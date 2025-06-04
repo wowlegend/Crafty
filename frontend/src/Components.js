@@ -395,55 +395,20 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// COMPLETELY STATIC HANDS - Zero animation, zero shaking
+// COMPLETELY STATIC HANDS - No useFrame animation at all
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   
-  useFrame(({ camera }) => {
-    try {
-      if (!camera?.position || !camera?.rotation || !camera?.quaternion) {
-        return;
-      }
-      
-      // COMPLETELY STATIC positioning - NO MOVEMENT AT ALL
-      if (rightHandRef.current) {
-        const cameraPos = camera.position.clone();
-        const cameraQuat = camera.quaternion.clone();
-        const rightHandLocalPos = new THREE.Vector3(0.25, -0.15, -0.4);
-        
-        rightHandLocalPos.applyQuaternion(cameraQuat);
-        rightHandLocalPos.add(cameraPos);
-        
-        rightHandRef.current.position.copy(rightHandLocalPos);
-        rightHandRef.current.rotation.copy(camera.rotation);
-        
-        // NO ANIMATION - only static positioning
-      }
-      
-      // Left hand - completely static
-      if (leftHandRef.current) {
-        const cameraPos = camera.position.clone();
-        const cameraQuat = camera.quaternion.clone();
-        const leftHandLocalPos = new THREE.Vector3(-0.25, -0.15, -0.4);
-        
-        leftHandLocalPos.applyQuaternion(cameraQuat);
-        leftHandLocalPos.add(cameraPos);
-        
-        leftHandRef.current.position.copy(leftHandLocalPos);
-        leftHandRef.current.rotation.copy(camera.rotation);
-      }
-    } catch (error) {
-      console.error("BothHands error:", error.message);
-    }
-  });
-
+  // REMOVED useFrame completely to stop all shaking
+  // Hands will be positioned relative to camera but won't move
+  
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   return (
     <group>
-      {/* Completely static right hand */}
-      <group ref={rightHandRef}>
+      {/* Static right hand - positioned manually */}
+      <group position={[0.3, -0.2, -0.5]}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
           <meshBasicMaterial color="#fdbcb4" />
@@ -463,8 +428,8 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         )}
       </group>
       
-      {/* Completely static left hand */}
-      <group ref={leftHandRef}>
+      {/* Static left hand - positioned manually */}
+      <group position={[-0.3, -0.2, -0.5]}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
           <meshBasicMaterial color="#fdbcb4" />
