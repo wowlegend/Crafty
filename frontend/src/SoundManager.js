@@ -303,6 +303,11 @@ export const useGameSounds = () => {
     playJump: () => playSound('jump'),
     playPickup: () => playSound('pickup'),
     playCraft: () => playSound('craft'),
-    playMagic: () => playSound('magic')
+    playMagic: () => playSound('magic'),
+    // NEW: Combat sounds
+    playAttack: () => playSound('attack', 0.9 + Math.random() * 0.2),
+    playSwing: () => playSound('swing', 0.8 + Math.random() * 0.4),
+    playHit: () => playSound('hit', 0.9 + Math.random() * 0.2),
+    playDefeat: () => playSound('defeat')
   };
 };
