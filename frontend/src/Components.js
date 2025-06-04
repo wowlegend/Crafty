@@ -428,23 +428,62 @@ const MinecraftClouds = () => {
   );
 };
 
-// Simplified Particles - Static for stability
-// MINIMAL Particles - No arrays, no maps
+// Enhanced Particles - With Error Handling
 const EnvironmentalParticles = () => {
+  const particlesRef = useRef();
+  
+  // Generate particle positions safely
+  const particlePositions = useMemo(() => {
+    try {
+      const positions = [];
+      for (let i = 0; i < 12; i++) {
+        positions.push({
+          x: (Math.random() - 0.5) * 25,
+          y: 0.1 + Math.random() * 1.5,
+          z: (Math.random() - 0.5) * 25,
+          initialY: 0.1 + Math.random() * 1.5
+        });
+      }
+      return positions;
+    } catch (error) {
+      console.warn("Particle generation error:", error);
+      return [];
+    }
+  }, []);
+  
+  // Safe particle animation
+  useFrame((state) => {
+    if (particlesRef.current?.children && state?.clock?.getElapsedTime) {
+      try {
+        const time = state.clock.getElapsedTime();
+        particlesRef.current.children.forEach((particle, i) => {
+          if (particle && particlePositions[i]) {
+            const originalY = particlePositions[i].initialY;
+            particle.position.y = originalY + Math.sin(time * 0.5 + i) * 0.1;
+          }
+        });
+      } catch (error) {
+        console.warn("Particle animation error:", error.message);
+      }
+    }
+  });
+  
   return (
-    <group>
-      <mesh position={[-2, 0.2, -1]} scale={[0.05, 0.05, 0.05]}>
-        <sphereGeometry args={[1, 4, 4]} />
-        <meshBasicMaterial color="#22c55e" />
-      </mesh>
-      <mesh position={[1, 0.3, 2]} scale={[0.05, 0.05, 0.05]}>
-        <sphereGeometry args={[1, 4, 4]} />
-        <meshBasicMaterial color="#22c55e" />
-      </mesh>
-      <mesh position={[3, 0.2, -2]} scale={[0.05, 0.05, 0.05]}>
-        <sphereGeometry args={[1, 4, 4]} />
-        <meshBasicMaterial color="#22c55e" />
-      </mesh>
+    <group ref={particlesRef}>
+      {particlePositions.map((pos, index) => (
+        <mesh 
+          key={index}
+          position={[pos.x, pos.y, pos.z]}
+          scale={[0.08, 0.08, 0.08]}
+        >
+          <sphereGeometry args={[1, 6, 6]} />
+          <meshLambertMaterial 
+            color="#22c55e" 
+            transparent 
+            opacity={0.7} 
+          />
+        </mesh>
+      ))}
     </group>
   );
 };
