@@ -743,8 +743,12 @@ export const Player = ({ gameState }) => {
   
   // Set initial camera position ABOVE the ground
   useEffect(() => {
-    camera.position.set(0, 5, 0); // Start higher to fall onto blocks
-    console.log('🎮 Player initialized at position:', camera.position);
+    try {
+      camera.position.set(0, 8, 0); // Start higher to fall onto blocks
+      console.log('🎮 Player initialized at position:', camera.position);
+    } catch (error) {
+      console.error('❌ Camera initialization error:', error);
+    }
   }, [camera]);
 
   useFrame((state, delta) => {
