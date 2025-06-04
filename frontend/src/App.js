@@ -44,11 +44,14 @@ import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
 import { NPCSystem, TradingInterface } from './NPCSystem';
 import { AmbientParticles } from './EnhancedVisuals';
 
-// Enhanced Game state management with world persistence
+// Enhanced Game state management with world persistence and new features
 const useGameState = () => {
   const [gameMode, setGameMode] = useState('creative');
   const [selectedBlock, setSelectedBlock] = useState('grass');
-  const [worldBlocks, setWorldBlocks] = useState(new Map()); // Store world data
+  const [worldBlocks, setWorldBlocks] = useState(new Map());
+  const [activeSpell, setActiveSpell] = useState(null);
+  const [showTradingInterface, setShowTradingInterface] = useState(false);
+  const [selectedVillager, setSelectedVillager] = useState(null);
   const [inventory, setInventory] = useState({
     blocks: {
       grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,
@@ -100,7 +103,6 @@ const useGameState = () => {
 
   const loadWorldData = (worldData) => {
     if (worldData.world_data) {
-      // Convert world data back to Map
       const blockMap = new Map();
       Object.entries(worldData.world_data).forEach(([key, value]) => {
         blockMap.set(key, value);
@@ -119,9 +121,12 @@ const useGameState = () => {
 
   return {
     gameMode, setGameMode, selectedBlock, setSelectedBlock, worldBlocks, setWorldBlocks,
-    inventory, setInventory, showInventory, setShowInventory, showCrafting, setShowCrafting,
-    showMagic, setShowMagic, showSettings, setShowSettings, showBuildingTools, setShowBuildingTools,
-    showWorldManager, setShowWorldManager, isDay, setIsDay, gameTime, achievements, setAchievements,
+    activeSpell, setActiveSpell, showTradingInterface, setShowTradingInterface,
+    selectedVillager, setSelectedVillager, inventory, setInventory, 
+    showInventory, setShowInventory, showCrafting, setShowCrafting,
+    showMagic, setShowMagic, showSettings, setShowSettings, 
+    showBuildingTools, setShowBuildingTools, showWorldManager, setShowWorldManager, 
+    isDay, setIsDay, gameTime, achievements, setAchievements,
     playerStats, setPlayerStats, addToInventory, removeFromInventory, loadWorldData
   };
 };
