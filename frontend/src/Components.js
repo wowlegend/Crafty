@@ -117,9 +117,10 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* DISABLED FOR TESTING - NO ENVIRONMENT COMPONENTS */}
-      {/* <MinecraftClouds />
-      <EnvironmentalParticles /> */}
+      {/* TESTING - Add back clouds component to see if it causes the error */}
+      <MinecraftClouds />
+      {/* KEEP PARTICLES DISABLED FOR NOW */}
+      {/* <EnvironmentalParticles /> */}
       
       {/* Only basic blocks */}
       {Array.from(blocks.values()).map((block) => {
