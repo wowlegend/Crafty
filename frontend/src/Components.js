@@ -639,7 +639,7 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// FIXED Player component with proper hands rendering and attack state
+// ENHANCED Player component with improved hands rendering and debugging
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -648,11 +648,13 @@ export const Player = ({ gameState }) => {
   const [isAttacking, setIsAttacking] = useState(false);
   
   console.log('🎮 Player component rendering');
+  console.log('🎥 Camera details - position:', camera.position, 'near:', camera.near, 'far:', camera.far);
   
   // Set initial camera position
   useEffect(() => {
     camera.position.set(0, 15, 0);
     console.log('🎮 Player initialized at position:', camera.position);
+    console.log('🎥 Camera matrix:', camera.matrix);
   }, [camera]);
 
   // Expose attack state globally
@@ -660,6 +662,7 @@ export const Player = ({ gameState }) => {
     window.setPlayerAttacking = setIsAttacking;
   }, []);
 
+  // Enhanced frame logic with hands debugging
   useFrame((state, delta) => {
     const speed = 8;
     const moveVector = new THREE.Vector3();
@@ -702,6 +705,11 @@ export const Player = ({ gameState }) => {
       camera.position.y = newY;
       setIsOnGround(false);
     }
+    
+    // Debug hands visibility every few frames
+    if (Math.floor(state.clock.elapsedTime) % 2 === 0) {
+      console.log('🤲 Hands should be visible at camera position:', camera.position);
+    }
   });
 
   const getGroundLevel = (x, z) => {
@@ -723,11 +731,19 @@ export const Player = ({ gameState }) => {
         }
       }
       
+      // Testing attack for hands visibility
+      if (event.code === 'KeyF') {
+        console.log('🗡️ Attack key pressed - testing hands visibility');
+        setIsAttacking(true);
+        setTimeout(() => setIsAttacking(false), 500);
+      }
+      
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = Object.keys(BLOCK_TYPES);
         if (num >= 1 && num <= blockTypes.length) {
           gameState.setSelectedBlock(blockTypes[num - 1]);
+          console.log('🧱 Selected block:', blockTypes[num - 1]);
         }
       }
     };
@@ -745,6 +761,9 @@ export const Player = ({ gameState }) => {
     };
   }, [camera, gameState, isOnGround]);
 
+  // Render hands with debug info
+  console.log('🤲 Rendering BothHands component with selectedBlock:', gameState.selectedBlock, 'isAttacking:', isAttacking);
+  
   return <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />;
 };
 
