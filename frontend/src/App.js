@@ -144,11 +144,22 @@ function GameApp() {
   const gameState = useGameState();
   const { isAuthenticated, loading } = useAuth();
   const { soundEnabled, setSoundEnabled, musicEnabled, setMusicEnabled, playBackgroundMusic } = useSounds();
+  const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
+
+  // Expose combat sounds globally for NPC system
+  useEffect(() => {
+    window.playAttackSounds = () => {
+      playSwing();
+      setTimeout(() => playAttack(), 100);
+    };
+    window.playHitSound = playHit;
+    window.playDefeatSound = playDefeat;
+  }, [playAttack, playSwing, playHit, playDefeat]);
 
   // Start background music
   useEffect(() => {
