@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Box, Plane } from '@react-three/drei';
+import { Text, Box, Plane, Stars } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { 
