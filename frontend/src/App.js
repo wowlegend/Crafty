@@ -221,47 +221,44 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Main Game Canvas - Optimized settings */}
+      {/* Ultra-Simple Game Canvas */}
       <Canvas
         camera={{
           fov: 75,
           near: 0.1,
-          far: 100, // Reduced from 1000
-          position: [0, 2, 5] // Better starting position
+          far: 50, // Much shorter render distance
+          position: [0, 3, 5] // Better starting position
         }}
-        shadows={false} // Disabled for performance
+        shadows={false}
         className="w-full h-full"
-        performance={{ min: 0.5 }} // Performance optimization
+        gl={{ antialias: false }} // Disable antialiasing for performance
       >
-        {/* Environment */}
+        {/* Simple Environment */}
         <Sky 
-          distance={100000} // Reduced from 450000
-          sunPosition={gameState.isDay ? [0, 1, 0] : [0, -1, 0]}
-          inclination={gameState.isDay ? 0 : 0.49}
+          distance={50000}
+          sunPosition={[0, 1, 0]}
+          inclination={0}
           azimuth={0.25}
         />
         
-        {/* Simplified Lighting */}
-        <ambientLight intensity={gameState.isDay ? 0.8 : 0.3} />
+        {/* Basic Lighting Only */}
+        <ambientLight intensity={0.6} />
         <directionalLight
-          position={gameState.isDay ? [10, 10, 5] : [-10, -10, -5]}
-          intensity={gameState.isDay ? 1 : 0.4}
-          castShadow={false} // Disabled for performance
+          position={[10, 10, 5]}
+          intensity={1}
+          castShadow={false}
         />
 
         {/* Player Controls */}
         <PointerLockControls />
         
-        {/* Game World */}
-        <MinecraftWorld 
-          gameState={gameState}
-          worldSeed={worldSeed}
-        />
+        {/* Simple Game World */}
+        <MinecraftWorld gameState={gameState} />
         
-        {/* Player */}
+        {/* Player with Hands */}
         <Player gameState={gameState} />
 
-        {/* Performance Stats - Only when enabled */}
+        {/* Performance Stats */}
         {showStats && <Stats />}
       </Canvas>
 
