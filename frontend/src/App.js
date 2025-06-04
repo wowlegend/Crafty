@@ -221,38 +221,32 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Main Game Canvas */}
+      {/* Main Game Canvas - Optimized settings */}
       <Canvas
         camera={{
           fov: 75,
           near: 0.1,
-          far: 1000,
-          position: [0, 10, 0]
+          far: 100, // Reduced from 1000
+          position: [0, 2, 5] // Better starting position
         }}
-        shadows
+        shadows={false} // Disabled for performance
         className="w-full h-full"
+        performance={{ min: 0.5 }} // Performance optimization
       >
         {/* Environment */}
         <Sky 
-          distance={450000}
+          distance={100000} // Reduced from 450000
           sunPosition={gameState.isDay ? [0, 1, 0] : [0, -1, 0]}
           inclination={gameState.isDay ? 0 : 0.49}
           azimuth={0.25}
         />
         
-        {/* Lighting */}
-        <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
+        {/* Simplified Lighting */}
+        <ambientLight intensity={gameState.isDay ? 0.8 : 0.3} />
         <directionalLight
           position={gameState.isDay ? [10, 10, 5] : [-10, -10, -5]}
-          intensity={gameState.isDay ? 1.2 : 0.3}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={50}
-          shadow-camera-left={-10}
-          shadow-camera-right={10}
-          shadow-camera-top={10}
-          shadow-camera-bottom={-10}
+          intensity={gameState.isDay ? 1 : 0.4}
+          castShadow={false} // Disabled for performance
         />
 
         {/* Player Controls */}
@@ -267,7 +261,7 @@ function App() {
         {/* Player */}
         <Player gameState={gameState} />
 
-        {/* Performance Stats */}
+        {/* Performance Stats - Only when enabled */}
         {showStats && <Stats />}
       </Canvas>
 
