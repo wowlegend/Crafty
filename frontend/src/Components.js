@@ -161,102 +161,118 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// SIMPLE BUT WORKING TERRAIN - Larger static world with extension
+// OPTIMIZED TERRAIN - Faster generation, less lag
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
 
-  // Simple terrain extension when player gets close to edges
-  const extendTerrain = (playerX, playerZ) => {
-    const chunkSize = 25;
+  // SMALLER chunks for faster generation
+  const chunkSize = 15; // Reduced from 25
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // FASTER terrain extension 
+  const extendTerrain = async (playerX, playerZ) => {
+    if (isGenerating) return; // Prevent multiple generations at once
+    
+    setIsGenerating(true);
+    
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // Check chunks around player
+    // Generate only the nearest missing chunk
     for (let x = currentChunkX - 1; x <= currentChunkX + 1; x++) {
       for (let z = currentChunkZ - 1; z <= currentChunkZ + 1; z++) {
         const chunkKey = `${x}_${z}`;
         
         if (!generatedChunks.has(chunkKey)) {
-          generateChunk(x, z);
+          await generateChunkFast(x, z); // Generate one at a time
           setGeneratedChunks(prev => new Set(prev).add(chunkKey));
+          break; // Only generate one chunk per frame to prevent lag
         }
       }
     }
+    
+    setIsGenerating(false);
   };
 
-  // Generate a chunk of terrain
-  const generateChunk = (chunkX, chunkZ) => {
-    const newBlocks = new Map();
-    const startX = chunkX * 25;
-    const startZ = chunkZ * 25;
-    
-    for (let x = startX; x < startX + 25; x++) {
-      for (let z = startZ; z < startZ + 25; z++) {
-        // Simple height generation
-        const height = Math.floor(
-          Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 + 5
-        );
+  // FASTER chunk generation with fewer blocks
+  const generateChunkFast = async (chunkX, chunkZ) => {
+    return new Promise(resolve => {
+      setTimeout(() => { // Use setTimeout to prevent blocking
+        const newBlocks = new Map();
+        const startX = chunkX * chunkSize;
+        const startZ = chunkZ * chunkSize;
         
-        // Generate solid layers
-        for (let y = 0; y <= height; y++) {
-          const key = `${x},${y},${z}`;
-          
-          if (y === height && height > 3) {
-            newBlocks.set(key, { position: [x, y, z], type: 'grass' });
-          } else if (y === height && height <= 3) {
-            newBlocks.set(key, { position: [x, y, z], type: 'sand' });
-          } else if (y >= height - 1) {
-            newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          } else {
-            newBlocks.set(key, { position: [x, y, z], type: 'stone' });
+        for (let x = startX; x < startX + chunkSize; x++) {
+          for (let z = startZ; z < startZ + chunkSize; z++) {
+            // SIMPLIFIED height generation for speed
+            const height = Math.floor(Math.sin(x * 0.1) * Math.cos(z * 0.1) * 1.5 + 4);
+            
+            // Generate fewer layers for performance
+            for (let y = 0; y <= Math.min(height, 6); y++) {
+              const key = `${x},${y},${z}`;
+              
+              if (y === height && height > 2) {
+                newBlocks.set(key, { position: [x, y, z], type: 'grass' });
+              } else if (y === height && height <= 2) {
+                newBlocks.set(key, { position: [x, y, z], type: 'sand' });
+              } else if (y >= height - 1) {
+                newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
+              } else {
+                newBlocks.set(key, { position: [x, y, z], type: 'stone' });
+              }
+            }
+            
+            // Fewer trees
+            if (Math.random() < 0.005 && height > 2) {
+              const treeKey = `${x},${height + 1},${z}`;
+              newBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
+            }
           }
         }
         
-        // Simple trees
-        if (Math.random() < 0.01 && height > 3) {
-          const treeKey = `${x},${height + 1},${z}`;
-          newBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
-        }
-      }
-    }
-    
-    setBlocks(prev => {
-      const updated = new Map(prev);
-      newBlocks.forEach((value, key) => {
-        updated.set(key, value);
-      });
-      return updated;
+        setBlocks(prev => {
+          const updated = new Map(prev);
+          newBlocks.forEach((value, key) => {
+            updated.set(key, value);
+          });
+          return updated;
+        });
+        
+        resolve();
+      }, 10); // Small delay to prevent blocking
     });
   };
 
-  // Check for terrain extension (simplified)
-  useFrame(() => {
-    const distance = Math.sqrt(camera.position.x * camera.position.x + camera.position.z * camera.position.z);
-    
-    // If player is getting far from center, extend terrain
-    if (Math.abs(camera.position.x) > 40 || Math.abs(camera.position.z) > 40) {
-      extendTerrain(camera.position.x, camera.position.z);
+  // Check for terrain extension - less frequent checks
+  const [lastCheck, setLastCheck] = useState(0);
+  
+  useFrame((state) => {
+    // Only check every 60 frames (1 second at 60fps) to reduce performance impact
+    if (state.clock.elapsedTime - lastCheck > 1) {
+      setLastCheck(state.clock.elapsedTime);
+      
+      // If player is getting close to edge, extend terrain
+      if (Math.abs(camera.position.x) > 30 || Math.abs(camera.position.z) > 30) {
+        extendTerrain(camera.position.x, camera.position.z);
+      }
     }
   });
 
-  // Initial world generation
+  // Initial world generation - smaller area
   useEffect(() => {
-    // Generate initial 3x3 chunks
-    for (let x = -1; x <= 1; x++) {
-      for (let z = -1; z <= 1; z++) {
-        generateChunk(x, z);
-        setGeneratedChunks(prev => new Set(prev).add(`${x}_${z}`));
-      }
-    }
-    console.log('🌍 Initial world generated');
+    // Generate only center chunk initially
+    generateChunkFast(0, 0).then(() => {
+      setGeneratedChunks(prev => new Set(prev).add('0_0'));
+    });
+    console.log('🌍 Fast initial world generated');
   }, []);
 
   // Simple collision detection
   const getHighestBlockAt = (x, z) => {
     let maxY = 0;
-    for (let y = 0; y <= 10; y++) {
+    for (let y = 0; y <= 8; y++) {
       const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
       if (blocks.has(key)) {
         maxY = Math.max(maxY, y);
@@ -358,7 +374,7 @@ export const MinecraftWorld = ({ gameState }) => {
     <group>
       <MinecraftClouds />
       
-      {/* Render blocks simply */}
+      {/* Render blocks with CLEAR delineations like Minecraft */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -367,7 +383,11 @@ export const MinecraftWorld = ({ gameState }) => {
             position={block.position}
           >
             <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color={blockConfig.color} />
+            <meshLambertMaterial 
+              color={blockConfig.color}
+              transparent={blockConfig.transparent || false}
+              opacity={blockConfig.transparent ? 0.8 : 1}
+            />
           </mesh>
         );
       })}
