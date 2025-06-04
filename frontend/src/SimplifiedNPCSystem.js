@@ -106,8 +106,13 @@ export const NPCSystem = ({ gameState }) => {
     }
   };
 
-  // ENHANCED attack function with VISUAL EFFECTS and weapon display
+  // ENHANCED attack function with VISUAL EFFECTS, SOUND EFFECTS and weapon display
   const attackEntity = (entityId) => {
+    // PLAY ATTACK SOUNDS
+    if (window.playAttackSounds) {
+      window.playAttackSounds();
+    }
+
     // Show weapon during attack with enhanced feedback
     if (window.setPlayerAttacking) {
       window.setPlayerAttacking(true);
@@ -123,6 +128,11 @@ export const NPCSystem = ({ gameState }) => {
         
         console.log(`⚔️ ATTACKING ${entity.type}! Health: ${newHealth}/${entity.maxHealth}`);
         
+        // PLAY HIT SOUND
+        if (window.playHitSound) {
+          window.playHitSound();
+        }
+        
         // CREATE ATTACK VISUAL EFFECTS
         createAttackEffects(entity.position);
         
@@ -130,6 +140,11 @@ export const NPCSystem = ({ gameState }) => {
         spawnDamageNumber(entity.position, damage);
         
         if (newHealth <= 0) {
+          // PLAY DEFEAT SOUND
+          if (window.playDefeatSound) {
+            window.playDefeatSound();
+          }
+          
           // DEATH EFFECTS
           createDeathEffects(entity.position);
           
