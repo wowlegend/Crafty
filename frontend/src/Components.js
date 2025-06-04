@@ -265,61 +265,189 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Properly Visible Both Hands - With Precise Error Handling
+// Precise Debugging Both Hands Component
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
+  const [debugInfo, setDebugInfo] = useState('');
   
   useFrame(({ camera, clock }) => {
-    // Precise null checks to prevent "undefined reading 'value'" errors
-    if (!camera || !camera.position || !camera.rotation) {
-      console.warn("Camera not ready yet");
-      return;
-    }
-    
-    const time = clock?.getElapsedTime?.() || 0;
-    
     try {
-      // Right hand positioning with camera-relative movement
+      // Step 1: Check if basic objects exist
+      if (!camera) {
+        setDebugInfo('Camera undefined');
+        return;
+      }
+      
+      // Step 2: Check camera properties exist
+      if (!camera.position) {
+        setDebugInfo('Camera.position undefined');
+        return;
+      }
+      
+      if (!camera.rotation) {
+        setDebugInfo('Camera.rotation undefined');
+        return;
+      }
+      
+      if (!camera.quaternion) {
+        setDebugInfo('Camera.quaternion undefined');
+        return;
+      }
+      
+      // Step 3: Check if camera properties have required internal properties
+      if (typeof camera.position.x === 'undefined' || 
+          typeof camera.position.y === 'undefined' || 
+          typeof camera.position.z === 'undefined') {
+        setDebugInfo('Camera position values undefined');
+        return;
+      }
+      
+      // Step 4: Check clock
+      if (!clock || typeof clock.getElapsedTime !== 'function') {
+        setDebugInfo('Clock undefined or invalid');
+        return;
+      }
+      
+      let time;
+      try {
+        time = clock.getElapsedTime();
+        if (typeof time !== 'number') {
+          setDebugInfo('Clock time not a number');
+          return;
+        }
+      } catch (clockError) {
+        setDebugInfo(`Clock error: ${clockError.message}`);
+        return;
+      }
+      
+      // Step 5: Check if camera quaternion is valid
+      if (typeof camera.quaternion.x === 'undefined' ||
+          typeof camera.quaternion.y === 'undefined' ||
+          typeof camera.quaternion.z === 'undefined' ||
+          typeof camera.quaternion.w === 'undefined') {
+        setDebugInfo('Camera quaternion values undefined');
+        return;
+      }
+      
+      // Step 6: Try cloning operations with individual try-catch
+      let cameraPos, cameraQuat;
+      
+      try {
+        cameraPos = camera.position.clone();
+        if (!cameraPos || typeof cameraPos.x === 'undefined') {
+          setDebugInfo('Camera position clone failed');
+          return;
+        }
+      } catch (posError) {
+        setDebugInfo(`Position clone error: ${posError.message}`);
+        return;
+      }
+      
+      try {
+        cameraQuat = camera.quaternion.clone();
+        if (!cameraQuat || typeof cameraQuat.x === 'undefined') {
+          setDebugInfo('Camera quaternion clone failed');
+          return;
+        }
+      } catch (quatError) {
+        setDebugInfo(`Quaternion clone error: ${quatError.message}`);
+        return;
+      }
+      
+      // Step 7: Position hands with detailed error checking
       if (rightHandRef.current) {
-        // Calculate right hand position relative to camera
-        const cameraPos = camera.position.clone();
-        const cameraQuat = camera.quaternion.clone();
-        
-        // Local position for right hand
-        const rightHandLocalPos = new THREE.Vector3(0.3, -0.2, -0.6);
-        
-        // Transform to world space
-        rightHandLocalPos.applyQuaternion(cameraQuat);
-        rightHandLocalPos.add(cameraPos);
-        
-        rightHandRef.current.position.copy(rightHandLocalPos);
-        rightHandRef.current.rotation.copy(camera.rotation);
-        
-        // Subtle swing animation
-        if (isSwinging && typeof time === 'number') {
-          rightHandRef.current.rotation.x += Math.sin(time * 8) * 0.1;
+        try {
+          const rightHandLocalPos = new THREE.Vector3(0.3, -0.2, -0.6);
+          
+          // Check if Vector3 is valid
+          if (!rightHandLocalPos || typeof rightHandLocalPos.x === 'undefined') {
+            setDebugInfo('Right hand vector3 creation failed');
+            return;
+          }
+          
+          // Apply quaternion with error checking
+          try {
+            rightHandLocalPos.applyQuaternion(cameraQuat);
+          } catch (applyError) {
+            setDebugInfo(`Right hand applyQuaternion error: ${applyError.message}`);
+            return;
+          }
+          
+          // Add position with error checking
+          try {
+            rightHandLocalPos.add(cameraPos);
+          } catch (addError) {
+            setDebugInfo(`Right hand add position error: ${addError.message}`);
+            return;
+          }
+          
+          // Set position with error checking
+          try {
+            rightHandRef.current.position.copy(rightHandLocalPos);
+            rightHandRef.current.rotation.copy(camera.rotation);
+          } catch (setError) {
+            setDebugInfo(`Right hand set position error: ${setError.message}`);
+            return;
+          }
+          
+          // Swing animation with error checking
+          if (isSwinging && typeof time === 'number') {
+            try {
+              rightHandRef.current.rotation.x += Math.sin(time * 8) * 0.1;
+            } catch (animError) {
+              setDebugInfo(`Right hand animation error: ${animError.message}`);
+            }
+          }
+        } catch (rightHandError) {
+          setDebugInfo(`Right hand general error: ${rightHandError.message}`);
+          return;
         }
       }
       
-      // Left hand positioning
+      // Step 8: Left hand with same detailed checking
       if (leftHandRef.current) {
-        const cameraPos = camera.position.clone();
-        const cameraQuat = camera.quaternion.clone();
-        
-        // Local position for left hand
-        const leftHandLocalPos = new THREE.Vector3(-0.3, -0.2, -0.6);
-        
-        // Transform to world space
-        leftHandLocalPos.applyQuaternion(cameraQuat);
-        leftHandLocalPos.add(cameraPos);
-        
-        leftHandRef.current.position.copy(leftHandLocalPos);
-        leftHandRef.current.rotation.copy(camera.rotation);
+        try {
+          const leftHandLocalPos = new THREE.Vector3(-0.3, -0.2, -0.6);
+          
+          if (!leftHandLocalPos || typeof leftHandLocalPos.x === 'undefined') {
+            setDebugInfo('Left hand vector3 creation failed');
+            return;
+          }
+          
+          try {
+            leftHandLocalPos.applyQuaternion(cameraQuat);
+          } catch (applyError) {
+            setDebugInfo(`Left hand applyQuaternion error: ${applyError.message}`);
+            return;
+          }
+          
+          try {
+            leftHandLocalPos.add(cameraPos);
+          } catch (addError) {
+            setDebugInfo(`Left hand add position error: ${addError.message}`);
+            return;
+          }
+          
+          try {
+            leftHandRef.current.position.copy(leftHandLocalPos);
+            leftHandRef.current.rotation.copy(camera.rotation);
+          } catch (setError) {
+            setDebugInfo(`Left hand set position error: ${setError.message}`);
+            return;
+          }
+        } catch (leftHandError) {
+          setDebugInfo(`Left hand general error: ${leftHandError.message}`);
+          return;
+        }
       }
-    } catch (error) {
-      // Log specific error for debugging
-      console.error("Hand positioning error:", error.message);
+      
+      // If we get here, everything worked
+      setDebugInfo('Hands positioned successfully');
+      
+    } catch (mainError) {
+      setDebugInfo(`Main useFrame error: ${mainError.message}`);
+      console.error('BothHands useFrame error:', mainError);
     }
   });
 
@@ -327,6 +455,17 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
 
   return (
     <group>
+      {/* Debug info display */}
+      {debugInfo && debugInfo !== 'Hands positioned successfully' && (
+        <Text
+          position={[0, 3, -2]}
+          fontSize={0.2}
+          color="red"
+        >
+          DEBUG: {debugInfo}
+        </Text>
+      )}
+      
       {/* Right Hand with Proper Minecraft-like Structure */}
       <group ref={rightHandRef}>
         {/* Right arm */}
