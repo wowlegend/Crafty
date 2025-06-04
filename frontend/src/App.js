@@ -234,8 +234,8 @@ function App() {
         className="w-full h-full"
         gl={{ antialias: false }}
       >
-        {/* Simplified Environment */}
-        <MinecraftSky isDay={gameState.isDay} />
+        {/* Ultra Simple Environment */}
+        <MinecraftSky />
         
         {/* Basic Lighting - No complex shadows */}
         <ambientLight intensity={0.7} />
