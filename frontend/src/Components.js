@@ -287,12 +287,13 @@ export const MinecraftWorld = ({ gameState }) => {
 };
 
 // Both Hands Component - Like Minecraft
-const BothHands = ({ selectedBlock }) => {
+const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   
   useFrame(({ camera, clock }) => {
     const time = clock.getElapsedTime();
+    const swingAmount = isSwinging ? Math.sin(time * 20) * 0.3 : 0;
     
     if (rightHandRef.current) {
       // Right hand position in camera space
@@ -301,8 +302,8 @@ const BothHands = ({ selectedBlock }) => {
       rightHandRef.current.position.copy(rightHandPos);
       rightHandRef.current.rotation.copy(camera.rotation);
       
-      // Subtle idle animation
-      rightHandRef.current.rotation.z += Math.sin(time * 0.5) * 0.02;
+      // Subtle idle animation + swing
+      rightHandRef.current.rotation.z += Math.sin(time * 0.5) * 0.02 + swingAmount;
     }
     
     if (leftHandRef.current) {
