@@ -352,11 +352,14 @@ function GameApp() {
       {/* Game UI Overlay */}
       <AnimatePresence>
         {isPointerLocked && (
-          <GameUI 
-            gameState={gameState}
-            showStats={showStats}
-            setShowStats={setShowStats}
-          />
+          <>
+            <GameUI 
+              gameState={gameState}
+              showStats={showStats}
+              setShowStats={setShowStats}
+            />
+            <CombatInstructions />
+          </>
         )}
       </AnimatePresence>
 
