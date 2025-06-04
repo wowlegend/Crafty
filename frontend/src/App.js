@@ -41,7 +41,7 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
-import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
+import { NPCSystem, TradingInterface, CombatInstructions } from './SimplifiedNPCSystem';
 
 // Game state management
 const useGameState = () => {
@@ -232,7 +232,7 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                RESTORED: Hands • Clouds • NPCs • Infinite Terrain
+                FIXED: Hands • Infinite Terrain • Proper NPC Spawning
               </motion.p>
 
               {/* Authentication Status */}
@@ -304,21 +304,23 @@ function GameApp() {
         camera={{
           fov: 75,
           near: 0.1,
-          far: 500,
-          position: [0, 20, 0]
+          far: 300, // Reduced far plane for better performance
+          position: [0, 15, 0]
         }}
         shadows={false}
         className="w-full h-full"
         gl={{ 
-          antialias: true,
+          antialias: false, // Disabled for performance
           alpha: false,
-          depth: true
+          depth: true,
+          powerPreference: "high-performance"
         }}
+        performance={{ min: 0.5 }} // Allow framerate to drop to maintain performance
       >
-        {/* Lighting */}
+        {/* Optimized lighting */}
         <MinecraftSky isDay={gameState.isDay} />
         <ambientLight intensity={0.6} />
-        <directionalLight position={[50, 50, 25]} intensity={1} />
+        <directionalLight position={[50, 50, 25]} intensity={1} castShadow={false} />
 
         {/* Player Controls */}
         <PointerLockControls />
@@ -326,13 +328,13 @@ function GameApp() {
         {/* Position tracker */}
         <PositionTracker onPositionUpdate={setPlayerPosition} />
         
-        {/* RESTORED Game World with infinite generation */}
+        {/* FIXED Game World with working infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* RESTORED Player with hands */}
+        {/* FIXED Player with visible hands */}
         <Player gameState={gameState} />
 
-        {/* RESTORED NPCs and Mobs */}
+        {/* FIXED NPCs that spawn on terrain properly */}
         <NPCSystem gameState={gameState} />
 
         {/* Performance Stats */}

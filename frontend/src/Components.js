@@ -25,7 +25,7 @@ import {
   Shield
 } from 'lucide-react';
 
-// Authentic Minecraft Block Types Configuration with EXACT Colors
+// Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
   grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
   dirt: { color: '#976D4D', name: 'Dirt', texture: 'dirt' },
@@ -105,66 +105,63 @@ const MinecraftHealthHunger = () => {
   );
 };
 
-// IMPROVED terrain generation with multiple octaves
-const generateTerrain = (x, z, seed = 12345) => {
-  // Multi-octave noise for realistic terrain
-  const octave1 = Math.sin(x * 0.1 + seed) * Math.cos(z * 0.1 + seed) * 2;
-  const octave2 = Math.sin(x * 0.05 + seed * 2) * Math.cos(z * 0.05 + seed * 2) * 4;
-  const octave3 = Math.sin(x * 0.025 + seed * 3) * Math.cos(z * 0.025 + seed * 3) * 8;
+// FIXED terrain generation with better height calculation
+const generateTerrain = (x, z) => {
+  // Improved noise function for more realistic terrain
+  const scale1 = 0.05;
+  const scale2 = 0.02;
+  const scale3 = 0.01;
   
-  const height = octave1 + octave2 + octave3 + 15; // Base height
-  return Math.floor(Math.max(5, height)); // Minimum height 5, max around 30
+  const noise1 = Math.sin(x * scale1) * Math.cos(z * scale1) * 3;
+  const noise2 = Math.sin(x * scale2) * Math.cos(z * scale2) * 6;
+  const noise3 = Math.sin(x * scale3) * Math.cos(z * scale3) * 12;
+  
+  const height = noise1 + noise2 + noise3 + 10; // Base height of 10
+  return Math.floor(Math.max(5, Math.min(25, height))); // Clamp between 5-25
 };
 
-// WORKING Infinite World Generation System
+// WORKING Infinite World Generation with proper chunk management
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const lastPlayerChunk = useRef({ x: 0, z: 0 });
+  const lastGenerationTime = useRef(0);
+  const currentPlayerChunk = useRef({ x: 0, z: 0 });
   
-  const chunkSize = 16; // Standard Minecraft chunk size
-  const renderDistance = 2; // Chunks around player
+  const chunkSize = 16;
+  const renderDistance = 3;
 
-  // Generate a single chunk
-  const generateChunk = (chunkX, chunkZ) => {
+  // Generate a single chunk efficiently
+  const generateChunk = async (chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     
     if (generatedChunks.has(chunkKey)) {
-      return; // Already generated
+      return;
     }
 
-    console.log(`🌍 Generating chunk ${chunkX},${chunkZ}`);
-    
     const newBlocks = new Map();
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
     
-    // Generate terrain for this chunk
+    // Generate terrain
     for (let x = startX; x < startX + chunkSize; x++) {
       for (let z = startZ; z < startZ + chunkSize; z++) {
         const height = generateTerrain(x, z);
         
-        // Generate block column
+        // Generate blocks for this column
         for (let y = 0; y <= height; y++) {
           const key = `${x},${y},${z}`;
           
-          // Surface layer
           if (y === height) {
             if (height > 12) {
               newBlocks.set(key, { position: [x, y, z], type: 'grass' });
             } else {
               newBlocks.set(key, { position: [x, y, z], type: 'sand' });
             }
-          }
-          // Sub-surface layers
-          else if (y >= height - 2) {
+          } else if (y >= height - 2) {
             newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          }
-          // Deep layers with ores
-          else {
-            if (Math.random() < 0.03 && y < 8) {
+          } else {
+            if (Math.random() < 0.02 && y < 8) {
               const oreType = Math.random() < 0.1 ? 'diamond' : 
                              Math.random() < 0.3 ? 'gold' : 'iron';
               newBlocks.set(key, { position: [x, y, z], type: oreType });
@@ -175,8 +172,8 @@ export const MinecraftWorld = ({ gameState }) => {
         }
         
         // Add trees occasionally
-        if (height > 12 && Math.random() < 0.02) {
-          const treeHeight = 3 + Math.floor(Math.random() * 3);
+        if (height > 12 && Math.random() < 0.03) {
+          const treeHeight = 4 + Math.floor(Math.random() * 3);
           for (let th = 1; th <= treeHeight; th++) {
             const treeKey = `${x},${height + th},${z}`;
             newBlocks.set(treeKey, { position: [x, height + th, z], type: 'wood' });
@@ -185,7 +182,7 @@ export const MinecraftWorld = ({ gameState }) => {
       }
     }
     
-    // Add blocks to world
+    // Update world blocks
     setBlocks(prev => {
       const updated = new Map(prev);
       newBlocks.forEach((value, key) => {
@@ -196,64 +193,63 @@ export const MinecraftWorld = ({ gameState }) => {
     
     // Mark chunk as generated
     setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-    console.log(`✅ Chunk ${chunkX},${chunkZ} generated with ${newBlocks.size} blocks`);
+    console.log(`✅ Generated chunk ${chunkX},${chunkZ} with ${newBlocks.size} blocks`);
   };
 
-  // Check if player moved to new chunk and generate surrounding chunks
-  useFrame(() => {
-    if (isGenerating) return;
+  // Improved chunk generation trigger
+  useFrame((state) => {
+    const now = state.clock.elapsedTime * 1000;
+    
+    // Throttle generation to prevent lag
+    if (now - lastGenerationTime.current < 100) {
+      return;
+    }
     
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
-    const currentChunkX = Math.floor(playerX / chunkSize);
-    const currentChunkZ = Math.floor(playerZ / chunkSize);
+    const chunkX = Math.floor(playerX / chunkSize);
+    const chunkZ = Math.floor(playerZ / chunkSize);
     
-    // Only generate if player moved to a different chunk
-    if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
-      lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
-      
-      setIsGenerating(true);
+    // Only generate if player moved to a new chunk
+    if (chunkX !== currentPlayerChunk.current.x || chunkZ !== currentPlayerChunk.current.z) {
+      currentPlayerChunk.current = { x: chunkX, z: chunkZ };
+      lastGenerationTime.current = now;
       
       // Generate chunks around player
-      let chunksGenerated = 0;
       for (let dx = -renderDistance; dx <= renderDistance; dx++) {
         for (let dz = -renderDistance; dz <= renderDistance; dz++) {
-          const chunkX = currentChunkX + dx;
-          const chunkZ = currentChunkZ + dz;
-          const chunkKey = `${chunkX}_${chunkZ}`;
+          const targetChunkX = chunkX + dx;
+          const targetChunkZ = chunkZ + dz;
+          const chunkKey = `${targetChunkX}_${targetChunkZ}`;
           
           if (!generatedChunks.has(chunkKey)) {
-            generateChunk(chunkX, chunkZ);
-            chunksGenerated++;
-            
-            // Only generate one chunk per frame to prevent lag
-            if (chunksGenerated >= 1) break;
+            generateChunk(targetChunkX, targetChunkZ);
+            return; // Generate one chunk per frame
           }
         }
-        if (chunksGenerated >= 1) break;
       }
-      
-      setIsGenerating(false);
     }
   });
 
   // Initial world generation
   useEffect(() => {
-    console.log('🌍 Starting initial world generation...');
+    console.log('🌍 Initializing world...');
     
-    // Generate starting chunks around spawn
-    for (let x = -1; x <= 1; x++) {
-      for (let z = -1; z <= 1; z++) {
-        generateChunk(x, z);
+    // Generate initial 3x3 chunks around spawn
+    const generateInitial = async () => {
+      for (let x = -1; x <= 1; x++) {
+        for (let z = -1; z <= 1; z++) {
+          await generateChunk(x, z);
+        }
       }
-    }
+    };
     
-    console.log('✅ Initial world generation complete');
+    generateInitial();
   }, []);
 
   // Collision detection
   const getHighestBlockAt = (x, z) => {
-    let maxY = 5; // Default ground level
+    let maxY = 5;
     for (let y = 5; y <= 30; y++) {
       const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
       if (blocks.has(key)) {
@@ -294,7 +290,7 @@ export const MinecraftWorld = ({ gameState }) => {
           gameState.removeFromInventory(gameState.selectedBlock, 1);
         }
         
-        console.log(`🧱 Placed ${gameState.selectedBlock} at ${gridPos.x},${gridPos.y},${gridPos.z}`);
+        console.log(`🧱 Placed ${gameState.selectedBlock}`);
       }
     } catch (error) {
       console.error('Error placing block:', error);
@@ -324,7 +320,7 @@ export const MinecraftWorld = ({ gameState }) => {
         });
         
         gameState.addToInventory(block.type, 1);
-        console.log(`💥 Broke ${block.type} at ${gridPos.x},${gridPos.y},${gridPos.z}`);
+        console.log(`💥 Broke ${block.type}`);
       }
     } catch (error) {
       console.error('Error breaking block:', error);
@@ -358,10 +354,10 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Add clouds back */}
+      {/* Add static clouds */}
       <MinecraftClouds />
       
-      {/* Render blocks efficiently */}
+      {/* Render blocks with optimized rendering */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -374,8 +370,6 @@ export const MinecraftWorld = ({ gameState }) => {
               color={blockConfig.color}
               transparent={blockConfig.transparent || false}
               opacity={blockConfig.transparent ? 0.8 : 1}
-              emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-              emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
             />
           </mesh>
         );
@@ -384,24 +378,21 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// RESTORED Clouds with minimal animation
+// Simple static clouds 
 const MinecraftClouds = () => {
-  const cloudsRef = useRef();
-  
-  // Generate cloud positions
   const cloudPositions = useMemo(() => {
     const positions = [];
     
-    for (let i = 0; i < 12; i++) {
-      const baseX = (i - 6) * 20 + (Math.random() - 0.5) * 10;
-      const baseZ = -30 + (Math.random() - 0.5) * 20;
-      const baseY = 25 + Math.random() * 5;
+    for (let i = 0; i < 8; i++) {
+      const baseX = (i - 4) * 25;
+      const baseZ = -40;
+      const baseY = 30;
       
-      for (let j = 0; j < 6; j++) {
+      for (let j = 0; j < 4; j++) {
         positions.push({
-          x: baseX + (Math.random() - 0.5) * 8,
-          y: baseY + (Math.random() - 0.5) * 2,
-          z: baseZ + (Math.random() - 0.5) * 8,
+          x: baseX + (Math.random() - 0.5) * 15,
+          y: baseY + (Math.random() - 0.5) * 3,
+          z: baseZ + (Math.random() - 0.5) * 15,
           scaleX: 3 + Math.random() * 2,
           scaleY: 1 + Math.random() * 0.5,
           scaleZ: 3 + Math.random() * 2,
@@ -413,17 +404,8 @@ const MinecraftClouds = () => {
     return positions;
   }, []);
   
-  // Very slow cloud movement
-  useFrame((state) => {
-    if (cloudsRef.current) {
-      const time = state.clock.getElapsedTime();
-      cloudsRef.current.position.x = Math.sin(time * 0.002) * 3;
-      cloudsRef.current.position.z = time * 0.02;
-    }
-  });
-  
   return (
-    <group ref={cloudsRef}>
+    <group>
       {cloudPositions.map((cloud, index) => (
         <mesh 
           key={index} 
@@ -442,47 +424,47 @@ const MinecraftClouds = () => {
   );
 };
 
-// RESTORED Hands - Static but visible
+// FIXED Hands Component - Properly positioned and visible
 const BothHands = ({ selectedBlock }) => {
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   return (
     <group>
-      {/* Right hand with tool */}
-      <group position={[0.4, -0.3, -0.6]}>
+      {/* Right hand */}
+      <group position={[0.5, -0.4, -0.8]} rotation={[0, -0.1, 0]}>
         {/* Arm */}
-        <mesh position={[0, 0.1, 0]}>
-          <boxGeometry args={[0.08, 0.24, 0.08]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        <mesh position={[0, 0.15, 0]}>
+          <boxGeometry args={[0.1, 0.3, 0.1]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
         {/* Hand */}
-        <mesh position={[0, -0.12, 0]}>
-          <boxGeometry args={[0.06, 0.12, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        <mesh position={[0, -0.1, 0]}>
+          <boxGeometry args={[0.08, 0.15, 0.08]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Tool/Block in hand */}
+        {/* Block/tool in hand */}
         {selectedBlock && (
-          <mesh position={[0.05, -0.08, -0.1]}>
-            <boxGeometry args={[0.05, 0.05, 0.05]} />
-            <meshBasicMaterial color={selectedBlockConfig.color} />
+          <mesh position={[0.06, -0.05, -0.12]} rotation={[0.2, 0.1, 0]}>
+            <boxGeometry args={[0.06, 0.06, 0.06]} />
+            <meshLambertMaterial color={selectedBlockConfig.color} />
           </mesh>
         )}
       </group>
       
       {/* Left hand */}
-      <group position={[-0.4, -0.3, -0.6]}>
+      <group position={[-0.5, -0.4, -0.8]} rotation={[0, 0.1, 0]}>
         {/* Arm */}
-        <mesh position={[0, 0.1, 0]}>
-          <boxGeometry args={[0.08, 0.24, 0.08]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        <mesh position={[0, 0.15, 0]}>
+          <boxGeometry args={[0.1, 0.3, 0.1]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
         {/* Hand */}
-        <mesh position={[0, -0.12, 0]}>
-          <boxGeometry args={[0.06, 0.12, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        <mesh position={[0, -0.1, 0]}>
+          <boxGeometry args={[0.08, 0.15, 0.08]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
       </group>
     </group>
@@ -528,7 +510,7 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// Player with hands
+// FIXED Player component with proper hands rendering
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -537,8 +519,8 @@ export const Player = ({ gameState }) => {
   
   // Set initial camera position
   useEffect(() => {
-    camera.position.set(0, 20, 0);
-    console.log('🎮 Player initialized at position:', camera.position);
+    camera.position.set(0, 15, 0);
+    console.log('🎮 Player initialized');
   }, [camera]);
 
   useFrame((state, delta) => {
@@ -601,7 +583,6 @@ export const Player = ({ gameState }) => {
         if (isOnGround) {
           velocity.current.y = 12;
           setIsOnGround(false);
-          console.log('🦘 Jump!');
         }
       }
       
@@ -610,7 +591,6 @@ export const Player = ({ gameState }) => {
         const blockTypes = Object.keys(BLOCK_TYPES);
         if (num >= 1 && num <= blockTypes.length) {
           gameState.setSelectedBlock(blockTypes[num - 1]);
-          console.log('🧱 Selected block:', blockTypes[num - 1]);
         }
       }
     };
@@ -708,7 +688,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <div>Y: {playerPosition.y}</div>
               <div>Z: {playerPosition.z}</div>
               <div>Biome: Plains</div>
-              <div>Light Level: {gameState.isDay ? '15' : '7'}</div>
+              <div>Chunks: {Math.floor(playerPosition.x / 16)},{Math.floor(playerPosition.z / 16)}</div>
             </div>
           </div>
         </div>
@@ -717,7 +697,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
   );
 };
 
-// Keep all UI components (Inventory, CraftingTable, etc.) - they're working fine
+// Keep all UI components unchanged - they work fine
 export const Inventory = ({ gameState, onClose }) => {
   return (
     <motion.div
