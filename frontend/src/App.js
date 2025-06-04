@@ -43,6 +43,7 @@ import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
 import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
 import { AmbientParticles } from './EnhancedVisuals';
+import { CombatEffects } from './CombatEffects';
 
 // Enhanced Game state management with world persistence and new features
 const useGameState = () => {
@@ -55,7 +56,7 @@ const useGameState = () => {
   const [inventory, setInventory] = useState({
     blocks: {
       grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,
-      lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, gravel: 32
+      lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, cobblestone: 32
     },
     tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
     magic: { wand: 1, crystals: 8, scrolls: 4 }
@@ -232,7 +233,7 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Enhanced Building • Magic System • Advanced Tools • World Persistence
+                Infinite World Generation • Enhanced Combat • Visual Effects • Full Persistence
               </motion.p>
 
               {/* Authentication Status */}
@@ -299,50 +300,53 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* OPTIMIZED Game Canvas - Enhanced depth handling */}
+      {/* ENHANCED Game Canvas - Fixed depth handling */}
       <Canvas
         camera={{
           fov: 75,
-          near: 0.01, // FIXED: Much closer near plane for proper hand rendering
-          far: 200,   // INCREASED: Larger view distance
-          position: [0, 3, 5]
+          near: 0.1,   // Standard near plane
+          far: 1000,   // Much larger view distance for infinite world
+          position: [0, 50, 0] // Start high above ground
         }}
         shadows={false}
         className="w-full h-full"
         gl={{ 
-          antialias: true,  // ENABLED: Better visual quality
-          alpha: false,     // DISABLED: Better performance
-          depth: true,      // ENABLED: Proper depth testing
-          logarithmicDepthBuffer: true // ENABLED: Better depth precision
+          antialias: true,
+          alpha: false,
+          depth: true,
+          logarithmicDepthBuffer: false // Disabled to prevent compatibility issues
         }}
       >
         {/* Enhanced 3D Game World */}
         <MinecraftSky isDay={gameState.isDay} />
         
-        {/* Ambient lighting */}
-        <ambientLight intensity={0.7} />
+        {/* Enhanced lighting */}
+        <ambientLight intensity={0.6} />
         <directionalLight
-          position={[10, 10, 5]}
-          intensity={1}
+          position={[100, 100, 50]}
+          intensity={1.2}
           castShadow={false}
         />
 
         {/* Player Controls */}
         <PointerLockControls />
         
-        {/* Enhanced Game World with all features */}
+        {/* Enhanced Game World with infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* Player with both hands */}
+        {/* Player with fixed hands */}
         <Player gameState={gameState} />
 
-        {/* NPCs and Mobs */}
+        {/* NPCs and Mobs with enhanced combat */}
         <NPCSystem gameState={gameState} />
+
+        {/* Combat Effects System */}
+        <CombatEffects gameState={gameState} />
 
         {/* Spell Effects */}
         <SpellEffects activeSpell={gameState.activeSpell} gameState={gameState} />
 
-        {/* Ambient Particles - simplified */}
+        {/* Ambient Particles */}
         <AmbientParticles />
 
         {/* Performance Stats */}

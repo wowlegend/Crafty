@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameSounds } from './SoundManager';
 
-// Enhanced NPC and Mob System with Combat
+// Enhanced NPC and Mob System with Visual Combat Effects
 export const NPCSystem = ({ gameState }) => {
   const [entities, setEntities] = useState([]);
   const { camera } = useThree();
@@ -15,7 +15,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'villager_1',
         type: 'villager',
-        position: [8, 7, 12], // Higher Y position to ensure on ground
+        position: [20, 50, 25], // Higher Y position to ensure spawning on ground
         health: 100,
         maxHealth: 100,
         state: 'idle',
@@ -32,7 +32,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'pig_1',
         type: 'pig',
-        position: [15, 7, -8], // Higher Y position
+        position: [30, 50, -15],
         health: 50,
         maxHealth: 50,
         state: 'wandering',
@@ -42,7 +42,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'chicken_1',
         type: 'chicken',
-        position: [-8, 7, -12], // Higher Y position
+        position: [-15, 50, -25],
         health: 30,
         maxHealth: 30,
         state: 'wandering',
@@ -50,11 +50,11 @@ export const NPCSystem = ({ gameState }) => {
         drops: ['feather']
       },
       
-      // Hostile Mobs (spawn on ground)
+      // Hostile Mobs
       {
         id: 'zombie_1',
         type: 'zombie',
-        position: [-20, 7, -20], // Higher Y position
+        position: [-30, 50, -35],
         health: 100,
         maxHealth: 100,
         state: 'hostile',
@@ -65,7 +65,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'skeleton_1',
         type: 'skeleton',
-        position: [-25, 7, 10], // Higher Y position
+        position: [-40, 50, 20],
         health: 80,
         maxHealth: 80,
         state: 'hostile',
@@ -76,38 +76,52 @@ export const NPCSystem = ({ gameState }) => {
     ];
 
     setEntities(initialEntities);
-    console.log('🎮 NPCs initialized on solid ground:', initialEntities.length);
+    console.log('🎮 NPCs initialized with enhanced combat:', initialEntities.length);
   }, []);
 
-  // WORKING combat system with visual feedback
+  // ENHANCED combat system with VISUAL EFFECTS
   const attackEntity = (entityId) => {
     setEntities(prev => prev.map(entity => {
       if (entity.id === entityId) {
         const damage = 25;
         const newHealth = Math.max(0, entity.health - damage);
         
-        // Add simple visual feedback
-        console.log(`⚔️ ATTACKING ${entity.type}! Damage: ${damage}`);
+        // ADD COMBAT VISUAL EFFECTS
+        if (window.addCombatEffect) {
+          // Hit effect at entity position
+          window.addCombatEffect('hit_damage', entity.position, {
+            color: '#ff0000',
+            damage: damage
+          });
+          
+          // Weapon swing effect
+          window.addCombatEffect('weapon_swing', entity.position, {
+            color: '#ffffff'
+          });
+        }
+        
+        console.log(`⚔️ ATTACKING ${entity.type}! Damage: ${damage} Health: ${newHealth}/${entity.maxHealth}`);
         
         if (newHealth <= 0) {
-          // Entity dies - drop items
+          // Entity dies - add death effect
+          if (window.addCombatEffect) {
+            window.addCombatEffect('death_explosion', entity.position, {
+              color: '#ff4444'
+            });
+          }
+          
+          // Drop items
           if (entity.drops) {
             entity.drops.forEach(drop => {
               gameState.addToInventory?.(drop, 1);
             });
           }
-          console.log(`💀 ${entity.type} DEFEATED! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
           
-          // Add a simple death indicator
-          if (typeof window !== 'undefined' && window.alert) {
-            setTimeout(() => {
-              console.log(`🎉 Victory! You defeated the ${entity.type}!`);
-            }, 100);
-          }
+          console.log(`💀 ${entity.type} DEFEATED! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
           
           return null; // Remove entity
         } else {
-          console.log(`💥 ${entity.type} health: ${newHealth}/${entity.maxHealth}`);
+          console.log(`💥 ${entity.type} took ${damage} damage! Health: ${newHealth}/${entity.maxHealth}`);
           return { ...entity, health: newHealth };
         }
       }
@@ -138,7 +152,6 @@ export const NPCSystem = ({ gameState }) => {
 
 const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
   const meshRef = useRef();
-  const [currentPos, setCurrentPos] = useState(entity.position);
 
   useFrame((state, delta) => {
     if (meshRef.current && camera) {
@@ -146,19 +159,19 @@ const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
       const entityPos = new THREE.Vector3(...entity.position);
       const distance = playerPos.distanceTo(entityPos);
 
-      // SIMPLE AI behavior - minimal animation to prevent shaking
+      // MINIMAL AI behavior to prevent shaking
       if (entity.type === 'villager') {
         // Villagers stay completely still
         meshRef.current.position.set(...entity.position);
         
       } else if (entity.hostile) {
-        // Hostile mobs - simple chase behavior
-        if (distance < 15) {
+        // Hostile mobs - very slow chase behavior
+        if (distance < 20) {
           const direction = new THREE.Vector3()
             .subVectors(playerPos, entityPos)
             .normalize();
           
-          const speed = 1;
+          const speed = 0.5; // Slow movement to prevent shaking
           meshRef.current.position.x += direction.x * speed * delta;
           meshRef.current.position.z += direction.z * speed * delta;
           
@@ -167,18 +180,18 @@ const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
         }
         
       } else {
-        // Passive animals - minimal wandering
-        const wanderRadius = 2;
+        // Passive animals - very minimal wandering
+        const wanderRadius = 1;
         const centerX = entity.position[0];
         const centerZ = entity.position[2];
         
-        const time = state.clock.elapsedTime * 0.1; // Very slow movement
+        const time = state.clock.elapsedTime * 0.05; // Ultra slow movement
         const newX = centerX + Math.sin(time) * wanderRadius;
         const newZ = centerZ + Math.cos(time) * wanderRadius;
         
         meshRef.current.position.x = newX;
         meshRef.current.position.z = newZ;
-        meshRef.current.position.y = entity.position[1]; // Fixed Y
+        meshRef.current.position.y = entity.position[1];
       }
     }
   });
@@ -188,6 +201,7 @@ const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
     
     if (event.shiftKey) {
       // Shift+click to attack
+      console.log(`🗡️ Attacking ${entity.type}!`);
       onAttack(entity.id);
     } else {
       // Regular click to interact
@@ -212,15 +226,15 @@ const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
         {entity.type === 'creeper' && <CreeperModel />}
       </mesh>
       
-      {/* Simple health bar */}
+      {/* Enhanced health bar with better visibility */}
       {entity.health < entity.maxHealth && (
-        <HealthBar entity={entity} position={[entity.position[0], entity.position[1] + 2, entity.position[2]]} />
+        <HealthBar entity={entity} position={[entity.position[0], entity.position[1] + 2.5, entity.position[2]]} />
       )}
     </group>
   );
 };
 
-// Health bar component
+// Enhanced health bar component
 const HealthBar = ({ entity, position }) => {
   if (entity.health >= entity.maxHealth) return null;
   
@@ -231,30 +245,31 @@ const HealthBar = ({ entity, position }) => {
     <group position={position}>
       {/* Background bar */}
       <mesh position={[0, 0, 0]}>
-        <planeGeometry args={[1, 0.1]} />
+        <planeGeometry args={[1.5, 0.2]} />
         <meshBasicMaterial color="#333333" />
       </mesh>
       {/* Health bar */}
-      <mesh position={[-0.5 + (healthPercent * 0.5), 0, 0.01]} scale={[healthPercent, 1, 1]}>
-        <planeGeometry args={[1, 0.1]} />
+      <mesh position={[-0.75 + (healthPercent * 0.75), 0, 0.01]} scale={[healthPercent, 1, 1]}>
+        <planeGeometry args={[1.5, 0.2]} />
         <meshBasicMaterial color={barColor} />
+      </mesh>
+      {/* Health text */}
+      <mesh position={[0, 0.3, 0]}>
+        <planeGeometry args={[1, 0.3]} />
+        <meshBasicMaterial color="rgba(0,0,0,0.7)" transparent />
       </mesh>
     </group>
   );
 };
 
-// NEW MOB MODELS
-
+// Enhanced mob models
 const CowModel = () => {
   return (
     <group scale={1.2}>
-      {/* Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[1.2, 0.8, 2]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
-      
-      {/* White spots */}
       <mesh position={[0.1, 0.1, 0.2]}>
         <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshBasicMaterial color="#ffffff" />
@@ -263,14 +278,10 @@ const CowModel = () => {
         <boxGeometry args={[0.4, 0.4, 0.4]} />
         <meshBasicMaterial color="#ffffff" />
       </mesh>
-      
-      {/* Head */}
       <mesh position={[0, 0.2, 1.2]}>
         <boxGeometry args={[0.8, 0.8, 0.8]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
-      
-      {/* Legs */}
       {[-0.4, 0.4].map((x, i) => 
         [0.7, -0.7].map((z, j) => (
           <mesh key={`${i}-${j}`} position={[x, -0.7, z]}>
@@ -286,19 +297,14 @@ const CowModel = () => {
 const ZombieModel = () => {
   return (
     <group scale={1.1}>
-      {/* Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.6, 1.2, 0.3]} />
         <meshBasicMaterial color="#2F4F2F" />
       </mesh>
-      
-      {/* Head */}
       <mesh position={[0, 0.9, 0]}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshBasicMaterial color="#90EE90" />
       </mesh>
-      
-      {/* Eyes (red) */}
       <mesh position={[-0.1, 0.95, 0.26]}>
         <boxGeometry args={[0.05, 0.05, 0.05]} />
         <meshBasicMaterial color="#ff0000" />
@@ -307,8 +313,6 @@ const ZombieModel = () => {
         <boxGeometry args={[0.05, 0.05, 0.05]} />
         <meshBasicMaterial color="#ff0000" />
       </mesh>
-      
-      {/* Arms */}
       <mesh position={[-0.4, 0.3, 0]} rotation={[0, 0, 0.5]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#2F4F2F" />
@@ -317,8 +321,6 @@ const ZombieModel = () => {
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#2F4F2F" />
       </mesh>
-      
-      {/* Legs */}
       <mesh position={[-0.2, -0.8, 0]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#654321" />
@@ -334,19 +336,14 @@ const ZombieModel = () => {
 const SkeletonModel = () => {
   return (
     <group scale={1.1}>
-      {/* Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.6, 1.2, 0.3]} />
         <meshBasicMaterial color="#F5F5DC" />
       </mesh>
-      
-      {/* Head */}
       <mesh position={[0, 0.9, 0]}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshBasicMaterial color="#F5F5DC" />
       </mesh>
-      
-      {/* Dark eye sockets */}
       <mesh position={[-0.1, 0.95, 0.26]}>
         <boxGeometry args={[0.08, 0.08, 0.05]} />
         <meshBasicMaterial color="#000000" />
@@ -355,8 +352,6 @@ const SkeletonModel = () => {
         <boxGeometry args={[0.08, 0.08, 0.05]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
-      
-      {/* Arms */}
       <mesh position={[-0.4, 0.3, 0]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#F5F5DC" />
@@ -365,14 +360,10 @@ const SkeletonModel = () => {
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#F5F5DC" />
       </mesh>
-      
-      {/* Bow */}
       <mesh position={[0.6, 0.5, 0]}>
         <boxGeometry args={[0.1, 0.6, 0.1]} />
         <meshBasicMaterial color="#8B4513" />
       </mesh>
-      
-      {/* Legs */}
       <mesh position={[-0.2, -0.8, 0]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#F5F5DC" />
@@ -388,19 +379,14 @@ const SkeletonModel = () => {
 const CreeperModel = () => {
   return (
     <group scale={1.1}>
-      {/* Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.6, 1.2, 0.6]} />
         <meshBasicMaterial color="#0F5132" />
       </mesh>
-      
-      {/* Head */}
       <mesh position={[0, 0.9, 0]}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshBasicMaterial color="#0F5132" />
       </mesh>
-      
-      {/* Face pattern (dark green pixels) */}
       <mesh position={[-0.1, 0.95, 0.26]}>
         <boxGeometry args={[0.05, 0.15, 0.05]} />
         <meshBasicMaterial color="#064420" />
@@ -413,8 +399,6 @@ const CreeperModel = () => {
         <boxGeometry args={[0.08, 0.05, 0.05]} />
         <meshBasicMaterial color="#064420" />
       </mesh>
-      
-      {/* Legs */}
       <mesh position={[-0.15, -0.8, -0.15]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#0F5132" />
@@ -435,23 +419,17 @@ const CreeperModel = () => {
   );
 };
 
-// Keep existing models (VillagerModel, PigModel, ChickenModel)
 const VillagerModel = () => {
   return (
     <group>
-      {/* Body */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.6, 1.2, 0.3]} />
         <meshBasicMaterial color="#8B4513" />
       </mesh>
-      
-      {/* Head */}
       <mesh position={[0, 0.9, 0]}>
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshBasicMaterial color="#FDBCB4" />
       </mesh>
-      
-      {/* Arms */}
       <mesh position={[-0.4, 0.3, 0]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#8B4513" />
@@ -460,8 +438,6 @@ const VillagerModel = () => {
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#8B4513" />
       </mesh>
-      
-      {/* Legs */}
       <mesh position={[-0.2, -0.8, 0]}>
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#654321" />
@@ -470,8 +446,6 @@ const VillagerModel = () => {
         <boxGeometry args={[0.3, 0.8, 0.3]} />
         <meshBasicMaterial color="#654321" />
       </mesh>
-      
-      {/* Hat */}
       <mesh position={[0, 1.3, 0]}>
         <cylinderGeometry args={[0.3, 0.25, 0.1, 8]} />
         <meshBasicMaterial color="#228B22" />
@@ -542,22 +516,23 @@ const ChickenModel = () => {
   );
 };
 
-// Combat Instructions Component
+// Enhanced Combat Instructions Component
 export const CombatInstructions = () => {
   return (
-    <div className="absolute top-4 right-4 bg-black/70 text-white p-3 rounded-lg text-sm max-w-xs">
-      <h3 className="font-bold mb-2">Combat Controls:</h3>
+    <div className="absolute top-4 right-4 bg-black/80 text-white p-4 rounded-lg text-sm max-w-xs">
+      <h3 className="font-bold mb-2 text-red-400">⚔️ Combat Controls:</h3>
       <ul className="space-y-1">
-        <li><strong>Shift + Click:</strong> Attack mob</li>
-        <li><strong>Regular Click:</strong> Interact/Trade</li>
-        <li><strong>Hostile Mobs:</strong> Zombies, Skeletons, Creepers</li>
-        <li><strong>Passive Mobs:</strong> Pigs, Chickens, Cows</li>
+        <li><strong className="text-yellow-400">Shift + Click:</strong> Attack mob</li>
+        <li><strong className="text-green-400">Regular Click:</strong> Interact/Trade</li>
+        <li><strong className="text-red-300">Hostile Mobs:</strong> Zombies, Skeletons, Creepers</li>
+        <li><strong className="text-blue-300">Passive Mobs:</strong> Pigs, Chickens, Cows</li>
+        <li><span className="text-orange-300">🎯 Visual effects show damage!</span></li>
       </ul>
     </div>
   );
 };
 
-// Trading System Component (keep existing)
+// Enhanced Trading System Component
 export const TradingInterface = ({ villager, onClose, gameState }) => {
   const [selectedOffer, setSelectedOffer] = useState(null);
 
@@ -590,16 +565,12 @@ export const TradingInterface = ({ villager, onClose, gameState }) => {
   const executeTrade = (offer) => {
     if (!canTrade(offer)) return;
 
-    // Remove items from player
     gameState.removeFromInventory(offer.wants.item, offer.wants.quantity);
-    
-    // Add items to player
     gameState.addToInventory(offer.offers.item, offer.offers.quantity);
     
-    // Reduce stock
     offer.stock--;
     
-    console.log(`Traded ${offer.wants.quantity} ${offer.wants.item} for ${offer.offers.quantity} ${offer.offers.item}`);
+    console.log(`✅ Traded ${offer.wants.quantity} ${offer.wants.item} for ${offer.offers.quantity} ${offer.offers.item}`);
   };
 
   if (!villager) return null;
@@ -608,7 +579,7 @@ export const TradingInterface = ({ villager, onClose, gameState }) => {
     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-40">
       <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-white">Trading Post</h3>
+          <h3 className="text-xl font-bold text-white">🏪 Trading Post</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
         </div>
         
@@ -630,7 +601,7 @@ export const TradingInterface = ({ villager, onClose, gameState }) => {
               <div className="flex justify-between items-center">
                 <div className="text-white">
                   <span className="text-red-400">{offer.wants.quantity} {offer.wants.item}</span>
-                  <span className="mx-2">→</span>
+                  <span className="mx-2 text-yellow-400">→</span>
                   <span className="text-green-400">{offer.offers.quantity} {offer.offers.item}</span>
                 </div>
                 <div className="text-sm text-gray-400">
@@ -650,13 +621,10 @@ const handleEntityInteraction = (entityId, entities, setEntities) => {
   if (!entity) return;
 
   if (entity.type === 'villager') {
-    // Open trading interface or show dialogue
-    console.log(`Interacting with villager: ${entity.dialogue[0]}`);
-    // This would open the trading interface
+    console.log(`💬 Interacting with villager: ${entity.dialogue[0]}`);
   } else if (entity.hostile) {
-    console.log(`This ${entity.type} is hostile! Use Shift+Click to attack!`);
+    console.log(`⚠️ This ${entity.type} is hostile! Use Shift+Click to attack!`);
   } else {
-    // Peaceful animals
-    console.log(`You pet the ${entity.type}!`);
+    console.log(`🐾 You pet the ${entity.type}!`);
   }
 };
