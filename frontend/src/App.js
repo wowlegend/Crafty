@@ -41,12 +41,8 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
-import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
-import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
-import { AmbientParticles } from './EnhancedVisuals';
-import { CombatEffects } from './CombatEffects';
 
-// Enhanced Game state management with world persistence and new features
+// Simplified Game state management
 const useGameState = () => {
   const [gameMode, setGameMode] = useState('creative');
   const [selectedBlock, setSelectedBlock] = useState('grass');
@@ -75,12 +71,12 @@ const useGameState = () => {
     blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0
   });
 
-  // Time cycle
+  // Simple time cycle
   useEffect(() => {
     const timer = setInterval(() => {
       setGameTime(prev => {
         const newTime = prev + 1;
-        if (newTime % 600 === 0) { // Change day/night every 10 minutes
+        if (newTime % 600 === 0) {
           setIsDay(prev => !prev);
         }
         return newTime;
@@ -153,14 +149,14 @@ function GameApp() {
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
 
-  // Start background music when game starts
+  // Start background music
   useEffect(() => {
     if (isPointerLocked && musicEnabled) {
       playBackgroundMusic();
     }
   }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
 
-  // Handle escape key to unlock pointer
+  // Handle keys
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -211,7 +207,7 @@ function GameApp() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative">
-      {/* Enhanced Loading screen with authentication */}
+      {/* Loading screen */}
       <AnimatePresence>
         {!isPointerLocked && (
           <motion.div
@@ -235,7 +231,7 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Infinite World Generation • Enhanced Combat • Visual Effects • Full Persistence
+                Simplified & Stable • No Lag • Smooth Performance
               </motion.p>
 
               {/* Authentication Status */}
@@ -302,78 +298,56 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* ENHANCED Game Canvas - Fixed depth handling */}
+      {/* SIMPLIFIED Game Canvas - Maximum performance */}
       <Canvas
         camera={{
           fov: 75,
-          near: 0.1,   // Standard near plane
-          far: 1000,   // Much larger view distance for infinite world
-          position: [0, 50, 0] // Start high above ground
+          near: 0.1,
+          far: 500,
+          position: [0, 10, 0]
         }}
         shadows={false}
         className="w-full h-full"
         gl={{ 
-          antialias: true,
+          antialias: false, // Disabled for performance
           alpha: false,
-          depth: true,
-          logarithmicDepthBuffer: false // Disabled to prevent compatibility issues
+          depth: true
         }}
       >
-        {/* Enhanced 3D Game World */}
+        {/* Simple lighting */}
         <MinecraftSky isDay={gameState.isDay} />
-        
-        {/* Enhanced lighting */}
         <ambientLight intensity={0.6} />
-        <directionalLight
-          position={[100, 100, 50]}
-          intensity={1.2}
-          castShadow={false}
-        />
+        <directionalLight position={[50, 50, 25]} intensity={1} />
 
         {/* Player Controls */}
         <PointerLockControls />
         
-        {/* Position tracker - works inside Canvas */}
+        {/* Position tracker */}
         <PositionTracker onPositionUpdate={setPlayerPosition} />
         
-        {/* Enhanced Game World with infinite generation */}
+        {/* Simplified Game World */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* Player with fixed hands */}
+        {/* Player */}
         <Player gameState={gameState} />
-
-        {/* NPCs and Mobs with enhanced combat */}
-        <NPCSystem gameState={gameState} />
-
-        {/* Combat Effects System */}
-        <CombatEffects gameState={gameState} />
-
-        {/* Spell Effects */}
-        <SpellEffects activeSpell={gameState.activeSpell} gameState={gameState} />
-
-        {/* Ambient Particles */}
-        <AmbientParticles />
 
         {/* Performance Stats */}
         {showStats && <Stats />}
       </Canvas>
 
-      {/* Game UI Overlay */}
+      {/* Game UI */}
       <AnimatePresence>
         {isPointerLocked && (
-          <>
-            <GameUI 
-              gameState={gameState}
-              showStats={showStats}
-              setShowStats={setShowStats}
-              playerPosition={playerPosition}
-            />
-            <CombatInstructions />
-          </>
+          <GameUI 
+            gameState={gameState}
+            showStats={showStats}
+            setShowStats={setShowStats}
+            playerPosition={playerPosition}
+          />
         )}
       </AnimatePresence>
 
-      {/* Enhanced Panels with Authentication and World Management */}
+      {/* UI Panels */}
       <AnimatePresence>
         {gameState.showInventory && (
           <Inventory 
@@ -390,7 +364,7 @@ function GameApp() {
         )}
         
         {gameState.showMagic && (
-          <EnhancedMagicSystem 
+          <MagicSystem 
             gameState={gameState}
             onClose={() => gameState.setShowMagic(false)}
           />
@@ -420,18 +394,6 @@ function GameApp() {
           />
         )}
       </AnimatePresence>
-
-      {/* Trading Interface */}
-      {gameState.showTradingInterface && (
-        <TradingInterface 
-          villager={gameState.selectedVillager}
-          gameState={gameState}
-          onClose={() => {
-            gameState.setShowTradingInterface(false);
-            gameState.setSelectedVillager(null);
-          }}
-        />
-      )}
 
       {/* Authentication Modal */}
       <AuthModal 
