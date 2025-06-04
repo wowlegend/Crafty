@@ -43,6 +43,7 @@ import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
 import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
 import { AmbientParticles } from './EnhancedVisuals';
+import { CombatEffects, ScreenDamageEffect } from './CombatEffects';
 
 // Enhanced Game state management with world persistence and new features
 const useGameState = () => {
