@@ -79,15 +79,42 @@ export const NPCSystem = ({ gameState }) => {
     console.log('🎮 NPCs initialized on solid ground:', initialEntities.length);
   }, []);
 
-  // Combat system
+  // Enhanced combat system with visual effects
   const attackEntity = (entityId) => {
     setEntities(prev => prev.map(entity => {
       if (entity.id === entityId) {
         const damage = 25; // Player damage
         const newHealth = Math.max(0, entity.health - damage);
         
+        // Add combat visual effects
+        if (window.addCombatEffect) {
+          // Weapon swing effect
+          window.addCombatEffect('weapon_swing', entity.position, {
+            color: '#ffffff',
+            duration: 300
+          });
+          
+          // Damage number effect
+          window.addCombatEffect('hit_damage', [
+            entity.position[0],
+            entity.position[1] + 1,
+            entity.position[2]
+          ], {
+            color: '#ff0000',
+            duration: 1500,
+            damage: damage
+          });
+        }
+        
         if (newHealth <= 0) {
-          // Entity dies - drop items
+          // Entity dies - spectacular death effect
+          if (window.addCombatEffect) {
+            window.addCombatEffect('death_explosion', entity.position, {
+              duration: 2000
+            });
+          }
+          
+          // Drop items
           if (entity.drops) {
             entity.drops.forEach(drop => {
               gameState.addToInventory?.(drop, 1);
@@ -97,6 +124,12 @@ export const NPCSystem = ({ gameState }) => {
           return null; // Remove entity
         } else {
           console.log(`⚔️ Hit ${entity.type} for ${damage} damage! Health: ${newHealth}/${entity.maxHealth}`);
+          
+          // Add screen shake effect for impact
+          if (window.addScreenShake) {
+            window.addScreenShake(200);
+          }
+          
           return { ...entity, health: newHealth };
         }
       }
