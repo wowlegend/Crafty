@@ -372,23 +372,58 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
   );
 };
 
-// Simplified Clouds Component - No complex animations
-// MINIMAL Clouds - No arrays, no maps
+// Enhanced Clouds - With Error Handling
 const MinecraftClouds = () => {
+  const cloudsRef = useRef();
+  
+  // Generate cloud positions safely
+  const cloudPositions = useMemo(() => {
+    try {
+      const positions = [];
+      for (let i = 0; i < 6; i++) {
+        positions.push({
+          x: (i - 3) * 12 + (Math.random() - 0.5) * 5,
+          y: 15 + Math.random() * 3,
+          z: -25 + (Math.random() - 0.5) * 10,
+          scale: 0.8 + Math.random() * 0.6
+        });
+      }
+      return positions;
+    } catch (error) {
+      console.warn("Cloud generation error:", error);
+      return []; // Return empty array if error
+    }
+  }, []);
+  
+  // Safe cloud movement
+  useFrame((state) => {
+    if (cloudsRef.current && state?.clock?.getElapsedTime) {
+      try {
+        const time = state.clock.getElapsedTime();
+        // Very slow cloud movement
+        cloudsRef.current.position.x = Math.sin(time * 0.02) * 2;
+      } catch (error) {
+        console.warn("Cloud animation error:", error.message);
+      }
+    }
+  });
+  
   return (
-    <group>
-      <mesh position={[-10, 12, -15]} scale={[1.5, 0.3, 1.5]}>
-        <boxGeometry args={[2, 1, 2]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[0, 13, -18]} scale={[1.2, 0.3, 1.2]}>
-        <boxGeometry args={[2, 1, 2]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[10, 12, -15]} scale={[1.8, 0.3, 1.8]}>
-        <boxGeometry args={[2, 1, 2]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
+    <group ref={cloudsRef}>
+      {cloudPositions.map((cloud, index) => (
+        <mesh 
+          key={index} 
+          position={[cloud.x, cloud.y, cloud.z]}
+          scale={[cloud.scale * 2, cloud.scale * 0.4, cloud.scale * 2]}
+        >
+          <boxGeometry args={[2.5, 1, 2.5]} />
+          <meshLambertMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.85} 
+          />
+        </mesh>
+      ))}
     </group>
   );
 };
