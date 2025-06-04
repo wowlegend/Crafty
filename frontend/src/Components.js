@@ -663,7 +663,7 @@ export const Player = ({ gameState }) => {
   
   // Set initial camera position
   useEffect(() => {
-    camera.position.set(0, 2, 5);
+    camera.position.set(0, 1.6, 0);
     console.log('🎮 Player initialized at position:', camera.position);
   }, [camera]);
 
