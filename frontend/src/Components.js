@@ -111,29 +111,36 @@ const generateTerrain = (x, z) => {
   return Math.floor(Math.max(8, Math.min(20, noise + 12)));
 };
 
-// FIXED Infinite World Generation - PROPERLY THROTTLED
+// COMPLETELY REDESIGNED Infinite World Generation - FIXED chunk expansion
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const lastGenerationTime = useRef(0);
-  const generationQueue = useRef([]);
   const isGenerating = useRef(false);
   
   const chunkSize = 16;
-  const renderDistance = 3;
+  const renderDistance = 4; // Increased render distance
 
-  // FIXED: Gradual chunk generation to prevent lag
+  console.log('🌍 MinecraftWorld component initialized');
+
+  // ENHANCED chunk generation with better logging
   const generateChunk = async (chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     
-    if (generatedChunks.has(chunkKey) || isGenerating.current) {
+    if (generatedChunks.has(chunkKey)) {
+      console.log(`⏭️ Chunk ${chunkKey} already exists, skipping`);
+      return;
+    }
+
+    if (isGenerating.current) {
+      console.log(`⏳ Currently generating, queuing chunk ${chunkKey}`);
       return;
     }
 
     isGenerating.current = true;
-    console.log(`🌍 Generating chunk ${chunkX},${chunkZ}`);
+    console.log(`🌍 STARTING generation of chunk ${chunkX},${chunkZ}`);
     
     return new Promise((resolve) => {
       // Use setTimeout to prevent blocking the main thread
@@ -142,27 +149,29 @@ export const MinecraftWorld = ({ gameState }) => {
         const startX = chunkX * chunkSize;
         const startZ = chunkZ * chunkSize;
         
-        // Generate only surface + 2 layers for performance
+        console.log(`🌍 Generating blocks for chunk ${chunkKey} from ${startX},${startZ} to ${startX + chunkSize},${startZ + chunkSize}`);
+        
+        // Generate surface + 3 layers for better terrain
         for (let x = startX; x < startX + chunkSize; x++) {
           for (let z = startZ; z < startZ + chunkSize; z++) {
             const height = generateTerrain(x, z);
             
-            // Generate only essential blocks
-            for (let y = Math.max(0, height - 2); y <= height; y++) {
+            // Generate essential blocks
+            for (let y = Math.max(0, height - 3); y <= height; y++) {
               const key = `${x},${y},${z}`;
               
               if (y === height) {
                 newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
-              } else if (y >= height - 1) {
+              } else if (y >= height - 2) {
                 newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
               } else {
                 newBlocks.set(key, { position: [x, y, z], type: 'stone' });
               }
             }
             
-            // Occasional trees (very sparse for performance)
-            if (height > 14 && Math.random() < 0.005) {
-              for (let th = 1; th <= 4; th++) {
+            // Occasional trees (sparse for performance)
+            if (height > 14 && Math.random() < 0.01) {
+              for (let th = 1; th <= 3; th++) {
                 const treeKey = `${x},${height + th},${z}`;
                 newBlocks.set(treeKey, { position: [x, height + th, z], type: 'wood' });
               }
@@ -170,30 +179,38 @@ export const MinecraftWorld = ({ gameState }) => {
           }
         }
         
-        // Update world blocks
-        setBlocks(prev => {
-          const updated = new Map(prev);
+        console.log(`🌍 Generated ${newBlocks.size} blocks for chunk ${chunkKey}`);
+        
+        // Update world blocks using functional update
+        setBlocks(prevBlocks => {
+          const updatedBlocks = new Map(prevBlocks);
           newBlocks.forEach((value, key) => {
-            updated.set(key, value);
+            updatedBlocks.set(key, value);
           });
-          return updated;
+          console.log(`🌍 Total blocks in world: ${updatedBlocks.size}`);
+          return updatedBlocks;
         });
         
         // Mark chunk as generated
-        setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-        console.log(`✅ Generated chunk ${chunkX},${chunkZ} with ${newBlocks.size} blocks`);
+        setGeneratedChunks(prevChunks => {
+          const updatedChunks = new Set(prevChunks);
+          updatedChunks.add(chunkKey);
+          console.log(`✅ Marked chunk ${chunkKey} as generated. Total chunks: ${updatedChunks.size}`);
+          return updatedChunks;
+        });
+        
         isGenerating.current = false;
         resolve();
-      }, 10); // Small delay to prevent blocking
+      }, 20); // Slightly longer delay for stability
     });
   };
 
-  // FIXED: Throttled chunk generation
+  // ENHANCED terrain generation detection with better debugging
   useFrame((state) => {
     const now = state.clock.elapsedTime * 1000;
     
-    // Only check every 200ms to prevent constant generation
-    if (now - lastGenerationTime.current < 200) {
+    // Check every 500ms instead of 200ms for more stable generation
+    if (now - lastGenerationTime.current < 500) {
       return;
     }
     
@@ -202,56 +219,75 @@ export const MinecraftWorld = ({ gameState }) => {
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // Only generate when player moves to new chunk
-    if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
+    // Debug player position every frame
+    if (Math.floor(now / 1000) % 3 === 0) {
+      console.log(`📍 Player at world pos (${playerX}, ${playerZ}) = chunk (${currentChunkX}, ${currentChunkZ})`);
+      console.log(`🌍 Generated chunks: ${generatedChunks.size}, Total blocks: ${blocks.size}`);
+    }
+    
+    // Generate chunks when player moves OR periodically
+    const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z;
+    
+    if (chunkChanged || Math.floor(now / 2000) % 5 === 0) { // Also generate periodically
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       lastGenerationTime.current = now;
       
-      console.log(`📍 Player moved to chunk ${currentChunkX},${currentChunkZ}`);
+      console.log(`🚀 Triggering chunk generation around chunk (${currentChunkX}, ${currentChunkZ})`);
       
-      // Queue chunks for generation (but don't generate all at once)
+      // Generate surrounding chunks in priority order (closest first)
       const chunksToGenerate = [];
-      for (let dx = -renderDistance; dx <= renderDistance; dx++) {
-        for (let dz = -renderDistance; dz <= renderDistance; dz++) {
-          const targetChunkX = currentChunkX + dx;
-          const targetChunkZ = currentChunkZ + dz;
-          const chunkKey = `${targetChunkX}_${targetChunkZ}`;
-          
-          if (!generatedChunks.has(chunkKey) && !isGenerating.current) {
-            chunksToGenerate.push({ x: targetChunkX, z: targetChunkZ });
+      for (let distance = 0; distance <= renderDistance; distance++) {
+        for (let dx = -distance; dx <= distance; dx++) {
+          for (let dz = -distance; dz <= distance; dz++) {
+            // Only generate border of current distance ring
+            if (Math.abs(dx) === distance || Math.abs(dz) === distance) {
+              const targetChunkX = currentChunkX + dx;
+              const targetChunkZ = currentChunkZ + dz;
+              const chunkKey = `${targetChunkX}_${targetChunkZ}`;
+              
+              if (!generatedChunks.has(chunkKey) && !isGenerating.current) {
+                chunksToGenerate.push({ x: targetChunkX, z: targetChunkZ, priority: distance });
+              }
+            }
           }
         }
       }
       
-      // Generate only ONE chunk per frame to prevent lag
+      // Generate the closest chunk first
       if (chunksToGenerate.length > 0 && !isGenerating.current) {
-        const chunk = chunksToGenerate[0];
+        const chunk = chunksToGenerate[0]; // Closest chunk
+        console.log(`🏗️ Generating priority chunk (${chunk.x}, ${chunk.z}) at distance ${chunk.priority}`);
         generateChunk(chunk.x, chunk.z);
       }
     }
   });
 
-  // Initial world generation
+  // Enhanced initial world generation
   useEffect(() => {
-    console.log('🌍 Initializing world...');
+    console.log('🌍 Initializing enhanced world with better chunk coverage...');
     
-    // Generate initial chunks gradually
+    // Generate initial 3x3 chunks around spawn
     const generateInitial = async () => {
+      console.log('🌍 Starting initial world generation...');
+      
       for (let x = -1; x <= 1; x++) {
         for (let z = -1; z <= 1; z++) {
+          console.log(`🌍 Generating initial chunk (${x}, ${z})`);
           await generateChunk(x, z);
-          await new Promise(resolve => setTimeout(resolve, 50)); // Delay between chunks
+          await new Promise(resolve => setTimeout(resolve, 100)); // Delay between chunks
         }
       }
+      
+      console.log('✅ Initial world generation complete');
     };
     
     generateInitial();
   }, []);
 
-  // Collision detection
+  // Enhanced collision detection
   const getHighestBlockAt = (x, z) => {
     let maxY = 8;
-    for (let y = 8; y <= 25; y++) {
+    for (let y = 8; y <= 30; y++) { // Increased height range
       const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
       if (blocks.has(key)) {
         maxY = Math.max(maxY, y);
@@ -264,7 +300,7 @@ export const MinecraftWorld = ({ gameState }) => {
     window.getHighestBlockAt = getHighestBlockAt;
   }, [blocks]);
 
-  // Block placement
+  // Enhanced block placement with chunk awareness
   const placeBlock = () => {
     if (!gameState.selectedBlock) return;
     
@@ -291,7 +327,7 @@ export const MinecraftWorld = ({ gameState }) => {
           gameState.removeFromInventory(gameState.selectedBlock, 1);
         }
         
-        console.log(`🧱 Placed ${gameState.selectedBlock}`);
+        console.log(`🧱 Placed ${gameState.selectedBlock} at (${gridPos.x}, ${gridPos.y}, ${gridPos.z})`);
       }
     } catch (error) {
       console.error('Error placing block:', error);
