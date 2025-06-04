@@ -257,20 +257,84 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
   );
 };
 
+// Player Hands Component
+const PlayerHands = ({ gameState, isBreaking, isPlacing }) => {
+  const handRef = useRef();
+  const toolRef = useRef();
+  const { camera } = useThree();
+  
+  useFrame((state) => {
+    if (handRef.current && camera) {
+      // Position hands relative to camera
+      const cameraPosition = camera.position.clone();
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      
+      // Right hand position
+      const rightHandPos = cameraPosition.clone()
+        .add(cameraDirection.clone().multiplyScalar(0.5))
+        .add(new THREE.Vector3(0.3, -0.3, 0));
+      
+      handRef.current.position.copy(rightHandPos);
+      handRef.current.lookAt(
+        rightHandPos.clone().add(cameraDirection)
+      );
+      
+      // Tool animation
+      if (toolRef.current) {
+        const time = state.clock.getElapsedTime();
+        if (isBreaking) {
+          toolRef.current.rotation.x = Math.sin(time * 10) * 0.2;
+        } else if (isPlacing) {
+          toolRef.current.rotation.y = Math.sin(time * 5) * 0.1;
+        } else {
+          toolRef.current.rotation.x = Math.sin(time * 0.5) * 0.05; // Idle sway
+        }
+      }
+    }
+  });
+
+  const selectedBlockConfig = BLOCK_TYPES[gameState.selectedBlock];
+
+  return (
+    <group ref={handRef}>
+      {/* Right Hand */}
+      <Box position={[0, 0, 0]} scale={[0.15, 0.25, 0.1]}>
+        <meshLambertMaterial color="#fdbcb4" />
+      </Box>
+      
+      {/* Tool/Block in hand */}
+      <group ref={toolRef} position={[0.1, 0.1, -0.2]}>
+        {gameState.selectedBlock && (
+          <Box scale={[0.1, 0.1, 0.1]}>
+            <meshLambertMaterial 
+              color={selectedBlockConfig?.color || '#4ade80'}
+              transparent={selectedBlockConfig?.transparent || false}
+              opacity={selectedBlockConfig?.transparent ? 0.7 : 1}
+            />
+          </Box>
+        )}
+      </group>
+    </group>
+  );
+};
+
 // Player Component
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
   const isJumping = useRef(false);
+  const [isBreaking, setIsBreaking] = useState(false);
+  const [isPlacing, setIsPlacing] = useState(false);
   
   useFrame((state, delta) => {
     // Simple gravity and movement
-    if (camera.position.y > 1) {
+    if (camera.position.y > 1.6) { // Adjusted for player height
       velocity.current.y -= 9.8 * delta;
     } else {
       velocity.current.y = 0;
-      camera.position.y = 1;
+      camera.position.y = 1.6; // Eye level height
       isJumping.current = false;
     }
     
@@ -291,6 +355,16 @@ export const Player = ({ gameState }) => {
     
     const handleKeyUp = (event) => {
       keys[event.code] = false;
+    };
+    
+    const handleMouseDown = (event) => {
+      if (event.button === 0) { // Left click
+        setIsBreaking(true);
+        setTimeout(() => setIsBreaking(false), 200);
+      } else if (event.button === 2) { // Right click
+        setIsPlacing(true);
+        setTimeout(() => setIsPlacing(false), 200);
+      }
     };
     
     const movePlayer = () => {
@@ -320,15 +394,17 @@ export const Player = ({ gameState }) => {
     
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseDown);
     movePlayer();
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
     };
   }, [camera]);
 
-  return null;
+  return <PlayerHands gameState={gameState} isBreaking={isBreaking} isPlacing={isPlacing} />;
 };
 
 // Game UI Component
