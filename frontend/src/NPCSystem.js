@@ -9,13 +9,13 @@ export const NPCSystem = ({ gameState }) => {
   const { camera } = useThree();
 
   useEffect(() => {
-    // Initialize smaller number of entities for better performance
+    // Initialize entities positioned ON SOLID GROUND
     const initialEntities = [
       // Friendly NPCs
       {
         id: 'villager_1',
         type: 'villager',
-        position: [8, 6, 12],
+        position: [8, 7, 12], // Higher Y position to ensure on ground
         health: 100,
         maxHealth: 100,
         state: 'idle',
@@ -32,7 +32,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'pig_1',
         type: 'pig',
-        position: [15, 6, -8],
+        position: [15, 7, -8], // Higher Y position
         health: 50,
         maxHealth: 50,
         state: 'wandering',
@@ -42,7 +42,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'chicken_1',
         type: 'chicken',
-        position: [-8, 6, -12],
+        position: [-8, 7, -12], // Higher Y position
         health: 30,
         maxHealth: 30,
         state: 'wandering',
@@ -50,11 +50,11 @@ export const NPCSystem = ({ gameState }) => {
         drops: ['feather']
       },
       
-      // Hostile Mobs (fewer for performance)
+      // Hostile Mobs (spawn on ground)
       {
         id: 'zombie_1',
         type: 'zombie',
-        position: [-20, 6, -20],
+        position: [-20, 7, -20], // Higher Y position
         health: 100,
         maxHealth: 100,
         state: 'hostile',
@@ -65,7 +65,7 @@ export const NPCSystem = ({ gameState }) => {
       {
         id: 'skeleton_1',
         type: 'skeleton',
-        position: [-25, 6, 10],
+        position: [-25, 7, 10], // Higher Y position
         health: 80,
         maxHealth: 80,
         state: 'hostile',
@@ -76,7 +76,7 @@ export const NPCSystem = ({ gameState }) => {
     ];
 
     setEntities(initialEntities);
-    console.log('🎮 NPCs initialized:', initialEntities.length);
+    console.log('🎮 NPCs initialized on solid ground:', initialEntities.length);
   }, []);
 
   // Combat system
