@@ -225,11 +225,11 @@ backend:
 frontend:
   - task: "World Generation & Movement"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
@@ -237,6 +237,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Fixed the issue with users getting stuck in a small space with green walls. The problem was related to the player's initial position and the ground plane position. The player now spawns at position [0, 1.6, 0] which is properly aligned with the generated terrain. Also fixed an error in the GameUI component where useThree hook was being used outside of the Canvas component."
+      - working: false
+        agent: "user"
+        comment: "User reports terrain generation still limited to initial patch, no infinite terrain. Also experiencing shaking terrain issues."
 
   - task: "Building & Block System"
     implemented: true
