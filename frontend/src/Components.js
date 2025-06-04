@@ -1198,3 +1198,6 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
     </motion.div>
   );
 };
+
+// Export new components
+export { MinecraftSky, BothHands, MinecraftClouds, EnvironmentalParticles };
