@@ -161,68 +161,135 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// FIXED WORLD GENERATION - Proper solid terrain with collision
+// WORKING INFINITE TERRAIN - Generates new terrain at world edges
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
+  const [lastPlayerChunk, setLastPlayerChunk] = useState({ x: 0, z: 0 });
   const { camera } = useThree();
 
-  // Generate proper Minecraft-style world with solid ground
-  useEffect(() => {
-    const initialBlocks = new Map();
-    const size = 30; // 60x60 world for good exploration
+  const CHUNK_SIZE = 20; // Size of each terrain chunk
+  const RENDER_DISTANCE = 3; // How many chunks to keep loaded around player
+
+  // Generate terrain for a specific chunk
+  const generateChunkTerrain = (chunkX, chunkZ) => {
+    const chunkBlocks = new Map();
+    const startX = chunkX * CHUNK_SIZE;
+    const startZ = chunkZ * CHUNK_SIZE;
     
-    // Generate SOLID terrain with proper block positions
-    for (let x = -size; x <= size; x++) {
-      for (let z = -size; z <= size; z++) {
-        // Create terrain height (2-6 blocks high for solid ground)
+    for (let x = startX; x < startX + CHUNK_SIZE; x++) {
+      for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
+        // Generate terrain height with variety
         const height = Math.floor(
-          Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 + 
+          Math.sin(x * 0.08) * Math.cos(z * 0.08) * 3 + 
+          Math.sin(x * 0.03) * Math.cos(z * 0.03) * 2 +
           Math.random() * 1 + 4
         );
         
-        // Generate SOLID block layers from bottom to top
-        for (let y = 0; y <= Math.min(height, 8); y++) {
+        // Generate solid block layers
+        for (let y = 0; y <= Math.min(height, 10); y++) {
           const key = `${x},${y},${z}`;
           
           if (y === height && height > 3) {
             // Grass on surface
-            initialBlocks.set(key, { position: [x, y, z], type: 'grass' });
+            chunkBlocks.set(key, { position: [x, y, z], type: 'grass' });
           } else if (y === height && height <= 3) {
             // Sand in low areas
-            initialBlocks.set(key, { position: [x, y, z], type: 'sand' });
+            chunkBlocks.set(key, { position: [x, y, z], type: 'sand' });
           } else if (y >= height - 2) {
             // Dirt layer below grass
-            initialBlocks.set(key, { position: [x, y, z], type: 'dirt' });
+            chunkBlocks.set(key, { position: [x, y, z], type: 'dirt' });
           } else {
-            // Stone bottom with occasional ores
+            // Stone bottom with ores
             const rand = Math.random();
-            if (rand < 0.05) {
-              initialBlocks.set(key, { position: [x, y, z], type: 'coal' });
-            } else if (rand < 0.07) {
-              initialBlocks.set(key, { position: [x, y, z], type: 'iron' });
+            if (y < 3 && rand < 0.03) {
+              chunkBlocks.set(key, { position: [x, y, z], type: 'diamond' });
+            } else if (y < 5 && rand < 0.05) {
+              chunkBlocks.set(key, { position: [x, y, z], type: 'gold' });
+            } else if (y < 7 && rand < 0.08) {
+              chunkBlocks.set(key, { position: [x, y, z], type: 'iron' });
+            } else if (rand < 0.1) {
+              chunkBlocks.set(key, { position: [x, y, z], type: 'coal' });
             } else {
-              initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
+              chunkBlocks.set(key, { position: [x, y, z], type: 'stone' });
             }
           }
         }
         
-        // Add occasional trees
+        // Add trees occasionally
         if (Math.random() < 0.02 && height > 3) {
-          const treeKey = `${x},${height + 1},${z}`;
-          initialBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
-          
+          for (let ty = 1; ty <= 3; ty++) {
+            const treeKey = `${x},${height + ty},${z}`;
+            chunkBlocks.set(treeKey, { position: [x, height + ty, z], type: 'wood' });
+          }
           // Add leaves
-          const leafKey = `${x},${height + 2},${z}`;
-          initialBlocks.set(leafKey, { position: [x, height + 2, z], type: 'grass' });
+          const leafKey = `${x},${height + 4},${z}`;
+          chunkBlocks.set(leafKey, { position: [x, height + 4, z], type: 'grass' });
         }
       }
     }
     
-    setBlocks(initialBlocks);
-    console.log('🌍 Fixed world generated with', initialBlocks.size, 'blocks');
+    return chunkBlocks;
+  };
+
+  // Check and generate terrain around player
+  useFrame(() => {
+    const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
+    const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
+    
+    // Only generate new chunks if player moved to different chunk
+    if (playerChunkX !== lastPlayerChunk.x || playerChunkZ !== lastPlayerChunk.z) {
+      setLastPlayerChunk({ x: playerChunkX, z: playerChunkZ });
+      
+      // Generate chunks around player
+      for (let x = playerChunkX - RENDER_DISTANCE; x <= playerChunkX + RENDER_DISTANCE; x++) {
+        for (let z = playerChunkZ - RENDER_DISTANCE; z <= playerChunkZ + RENDER_DISTANCE; z++) {
+          const chunkKey = `chunk_${x}_${z}`;
+          
+          // Check if this chunk area has blocks
+          const hasBlocks = checkChunkHasBlocks(x, z);
+          
+          if (!hasBlocks) {
+            // Generate new chunk
+            const chunkBlocks = generateChunkTerrain(x, z);
+            setBlocks(prev => {
+              const newBlocks = new Map(prev);
+              chunkBlocks.forEach((value, key) => {
+                newBlocks.set(key, value);
+              });
+              return newBlocks;
+            });
+            console.log(`🌍 Generated new chunk at ${x}, ${z}`);
+          }
+        }
+      }
+    }
+  });
+
+  // Check if a chunk area already has blocks
+  const checkChunkHasBlocks = (chunkX, chunkZ) => {
+    const startX = chunkX * CHUNK_SIZE;
+    const startZ = chunkZ * CHUNK_SIZE;
+    
+    // Check a few sample positions in the chunk
+    for (let x = startX; x < startX + CHUNK_SIZE; x += 5) {
+      for (let z = startZ; z < startZ + CHUNK_SIZE; z += 5) {
+        const key = `${x},${4},${z}`; // Check at a reasonable height
+        if (blocks.has(key)) {
+          return true; // Chunk already has blocks
+        }
+      }
+    }
+    return false; // Chunk is empty
+  };
+
+  // Initial world generation (single chunk at spawn)
+  useEffect(() => {
+    const initialChunk = generateChunkTerrain(0, 0);
+    setBlocks(initialChunk);
+    console.log('🌍 Initial world chunk generated with', initialChunk.size, 'blocks');
   }, []);
 
-  // WORKING collision detection - get the highest block at a position
+  // Get the highest block at a position (for collision detection)
   const getHighestBlockAt = (x, z) => {
     let maxY = 0;
     for (let y = 0; y <= 15; y++) {
@@ -237,10 +304,9 @@ export const MinecraftWorld = ({ gameState }) => {
   // Expose collision detection function globally
   useEffect(() => {
     window.getHighestBlockAt = getHighestBlockAt;
-    console.log('🎯 Collision detection system activated');
   }, [blocks]);
 
-  // WORKING block placement functionality
+  // Block placement and breaking (same as before)
   const placeBlock = () => {
     if (!gameState.selectedBlock) return;
     
@@ -288,7 +354,6 @@ export const MinecraftWorld = ({ gameState }) => {
     }
   };
 
-  // WORKING block breaking functionality
   const breakBlock = () => {
     try {
       const direction = new THREE.Vector3();
