@@ -90,38 +90,53 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Ultra Simple World - Better building
+// Enhanced World with Environment
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate simple flat world
+  // Generate simple flat world with more variety
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 8; // Slightly larger for more building space
+    const size = 10; // Larger world for better exploration
     
-    // Create flat ground
+    // Create varied terrain
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
         const key = `${x},0,${z}`;
+        // Vary grass and dirt blocks
+        const blockType = Math.random() < 0.8 ? 'grass' : 'dirt';
         initialBlocks.set(key, { 
           position: [x, 0, z], 
-          type: 'grass' 
+          type: blockType 
         });
       }
     }
     
-    // Add some starter blocks for testing
+    // Add some interesting starter structures
     initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
     initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
     initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
     initialBlocks.set('0,1,1', { position: [0, 1, 1], type: 'glass' });
+    initialBlocks.set('0,2,0', { position: [0, 2, 0], type: 'diamond' });
+    
+    // Create a small house structure
+    for (let i = 3; i <= 5; i++) {
+      for (let j = 3; j <= 5; j++) {
+        if (i === 3 || i === 5 || j === 3 || j === 5) {
+          initialBlocks.set(`${i},1,${j}`, { position: [i, 1, j], type: 'wood' });
+          if ((i === 3 || i === 5) && (j === 3 || j === 5)) {
+            initialBlocks.set(`${i},2,${j}`, { position: [i, 2, j], type: 'wood' });
+          }
+        }
+      }
+    }
     
     setBlocks(initialBlocks);
-    console.log('🌍 World generated with', initialBlocks.size, 'blocks');
+    console.log('🌍 Enhanced world generated with', initialBlocks.size, 'blocks');
   }, []);
 
-  // Better block placement - in front of player
+  // Better block placement with sound feedback
   const placeBlock = () => {
     if (!gameState.selectedBlock) {
       console.log('❌ No block selected');
@@ -131,14 +146,12 @@ export const MinecraftWorld = ({ gameState }) => {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     
-    // Place block 2 units in front of player
     const newPos = camera.position.clone()
       .add(direction.multiplyScalar(2));
     
-    // Round to grid and adjust to be above ground
     const gridPos = {
       x: Math.round(newPos.x),
-      y: Math.max(1, Math.round(newPos.y)), // At least 1 block high
+      y: Math.max(1, Math.round(newPos.y)),
       z: Math.round(newPos.z)
     };
     
@@ -150,7 +163,6 @@ export const MinecraftWorld = ({ gameState }) => {
         type: gameState.selectedBlock
       }));
       
-      // Update stats
       gameState.setPlayerStats(prev => ({
         ...prev,
         blocksPlaced: prev.blocksPlaced + 1
@@ -162,12 +174,10 @@ export const MinecraftWorld = ({ gameState }) => {
     }
   };
 
-  // Better block breaking - target block in front
   const breakBlock = () => {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     
-    // Target block 2-3 units in front
     const targetPos = camera.position.clone()
       .add(direction.multiplyScalar(2.5));
     
@@ -187,10 +197,7 @@ export const MinecraftWorld = ({ gameState }) => {
         return newBlocks;
       });
       
-      // Add to inventory
       gameState.addToInventory(block.type, 1);
-      
-      // Update stats
       gameState.setPlayerStats(prev => ({
         ...prev,
         blocksDestroyed: prev.blocksDestroyed + 1
@@ -205,9 +212,9 @@ export const MinecraftWorld = ({ gameState }) => {
   // Handle mouse clicks
   useEffect(() => {
     const handleClick = (event) => {
-      if (event.button === 0) { // Left click - break
+      if (event.button === 0) { 
         breakBlock();
-      } else if (event.button === 2) { // Right click - place
+      } else if (event.button === 2) { 
         event.preventDefault();
         placeBlock();
       }
@@ -223,29 +230,58 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Render all blocks */}
+      {/* Environmental elements */}
+      <MinecraftClouds />
+      <EnvironmentalParticles />
+      
+      {/* Render all blocks with better materials */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
           <mesh 
             key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
             position={block.position}
+            castShadow
+            receiveShadow
           >
             <boxGeometry args={[1, 1, 1]} />
             <meshLambertMaterial 
               color={blockConfig.color}
               transparent={blockConfig.transparent || false}
               opacity={blockConfig.transparent ? 0.8 : 1}
+              emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
+              emissiveIntensity={blockConfig.emissive ? 0.1 : 0}
             />
           </mesh>
         );
       })}
       
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[40, 40]} />
+      {/* Enhanced ground plane with texture-like effect */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+        <planeGeometry args={[50, 50]} />
         <meshLambertMaterial color="#22c55e" />
       </mesh>
+      
+      {/* Add some grass patches */}
+      {Array.from({ length: 30 }).map((_, i) => (
+        <mesh 
+          key={`grass-${i}`}
+          position={[
+            (Math.random() - 0.5) * 40,
+            0.1,
+            (Math.random() - 0.5) * 40
+          ]}
+          rotation={[0, Math.random() * Math.PI * 2, 0]}
+        >
+          <planeGeometry args={[0.3, 0.5]} />
+          <meshLambertMaterial 
+            color="#2d5a0d" 
+            transparent 
+            opacity={0.8}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
     </group>
   );
 };
