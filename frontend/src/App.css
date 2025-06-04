@@ -1,38 +1,366 @@
-.App {
-    text-align: center;
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+/* Minecraft-style font */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('data:font/truetype;charset=utf-8;base64,') format('truetype');
 }
 
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.pixel-font {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-weight: 700;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.text-shadow-lg {
+  text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8), 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Game UI Styles */
+.game-ui {
+  font-family: 'Orbitron', 'Courier New', monospace;
 }
 
-.App-link {
-    color: #61dafb;
+/* Block hover effects */
+.block-hover {
+  transition: all 0.2s ease-in-out;
+  transform-style: preserve-3d;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.block-hover:hover {
+  transform: scale(1.05);
+  filter: brightness(1.2);
+}
+
+/* Inventory grid */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  padding: 16px;
+}
+
+.inventory-slot {
+  aspect-ratio: 1;
+  border: 2px solid #4b5563;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #374151, #1f2937);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.inventory-slot:hover {
+  border-color: #9ca3af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.inventory-slot.selected {
+  border-color: #fbbf24;
+  background: linear-gradient(145deg, #d97706, #92400e);
+}
+
+/* Hotbar styles */
+.hotbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.hotbar-slot {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #6b7280;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 41, 55, 0.8);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.hotbar-slot:hover {
+  border-color: #d1d5db;
+  background: rgba(55, 65, 81, 0.9);
+}
+
+.hotbar-slot.selected {
+  border-color: #fbbf24;
+  background: rgba(217, 119, 6, 0.3);
+}
+
+.hotbar-slot .count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 2px;
+  padding: 1px 3px;
+  min-width: 12px;
+  text-align: center;
+}
+
+/* Modal animations */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: linear-gradient(145deg, #1f2937, #111827);
+  border: 2px solid #374151;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Button styles */
+.btn-primary {
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(145deg, #2563eb, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+  background: linear-gradient(145deg, #6b7280, #4b5563);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(145deg, #9ca3af, #6b7280);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(145deg, #ef4444, #dc2626);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(145deg, #f87171, #ef4444);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Health and energy bars */
+.health-bar, .energy-bar {
+  display: flex;
+  gap: 2px;
+}
+
+.health-heart, .energy-bolt {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  transition: all 0.2s ease;
+}
+
+.health-heart {
+  background: #ef4444;
+}
+
+.energy-bolt {
+  background: #facc15;
+}
+
+.health-heart.empty, .energy-bolt.empty {
+  background: #374151;
+  opacity: 0.5;
+}
+
+/* Crafting grid */
+.crafting-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 16px;
+  background: rgba(17, 24, 39, 0.8);
+  border-radius: 8px;
+}
+
+.crafting-slot {
+  width: 48px;
+  height: 48px;
+  border: 2px solid #374151;
+  border-radius: 4px;
+  background: rgba(31, 41, 55, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crafting-slot:hover {
+  border-color: #6b7280;
+  background: rgba(55, 65, 81, 0.7);
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.5);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.8);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+/* Loading animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.floating {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Glow effects */
+.glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.5);
+}
+
+.glow-yellow {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+}
+
+/* Crosshair pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.crosshair {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Glass morphism effect */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Text effects */
+.text-outline {
+  text-shadow: 
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 0 5px rgba(0, 0, 0, 0.8);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .hotbar-slot {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .inventory-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  }
+  
+  .modal-content {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+  }
+}
+
+/* Disable context menu */
+canvas {
+  outline: none;
+}
+
+/* Hide cursor when pointer is locked */
+body.pointer-locked {
+  cursor: none;
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Block texture simulation with CSS */
+.block-grass {
+  background: linear-gradient(45deg, #4ade80 25%, #22c55e 25%, #22c55e 50%, #4ade80 50%, #4ade80 75%, #22c55e 75%);
+  background-size: 4px 4px;
+}
+
+.block-dirt {
+  background: linear-gradient(45deg, #92400e 25%, #78350f 25%, #78350f 50%, #92400e 50%, #92400e 75%, #78350f 75%);
+  background-size: 3px 3px;
+}
+
+.block-stone {
+  background: linear-gradient(45deg, #6b7280 25%, #4b5563 25%, #4b5563 50%, #6b7280 50%, #6b7280 75%, #4b5563 75%);
+  background-size: 2px 2px;
+}
+
+.block-wood {
+  background: linear-gradient(to bottom, #d97706, #92400e);
+  position: relative;
+}
+
+.block-wood::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 3px);
 }
