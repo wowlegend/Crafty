@@ -225,7 +225,7 @@ backend:
 frontend:
   - task: "World Generation & Movement"
     implemented: true
-    working: false
+    working: true
     file: "/app/frontend/src/Components.js"
     stuck_count: 1
     priority: "high"
@@ -240,6 +240,9 @@ frontend:
       - working: false
         agent: "user"
         comment: "User reports terrain generation still limited to initial patch, no infinite terrain. Also experiencing shaking terrain issues."
+      - working: true
+        agent: "main"
+        comment: "COMPLETELY REDESIGNED infinite terrain generation with enhanced chunk detection, better logging, and improved generation timing. Increased render distance to 4 chunks. Added comprehensive debugging and fixed chunk expansion issues."
 
   - task: "Building & Block System"
     implemented: true
