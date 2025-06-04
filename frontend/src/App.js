@@ -316,10 +316,10 @@ function GameApp() {
           logarithmicDepthBuffer: true // ENABLED: Better depth precision
         }}
       >
-        {/* FULL FEATURED Environment with Error Logging */}
+        {/* Enhanced 3D Game World */}
         <MinecraftSky isDay={gameState.isDay} />
         
-        {/* Basic Lighting - No complex shadows */}
+        {/* Ambient lighting */}
         <ambientLight intensity={0.7} />
         <directionalLight
           position={[10, 10, 5]}
@@ -330,11 +330,20 @@ function GameApp() {
         {/* Player Controls */}
         <PointerLockControls />
         
-        {/* Stable Game World */}
+        {/* Enhanced Game World with all features */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* Player with Both Hands */}
+        {/* Player with both hands */}
         <Player gameState={gameState} />
+
+        {/* NPCs and Mobs */}
+        <NPCSystem gameState={gameState} />
+
+        {/* Spell Effects */}
+        <SpellEffects activeSpell={gameState.activeSpell} gameState={gameState} />
+
+        {/* Ambient Particles */}
+        <AmbientParticles />
 
         {/* Performance Stats */}
         {showStats && <Stats />}
