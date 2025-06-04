@@ -601,99 +601,140 @@ const EnvironmentalParticles = () => {
   );
 };
 
-// COMPLETELY REDESIGNED Hands Component - Multiple Debug Approaches
+// ENHANCED Hands Component - Clear fist shape and weapon display
 const BothHands = ({ selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
-  console.log('🤲 BothHands component rendering with selectedBlock:', selectedBlock);
-  console.log('🎥 Camera position:', camera.position);
-  console.log('🎥 Camera near/far:', camera.near, camera.far);
-
-  // Frame-by-frame debugging and positioning
+  // Frame-by-frame positioning with smooth movement
   useFrame(() => {
     if (rightHandRef.current && leftHandRef.current) {
-      // Position hands relative to camera
-      const cameraMatrix = new THREE.Matrix4();
-      cameraMatrix.extractRotation(camera.matrixWorld);
+      // Position hands relative to camera with subtle movement
+      const time = Date.now() * 0.001;
       
-      // Right hand positioning - closer to camera
-      const rightPos = new THREE.Vector3(0.4, -0.6, -1.0);
-      rightPos.applyMatrix4(cameraMatrix);
-      rightPos.add(camera.position);
+      // Right hand positioning - closer and more visible
+      const rightPos = new THREE.Vector3(0.5, -0.7, -1.2);
+      rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
-      
-      // Left hand positioning - closer to camera
-      const leftPos = new THREE.Vector3(-0.4, -0.6, -1.0);
-      leftPos.applyMatrix4(cameraMatrix);
-      leftPos.add(camera.position);
-      leftHandRef.current.position.copy(leftPos);
-      
-      // Apply camera rotation to hands
       rightHandRef.current.quaternion.copy(camera.quaternion);
+      
+      // Add subtle breathing/idle animation
+      rightHandRef.current.position.y += Math.sin(time * 2) * 0.02;
+      
+      // Left hand positioning
+      const leftPos = new THREE.Vector3(-0.5, -0.7, -1.2);
+      leftPos.applyMatrix4(camera.matrixWorld);
+      leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
+      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
+      
+      // Attack animation
+      if (isAttacking) {
+        rightHandRef.current.rotation.x = Math.sin(time * 20) * 0.5;
+        leftHandRef.current.rotation.x = Math.sin(time * 20 + 1) * 0.3;
+      }
     }
   });
 
   return (
     <group>
-      {/* RIGHT HAND - Much larger and brighter for visibility */}
-      <group ref={rightHandRef}>
-        {/* Debug sphere to ensure visibility */}
+      {/* RIGHT HAND with clear fist shape */}
+      <group ref={rightHandRef}>        
+        {/* Forearm - visible skin tone */}
+        <mesh position={[0, 0.4, 0]}>
+          <boxGeometry args={[0.12, 0.6, 0.12]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* CLEAR FIST - Proper hand shape */}
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#ff0000" />
+          <boxGeometry args={[0.14, 0.18, 0.1]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Arm - much more visible */}
-        <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[0.15, 0.5, 0.15]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        {/* Thumb */}
+        <mesh position={[0.08, 0.05, 0]}>
+          <boxGeometry args={[0.06, 0.1, 0.06]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Hand - much more visible */}
-        <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[0.12, 0.2, 0.12]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        {/* Knuckles detail */}
+        <mesh position={[0, 0.08, -0.06]}>
+          <boxGeometry args={[0.12, 0.04, 0.02]} />
+          <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* Block in hand - much more visible */}
+        {/* WEAPON/TOOL DISPLAY - Show selected item clearly */}
         {selectedBlock && (
-          <mesh position={[0.1, -0.05, -0.1]} rotation={[0.2, 0.3, 0]}>
-            <boxGeometry args={[0.08, 0.08, 0.08]} />
-            <meshBasicMaterial color={selectedBlockConfig.color} />
-          </mesh>
+          <group position={[0.1, -0.1, -0.15]} rotation={[0.3, 0.4, 0]}>
+            {/* Tool handle */}
+            <mesh position={[0, -0.15, 0]}>
+              <boxGeometry args={[0.03, 0.3, 0.03]} />
+              <meshLambertMaterial color="#8B4513" />
+            </mesh>
+            
+            {/* Tool head - different for different blocks */}
+            <mesh position={[0, 0.05, 0]}>
+              <boxGeometry args={[0.08, 0.08, 0.08]} />
+              <meshLambertMaterial color={selectedBlockConfig.color} />
+            </mesh>
+            
+            {/* Pickaxe head for mining tools */}
+            {['stone', 'iron', 'diamond'].includes(selectedBlock) && (
+              <mesh position={[0, 0.1, 0]} rotation={[0, 0, 0.785]}>
+                <boxGeometry args={[0.12, 0.03, 0.03]} />
+                <meshLambertMaterial color="#C0C0C0" />
+              </mesh>
+            )}
+          </group>
         )}
         
-        {/* Weapon when attacking - much more visible */}
+        {/* Enhanced weapon when attacking */}
         {isAttacking && (
-          <mesh position={[0.1, 0, -0.2]} rotation={[0.5, 0.3, 0]}>
-            <boxGeometry args={[0.04, 0.3, 0.04]} />
-            <meshBasicMaterial color="#8B4513" />
-          </mesh>
+          <group position={[0.15, 0, -0.25]} rotation={[0.6, 0.4, 0]}>
+            <mesh position={[0, -0.2, 0]}>
+              <boxGeometry args={[0.04, 0.4, 0.04]} />
+              <meshLambertMaterial color="#8B4513" />
+            </mesh>
+            <mesh position={[0, 0.05, 0]}>
+              <boxGeometry args={[0.1, 0.06, 0.02]} />
+              <meshLambertMaterial color="#C0C0C0" />
+            </mesh>
+            {/* Sword gleam effect */}
+            <mesh position={[0, 0.05, 0.02]}>
+              <boxGeometry args={[0.08, 0.04, 0.01]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+            </mesh>
+          </group>
         )}
       </group>
       
-      {/* LEFT HAND - Much larger and brighter for visibility */}
+      {/* LEFT HAND with clear fist shape */}
       <group ref={leftHandRef}>
-        {/* Debug sphere to ensure visibility */}
+        {/* Forearm */}
+        <mesh position={[0, 0.4, 0]}>
+          <boxGeometry args={[0.12, 0.6, 0.12]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* CLEAR FIST */}
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#00ff00" />
+          <boxGeometry args={[0.14, 0.18, 0.1]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Arm - much more visible */}
-        <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[0.15, 0.5, 0.15]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        {/* Thumb */}
+        <mesh position={[-0.08, 0.05, 0]}>
+          <boxGeometry args={[0.06, 0.1, 0.06]} />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Hand - much more visible */}
-        <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[0.12, 0.2, 0.12]} />
-          <meshBasicMaterial color="#fdbcb4" />
+        {/* Knuckles detail */}
+        <mesh position={[0, 0.08, -0.06]}>
+          <boxGeometry args={[0.12, 0.04, 0.02]} />
+          <meshLambertMaterial color="#e6a69a" />
         </mesh>
       </group>
     </group>
