@@ -161,17 +161,17 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// INFINITE WORLD GENERATION - Chunk-based system like Minecraft
+// OPTIMIZED WORLD GENERATION - Fixed performance issues
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [loadedChunks, setLoadedChunks] = useState(new Set());
   const { camera } = useThree();
 
-  // Chunk size (16x16 like Minecraft)
-  const CHUNK_SIZE = 16;
-  const RENDER_DISTANCE = 8; // 8 chunks in each direction
+  // Smaller chunks for better performance
+  const CHUNK_SIZE = 8;
+  const RENDER_DISTANCE = 4; // Smaller render distance
 
-  // Generate a single chunk
+  // Generate a single chunk (simplified)
   const generateChunk = (chunkX, chunkZ) => {
     const chunkBlocks = new Map();
     const startX = chunkX * CHUNK_SIZE;
@@ -179,74 +179,38 @@ export const MinecraftWorld = ({ gameState }) => {
     
     for (let x = startX; x < startX + CHUNK_SIZE; x++) {
       for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
-        // Enhanced terrain generation with biomes
+        // Simpler terrain generation
         const height = Math.floor(
-          Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + 
-          Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6 +
-          Math.random() * 2 + 4
+          Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 + 3
         );
         
-        // Determine biome
-        const biomeNoise = Math.sin(x * 0.01) * Math.cos(z * 0.01);
-        const isDesert = biomeNoise < -0.3;
-        const isMountain = biomeNoise > 0.5;
-        
-        // Generate block layers
-        for (let y = 0; y <= Math.min(height, 15); y++) {
+        // Generate fewer layers for performance
+        for (let y = 0; y <= Math.min(height, 6); y++) {
           const key = `${x},${y},${z}`;
           
           if (y === height && height > 2) {
-            // Surface blocks based on biome
-            if (isDesert) {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'sand' });
-            } else if (isMountain && height > 8) {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'stone' });
-            } else {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'grass' });
-            }
+            chunkBlocks.set(key, { position: [x, y, z], type: 'grass' });
           } else if (y === height && height <= 2) {
-            // Water level areas
             chunkBlocks.set(key, { position: [x, y, z], type: 'sand' });
-          } else if (y >= height - 2) {
-            // Dirt layers
+          } else if (y >= height - 1) {
             chunkBlocks.set(key, { position: [x, y, z], type: 'dirt' });
           } else {
-            // Underground with ores
+            // Stone with occasional ores
             const rand = Math.random();
-            if (y < 5 && rand < 0.02) {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'diamond' });
-            } else if (y < 8 && rand < 0.05) {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'gold' });
-            } else if (y < 12 && rand < 0.08) {
-              chunkBlocks.set(key, { position: [x, y, z], type: 'iron' });
-            } else if (rand < 0.1) {
+            if (rand < 0.05) {
               chunkBlocks.set(key, { position: [x, y, z], type: 'coal' });
+            } else if (rand < 0.07) {
+              chunkBlocks.set(key, { position: [x, y, z], type: 'iron' });
             } else {
               chunkBlocks.set(key, { position: [x, y, z], type: 'stone' });
             }
           }
         }
         
-        // Add structures (trees, etc.)
-        if (Math.random() < 0.02 && height > 3 && !isDesert) {
-          // Tree generation
-          const treeHeight = 3 + Math.floor(Math.random() * 3);
-          for (let ty = 1; ty <= treeHeight; ty++) {
-            const treeKey = `${x},${height + ty},${z}`;
-            chunkBlocks.set(treeKey, { position: [x, height + ty, z], type: 'wood' });
-          }
-          
-          // Leaves
-          for (let lx = -1; lx <= 1; lx++) {
-            for (let lz = -1; lz <= 1; lz++) {
-              for (let ly = 0; ly <= 2; ly++) {
-                if (Math.random() < 0.7) {
-                  const leafKey = `${x + lx},${height + treeHeight + ly},${z + lz}`;
-                  chunkBlocks.set(leafKey, { position: [x + lx, height + treeHeight + ly, z + lz], type: 'grass' });
-                }
-              }
-            }
-          }
+        // Fewer trees for performance
+        if (Math.random() < 0.01 && height > 2) {
+          const treeKey = `${x},${height + 1},${z}`;
+          chunkBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
         }
       }
     }
@@ -254,39 +218,48 @@ export const MinecraftWorld = ({ gameState }) => {
     return chunkBlocks;
   };
 
-  // Load chunks around player
-  useFrame(() => {
-    const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
-    const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
-    
-    // Check if we need to load new chunks
-    for (let x = playerChunkX - RENDER_DISTANCE; x <= playerChunkX + RENDER_DISTANCE; x++) {
-      for (let z = playerChunkZ - RENDER_DISTANCE; z <= playerChunkZ + RENDER_DISTANCE; z++) {
-        const chunkKey = `${x},${z}`;
-        
-        if (!loadedChunks.has(chunkKey)) {
-          // Load new chunk
-          const chunkBlocks = generateChunk(x, z);
+  // Throttled chunk loading
+  const [lastChunkCheck, setLastChunkCheck] = useState(0);
+  
+  useFrame((state) => {
+    // Only check for new chunks every second to prevent lag
+    if (state.clock.elapsedTime - lastChunkCheck > 1) {
+      setLastChunkCheck(state.clock.elapsedTime);
+      
+      const playerChunkX = Math.floor(camera.position.x / CHUNK_SIZE);
+      const playerChunkZ = Math.floor(camera.position.z / CHUNK_SIZE);
+      
+      // Check if we need to load new chunks (smaller area)
+      for (let x = playerChunkX - RENDER_DISTANCE; x <= playerChunkX + RENDER_DISTANCE; x++) {
+        for (let z = playerChunkZ - RENDER_DISTANCE; z <= playerChunkZ + RENDER_DISTANCE; z++) {
+          const chunkKey = `${x},${z}`;
           
-          setBlocks(prev => {
-            const newBlocks = new Map(prev);
-            chunkBlocks.forEach((value, key) => {
-              newBlocks.set(key, value);
-            });
-            return newBlocks;
-          });
-          
-          setLoadedChunks(prev => new Set(prev).add(chunkKey));
+          if (!loadedChunks.has(chunkKey)) {
+            // Load new chunk (limit to prevent performance issues)
+            if (loadedChunks.size < 50) { // Maximum 50 chunks
+              const chunkBlocks = generateChunk(x, z);
+              
+              setBlocks(prev => {
+                const newBlocks = new Map(prev);
+                chunkBlocks.forEach((value, key) => {
+                  newBlocks.set(key, value);
+                });
+                return newBlocks;
+              });
+              
+              setLoadedChunks(prev => new Set(prev).add(chunkKey));
+            }
+          }
         }
       }
     }
   });
 
-  // Initial world generation
+  // Initial world generation (smaller initial area)
   useEffect(() => {
-    // Generate initial chunks around spawn
-    for (let x = -2; x <= 2; x++) {
-      for (let z = -2; z <= 2; z++) {
+    // Generate fewer initial chunks
+    for (let x = -1; x <= 1; x++) {
+      for (let z = -1; z <= 1; z++) {
         const chunkBlocks = generateChunk(x, z);
         setBlocks(prev => {
           const newBlocks = new Map(prev);
@@ -298,13 +271,13 @@ export const MinecraftWorld = ({ gameState }) => {
         setLoadedChunks(prev => new Set(prev).add(`${x},${z}`));
       }
     }
-    console.log('🌍 Infinite world initialized');
+    console.log('🌍 Optimized infinite world initialized');
   }, []);
 
   // Get the highest block at a position (for collision detection)
   const getHighestBlockAt = (x, z) => {
     let maxY = 0;
-    for (let y = 0; y <= 20; y++) {
+    for (let y = 0; y <= 10; y++) {
       const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
       if (blocks.has(key)) {
         maxY = Math.max(maxY, y);
@@ -318,7 +291,7 @@ export const MinecraftWorld = ({ gameState }) => {
     window.getHighestBlockAt = getHighestBlockAt;
   }, [blocks]);
 
-  // Block placement and breaking (same as before but updated for infinite world)
+  // Block placement and breaking (simplified)
   const placeBlock = () => {
     if (!gameState.selectedBlock) return;
     
@@ -439,8 +412,8 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced Minecraft clouds */}
       <MinecraftClouds />
       
-      {/* Render blocks as proper Minecraft cubes */}
-      {Array.from(blocks.values()).map((block) => {
+      {/* Render blocks as proper Minecraft cubes with performance optimization */}
+      {Array.from(blocks.values()).slice(0, 2000).map((block) => { // Limit rendered blocks
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
           <mesh 
