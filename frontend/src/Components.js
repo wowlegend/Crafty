@@ -111,106 +111,85 @@ const generateTerrain = (x, z) => {
   return Math.floor(Math.max(8, Math.min(20, noise + 12)));
 };
 
-// COMPLETELY REDESIGNED Infinite World Generation - FIXED chunk expansion
+// PERFORMANCE-OPTIMIZED Infinite World Generation - SMOOTH & FAST
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const lastGenerationTime = useRef(0);
-  const isGenerating = useRef(false);
+  const generationQueue = useRef([]);
   
   const chunkSize = 16;
-  const renderDistance = 4; // Increased render distance
+  const renderDistance = 3; // Reduced for better performance
+  const generationTriggerDistance = 2; // Generate when player is 2 chunks away
 
-  console.log('🌍 MinecraftWorld component initialized');
-
-  // ENHANCED chunk generation with better logging
-  const generateChunk = async (chunkX, chunkZ) => {
+  // OPTIMIZED chunk generation - MUCH FASTER
+  const generateChunk = (chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     
     if (generatedChunks.has(chunkKey)) {
-      console.log(`⏭️ Chunk ${chunkKey} already exists, skipping`);
       return;
     }
 
-    if (isGenerating.current) {
-      console.log(`⏳ Currently generating, queuing chunk ${chunkKey}`);
-      return;
-    }
-
-    isGenerating.current = true;
-    console.log(`🌍 STARTING generation of chunk ${chunkX},${chunkZ}`);
+    const newBlocks = new Map();
+    const startX = chunkX * chunkSize;
+    const startZ = chunkZ * chunkSize;
     
-    return new Promise((resolve) => {
-      // Use setTimeout to prevent blocking the main thread
-      setTimeout(() => {
-        const newBlocks = new Map();
-        const startX = chunkX * chunkSize;
-        const startZ = chunkZ * chunkSize;
+    // OPTIMIZED: Generate only surface + 1 layer for speed
+    for (let x = startX; x < startX + chunkSize; x += 2) { // Skip every other block for performance
+      for (let z = startZ; z < startZ + chunkSize; z += 2) {
+        const height = generateTerrain(x, z);
         
-        console.log(`🌍 Generating blocks for chunk ${chunkKey} from ${startX},${startZ} to ${startX + chunkSize},${startZ + chunkSize}`);
-        
-        // Generate surface + 3 layers for better terrain
-        for (let x = startX; x < startX + chunkSize; x++) {
-          for (let z = startZ; z < startZ + chunkSize; z++) {
-            const height = generateTerrain(x, z);
-            
-            // Generate essential blocks
-            for (let y = Math.max(0, height - 3); y <= height; y++) {
-              const key = `${x},${y},${z}`;
-              
-              if (y === height) {
-                newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
-              } else if (y >= height - 2) {
-                newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-              } else {
-                newBlocks.set(key, { position: [x, y, z], type: 'stone' });
-              }
-            }
-            
-            // Occasional trees (sparse for performance)
-            if (height > 14 && Math.random() < 0.01) {
-              for (let th = 1; th <= 3; th++) {
-                const treeKey = `${x},${height + th},${z}`;
-                newBlocks.set(treeKey, { position: [x, height + th, z], type: 'wood' });
-              }
-            }
+        // Generate minimal essential blocks
+        for (let y = Math.max(0, height - 1); y <= height; y++) {
+          const key = `${x},${y},${z}`;
+          
+          if (y === height) {
+            newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
+          } else {
+            newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
           }
         }
         
-        console.log(`🌍 Generated ${newBlocks.size} blocks for chunk ${chunkKey}`);
-        
-        // Update world blocks using functional update
-        setBlocks(prevBlocks => {
-          const updatedBlocks = new Map(prevBlocks);
-          newBlocks.forEach((value, key) => {
-            updatedBlocks.set(key, value);
-          });
-          console.log(`🌍 Total blocks in world: ${updatedBlocks.size}`);
-          return updatedBlocks;
-        });
-        
-        // Mark chunk as generated
-        setGeneratedChunks(prevChunks => {
-          const updatedChunks = new Set(prevChunks);
-          updatedChunks.add(chunkKey);
-          console.log(`✅ Marked chunk ${chunkKey} as generated. Total chunks: ${updatedChunks.size}`);
-          return updatedChunks;
-        });
-        
-        isGenerating.current = false;
-        resolve();
-      }, 20); // Slightly longer delay for stability
+        // Fill gaps for smoother terrain
+        if (x % 2 === 0 && z % 2 === 0) {
+          const key1 = `${x+1},${height},${z}`;
+          const key2 = `${x},${height},${z+1}`;
+          const key3 = `${x+1},${height},${z+1}`;
+          
+          newBlocks.set(key1, { position: [x+1, height, z], type: height > 14 ? 'grass' : 'sand' });
+          newBlocks.set(key2, { position: [x, height, z+1], type: height > 14 ? 'grass' : 'sand' });
+          newBlocks.set(key3, { position: [x+1, height, z+1], type: height > 14 ? 'grass' : 'sand' });
+        }
+      }
+    }
+    
+    // IMMEDIATE update - no setTimeout for faster response
+    setBlocks(prevBlocks => {
+      const updatedBlocks = new Map(prevBlocks);
+      newBlocks.forEach((value, key) => {
+        updatedBlocks.set(key, value);
+      });
+      return updatedBlocks;
     });
+    
+    // Mark chunk as generated
+    setGeneratedChunks(prevChunks => {
+      const updatedChunks = new Set(prevChunks);
+      updatedChunks.add(chunkKey);
+      return updatedChunks;
+    });
+    
+    console.log(`⚡ FAST generated chunk ${chunkKey} with ${newBlocks.size} blocks`);
   };
 
-  // ENHANCED terrain generation detection with better debugging
+  // PREDICTIVE terrain generation - Generate AHEAD of player movement
   useFrame((state) => {
     const now = state.clock.elapsedTime * 1000;
     
-    // Check every 500ms instead of 200ms for more stable generation
-    if (now - lastGenerationTime.current < 500) {
+    // Check much more frequently for smoother generation
+    if (now - lastGenerationTime.current < 100) {
       return;
     }
     
@@ -219,45 +198,55 @@ export const MinecraftWorld = ({ gameState }) => {
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // Debug player position every frame
-    if (Math.floor(now / 1000) % 3 === 0) {
-      console.log(`📍 Player at world pos (${playerX}, ${playerZ}) = chunk (${currentChunkX}, ${currentChunkZ})`);
-      console.log(`🌍 Generated chunks: ${generatedChunks.size}, Total blocks: ${blocks.size}`);
-    }
+    // PREDICTIVE: Get player direction for anticipating movement
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    const futureChunkX = Math.floor((playerX + direction.x * 32) / chunkSize);
+    const futureChunkZ = Math.floor((playerZ + direction.z * 32) / chunkSize);
     
-    // Generate chunks when player moves OR periodically
     const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z;
     
-    if (chunkChanged || Math.floor(now / 2000) % 5 === 0) { // Also generate periodically
+    if (chunkChanged || now - lastGenerationTime.current > 200) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       lastGenerationTime.current = now;
       
-      console.log(`🚀 Triggering chunk generation around chunk (${currentChunkX}, ${currentChunkZ})`);
+      // Generate current chunk and immediate neighbors FIRST
+      const priorityChunks = [
+        { x: currentChunkX, z: currentChunkZ, priority: 0 },
+        { x: currentChunkX + 1, z: currentChunkZ, priority: 1 },
+        { x: currentChunkX - 1, z: currentChunkZ, priority: 1 },
+        { x: currentChunkX, z: currentChunkZ + 1, priority: 1 },
+        { x: currentChunkX, z: currentChunkZ - 1, priority: 1 },
+        { x: futureChunkX, z: futureChunkZ, priority: 1 }, // Predictive chunk
+      ];
       
-      // Generate surrounding chunks in priority order (closest first)
-      const chunksToGenerate = [];
-      for (let distance = 0; distance <= renderDistance; distance++) {
-        for (let dx = -distance; dx <= distance; dx++) {
-          for (let dz = -distance; dz <= distance; dz++) {
-            // Only generate border of current distance ring
-            if (Math.abs(dx) === distance || Math.abs(dz) === distance) {
-              const targetChunkX = currentChunkX + dx;
-              const targetChunkZ = currentChunkZ + dz;
-              const chunkKey = `${targetChunkX}_${targetChunkZ}`;
-              
-              if (!generatedChunks.has(chunkKey) && !isGenerating.current) {
-                chunksToGenerate.push({ x: targetChunkX, z: targetChunkZ, priority: distance });
-              }
-            }
-          }
+      // Generate multiple chunks per frame when needed
+      let generated = 0;
+      for (const chunk of priorityChunks) {
+        if (generated >= 2) break; // Limit to 2 chunks per frame
+        
+        const chunkKey = `${chunk.x}_${chunk.z}`;
+        if (!generatedChunks.has(chunkKey)) {
+          generateChunk(chunk.x, chunk.z);
+          generated++;
         }
       }
       
-      // Generate the closest chunk first
-      if (chunksToGenerate.length > 0 && !isGenerating.current) {
-        const chunk = chunksToGenerate[0]; // Closest chunk
-        console.log(`🏗️ Generating priority chunk (${chunk.x}, ${chunk.z}) at distance ${chunk.priority}`);
-        generateChunk(chunk.x, chunk.z);
+      // Generate surrounding area
+      for (let dx = -renderDistance; dx <= renderDistance; dx++) {
+        for (let dz = -renderDistance; dz <= renderDistance; dz++) {
+          if (generated >= 3) break; // Don't generate too many at once
+          
+          const targetChunkX = currentChunkX + dx;
+          const targetChunkZ = currentChunkZ + dz;
+          const chunkKey = `${targetChunkX}_${targetChunkZ}`;
+          
+          if (!generatedChunks.has(chunkKey)) {
+            generateChunk(targetChunkX, targetChunkZ);
+            generated++;
+          }
+        }
+        if (generated >= 3) break;
       }
     }
   });
