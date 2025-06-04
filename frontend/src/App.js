@@ -365,6 +365,7 @@ function GameApp() {
               gameState={gameState}
               showStats={showStats}
               setShowStats={setShowStats}
+              playerPosition={playerPosition}
             />
             <CombatInstructions />
           </>
