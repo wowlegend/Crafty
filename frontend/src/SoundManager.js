@@ -101,6 +101,88 @@ export const SoundProvider = ({ children }) => {
     return buffer;
   };
 
+  // NEW: Attack sound generation functions
+  const generateAttackSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.2;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const freq = 180 + Math.sin(t * 50) * 30;
+      const sample = Math.sin(2 * Math.PI * freq * t);
+      const envelope = Math.exp(-t * 8);
+      channelData[i] = sample * envelope * 0.3;
+    }
+
+    return buffer;
+  };
+
+  const generateHitSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.15;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const noise = (Math.random() - 0.5) * 2;
+      const tone = Math.sin(2 * Math.PI * 120 * t);
+      const envelope = Math.exp(-t * 12);
+      channelData[i] = (noise * 0.7 + tone * 0.3) * envelope * 0.4;
+    }
+
+    return buffer;
+  };
+
+  const generateDefeatSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.8;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const freq = 200 - t * 150; // Descending frequency
+      const sample = Math.sin(2 * Math.PI * freq * t);
+      const envelope = Math.exp(-t * 2);
+      channelData[i] = sample * envelope * 0.3;
+    }
+
+    return buffer;
+  };
+
+  const generateSwingSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.3;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const freq = 80 + t * 200; // Rising whoosh sound
+      const noise = (Math.random() - 0.5) * 2;
+      const tone = Math.sin(2 * Math.PI * freq * t);
+      const envelope = Math.sin(Math.PI * t / duration);
+      channelData[i] = (noise * 0.8 + tone * 0.2) * envelope * 0.2;
+    }
+
+    return buffer;
+  };
+
   const generateMagicSound = () => {
     if (!audioContext.current) return null;
 
