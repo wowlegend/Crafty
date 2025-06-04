@@ -369,38 +369,25 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// FULL FEATURED VERSION - With comprehensive error logging
+// FIXED HANDS RENDERING - Proper depth and z-index handling
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   
   useFrame(({ camera, clock }) => {
     try {
-      // Add detailed error tracking
-      if (!camera) {
-        console.error("BothHands: Camera is undefined");
-        return;
-      }
-      if (!camera.position) {
-        console.error("BothHands: Camera.position is undefined");
-        return;
-      }
-      if (!camera.rotation) {
-        console.error("BothHands: Camera.rotation is undefined");
-        return;
-      }
-      if (!camera.quaternion) {
-        console.error("BothHands: Camera.quaternion is undefined");
+      if (!camera?.position || !camera?.rotation || !camera?.quaternion) {
         return;
       }
       
       const time = clock?.getElapsedTime?.() || 0;
       
-      // Right hand with detailed error checking
+      // Right hand with FIXED positioning - closer to camera to prevent overlap
       if (rightHandRef.current) {
         const cameraPos = camera.position.clone();
         const cameraQuat = camera.quaternion.clone();
-        const rightHandLocalPos = new THREE.Vector3(0.3, -0.2, -0.6);
+        // CRITICAL: Moved closer to camera (z: -0.4 instead of -0.6)
+        const rightHandLocalPos = new THREE.Vector3(0.25, -0.15, -0.4);
         
         rightHandLocalPos.applyQuaternion(cameraQuat);
         rightHandLocalPos.add(cameraPos);
@@ -413,11 +400,12 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         }
       }
       
-      // Left hand
+      // Left hand with FIXED positioning
       if (leftHandRef.current) {
         const cameraPos = camera.position.clone();
         const cameraQuat = camera.quaternion.clone();
-        const leftHandLocalPos = new THREE.Vector3(-0.3, -0.2, -0.6);
+        // CRITICAL: Moved closer to camera (z: -0.4 instead of -0.6)
+        const leftHandLocalPos = new THREE.Vector3(-0.25, -0.15, -0.4);
         
         leftHandLocalPos.applyQuaternion(cameraQuat);
         leftHandLocalPos.add(cameraPos);
@@ -426,7 +414,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         leftHandRef.current.rotation.copy(camera.rotation);
       }
     } catch (error) {
-      console.error("BothHands useFrame error:", error.message, error.stack);
+      console.error("BothHands useFrame error:", error.message);
     }
   });
 
@@ -434,34 +422,56 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
 
   return (
     <group>
-      <group ref={rightHandRef}>
-        <mesh position={[0, 0.06, 0]}>
+      {/* Right hand with proper depth ordering */}
+      <group ref={rightHandRef} renderOrder={1000}>
+        <mesh position={[0, 0.06, 0]} renderOrder={1001}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshBasicMaterial 
+            color="#fdbcb4" 
+            depthTest={true}
+            depthWrite={true}
+          />
         </mesh>
         
-        <mesh position={[0, -0.1, 0]}>
+        <mesh position={[0, -0.1, 0]} renderOrder={1002}>
           <boxGeometry args={[0.05, 0.08, 0.04]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshBasicMaterial 
+            color="#fdbcb4"
+            depthTest={true}
+            depthWrite={true}
+          />
         </mesh>
         
         {selectedBlock && (
-          <mesh position={[0.05, -0.05, -0.08]}>
+          <mesh position={[0.05, -0.05, -0.08]} renderOrder={1003}>
             <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshBasicMaterial color={selectedBlockConfig.color} />
+            <meshBasicMaterial 
+              color={selectedBlockConfig.color}
+              depthTest={true}
+              depthWrite={true}
+            />
           </mesh>
         )}
       </group>
       
-      <group ref={leftHandRef}>
-        <mesh position={[0, 0.06, 0]}>
+      {/* Left hand with proper depth ordering */}
+      <group ref={leftHandRef} renderOrder={1000}>
+        <mesh position={[0, 0.06, 0]} renderOrder={1001}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshBasicMaterial 
+            color="#fdbcb4"
+            depthTest={true}
+            depthWrite={true}
+          />
         </mesh>
         
-        <mesh position={[0, -0.1, 0]}>
+        <mesh position={[0, -0.1, 0]} renderOrder={1002}>
           <boxGeometry args={[0.05, 0.08, 0.04]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshBasicMaterial 
+            color="#fdbcb4"
+            depthTest={true}
+            depthWrite={true}
+          />
         </mesh>
       </group>
     </group>
