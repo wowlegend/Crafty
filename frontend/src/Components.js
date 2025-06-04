@@ -90,38 +90,171 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// ISOLATED TEST - Disable all complex components temporarily
+// RESTORED - Full World with Block Placement
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate simple stable world
+  // Generate simple world with building capability
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 4; // Very small for testing
+    const size = 8;
     
     // Create flat terrain
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
         const key = `${x},0,${z}`;
+        const blockType = (x + z) % 4 === 0 ? 'dirt' : 'grass';
         initialBlocks.set(key, { 
           position: [x, 0, z], 
-          type: 'grass' 
+          type: blockType 
         });
       }
     }
     
+    // Add some test blocks
+    initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
+    initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
+    initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
+    initialBlocks.set('0,1,1', { position: [0, 1, 1], type: 'glass' });
+    initialBlocks.set('0,2,0', { position: [0, 2, 0], type: 'diamond' });
+    
     setBlocks(initialBlocks);
-    console.log('🌍 ISOLATED: Simple world generated');
+    console.log('🌍 World generated with building capability');
   }, []);
+
+  // RESTORED - Block placement functionality
+  const placeBlock = () => {
+    if (!gameState.selectedBlock) {
+      console.log('❌ No block selected for placement');
+      return;
+    }
+    
+    if (gameState.inventory.blocks[gameState.selectedBlock] <= 0) {
+      console.log('❌ No blocks of this type in inventory');
+      return;
+    }
+    
+    try {
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      
+      const newPos = camera.position.clone()
+        .add(direction.multiplyScalar(3)); // Place 3 units in front
+      
+      const gridPos = {
+        x: Math.round(newPos.x),
+        y: Math.max(1, Math.round(newPos.y)), // At least 1 block high
+        z: Math.round(newPos.z)
+      };
+      
+      const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
+      
+      if (!blocks.has(key)) {
+        setBlocks(prev => new Map(prev).set(key, {
+          position: [gridPos.x, gridPos.y, gridPos.z],
+          type: gameState.selectedBlock
+        }));
+        
+        // Remove from inventory (except in creative mode)
+        if (gameState.gameMode !== 'creative') {
+          gameState.removeFromInventory(gameState.selectedBlock, 1);
+        }
+        
+        // Update stats
+        gameState.setPlayerStats(prev => ({
+          ...prev,
+          blocksPlaced: prev.blocksPlaced + 1
+        }));
+        
+        console.log('✅ Placed', gameState.selectedBlock, 'block at', gridPos.x, gridPos.y, gridPos.z);
+      } else {
+        console.log('❌ Block already exists at that position');
+      }
+    } catch (error) {
+      console.error('❌ Error placing block:', error.message);
+    }
+  };
+
+  // RESTORED - Block breaking functionality
+  const breakBlock = () => {
+    try {
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      
+      const targetPos = camera.position.clone()
+        .add(direction.multiplyScalar(3)); // Target 3 units in front
+      
+      const gridPos = {
+        x: Math.round(targetPos.x),
+        y: Math.round(targetPos.y),
+        z: Math.round(targetPos.z)
+      };
+      
+      const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
+      
+      if (blocks.has(key)) {
+        const block = blocks.get(key);
+        setBlocks(prev => {
+          const newBlocks = new Map(prev);
+          newBlocks.delete(key);
+          return newBlocks;
+        });
+        
+        // Add to inventory
+        gameState.addToInventory(block.type, 1);
+        
+        // Update stats
+        gameState.setPlayerStats(prev => ({
+          ...prev,
+          blocksDestroyed: prev.blocksDestroyed + 1
+        }));
+        
+        console.log('💥 Broke', block.type, 'block at', gridPos.x, gridPos.y, gridPos.z);
+      } else {
+        console.log('❌ No block to break at that position');
+      }
+    } catch (error) {
+      console.error('❌ Error breaking block:', error.message);
+    }
+  };
+
+  // RESTORED - Mouse click handlers
+  useEffect(() => {
+    const handleClick = (event) => {
+      try {
+        if (event.button === 0) { // Left click - break blocks
+          event.preventDefault();
+          breakBlock();
+        } else if (event.button === 2) { // Right click - place blocks
+          event.preventDefault();
+          placeBlock();
+        }
+      } catch (error) {
+        console.error('❌ Error in click handler:', error.message);
+      }
+    };
+
+    const handleContextMenu = (event) => {
+      event.preventDefault(); // Prevent browser context menu
+    };
+
+    window.addEventListener('mousedown', handleClick);
+    window.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      window.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [gameState.selectedBlock, blocks, gameState.inventory]);
 
   return (
     <group>
-      {/* TESTING - Add back particles component to see if it causes the error */}
+      {/* Environment components */}
       <MinecraftClouds />
       <EnvironmentalParticles />
       
-      {/* Only basic blocks */}
+      {/* Render all blocks with basic materials (no complex properties) */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -135,9 +268,9 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Simple ground plane */}
+      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[20, 20]} />
+        <planeGeometry args={[40, 40]} />
         <meshBasicMaterial color="#22c55e" />
       </mesh>
     </group>
