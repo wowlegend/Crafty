@@ -304,6 +304,63 @@
   .minecraft-block-icon {
     width: 18px;
     height: 18px;
+}
+
+/* COMBAT VISUAL EFFECTS - Screen shake animation */
+@keyframes shake {
+  0% { transform: translate(0); }
+  10% { transform: translate(-2px, 1px); }
+  20% { transform: translate(2px, -1px); }
+  30% { transform: translate(-1px, 2px); }
+  40% { transform: translate(1px, -2px); }
+  50% { transform: translate(-2px, 1px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, 2px); }
+  80% { transform: translate(1px, -2px); }
+  90% { transform: translate(-2px, 1px); }
+  100% { transform: translate(0); }
+}
+
+/* Enhanced combat feedback */
+.combat-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  border-radius: 50%;
+  animation: combatSpark 0.4s ease-out forwards;
+}
+
+@keyframes combatSpark {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+.damage-number {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -150%) scale(1.5);
+    opacity: 0;
+  }
   }
   
   .minecraft-tool-button {
