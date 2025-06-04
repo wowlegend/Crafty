@@ -161,40 +161,40 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// OPTIMIZED WORLD - Balanced size for performance
+// PROPER MINECRAFT-STYLE WORLD with collision detection
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate balanced world - larger but optimized
+  // Generate proper Minecraft-style world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 25; // Balanced size (50x50 = 2500 blocks vs 10000 before)
+    const size = 25; // 50x50 world
     
-    // Generate optimized terrain with fewer layers
+    // Generate terrain with proper block positions
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
-        // Simpler height calculation for better performance
+        // Create terrain height (1-4 blocks high)
         const height = Math.floor(
           Math.sin(x * 0.15) * Math.cos(z * 0.15) * 2 + 
           Math.random() * 1 + 2
         );
         
-        // Generate fewer layers to reduce block count
-        for (let y = 0; y <= Math.min(height, 3); y++) { // Max 4 layers
+        // Generate block layers from bottom to top
+        for (let y = 0; y <= Math.min(height, 4); y++) {
           const key = `${x},${y},${z}`;
           
           if (y === height && height > 1) {
-            // Grass on top
+            // Grass on surface
             initialBlocks.set(key, { position: [x, y, z], type: 'grass' });
           } else if (y === height && height <= 1) {
             // Sand in low areas
             initialBlocks.set(key, { position: [x, y, z], type: 'sand' });
           } else if (y >= height - 1) {
-            // Dirt layer
+            // Dirt layer below grass
             initialBlocks.set(key, { position: [x, y, z], type: 'dirt' });
           } else {
-            // Stone bottom layer with occasional ores
+            // Stone bottom with occasional ores
             const rand = Math.random();
             if (rand < 0.05) {
               initialBlocks.set(key, { position: [x, y, z], type: 'coal' });
@@ -206,7 +206,7 @@ export const MinecraftWorld = ({ gameState }) => {
           }
         }
         
-        // Fewer trees for better performance
+        // Add occasional trees
         if (Math.random() < 0.01 && height > 2) {
           const treeKey = `${x},${height + 1},${z}`;
           initialBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
@@ -215,18 +215,33 @@ export const MinecraftWorld = ({ gameState }) => {
     }
     
     setBlocks(initialBlocks);
-    console.log('🌍 Optimized world generated with', initialBlocks.size, 'blocks');
+    // Store blocks in game state for collision detection
+    gameState.setWorldBlocks(initialBlocks);
+    console.log('🌍 Minecraft world generated with', initialBlocks.size, 'blocks');
   }, []);
+
+  // Get the highest block at a position (for collision detection)
+  const getHighestBlockAt = (x, z) => {
+    let maxY = 0;
+    for (let y = 0; y <= 10; y++) {
+      const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
+      if (blocks.has(key)) {
+        maxY = Math.max(maxY, y);
+      }
+    }
+    return maxY;
+  };
+
+  // Expose collision detection function globally
+  useEffect(() => {
+    window.getHighestBlockAt = getHighestBlockAt;
+  }, [blocks]);
 
   // WORKING block placement functionality
   const placeBlock = () => {
-    if (!gameState.selectedBlock) {
-      console.log('❌ No block selected');
-      return;
-    }
+    if (!gameState.selectedBlock) return;
     
     if (gameState.gameMode !== 'creative' && gameState.inventory.blocks[gameState.selectedBlock] <= 0) {
-      console.log('❌ No blocks in inventory');
       return;
     }
     
@@ -235,7 +250,7 @@ export const MinecraftWorld = ({ gameState }) => {
       camera.getWorldDirection(direction);
       
       const newPos = camera.position.clone()
-        .add(direction.multiplyScalar(3));
+        .add(direction.multiplyScalar(4));
       
       const gridPos = {
         x: Math.round(newPos.x),
@@ -246,10 +261,13 @@ export const MinecraftWorld = ({ gameState }) => {
       const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
       
       if (!blocks.has(key)) {
-        setBlocks(prev => new Map(prev).set(key, {
+        const newBlock = {
           position: [gridPos.x, gridPos.y, gridPos.z],
           type: gameState.selectedBlock
-        }));
+        };
+        
+        setBlocks(prev => new Map(prev).set(key, newBlock));
+        gameState.setWorldBlocks(prev => new Map(prev).set(key, newBlock));
         
         // Remove from inventory (except creative mode)
         if (gameState.gameMode !== 'creative') {
@@ -262,8 +280,6 @@ export const MinecraftWorld = ({ gameState }) => {
         }));
         
         console.log('✅ Placed', gameState.selectedBlock, 'at', gridPos.x, gridPos.y, gridPos.z);
-      } else {
-        console.log('❌ Block already exists there');
       }
     } catch (error) {
       console.error('❌ Error placing block:', error.message);
@@ -277,7 +293,7 @@ export const MinecraftWorld = ({ gameState }) => {
       camera.getWorldDirection(direction);
       
       const targetPos = camera.position.clone()
-        .add(direction.multiplyScalar(3));
+        .add(direction.multiplyScalar(4));
       
       const gridPos = {
         x: Math.round(targetPos.x),
@@ -295,6 +311,12 @@ export const MinecraftWorld = ({ gameState }) => {
           return newBlocks;
         });
         
+        gameState.setWorldBlocks(prev => {
+          const newBlocks = new Map(prev);
+          newBlocks.delete(key);
+          return newBlocks;
+        });
+        
         // Add to inventory
         gameState.addToInventory(block.type, 1);
         
@@ -304,8 +326,6 @@ export const MinecraftWorld = ({ gameState }) => {
         }));
         
         console.log('💥 Broke', block.type, 'at', gridPos.x, gridPos.y, gridPos.z);
-      } else {
-        console.log('❌ No block to break');
       }
     } catch (error) {
       console.error('❌ Error breaking block:', error.message);
@@ -343,28 +363,29 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* SIMPLIFIED environment for better performance */}
+      {/* Enhanced environment */}
       <MinecraftClouds />
       
-      {/* Render blocks with optimized materials */}
+      {/* Render blocks as proper Minecraft cubes */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
           <mesh 
             key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
             position={block.position}
+            userData={{ isBlock: true, blockType: block.type }}
           >
             <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color={blockConfig.color} />
+            <meshLambertMaterial 
+              color={blockConfig.color}
+              transparent={blockConfig.transparent || false}
+              opacity={blockConfig.transparent ? 0.8 : 1}
+            />
           </mesh>
         );
       })}
       
-      {/* FIXED ground plane with authentic Minecraft grass color - ADJUSTED POSITION */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <planeGeometry args={[120, 120]} />
-        <meshBasicMaterial color="#7FB238" />
-      </mesh>
+      {/* NO GROUND PLANE - blocks provide the ground */}
     </group>
   );
 };
