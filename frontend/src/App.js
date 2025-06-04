@@ -121,9 +121,19 @@ const useGameState = () => {
 };
 
 function App() {
+  return (
+    <AuthProvider>
+      <GameApp />
+    </AuthProvider>
+  );
+}
+
+function GameApp() {
   const gameState = useGameState();
+  const { isAuthenticated, loading } = useAuth();
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
 
   // Handle escape key to unlock pointer
@@ -163,6 +173,17 @@ function App() {
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     return () => document.removeEventListener('pointerlockchange', handlePointerLockChange);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-xl">Loading Crafty...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative">
