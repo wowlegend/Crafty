@@ -212,22 +212,18 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
       <group ref={rightHandRef}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
         <mesh position={[0, -0.1, 0]}>
           <boxGeometry args={[0.05, 0.08, 0.04]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
         {selectedBlock && (
           <mesh position={[0.05, -0.05, -0.08]}>
             <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshLambertMaterial 
-              color={selectedBlockConfig.color}
-              transparent={selectedBlockConfig.transparent || false}
-              opacity={selectedBlockConfig.transparent ? 0.8 : 1}
-            />
+            <meshBasicMaterial color={selectedBlockConfig.color} />
           </mesh>
         )}
       </group>
