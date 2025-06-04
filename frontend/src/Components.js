@@ -674,21 +674,8 @@ export const Player = ({ gameState }) => {
   return <BothHands selectedBlock={gameState.selectedBlock} />;
 };
 
-// Game UI Component
+// Game UI Component - FIXED: No useThree hook (used outside Canvas)
 export const GameUI = ({ gameState, showStats, setShowStats }) => {
-  const { camera } = useThree();
-  const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
-
-  useFrame(() => {
-    if (camera) {
-      setPosition({
-        x: Math.round(camera.position.x),
-        y: Math.round(camera.position.y),
-        z: Math.round(camera.position.z)
-      });
-    }
-  });
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -758,16 +745,15 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         </div>
       </div>
 
-      {/* Debug info */}
+      {/* Debug info - simplified without camera position */}
       {showStats && (
         <div className="absolute top-20 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
             <div className="text-white minecraft-text text-sm space-y-1">
-              <div>X: {position.x}</div>
-              <div>Y: {position.y}</div>
-              <div>Z: {position.z}</div>
               <div>Biome: Plains</div>
               <div>Light Level: {gameState.isDay ? '15' : '7'}</div>
+              <div>Game Mode: {gameState.gameMode}</div>
+              <div>Time: {Math.floor(gameState.gameTime / 60)}m {gameState.gameTime % 60}s</div>
             </div>
           </div>
         </div>
