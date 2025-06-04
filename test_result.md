@@ -320,15 +320,9 @@ metadata:
   run_ui: true
 
 test_plan:
-  current_focus:
-    - "World Generation & Movement"
-    - "Building & Block System"
-    - "Enhanced UI System"
-    - "New Features"
-    - "Visual Quality"
-    - "Performance & Stability"
+  current_focus: []
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
