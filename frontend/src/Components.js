@@ -306,46 +306,21 @@ const EnvironmentalParticles = () => {
 };
 
 // Simplified Sky Component - Basic and stable
-// Enhanced Sky Component - With Error Handling
-const MinecraftSky = ({ isDay = true }) => {
-  const skyRef = useRef();
-  
-  // Safe useFrame with error handling
-  useFrame((state) => {
-    if (skyRef.current && state?.clock?.getElapsedTime) {
-      try {
-        const time = state.clock.getElapsedTime();
-        // Gentle sky rotation - very slow to avoid issues
-        skyRef.current.rotation.y = time * 0.001;
-      } catch (error) {
-        console.warn("Sky animation error:", error.message);
-      }
-    }
-  });
-  
-  const skyColor = isDay ? '#87CEEB' : '#191970';
-  const sunColor = isDay ? '#FFD700' : '#F5F5DC';
-  const celestialPosition = [0, 20, -35];
+// ISOLATED TEST - Minimal Sky Component
+const MinecraftSky = () => {
+  // NO refs, NO useFrame, NO day/night logic
+  // Just basic sky sphere to test if sky is the issue
   
   return (
-    <group ref={skyRef}>
-      {/* Sky sphere with better quality */}
-      <mesh scale={[120, 120, 120]}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial 
-          color={skyColor}
-          side={THREE.BackSide}
-        />
+    <group>
+      <mesh scale={[100, 100, 100]}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshBasicMaterial color="#87CEEB" side={THREE.BackSide} />
       </mesh>
       
-      {/* Sun/Moon with better positioning */}
-      <mesh position={celestialPosition}>
-        <sphereGeometry args={[1.8, 12, 12]} />
-        <meshBasicMaterial 
-          color={sunColor}
-          emissive={sunColor}
-          emissiveIntensity={isDay ? 0.3 : 0.2}
-        />
+      <mesh position={[0, 15, -25]}>
+        <sphereGeometry args={[1.5, 8, 8]} />
+        <meshBasicMaterial color="#FFD700" />
       </mesh>
     </group>
   );
