@@ -90,191 +90,124 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Minecraft World Component - OPTIMIZED for performance
-export const MinecraftWorld = ({ gameState, worldSeed }) => {
+// Ultra Simple World - Like classic Minecraft
+export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
-  const [highlightedBlock, setHighlightedBlock] = useState(null);
-  const { camera, raycaster, mouse, scene } = useThree();
+  const { camera } = useThree();
 
-  // Generate smaller, optimized world
+  // Generate super simple flat world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 8; // Reduced from 20 to 8 for much better performance
+    const size = 6; // Very small for testing
     
+    // Create simple flat ground
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
-        const height = generateTerrain(x, z, worldSeed.length);
-        
-        // Generate fewer layers for better performance
-        for (let y = 0; y <= Math.min(height, 4); y++) { // Max height of 4
-          const key = `${x},${y},${z}`;
-          if (y === height && height > 2) {
-            initialBlocks.set(key, { position: [x, y, z], type: 'grass' });
-          } else if (y === height && height <= 2) {
-            initialBlocks.set(key, { position: [x, y, z], type: 'sand' });
-          } else if (y >= height - 1) {
-            initialBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          } else {
-            initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
-          }
-        }
-        
-        // Reduced decorations for performance
-        if (Math.random() < 0.05 && height > 2) {
-          const decorY = height + 1;
-          const decorKey = `${x},${decorY},${z}`;
-          initialBlocks.set(decorKey, { position: [x, decorY, z], type: 'wood' });
-        }
+        // Just one layer of grass blocks
+        const key = `${x},0,${z}`;
+        initialBlocks.set(key, { 
+          position: [x, 0, z], 
+          type: 'grass' 
+        });
       }
     }
     
-    setBlocks(initialBlocks);
-  }, [worldSeed]);
-
-  // Optimized block interaction
-  const handleBlockDestroy = (position) => {
-    const key = `${position[0]},${position[1]},${position[2]}`;
-    const block = blocks.get(key);
+    // Add a few test blocks
+    initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
+    initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
+    initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
     
-    if (block) {
+    setBlocks(initialBlocks);
+    console.log('World generated with', initialBlocks.size, 'blocks');
+  }, []);
+
+  // Simple block placement
+  const placeBlock = () => {
+    if (!gameState.selectedBlock) return;
+    
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    
+    const newPos = camera.position.clone()
+      .add(direction.multiplyScalar(3))
+      .round();
+    
+    const key = `${newPos.x},${newPos.y},${newPos.z}`;
+    
+    if (!blocks.has(key)) {
+      setBlocks(prev => new Map(prev).set(key, {
+        position: [newPos.x, newPos.y, newPos.z],
+        type: gameState.selectedBlock
+      }));
+      console.log('Placed block at', newPos.x, newPos.y, newPos.z);
+    }
+  };
+
+  // Simple block breaking
+  const breakBlock = () => {
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    
+    const targetPos = camera.position.clone()
+      .add(direction.multiplyScalar(3))
+      .round();
+    
+    const key = `${targetPos.x},${targetPos.y},${targetPos.z}`;
+    
+    if (blocks.has(key)) {
       setBlocks(prev => {
         const newBlocks = new Map(prev);
         newBlocks.delete(key);
         return newBlocks;
       });
-      
-      // Add to inventory in creative mode
-      if (gameState.gameMode === 'creative') {
-        gameState.addToInventory(block.type, 1);
-      }
-      
-      // Update stats
-      gameState.setPlayerStats(prev => ({
-        ...prev,
-        blocksDestroyed: prev.blocksDestroyed + 1
-      }));
+      console.log('Broke block at', targetPos.x, targetPos.y, targetPos.z);
     }
   };
 
-  const handleBlockPlace = (position, normal) => {
-    if (!gameState.selectedBlock || gameState.inventory.blocks[gameState.selectedBlock] <= 0) {
-      return;
-    }
-
-    const newPosition = [
-      Math.round(position[0] + normal.x),
-      Math.round(position[1] + normal.y),
-      Math.round(position[2] + normal.z)
-    ];
-    
-    const key = `${newPosition[0]},${newPosition[1]},${newPosition[2]}`;
-    
-    if (!blocks.has(key) && newPosition[1] > 0) { // Prevent placing below ground
-      setBlocks(prev => new Map(prev).set(key, {
-        position: newPosition,
-        type: gameState.selectedBlock
-      }));
-      
-      // Remove from inventory
-      if (gameState.gameMode !== 'creative') {
-        gameState.removeFromInventory(gameState.selectedBlock, 1);
-      }
-      
-      // Update stats
-      gameState.setPlayerStats(prev => ({
-        ...prev,
-        blocksPlaced: prev.blocksPlaced + 1
-      }));
-    }
-  };
-
-  // Simplified mouse interaction - less frequent updates
-  useFrame(() => {
-    if (Math.random() < 0.1) { // Only update 10% of frames for performance
-      raycaster.setFromCamera({ x: 0, y: 0 }, camera); // Use center of screen
-      const blockArray = Array.from(blocks.values()).map(block => {
-        // Create temporary object for raycasting
-        const tempGeo = new THREE.BoxGeometry(1, 1, 1);
-        const tempMat = new THREE.MeshBasicMaterial();
-        const tempMesh = new THREE.Mesh(tempGeo, tempMat);
-        tempMesh.position.set(...block.position);
-        tempMesh.userData = { blockPosition: block.position };
-        return tempMesh;
-      });
-      
-      const intersects = raycaster.intersectObjects(blockArray);
-      
-      if (intersects.length > 0) {
-        const intersect = intersects[0];
-        const position = intersect.object.userData.blockPosition;
-        setHighlightedBlock(position);
-      } else {
-        setHighlightedBlock(null);
-      }
-      
-      // Clean up temporary objects
-      blockArray.forEach(mesh => {
-        mesh.geometry.dispose();
-        mesh.material.dispose();
-      });
-    }
-  });
-
-  // Simplified click handling
+  // Handle mouse clicks
   useEffect(() => {
     const handleClick = (event) => {
-      if (event.button === 2 && highlightedBlock) { // Right click for placing
+      if (event.button === 0) { // Left click - break
+        breakBlock();
+      } else if (event.button === 2) { // Right click - place
         event.preventDefault();
-        raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-        
-        // Find the intersected block
-        const targetBlock = Array.from(blocks.values()).find(block => 
-          block.position[0] === highlightedBlock[0] &&
-          block.position[1] === highlightedBlock[1] &&
-          block.position[2] === highlightedBlock[2]
-        );
-        
-        if (targetBlock) {
-          // Place block on top
-          handleBlockPlace(targetBlock.position, { x: 0, y: 1, z: 0 });
-        }
+        placeBlock();
       }
     };
 
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('mousedown', handleClick);
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
     
     return () => {
       window.removeEventListener('mousedown', handleClick);
     };
-  }, [highlightedBlock, gameState.selectedBlock, blocks]);
+  }, [gameState.selectedBlock, blocks]);
 
   return (
     <group>
-      {Array.from(blocks.values()).map((block, index) => (
-        <Block
-          key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
-          position={block.position}
-          type={block.type}
-          onDestroy={handleBlockDestroy}
-          isHighlighted={
-            highlightedBlock &&
-            highlightedBlock[0] === block.position[0] &&
-            highlightedBlock[1] === block.position[1] &&
-            highlightedBlock[2] === block.position[2]
-          }
-        />
-      ))}
+      {/* Render all blocks as simple cubes */}
+      {Array.from(blocks.values()).map((block) => {
+        const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
+        return (
+          <mesh 
+            key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
+            position={block.position}
+          >
+            <boxGeometry args={[1, 1, 1]} />
+            <meshLambertMaterial 
+              color={blockConfig.color}
+              transparent={blockConfig.transparent || false}
+              opacity={blockConfig.transparent ? 0.8 : 1}
+            />
+          </mesh>
+        );
+      })}
       
-      {/* Simplified ground plane */}
-      <Plane
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.5, 0]}
-        args={[50, 50]}
-        receiveShadow
-      >
+      {/* Simple ground reference */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
+        <planeGeometry args={[30, 30]} />
         <meshLambertMaterial color="#22c55e" />
-      </Plane>
+      </mesh>
     </group>
   );
 };
