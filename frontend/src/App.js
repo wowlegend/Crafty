@@ -332,6 +332,9 @@ function GameApp() {
         {/* Player Controls */}
         <PointerLockControls />
         
+        {/* Position tracker - works inside Canvas */}
+        <PositionTracker onPositionUpdate={setPlayerPosition} />
+        
         {/* Enhanced Game World with infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
