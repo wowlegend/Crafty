@@ -348,7 +348,7 @@ const EnvironmentalParticles = () => {
           scale={[0.08, 0.08, 0.08]}
         >
           <sphereGeometry args={[1, 6, 6]} />
-          <meshLambertMaterial 
+          <meshBasicMaterial 
             color="#22c55e" 
             transparent 
             opacity={0.7} 
