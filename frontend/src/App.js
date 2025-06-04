@@ -342,10 +342,7 @@ function GameApp() {
         {/* Spell Effects */}
         <SpellEffects activeSpell={gameState.activeSpell} gameState={gameState} />
 
-        {/* Combat Visual Effects System */}
-        <CombatEffects gameState={gameState} />
-
-        {/* Ambient Particles */}
+        {/* Ambient Particles - simplified */}
         <AmbientParticles />
 
         {/* Performance Stats */}
