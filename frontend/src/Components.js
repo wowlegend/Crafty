@@ -380,20 +380,20 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Restored enhanced clouds */}
+      {/* Enhanced clouds with better performance */}
       <MinecraftClouds />
       
-      {/* Enhanced particle effects */}
-      <EnvironmentalParticles />
+      {/* Grass particle effects for better grass appearance */}
+      <GrassEffects />
       
-      {/* Optimized block rendering with distance culling */}
+      {/* PERFORMANCE-OPTIMIZED block rendering */}
       {Array.from(blocks.values())
         .filter(block => {
           const distance = Math.sqrt(
             Math.pow(block.position[0] - camera.position.x, 2) + 
             Math.pow(block.position[2] - camera.position.z, 2)
           );
-          return distance < 100; // Increased render distance slightly
+          return distance < 80; // Reduced render distance for performance
         })
         .map((block) => {
           const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
@@ -410,9 +410,87 @@ export const MinecraftWorld = ({ gameState }) => {
                 emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
                 emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
               />
+              {/* Enhanced grass texture effect */}
+              {block.type === 'grass' && (
+                <GrassTexture position={[0, 0.51, 0]} />
+              )}
             </mesh>
           );
         })}
+    </group>
+  );
+};
+
+// NEW: Grass texture enhancement for more realistic grass blocks
+const GrassTexture = ({ position }) => {
+  return (
+    <group position={position}>
+      {/* Grass blade effects */}
+      {[...Array(3)].map((_, i) => (
+        <mesh key={i} position={[
+          (Math.random() - 0.5) * 0.8,
+          0,
+          (Math.random() - 0.5) * 0.8
+        ]}>
+          <planeGeometry args={[0.1, 0.2]} />
+          <meshBasicMaterial 
+            color="#4a7c59" 
+            transparent 
+            opacity={0.6}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
+// NEW: Environmental grass particle effects
+const GrassEffects = () => {
+  const particlesRef = useRef();
+  
+  const grassParticles = useMemo(() => {
+    const particles = [];
+    for (let i = 0; i < 15; i++) { // Reduced for performance
+      particles.push({
+        x: (Math.random() - 0.5) * 60,
+        y: 12 + Math.random() * 8,
+        z: (Math.random() - 0.5) * 60,
+        speed: 0.05 + Math.random() * 0.05
+      });
+    }
+    return particles;
+  }, []);
+  
+  useFrame((state) => {
+    if (particlesRef.current) {
+      particlesRef.current.children.forEach((particle, index) => {
+        const particleData = grassParticles[index];
+        particle.position.y += particleData.speed * Math.sin(state.clock.elapsedTime + index);
+        particle.rotation.y += 0.01;
+        if (particle.position.y > 25) {
+          particle.position.y = 12;
+        }
+      });
+    }
+  });
+  
+  return (
+    <group ref={particlesRef}>
+      {grassParticles.map((particle, index) => (
+        <mesh 
+          key={index} 
+          position={[particle.x, particle.y, particle.z]}
+        >
+          <planeGeometry args={[0.08, 0.15]} />
+          <meshBasicMaterial 
+            color="#90EE90" 
+            transparent 
+            opacity={0.7}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
     </group>
   );
 };
