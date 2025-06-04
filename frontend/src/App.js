@@ -408,6 +408,18 @@ function GameApp() {
         )}
       </AnimatePresence>
 
+      {/* Trading Interface */}
+      {gameState.showTradingInterface && (
+        <TradingInterface 
+          villager={gameState.selectedVillager}
+          gameState={gameState}
+          onClose={() => {
+            gameState.setShowTradingInterface(false);
+            gameState.setSelectedVillager(null);
+          }}
+        />
+      )}
+
       {/* Authentication Modal */}
       <AuthModal 
         isOpen={showAuthModal} 
