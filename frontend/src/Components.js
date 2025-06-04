@@ -360,10 +360,10 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Optimized ground plane */}
+      {/* FIXED ground plane with authentic Minecraft grass color */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
         <planeGeometry args={[120, 120]} />
-        <meshBasicMaterial color="#7C9F3A" />
+        <meshBasicMaterial color="#7FB238" />
       </mesh>
     </group>
   );
