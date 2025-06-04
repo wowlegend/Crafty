@@ -692,7 +692,7 @@ export const Player = ({ gameState }) => {
 };
 
 // Game UI Component - FIXED: No useThree hook (used outside Canvas)
-export const GameUI = ({ gameState, showStats, setShowStats }) => {
+export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { x: 0, y: 0, z: 0 } }) => {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -762,11 +762,14 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         </div>
       </div>
 
-      {/* Debug info - simplified without camera position */}
+      {/* Debug info with player position */}
       {showStats && (
         <div className="absolute top-20 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
             <div className="text-white minecraft-text text-sm space-y-1">
+              <div>X: {playerPosition.x}</div>
+              <div>Y: {playerPosition.y}</div>
+              <div>Z: {playerPosition.z}</div>
               <div>Biome: Plains</div>
               <div>Light Level: {gameState.isDay ? '15' : '7'}</div>
               <div>Game Mode: {gameState.gameMode}</div>
