@@ -41,8 +41,9 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
+import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
 
-// Simplified Game state management
+// Game state management
 const useGameState = () => {
   const [gameMode, setGameMode] = useState('creative');
   const [selectedBlock, setSelectedBlock] = useState('grass');
@@ -71,7 +72,7 @@ const useGameState = () => {
     blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0
   });
 
-  // Simple time cycle
+  // Time cycle
   useEffect(() => {
     const timer = setInterval(() => {
       setGameTime(prev => {
@@ -231,7 +232,7 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Simplified & Stable • No Lag • Smooth Performance
+                RESTORED: Hands • Clouds • NPCs • Infinite Terrain
               </motion.p>
 
               {/* Authentication Status */}
@@ -298,23 +299,23 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* SIMPLIFIED Game Canvas - Maximum performance */}
+      {/* OPTIMIZED Game Canvas */}
       <Canvas
         camera={{
           fov: 75,
           near: 0.1,
           far: 500,
-          position: [0, 10, 0]
+          position: [0, 20, 0]
         }}
         shadows={false}
         className="w-full h-full"
         gl={{ 
-          antialias: false, // Disabled for performance
+          antialias: true,
           alpha: false,
           depth: true
         }}
       >
-        {/* Simple lighting */}
+        {/* Lighting */}
         <MinecraftSky isDay={gameState.isDay} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 50, 25]} intensity={1} />
@@ -325,11 +326,14 @@ function GameApp() {
         {/* Position tracker */}
         <PositionTracker onPositionUpdate={setPlayerPosition} />
         
-        {/* Simplified Game World */}
+        {/* RESTORED Game World with infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* Player */}
+        {/* RESTORED Player with hands */}
         <Player gameState={gameState} />
+
+        {/* RESTORED NPCs and Mobs */}
+        <NPCSystem gameState={gameState} />
 
         {/* Performance Stats */}
         {showStats && <Stats />}
@@ -338,12 +342,15 @@ function GameApp() {
       {/* Game UI */}
       <AnimatePresence>
         {isPointerLocked && (
-          <GameUI 
-            gameState={gameState}
-            showStats={showStats}
-            setShowStats={setShowStats}
-            playerPosition={playerPosition}
-          />
+          <>
+            <GameUI 
+              gameState={gameState}
+              showStats={showStats}
+              setShowStats={setShowStats}
+              playerPosition={playerPosition}
+            />
+            <CombatInstructions />
+          </>
         )}
       </AnimatePresence>
 
@@ -394,6 +401,18 @@ function GameApp() {
           />
         )}
       </AnimatePresence>
+
+      {/* Trading Interface */}
+      {gameState.showTradingInterface && (
+        <TradingInterface 
+          villager={gameState.selectedVillager}
+          gameState={gameState}
+          onClose={() => {
+            gameState.setShowTradingInterface(false);
+            gameState.setSelectedVillager(null);
+          }}
+        />
+      )}
 
       {/* Authentication Modal */}
       <AuthModal 
