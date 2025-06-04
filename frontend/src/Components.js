@@ -364,21 +364,62 @@ const EnvironmentalParticles = () => {
 };
 
 // Simplified Sky Component - Basic and stable
-// ISOLATED TEST - Minimal Sky Component
-const MinecraftSky = () => {
-  // NO refs, NO useFrame, NO day/night logic
-  // Just basic sky sphere to test if sky is the issue
+// FULL FEATURED Sky Component - With comprehensive error logging
+const MinecraftSky = ({ isDay = true }) => {
+  const skyRef = useRef();
+  
+  useFrame((state) => {
+    try {
+      if (!skyRef.current) {
+        console.warn("MinecraftSky: skyRef.current is undefined");
+        return;
+      }
+      if (!state) {
+        console.error("MinecraftSky: state is undefined");
+        return;
+      }
+      if (!state.clock) {
+        console.error("MinecraftSky: state.clock is undefined");
+        return;
+      }
+      if (typeof state.clock.getElapsedTime !== 'function') {
+        console.error("MinecraftSky: state.clock.getElapsedTime is not a function");
+        return;
+      }
+      
+      const time = state.clock.getElapsedTime();
+      if (typeof time !== 'number') {
+        console.error("MinecraftSky: time is not a number:", time);
+        return;
+      }
+      
+      skyRef.current.rotation.y = time * 0.001;
+    } catch (error) {
+      console.error("MinecraftSky useFrame error:", error.message, error.stack);
+    }
+  });
+  
+  const skyColor = isDay ? '#87CEEB' : '#191970';
+  const sunColor = isDay ? '#FFD700' : '#F5F5DC';
+  const celestialPosition = [0, 20, -35];
   
   return (
-    <group>
-      <mesh scale={[100, 100, 100]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshBasicMaterial color="#87CEEB" side={THREE.BackSide} />
+    <group ref={skyRef}>
+      <mesh scale={[120, 120, 120]}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial 
+          color={skyColor}
+          side={THREE.BackSide}
+        />
       </mesh>
       
-      <mesh position={[0, 15, -25]}>
-        <sphereGeometry args={[1.5, 8, 8]} />
-        <meshBasicMaterial color="#FFD700" />
+      <mesh position={celestialPosition}>
+        <sphereGeometry args={[1.8, 12, 12]} />
+        <meshBasicMaterial 
+          color={sunColor}
+          emissive={sunColor}
+          emissiveIntensity={isDay ? 0.3 : 0.2}
+        />
       </mesh>
     </group>
   );
