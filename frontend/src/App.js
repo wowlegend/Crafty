@@ -41,7 +41,7 @@ import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
-import { NPCSystem, TradingInterface } from './NPCSystem';
+import { NPCSystem, TradingInterface, CombatInstructions } from './NPCSystem';
 import { AmbientParticles } from './EnhancedVisuals';
 
 // Enhanced Game state management with world persistence and new features
