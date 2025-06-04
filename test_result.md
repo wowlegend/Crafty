@@ -273,11 +273,11 @@ frontend:
 
   - task: "New Features"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
@@ -285,6 +285,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "The new features are implemented correctly. Sound effects for block breaking are working as seen in the console logs. Particle effects, NPC interactions, and magic spells are also implemented in the code."
+      - working: false
+        agent: "user"
+        comment: "User reports no graphics effects when attacking mobs or characters. Combat system lacks visual feedback."
 
   - task: "Visual Quality"
     implemented: true
