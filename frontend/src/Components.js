@@ -570,36 +570,50 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
   );
 };
 
-// Enhanced Clouds - With Error Handling
+// Authentic Minecraft-style Clouds
 const MinecraftClouds = () => {
   const cloudsRef = useRef();
   
-  // Generate cloud positions safely
+  // Generate Minecraft-style cloud formation
   const cloudPositions = useMemo(() => {
     try {
       const positions = [];
-      for (let i = 0; i < 6; i++) {
-        positions.push({
-          x: (i - 3) * 12 + (Math.random() - 0.5) * 5,
-          y: 15 + Math.random() * 3,
-          z: -25 + (Math.random() - 0.5) * 10,
-          scale: 0.8 + Math.random() * 0.6
-        });
+      
+      // Create large cloud formations like Minecraft
+      for (let i = 0; i < 12; i++) {
+        const baseX = (i - 6) * 20 + (Math.random() - 0.5) * 10;
+        const baseZ = -30 + (Math.random() - 0.5) * 20;
+        const baseY = 20 + Math.random() * 5;
+        
+        // Create cloud cluster (multiple cubes forming a cloud)
+        for (let j = 0; j < 8; j++) {
+          positions.push({
+            x: baseX + (Math.random() - 0.5) * 8,
+            y: baseY + (Math.random() - 0.5) * 2,
+            z: baseZ + (Math.random() - 0.5) * 8,
+            scaleX: 3 + Math.random() * 2,
+            scaleY: 1 + Math.random() * 0.5,
+            scaleZ: 3 + Math.random() * 2,
+            opacity: 0.7 + Math.random() * 0.3
+          });
+        }
       }
+      
       return positions;
     } catch (error) {
       console.warn("Cloud generation error:", error);
-      return []; // Return empty array if error
+      return [];
     }
   }, []);
   
-  // Safe cloud movement
+  // Slow cloud movement like Minecraft
   useFrame((state) => {
     if (cloudsRef.current && state?.clock?.getElapsedTime) {
       try {
         const time = state.clock.getElapsedTime();
-        // Very slow cloud movement
-        cloudsRef.current.position.x = Math.sin(time * 0.02) * 2;
+        // Very slow cloud drift
+        cloudsRef.current.position.x = Math.sin(time * 0.01) * 5;
+        cloudsRef.current.position.z = time * 0.1; // Slow forward movement
       } catch (error) {
         console.warn("Cloud animation error:", error.message);
       }
@@ -612,13 +626,13 @@ const MinecraftClouds = () => {
         <mesh 
           key={index} 
           position={[cloud.x, cloud.y, cloud.z]}
-          scale={[cloud.scale * 2, cloud.scale * 0.4, cloud.scale * 2]}
+          scale={[cloud.scaleX, cloud.scaleY, cloud.scaleZ]}
         >
-          <boxGeometry args={[2.5, 1, 2.5]} />
+          <boxGeometry args={[1, 1, 1]} />
           <meshLambertMaterial 
             color="#ffffff" 
             transparent 
-            opacity={0.85} 
+            opacity={cloud.opacity}
           />
         </mesh>
       ))}
