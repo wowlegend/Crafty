@@ -769,7 +769,7 @@ export const Player = ({ gameState }) => {
   return <BothHands selectedBlock={gameState.selectedBlock} isSwinging={isSwinging} />;
 };
 
-// Game UI Component
+// Minecraft-style Game UI Component
 export const GameUI = ({ gameState, showStats, setShowStats }) => {
   return (
     <motion.div
@@ -778,17 +778,17 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
       exit={{ opacity: 0 }}
       className="absolute inset-0 pointer-events-none z-20"
     >
-      {/* Top HUD */}
+      {/* Top HUD - Minecraft style */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">
-        {/* Left side - Game info */}
-        <div className="bg-black/50 rounded-lg p-3 text-white text-sm">
-          <div className="flex items-center space-x-4">
+        {/* Left side - Game info with Minecraft styling */}
+        <div className="minecraft-info-panel">
+          <div className="flex items-center space-x-4 text-white minecraft-text">
             <div className="flex items-center space-x-1">
-              {gameState.isDay ? <Sun size={16} /> : <Moon size={16} />}
+              {gameState.isDay ? <Sun size={16} className="text-yellow-400" /> : <Moon size={16} className="text-blue-200" />}
               <span>{gameState.isDay ? 'Day' : 'Night'}</span>
             </div>
-            <div>Mode: {gameState.gameMode}</div>
-            <div>Blocks: {gameState.playerStats.blocksPlaced}</div>
+            <div>Mode: <span className="text-green-400">{gameState.gameMode}</span></div>
+            <div>Blocks: <span className="text-blue-400">{gameState.playerStats.blocksPlaced}</span></div>
           </div>
         </div>
 
@@ -796,69 +796,46 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         <div className="flex space-x-2">
           <button
             onClick={() => gameState.setShowSettings(true)}
-            className="bg-black/50 hover:bg-black/70 text-white p-2 rounded-lg transition-colors"
+            className="minecraft-button"
           >
             <Settings size={20} />
           </button>
         </div>
       </div>
 
-      {/* Bottom HUD - Hotbar */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-        <div className="bg-black/70 rounded-lg p-2">
-          <div className="flex space-x-1">
-            {Object.entries(BLOCK_TYPES).slice(0, 9).map(([type, config], index) => (
-              <button
-                key={type}
-                onClick={() => gameState.setSelectedBlock(type)}
-                className={`w-12 h-12 rounded border-2 transition-all ${
-                  gameState.selectedBlock === type
-                    ? 'border-white bg-white/20'
-                    : 'border-gray-500 hover:border-gray-300'
-                }`}
-                style={{ backgroundColor: config.color + '40' }}
-                title={`${config.name} (${gameState.inventory.blocks[type] || 0})`}
-              >
-                <div
-                  className="w-8 h-8 mx-auto rounded"
-                  style={{ backgroundColor: config.color }}
-                />
-                <div className="text-xs text-white text-center mt-1">
-                  {gameState.inventory.blocks[type] || 0}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Minecraft-style Hotbar */}
+      <MinecraftHotbar gameState={gameState} />
+      
+      {/* Minecraft-style Health and Hunger */}
+      <MinecraftHealthHunger />
 
-      {/* Left side - Quick tools */}
+      {/* Left side - Quick tools with Minecraft styling */}
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
-        <div className="bg-black/50 rounded-lg p-2 space-y-2">
+        <div className="minecraft-toolbar">
           <button
             onClick={() => gameState.setShowInventory(true)}
-            className="w-10 h-10 bg-gray-700 hover:bg-gray-600 text-white rounded flex items-center justify-center transition-colors"
+            className="minecraft-tool-button"
             title="Inventory (E)"
           >
             <Package size={20} />
           </button>
           <button
             onClick={() => gameState.setShowCrafting(true)}
-            className="w-10 h-10 bg-blue-700 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors"
+            className="minecraft-tool-button"
             title="Crafting (C)"
           >
             <Hammer size={20} />
           </button>
           <button
             onClick={() => gameState.setShowMagic(true)}
-            className="w-10 h-10 bg-purple-700 hover:bg-purple-600 text-white rounded flex items-center justify-center transition-colors"
+            className="minecraft-tool-button"
             title="Magic (M)"
           >
             <Wand2 size={20} />
           </button>
           <button
             onClick={() => gameState.setShowBuildingTools(true)}
-            className="w-10 h-10 bg-green-700 hover:bg-green-600 text-white rounded flex items-center justify-center transition-colors"
+            className="minecraft-tool-button"
             title="Building Tools (B)"
           >
             <Grid3X3 size={20} />
@@ -866,27 +843,20 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         </div>
       </div>
 
-      {/* Player health and stats */}
-      <div className="absolute bottom-20 left-4 pointer-events-auto">
-        <div className="bg-black/50 rounded-lg p-3 text-white text-sm">
-          <div className="flex items-center space-x-2 mb-2">
-            <Heart className="text-red-500" size={16} />
-            <div className="flex space-x-1">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="w-2 h-2 bg-red-500 rounded" />
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Zap className="text-yellow-500" size={16} />
-            <div className="flex space-x-1">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="w-2 h-2 bg-yellow-500 rounded" />
-              ))}
+      {/* Minecraft-style coordinates (F3 debug info) */}
+      {showStats && (
+        <div className="absolute top-20 left-4 pointer-events-auto">
+          <div className="minecraft-debug-panel">
+            <div className="text-white minecraft-text text-sm space-y-1">
+              <div>X: {Math.round(camera?.position?.x || 0)}</div>
+              <div>Y: {Math.round(camera?.position?.y || 0)}</div>
+              <div>Z: {Math.round(camera?.position?.z || 0)}</div>
+              <div>Biome: Plains</div>
+              <div>Light Level: {gameState.isDay ? '15' : '7'}</div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 };
