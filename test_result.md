@@ -338,7 +338,10 @@ metadata:
   run_ui: true
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "World Generation & Movement"
+    - "Visual Quality" 
+    - "New Features"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -352,3 +355,5 @@ agent_communication:
     message: "Fixed the issue with users getting stuck in a small space with green walls. The problem was related to the player's initial position and the ground plane position. The player now spawns at position [0, 1.6, 0] which is properly aligned with the generated terrain. Also fixed an error in the GameUI component where useThree hook was being used outside of the Canvas component. All frontend features are now working correctly."
   - agent: "testing"
     message: "Re-tested all backend API endpoints to ensure they are still working correctly. All tests passed with 100% success rate. The backend is stable and ready to support the frontend features including authentication, world management, and chat functionality."
+  - agent: "main"
+    message: "MAJOR FIXES IMPLEMENTED: 1) Completely redesigned hands system with debug spheres and camera-relative positioning, reduced near plane to 0.001. 2) Enhanced infinite terrain generation with better chunk detection and expanded render distance. 3) Added comprehensive combat visual effects including particles, damage numbers, screen shake, and mob flashing. Ready for testing."
