@@ -288,11 +288,11 @@ frontend:
 
   - task: "Visual Quality"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 0
-    priority: "low"
-    needs_retesting: false
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
@@ -300,6 +300,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Visual quality is good. The authentic Minecraft colors are implemented correctly in the BLOCK_TYPES configuration. The sky, lighting, hands visibility, and UI elements are all implemented properly."
+      - working: false
+        agent: "user"
+        comment: "User reports significant shaking issues with both hands and terrain. No graphics effects when attacking mobs. Visual stability is poor."
 
   - task: "Performance & Stability"
     implemented: true
