@@ -308,37 +308,22 @@ const BothHands = ({ selectedBlock }) => {
 };
 
 // Simplified Clouds Component - No complex animations
+// MINIMAL Clouds - No arrays, no maps
 const MinecraftClouds = () => {
-  // Static clouds to avoid runtime errors
-  const cloudPositions = useMemo(() => {
-    const positions = [];
-    for (let i = 0; i < 8; i++) {
-      positions.push({
-        x: (i - 4) * 15,
-        y: 20,
-        z: -30 + (i % 2) * 10,
-        scale: 1 + (i % 3) * 0.5
-      });
-    }
-    return positions;
-  }, []);
-  
   return (
     <group>
-      {cloudPositions.map((cloud, index) => (
-        <mesh 
-          key={index} 
-          position={[cloud.x, cloud.y, cloud.z]}
-          scale={[cloud.scale, 0.3, cloud.scale]}
-        >
-          <boxGeometry args={[3, 1, 3]} />
-          <meshLambertMaterial 
-            color="#ffffff" 
-            transparent 
-            opacity={0.8} 
-          />
-        </mesh>
-      ))}
+      <mesh position={[-10, 12, -15]} scale={[1.5, 0.3, 1.5]}>
+        <boxGeometry args={[2, 1, 2]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, 13, -18]} scale={[1.2, 0.3, 1.2]}>
+        <boxGeometry args={[2, 1, 2]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[10, 12, -15]} scale={[1.8, 0.3, 1.8]}>
+        <boxGeometry args={[2, 1, 2]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
     </group>
   );
 };
