@@ -117,10 +117,9 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* TESTING - Add back clouds component to see if it causes the error */}
+      {/* TESTING - Add back particles component to see if it causes the error */}
       <MinecraftClouds />
-      {/* KEEP PARTICLES DISABLED FOR NOW */}
-      {/* <EnvironmentalParticles /> */}
+      <EnvironmentalParticles />
       
       {/* Only basic blocks */}
       {Array.from(blocks.values()).map((block) => {
