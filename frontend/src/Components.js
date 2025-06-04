@@ -546,11 +546,12 @@ const MinecraftSky = ({ isDay }) => {
   );
 };
 
-// Fixed Player Movement Component
+// Enhanced Player with Both Hands
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
+  const [isSwinging, setIsSwinging] = useState(false);
   
   // Set initial camera position
   useEffect(() => {
@@ -628,16 +629,25 @@ export const Player = ({ gameState }) => {
       setKeys(prev => ({ ...prev, [event.code]: false }));
     };
     
+    const handleMouseDown = (event) => {
+      if (event.button === 0 || event.button === 2) {
+        setIsSwinging(true);
+        setTimeout(() => setIsSwinging(false), 300);
+      }
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseDown);
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
     };
   }, [camera, gameState]);
 
-  return <SimpleHands selectedBlock={gameState.selectedBlock} />;
+  return <BothHands selectedBlock={gameState.selectedBlock} isSwinging={isSwinging} />;
 };
 
 // Game UI Component
