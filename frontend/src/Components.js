@@ -90,22 +90,22 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Enhanced World with Environment
+// Simplified World with Stable Environment
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate simple flat world with more variety
+  // Generate simple stable world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 10; // Larger world for better exploration
+    const size = 8; // Smaller for stability
     
-    // Create varied terrain
+    // Create flat terrain
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
         const key = `${x},0,${z}`;
-        // Vary grass and dirt blocks
-        const blockType = Math.random() < 0.8 ? 'grass' : 'dirt';
+        // Simple alternating pattern
+        const blockType = (x + z) % 4 === 0 ? 'dirt' : 'grass';
         initialBlocks.set(key, { 
           position: [x, 0, z], 
           type: blockType 
@@ -113,30 +113,18 @@ export const MinecraftWorld = ({ gameState }) => {
       }
     }
     
-    // Add some interesting starter structures
+    // Add some test blocks
     initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
     initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
     initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
     initialBlocks.set('0,1,1', { position: [0, 1, 1], type: 'glass' });
     initialBlocks.set('0,2,0', { position: [0, 2, 0], type: 'diamond' });
     
-    // Create a small house structure
-    for (let i = 3; i <= 5; i++) {
-      for (let j = 3; j <= 5; j++) {
-        if (i === 3 || i === 5 || j === 3 || j === 5) {
-          initialBlocks.set(`${i},1,${j}`, { position: [i, 1, j], type: 'wood' });
-          if ((i === 3 || i === 5) && (j === 3 || j === 5)) {
-            initialBlocks.set(`${i},2,${j}`, { position: [i, 2, j], type: 'wood' });
-          }
-        }
-      }
-    }
-    
     setBlocks(initialBlocks);
-    console.log('🌍 Enhanced world generated with', initialBlocks.size, 'blocks');
+    console.log('🌍 Stable world generated with', initialBlocks.size, 'blocks');
   }, []);
 
-  // Better block placement with sound feedback
+  // Simplified block placement
   const placeBlock = () => {
     if (!gameState.selectedBlock) {
       console.log('❌ No block selected');
@@ -169,8 +157,6 @@ export const MinecraftWorld = ({ gameState }) => {
       }));
       
       console.log('✅ Placed', gameState.selectedBlock, 'block at', gridPos.x, gridPos.y, gridPos.z);
-    } else {
-      console.log('❌ Block already exists at that position');
     }
   };
 
@@ -204,8 +190,6 @@ export const MinecraftWorld = ({ gameState }) => {
       }));
       
       console.log('💥 Broke', block.type, 'block at', gridPos.x, gridPos.y, gridPos.z);
-    } else {
-      console.log('❌ No block to break at that position');
     }
   };
 
@@ -230,54 +214,49 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Environmental elements */}
+      {/* Simple environmental elements - no complex animations */}
       <MinecraftClouds />
       <EnvironmentalParticles />
       
-      {/* Render all blocks with better materials */}
+      {/* Render blocks with basic materials */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
           <mesh 
             key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
             position={block.position}
-            castShadow
-            receiveShadow
           >
             <boxGeometry args={[1, 1, 1]} />
             <meshLambertMaterial 
               color={blockConfig.color}
               transparent={blockConfig.transparent || false}
               opacity={blockConfig.transparent ? 0.8 : 1}
-              emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-              emissiveIntensity={blockConfig.emissive ? 0.1 : 0}
             />
           </mesh>
         );
       })}
       
-      {/* Enhanced ground plane with texture-like effect */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-        <planeGeometry args={[50, 50]} />
+      {/* Simple ground plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
+        <planeGeometry args={[40, 40]} />
         <meshLambertMaterial color="#22c55e" />
       </mesh>
       
-      {/* Add some grass patches */}
-      {Array.from({ length: 30 }).map((_, i) => (
+      {/* Simple static grass patches - no complex positioning */}
+      {[...Array(15)].map((_, i) => (
         <mesh 
           key={`grass-${i}`}
           position={[
-            (Math.random() - 0.5) * 40,
+            (i - 7) * 2,
             0.1,
-            (Math.random() - 0.5) * 40
+            ((i % 3) - 1) * 3
           ]}
-          rotation={[0, Math.random() * Math.PI * 2, 0]}
         >
-          <planeGeometry args={[0.3, 0.5]} />
+          <planeGeometry args={[0.2, 0.3]} />
           <meshLambertMaterial 
             color="#2d5a0d" 
             transparent 
-            opacity={0.8}
+            opacity={0.7}
             side={THREE.DoubleSide}
           />
         </mesh>
