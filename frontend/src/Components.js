@@ -291,7 +291,7 @@ const SimpleHands = ({ selectedBlock }) => {
   );
 };
 
-// Simplified Player Component
+// Fixed Player Movement Component
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -299,30 +299,50 @@ export const Player = ({ gameState }) => {
   
   // Set initial camera position
   useEffect(() => {
-    camera.position.set(0, 3, 5);
+    camera.position.set(0, 2, 5);
+    console.log('🎮 Player initialized at position:', camera.position);
   }, [camera]);
 
   useFrame((state, delta) => {
-    // Simple movement
-    const speed = 5;
+    // FIXED MOVEMENT - Corrected directions
+    const speed = 8;
+    const moveVector = new THREE.Vector3();
+    
+    // Get camera direction
     const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
     
-    if (keys.KeyW) direction.z -= 1;
-    if (keys.KeyS) direction.z += 1;
-    if (keys.KeyA) direction.x -= 1;
-    if (keys.KeyD) direction.x += 1;
+    // Get right vector
+    const right = new THREE.Vector3();
+    right.crossVectors(direction, camera.up).normalize();
     
-    if (direction.length() > 0) {
-      direction.normalize();
-      camera.position.add(direction.multiplyScalar(speed * delta));
+    // Apply movement based on keys - FIXED DIRECTIONS
+    if (keys.KeyW) { // Forward
+      moveVector.add(direction);
+    }
+    if (keys.KeyS) { // Backward  
+      moveVector.sub(direction);
+    }
+    if (keys.KeyA) { // Left
+      moveVector.sub(right);
+    }
+    if (keys.KeyD) { // Right
+      moveVector.add(right);
     }
     
-    // Simple gravity
-    if (camera.position.y > 1.5) {
-      velocity.current.y -= 9.8 * delta;
+    // Normalize and apply movement
+    if (moveVector.length() > 0) {
+      moveVector.normalize();
+      moveVector.y = 0; // Don't move up/down with WASD
+      camera.position.add(moveVector.multiplyScalar(speed * delta));
+    }
+    
+    // Simple gravity and ground collision
+    if (camera.position.y > 1.6) {
+      velocity.current.y -= 15 * delta; // Faster gravity
       camera.position.y += velocity.current.y * delta;
     } else {
-      camera.position.y = 1.5;
+      camera.position.y = 1.6; // Eye level
       velocity.current.y = 0;
     }
   });
@@ -332,7 +352,20 @@ export const Player = ({ gameState }) => {
       setKeys(prev => ({ ...prev, [event.code]: true }));
       
       if (event.code === 'Space') {
-        velocity.current.y = 5;
+        if (camera.position.y <= 1.7) { // Only jump if on ground
+          velocity.current.y = 8;
+          console.log('🦘 Jump!');
+        }
+      }
+      
+      // Number keys for block selection
+      if (event.code.startsWith('Digit')) {
+        const num = parseInt(event.code.replace('Digit', ''));
+        const blockTypes = Object.keys(BLOCK_TYPES);
+        if (num >= 1 && num <= blockTypes.length) {
+          gameState.setSelectedBlock(blockTypes[num - 1]);
+          console.log('🧱 Selected block:', blockTypes[num - 1]);
+        }
       }
     };
     
@@ -347,7 +380,7 @@ export const Player = ({ gameState }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [camera, gameState]);
 
   return <SimpleHands selectedBlock={gameState.selectedBlock} />;
 };
