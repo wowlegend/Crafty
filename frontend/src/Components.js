@@ -279,65 +279,40 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
   );
 };
 
-// Optimized Player Hands Component
-const PlayerHands = ({ gameState, isBreaking, isPlacing }) => {
+// Simple Hand Component - Always visible
+const SimpleHands = ({ selectedBlock }) => {
   const handRef = useRef();
-  const toolRef = useRef();
   const { camera } = useThree();
   
-  // Reduced animation frequency for better performance
-  useFrame((state) => {
-    if (handRef.current && camera && Math.random() < 0.2) { // Only update 20% of frames
-      // Position hands relative to camera
-      const cameraPosition = camera.position.clone();
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection);
-      
-      // Right hand position - simplified calculation
-      const rightHandPos = cameraPosition.clone()
-        .add(cameraDirection.clone().multiplyScalar(0.8))
-        .add(new THREE.Vector3(0.4, -0.4, 0));
-      
-      handRef.current.position.copy(rightHandPos);
-      handRef.current.lookAt(
-        rightHandPos.clone().add(cameraDirection)
-      );
-      
-      // Simplified tool animation
-      if (toolRef.current) {
-        const time = state.clock.getElapsedTime();
-        if (isBreaking) {
-          toolRef.current.rotation.x = Math.sin(time * 8) * 0.15;
-        } else if (isPlacing) {
-          toolRef.current.rotation.y = Math.sin(time * 4) * 0.08;
-        } else {
-          toolRef.current.rotation.x = Math.sin(time * 0.3) * 0.03; // Gentle idle sway
-        }
-      }
+  useFrame(() => {
+    if (handRef.current && camera) {
+      // Position hands in front of camera, always visible
+      handRef.current.position.set(0.5, -0.3, -0.8);
+      handRef.current.rotation.copy(camera.rotation);
     }
   });
 
-  const selectedBlockConfig = BLOCK_TYPES[gameState.selectedBlock];
+  const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   return (
     <group ref={handRef}>
-      {/* Simplified Right Hand */}
-      <Box position={[0, 0, 0]} scale={[0.12, 0.2, 0.08]}>
+      {/* Visible right hand */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[0.1, 0.15, 0.05]} />
         <meshLambertMaterial color="#fdbcb4" />
-      </Box>
+      </mesh>
       
-      {/* Tool/Block in hand */}
-      <group ref={toolRef} position={[0.08, 0.08, -0.15]}>
-        {gameState.selectedBlock && (
-          <Box scale={[0.08, 0.08, 0.08]}>
-            <meshLambertMaterial 
-              color={selectedBlockConfig?.color || '#4ade80'}
-              transparent={selectedBlockConfig?.transparent || false}
-              opacity={selectedBlockConfig?.transparent ? 0.8 : 1}
-            />
-          </Box>
-        )}
-      </group>
+      {/* Block in hand */}
+      {selectedBlock && (
+        <mesh position={[0.1, 0.05, -0.1]}>
+          <boxGeometry args={[0.06, 0.06, 0.06]} />
+          <meshLambertMaterial 
+            color={selectedBlockConfig.color}
+            transparent={selectedBlockConfig.transparent || false}
+            opacity={selectedBlockConfig.transparent ? 0.8 : 1}
+          />
+        </mesh>
+      )}
     </group>
   );
 };
