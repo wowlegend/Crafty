@@ -25,9 +25,9 @@ import {
   Shield
 } from 'lucide-react';
 
-// Authentic Minecraft Block Types Configuration with Exact Colors
+// Authentic Minecraft Block Types Configuration with EXACT Colors
 export const BLOCK_TYPES = {
-  grass: { color: '#7FB238', name: 'Grass Block', texture: 'grass' },
+  grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' }, // DARKER authentic Minecraft grass
   dirt: { color: '#976D4D', name: 'Dirt', texture: 'dirt' },
   stone: { color: '#707070', name: 'Stone', texture: 'stone' },
   wood: { color: '#8F7748', name: 'Oak Wood', texture: 'wood' },
