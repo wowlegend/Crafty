@@ -498,57 +498,99 @@ const EnvironmentalParticles = () => {
   );
 };
 
-// FIXED Hands Component - CORRECT positioning to avoid camera clipping
+// COMPLETELY REDESIGNED Hands Component - Multiple Debug Approaches
 const BothHands = ({ selectedBlock, isAttacking }) => {
+  const { camera } = useThree();
+  const rightHandRef = useRef();
+  const leftHandRef = useRef();
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   console.log('🤲 BothHands component rendering with selectedBlock:', selectedBlock);
+  console.log('🎥 Camera position:', camera.position);
+  console.log('🎥 Camera near/far:', camera.near, camera.far);
+
+  // Frame-by-frame debugging and positioning
+  useFrame(() => {
+    if (rightHandRef.current && leftHandRef.current) {
+      // Position hands relative to camera
+      const cameraMatrix = new THREE.Matrix4();
+      cameraMatrix.extractRotation(camera.matrixWorld);
+      
+      // Right hand positioning - closer to camera
+      const rightPos = new THREE.Vector3(0.4, -0.6, -1.0);
+      rightPos.applyMatrix4(cameraMatrix);
+      rightPos.add(camera.position);
+      rightHandRef.current.position.copy(rightPos);
+      
+      // Left hand positioning - closer to camera
+      const leftPos = new THREE.Vector3(-0.4, -0.6, -1.0);
+      leftPos.applyMatrix4(cameraMatrix);
+      leftPos.add(camera.position);
+      leftHandRef.current.position.copy(leftPos);
+      
+      // Apply camera rotation to hands
+      rightHandRef.current.quaternion.copy(camera.quaternion);
+      leftHandRef.current.quaternion.copy(camera.quaternion);
+    }
+  });
 
   return (
     <group>
-      {/* Right hand - positioned to be clearly visible */}
-      <group position={[0.6, -0.8, -1.5]} rotation={[0, -0.3, 0]}>
-        {/* Arm - visible brown/skin tone */}
-        <mesh position={[0, 0.25, 0]}>
-          <boxGeometry args={[0.12, 0.4, 0.12]} />
-          <meshLambertMaterial color="#fdbcb4" />
+      {/* RIGHT HAND - Much larger and brighter for visibility */}
+      <group ref={rightHandRef}>
+        {/* Debug sphere to ensure visibility */}
+        <mesh position={[0, 0, 0]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#ff0000" />
         </mesh>
         
-        {/* Hand - visible skin tone */}
+        {/* Arm - much more visible */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.15, 0.5, 0.15]} />
+          <meshBasicMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Hand - much more visible */}
         <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[0.1, 0.15, 0.1]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <boxGeometry args={[0.12, 0.2, 0.12]} />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Block in hand - clearly visible */}
+        {/* Block in hand - much more visible */}
         {selectedBlock && (
-          <mesh position={[0.08, -0.05, -0.12]} rotation={[0.2, 0.3, 0]}>
-            <boxGeometry args={[0.06, 0.06, 0.06]} />
-            <meshLambertMaterial color={selectedBlockConfig.color} />
+          <mesh position={[0.1, -0.05, -0.1]} rotation={[0.2, 0.3, 0]}>
+            <boxGeometry args={[0.08, 0.08, 0.08]} />
+            <meshBasicMaterial color={selectedBlockConfig.color} />
           </mesh>
         )}
         
-        {/* Weapon when attacking - brown stick */}
+        {/* Weapon when attacking - much more visible */}
         {isAttacking && (
           <mesh position={[0.1, 0, -0.2]} rotation={[0.5, 0.3, 0]}>
-            <boxGeometry args={[0.03, 0.25, 0.03]} />
-            <meshLambertMaterial color="#8B4513" />
+            <boxGeometry args={[0.04, 0.3, 0.04]} />
+            <meshBasicMaterial color="#8B4513" />
           </mesh>
         )}
       </group>
       
-      {/* Left hand - positioned to be clearly visible */}
-      <group position={[-0.6, -0.8, -1.5]} rotation={[0, 0.3, 0]}>
-        {/* Arm - visible brown/skin tone */}
-        <mesh position={[0, 0.25, 0]}>
-          <boxGeometry args={[0.12, 0.4, 0.12]} />
-          <meshLambertMaterial color="#fdbcb4" />
+      {/* LEFT HAND - Much larger and brighter for visibility */}
+      <group ref={leftHandRef}>
+        {/* Debug sphere to ensure visibility */}
+        <mesh position={[0, 0, 0]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#00ff00" />
         </mesh>
         
-        {/* Hand - visible skin tone */}
+        {/* Arm - much more visible */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.15, 0.5, 0.15]} />
+          <meshBasicMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Hand - much more visible */}
         <mesh position={[0, -0.1, 0]}>
-          <boxGeometry args={[0.1, 0.15, 0.1]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <boxGeometry args={[0.12, 0.2, 0.12]} />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
       </group>
     </group>
