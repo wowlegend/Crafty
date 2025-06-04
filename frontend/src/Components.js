@@ -329,35 +329,22 @@ const MinecraftClouds = () => {
 };
 
 // Simplified Particles - Static for stability
+// MINIMAL Particles - No arrays, no maps
 const EnvironmentalParticles = () => {
-  const particlePositions = useMemo(() => {
-    const positions = [];
-    for (let i = 0; i < 20; i++) {
-      positions.push({
-        x: (Math.random() - 0.5) * 30,
-        y: 0.2 + Math.random() * 2,
-        z: (Math.random() - 0.5) * 30
-      });
-    }
-    return positions;
-  }, []);
-  
   return (
     <group>
-      {particlePositions.map((pos, index) => (
-        <mesh 
-          key={index}
-          position={[pos.x, pos.y, pos.z]}
-          scale={[0.1, 0.1, 0.1]}
-        >
-          <sphereGeometry args={[1, 4, 4]} />
-          <meshLambertMaterial 
-            color="#22c55e" 
-            transparent 
-            opacity={0.6} 
-          />
-        </mesh>
-      ))}
+      <mesh position={[-2, 0.2, -1]} scale={[0.05, 0.05, 0.05]}>
+        <sphereGeometry args={[1, 4, 4]} />
+        <meshBasicMaterial color="#22c55e" />
+      </mesh>
+      <mesh position={[1, 0.3, 2]} scale={[0.05, 0.05, 0.05]}>
+        <sphereGeometry args={[1, 4, 4]} />
+        <meshBasicMaterial color="#22c55e" />
+      </mesh>
+      <mesh position={[3, 0.2, -2]} scale={[0.05, 0.05, 0.05]}>
+        <sphereGeometry args={[1, 4, 4]} />
+        <meshBasicMaterial color="#22c55e" />
+      </mesh>
     </group>
   );
 };
