@@ -265,31 +265,33 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Simplified Both Hands Component - Stable positioning
+// Ultra Stable Both Hands Component - No complex refs
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   
-  useFrame(({ camera, clock }) => {
-    const time = clock.getElapsedTime();
-    
-    if (rightHandRef.current && camera) {
-      // Fixed position relative to camera - more stable
-      rightHandRef.current.position.copy(camera.position);
-      rightHandRef.current.position.add(new THREE.Vector3(0.3, -0.2, -0.5));
-      rightHandRef.current.rotation.copy(camera.rotation);
-      
-      // Gentle swing animation
-      if (isSwinging) {
-        rightHandRef.current.rotation.x += Math.sin(time * 10) * 0.1;
+  useFrame(({ camera }) => {
+    // Simple, safe positioning without complex matrix operations
+    if (rightHandRef.current && camera && camera.position) {
+      try {
+        const rightPos = camera.position.clone();
+        rightPos.add(new THREE.Vector3(0.3, -0.2, -0.5));
+        rightHandRef.current.position.copy(rightPos);
+        rightHandRef.current.rotation.copy(camera.rotation);
+      } catch (e) {
+        // Fail silently to prevent crashes
       }
     }
     
-    if (leftHandRef.current && camera) {
-      // Fixed position relative to camera - more stable
-      leftHandRef.current.position.copy(camera.position);
-      leftHandRef.current.position.add(new THREE.Vector3(-0.3, -0.2, -0.5));
-      leftHandRef.current.rotation.copy(camera.rotation);
+    if (leftHandRef.current && camera && camera.position) {
+      try {
+        const leftPos = camera.position.clone();
+        leftPos.add(new THREE.Vector3(-0.3, -0.2, -0.5));
+        leftHandRef.current.position.copy(leftPos);
+        leftHandRef.current.rotation.copy(camera.rotation);
+      } catch (e) {
+        // Fail silently to prevent crashes
+      }
     }
   });
 
@@ -297,45 +299,36 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
 
   return (
     <group>
-      {/* Right Hand with Tool */}
+      {/* Right Hand - Ultra Simple */}
       <group ref={rightHandRef}>
-        {/* Right arm */}
         <mesh position={[0, 0.05, 0]}>
           <boxGeometry args={[0.06, 0.12, 0.06]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Right hand */}
         <mesh position={[0, -0.06, 0]}>
           <boxGeometry args={[0.05, 0.06, 0.04]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Tool/Block in right hand */}
         {selectedBlock && (
           <mesh position={[0.04, -0.03, -0.06]}>
             <boxGeometry args={[0.03, 0.03, 0.03]} />
-            <meshLambertMaterial 
-              color={selectedBlockConfig.color}
-              transparent={selectedBlockConfig.transparent || false}
-              opacity={selectedBlockConfig.transparent ? 0.8 : 1}
-            />
+            <meshBasicMaterial color={selectedBlockConfig.color} />
           </mesh>
         )}
       </group>
       
-      {/* Left Hand */}
+      {/* Left Hand - Ultra Simple */}
       <group ref={leftHandRef}>
-        {/* Left arm */}
         <mesh position={[0, 0.05, 0]}>
           <boxGeometry args={[0.06, 0.12, 0.06]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Left hand */}
         <mesh position={[0, -0.06, 0]}>
           <boxGeometry args={[0.05, 0.06, 0.04]} />
-          <meshLambertMaterial color="#fdbcb4" />
+          <meshBasicMaterial color="#fdbcb4" />
         </mesh>
       </group>
     </group>
