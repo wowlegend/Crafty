@@ -240,15 +240,18 @@ frontend:
 
   - task: "Building & Block System"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/Components.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Need to test block placement, breaking, selection, and inventory management."
+      - working: true
+        agent: "testing"
+        comment: "Block placement and breaking functionality is working correctly. The console logs show successful block breaking with the message '💥 Broke stone at 0 0 -3'. Block selection with number keys and inventory management are also implemented correctly."
 
   - task: "Enhanced UI System"
     implemented: true
