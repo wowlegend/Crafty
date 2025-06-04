@@ -316,6 +316,18 @@ export const NPCSystem = ({ gameState }) => {
 
 const Entity = ({ entity, gameState, camera, onAttack }) => {
   const meshRef = useRef();
+  const [isFlashing, setIsFlashing] = useState(false);
+
+  // Handle damage flashing effect
+  useEffect(() => {
+    if (entity.lastDamageTime && Date.now() - entity.lastDamageTime < 500) {
+      setIsFlashing(true);
+      const flashTimer = setTimeout(() => {
+        setIsFlashing(false);
+      }, 500);
+      return () => clearTimeout(flashTimer);
+    }
+  }, [entity.lastDamageTime]);
 
   // Enhanced AI movement
   useFrame((state, delta) => {
@@ -323,6 +335,23 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
 
     const time = state.clock.elapsedTime;
     const [initX, initY, initZ] = entity.initialPosition;
+    
+    // Apply flashing effect by changing material opacity
+    if (meshRef.current.children) {
+      meshRef.current.children.forEach(child => {
+        if (child.material) {
+          if (isFlashing) {
+            child.material.opacity = Math.sin(time * 20) * 0.3 + 0.7; // Rapid flashing
+            child.material.transparent = true;
+            child.material.color.setHex(0xff6666); // Reddish tint when damaged
+          } else {
+            child.material.opacity = 1;
+            child.material.transparent = false;
+            child.material.color.setHex(0xffffff); // Normal color
+          }
+        }
+      });
+    }
     
     if (entity.type === 'villager') {
       // Villagers stay mostly still
@@ -372,12 +401,14 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
     event.stopPropagation();
     
     if (event.shiftKey) {
-      console.log(`🗡️ Attacking ${entity.type}!`);
+      console.log(`🗡️ ATTACKING ${entity.type}!`);
       onAttack(entity.id);
     } else {
       console.log(`👋 Interacting with ${entity.type}!`);
       if (entity.type === 'villager') {
         console.log('💬 "Welcome, traveler!"');
+        gameState.setShowTradingInterface(true);
+        gameState.setSelectedVillager(entity);
       }
     }
   };
@@ -403,9 +434,13 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
         {entity.type === 'witch' && <WitchModel />}
       </mesh>
       
-      {/* Enhanced health bar */}
+      {/* Enhanced health bar with damage indication */}
       {entity.health < entity.maxHealth && (
-        <HealthBar entity={entity} position={[entity.position[0], entity.position[1] + 2.2, entity.position[2]]} />
+        <HealthBar 
+          entity={entity} 
+          position={[entity.position[0], entity.position[1] + 2.2, entity.position[2]]} 
+          isFlashing={isFlashing}
+        />
       )}
     </group>
   );
