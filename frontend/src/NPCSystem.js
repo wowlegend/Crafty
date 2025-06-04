@@ -9,7 +9,7 @@ export const NPCSystem = ({ gameState }) => {
   const { camera } = useThree();
 
   useEffect(() => {
-    // Initialize diverse mob population
+    // Initialize smaller number of entities for better performance
     const initialEntities = [
       // Friendly NPCs
       {
@@ -27,37 +27,12 @@ export const NPCSystem = ({ gameState }) => {
           "Would you like to see my wares?"
         ]
       },
-      {
-        id: 'villager_2',
-        type: 'villager',
-        position: [-15, 6, 8],
-        health: 100,
-        maxHealth: 100,
-        state: 'walking',
-        hostile: false,
-        inventory: ['wood', 'stone', 'glass'],
-        dialogue: [
-          "Beautiful day for building, isn't it?",
-          "I specialize in construction materials.",
-          "Let me know if you need anything!"
-        ]
-      },
       
       // Passive Animals
       {
         id: 'pig_1',
         type: 'pig',
         position: [15, 6, -8],
-        health: 50,
-        maxHealth: 50,
-        state: 'wandering',
-        hostile: false,
-        drops: ['meat']
-      },
-      {
-        id: 'pig_2',
-        type: 'pig',
-        position: [12, 6, -5],
         health: 50,
         maxHealth: 50,
         state: 'wandering',
@@ -74,43 +49,12 @@ export const NPCSystem = ({ gameState }) => {
         hostile: false,
         drops: ['feather']
       },
-      {
-        id: 'chicken_2',
-        type: 'chicken',
-        position: [-5, 6, -15],
-        health: 30,
-        maxHealth: 30,
-        state: 'wandering',
-        hostile: false,
-        drops: ['feather']
-      },
-      {
-        id: 'cow_1',
-        type: 'cow',
-        position: [20, 6, 5],
-        health: 80,
-        maxHealth: 80,
-        state: 'wandering',
-        hostile: false,
-        drops: ['meat', 'leather']
-      },
       
-      // Hostile Mobs
+      // Hostile Mobs (fewer for performance)
       {
         id: 'zombie_1',
         type: 'zombie',
         position: [-20, 6, -20],
-        health: 100,
-        maxHealth: 100,
-        state: 'hostile',
-        hostile: true,
-        damage: 15,
-        drops: ['flesh']
-      },
-      {
-        id: 'zombie_2',
-        type: 'zombie',
-        position: [25, 6, -15],
         health: 100,
         maxHealth: 100,
         state: 'hostile',
@@ -128,28 +72,11 @@ export const NPCSystem = ({ gameState }) => {
         hostile: true,
         damage: 20,
         drops: ['bone', 'arrow']
-      },
-      {
-        id: 'creeper_1',
-        type: 'creeper',
-        position: [30, 6, 20],
-        health: 100,
-        maxHealth: 100,
-        state: 'hostile',
-        hostile: true,
-        damage: 50,
-        explosive: true,
-        drops: ['gunpowder']
       }
     ];
 
     setEntities(initialEntities);
-    
-    // Store player health in game state
-    if (!gameState.playerHealth) {
-      gameState.setPlayerHealth?.(100);
-      gameState.setPlayerMaxHealth?.(100);
-    }
+    console.log('🎮 NPCs initialized:', initialEntities.length);
   }, []);
 
   // Combat system
