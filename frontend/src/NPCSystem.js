@@ -128,66 +128,46 @@ export const NPCSystem = ({ gameState }) => {
 const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
   const meshRef = useRef();
   const [currentPos, setCurrentPos] = useState(entity.position);
-  const [animationTime, setAnimationTime] = useState(0);
-  const [targetPlayer, setTargetPlayer] = useState(false);
 
   useFrame((state, delta) => {
-    setAnimationTime(prev => prev + delta);
-
     if (meshRef.current && camera) {
       const playerPos = camera.position;
       const entityPos = new THREE.Vector3(...entity.position);
       const distance = playerPos.distanceTo(entityPos);
 
-      // AI behavior based on entity type
+      // SIMPLE AI behavior - minimal animation to prevent shaking
       if (entity.type === 'villager') {
-        // Villagers stay mostly in place but look around
-        meshRef.current.rotation.y = Math.sin(animationTime * 0.5) * 0.3;
-        meshRef.current.position.y = entity.position[1] + Math.sin(animationTime * 2) * 0.05;
+        // Villagers stay completely still
+        meshRef.current.position.set(...entity.position);
         
       } else if (entity.hostile) {
-        // Hostile mob AI
+        // Hostile mobs - simple chase behavior
         if (distance < 15) {
-          // Chase player
           const direction = new THREE.Vector3()
             .subVectors(playerPos, entityPos)
             .normalize();
           
-          const speed = entity.type === 'creeper' ? 2 : 1.5;
+          const speed = 1;
           meshRef.current.position.x += direction.x * speed * delta;
           meshRef.current.position.z += direction.z * speed * delta;
           
-          // Look at player
-          meshRef.current.lookAt(playerPos);
-          
-          // Attack if close enough
-          if (distance < 2) {
-            // Deal damage to player (implement player damage system)
-            console.log(`💥 ${entity.type} attacks player for ${entity.damage} damage!`);
-          }
+          // Keep Y position stable
+          meshRef.current.position.y = entity.position[1];
         }
         
       } else {
-        // Passive animals wander around
-        if (entity.state === 'wandering') {
-          const wanderRadius = 5;
-          const centerX = entity.position[0];
-          const centerZ = entity.position[2];
-          
-          const newX = centerX + Math.sin(animationTime * 0.3) * wanderRadius;
-          const newZ = centerZ + Math.cos(animationTime * 0.3) * wanderRadius;
-          
-          meshRef.current.position.x = newX;
-          meshRef.current.position.z = newZ;
-          meshRef.current.position.y = entity.position[1] + Math.sin(animationTime * 4) * 0.02;
-          
-          // Face movement direction
-          meshRef.current.lookAt(
-            newX + Math.sin(animationTime * 0.3),
-            entity.position[1],
-            newZ + Math.cos(animationTime * 0.3)
-          );
-        }
+        // Passive animals - minimal wandering
+        const wanderRadius = 2;
+        const centerX = entity.position[0];
+        const centerZ = entity.position[2];
+        
+        const time = state.clock.elapsedTime * 0.1; // Very slow movement
+        const newX = centerX + Math.sin(time) * wanderRadius;
+        const newZ = centerZ + Math.cos(time) * wanderRadius;
+        
+        meshRef.current.position.x = newX;
+        meshRef.current.position.z = newZ;
+        meshRef.current.position.y = entity.position[1]; // Fixed Y
       }
     }
   });
@@ -221,8 +201,10 @@ const Entity = ({ entity, gameState, camera, onInteract, onAttack }) => {
         {entity.type === 'creeper' && <CreeperModel />}
       </mesh>
       
-      {/* Health bar for all entities */}
-      <HealthBar entity={entity} position={[entity.position[0], entity.position[1] + 2, entity.position[2]]} />
+      {/* Simple health bar */}
+      {entity.health < entity.maxHealth && (
+        <HealthBar entity={entity} position={[entity.position[0], entity.position[1] + 2, entity.position[2]]} />
+      )}
     </group>
   );
 };
