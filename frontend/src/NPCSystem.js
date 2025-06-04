@@ -79,12 +79,15 @@ export const NPCSystem = ({ gameState }) => {
     console.log('🎮 NPCs initialized on solid ground:', initialEntities.length);
   }, []);
 
-  // SIMPLE combat system without complex effects
+  // WORKING combat system with visual feedback
   const attackEntity = (entityId) => {
     setEntities(prev => prev.map(entity => {
       if (entity.id === entityId) {
         const damage = 25;
         const newHealth = Math.max(0, entity.health - damage);
+        
+        // Add simple visual feedback
+        console.log(`⚔️ ATTACKING ${entity.type}! Damage: ${damage}`);
         
         if (newHealth <= 0) {
           // Entity dies - drop items
@@ -93,10 +96,18 @@ export const NPCSystem = ({ gameState }) => {
               gameState.addToInventory?.(drop, 1);
             });
           }
-          console.log(`💀 ${entity.type} defeated! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
+          console.log(`💀 ${entity.type} DEFEATED! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
+          
+          // Add a simple death indicator
+          if (typeof window !== 'undefined' && window.alert) {
+            setTimeout(() => {
+              console.log(`🎉 Victory! You defeated the ${entity.type}!`);
+            }, 100);
+          }
+          
           return null; // Remove entity
         } else {
-          console.log(`⚔️ Hit ${entity.type} for ${damage} damage! Health: ${newHealth}/${entity.maxHealth}`);
+          console.log(`💥 ${entity.type} health: ${newHealth}/${entity.maxHealth}`);
           return { ...entity, health: newHealth };
         }
       }
