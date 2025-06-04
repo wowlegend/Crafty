@@ -123,7 +123,9 @@ const useGameState = () => {
 function App() {
   return (
     <AuthProvider>
-      <GameApp />
+      <SoundProvider>
+        <GameApp />
+      </SoundProvider>
     </AuthProvider>
   );
 }
