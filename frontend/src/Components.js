@@ -279,38 +279,39 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
   );
 };
 
-// Player Hands Component
+// Optimized Player Hands Component
 const PlayerHands = ({ gameState, isBreaking, isPlacing }) => {
   const handRef = useRef();
   const toolRef = useRef();
   const { camera } = useThree();
   
+  // Reduced animation frequency for better performance
   useFrame((state) => {
-    if (handRef.current && camera) {
+    if (handRef.current && camera && Math.random() < 0.2) { // Only update 20% of frames
       // Position hands relative to camera
       const cameraPosition = camera.position.clone();
       const cameraDirection = new THREE.Vector3();
       camera.getWorldDirection(cameraDirection);
       
-      // Right hand position
+      // Right hand position - simplified calculation
       const rightHandPos = cameraPosition.clone()
-        .add(cameraDirection.clone().multiplyScalar(0.5))
-        .add(new THREE.Vector3(0.3, -0.3, 0));
+        .add(cameraDirection.clone().multiplyScalar(0.8))
+        .add(new THREE.Vector3(0.4, -0.4, 0));
       
       handRef.current.position.copy(rightHandPos);
       handRef.current.lookAt(
         rightHandPos.clone().add(cameraDirection)
       );
       
-      // Tool animation
+      // Simplified tool animation
       if (toolRef.current) {
         const time = state.clock.getElapsedTime();
         if (isBreaking) {
-          toolRef.current.rotation.x = Math.sin(time * 10) * 0.2;
+          toolRef.current.rotation.x = Math.sin(time * 8) * 0.15;
         } else if (isPlacing) {
-          toolRef.current.rotation.y = Math.sin(time * 5) * 0.1;
+          toolRef.current.rotation.y = Math.sin(time * 4) * 0.08;
         } else {
-          toolRef.current.rotation.x = Math.sin(time * 0.5) * 0.05; // Idle sway
+          toolRef.current.rotation.x = Math.sin(time * 0.3) * 0.03; // Gentle idle sway
         }
       }
     }
@@ -320,19 +321,19 @@ const PlayerHands = ({ gameState, isBreaking, isPlacing }) => {
 
   return (
     <group ref={handRef}>
-      {/* Right Hand */}
-      <Box position={[0, 0, 0]} scale={[0.15, 0.25, 0.1]}>
+      {/* Simplified Right Hand */}
+      <Box position={[0, 0, 0]} scale={[0.12, 0.2, 0.08]}>
         <meshLambertMaterial color="#fdbcb4" />
       </Box>
       
       {/* Tool/Block in hand */}
-      <group ref={toolRef} position={[0.1, 0.1, -0.2]}>
+      <group ref={toolRef} position={[0.08, 0.08, -0.15]}>
         {gameState.selectedBlock && (
-          <Box scale={[0.1, 0.1, 0.1]}>
+          <Box scale={[0.08, 0.08, 0.08]}>
             <meshLambertMaterial 
               color={selectedBlockConfig?.color || '#4ade80'}
               transparent={selectedBlockConfig?.transparent || false}
-              opacity={selectedBlockConfig?.transparent ? 0.7 : 1}
+              opacity={selectedBlockConfig?.transparent ? 0.8 : 1}
             />
           </Box>
         )}
