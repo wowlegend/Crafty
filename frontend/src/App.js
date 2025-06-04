@@ -222,47 +222,33 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Enhanced Game Canvas with Better Environment */}
+      {/* Stable Game Canvas - Simplified for performance */}
       <Canvas
         camera={{
           fov: 75,
           near: 0.1,
-          far: 200, // Increased for clouds and sky
+          far: 100,
           position: [0, 3, 5]
         }}
-        shadows
+        shadows={false} // Disabled to prevent errors
         className="w-full h-full"
-        gl={{ antialias: true }} // Re-enabled for better quality
+        gl={{ antialias: false }}
       >
-        {/* Enhanced Environment */}
+        {/* Simplified Environment */}
         <MinecraftSky isDay={gameState.isDay} />
         
-        {/* Enhanced Lighting */}
-        <ambientLight intensity={gameState.isDay ? 0.7 : 0.3} />
+        {/* Basic Lighting - No complex shadows */}
+        <ambientLight intensity={0.7} />
         <directionalLight
-          position={gameState.isDay ? [50, 50, 25] : [-50, 20, -25]}
-          intensity={gameState.isDay ? 1.2 : 0.4}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-          shadow-camera-far={50}
-          shadow-camera-left={-25}
-          shadow-camera-right={25}
-          shadow-camera-top={25}
-          shadow-camera-bottom={-25}
-        />
-        
-        {/* Atmospheric lighting */}
-        <hemisphereLight
-          skyColor={gameState.isDay ? '#87CEEB' : '#191970'}
-          groundColor={gameState.isDay ? '#22c55e' : '#0f172a'}
-          intensity={0.3}
+          position={[10, 10, 5]}
+          intensity={1}
+          castShadow={false}
         />
 
         {/* Player Controls */}
         <PointerLockControls />
         
-        {/* Enhanced Game World */}
+        {/* Stable Game World */}
         <MinecraftWorld gameState={gameState} />
         
         {/* Player with Both Hands */}
