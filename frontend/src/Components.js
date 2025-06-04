@@ -25,21 +25,21 @@ import {
   Shield
 } from 'lucide-react';
 
-// Block Types Configuration
+// Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
-  grass: { color: '#4ade80', name: 'Grass', texture: 'grass' },
-  dirt: { color: '#92400e', name: 'Dirt', texture: 'dirt' },
-  stone: { color: '#6b7280', name: 'Stone', texture: 'stone' },
-  wood: { color: '#d97706', name: 'Wood', texture: 'wood' },
-  glass: { color: '#7dd3fc', name: 'Glass', texture: 'glass', transparent: true },
-  water: { color: '#0ea5e9', name: 'Water', texture: 'water', transparent: true },
-  lava: { color: '#ef4444', name: 'Lava', texture: 'lava', emissive: true },
-  diamond: { color: '#06d6a0', name: 'Diamond', texture: 'diamond', emissive: true },
-  gold: { color: '#fbbf24', name: 'Gold', texture: 'gold' },
-  iron: { color: '#9ca3af', name: 'Iron', texture: 'iron' },
-  coal: { color: '#1f2937', name: 'Coal', texture: 'coal' },
-  sand: { color: '#fde047', name: 'Sand', texture: 'sand' },
-  gravel: { color: '#78716c', name: 'Gravel', texture: 'gravel' }
+  grass: { color: '#7C9F3A', name: 'Grass Block', texture: 'grass' },
+  dirt: { color: '#8E7748', name: 'Dirt', texture: 'dirt' },
+  stone: { color: '#707070', name: 'Stone', texture: 'stone' },
+  wood: { color: '#9F7A3F', name: 'Oak Wood', texture: 'wood' },
+  glass: { color: '#E6F3FF', name: 'Glass', texture: 'glass', transparent: true },
+  water: { color: '#3F76E4', name: 'Water', texture: 'water', transparent: true },
+  lava: { color: '#FF6A00', name: 'Lava', texture: 'lava', emissive: true },
+  diamond: { color: '#5DCFE0', name: 'Diamond Ore', texture: 'diamond', emissive: true },
+  gold: { color: '#FCEE4B', name: 'Gold Ore', texture: 'gold' },
+  iron: { color: '#D8AF93', name: 'Iron Ore', texture: 'iron' },
+  coal: { color: '#383838', name: 'Coal Ore', texture: 'coal' },
+  sand: { color: '#DBD3A0', name: 'Sand', texture: 'sand' },
+  cobblestone: { color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' }
 };
 
 // Optimized World Generation - Much smaller world
