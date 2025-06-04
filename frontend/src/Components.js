@@ -48,15 +48,16 @@ const generateTerrain = (x, z, seed = 0) => {
   return Math.floor(Math.max(1, height));
 };
 
-// Block Component
+// Optimized Block Component - Better performance
 const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   const meshRef = useRef();
   const blockConfig = BLOCK_TYPES[type] || BLOCK_TYPES.grass;
   
+  // Reduced animation frequency for performance
   useFrame((state) => {
     if (meshRef.current && blockConfig.emissive) {
       const time = state.clock.getElapsedTime();
-      meshRef.current.material.emissiveIntensity = 0.3 + Math.sin(time * 2) * 0.2;
+      meshRef.current.material.emissiveIntensity = 0.2 + Math.sin(time) * 0.1;
     }
   });
 
@@ -75,14 +76,15 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
       position={position}
       onClick={handleClick}
       onContextMenu={handleClick}
-      scale={isHighlighted ? [1.05, 1.05, 1.05] : [1, 1, 1]}
+      scale={isHighlighted ? [1.02, 1.02, 1.02] : [1, 1, 1]}
+      userData={{ isBlock: true }}
     >
       <meshLambertMaterial
         color={blockConfig.color}
         transparent={blockConfig.transparent || false}
-        opacity={blockConfig.transparent ? 0.7 : 1}
+        opacity={blockConfig.transparent ? 0.8 : 1}
         emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-        emissiveIntensity={blockConfig.emissive ? 0.3 : 0}
+        emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
       />
     </Box>
   );
