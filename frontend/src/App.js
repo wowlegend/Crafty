@@ -377,7 +377,7 @@ function GameApp() {
         )}
         
         {gameState.showMagic && (
-          <MagicSystem 
+          <EnhancedMagicSystem 
             gameState={gameState}
             onClose={() => gameState.setShowMagic(false)}
           />
