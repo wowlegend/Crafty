@@ -837,9 +837,9 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         <div className="absolute top-20 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
             <div className="text-white minecraft-text text-sm space-y-1">
-              <div>X: {Math.round(camera?.position?.x || 0)}</div>
-              <div>Y: {Math.round(camera?.position?.y || 0)}</div>
-              <div>Z: {Math.round(camera?.position?.z || 0)}</div>
+              <div>X: {Math.round(0)}</div>
+              <div>Y: {Math.round(0)}</div>
+              <div>Z: {Math.round(0)}</div>
               <div>Biome: Plains</div>
               <div>Light Level: {gameState.isDay ? '15' : '7'}</div>
             </div>
