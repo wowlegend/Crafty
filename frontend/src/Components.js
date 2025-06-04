@@ -90,43 +90,40 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Minecraft World Component
+// Minecraft World Component - OPTIMIZED for performance
 export const MinecraftWorld = ({ gameState, worldSeed }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [highlightedBlock, setHighlightedBlock] = useState(null);
   const { camera, raycaster, mouse, scene } = useThree();
 
-  // Generate initial world
+  // Generate smaller, optimized world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 20;
+    const size = 8; // Reduced from 20 to 8 for much better performance
     
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
         const height = generateTerrain(x, z, worldSeed.length);
         
-        // Generate terrain layers
-        for (let y = 0; y <= height; y++) {
+        // Generate fewer layers for better performance
+        for (let y = 0; y <= Math.min(height, 4); y++) { // Max height of 4
           const key = `${x},${y},${z}`;
-          if (y === height && height > 3) {
+          if (y === height && height > 2) {
             initialBlocks.set(key, { position: [x, y, z], type: 'grass' });
-          } else if (y === height && height <= 3) {
+          } else if (y === height && height <= 2) {
             initialBlocks.set(key, { position: [x, y, z], type: 'sand' });
-          } else if (y >= height - 2) {
+          } else if (y >= height - 1) {
             initialBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          } else if (y === 0) {
-            initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
           } else {
             initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
           }
         }
         
-        // Add some random decorations
-        if (Math.random() < 0.1 && height > 5) {
+        // Reduced decorations for performance
+        if (Math.random() < 0.05 && height > 2) {
           const decorY = height + 1;
           const decorKey = `${x},${decorY},${z}`;
-          const decorType = Math.random() < 0.5 ? 'wood' : 'coal';
-          initialBlocks.set(decorKey, { position: [x, decorY, z], type: decorType });
+          initialBlocks.set(decorKey, { position: [x, decorY, z], type: 'wood' });
         }
       }
     }
@@ -134,7 +131,7 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
     setBlocks(initialBlocks);
   }, [worldSeed]);
 
-  // Handle block placement and destruction
+  // Optimized block interaction
   const handleBlockDestroy = (position) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
     const block = blocks.get(key);
@@ -165,14 +162,14 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
     }
 
     const newPosition = [
-      position[0] + normal.x,
-      position[1] + normal.y,
-      position[2] + normal.z
+      Math.round(position[0] + normal.x),
+      Math.round(position[1] + normal.y),
+      Math.round(position[2] + normal.z)
     ];
     
     const key = `${newPosition[0]},${newPosition[1]},${newPosition[2]}`;
     
-    if (!blocks.has(key)) {
+    if (!blocks.has(key) && newPosition[1] > 0) { // Prevent placing below ground
       setBlocks(prev => new Map(prev).set(key, {
         position: newPosition,
         type: gameState.selectedBlock
@@ -191,32 +188,55 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
     }
   };
 
-  // Handle mouse interactions
+  // Simplified mouse interaction - less frequent updates
   useFrame(() => {
-    raycaster.setFromCamera(mouse, camera);
-    const blockArray = Array.from(blocks.values());
-    const intersects = raycaster.intersectObjects(scene.children.filter(child => child.userData.isBlock));
-    
-    if (intersects.length > 0) {
-      const intersect = intersects[0];
-      const position = intersect.object.position;
-      setHighlightedBlock([position.x, position.y, position.z]);
-    } else {
-      setHighlightedBlock(null);
+    if (Math.random() < 0.1) { // Only update 10% of frames for performance
+      raycaster.setFromCamera({ x: 0, y: 0 }, camera); // Use center of screen
+      const blockArray = Array.from(blocks.values()).map(block => {
+        // Create temporary object for raycasting
+        const tempGeo = new THREE.BoxGeometry(1, 1, 1);
+        const tempMat = new THREE.MeshBasicMaterial();
+        const tempMesh = new THREE.Mesh(tempGeo, tempMat);
+        tempMesh.position.set(...block.position);
+        tempMesh.userData = { blockPosition: block.position };
+        return tempMesh;
+      });
+      
+      const intersects = raycaster.intersectObjects(blockArray);
+      
+      if (intersects.length > 0) {
+        const intersect = intersects[0];
+        const position = intersect.object.userData.blockPosition;
+        setHighlightedBlock(position);
+      } else {
+        setHighlightedBlock(null);
+      }
+      
+      // Clean up temporary objects
+      blockArray.forEach(mesh => {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+      });
     }
   });
 
-  // Handle clicks
+  // Simplified click handling
   useEffect(() => {
     const handleClick = (event) => {
       if (event.button === 2 && highlightedBlock) { // Right click for placing
         event.preventDefault();
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(scene.children.filter(child => child.userData.isBlock));
+        raycaster.setFromCamera({ x: 0, y: 0 }, camera);
         
-        if (intersects.length > 0) {
-          const intersect = intersects[0];
-          handleBlockPlace(intersect.point, intersect.face.normal);
+        // Find the intersected block
+        const targetBlock = Array.from(blocks.values()).find(block => 
+          block.position[0] === highlightedBlock[0] &&
+          block.position[1] === highlightedBlock[1] &&
+          block.position[2] === highlightedBlock[2]
+        );
+        
+        if (targetBlock) {
+          // Place block on top
+          handleBlockPlace(targetBlock.position, { x: 0, y: 1, z: 0 });
         }
       }
     };
@@ -227,7 +247,7 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
     return () => {
       window.removeEventListener('mousedown', handleClick);
     };
-  }, [highlightedBlock, gameState.selectedBlock, gameState.inventory]);
+  }, [highlightedBlock, gameState.selectedBlock, blocks]);
 
   return (
     <group>
@@ -246,11 +266,11 @@ export const MinecraftWorld = ({ gameState, worldSeed }) => {
         />
       ))}
       
-      {/* Ground plane for reference */}
+      {/* Simplified ground plane */}
       <Plane
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -1, 0]}
-        args={[100, 100]}
+        position={[0, -0.5, 0]}
+        args={[50, 50]}
         receiveShadow
       >
         <meshLambertMaterial color="#22c55e" />
