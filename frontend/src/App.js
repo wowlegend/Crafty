@@ -34,7 +34,8 @@ import {
   SettingsPanel,
   MinecraftSky,
   MinecraftHotbar,
-  MinecraftHealthHunger
+  MinecraftHealthHunger,
+  PositionTracker
 } from './Components';
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
