@@ -42,6 +42,12 @@ export const SoundProvider = ({ children }) => {
     sounds.current.pickup = generateTone(400, 0.1, 'sine');
     sounds.current.craft = generateTone(350, 0.3, 'triangle');
     sounds.current.magic = generateMagicSound();
+    
+    // NEW: Attack and combat sounds
+    sounds.current.attack = generateAttackSound();
+    sounds.current.hit = generateHitSound();
+    sounds.current.defeat = generateDefeatSound();
+    sounds.current.swing = generateSwingSound();
   };
 
   const generateTone = (frequency, duration, type = 'sine') => {
