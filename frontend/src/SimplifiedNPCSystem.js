@@ -446,10 +446,11 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
   );
 };
 
-// Enhanced health bar
-const HealthBar = ({ entity, position }) => {
+// Enhanced health bar with flashing damage indication
+const HealthBar = ({ entity, position, isFlashing }) => {
   const healthPercent = entity.health / entity.maxHealth;
   const barColor = healthPercent > 0.6 ? '#00ff00' : healthPercent > 0.3 ? '#ffff00' : '#ff0000';
+  const flashColor = isFlashing ? '#ffffff' : barColor;
   
   return (
     <group position={position}>
@@ -458,16 +459,23 @@ const HealthBar = ({ entity, position }) => {
         <planeGeometry args={[1.8, 0.25]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
-      {/* Health bar */}
+      {/* Health bar with flashing effect */}
       <mesh position={[-0.9 + (healthPercent * 0.9), 0, 0.01]} scale={[healthPercent, 1, 1]}>
         <planeGeometry args={[1.8, 0.25]} />
-        <meshBasicMaterial color={barColor} />
+        <meshBasicMaterial color={flashColor} />
       </mesh>
       {/* Border */}
       <mesh position={[0, 0, 0.02]}>
         <planeGeometry args={[1.8, 0.25]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
       </mesh>
+      {/* Damage indicator text */}
+      {entity.health < entity.maxHealth && (
+        <mesh position={[0, 0.4, 0]}>
+          <planeGeometry args={[1.5, 0.2]} />
+          <meshBasicMaterial color="transparent" />
+        </mesh>
+      )}
     </group>
   );
 };
