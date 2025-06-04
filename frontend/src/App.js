@@ -27,7 +27,8 @@ import {
   CraftingTable, 
   MagicSystem,
   BuildingTools,
-  SettingsPanel 
+  SettingsPanel,
+  MinecraftSky 
 } from './Components';
 
 // Game state management
