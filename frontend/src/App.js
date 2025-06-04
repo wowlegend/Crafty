@@ -258,6 +258,28 @@ function GameApp() {
                 </motion.div>
               )}
 
+              {/* Sound Controls */}
+              <div className="mb-6 flex justify-center space-x-4">
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`p-3 rounded-lg transition-all ${
+                    soundEnabled ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 hover:bg-gray-500'
+                  } text-white`}
+                  title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
+                >
+                  {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                </button>
+                <button
+                  onClick={() => setMusicEnabled(!musicEnabled)}
+                  className={`p-3 rounded-lg transition-all ${
+                    musicEnabled ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
+                  } text-white`}
+                  title={musicEnabled ? 'Disable Music' : 'Enable Music'}
+                >
+                  {musicEnabled ? '🎵' : '🔇'}
+                </button>
+              </div>
+
               <motion.button
                 onClick={() => document.body.requestPointerLock()}
                 className="bg-green-500 hover:bg-green-400 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
