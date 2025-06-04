@@ -28,7 +28,9 @@ import {
   MagicSystem,
   BuildingTools,
   SettingsPanel,
-  MinecraftSky 
+  MinecraftSky,
+  MinecraftHotbar,
+  MinecraftHealthHunger
 } from './Components';
 
 // Game state management
