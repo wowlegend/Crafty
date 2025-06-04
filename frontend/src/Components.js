@@ -760,6 +760,7 @@ export const Player = ({ gameState }) => {
 
 // Minecraft-style Game UI Component
 export const GameUI = ({ gameState, showStats, setShowStats }) => {
+  const { camera } = useThree();
   return (
     <motion.div
       initial={{ opacity: 0 }}
