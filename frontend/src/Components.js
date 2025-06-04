@@ -42,10 +42,10 @@ export const BLOCK_TYPES = {
   gravel: { color: '#78716c', name: 'Gravel', texture: 'gravel' }
 };
 
-// World Generation
+// Optimized World Generation - Much smaller world
 const generateTerrain = (x, z, seed = 0) => {
-  const height = Math.sin(x * 0.1 + seed) * Math.cos(z * 0.1 + seed) * 3 + 5;
-  return Math.floor(height);
+  const height = Math.sin(x * 0.2 + seed) * Math.cos(z * 0.2 + seed) * 2 + 3;
+  return Math.floor(Math.max(1, height));
 };
 
 // Block Component
