@@ -150,6 +150,7 @@ function GameApp() {
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
+  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
 
   // Start background music when game starts
   useEffect(() => {
