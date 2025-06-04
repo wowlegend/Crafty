@@ -90,7 +90,7 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Simplified World with Stable Environment
+// ISOLATED TEST - Disable all complex components temporarily
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
@@ -98,127 +98,30 @@ export const MinecraftWorld = ({ gameState }) => {
   // Generate simple stable world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 8; // Smaller for stability
+    const size = 4; // Very small for testing
     
     // Create flat terrain
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
         const key = `${x},0,${z}`;
-        // Simple alternating pattern
-        const blockType = (x + z) % 4 === 0 ? 'dirt' : 'grass';
         initialBlocks.set(key, { 
           position: [x, 0, z], 
-          type: blockType 
+          type: 'grass' 
         });
       }
     }
     
-    // Add some test blocks
-    initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
-    initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
-    initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
-    initialBlocks.set('0,1,1', { position: [0, 1, 1], type: 'glass' });
-    initialBlocks.set('0,2,0', { position: [0, 2, 0], type: 'diamond' });
-    
     setBlocks(initialBlocks);
-    console.log('🌍 Stable world generated with', initialBlocks.size, 'blocks');
+    console.log('🌍 ISOLATED: Simple world generated');
   }, []);
-
-  // Simplified block placement
-  const placeBlock = () => {
-    if (!gameState.selectedBlock) {
-      console.log('❌ No block selected');
-      return;
-    }
-    
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    
-    const newPos = camera.position.clone()
-      .add(direction.multiplyScalar(2));
-    
-    const gridPos = {
-      x: Math.round(newPos.x),
-      y: Math.max(1, Math.round(newPos.y)),
-      z: Math.round(newPos.z)
-    };
-    
-    const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
-    
-    if (!blocks.has(key)) {
-      setBlocks(prev => new Map(prev).set(key, {
-        position: [gridPos.x, gridPos.y, gridPos.z],
-        type: gameState.selectedBlock
-      }));
-      
-      gameState.setPlayerStats(prev => ({
-        ...prev,
-        blocksPlaced: prev.blocksPlaced + 1
-      }));
-      
-      console.log('✅ Placed', gameState.selectedBlock, 'block at', gridPos.x, gridPos.y, gridPos.z);
-    }
-  };
-
-  const breakBlock = () => {
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    
-    const targetPos = camera.position.clone()
-      .add(direction.multiplyScalar(2.5));
-    
-    const gridPos = {
-      x: Math.round(targetPos.x),
-      y: Math.round(targetPos.y),
-      z: Math.round(targetPos.z)
-    };
-    
-    const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
-    
-    if (blocks.has(key)) {
-      const block = blocks.get(key);
-      setBlocks(prev => {
-        const newBlocks = new Map(prev);
-        newBlocks.delete(key);
-        return newBlocks;
-      });
-      
-      gameState.addToInventory(block.type, 1);
-      gameState.setPlayerStats(prev => ({
-        ...prev,
-        blocksDestroyed: prev.blocksDestroyed + 1
-      }));
-      
-      console.log('💥 Broke', block.type, 'block at', gridPos.x, gridPos.y, gridPos.z);
-    }
-  };
-
-  // Handle mouse clicks
-  useEffect(() => {
-    const handleClick = (event) => {
-      if (event.button === 0) { 
-        breakBlock();
-      } else if (event.button === 2) { 
-        event.preventDefault();
-        placeBlock();
-      }
-    };
-
-    window.addEventListener('mousedown', handleClick);
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
-    
-    return () => {
-      window.removeEventListener('mousedown', handleClick);
-    };
-  }, [gameState.selectedBlock, blocks]);
 
   return (
     <group>
-      {/* Simple environmental elements - no complex animations */}
-      <MinecraftClouds />
-      <EnvironmentalParticles />
+      {/* DISABLED FOR TESTING - NO ENVIRONMENT COMPONENTS */}
+      {/* <MinecraftClouds />
+      <EnvironmentalParticles /> */}
       
-      {/* Render blocks with basic materials */}
+      {/* Only basic blocks */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -227,40 +130,16 @@ export const MinecraftWorld = ({ gameState }) => {
             position={block.position}
           >
             <boxGeometry args={[1, 1, 1]} />
-            <meshLambertMaterial 
-              color={blockConfig.color}
-              transparent={blockConfig.transparent || false}
-              opacity={blockConfig.transparent ? 0.8 : 1}
-            />
+            <meshBasicMaterial color={blockConfig.color} />
           </mesh>
         );
       })}
       
       {/* Simple ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[40, 40]} />
-        <meshLambertMaterial color="#22c55e" />
+        <planeGeometry args={[20, 20]} />
+        <meshBasicMaterial color="#22c55e" />
       </mesh>
-      
-      {/* Simple static grass patches - no complex positioning */}
-      {[...Array(15)].map((_, i) => (
-        <mesh 
-          key={`grass-${i}`}
-          position={[
-            (i - 7) * 2,
-            0.1,
-            ((i % 3) - 1) * 3
-          ]}
-        >
-          <planeGeometry args={[0.2, 0.3]} />
-          <meshLambertMaterial 
-            color="#2d5a0d" 
-            transparent 
-            opacity={0.7}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
     </group>
   );
 };
