@@ -187,7 +187,7 @@ function GameApp() {
 
   return (
     <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative">
-      {/* Loading screen */}
+      {/* Enhanced Loading screen with authentication */}
       <AnimatePresence>
         {!isPointerLocked && (
           <motion.div
@@ -196,7 +196,7 @@ function GameApp() {
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 bg-gradient-to-br from-green-600 via-green-700 to-green-900 flex items-center justify-center"
           >
-            <div className="text-center text-white">
+            <div className="text-center text-white max-w-lg mx-4">
               <motion.h1 
                 className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
                 initial={{ scale: 0.5 }}
@@ -211,8 +211,32 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                Enhanced Building • Magic System • Advanced Tools
+                Enhanced Building • Magic System • Advanced Tools • World Persistence
               </motion.p>
+
+              {/* Authentication Status */}
+              {isAuthenticated ? (
+                <div className="mb-6">
+                  <UserProfile onShowWorldManager={() => gameState.setShowWorldManager(true)} />
+                </div>
+              ) : (
+                <motion.div
+                  className="mb-6"
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <p className="text-green-200 mb-4">Sign in to save worlds and access multiplayer features</p>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font mr-4"
+                  >
+                    <LogIn className="inline mr-2" size={20} />
+                    Sign In / Register
+                  </button>
+                </motion.div>
+              )}
+
               <motion.button
                 onClick={() => document.body.requestPointerLock()}
                 className="bg-green-500 hover:bg-green-400 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
