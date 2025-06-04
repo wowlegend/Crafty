@@ -106,14 +106,14 @@ export const NPCSystem = ({ gameState }) => {
     }
   };
 
-  // Enhanced attack function with weapon display
+  // ENHANCED attack function with VISUAL EFFECTS and weapon display
   const attackEntity = (entityId) => {
-    // Show weapon during attack
+    // Show weapon during attack with enhanced feedback
     if (window.setPlayerAttacking) {
       window.setPlayerAttacking(true);
       setTimeout(() => {
         window.setPlayerAttacking(false);
-      }, 500);
+      }, 600);
     }
 
     setEntities(prev => prev.map(entity => {
@@ -121,9 +121,18 @@ export const NPCSystem = ({ gameState }) => {
         const damage = 25;
         const newHealth = Math.max(0, entity.health - damage);
         
-        console.log(`⚔️ Attacking ${entity.type}! Health: ${newHealth}/${entity.maxHealth}`);
+        console.log(`⚔️ ATTACKING ${entity.type}! Health: ${newHealth}/${entity.maxHealth}`);
+        
+        // CREATE ATTACK VISUAL EFFECTS
+        createAttackEffects(entity.position);
+        
+        // SPAWN DAMAGE NUMBER
+        spawnDamageNumber(entity.position, damage);
         
         if (newHealth <= 0) {
+          // DEATH EFFECTS
+          createDeathEffects(entity.position);
+          
           // Drop items when mob dies
           if (entity.drops && gameState.addToInventory) {
             entity.drops.forEach(drop => {
@@ -131,14 +140,159 @@ export const NPCSystem = ({ gameState }) => {
             });
           }
           
-          console.log(`💀 ${entity.type} defeated! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
+          console.log(`💀 ${entity.type} DEFEATED! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
           return null; // Remove entity
         } else {
-          return { ...entity, health: newHealth };
+          // DAMAGE EFFECTS - Mark entity as recently damaged for visual feedback
+          return { 
+            ...entity, 
+            health: newHealth, 
+            lastDamageTime: Date.now(),
+            isFlashing: true 
+          };
         }
       }
       return entity;
     }).filter(Boolean));
+  };
+
+  // CREATE ATTACK VISUAL EFFECTS
+  const createAttackEffects = (position) => {
+    // Spark particles
+    for (let i = 0; i < 8; i++) {
+      const particle = document.createElement('div');
+      particle.style.position = 'absolute';
+      particle.style.width = '4px';
+      particle.style.height = '4px';
+      particle.style.backgroundColor = '#ffff00';
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.zIndex = '1000';
+      
+      // Position relative to screen center (where crosshair is)
+      particle.style.left = '50%';
+      particle.style.top = '50%';
+      particle.style.transform = 'translate(-50%, -50%)';
+      
+      document.body.appendChild(particle);
+      
+      // Animate particle
+      const angle = (i / 8) * Math.PI * 2;
+      const distance = 20 + Math.random() * 30;
+      const endX = Math.cos(angle) * distance;
+      const endY = Math.sin(angle) * distance;
+      
+      particle.animate([
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${endX}px), calc(-50% + ${endY}px)) scale(0)`, opacity: 0 }
+      ], {
+        duration: 400,
+        easing: 'ease-out'
+      }).onfinish = () => {
+        document.body.removeChild(particle);
+      };
+    }
+    
+    // Flash effect
+    const flash = document.createElement('div');
+    flash.style.position = 'fixed';
+    flash.style.top = '0';
+    flash.style.left = '0';
+    flash.style.width = '100%';
+    flash.style.height = '100%';
+    flash.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+    flash.style.pointerEvents = 'none';
+    flash.style.zIndex = '999';
+    
+    document.body.appendChild(flash);
+    
+    flash.animate([
+      { opacity: 1 },
+      { opacity: 0 }
+    ], {
+      duration: 150,
+      easing: 'ease-out'
+    }).onfinish = () => {
+      document.body.removeChild(flash);
+    };
+  };
+
+  // SPAWN DAMAGE NUMBER
+  const spawnDamageNumber = (position, damage) => {
+    const damageText = document.createElement('div');
+    damageText.textContent = `-${damage}`;
+    damageText.style.position = 'absolute';
+    damageText.style.color = '#ff4444';
+    damageText.style.fontSize = '24px';
+    damageText.style.fontWeight = 'bold';
+    damageText.style.fontFamily = 'monospace';
+    damageText.style.pointerEvents = 'none';
+    damageText.style.zIndex = '1000';
+    damageText.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+    
+    // Position near center of screen with slight randomness
+    damageText.style.left = `calc(50% + ${(Math.random() - 0.5) * 100}px)`;
+    damageText.style.top = `calc(50% + ${(Math.random() - 0.5) * 100}px)`;
+    damageText.style.transform = 'translate(-50%, -50%)';
+    
+    document.body.appendChild(damageText);
+    
+    // Animate damage number
+    damageText.animate([
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+      { transform: 'translate(-50%, -150%) scale(1.5)', opacity: 0 }
+    ], {
+      duration: 1000,
+      easing: 'ease-out'
+    }).onfinish = () => {
+      document.body.removeChild(damageText);
+    };
+  };
+
+  // CREATE DEATH EFFECTS
+  const createDeathEffects = (position) => {
+    // Multiple explosion particles
+    for (let i = 0; i < 16; i++) {
+      const particle = document.createElement('div');
+      particle.style.position = 'absolute';
+      particle.style.width = '6px';
+      particle.style.height = '6px';
+      particle.style.backgroundColor = '#ff6600';
+      particle.style.borderRadius = '50%';
+      particle.style.pointerEvents = 'none';
+      particle.style.zIndex = '1000';
+      
+      particle.style.left = '50%';
+      particle.style.top = '50%';
+      particle.style.transform = 'translate(-50%, -50%)';
+      
+      document.body.appendChild(particle);
+      
+      const angle = (i / 16) * Math.PI * 2;
+      const distance = 40 + Math.random() * 60;
+      const endX = Math.cos(angle) * distance;
+      const endY = Math.sin(angle) * distance;
+      
+      particle.animate([
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${endX}px), calc(-50% + ${endY}px)) scale(0)`, opacity: 0 }
+      ], {
+        duration: 800,
+        easing: 'ease-out'
+      }).onfinish = () => {
+        document.body.removeChild(particle);
+      };
+    }
+    
+    // Screen shake effect
+    const body = document.body;
+    body.style.animation = 'none';
+    body.offsetHeight; // Trigger reflow
+    body.style.animation = 'shake 0.3s ease-in-out';
+    
+    setTimeout(() => {
+      body.style.animation = '';
+    }, 300);
   };
 
   useEffect(() => {
