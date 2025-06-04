@@ -303,8 +303,8 @@ function GameApp() {
       <Canvas
         camera={{
           fov: 75,
-          near: 0.01, // FIXED: Reduced near plane to prevent clipping hands
-          far: 500,   // Increased far plane for better world visibility
+          near: 0.001, // DRASTICALLY reduced near plane to ensure hands visibility
+          far: 500,    // Increased far plane for better world visibility
           position: [0, 15, 0]
         }}
         shadows={false}
