@@ -144,10 +144,18 @@ function App() {
 function GameApp() {
   const gameState = useGameState();
   const { isAuthenticated, loading } = useAuth();
+  const { soundEnabled, setSoundEnabled, musicEnabled, setMusicEnabled, playBackgroundMusic } = useSounds();
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
+
+  // Start background music when game starts
+  useEffect(() => {
+    if (isPointerLocked && musicEnabled) {
+      playBackgroundMusic();
+    }
+  }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
 
   // Handle escape key to unlock pointer
   useEffect(() => {
