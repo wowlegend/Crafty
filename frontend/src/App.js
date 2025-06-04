@@ -38,51 +38,30 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
 
-// Game state management
+// Enhanced Game state management with world persistence
 const useGameState = () => {
-  const [gameMode, setGameMode] = useState('creative'); // 'creative' | 'survival'
+  const [gameMode, setGameMode] = useState('creative');
   const [selectedBlock, setSelectedBlock] = useState('grass');
+  const [worldBlocks, setWorldBlocks] = useState(new Map()); // Store world data
   const [inventory, setInventory] = useState({
     blocks: {
-      grass: 64,
-      dirt: 64,
-      stone: 64,
-      wood: 64,
-      glass: 32,
-      water: 16,
-      lava: 8,
-      diamond: 4,
-      gold: 8,
-      iron: 16,
-      coal: 32,
-      sand: 64,
-      gravel: 32
+      grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,
+      lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, gravel: 32
     },
-    tools: {
-      pickaxe: 1,
-      shovel: 1,
-      axe: 1,
-      sword: 1
-    },
-    magic: {
-      wand: 1,
-      crystals: 8,
-      scrolls: 4
-    }
+    tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
+    magic: { wand: 1, crystals: 8, scrolls: 4 }
   });
   const [showInventory, setShowInventory] = useState(false);
   const [showCrafting, setShowCrafting] = useState(false);
   const [showMagic, setShowMagic] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showBuildingTools, setShowBuildingTools] = useState(false);
+  const [showWorldManager, setShowWorldManager] = useState(false);
   const [isDay, setIsDay] = useState(true);
   const [gameTime, setGameTime] = useState(0);
   const [achievements, setAchievements] = useState([]);
   const [playerStats, setPlayerStats] = useState({
-    blocksPlaced: 0,
-    blocksDestroyed: 0,
-    distanceTraveled: 0,
-    timeplayed: 0
+    blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0
   });
 
   // Time cycle
@@ -96,45 +75,48 @@ const useGameState = () => {
         return newTime;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
   const addToInventory = (item, quantity = 1) => {
     setInventory(prev => ({
       ...prev,
-      blocks: {
-        ...prev.blocks,
-        [item]: (prev.blocks[item] || 0) + quantity
-      }
+      blocks: { ...prev.blocks, [item]: (prev.blocks[item] || 0) + quantity }
     }));
   };
 
   const removeFromInventory = (item, quantity = 1) => {
     setInventory(prev => ({
       ...prev,
-      blocks: {
-        ...prev.blocks,
-        [item]: Math.max(0, (prev.blocks[item] || 0) - quantity)
-      }
+      blocks: { ...prev.blocks, [item]: Math.max(0, (prev.blocks[item] || 0) - quantity) }
     }));
   };
 
+  const loadWorldData = (worldData) => {
+    if (worldData.world_data) {
+      // Convert world data back to Map
+      const blockMap = new Map();
+      Object.entries(worldData.world_data).forEach(([key, value]) => {
+        blockMap.set(key, value);
+      });
+      setWorldBlocks(blockMap);
+    }
+    
+    if (worldData.settings) {
+      const settings = worldData.settings;
+      if (settings.gameMode) setGameMode(settings.gameMode);
+      if (settings.isDay !== undefined) setIsDay(settings.isDay);
+      if (settings.inventory) setInventory(settings.inventory);
+      if (settings.playerStats) setPlayerStats(settings.playerStats);
+    }
+  };
+
   return {
-    gameMode, setGameMode,
-    selectedBlock, setSelectedBlock,
-    inventory, setInventory,
-    showInventory, setShowInventory,
-    showCrafting, setShowCrafting,
-    showMagic, setShowMagic,
-    showSettings, setShowSettings,
-    showBuildingTools, setShowBuildingTools,
-    isDay, setIsDay,
-    gameTime,
-    achievements, setAchievements,
-    playerStats, setPlayerStats,
-    addToInventory,
-    removeFromInventory
+    gameMode, setGameMode, selectedBlock, setSelectedBlock, worldBlocks, setWorldBlocks,
+    inventory, setInventory, showInventory, setShowInventory, showCrafting, setShowCrafting,
+    showMagic, setShowMagic, showSettings, setShowSettings, showBuildingTools, setShowBuildingTools,
+    showWorldManager, setShowWorldManager, isDay, setIsDay, gameTime, achievements, setAchievements,
+    playerStats, setPlayerStats, addToInventory, removeFromInventory, loadWorldData
   };
 };
 
