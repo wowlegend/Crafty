@@ -378,43 +378,19 @@ const EnvironmentalParticles = () => {
 };
 
 // Simplified Sky Component - Basic and stable
-const MinecraftSky = ({ isDay }) => {
-  const skyColor = isDay ? '#87CEEB' : '#191970';
-  
+// MINIMAL Sky - No variables, no conditionals
+const MinecraftSky = () => {
   return (
     <group>
-      {/* Simple sky sphere */}
-      <mesh scale={[150, 150, 150]}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial 
-          color={skyColor}
-          side={THREE.BackSide}
-        />
+      <mesh scale={[50, 50, 50]}>
+        <sphereGeometry args={[1, 6, 6]} />
+        <meshBasicMaterial color="#87CEEB" side={THREE.BackSide} />
       </mesh>
       
-      {/* Simple sun */}
-      {isDay && (
-        <mesh position={[0, 25, -40]}>
-          <sphereGeometry args={[2, 8, 8]} />
-          <meshBasicMaterial 
-            color="#FFD700" 
-            emissive="#FFD700"
-            emissiveIntensity={0.3}
-          />
-        </mesh>
-      )}
-      
-      {/* Simple moon */}
-      {!isDay && (
-        <mesh position={[0, 25, -40]}>
-          <sphereGeometry args={[1.5, 8, 8]} />
-          <meshBasicMaterial 
-            color="#F5F5DC" 
-            emissive="#F5F5DC"
-            emissiveIntensity={0.2}
-          />
-        </mesh>
-      )}
+      <mesh position={[0, 15, -20]}>
+        <sphereGeometry args={[1, 6, 6]} />
+        <meshBasicMaterial color="#FFD700" />
+      </mesh>
     </group>
   );
 };
