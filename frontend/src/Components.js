@@ -212,15 +212,18 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Simple Hand Component - Always visible
+// Properly Visible Hand Component
 const SimpleHands = ({ selectedBlock }) => {
   const handRef = useRef();
-  const { camera } = useThree();
   
-  useFrame(() => {
-    if (handRef.current && camera) {
-      // Position hands in front of camera, always visible
-      handRef.current.position.set(0.5, -0.3, -0.8);
+  useFrame(({ camera }) => {
+    if (handRef.current) {
+      // Position hands in camera space (always visible)
+      const handPosition = new THREE.Vector3(0.3, -0.2, -0.5);
+      
+      // Transform to world space
+      handPosition.applyMatrix4(camera.matrixWorld);
+      handRef.current.position.copy(handPosition);
       handRef.current.rotation.copy(camera.rotation);
     }
   });
@@ -229,16 +232,16 @@ const SimpleHands = ({ selectedBlock }) => {
 
   return (
     <group ref={handRef}>
-      {/* Visible right hand */}
+      {/* Right hand - larger and more visible */}
       <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[0.1, 0.15, 0.05]} />
+        <boxGeometry args={[0.08, 0.12, 0.04]} />
         <meshLambertMaterial color="#fdbcb4" />
       </mesh>
       
-      {/* Block in hand */}
+      {/* Block in hand - more visible */}
       {selectedBlock && (
-        <mesh position={[0.1, 0.05, -0.1]}>
-          <boxGeometry args={[0.06, 0.06, 0.06]} />
+        <mesh position={[0.06, 0.03, -0.08]}>
+          <boxGeometry args={[0.05, 0.05, 0.05]} />
           <meshLambertMaterial 
             color={selectedBlockConfig.color}
             transparent={selectedBlockConfig.transparent || false}
