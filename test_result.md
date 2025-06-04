@@ -300,15 +300,18 @@ frontend:
 
   - task: "Performance & Stability"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Need to test for runtime errors, smooth performance, memory usage, and browser compatibility."
+      - working: true
+        agent: "testing"
+        comment: "Fixed a runtime error in the GameUI component where the useThree hook was being used outside of the Canvas component. The application is now stable and performs well. The world generation is optimized with a balanced size of 25 (50x50 blocks) for better performance."
 
 metadata:
   created_by: "testing_agent"
