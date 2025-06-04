@@ -202,10 +202,159 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         "worlds": current_user.worlds
     }
 
+# ========== WORLD MANAGEMENT ENDPOINTS ==========
+
+@api_router.post("/worlds", response_model=Dict[str, Any])
+async def create_world(world_data: WorldCreate, current_user: User = Depends(get_current_user)):
+    world = World(
+        name=world_data.name,
+        owner_id=current_user.id,
+        world_data=world_data.world_data,
+        settings=world_data.settings,
+        is_public=world_data.is_public
+    )
+    
+    await db.worlds.insert_one(world.dict())
+    
+    # Add world to user's world list
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$push": {"worlds": world.id}}
+    )
+    
+    return {"world_id": world.id, "message": "World created successfully"}
+
+@api_router.get("/worlds", response_model=List[Dict[str, Any]])
+async def get_user_worlds(current_user: User = Depends(get_current_user)):
+    worlds = await db.worlds.find({
+        "$or": [
+            {"owner_id": current_user.id},
+            {"collaborators": current_user.id},
+            {"is_public": True}
+        ]
+    }).to_list(100)
+    
+    return [{
+        "id": world["id"],
+        "name": world["name"],
+        "owner_id": world["owner_id"],
+        "created_at": world["created_at"],
+        "last_modified": world["last_modified"],
+        "is_public": world["is_public"],
+        "is_owner": world["owner_id"] == current_user.id
+    } for world in worlds]
+
+@api_router.get("/worlds/{world_id}")
+async def get_world(world_id: str, current_user: User = Depends(get_current_user)):
+    world = await db.worlds.find_one({"id": world_id})
+    
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    
+    # Check permissions
+    if (world["owner_id"] != current_user.id and 
+        current_user.id not in world.get("collaborators", []) and 
+        not world.get("is_public", False)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return World(**world)
+
+@api_router.put("/worlds/{world_id}")
+async def update_world(world_id: str, world_data: WorldUpdate, current_user: User = Depends(get_current_user)):
+    world = await db.worlds.find_one({"id": world_id})
+    
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    
+    # Check permissions - only owner or collaborators can edit
+    if (world["owner_id"] != current_user.id and 
+        current_user.id not in world.get("collaborators", [])):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update world data
+    update_data = {"last_modified": datetime.utcnow()}
+    
+    if world_data.world_data is not None:
+        update_data["world_data"] = world_data.world_data
+    if world_data.settings is not None:
+        update_data["settings"] = world_data.settings
+    if world_data.name is not None:
+        update_data["name"] = world_data.name
+    if world_data.is_public is not None:
+        update_data["is_public"] = world_data.is_public
+    
+    await db.worlds.update_one({"id": world_id}, {"$set": update_data})
+    
+    return {"message": "World updated successfully"}
+
+@api_router.delete("/worlds/{world_id}")
+async def delete_world(world_id: str, current_user: User = Depends(get_current_user)):
+    world = await db.worlds.find_one({"id": world_id})
+    
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    
+    # Only owner can delete
+    if world["owner_id"] != current_user.id:
+        raise HTTPException(status_code=403, detail="Only owner can delete world")
+    
+    await db.worlds.delete_one({"id": world_id})
+    
+    # Remove from user's world list
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$pull": {"worlds": world_id}}
+    )
+    
+    return {"message": "World deleted successfully"}
+
+# ========== CHAT ENDPOINTS ==========
+
+@api_router.post("/worlds/{world_id}/chat")
+async def send_chat_message(world_id: str, message: str, current_user: User = Depends(get_current_user)):
+    # Verify user has access to world
+    world = await db.worlds.find_one({"id": world_id})
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    
+    if (world["owner_id"] != current_user.id and 
+        current_user.id not in world.get("collaborators", []) and 
+        not world.get("is_public", False)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    chat_message = ChatMessage(
+        world_id=world_id,
+        user_id=current_user.id,
+        username=current_user.username,
+        message=message
+    )
+    
+    await db.chat_messages.insert_one(chat_message.dict())
+    
+    return chat_message
+
+@api_router.get("/worlds/{world_id}/chat")
+async def get_chat_messages(world_id: str, limit: int = 50, current_user: User = Depends(get_current_user)):
+    # Verify user has access to world
+    world = await db.worlds.find_one({"id": world_id})
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    
+    if (world["owner_id"] != current_user.id and 
+        current_user.id not in world.get("collaborators", []) and 
+        not world.get("is_public", False)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    messages = await db.chat_messages.find(
+        {"world_id": world_id}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return [ChatMessage(**msg) for msg in reversed(messages)]
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Crafty Minecraft Clone API v2.0", "status": "running"}
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
