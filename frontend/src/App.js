@@ -224,17 +224,22 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Stable Game Canvas - Simplified for performance */}
+      {/* OPTIMIZED Game Canvas - Enhanced depth handling */}
       <Canvas
         camera={{
           fov: 75,
-          near: 0.1,
-          far: 100,
+          near: 0.01, // FIXED: Much closer near plane for proper hand rendering
+          far: 200,   // INCREASED: Larger view distance
           position: [0, 3, 5]
         }}
-        shadows={false} // Disabled to prevent errors
+        shadows={false}
         className="w-full h-full"
-        gl={{ antialias: false }}
+        gl={{ 
+          antialias: true,  // ENABLED: Better visual quality
+          alpha: false,     // DISABLED: Better performance
+          depth: true,      // ENABLED: Proper depth testing
+          logarithmicDepthBuffer: true // ENABLED: Better depth precision
+        }}
       >
         {/* FULL FEATURED Environment with Error Logging */}
         <MinecraftSky isDay={gameState.isDay} />
