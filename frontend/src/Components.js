@@ -42,6 +42,77 @@ export const BLOCK_TYPES = {
   cobblestone: { color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' }
 };
 
+// Authentic Minecraft-style Hotbar
+const MinecraftHotbar = ({ gameState }) => {
+  const hotbarBlocks = Object.keys(BLOCK_TYPES).slice(0, 9);
+  
+  return (
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+      <div className="minecraft-hotbar">
+        {hotbarBlocks.map((blockType, index) => {
+          const blockConfig = BLOCK_TYPES[blockType];
+          const isSelected = gameState.selectedBlock === blockType;
+          const quantity = gameState.inventory.blocks[blockType] || 0;
+          
+          return (
+            <div
+              key={blockType}
+              className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
+              onClick={() => gameState.setSelectedBlock(blockType)}
+              title={`${blockConfig.name} (${quantity})`}
+            >
+              {/* Block icon */}
+              <div 
+                className="minecraft-block-icon"
+                style={{ backgroundColor: blockConfig.color }}
+              />
+              
+              {/* Quantity display */}
+              {quantity > 1 && (
+                <div className="minecraft-quantity">
+                  {quantity > 999 ? '999+' : quantity}
+                </div>
+              )}
+              
+              {/* Hotkey number */}
+              <div className="minecraft-hotkey">
+                {index + 1}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Minecraft-style Health and Hunger bars
+const MinecraftHealthHunger = () => {
+  return (
+    <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+      <div className="minecraft-status-bars">
+        {/* Health bar (left side) */}
+        <div className="minecraft-health-bar">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="minecraft-heart">
+              <div className="minecraft-heart-icon">❤</div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Hunger bar (right side) */}
+        <div className="minecraft-hunger-bar">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="minecraft-hunger">
+              <div className="minecraft-hunger-icon">🍖</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Optimized World Generation - Much smaller world
 const generateTerrain = (x, z, seed = 0) => {
   const height = Math.sin(x * 0.2 + seed) * Math.cos(z * 0.2 + seed) * 2 + 3;
