@@ -25,19 +25,19 @@ import {
   Shield
 } from 'lucide-react';
 
-// Authentic Minecraft Block Types Configuration
+// Authentic Minecraft Block Types Configuration with Exact Colors
 export const BLOCK_TYPES = {
-  grass: { color: '#7C9F3A', name: 'Grass Block', texture: 'grass' },
-  dirt: { color: '#8E7748', name: 'Dirt', texture: 'dirt' },
+  grass: { color: '#7FB238', name: 'Grass Block', texture: 'grass' },
+  dirt: { color: '#976D4D', name: 'Dirt', texture: 'dirt' },
   stone: { color: '#707070', name: 'Stone', texture: 'stone' },
-  wood: { color: '#9F7A3F', name: 'Oak Wood', texture: 'wood' },
-  glass: { color: '#E6F3FF', name: 'Glass', texture: 'glass', transparent: true },
+  wood: { color: '#8F7748', name: 'Oak Wood', texture: 'wood' },
+  glass: { color: '#F0F8FF', name: 'Glass', texture: 'glass', transparent: true },
   water: { color: '#3F76E4', name: 'Water', texture: 'water', transparent: true },
-  lava: { color: '#FF6A00', name: 'Lava', texture: 'lava', emissive: true },
-  diamond: { color: '#5DCFE0', name: 'Diamond Ore', texture: 'diamond', emissive: true },
+  lava: { color: '#FF4500', name: 'Lava', texture: 'lava', emissive: true },
+  diamond: { color: '#4FD0E7', name: 'Diamond Ore', texture: 'diamond', emissive: true },
   gold: { color: '#FCEE4B', name: 'Gold Ore', texture: 'gold' },
   iron: { color: '#D8AF93', name: 'Iron Ore', texture: 'iron' },
-  coal: { color: '#383838', name: 'Coal Ore', texture: 'coal' },
+  coal: { color: '#2F2F2F', name: 'Coal Ore', texture: 'coal' },
   sand: { color: '#DBD3A0', name: 'Sand', texture: 'sand' },
   cobblestone: { color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' }
 };
