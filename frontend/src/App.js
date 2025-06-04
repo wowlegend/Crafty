@@ -16,7 +16,9 @@ import {
   Trash2,
   Grid3X3,
   Eye,
-  EyeOff
+  EyeOff,
+  LogIn,
+  Save
 } from 'lucide-react';
 import './App.css';
 import { 
@@ -32,6 +34,9 @@ import {
   MinecraftHotbar,
   MinecraftHealthHunger
 } from './Components';
+import { AuthProvider, useAuth } from './AuthContext';
+import { AuthModal, UserProfile } from './AuthComponents';
+import { WorldManager } from './WorldManager';
 
 // Game state management
 const useGameState = () => {
