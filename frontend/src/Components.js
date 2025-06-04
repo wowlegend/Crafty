@@ -250,43 +250,262 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Properly Visible Hand Component
-const SimpleHands = ({ selectedBlock }) => {
-  const handRef = useRef();
+// Both Hands Component - Like Minecraft
+const BothHands = ({ selectedBlock }) => {
+  const rightHandRef = useRef();
+  const leftHandRef = useRef();
   
-  useFrame(({ camera }) => {
-    if (handRef.current) {
-      // Position hands in camera space (always visible)
-      const handPosition = new THREE.Vector3(0.3, -0.2, -0.5);
+  useFrame(({ camera, clock }) => {
+    const time = clock.getElapsedTime();
+    
+    if (rightHandRef.current) {
+      // Right hand position in camera space
+      const rightHandPos = new THREE.Vector3(0.25, -0.15, -0.4);
+      rightHandPos.applyMatrix4(camera.matrixWorld);
+      rightHandRef.current.position.copy(rightHandPos);
+      rightHandRef.current.rotation.copy(camera.rotation);
       
-      // Transform to world space
-      handPosition.applyMatrix4(camera.matrixWorld);
-      handRef.current.position.copy(handPosition);
-      handRef.current.rotation.copy(camera.rotation);
+      // Subtle idle animation
+      rightHandRef.current.rotation.z += Math.sin(time * 0.5) * 0.02;
+    }
+    
+    if (leftHandRef.current) {
+      // Left hand position in camera space
+      const leftHandPos = new THREE.Vector3(-0.25, -0.15, -0.4);
+      leftHandPos.applyMatrix4(camera.matrixWorld);
+      leftHandRef.current.position.copy(leftHandPos);
+      leftHandRef.current.rotation.copy(camera.rotation);
+      
+      // Subtle idle animation (opposite phase)
+      leftHandRef.current.rotation.z += Math.sin(time * 0.5 + Math.PI) * 0.02;
     }
   });
 
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   return (
-    <group ref={handRef}>
-      {/* Right hand - larger and more visible */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[0.08, 0.12, 0.04]} />
-        <meshLambertMaterial color="#fdbcb4" />
+    <group>
+      {/* Right Hand with Tool */}
+      <group ref={rightHandRef}>
+        {/* Right arm */}
+        <mesh position={[-0.05, 0.05, 0]}>
+          <boxGeometry args={[0.06, 0.15, 0.06]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Right hand */}
+        <mesh position={[0, -0.08, 0]}>
+          <boxGeometry args={[0.05, 0.08, 0.04]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Tool/Block in right hand */}
+        {selectedBlock && (
+          <mesh position={[0.04, -0.05, -0.06]}>
+            <boxGeometry args={[0.04, 0.04, 0.04]} />
+            <meshLambertMaterial 
+              color={selectedBlockConfig.color}
+              transparent={selectedBlockConfig.transparent || false}
+              opacity={selectedBlockConfig.transparent ? 0.8 : 1}
+            />
+          </mesh>
+        )}
+      </group>
+      
+      {/* Left Hand */}
+      <group ref={leftHandRef}>
+        {/* Left arm */}
+        <mesh position={[0.05, 0.05, 0]}>
+          <boxGeometry args={[0.06, 0.15, 0.06]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Left hand */}
+        <mesh position={[0, -0.08, 0]}>
+          <boxGeometry args={[0.05, 0.08, 0.04]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+// Moving Clouds Component - Like Minecraft
+const MinecraftClouds = () => {
+  const cloudsRef = useRef();
+  const cloudMaterial = useMemo(() => 
+    new THREE.MeshLambertMaterial({ 
+      color: '#ffffff', 
+      transparent: true, 
+      opacity: 0.8 
+    }), []
+  );
+  
+  // Generate cloud positions
+  const cloudPositions = useMemo(() => {
+    const positions = [];
+    for (let i = 0; i < 20; i++) {
+      positions.push({
+        x: (Math.random() - 0.5) * 200,
+        y: 15 + Math.random() * 5,
+        z: (Math.random() - 0.5) * 200,
+        scale: 0.5 + Math.random() * 1.5
+      });
+    }
+    return positions;
+  }, []);
+  
+  useFrame((state) => {
+    if (cloudsRef.current) {
+      // Move clouds slowly across the sky
+      const time = state.clock.getElapsedTime();
+      cloudsRef.current.position.x = (time * 0.2) % 100 - 50;
+    }
+  });
+  
+  return (
+    <group ref={cloudsRef} position={[0, 0, 0]}>
+      {cloudPositions.map((cloud, index) => (
+        <mesh 
+          key={index} 
+          position={[cloud.x, cloud.y, cloud.z]}
+          scale={[cloud.scale, cloud.scale * 0.3, cloud.scale]}
+        >
+          <boxGeometry args={[4, 1, 4]} />
+          <primitive object={cloudMaterial} />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
+// Environmental Particles Component
+const EnvironmentalParticles = () => {
+  const particlesRef = useRef();
+  const particleCount = 50;
+  
+  const particles = useMemo(() => {
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 50;
+      positions[i * 3 + 1] = Math.random() * 10;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+      
+      // Green grass particles
+      colors[i * 3] = 0.2 + Math.random() * 0.3; // R
+      colors[i * 3 + 1] = 0.6 + Math.random() * 0.4; // G
+      colors[i * 3 + 2] = 0.1 + Math.random() * 0.2; // B
+    }
+    
+    return { positions, colors };
+  }, []);
+  
+  useFrame((state) => {
+    if (particlesRef.current) {
+      const time = state.clock.getElapsedTime();
+      const positions = particlesRef.current.geometry.attributes.position.array;
+      
+      for (let i = 0; i < particleCount; i++) {
+        // Floating motion
+        positions[i * 3 + 1] += Math.sin(time + i) * 0.001;
+        
+        // Reset particles that fall too low
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 10;
+        }
+      }
+      
+      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+  
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          array={particles.positions}
+          count={particleCount}
+          itemSize={3}
+        />
+        <bufferAttribute
+          attach="attributes-color"
+          array={particles.colors}
+          count={particleCount}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial size={0.1} vertexColors transparent opacity={0.6} />
+    </points>
+  );
+};
+
+// Enhanced Sky Component
+const MinecraftSky = ({ isDay }) => {
+  const skyRef = useRef();
+  
+  useFrame((state) => {
+    if (skyRef.current) {
+      const time = state.clock.getElapsedTime();
+      // Rotate sky slowly
+      skyRef.current.rotation.y = time * 0.01;
+    }
+  });
+  
+  const skyColors = {
+    day: {
+      top: '#87CEEB',    // Sky blue
+      horizon: '#E6F3FF', // Light blue
+      bottom: '#B0E0E6'   // Powder blue
+    },
+    night: {
+      top: '#191970',     // Midnight blue
+      horizon: '#483D8B',  // Dark slate blue
+      bottom: '#2F2F2F'    // Dark gray
+    }
+  };
+  
+  const currentColors = isDay ? skyColors.day : skyColors.night;
+  
+  return (
+    <group ref={skyRef}>
+      {/* Sky sphere with gradient */}
+      <mesh scale={[200, 200, 200]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial 
+          color={currentColors.top}
+          side={THREE.BackSide}
+        />
       </mesh>
       
-      {/* Block in hand - more visible */}
-      {selectedBlock && (
-        <mesh position={[0.06, 0.03, -0.08]}>
-          <boxGeometry args={[0.05, 0.05, 0.05]} />
-          <meshLambertMaterial 
-            color={selectedBlockConfig.color}
-            transparent={selectedBlockConfig.transparent || false}
-            opacity={selectedBlockConfig.transparent ? 0.8 : 1}
+      {/* Sun */}
+      {isDay && (
+        <mesh position={[0, 30, -50]}>
+          <sphereGeometry args={[2, 16, 16]} />
+          <meshBasicMaterial 
+            color="#FFD700" 
+            emissive="#FFD700"
+            emissiveIntensity={0.5}
           />
         </mesh>
       )}
+      
+      {/* Moon */}
+      {!isDay && (
+        <mesh position={[0, 30, -50]}>
+          <sphereGeometry args={[1.5, 16, 16]} />
+          <meshBasicMaterial 
+            color="#F5F5DC" 
+            emissive="#F5F5DC"
+            emissiveIntensity={0.3}
+          />
+        </mesh>
+      )}
+      
+      {/* Stars at night */}
+      {!isDay && <Stars radius={100} depth={50} count={500} factor={4} fade />}
     </group>
   );
 };
