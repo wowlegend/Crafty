@@ -413,8 +413,6 @@ const MinecraftSky = ({ isDay = true }) => {
         <sphereGeometry args={[1.8, 12, 12]} />
         <meshBasicMaterial 
           color={sunColor}
-          emissive={sunColor}
-          emissiveIntensity={isDay ? 0.3 : 0.2}
         />
       </mesh>
     </group>
