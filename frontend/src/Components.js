@@ -265,42 +265,14 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Ultra Stable Both Hands Component - No complex refs
-const BothHands = ({ selectedBlock, isSwinging = false }) => {
-  const rightHandRef = useRef();
-  const leftHandRef = useRef();
-  
-  useFrame(({ camera }) => {
-    // Simple, safe positioning without complex matrix operations
-    if (rightHandRef.current && camera && camera.position) {
-      try {
-        const rightPos = camera.position.clone();
-        rightPos.add(new THREE.Vector3(0.3, -0.2, -0.5));
-        rightHandRef.current.position.copy(rightPos);
-        rightHandRef.current.rotation.copy(camera.rotation);
-      } catch (e) {
-        // Fail silently to prevent crashes
-      }
-    }
-    
-    if (leftHandRef.current && camera && camera.position) {
-      try {
-        const leftPos = camera.position.clone();
-        leftPos.add(new THREE.Vector3(-0.3, -0.2, -0.5));
-        leftHandRef.current.position.copy(leftPos);
-        leftHandRef.current.rotation.copy(camera.rotation);
-      } catch (e) {
-        // Fail silently to prevent crashes
-      }
-    }
-  });
-
+// MINIMAL Hands Component - No refs, no useFrame
+const BothHands = ({ selectedBlock }) => {
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   return (
-    <group>
-      {/* Right Hand - Ultra Simple */}
-      <group ref={rightHandRef}>
+    <group position={[0, -0.3, -0.8]}>
+      {/* Right Hand - Fixed position */}
+      <group position={[0.3, 0, 0]}>
         <mesh position={[0, 0.05, 0]}>
           <boxGeometry args={[0.06, 0.12, 0.06]} />
           <meshBasicMaterial color="#fdbcb4" />
@@ -319,8 +291,8 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         )}
       </group>
       
-      {/* Left Hand - Ultra Simple */}
-      <group ref={leftHandRef}>
+      {/* Left Hand - Fixed position */}
+      <group position={[-0.3, 0, 0]}>
         <mesh position={[0, 0.05, 0]}>
           <boxGeometry args={[0.06, 0.12, 0.06]} />
           <meshBasicMaterial color="#fdbcb4" />
