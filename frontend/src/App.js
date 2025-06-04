@@ -18,7 +18,9 @@ import {
   Eye,
   EyeOff,
   LogIn,
-  Save
+  Save,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import './App.css';
 import { 
@@ -37,6 +39,10 @@ import {
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
+import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
+import { EnhancedMagicSystem, SpellEffects } from './EnhancedMagic';
+import { NPCSystem, TradingInterface } from './NPCSystem';
+import { AmbientParticles } from './EnhancedVisuals';
 
 // Enhanced Game state management with world persistence
 const useGameState = () => {
