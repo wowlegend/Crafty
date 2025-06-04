@@ -234,8 +234,8 @@ function App() {
         className="w-full h-full"
         gl={{ antialias: false }}
       >
-        {/* ISOLATED TEST - Minimal Environment */}
-        <MinecraftSky />
+        {/* FULL FEATURED Environment with Error Logging */}
+        <MinecraftSky isDay={gameState.isDay} />
         
         {/* Basic Lighting - No complex shadows */}
         <ambientLight intensity={0.7} />
