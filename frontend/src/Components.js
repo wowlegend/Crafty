@@ -375,7 +375,7 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// SIMPLE, STABLE HANDS - No shaking, minimal animation
+// COMPLETELY STATIC HANDS - Zero animation, zero shaking
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
@@ -386,7 +386,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         return;
       }
       
-      // FIXED: Static hand positioning - NO ANIMATION to prevent shaking
+      // COMPLETELY STATIC positioning - NO MOVEMENT AT ALL
       if (rightHandRef.current) {
         const cameraPos = camera.position.clone();
         const cameraQuat = camera.quaternion.clone();
@@ -398,10 +398,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         rightHandRef.current.position.copy(rightHandLocalPos);
         rightHandRef.current.rotation.copy(camera.rotation);
         
-        // ONLY animate when swinging - simple rotation
-        if (isSwinging) {
-          rightHandRef.current.rotation.x += 0.5;
-        }
+        // NO ANIMATION - only static positioning
       }
       
       // Left hand - completely static
@@ -425,7 +422,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
 
   return (
     <group>
-      {/* Simple right hand */}
+      {/* Completely static right hand */}
       <group ref={rightHandRef}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
@@ -437,7 +434,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
           <meshBasicMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Tool in hand */}
+        {/* Tool in hand - static */}
         {selectedBlock && (
           <mesh position={[0.05, -0.05, -0.08]}>
             <boxGeometry args={[0.04, 0.04, 0.04]} />
@@ -446,7 +443,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         )}
       </group>
       
-      {/* Simple left hand */}
+      {/* Completely static left hand */}
       <group ref={leftHandRef}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
