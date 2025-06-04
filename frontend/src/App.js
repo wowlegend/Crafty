@@ -192,7 +192,7 @@ function App() {
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", duration: 0.8 }}
               >
-                MineCraft++
+                Crafty
               </motion.h1>
               <motion.p 
                 className="text-2xl mb-8 text-green-100"
