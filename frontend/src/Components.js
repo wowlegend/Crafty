@@ -161,100 +161,72 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// EXPANDED WORLD - Much larger terrain generation
+// OPTIMIZED WORLD - Balanced size for performance
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate much larger world with varied terrain
+  // Generate balanced world - larger but optimized
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 50; // Much larger world (100x100 blocks)
+    const size = 25; // Balanced size (50x50 = 2500 blocks vs 10000 before)
     
-    // Generate varied terrain with height maps
+    // Generate optimized terrain with fewer layers
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
-        // Create height variation using noise-like function
+        // Simpler height calculation for better performance
         const height = Math.floor(
-          Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + 
-          Math.sin(x * 0.05) * Math.cos(z * 0.05) * 2 + 
-          Math.random() * 2 + 3
+          Math.sin(x * 0.15) * Math.cos(z * 0.15) * 2 + 
+          Math.random() * 1 + 2
         );
         
-        // Generate terrain layers
-        for (let y = 0; y <= Math.max(1, height); y++) {
+        // Generate fewer layers to reduce block count
+        for (let y = 0; y <= Math.min(height, 3); y++) { // Max 4 layers
           const key = `${x},${y},${z}`;
           
-          if (y === height && height > 2) {
-            // Grass on top of hills
+          if (y === height && height > 1) {
+            // Grass on top
             initialBlocks.set(key, { position: [x, y, z], type: 'grass' });
-          } else if (y === height && height <= 2) {
-            // Sand in low areas (beaches/deserts)
+          } else if (y === height && height <= 1) {
+            // Sand in low areas
             initialBlocks.set(key, { position: [x, y, z], type: 'sand' });
-          } else if (y >= height - 2 && height > 2) {
-            // Dirt layer under grass
+          } else if (y >= height - 1) {
+            // Dirt layer
             initialBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          } else if (y === 0) {
-            // Bedrock layer
-            initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
           } else {
-            // Stone underground
+            // Stone bottom layer with occasional ores
             const rand = Math.random();
-            if (rand < 0.1) {
+            if (rand < 0.05) {
               initialBlocks.set(key, { position: [x, y, z], type: 'coal' });
-            } else if (rand < 0.15) {
+            } else if (rand < 0.07) {
               initialBlocks.set(key, { position: [x, y, z], type: 'iron' });
-            } else if (rand < 0.17) {
-              initialBlocks.set(key, { position: [x, y, z], type: 'gold' });
-            } else if (rand < 0.175) {
-              initialBlocks.set(key, { position: [x, y, z], type: 'diamond' });
             } else {
               initialBlocks.set(key, { position: [x, y, z], type: 'stone' });
             }
           }
         }
         
-        // Add trees and decorations
-        if (Math.random() < 0.02 && height > 3) {
-          const treeHeight = 3 + Math.floor(Math.random() * 3);
-          for (let i = 1; i <= treeHeight; i++) {
-            const treeKey = `${x},${height + i},${z}`;
-            initialBlocks.set(treeKey, { position: [x, height + i, z], type: 'wood' });
-          }
+        // Fewer trees for better performance
+        if (Math.random() < 0.01 && height > 2) {
+          const treeKey = `${x},${height + 1},${z}`;
+          initialBlocks.set(treeKey, { position: [x, height + 1, z], type: 'wood' });
         }
       }
     }
     
-    // Add some starter structures near spawn
-    const structures = [
-      { pos: [5, 4, 5], type: 'wood' },
-      { pos: [5, 5, 5], type: 'wood' },
-      { pos: [6, 4, 5], type: 'wood' },
-      { pos: [7, 4, 5], type: 'wood' },
-      { pos: [8, 4, 5], type: 'wood' },
-      { pos: [5, 4, 6], type: 'wood' },
-      { pos: [5, 4, 7], type: 'wood' },
-      { pos: [5, 4, 8], type: 'wood' }
-    ];
-    
-    structures.forEach(({ pos, type }) => {
-      const key = `${pos[0]},${pos[1]},${pos[2]}`;
-      initialBlocks.set(key, { position: pos, type });
-    });
-    
     setBlocks(initialBlocks);
-    console.log('🌍 Large Minecraft world generated with', initialBlocks.size, 'blocks');
+    console.log('🌍 Optimized world generated with', initialBlocks.size, 'blocks');
   }, []);
 
-  // Block placement functionality (same as before)
+  // WORKING block placement functionality
   const placeBlock = () => {
     if (!gameState.selectedBlock) {
-      console.log('❌ No block selected for placement');
+      console.log('❌ No block selected');
       return;
     }
     
-    if (gameState.inventory.blocks[gameState.selectedBlock] <= 0) {
-      console.log('❌ No blocks of this type in inventory');
+    if (gameState.gameMode !== 'creative' && gameState.inventory.blocks[gameState.selectedBlock] <= 0) {
+      console.log('❌ No blocks in inventory');
       return;
     }
     
@@ -279,6 +251,7 @@ export const MinecraftWorld = ({ gameState }) => {
           type: gameState.selectedBlock
         }));
         
+        // Remove from inventory (except creative mode)
         if (gameState.gameMode !== 'creative') {
           gameState.removeFromInventory(gameState.selectedBlock, 1);
         }
@@ -288,13 +261,16 @@ export const MinecraftWorld = ({ gameState }) => {
           blocksPlaced: prev.blocksPlaced + 1
         }));
         
-        console.log('✅ Placed', gameState.selectedBlock, 'block at', gridPos.x, gridPos.y, gridPos.z);
+        console.log('✅ Placed', gameState.selectedBlock, 'at', gridPos.x, gridPos.y, gridPos.z);
+      } else {
+        console.log('❌ Block already exists there');
       }
     } catch (error) {
       console.error('❌ Error placing block:', error.message);
     }
   };
 
+  // WORKING block breaking functionality
   const breakBlock = () => {
     try {
       const direction = new THREE.Vector3();
@@ -319,32 +295,36 @@ export const MinecraftWorld = ({ gameState }) => {
           return newBlocks;
         });
         
+        // Add to inventory
         gameState.addToInventory(block.type, 1);
+        
         gameState.setPlayerStats(prev => ({
           ...prev,
           blocksDestroyed: prev.blocksDestroyed + 1
         }));
         
-        console.log('💥 Broke', block.type, 'block at', gridPos.x, gridPos.y, gridPos.z);
+        console.log('💥 Broke', block.type, 'at', gridPos.x, gridPos.y, gridPos.z);
+      } else {
+        console.log('❌ No block to break');
       }
     } catch (error) {
       console.error('❌ Error breaking block:', error.message);
     }
   };
 
-  // Mouse click handlers (same as before)
+  // Mouse click handlers
   useEffect(() => {
     const handleClick = (event) => {
       try {
-        if (event.button === 0) {
+        if (event.button === 0) { // Left click - break
           event.preventDefault();
           breakBlock();
-        } else if (event.button === 2) {
+        } else if (event.button === 2) { // Right click - place
           event.preventDefault();
           placeBlock();
         }
       } catch (error) {
-        console.error('❌ Error in click handler:', error.message);
+        console.error('❌ Click handler error:', error.message);
       }
     };
 
@@ -363,11 +343,10 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Environment components */}
+      {/* SIMPLIFIED environment for better performance */}
       <MinecraftClouds />
-      <EnvironmentalParticles />
       
-      {/* Render blocks with authentic Minecraft colors */}
+      {/* Render blocks with optimized materials */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -381,9 +360,9 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Larger ground plane with Minecraft grass color */}
+      {/* Optimized ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[200, 200]} />
+        <planeGeometry args={[120, 120]} />
         <meshBasicMaterial color="#7C9F3A" />
       </mesh>
     </group>
