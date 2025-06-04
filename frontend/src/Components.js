@@ -384,7 +384,7 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// FIXED HANDS RENDERING - Proper depth and z-index handling
+// FIXED HANDS RENDERING - Smooth animation, no shaking
 const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
@@ -397,11 +397,12 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
       
       const time = clock?.getElapsedTime?.() || 0;
       
-      // Right hand with FIXED positioning - closer to camera to prevent overlap
+      // FIXED: Much smoother, subtle movement - no shaking
+      // Right hand with SMOOTH positioning
       if (rightHandRef.current) {
         const cameraPos = camera.position.clone();
         const cameraQuat = camera.quaternion.clone();
-        // CRITICAL: Moved closer to camera (z: -0.4 instead of -0.6)
+        // FIXED: Stable position with minimal movement
         const rightHandLocalPos = new THREE.Vector3(0.25, -0.15, -0.4);
         
         rightHandLocalPos.applyQuaternion(cameraQuat);
@@ -410,16 +411,20 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         rightHandRef.current.position.copy(rightHandLocalPos);
         rightHandRef.current.rotation.copy(camera.rotation);
         
+        // FIXED: Gentle swing animation only when attacking
         if (isSwinging && typeof time === 'number') {
-          rightHandRef.current.rotation.x += Math.sin(time * 8) * 0.1;
+          rightHandRef.current.rotation.x += Math.sin(time * 12) * 0.3; // Stronger swing
+        } else {
+          // FIXED: Very subtle idle movement - no shaking
+          rightHandRef.current.position.y += Math.sin(time * 1.5) * 0.005; // Much smaller movement
         }
       }
       
-      // Left hand with FIXED positioning
+      // Left hand with SMOOTH positioning  
       if (leftHandRef.current) {
         const cameraPos = camera.position.clone();
         const cameraQuat = camera.quaternion.clone();
-        // CRITICAL: Moved closer to camera (z: -0.4 instead of -0.6)
+        // FIXED: Stable position
         const leftHandLocalPos = new THREE.Vector3(-0.25, -0.15, -0.4);
         
         leftHandLocalPos.applyQuaternion(cameraQuat);
@@ -427,6 +432,11 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
         
         leftHandRef.current.position.copy(leftHandLocalPos);
         leftHandRef.current.rotation.copy(camera.rotation);
+        
+        // FIXED: Subtle opposite movement for natural feel
+        if (!isSwinging) {
+          leftHandRef.current.position.y += Math.sin(time * 1.5 + Math.PI) * 0.005; // Very small
+        }
       }
     } catch (error) {
       console.error("BothHands useFrame error:", error.message);
@@ -437,7 +447,7 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
 
   return (
     <group>
-      {/* Right hand with proper depth ordering */}
+      {/* Right hand with enhanced visual effects */}
       <group ref={rightHandRef} renderOrder={1000}>
         <mesh position={[0, 0.06, 0]} renderOrder={1001}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
@@ -457,19 +467,33 @@ const BothHands = ({ selectedBlock, isSwinging = false }) => {
           />
         </mesh>
         
+        {/* Tool/block in hand with glow effect when swinging */}
         {selectedBlock && (
-          <mesh position={[0.05, -0.05, -0.08]} renderOrder={1003}>
-            <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshBasicMaterial 
-              color={selectedBlockConfig.color}
-              depthTest={true}
-              depthWrite={true}
-            />
-          </mesh>
+          <group position={[0.05, -0.05, -0.08]}>
+            <mesh renderOrder={1003}>
+              <boxGeometry args={[0.04, 0.04, 0.04]} />
+              <meshBasicMaterial 
+                color={selectedBlockConfig.color}
+                depthTest={true}
+                depthWrite={true}
+              />
+            </mesh>
+            {/* Add glow effect when swinging */}
+            {isSwinging && (
+              <mesh renderOrder={1004}>
+                <boxGeometry args={[0.06, 0.06, 0.06]} />
+                <meshBasicMaterial 
+                  color="#ffffff"
+                  transparent
+                  opacity={0.3}
+                />
+              </mesh>
+            )}
+          </group>
         )}
       </group>
       
-      {/* Left hand with proper depth ordering */}
+      {/* Left hand - stable */}
       <group ref={leftHandRef} renderOrder={1000}>
         <mesh position={[0, 0.06, 0]} renderOrder={1001}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
