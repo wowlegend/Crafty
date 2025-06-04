@@ -308,7 +308,7 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* Panels */}
+      {/* Enhanced Panels with Authentication and World Management */}
       <AnimatePresence>
         {gameState.showInventory && (
           <Inventory 
@@ -346,7 +346,21 @@ function GameApp() {
             setShowStats={setShowStats}
           />
         )}
+
+        {gameState.showWorldManager && isAuthenticated && (
+          <WorldManager 
+            gameState={gameState}
+            onWorldLoad={gameState.loadWorldData}
+            onClose={() => gameState.setShowWorldManager(false)}
+          />
+        )}
       </AnimatePresence>
+
+      {/* Authentication Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
 
       {/* Crosshair */}
       {isPointerLocked && (
