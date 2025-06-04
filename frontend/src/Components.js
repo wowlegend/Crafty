@@ -90,20 +90,19 @@ const Block = ({ position, type, onDestroy, onClick, isHighlighted }) => {
   );
 };
 
-// Ultra Simple World - Like classic Minecraft
+// Ultra Simple World - Better building
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
 
-  // Generate super simple flat world
+  // Generate simple flat world
   useEffect(() => {
     const initialBlocks = new Map();
-    const size = 6; // Very small for testing
+    const size = 8; // Slightly larger for more building space
     
-    // Create simple flat ground
+    // Create flat ground
     for (let x = -size; x <= size; x++) {
       for (let z = -size; z <= size; z++) {
-        // Just one layer of grass blocks
         const key = `${x},0,${z}`;
         initialBlocks.set(key, { 
           position: [x, 0, z], 
@@ -112,55 +111,94 @@ export const MinecraftWorld = ({ gameState }) => {
       }
     }
     
-    // Add a few test blocks
+    // Add some starter blocks for testing
     initialBlocks.set('0,1,0', { position: [0, 1, 0], type: 'dirt' });
     initialBlocks.set('1,1,0', { position: [1, 1, 0], type: 'stone' });
     initialBlocks.set('-1,1,0', { position: [-1, 1, 0], type: 'wood' });
+    initialBlocks.set('0,1,1', { position: [0, 1, 1], type: 'glass' });
     
     setBlocks(initialBlocks);
-    console.log('World generated with', initialBlocks.size, 'blocks');
+    console.log('🌍 World generated with', initialBlocks.size, 'blocks');
   }, []);
 
-  // Simple block placement
+  // Better block placement - in front of player
   const placeBlock = () => {
-    if (!gameState.selectedBlock) return;
+    if (!gameState.selectedBlock) {
+      console.log('❌ No block selected');
+      return;
+    }
     
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     
+    // Place block 2 units in front of player
     const newPos = camera.position.clone()
-      .add(direction.multiplyScalar(3))
-      .round();
+      .add(direction.multiplyScalar(2));
     
-    const key = `${newPos.x},${newPos.y},${newPos.z}`;
+    // Round to grid and adjust to be above ground
+    const gridPos = {
+      x: Math.round(newPos.x),
+      y: Math.max(1, Math.round(newPos.y)), // At least 1 block high
+      z: Math.round(newPos.z)
+    };
+    
+    const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
     
     if (!blocks.has(key)) {
       setBlocks(prev => new Map(prev).set(key, {
-        position: [newPos.x, newPos.y, newPos.z],
+        position: [gridPos.x, gridPos.y, gridPos.z],
         type: gameState.selectedBlock
       }));
-      console.log('Placed block at', newPos.x, newPos.y, newPos.z);
+      
+      // Update stats
+      gameState.setPlayerStats(prev => ({
+        ...prev,
+        blocksPlaced: prev.blocksPlaced + 1
+      }));
+      
+      console.log('✅ Placed', gameState.selectedBlock, 'block at', gridPos.x, gridPos.y, gridPos.z);
+    } else {
+      console.log('❌ Block already exists at that position');
     }
   };
 
-  // Simple block breaking
+  // Better block breaking - target block in front
   const breakBlock = () => {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     
+    // Target block 2-3 units in front
     const targetPos = camera.position.clone()
-      .add(direction.multiplyScalar(3))
-      .round();
+      .add(direction.multiplyScalar(2.5));
     
-    const key = `${targetPos.x},${targetPos.y},${targetPos.z}`;
+    const gridPos = {
+      x: Math.round(targetPos.x),
+      y: Math.round(targetPos.y),
+      z: Math.round(targetPos.z)
+    };
+    
+    const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
     
     if (blocks.has(key)) {
+      const block = blocks.get(key);
       setBlocks(prev => {
         const newBlocks = new Map(prev);
         newBlocks.delete(key);
         return newBlocks;
       });
-      console.log('Broke block at', targetPos.x, targetPos.y, targetPos.z);
+      
+      // Add to inventory
+      gameState.addToInventory(block.type, 1);
+      
+      // Update stats
+      gameState.setPlayerStats(prev => ({
+        ...prev,
+        blocksDestroyed: prev.blocksDestroyed + 1
+      }));
+      
+      console.log('💥 Broke', block.type, 'block at', gridPos.x, gridPos.y, gridPos.z);
+    } else {
+      console.log('❌ No block to break at that position');
     }
   };
 
@@ -185,7 +223,7 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Render all blocks as simple cubes */}
+      {/* Render all blocks */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -203,9 +241,9 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Simple ground reference */}
+      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[30, 30]} />
+        <planeGeometry args={[40, 40]} />
         <meshLambertMaterial color="#22c55e" />
       </mesh>
     </group>
