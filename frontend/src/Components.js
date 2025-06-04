@@ -144,33 +144,64 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// TESTING - Add back ONLY hands component to see if hands cause the error
-const BothHands = ({ selectedBlock }) => {
+// FULL FEATURED VERSION - With comprehensive error logging
+const BothHands = ({ selectedBlock, isSwinging = false }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   
-  useFrame(({ camera }) => {
-    // Minimal error checking - just test if this causes the error
-    if (rightHandRef.current && camera && camera.position) {
-      try {
-        const rightPos = camera.position.clone();
-        rightPos.add(new THREE.Vector3(0.3, -0.2, -0.6));
-        rightHandRef.current.position.copy(rightPos);
+  useFrame(({ camera, clock }) => {
+    try {
+      // Add detailed error tracking
+      if (!camera) {
+        console.error("BothHands: Camera is undefined");
+        return;
+      }
+      if (!camera.position) {
+        console.error("BothHands: Camera.position is undefined");
+        return;
+      }
+      if (!camera.rotation) {
+        console.error("BothHands: Camera.rotation is undefined");
+        return;
+      }
+      if (!camera.quaternion) {
+        console.error("BothHands: Camera.quaternion is undefined");
+        return;
+      }
+      
+      const time = clock?.getElapsedTime?.() || 0;
+      
+      // Right hand with detailed error checking
+      if (rightHandRef.current) {
+        const cameraPos = camera.position.clone();
+        const cameraQuat = camera.quaternion.clone();
+        const rightHandLocalPos = new THREE.Vector3(0.3, -0.2, -0.6);
+        
+        rightHandLocalPos.applyQuaternion(cameraQuat);
+        rightHandLocalPos.add(cameraPos);
+        
+        rightHandRef.current.position.copy(rightHandLocalPos);
         rightHandRef.current.rotation.copy(camera.rotation);
-      } catch (e) {
-        console.warn("Right hand error:", e.message);
+        
+        if (isSwinging && typeof time === 'number') {
+          rightHandRef.current.rotation.x += Math.sin(time * 8) * 0.1;
+        }
       }
-    }
-    
-    if (leftHandRef.current && camera && camera.position) {
-      try {
-        const leftPos = camera.position.clone();
-        leftPos.add(new THREE.Vector3(-0.3, -0.2, -0.6));
-        leftHandRef.current.position.copy(leftPos);
+      
+      // Left hand
+      if (leftHandRef.current) {
+        const cameraPos = camera.position.clone();
+        const cameraQuat = camera.quaternion.clone();
+        const leftHandLocalPos = new THREE.Vector3(-0.3, -0.2, -0.6);
+        
+        leftHandLocalPos.applyQuaternion(cameraQuat);
+        leftHandLocalPos.add(cameraPos);
+        
+        leftHandRef.current.position.copy(leftHandLocalPos);
         leftHandRef.current.rotation.copy(camera.rotation);
-      } catch (e) {
-        console.warn("Left hand error:", e.message);
       }
+    } catch (error) {
+      console.error("BothHands useFrame error:", error.message, error.stack);
     }
   });
 
@@ -178,36 +209,38 @@ const BothHands = ({ selectedBlock }) => {
 
   return (
     <group>
-      {/* Right Hand */}
       <group ref={rightHandRef}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
         <mesh position={[0, -0.1, 0]}>
           <boxGeometry args={[0.05, 0.08, 0.04]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
         {selectedBlock && (
           <mesh position={[0.05, -0.05, -0.08]}>
             <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshBasicMaterial color={selectedBlockConfig.color} />
+            <meshLambertMaterial 
+              color={selectedBlockConfig.color}
+              transparent={selectedBlockConfig.transparent || false}
+              opacity={selectedBlockConfig.transparent ? 0.8 : 1}
+            />
           </mesh>
         )}
       </group>
       
-      {/* Left Hand */}
       <group ref={leftHandRef}>
         <mesh position={[0, 0.06, 0]}>
           <boxGeometry args={[0.06, 0.18, 0.06]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
         <mesh position={[0, -0.1, 0]}>
           <boxGeometry args={[0.05, 0.08, 0.04]} />
-          <meshBasicMaterial color="#fdbcb4" />
+          <meshLambertMaterial color="#fdbcb4" />
         </mesh>
       </group>
     </group>
