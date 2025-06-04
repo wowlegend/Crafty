@@ -561,6 +561,23 @@ const MinecraftClouds = () => {
   );
 };
 
+// Position tracker component - works INSIDE Canvas
+const PositionTracker = ({ onPositionUpdate }) => {
+  const { camera } = useThree();
+  
+  useFrame(() => {
+    if (camera && onPositionUpdate) {
+      onPositionUpdate({
+        x: Math.round(camera.position.x),
+        y: Math.round(camera.position.y),
+        z: Math.round(camera.position.z)
+      });
+    }
+  });
+  
+  return null; // This component doesn't render anything
+};
+
 // Enhanced Player with STABLE physics - No shaking
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
