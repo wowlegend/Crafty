@@ -250,92 +250,65 @@ const SimpleHands = ({ selectedBlock }) => {
   );
 };
 
-// Player Component
+// Simplified Player Component
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
-  const direction = useRef(new THREE.Vector3());
-  const isJumping = useRef(false);
-  const [isBreaking, setIsBreaking] = useState(false);
-  const [isPlacing, setIsPlacing] = useState(false);
+  const [keys, setKeys] = useState({});
   
+  // Set initial camera position
+  useEffect(() => {
+    camera.position.set(0, 3, 5);
+  }, [camera]);
+
   useFrame((state, delta) => {
-    // Simple gravity and movement
-    if (camera.position.y > 1.6) { // Adjusted for player height
-      velocity.current.y -= 9.8 * delta;
-    } else {
-      velocity.current.y = 0;
-      camera.position.y = 1.6; // Eye level height
-      isJumping.current = false;
+    // Simple movement
+    const speed = 5;
+    const direction = new THREE.Vector3();
+    
+    if (keys.KeyW) direction.z -= 1;
+    if (keys.KeyS) direction.z += 1;
+    if (keys.KeyA) direction.x -= 1;
+    if (keys.KeyD) direction.x += 1;
+    
+    if (direction.length() > 0) {
+      direction.normalize();
+      camera.position.add(direction.multiplyScalar(speed * delta));
     }
     
-    camera.position.add(velocity.current.clone().multiplyScalar(delta));
+    // Simple gravity
+    if (camera.position.y > 1.5) {
+      velocity.current.y -= 9.8 * delta;
+      camera.position.y += velocity.current.y * delta;
+    } else {
+      camera.position.y = 1.5;
+      velocity.current.y = 0;
+    }
   });
 
   useEffect(() => {
-    const keys = {};
-    
     const handleKeyDown = (event) => {
-      keys[event.code] = true;
+      setKeys(prev => ({ ...prev, [event.code]: true }));
       
-      if (event.code === 'Space' && !isJumping.current) {
+      if (event.code === 'Space') {
         velocity.current.y = 5;
-        isJumping.current = true;
       }
     };
     
     const handleKeyUp = (event) => {
-      keys[event.code] = false;
-    };
-    
-    const handleMouseDown = (event) => {
-      if (event.button === 0) { // Left click
-        setIsBreaking(true);
-        setTimeout(() => setIsBreaking(false), 200);
-      } else if (event.button === 2) { // Right click
-        setIsPlacing(true);
-        setTimeout(() => setIsPlacing(false), 200);
-      }
-    };
-    
-    const movePlayer = () => {
-      const speed = 5;
-      direction.current.set(0, 0, 0);
-      
-      if (keys['KeyW']) direction.current.z -= 1;
-      if (keys['KeyS']) direction.current.z += 1;
-      if (keys['KeyA']) direction.current.x -= 1;
-      if (keys['KeyD']) direction.current.x += 1;
-      
-      if (direction.current.length() > 0) {
-        direction.current.normalize();
-        camera.getWorldDirection(direction.current);
-        direction.current.y = 0;
-        direction.current.normalize();
-        
-        velocity.current.x = direction.current.x * speed;
-        velocity.current.z = direction.current.z * speed;
-      } else {
-        velocity.current.x *= 0.8;
-        velocity.current.z *= 0.8;
-      }
-      
-      requestAnimationFrame(movePlayer);
+      setKeys(prev => ({ ...prev, [event.code]: false }));
     };
     
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('mousedown', handleMouseDown);
-    movePlayer();
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('mousedown', handleMouseDown);
     };
-  }, [camera]);
+  }, []);
 
-  return <PlayerHands gameState={gameState} isBreaking={isBreaking} isPlacing={isPlacing} />;
+  return <SimpleHands selectedBlock={gameState.selectedBlock} />;
 };
 
 // Game UI Component
