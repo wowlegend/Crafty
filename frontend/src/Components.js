@@ -105,25 +105,27 @@ const MinecraftHealthHunger = () => {
   );
 };
 
-// SIMPLIFIED terrain generation for performance
+// Optimized terrain generation for performance
 const generateTerrain = (x, z) => {
   const noise = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6;
-  return Math.floor(Math.max(8, Math.min(20, noise + 12))); // Heights between 8-20
+  return Math.floor(Math.max(8, Math.min(20, noise + 12)));
 };
 
-// FIXED Infinite World Generation - Aggressive expansion
+// FIXED Infinite World Generation - PROPERLY THROTTLED
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
+  const lastGenerationTime = useRef(0);
+  const generationQueue = useRef([]);
   const isGenerating = useRef(false);
   
   const chunkSize = 16;
-  const renderDistance = 4; // Increased render distance
+  const renderDistance = 3;
 
-  // Generate chunk efficiently
-  const generateChunk = (chunkX, chunkZ) => {
+  // FIXED: Gradual chunk generation to prevent lag
+  const generateChunk = async (chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     
     if (generatedChunks.has(chunkKey) || isGenerating.current) {
@@ -133,73 +135,98 @@ export const MinecraftWorld = ({ gameState }) => {
     isGenerating.current = true;
     console.log(`🌍 Generating chunk ${chunkX},${chunkZ}`);
     
-    const newBlocks = new Map();
-    const startX = chunkX * chunkSize;
-    const startZ = chunkZ * chunkSize;
-    
-    // Generate terrain for this chunk
-    for (let x = startX; x < startX + chunkSize; x++) {
-      for (let z = startZ; z < startZ + chunkSize; z++) {
-        const height = generateTerrain(x, z);
+    return new Promise((resolve) => {
+      // Use setTimeout to prevent blocking the main thread
+      setTimeout(() => {
+        const newBlocks = new Map();
+        const startX = chunkX * chunkSize;
+        const startZ = chunkZ * chunkSize;
         
-        // Generate only surface and one layer below for performance
-        for (let y = Math.max(0, height - 3); y <= height; y++) {
-          const key = `${x},${y},${z}`;
-          
-          if (y === height) {
-            newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
-          } else if (y >= height - 1) {
-            newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          } else {
-            newBlocks.set(key, { position: [x, y, z], type: 'stone' });
+        // Generate only surface + 2 layers for performance
+        for (let x = startX; x < startX + chunkSize; x++) {
+          for (let z = startZ; z < startZ + chunkSize; z++) {
+            const height = generateTerrain(x, z);
+            
+            // Generate only essential blocks
+            for (let y = Math.max(0, height - 2); y <= height; y++) {
+              const key = `${x},${y},${z}`;
+              
+              if (y === height) {
+                newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
+              } else if (y >= height - 1) {
+                newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
+              } else {
+                newBlocks.set(key, { position: [x, y, z], type: 'stone' });
+              }
+            }
+            
+            // Occasional trees (very sparse for performance)
+            if (height > 14 && Math.random() < 0.005) {
+              for (let th = 1; th <= 4; th++) {
+                const treeKey = `${x},${height + th},${z}`;
+                newBlocks.set(treeKey, { position: [x, height + th, z], type: 'wood' });
+              }
+            }
           }
         }
         
-        // Occasional trees (reduced for performance)
-        if (height > 14 && Math.random() < 0.01) {
-          for (let th = 1; th <= 4; th++) {
-            const treeKey = `${x},${height + th},${z}`;
-            newBlocks.set(treeKey, { position: [x, height + th, z], type: 'wood' });
-          }
-        }
-      }
-    }
-    
-    // Update world blocks
-    setBlocks(prev => {
-      const updated = new Map(prev);
-      newBlocks.forEach((value, key) => {
-        updated.set(key, value);
-      });
-      return updated;
+        // Update world blocks
+        setBlocks(prev => {
+          const updated = new Map(prev);
+          newBlocks.forEach((value, key) => {
+            updated.set(key, value);
+          });
+          return updated;
+        });
+        
+        // Mark chunk as generated
+        setGeneratedChunks(prev => new Set(prev).add(chunkKey));
+        console.log(`✅ Generated chunk ${chunkX},${chunkZ} with ${newBlocks.size} blocks`);
+        isGenerating.current = false;
+        resolve();
+      }, 10); // Small delay to prevent blocking
     });
-    
-    // Mark chunk as generated
-    setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-    console.log(`✅ Generated chunk ${chunkX},${chunkZ} with ${newBlocks.size} blocks`);
-    isGenerating.current = false;
   };
 
-  // FIXED: Aggressive chunk generation on player movement
-  useFrame(() => {
+  // FIXED: Throttled chunk generation
+  useFrame((state) => {
+    const now = state.clock.elapsedTime * 1000;
+    
+    // Only check every 200ms to prevent constant generation
+    if (now - lastGenerationTime.current < 200) {
+      return;
+    }
+    
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // Generate chunks when player moves
+    // Only generate when player moves to new chunk
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
+      lastGenerationTime.current = now;
       
       console.log(`📍 Player moved to chunk ${currentChunkX},${currentChunkZ}`);
       
-      // Generate all chunks in render distance
+      // Queue chunks for generation (but don't generate all at once)
+      const chunksToGenerate = [];
       for (let dx = -renderDistance; dx <= renderDistance; dx++) {
         for (let dz = -renderDistance; dz <= renderDistance; dz++) {
           const targetChunkX = currentChunkX + dx;
           const targetChunkZ = currentChunkZ + dz;
-          generateChunk(targetChunkX, targetChunkZ);
+          const chunkKey = `${targetChunkX}_${targetChunkZ}`;
+          
+          if (!generatedChunks.has(chunkKey) && !isGenerating.current) {
+            chunksToGenerate.push({ x: targetChunkX, z: targetChunkZ });
+          }
         }
+      }
+      
+      // Generate only ONE chunk per frame to prevent lag
+      if (chunksToGenerate.length > 0 && !isGenerating.current) {
+        const chunk = chunksToGenerate[0];
+        generateChunk(chunk.x, chunk.z);
       }
     }
   });
@@ -208,12 +235,17 @@ export const MinecraftWorld = ({ gameState }) => {
   useEffect(() => {
     console.log('🌍 Initializing world...');
     
-    // Generate initial chunks immediately
-    for (let x = -2; x <= 2; x++) {
-      for (let z = -2; z <= 2; z++) {
-        generateChunk(x, z);
+    // Generate initial chunks gradually
+    const generateInitial = async () => {
+      for (let x = -1; x <= 1; x++) {
+        for (let z = -1; z <= 1; z++) {
+          await generateChunk(x, z);
+          await new Promise(resolve => setTimeout(resolve, 50)); // Delay between chunks
+        }
       }
-    }
+    };
+    
+    generateInitial();
   }, []);
 
   // Collision detection
@@ -323,17 +355,20 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Static clouds */}
-      <StaticClouds />
+      {/* Restored enhanced clouds */}
+      <MinecraftClouds />
       
-      {/* Render blocks efficiently - limit to nearby blocks for performance */}
+      {/* Enhanced particle effects */}
+      <EnvironmentalParticles />
+      
+      {/* Optimized block rendering with distance culling */}
       {Array.from(blocks.values())
         .filter(block => {
           const distance = Math.sqrt(
             Math.pow(block.position[0] - camera.position.x, 2) + 
             Math.pow(block.position[2] - camera.position.z, 2)
           );
-          return distance < 80; // Only render nearby blocks
+          return distance < 100; // Increased render distance slightly
         })
         .map((block) => {
           const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
@@ -347,6 +382,8 @@ export const MinecraftWorld = ({ gameState }) => {
                 color={blockConfig.color}
                 transparent={blockConfig.transparent || false}
                 opacity={blockConfig.transparent ? 0.8 : 1}
+                emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
+                emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
               />
             </mesh>
           );
@@ -355,25 +392,46 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// Ultra-simple static clouds for performance
-const StaticClouds = () => {
+// RESTORED Enhanced clouds with minimal movement
+const MinecraftClouds = () => {
+  const cloudsRef = useRef();
+  
+  // Generate cloud positions
   const cloudPositions = useMemo(() => {
     const positions = [];
-    for (let i = 0; i < 6; i++) {
-      positions.push({
-        x: (i - 3) * 30,
-        y: 25,
-        z: -40,
-        scaleX: 4,
-        scaleY: 1,
-        scaleZ: 4
-      });
+    
+    for (let i = 0; i < 12; i++) {
+      const baseX = (i - 6) * 20 + (Math.random() - 0.5) * 10;
+      const baseZ = -30 + (Math.random() - 0.5) * 20;
+      const baseY = 25 + Math.random() * 5;
+      
+      for (let j = 0; j < 6; j++) {
+        positions.push({
+          x: baseX + (Math.random() - 0.5) * 8,
+          y: baseY + (Math.random() - 0.5) * 2,
+          z: baseZ + (Math.random() - 0.5) * 8,
+          scaleX: 3 + Math.random() * 2,
+          scaleY: 1 + Math.random() * 0.5,
+          scaleZ: 3 + Math.random() * 2,
+          opacity: 0.7 + Math.random() * 0.3
+        });
+      }
     }
+    
     return positions;
   }, []);
   
+  // Very slow cloud movement
+  useFrame((state) => {
+    if (cloudsRef.current) {
+      const time = state.clock.elapsedTime;
+      cloudsRef.current.position.x = Math.sin(time * 0.002) * 3;
+      cloudsRef.current.position.z = time * 0.02;
+    }
+  });
+  
   return (
-    <group>
+    <group ref={cloudsRef}>
       {cloudPositions.map((cloud, index) => (
         <mesh 
           key={index} 
@@ -381,61 +439,115 @@ const StaticClouds = () => {
           scale={[cloud.scaleX, cloud.scaleY, cloud.scaleZ]}
         >
           <boxGeometry args={[1, 1, 1]} />
-          <meshLambertMaterial color="#ffffff" transparent opacity={0.8} />
+          <meshLambertMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={cloud.opacity}
+          />
         </mesh>
       ))}
     </group>
   );
 };
 
-// FIXED Hands Component - Made much more visible
+// RESTORED environmental particles
+const EnvironmentalParticles = () => {
+  const particlesRef = useRef();
+  
+  const particlePositions = useMemo(() => {
+    const positions = [];
+    for (let i = 0; i < 20; i++) {
+      positions.push({
+        x: (Math.random() - 0.5) * 100,
+        y: 20 + Math.random() * 10,
+        z: (Math.random() - 0.5) * 100,
+        speed: 0.1 + Math.random() * 0.1
+      });
+    }
+    return positions;
+  }, []);
+  
+  useFrame((state) => {
+    if (particlesRef.current) {
+      particlesRef.current.children.forEach((particle, index) => {
+        const particleData = particlePositions[index];
+        particle.position.y += particleData.speed * Math.sin(state.clock.elapsedTime + index);
+        if (particle.position.y > 35) {
+          particle.position.y = 15;
+        }
+      });
+    }
+  });
+  
+  return (
+    <group ref={particlesRef}>
+      {particlePositions.map((particle, index) => (
+        <mesh 
+          key={index} 
+          position={[particle.x, particle.y, particle.z]}
+        >
+          <sphereGeometry args={[0.05, 4, 4]} />
+          <meshBasicMaterial 
+            color="#ffffff" 
+            transparent 
+            opacity={0.6}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
+// FIXED Hands Component - CORRECT positioning to avoid camera clipping
 const BothHands = ({ selectedBlock, isAttacking }) => {
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
+  console.log('🤲 BothHands component rendering with selectedBlock:', selectedBlock);
+
   return (
     <group>
-      {/* Right hand - Much more visible */}
-      <group position={[0.8, -0.6, -1.2]} rotation={[0, -0.2, 0]}>
-        {/* Arm */}
-        <mesh position={[0, 0.2, 0]}>
-          <boxGeometry args={[0.15, 0.4, 0.15]} />
+      {/* Right hand - positioned to be clearly visible */}
+      <group position={[0.6, -0.8, -1.5]} rotation={[0, -0.3, 0]}>
+        {/* Arm - visible brown/skin tone */}
+        <mesh position={[0, 0.25, 0]}>
+          <boxGeometry args={[0.12, 0.4, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Hand */}
-        <mesh position={[0, -0.15, 0]}>
-          <boxGeometry args={[0.12, 0.2, 0.12]} />
+        {/* Hand - visible skin tone */}
+        <mesh position={[0, -0.1, 0]}>
+          <boxGeometry args={[0.1, 0.15, 0.1]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Tool/Block in hand */}
+        {/* Block in hand - clearly visible */}
         {selectedBlock && (
-          <mesh position={[0.08, -0.1, -0.15]} rotation={[0.3, 0.2, 0]}>
-            <boxGeometry args={[0.08, 0.08, 0.08]} />
+          <mesh position={[0.08, -0.05, -0.12]} rotation={[0.2, 0.3, 0]}>
+            <boxGeometry args={[0.06, 0.06, 0.06]} />
             <meshLambertMaterial color={selectedBlockConfig.color} />
           </mesh>
         )}
         
-        {/* Weapon when attacking */}
+        {/* Weapon when attacking - brown stick */}
         {isAttacking && (
-          <mesh position={[0.1, -0.05, -0.2]} rotation={[0.5, 0.3, 0]}>
-            <boxGeometry args={[0.05, 0.3, 0.05]} />
+          <mesh position={[0.1, 0, -0.2]} rotation={[0.5, 0.3, 0]}>
+            <boxGeometry args={[0.03, 0.25, 0.03]} />
             <meshLambertMaterial color="#8B4513" />
           </mesh>
         )}
       </group>
       
-      {/* Left hand - Much more visible */}
-      <group position={[-0.8, -0.6, -1.2]} rotation={[0, 0.2, 0]}>
-        {/* Arm */}
-        <mesh position={[0, 0.2, 0]}>
-          <boxGeometry args={[0.15, 0.4, 0.15]} />
+      {/* Left hand - positioned to be clearly visible */}
+      <group position={[-0.6, -0.8, -1.5]} rotation={[0, 0.3, 0]}>
+        {/* Arm - visible brown/skin tone */}
+        <mesh position={[0, 0.25, 0]}>
+          <boxGeometry args={[0.12, 0.4, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Hand */}
-        <mesh position={[0, -0.15, 0]}>
-          <boxGeometry args={[0.12, 0.2, 0.12]} />
+        {/* Hand - visible skin tone */}
+        <mesh position={[0, -0.1, 0]}>
+          <boxGeometry args={[0.1, 0.15, 0.1]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
       </group>
@@ -443,22 +555,25 @@ const BothHands = ({ selectedBlock, isAttacking }) => {
   );
 };
 
-// Simple Sky Component
+// Enhanced Sky Component
 const MinecraftSky = ({ isDay = true }) => {
   const skyColor = isDay ? '#87CEEB' : '#191970';
   const sunColor = isDay ? '#FFD700' : '#F5F5DC';
   
   return (
     <group>
+      {/* Sky sphere */}
       <mesh scale={[200, 200, 200]}>
-        <sphereGeometry args={[1, 8, 8]} />
+        <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial 
           color={skyColor}
           side={THREE.BackSide}
         />
       </mesh>
+      
+      {/* Sun/Moon */}
       <mesh position={[0, 50, -80]}>
-        <sphereGeometry args={[3, 8, 8]} />
+        <sphereGeometry args={[3, 12, 12]} />
         <meshBasicMaterial color={sunColor} />
       </mesh>
     </group>
@@ -490,10 +605,12 @@ export const Player = ({ gameState }) => {
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   
+  console.log('🎮 Player component rendering');
+  
   // Set initial camera position
   useEffect(() => {
     camera.position.set(0, 15, 0);
-    console.log('🎮 Player initialized');
+    console.log('🎮 Player initialized at position:', camera.position);
   }, [camera]);
 
   // Expose attack state globally
@@ -502,7 +619,7 @@ export const Player = ({ gameState }) => {
   }, []);
 
   useFrame((state, delta) => {
-    const speed = 8; // Increased speed for better movement
+    const speed = 8;
     const moveVector = new THREE.Vector3();
     
     // Get camera direction
@@ -657,7 +774,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
         </div>
       </div>
 
-      {/* Debug info */}
+      {/* Enhanced debug info */}
       {showStats && (
         <div className="absolute top-20 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
@@ -667,6 +784,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <div>Z: {playerPosition.z}</div>
               <div>Chunk: {Math.floor(playerPosition.x / 16)},{Math.floor(playerPosition.z / 16)}</div>
               <div>Biome: Plains</div>
+              <div>Blocks: {gameState.worldBlocks?.size || 0}</div>
             </div>
           </div>
         </div>
@@ -1080,4 +1198,4 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
 };
 
 // Export components
-export { MinecraftSky, BothHands, StaticClouds as MinecraftClouds, MinecraftHotbar, MinecraftHealthHunger, PositionTracker };
+export { MinecraftSky, BothHands, MinecraftClouds, EnvironmentalParticles, MinecraftHotbar, MinecraftHealthHunger, PositionTracker };

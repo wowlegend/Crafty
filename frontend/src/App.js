@@ -232,7 +232,7 @@ function GameApp() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                FIXED: Hands • Infinite Terrain • Proper NPC Spawning
+                DEBUGGING: Camera Fixed • Chunk Optimized • Hands Positioned
               </motion.p>
 
               {/* Authentication Status */}
@@ -299,28 +299,28 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* OPTIMIZED Game Canvas */}
+      {/* FIXED Game Canvas with proper camera settings */}
       <Canvas
         camera={{
           fov: 75,
-          near: 0.1,
-          far: 300, // Reduced far plane for better performance
+          near: 0.01, // FIXED: Reduced near plane to prevent clipping hands
+          far: 500,   // Increased far plane for better world visibility
           position: [0, 15, 0]
         }}
         shadows={false}
         className="w-full h-full"
         gl={{ 
-          antialias: false, // Disabled for performance
+          antialias: true, // Re-enabled for better quality
           alpha: false,
           depth: true,
           powerPreference: "high-performance"
         }}
-        performance={{ min: 0.5 }} // Allow framerate to drop to maintain performance
+        performance={{ min: 0.3 }} // More aggressive performance throttling
       >
-        {/* Optimized lighting */}
+        {/* Enhanced lighting */}
         <MinecraftSky isDay={gameState.isDay} />
         <ambientLight intensity={0.6} />
-        <directionalLight position={[50, 50, 25]} intensity={1} castShadow={false} />
+        <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow={false} />
 
         {/* Player Controls */}
         <PointerLockControls />
@@ -328,13 +328,13 @@ function GameApp() {
         {/* Position tracker */}
         <PositionTracker onPositionUpdate={setPlayerPosition} />
         
-        {/* FIXED Game World with working infinite generation */}
+        {/* FIXED Game World with throttled infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* FIXED Player with visible hands */}
+        {/* FIXED Player with properly positioned hands */}
         <Player gameState={gameState} />
 
-        {/* FIXED NPCs that spawn on terrain properly */}
+        {/* NPCs */}
         <NPCSystem gameState={gameState} />
 
         {/* Performance Stats */}
