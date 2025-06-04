@@ -675,25 +675,25 @@ const MinecraftSky = ({ isDay = true }) => {
   );
 };
 
-// Enhanced Player with Both Hands
+// Enhanced Player with PROPER MINECRAFT PHYSICS and collision detection
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isSwinging, setIsSwinging] = useState(false);
+  const [isOnGround, setIsOnGround] = useState(false);
   
-  // Set initial camera position
+  // Set initial camera position ABOVE the ground
   useEffect(() => {
-    camera.position.set(0, 1.6, 0);
+    camera.position.set(0, 5, 0); // Start higher to fall onto blocks
     console.log('🎮 Player initialized at position:', camera.position);
   }, [camera]);
 
   useFrame((state, delta) => {
-    // FIXED MOVEMENT - Corrected directions
-    const speed = 8;
+    const speed = 5; // Minecraft-like movement speed
     const moveVector = new THREE.Vector3();
     
-    // Get camera direction
+    // Get camera direction for movement
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
     
@@ -701,7 +701,7 @@ export const Player = ({ gameState }) => {
     const right = new THREE.Vector3();
     right.crossVectors(direction, camera.up).normalize();
     
-    // Apply movement based on keys - FIXED DIRECTIONS
+    // Apply movement based on keys
     if (keys.KeyW) { // Forward
       moveVector.add(direction);
     }
@@ -715,31 +715,99 @@ export const Player = ({ gameState }) => {
       moveVector.add(right);
     }
     
-    // Normalize and apply movement
+    // Apply horizontal movement
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0; // Don't move up/down with WASD
-      camera.position.add(moveVector.multiplyScalar(speed * delta));
+      
+      // Calculate new position
+      const newPosition = camera.position.clone().add(moveVector.multiplyScalar(speed * delta));
+      
+      // Check collision for X movement
+      const testX = camera.position.clone();
+      testX.x = newPosition.x;
+      if (!checkCollision(testX)) {
+        camera.position.x = newPosition.x;
+      }
+      
+      // Check collision for Z movement
+      const testZ = camera.position.clone();
+      testZ.z = newPosition.z;
+      if (!checkCollision(testZ)) {
+        camera.position.z = newPosition.z;
+      }
     }
     
-    // Simple gravity and ground collision
-    if (camera.position.y > 1.6) {
-      velocity.current.y -= 15 * delta; // Faster gravity
-      camera.position.y += velocity.current.y * delta;
-    } else {
-      camera.position.y = 1.6; // Eye level
+    // PROPER MINECRAFT PHYSICS
+    // Apply gravity
+    velocity.current.y -= 25 * delta; // Strong gravity like Minecraft
+    
+    // Apply Y movement with collision detection
+    const newY = camera.position.y + velocity.current.y * delta;
+    const testPos = camera.position.clone();
+    testPos.y = newY;
+    
+    // Check if we would collide with ground
+    const groundLevel = getGroundLevel(camera.position.x, camera.position.z);
+    const playerHeight = 1.6; // Player eye level
+    
+    if (newY - playerHeight <= groundLevel) {
+      // Land on ground
+      camera.position.y = groundLevel + playerHeight;
       velocity.current.y = 0;
+      setIsOnGround(true);
+    } else {
+      // Still falling/jumping
+      camera.position.y = newY;
+      setIsOnGround(false);
     }
   });
+
+  // Collision detection function
+  const checkCollision = (position) => {
+    const playerRadius = 0.3;
+    const playerHeight = 1.6;
+    
+    // Check blocks around player position
+    for (let x = Math.floor(position.x - playerRadius); x <= Math.ceil(position.x + playerRadius); x++) {
+      for (let z = Math.floor(position.z - playerRadius); z <= Math.ceil(position.z + playerRadius); z++) {
+        for (let y = Math.floor(position.y - playerHeight); y <= Math.ceil(position.y + 0.2); y++) {
+          if (window.getHighestBlockAt && window.getHighestBlockAt(x, z) >= y) {
+            // Check if player bounding box intersects with block
+            const blockCenter = new THREE.Vector3(x, y, z);
+            const playerCenter = new THREE.Vector3(position.x, position.y - playerHeight/2, position.z);
+            
+            if (Math.abs(blockCenter.x - playerCenter.x) < 0.5 + playerRadius &&
+                Math.abs(blockCenter.z - playerCenter.z) < 0.5 + playerRadius &&
+                Math.abs(blockCenter.y - playerCenter.y) < 0.5 + playerHeight/2) {
+              return true; // Collision detected
+            }
+          }
+        }
+      }
+    }
+    return false; // No collision
+  };
+
+  // Get ground level at position
+  const getGroundLevel = (x, z) => {
+    if (window.getHighestBlockAt) {
+      return window.getHighestBlockAt(x, z) + 1; // Top of highest block
+    }
+    return 1; // Default ground level
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
       setKeys(prev => ({ ...prev, [event.code]: true }));
       
+      // FIXED JUMPING - only jump if on ground
       if (event.code === 'Space') {
-        if (camera.position.y <= 1.7) { // Only jump if on ground
-          velocity.current.y = 8;
-          console.log('🦘 Jump!');
+        event.preventDefault(); // Prevent page scroll
+        if (isOnGround) {
+          velocity.current.y = 10; // Strong jump like Minecraft
+          setIsOnGround(false);
+          console.log('🦘 Jump! Current Y:', camera.position.y);
         }
       }
       
@@ -774,7 +842,7 @@ export const Player = ({ gameState }) => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
     };
-  }, [camera, gameState]);
+  }, [camera, gameState, isOnGround]);
 
   return <BothHands selectedBlock={gameState.selectedBlock} isSwinging={isSwinging} />;
 };
