@@ -906,17 +906,19 @@ export const Player = ({ gameState }) => {
         }
       }
       
-      // Enhanced magic combat with F key
+      // Enhanced attack with F key + magic effects
       if (event.code === 'KeyF') {
         setIsAttacking(true);
         
-        // Cast magic spell
-        if (window.castMagicSpell) {
-          window.castMagicSpell(selectedSpell);
-          experienceSystem.addExperience('useMagic', 3, selectedSpell);
+        // Add visual magic effect feedback
+        console.log('🪄 Casting magic spell!');
+        
+        // Play magic sound if available
+        if (window.playMagicSound) {
+          window.playMagicSound();
         }
         
-        setTimeout(() => setIsAttacking(false), 500);
+        setTimeout(() => setIsAttacking(false), 300);
       }
       
       // Spell selection with Q, R, T keys
