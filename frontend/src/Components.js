@@ -29,10 +29,6 @@ import {
 import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
 import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
 
-// Import simplified systems - no runtime errors
-import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
-import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
-
 
 
 
