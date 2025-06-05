@@ -926,12 +926,26 @@ export const Player = ({ gameState }) => {
         }
       }
       
-      // Enhanced attack with F key + magic effects
+      // Enhanced magic combat with F key
       if (event.code === 'KeyF') {
         setIsAttacking(true);
         
+        // Cast magic spell
+        if (window.castMagicSpell) {
+          try {
+            window.castMagicSpell(selectedSpell);
+            
+            // Add XP for using magic
+            if (experienceSystem) {
+              experienceSystem.addExperience('useMagic', 3, selectedSpell);
+            }
+          } catch (error) {
+            console.warn('Error casting spell:', error);
+          }
+        }
+        
         // Add visual magic effect feedback
-        console.log('🪄 Casting magic spell!');
+        console.log(`🪄 Casting ${selectedSpell} spell!`);
         
         // Play magic sound if available
         if (window.playMagicSound) {
@@ -939,6 +953,36 @@ export const Player = ({ gameState }) => {
         }
         
         setTimeout(() => setIsAttacking(false), 300);
+      }
+      
+      // Spell selection with Q, R, T, Y keys
+      if (event.code === 'KeyQ') {
+        setSelectedSpell('fireball');
+        console.log('🔥 Selected Fireball');
+      }
+      if (event.code === 'KeyR') {
+        if (experienceSystem?.playerData?.unlockedSpells?.includes('iceShard')) {
+          setSelectedSpell('iceShard');
+          console.log('❄️ Selected Ice Shard');
+        } else {
+          console.log('❄️ Ice Shard locked - reach level 5!');
+        }
+      }
+      if (event.code === 'KeyT') {
+        if (experienceSystem?.playerData?.unlockedSpells?.includes('lightningBeam')) {
+          setSelectedSpell('lightningBeam');
+          console.log('⚡ Selected Lightning Beam');
+        } else {
+          console.log('⚡ Lightning Beam locked - reach level 15!');
+        }
+      }
+      if (event.code === 'KeyY') {
+        if (experienceSystem?.playerData?.unlockedSpells?.includes('arcaneOrb')) {
+          setSelectedSpell('arcaneOrb');
+          console.log('🔮 Selected Arcane Orb');
+        } else {
+          console.log('🔮 Arcane Orb locked - reach level 25!');
+        }
       }
       
       // Optimized block selection
