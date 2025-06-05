@@ -747,6 +747,7 @@ export const Player = ({ gameState }) => {
   const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
+  const [selectedSpell, setSelectedSpell] = useState('fireball');
   
   // Experience system integration with error handling
   const experienceSystem = ExperienceSystem ? 
