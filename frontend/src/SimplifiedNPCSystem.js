@@ -154,11 +154,11 @@ export const NPCSystem = ({ gameState }) => {
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
             
-            // ROBUST spawn height calculation
+            // FIXED spawn height calculation using separate mob function
             let spawnY = 15; // Safe default
             try {
-              if (window.getHighestBlockAt) {
-                const calculatedY = window.getHighestBlockAt(spawnX, spawnZ);
+              if (window.getMobGroundLevel) {
+                const calculatedY = window.getMobGroundLevel(spawnX, spawnZ);
                 if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
                   spawnY = calculatedY + 1.5; // Spawn above ground
                 }
