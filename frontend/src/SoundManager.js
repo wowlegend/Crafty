@@ -214,6 +214,128 @@ export const SoundProvider = ({ children }) => {
     return buffer;
   };
 
+  // Enhanced magic system sounds
+  const generateMagicCastSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.6;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const freq1 = 440 + Math.sin(t * 30) * 150;
+      const freq2 = 880 + Math.cos(t * 25) * 200;
+      const freq3 = 220 + Math.sin(t * 40) * 100;
+      
+      const sample1 = Math.sin(2 * Math.PI * freq1 * t);
+      const sample2 = Math.sin(2 * Math.PI * freq2 * t) * 0.5;
+      const sample3 = Math.sin(2 * Math.PI * freq3 * t) * 0.3;
+      
+      const envelope = Math.sin(Math.PI * t / duration) * Math.exp(-t * 1.5);
+      channelData[i] = (sample1 + sample2 + sample3) * envelope * 0.15;
+    }
+
+    return buffer;
+  };
+
+  const generateMagicHitSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.3;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const noise = (Math.random() - 0.5) * 2;
+      const freq = 300 + Math.sin(t * 50) * 200;
+      const tone = Math.sin(2 * Math.PI * freq * t);
+      
+      const envelope = Math.exp(-t * 8);
+      channelData[i] = (noise * 0.4 + tone * 0.6) * envelope * 0.3;
+    }
+
+    return buffer;
+  };
+
+  const generateMagicExplosionSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 1.0;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const noise = (Math.random() - 0.5) * 2;
+      const freq = 100 - t * 80; // Descending boom
+      const tone = Math.sin(2 * Math.PI * freq * t);
+      
+      const envelope = Math.exp(-t * 3);
+      channelData[i] = (noise * 0.7 + tone * 0.3) * envelope * 0.4;
+    }
+
+    return buffer;
+  };
+
+  const generateMagicChargeSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.8;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const freq = 200 + t * 400; // Rising charge sound
+      const sample = Math.sin(2 * Math.PI * freq * t);
+      
+      const envelope = t / duration * Math.exp(-t * 0.5);
+      channelData[i] = sample * envelope * 0.2;
+    }
+
+    return buffer;
+  };
+
+  const generateLevelUpSound = () => {
+    if (!audioContext.current) return null;
+
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 1.5;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      
+      // Triumphant chord progression
+      const freq1 = 440; // A
+      const freq2 = 554.37; // C#
+      const freq3 = 659.25; // E
+      const freq4 = 880; // A octave
+      
+      const sample1 = Math.sin(2 * Math.PI * freq1 * t);
+      const sample2 = Math.sin(2 * Math.PI * freq2 * t);
+      const sample3 = Math.sin(2 * Math.PI * freq3 * t);
+      const sample4 = Math.sin(2 * Math.PI * freq4 * t) * 0.5;
+      
+      const envelope = Math.sin(Math.PI * t / duration) * Math.exp(-t * 0.8);
+      channelData[i] = (sample1 + sample2 + sample3 + sample4) * envelope * 0.1;
+    }
+
+    return buffer;
+  };
+
   const playSound = (soundName, playbackRate = 1) => {
     if (!soundEnabled || !audioContext.current || !sounds.current[soundName]) return;
 
