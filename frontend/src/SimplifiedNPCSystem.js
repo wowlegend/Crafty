@@ -435,57 +435,69 @@ export const NPCSystem = ({ gameState }) => {
       return null;
     };
     
-    // DAMAGE MOB from spells
+    // DAMAGE MOB from spells - COMPREHENSIVE DEBUG
     window.damageMob = (entityId, damage) => {
-      console.log(`🔮 SPELL HIT! Damaging ${entityId} for ${damage} damage`);
+      console.log(`🔮 damageMob called! EntityID: ${entityId}, Damage: ${damage}`);
       
       // PLAY SPELL HIT SOUND
       if (window.playHitSound) {
         window.playHitSound();
       }
       
-      setEntities(prev => prev.map(entity => {
-        if (entity.id === entityId) {
-          const newHealth = Math.max(0, entity.health - damage);
-          
-          // SPAWN DAMAGE NUMBER
-          spawnDamageNumber(entity.position, damage);
-          
-          if (newHealth <= 0) {
-            // PLAY DEFEAT SOUND
-            if (window.playDefeatSound) {
-              window.playDefeatSound();
+      setEntities(prev => {
+        console.log(`🔍 Current entities before damage:`, prev.map(e => `${e.type}(${e.id})`));
+        
+        const newEntities = prev.map(entity => {
+          if (entity.id === entityId) {
+            console.log(`🎯 Found target entity: ${entity.type}, Current health: ${entity.health}`);
+            const newHealth = Math.max(0, entity.health - damage);
+            console.log(`💥 New health after damage: ${newHealth}`);
+            
+            // SPAWN DAMAGE NUMBER
+            spawnDamageNumber(entity.position, damage);
+            
+            if (newHealth <= 0) {
+              console.log(`💀 ENTITY KILLED! ${entity.type}`);
+              // PLAY DEFEAT SOUND
+              if (window.playDefeatSound) {
+                window.playDefeatSound();
+              }
+              
+              // DEATH EFFECTS
+              createDeathEffects(entity.position);
+              
+              // Drop items when mob dies from spells
+              if (entity.drops && gameState.addToInventory) {
+                entity.drops.forEach(drop => {
+                  gameState.addToInventory(drop, 1);
+                });
+              }
+              
+              // BONUS XP for kill
+              if (window.addExperience) {
+                window.addExperience(25, `Defeated ${entity.type}`);
+                console.log(`⭐ +25 XP for defeating ${entity.type}`);
+              }
+              
+              console.log(`💀 ${entity.type} DEFEATED BY SPELL! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
+              return null; // Remove entity
+            } else {
+              console.log(`🩸 ${entity.type} damaged but alive, health: ${newHealth}`);
+              // DAMAGE EFFECTS
+              return { 
+                ...entity, 
+                health: newHealth, 
+                lastDamageTime: Date.now(),
+                isFlashing: true 
+              };
             }
-            
-            // DEATH EFFECTS
-            createDeathEffects(entity.position);
-            
-            // Drop items when mob dies from spells
-            if (entity.drops && gameState.addToInventory) {
-              entity.drops.forEach(drop => {
-                gameState.addToInventory(drop, 1);
-              });
-            }
-            
-            // BONUS XP for kill
-            if (window.addExperience) {
-              window.addExperience(25, `Defeated ${entity.type}`);
-            }
-            
-            console.log(`💀 ${entity.type} DEFEATED BY SPELL! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
-            return null; // Remove entity
-          } else {
-            // DAMAGE EFFECTS
-            return { 
-              ...entity, 
-              health: newHealth, 
-              lastDamageTime: Date.now(),
-              isFlashing: true 
-            };
           }
-        }
-        return entity;
-      }).filter(Boolean));
+          return entity;
+        }).filter(Boolean);
+        
+        console.log(`🔍 Entities after damage:`, newEntities.map(e => `${e.type}(${e.id})`));
+        return newEntities;
+      });
     };
     
   }, [entities, gameState]);
