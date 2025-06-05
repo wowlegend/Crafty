@@ -25,6 +25,13 @@ import {
   Shield
 } from 'lucide-react';
 
+// Import new enhanced systems
+import { OptimizedTerrain } from './OptimizedTerrain';
+import { MagicProjectileSystem, MagicWand, MagicImpactSystem } from './MagicSystem';
+import { useExperienceSystem, XPGainVisual, LevelUpEffect, ExperienceBar, LevelUpParticles } from './ExperienceSystem';
+import { EnhancedGrassSystem, WindParticleSystem, EnhancedGrassTexture } from './EnhancedGrassSystem';
+import { useSoundEnhancements, AudioPerformanceMonitor } from './SoundEnhancements';
+
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
   grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
