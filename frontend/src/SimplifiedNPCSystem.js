@@ -405,7 +405,85 @@ export const NPCSystem = ({ gameState }) => {
 
   useEffect(() => {
     window.attackEntity = attackEntity;
-  }, []);
+    
+    // SPELL COMBAT SYSTEM - Missing functions that spells need
+    window.checkMobCollision = (position, size = 0.5) => {
+      for (const entity of entities) {
+        if (entity.position) {
+          const [ex, ey, ez] = entity.position;
+          const distance = Math.sqrt(
+            Math.pow(position.x - ex, 2) + 
+            Math.pow(position.y - ey, 2) + 
+            Math.pow(position.z - ez, 2)
+          );
+          if (distance <= size + 1) {
+            return entity; // Return hit entity
+          }
+        }
+      }
+      return null;
+    };
+    
+    // DAMAGE MOB from spells
+    window.damageMob = (entityId, damage) => {
+      console.log(`🔮 SPELL HIT! Damaging ${entityId} for ${damage} damage`);
+      
+      // PLAY SPELL HIT SOUND
+      if (window.playHitSound) {
+        window.playHitSound();
+      }
+      
+      setEntities(prev => prev.map(entity => {
+        if (entity.id === entityId) {
+          const newHealth = Math.max(0, entity.health - damage);
+          
+          // SPAWN DAMAGE NUMBER
+          spawnDamageNumber(entity.position, damage);
+          
+          // ADD XP GAIN for spell combat
+          if (window.addXP) {
+            const xpGain = Math.floor(damage / 5); // 1 XP per 5 damage
+            window.addXP(xpGain, `Spell Combat`);
+          }
+          
+          if (newHealth <= 0) {
+            // PLAY DEFEAT SOUND
+            if (window.playDefeatSound) {
+              window.playDefeatSound();
+            }
+            
+            // DEATH EFFECTS
+            createDeathEffects(entity.position);
+            
+            // Drop items when mob dies from spells
+            if (entity.drops && gameState.addToInventory) {
+              entity.drops.forEach(drop => {
+                gameState.addToInventory(drop, 1);
+              });
+            }
+            
+            // BONUS XP for kill
+            if (window.addXP) {
+              window.addXP(25, `Defeated ${entity.type}`);
+            }
+            
+            console.log(`💀 ${entity.type} DEFEATED BY SPELL! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
+            return null; // Remove entity
+          } else {
+            // DAMAGE EFFECTS
+            return { 
+              ...entity, 
+              health: newHealth, 
+              lastDamageTime: Date.now(),
+              isFlashing: true 
+            };
+          }
+        }
+        return entity;
+      }).filter(Boolean));
+    };
+    
+  }, [entities, gameState]);
 
   return (
     <group>
