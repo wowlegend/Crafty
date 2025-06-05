@@ -204,12 +204,40 @@ function GameApp() {
   }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, showStats]);
 
   const handlePointerLockChange = () => {
-    setIsPointerLocked(document.pointerLockElement !== null);
+    // Better iframe detection and handling
+    try {
+      const isLocked = document.pointerLockElement !== null;
+      setIsPointerLocked(isLocked);
+    } catch (error) {
+      console.warn('Pointer lock state check failed:', error);
+      // For iframe environments, assume locked state for gameplay
+      setIsPointerLocked(true);
+    }
   };
 
   useEffect(() => {
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    return () => document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    try {
+      document.addEventListener('pointerlockchange', handlePointerLockChange);
+      // Also listen for iframe-specific events
+      document.addEventListener('pointerlockerror', (event) => {
+        console.warn('Pointer lock error:', event);
+        // Still allow game to start in iframe
+        setIsPointerLocked(true);
+      });
+    } catch (error) {
+      console.warn('Pointer lock event listeners failed:', error);
+      // Fallback for iframe environments
+      setIsPointerLocked(true);
+    }
+    
+    return () => {
+      try {
+        document.removeEventListener('pointerlockchange', handlePointerLockChange);
+        document.removeEventListener('pointerlockerror', () => {});
+      } catch (error) {
+        console.warn('Failed to remove pointer lock listeners:', error);
+      }
+    };
   }, []);
 
   if (loading) {
