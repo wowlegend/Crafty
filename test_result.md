@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the enhanced Crafty Minecraft Clone frontend thoroughly to identify and resolve the issue where users get stuck in a small space confined by green walls. The game should have these features working: World Generation & Movement, Building & Block System, Enhanced UI System, New Features, Visual Quality, and Performance & Stability."
+user_problem_statement: "Complete all requested enhancements to the Crafty Minecraft Clone: 1) Enhanced Magic System with Diablo-style effects and magic wands as primary weapons, 2) Performance optimization for terrain generation lag/freezing, 3) Experience/leveling system with visual effects, 4) Enhanced grass with wind effects, 5) Focus on code elegance, efficiency and error-proof implementation. Fix any Three.js rendering pipeline issues and ensure no runtime errors."
 
 backend:
   - task: "API Health Check"
