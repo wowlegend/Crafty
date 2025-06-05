@@ -204,38 +204,42 @@ function GameApp() {
   }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, showStats]);
 
   const handlePointerLockChange = () => {
-    // Better iframe detection and handling
+    // BULLETPROOF pointer lock state handling
     try {
       const isLocked = document.pointerLockElement !== null;
       setIsPointerLocked(isLocked);
     } catch (error) {
-      console.warn('Pointer lock state check failed:', error);
-      // For iframe environments, assume locked state for gameplay
+      // If we can't check, assume we're locked (iframe fallback)
       setIsPointerLocked(true);
     }
   };
 
   useEffect(() => {
+    // COMPREHENSIVE event listener setup with error handling
     try {
       document.addEventListener('pointerlockchange', handlePointerLockChange);
-      // Also listen for iframe-specific events
       document.addEventListener('pointerlockerror', (event) => {
-        console.warn('Pointer lock error:', event);
-        // Still allow game to start in iframe
+        console.log('⚠️ Pointer lock error - continuing anyway');
         setIsPointerLocked(true);
       });
+      
+      // Also handle vendor prefixes
+      document.addEventListener('webkitpointerlockchange', handlePointerLockChange);
+      document.addEventListener('mozpointerlockchange', handlePointerLockChange);
     } catch (error) {
-      console.warn('Pointer lock event listeners failed:', error);
-      // Fallback for iframe environments
+      console.log('⚠️ Event listener setup failed - using fallback mode');
       setIsPointerLocked(true);
     }
     
     return () => {
+      // SAFE cleanup
       try {
         document.removeEventListener('pointerlockchange', handlePointerLockChange);
         document.removeEventListener('pointerlockerror', () => {});
+        document.removeEventListener('webkitpointerlockchange', handlePointerLockChange);
+        document.removeEventListener('mozpointerlockchange', handlePointerLockChange);
       } catch (error) {
-        console.warn('Failed to remove pointer lock listeners:', error);
+        // Ignore cleanup errors
       }
     };
   }, []);
