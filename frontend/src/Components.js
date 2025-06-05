@@ -486,22 +486,22 @@ export const MinecraftWorld = ({ gameState }) => {
   );
 };
 
-// NEW: Grass texture enhancement for more realistic grass blocks
+// OPTIMIZED Grass Texture - Reduced complexity
 const GrassTexture = ({ position }) => {
   return (
     <group position={position}>
-      {/* Grass blade effects */}
-      {[...Array(3)].map((_, i) => (
+      {/* Simplified grass blade effects for performance */}
+      {[...Array(2)].map((_, i) => (
         <mesh key={i} position={[
-          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.6,
           0,
-          (Math.random() - 0.5) * 0.8
+          (Math.random() - 0.5) * 0.6
         ]}>
-          <planeGeometry args={[0.1, 0.2]} />
+          <planeGeometry args={[0.08, 0.15]} />
           <meshBasicMaterial 
             color="#4a7c59" 
             transparent 
-            opacity={0.6}
+            opacity={0.5}
             side={THREE.DoubleSide}
           />
         </mesh>
