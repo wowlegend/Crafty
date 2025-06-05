@@ -96,11 +96,6 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       
       setProjectiles(prev => [...prev, newProjectile]);
       
-      // XP GAIN for casting
-      if (window.addExperience) {
-        window.addExperience(3, `Cast ${spellType}`);
-      }
-      
       console.log(`🔥 ENHANCED: Cast ${spellType}! Damage: ${spell.damage}`);
       
       // Create initial spell trail from wand
