@@ -618,9 +618,9 @@ export const Player = ({ gameState }) => {
       
       const newChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
       
-      // Award exploration XP for new areas
-      if (oldChunk !== newChunk && window.xpExploration) {
-        window.xpExploration();
+      // Award exploration XP for new areas - CONTROLLED
+      if (oldChunk !== newChunk && window.manualXpExploration) {
+        window.manualXpExploration();
       }
     }
     
