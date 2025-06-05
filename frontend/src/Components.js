@@ -564,6 +564,10 @@ export const Player = ({ gameState }) => {
   // Store target position to prevent oscillation
   const targetPosition = useRef(new THREE.Vector3(0, 18, 0));
   const isInitialized = useRef(false);
+  
+  // SPELL COOLDOWN SYSTEM - Prevent rapid firing
+  const lastSpellCast = useRef(0);
+  const spellCooldown = 800; // 800ms cooldown between spells
 
   // Set initial camera position ONCE - then let PointerLockControls handle rotation
   useEffect(() => {
