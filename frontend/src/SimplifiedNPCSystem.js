@@ -52,41 +52,52 @@ export const NPCSystem = ({ gameState }) => {
   useEffect(() => {
     if (!terrainReady) return;
 
-    console.log('🎮 Initializing ENHANCED NPCs on terrain...');
+    console.log('🎮 Initializing ABUNDANT mob ecosystem...');
     
-    // MORE spawn positions for abundant mobs
-    const spawnPositions = [
-      { x: 15, z: 10 }, { x: -12, z: 15 }, { x: 20, z: -8 }, { x: -18, z: -12 },
-      { x: 8, z: 25 }, { x: -25, z: 5 }, { x: 30, z: -15 }, { x: -10, z: -20 },
-      { x: 22, z: 18 }, { x: -30, z: -8 }, { x: 12, z: -25 }, { x: -15, z: 30 },
-      // Additional spawn points for more mobs
-      { x: 35, z: 20 }, { x: -35, z: -25 }, { x: 40, z: -10 }, { x: -40, z: 15 },
-      { x: 25, z: 35 }, { x: -20, z: -35 }, { x: 45, z: 5 }, { x: -45, z: -5 },
-      { x: 10, z: 40 }, { x: -10, z: -40 }, { x: 50, z: 25 }, { x: -50, z: -20 }
+    // MASSIVE spawn grid for high mob density
+    const spawnPositions = [];
+    
+    // Create dense grid around spawn area
+    for (let x = -40; x <= 40; x += 8) {
+      for (let z = -40; z <= 40; z += 8) {
+        if (Math.abs(x) > 5 || Math.abs(z) > 5) { // Don't spawn too close to player
+          spawnPositions.push({ x, z });
+        }
+      }
+    }
+    
+    // Add additional scattered positions for variety
+    const additionalPositions = [
+      { x: 55, z: 20 }, { x: -55, z: -25 }, { x: 60, z: -10 }, { x: -60, z: 15 },
+      { x: 45, z: 45 }, { x: -45, z: -45 }, { x: 70, z: 5 }, { x: -70, z: -5 },
+      { x: 25, z: 60 }, { x: -25, z: -60 }, { x: 80, z: 30 }, { x: -80, z: -30 }
     ];
+    
+    spawnPositions.push(...additionalPositions);
 
-    // More variety of mobs
+    // More variety of mobs with balanced distribution
     const entityTypes = [
       'villager', 'pig', 'chicken', 'cow', 'zombie', 'skeleton', 'creeper', 
-      'spider', 'enderman', 'witch', 'wolf', 'sheep'
+      'spider', 'enderman', 'witch', 'wolf', 'sheep', 'pig', 'chicken', 
+      'cow', 'sheep', 'wolf' // Duplicate peaceful mobs for balance
     ];
 
     const initialEntities = spawnPositions.map((pos, index) => {
       const groundY = window.getHighestBlockAt(pos.x, pos.z) + 1;
       const entityType = entityTypes[index % entityTypes.length];
       
-      // Different health and properties for different mobs
+      // Enhanced stats for better gameplay
       const getEntityStats = (type) => {
         switch(type) {
-          case 'villager': return { health: 100, hostile: false, speed: 0.5 };
-          case 'zombie': return { health: 100, hostile: true, speed: 1.0 };
-          case 'skeleton': return { health: 80, hostile: true, speed: 0.8 };
-          case 'creeper': return { health: 120, hostile: true, speed: 0.6 };
-          case 'spider': return { health: 60, hostile: true, speed: 1.2 };
-          case 'enderman': return { health: 150, hostile: true, speed: 1.5 };
-          case 'witch': return { health: 90, hostile: true, speed: 0.7 };
-          case 'wolf': return { health: 70, hostile: false, speed: 1.1 };
-          default: return { health: 50, hostile: false, speed: 0.6 };
+          case 'villager': return { health: 120, hostile: false, speed: 0.6 };
+          case 'zombie': return { health: 80, hostile: true, speed: 0.8 };
+          case 'skeleton': return { health: 70, hostile: true, speed: 0.9 };
+          case 'creeper': return { health: 100, hostile: true, speed: 0.7 };
+          case 'spider': return { health: 60, hostile: true, speed: 1.0 };
+          case 'enderman': return { health: 150, hostile: true, speed: 1.2 };
+          case 'witch': return { health: 90, hostile: true, speed: 0.8 };
+          case 'wolf': return { health: 80, hostile: false, speed: 1.0 };
+          default: return { health: 60, hostile: false, speed: 0.7 };
         }
       };
       
@@ -101,28 +112,30 @@ export const NPCSystem = ({ gameState }) => {
         hostile: stats.hostile,
         speed: stats.speed,
         initialPosition: [pos.x, groundY, pos.z],
-        wanderRadius: stats.hostile ? 8 : 4,
-        drops: getDrops(entityType)
+        wanderRadius: stats.hostile ? 10 : 6,
+        drops: getDrops(entityType),
+        spawnTime: Date.now()
       };
     });
 
     setEntities(initialEntities);
-    console.log('✅ ENHANCED NPCs spawned:', initialEntities.length);
+    console.log(`✅ ABUNDANT mob ecosystem spawned: ${initialEntities.length} entities`);
     
-    // AUTOMATIC RESPAWNING SYSTEM
+    // AGGRESSIVE RESPAWNING SYSTEM for high density
     const respawnInterval = setInterval(() => {
       setEntities(currentEntities => {
-        if (currentEntities.length < 15) { // Maintain minimum 15 mobs
+        const targetMobCount = 40; // High mob density target
+        
+        if (currentEntities.length < targetMobCount) {
           const playerPos = camera?.position;
           if (!playerPos) return currentEntities;
           
-          // Spawn new mobs near player but not too close
+          const mobsToSpawn = Math.min(8, targetMobCount - currentEntities.length);
           const newMobs = [];
-          const mobsToSpawn = Math.min(5, 15 - currentEntities.length);
           
           for (let i = 0; i < mobsToSpawn; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const distance = 30 + Math.random() * 20; // 30-50 blocks away
+            const distance = 25 + Math.random() * 30; // 25-55 blocks away
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
             const spawnY = window.getHighestBlockAt ? window.getHighestBlockAt(spawnX, spawnZ) + 1 : 15;
@@ -139,17 +152,18 @@ export const NPCSystem = ({ gameState }) => {
               hostile: stats.hostile,
               speed: stats.speed,
               initialPosition: [spawnX, spawnY, spawnZ],
-              wanderRadius: stats.hostile ? 8 : 4,
-              drops: getDrops(entityType)
+              wanderRadius: stats.hostile ? 10 : 6,
+              drops: getDrops(entityType),
+              spawnTime: Date.now()
             });
           }
           
-          console.log(`🔄 Respawned ${newMobs.length} mobs`);
+          console.log(`🔄 Aggressively respawned ${newMobs.length} mobs (Total: ${currentEntities.length + newMobs.length})`);
           return [...currentEntities, ...newMobs];
         }
         return currentEntities;
       });
-    }, 10000); // Respawn every 10 seconds
+    }, 5000); // Respawn every 5 seconds for high density
 
     return () => clearInterval(respawnInterval);
   }, [terrainReady, camera]);
