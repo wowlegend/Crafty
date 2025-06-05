@@ -155,9 +155,14 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     
     setSpellImpacts(prev => [...prev, newImpact]);
     
-    // Play impact sound
-    if (window.playSpellImpactSound) {
+    // Play impact sound - Multiple fallbacks
+    if (window.playMagicHit) {
+      window.playMagicHit();
+    } else if (window.playSpellImpactSound) {
       window.playSpellImpactSound(spellType);
+    } else if (window.playHitSound) {
+      window.playHitSound();
+    }
     }
   };
 
