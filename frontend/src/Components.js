@@ -419,25 +419,6 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Experience UI Components */}
-      <SimpleExperienceBar 
-        level={experienceSystem.playerLevel}
-        currentXP={experienceSystem.currentXP}
-        xpRequired={experienceSystem.xpRequired}
-        xpProgress={experienceSystem.xpProgress}
-      />
-      
-      <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
-      
-      <SimpleLevelUpEffect 
-        levelUpEffects={experienceSystem.levelUpEffects}
-        onEffectComplete={(id) => {
-          experienceSystem.setLevelUpEffects(prev => 
-            prev.filter(effect => effect.id !== id)
-          );
-        }}
-      />
-      
       {/* Clouds */}
       <MinecraftClouds />
       
