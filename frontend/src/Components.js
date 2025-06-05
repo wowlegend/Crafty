@@ -536,7 +536,7 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-// OPTIMIZED Player Component with Enhanced Magic System
+// OPTIMIZED Player Component - Fixed Camera Issues
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -555,12 +555,10 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position - FIXED orientation
+  // MINIMAL camera setup - let PointerLockControls handle rotation
   useEffect(() => {
+    // Only set initial position, NO rotation control
     camera.position.set(0, 18, 0);
-    camera.rotation.set(0, 0, 0); // Reset rotation to horizontal
-    camera.lookAt(0, 18, -5); // Look forward horizontally
-    camera.updateProjectionMatrix();
     
     // Expose camera globally for magic system
     window.gameCamera = camera;
@@ -572,8 +570,7 @@ export const Player = ({ gameState }) => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
       const safeHeight = Math.max(groundLevel + 2, 16);
       camera.position.y = safeHeight;
-      camera.rotation.set(0, 0, 0); // Ensure horizontal look
-      console.log(`🧙‍♂️ Enhanced Player with Magic System initialized at height: ${safeHeight}`);
+      console.log(`🧙‍♂️ Player initialized at height: ${safeHeight}`);
     }, 500);
   }, [camera, gameState, selectedSpell]);
 
@@ -584,7 +581,7 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // OPTIMIZED frame logic with magic integration
+  // OPTIMIZED frame logic - NO camera rotation interference
   useFrame((state, delta) => {
     const now = performance.now();
     
@@ -600,7 +597,7 @@ export const Player = ({ gameState }) => {
       lastCameraUpdate.current = now;
     }
     
-    // Apply movement
+    // Apply movement - ONLY position, no rotation
     if (keys.KeyW) moveVector.add(forwardVector.current);
     if (keys.KeyS) moveVector.sub(forwardVector.current);
     if (keys.KeyA) moveVector.sub(rightVector.current);
@@ -625,7 +622,7 @@ export const Player = ({ gameState }) => {
       }
     }
     
-    // Enhanced gravity and ground collision
+    // Enhanced gravity and ground collision - ONLY Y position
     velocity.current.y -= 25 * delta;
     
     if (shouldCheckGround) {
@@ -763,8 +760,8 @@ export const Player = ({ gameState }) => {
 
   return (
     <group>
-      {/* Enhanced Magic Hands with Authentic Effects */}
-      <OptimizedMagicHands 
+      {/* STABLE Magic Hands - No Shaking */}
+      <StableMagicHands 
         selectedSpell={selectedSpell}
         selectedBlock={gameState.selectedBlock}
         isAttacking={isAttacking}
