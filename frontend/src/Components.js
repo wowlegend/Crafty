@@ -992,6 +992,12 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <span>{gameState.isDay ? 'Day' : 'Night'}</span>
             </div>
             <div>Mode: <span className="text-green-400">{gameState.gameMode}</span></div>
+            {gameState.playerData && (
+              <div className="flex items-center space-x-1">
+                <Crown size={16} className="text-yellow-400" />
+                <span>Level {gameState.playerData.level}</span>
+              </div>
+            )}
           </div>
         </div>
 
