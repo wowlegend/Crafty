@@ -770,13 +770,11 @@ export const Player = ({ gameState }) => {
   );
 };
 
-// STABLE Magic Hands Component with Fixed Positioning
-const OptimizedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
+// COMPLETELY STABLE Magic Hands - NO SHAKING
+const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
-  const wandRef = useRef();
-  const magicAuraRef = useRef();
   
   const SPELL_COLORS = {
     fireball: '#FF4500',
@@ -787,158 +785,105 @@ const OptimizedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   
   const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
-  // STABLE frame-by-frame positioning - NO SHAKING
-  useFrame((state) => {
+  // COMPLETELY STABLE positioning - ZERO movement
+  useFrame(() => {
     if (rightHandRef.current && leftHandRef.current && camera) {
-      const time = state.clock.elapsedTime;
-      
-      // STABLE right hand positioning - minimal movement
+      // STATIC right hand positioning - NO ANIMATION
       const rightPos = new THREE.Vector3(0.6, -0.8, -1.0);
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
       rightHandRef.current.quaternion.copy(camera.quaternion);
       
-      // Gentle magical idle animation - MUCH REDUCED
-      rightHandRef.current.position.y += Math.sin(time * 1) * 0.01; // Reduced from 0.03
-      rightHandRef.current.rotation.z = Math.sin(time * 0.8) * 0.02; // Reduced from 0.08
-      
-      // STABLE left hand positioning - minimal movement
+      // STATIC left hand positioning - NO ANIMATION  
       const leftPos = new THREE.Vector3(-0.4, -0.7, -0.9);
       leftPos.applyMatrix4(camera.matrixWorld);
       leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
-      leftHandRef.current.position.y += Math.sin(time * 1 + 0.5) * 0.008; // Reduced movement
-      leftHandRef.current.rotation.z = Math.sin(time * 0.8 + 0.5) * 0.015; // Reduced rotation
       
-      // STABLE spell casting animation - controlled movement
+      // ONLY slight movement when attacking
       if (isAttacking) {
-        const attackTime = time * 10; // Reduced speed
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.2; // Reduced from 0.6
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.05; // Reduced from 0.2
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.15; // Reduced from 0.4
-        
-        if (wandRef.current) {
-          wandRef.current.rotation.x = Math.sin(attackTime) * 0.1; // Reduced from 0.3
-          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.05; // Reduced from 0.15
-        }
-      }
-      
-      // STABLE magic aura effects - reduced intensity
-      if (magicAuraRef.current) {
-        const intensity = isAttacking ? 1.2 + Math.sin(time * 4) * 0.1 : 0.9 + Math.sin(time * 2) * 0.05;
-        magicAuraRef.current.scale.setScalar(intensity);
-        magicAuraRef.current.material.opacity = isAttacking ? 0.4 : 0.2; // Reduced opacity
+        rightHandRef.current.rotation.x = -0.1;
+        leftHandRef.current.rotation.x = -0.1;
+      } else {
+        rightHandRef.current.rotation.x = 0;
+        leftHandRef.current.rotation.x = 0;
       }
     }
   });
 
   return (
     <group>
-      {/* RIGHT HAND - Enhanced Magic Wand Hand */}
+      {/* RIGHT HAND - STABLE */}
       <group ref={rightHandRef}>        
-        {/* Enhanced forearm */}
+        {/* Forearm */}
         <mesh position={[0, 0.3, 0]}>
           <boxGeometry args={[0.16, 0.7, 0.16]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced main hand block */}
+        {/* Main hand */}
         <mesh position={[0, -0.05, 0]}>
           <boxGeometry args={[0.2, 0.24, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced thumb */}
+        {/* Thumb */}
         <mesh position={[0.12, -0.02, 0]}>
           <boxGeometry args={[0.08, 0.12, 0.08]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced fingers */}
+        {/* Fingers */}
         <mesh position={[0, -0.15, -0.08]}>
           <boxGeometry args={[0.16, 0.06, 0.04]} />
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* ENHANCED MAGIC WAND with Authentic Effects */}
-        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
+        {/* STABLE MAGIC WAND */}
+        <group position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
           <MagicWand wandType={selectedSpell} />
         </group>
-        
-        {/* Enhanced magical aura around hand during casting */}
-        {isAttacking && (
-          <mesh ref={magicAuraRef} position={[0, 0, 0]}>
-            <sphereGeometry args={[0.4, 8, 8]} />
-            <meshBasicMaterial 
-              color={currentSpellColor}
-              transparent
-              opacity={0.4}
-            />
-          </mesh>
-        )}
       </group>
       
-      {/* LEFT HAND - Enhanced Spell Gesture Hand */}
+      {/* LEFT HAND - STABLE */}
       <group ref={leftHandRef}>
-        {/* Enhanced forearm */}
+        {/* Forearm */}
         <mesh position={[0, 0.3, 0]}>
           <boxGeometry args={[0.16, 0.7, 0.16]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced main hand block */}
+        {/* Main hand */}
         <mesh position={[0, -0.05, 0]}>
           <boxGeometry args={[0.2, 0.24, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced thumb */}
+        {/* Thumb */}
         <mesh position={[-0.12, -0.02, 0]}>
           <boxGeometry args={[0.08, 0.12, 0.08]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Enhanced fingers in spell-casting position */}
+        {/* Fingers */}
         <mesh position={[0, -0.1, -0.1]} rotation={[0.2, 0, 0]}>
           <boxGeometry args={[0.16, 0.06, 0.04]} />
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* Enhanced spell energy emanating from left hand */}
+        {/* Static spell energy when attacking */}
         {isAttacking && (
-          <group>
-            {/* Main spell energy orb with authentic effects */}
-            <mesh position={[0, 0.1, -0.2]}>
-              <sphereGeometry args={[0.1, 8, 8]} />
-              <meshBasicMaterial 
-                color={currentSpellColor}
-                transparent
-                opacity={0.9}
-              />
-            </mesh>
-            
-            {/* Enhanced magical particles */}
-            {[...Array(8)].map((_, i) => (
-              <mesh 
-                key={i}
-                position={[
-                  (Math.random() - 0.5) * 0.4,
-                  Math.random() * 0.3,
-                  -0.1 - Math.random() * 0.3
-                ]}
-              >
-                <sphereGeometry args={[0.02, 4, 4]} />
-                <meshBasicMaterial 
-                  color={currentSpellColor}
-                  transparent
-                  opacity={0.8}
-                />
-              </mesh>
-            ))}
-          </group>
+          <mesh position={[0, 0.1, -0.2]}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+            <meshBasicMaterial 
+              color={currentSpellColor}
+              transparent
+              opacity={0.8}
+            />
+          </mesh>
         )}
         
-        {/* Enhanced selected block display for building mode */}
+        {/* Static selected block display */}
         {!isAttacking && selectedBlock && (
           <group position={[-0.1, 0.2, -0.15]} scale={[0.3, 0.3, 0.3]}>
             <mesh>
