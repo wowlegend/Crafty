@@ -443,12 +443,6 @@ export const NPCSystem = ({ gameState }) => {
           // SPAWN DAMAGE NUMBER
           spawnDamageNumber(entity.position, damage);
           
-          // ADD XP GAIN for spell combat
-          if (window.addExperience) {
-            const xpGain = Math.floor(damage / 5); // 1 XP per 5 damage
-            window.addExperience(xpGain, `Spell Combat`);
-          }
-          
           if (newHealth <= 0) {
             // PLAY DEFEAT SOUND
             if (window.playDefeatSound) {
