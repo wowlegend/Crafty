@@ -773,7 +773,7 @@ export const Player = ({ gameState }) => {
   );
 };
 
-// ENHANCED Magic Hands Component with Authentic Visual Effects
+// STABLE Magic Hands Component with Fixed Positioning
 const OptimizedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
@@ -790,47 +790,47 @@ const OptimizedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   
   const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
-  // Enhanced frame-by-frame positioning with authentic magic effects
+  // STABLE frame-by-frame positioning - NO SHAKING
   useFrame((state) => {
     if (rightHandRef.current && leftHandRef.current && camera) {
       const time = state.clock.elapsedTime;
       
-      // Right hand positioning - holding enhanced magic wand
-      const rightPos = new THREE.Vector3(0.7, -0.7, -1.2);
+      // STABLE right hand positioning - minimal movement
+      const rightPos = new THREE.Vector3(0.6, -0.8, -1.0);
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
       rightHandRef.current.quaternion.copy(camera.quaternion);
       
-      // Enhanced magical idle animation
-      rightHandRef.current.position.y += Math.sin(time * 2) * 0.03;
-      rightHandRef.current.rotation.z = Math.sin(time * 1.5) * 0.08;
+      // Gentle magical idle animation - MUCH REDUCED
+      rightHandRef.current.position.y += Math.sin(time * 1) * 0.01; // Reduced from 0.03
+      rightHandRef.current.rotation.z = Math.sin(time * 0.8) * 0.02; // Reduced from 0.08
       
-      // Left hand positioning - enhanced gesture casting
-      const leftPos = new THREE.Vector3(-0.5, -0.6, -1.1);
+      // STABLE left hand positioning - minimal movement
+      const leftPos = new THREE.Vector3(-0.4, -0.7, -0.9);
       leftPos.applyMatrix4(camera.matrixWorld);
       leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
-      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
-      leftHandRef.current.rotation.z = Math.sin(time * 1.5 + 1) * 0.06;
+      leftHandRef.current.position.y += Math.sin(time * 1 + 0.5) * 0.008; // Reduced movement
+      leftHandRef.current.rotation.z = Math.sin(time * 0.8 + 0.5) * 0.015; // Reduced rotation
       
-      // Enhanced spell casting animation with authentic effects
+      // STABLE spell casting animation - controlled movement
       if (isAttacking) {
-        const attackTime = time * 20;
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.6;
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.2;
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.4;
+        const attackTime = time * 10; // Reduced speed
+        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.2; // Reduced from 0.6
+        rightHandRef.current.position.z += Math.sin(attackTime) * 0.05; // Reduced from 0.2
+        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.15; // Reduced from 0.4
         
         if (wandRef.current) {
-          wandRef.current.rotation.x = Math.sin(attackTime) * 0.3;
-          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.15;
+          wandRef.current.rotation.x = Math.sin(attackTime) * 0.1; // Reduced from 0.3
+          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.05; // Reduced from 0.15
         }
       }
       
-      // Enhanced magic aura effects
+      // STABLE magic aura effects - reduced intensity
       if (magicAuraRef.current) {
-        const intensity = isAttacking ? 1.5 + Math.sin(time * 10) * 0.5 : 0.8 + Math.sin(time * 3) * 0.2;
+        const intensity = isAttacking ? 1.2 + Math.sin(time * 4) * 0.1 : 0.9 + Math.sin(time * 2) * 0.05;
         magicAuraRef.current.scale.setScalar(intensity);
-        magicAuraRef.current.material.opacity = isAttacking ? 0.6 : 0.3;
+        magicAuraRef.current.material.opacity = isAttacking ? 0.4 : 0.2; // Reduced opacity
       }
     }
   });
