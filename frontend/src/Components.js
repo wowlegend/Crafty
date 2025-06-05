@@ -687,16 +687,32 @@ export const Player = ({ gameState }) => {
     return groundLevel;
   }, []);
 
-  // Enhanced event handlers with magic system - FIXED KEY CONFLICTS
+  // COMPLETELY ISOLATED event handlers - NO CONFLICTS
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // ONLY update movement keys, no other actions
-      if (['KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(event.code)) {
+      // MOVEMENT KEYS ONLY - No other processing
+      if (event.code === 'KeyW' || event.code === 'KeyA' || event.code === 'KeyS' || event.code === 'KeyD') {
         setKeys(prev => ({ ...prev, [event.code]: true }));
-        return; // Exit early to prevent other key handling
+        event.preventDefault(); // Prevent any other handlers
+        event.stopPropagation(); // Stop event bubbling
+        return; // Exit immediately
       }
       
-      // Handle other keys separately
+      // SEPARATE handler for other keys
+      handleNonMovementKeys(event);
+    };
+    
+    const handleKeyUp = (event) => {
+      // MOVEMENT KEYS ONLY - No other processing
+      if (event.code === 'KeyW' || event.code === 'KeyA' || event.code === 'KeyS' || event.code === 'KeyD') {
+        setKeys(prev => ({ ...prev, [event.code]: false }));
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    };
+    
+    const handleNonMovementKeys = (event) => {
       if (event.code === 'Space') {
         event.preventDefault();
         if (isOnGround) {
@@ -706,26 +722,22 @@ export const Player = ({ gameState }) => {
         return;
       }
       
-      // Enhanced magic casting with F key
+      // FIXED magic casting - NO automatic XP
       if (event.code === 'KeyF') {
         event.preventDefault();
         setIsAttacking(true);
         
-        // Cast spell with enhanced visual and audio effects
+        // Cast spell WITHOUT automatic XP
         if (window.castSpell) {
           window.castSpell(selectedSpell);
-          
-          // Award XP for spell casting
-          if (window.xpMagicCast) {
-            window.xpMagicCast();
-          }
+          // REMOVED automatic XP - only award XP on actual hits
         }
         
         setTimeout(() => setIsAttacking(false), 600);
         return;
       }
       
-      // Spell selection with Q key (cycle through spells)
+      // Spell selection
       if (event.code === 'KeyQ') {
         event.preventDefault();
         const spells = ['fireball', 'iceball', 'lightning', 'arcane'];
@@ -737,7 +749,7 @@ export const Player = ({ gameState }) => {
         return;
       }
       
-      // Block selection (keeping for building mode)
+      // Block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = BLOCK_TYPE_KEYS;
@@ -748,19 +760,13 @@ export const Player = ({ gameState }) => {
       }
     };
     
-    const handleKeyUp = (event) => {
-      // ONLY handle movement keys for release
-      if (['KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(event.code)) {
-        setKeys(prev => ({ ...prev, [event.code]: false }));
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown, { passive: false });
-    window.addEventListener('keyup', handleKeyUp, { passive: true });
+    // Add with highest priority to capture first
+    window.addEventListener('keydown', handleKeyDown, { passive: false, capture: true });
+    window.addEventListener('keyup', handleKeyUp, { passive: false, capture: true });
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
     };
   }, [gameState, isOnGround, selectedSpell]);
 
