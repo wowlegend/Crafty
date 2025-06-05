@@ -335,7 +335,16 @@ function GameApp() {
               </div>
 
               <motion.button
-                onClick={() => document.body.requestPointerLock()}
+                onClick={() => {
+                  // Fix for iframe preview - try-catch for pointer lock
+                  try {
+                    document.body.requestPointerLock();
+                  } catch (error) {
+                    console.warn('Pointer lock not available in this environment:', error);
+                    // Still allow game to start without pointer lock for preview
+                    setIsPointerLocked(true);
+                  }
+                }}
                 className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
