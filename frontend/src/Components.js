@@ -1039,7 +1039,7 @@ export const Player = ({ gameState }) => {
     }
   });
 
-  // OPTIMIZED ground level detection with caching
+  // ROBUST ground level detection with caching
   const getOptimizedGroundLevel = (x, z) => {
     const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`; // Cache every 4 blocks for performance
     
@@ -1047,10 +1047,22 @@ export const Player = ({ gameState }) => {
       return groundLevelCache.current.get(cacheKey);
     }
     
-    let groundLevel = 14; // Better default height
-    if (window.getHighestBlockAt) {
-      groundLevel = window.getHighestBlockAt(x, z) + 1;
+    let groundLevel = 15; // SAFE default height - above most terrain
+    try {
+      if (window.getHighestBlockAt) {
+        const calculatedLevel = window.getHighestBlockAt(x, z);
+        // ENSURE we get a valid number
+        if (typeof calculatedLevel === 'number' && !isNaN(calculatedLevel)) {
+          groundLevel = calculatedLevel + 1;
+        }
+      }
+    } catch (error) {
+      console.warn('Error calculating ground level:', error);
     }
+    
+    // SAFETY CHECK: Ensure ground level is reasonable
+    groundLevel = Math.max(groundLevel, 12); // Never below 12
+    groundLevel = Math.min(groundLevel, 25); // Never above 25
     
     // Cache result for performance
     groundLevelCache.current.set(cacheKey, groundLevel);
