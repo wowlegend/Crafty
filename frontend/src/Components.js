@@ -55,6 +55,25 @@ try {
   };
 }
 
+// Import Magic System with error handling
+let MagicSystem = null;
+try {
+  const magicSystem = require('./MagicSystem');
+  MagicSystem = {
+    MagicWand: magicSystem.MagicWand,
+    MagicSystemManager: magicSystem.MagicSystemManager,
+    MAGIC_SPELLS: magicSystem.MAGIC_SPELLS
+  };
+} catch (error) {
+  console.warn('Magic System not available:', error);
+  // Fallback components
+  MagicSystem = {
+    MagicWand: () => null,
+    MagicSystemManager: () => null,
+    MAGIC_SPELLS: { fireball: { color: '#FF6B35', name: 'Fireball' } }
+  };
+}
+
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
   grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
