@@ -1023,8 +1023,11 @@ export const Player = ({ gameState }) => {
       const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
       const playerHeight = 1.8;
       
-      if (newY - playerHeight <= groundLevel) {
-        camera.position.y = groundLevel + playerHeight;
+      // CRITICAL FIX: Ensure player never goes underground
+      const minAllowedY = groundLevel + playerHeight;
+      
+      if (newY <= minAllowedY) {
+        camera.position.y = minAllowedY;
         velocity.current.y = 0;
         setIsOnGround(true);
       } else {
@@ -1032,10 +1035,25 @@ export const Player = ({ gameState }) => {
         setIsOnGround(false);
       }
       
+      // SAFETY CHECK: Force above ground if somehow below
+      if (camera.position.y < groundLevel + playerHeight) {
+        camera.position.y = groundLevel + playerHeight;
+        console.warn(`🚑 Emergency repositioning player above ground: ${camera.position.y}`);
+      }
+      
       lastGroundCheck.current = now;
     } else {
       // Apply velocity without ground check for smoother movement
       camera.position.y += velocity.current.y * delta;
+      
+      // SAFETY: Still check for underground position during movement
+      if (Math.random() < 0.1) { // 10% chance per frame
+        const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
+        if (camera.position.y < groundLevel + 1.8) {
+          camera.position.y = groundLevel + 1.8;
+          console.warn(`🚑 Emergency correction during movement: ${camera.position.y}`);
+        }
+      }
     }
   });
 
