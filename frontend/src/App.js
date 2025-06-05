@@ -154,6 +154,9 @@ function GameApp() {
   const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
 
+  // Initialize experience system
+  const experienceSystem = useSimpleExperience();
+
   // Expose combat sounds globally for NPC system
   useEffect(() => {
     window.playAttackSounds = () => {
