@@ -143,66 +143,19 @@ const generateTerrain = (x, z) => {
   return height;
 };
 
-// ULTRA-OPTIMIZED World Generation with Performance Fixes
+// SUPER-EFFICIENT World Generation - Minimal lag with maximum performance
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
-  const lastUpdateTime = useRef(0);
+  const lastPlayerPosition = useRef({ x: 0, z: 0 });
+  const lastGenerationTime = useRef(0);
+  const generationQueue = useRef([]);
+  const blockPool = useRef(new Map());
   
   const chunkSize = 16;
-  
-  // Initialize terrain optimizer
-  useEffect(() => {
-    terrainOptimizer.setChunkCompletedCallback((chunkKey, chunkBlocks) => {
-      setBlocks(prev => {
-        const updated = new Map(prev);
-        chunkBlocks.forEach((value, key) => updated.set(key, value));
-        return updated;
-      });
-      setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-    });
-    
-    // Generate initial chunks
-    console.log('🌍 Initializing ultra-optimized world generation...');
-    
-    return () => {
-      terrainOptimizer.destroy();
-    };
-  }, []);
-  
-  // Performance-optimized chunk management
-  useFrame((state) => {
-    const now = performance.now();
-    
-    // Throttle updates to 30fps for chunk management
-    if (now - lastUpdateTime.current < 33) return;
-    
-    const playerX = Math.floor(camera.position.x);
-    const playerZ = Math.floor(camera.position.z);
-    const currentChunkX = Math.floor(playerX / chunkSize);
-    const currentChunkZ = Math.floor(playerZ / chunkSize);
-    
-    // Update player position in optimizer
-    terrainOptimizer.updatePlayerPosition({ x: playerX, z: playerZ });
-    
-    const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || 
-                        currentChunkZ !== lastPlayerChunk.current.z;
-    
-    if (chunkChanged || now - lastUpdateTime.current > 1000) {
-      lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
-      lastUpdateTime.current = now;
-      
-      // Preload chunks around player
-      terrainOptimizer.preloadChunksAroundPlayer(3);
-      
-      // Cleanup distant chunks every 5 seconds
-      if (now % 5000 < 100) {
-        terrainOptimizer.cleanupDistantChunks(5);
-      }
-    }
-  });
+  const renderDistance = 2;
 
   // Enhanced collision detection with caching
   const getHighestBlockAt = (x, z) => {
