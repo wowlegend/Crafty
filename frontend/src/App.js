@@ -43,6 +43,9 @@ import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { NPCSystem, TradingInterface, CombatInstructions } from './SimplifiedNPCSystem';
 
+// Import experience system for UI outside Canvas
+import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
+
 // Game state management
 const useGameState = () => {
   const [gameMode, setGameMode] = useState('creative');
