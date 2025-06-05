@@ -1018,7 +1018,7 @@ export const Player = ({ gameState }) => {
   return (
     <group>
       {/* Enhanced Magic Hands with Wand */}
-      <EnhancedMagicHands 
+      <BothHands 
         selectedSpell={selectedSpell}
         selectedBlock={gameState.selectedBlock}
         isAttacking={isAttacking}
