@@ -958,11 +958,21 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position and fix orientation
+  // Set initial camera position and fix orientation - CRITICAL FIX
   useEffect(() => {
-    camera.position.set(0, 15, 0);
-    camera.lookAt(0, 14, 0); // Look slightly down initially
+    // ROBUST initial positioning
+    camera.position.set(0, 20, 0); // Higher initial spawn to prevent underground spawn
+    camera.lookAt(0, 18, 0); // Look slightly down initially
     camera.updateProjectionMatrix();
+    
+    // FORCE proper ground positioning after terrain is ready
+    setTimeout(() => {
+      const groundLevel = getOptimizedGroundLevel(0, 0);
+      const safeHeight = Math.max(groundLevel + 2, 16); // Ensure always above ground
+      camera.position.y = safeHeight;
+      console.log(`🎮 Player positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
+    }, 1000); // Wait for terrain to generate
+    
     console.log('🎮 Ultra-optimized Player initialized with fixed orientation');
   }, [camera]);
 
