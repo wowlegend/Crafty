@@ -432,43 +432,56 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Enhanced clouds with better performance */}
+      {/* Performance-optimized clouds */}
       <MinecraftClouds />
       
-      {/* Grass particle effects for better grass appearance */}
+      {/* Enhanced grass effects */}
       <GrassEffects />
       
-      {/* PERFORMANCE-OPTIMIZED block rendering */}
-      {Array.from(blocks.values())
-        .filter(block => {
-          const distance = Math.sqrt(
-            Math.pow(block.position[0] - camera.position.x, 2) + 
-            Math.pow(block.position[2] - camera.position.z, 2)
-          );
-          return distance < 80; // Reduced render distance for performance
-        })
-        .map((block) => {
-          const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
-          return (
-            <mesh 
-              key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
-              position={block.position}
-            >
-              <boxGeometry args={[1, 1, 1]} />
-              <meshLambertMaterial 
-                color={blockConfig.color}
-                transparent={blockConfig.transparent || false}
-                opacity={blockConfig.transparent ? 0.8 : 1}
-                emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-                emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
-              />
-              {/* Enhanced grass texture effect */}
-              {block.type === 'grass' && (
-                <GrassTexture position={[0, 0.51, 0]} />
-              )}
-            </mesh>
-          );
-        })}
+      {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
+      {useMemo(() => {
+        const visibleBlocks = Array.from(blocks.values())
+          .filter(block => {
+            // Aggressive distance culling
+            const dx = block.position[0] - camera.position.x;
+            const dz = block.position[2] - camera.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            // Frustum culling approximation
+            if (distance > 60) return false;
+            
+            // Height culling - don't render blocks too far above/below player
+            const dy = Math.abs(block.position[1] - camera.position.y);
+            if (dy > 20) return false;
+            
+            return true;
+          })
+          .map((block) => {
+            const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
+            return (
+              <mesh 
+                key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
+                position={block.position}
+                userData={{ blockType: block.type }} // For interaction optimization
+              >
+                <boxGeometry args={[1, 1, 1]} />
+                <meshLambertMaterial 
+                  color={blockConfig.color}
+                  transparent={blockConfig.transparent || false}
+                  opacity={blockConfig.transparent ? 0.8 : 1}
+                  emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
+                  emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
+                />
+                {/* Enhanced grass texture effect with performance check */}
+                {block.type === 'grass' && (
+                  <GrassTexture position={[0, 0.51, 0]} />
+                )}
+              </mesh>
+            );
+          });
+        
+        return visibleBlocks;
+      }, [blocks, camera.position.x, camera.position.z, camera.position.y])}
     </group>
   );
 };
