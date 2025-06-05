@@ -311,17 +311,17 @@ function GameApp() {
 
               <motion.button
                 onClick={() => document.body.requestPointerLock()}
-                className="bg-green-500 hover:bg-green-400 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
+                className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.6 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                Start Playing
+                🧙‍♂️ Start Magical Adventure
               </motion.button>
               <p className="text-sm text-green-200 mt-4">
-                Click to lock mouse pointer and start the game
+                Click to lock mouse pointer and begin your magical journey
               </p>
             </div>
           </motion.div>
