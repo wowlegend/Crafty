@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Box, Plane, Stars } from '@react-three/drei';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import { 
   Pickaxe, 
@@ -25,6 +25,35 @@ import {
   Shield,
   Crown
 } from 'lucide-react';
+
+// Import Experience System with error handling
+let ExperienceSystem = null;
+try {
+  const expSystem = require('./ExperienceSystem');
+  ExperienceSystem = {
+    useExperienceSystem: expSystem.useExperienceSystem,
+    XPNotification: expSystem.XPNotification,
+    LevelUpNotification: expSystem.LevelUpNotification,
+    ExperienceBar: expSystem.ExperienceBar,
+    PlayerStats: expSystem.PlayerStats
+  };
+} catch (error) {
+  console.warn('Experience System not available:', error);
+  // Fallback components
+  ExperienceSystem = {
+    useExperienceSystem: () => ({
+      playerData: { level: 1, totalXP: 0, stats: {} },
+      addExperience: () => {},
+      xpNotifications: [],
+      levelUpNotification: null,
+      getLevelProgress: () => ({ level: 1, progressPercent: 0 })
+    }),
+    XPNotification: () => null,
+    LevelUpNotification: () => null,
+    ExperienceBar: () => null,
+    PlayerStats: () => null
+  };
+}
 
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
