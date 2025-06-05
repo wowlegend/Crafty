@@ -74,6 +74,21 @@ try {
   };
 }
 
+// Import Enhanced Grass System with error handling
+let EnhancedGrass = null;
+try {
+  const grassSystem = require('./EnhancedGrassSystem');
+  EnhancedGrass = {
+    EnhancedGrassSystem: grassSystem.EnhancedGrassSystem
+  };
+} catch (error) {
+  console.warn('Enhanced Grass System not available:', error);
+  // Fallback component
+  EnhancedGrass = {
+    EnhancedGrassSystem: () => null
+  };
+}
+
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
   grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
