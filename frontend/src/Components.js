@@ -738,13 +738,24 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ULTRA-OPTIMIZED Player component with smooth mouse look
+// ULTRA-OPTIMIZED Player component with Experience System and Magic Combat
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
+  const [selectedSpell, setSelectedSpell] = useState('fireball');
+  
+  // Experience system integration
+  const experienceSystem = useExperienceSystem(gameState.playerData);
+  
+  // Update gameState with experience system
+  useEffect(() => {
+    gameState.addExperience = experienceSystem.addExperience;
+    gameState.playerData = experienceSystem.playerData;
+    gameState.getLevelProgress = experienceSystem.getLevelProgress;
+  }, [experienceSystem]);
   
   // Performance optimization: cached vectors and minimal recalculations
   const forwardVector = useRef(new THREE.Vector3());
@@ -756,54 +767,51 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position and fix orientation - CRITICAL FIX
+  // Set initial camera position and fix orientation
   useEffect(() => {
-    // ROBUST initial positioning
-    camera.position.set(0, 20, 0); // Higher initial spawn to prevent underground spawn
-    camera.lookAt(0, 18, 0); // Look slightly down initially
+    camera.position.set(0, 20, 0);
+    camera.lookAt(0, 18, 0);
     camera.updateProjectionMatrix();
     
-    // FORCE proper ground positioning after terrain is ready
     setTimeout(() => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
-      const safeHeight = Math.max(groundLevel + 2, 16); // Ensure always above ground
+      const safeHeight = Math.max(groundLevel + 2, 16);
       camera.position.y = safeHeight;
       console.log(`🎮 Player positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
-    }, 1000); // Wait for terrain to generate
+    }, 1000);
     
-    console.log('🎮 Ultra-optimized Player initialized with fixed orientation');
+    console.log('🎮 Ultra-optimized Player with Experience System initialized');
   }, [camera]);
 
-  // Expose attack state globally
+  // Expose attack state and magic casting globally
   useEffect(() => {
     window.setPlayerAttacking = setIsAttacking;
+    window.playLevelUpSound = experienceSystem.playLevelUpSound;
   }, []);
 
   // OPTIMIZED frame logic with performance throttling
   useFrame((state, delta) => {
     const now = performance.now();
     
-    // Throttle expensive operations
-    const shouldUpdateCamera = now - lastCameraUpdate.current > 8; // 120fps camera updates
-    const shouldCheckGround = now - lastGroundCheck.current > 16; // 60fps ground checking
+    const shouldUpdateCamera = now - lastCameraUpdate.current > 8;
+    const shouldCheckGround = now - lastGroundCheck.current > 16;
     
-    const speed = 10; // Optimized speed
+    const speed = 10;
     const moveVector = new THREE.Vector3();
     
-    // Only update camera vectors when needed for performance
     if (shouldUpdateCamera) {
       camera.getWorldDirection(forwardVector.current);
       rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
       lastCameraUpdate.current = now;
     }
     
-    // Apply movement with optimized vector operations
+    // Apply movement
     if (keys.KeyW) moveVector.add(forwardVector.current);
     if (keys.KeyS) moveVector.sub(forwardVector.current);
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // Horizontal movement with performance optimization
+    // Track movement for experience
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
@@ -811,6 +819,11 @@ export const Player = ({ gameState }) => {
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
+      
+      // Add experience for exploration (every 10 seconds of movement)
+      if (Math.random() < 0.001) {
+        experienceSystem.addExperience('discoverArea', 25, 'exploration');
+      }
     }
     
     // Optimized gravity and ground collision
@@ -821,7 +834,6 @@ export const Player = ({ gameState }) => {
       const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
       const playerHeight = 1.8;
       
-      // CRITICAL FIX: Ensure player never goes underground
       const minAllowedY = groundLevel + playerHeight;
       
       if (newY <= minAllowedY) {
@@ -833,7 +845,7 @@ export const Player = ({ gameState }) => {
         setIsOnGround(false);
       }
       
-      // SAFETY CHECK: Force above ground if somehow below
+      // Safety check
       if (camera.position.y < groundLevel + playerHeight) {
         camera.position.y = groundLevel + playerHeight;
         console.warn(`🚑 Emergency repositioning player above ground: ${camera.position.y}`);
@@ -841,11 +853,10 @@ export const Player = ({ gameState }) => {
       
       lastGroundCheck.current = now;
     } else {
-      // Apply velocity without ground check for smoother movement
       camera.position.y += velocity.current.y * delta;
       
-      // SAFETY: Still check for underground position during movement
-      if (Math.random() < 0.1) { // 10% chance per frame
+      // Random safety check during movement
+      if (Math.random() < 0.1) {
         const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
         if (camera.position.y < groundLevel + 1.8) {
           camera.position.y = groundLevel + 1.8;
@@ -855,19 +866,18 @@ export const Player = ({ gameState }) => {
     }
   });
 
-  // ROBUST ground level detection with caching
+  // Ground level detection with caching
   const getOptimizedGroundLevel = (x, z) => {
-    const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`; // Cache every 4 blocks for performance
+    const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`;
     
     if (groundLevelCache.current.has(cacheKey)) {
       return groundLevelCache.current.get(cacheKey);
     }
     
-    let groundLevel = 15; // SAFE default height - above most terrain
+    let groundLevel = 15;
     try {
       if (window.getHighestBlockAt) {
         const calculatedLevel = window.getHighestBlockAt(x, z);
-        // ENSURE we get a valid number
         if (typeof calculatedLevel === 'number' && !isNaN(calculatedLevel)) {
           groundLevel = calculatedLevel + 1;
         }
@@ -876,18 +886,14 @@ export const Player = ({ gameState }) => {
       console.warn('Error calculating ground level:', error);
     }
     
-    // SAFETY CHECK: Ensure ground level is reasonable
-    groundLevel = Math.max(groundLevel, 12); // Never below 12
-    groundLevel = Math.min(groundLevel, 25); // Never above 25
+    groundLevel = Math.max(groundLevel, 12);
+    groundLevel = Math.min(groundLevel, 25);
     
-    // Cache result for performance
     groundLevelCache.current.set(cacheKey, groundLevel);
     
-    // Clean cache periodically to prevent memory leaks
     if (groundLevelCache.current.size > 50) {
       const entries = Array.from(groundLevelCache.current.entries());
       groundLevelCache.current.clear();
-      // Keep only recent entries
       entries.slice(-25).forEach(([key, value]) => {
         groundLevelCache.current.set(key, value);
       });
@@ -896,10 +902,9 @@ export const Player = ({ gameState }) => {
     return groundLevel;
   };
 
-  // HIGHLY OPTIMIZED event handlers
+  // Enhanced event handlers with magic system
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // Prevent unnecessary re-renders
       setKeys(prev => {
         if (prev[event.code]) return prev;
         return { ...prev, [event.code]: true };
@@ -913,13 +918,44 @@ export const Player = ({ gameState }) => {
         }
       }
       
-      // Enhanced attack with F key
+      // Enhanced magic combat with F key
       if (event.code === 'KeyF') {
         setIsAttacking(true);
-        setTimeout(() => setIsAttacking(false), 300);
+        
+        // Cast magic spell
+        if (window.castMagicSpell) {
+          window.castMagicSpell(selectedSpell);
+          experienceSystem.addExperience('useMagic', 3, selectedSpell);
+        }
+        
+        setTimeout(() => setIsAttacking(false), 500);
       }
       
-      // Optimized block selection
+      // Spell selection with Q, R, T keys
+      if (event.code === 'KeyQ') {
+        setSelectedSpell('fireball');
+        console.log('🔥 Selected Fireball');
+      }
+      if (event.code === 'KeyR') {
+        if (experienceSystem.playerData.unlockedSpells.includes('iceShard')) {
+          setSelectedSpell('iceShard');
+          console.log('❄️ Selected Ice Shard');
+        }
+      }
+      if (event.code === 'KeyT') {
+        if (experienceSystem.playerData.unlockedSpells.includes('lightningBeam')) {
+          setSelectedSpell('lightningBeam');
+          console.log('⚡ Selected Lightning Beam');
+        }
+      }
+      if (event.code === 'KeyY') {
+        if (experienceSystem.playerData.unlockedSpells.includes('arcaneOrb')) {
+          setSelectedSpell('arcaneOrb');
+          console.log('🔮 Selected Arcane Orb');
+        }
+      }
+      
+      // Block selection with number keys
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = Object.keys(BLOCK_TYPES);
@@ -936,7 +972,6 @@ export const Player = ({ gameState }) => {
       });
     };
     
-    // Optimized event listeners
     window.addEventListener('keydown', handleKeyDown, { passive: false });
     window.addEventListener('keyup', handleKeyUp, { passive: true });
     
@@ -944,9 +979,38 @@ export const Player = ({ gameState }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, isOnGround]);
+  }, [gameState, isOnGround, selectedSpell, experienceSystem]);
 
-  return <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />;
+  return (
+    <>
+      <BothHands 
+        selectedBlock={gameState.selectedBlock} 
+        isAttacking={isAttacking}
+        selectedSpell={selectedSpell}
+      />
+      
+      {/* Experience notifications */}
+      {experienceSystem.xpNotifications.map(notification => (
+        <XPNotification
+          key={notification.id}
+          notification={notification}
+          onComplete={() => {
+            // Remove notification (handled automatically)
+          }}
+        />
+      ))}
+      
+      {/* Level up notification */}
+      {experienceSystem.levelUpNotification && (
+        <LevelUpNotification
+          notification={experienceSystem.levelUpNotification}
+          onComplete={() => {
+            // Remove notification (handled automatically)
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 // Game UI Component
