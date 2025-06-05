@@ -557,9 +557,9 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // MINIMAL camera setup - let PointerLockControls handle rotation
+  // MINIMAL camera setup - ZERO conflicts with PointerLockControls
   useEffect(() => {
-    // Only set initial position, NO rotation control
+    // ONLY set initial position - NO other camera manipulation
     camera.position.set(0, 18, 0);
     
     // Expose camera globally for magic system
@@ -568,12 +568,7 @@ export const Player = ({ gameState }) => {
     // Set initial spell
     gameState.selectedSpell = selectedSpell;
     
-    setTimeout(() => {
-      const groundLevel = getOptimizedGroundLevel(0, 0);
-      const safeHeight = Math.max(groundLevel + 2, 16);
-      camera.position.y = safeHeight;
-      console.log(`🧙‍♂️ Player initialized at height: ${safeHeight}`);
-    }, 500);
+    console.log('🧙‍♂️ Player initialized - letting PointerLockControls handle camera');
   }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
