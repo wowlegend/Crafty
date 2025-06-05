@@ -406,6 +406,25 @@ function GameApp() {
               playerPosition={playerPosition}
             />
             <CombatInstructions />
+            
+            {/* Experience System UI - Outside Canvas */}
+            <SimpleExperienceBar 
+              level={experienceSystem.playerLevel}
+              currentXP={experienceSystem.currentXP}
+              xpRequired={experienceSystem.xpRequired}
+              xpProgress={experienceSystem.xpProgress}
+            />
+            
+            <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
+            
+            <SimpleLevelUpEffect 
+              levelUpEffects={experienceSystem.levelUpEffects}
+              onEffectComplete={(id) => {
+                experienceSystem.setLevelUpEffects(prev => 
+                  prev.filter(effect => effect.id !== id)
+                );
+              }}
+            />
           </>
         )}
       </AnimatePresence>
