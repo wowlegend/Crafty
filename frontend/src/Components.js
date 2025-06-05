@@ -25,12 +25,7 @@ import {
   Shield
 } from 'lucide-react';
 
-// Import enhanced systems to fix runtime errors
-import { useExperienceSystem, XPGainVisual, LevelUpEffect, ExperienceBar, LevelUpParticles } from './ExperienceSystem';
-import { useSoundEnhancements, AudioPerformanceMonitor } from './SoundEnhancements';
-import { MagicProjectileSystem, MagicWand, MagicImpactSystem } from './MagicSystem';
-import { EnhancedGrassSystem, WindParticleSystem, EnhancedGrassTexture } from './EnhancedGrassSystem';
-import { OptimizedTerrain } from './OptimizedTerrain';
+
 
 
 
