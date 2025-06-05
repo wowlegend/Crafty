@@ -14,31 +14,31 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
       .slice(0, 50); // Limit for performance
   }, [blockPositions]);
 
-  // Optimized wind animation
-  useFrame((state) => {
-    if (!grassGroupRef.current) return;
+  // DISABLED useFrame to prevent camera conflicts
+  // useFrame((state) => {
+  //   if (!grassGroupRef.current) return;
     
-    const time = state.clock.elapsedTime;
+  //   const time = state.clock.elapsedTime;
     
-    // Simplified animation for performance
-    grassGroupRef.current.children.forEach((grass, index) => {
-      if (index % 3 === 0) { // Only animate every 3rd grass blade
-        const offset = index * 0.1;
-        grass.rotation.z = Math.sin(time * 0.5 + offset) * 0.08;
-      }
-    });
+  //   // Simplified animation for performance
+  //   grassGroupRef.current.children.forEach((grass, index) => {
+  //     if (index % 3 === 0) { // Only animate every 3rd grass blade
+  //       const offset = index * 0.1;
+  //       grass.rotation.z = Math.sin(time * 0.5 + offset) * 0.08;
+  //     }
+  //   });
     
-    // Animate floating particles
-    if (particlesRef.current) {
-      particlesRef.current.children.forEach((particle, index) => {
-        const offset = index * 0.5;
-        particle.position.y = 15 + Math.sin(time * 0.3 + offset) * 1.5;
-        if (particle.position.y > 20) {
-          particle.position.y = 12;
-        }
-      });
-    }
-  });
+  //   // Animate floating particles
+  //   if (particlesRef.current) {
+  //     particlesRef.current.children.forEach((particle, index) => {
+  //       const offset = index * 0.5;
+  //       particle.position.y = 15 + Math.sin(time * 0.3 + offset) * 1.5;
+  //       if (particle.position.y > 20) {
+  //         particle.position.y = 12;
+  //       }
+  //     });
+  //   }
+  // });
 
   // Simplified grass particles for performance
   const grassParticles = useMemo(() => {
