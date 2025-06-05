@@ -370,15 +370,12 @@ function GameApp() {
           far: 500,
           position: [0, 18, 0]
         }}
-        onCreated={({ camera, gl }) => {
-          // FIXED camera orientation - look horizontally forward
-          camera.rotation.set(0, 0, 0); // Reset rotation
-          camera.lookAt(0, 18, -10); // Look forward horizontally
-          camera.updateProjectionMatrix();
-          
+        onCreated={({ gl }) => {
           // Optimize WebGL settings for performance
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           gl.shadowMap.enabled = false; // Disable shadows for performance
+          
+          // NO camera manipulation here - let PointerLockControls handle it
         }}
       >
         {/* Enhanced lighting */}
