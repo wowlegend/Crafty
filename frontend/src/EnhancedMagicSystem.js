@@ -103,6 +103,16 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       
       console.log(`🔥 ENHANCED: Cast ${spellType}! Damage: ${spell.damage}`);
       
+      // Create initial spell trail from wand
+      createSpellTrail(startPos, direction, spell);
+      
+      // Play spell casting sound
+      if (window.playSpellCastSound) {
+        window.playSpellCastSound(spellType);
+      }
+    };
+  }, [SPELL_TYPES]);
+      
       setProjectiles(prev => [...prev, newProjectile]);
       
       // Create initial spell trail from wand
