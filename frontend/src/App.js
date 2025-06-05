@@ -310,14 +310,25 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* FIXED Game Canvas with proper camera settings */}
+      {/* FIXED Game Canvas with optimized camera settings */}
       <Canvas
         camera={{
           fov: 75,
-          near: 0.001, // DRASTICALLY reduced near plane to ensure hands visibility
-          far: 500,    // Increased far plane for better world visibility
-          position: [0, 15, 0]
+          near: 0.001,
+          far: 500,
+          position: [0, 15, 0],
+          rotation: [0, 0, 0] // Ensure proper initial orientation
         }}
+        onCreated={({ camera, gl }) => {
+          // Fix initial camera orientation
+          camera.lookAt(0, 14, 0);
+          camera.updateProjectionMatrix();
+          
+          // Optimize WebGL settings for performance
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          gl.shadowMap.enabled = false; // Disable shadows for performance
+        }}
+      >
         shadows={false}
         className="w-full h-full"
         gl={{ 
