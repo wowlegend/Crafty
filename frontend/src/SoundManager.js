@@ -440,10 +440,16 @@ export const useGameSounds = () => {
     playPickup: () => playSound('pickup'),
     playCraft: () => playSound('craft'),
     playMagic: () => playSound('magic'),
-    // NEW: Combat sounds
+    // Combat sounds
     playAttack: () => playSound('attack', 0.9 + Math.random() * 0.2),
     playSwing: () => playSound('swing', 0.8 + Math.random() * 0.4),
     playHit: () => playSound('hit', 0.9 + Math.random() * 0.2),
-    playDefeat: () => playSound('defeat')
+    playDefeat: () => playSound('defeat'),
+    // Enhanced magic sounds
+    playMagicCast: () => playSound('magicCast', 0.9 + Math.random() * 0.2),
+    playMagicHit: () => playSound('magicHit', 0.8 + Math.random() * 0.4),
+    playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
+    playMagicCharge: () => playSound('magicCharge'),
+    playLevelUpSound: () => playSound('levelUp')
   };
 };
