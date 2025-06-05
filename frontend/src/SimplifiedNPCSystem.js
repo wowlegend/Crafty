@@ -441,9 +441,9 @@ export const NPCSystem = ({ gameState }) => {
           spawnDamageNumber(entity.position, damage);
           
           // ADD XP GAIN for spell combat
-          if (window.addXP) {
+          if (window.addExperience) {
             const xpGain = Math.floor(damage / 5); // 1 XP per 5 damage
-            window.addXP(xpGain, `Spell Combat`);
+            window.addExperience(xpGain, `Spell Combat`);
           }
           
           if (newHealth <= 0) {
