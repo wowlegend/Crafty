@@ -355,16 +355,23 @@ export const MinecraftWorld = ({ gameState }) => {
     generateInitial();
   }, []);
 
-  // Enhanced collision detection
+  // ROBUST collision detection with safety checks
   const getHighestBlockAt = (x, z) => {
-    let maxY = 8;
-    for (let y = 8; y <= 30; y++) { // Increased height range
-      const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
-      if (blocks.has(key)) {
-        maxY = Math.max(maxY, y);
+    let maxY = 12; // Safe default minimum
+    try {
+      // Check reasonable height range
+      for (let y = 8; y <= 25; y++) {
+        const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
+        if (blocks.has(key)) {
+          maxY = Math.max(maxY, y);
+        }
       }
+    } catch (error) {
+      console.warn('Error in getHighestBlockAt:', error);
     }
-    return maxY;
+    
+    // SAFETY: Ensure reasonable return value
+    return Math.max(maxY, 12);
   };
 
   useEffect(() => {
