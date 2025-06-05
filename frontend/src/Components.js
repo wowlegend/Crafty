@@ -357,18 +357,13 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     };
   }, [camera, gameState.selectedBlock, handleBlockBreak, handleBlockPlace]);
 
-  // Expose ground level function
+  // DISABLED - Expose ground level function (CAUSING OSCILLATION)
   useEffect(() => {
+    // TEMPORARILY DISABLED TO FIX OSCILLATION
     window.getHighestBlockAt = (x, z) => {
-      let maxY = 12;
-      blocks.forEach(block => {
-        if (Math.floor(block.position[0]) === Math.floor(x) && 
-            Math.floor(block.position[2]) === Math.floor(z)) {
-          maxY = Math.max(maxY, block.position[1]);
-        }
-      });
-      return Math.max(maxY, 12);
+      return 15; // Fixed height to prevent oscillation
     };
+    console.log('⚠️ Ground detection DISABLED to fix oscillation - using fixed height 15');
   }, [blocks]);
 
   // OPTIMIZED block rendering with culling
