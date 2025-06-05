@@ -23,20 +23,41 @@ import {
   VolumeX
 } from 'lucide-react';
 import './App.css';
-import { 
-  MinecraftWorld, 
-  Player, 
-  GameUI, 
-  Inventory, 
-  CraftingTable, 
-  MagicSystem,
-  BuildingTools,
-  SettingsPanel,
-  MinecraftSky,
-  MinecraftHotbar,
-  MinecraftHealthHunger,
-  PositionTracker
-} from './Components';
+
+// Import core components with error handling
+let MinecraftWorld, Player, GameUI, Inventory, CraftingTable, MagicSystem, BuildingTools, SettingsPanel, MinecraftSky, MinecraftHotbar, MinecraftHealthHunger, PositionTracker;
+
+try {
+  const components = require('./Components');
+  MinecraftWorld = components.MinecraftWorld;
+  Player = components.Player;
+  GameUI = components.GameUI;
+  Inventory = components.Inventory;
+  CraftingTable = components.CraftingTable;
+  MagicSystem = components.MagicSystem;
+  BuildingTools = components.BuildingTools;
+  SettingsPanel = components.SettingsPanel;
+  MinecraftSky = components.MinecraftSky;
+  MinecraftHotbar = components.MinecraftHotbar;
+  MinecraftHealthHunger = components.MinecraftHealthHunger;
+  PositionTracker = components.PositionTracker;
+} catch (error) {
+  console.error('Error loading components:', error);
+  // Fallback components
+  MinecraftWorld = () => null;
+  Player = () => null;
+  GameUI = () => null;
+  Inventory = () => null;
+  CraftingTable = () => null;
+  MagicSystem = () => null;
+  BuildingTools = () => null;
+  SettingsPanel = () => null;
+  MinecraftSky = () => null;
+  MinecraftHotbar = () => null;
+  MinecraftHealthHunger = () => null;
+  PositionTracker = () => null;
+}
+
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
