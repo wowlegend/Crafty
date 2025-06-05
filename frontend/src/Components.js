@@ -538,37 +538,19 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-// OPTIMIZED Player Component - Fixed Camera Issues
+// FIXED Player Component - NO camera manipulation, work WITH PointerLockControls
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
-  const velocity = useRef(new THREE.Vector3());
-  const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   const [selectedSpell, setSelectedSpell] = useState('fireball');
   
-  // Performance optimization: cached vectors
-  const forwardVector = useRef(new THREE.Vector3());
-  const rightVector = useRef(new THREE.Vector3());
-  const upVector = useRef(new THREE.Vector3(0, 1, 0));
-  
-  // Movement optimization
-  const lastGroundCheck = useRef(0);
-  const groundLevelCache = useRef(new Map());
-  const lastCameraUpdate = useRef(0);
-  
-  // MINIMAL camera setup - ZERO conflicts with PointerLockControls
+  // Set initial camera position ONCE - then let PointerLockControls handle everything
   useEffect(() => {
-    // ONLY set initial position - NO other camera manipulation
     camera.position.set(0, 18, 0);
-    
-    // Expose camera globally for magic system
     window.gameCamera = camera;
-    
-    // Set initial spell
     gameState.selectedSpell = selectedSpell;
-    
-    console.log('🧙‍♂️ Player initialized - letting PointerLockControls handle camera');
+    console.log('🧙‍♂️ Player initialized - PointerLockControls handles movement');
   }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
@@ -578,126 +560,31 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // SIMPLIFIED frame logic - STOP camera position fights
-  useFrame((state, delta) => {
-    const now = performance.now();
-    
-    // ONLY handle movement vectors - NO camera position manipulation
-    const speed = 12;
-    const moveVector = new THREE.Vector3();
-    
-    // Get movement direction from camera - MINIMAL calculations
-    if (now - lastCameraUpdate.current > 50) { // Slower updates
-      try {
-        camera.getWorldDirection(forwardVector.current);
-        rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
-        lastCameraUpdate.current = now;
-      } catch (error) {
-        // Skip this frame if camera calculations fail
-        return;
-      }
-    }
-    
-    // Apply movement vectors - MINIMAL processing
-    if (keys.KeyW) moveVector.add(forwardVector.current);
-    if (keys.KeyS) moveVector.sub(forwardVector.current);
-    if (keys.KeyA) moveVector.sub(rightVector.current);
-    if (keys.KeyD) moveVector.add(rightVector.current);
-    
-    // BASIC movement - NO complex XP or chunk calculations
-    if (moveVector.length() > 0) {
-      moveVector.normalize();
-      moveVector.y = 0;
-      
-      const scaledMovement = moveVector.multiplyScalar(speed * delta);
-      
-      // SIMPLE position update - NO interference
-      camera.position.x += scaledMovement.x;
-      camera.position.z += scaledMovement.z;
-    }
-    
-    // BASIC gravity - NO complex ground checking
-    velocity.current.y -= 25 * delta;
-    
-    // SIMPLE ground collision - MINIMAL processing
-    if (now - lastGroundCheck.current > 200) { // Much slower checks
-      const groundLevel = 15; // FIXED ground level - no calculations
-      const playerHeight = 1.8;
-      const minAllowedY = groundLevel + playerHeight;
-      
-      if (camera.position.y < minAllowedY) {
-        camera.position.y = minAllowedY;
-        velocity.current.y = 0;
-        setIsOnGround(true);
-      } else {
-        camera.position.y += velocity.current.y * delta;
-        setIsOnGround(false);
-      }
-      
-      lastGroundCheck.current = now;
-    } else {
-      // SIMPLE Y movement between checks
-      camera.position.y += velocity.current.y * delta;
-    }
-  });
+  // NO useFrame - NO camera manipulation - Let PointerLockControls do everything
+  // Just handle key events for non-movement actions
 
-  // Remove complex ground level detection - causing conflicts
-  const getOptimizedGroundLevel = useCallback((x, z) => {
-    // SIMPLIFIED - just return fixed level
-    return 15;
-  }, []);
-
-  // COMPLETELY ISOLATED event handlers - NO CONFLICTS
+  // KEY HANDLERS - Only for NON-MOVEMENT keys
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // MOVEMENT KEYS ONLY - No other processing
-      if (event.code === 'KeyW' || event.code === 'KeyA' || event.code === 'KeyS' || event.code === 'KeyD') {
-        setKeys(prev => ({ ...prev, [event.code]: true }));
-        event.preventDefault(); // Prevent any other handlers
-        event.stopPropagation(); // Stop event bubbling
-        return; // Exit immediately
-      }
-      
-      // SEPARATE handler for other keys
-      handleNonMovementKeys(event);
-    };
-    
-    const handleKeyUp = (event) => {
-      // MOVEMENT KEYS ONLY - No other processing
-      if (event.code === 'KeyW' || event.code === 'KeyA' || event.code === 'KeyS' || event.code === 'KeyD') {
-        setKeys(prev => ({ ...prev, [event.code]: false }));
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-    };
-    
-    const handleNonMovementKeys = (event) => {
+      // ONLY handle action keys - NO movement keys
       if (event.code === 'Space') {
         event.preventDefault();
-        if (isOnGround) {
-          velocity.current.y = 12;
-          setIsOnGround(false);
-        }
+        // Could add jump logic here if needed
         return;
       }
       
-      // FIXED magic casting - NO automatic XP
       if (event.code === 'KeyF') {
         event.preventDefault();
         setIsAttacking(true);
         
-        // Cast spell WITHOUT automatic XP
         if (window.castSpell) {
           window.castSpell(selectedSpell);
-          // REMOVED automatic XP - only award XP on actual hits
         }
         
         setTimeout(() => setIsAttacking(false), 600);
         return;
       }
       
-      // Spell selection
       if (event.code === 'KeyQ') {
         event.preventDefault();
         const spells = ['fireball', 'iceball', 'lightning', 'arcane'];
@@ -709,7 +596,6 @@ export const Player = ({ gameState }) => {
         return;
       }
       
-      // Block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = BLOCK_TYPE_KEYS;
@@ -720,19 +606,17 @@ export const Player = ({ gameState }) => {
       }
     };
     
-    // Add with highest priority to capture first
-    window.addEventListener('keydown', handleKeyDown, { passive: false, capture: true });
-    window.addEventListener('keyup', handleKeyUp, { passive: false, capture: true });
+    // Only listen for action keys - PointerLockControls handles WASD
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true });
-      window.removeEventListener('keyup', handleKeyUp, { capture: true });
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [gameState, isOnGround, selectedSpell]);
+  }, [gameState, selectedSpell]);
 
   return (
     <group>
-      {/* STABLE Magic Hands - No Shaking */}
+      {/* RESTORED Magic Hands with ALL Effects - Fixed positioning */}
       <StableMagicHands 
         selectedSpell={selectedSpell}
         selectedBlock={gameState.selectedBlock}
