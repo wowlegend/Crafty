@@ -118,6 +118,7 @@ export const MinecraftWorld = ({ gameState }) => {
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
+  const lastPlayerPosition = useRef({ x: 0, z: 0 });
   const lastGenerationTime = useRef(0);
   const generationQueue = useRef([]);
   
