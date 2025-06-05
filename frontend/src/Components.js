@@ -158,131 +158,66 @@ export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const { camera } = useThree();
   const worldRef = useRef();
-  
-  // Experience system integration
-  const experienceSystem = useExperienceSystem();
-  
-  // Enhanced sound system
-  const soundEnhancements = useSoundEnhancements();
 
-  // Enhanced collision detection with caching
-  const getHighestBlockAt = (x, z) => {
-    let maxY = 12;
-    try {
-      for (let y = 8; y <= 25; y++) {
-        const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
-        if (blocks.has(key)) {
-          maxY = Math.max(maxY, y);
-        }
+  // Handle block interactions
+  const handleBlockPlace = (position, blockType) => {
+    const key = `${position[0]},${position[1]},${position[2]}`;
+    if (!blocks.has(key)) {
+      setBlocks(prev => new Map(prev).set(key, {
+        position,
+        type: blockType
+      }));
+      
+      if (gameState.gameMode !== 'creative') {
+        gameState.removeFromInventory(blockType, 1);
       }
-    } catch (error) {
-      console.warn('Error in getHighestBlockAt:', error);
-    }
-    return Math.max(maxY, 12);
-  };
-
-  useEffect(() => {
-    window.getHighestBlockAt = getHighestBlockAt;
-  }, [blocks]);
-
-  // Enhanced block placement
-  const placeBlock = () => {
-    if (!gameState.selectedBlock) return;
-    
-    try {
-      const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-      
-      const newPos = camera.position.clone().add(direction.multiplyScalar(4));
-      const gridPos = {
-        x: Math.round(newPos.x),
-        y: Math.max(1, Math.round(newPos.y)),
-        z: Math.round(newPos.z)
-      };
-      
-      const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
-      
-      if (!blocks.has(key)) {
-        setBlocks(prev => new Map(prev).set(key, {
-          position: [gridPos.x, gridPos.y, gridPos.z],
-          type: gameState.selectedBlock
-        }));
-        
-        if (gameState.gameMode !== 'creative') {
-          gameState.removeFromInventory(gameState.selectedBlock, 1);
-        }
-        
-        // Add XP for placing blocks
-        if (gameState.addExperience) {
-          try {
-            gameState.addExperience('placeBlock', 1, gameState.selectedBlock);
-          } catch (error) {
-            console.warn('Error adding place block XP:', error);
-          }
-        }
-        
-        console.log(`🧱 Placed ${gameState.selectedBlock} at (${gridPos.x}, ${gridPos.y}, ${gridPos.z})`);
-      }
-    } catch (error) {
-      console.error('Error placing block:', error);
     }
   };
 
-  const breakBlock = () => {
-    try {
-      const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
+  const handleBlockBreak = (position) => {
+    const key = `${position[0]},${position[1]},${position[2]}`;
+    if (blocks.has(key)) {
+      const block = blocks.get(key);
+      setBlocks(prev => {
+        const newBlocks = new Map(prev);
+        newBlocks.delete(key);
+        return newBlocks;
+      });
       
-      const targetPos = camera.position.clone().add(direction.multiplyScalar(4));
-      const gridPos = {
-        x: Math.round(targetPos.x),
-        y: Math.round(targetPos.y),
-        z: Math.round(targetPos.z)
-      };
-      
-      const key = `${gridPos.x},${gridPos.y},${gridPos.z}`;
-      
-      if (blocks.has(key)) {
-        const block = blocks.get(key);
-        setBlocks(prev => {
-          const newBlocks = new Map(prev);
-          newBlocks.delete(key);
-          return newBlocks;
-        });
-        
-        gameState.addToInventory(block.type, 1);
-        
-        // Add XP for breaking blocks
-        if (gameState.addExperience) {
-          try {
-            gameState.addExperience('breakBlock', 1, block.type);
-          } catch (error) {
-            console.warn('Error adding break block XP:', error);
-          }
-        }
-        
-        console.log(`💥 Broke ${block.type}`);
-      }
-    } catch (error) {
-      console.error('Error breaking block:', error);
+      gameState.addToInventory(block.type, 1);
     }
   };
 
-  // Click handlers
+  // Optimized click handlers
   useEffect(() => {
     const handleClick = (event) => {
-      if (event.button === 0) {
+      if (!camera) return;
+      
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      
+      if (event.button === 0) { // Left click - break
         event.preventDefault();
-        breakBlock();
-      } else if (event.button === 2) {
+        const targetPos = camera.position.clone().add(direction.multiplyScalar(4));
+        const gridPos = [
+          Math.round(targetPos.x),
+          Math.round(targetPos.y),
+          Math.round(targetPos.z)
+        ];
+        handleBlockBreak(gridPos);
+      } else if (event.button === 2) { // Right click - place
         event.preventDefault();
-        placeBlock();
+        const newPos = camera.position.clone().add(direction.multiplyScalar(4));
+        const gridPos = [
+          Math.round(newPos.x),
+          Math.max(1, Math.round(newPos.y)),
+          Math.round(newPos.z)
+        ];
+        handleBlockPlace(gridPos, gameState.selectedBlock);
       }
     };
 
-    const handleContextMenu = (event) => {
-      event.preventDefault();
-    };
+    const handleContextMenu = (event) => event.preventDefault();
 
     window.addEventListener('mousedown', handleClick);
     window.addEventListener('contextmenu', handleContextMenu);
@@ -291,56 +226,54 @@ export const MinecraftWorld = ({ gameState }) => {
       window.removeEventListener('mousedown', handleClick);
       window.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [gameState.selectedBlock, blocks]);
+  }, [camera, gameState.selectedBlock, blocks]);
+
+  // Expose ground level function
+  useEffect(() => {
+    window.getHighestBlockAt = (x, z) => {
+      let maxY = 12;
+      blocks.forEach(block => {
+        if (Math.floor(block.position[0]) === Math.floor(x) && 
+            Math.floor(block.position[2]) === Math.floor(z)) {
+          maxY = Math.max(maxY, block.position[1]);
+        }
+      });
+      return Math.max(maxY, 12);
+    };
+  }, [blocks]);
 
   return (
-    <group>
-      {/* Performance-optimized clouds */}
+    <group ref={worldRef}>
+      {/* Basic terrain rendering */}
+      {Array.from(blocks.values()).map((block) => {
+        const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
+        return (
+          <mesh 
+            key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
+            position={block.position}
+            userData={{ blockType: block.type }}
+          >
+            <boxGeometry args={[1, 1, 1]} />
+            <meshLambertMaterial 
+              color={blockConfig.color}
+              transparent={blockConfig.transparent || false}
+              opacity={blockConfig.transparent ? 0.8 : 1}
+              emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
+              emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
+            />
+            {/* Enhanced grass texture */}
+            {block.type === 'grass' && (
+              <GrassTexture position={[0, 0.51, 0]} />
+            )}
+          </mesh>
+        );
+      })}
+      
+      {/* Basic clouds */}
       <MinecraftClouds />
       
-      {/* Enhanced grass effects */}
+      {/* Basic grass effects */}
       <GrassEffects />
-      
-      {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
-      {useMemo(() => {
-        const visibleBlocks = Array.from(blocks.values())
-          .filter(block => {
-            // Aggressive distance culling
-            const dx = block.position[0] - camera.position.x;
-            const dz = block.position[2] - camera.position.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
-            
-            // Enhanced frustum culling
-            if (distance > 40) return false; // Reduced for better performance
-            
-            // Height culling
-            const dy = Math.abs(block.position[1] - camera.position.y);
-            if (dy > 15) return false;
-            
-            return true;
-          })
-          .map((block) => {
-            const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
-            return (
-              <mesh 
-                key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
-                position={block.position}
-                userData={{ blockType: block.type }}
-              >
-                <boxGeometry args={[1, 1, 1]} />
-                <meshLambertMaterial 
-                  color={blockConfig.color}
-                  transparent={blockConfig.transparent || false}
-                  opacity={blockConfig.transparent ? 0.8 : 1}
-                  emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-                  emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
-                />
-              </mesh>
-            );
-          });
-        
-        return visibleBlocks;
-      }, [blocks, camera.position.x, camera.position.z, camera.position.y])}
     </group>
   );
 };
