@@ -877,7 +877,7 @@ export const Player = ({ gameState }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, isOnGround, selectedSpell, experienceSystem]);
+  }, [gameState, isOnGround]);
 
   return (
     <>
