@@ -461,11 +461,11 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
       });
     }
     
-    // FIXED: Proper ground-based positioning
+    // FIXED: Proper ground-based positioning using MOB-specific function
     let targetY = initY;
     try {
-      if (window.getHighestBlockAt) {
-        const groundLevel = window.getHighestBlockAt(meshRef.current.position.x, meshRef.current.position.z);
+      if (window.getMobGroundLevel) {
+        const groundLevel = window.getMobGroundLevel(meshRef.current.position.x, meshRef.current.position.z);
         if (typeof groundLevel === 'number' && !isNaN(groundLevel)) {
           targetY = groundLevel + 1.2; // Keep mobs above ground
         }
