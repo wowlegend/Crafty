@@ -601,139 +601,179 @@ const EnvironmentalParticles = () => {
   );
 };
 
-// ENHANCED Hands Component - Clear fist shape and weapon display
+// MINECRAFT-STYLE Blocky Hands Component - Authentic cubic design
 const BothHands = ({ selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
+  const weaponRef = useRef();
   const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
 
   // Frame-by-frame positioning with smooth movement
   useFrame(() => {
     if (rightHandRef.current && leftHandRef.current) {
-      // Position hands relative to camera with subtle movement
       const time = Date.now() * 0.001;
       
-      // Right hand positioning - closer and more visible
-      const rightPos = new THREE.Vector3(0.5, -0.7, -1.2);
+      // Right hand positioning - blocky style
+      const rightPos = new THREE.Vector3(0.6, -0.8, -1.4);
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
       rightHandRef.current.quaternion.copy(camera.quaternion);
       
-      // Add subtle breathing/idle animation
-      rightHandRef.current.position.y += Math.sin(time * 2) * 0.02;
+      // Subtle idle animation
+      rightHandRef.current.position.y += Math.sin(time * 1.5) * 0.02;
+      rightHandRef.current.rotation.z = Math.sin(time) * 0.05;
       
       // Left hand positioning
-      const leftPos = new THREE.Vector3(-0.5, -0.7, -1.2);
+      const leftPos = new THREE.Vector3(-0.6, -0.8, -1.4);
       leftPos.applyMatrix4(camera.matrixWorld);
       leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
-      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
+      leftHandRef.current.position.y += Math.sin(time * 1.5 + 1) * 0.02;
+      leftHandRef.current.rotation.z = Math.sin(time + 1) * 0.05;
       
-      // Attack animation
+      // Enhanced attack animation
       if (isAttacking) {
-        rightHandRef.current.rotation.x = Math.sin(time * 20) * 0.5;
-        leftHandRef.current.rotation.x = Math.sin(time * 20 + 1) * 0.3;
+        const attackTime = time * 15;
+        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.8;
+        rightHandRef.current.position.z += Math.sin(attackTime) * 0.3;
+        
+        if (weaponRef.current) {
+          weaponRef.current.rotation.x = Math.sin(attackTime) * 0.5;
+          weaponRef.current.position.y = 0.3 + Math.sin(attackTime) * 0.2;
+        }
       }
     }
   });
 
   return (
     <group>
-      {/* RIGHT HAND with clear fist shape */}
+      {/* RIGHT HAND - Minecraft blocky style */}
       <group ref={rightHandRef}>        
-        {/* Forearm - visible skin tone */}
-        <mesh position={[0, 0.4, 0]}>
-          <boxGeometry args={[0.12, 0.6, 0.12]} />
+        {/* Blocky forearm */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.16]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* CLEAR FIST - Proper hand shape */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.14, 0.18, 0.1]} />
+        {/* Main hand block - Minecraft style */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[0.2, 0.24, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Thumb */}
-        <mesh position={[0.08, 0.05, 0]}>
-          <boxGeometry args={[0.06, 0.1, 0.06]} />
+        {/* Thumb block */}
+        <mesh position={[0.12, -0.02, 0]}>
+          <boxGeometry args={[0.08, 0.12, 0.08]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Knuckles detail */}
-        <mesh position={[0, 0.08, -0.06]}>
-          <boxGeometry args={[0.12, 0.04, 0.02]} />
+        {/* Finger blocks */}
+        <mesh position={[0, -0.15, -0.08]}>
+          <boxGeometry args={[0.16, 0.06, 0.04]} />
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* WEAPON/TOOL DISPLAY - Show selected item clearly */}
+        {/* LARGE PROMINENT WEAPON - Best practice positioning */}
         {selectedBlock && (
-          <group position={[0.1, -0.1, -0.15]} rotation={[0.3, 0.4, 0]}>
-            {/* Tool handle */}
-            <mesh position={[0, -0.15, 0]}>
-              <boxGeometry args={[0.03, 0.3, 0.03]} />
+          <group ref={weaponRef} position={[0.15, 0.3, -0.2]} rotation={[0.2, 0.3, 0.1]}>
+            {/* Large tool handle */}
+            <mesh position={[0, -0.4, 0]}>
+              <boxGeometry args={[0.06, 0.8, 0.06]} />
               <meshLambertMaterial color="#8B4513" />
             </mesh>
             
-            {/* Tool head - different for different blocks */}
-            <mesh position={[0, 0.05, 0]}>
-              <boxGeometry args={[0.08, 0.08, 0.08]} />
-              <meshLambertMaterial color={selectedBlockConfig.color} />
+            {/* Large tool head - much more prominent */}
+            <mesh position={[0, 0.1, 0]}>
+              <boxGeometry args={[0.16, 0.16, 0.16]} />
+              <meshLambertMaterial 
+                color={selectedBlockConfig.color}
+                emissive={selectedBlockConfig.emissive ? selectedBlockConfig.color : '#000000'}
+                emissiveIntensity={0.1}
+              />
             </mesh>
             
-            {/* Pickaxe head for mining tools */}
-            {['stone', 'iron', 'diamond'].includes(selectedBlock) && (
-              <mesh position={[0, 0.1, 0]} rotation={[0, 0, 0.785]}>
-                <boxGeometry args={[0.12, 0.03, 0.03]} />
-                <meshLambertMaterial color="#C0C0C0" />
-              </mesh>
+            {/* Tool-specific enhancements */}
+            {['stone', 'iron', 'diamond', 'cobblestone'].includes(selectedBlock) && (
+              <>
+                {/* Pickaxe head */}
+                <mesh position={[0, 0.2, 0]} rotation={[0, 0, 0.785]}>
+                  <boxGeometry args={[0.24, 0.06, 0.06]} />
+                  <meshLambertMaterial color="#C0C0C0" />
+                </mesh>
+                {/* Metal gleam */}
+                <mesh position={[0, 0.2, 0.04]}>
+                  <boxGeometry args={[0.2, 0.04, 0.02]} />
+                  <meshBasicMaterial color="#ffffff" transparent opacity={0.6} />
+                </mesh>
+              </>
+            )}
+            
+            {['wood'].includes(selectedBlock) && (
+              <>
+                {/* Axe head */}
+                <mesh position={[0.1, 0.15, 0]}>
+                  <boxGeometry args={[0.1, 0.2, 0.06]} />
+                  <meshLambertMaterial color="#A0A0A0" />
+                </mesh>
+              </>
             )}
           </group>
         )}
         
-        {/* Enhanced weapon when attacking */}
+        {/* Enhanced combat weapon when attacking */}
         {isAttacking && (
-          <group position={[0.15, 0, -0.25]} rotation={[0.6, 0.4, 0]}>
-            <mesh position={[0, -0.2, 0]}>
-              <boxGeometry args={[0.04, 0.4, 0.04]} />
-              <meshLambertMaterial color="#8B4513" />
+          <group position={[0.2, 0.4, -0.3]} rotation={[0.5, 0.4, 0.2]}>
+            {/* Large sword handle */}
+            <mesh position={[0, -0.3, 0]}>
+              <boxGeometry args={[0.08, 0.6, 0.08]} />
+              <meshLambertMaterial color="#654321" />
             </mesh>
-            <mesh position={[0, 0.05, 0]}>
-              <boxGeometry args={[0.1, 0.06, 0.02]} />
+            
+            {/* Large sword blade */}
+            <mesh position={[0, 0.1, 0]}>
+              <boxGeometry args={[0.06, 0.4, 0.02]} />
               <meshLambertMaterial color="#C0C0C0" />
             </mesh>
+            
             {/* Sword gleam effect */}
-            <mesh position={[0, 0.05, 0.02]}>
-              <boxGeometry args={[0.08, 0.04, 0.01]} />
-              <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+            <mesh position={[0, 0.1, 0.02]}>
+              <boxGeometry args={[0.04, 0.35, 0.01]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
+            </mesh>
+            
+            {/* Crossguard */}
+            <mesh position={[0, -0.05, 0]}>
+              <boxGeometry args={[0.2, 0.04, 0.04]} />
+              <meshLambertMaterial color="#8B4513" />
             </mesh>
           </group>
         )}
       </group>
       
-      {/* LEFT HAND with clear fist shape */}
+      {/* LEFT HAND - Minecraft blocky style */}
       <group ref={leftHandRef}>
-        {/* Forearm */}
-        <mesh position={[0, 0.4, 0]}>
-          <boxGeometry args={[0.12, 0.6, 0.12]} />
+        {/* Blocky forearm */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.16]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* CLEAR FIST */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.14, 0.18, 0.1]} />
+        {/* Main hand block */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[0.2, 0.24, 0.12]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Thumb */}
-        <mesh position={[-0.08, 0.05, 0]}>
-          <boxGeometry args={[0.06, 0.1, 0.06]} />
+        {/* Thumb block */}
+        <mesh position={[-0.12, -0.02, 0]}>
+          <boxGeometry args={[0.08, 0.12, 0.08]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Knuckles detail */}
-        <mesh position={[0, 0.08, -0.06]}>
-          <boxGeometry args={[0.12, 0.04, 0.02]} />
+        {/* Finger blocks */}
+        <mesh position={[0, -0.15, -0.08]}>
+          <boxGeometry args={[0.16, 0.06, 0.04]} />
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
       </group>
