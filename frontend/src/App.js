@@ -364,26 +364,43 @@ function GameApp() {
 
               <motion.button
                 onClick={() => {
-                  // Enhanced iframe and security handling
+                  // ROBUST iframe and security handling with multiple fallbacks
                   try {
-                    // Check if we're in an iframe
-                    const isInIframe = window.self !== window.top;
-                    
-                    if (isInIframe) {
-                      console.log('Running in iframe - using fallback game mode');
-                      // For iframe, skip pointer lock and start game directly
-                      setIsPointerLocked(true);
-                    } else {
-                      // For standalone tab, use pointer lock
-                      document.body.requestPointerLock().catch((error) => {
-                        console.warn('Pointer lock request failed:', error);
-                        // Fallback: start game anyway
+                    // Method 1: Check document permissions
+                    if (document.permissions && document.permissions.query) {
+                      document.permissions.query({ name: 'pointer-lock' }).then((result) => {
+                        if (result.state === 'granted' || result.state === 'prompt') {
+                          document.body.requestPointerLock();
+                        } else {
+                          console.log('Pointer lock not permitted - starting in fallback mode');
+                          setIsPointerLocked(true);
+                        }
+                      }).catch(() => {
+                        // Fallback if permissions API fails
                         setIsPointerLocked(true);
                       });
+                    } else {
+                      // Method 2: Direct iframe detection
+                      if (window.self !== window.top || window.frameElement) {
+                        console.log('Iframe detected - skipping pointer lock');
+                        setIsPointerLocked(true);
+                      } else {
+                        // Method 3: Try pointer lock with timeout
+                        const pointerLockPromise = document.body.requestPointerLock();
+                        if (pointerLockPromise && typeof pointerLockPromise.catch === 'function') {
+                          pointerLockPromise.catch(() => setIsPointerLocked(true));
+                        }
+                        
+                        // Timeout fallback
+                        setTimeout(() => {
+                          if (!document.pointerLockElement) {
+                            setIsPointerLocked(true);
+                          }
+                        }, 100);
+                      }
                     }
                   } catch (error) {
-                    console.warn('Error detecting environment or requesting pointer lock:', error);
-                    // Final fallback: always start the game
+                    console.log('Starting game in compatibility mode');
                     setIsPointerLocked(true);
                   }
                 }}
