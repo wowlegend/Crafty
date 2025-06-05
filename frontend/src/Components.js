@@ -605,7 +605,7 @@ export const Player = ({ gameState }) => {
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // Enhanced movement with exploration XP
+    // Enhanced movement with FIXED exploration XP
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
@@ -618,8 +618,8 @@ export const Player = ({ gameState }) => {
       
       const newChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
       
-      // Award exploration XP for new areas - CONTROLLED
-      if (oldChunk !== newChunk && window.manualXpExploration) {
+      // FIXED exploration XP - only for GROUND-BASED chunk changes, not jumping
+      if (oldChunk !== newChunk && isOnGround && window.manualXpExploration) {
         window.manualXpExploration();
       }
     }
