@@ -910,7 +910,7 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ULTRA-SMOOTH Player component with maximum performance optimization
+// ULTRA-OPTIMIZED Player component with smooth mouse look
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -918,7 +918,7 @@ export const Player = ({ gameState }) => {
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   
-  // Performance optimization: cached direction vectors
+  // Performance optimization: cached vectors and minimal recalculations
   const forwardVector = useRef(new THREE.Vector3());
   const rightVector = useRef(new THREE.Vector3());
   const upVector = useRef(new THREE.Vector3(0, 1, 0));
@@ -926,11 +926,14 @@ export const Player = ({ gameState }) => {
   // Movement optimization: reduce recalculations
   const lastGroundCheck = useRef(0);
   const groundLevelCache = useRef(new Map());
+  const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position
+  // Set initial camera position and fix orientation
   useEffect(() => {
     camera.position.set(0, 15, 0);
-    console.log('🎮 Ultra-optimized Player initialized');
+    camera.lookAt(0, 14, 0); // Look slightly down initially
+    camera.updateProjectionMatrix();
+    console.log('🎮 Ultra-optimized Player initialized with fixed orientation');
   }, [camera]);
 
   // Expose attack state globally
@@ -938,19 +941,23 @@ export const Player = ({ gameState }) => {
     window.setPlayerAttacking = setIsAttacking;
   }, []);
 
-  // ULTRA-OPTIMIZED frame logic with minimal calculations
+  // OPTIMIZED frame logic with performance throttling
   useFrame((state, delta) => {
     const now = performance.now();
     
-    // Performance optimization: limit ground checks
+    // Throttle expensive operations
+    const shouldUpdateCamera = now - lastCameraUpdate.current > 8; // 120fps camera updates
     const shouldCheckGround = now - lastGroundCheck.current > 16; // 60fps ground checking
     
-    const speed = 12; // Increased for smoother feel
+    const speed = 10; // Optimized speed
     const moveVector = new THREE.Vector3();
     
-    // Cache direction calculations for performance
-    camera.getWorldDirection(forwardVector.current);
-    rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
+    // Only update camera vectors when needed for performance
+    if (shouldUpdateCamera) {
+      camera.getWorldDirection(forwardVector.current);
+      rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
+      lastCameraUpdate.current = now;
+    }
     
     // Apply movement with optimized vector operations
     if (keys.KeyW) moveVector.add(forwardVector.current);
@@ -969,7 +976,7 @@ export const Player = ({ gameState }) => {
     }
     
     // Optimized gravity and ground collision
-    velocity.current.y -= 25 * delta; // Slightly faster gravity
+    velocity.current.y -= 25 * delta;
     
     if (shouldCheckGround) {
       const newY = camera.position.y + velocity.current.y * delta;
@@ -994,13 +1001,13 @@ export const Player = ({ gameState }) => {
 
   // OPTIMIZED ground level detection with caching
   const getOptimizedGroundLevel = (x, z) => {
-    const cacheKey = `${Math.floor(x/2)}_${Math.floor(z/2)}`; // Cache every 2 blocks
+    const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`; // Cache every 4 blocks for performance
     
     if (groundLevelCache.current.has(cacheKey)) {
       return groundLevelCache.current.get(cacheKey);
     }
     
-    let groundLevel = 12;
+    let groundLevel = 14; // Better default height
     if (window.getHighestBlockAt) {
       groundLevel = window.getHighestBlockAt(x, z) + 1;
     }
@@ -1009,11 +1016,11 @@ export const Player = ({ gameState }) => {
     groundLevelCache.current.set(cacheKey, groundLevel);
     
     // Clean cache periodically to prevent memory leaks
-    if (groundLevelCache.current.size > 100) {
+    if (groundLevelCache.current.size > 50) {
       const entries = Array.from(groundLevelCache.current.entries());
       groundLevelCache.current.clear();
       // Keep only recent entries
-      entries.slice(-50).forEach(([key, value]) => {
+      entries.slice(-25).forEach(([key, value]) => {
         groundLevelCache.current.set(key, value);
       });
     }
@@ -1021,7 +1028,7 @@ export const Player = ({ gameState }) => {
     return groundLevel;
   };
 
-  // OPTIMIZED event handlers with performance considerations
+  // HIGHLY OPTIMIZED event handlers
   useEffect(() => {
     const handleKeyDown = (event) => {
       // Prevent unnecessary re-renders
@@ -1033,16 +1040,15 @@ export const Player = ({ gameState }) => {
       if (event.code === 'Space') {
         event.preventDefault();
         if (isOnGround) {
-          velocity.current.y = 15; // Higher jump for better feel
+          velocity.current.y = 12;
           setIsOnGround(false);
         }
       }
       
       // Enhanced attack with F key
       if (event.code === 'KeyF') {
-        console.log('🗡️ Attack triggered - ultra-responsive');
         setIsAttacking(true);
-        setTimeout(() => setIsAttacking(false), 400);
+        setTimeout(() => setIsAttacking(false), 300);
       }
       
       // Optimized block selection
