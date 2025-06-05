@@ -478,7 +478,7 @@ const OptimizedClouds = React.memo(() => {
   );
 });
 
-// ENHANCED Sky Component with Authentic Effects
+// FIXED Sky Component - NO camera manipulation
 export const MinecraftSky = React.memo(({ isDay = true }) => {
   const { camera } = useThree();
   const skyRef = useRef();
@@ -488,8 +488,9 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
   const sunColor = isDay ? '#FFD700' : '#F5F5DC';
   
   useFrame(() => {
+    // FIXED - Sky follows camera but DOESN'T modify camera position
     if (skyRef.current && camera) {
-      skyRef.current.position.copy(camera.position);
+      skyRef.current.position.set(camera.position.x, camera.position.y, camera.position.z);
     }
     if (sunRef.current && camera) {
       sunRef.current.position.set(
