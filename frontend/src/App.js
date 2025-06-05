@@ -43,6 +43,10 @@ import { WorldManager } from './WorldManager';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { NPCSystem, TradingInterface, CombatInstructions } from './SimplifiedNPCSystem';
 
+// Import enhanced systems
+import { useExperienceSystem, XPGainVisual, LevelUpEffect, ExperienceBar } from './ExperienceSystem';
+import { useSoundEnhancements } from './SoundEnhancements';
+
 // Game state management
 const useGameState = () => {
   const [gameMode, setGameMode] = useState('creative');
