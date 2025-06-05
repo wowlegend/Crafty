@@ -404,6 +404,15 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
         playerPosition={camera?.position}
       />
       
+      {/* Magic Projectile System - SPELL COMBAT */}
+      <MagicProjectileSystem 
+        gameState={gameState}
+        playerPosition={camera?.position}
+      />
+      
+      {/* Magic Impact System - SPELL EFFECTS */}
+      <MagicImpactSystem />
+      
       {/* Optimized Grass System */}
       <OptimizedGrassSystem 
         chunkX={Math.floor(camera?.position?.x / 16) || 0}
