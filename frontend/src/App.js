@@ -353,7 +353,7 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* FIXED Game Canvas with optimized camera settings */}
+      {/* FIXED Game Canvas with proper camera settings */}
       <Canvas
         shadows={false}
         className="w-full h-full"
@@ -366,29 +366,20 @@ function GameApp() {
         performance={{ min: 0.3 }}
         camera={{
           fov: 75,
-          near: 0.001,
+          near: 0.1,
           far: 500,
-          position: [0, 15, 0],
-          rotation: [0, 0, 0] // Ensure proper initial orientation
+          position: [0, 18, 0]
         }}
         onCreated={({ camera, gl }) => {
-          // Fix initial camera orientation
-          camera.lookAt(0, 14, 0);
+          // FIXED camera orientation - look horizontally forward
+          camera.rotation.set(0, 0, 0); // Reset rotation
+          camera.lookAt(0, 18, -10); // Look forward horizontally
           camera.updateProjectionMatrix();
           
           // Optimize WebGL settings for performance
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           gl.shadowMap.enabled = false; // Disable shadows for performance
         }}
-        shadows={false}
-        className="w-full h-full"
-        gl={{ 
-          antialias: true, // Re-enabled for better quality
-          alpha: false,
-          depth: true,
-          powerPreference: "high-performance"
-        }}
-        performance={{ min: 0.3 }} // More aggressive performance throttling
       >
         {/* Enhanced lighting */}
         <MinecraftSky isDay={gameState.isDay} />
