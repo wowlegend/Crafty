@@ -151,19 +151,17 @@ const generateTerrain = (x, z) => {
   return height;
 };
 
-// SUPER-EFFICIENT World Generation - Minimal lag with maximum performance
+// ENHANCED World Generation with Optimized Performance
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
-  const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
-  const lastPlayerChunk = useRef({ x: 0, z: 0 });
-  const lastPlayerPosition = useRef({ x: 0, z: 0 });
-  const lastGenerationTime = useRef(0);
-  const generationQueue = useRef([]);
-  const blockPool = useRef(new Map());
+  const worldRef = useRef();
   
-  const chunkSize = 16;
-  const renderDistance = 2;
+  // Experience system integration
+  const experienceSystem = useExperienceSystem();
+  
+  // Enhanced sound system
+  const soundEnhancements = useSoundEnhancements();
 
   // Enhanced collision detection with caching
   const getHighestBlockAt = (x, z) => {
