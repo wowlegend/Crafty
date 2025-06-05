@@ -187,12 +187,12 @@ export const MinecraftWorld = ({ gameState }) => {
     console.log(`⚡ FAST generated chunk ${chunkKey} with ${newBlocks.size} blocks`);
   };
 
-  // PREDICTIVE terrain generation - Generate AHEAD of player movement
+  // ULTRA-SMOOTH terrain generation detection with direction-change optimization
   useFrame((state) => {
     const now = state.clock.elapsedTime * 1000;
     
-    // Check much more frequently for smoother generation
-    if (now - lastGenerationTime.current < 100) {
+    // More frequent checks for smoother generation during direction changes
+    if (now - lastGenerationTime.current < 50) { // Reduced from 100ms to 50ms
       return;
     }
     
@@ -201,55 +201,69 @@ export const MinecraftWorld = ({ gameState }) => {
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // PREDICTIVE: Get player direction for anticipating movement
+    // ENHANCED PREDICTIVE: Get player direction and velocity for better anticipation
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
-    const futureChunkX = Math.floor((playerX + direction.x * 32) / chunkSize);
-    const futureChunkZ = Math.floor((playerZ + direction.z * 32) / chunkSize);
+    
+    // Calculate movement speed to anticipate faster for quick direction changes
+    const velocity = new THREE.Vector3(
+      playerX - (lastPlayerPosition.current?.x || playerX),
+      0,
+      playerZ - (lastPlayerPosition.current?.z || playerZ)
+    );
+    const speed = velocity.length();
+    
+    // Larger prediction distance for faster movement and direction changes
+    const predictionDistance = Math.max(32, speed * 48); // Dynamic prediction
+    const futureChunkX = Math.floor((playerX + direction.x * predictionDistance) / chunkSize);
+    const futureChunkZ = Math.floor((playerZ + direction.z * predictionDistance) / chunkSize);
+    
+    // Additional prediction for perpendicular directions (for turning)
+    const leftChunkX = Math.floor((playerX + direction.z * 24) / chunkSize);
+    const leftChunkZ = Math.floor((playerZ - direction.x * 24) / chunkSize);
+    const rightChunkX = Math.floor((playerX - direction.z * 24) / chunkSize);
+    const rightChunkZ = Math.floor((playerZ + direction.x * 24) / chunkSize);
     
     const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z;
     
-    if (chunkChanged || now - lastGenerationTime.current > 200) {
+    if (chunkChanged || now - lastGenerationTime.current > 100) { // More frequent generation
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
+      lastPlayerPosition.current = { x: playerX, z: playerZ };
       lastGenerationTime.current = now;
       
-      // Generate current chunk and immediate neighbors FIRST
+      // Generate multiple priority chunks including directional predictions
       const priorityChunks = [
+        // Current area (highest priority)
         { x: currentChunkX, z: currentChunkZ, priority: 0 },
         { x: currentChunkX + 1, z: currentChunkZ, priority: 1 },
         { x: currentChunkX - 1, z: currentChunkZ, priority: 1 },
         { x: currentChunkX, z: currentChunkZ + 1, priority: 1 },
         { x: currentChunkX, z: currentChunkZ - 1, priority: 1 },
-        { x: futureChunkX, z: futureChunkZ, priority: 1 }, // Predictive chunk
+        
+        // Predictive chunks for movement direction
+        { x: futureChunkX, z: futureChunkZ, priority: 1 },
+        
+        // Turning prediction chunks
+        { x: leftChunkX, z: leftChunkZ, priority: 2 },
+        { x: rightChunkX, z: rightChunkZ, priority: 2 },
+        
+        // Extended area for smooth traversal
+        { x: currentChunkX + 2, z: currentChunkZ, priority: 3 },
+        { x: currentChunkX - 2, z: currentChunkZ, priority: 3 },
+        { x: currentChunkX, z: currentChunkZ + 2, priority: 3 },
+        { x: currentChunkX, z: currentChunkZ - 2, priority: 3 },
       ];
       
-      // Generate multiple chunks per frame when needed
+      // Generate up to 4 chunks per frame for ultra-smooth experience
       let generated = 0;
       for (const chunk of priorityChunks) {
-        if (generated >= 2) break; // Limit to 2 chunks per frame
+        if (generated >= 4) break; // Increased from 2 to 4 for faster generation
         
         const chunkKey = `${chunk.x}_${chunk.z}`;
         if (!generatedChunks.has(chunkKey)) {
           generateChunk(chunk.x, chunk.z);
           generated++;
         }
-      }
-      
-      // Generate surrounding area
-      for (let dx = -renderDistance; dx <= renderDistance; dx++) {
-        for (let dz = -renderDistance; dz <= renderDistance; dz++) {
-          if (generated >= 3) break; // Don't generate too many at once
-          
-          const targetChunkX = currentChunkX + dx;
-          const targetChunkZ = currentChunkZ + dz;
-          const chunkKey = `${targetChunkX}_${targetChunkZ}`;
-          
-          if (!generatedChunks.has(chunkKey)) {
-            generateChunk(targetChunkX, targetChunkZ);
-            generated++;
-          }
-        }
-        if (generated >= 3) break;
       }
     }
   });
