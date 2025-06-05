@@ -898,14 +898,7 @@ export const Player = ({ gameState }) => {
     };
   }, [gameState, isOnGround]);
 
-  return (
-    <>
-      <BothHands 
-        selectedBlock={gameState.selectedBlock} 
-        isAttacking={isAttacking}
-      />
-    </>
-  );
+  return <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />;
 };
 
 // Game UI Component with Experience System
