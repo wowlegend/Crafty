@@ -626,11 +626,14 @@ export const Player = ({ gameState }) => {
     }
     
     // SMOOTH position interpolation - prevents oscillation
-    camera.position.lerp(targetPosition.current, 0.95);
+    const distance = camera.position.distanceTo(targetPosition.current);
+    if (distance > 0.001) { // Only interpolate if there's a meaningful difference
+      camera.position.lerp(targetPosition.current, 0.85); // Slightly slower for stability
+    }
     
-    // Debug position
-    if (Math.random() < 0.01) { // Only log occasionally
-      console.log(`📍 Position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+    // Debug position changes
+    if (distance > 0.1) { // Log significant movements
+      console.log(`📍 Moving: distance=${distance.toFixed(3)}, target=(${targetPosition.current.x.toFixed(1)}, ${targetPosition.current.y.toFixed(1)}, ${targetPosition.current.z.toFixed(1)})`);
     }
   });
 
