@@ -136,17 +136,17 @@ let EnhancedGrass = null;
 let EnhancedGrassSystem = null;
 
 try {
-  // Try to import the grass system
-  const GrassSystemModule = require('./EnhancedGrassSystem');
+  // Try to import the SAFE grass system
+  const GrassSystemModule = require('./EnhancedGrassSystemSafe');
   EnhancedGrassSystem = GrassSystemModule.EnhancedGrassSystem;
   
   EnhancedGrass = {
     EnhancedGrassSystem
   };
   
-  console.log('✅ Enhanced Grass System loaded successfully');
+  console.log('✅ Safe Grass System loaded successfully');
 } catch (error) {
-  console.warn('⚠️ Enhanced Grass System not available, using fallbacks:', error);
+  console.warn('⚠️ Grass System not available, using fallbacks:', error);
   
   // Create safe fallback component
   EnhancedGrassSystem = () => null;
