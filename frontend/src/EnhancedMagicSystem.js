@@ -122,17 +122,6 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       }
     };
   }, [SPELL_TYPES]);
-      
-      setProjectiles(prev => [...prev, newProjectile]);
-      
-      // Create initial spell trail from wand
-      createSpellTrail(startPos, direction, spell);
-      
-      // Play spell casting sound
-      if (window.playSpellCastSound) {
-        window.playSpellCastSound(spellType);
-      }
-    };
   }, [SPELL_TYPES]);
 
   // Create spell trail effect
