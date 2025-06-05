@@ -782,7 +782,7 @@ export const Player = ({ gameState }) => {
   );
 };
 
-// STABLE Magic Hands with ENHANCED EFFECTS - No Shaking
+// COMPLETELY STABLE Magic Hands - NO MOVEMENT AT ALL
 const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
@@ -799,67 +799,46 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   
   const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
-  // STABLE positioning with MINIMAL movement - ENHANCED EFFECTS PRESERVED
-  useFrame((state) => {
+  // COMPLETELY STABLE positioning - ZERO ANIMATION
+  useFrame(() => {
     if (rightHandRef.current && leftHandRef.current && camera) {
-      const time = state.clock.elapsedTime;
+      // FIXED right hand positioning - NO MATRIX OPERATIONS
+      rightHandRef.current.position.set(0.6, -0.8, -1.0);
+      rightHandRef.current.rotation.set(0, 0, 0);
       
-      // STABLE right hand positioning - MINIMAL movement
-      const rightPos = new THREE.Vector3(0.6, -0.8, -1.0);
-      rightPos.applyMatrix4(camera.matrixWorld);
-      rightHandRef.current.position.copy(rightPos);
-      rightHandRef.current.quaternion.copy(camera.quaternion);
+      // FIXED left hand positioning - NO MATRIX OPERATIONS
+      leftHandRef.current.position.set(-0.4, -0.7, -0.9);
+      leftHandRef.current.rotation.set(0, 0, 0);
       
-      // VERY subtle magical idle animation - MUCH REDUCED but preserved
-      if (!isAttacking) {
-        rightHandRef.current.position.y += Math.sin(time * 0.5) * 0.005; // Reduced from 0.01
-        rightHandRef.current.rotation.z = Math.sin(time * 0.3) * 0.008; // Reduced from 0.02
-      }
-      
-      // STABLE left hand positioning
-      const leftPos = new THREE.Vector3(-0.4, -0.7, -0.9);
-      leftPos.applyMatrix4(camera.matrixWorld);
-      leftHandRef.current.position.copy(leftPos);
-      leftHandRef.current.quaternion.copy(camera.quaternion);
-      
-      if (!isAttacking) {
-        leftHandRef.current.position.y += Math.sin(time * 0.5 + 0.5) * 0.003; // Reduced movement
-        leftHandRef.current.rotation.z = Math.sin(time * 0.3 + 0.5) * 0.005; // Reduced rotation
-      }
-      
-      // ENHANCED spell casting animation - CONTROLLED movement
+      // ONLY move during attack - MINIMAL movement
       if (isAttacking) {
-        const attackTime = time * 8; // Reduced speed for stability
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.15; // Controlled movement
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.03; // Reduced
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.1; // Reduced
+        rightHandRef.current.rotation.x = -0.05;
+        leftHandRef.current.rotation.x = -0.05;
         
         if (wandRef.current) {
-          wandRef.current.rotation.x = Math.sin(attackTime) * 0.08; // Reduced
-          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.03; // Reduced
+          wandRef.current.rotation.x = 0.05;
         }
       } else {
-        // Reset to stable position when not attacking
+        // COMPLETELY STATIC when not attacking
         rightHandRef.current.rotation.x = 0;
         leftHandRef.current.rotation.x = 0;
+        
         if (wandRef.current) {
-          wandRef.current.rotation.x = 0.1; // Default position
-          wandRef.current.position.y = 0.4; // Default position
+          wandRef.current.rotation.x = 0;
         }
       }
       
-      // ENHANCED magic aura effects - PRESERVED but controlled
+      // STATIC magic aura - no scaling
       if (magicAuraRef.current) {
-        const intensity = isAttacking ? 1.1 + Math.sin(time * 3) * 0.05 : 0.95 + Math.sin(time * 1) * 0.02;
-        magicAuraRef.current.scale.setScalar(intensity);
-        magicAuraRef.current.material.opacity = isAttacking ? 0.5 : 0.15; // Controlled opacity
+        magicAuraRef.current.scale.setScalar(1);
+        magicAuraRef.current.material.opacity = isAttacking ? 0.3 : 0;
       }
     }
   });
 
   return (
     <group>
-      {/* RIGHT HAND - ENHANCED with Stable Magic Effects */}
+      {/* RIGHT HAND - COMPLETELY STATIC */}
       <group ref={rightHandRef}>        
         {/* Forearm */}
         <mesh position={[0, 0.3, 0]}>
@@ -885,30 +864,25 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* ENHANCED MAGIC WAND with Effects */}
-        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
+        {/* STATIC MAGIC WAND */}
+        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0, 0.2, 0.1]}>
           <MagicWand wandType={selectedSpell} />
         </group>
         
-        {/* ENHANCED magical aura around hand during casting - PRESERVED */}
+        {/* STATIC magical aura during casting */}
         {isAttacking && (
           <mesh ref={magicAuraRef} position={[0, 0, 0]}>
-            <sphereGeometry args={[0.35, 8, 8]} />
+            <sphereGeometry args={[0.3, 8, 8]} />
             <meshBasicMaterial 
               color={currentSpellColor}
               transparent
-              opacity={0.4}
+              opacity={0.3}
             />
           </mesh>
         )}
-        
-        {/* ENHANCED spell-specific hand effects - PRESERVED */}
-        {isAttacking && (
-          <SpellHandEffects spellType={selectedSpell} />
-        )}
       </group>
       
-      {/* LEFT HAND - ENHANCED with Stable Magic Effects */}
+      {/* LEFT HAND - COMPLETELY STATIC */}
       <group ref={leftHandRef}>
         {/* Forearm */}
         <mesh position={[0, 0.3, 0]}>
@@ -934,40 +908,37 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* ENHANCED spell energy emanating from left hand - PRESERVED */}
+        {/* STATIC spell energy when attacking */}
         {isAttacking && (
           <group>
-            {/* Main spell energy orb with authentic effects */}
+            {/* Main spell energy orb */}
             <mesh position={[0, 0.1, -0.2]}>
-              <sphereGeometry args={[0.08, 8, 8]} />
+              <sphereGeometry args={[0.06, 8, 8]} />
               <meshBasicMaterial 
                 color={currentSpellColor}
                 transparent
-                opacity={0.9}
+                opacity={0.8}
               />
             </mesh>
             
-            {/* ENHANCED magical particles - PRESERVED */}
-            {[...Array(6)].map((_, i) => (
+            {/* STATIC magical particles */}
+            {[...Array(4)].map((_, i) => (
               <mesh 
                 key={i}
                 position={[
-                  (Math.random() - 0.5) * 0.3,
-                  Math.random() * 0.2,
-                  -0.1 - Math.random() * 0.2
+                  (i % 2 === 0 ? 0.1 : -0.1),
+                  0.05 + (i * 0.03),
+                  -0.15 - (i * 0.02)
                 ]}
               >
-                <sphereGeometry args={[0.015, 4, 4]} />
+                <sphereGeometry args={[0.01, 4, 4]} />
                 <meshBasicMaterial 
                   color={currentSpellColor}
                   transparent
-                  opacity={0.7}
+                  opacity={0.6}
                 />
               </mesh>
             ))}
-            
-            {/* ENHANCED spell-specific left hand effects - PRESERVED */}
-            <SpellLeftHandEffects spellType={selectedSpell} />
           </group>
         )}
         
