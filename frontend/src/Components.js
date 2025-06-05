@@ -271,7 +271,11 @@ export const MinecraftWorld = ({ gameState }) => {
         
         // Add XP for breaking blocks
         if (gameState.addExperience) {
-          gameState.addExperience('breakBlock', 1, block.type);
+          try {
+            gameState.addExperience('breakBlock', 1, block.type);
+          } catch (error) {
+            console.warn('Error adding break block XP:', error);
+          }
         }
         
         console.log(`💥 Broke ${block.type}`);
