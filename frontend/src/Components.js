@@ -528,7 +528,7 @@ const EnvironmentalParticles = () => {
 };
 
 // ENHANCED Magic Hands Component - Diablo-style Magic System
-const EnhancedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
+const BothHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
