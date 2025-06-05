@@ -406,8 +406,10 @@ export const NPCSystem = ({ gameState }) => {
   useEffect(() => {
     window.attackEntity = attackEntity;
     
-    // ENHANCED MOB COLLISION - Larger hit radius for better spell targeting
+    // ENHANCED MOB COLLISION - COMPREHENSIVE DEBUG
     window.checkMobCollision = (position, size = 0.5) => {
+      console.log(`🔍 checkMobCollision called: position=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), entities count: ${entities.length}`);
+      
       for (const entity of entities) {
         if (entity.position) {
           const [ex, ey, ez] = entity.position;
@@ -418,12 +420,18 @@ export const NPCSystem = ({ gameState }) => {
           );
           // INCREASED collision radius for easier spell targeting
           const hitRadius = size + 2.5; // Much larger hit box for spells
+          
+          console.log(`🔍 Entity ${entity.type} at (${ex.toFixed(1)}, ${ey.toFixed(1)}, ${ez.toFixed(1)}) - Distance: ${distance.toFixed(2)}, Required: ${hitRadius.toFixed(2)}`);
+          
           if (distance <= hitRadius) {
-            console.log(`🎯 SPELL COLLISION! Distance: ${distance.toFixed(2)}, Required: ${hitRadius.toFixed(2)}`);
+            console.log(`🎯 SPELL COLLISION! Mob: ${entity.type}, Distance: ${distance.toFixed(2)}, Required: ${hitRadius.toFixed(2)}`);
             return entity; // Return hit entity
           }
+        } else {
+          console.log(`⚠️ Entity has no position:`, entity);
         }
       }
+      console.log(`❌ No collision found with any of ${entities.length} entities`);
       return null;
     };
     
