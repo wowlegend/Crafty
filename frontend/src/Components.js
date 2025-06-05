@@ -105,10 +105,11 @@ const MinecraftHealthHunger = () => {
   );
 };
 
-// Optimized terrain generation for performance
+// Enhanced terrain generation that favors grass terrain
 const generateTerrain = (x, z) => {
   const noise = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6;
-  return Math.floor(Math.max(8, Math.min(20, noise + 12)));
+  const height = Math.floor(Math.max(10, Math.min(18, noise + 14))); // Raised base height for more grass
+  return height;
 };
 
 // PERFORMANCE-OPTIMIZED Infinite World Generation - SMOOTH & FAST
