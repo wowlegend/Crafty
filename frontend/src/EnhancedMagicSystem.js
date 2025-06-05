@@ -67,6 +67,15 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       
       if (!camera || !spell) return;
       
+      // SOUND EFFECTS - Multiple fallbacks
+      if (window.playMagicCast) {
+        window.playMagicCast();
+      } else if (window.playAttack) {
+        window.playAttack();
+      } else if (window.playAttackSounds) {
+        window.playAttackSounds();
+      }
+      
       const direction = new THREE.Vector3();
       camera.getWorldDirection(direction);
       
@@ -84,6 +93,15 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         trailPositions: [startPos.clone()],
         lastTrailUpdate: 0
       };
+      
+      setProjectiles(prev => [...prev, newProjectile]);
+      
+      // XP GAIN for casting
+      if (window.addExperience) {
+        window.addExperience(3, `Cast ${spellType}`);
+      }
+      
+      console.log(`🔥 ENHANCED: Cast ${spellType}! Damage: ${spell.damage}`);
       
       setProjectiles(prev => [...prev, newProjectile]);
       
