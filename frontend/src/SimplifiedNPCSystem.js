@@ -49,6 +49,21 @@ export const NPCSystem = ({ gameState }) => {
     }
   };
 
+  // Enhanced stats for better gameplay
+  const getEntityStats = (type) => {
+    switch(type) {
+      case 'villager': return { health: 120, hostile: false, speed: 0.6 };
+      case 'zombie': return { health: 80, hostile: true, speed: 0.8 };
+      case 'skeleton': return { health: 70, hostile: true, speed: 0.9 };
+      case 'creeper': return { health: 100, hostile: true, speed: 0.7 };
+      case 'spider': return { health: 60, hostile: true, speed: 1.0 };
+      case 'enderman': return { health: 150, hostile: true, speed: 1.2 };
+      case 'witch': return { health: 90, hostile: true, speed: 0.8 };
+      case 'wolf': return { health: 80, hostile: false, speed: 1.0 };
+      default: return { health: 60, hostile: false, speed: 0.7 };
+    }
+  };
+
   useEffect(() => {
     if (!terrainReady) return;
 
@@ -85,22 +100,6 @@ export const NPCSystem = ({ gameState }) => {
     const initialEntities = spawnPositions.map((pos, index) => {
       const groundY = window.getHighestBlockAt(pos.x, pos.z) + 1;
       const entityType = entityTypes[index % entityTypes.length];
-      
-      // Enhanced stats for better gameplay
-      const getEntityStats = (type) => {
-        switch(type) {
-          case 'villager': return { health: 120, hostile: false, speed: 0.6 };
-          case 'zombie': return { health: 80, hostile: true, speed: 0.8 };
-          case 'skeleton': return { health: 70, hostile: true, speed: 0.9 };
-          case 'creeper': return { health: 100, hostile: true, speed: 0.7 };
-          case 'spider': return { health: 60, hostile: true, speed: 1.0 };
-          case 'enderman': return { health: 150, hostile: true, speed: 1.2 };
-          case 'witch': return { health: 90, hostile: true, speed: 0.8 };
-          case 'wolf': return { health: 80, hostile: false, speed: 1.0 };
-          default: return { health: 60, hostile: false, speed: 0.7 };
-        }
-      };
-      
       const stats = getEntityStats(entityType);
       
       return {
