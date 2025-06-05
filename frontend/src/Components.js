@@ -643,12 +643,13 @@ export const Player = ({ gameState }) => {
         return;
       }
       
-      // Handle jump
+      // Handle jump - IMPROVED for new system
       if (event.code === 'Space') {
         event.preventDefault();
         if (isOnGround) {
-          velocity.current.y = 12;
+          velocity.current.y = 8; // Reduced jump force for stability
           setIsOnGround(false);
+          console.log('🦘 Jump!');
         }
         return;
       }
