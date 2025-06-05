@@ -56,6 +56,25 @@ try {
 }
 
 // Import Magic System with error handling
+let ImportedMagicSystem = null;
+try {
+  const magicSystem = require('./MagicSystem');
+  ImportedMagicSystem = {
+    MagicWand: magicSystem.MagicWand,
+    MagicSystemManager: magicSystem.MagicSystemManager,
+    MAGIC_SPELLS: magicSystem.MAGIC_SPELLS
+  };
+} catch (error) {
+  console.warn('Magic System not available:', error);
+  // Fallback components
+  ImportedMagicSystem = {
+    MagicWand: () => null,
+    MagicSystemManager: () => null,
+    MAGIC_SPELLS: { fireball: { color: '#FF6B35', name: 'Fireball' } }
+  };
+}
+
+// Import Magic System with error handling
 let MagicSystemModule = null;
 try {
   const magicSystem = require('./MagicSystem');
