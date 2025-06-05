@@ -113,19 +113,11 @@ try {
 } catch (error) {
   console.warn('⚠️ Enhanced Magic System not available, using fallbacks:', error);
   
-  // Create safe fallback components
-  MagicWand = ({ selectedSpell, isAttacking, position, rotation }) => (
-    <group position={position} rotation={rotation}>
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.03, 0.04, 0.8, 12]} />
-        <meshLambertMaterial color="#8B4513" />
-      </mesh>
-      <mesh position={[0, 0.4, 0]}>
-        <sphereGeometry args={[0.06, 8, 8]} />
-        <meshBasicMaterial color="#FF6B35" emissive="#FF6B35" emissiveIntensity={0.5} />
-      </mesh>
-    </group>
-  );
+  // Create safe fallback components that don't use Three.js
+  MagicWand = ({ selectedSpell, isAttacking, position, rotation }) => {
+    // Return null to avoid Three.js issues - magic system will be disabled
+    return null;
+  };
   
   MagicSystemManager = () => null;
   
