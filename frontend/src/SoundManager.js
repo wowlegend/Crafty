@@ -55,6 +55,13 @@ export const SoundProvider = ({ children }) => {
     sounds.current.magicExplosion = generateMagicExplosionSound();
     sounds.current.magicCharge = generateMagicChargeSound();
     sounds.current.levelUp = generateLevelUpSound();
+    
+    // NEW: Enhanced magic system sounds
+    sounds.current.magicCast = generateMagicCastSound();
+    sounds.current.magicHit = generateMagicHitSound();
+    sounds.current.magicExplosion = generateMagicExplosionSound();
+    sounds.current.magicCharge = generateMagicChargeSound();
+    sounds.current.levelUp = generateLevelUpSound();
   };
 
   const generateTone = (frequency, duration, type = 'sine') => {
