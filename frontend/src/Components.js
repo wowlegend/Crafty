@@ -105,14 +105,14 @@ const MinecraftHealthHunger = () => {
   );
 };
 
-// Enhanced terrain generation that favors grass terrain
+// ULTRA-OPTIMIZED terrain generation - heavily favors grass with trees
 const generateTerrain = (x, z) => {
-  const noise = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3 + Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6;
-  const height = Math.floor(Math.max(10, Math.min(18, noise + 14))); // Raised base height for more grass
+  const noise = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2 + Math.sin(x * 0.04) * Math.cos(z * 0.04) * 4;
+  const height = Math.floor(Math.max(12, Math.min(16, noise + 15))); // Higher base for more grass
   return height;
 };
 
-// PERFORMANCE-OPTIMIZED Infinite World Generation - SMOOTH & FAST
+// SUPER-EFFICIENT World Generation - Minimal lag with maximum performance
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
@@ -121,144 +121,178 @@ export const MinecraftWorld = ({ gameState }) => {
   const lastPlayerPosition = useRef({ x: 0, z: 0 });
   const lastGenerationTime = useRef(0);
   const generationQueue = useRef([]);
+  const blockPool = useRef(new Map()); // Object pooling for performance
   
   const chunkSize = 16;
-  const renderDistance = 3; // Reduced for better performance
-  const generationTriggerDistance = 2; // Generate when player is 2 chunks away
-
-  // OPTIMIZED chunk generation - MUCH FASTER
+  const renderDistance = 2; // Reduced for ultra-performance
+  
+  // PERFORMANCE-OPTIMIZED chunk generation with object pooling
   const generateChunk = (chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     
-    if (generatedChunks.has(chunkKey)) {
-      return;
-    }
+    if (generatedChunks.has(chunkKey)) return;
 
-    const newBlocks = new Map();
+    const newBlocks = blockPool.current.get(chunkKey) || new Map();
+    newBlocks.clear();
+    
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
     
-    // OPTIMIZED: Generate only surface + 1 layer for speed
-    for (let x = startX; x < startX + chunkSize; x += 2) { // Skip every other block for performance
+    // ULTRA-EFFICIENT: Generate every 2nd block with smart interpolation
+    for (let x = startX; x < startX + chunkSize; x += 2) {
       for (let z = startZ; z < startZ + chunkSize; z += 2) {
         const height = generateTerrain(x, z);
         
-        // Generate surface blocks - favor grass terrain
-        for (let y = Math.max(0, height - 1); y <= height; y++) {
-          const key = `${x},${y},${z}`;
-          
-          if (y === height) {
-            // 85% grass, 15% sand for variety
-            const blockType = height > 12 && Math.random() < 0.85 ? 'grass' : 'sand';
-            newBlocks.set(key, { position: [x, y, z], type: blockType });
-          } else {
-            newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
-          }
+        // Generate surface blocks - 95% grass for lush world
+        const key = `${x},${height},${z}`;
+        const blockType = Math.random() < 0.95 ? 'grass' : 'sand';
+        newBlocks.set(key, { 
+          position: [x, height, z], 
+          type: blockType,
+          cached: true // Mark for performance
+        });
+        
+        // Ground layer
+        const groundKey = `${x},${height - 1},${z}`;
+        newBlocks.set(groundKey, { 
+          position: [x, height - 1, z], 
+          type: 'dirt',
+          cached: true
+        });
+        
+        // ENHANCED tree generation - more frequent, better distribution
+        if (blockType === 'grass' && Math.random() < 0.08) { // 8% tree chance
+          generateTree(newBlocks, x, height, z);
         }
         
-        // Fill gaps for smoother terrain
+        // Smart interpolation for missing blocks
         if (x % 2 === 0 && z % 2 === 0) {
-          const key1 = `${x+1},${height},${z}`;
-          const key2 = `${x},${height},${z+1}`;
-          const key3 = `${x+1},${height},${z+1}`;
-          
-          newBlocks.set(key1, { position: [x+1, height, z], type: height > 14 ? 'grass' : 'sand' });
-          newBlocks.set(key2, { position: [x, height, z+1], type: height > 14 ? 'grass' : 'sand' });
-          newBlocks.set(key3, { position: [x+1, height, z+1], type: height > 14 ? 'grass' : 'sand' });
+          interpolateBlocks(newBlocks, x, height, z, blockType);
         }
       }
     }
     
-    // IMMEDIATE update - no setTimeout for faster response
-    setBlocks(prevBlocks => {
-      const updatedBlocks = new Map(prevBlocks);
-      newBlocks.forEach((value, key) => {
-        updatedBlocks.set(key, value);
-      });
-      return updatedBlocks;
+    // BATCH update for performance
+    setBlocks(prev => {
+      const updated = new Map(prev);
+      newBlocks.forEach((value, key) => updated.set(key, value));
+      return updated;
     });
     
-    // Mark chunk as generated
-    setGeneratedChunks(prevChunks => {
-      const updatedChunks = new Set(prevChunks);
-      updatedChunks.add(chunkKey);
-      return updatedChunks;
-    });
-    
-    console.log(`⚡ FAST generated chunk ${chunkKey} with ${newBlocks.size} blocks`);
+    setGeneratedChunks(prev => new Set(prev).add(chunkKey));
+    blockPool.current.set(chunkKey, newBlocks);
   };
 
-  // ULTRA-SMOOTH terrain generation detection with direction-change optimization
-  useFrame((state) => {
-    const now = state.clock.elapsedTime * 1000;
+  // EFFICIENT tree generation
+  const generateTree = (blockMap, x, baseY, z) => {
+    const treeHeight = 3 + Math.floor(Math.random() * 3);
     
-    // More frequent checks for smoother generation during direction changes
-    if (now - lastGenerationTime.current < 50) { // Reduced from 100ms to 50ms
-      return;
+    // Tree trunk
+    for (let y = 1; y <= treeHeight; y++) {
+      const trunkKey = `${x},${baseY + y},${z}`;
+      blockMap.set(trunkKey, { 
+        position: [x, baseY + y, z], 
+        type: 'wood',
+        cached: true
+      });
     }
+    
+    // Compact tree crown
+    const crownY = baseY + treeHeight + 1;
+    const crownPositions = [
+      [x, crownY, z], [x+1, crownY, z], [x-1, crownY, z],
+      [x, crownY, z+1], [x, crownY, z-1]
+    ];
+    
+    crownPositions.forEach(([tx, ty, tz]) => {
+      const leafKey = `${tx},${ty},${tz}`;
+      blockMap.set(leafKey, { 
+        position: [tx, ty, tz], 
+        type: 'grass',
+        cached: true
+      });
+    });
+  };
+
+  // Smart block interpolation for performance
+  const interpolateBlocks = (blockMap, x, height, z, blockType) => {
+    const positions = [
+      [x + 1, height, z], [x, height, z + 1], [x + 1, height, z + 1]
+    ];
+    
+    positions.forEach(([nx, ny, nz]) => {
+      const key = `${nx},${ny},${nz}`;
+      if (!blockMap.has(key)) {
+        blockMap.set(key, { 
+          position: [nx, ny, nz], 
+          type: blockType,
+          cached: true
+        });
+      }
+    });
+  };
+
+  // ULTRA-SMOOTH generation with aggressive optimization
+  useFrame((state) => {
+    const now = performance.now(); // More precise timing
+    
+    // Ultra-frequent checks for maximum smoothness
+    if (now - lastGenerationTime.current < 33) return; // 30fps generation
     
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // ENHANCED PREDICTIVE: Get player direction and velocity for better anticipation
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    
-    // Calculate movement speed to anticipate faster for quick direction changes
+    // Velocity-based prediction for ultra-smooth experience
     const velocity = new THREE.Vector3(
       playerX - (lastPlayerPosition.current?.x || playerX),
       0,
       playerZ - (lastPlayerPosition.current?.z || playerZ)
     );
+    
     const speed = velocity.length();
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
     
-    // Larger prediction distance for faster movement and direction changes
-    const predictionDistance = Math.max(32, speed * 48); // Dynamic prediction
-    const futureChunkX = Math.floor((playerX + direction.x * predictionDistance) / chunkSize);
-    const futureChunkZ = Math.floor((playerZ + direction.z * predictionDistance) / chunkSize);
+    // Dynamic prediction based on speed and direction
+    const predictionMultiplier = Math.max(1, speed * 2);
+    const futureX = playerX + direction.x * 16 * predictionMultiplier;
+    const futureZ = playerZ + direction.z * 16 * predictionMultiplier;
+    const futureChunkX = Math.floor(futureX / chunkSize);
+    const futureChunkZ = Math.floor(futureZ / chunkSize);
     
-    // Additional prediction for perpendicular directions (for turning)
-    const leftChunkX = Math.floor((playerX + direction.z * 24) / chunkSize);
-    const leftChunkZ = Math.floor((playerZ - direction.x * 24) / chunkSize);
-    const rightChunkX = Math.floor((playerX - direction.z * 24) / chunkSize);
-    const rightChunkZ = Math.floor((playerZ + direction.x * 24) / chunkSize);
+    const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || 
+                        currentChunkZ !== lastPlayerChunk.current.z;
     
-    const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z;
-    
-    if (chunkChanged || now - lastGenerationTime.current > 100) { // More frequent generation
+    if (chunkChanged || now - lastGenerationTime.current > 100) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       lastPlayerPosition.current = { x: playerX, z: playerZ };
       lastGenerationTime.current = now;
       
-      // Generate multiple priority chunks including directional predictions
+      // PRIORITY-BASED generation for smoothness
       const priorityChunks = [
-        // Current area (highest priority)
-        { x: currentChunkX, z: currentChunkZ, priority: 0 },
-        { x: currentChunkX + 1, z: currentChunkZ, priority: 1 },
-        { x: currentChunkX - 1, z: currentChunkZ, priority: 1 },
-        { x: currentChunkX, z: currentChunkZ + 1, priority: 1 },
-        { x: currentChunkX, z: currentChunkZ - 1, priority: 1 },
+        // Immediate area (highest priority)
+        { x: currentChunkX, z: currentChunkZ },
+        { x: currentChunkX + 1, z: currentChunkZ },
+        { x: currentChunkX - 1, z: currentChunkZ },
+        { x: currentChunkX, z: currentChunkZ + 1 },
+        { x: currentChunkX, z: currentChunkZ - 1 },
         
-        // Predictive chunks for movement direction
-        { x: futureChunkX, z: futureChunkZ, priority: 1 },
+        // Predictive chunks
+        { x: futureChunkX, z: futureChunkZ },
         
-        // Turning prediction chunks
-        { x: leftChunkX, z: leftChunkZ, priority: 2 },
-        { x: rightChunkX, z: rightChunkZ, priority: 2 },
-        
-        // Extended area for smooth traversal
-        { x: currentChunkX + 2, z: currentChunkZ, priority: 3 },
-        { x: currentChunkX - 2, z: currentChunkZ, priority: 3 },
-        { x: currentChunkX, z: currentChunkZ + 2, priority: 3 },
-        { x: currentChunkX, z: currentChunkZ - 2, priority: 3 },
+        // Extended area for ultra-smooth traversal
+        { x: currentChunkX + 2, z: currentChunkZ },
+        { x: currentChunkX - 2, z: currentChunkZ },
+        { x: currentChunkX, z: currentChunkZ + 2 },
+        { x: currentChunkX, z: currentChunkZ - 2 }
       ];
       
-      // Generate up to 4 chunks per frame for ultra-smooth experience
+      // Generate up to 6 chunks per frame for ultra-smoothness
       let generated = 0;
       for (const chunk of priorityChunks) {
-        if (generated >= 4) break; // Increased from 2 to 4 for faster generation
+        if (generated >= 6) break;
         
         const chunkKey = `${chunk.x}_${chunk.z}`;
         if (!generatedChunks.has(chunkKey)) {
