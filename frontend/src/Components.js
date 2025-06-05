@@ -555,10 +555,11 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position
+  // Set initial camera position - FIXED orientation
   useEffect(() => {
-    camera.position.set(0, 20, 0);
-    camera.lookAt(0, 18, 0);
+    camera.position.set(0, 18, 0);
+    camera.rotation.set(0, 0, 0); // Reset rotation to horizontal
+    camera.lookAt(0, 18, -5); // Look forward horizontally
     camera.updateProjectionMatrix();
     
     // Expose camera globally for magic system
@@ -571,8 +572,9 @@ export const Player = ({ gameState }) => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
       const safeHeight = Math.max(groundLevel + 2, 16);
       camera.position.y = safeHeight;
+      camera.rotation.set(0, 0, 0); // Ensure horizontal look
       console.log(`🧙‍♂️ Enhanced Player with Magic System initialized at height: ${safeHeight}`);
-    }, 1000);
+    }, 500);
   }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
