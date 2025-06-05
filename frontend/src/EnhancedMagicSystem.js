@@ -194,6 +194,21 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         }
       }
       
+      // SPELL COMBAT: Check collision with mobs
+      if (window.checkMobCollision) {
+        const hitMob = window.checkMobCollision(projectile.position, projectile.size);
+        if (hitMob) {
+          // Damage mob
+          if (window.damageMob) {
+            window.damageMob(hitMob.id, projectile.damage);
+            console.log(`🔥 SPELL HIT ${hitMob.type}! Damage: ${projectile.damage}`);
+          }
+          // Create hit effect
+          createSpellImpact(projectile.position, projectile.type);
+          return false; // Remove projectile after hit
+        }
+      }
+      
       return true;
     }));
     
