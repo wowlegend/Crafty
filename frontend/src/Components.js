@@ -162,9 +162,6 @@ export const MinecraftWorld = ({ gameState }) => {
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const worldRef = useRef();
   
-  // Experience system integration
-  const experienceSystem = useSimpleExperience();
-  
   const chunkSize = 16;
   const renderDistance = 2;
   
