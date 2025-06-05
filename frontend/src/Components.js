@@ -22,19 +22,14 @@ import {
   Star,
   Hammer,
   Sword,
-  Shield
+  Shield,
+  Crown
 } from 'lucide-react';
 
 // Import optimized systems with enhanced visual effects
 import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
-import { 
-  OptimizedMinecraftWorld as MinecraftWorld,
-  MinecraftHotbar,
-  MinecraftHealthHunger,
-  OptimizedMinecraftSky as MinecraftSky,
-  PositionTracker
-} from './OptimizedComponents';
-import { OptimizedPlayer as Player } from './OptimizedPlayer';
+import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
+import { EnhancedGrassSystem } from './SimpleGrassSystem';
 
 
 
