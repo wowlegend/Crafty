@@ -641,41 +641,10 @@ export const Player = ({ gameState }) => {
     }
   });
 
-  // Enhanced ground level detection with caching
+  // Remove complex ground level detection - causing conflicts
   const getOptimizedGroundLevel = useCallback((x, z) => {
-    const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`;
-    
-    if (groundLevelCache.current.has(cacheKey)) {
-      return groundLevelCache.current.get(cacheKey);
-    }
-    
-    let groundLevel = 15;
-    try {
-      if (window.getHighestBlockAt) {
-        const calculatedLevel = window.getHighestBlockAt(x, z);
-        if (typeof calculatedLevel === 'number' && !isNaN(calculatedLevel)) {
-          groundLevel = calculatedLevel + 1;
-        }
-      }
-    } catch (error) {
-      console.warn('Error calculating ground level:', error);
-    }
-    
-    groundLevel = Math.max(groundLevel, 12);
-    groundLevel = Math.min(groundLevel, 25);
-    
-    groundLevelCache.current.set(cacheKey, groundLevel);
-    
-    // Limit cache size
-    if (groundLevelCache.current.size > 50) {
-      const entries = Array.from(groundLevelCache.current.entries());
-      groundLevelCache.current.clear();
-      entries.slice(-25).forEach(([key, value]) => {
-        groundLevelCache.current.set(key, value);
-      });
-    }
-    
-    return groundLevel;
+    // SIMPLIFIED - just return fixed level
+    return 15;
   }, []);
 
   // COMPLETELY ISOLATED event handlers - NO CONFLICTS
