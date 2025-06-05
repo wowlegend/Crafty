@@ -406,7 +406,7 @@ export const NPCSystem = ({ gameState }) => {
   useEffect(() => {
     window.attackEntity = attackEntity;
     
-    // SPELL COMBAT SYSTEM - Missing functions that spells need
+    // ENHANCED MOB COLLISION - Larger hit radius for better spell targeting
     window.checkMobCollision = (position, size = 0.5) => {
       for (const entity of entities) {
         if (entity.position) {
@@ -416,7 +416,10 @@ export const NPCSystem = ({ gameState }) => {
             Math.pow(position.y - ey, 2) + 
             Math.pow(position.z - ez, 2)
           );
-          if (distance <= size + 1) {
+          // INCREASED collision radius for easier spell targeting
+          const hitRadius = size + 2.5; // Much larger hit box for spells
+          if (distance <= hitRadius) {
+            console.log(`🎯 SPELL COLLISION! Distance: ${distance.toFixed(2)}, Required: ${hitRadius.toFixed(2)}`);
             return entity; // Return hit entity
           }
         }
