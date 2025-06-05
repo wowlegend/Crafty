@@ -67,38 +67,33 @@ export const NPCSystem = ({ gameState }) => {
   useEffect(() => {
     if (!terrainReady) return;
 
-    console.log('🎮 Initializing ABUNDANT mob ecosystem...');
+    console.log('🎮 Initializing DISTRIBUTED mob ecosystem...');
     
-    // MASSIVE spawn grid for high mob density
+    // DISTRIBUTED spawn system - spread across wider area
     const spawnPositions = [];
     
-    // Create dense grid around spawn area
-    for (let x = -40; x <= 40; x += 8) {
-      for (let z = -40; z <= 40; z += 8) {
-        if (Math.abs(x) > 5 || Math.abs(z) > 5) { // Don't spawn too close to player
-          spawnPositions.push({ x, z });
+    // Create wider distributed grid for better coverage
+    for (let x = -60; x <= 60; x += 12) {
+      for (let z = -60; z <= 60; z += 12) {
+        // Add random offset for natural distribution
+        const offsetX = x + (Math.random() - 0.5) * 8;
+        const offsetZ = z + (Math.random() - 0.5) * 8;
+        
+        if (Math.abs(offsetX) > 8 || Math.abs(offsetZ) > 8) { // Don't spawn too close to player
+          spawnPositions.push({ x: offsetX, z: offsetZ });
         }
       }
     }
-    
-    // Add additional scattered positions for variety
-    const additionalPositions = [
-      { x: 55, z: 20 }, { x: -55, z: -25 }, { x: 60, z: -10 }, { x: -60, z: 15 },
-      { x: 45, z: 45 }, { x: -45, z: -45 }, { x: 70, z: 5 }, { x: -70, z: -5 },
-      { x: 25, z: 60 }, { x: -25, z: -60 }, { x: 80, z: 30 }, { x: -80, z: -30 }
-    ];
-    
-    spawnPositions.push(...additionalPositions);
 
-    // More variety of mobs with balanced distribution
+    // Balanced mob variety with more peaceful creatures
     const entityTypes = [
-      'villager', 'pig', 'chicken', 'cow', 'zombie', 'skeleton', 'creeper', 
-      'spider', 'enderman', 'witch', 'wolf', 'sheep', 'pig', 'chicken', 
-      'cow', 'sheep', 'wolf' // Duplicate peaceful mobs for balance
+      'villager', 'pig', 'chicken', 'cow', 'sheep', 'wolf', // More peaceful
+      'zombie', 'skeleton', 'creeper', 'spider', 'witch', // Hostile
+      'pig', 'chicken', 'cow', 'sheep' // Extra peaceful for balance
     ];
 
     const initialEntities = spawnPositions.map((pos, index) => {
-      const groundY = window.getHighestBlockAt(pos.x, pos.z) + 1;
+      const groundY = window.getHighestBlockAt ? window.getHighestBlockAt(pos.x, pos.z) + 1 : 15;
       const entityType = entityTypes[index % entityTypes.length];
       const stats = getEntityStats(entityType);
       
@@ -118,23 +113,26 @@ export const NPCSystem = ({ gameState }) => {
     });
 
     setEntities(initialEntities);
-    console.log(`✅ ABUNDANT mob ecosystem spawned: ${initialEntities.length} entities`);
+    console.log(`✅ DISTRIBUTED mob ecosystem spawned: ${initialEntities.length} entities across wider area`);
     
-    // AGGRESSIVE RESPAWNING SYSTEM for high density
+    // DISTRIBUTED RESPAWNING SYSTEM - spawns around player position
     const respawnInterval = setInterval(() => {
       setEntities(currentEntities => {
-        const targetMobCount = 40; // High mob density target
+        const targetMobCount = 30; // Balanced target
         
         if (currentEntities.length < targetMobCount) {
           const playerPos = camera?.position;
           if (!playerPos) return currentEntities;
           
-          const mobsToSpawn = Math.min(8, targetMobCount - currentEntities.length);
+          const mobsToSpawn = Math.min(6, targetMobCount - currentEntities.length);
           const newMobs = [];
           
           for (let i = 0; i < mobsToSpawn; i++) {
+            // Spawn in multiple rings around player for better distribution
+            const ring = Math.floor(Math.random() * 3); // 3 different rings
             const angle = Math.random() * Math.PI * 2;
-            const distance = 25 + Math.random() * 30; // 25-55 blocks away
+            const distance = 30 + (ring * 20) + Math.random() * 15; // 30-80 blocks away
+            
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
             const spawnY = window.getHighestBlockAt ? window.getHighestBlockAt(spawnX, spawnZ) + 1 : 15;
@@ -157,12 +155,12 @@ export const NPCSystem = ({ gameState }) => {
             });
           }
           
-          console.log(`🔄 Aggressively respawned ${newMobs.length} mobs (Total: ${currentEntities.length + newMobs.length})`);
+          console.log(`🔄 Distributed respawn: ${newMobs.length} mobs across terrain (Total: ${currentEntities.length + newMobs.length})`);
           return [...currentEntities, ...newMobs];
         }
         return currentEntities;
       });
-    }, 5000); // Respawn every 5 seconds for high density
+    }, 8000); // Spawn every 8 seconds
 
     return () => clearInterval(respawnInterval);
   }, [terrainReady, camera]);
