@@ -153,7 +153,23 @@ export const NPCSystem = ({ gameState }) => {
             
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
-            const spawnY = window.getHighestBlockAt ? window.getHighestBlockAt(spawnX, spawnZ) + 1 : 15;
+            
+            // ROBUST spawn height calculation
+            let spawnY = 15; // Safe default
+            try {
+              if (window.getHighestBlockAt) {
+                const calculatedY = window.getHighestBlockAt(spawnX, spawnZ);
+                if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
+                  spawnY = calculatedY + 1.5; // Spawn above ground
+                }
+              }
+            } catch (error) {
+              console.warn(`Error calculating spawn height at ${spawnX}, ${spawnZ}:`, error);
+            }
+            
+            // SAFETY: Ensure reasonable spawn height
+            spawnY = Math.max(spawnY, 13);
+            spawnY = Math.min(spawnY, 22);
             
             const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
             const stats = getEntityStats(entityType);
