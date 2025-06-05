@@ -25,11 +25,16 @@ import {
   Shield
 } from 'lucide-react';
 
-// Import simplified systems - no runtime errors
-// Import simplified systems - no runtime errors
+// Import optimized systems with enhanced visual effects
 import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
-import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
-import { EnhancedGrassSystem } from './SimpleGrassSystem';
+import { 
+  OptimizedMinecraftWorld as MinecraftWorld,
+  MinecraftHotbar,
+  MinecraftHealthHunger,
+  OptimizedMinecraftSky as MinecraftSky,
+  PositionTracker
+} from './OptimizedComponents';
+import { OptimizedPlayer as Player } from './OptimizedPlayer';
 
 
 
