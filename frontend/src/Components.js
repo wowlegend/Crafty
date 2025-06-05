@@ -566,7 +566,7 @@ export const Player = ({ gameState }) => {
       window.gameCamera = camera;
       gameState.selectedSpell = selectedSpell;
       isInitialized.current = true;
-      console.log('🎮 Player initialized - NO OSCILLATION MODE');
+      console.log('🎮 FIXED Player initialized - NO OSCILLATION MODE - Position:', camera.position.x, camera.position.y, camera.position.z);
     }
   }, [camera, gameState, selectedSpell]);
 
