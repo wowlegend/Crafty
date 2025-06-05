@@ -28,7 +28,7 @@ import {
 
 // Import optimized systems with enhanced visual effects
 import { useSimpleExperience } from './SimpleExperienceSystem';
-import { UnifiedMagicSystem, UnifiedMagicWand } from './UnifiedMagicSystem';
+import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
 import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 
 // OPTIMIZED Block Types - Cached and immutable
