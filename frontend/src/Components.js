@@ -143,18 +143,28 @@ try {
   };
 }
 
-// Import Enhanced Grass System with error handling
+// Safely import Enhanced Grass System with fallbacks
 let EnhancedGrass = null;
+let EnhancedGrassSystem = null;
+
 try {
-  const grassSystem = require('./EnhancedGrassSystem');
+  // Try to import the grass system
+  const GrassSystemModule = require('./EnhancedGrassSystem');
+  EnhancedGrassSystem = GrassSystemModule.EnhancedGrassSystem;
+  
   EnhancedGrass = {
-    EnhancedGrassSystem: grassSystem.EnhancedGrassSystem
+    EnhancedGrassSystem
   };
+  
+  console.log('✅ Enhanced Grass System loaded successfully');
 } catch (error) {
-  console.warn('Enhanced Grass System not available:', error);
-  // Fallback component
+  console.warn('⚠️ Enhanced Grass System not available, using fallbacks:', error);
+  
+  // Create safe fallback component
+  EnhancedGrassSystem = () => null;
+  
   EnhancedGrass = {
-    EnhancedGrassSystem: () => null
+    EnhancedGrassSystem
   };
 }
 
