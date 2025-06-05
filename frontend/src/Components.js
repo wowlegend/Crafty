@@ -1200,9 +1200,15 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
           </div>
           
           {/* Player stats in debug mode */}
-          {gameState.playerData && ExperienceSystem && (
+          {gameState.playerData && (
             <div className="mt-2">
-              <ExperienceSystem.PlayerStats playerData={gameState.playerData} />
+              <div className="minecraft-debug-panel">
+                <div className="text-white minecraft-text text-sm space-y-1">
+                  <div>Level: {gameState.playerData.level}</div>
+                  <div>XP: {gameState.playerData.currentXP} / {gameState.playerData.xpRequired}</div>
+                  <div>Total XP: {gameState.playerData.totalXP}</div>
+                </div>
+              </div>
             </div>
           )}
         </div>
