@@ -397,8 +397,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   return (
     <group>
-      {/* UNIFIED Magic System - NO CONFLICTS, ALL FEATURES */}
-      <UnifiedMagicSystem 
+      {/* WORKING Enhanced Magic System - NO CHANGES */}
+      <EnhancedMagicSystem 
         gameState={gameState}
         playerPosition={camera?.position}
       />
