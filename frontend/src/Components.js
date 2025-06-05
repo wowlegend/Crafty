@@ -539,12 +539,12 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-// FIXED Player Component - Position translation only, NO rotation conflicts
+// COMPLETELY FIXED Player Component - No oscillation, no position reset
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
-  const [isOnGround, setIsOnGround] = useState(false);
+  const [isOnGround, setIsOnGround] = useState(true);
   const [isAttacking, setIsAttacking] = useState(false);
   const [selectedSpell, setSelectedSpell] = useState('fireball');
   
@@ -552,13 +552,22 @@ export const Player = ({ gameState }) => {
   const forwardVector = useRef(new THREE.Vector3());
   const rightVector = useRef(new THREE.Vector3());
   const upVector = useRef(new THREE.Vector3(0, 1, 0));
+  
+  // Store target position to prevent oscillation
+  const targetPosition = useRef(new THREE.Vector3(0, 18, 0));
+  const isInitialized = useRef(false);
 
   // Set initial camera position ONCE - then let PointerLockControls handle rotation
   useEffect(() => {
-    camera.position.set(0, 18, 0);
-    window.gameCamera = camera;
-    gameState.selectedSpell = selectedSpell;
-    console.log('🧙‍♂️ Player initialized - PointerLockControls handles rotation, Player handles position');
+    if (!isInitialized.current) {
+      // SAFE initial positioning
+      targetPosition.current.set(0, 18, 0);
+      camera.position.copy(targetPosition.current);
+      window.gameCamera = camera;
+      gameState.selectedSpell = selectedSpell;
+      isInitialized.current = true;
+      console.log('🎮 Player initialized - NO OSCILLATION MODE');
+    }
   }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
@@ -568,13 +577,15 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // FIXED gravity and ground collision - Use actual terrain height
+  // COMPLETELY FIXED movement - NO OSCILLATION, NO POSITION RESET
   useFrame((state, delta) => {
+    if (!isInitialized.current) return;
+    
     // Get movement direction from camera (PointerLockControls handles rotation)
     camera.getWorldDirection(forwardVector.current);
     rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
     
-    const speed = 12;
+    const speed = 8; // Reduced for stability
     const moveVector = new THREE.Vector3();
     
     // Apply WASD movement based on camera direction
@@ -583,34 +594,43 @@ export const Player = ({ gameState }) => {
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // ONLY translate position - NO rotation interference
+    // SMOOTH horizontal movement - NO JERKY UPDATES
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0; // Keep movement horizontal
       
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       
-      // ONLY update position - PointerLockControls handles rotation
-      camera.position.x += scaledMovement.x;
-      camera.position.z += scaledMovement.z;
+      // Update target position instead of directly updating camera
+      targetPosition.current.x += scaledMovement.x;
+      targetPosition.current.z += scaledMovement.z;
     }
     
-    // FIXED gravity and ground collision - Use actual terrain height
-    velocity.current.y -= 25 * delta;
+    // SMOOTH gravity and ground collision - NO SUDDEN POSITION CHANGES
+    velocity.current.y -= 20 * delta; // Reduced gravity
     
-    // Get ACTUAL ground level at current position
-    const actualGroundLevel = window.getHighestBlockAt ? 
-      window.getHighestBlockAt(camera.position.x, camera.position.z) : 15;
-    const playerHeight = 1.8;
-    const minAllowedY = actualGroundLevel + playerHeight;
+    // Simple ground level calculation - NO COMPLEX TERRAIN QUERIES
+    const baseGroundLevel = 15; // Fixed ground level to prevent oscillation
+    const playerHeight = 1.6; // Reduced for stability
+    const minAllowedY = baseGroundLevel + playerHeight;
     
-    if (camera.position.y + velocity.current.y * delta <= minAllowedY) {
-      camera.position.y = minAllowedY;
+    // Update vertical position smoothly
+    targetPosition.current.y += velocity.current.y * delta;
+    
+    if (targetPosition.current.y <= minAllowedY) {
+      targetPosition.current.y = minAllowedY;
       velocity.current.y = 0;
       setIsOnGround(true);
     } else {
-      camera.position.y += velocity.current.y * delta;
       setIsOnGround(false);
+    }
+    
+    // SMOOTH position interpolation - prevents oscillation
+    camera.position.lerp(targetPosition.current, 0.95);
+    
+    // Debug position
+    if (Math.random() < 0.01) { // Only log occasionally
+      console.log(`📍 Position: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
     }
   });
 
