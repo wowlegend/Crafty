@@ -90,22 +90,56 @@ try {
   };
 }
 
-// Import Enhanced Magic System with error handling
+// Safely import Magic System with fallbacks
 let EnhancedMagic = null;
+let MagicWand = null;
+let MagicSystemManager = null;
+let MAGIC_SPELLS = null;
+
 try {
-  const magicSystem = require('./MagicSystem');
+  // Try to import the magic system
+  const MagicSystemModule = require('./MagicSystem');
+  MagicWand = MagicSystemModule.MagicWand;
+  MagicSystemManager = MagicSystemModule.MagicSystemManager;
+  MAGIC_SPELLS = MagicSystemModule.MAGIC_SPELLS;
+  
   EnhancedMagic = {
-    MagicWand: magicSystem.MagicWand,
-    MagicSystemManager: magicSystem.MagicSystemManager,
-    MAGIC_SPELLS: magicSystem.MAGIC_SPELLS
+    MagicWand,
+    MagicSystemManager,
+    MAGIC_SPELLS
   };
+  
+  console.log('✅ Enhanced Magic System loaded successfully');
 } catch (error) {
-  console.warn('Enhanced Magic System not available:', error);
-  // Fallback components
+  console.warn('⚠️ Enhanced Magic System not available, using fallbacks:', error);
+  
+  // Create safe fallback components
+  MagicWand = ({ selectedSpell, isAttacking, position, rotation }) => (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[0.03, 0.04, 0.8, 12]} />
+        <meshLambertMaterial color="#8B4513" />
+      </mesh>
+      <mesh position={[0, 0.4, 0]}>
+        <sphereGeometry args={[0.06, 8, 8]} />
+        <meshBasicMaterial color="#FF6B35" emissive="#FF6B35" emissiveIntensity={0.5} />
+      </mesh>
+    </group>
+  );
+  
+  MagicSystemManager = () => null;
+  
+  MAGIC_SPELLS = {
+    fireball: { color: '#FF6B35', name: 'Fireball', cost: 5 },
+    iceShard: { color: '#00BFFF', name: 'Ice Shard', cost: 4 },
+    lightningBeam: { color: '#FFFF00', name: 'Lightning Beam', cost: 8 },
+    arcaneOrb: { color: '#9932CC', name: 'Arcane Orb', cost: 7 }
+  };
+  
   EnhancedMagic = {
-    MagicWand: () => null,
-    MagicSystemManager: () => null,
-    MAGIC_SPELLS: { fireball: { color: '#FF6B35', name: 'Fireball' } }
+    MagicWand,
+    MagicSystemManager,
+    MAGIC_SPELLS
   };
 }
 
