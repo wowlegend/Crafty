@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Box, Plane, Stars } from '@react-three/drei';
 import { motion } from 'framer-motion';
@@ -27,117 +27,86 @@ import {
 } from 'lucide-react';
 
 // Import optimized systems with enhanced visual effects
-import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
-import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
-import { EnhancedGrassSystem } from './SimpleGrassSystem';
+import { useSimpleExperience } from './SimpleExperienceSystem';
+import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
+import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 
+// OPTIMIZED Block Types - Cached and immutable
+export const BLOCK_TYPES = Object.freeze({
+  grass: Object.freeze({ color: '#567C35', name: 'Grass Block', texture: 'grass' }),
+  dirt: Object.freeze({ color: '#976D4D', name: 'Dirt', texture: 'dirt' }),
+  stone: Object.freeze({ color: '#707070', name: 'Stone', texture: 'stone' }),
+  wood: Object.freeze({ color: '#8F7748', name: 'Oak Wood', texture: 'wood' }),
+  glass: Object.freeze({ color: '#F0F8FF', name: 'Glass', texture: 'glass', transparent: true }),
+  water: Object.freeze({ color: '#3F76E4', name: 'Water', texture: 'water', transparent: true }),
+  lava: Object.freeze({ color: '#FF4500', name: 'Lava', texture: 'lava', emissive: true }),
+  diamond: Object.freeze({ color: '#4FD0E7', name: 'Diamond Ore', texture: 'diamond', emissive: true }),
+  gold: Object.freeze({ color: '#FCEE4B', name: 'Gold Ore', texture: 'gold' }),
+  iron: Object.freeze({ color: '#D8AF93', name: 'Iron Ore', texture: 'iron' }),
+  coal: Object.freeze({ color: '#2F2F2F', name: 'Coal Ore', texture: 'coal' }),
+  sand: Object.freeze({ color: '#DBD3A0', name: 'Sand', texture: 'sand' }),
+  cobblestone: Object.freeze({ color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' })
+});
 
+// CACHED block type keys for performance
+const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
+const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);
 
+// ULTRA-OPTIMIZED Minecraft Hotbar - Minimal re-renders
+export const MinecraftHotbar = React.memo(({ gameState }) => {
+  if (!gameState) return null;
 
-
-
-
-// Authentic Minecraft Block Types Configuration
-export const BLOCK_TYPES = {
-  grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
-  dirt: { color: '#976D4D', name: 'Dirt', texture: 'dirt' },
-  stone: { color: '#707070', name: 'Stone', texture: 'stone' },
-  wood: { color: '#8F7748', name: 'Oak Wood', texture: 'wood' },
-  glass: { color: '#F0F8FF', name: 'Glass', texture: 'glass', transparent: true },
-  water: { color: '#3F76E4', name: 'Water', texture: 'water', transparent: true },
-  lava: { color: '#FF4500', name: 'Lava', texture: 'lava', emissive: true },
-  diamond: { color: '#4FD0E7', name: 'Diamond Ore', texture: 'diamond', emissive: true },
-  gold: { color: '#FCEE4B', name: 'Gold Ore', texture: 'gold' },
-  iron: { color: '#D8AF93', name: 'Iron Ore', texture: 'iron' },
-  coal: { color: '#2F2F2F', name: 'Coal Ore', texture: 'coal' },
-  sand: { color: '#DBD3A0', name: 'Sand', texture: 'sand' },
-  cobblestone: { color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' }
-};
-
-// Minecraft-style Hotbar
-const MinecraftHotbar = ({ gameState }) => {
-  // ROBUST error checking to prevent runtime errors
-  if (!gameState || !BLOCK_TYPES) {
-    console.error('MinecraftHotbar: Missing gameState or BLOCK_TYPES');
-    return <div>Loading hotbar...</div>;
-  }
-
-  const hotbarBlocks = Object.keys(BLOCK_TYPES).slice(0, 9);
-  
   return (
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
       <div className="minecraft-hotbar">
-        {hotbarBlocks.map((blockType, index) => {
-          try {
-            const blockConfig = BLOCK_TYPES[blockType];
-            if (!blockConfig) {
-              console.error(`Missing block config for: ${blockType}`);
-              return null;
-            }
-
-            const isSelected = gameState.selectedBlock === blockType;
-            
-            // TRIPLE-SAFE inventory access
-            let quantity = 0;
-            try {
-              quantity = gameState?.inventory?.blocks?.[blockType] || 0;
-            } catch (err) {
-              console.warn('Inventory access error:', err);
-              quantity = 0;
-            }
-            
-            return (
-              <div
-                key={blockType}
-                className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
-                onClick={() => {
-                  try {
-                    gameState.setSelectedBlock(blockType);
-                  } catch (err) {
-                    console.error('Error setting selected block:', err);
-                  }
-                }}
-                title={`${blockConfig.name || 'Unknown'} (${quantity})`}
-              >
-                <div 
-                  className="minecraft-block-icon"
-                  style={{ backgroundColor: blockConfig.color || '#4a7c59' }}
-                />
-                {quantity > 1 && (
-                  <div className="minecraft-quantity">
-                    {quantity > 999 ? '999+' : quantity}
-                  </div>
-                )}
-                <div className="minecraft-hotkey">
-                  {index + 1}
+        {HOTBAR_BLOCKS.map((blockType, index) => {
+          const blockConfig = BLOCK_TYPES[blockType];
+          const isSelected = gameState.selectedBlock === blockType;
+          const quantity = gameState.inventory?.blocks?.[blockType] || 0;
+          
+          return (
+            <div
+              key={blockType}
+              className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
+              onClick={() => gameState.setSelectedBlock(blockType)}
+              title={`${blockConfig.name} (${quantity})`}
+            >
+              <div 
+                className="minecraft-block-icon"
+                style={{ backgroundColor: blockConfig.color }}
+              />
+              {quantity > 1 && (
+                <div className="minecraft-quantity">
+                  {quantity > 999 ? '999+' : quantity}
                 </div>
-              </div>
-            );
-          } catch (error) {
-            console.error(`Error rendering hotbar slot ${index}:`, error);
-            return null;
-          }
+              )}
+              <div className="minecraft-hotkey">{index + 1}</div>
+            </div>
+          );
         })}
       </div>
     </div>
   );
-};
+});
 
-// Minecraft-style Health and Hunger bars
-const MinecraftHealthHunger = () => {
+// OPTIMIZED Health and Hunger - Static components
+export const MinecraftHealthHunger = React.memo(() => {
+  const hearts = useMemo(() => Array(10).fill(null).map((_, i) => i), []);
+  const hunger = useMemo(() => Array(10).fill(null).map((_, i) => i), []);
+
   return (
     <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 pointer-events-auto">
       <div className="minecraft-status-bars">
         <div className="minecraft-health-bar">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="minecraft-heart">
+          {hearts.map(i => (
+            <div key={`heart-${i}`} className="minecraft-heart">
               <div className="minecraft-heart-icon">❤</div>
             </div>
           ))}
         </div>
         <div className="minecraft-hunger-bar">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="minecraft-hunger">
+          {hunger.map(i => (
+            <div key={`hunger-${i}`} className="minecraft-hunger">
               <div className="minecraft-hunger-icon">🍖</div>
             </div>
           ))}
@@ -145,35 +114,49 @@ const MinecraftHealthHunger = () => {
       </div>
     </div>
   );
-};
+});
 
-// ULTRA-OPTIMIZED terrain generation - heavily favors grass with trees
-const generateTerrain = (x, z) => {
-  const noise = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2 + Math.sin(x * 0.04) * Math.cos(z * 0.04) * 4;
-  const height = Math.floor(Math.max(12, Math.min(16, noise + 15))); // Higher base for more grass
-  return height;
-};
+// ULTRA-OPTIMIZED terrain generation with caching
+const generateTerrainHeight = (() => {
+  const cache = new Map();
+  const maxCacheSize = 1000;
+  
+  return (x, z) => {
+    const key = `${Math.floor(x)}_${Math.floor(z)}`;
+    
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    
+    const noise1 = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2;
+    const noise2 = Math.sin(x * 0.04) * Math.cos(z * 0.04) * 4;
+    const height = Math.floor(Math.max(12, Math.min(18, noise1 + noise2 + 15)));
+    
+    if (cache.size >= maxCacheSize) {
+      const firstKey = cache.keys().next().value;
+      cache.delete(firstKey);
+    }
+    
+    cache.set(key, height);
+    return height;
+  };
+})();
 
-// ENHANCED World Generation with ALL Features - No Runtime Errors
-export const MinecraftWorld = ({ gameState }) => {
+// OPTIMIZED World Generation - Drastically improved performance
+export const MinecraftWorld = React.memo(({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
-  const worldRef = useRef();
+  const lastUpdateTime = useRef(0);
+  const isGenerating = useRef(false);
   
   const chunkSize = 16;
-  const renderDistance = 2;
-  
-  // WORKING terrain generation - no errors
-  const generateTerrain = (x, z) => {
-    const noise1 = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3;
-    const noise2 = Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6;
-    const height = Math.floor(Math.max(10, Math.min(18, noise1 + noise2 + 15)));
-    return height;
-  };
+  const renderDistance = 3; // Increased for better experience
+  const updateThreshold = 100; // Only update every 100ms
 
-  const generateChunk = (chunkX, chunkZ) => {
+  // OPTIMIZED chunk generation with batching
+  const generateChunk = useCallback((chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
     if (generatedChunks.has(chunkKey)) return;
 
@@ -181,35 +164,39 @@ export const MinecraftWorld = ({ gameState }) => {
     const startX = chunkX * chunkSize;
     const startZ = chunkZ * chunkSize;
     
+    // Generate blocks in batch
     for (let x = startX; x < startX + chunkSize; x++) {
       for (let z = startZ; z < startZ + chunkSize; z++) {
-        const height = generateTerrain(x, z);
+        const height = generateTerrainHeight(x, z);
         
-        // Surface block - 95% grass
-        const blockType = Math.random() < 0.95 ? 'grass' : 'sand';
+        // Surface block - 95% grass for performance
+        const blockType = Math.random() < 0.95 ? 'grass' : 'dirt';
         const key = `${x},${height},${z}`;
         newBlocks.set(key, { 
           position: [x, height, z], 
-          type: blockType
+          type: blockType,
+          key // Store key for faster access
         });
         
-        // Underground layers
-        for (let y = height - 1; y >= Math.max(height - 3, 8); y--) {
+        // Underground layers - optimized
+        for (let y = height - 1; y >= Math.max(height - 2, 10); y--) {
           const undergroundType = y === height - 1 ? 'dirt' : 'stone';
           const undergroundKey = `${x},${y},${z}`;
           newBlocks.set(undergroundKey, { 
             position: [x, y, z], 
-            type: undergroundType
+            type: undergroundType,
+            key: undergroundKey
           });
         }
         
-        // Trees
-        if (blockType === 'grass' && Math.random() < 0.03) {
+        // Fewer trees for performance - only 1% chance
+        if (blockType === 'grass' && Math.random() < 0.01) {
           generateTree(newBlocks, x, height, z);
         }
       }
     }
     
+    // Batch update state
     setBlocks(prev => {
       const updated = new Map(prev);
       newBlocks.forEach((value, key) => updated.set(key, value));
@@ -217,39 +204,44 @@ export const MinecraftWorld = ({ gameState }) => {
     });
     
     setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-  };
+  }, []);
 
-  const generateTree = (blockMap, x, baseY, z) => {
-    const treeHeight = 3 + Math.floor(Math.random() * 3);
+  const generateTree = useCallback((blockMap, x, baseY, z) => {
+    const treeHeight = 2 + Math.floor(Math.random() * 2); // Smaller trees
     
     // Trunk
     for (let y = 1; y <= treeHeight; y++) {
       const trunkKey = `${x},${baseY + y},${z}`;
       blockMap.set(trunkKey, { 
         position: [x, baseY + y, z], 
-        type: 'wood'
+        type: 'wood',
+        key: trunkKey
       });
     }
     
-    // Leaves
+    // Minimal leaves for performance
     const crownY = baseY + treeHeight + 1;
     const leafPositions = [
-      [x, crownY, z], [x+1, crownY, z], [x-1, crownY, z],
-      [x, crownY, z+1], [x, crownY, z-1]
+      [x, crownY, z], [x+1, crownY, z], [x-1, crownY, z]
     ];
     
     leafPositions.forEach(([lx, ly, lz]) => {
       const leafKey = `${lx},${ly},${lz}`;
       blockMap.set(leafKey, { 
         position: [lx, ly, lz], 
-        type: 'grass'
+        type: 'grass',
+        key: leafKey
       });
     });
-  };
+  }, []);
 
-  // Frame-based terrain generation
+  // OPTIMIZED frame-based generation with throttling
   useFrame(() => {
     if (!camera) return;
+    
+    const now = performance.now();
+    if (now - lastUpdateTime.current < updateThreshold) return;
+    lastUpdateTime.current = now;
     
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
@@ -259,51 +251,55 @@ export const MinecraftWorld = ({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // Generate chunks around player
-      for (let x = -renderDistance; x <= renderDistance; x++) {
-        for (let z = -renderDistance; z <= renderDistance; z++) {
-          const chunkX = currentChunkX + x;
-          const chunkZ = currentChunkZ + z;
-          generateChunk(chunkX, chunkZ);
-        }
+      // Queue chunks for generation instead of generating immediately
+      if (!isGenerating.current) {
+        isGenerating.current = true;
+        requestIdleCallback(() => {
+          for (let x = -renderDistance; x <= renderDistance; x++) {
+            for (let z = -renderDistance; z <= renderDistance; z++) {
+              const chunkX = currentChunkX + x;
+              const chunkZ = currentChunkZ + z;
+              generateChunk(chunkX, chunkZ);
+            }
+          }
+          isGenerating.current = false;
+        });
       }
     }
   });
 
-  // Initial terrain generation
+  // Initial generation - smaller area
   useEffect(() => {
-    console.log('🌍 Generating initial terrain...');
+    console.log('🌍 Optimized terrain generation starting...');
     for (let x = -1; x <= 1; x++) {
       for (let z = -1; z <= 1; z++) {
         generateChunk(x, z);
       }
     }
-  }, []);
+  }, [generateChunk]);
 
-  // Block interaction handlers with XP rewards
-  const handleBlockPlace = (position, blockType) => {
+  // OPTIMIZED block interactions
+  const handleBlockPlace = useCallback((position, blockType) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
     if (!blocks.has(key)) {
       setBlocks(prev => new Map(prev).set(key, {
         position,
-        type: blockType
+        type: blockType,
+        key
       }));
       
-      // Award XP for block placement
-      if (window.xpBlockPlace) {
-        window.xpBlockPlace();
-      }
-      
+      if (window.xpBlockPlace) window.xpBlockPlace();
       if (gameState.gameMode !== 'creative') {
         gameState.removeFromInventory(blockType, 1);
       }
     }
-  };
+  }, [blocks, gameState]);
 
-  const handleBlockBreak = (position) => {
+  const handleBlockBreak = useCallback((position) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
-    if (blocks.has(key)) {
-      const block = blocks.get(key);
+    const block = blocks.get(key);
+    
+    if (block) {
       setBlocks(prev => {
         const newBlocks = new Map(prev);
         newBlocks.delete(key);
@@ -311,20 +307,15 @@ export const MinecraftWorld = ({ gameState }) => {
       });
       
       gameState.addToInventory(block.type, 1);
+      if (window.xpBlockBreak) window.xpBlockBreak();
       
-      // Award XP for block breaking
-      if (window.xpBlockBreak) {
-        window.xpBlockBreak();
-      }
-      
-      // Special XP for rare blocks
       if (['diamond', 'gold'].includes(block.type) && window.addExperience) {
         window.addExperience(15, 'Rare Material');
       }
     }
-  };
+  }, [blocks, gameState]);
 
-  // Click handlers
+  // OPTIMIZED click handlers
   useEffect(() => {
     const handleClick = (event) => {
       if (!camera) return;
@@ -362,7 +353,7 @@ export const MinecraftWorld = ({ gameState }) => {
       window.removeEventListener('mousedown', handleClick);
       window.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [camera, gameState.selectedBlock, blocks]);
+  }, [camera, gameState.selectedBlock, handleBlockBreak, handleBlockPlace]);
 
   // Expose ground level function
   useEffect(() => {
@@ -378,166 +369,90 @@ export const MinecraftWorld = ({ gameState }) => {
     };
   }, [blocks]);
 
+  // OPTIMIZED block rendering with culling
+  const visibleBlocks = useMemo(() => {
+    if (!camera) return [];
+    
+    const cameraPos = camera.position;
+    const viewDistance = 32; // Only render nearby blocks
+    
+    return Array.from(blocks.values()).filter(block => {
+      const distance = Math.sqrt(
+        Math.pow(block.position[0] - cameraPos.x, 2) +
+        Math.pow(block.position[2] - cameraPos.z, 2)
+      );
+      return distance <= viewDistance;
+    });
+  }, [blocks, camera]);
+
   return (
-    <group ref={worldRef}>
-      {/* Magic Projectile System */}
-      <SimpleMagicProjectileSystem 
+    <group>
+      {/* Enhanced Magic System */}
+      <EnhancedMagicSystem 
         gameState={gameState}
-        playerPosition={camera.position}
+        playerPosition={camera?.position}
       />
       
-      {/* Enhanced Grass System */}
-      <EnhancedGrassSystem 
-        chunkX={Math.floor(camera.position.x / 16)}
-        chunkZ={Math.floor(camera.position.z / 16)}
-        blockPositions={Array.from(blocks.values()).map(block => [...block.position, block.type])}
+      {/* Optimized Grass System */}
+      <OptimizedGrassSystem 
+        chunkX={Math.floor(camera?.position?.x / 16) || 0}
+        chunkZ={Math.floor(camera?.position?.z / 16) || 0}
+        blockPositions={visibleBlocks.map(block => [...block.position, block.type])}
       />
       
-      {/* Render all blocks */}
-      {Array.from(blocks.values()).map((block) => {
-        const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
+      {/* OPTIMIZED Block Rendering */}
+      {visibleBlocks.map((block) => {
+        const blockConfig = BLOCK_TYPES[block.type];
         return (
-          <mesh 
-            key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
+          <OptimizedBlock 
+            key={block.key}
             position={block.position}
-            userData={{ blockType: block.type }}
-          >
-            <boxGeometry args={[1, 1, 1]} />
-            <meshLambertMaterial 
-              color={blockConfig.color}
-              transparent={blockConfig.transparent || false}
-              opacity={blockConfig.transparent ? 0.8 : 1}
-            />
-            {/* Enhanced grass texture */}
-            {block.type === 'grass' && (
-              <GrassTexture position={[0, 0.51, 0]} />
-            )}
-          </mesh>
+            blockConfig={blockConfig}
+            blockType={block.type}
+          />
         );
       })}
       
-      {/* Clouds */}
-      <MinecraftClouds />
-      
-      {/* Grass effects */}
-      <GrassEffects />
+      {/* Simplified environment for performance */}
+      <OptimizedClouds />
     </group>
   );
-};
+});
 
-// OPTIMIZED Grass Texture - Reduced complexity
-const GrassTexture = ({ position }) => {
+// OPTIMIZED individual block component
+const OptimizedBlock = React.memo(({ position, blockConfig, blockType }) => {
   return (
-    <group position={position}>
-      {/* Simplified grass blade effects for performance */}
-      {[...Array(2)].map((_, i) => (
-        <mesh key={i} position={[
-          (Math.random() - 0.5) * 0.6,
-          0,
-          (Math.random() - 0.5) * 0.6
-        ]}>
-          <planeGeometry args={[0.08, 0.15]} />
-          <meshBasicMaterial 
-            color="#4a7c59" 
-            transparent 
-            opacity={0.5}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
+    <mesh position={position} userData={{ blockType }}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshLambertMaterial 
+        color={blockConfig.color}
+        transparent={blockConfig.transparent || false}
+        opacity={blockConfig.transparent ? 0.8 : 1}
+      />
+    </mesh>
   );
-};
+});
 
-// ULTRA-PERFORMANCE Grass Effects - Optimized for smoothness
-const GrassEffects = () => {
-  const particlesRef = useRef();
-  
-  const grassParticles = useMemo(() => {
-    const particles = [];
-    for (let i = 0; i < 8; i++) { // Reduced for ultra-performance
-      particles.push({
-        x: (Math.random() - 0.5) * 40, // Smaller area for performance
-        y: 12 + Math.random() * 6,
-        z: (Math.random() - 0.5) * 40,
-        speed: 0.03 + Math.random() * 0.03, // Slower for smoother feel
-        phase: Math.random() * Math.PI * 2
-      });
-    }
-    return particles;
-  }, []);
-  
-  useFrame((state) => {
-    if (particlesRef.current) {
-      const time = state.clock.elapsedTime;
-      particlesRef.current.children.forEach((particle, index) => {
-        const particleData = grassParticles[index];
-        particle.position.y = particleData.y + Math.sin(time + particleData.phase) * 2;
-        particle.rotation.y += 0.005; // Slower rotation
-        
-        // Gentle floating animation
-        if (particle.position.y > 20) {
-          particle.position.y = 12;
-        }
-      });
-    }
-  });
-  
-  return (
-    <group ref={particlesRef}>
-      {grassParticles.map((particle, index) => (
-        <mesh 
-          key={index} 
-          position={[particle.x, particle.y, particle.z]}
-        >
-          <planeGeometry args={[0.06, 0.12]} />
-          <meshBasicMaterial 
-            color="#90EE90" 
-            transparent 
-            opacity={0.6}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// ULTRA-OPTIMIZED Clouds - Minimal performance impact
-const MinecraftClouds = () => {
+// SIMPLIFIED clouds for performance
+const OptimizedClouds = React.memo(() => {
   const cloudsRef = useRef();
   
-  // Reduced cloud count for performance
   const cloudPositions = useMemo(() => {
     const positions = [];
-    
-    for (let i = 0; i < 6; i++) { // Reduced from 12
-      const baseX = (i - 3) * 25 + (Math.random() - 0.5) * 10;
-      const baseZ = -25 + (Math.random() - 0.5) * 15;
-      const baseY = 30 + Math.random() * 5;
-      
-      for (let j = 0; j < 3; j++) { // Reduced from 6
-        positions.push({
-          x: baseX + (Math.random() - 0.5) * 6,
-          y: baseY + (Math.random() - 0.5) * 2,
-          z: baseZ + (Math.random() - 0.5) * 6,
-          scaleX: 2 + Math.random() * 1.5,
-          scaleY: 0.8 + Math.random() * 0.4,
-          scaleZ: 2 + Math.random() * 1.5,
-          opacity: 0.6 + Math.random() * 0.3
-        });
-      }
+    for (let i = 0; i < 3; i++) { // Reduced to 3 clouds
+      positions.push({
+        x: (i - 1) * 30,
+        y: 35,
+        z: -20,
+        scale: 3
+      });
     }
-    
     return positions;
   }, []);
   
-  // Ultra-slow cloud movement for performance
   useFrame((state) => {
     if (cloudsRef.current) {
-      const time = state.clock.elapsedTime;
-      cloudsRef.current.position.x = Math.sin(time * 0.001) * 2;
-      cloudsRef.current.position.z = time * 0.01;
+      cloudsRef.current.position.x = Math.sin(state.clock.elapsedTime * 0.001) * 2;
     }
   });
   
@@ -547,244 +462,22 @@ const MinecraftClouds = () => {
         <mesh 
           key={index} 
           position={[cloud.x, cloud.y, cloud.z]}
-          scale={[cloud.scaleX, cloud.scaleY, cloud.scaleZ]}
+          scale={[cloud.scale, 1, cloud.scale]}
         >
           <boxGeometry args={[1, 1, 1]} />
           <meshLambertMaterial 
             color="#ffffff" 
             transparent 
-            opacity={cloud.opacity}
+            opacity={0.7}
           />
         </mesh>
       ))}
     </group>
   );
-};
+});
 
-// RESTORED environmental particles
-const EnvironmentalParticles = () => {
-  const particlesRef = useRef();
-  
-  const particlePositions = useMemo(() => {
-    const positions = [];
-    for (let i = 0; i < 20; i++) {
-      positions.push({
-        x: (Math.random() - 0.5) * 100,
-        y: 20 + Math.random() * 10,
-        z: (Math.random() - 0.5) * 100,
-        speed: 0.1 + Math.random() * 0.1
-      });
-    }
-    return positions;
-  }, []);
-  
-  useFrame((state) => {
-    if (particlesRef.current) {
-      particlesRef.current.children.forEach((particle, index) => {
-        const particleData = particlePositions[index];
-        particle.position.y += particleData.speed * Math.sin(state.clock.elapsedTime + index);
-        if (particle.position.y > 35) {
-          particle.position.y = 15;
-        }
-      });
-    }
-  });
-  
-  return (
-    <group ref={particlesRef}>
-      {particlePositions.map((particle, index) => (
-        <mesh 
-          key={index} 
-          position={[particle.x, particle.y, particle.z]}
-        >
-          <sphereGeometry args={[0.05, 4, 4]} />
-          <meshBasicMaterial 
-            color="#ffffff" 
-            transparent 
-            opacity={0.6}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// ENHANCED Magic Hands Component - No Runtime Errors
-const EnhancedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
-  const { camera } = useThree();
-  const rightHandRef = useRef();
-  const leftHandRef = useRef();
-  const wandRef = useRef();
-  
-  const SPELL_COLORS = {
-    fireball: '#FF4500',
-    iceball: '#00BFFF', 
-    lightning: '#FFD700',
-    arcane: '#9932CC'
-  };
-  
-  const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
-
-  // Frame-by-frame positioning with enhanced magic effects
-  useFrame(() => {
-    if (rightHandRef.current && leftHandRef.current) {
-      const time = Date.now() * 0.001;
-      
-      // Right hand positioning - holding magic wand
-      const rightPos = new THREE.Vector3(0.7, -0.7, -1.2);
-      rightPos.applyMatrix4(camera.matrixWorld);
-      rightHandRef.current.position.copy(rightPos);
-      rightHandRef.current.quaternion.copy(camera.quaternion);
-      
-      // Enhanced magical idle animation
-      rightHandRef.current.position.y += Math.sin(time * 2) * 0.03;
-      rightHandRef.current.rotation.z = Math.sin(time * 1.5) * 0.08;
-      
-      // Left hand positioning - gesture casting
-      const leftPos = new THREE.Vector3(-0.5, -0.6, -1.1);
-      leftPos.applyMatrix4(camera.matrixWorld);
-      leftHandRef.current.position.copy(leftPos);
-      leftHandRef.current.quaternion.copy(camera.quaternion);
-      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
-      leftHandRef.current.rotation.z = Math.sin(time * 1.5 + 1) * 0.06;
-      
-      // Enhanced spell casting animation
-      if (isAttacking) {
-        const attackTime = time * 20;
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.6;
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.2;
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.4;
-        
-        if (wandRef.current) {
-          wandRef.current.rotation.x = Math.sin(attackTime) * 0.3;
-          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.15;
-        }
-      }
-    }
-  });
-
-  return (
-    <group>
-      {/* RIGHT HAND - Magic Wand Hand */}
-      <group ref={rightHandRef}>        
-        {/* Magical forearm */}
-        <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[0.16, 0.7, 0.16]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Main hand block */}
-        <mesh position={[0, -0.05, 0]}>
-          <boxGeometry args={[0.2, 0.24, 0.12]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Thumb */}
-        <mesh position={[0.12, -0.02, 0]}>
-          <boxGeometry args={[0.08, 0.12, 0.08]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Fingers */}
-        <mesh position={[0, -0.15, -0.08]}>
-          <boxGeometry args={[0.16, 0.06, 0.04]} />
-          <meshLambertMaterial color="#e6a69a" />
-        </mesh>
-        
-        {/* ENHANCED MAGIC WAND - Primary Weapon */}
-        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
-          <SimpleMagicWand wandType={selectedSpell} />
-        </group>
-        
-        {/* Magical aura around hand during casting */}
-        {isAttacking && (
-          <mesh position={[0, 0, 0]}>
-            <sphereGeometry args={[0.35, 8, 8]} />
-            <meshBasicMaterial 
-              color={currentSpellColor}
-              transparent
-              opacity={0.3}
-            />
-          </mesh>
-        )}
-      </group>
-      
-      {/* LEFT HAND - Spell Gesture Hand */}
-      <group ref={leftHandRef}>
-        {/* Forearm */}
-        <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[0.16, 0.7, 0.16]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Main hand block */}
-        <mesh position={[0, -0.05, 0]}>
-          <boxGeometry args={[0.2, 0.24, 0.12]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Thumb */}
-        <mesh position={[-0.12, -0.02, 0]}>
-          <boxGeometry args={[0.08, 0.12, 0.08]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Fingers in spell-casting position */}
-        <mesh position={[0, -0.1, -0.1]} rotation={[0.2, 0, 0]}>
-          <boxGeometry args={[0.16, 0.06, 0.04]} />
-          <meshLambertMaterial color="#e6a69a" />
-        </mesh>
-        
-        {/* Spell energy emanating from left hand */}
-        {isAttacking && (
-          <group>
-            {/* Main spell energy orb */}
-            <mesh position={[0, 0.1, -0.2]}>
-              <sphereGeometry args={[0.08, 8, 8]} />
-              <meshBasicMaterial 
-                color={currentSpellColor}
-                transparent
-                opacity={0.8}
-              />
-            </mesh>
-            
-            {/* Magical particles */}
-            {[...Array(5)].map((_, i) => (
-              <mesh 
-                key={i}
-                position={[
-                  (Math.random() - 0.5) * 0.3,
-                  Math.random() * 0.2,
-                  -0.1 - Math.random() * 0.2
-                ]}
-              >
-                <sphereGeometry args={[0.02, 4, 4]} />
-                <meshBasicMaterial 
-                  color={currentSpellColor}
-                  transparent
-                  opacity={0.7}
-                />
-              </mesh>
-            ))}
-          </group>
-        )}
-        
-        {/* Alternative: Show selected block for building mode */}
-        {!isAttacking && selectedBlock && (
-          <group position={[-0.1, 0.2, -0.15]} scale={[0.3, 0.3, 0.3]}>
-            <mesh>
-              <boxGeometry args={[1, 1, 1]} />
-              <meshLambertMaterial color={BLOCK_TYPES[selectedBlock]?.color || '#567C35'} />
-            </mesh>
-          </group>
-        )}
-      </group>
-    </group>
-  );
-};
-
-// ENHANCED Sky Component - Follows player like terrain
-const MinecraftSky = ({ isDay = true }) => {
+// ENHANCED Sky Component with Authentic Effects
+export const MinecraftSky = React.memo(({ isDay = true }) => {
   const { camera } = useThree();
   const skyRef = useRef();
   const sunRef = useRef();
@@ -792,7 +485,6 @@ const MinecraftSky = ({ isDay = true }) => {
   const skyColor = isDay ? '#87CEEB' : '#191970';
   const sunColor = isDay ? '#FFD700' : '#F5F5DC';
   
-  // Make sky follow player position
   useFrame(() => {
     if (skyRef.current && camera) {
       skyRef.current.position.copy(camera.position);
@@ -808,30 +500,31 @@ const MinecraftSky = ({ isDay = true }) => {
   
   return (
     <group>
-      {/* Sky sphere that follows player */}
       <mesh ref={skyRef} scale={[200, 200, 200]}>
-        <sphereGeometry args={[1, 16, 16]} />
+        <sphereGeometry args={[1, 8, 8]} />
         <meshBasicMaterial 
           color={skyColor}
           side={THREE.BackSide}
         />
       </mesh>
       
-      {/* Sun/Moon that follows player */}
       <mesh ref={sunRef}>
-        <sphereGeometry args={[3, 12, 12]} />
+        <sphereGeometry args={[3, 8, 8]} />
         <meshBasicMaterial color={sunColor} />
       </mesh>
     </group>
   );
-};
+});
 
-// Position tracker component
-const PositionTracker = ({ onPositionUpdate }) => {
+// Position tracker component - Optimized
+export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   const { camera } = useThree();
+  const lastUpdate = useRef(0);
   
   useFrame(() => {
-    if (camera && onPositionUpdate) {
+    const now = performance.now();
+    if (camera && onPositionUpdate && now - lastUpdate.current > 200) {
+      lastUpdate.current = now;
       onPositionUpdate({
         x: Math.round(camera.position.x),
         y: Math.round(camera.position.y),
@@ -841,9 +534,9 @@ const PositionTracker = ({ onPositionUpdate }) => {
   });
   
   return null;
-};
+});
 
-// ENHANCED Player with Magic System Integration - No Runtime Errors
+// OPTIMIZED Player Component with Enhanced Magic System
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -878,11 +571,9 @@ export const Player = ({ gameState }) => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
       const safeHeight = Math.max(groundLevel + 2, 16);
       camera.position.y = safeHeight;
-      console.log(`🧙‍♂️ Mage positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
+      console.log(`🧙‍♂️ Enhanced Player with Magic System initialized at height: ${safeHeight}`);
     }, 1000);
-    
-    console.log('🧙‍♂️ Enhanced Player with Magic System initialized');
-  }, [camera]);
+  }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
   useEffect(() => {
@@ -891,12 +582,12 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // Enhanced frame logic with magic integration
+  // OPTIMIZED frame logic with magic integration
   useFrame((state, delta) => {
     const now = performance.now();
     
-    const shouldUpdateCamera = now - lastCameraUpdate.current > 8;
-    const shouldCheckGround = now - lastGroundCheck.current > 16;
+    const shouldUpdateCamera = now - lastCameraUpdate.current > 16; // 60fps
+    const shouldCheckGround = now - lastGroundCheck.current > 50; // 20fps for ground check
     
     const speed = 12;
     const moveVector = new THREE.Vector3();
@@ -952,25 +643,16 @@ export const Player = ({ gameState }) => {
       
       if (camera.position.y < groundLevel + playerHeight) {
         camera.position.y = groundLevel + playerHeight;
-        console.warn(`🚑 Emergency repositioning mage above ground: ${camera.position.y}`);
       }
       
       lastGroundCheck.current = now;
     } else {
       camera.position.y += velocity.current.y * delta;
-      
-      if (Math.random() < 0.1) {
-        const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
-        if (camera.position.y < groundLevel + 1.8) {
-          camera.position.y = groundLevel + 1.8;
-          console.warn(`🚑 Emergency correction during movement: ${camera.position.y}`);
-        }
-      }
     }
   });
 
-  // Enhanced ground level detection
-  const getOptimizedGroundLevel = (x, z) => {
+  // Enhanced ground level detection with caching
+  const getOptimizedGroundLevel = useCallback((x, z) => {
     const cacheKey = `${Math.floor(x/4)}_${Math.floor(z/4)}`;
     
     if (groundLevelCache.current.has(cacheKey)) {
@@ -994,6 +676,7 @@ export const Player = ({ gameState }) => {
     
     groundLevelCache.current.set(cacheKey, groundLevel);
     
+    // Limit cache size
     if (groundLevelCache.current.size > 50) {
       const entries = Array.from(groundLevelCache.current.entries());
       groundLevelCache.current.clear();
@@ -1003,7 +686,7 @@ export const Player = ({ gameState }) => {
     }
     
     return groundLevel;
-  };
+  }, []);
 
   // Enhanced event handlers with magic system
   useEffect(() => {
@@ -1026,7 +709,7 @@ export const Player = ({ gameState }) => {
         event.preventDefault();
         setIsAttacking(true);
         
-        // Cast spell with visual and audio effects
+        // Cast spell with enhanced visual and audio effects
         if (window.castSpell) {
           window.castSpell(selectedSpell);
           
@@ -1036,7 +719,7 @@ export const Player = ({ gameState }) => {
           }
         }
         
-        setTimeout(() => setIsAttacking(false), 400);
+        setTimeout(() => setIsAttacking(false), 600); // Longer for better visual effect
       }
       
       // Spell selection with Q key (cycle through spells)
@@ -1053,7 +736,7 @@ export const Player = ({ gameState }) => {
       // Block selection (keeping for building mode)
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
-        const blockTypes = Object.keys(BLOCK_TYPES);
+        const blockTypes = BLOCK_TYPE_KEYS;
         if (num >= 1 && num <= blockTypes.length) {
           gameState.setSelectedBlock(blockTypes[num - 1]);
         }
@@ -1078,8 +761,8 @@ export const Player = ({ gameState }) => {
 
   return (
     <group>
-      {/* Enhanced Magic Hands with Wand */}
-      <EnhancedMagicHands 
+      {/* Enhanced Magic Hands with Authentic Effects */}
+      <OptimizedMagicHands 
         selectedSpell={selectedSpell}
         selectedBlock={gameState.selectedBlock}
         isAttacking={isAttacking}
@@ -1088,7 +771,189 @@ export const Player = ({ gameState }) => {
   );
 };
 
-// Game UI Component with Experience System
+// ENHANCED Magic Hands Component with Authentic Visual Effects
+const OptimizedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
+  const { camera } = useThree();
+  const rightHandRef = useRef();
+  const leftHandRef = useRef();
+  const wandRef = useRef();
+  const magicAuraRef = useRef();
+  
+  const SPELL_COLORS = {
+    fireball: '#FF4500',
+    iceball: '#00BFFF', 
+    lightning: '#FFD700',
+    arcane: '#9932CC'
+  };
+  
+  const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
+
+  // Enhanced frame-by-frame positioning with authentic magic effects
+  useFrame((state) => {
+    if (rightHandRef.current && leftHandRef.current && camera) {
+      const time = state.clock.elapsedTime;
+      
+      // Right hand positioning - holding enhanced magic wand
+      const rightPos = new THREE.Vector3(0.7, -0.7, -1.2);
+      rightPos.applyMatrix4(camera.matrixWorld);
+      rightHandRef.current.position.copy(rightPos);
+      rightHandRef.current.quaternion.copy(camera.quaternion);
+      
+      // Enhanced magical idle animation
+      rightHandRef.current.position.y += Math.sin(time * 2) * 0.03;
+      rightHandRef.current.rotation.z = Math.sin(time * 1.5) * 0.08;
+      
+      // Left hand positioning - enhanced gesture casting
+      const leftPos = new THREE.Vector3(-0.5, -0.6, -1.1);
+      leftPos.applyMatrix4(camera.matrixWorld);
+      leftHandRef.current.position.copy(leftPos);
+      leftHandRef.current.quaternion.copy(camera.quaternion);
+      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
+      leftHandRef.current.rotation.z = Math.sin(time * 1.5 + 1) * 0.06;
+      
+      // Enhanced spell casting animation with authentic effects
+      if (isAttacking) {
+        const attackTime = time * 20;
+        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.6;
+        rightHandRef.current.position.z += Math.sin(attackTime) * 0.2;
+        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.4;
+        
+        if (wandRef.current) {
+          wandRef.current.rotation.x = Math.sin(attackTime) * 0.3;
+          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.15;
+        }
+      }
+      
+      // Enhanced magic aura effects
+      if (magicAuraRef.current) {
+        const intensity = isAttacking ? 1.5 + Math.sin(time * 10) * 0.5 : 0.8 + Math.sin(time * 3) * 0.2;
+        magicAuraRef.current.scale.setScalar(intensity);
+        magicAuraRef.current.material.opacity = isAttacking ? 0.6 : 0.3;
+      }
+    }
+  });
+
+  return (
+    <group>
+      {/* RIGHT HAND - Enhanced Magic Wand Hand */}
+      <group ref={rightHandRef}>        
+        {/* Enhanced forearm */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.16]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced main hand block */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[0.2, 0.24, 0.12]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced thumb */}
+        <mesh position={[0.12, -0.02, 0]}>
+          <boxGeometry args={[0.08, 0.12, 0.08]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced fingers */}
+        <mesh position={[0, -0.15, -0.08]}>
+          <boxGeometry args={[0.16, 0.06, 0.04]} />
+          <meshLambertMaterial color="#e6a69a" />
+        </mesh>
+        
+        {/* ENHANCED MAGIC WAND with Authentic Effects */}
+        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
+          <MagicWand wandType={selectedSpell} />
+        </group>
+        
+        {/* Enhanced magical aura around hand during casting */}
+        {isAttacking && (
+          <mesh ref={magicAuraRef} position={[0, 0, 0]}>
+            <sphereGeometry args={[0.4, 8, 8]} />
+            <meshBasicMaterial 
+              color={currentSpellColor}
+              transparent
+              opacity={0.4}
+            />
+          </mesh>
+        )}
+      </group>
+      
+      {/* LEFT HAND - Enhanced Spell Gesture Hand */}
+      <group ref={leftHandRef}>
+        {/* Enhanced forearm */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.16]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced main hand block */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[0.2, 0.24, 0.12]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced thumb */}
+        <mesh position={[-0.12, -0.02, 0]}>
+          <boxGeometry args={[0.08, 0.12, 0.08]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Enhanced fingers in spell-casting position */}
+        <mesh position={[0, -0.1, -0.1]} rotation={[0.2, 0, 0]}>
+          <boxGeometry args={[0.16, 0.06, 0.04]} />
+          <meshLambertMaterial color="#e6a69a" />
+        </mesh>
+        
+        {/* Enhanced spell energy emanating from left hand */}
+        {isAttacking && (
+          <group>
+            {/* Main spell energy orb with authentic effects */}
+            <mesh position={[0, 0.1, -0.2]}>
+              <sphereGeometry args={[0.1, 8, 8]} />
+              <meshBasicMaterial 
+                color={currentSpellColor}
+                transparent
+                opacity={0.9}
+              />
+            </mesh>
+            
+            {/* Enhanced magical particles */}
+            {[...Array(8)].map((_, i) => (
+              <mesh 
+                key={i}
+                position={[
+                  (Math.random() - 0.5) * 0.4,
+                  Math.random() * 0.3,
+                  -0.1 - Math.random() * 0.3
+                ]}
+              >
+                <sphereGeometry args={[0.02, 4, 4]} />
+                <meshBasicMaterial 
+                  color={currentSpellColor}
+                  transparent
+                  opacity={0.8}
+                />
+              </mesh>
+            ))}
+          </group>
+        )}
+        
+        {/* Enhanced selected block display for building mode */}
+        {!isAttacking && selectedBlock && (
+          <group position={[-0.1, 0.2, -0.15]} scale={[0.3, 0.3, 0.3]}>
+            <mesh>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshLambertMaterial color={BLOCK_TYPES[selectedBlock]?.color || '#567C35'} />
+            </mesh>
+          </group>
+        )}
+      </group>
+    </group>
+  );
+};
+
+// Game UI Component with optimizations
 export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { x: 0, y: 0, z: 0 } }) => {
   return (
     <motion.div
@@ -1106,12 +971,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <span>{gameState.isDay ? 'Day' : 'Night'}</span>
             </div>
             <div>Mode: <span className="text-green-400">{gameState.gameMode}</span></div>
-            {gameState.playerData && (
-              <div className="flex items-center space-x-1">
-                <Crown size={16} className="text-yellow-400" />
-                <span>Level {gameState.playerData.level}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1124,18 +983,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
           </button>
         </div>
       </div>
-
-      {/* Experience Bar with error handling */}
-      {gameState.playerData && (
-        <div className="absolute top-20 left-4 right-4 pointer-events-auto">
-          <SimpleExperienceBar 
-            level={gameState.playerData.level}
-            currentXP={gameState.playerData.currentXP}
-            xpRequired={gameState.playerData.xpRequired}
-            xpProgress={gameState.playerData.xpProgress}
-          />
-        </div>
-      )}
 
       <MinecraftHotbar gameState={gameState} />
       <MinecraftHealthHunger />
@@ -1174,80 +1021,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
         </div>
       </div>
 
-      {/* Magic spell indicators with enhanced UI */}
-      {gameState.playerData && (
-        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
-          <div className="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4 text-white border-2 border-purple-600 shadow-xl">
-            <h3 className="font-bold mb-3 text-sm flex items-center">
-              <Wand2 className="mr-2 text-purple-400" size={16} />
-              Magic Arsenal (F to cast)
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
-                <span className="text-red-400 font-bold">Q</span>
-                <span>🔥 Fireball</span>
-                <span className="text-purple-300">(Always Available)</span>
-              </div>
-              {gameState.playerData?.unlockedSpells?.includes('iceShard') ? (
-                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
-                  <span className="text-blue-400 font-bold">R</span>
-                  <span>❄️ Ice Shard</span>
-                  <span className="text-green-400">(Unlocked)</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
-                  <span className="text-gray-400 font-bold">R</span>
-                  <span>❄️ Ice Shard</span>
-                  <span className="text-yellow-400">(Level 5)</span>
-                </div>
-              )}
-              {gameState.playerData?.unlockedSpells?.includes('lightningBeam') ? (
-                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
-                  <span className="text-yellow-400 font-bold">T</span>
-                  <span>⚡ Lightning</span>
-                  <span className="text-green-400">(Unlocked)</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
-                  <span className="text-gray-400 font-bold">T</span>
-                  <span>⚡ Lightning</span>
-                  <span className="text-yellow-400">(Level 15)</span>
-                </div>
-              )}
-              {gameState.playerData?.unlockedSpells?.includes('arcaneOrb') ? (
-                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
-                  <span className="text-purple-400 font-bold">Y</span>
-                  <span>🔮 Arcane Orb</span>
-                  <span className="text-green-400">(Unlocked)</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
-                  <span className="text-gray-400 font-bold">Y</span>
-                  <span>🔮 Arcane Orb</span>
-                  <span className="text-yellow-400">(Level 25)</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Enhanced mana display */}
-            <div className="mt-4 pt-3 border-t border-purple-600">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-blue-400 font-semibold flex items-center">
-                  <Star className="mr-1" size={14} />
-                  Mana Crystals:
-                </span>
-                <span className="text-white font-bold text-lg">
-                  {gameState.inventory?.magic?.crystals || 0}
-                </span>
-              </div>
-              <div className="text-xs text-purple-300">
-                Cast spells to consume crystals
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Enhanced debug info */}
       {showStats && (
         <div className="absolute top-32 left-4 pointer-events-auto">
@@ -1259,35 +1032,15 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <div>Chunk: {Math.floor(playerPosition.x / 16)},{Math.floor(playerPosition.z / 16)}</div>
               <div>Biome: Plains</div>
               <div>Blocks: {gameState.worldBlocks?.size || 0}</div>
-              {gameState.playerData && (
-                <>
-                  <div>Level: {gameState.playerData.level}</div>
-                  <div>XP: {gameState.playerData.totalXP}</div>
-                  <div>Mobs Killed: {gameState.playerData.stats?.mobsKilled || 0}</div>
-                </>
-              )}
             </div>
           </div>
-          
-          {/* Player stats in debug mode */}
-          {gameState.playerData && (
-            <div className="mt-2">
-              <div className="minecraft-debug-panel">
-                <div className="text-white minecraft-text text-sm space-y-1">
-                  <div>Level: {gameState.playerData.level}</div>
-                  <div>XP: {gameState.playerData.currentXP} / {gameState.playerData.xpRequired}</div>
-                  <div>Total XP: {gameState.playerData.totalXP}</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </motion.div>
   );
 };
 
-// Keep all UI components unchanged
+// Keep all UI components unchanged but optimized
 export const Inventory = ({ gameState, onClose }) => {
   return (
     <motion.div
@@ -1690,6 +1443,3 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
     </motion.div>
   );
 };
-
-// Export components
-export { MinecraftSky, EnhancedMagicHands, MinecraftHotbar, MinecraftHealthHunger, PositionTracker };
