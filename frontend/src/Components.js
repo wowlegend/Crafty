@@ -564,28 +564,28 @@ const GrassEffects = () => {
   );
 };
 
-// RESTORED Enhanced clouds with minimal movement
+// ULTRA-OPTIMIZED Clouds - Minimal performance impact
 const MinecraftClouds = () => {
   const cloudsRef = useRef();
   
-  // Generate cloud positions
+  // Reduced cloud count for performance
   const cloudPositions = useMemo(() => {
     const positions = [];
     
-    for (let i = 0; i < 12; i++) {
-      const baseX = (i - 6) * 20 + (Math.random() - 0.5) * 10;
-      const baseZ = -30 + (Math.random() - 0.5) * 20;
-      const baseY = 25 + Math.random() * 5;
+    for (let i = 0; i < 6; i++) { // Reduced from 12
+      const baseX = (i - 3) * 25 + (Math.random() - 0.5) * 10;
+      const baseZ = -25 + (Math.random() - 0.5) * 15;
+      const baseY = 30 + Math.random() * 5;
       
-      for (let j = 0; j < 6; j++) {
+      for (let j = 0; j < 3; j++) { // Reduced from 6
         positions.push({
-          x: baseX + (Math.random() - 0.5) * 8,
+          x: baseX + (Math.random() - 0.5) * 6,
           y: baseY + (Math.random() - 0.5) * 2,
-          z: baseZ + (Math.random() - 0.5) * 8,
-          scaleX: 3 + Math.random() * 2,
-          scaleY: 1 + Math.random() * 0.5,
-          scaleZ: 3 + Math.random() * 2,
-          opacity: 0.7 + Math.random() * 0.3
+          z: baseZ + (Math.random() - 0.5) * 6,
+          scaleX: 2 + Math.random() * 1.5,
+          scaleY: 0.8 + Math.random() * 0.4,
+          scaleZ: 2 + Math.random() * 1.5,
+          opacity: 0.6 + Math.random() * 0.3
         });
       }
     }
@@ -593,12 +593,12 @@ const MinecraftClouds = () => {
     return positions;
   }, []);
   
-  // Very slow cloud movement
+  // Ultra-slow cloud movement for performance
   useFrame((state) => {
     if (cloudsRef.current) {
       const time = state.clock.elapsedTime;
-      cloudsRef.current.position.x = Math.sin(time * 0.002) * 3;
-      cloudsRef.current.position.z = time * 0.02;
+      cloudsRef.current.position.x = Math.sin(time * 0.001) * 2;
+      cloudsRef.current.position.z = time * 0.01;
     }
   });
   
