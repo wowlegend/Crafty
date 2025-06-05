@@ -510,18 +510,19 @@ const GrassTexture = ({ position }) => {
   );
 };
 
-// NEW: Environmental grass particle effects
+// ULTRA-PERFORMANCE Grass Effects - Optimized for smoothness
 const GrassEffects = () => {
   const particlesRef = useRef();
   
   const grassParticles = useMemo(() => {
     const particles = [];
-    for (let i = 0; i < 15; i++) { // Reduced for performance
+    for (let i = 0; i < 8; i++) { // Reduced for ultra-performance
       particles.push({
-        x: (Math.random() - 0.5) * 60,
-        y: 12 + Math.random() * 8,
-        z: (Math.random() - 0.5) * 60,
-        speed: 0.05 + Math.random() * 0.05
+        x: (Math.random() - 0.5) * 40, // Smaller area for performance
+        y: 12 + Math.random() * 6,
+        z: (Math.random() - 0.5) * 40,
+        speed: 0.03 + Math.random() * 0.03, // Slower for smoother feel
+        phase: Math.random() * Math.PI * 2
       });
     }
     return particles;
@@ -529,11 +530,14 @@ const GrassEffects = () => {
   
   useFrame((state) => {
     if (particlesRef.current) {
+      const time = state.clock.elapsedTime;
       particlesRef.current.children.forEach((particle, index) => {
         const particleData = grassParticles[index];
-        particle.position.y += particleData.speed * Math.sin(state.clock.elapsedTime + index);
-        particle.rotation.y += 0.01;
-        if (particle.position.y > 25) {
+        particle.position.y = particleData.y + Math.sin(time + particleData.phase) * 2;
+        particle.rotation.y += 0.005; // Slower rotation
+        
+        // Gentle floating animation
+        if (particle.position.y > 20) {
           particle.position.y = 12;
         }
       });
@@ -547,11 +551,11 @@ const GrassEffects = () => {
           key={index} 
           position={[particle.x, particle.y, particle.z]}
         >
-          <planeGeometry args={[0.08, 0.15]} />
+          <planeGeometry args={[0.06, 0.12]} />
           <meshBasicMaterial 
             color="#90EE90" 
             transparent 
-            opacity={0.7}
+            opacity={0.6}
             side={THREE.DoubleSide}
           />
         </mesh>
