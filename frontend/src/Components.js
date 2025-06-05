@@ -160,8 +160,8 @@ export const MinecraftWorld = ({ gameState }) => {
           cached: true
         });
         
-        // ENHANCED tree generation - more frequent, better distribution
-        if (blockType === 'grass' && Math.random() < 0.08) { // 8% tree chance
+        // ENHANCED tree generation - reduced frequency for performance
+        if (blockType === 'grass' && Math.random() < 0.03) { // Reduced from 8% to 3%
           generateTree(newBlocks, x, height, z);
         }
         
