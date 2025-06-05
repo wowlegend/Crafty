@@ -1148,6 +1148,80 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
         </div>
       </div>
 
+      {/* Magic spell indicators with enhanced UI */}
+      {gameState.playerData && (
+        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
+          <div className="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4 text-white border-2 border-purple-600 shadow-xl">
+            <h3 className="font-bold mb-3 text-sm flex items-center">
+              <Wand2 className="mr-2 text-purple-400" size={16} />
+              Magic Arsenal (F to cast)
+            </h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
+                <span className="text-red-400 font-bold">Q</span>
+                <span>🔥 Fireball</span>
+                <span className="text-purple-300">(Always Available)</span>
+              </div>
+              {gameState.playerData?.unlockedSpells?.includes('iceShard') ? (
+                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
+                  <span className="text-blue-400 font-bold">R</span>
+                  <span>❄️ Ice Shard</span>
+                  <span className="text-green-400">(Unlocked)</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
+                  <span className="text-gray-400 font-bold">R</span>
+                  <span>❄️ Ice Shard</span>
+                  <span className="text-yellow-400">(Level 5)</span>
+                </div>
+              )}
+              {gameState.playerData?.unlockedSpells?.includes('lightningBeam') ? (
+                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
+                  <span className="text-yellow-400 font-bold">T</span>
+                  <span>⚡ Lightning</span>
+                  <span className="text-green-400">(Unlocked)</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
+                  <span className="text-gray-400 font-bold">T</span>
+                  <span>⚡ Lightning</span>
+                  <span className="text-yellow-400">(Level 15)</span>
+                </div>
+              )}
+              {gameState.playerData?.unlockedSpells?.includes('arcaneOrb') ? (
+                <div className="flex items-center space-x-2 p-2 bg-purple-800 rounded">
+                  <span className="text-purple-400 font-bold">Y</span>
+                  <span>🔮 Arcane Orb</span>
+                  <span className="text-green-400">(Unlocked)</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 p-2 bg-gray-700 rounded opacity-60">
+                  <span className="text-gray-400 font-bold">Y</span>
+                  <span>🔮 Arcane Orb</span>
+                  <span className="text-yellow-400">(Level 25)</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Enhanced mana display */}
+            <div className="mt-4 pt-3 border-t border-purple-600">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-blue-400 font-semibold flex items-center">
+                  <Star className="mr-1" size={14} />
+                  Mana Crystals:
+                </span>
+                <span className="text-white font-bold text-lg">
+                  {gameState.inventory?.magic?.crystals || 0}
+                </span>
+              </div>
+              <div className="text-xs text-purple-300">
+                Cast spells to consume crystals
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enhanced debug info */}
       {showStats && (
         <div className="absolute top-32 left-4 pointer-events-auto">
