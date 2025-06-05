@@ -862,9 +862,6 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Experience system integration
-  const experienceSystem = useSimpleExperience();
-  
   // Set initial camera position
   useEffect(() => {
     camera.position.set(0, 20, 0);
