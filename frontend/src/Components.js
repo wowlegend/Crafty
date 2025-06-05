@@ -736,13 +736,7 @@ export const Player = ({ gameState }) => {
       lastCameraUpdate.current = now;
     }
     
-    // Apply movement
-    if (keys.KeyW) moveVector.add(forwardVector.current);
-    if (keys.KeyS) moveVector.sub(forwardVector.current);
-    if (keys.KeyA) moveVector.sub(rightVector.current);
-    if (keys.KeyD) moveVector.add(rightVector.current);
-    
-    // Track movement for experience
+    // Horizontal movement with performance optimization
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
@@ -750,11 +744,6 @@ export const Player = ({ gameState }) => {
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
-      
-      // Add experience for exploration (every 10 seconds of movement)
-      if (Math.random() < 0.001) {
-        experienceSystem.addExperience('discoverArea', 25, 'exploration');
-      }
     }
     
     // Optimized gravity and ground collision
