@@ -489,8 +489,16 @@ function GameApp() {
         <ambientLight intensity={0.6} />
         <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow={false} />
 
-        {/* Player Controls */}
-        <PointerLockControls />
+        {/* Player Controls with WASD Movement */}
+        <PointerLockControls 
+          makeDefault
+          enableZoom={false}
+          enablePan={false}
+          minDistance={0}
+          maxDistance={0}
+          keys={['KeyW', 'KeyA', 'KeyS', 'KeyD']}
+          selector="#root"
+        />
         
         {/* Position tracker */}
         <PositionTracker onPositionUpdate={setPlayerPosition} />
