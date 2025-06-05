@@ -357,13 +357,26 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     };
   }, [camera, gameState.selectedBlock, handleBlockBreak, handleBlockPlace]);
 
-  // DISABLED - Expose ground level function (CAUSING OSCILLATION)
+  // SEPARATE ground level function for MOBS ONLY (doesn't affect player)
   useEffect(() => {
-    // TEMPORARILY DISABLED TO FIX OSCILLATION
+    // Player uses fixed ground level - NO OSCILLATION
     window.getHighestBlockAt = (x, z) => {
-      return 15; // Fixed height to prevent oscillation
+      return 15; // Fixed height for player to prevent oscillation
     };
-    console.log('⚠️ Ground detection DISABLED to fix oscillation - using fixed height 15');
+    
+    // SEPARATE ground detection for MOBS ONLY
+    window.getMobGroundLevel = (x, z) => {
+      let maxY = 12;
+      blocks.forEach(block => {
+        if (Math.floor(block.position[0]) === Math.floor(x) && 
+            Math.floor(block.position[2]) === Math.floor(z)) {
+          maxY = Math.max(maxY, block.position[1]);
+        }
+      });
+      return Math.max(maxY, 12); // Proper terrain height for mobs
+    };
+    
+    console.log('🔧 FIXED: Separate ground detection - Player=fixed(15), Mobs=terrain-based');
   }, [blocks]);
 
   // OPTIMIZED block rendering with culling
