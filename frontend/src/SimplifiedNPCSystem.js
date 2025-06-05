@@ -31,6 +31,24 @@ export const NPCSystem = ({ gameState }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Define drops for different mobs
+  const getDrops = (type) => {
+    switch(type) {
+      case 'zombie': return ['flesh', 'iron'];
+      case 'skeleton': return ['bone', 'arrow'];
+      case 'creeper': return ['gunpowder'];
+      case 'spider': return ['string', 'spider_eye'];
+      case 'enderman': return ['ender_pearl'];
+      case 'witch': return ['potion', 'sugar'];
+      case 'pig': return ['pork'];
+      case 'cow': return ['beef', 'leather'];
+      case 'chicken': return ['feather', 'chicken'];
+      case 'sheep': return ['wool', 'mutton'];
+      case 'wolf': return ['bone'];
+      default: return ['meat'];
+    }
+  };
+
   useEffect(() => {
     if (!terrainReady) return;
 
