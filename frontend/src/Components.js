@@ -950,48 +950,9 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
         </div>
       </div>
 
-      {/* Magic spell indicators */}
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
-        <div className="bg-gray-800 rounded-lg p-3 text-white">
-          <h3 className="font-semibold mb-2 text-sm">Magic (F to cast)</h3>
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center space-x-2">
-              <span className="text-red-400">Q</span>
-              <span>🔥 Fireball</span>
-            </div>
-            {gameState.playerData?.unlockedSpells?.includes('iceShard') && (
-              <div className="flex items-center space-x-2">
-                <span className="text-blue-400">R</span>
-                <span>❄️ Ice Shard</span>
-              </div>
-            )}
-            {gameState.playerData?.unlockedSpells?.includes('lightningBeam') && (
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-400">T</span>
-                <span>⚡ Lightning</span>
-              </div>
-            )}
-            {gameState.playerData?.unlockedSpells?.includes('arcaneOrb') && (
-              <div className="flex items-center space-x-2">
-                <span className="text-purple-400">Y</span>
-                <span>🔮 Arcane Orb</span>
-              </div>
-            )}
-          </div>
-          
-          {/* Mana display */}
-          <div className="mt-2 pt-2 border-t border-gray-600">
-            <div className="flex justify-between items-center">
-              <span className="text-blue-400">💎 Mana:</span>
-              <span>{gameState.inventory?.magic?.crystals || 0}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Enhanced debug info */}
       {showStats && (
-        <div className="absolute top-32 left-4 pointer-events-auto">
+        <div className="absolute top-20 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
             <div className="text-white minecraft-text text-sm space-y-1">
               <div>X: {playerPosition.x}</div>
@@ -1000,22 +961,8 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <div>Chunk: {Math.floor(playerPosition.x / 16)},{Math.floor(playerPosition.z / 16)}</div>
               <div>Biome: Plains</div>
               <div>Blocks: {gameState.worldBlocks?.size || 0}</div>
-              {gameState.playerData && (
-                <>
-                  <div>Level: {gameState.playerData.level}</div>
-                  <div>XP: {gameState.playerData.totalXP}</div>
-                  <div>Mobs Killed: {gameState.playerData.stats.mobsKilled}</div>
-                </>
-              )}
             </div>
           </div>
-          
-          {/* Player stats in debug mode */}
-          {gameState.playerData && (
-            <div className="mt-2">
-              <PlayerStats playerData={gameState.playerData} />
-            </div>
-          )}
         </div>
       )}
     </motion.div>
