@@ -26,16 +26,18 @@ import {
   Crown
 } from 'lucide-react';
 
-// Import Experience System with error handling
+// Import Experience System with safe fallbacks
+import * as ExperienceSystemModule from './ExperienceSystem';
+
+// Experience System with error handling
 let ExperienceSystem = null;
 try {
-  const expSystem = require('./ExperienceSystem');
   ExperienceSystem = {
-    useExperienceSystem: expSystem.useExperienceSystem,
-    XPNotification: expSystem.XPNotification,
-    LevelUpNotification: expSystem.LevelUpNotification,
-    ExperienceBar: expSystem.ExperienceBar,
-    PlayerStats: expSystem.PlayerStats
+    useExperienceSystem: ExperienceSystemModule.useExperienceSystem,
+    XPNotification: ExperienceSystemModule.XPNotification,
+    LevelUpNotification: ExperienceSystemModule.LevelUpNotification,
+    ExperienceBar: ExperienceSystemModule.ExperienceBar,
+    PlayerStats: ExperienceSystemModule.PlayerStats
   };
 } catch (error) {
   console.warn('Experience System not available:', error);
