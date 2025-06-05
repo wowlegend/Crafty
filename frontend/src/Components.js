@@ -811,13 +811,14 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ENHANCED Player Component (Simplified)
+// ENHANCED Player with Magic System Integration - No Runtime Errors
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
+  const [selectedSpell, setSelectedSpell] = useState('fireball');
   
   // Performance optimization: cached vectors
   const forwardVector = useRef(new THREE.Vector3());
@@ -829,31 +830,39 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
+  // Experience system integration
+  const experienceSystem = useSimpleExperience();
+  
   // Set initial camera position
   useEffect(() => {
     camera.position.set(0, 20, 0);
     camera.lookAt(0, 18, 0);
     camera.updateProjectionMatrix();
     
-    // Expose camera globally
+    // Expose camera globally for magic system
     window.gameCamera = camera;
+    
+    // Set initial spell
+    gameState.selectedSpell = selectedSpell;
     
     setTimeout(() => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
       const safeHeight = Math.max(groundLevel + 2, 16);
       camera.position.y = safeHeight;
-      console.log(`🎮 Player positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
+      console.log(`🧙‍♂️ Mage positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
     }, 1000);
     
-    console.log('🎮 Enhanced Player initialized');
+    console.log('🧙‍♂️ Enhanced Player with Magic System initialized');
   }, [camera]);
 
-  // Expose attack state globally
+  // Expose attack state and spell casting globally
   useEffect(() => {
     window.setPlayerAttacking = setIsAttacking;
-  }, []);
+    window.getSelectedSpell = () => selectedSpell;
+    window.setSelectedSpell = setSelectedSpell;
+  }, [selectedSpell]);
 
-  // Enhanced frame logic
+  // Enhanced frame logic with magic integration
   useFrame((state, delta) => {
     const now = performance.now();
     
@@ -875,14 +884,23 @@ export const Player = ({ gameState }) => {
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // Enhanced movement
+    // Enhanced movement with exploration XP
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
       
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
+      const oldChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
+      
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
+      
+      const newChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
+      
+      // Award exploration XP for new areas
+      if (oldChunk !== newChunk && window.xpExploration) {
+        window.xpExploration();
+      }
     }
     
     // Enhanced gravity and ground collision
@@ -905,7 +923,7 @@ export const Player = ({ gameState }) => {
       
       if (camera.position.y < groundLevel + playerHeight) {
         camera.position.y = groundLevel + playerHeight;
-        console.warn(`🚑 Emergency repositioning player above ground: ${camera.position.y}`);
+        console.warn(`🚑 Emergency repositioning mage above ground: ${camera.position.y}`);
       }
       
       lastGroundCheck.current = now;
@@ -958,7 +976,7 @@ export const Player = ({ gameState }) => {
     return groundLevel;
   };
 
-  // Enhanced event handlers
+  // Enhanced event handlers with magic system
   useEffect(() => {
     const handleKeyDown = (event) => {
       setKeys(prev => {
@@ -974,11 +992,33 @@ export const Player = ({ gameState }) => {
         }
       }
       
-      // Basic attack with F key
+      // Enhanced magic casting with F key
       if (event.code === 'KeyF') {
         event.preventDefault();
         setIsAttacking(true);
+        
+        // Cast spell with visual and audio effects
+        if (window.castSpell) {
+          window.castSpell(selectedSpell);
+          
+          // Award XP for spell casting
+          if (window.xpMagicCast) {
+            window.xpMagicCast();
+          }
+        }
+        
         setTimeout(() => setIsAttacking(false), 400);
+      }
+      
+      // Spell selection with Q key (cycle through spells)
+      if (event.code === 'KeyQ') {
+        event.preventDefault();
+        const spells = ['fireball', 'iceball', 'lightning', 'arcane'];
+        const currentIndex = spells.indexOf(selectedSpell);
+        const nextSpell = spells[(currentIndex + 1) % spells.length];
+        setSelectedSpell(nextSpell);
+        gameState.selectedSpell = nextSpell;
+        console.log(`🔮 Selected spell: ${nextSpell}`);
       }
       
       // Block selection (keeping for building mode)
@@ -1005,12 +1045,13 @@ export const Player = ({ gameState }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, isOnGround]);
+  }, [gameState, isOnGround, selectedSpell]);
 
   return (
     <group>
-      {/* Basic Hands */}
-      <BothHands 
+      {/* Enhanced Magic Hands with Wand */}
+      <EnhancedMagicHands 
+        selectedSpell={selectedSpell}
         selectedBlock={gameState.selectedBlock}
         isAttacking={isAttacking}
       />
