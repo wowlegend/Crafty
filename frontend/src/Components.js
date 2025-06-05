@@ -278,7 +278,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     }
   }, [generateChunk]);
 
-  // OPTIMIZED block interactions
+  // OPTIMIZED block interactions - CONTROLLED XP
   const handleBlockPlace = useCallback((position, blockType) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
     if (!blocks.has(key)) {
@@ -288,7 +288,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
         key
       }));
       
-      if (window.xpBlockPlace) window.xpBlockPlace();
+      // CONTROLLED XP - only when intended
+      if (window.manualXpBlockPlace) window.manualXpBlockPlace();
       if (gameState.gameMode !== 'creative') {
         gameState.removeFromInventory(blockType, 1);
       }
@@ -307,7 +308,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       });
       
       gameState.addToInventory(block.type, 1);
-      if (window.xpBlockBreak) window.xpBlockBreak();
+      // CONTROLLED XP - only when intended
+      if (window.manualXpBlockBreak) window.manualXpBlockBreak();
       
       if (['diamond', 'gold'].includes(block.type) && window.addExperience) {
         window.addExperience(15, 'Rare Material');
