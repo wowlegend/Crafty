@@ -881,36 +881,6 @@ export const Player = ({ gameState }) => {
         setTimeout(() => setIsAttacking(false), 300);
       }
       
-      // Spell selection with Q, R, T, Y keys
-      if (event.code === 'KeyQ') {
-        setSelectedSpell('fireball');
-        console.log('🔥 Selected Fireball');
-      }
-      if (event.code === 'KeyR') {
-        if (experienceSystem?.playerData?.unlockedSpells?.includes('iceShard')) {
-          setSelectedSpell('iceShard');
-          console.log('❄️ Selected Ice Shard');
-        } else {
-          console.log('❄️ Ice Shard locked - reach level 5!');
-        }
-      }
-      if (event.code === 'KeyT') {
-        if (experienceSystem?.playerData?.unlockedSpells?.includes('lightningBeam')) {
-          setSelectedSpell('lightningBeam');
-          console.log('⚡ Selected Lightning Beam');
-        } else {
-          console.log('⚡ Lightning Beam locked - reach level 15!');
-        }
-      }
-      if (event.code === 'KeyY') {
-        if (experienceSystem?.playerData?.unlockedSpells?.includes('arcaneOrb')) {
-          setSelectedSpell('arcaneOrb');
-          console.log('🔮 Selected Arcane Orb');
-        } else {
-          console.log('🔮 Arcane Orb locked - reach level 25!');
-        }
-      }
-      
       // Optimized block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
