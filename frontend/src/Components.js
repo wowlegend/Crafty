@@ -538,19 +538,26 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-// FIXED Player Component - NO camera manipulation, work WITH PointerLockControls
+// FIXED Player Component - Position translation only, NO rotation conflicts
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
+  const velocity = useRef(new THREE.Vector3());
+  const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   const [selectedSpell, setSelectedSpell] = useState('fireball');
   
-  // Set initial camera position ONCE - then let PointerLockControls handle everything
+  // Movement vectors - updated from camera direction
+  const forwardVector = useRef(new THREE.Vector3());
+  const rightVector = useRef(new THREE.Vector3());
+  const upVector = useRef(new THREE.Vector3(0, 1, 0));
+
+  // Set initial camera position ONCE - then let PointerLockControls handle rotation
   useEffect(() => {
     camera.position.set(0, 18, 0);
     window.gameCamera = camera;
     gameState.selectedSpell = selectedSpell;
-    console.log('🧙‍♂️ Player initialized - PointerLockControls handles movement');
+    console.log('🧙‍♂️ Player initialized - PointerLockControls handles rotation, Player handles position');
   }, [camera, gameState, selectedSpell]);
 
   // Expose attack state and spell casting globally
@@ -560,19 +567,70 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // NO useFrame - NO camera manipulation - Let PointerLockControls do everything
-  // Just handle key events for non-movement actions
+  // MOVEMENT ONLY - NO rotation conflicts with PointerLockControls
+  useFrame((state, delta) => {
+    // Get movement direction from camera (PointerLockControls handles rotation)
+    camera.getWorldDirection(forwardVector.current);
+    rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
+    
+    const speed = 12;
+    const moveVector = new THREE.Vector3();
+    
+    // Apply WASD movement based on camera direction
+    if (keys.KeyW) moveVector.add(forwardVector.current);
+    if (keys.KeyS) moveVector.sub(forwardVector.current);
+    if (keys.KeyA) moveVector.sub(rightVector.current);
+    if (keys.KeyD) moveVector.add(rightVector.current);
+    
+    // ONLY translate position - NO rotation interference
+    if (moveVector.length() > 0) {
+      moveVector.normalize();
+      moveVector.y = 0; // Keep movement horizontal
+      
+      const scaledMovement = moveVector.multiplyScalar(speed * delta);
+      
+      // ONLY update position - PointerLockControls handles rotation
+      camera.position.x += scaledMovement.x;
+      camera.position.z += scaledMovement.z;
+    }
+    
+    // Simple gravity and ground collision
+    velocity.current.y -= 25 * delta;
+    
+    const groundLevel = 15;
+    const playerHeight = 1.8;
+    const minAllowedY = groundLevel + playerHeight;
+    
+    if (camera.position.y + velocity.current.y * delta <= minAllowedY) {
+      camera.position.y = minAllowedY;
+      velocity.current.y = 0;
+      setIsOnGround(true);
+    } else {
+      camera.position.y += velocity.current.y * delta;
+      setIsOnGround(false);
+    }
+  });
 
-  // KEY HANDLERS - Only for NON-MOVEMENT keys
+  // MOVEMENT KEY HANDLERS - Handle WASD for position translation
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // ONLY handle action keys - NO movement keys
-      if (event.code === 'Space') {
-        event.preventDefault();
-        // Could add jump logic here if needed
+      // Handle WASD movement keys
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+        setKeys(prev => ({ ...prev, [event.code]: true }));
         return;
       }
       
+      // Handle jump
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (isOnGround) {
+          velocity.current.y = 12;
+          setIsOnGround(false);
+        }
+        return;
+      }
+      
+      // Handle spell casting
       if (event.code === 'KeyF') {
         event.preventDefault();
         setIsAttacking(true);
@@ -585,6 +643,7 @@ export const Player = ({ gameState }) => {
         return;
       }
       
+      // Handle spell switching
       if (event.code === 'KeyQ') {
         event.preventDefault();
         const spells = ['fireball', 'iceball', 'lightning', 'arcane'];
@@ -596,6 +655,7 @@ export const Player = ({ gameState }) => {
         return;
       }
       
+      // Handle block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = BLOCK_TYPE_KEYS;
@@ -606,13 +666,21 @@ export const Player = ({ gameState }) => {
       }
     };
     
-    // Only listen for action keys - PointerLockControls handles WASD
+    const handleKeyUp = (event) => {
+      // Handle WASD key releases
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+        setKeys(prev => ({ ...prev, [event.code]: false }));
+      }
+    };
+    
     window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp, { passive: false });
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, selectedSpell]);
+  }, [gameState, selectedSpell, isOnGround]);
 
   return (
     <group>
