@@ -1571,4 +1571,4 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
 };
 
 // Export components
-export { MinecraftSky, BothHands, MinecraftClouds, EnvironmentalParticles, MinecraftHotbar, MinecraftHealthHunger, PositionTracker };
+export { MinecraftSky, BothHands, MinecraftHotbar, MinecraftHealthHunger, PositionTracker };
