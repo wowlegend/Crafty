@@ -50,20 +50,20 @@ const MinecraftHotbar = ({ gameState }) => {
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
       <div className="minecraft-hotbar">
         {hotbarBlocks.map((blockType, index) => {
-          const blockConfig = BLOCK_TYPES[blockType];
+          const blockConfig = BLOCK_TYPES[blockType] || BLOCK_TYPES.grass; // FIXED: Added fallback
           const isSelected = gameState.selectedBlock === blockType;
-          const quantity = gameState.inventory.blocks[blockType] || 0;
+          const quantity = gameState.inventory?.blocks?.[blockType] || 0; // FIXED: Added safe navigation
           
           return (
             <div
               key={blockType}
               className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
               onClick={() => gameState.setSelectedBlock(blockType)}
-              title={`${blockConfig.name} (${quantity})`}
+              title={`${blockConfig?.name || 'Unknown'} (${quantity})`} // FIXED: Added safe navigation
             >
               <div 
                 className="minecraft-block-icon"
-                style={{ backgroundColor: blockConfig.color }}
+                style={{ backgroundColor: blockConfig?.color || '#4a7c59' }} // FIXED: Added fallback color
               />
               {quantity > 1 && (
                 <div className="minecraft-quantity">
