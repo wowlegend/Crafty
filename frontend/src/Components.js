@@ -763,15 +763,6 @@ export const Player = ({ gameState }) => {
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
-      
-      // Add experience for exploration (periodically)
-      if (experienceSystem && Math.random() < 0.001) {
-        try {
-          experienceSystem.addExperience('discoverArea', 25, 'exploration');
-        } catch (error) {
-          console.warn('Error adding exploration XP:', error);
-        }
-      }
     }
     
     // Optimized gravity and ground collision
