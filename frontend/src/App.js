@@ -252,7 +252,26 @@ function GameApp() {
                 ENHANCED: Magic System • Experience • Wind Grass • Fixed Errors
               </motion.p>
 
-              {/* Controls Info */}
+              {/* Experience Display */}
+              <motion.div
+                className="mb-6 bg-black/30 rounded-lg p-4"
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="text-yellow-400 font-bold text-lg mb-2">
+                  🌟 Level {experienceSystem.playerLevel} Mage
+                </div>
+                <div className="text-sm text-blue-200">
+                  XP: {experienceSystem.currentXP} / {experienceSystem.xpRequired}
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${experienceSystem.xpProgress}%` }}
+                  ></div>
+                </div>
+              </motion.div>
               <motion.div
                 className="mb-6 text-left bg-black/20 rounded-lg p-4"
                 initial={{ y: 30, opacity: 0 }}
