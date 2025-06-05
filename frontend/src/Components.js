@@ -1013,7 +1013,11 @@ export const Player = ({ gameState }) => {
 
   return (
     <>
-      <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
+      <BothHands 
+        selectedBlock={gameState.selectedBlock} 
+        isAttacking={isAttacking}
+        selectedSpell={selectedSpell}
+      />
       
       {/* Experience notifications with error handling */}
       {experienceSystem && ExperienceSystem && (
