@@ -36,11 +36,15 @@ export const NPCSystem = ({ gameState }) => {
 
     console.log('🎮 Initializing ENHANCED NPCs on terrain...');
     
-    // MORE spawn positions for more mobs
+    // MORE spawn positions for abundant mobs
     const spawnPositions = [
       { x: 15, z: 10 }, { x: -12, z: 15 }, { x: 20, z: -8 }, { x: -18, z: -12 },
       { x: 8, z: 25 }, { x: -25, z: 5 }, { x: 30, z: -15 }, { x: -10, z: -20 },
-      { x: 22, z: 18 }, { x: -30, z: -8 }, { x: 12, z: -25 }, { x: -15, z: 30 }
+      { x: 22, z: 18 }, { x: -30, z: -8 }, { x: 12, z: -25 }, { x: -15, z: 30 },
+      // Additional spawn points for more mobs
+      { x: 35, z: 20 }, { x: -35, z: -25 }, { x: 40, z: -10 }, { x: -40, z: 15 },
+      { x: 25, z: 35 }, { x: -20, z: -35 }, { x: 45, z: 5 }, { x: -45, z: -5 },
+      { x: 10, z: 40 }, { x: -10, z: -40 }, { x: 50, z: 25 }, { x: -50, z: -20 }
     ];
 
     // More variety of mobs
@@ -86,7 +90,51 @@ export const NPCSystem = ({ gameState }) => {
 
     setEntities(initialEntities);
     console.log('✅ ENHANCED NPCs spawned:', initialEntities.length);
-  }, [terrainReady]);
+    
+    // AUTOMATIC RESPAWNING SYSTEM
+    const respawnInterval = setInterval(() => {
+      setEntities(currentEntities => {
+        if (currentEntities.length < 15) { // Maintain minimum 15 mobs
+          const playerPos = camera?.position;
+          if (!playerPos) return currentEntities;
+          
+          // Spawn new mobs near player but not too close
+          const newMobs = [];
+          const mobsToSpawn = Math.min(5, 15 - currentEntities.length);
+          
+          for (let i = 0; i < mobsToSpawn; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 20; // 30-50 blocks away
+            const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
+            const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
+            const spawnY = window.getHighestBlockAt ? window.getHighestBlockAt(spawnX, spawnZ) + 1 : 15;
+            
+            const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
+            const stats = getEntityStats(entityType);
+            
+            newMobs.push({
+              id: `entity_respawn_${Date.now()}_${i}`,
+              type: entityType,
+              position: [spawnX, spawnY, spawnZ],
+              health: stats.health,
+              maxHealth: stats.health,
+              hostile: stats.hostile,
+              speed: stats.speed,
+              initialPosition: [spawnX, spawnY, spawnZ],
+              wanderRadius: stats.hostile ? 8 : 4,
+              drops: getDrops(entityType)
+            });
+          }
+          
+          console.log(`🔄 Respawned ${newMobs.length} mobs`);
+          return [...currentEntities, ...newMobs];
+        }
+        return currentEntities;
+      });
+    }, 10000); // Respawn every 10 seconds
+
+    return () => clearInterval(respawnInterval);
+  }, [terrainReady, camera]);
 
   // Define drops for different mobs
   const getDrops = (type) => {
