@@ -879,36 +879,7 @@ export const Player = ({ gameState }) => {
     };
   }, [gameState, isOnGround]);
 
-  return (
-    <>
-      <BothHands 
-        selectedBlock={gameState.selectedBlock} 
-        isAttacking={isAttacking}
-        selectedSpell={selectedSpell}
-      />
-      
-      {/* Experience notifications */}
-      {experienceSystem.xpNotifications.map(notification => (
-        <XPNotification
-          key={notification.id}
-          notification={notification}
-          onComplete={() => {
-            // Remove notification (handled automatically)
-          }}
-        />
-      ))}
-      
-      {/* Level up notification */}
-      {experienceSystem.levelUpNotification && (
-        <LevelUpNotification
-          notification={experienceSystem.levelUpNotification}
-          onComplete={() => {
-            // Remove notification (handled automatically)
-          }}
-        />
-      )}
-    </>
-  );
+  return <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />;
 };
 
 // Game UI Component with Experience System
