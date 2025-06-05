@@ -669,13 +669,23 @@ export const Player = ({ gameState }) => {
         return;
       }
       
-      // Handle spell casting
+      // Handle spell casting with COOLDOWN CONTROL
       if (event.code === 'KeyF') {
         event.preventDefault();
+        
+        // CHECK COOLDOWN - Prevent rapid firing
+        const now = Date.now();
+        if (now - lastSpellCast.current < spellCooldown) {
+          console.log('🔮 Spell on cooldown!');
+          return; // Spell still cooling down
+        }
+        
         setIsAttacking(true);
+        lastSpellCast.current = now; // Update cooldown timer
         
         if (window.castSpell) {
           window.castSpell(selectedSpell);
+          console.log(`🔥 Cast ${selectedSpell}! Next spell in ${spellCooldown}ms`);
         }
         
         setTimeout(() => setIsAttacking(false), 600);
