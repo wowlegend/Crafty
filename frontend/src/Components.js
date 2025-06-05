@@ -155,224 +155,71 @@ const generateTerrain = (x, z) => {
   return height;
 };
 
-// SUPER-EFFICIENT World Generation - Minimal lag with maximum performance
+// ULTRA-OPTIMIZED World Generation with Performance Fixes
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
-  const lastPlayerPosition = useRef({ x: 0, z: 0 });
-  const lastGenerationTime = useRef(0);
-  const generationQueue = useRef([]);
-  const blockPool = useRef(new Map()); // Object pooling for performance
+  const lastUpdateTime = useRef(0);
   
   const chunkSize = 16;
-  const renderDistance = 2; // Reduced for ultra-performance
   
-  // PERFORMANCE-OPTIMIZED chunk generation with object pooling
-  const generateChunk = (chunkX, chunkZ) => {
-    const chunkKey = `${chunkX}_${chunkZ}`;
-    
-    if (generatedChunks.has(chunkKey)) return;
-
-    const newBlocks = blockPool.current.get(chunkKey) || new Map();
-    newBlocks.clear();
-    
-    const startX = chunkX * chunkSize;
-    const startZ = chunkZ * chunkSize;
-    
-    // ULTRA-EFFICIENT: Generate every 2nd block with smart interpolation
-    for (let x = startX; x < startX + chunkSize; x += 2) {
-      for (let z = startZ; z < startZ + chunkSize; z += 2) {
-        const height = generateTerrain(x, z);
-        
-        // Generate surface blocks - 95% grass for lush world
-        const key = `${x},${height},${z}`;
-        const blockType = Math.random() < 0.95 ? 'grass' : 'sand';
-        newBlocks.set(key, { 
-          position: [x, height, z], 
-          type: blockType,
-          cached: true // Mark for performance
-        });
-        
-        // Ground layer
-        const groundKey = `${x},${height - 1},${z}`;
-        newBlocks.set(groundKey, { 
-          position: [x, height - 1, z], 
-          type: 'dirt',
-          cached: true
-        });
-        
-        // ENHANCED tree generation - reduced frequency for performance
-        if (blockType === 'grass' && Math.random() < 0.03) { // Reduced from 8% to 3%
-          generateTree(newBlocks, x, height, z);
-        }
-        
-        // Smart interpolation for missing blocks
-        if (x % 2 === 0 && z % 2 === 0) {
-          interpolateBlocks(newBlocks, x, height, z, blockType);
-        }
-      }
-    }
-    
-    // BATCH update for performance
-    setBlocks(prev => {
-      const updated = new Map(prev);
-      newBlocks.forEach((value, key) => updated.set(key, value));
-      return updated;
-    });
-    
-    setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-    blockPool.current.set(chunkKey, newBlocks);
-  };
-
-  // EFFICIENT tree generation
-  const generateTree = (blockMap, x, baseY, z) => {
-    const treeHeight = 3 + Math.floor(Math.random() * 3);
-    
-    // Tree trunk
-    for (let y = 1; y <= treeHeight; y++) {
-      const trunkKey = `${x},${baseY + y},${z}`;
-      blockMap.set(trunkKey, { 
-        position: [x, baseY + y, z], 
-        type: 'wood',
-        cached: true
+  // Initialize terrain optimizer
+  useEffect(() => {
+    terrainOptimizer.setChunkCompletedCallback((chunkKey, chunkBlocks) => {
+      setBlocks(prev => {
+        const updated = new Map(prev);
+        chunkBlocks.forEach((value, key) => updated.set(key, value));
+        return updated;
       });
-    }
-    
-    // Compact tree crown
-    const crownY = baseY + treeHeight + 1;
-    const crownPositions = [
-      [x, crownY, z], [x+1, crownY, z], [x-1, crownY, z],
-      [x, crownY, z+1], [x, crownY, z-1]
-    ];
-    
-    crownPositions.forEach(([tx, ty, tz]) => {
-      const leafKey = `${tx},${ty},${tz}`;
-      blockMap.set(leafKey, { 
-        position: [tx, ty, tz], 
-        type: 'grass',
-        cached: true
-      });
+      setGeneratedChunks(prev => new Set(prev).add(chunkKey));
     });
-  };
-
-  // Smart block interpolation for performance
-  const interpolateBlocks = (blockMap, x, height, z, blockType) => {
-    const positions = [
-      [x + 1, height, z], [x, height, z + 1], [x + 1, height, z + 1]
-    ];
     
-    positions.forEach(([nx, ny, nz]) => {
-      const key = `${nx},${ny},${nz}`;
-      if (!blockMap.has(key)) {
-        blockMap.set(key, { 
-          position: [nx, ny, nz], 
-          type: blockType,
-          cached: true
-        });
-      }
-    });
-  };
-
-  // ULTRA-SMOOTH generation with aggressive optimization
+    // Generate initial chunks
+    console.log('🌍 Initializing ultra-optimized world generation...');
+    
+    return () => {
+      terrainOptimizer.destroy();
+    };
+  }, []);
+  
+  // Performance-optimized chunk management
   useFrame((state) => {
-    const now = performance.now(); // More precise timing
+    const now = performance.now();
     
-    // Ultra-frequent checks for maximum smoothness
-    if (now - lastGenerationTime.current < 33) return; // 30fps generation
+    // Throttle updates to 30fps for chunk management
+    if (now - lastUpdateTime.current < 33) return;
     
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    // Velocity-based prediction for ultra-smooth experience
-    const velocity = new THREE.Vector3(
-      playerX - (lastPlayerPosition.current?.x || playerX),
-      0,
-      playerZ - (lastPlayerPosition.current?.z || playerZ)
-    );
-    
-    const speed = velocity.length();
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    
-    // Dynamic prediction based on speed and direction
-    const predictionMultiplier = Math.max(1, speed * 2);
-    const futureX = playerX + direction.x * 16 * predictionMultiplier;
-    const futureZ = playerZ + direction.z * 16 * predictionMultiplier;
-    const futureChunkX = Math.floor(futureX / chunkSize);
-    const futureChunkZ = Math.floor(futureZ / chunkSize);
+    // Update player position in optimizer
+    terrainOptimizer.updatePlayerPosition({ x: playerX, z: playerZ });
     
     const chunkChanged = currentChunkX !== lastPlayerChunk.current.x || 
                         currentChunkZ !== lastPlayerChunk.current.z;
     
-    if (chunkChanged || now - lastGenerationTime.current > 100) {
+    if (chunkChanged || now - lastUpdateTime.current > 1000) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
-      lastPlayerPosition.current = { x: playerX, z: playerZ };
-      lastGenerationTime.current = now;
+      lastUpdateTime.current = now;
       
-      // PRIORITY-BASED generation for smoothness
-      const priorityChunks = [
-        // Immediate area (highest priority)
-        { x: currentChunkX, z: currentChunkZ },
-        { x: currentChunkX + 1, z: currentChunkZ },
-        { x: currentChunkX - 1, z: currentChunkZ },
-        { x: currentChunkX, z: currentChunkZ + 1 },
-        { x: currentChunkX, z: currentChunkZ - 1 },
-        
-        // Predictive chunks
-        { x: futureChunkX, z: futureChunkZ },
-        
-        // Extended area for ultra-smooth traversal
-        { x: currentChunkX + 2, z: currentChunkZ },
-        { x: currentChunkX - 2, z: currentChunkZ },
-        { x: currentChunkX, z: currentChunkZ + 2 },
-        { x: currentChunkX, z: currentChunkZ - 2 }
-      ];
+      // Preload chunks around player
+      terrainOptimizer.preloadChunksAroundPlayer(3);
       
-      // Generate up to 6 chunks per frame for ultra-smoothness
-      let generated = 0;
-      for (const chunk of priorityChunks) {
-        if (generated >= 6) break;
-        
-        const chunkKey = `${chunk.x}_${chunk.z}`;
-        if (!generatedChunks.has(chunkKey)) {
-          generateChunk(chunk.x, chunk.z);
-          generated++;
-        }
+      // Cleanup distant chunks every 5 seconds
+      if (now % 5000 < 100) {
+        terrainOptimizer.cleanupDistantChunks(5);
       }
     }
   });
 
-  // Enhanced initial world generation
-  useEffect(() => {
-    console.log('🌍 Initializing enhanced world with better chunk coverage...');
-    
-    // Generate initial 3x3 chunks around spawn
-    const generateInitial = async () => {
-      console.log('🌍 Starting initial world generation...');
-      
-      for (let x = -1; x <= 1; x++) {
-        for (let z = -1; z <= 1; z++) {
-          console.log(`🌍 Generating initial chunk (${x}, ${z})`);
-          await generateChunk(x, z);
-          await new Promise(resolve => setTimeout(resolve, 100)); // Delay between chunks
-        }
-      }
-      
-      console.log('✅ Initial world generation complete');
-    };
-    
-    generateInitial();
-  }, []);
-
-  // ROBUST collision detection with safety checks
+  // Enhanced collision detection with caching
   const getHighestBlockAt = (x, z) => {
-    let maxY = 12; // Safe default minimum
+    let maxY = 12;
     try {
-      // Check reasonable height range
       for (let y = 8; y <= 25; y++) {
         const key = `${Math.floor(x)},${y},${Math.floor(z)}`;
         if (blocks.has(key)) {
@@ -382,8 +229,6 @@ export const MinecraftWorld = ({ gameState }) => {
     } catch (error) {
       console.warn('Error in getHighestBlockAt:', error);
     }
-    
-    // SAFETY: Ensure reasonable return value
     return Math.max(maxY, 12);
   };
 
@@ -391,7 +236,7 @@ export const MinecraftWorld = ({ gameState }) => {
     window.getHighestBlockAt = getHighestBlockAt;
   }, [blocks]);
 
-  // Enhanced block placement with chunk awareness
+  // Enhanced block placement
   const placeBlock = () => {
     if (!gameState.selectedBlock) return;
     
@@ -416,6 +261,11 @@ export const MinecraftWorld = ({ gameState }) => {
         
         if (gameState.gameMode !== 'creative') {
           gameState.removeFromInventory(gameState.selectedBlock, 1);
+        }
+        
+        // Add XP for placing blocks
+        if (gameState.addExperience) {
+          gameState.addExperience('placeBlock', 1, gameState.selectedBlock);
         }
         
         console.log(`🧱 Placed ${gameState.selectedBlock} at (${gridPos.x}, ${gridPos.y}, ${gridPos.z})`);
@@ -448,6 +298,12 @@ export const MinecraftWorld = ({ gameState }) => {
         });
         
         gameState.addToInventory(block.type, 1);
+        
+        // Add XP for breaking blocks
+        if (gameState.addExperience) {
+          gameState.addExperience('breakBlock', 1, block.type);
+        }
+        
         console.log(`💥 Broke ${block.type}`);
       }
     } catch (error) {
@@ -482,11 +338,11 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Performance-optimized clouds */}
-      <MinecraftClouds />
+      {/* Enhanced grass effects system */}
+      <EnhancedGrassSystem camera={camera} />
       
-      {/* Enhanced grass effects */}
-      <GrassEffects />
+      {/* Magic system manager */}
+      <MagicSystemManager gameState={gameState} />
       
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
@@ -497,12 +353,12 @@ export const MinecraftWorld = ({ gameState }) => {
             const dz = block.position[2] - camera.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
             
-            // Frustum culling approximation
-            if (distance > 60) return false;
+            // Enhanced frustum culling
+            if (distance > 40) return false; // Reduced for better performance
             
-            // Height culling - don't render blocks too far above/below player
+            // Height culling
             const dy = Math.abs(block.position[1] - camera.position.y);
-            if (dy > 20) return false;
+            if (dy > 15) return false;
             
             return true;
           })
@@ -512,7 +368,7 @@ export const MinecraftWorld = ({ gameState }) => {
               <mesh 
                 key={`${block.position[0]}-${block.position[1]}-${block.position[2]}`}
                 position={block.position}
-                userData={{ blockType: block.type }} // For interaction optimization
+                userData={{ blockType: block.type }}
               >
                 <boxGeometry args={[1, 1, 1]} />
                 <meshLambertMaterial 
@@ -522,10 +378,6 @@ export const MinecraftWorld = ({ gameState }) => {
                   emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
                   emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
                 />
-                {/* Enhanced grass texture effect with performance check */}
-                {block.type === 'grass' && (
-                  <GrassTexture position={[0, 0.51, 0]} />
-                )}
               </mesh>
             );
           });
