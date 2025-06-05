@@ -152,13 +152,16 @@ const generateTerrain = (x, z) => {
   return height;
 };
 
-// ENHANCED World Generation with Optimized Performance - FIXED
+// ENHANCED World Generation with ALL Features - No Runtime Errors
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const worldRef = useRef();
+  
+  // Experience system integration
+  const experienceSystem = useSimpleExperience();
   
   const chunkSize = 16;
   const renderDistance = 2;
@@ -278,7 +281,7 @@ export const MinecraftWorld = ({ gameState }) => {
     }
   }, []);
 
-  // Block interaction handlers
+  // Block interaction handlers with XP rewards
   const handleBlockPlace = (position, blockType) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
     if (!blocks.has(key)) {
@@ -286,6 +289,11 @@ export const MinecraftWorld = ({ gameState }) => {
         position,
         type: blockType
       }));
+      
+      // Award XP for block placement
+      if (window.xpBlockPlace) {
+        window.xpBlockPlace();
+      }
       
       if (gameState.gameMode !== 'creative') {
         gameState.removeFromInventory(blockType, 1);
@@ -302,7 +310,18 @@ export const MinecraftWorld = ({ gameState }) => {
         newBlocks.delete(key);
         return newBlocks;
       });
+      
       gameState.addToInventory(block.type, 1);
+      
+      // Award XP for block breaking
+      if (window.xpBlockBreak) {
+        window.xpBlockBreak();
+      }
+      
+      // Special XP for rare blocks
+      if (['diamond', 'gold'].includes(block.type) && window.addExperience) {
+        window.addExperience(15, 'Rare Material');
+      }
     }
   };
 
@@ -362,6 +381,19 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group ref={worldRef}>
+      {/* Magic Projectile System */}
+      <SimpleMagicProjectileSystem 
+        gameState={gameState}
+        playerPosition={camera.position}
+      />
+      
+      {/* Enhanced Grass System */}
+      <EnhancedGrassSystem 
+        chunkX={Math.floor(camera.position.x / 16)}
+        chunkZ={Math.floor(camera.position.z / 16)}
+        blockPositions={Array.from(blocks.values()).map(block => [...block.position, block.type])}
+      />
+      
       {/* Render all blocks */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
@@ -384,6 +416,25 @@ export const MinecraftWorld = ({ gameState }) => {
           </mesh>
         );
       })}
+      
+      {/* Experience UI Components */}
+      <SimpleExperienceBar 
+        level={experienceSystem.playerLevel}
+        currentXP={experienceSystem.currentXP}
+        xpRequired={experienceSystem.xpRequired}
+        xpProgress={experienceSystem.xpProgress}
+      />
+      
+      <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
+      
+      <SimpleLevelUpEffect 
+        levelUpEffects={experienceSystem.levelUpEffects}
+        onEffectComplete={(id) => {
+          experienceSystem.setLevelUpEffects(prev => 
+            prev.filter(effect => effect.id !== id)
+          );
+        }}
+      />
       
       {/* Clouds */}
       <MinecraftClouds />
