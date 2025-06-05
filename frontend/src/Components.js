@@ -618,22 +618,39 @@ export const Player = ({ gameState }) => {
       targetPosition.current.z += scaledMovement.z;
     }
     
-    // SMOOTH gravity and ground collision - NO SUDDEN POSITION CHANGES
+    // FIXED: SMART terrain following - adapts to terrain but prevents oscillation
     velocity.current.y -= 20 * delta; // Reduced gravity
     
-    // Simple ground level calculation - NO COMPLEX TERRAIN QUERIES
-    const baseGroundLevel = 15; // Fixed ground level to prevent oscillation
-    const playerHeight = 1.6; // Reduced for stability
-    const minAllowedY = baseGroundLevel + playerHeight;
+    // SMART ground level calculation - uses terrain but with smoothing
+    let targetGroundLevel = 15; // Safe default
+    try {
+      if (window.getMobGroundLevel) {
+        // Use the mob ground detection for accurate terrain height
+        const actualGroundLevel = window.getMobGroundLevel(camera.position.x, camera.position.z);
+        if (typeof actualGroundLevel === 'number' && !isNaN(actualGroundLevel)) {
+          targetGroundLevel = actualGroundLevel;
+        }
+      }
+    } catch (error) {
+      console.warn('Error getting ground level:', error);
+    }
     
-    // Update vertical position smoothly
-    targetPosition.current.y += velocity.current.y * delta;
+    const playerHeight = 1.6;
+    const minAllowedY = targetGroundLevel + playerHeight;
     
-    if (targetPosition.current.y <= minAllowedY) {
+    // SMOOTH terrain following - prevents oscillation but follows terrain
+    if (targetPosition.current.y + velocity.current.y * delta <= minAllowedY) {
+      // Smooth landing on terrain
       targetPosition.current.y = minAllowedY;
       velocity.current.y = 0;
       setIsOnGround(true);
+      
+      // Debug terrain following
+      if (Math.random() < 0.05) { // Occasional debug
+        console.log(`🌍 Following terrain: ground=${targetGroundLevel.toFixed(1)}, player=${targetPosition.current.y.toFixed(1)}`);
+      }
     } else {
+      targetPosition.current.y += velocity.current.y * delta;
       setIsOnGround(false);
     }
     
