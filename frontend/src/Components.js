@@ -578,83 +578,66 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // ULTRA-STABLE frame logic with anti-shake measures
+  // SIMPLIFIED frame logic - STOP camera position fights
   useFrame((state, delta) => {
     const now = performance.now();
     
-    // INCREASED thresholds for stability
-    const shouldUpdateCamera = now - lastCameraUpdate.current > 32; // 30fps for camera
-    const shouldCheckGround = now - lastGroundCheck.current > 100; // 10fps for ground check
-    
+    // ONLY handle movement vectors - NO camera position manipulation
     const speed = 12;
     const moveVector = new THREE.Vector3();
     
-    // STABLE camera direction calculations
-    if (shouldUpdateCamera) {
+    // Get movement direction from camera - MINIMAL calculations
+    if (now - lastCameraUpdate.current > 50) { // Slower updates
       try {
         camera.getWorldDirection(forwardVector.current);
         rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
         lastCameraUpdate.current = now;
       } catch (error) {
-        // Fallback if camera calculations fail
-        console.warn('Camera calculation error, using fallback');
+        // Skip this frame if camera calculations fail
+        return;
       }
     }
     
-    // Apply movement
+    // Apply movement vectors - MINIMAL processing
     if (keys.KeyW) moveVector.add(forwardVector.current);
     if (keys.KeyS) moveVector.sub(forwardVector.current);
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // Enhanced movement with FIXED exploration XP
+    // BASIC movement - NO complex XP or chunk calculations
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
       
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
-      const oldChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
       
+      // SIMPLE position update - NO interference
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
-      
-      const newChunk = Math.floor(camera.position.x / 64) + ',' + Math.floor(camera.position.z / 64);
-      
-      // FIXED exploration XP - only for GROUND-BASED chunk changes, not jumping
-      if (oldChunk !== newChunk && isOnGround && window.manualXpExploration) {
-        window.manualXpExploration();
-      }
     }
     
-    // STABILIZED gravity and ground collision
+    // BASIC gravity - NO complex ground checking
     velocity.current.y -= 25 * delta;
     
-    if (shouldCheckGround) {
-      const newY = camera.position.y + velocity.current.y * delta;
-      const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
+    // SIMPLE ground collision - MINIMAL processing
+    if (now - lastGroundCheck.current > 200) { // Much slower checks
+      const groundLevel = 15; // FIXED ground level - no calculations
       const playerHeight = 1.8;
       const minAllowedY = groundLevel + playerHeight;
       
-      // SMOOTH transition to ground level
-      if (newY <= minAllowedY) {
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, minAllowedY, 0.1);
+      if (camera.position.y < minAllowedY) {
+        camera.position.y = minAllowedY;
         velocity.current.y = 0;
         setIsOnGround(true);
       } else {
-        camera.position.y = newY;
+        camera.position.y += velocity.current.y * delta;
         setIsOnGround(false);
-      }
-      
-      // SAFETY bounds check
-      if (camera.position.y < groundLevel + playerHeight) {
-        camera.position.y = groundLevel + playerHeight;
       }
       
       lastGroundCheck.current = now;
     } else {
-      // SMOOTH Y movement
-      const newY = camera.position.y + velocity.current.y * delta;
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, newY, 0.8);
+      // SIMPLE Y movement between checks
+      camera.position.y += velocity.current.y * delta;
     }
   });
 
