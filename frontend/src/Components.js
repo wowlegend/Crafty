@@ -356,6 +356,11 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced grass effects */}
       <GrassEffects />
       
+      {/* Enhanced Grass System with wind effects */}
+      {EnhancedGrass && (
+        <EnhancedGrass.EnhancedGrassSystem camera={camera} />
+      )}
+      
       {/* Enhanced Magic System Manager */}
       {EnhancedMagic && (
         <EnhancedMagic.MagicSystemManager gameState={gameState} />
