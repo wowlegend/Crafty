@@ -437,7 +437,7 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
     }
   }, [entity.lastDamageTime]);
 
-  // Enhanced AI movement
+  // Enhanced AI movement with proper ground positioning
   useFrame((state, delta) => {
     if (!meshRef.current) return;
 
@@ -461,28 +461,45 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
       });
     }
     
+    // FIXED: Proper ground-based positioning
+    let targetY = initY;
+    try {
+      if (window.getHighestBlockAt) {
+        const groundLevel = window.getHighestBlockAt(meshRef.current.position.x, meshRef.current.position.z);
+        if (typeof groundLevel === 'number' && !isNaN(groundLevel)) {
+          targetY = groundLevel + 1.2; // Keep mobs above ground
+        }
+      }
+    } catch (error) {
+      console.warn('Error updating mob height:', error);
+    }
+    
+    // SAFETY: Ensure reasonable height
+    targetY = Math.max(targetY, 13);
+    targetY = Math.min(targetY, 22);
+    
     if (entity.type === 'villager') {
-      // Villagers stay mostly still
+      // Villagers stay mostly still but on proper ground
       const offsetX = Math.sin(time * 0.1) * 0.3;
       const offsetZ = Math.cos(time * 0.1) * 0.3;
       
       meshRef.current.position.x = initX + offsetX;
       meshRef.current.position.z = initZ + offsetZ;
-      meshRef.current.position.y = initY;
+      meshRef.current.position.y = targetY;
       
     } else if (['pig', 'chicken', 'cow', 'sheep', 'wolf'].includes(entity.type)) {
-      // Passive animals wander
+      // Passive animals wander but stay on ground
       const offsetX = Math.sin(time * 0.2 * entity.speed) * entity.wanderRadius;
       const offsetZ = Math.cos(time * 0.15 * entity.speed) * entity.wanderRadius;
       
       meshRef.current.position.x = initX + offsetX;
       meshRef.current.position.z = initZ + offsetZ;
-      meshRef.current.position.y = initY;
+      meshRef.current.position.y = targetY;
       
     } else if (entity.hostile) {
-      // Hostile mobs move toward player
+      // Hostile mobs move toward player but stay on ground
       const playerPos = camera.position;
-      const entityPos = new THREE.Vector3(initX, initY, initZ);
+      const entityPos = new THREE.Vector3(initX, targetY, initZ);
       const distance = playerPos.distanceTo(entityPos);
       
       if (distance < 20) {
@@ -493,14 +510,14 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
         const moveDistance = entity.speed * Math.sin(time * 0.5) * 4;
         meshRef.current.position.x = initX + direction.x * moveDistance;
         meshRef.current.position.z = initZ + direction.z * moveDistance;
-        meshRef.current.position.y = initY;
+        meshRef.current.position.y = targetY;
       } else {
         // Wander when player is far
         const offsetX = Math.sin(time * 0.3) * 2;
         const offsetZ = Math.cos(time * 0.3) * 2;
         meshRef.current.position.x = initX + offsetX;
         meshRef.current.position.z = initZ + offsetZ;
-        meshRef.current.position.y = initY;
+        meshRef.current.position.y = targetY;
       }
     }
   });
