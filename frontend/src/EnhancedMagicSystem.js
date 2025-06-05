@@ -161,7 +161,6 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     } else if (window.playHitSound) {
       window.playHitSound();
     }
-    }
   };
 
   // Update projectiles with enhanced effects
