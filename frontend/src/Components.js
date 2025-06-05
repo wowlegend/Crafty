@@ -568,7 +568,7 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // MOVEMENT ONLY - NO rotation conflicts with PointerLockControls
+  // FIXED gravity and ground collision - Use actual terrain height
   useFrame((state, delta) => {
     // Get movement direction from camera (PointerLockControls handles rotation)
     camera.getWorldDirection(forwardVector.current);
@@ -595,12 +595,14 @@ export const Player = ({ gameState }) => {
       camera.position.z += scaledMovement.z;
     }
     
-    // Simple gravity and ground collision
+    // FIXED gravity and ground collision - Use actual terrain height
     velocity.current.y -= 25 * delta;
     
-    const groundLevel = 15;
+    // Get ACTUAL ground level at current position
+    const actualGroundLevel = window.getHighestBlockAt ? 
+      window.getHighestBlockAt(camera.position.x, camera.position.z) : 15;
     const playerHeight = 1.8;
-    const minAllowedY = groundLevel + playerHeight;
+    const minAllowedY = actualGroundLevel + playerHeight;
     
     if (camera.position.y + velocity.current.y * delta <= minAllowedY) {
       camera.position.y = minAllowedY;
