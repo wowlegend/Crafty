@@ -209,19 +209,31 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         }
       }
       
-      // SPELL COMBAT: Check collision with mobs
+      // SPELL COMBAT: Check collision with mobs - COMPREHENSIVE DEBUG
       if (window.checkMobCollision) {
+        console.log(`🔍 CHECKING collision for projectile at: (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
         const hitMob = window.checkMobCollision(projectile.position, projectile.size);
         if (hitMob) {
+          console.log(`🎯 HIT DETECTED! Mob: ${hitMob.type}, ID: ${hitMob.id}`);
           // Damage mob
           if (window.damageMob) {
+            console.log(`🔥 CALLING damageMob(${hitMob.id}, ${projectile.damage})`);
             window.damageMob(hitMob.id, projectile.damage);
             console.log(`🔥 ENHANCED SPELL HIT ${hitMob.type}! Damage: ${projectile.damage}, Health: ${hitMob.health}`);
+          } else {
+            console.log(`❌ window.damageMob function NOT FOUND!`);
           }
           // Create hit effect
           createSpellImpact(projectile.position, projectile.type);
           return false; // Remove projectile after hit
+        } else {
+          // Debug: Show why no collision
+          if (Math.random() < 0.1) { // Occasionally log
+            console.log(`❌ No collision found at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
+          }
         }
+      } else {
+        console.log(`❌ window.checkMobCollision function NOT FOUND!`);
       }
       
       return true;
