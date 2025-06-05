@@ -1056,9 +1056,14 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
       </div>
 
       {/* Experience Bar with error handling */}
-      {gameState.playerData && ExperienceSystem && (
+      {gameState.playerData && (
         <div className="absolute top-20 left-4 right-4 pointer-events-auto">
-          <ExperienceSystem.ExperienceBar playerData={gameState.playerData} />
+          <SimpleExperienceBar 
+            level={gameState.playerData.level}
+            currentXP={gameState.playerData.currentXP}
+            xpRequired={gameState.playerData.xpRequired}
+            xpProgress={gameState.playerData.xpProgress}
+          />
         </div>
       )}
 
