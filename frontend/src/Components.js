@@ -44,37 +44,67 @@ export const BLOCK_TYPES = {
 
 // Minecraft-style Hotbar
 const MinecraftHotbar = ({ gameState }) => {
+  // ROBUST error checking to prevent runtime errors
+  if (!gameState || !BLOCK_TYPES) {
+    console.error('MinecraftHotbar: Missing gameState or BLOCK_TYPES');
+    return <div>Loading hotbar...</div>;
+  }
+
   const hotbarBlocks = Object.keys(BLOCK_TYPES).slice(0, 9);
   
   return (
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
       <div className="minecraft-hotbar">
         {hotbarBlocks.map((blockType, index) => {
-          const blockConfig = BLOCK_TYPES[blockType] || BLOCK_TYPES.grass; // FIXED: Added fallback
-          const isSelected = gameState.selectedBlock === blockType;
-          const quantity = gameState.inventory?.blocks?.[blockType] || 0; // FIXED: Added safe navigation
-          
-          return (
-            <div
-              key={blockType}
-              className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
-              onClick={() => gameState.setSelectedBlock(blockType)}
-              title={`${blockConfig?.name || 'Unknown'} (${quantity})`} // FIXED: Added safe navigation
-            >
-              <div 
-                className="minecraft-block-icon"
-                style={{ backgroundColor: blockConfig?.color || '#4a7c59' }} // FIXED: Added fallback color
-              />
-              {quantity > 1 && (
-                <div className="minecraft-quantity">
-                  {quantity > 999 ? '999+' : quantity}
+          try {
+            const blockConfig = BLOCK_TYPES[blockType];
+            if (!blockConfig) {
+              console.error(`Missing block config for: ${blockType}`);
+              return null;
+            }
+
+            const isSelected = gameState.selectedBlock === blockType;
+            
+            // TRIPLE-SAFE inventory access
+            let quantity = 0;
+            try {
+              quantity = gameState?.inventory?.blocks?.[blockType] || 0;
+            } catch (err) {
+              console.warn('Inventory access error:', err);
+              quantity = 0;
+            }
+            
+            return (
+              <div
+                key={blockType}
+                className={`minecraft-hotbar-slot ${isSelected ? 'selected' : ''}`}
+                onClick={() => {
+                  try {
+                    gameState.setSelectedBlock(blockType);
+                  } catch (err) {
+                    console.error('Error setting selected block:', err);
+                  }
+                }}
+                title={`${blockConfig.name || 'Unknown'} (${quantity})`}
+              >
+                <div 
+                  className="minecraft-block-icon"
+                  style={{ backgroundColor: blockConfig.color || '#4a7c59' }}
+                />
+                {quantity > 1 && (
+                  <div className="minecraft-quantity">
+                    {quantity > 999 ? '999+' : quantity}
+                  </div>
+                )}
+                <div className="minecraft-hotkey">
+                  {index + 1}
                 </div>
-              )}
-              <div className="minecraft-hotkey">
-                {index + 1}
               </div>
-            </div>
-          );
+            );
+          } catch (error) {
+            console.error(`Error rendering hotbar slot ${index}:`, error);
+            return null;
+          }
         })}
       </div>
     </div>
