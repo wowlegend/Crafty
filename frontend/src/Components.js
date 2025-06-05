@@ -913,13 +913,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
         </div>
       </div>
 
-      {/* Experience Bar */}
-      {gameState.playerData && (
-        <div className="absolute top-20 left-4 right-4 pointer-events-auto">
-          <ExperienceBar playerData={gameState.playerData} />
-        </div>
-      )}
-
       <MinecraftHotbar gameState={gameState} />
       <MinecraftHealthHunger />
 
