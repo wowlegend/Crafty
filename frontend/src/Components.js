@@ -863,9 +863,9 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* UNIFIED Magic Wand with ALL Effects */}
+        {/* WORKING Magic Wand - NO CHANGES */}
         <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
-          <UnifiedMagicWand wandType={selectedSpell} />
+          <MagicWand wandType={selectedSpell} />
         </group>
         
         {/* RESTORED magical aura around hand during casting */}
