@@ -26,34 +26,67 @@ import {
   Crown
 } from 'lucide-react';
 
-// Import Experience System with safe fallbacks
-import * as ExperienceSystemModule from './ExperienceSystem';
-
-// Experience System with error handling
+// Safely import Experience System with fallbacks  
 let ExperienceSystem = null;
+let useExperienceSystem = null;
+let XPNotification = null;
+let LevelUpNotification = null;
+let ExperienceBar = null;
+let PlayerStats = null;
+
 try {
+  // Try to import the experience system
+  const ExperienceSystemModule = require('./ExperienceSystem');
+  useExperienceSystem = ExperienceSystemModule.useExperienceSystem;
+  XPNotification = ExperienceSystemModule.XPNotification;
+  LevelUpNotification = ExperienceSystemModule.LevelUpNotification;
+  ExperienceBar = ExperienceSystemModule.ExperienceBar;
+  PlayerStats = ExperienceSystemModule.PlayerStats;
+  
   ExperienceSystem = {
-    useExperienceSystem: ExperienceSystemModule.useExperienceSystem,
-    XPNotification: ExperienceSystemModule.XPNotification,
-    LevelUpNotification: ExperienceSystemModule.LevelUpNotification,
-    ExperienceBar: ExperienceSystemModule.ExperienceBar,
-    PlayerStats: ExperienceSystemModule.PlayerStats
+    useExperienceSystem,
+    XPNotification,
+    LevelUpNotification,
+    ExperienceBar,
+    PlayerStats
   };
+  
+  console.log('✅ Experience System loaded successfully');
 } catch (error) {
-  console.warn('Experience System not available:', error);
-  // Fallback components
+  console.warn('⚠️ Experience System not available, using fallbacks:', error);
+  
+  // Create safe fallback functions
+  useExperienceSystem = (initialData = {}) => ({
+    playerData: { 
+      level: 1, 
+      totalXP: 0, 
+      stats: { mobsKilled: 0, blocksPlaced: 0, blocksBroken: 0 },
+      unlockedSpells: ['fireball'],
+      ...initialData 
+    },
+    addExperience: (source, amount, context) => {
+      console.log(`XP: +${amount} from ${source} (${context})`);
+    },
+    xpNotifications: [],
+    levelUpNotification: null,
+    getLevelProgress: () => ({ level: 1, progressPercent: 0, currentLevelXP: 0, requiredXP: 100 })
+  });
+  
+  XPNotification = () => null;
+  LevelUpNotification = () => null;
+  ExperienceBar = ({ playerData }) => (
+    <div className="bg-gray-800 rounded-lg p-3">
+      <div className="text-white text-sm">Level {playerData?.level || 1}</div>
+    </div>
+  );
+  PlayerStats = () => null;
+  
   ExperienceSystem = {
-    useExperienceSystem: () => ({
-      playerData: { level: 1, totalXP: 0, stats: {} },
-      addExperience: () => {},
-      xpNotifications: [],
-      levelUpNotification: null,
-      getLevelProgress: () => ({ level: 1, progressPercent: 0 })
-    }),
-    XPNotification: () => null,
-    LevelUpNotification: () => null,
-    ExperienceBar: () => null,
-    PlayerStats: () => null
+    useExperienceSystem,
+    XPNotification,
+    LevelUpNotification,
+    ExperienceBar,
+    PlayerStats
   };
 }
 
