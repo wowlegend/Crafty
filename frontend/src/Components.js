@@ -397,20 +397,11 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   return (
     <group>
-      {/* Enhanced Magic System */}
+      {/* Enhanced Magic System - SINGLE SYSTEM TO AVOID CONFLICTS */}
       <EnhancedMagicSystem 
         gameState={gameState}
         playerPosition={camera?.position}
       />
-      
-      {/* Magic Projectile System - SPELL COMBAT */}
-      <MagicProjectileSystem 
-        gameState={gameState}
-        playerPosition={camera?.position}
-      />
-      
-      {/* Magic Impact System - SPELL EFFECTS */}
-      <MagicImpactSystem />
       
       {/* Optimized Grass System */}
       <OptimizedGrassSystem 
