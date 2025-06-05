@@ -364,63 +364,78 @@ function GameApp() {
 
               <motion.button
                 onClick={() => {
-                  // ULTIMATE iframe and security handling with all possible fallbacks
-                  let gameStarted = false;
+                  // BULLETPROOF iframe detection and handling
+                  console.log('🎮 Starting game...');
                   
-                  // Method 1: Simple iframe detection
+                  // Method 1: Check if we can access window.top (most reliable)
+                  let isInIframe = false;
                   try {
-                    if (window.self !== window.top || window.frameElement !== null) {
-                      console.log('Iframe detected - starting without pointer lock');
-                      setIsPointerLocked(true);
-                      gameStarted = true;
-                      return;
+                    isInIframe = window.self !== window.top;
+                  } catch (e) {
+                    // SecurityError means we're definitely in a cross-origin iframe
+                    isInIframe = true;
+                  }
+                  
+                  // Method 2: Check for frameElement (secondary check)
+                  try {
+                    if (window.frameElement !== null) {
+                      isInIframe = true;
                     }
                   } catch (e) {
-                    // Cross-origin error means we're in iframe
-                    console.log('Cross-origin iframe detected - starting without pointer lock');
+                    // Cross-origin iframe
+                    isInIframe = true;
+                  }
+                  
+                  // Method 3: Check URL for iframe indicators
+                  if (window.location.href.includes('preview') || 
+                      window.location.href.includes('embed') ||
+                      window.location.href.includes('iframe')) {
+                    isInIframe = true;
+                  }
+                  
+                  if (isInIframe) {
+                    console.log('🔒 Iframe detected - starting without pointer lock');
                     setIsPointerLocked(true);
-                    gameStarted = true;
                     return;
                   }
                   
-                  // Method 2: Check if document.body exists and has requestPointerLock
-                  if (!document.body || typeof document.body.requestPointerLock !== 'function') {
-                    console.log('Pointer lock not supported - starting in compatibility mode');
+                  // For standalone windows, try pointer lock with comprehensive fallbacks
+                  if (!document.body) {
+                    console.log('⚠️ No document.body - starting without pointer lock');
                     setIsPointerLocked(true);
-                    gameStarted = true;
                     return;
                   }
                   
-                  // Method 3: Try pointer lock with comprehensive error handling
+                  // Check if requestPointerLock exists
+                  if (typeof document.body.requestPointerLock !== 'function') {
+                    console.log('⚠️ Pointer lock not supported - starting anyway');
+                    setIsPointerLocked(true);
+                    return;
+                  }
+                  
+                  // Try pointer lock with ultimate error handling
                   try {
-                    const result = document.body.requestPointerLock();
+                    const lockPromise = document.body.requestPointerLock();
                     
-                    // Handle both promise and non-promise returns
-                    if (result && typeof result.catch === 'function') {
-                      result.catch((error) => {
-                        if (!gameStarted) {
-                          console.log('Pointer lock promise rejected - starting anyway');
-                          setIsPointerLocked(true);
-                          gameStarted = true;
-                        }
+                    // Handle promise-based API
+                    if (lockPromise && typeof lockPromise.catch === 'function') {
+                      lockPromise.catch((error) => {
+                        console.log('🔄 Pointer lock promise failed - starting anyway');
+                        setIsPointerLocked(true);
                       });
                     }
                     
-                    // Timeout fallback
+                    // Fallback timeout
                     setTimeout(() => {
-                      if (!gameStarted && !document.pointerLockElement) {
-                        console.log('Pointer lock timeout - starting anyway');
+                      if (!document.pointerLockElement) {
+                        console.log('⏰ Pointer lock timeout - starting anyway');
                         setIsPointerLocked(true);
-                        gameStarted = true;
                       }
-                    }, 200);
+                    }, 150);
                     
                   } catch (error) {
-                    if (!gameStarted) {
-                      console.log('Pointer lock exception - starting in fallback mode');
-                      setIsPointerLocked(true);
-                      gameStarted = true;
-                    }
+                    console.log('❌ Pointer lock error - starting anyway');
+                    setIsPointerLocked(true);
                   }
                 }}
                 className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
