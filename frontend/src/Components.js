@@ -906,7 +906,7 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ENHANCED Player component with improved hands rendering and debugging
+// ULTRA-SMOOTH Player component with maximum performance optimization
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
@@ -914,14 +914,19 @@ export const Player = ({ gameState }) => {
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   
-  console.log('🎮 Player component rendering');
-  console.log('🎥 Camera details - position:', camera.position, 'near:', camera.near, 'far:', camera.far);
+  // Performance optimization: cached direction vectors
+  const forwardVector = useRef(new THREE.Vector3());
+  const rightVector = useRef(new THREE.Vector3());
+  const upVector = useRef(new THREE.Vector3(0, 1, 0));
+  
+  // Movement optimization: reduce recalculations
+  const lastGroundCheck = useRef(0);
+  const groundLevelCache = useRef(new Map());
   
   // Set initial camera position
   useEffect(() => {
     camera.position.set(0, 15, 0);
-    console.log('🎮 Player initialized at position:', camera.position);
-    console.log('🎥 Camera matrix:', camera.matrix);
+    console.log('🎮 Ultra-optimized Player initialized');
   }, [camera]);
 
   // Expose attack state globally
@@ -929,108 +934,140 @@ export const Player = ({ gameState }) => {
     window.setPlayerAttacking = setIsAttacking;
   }, []);
 
-  // Enhanced frame logic with hands debugging
+  // ULTRA-OPTIMIZED frame logic with minimal calculations
   useFrame((state, delta) => {
-    const speed = 8;
+    const now = performance.now();
+    
+    // Performance optimization: limit ground checks
+    const shouldCheckGround = now - lastGroundCheck.current > 16; // 60fps ground checking
+    
+    const speed = 12; // Increased for smoother feel
     const moveVector = new THREE.Vector3();
     
-    // Get camera direction
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
+    // Cache direction calculations for performance
+    camera.getWorldDirection(forwardVector.current);
+    rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
     
-    const right = new THREE.Vector3();
-    right.crossVectors(direction, camera.up).normalize();
+    // Apply movement with optimized vector operations
+    if (keys.KeyW) moveVector.add(forwardVector.current);
+    if (keys.KeyS) moveVector.sub(forwardVector.current);
+    if (keys.KeyA) moveVector.sub(rightVector.current);
+    if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // Apply movement
-    if (keys.KeyW) moveVector.add(direction);
-    if (keys.KeyS) moveVector.sub(direction);
-    if (keys.KeyA) moveVector.sub(right);
-    if (keys.KeyD) moveVector.add(right);
-    
-    // Horizontal movement
+    // Horizontal movement with performance optimization
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
       
-      const newPosition = camera.position.clone().add(moveVector.multiplyScalar(speed * delta));
-      camera.position.x = newPosition.x;
-      camera.position.z = newPosition.z;
+      const scaledMovement = moveVector.multiplyScalar(speed * delta);
+      camera.position.x += scaledMovement.x;
+      camera.position.z += scaledMovement.z;
     }
     
-    // Gravity and ground collision
-    velocity.current.y -= 20 * delta;
+    // Optimized gravity and ground collision
+    velocity.current.y -= 25 * delta; // Slightly faster gravity
     
-    const newY = camera.position.y + velocity.current.y * delta;
-    const groundLevel = getGroundLevel(camera.position.x, camera.position.z);
-    const playerHeight = 1.8;
-    
-    if (newY - playerHeight <= groundLevel) {
-      camera.position.y = groundLevel + playerHeight;
-      velocity.current.y = 0;
-      setIsOnGround(true);
+    if (shouldCheckGround) {
+      const newY = camera.position.y + velocity.current.y * delta;
+      const groundLevel = getOptimizedGroundLevel(camera.position.x, camera.position.z);
+      const playerHeight = 1.8;
+      
+      if (newY - playerHeight <= groundLevel) {
+        camera.position.y = groundLevel + playerHeight;
+        velocity.current.y = 0;
+        setIsOnGround(true);
+      } else {
+        camera.position.y = newY;
+        setIsOnGround(false);
+      }
+      
+      lastGroundCheck.current = now;
     } else {
-      camera.position.y = newY;
-      setIsOnGround(false);
-    }
-    
-    // Debug hands visibility every few frames
-    if (Math.floor(state.clock.elapsedTime) % 2 === 0) {
-      console.log('🤲 Hands should be visible at camera position:', camera.position);
+      // Apply velocity without ground check for smoother movement
+      camera.position.y += velocity.current.y * delta;
     }
   });
 
-  const getGroundLevel = (x, z) => {
-    if (window.getHighestBlockAt) {
-      return window.getHighestBlockAt(x, z) + 1;
+  // OPTIMIZED ground level detection with caching
+  const getOptimizedGroundLevel = (x, z) => {
+    const cacheKey = `${Math.floor(x/2)}_${Math.floor(z/2)}`; // Cache every 2 blocks
+    
+    if (groundLevelCache.current.has(cacheKey)) {
+      return groundLevelCache.current.get(cacheKey);
     }
-    return 12;
+    
+    let groundLevel = 12;
+    if (window.getHighestBlockAt) {
+      groundLevel = window.getHighestBlockAt(x, z) + 1;
+    }
+    
+    // Cache result for performance
+    groundLevelCache.current.set(cacheKey, groundLevel);
+    
+    // Clean cache periodically to prevent memory leaks
+    if (groundLevelCache.current.size > 100) {
+      const entries = Array.from(groundLevelCache.current.entries());
+      groundLevelCache.current.clear();
+      // Keep only recent entries
+      entries.slice(-50).forEach(([key, value]) => {
+        groundLevelCache.current.set(key, value);
+      });
+    }
+    
+    return groundLevel;
   };
 
+  // OPTIMIZED event handlers with performance considerations
   useEffect(() => {
     const handleKeyDown = (event) => {
-      setKeys(prev => ({ ...prev, [event.code]: true }));
+      // Prevent unnecessary re-renders
+      setKeys(prev => {
+        if (prev[event.code]) return prev;
+        return { ...prev, [event.code]: true };
+      });
       
       if (event.code === 'Space') {
         event.preventDefault();
         if (isOnGround) {
-          velocity.current.y = 12;
+          velocity.current.y = 15; // Higher jump for better feel
           setIsOnGround(false);
         }
       }
       
-      // Testing attack for hands visibility
+      // Enhanced attack with F key
       if (event.code === 'KeyF') {
-        console.log('🗡️ Attack key pressed - testing hands visibility');
+        console.log('🗡️ Attack triggered - ultra-responsive');
         setIsAttacking(true);
-        setTimeout(() => setIsAttacking(false), 500);
+        setTimeout(() => setIsAttacking(false), 400);
       }
       
+      // Optimized block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
         const blockTypes = Object.keys(BLOCK_TYPES);
         if (num >= 1 && num <= blockTypes.length) {
           gameState.setSelectedBlock(blockTypes[num - 1]);
-          console.log('🧱 Selected block:', blockTypes[num - 1]);
         }
       }
     };
     
     const handleKeyUp = (event) => {
-      setKeys(prev => ({ ...prev, [event.code]: false }));
+      setKeys(prev => {
+        if (!prev[event.code]) return prev;
+        return { ...prev, [event.code]: false };
+      });
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    // Optimized event listeners
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp, { passive: true });
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [camera, gameState, isOnGround]);
+  }, [gameState, isOnGround]);
 
-  // Render hands with debug info
-  console.log('🤲 Rendering BothHands component with selectedBlock:', gameState.selectedBlock, 'isAttacking:', isAttacking);
-  
   return <BothHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />;
 };
 
