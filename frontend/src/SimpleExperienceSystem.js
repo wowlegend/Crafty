@@ -62,19 +62,27 @@ export const useSimpleExperience = () => {
     }, 3000);
   };
 
-  // Expose functions globally
+  // Expose functions globally - DISABLED problematic ones
   useEffect(() => {
     window.addExperience = addExperience;
     window.getPlayerLevel = () => playerLevel;
     window.getPlayerXP = () => ({ current: currentXP, total: totalXP, level: playerLevel });
     
-    // Quick access functions
-    window.xpMobKill = () => addExperience(25, 'Mob Defeated');
-    window.xpBlockPlace = () => addExperience(2, 'Block Placed');
-    window.xpBlockBreak = () => addExperience(3, 'Block Broken');
-    window.xpExploration = () => addExperience(10, 'New Area');
-    window.xpCrafting = () => addExperience(5, 'Item Crafted');
-    window.xpMagicCast = () => addExperience(8, 'Spell Cast');
+    // DISABLED - Quick access functions that were causing conflicts
+    // window.xpMobKill = () => addExperience(25, 'Mob Defeated');
+    // window.xpBlockPlace = () => addExperience(2, 'Block Placed');
+    // window.xpBlockBreak = () => addExperience(3, 'Block Broken');
+    // window.xpExploration = () => addExperience(10, 'New Area');
+    // window.xpCrafting = () => addExperience(5, 'Item Crafted');
+    // window.xpMagicCast = () => addExperience(8, 'Spell Cast');
+    
+    // Manual XP functions - only when intended
+    window.manualXpMobKill = () => addExperience(25, 'Mob Defeated');
+    window.manualXpBlockPlace = () => addExperience(2, 'Block Placed');
+    window.manualXpBlockBreak = () => addExperience(3, 'Block Broken');
+    window.manualXpExploration = () => addExperience(10, 'New Area');
+    window.manualXpCrafting = () => addExperience(5, 'Item Crafted');
+    window.manualXpMagicCast = () => addExperience(8, 'Spell Cast');
   }, [playerLevel, currentXP, totalXP]);
 
   return {
