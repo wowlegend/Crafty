@@ -865,18 +865,13 @@ export const Player = ({ gameState }) => {
         if (window.castMagicSpell) {
           try {
             window.castMagicSpell(selectedSpell);
-            
-            // Add XP for using magic
-            if (experienceSystem) {
-              experienceSystem.addExperience('useMagic', 3, selectedSpell);
-            }
           } catch (error) {
             console.warn('Error casting spell:', error);
           }
         }
         
         // Add visual magic effect feedback
-        console.log(`🪄 Casting ${selectedSpell} spell!`);
+        console.log(`🪄 Casting spell!`);
         
         // Play magic sound if available
         if (window.playMagicSound) {
