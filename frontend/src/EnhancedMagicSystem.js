@@ -221,7 +221,7 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
           // Damage mob
           if (window.damageMob) {
             window.damageMob(hitMob.id, projectile.damage);
-            console.log(`🔥 SPELL HIT ${hitMob.type}! Damage: ${projectile.damage}`);
+            console.log(`🔥 ENHANCED SPELL HIT ${hitMob.type}! Damage: ${projectile.damage}, Health: ${hitMob.health}`);
           }
           // Create hit effect
           createSpellImpact(projectile.position, projectile.type);
