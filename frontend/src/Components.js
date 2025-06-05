@@ -97,8 +97,8 @@ let MagicSystemManager = null;
 let MAGIC_SPELLS = null;
 
 try {
-  // Try to import the magic system
-  const MagicSystemModule = require('./MagicSystem');
+  // Try to import the SAFE magic system
+  const MagicSystemModule = require('./MagicSystemSafe');
   MagicWand = MagicSystemModule.MagicWand;
   MagicSystemManager = MagicSystemModule.MagicSystemManager;
   MAGIC_SPELLS = MagicSystemModule.MAGIC_SPELLS;
@@ -109,16 +109,12 @@ try {
     MAGIC_SPELLS
   };
   
-  console.log('✅ Enhanced Magic System loaded successfully');
+  console.log('✅ Safe Magic System loaded successfully');
 } catch (error) {
-  console.warn('⚠️ Enhanced Magic System not available, using fallbacks:', error);
+  console.warn('⚠️ Magic System not available, using fallbacks:', error);
   
   // Create safe fallback components that don't use Three.js
-  MagicWand = ({ selectedSpell, isAttacking, position, rotation }) => {
-    // Return null to avoid Three.js issues - magic system will be disabled
-    return null;
-  };
-  
+  MagicWand = () => null;
   MagicSystemManager = () => null;
   
   MAGIC_SPELLS = {
