@@ -25,12 +25,7 @@ import {
   Shield
 } from 'lucide-react';
 
-// Import new enhanced systems
-import { OptimizedTerrain } from './OptimizedTerrain';
-import { MagicProjectileSystem, MagicWand, MagicImpactSystem } from './MagicSystem';
-import { useExperienceSystem, XPGainVisual, LevelUpEffect, ExperienceBar, LevelUpParticles } from './ExperienceSystem';
-import { EnhancedGrassSystem, WindParticleSystem, EnhancedGrassTexture } from './EnhancedGrassSystem';
-import { useSoundEnhancements, AudioPerformanceMonitor } from './SoundEnhancements';
+
 
 
 
