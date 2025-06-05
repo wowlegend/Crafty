@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Box, Plane, Stars } from '@react-three/drei';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { 
   Pickaxe, 
@@ -22,139 +22,8 @@ import {
   Star,
   Hammer,
   Sword,
-  Shield,
-  Crown
+  Shield
 } from 'lucide-react';
-
-// Safely import Experience System with fallbacks  
-let ExperienceSystem = null;
-let useExperienceSystem = null;
-let XPNotification = null;
-let LevelUpNotification = null;
-let ExperienceBar = null;
-let PlayerStats = null;
-
-try {
-  // Try to import the experience system
-  const ExperienceSystemModule = require('./ExperienceSystem');
-  useExperienceSystem = ExperienceSystemModule.useExperienceSystem;
-  XPNotification = ExperienceSystemModule.XPNotification;
-  LevelUpNotification = ExperienceSystemModule.LevelUpNotification;
-  ExperienceBar = ExperienceSystemModule.ExperienceBar;
-  PlayerStats = ExperienceSystemModule.PlayerStats;
-  
-  ExperienceSystem = {
-    useExperienceSystem,
-    XPNotification,
-    LevelUpNotification,
-    ExperienceBar,
-    PlayerStats
-  };
-  
-  console.log('✅ Experience System loaded successfully');
-} catch (error) {
-  console.warn('⚠️ Experience System not available, using fallbacks:', error);
-  
-  // Create safe fallback functions
-  useExperienceSystem = (initialData = {}) => ({
-    playerData: { 
-      level: 1, 
-      totalXP: 0, 
-      stats: { mobsKilled: 0, blocksPlaced: 0, blocksBroken: 0 },
-      unlockedSpells: ['fireball'],
-      ...initialData 
-    },
-    addExperience: (source, amount, context) => {
-      console.log(`XP: +${amount} from ${source} (${context})`);
-    },
-    xpNotifications: [],
-    levelUpNotification: null,
-    getLevelProgress: () => ({ level: 1, progressPercent: 0, currentLevelXP: 0, requiredXP: 100 })
-  });
-  
-  XPNotification = () => null;
-  LevelUpNotification = () => null;
-  ExperienceBar = ({ playerData }) => (
-    <div className="bg-gray-800 rounded-lg p-3">
-      <div className="text-white text-sm">Level {playerData?.level || 1}</div>
-    </div>
-  );
-  PlayerStats = () => null;
-  
-  ExperienceSystem = {
-    useExperienceSystem,
-    XPNotification,
-    LevelUpNotification,
-    ExperienceBar,
-    PlayerStats
-  };
-}
-
-// Safely import Magic System with fallbacks
-let EnhancedMagic = null;
-let MagicWand = null;
-let MagicSystemManager = null;
-let MAGIC_SPELLS = null;
-
-try {
-  // Try to import the SAFE magic system
-  const MagicSystemModule = require('./MagicSystemSafe');
-  MagicWand = MagicSystemModule.MagicWand;
-  MagicSystemManager = MagicSystemModule.MagicSystemManager;
-  MAGIC_SPELLS = MagicSystemModule.MAGIC_SPELLS;
-  
-  EnhancedMagic = {
-    MagicWand,
-    MagicSystemManager,
-    MAGIC_SPELLS
-  };
-  
-  console.log('✅ Safe Magic System loaded successfully');
-} catch (error) {
-  console.warn('⚠️ Magic System not available, using fallbacks:', error);
-  
-  // Create safe fallback components that don't use Three.js
-  MagicWand = () => null;
-  MagicSystemManager = () => null;
-  
-  MAGIC_SPELLS = {
-    fireball: { color: '#FF6B35', name: 'Fireball', cost: 5 },
-    iceShard: { color: '#00BFFF', name: 'Ice Shard', cost: 4 },
-    lightningBeam: { color: '#FFFF00', name: 'Lightning Beam', cost: 8 },
-    arcaneOrb: { color: '#9932CC', name: 'Arcane Orb', cost: 7 }
-  };
-  
-  EnhancedMagic = {
-    MagicWand,
-    MagicSystemManager,
-    MAGIC_SPELLS
-  };
-}
-
-// Safely import Enhanced Grass System with fallbacks
-let EnhancedGrass = null;
-let EnhancedGrassSystem = null;
-
-try {
-  // Try to import the SAFE grass system
-  const GrassSystemModule = require('./EnhancedGrassSystemSafe');
-  EnhancedGrassSystem = GrassSystemModule.EnhancedGrassSystem;
-  
-  EnhancedGrass = {
-    EnhancedGrassSystem
-  };
-  
-  console.log('✅ Safe Grass System loaded successfully');
-} catch (error) {
-  console.warn('⚠️ Grass System not available, using fallbacks:', error);
-  
-  // Create safe fallback component
-  EnhancedGrassSystem = () => null;
-  
-  EnhancedGrass = {
-    EnhancedGrassSystem
-  };
-}
 
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
