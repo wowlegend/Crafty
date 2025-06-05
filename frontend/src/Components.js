@@ -427,15 +427,16 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced grass effects */}
       <GrassEffects />
       
+      {/* Temporarily disabled enhanced systems to fix Three.js errors */}
       {/* Enhanced Grass System with wind effects */}
-      {EnhancedGrass && (
+      {/* {EnhancedGrass && (
         <EnhancedGrass.EnhancedGrassSystem camera={camera} />
-      )}
+      )} */}
       
       {/* Enhanced Magic System Manager */}
-      {EnhancedMagic && (
+      {/* {EnhancedMagic && (
         <EnhancedMagic.MagicSystemManager gameState={gameState} />
-      )}
+      )} */}
       
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
