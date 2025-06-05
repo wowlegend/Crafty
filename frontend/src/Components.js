@@ -1057,7 +1057,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
 
       {/* Enhanced debug info */}
       {showStats && (
-        <div className="absolute top-20 left-4 pointer-events-auto">
+        <div className="absolute top-32 left-4 pointer-events-auto">
           <div className="minecraft-debug-panel">
             <div className="text-white minecraft-text text-sm space-y-1">
               <div>X: {playerPosition.x}</div>
@@ -1066,8 +1066,22 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
               <div>Chunk: {Math.floor(playerPosition.x / 16)},{Math.floor(playerPosition.z / 16)}</div>
               <div>Biome: Plains</div>
               <div>Blocks: {gameState.worldBlocks?.size || 0}</div>
+              {gameState.playerData && (
+                <>
+                  <div>Level: {gameState.playerData.level}</div>
+                  <div>XP: {gameState.playerData.totalXP}</div>
+                  <div>Mobs Killed: {gameState.playerData.stats?.mobsKilled || 0}</div>
+                </>
+              )}
             </div>
           </div>
+          
+          {/* Player stats in debug mode */}
+          {gameState.playerData && ExperienceSystem && (
+            <div className="mt-2">
+              <ExperienceSystem.PlayerStats playerData={gameState.playerData} />
+            </div>
+          )}
         </div>
       )}
     </motion.div>
