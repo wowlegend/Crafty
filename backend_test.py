@@ -6,6 +6,7 @@ import sys
 import os
 import concurrent.futures
 import statistics
+import uuid
 from datetime import datetime
 
 # Get the backend URL from the frontend .env file
