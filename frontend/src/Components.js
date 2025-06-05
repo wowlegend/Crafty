@@ -679,24 +679,13 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ULTRA-OPTIMIZED Player component with Experience System and Magic Combat
+// ULTRA-OPTIMIZED Player component with smooth mouse look
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
-  const [selectedSpell, setSelectedSpell] = useState('fireball');
-  
-  // Experience system integration
-  const experienceSystem = useExperienceSystem(gameState.playerData);
-  
-  // Update gameState with experience system
-  useEffect(() => {
-    gameState.addExperience = experienceSystem.addExperience;
-    gameState.playerData = experienceSystem.playerData;
-    gameState.getLevelProgress = experienceSystem.getLevelProgress;
-  }, [experienceSystem]);
   
   // Performance optimization: cached vectors and minimal recalculations
   const forwardVector = useRef(new THREE.Vector3());
@@ -708,26 +697,27 @@ export const Player = ({ gameState }) => {
   const groundLevelCache = useRef(new Map());
   const lastCameraUpdate = useRef(0);
   
-  // Set initial camera position and fix orientation
+  // Set initial camera position and fix orientation - CRITICAL FIX
   useEffect(() => {
-    camera.position.set(0, 20, 0);
-    camera.lookAt(0, 18, 0);
+    // ROBUST initial positioning
+    camera.position.set(0, 20, 0); // Higher initial spawn to prevent underground spawn
+    camera.lookAt(0, 18, 0); // Look slightly down initially
     camera.updateProjectionMatrix();
     
+    // FORCE proper ground positioning after terrain is ready
     setTimeout(() => {
       const groundLevel = getOptimizedGroundLevel(0, 0);
-      const safeHeight = Math.max(groundLevel + 2, 16);
+      const safeHeight = Math.max(groundLevel + 2, 16); // Ensure always above ground
       camera.position.y = safeHeight;
       console.log(`🎮 Player positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
-    }, 1000);
+    }, 1000); // Wait for terrain to generate
     
-    console.log('🎮 Ultra-optimized Player with Experience System initialized');
+    console.log('🎮 Ultra-optimized Player initialized with fixed orientation');
   }, [camera]);
 
-  // Expose attack state and magic casting globally
+  // Expose attack state globally
   useEffect(() => {
     window.setPlayerAttacking = setIsAttacking;
-    window.playLevelUpSound = experienceSystem.playLevelUpSound;
   }, []);
 
   // OPTIMIZED frame logic with performance throttling
