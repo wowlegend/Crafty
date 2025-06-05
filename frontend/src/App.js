@@ -312,6 +312,15 @@ function GameApp() {
 
       {/* FIXED Game Canvas with optimized camera settings */}
       <Canvas
+        shadows={false}
+        className="w-full h-full"
+        gl={{ 
+          antialias: true,
+          alpha: false,
+          depth: true,
+          powerPreference: "high-performance"
+        }}
+        performance={{ min: 0.3 }}
         camera={{
           fov: 75,
           near: 0.001,
@@ -328,7 +337,6 @@ function GameApp() {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           gl.shadowMap.enabled = false; // Disable shadows for performance
         }}
-      >
         shadows={false}
         className="w-full h-full"
         gl={{ 
