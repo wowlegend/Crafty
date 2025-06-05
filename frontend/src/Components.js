@@ -148,13 +148,133 @@ const generateTerrain = (x, z) => {
   return height;
 };
 
-// ENHANCED World Generation with Optimized Performance
+// ENHANCED World Generation with Optimized Performance - FIXED
 export const MinecraftWorld = ({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
+  const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const { camera } = useThree();
+  const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const worldRef = useRef();
+  
+  const chunkSize = 16;
+  const renderDistance = 2;
+  
+  // WORKING terrain generation - no errors
+  const generateTerrain = (x, z) => {
+    const noise1 = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 3;
+    const noise2 = Math.sin(x * 0.05) * Math.cos(z * 0.05) * 6;
+    const height = Math.floor(Math.max(10, Math.min(18, noise1 + noise2 + 15)));
+    return height;
+  };
 
-  // Handle block interactions
+  const generateChunk = (chunkX, chunkZ) => {
+    const chunkKey = `${chunkX}_${chunkZ}`;
+    if (generatedChunks.has(chunkKey)) return;
+
+    const newBlocks = new Map();
+    const startX = chunkX * chunkSize;
+    const startZ = chunkZ * chunkSize;
+    
+    for (let x = startX; x < startX + chunkSize; x++) {
+      for (let z = startZ; z < startZ + chunkSize; z++) {
+        const height = generateTerrain(x, z);
+        
+        // Surface block - 95% grass
+        const blockType = Math.random() < 0.95 ? 'grass' : 'sand';
+        const key = `${x},${height},${z}`;
+        newBlocks.set(key, { 
+          position: [x, height, z], 
+          type: blockType
+        });
+        
+        // Underground layers
+        for (let y = height - 1; y >= Math.max(height - 3, 8); y--) {
+          const undergroundType = y === height - 1 ? 'dirt' : 'stone';
+          const undergroundKey = `${x},${y},${z}`;
+          newBlocks.set(undergroundKey, { 
+            position: [x, y, z], 
+            type: undergroundType
+          });
+        }
+        
+        // Trees
+        if (blockType === 'grass' && Math.random() < 0.03) {
+          generateTree(newBlocks, x, height, z);
+        }
+      }
+    }
+    
+    setBlocks(prev => {
+      const updated = new Map(prev);
+      newBlocks.forEach((value, key) => updated.set(key, value));
+      return updated;
+    });
+    
+    setGeneratedChunks(prev => new Set(prev).add(chunkKey));
+  };
+
+  const generateTree = (blockMap, x, baseY, z) => {
+    const treeHeight = 3 + Math.floor(Math.random() * 3);
+    
+    // Trunk
+    for (let y = 1; y <= treeHeight; y++) {
+      const trunkKey = `${x},${baseY + y},${z}`;
+      blockMap.set(trunkKey, { 
+        position: [x, baseY + y, z], 
+        type: 'wood'
+      });
+    }
+    
+    // Leaves
+    const crownY = baseY + treeHeight + 1;
+    const leafPositions = [
+      [x, crownY, z], [x+1, crownY, z], [x-1, crownY, z],
+      [x, crownY, z+1], [x, crownY, z-1]
+    ];
+    
+    leafPositions.forEach(([lx, ly, lz]) => {
+      const leafKey = `${lx},${ly},${lz}`;
+      blockMap.set(leafKey, { 
+        position: [lx, ly, lz], 
+        type: 'grass'
+      });
+    });
+  };
+
+  // Frame-based terrain generation
+  useFrame(() => {
+    if (!camera) return;
+    
+    const playerX = Math.floor(camera.position.x);
+    const playerZ = Math.floor(camera.position.z);
+    const currentChunkX = Math.floor(playerX / chunkSize);
+    const currentChunkZ = Math.floor(playerZ / chunkSize);
+    
+    if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
+      lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
+      
+      // Generate chunks around player
+      for (let x = -renderDistance; x <= renderDistance; x++) {
+        for (let z = -renderDistance; z <= renderDistance; z++) {
+          const chunkX = currentChunkX + x;
+          const chunkZ = currentChunkZ + z;
+          generateChunk(chunkX, chunkZ);
+        }
+      }
+    }
+  });
+
+  // Initial terrain generation
+  useEffect(() => {
+    console.log('🌍 Generating initial terrain...');
+    for (let x = -1; x <= 1; x++) {
+      for (let z = -1; z <= 1; z++) {
+        generateChunk(x, z);
+      }
+    }
+  }, []);
+
+  // Block interaction handlers
   const handleBlockPlace = (position, blockType) => {
     const key = `${position[0]},${position[1]},${position[2]}`;
     if (!blocks.has(key)) {
@@ -178,12 +298,11 @@ export const MinecraftWorld = ({ gameState }) => {
         newBlocks.delete(key);
         return newBlocks;
       });
-      
       gameState.addToInventory(block.type, 1);
     }
   };
 
-  // Optimized click handlers
+  // Click handlers
   useEffect(() => {
     const handleClick = (event) => {
       if (!camera) return;
@@ -239,7 +358,7 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group ref={worldRef}>
-      {/* Basic terrain rendering */}
+      {/* Render all blocks */}
       {Array.from(blocks.values()).map((block) => {
         const blockConfig = BLOCK_TYPES[block.type] || BLOCK_TYPES.grass;
         return (
@@ -253,8 +372,6 @@ export const MinecraftWorld = ({ gameState }) => {
               color={blockConfig.color}
               transparent={blockConfig.transparent || false}
               opacity={blockConfig.transparent ? 0.8 : 1}
-              emissive={blockConfig.emissive ? blockConfig.color : '#000000'}
-              emissiveIntensity={blockConfig.emissive ? 0.2 : 0}
             />
             {/* Enhanced grass texture */}
             {block.type === 'grass' && (
@@ -264,10 +381,10 @@ export const MinecraftWorld = ({ gameState }) => {
         );
       })}
       
-      {/* Basic clouds */}
+      {/* Clouds */}
       <MinecraftClouds />
       
-      {/* Basic grass effects */}
+      {/* Grass effects */}
       <GrassEffects />
     </group>
   );
