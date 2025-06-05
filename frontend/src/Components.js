@@ -527,46 +527,62 @@ const EnvironmentalParticles = () => {
   );
 };
 
-// MINECRAFT-STYLE Blocky Hands Component - Authentic cubic design
-const BothHands = ({ selectedBlock, isAttacking }) => {
+// ENHANCED Magic Hands Component - Diablo-style Magic System
+const EnhancedMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
-  const weaponRef = useRef();
-  const selectedBlockConfig = BLOCK_TYPES[selectedBlock] || BLOCK_TYPES.grass;
+  const wandRef = useRef();
+  
+  const SPELL_COLORS = {
+    fireball: '#FF4500',
+    iceball: '#00BFFF', 
+    lightning: '#FFD700',
+    arcane: '#9932CC'
+  };
+  
+  const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
-  // Frame-by-frame positioning with smooth movement
+  // Frame-by-frame positioning with enhanced magic effects
   useFrame(() => {
     if (rightHandRef.current && leftHandRef.current) {
       const time = Date.now() * 0.001;
       
-      // Right hand positioning - blocky style
-      const rightPos = new THREE.Vector3(0.6, -0.8, -1.4);
+      // Right hand positioning - holding magic wand
+      const rightPos = new THREE.Vector3(0.7, -0.7, -1.2);
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
       rightHandRef.current.quaternion.copy(camera.quaternion);
       
-      // Subtle idle animation
-      rightHandRef.current.position.y += Math.sin(time * 1.5) * 0.02;
-      rightHandRef.current.rotation.z = Math.sin(time) * 0.05;
+      // Enhanced magical idle animation
+      rightHandRef.current.position.y += Math.sin(time * 2) * 0.03;
+      rightHandRef.current.rotation.z = Math.sin(time * 1.5) * 0.08;
       
-      // Left hand positioning
-      const leftPos = new THREE.Vector3(-0.6, -0.8, -1.4);
+      // Left hand positioning - gesture casting
+      const leftPos = new THREE.Vector3(-0.5, -0.6, -1.1);
       leftPos.applyMatrix4(camera.matrixWorld);
       leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
-      leftHandRef.current.position.y += Math.sin(time * 1.5 + 1) * 0.02;
-      leftHandRef.current.rotation.z = Math.sin(time + 1) * 0.05;
+      leftHandRef.current.position.y += Math.sin(time * 2 + 1) * 0.02;
+      leftHandRef.current.rotation.z = Math.sin(time * 1.5 + 1) * 0.06;
       
-      // Enhanced attack animation
+      // Enhanced spell casting animation
       if (isAttacking) {
-        const attackTime = time * 15;
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.8;
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.3;
+        const attackTime = time * 20;
+        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.6;
+        rightHandRef.current.position.z += Math.sin(attackTime) * 0.2;
+        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.4;
         
-        if (weaponRef.current) {
-          weaponRef.current.rotation.x = Math.sin(attackTime) * 0.5;
-          weaponRef.current.position.y = 0.3 + Math.sin(attackTime) * 0.2;
+        if (wandRef.current) {
+          wandRef.current.rotation.x = Math.sin(attackTime) * 0.3;
+          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.15;
+          
+          // Magical glow intensity during casting
+          wandRef.current.children.forEach(child => {
+            if (child.material && child.material.emissive) {
+              child.material.emissiveIntensity = 0.8 + Math.sin(attackTime * 2) * 0.4;
+            }
+          });
         }
       }
     }
@@ -574,112 +590,9 @@ const BothHands = ({ selectedBlock, isAttacking }) => {
 
   return (
     <group>
-      {/* RIGHT HAND - Minecraft blocky style */}
+      {/* RIGHT HAND - Magic Wand Hand */}
       <group ref={rightHandRef}>        
-        {/* Blocky forearm */}
-        <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[0.16, 0.7, 0.16]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Main hand block - Minecraft style */}
-        <mesh position={[0, -0.05, 0]}>
-          <boxGeometry args={[0.2, 0.24, 0.12]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Thumb block */}
-        <mesh position={[0.12, -0.02, 0]}>
-          <boxGeometry args={[0.08, 0.12, 0.08]} />
-          <meshLambertMaterial color="#fdbcb4" />
-        </mesh>
-        
-        {/* Finger blocks */}
-        <mesh position={[0, -0.15, -0.08]}>
-          <boxGeometry args={[0.16, 0.06, 0.04]} />
-          <meshLambertMaterial color="#e6a69a" />
-        </mesh>
-        
-        {/* LARGE PROMINENT WEAPON - Best practice positioning */}
-        {selectedBlock && (
-          <group ref={weaponRef} position={[0.15, 0.3, -0.2]} rotation={[0.2, 0.3, 0.1]}>
-            {/* Large tool handle */}
-            <mesh position={[0, -0.4, 0]}>
-              <boxGeometry args={[0.06, 0.8, 0.06]} />
-              <meshLambertMaterial color="#8B4513" />
-            </mesh>
-            
-            {/* Large tool head - much more prominent */}
-            <mesh position={[0, 0.1, 0]}>
-              <boxGeometry args={[0.16, 0.16, 0.16]} />
-              <meshLambertMaterial 
-                color={selectedBlockConfig.color}
-                emissive={selectedBlockConfig.emissive ? selectedBlockConfig.color : '#000000'}
-                emissiveIntensity={0.1}
-              />
-            </mesh>
-            
-            {/* Tool-specific enhancements */}
-            {['stone', 'iron', 'diamond', 'cobblestone'].includes(selectedBlock) && (
-              <>
-                {/* Pickaxe head */}
-                <mesh position={[0, 0.2, 0]} rotation={[0, 0, 0.785]}>
-                  <boxGeometry args={[0.24, 0.06, 0.06]} />
-                  <meshLambertMaterial color="#C0C0C0" />
-                </mesh>
-                {/* Metal gleam */}
-                <mesh position={[0, 0.2, 0.04]}>
-                  <boxGeometry args={[0.2, 0.04, 0.02]} />
-                  <meshBasicMaterial color="#ffffff" transparent opacity={0.6} />
-                </mesh>
-              </>
-            )}
-            
-            {['wood'].includes(selectedBlock) && (
-              <>
-                {/* Axe head */}
-                <mesh position={[0.1, 0.15, 0]}>
-                  <boxGeometry args={[0.1, 0.2, 0.06]} />
-                  <meshLambertMaterial color="#A0A0A0" />
-                </mesh>
-              </>
-            )}
-          </group>
-        )}
-        
-        {/* Enhanced combat weapon when attacking */}
-        {isAttacking && (
-          <group position={[0.2, 0.4, -0.3]} rotation={[0.5, 0.4, 0.2]}>
-            {/* Large sword handle */}
-            <mesh position={[0, -0.3, 0]}>
-              <boxGeometry args={[0.08, 0.6, 0.08]} />
-              <meshLambertMaterial color="#654321" />
-            </mesh>
-            
-            {/* Large sword blade */}
-            <mesh position={[0, 0.1, 0]}>
-              <boxGeometry args={[0.06, 0.4, 0.02]} />
-              <meshLambertMaterial color="#C0C0C0" />
-            </mesh>
-            
-            {/* Sword gleam effect */}
-            <mesh position={[0, 0.1, 0.02]}>
-              <boxGeometry args={[0.04, 0.35, 0.01]} />
-              <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
-            </mesh>
-            
-            {/* Crossguard */}
-            <mesh position={[0, -0.05, 0]}>
-              <boxGeometry args={[0.2, 0.04, 0.04]} />
-              <meshLambertMaterial color="#8B4513" />
-            </mesh>
-          </group>
-        )}
-      </group>
-      
-      {/* LEFT HAND - Minecraft blocky style */}
-      <group ref={leftHandRef}>
-        {/* Blocky forearm */}
+        {/* Magical forearm with arcane energy */}
         <mesh position={[0, 0.3, 0]}>
           <boxGeometry args={[0.16, 0.7, 0.16]} />
           <meshLambertMaterial color="#fdbcb4" />
@@ -691,17 +604,111 @@ const BothHands = ({ selectedBlock, isAttacking }) => {
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Thumb block */}
+        {/* Thumb */}
+        <mesh position={[0.12, -0.02, 0]}>
+          <boxGeometry args={[0.08, 0.12, 0.08]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Fingers */}
+        <mesh position={[0, -0.15, -0.08]}>
+          <boxGeometry args={[0.16, 0.06, 0.04]} />
+          <meshLambertMaterial color="#e6a69a" />
+        </mesh>
+        
+        {/* ENHANCED MAGIC WAND - Primary Weapon */}
+        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
+          <MagicWand wandType={selectedSpell} />
+        </group>
+        
+        {/* Magical aura around hand during casting */}
+        {isAttacking && (
+          <mesh position={[0, 0, 0]}>
+            <sphereGeometry args={[0.35, 8, 8]} />
+            <meshBasicMaterial 
+              color={currentSpellColor}
+              transparent
+              opacity={0.3}
+              emissive={currentSpellColor}
+              emissiveIntensity={0.4}
+            />
+          </mesh>
+        )}
+      </group>
+      
+      {/* LEFT HAND - Spell Gesture Hand */}
+      <group ref={leftHandRef}>
+        {/* Forearm */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.16]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Main hand block */}
+        <mesh position={[0, -0.05, 0]}>
+          <boxGeometry args={[0.2, 0.24, 0.12]} />
+          <meshLambertMaterial color="#fdbcb4" />
+        </mesh>
+        
+        {/* Thumb */}
         <mesh position={[-0.12, -0.02, 0]}>
           <boxGeometry args={[0.08, 0.12, 0.08]} />
           <meshLambertMaterial color="#fdbcb4" />
         </mesh>
         
-        {/* Finger blocks */}
-        <mesh position={[0, -0.15, -0.08]}>
+        {/* Fingers in spell-casting position */}
+        <mesh position={[0, -0.1, -0.1]} rotation={[0.2, 0, 0]}>
           <boxGeometry args={[0.16, 0.06, 0.04]} />
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
+        
+        {/* Spell energy emanating from left hand */}
+        {isAttacking && (
+          <group>
+            {/* Main spell energy orb */}
+            <mesh position={[0, 0.1, -0.2]}>
+              <sphereGeometry args={[0.08, 8, 8]} />
+              <meshBasicMaterial 
+                color={currentSpellColor}
+                transparent
+                opacity={0.8}
+                emissive={currentSpellColor}
+                emissiveIntensity={0.6}
+              />
+            </mesh>
+            
+            {/* Magical particles */}
+            {[...Array(5)].map((_, i) => (
+              <mesh 
+                key={i}
+                position={[
+                  (Math.random() - 0.5) * 0.3,
+                  Math.random() * 0.2,
+                  -0.1 - Math.random() * 0.2
+                ]}
+              >
+                <sphereGeometry args={[0.02, 4, 4]} />
+                <meshBasicMaterial 
+                  color={currentSpellColor}
+                  transparent
+                  opacity={0.7}
+                  emissive={currentSpellColor}
+                  emissiveIntensity={0.5}
+                />
+              </mesh>
+            ))}
+          </group>
+        )}
+        
+        {/* Alternative: Show selected block for building mode */}
+        {!isAttacking && selectedBlock && (
+          <group position={[-0.1, 0.2, -0.15]} scale={[0.3, 0.3, 0.3]}>
+            <mesh>
+              <boxGeometry args={[1, 1, 1]} />
+              <meshLambertMaterial color={BLOCK_TYPES[selectedBlock]?.color || '#567C35'} />
+            </mesh>
+          </group>
+        )}
       </group>
     </group>
   );
