@@ -708,13 +708,30 @@ const PositionTracker = ({ onPositionUpdate }) => {
   return null;
 };
 
-// ULTRA-OPTIMIZED Player component with smooth mouse look
+// ENHANCED Player component with Experience System
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isOnGround, setIsOnGround] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
+  
+  // Experience system integration with error handling
+  const experienceSystem = ExperienceSystem ? 
+    ExperienceSystem.useExperienceSystem(gameState.playerData) : null;
+  
+  // Safely update gameState with experience system
+  useEffect(() => {
+    if (experienceSystem && gameState) {
+      try {
+        gameState.addExperience = experienceSystem.addExperience;
+        gameState.playerData = experienceSystem.playerData;
+        gameState.getLevelProgress = experienceSystem.getLevelProgress;
+      } catch (error) {
+        console.warn('Error integrating experience system:', error);
+      }
+    }
+  }, [experienceSystem, gameState]);
   
   // Performance optimization: cached vectors and minimal recalculations
   const forwardVector = useRef(new THREE.Vector3());
@@ -741,7 +758,7 @@ export const Player = ({ gameState }) => {
       console.log(`🎮 Player positioned at safe height: ${safeHeight} (ground: ${groundLevel})`);
     }, 1000); // Wait for terrain to generate
     
-    console.log('🎮 Ultra-optimized Player initialized with fixed orientation');
+    console.log('🎮 Enhanced Player with Experience System initialized');
   }, [camera]);
 
   // Expose attack state globally
