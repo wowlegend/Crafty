@@ -662,12 +662,14 @@ const BothHands = ({ selectedBlock, isAttacking, selectedSpell = 'fireball' }) =
         </mesh>
         
         {/* ENHANCED MAGIC WAND - Primary weapon */}
-        <MagicWand
-          selectedSpell={selectedSpell}
-          isAttacking={isAttacking}
-          position={[0.15, 0.3, -0.2]}
-          rotation={[0.2, 0.3, 0.1]}
-        />
+        {EnhancedMagic && (
+          <EnhancedMagic.MagicWand
+            selectedSpell={selectedSpell}
+            isAttacking={isAttacking}
+            position={[0.15, 0.3, -0.2]}
+            rotation={[0.2, 0.3, 0.1]}
+          />
+        )}
       </group>
       
       {/* LEFT HAND - Minecraft blocky style */}
