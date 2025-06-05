@@ -583,12 +583,312 @@ def test_chat_retrieval():
             "error": str(e)
         }
 
+def test_api_performance():
+    """Test 13: API Performance - Check response times for key endpoints"""
+    if not session_data["access_token"] or not session_data["world_id"]:
+        return {
+            "success": False,
+            "error": "No access token or world ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        # Test endpoints to measure
+        endpoints = [
+            {"name": "Health Check", "url": f"{API_URL}/", "method": "get", "data": None},
+            {"name": "User Info", "url": f"{API_URL}/auth/me", "method": "get", "data": None},
+            {"name": "World List", "url": f"{API_URL}/worlds", "method": "get", "data": None},
+            {"name": "World Details", "url": f"{API_URL}/worlds/{session_data['world_id']}", "method": "get", "data": None},
+            {"name": "Chat Messages", "url": f"{API_URL}/worlds/{session_data['world_id']}/chat", "method": "get", "data": None}
+        ]
+        
+        results = {}
+        all_response_times = []
+        
+        # Make 5 requests to each endpoint to get average response time
+        for endpoint in endpoints:
+            response_times = []
+            
+            for _ in range(5):
+                start_time = time.time()
+                
+                if endpoint["method"] == "get":
+                    response = requests.get(endpoint["url"], headers=headers)
+                elif endpoint["method"] == "post":
+                    response = requests.post(endpoint["url"], headers=headers, json=endpoint["data"])
+                
+                end_time = time.time()
+                response_time = (end_time - start_time) * 1000  # Convert to ms
+                response_times.append(response_time)
+                all_response_times.append(response_time)
+                
+                # Ensure we don't overwhelm the server
+                time.sleep(0.1)
+            
+            avg_response_time = sum(response_times) / len(response_times)
+            results[endpoint["name"]] = {
+                "avg_response_time_ms": avg_response_time,
+                "min_ms": min(response_times),
+                "max_ms": max(response_times)
+            }
+        
+        # Calculate overall stats
+        overall_avg = sum(all_response_times) / len(all_response_times)
+        
+        # Check if any endpoint is slower than 200ms
+        slow_endpoints = [name for name, data in results.items() if data["avg_response_time_ms"] > 200]
+        
+        if slow_endpoints:
+            return {
+                "success": False,
+                "error": f"Some endpoints are slower than 200ms: {', '.join(slow_endpoints)}",
+                "data": {
+                    "endpoint_results": results,
+                    "overall_avg_ms": overall_avg
+                }
+            }
+        else:
+            return {
+                "success": True,
+                "data": {
+                    "endpoint_results": results,
+                    "overall_avg_ms": overall_avg
+                }
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_concurrent_requests():
+    """Test 14: Concurrent Requests - Test API under concurrent load"""
+    if not session_data["access_token"] or not session_data["world_id"]:
+        return {
+            "success": False,
+            "error": "No access token or world ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        # Function to make a request to the worlds endpoint
+        def make_request():
+            start_time = time.time()
+            response = requests.get(f"{API_URL}/worlds", headers=headers)
+            end_time = time.time()
+            
+            return {
+                "status_code": response.status_code,
+                "response_time": (end_time - start_time) * 1000  # Convert to ms
+            }
+        
+        # Make 10 concurrent requests
+        num_requests = 10
+        response_times = []
+        failed_requests = 0
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_requests) as executor:
+            futures = [executor.submit(make_request) for _ in range(num_requests)]
+            
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result["status_code"] == 200:
+                    response_times.append(result["response_time"])
+                else:
+                    failed_requests += 1
+        
+        if failed_requests > 0:
+            return {
+                "success": False,
+                "error": f"{failed_requests} out of {num_requests} concurrent requests failed",
+                "data": {
+                    "avg_response_time_ms": sum(response_times) / len(response_times) if response_times else 0,
+                    "min_ms": min(response_times) if response_times else 0,
+                    "max_ms": max(response_times) if response_times else 0,
+                    "std_dev_ms": statistics.stdev(response_times) if len(response_times) > 1 else 0
+                }
+            }
+        else:
+            avg_response_time = sum(response_times) / len(response_times)
+            
+            # Check if average response time is under 500ms for concurrent requests
+            if avg_response_time > 500:
+                return {
+                    "success": False,
+                    "error": f"Average response time for concurrent requests is too high: {avg_response_time:.2f}ms",
+                    "data": {
+                        "avg_response_time_ms": avg_response_time,
+                        "min_ms": min(response_times),
+                        "max_ms": max(response_times),
+                        "std_dev_ms": statistics.stdev(response_times) if len(response_times) > 1 else 0
+                    }
+                }
+            else:
+                return {
+                    "success": True,
+                    "data": {
+                        "avg_response_time_ms": avg_response_time,
+                        "min_ms": min(response_times),
+                        "max_ms": max(response_times),
+                        "std_dev_ms": statistics.stdev(response_times) if len(response_times) > 1 else 0
+                    }
+                }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_error_handling():
+    """Test 15: Error Handling - Test API error responses for edge cases"""
+    if not session_data["access_token"]:
+        return {
+            "success": False,
+            "error": "No access token available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        # Test cases for error handling
+        test_cases = [
+            {
+                "name": "Missing Required Field",
+                "endpoint": f"{API_URL}/worlds",
+                "method": "post",
+                "data": {"settings": {}},  # Missing 'name' and 'world_data'
+                "expected_status": 422  # Validation error
+            },
+            {
+                "name": "Invalid World ID",
+                "endpoint": f"{API_URL}/worlds/invalid-uuid-format",
+                "method": "get",
+                "data": None,
+                "expected_status": 404  # Not found
+            },
+            {
+                "name": "Non-existent World",
+                "endpoint": f"{API_URL}/worlds/{str(uuid.uuid4())}",  # Random UUID
+                "method": "get",
+                "data": None,
+                "expected_status": 404  # Not found
+            }
+        ]
+        
+        results = {}
+        all_passed = True
+        
+        for test_case in test_cases:
+            if test_case["method"] == "get":
+                response = requests.get(test_case["endpoint"], headers=headers)
+            elif test_case["method"] == "post":
+                response = requests.post(test_case["endpoint"], headers=headers, json=test_case["data"])
+            
+            passed = response.status_code == test_case["expected_status"]
+            
+            results[test_case["name"]] = {
+                "passed": passed,
+                "expected_status": test_case["expected_status"],
+                "actual_status": response.status_code,
+                "response": response.json() if response.text else None
+            }
+            
+            if not passed:
+                all_passed = False
+        
+        if all_passed:
+            return {
+                "success": True,
+                "data": results
+            }
+        else:
+            failed_cases = [name for name, data in results.items() if not data["passed"]]
+            return {
+                "success": False,
+                "error": f"Some error handling tests failed: {', '.join(failed_cases)}",
+                "data": results
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_database_stability():
+    """Test 16: Database Stability - Test database connection stability"""
+    try:
+        # Make 20 sequential requests to an endpoint that requires DB access
+        num_requests = 20
+        success_count = 0
+        response_times = []
+        
+        for i in range(num_requests):
+            start_time = time.time()
+            response = requests.get(f"{API_URL}/")
+            end_time = time.time()
+            
+            if response.status_code == 200:
+                success_count += 1
+                response_times.append((end_time - start_time) * 1000)  # Convert to ms
+            
+            # Small delay to avoid overwhelming the server
+            time.sleep(0.1)
+        
+        # Check if all requests were successful
+        if success_count == num_requests:
+            # Check if response times are stable (not increasing)
+            first_half_avg = sum(response_times[:num_requests//2]) / (num_requests//2)
+            second_half_avg = sum(response_times[num_requests//2:]) / (num_requests - num_requests//2)
+            
+            # If second half average is significantly higher (>50%), it might indicate degradation
+            if second_half_avg > first_half_avg * 1.5:
+                return {
+                    "success": False,
+                    "error": f"Response times are increasing, possible performance degradation",
+                    "data": {
+                        "first_half_avg_ms": first_half_avg,
+                        "second_half_avg_ms": second_half_avg,
+                        "all_response_times_ms": response_times
+                    }
+                }
+            else:
+                return {
+                    "success": True,
+                    "data": {
+                        "success_rate": f"{success_count}/{num_requests}",
+                        "avg_response_time_ms": sum(response_times) / len(response_times),
+                        "first_half_avg_ms": first_half_avg,
+                        "second_half_avg_ms": second_half_avg
+                    }
+                }
+        else:
+            return {
+                "success": False,
+                "error": f"Only {success_count} out of {num_requests} requests were successful",
+                "data": {
+                    "success_rate": f"{success_count}/{num_requests}"
+                }
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 def run_all_tests():
     """Run all tests in sequence"""
     print(f"Starting backend API tests at {datetime.now().isoformat()}")
     print(f"API URL: {API_URL}")
     
-    # Run tests in sequence
+    # Run basic functionality tests
     run_test("API Health Check", test_api_health)
     run_test("User Registration", test_user_registration)
     run_test("User Registration (Duplicate)", test_user_registration_duplicate)
@@ -601,6 +901,12 @@ def run_all_tests():
     run_test("World Details", test_world_details)
     run_test("Chat System", test_chat_system)
     run_test("Chat Retrieval", test_chat_retrieval)
+    
+    # Run performance and stability tests
+    run_test("API Performance", test_api_performance)
+    run_test("Concurrent Requests", test_concurrent_requests)
+    run_test("Error Handling", test_error_handling)
+    run_test("Database Stability", test_database_stability)
     
     # Print summary
     print(f"\n{'='*80}\nTest Summary\n{'='*80}")
@@ -619,38 +925,4 @@ def run_all_tests():
     return test_results
 
 if __name__ == "__main__":
-    # Check if we should run only basic tests or all tests
-    if len(sys.argv) > 1 and sys.argv[1] == "--basic":
-        # Run only basic functionality tests
-        print(f"Starting basic backend API tests at {datetime.now().isoformat()}")
-        print(f"API URL: {API_URL}")
-        
-        run_test("API Health Check", test_api_health)
-        run_test("User Registration", test_user_registration)
-        run_test("User Registration (Duplicate)", test_user_registration_duplicate)
-        run_test("User Login", test_user_login)
-        run_test("User Login (Invalid)", test_user_login_invalid)
-        run_test("Protected Route", test_protected_route)
-        run_test("Protected Route (Invalid Token)", test_protected_route_invalid_token)
-        run_test("World Creation", test_world_creation)
-        run_test("World Retrieval", test_world_retrieval)
-        run_test("World Details", test_world_details)
-        run_test("Chat System", test_chat_system)
-        run_test("Chat Retrieval", test_chat_retrieval)
-        
-        # Print summary
-        print(f"\n{'='*80}\nTest Summary\n{'='*80}")
-        print(f"Total tests: {test_results['total']}")
-        print(f"Passed: {test_results['passed']}")
-        print(f"Failed: {test_results['failed']}")
-        print(f"Success rate: {(test_results['passed'] / test_results['total']) * 100:.2f}%")
-        
-        # Print detailed results for failed tests
-        if test_results['failed'] > 0:
-            print(f"\n{'='*80}\nFailed Tests\n{'='*80}")
-            for test in test_results['tests']:
-                if test['status'] != "PASSED":
-                    print(f"- {test['name']}: {test['result'].get('error', 'Unknown error')}")
-    else:
-        # Run all tests
-        run_all_tests()
+    run_all_tests()
