@@ -292,16 +292,6 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced grass effects */}
       <GrassEffects />
       
-      {/* Enhanced Grass System with wind effects - Safe implementation */}
-      {EnhancedGrass && EnhancedGrass.EnhancedGrassSystem && (
-        <EnhancedGrass.EnhancedGrassSystem camera={camera} />
-      )}
-      
-      {/* Enhanced Magic System Manager - Safe implementation */}
-      {EnhancedMagic && EnhancedMagic.MagicSystemManager && (
-        <EnhancedMagic.MagicSystemManager gameState={gameState} />
-      )}
-      
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
         const visibleBlocks = Array.from(blocks.values())
