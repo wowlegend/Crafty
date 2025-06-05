@@ -755,7 +755,7 @@ export const Player = ({ gameState }) => {
       lastCameraUpdate.current = now;
     }
     
-    // Horizontal movement with experience tracking
+    // Horizontal movement with performance optimization
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
