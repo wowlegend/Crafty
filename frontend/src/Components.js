@@ -583,23 +583,30 @@ export const Player = ({ gameState }) => {
     window.setSelectedSpell = setSelectedSpell;
   }, [selectedSpell]);
 
-  // OPTIMIZED frame logic - NO camera rotation interference
+  // ULTRA-STABLE frame logic with anti-shake measures
   useFrame((state, delta) => {
     const now = performance.now();
     
-    const shouldUpdateCamera = now - lastCameraUpdate.current > 16; // 60fps
-    const shouldCheckGround = now - lastGroundCheck.current > 50; // 20fps for ground check
+    // INCREASED thresholds for stability
+    const shouldUpdateCamera = now - lastCameraUpdate.current > 32; // 30fps for camera
+    const shouldCheckGround = now - lastGroundCheck.current > 100; // 10fps for ground check
     
     const speed = 12;
     const moveVector = new THREE.Vector3();
     
+    // STABLE camera direction calculations
     if (shouldUpdateCamera) {
-      camera.getWorldDirection(forwardVector.current);
-      rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
-      lastCameraUpdate.current = now;
+      try {
+        camera.getWorldDirection(forwardVector.current);
+        rightVector.current.crossVectors(forwardVector.current, upVector.current).normalize();
+        lastCameraUpdate.current = now;
+      } catch (error) {
+        // Fallback if camera calculations fail
+        console.warn('Camera calculation error, using fallback');
+      }
     }
     
-    // Apply movement - ONLY position, no rotation
+    // Apply movement
     if (keys.KeyW) moveVector.add(forwardVector.current);
     if (keys.KeyS) moveVector.sub(forwardVector.current);
     if (keys.KeyA) moveVector.sub(rightVector.current);
@@ -624,7 +631,7 @@ export const Player = ({ gameState }) => {
       }
     }
     
-    // Enhanced gravity and ground collision - ONLY Y position
+    // STABILIZED gravity and ground collision
     velocity.current.y -= 25 * delta;
     
     if (shouldCheckGround) {
@@ -633,8 +640,9 @@ export const Player = ({ gameState }) => {
       const playerHeight = 1.8;
       const minAllowedY = groundLevel + playerHeight;
       
+      // SMOOTH transition to ground level
       if (newY <= minAllowedY) {
-        camera.position.y = minAllowedY;
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, minAllowedY, 0.1);
         velocity.current.y = 0;
         setIsOnGround(true);
       } else {
@@ -642,13 +650,16 @@ export const Player = ({ gameState }) => {
         setIsOnGround(false);
       }
       
+      // SAFETY bounds check
       if (camera.position.y < groundLevel + playerHeight) {
         camera.position.y = groundLevel + playerHeight;
       }
       
       lastGroundCheck.current = now;
     } else {
-      camera.position.y += velocity.current.y * delta;
+      // SMOOTH Y movement
+      const newY = camera.position.y + velocity.current.y * delta;
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, newY, 0.8);
     }
   });
 
