@@ -429,10 +429,10 @@ export const MinecraftWorld = ({ gameState }) => {
         <EnhancedGrass.EnhancedGrassSystem camera={camera} />
       )} */}
       
-      {/* Enhanced Magic System Manager */}
-      {/* {EnhancedMagic && (
+      {/* Enhanced Magic System Manager - Safe implementation */}
+      {EnhancedMagic && EnhancedMagic.MagicSystemManager && (
         <EnhancedMagic.MagicSystemManager gameState={gameState} />
-      )} */}
+      )}
       
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
