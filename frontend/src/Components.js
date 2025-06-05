@@ -687,20 +687,23 @@ export const Player = ({ gameState }) => {
     return groundLevel;
   }, []);
 
-  // Enhanced event handlers with magic system
+  // Enhanced event handlers with magic system - FIXED KEY CONFLICTS
   useEffect(() => {
     const handleKeyDown = (event) => {
-      setKeys(prev => {
-        if (prev[event.code]) return prev;
-        return { ...prev, [event.code]: true };
-      });
+      // ONLY update movement keys, no other actions
+      if (['KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(event.code)) {
+        setKeys(prev => ({ ...prev, [event.code]: true }));
+        return; // Exit early to prevent other key handling
+      }
       
+      // Handle other keys separately
       if (event.code === 'Space') {
         event.preventDefault();
         if (isOnGround) {
           velocity.current.y = 12;
           setIsOnGround(false);
         }
+        return;
       }
       
       // Enhanced magic casting with F key
@@ -718,7 +721,8 @@ export const Player = ({ gameState }) => {
           }
         }
         
-        setTimeout(() => setIsAttacking(false), 600); // Longer for better visual effect
+        setTimeout(() => setIsAttacking(false), 600);
+        return;
       }
       
       // Spell selection with Q key (cycle through spells)
@@ -730,6 +734,7 @@ export const Player = ({ gameState }) => {
         setSelectedSpell(nextSpell);
         gameState.selectedSpell = nextSpell;
         console.log(`🔮 Selected spell: ${nextSpell}`);
+        return;
       }
       
       // Block selection (keeping for building mode)
@@ -739,14 +744,15 @@ export const Player = ({ gameState }) => {
         if (num >= 1 && num <= blockTypes.length) {
           gameState.setSelectedBlock(blockTypes[num - 1]);
         }
+        return;
       }
     };
     
     const handleKeyUp = (event) => {
-      setKeys(prev => {
-        if (!prev[event.code]) return prev;
-        return { ...prev, [event.code]: false };
-      });
+      // ONLY handle movement keys for release
+      if (['KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(event.code)) {
+        setKeys(prev => ({ ...prev, [event.code]: false }));
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown, { passive: false });
