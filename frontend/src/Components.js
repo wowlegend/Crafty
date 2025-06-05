@@ -26,18 +26,6 @@ import {
   Crown
 } from 'lucide-react';
 
-// Import new enhanced systems
-import { MagicWand, MagicSystemManager, MAGIC_SPELLS } from './MagicSystem';
-import { 
-  useExperienceSystem, 
-  XPNotification, 
-  LevelUpNotification, 
-  ExperienceBar, 
-  PlayerStats 
-} from './ExperienceSystem';
-import { EnhancedGrassSystem } from './EnhancedGrassSystem';
-import { terrainOptimizer } from './TerrainOptimizer';
-
 // Authentic Minecraft Block Types Configuration
 export const BLOCK_TYPES = {
   grass: { color: '#567C35', name: 'Grass Block', texture: 'grass' },
