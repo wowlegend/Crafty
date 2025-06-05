@@ -163,6 +163,11 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     const deltaMs = delta * 1000;
     const time = state.clock.elapsedTime;
     
+    // DEBUG: Show projectile count
+    if (projectiles.length > 0) {
+      console.log(`🚀 useFrame: ${projectiles.length} projectiles active`);
+    }
+    
     // Update projectiles
     setProjectiles(prev => prev.map(projectile => {
       console.log(`🚀 Updating projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
