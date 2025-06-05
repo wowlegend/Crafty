@@ -463,8 +463,8 @@ export const NPCSystem = ({ gameState }) => {
             }
             
             // BONUS XP for kill
-            if (window.addXP) {
-              window.addXP(25, `Defeated ${entity.type}`);
+            if (window.addExperience) {
+              window.addExperience(25, `Defeated ${entity.type}`);
             }
             
             console.log(`💀 ${entity.type} DEFEATED BY SPELL! Dropped: ${entity.drops?.join(', ') || 'nothing'}`);
