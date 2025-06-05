@@ -341,6 +341,11 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced grass effects */}
       <GrassEffects />
       
+      {/* Enhanced Magic System Manager */}
+      {EnhancedMagic && (
+        <EnhancedMagic.MagicSystemManager gameState={gameState} />
+      )}
+      
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
         const visibleBlocks = Array.from(blocks.values())
