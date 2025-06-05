@@ -142,12 +142,14 @@ export const MinecraftWorld = ({ gameState }) => {
       for (let z = startZ; z < startZ + chunkSize; z += 2) {
         const height = generateTerrain(x, z);
         
-        // Generate minimal essential blocks
+        // Generate surface blocks - favor grass terrain
         for (let y = Math.max(0, height - 1); y <= height; y++) {
           const key = `${x},${y},${z}`;
           
           if (y === height) {
-            newBlocks.set(key, { position: [x, y, z], type: height > 14 ? 'grass' : 'sand' });
+            // 85% grass, 15% sand for variety
+            const blockType = height > 12 && Math.random() < 0.85 ? 'grass' : 'sand';
+            newBlocks.set(key, { position: [x, y, z], type: blockType });
           } else {
             newBlocks.set(key, { position: [x, y, z], type: 'dirt' });
           }
