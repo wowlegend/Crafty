@@ -508,7 +508,7 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
         {entity.type === 'witch' && <WitchModel />}
       </mesh>
       
-      {/* Enhanced health bar with damage indication */}
+      {/* Enhanced health bar with damage indication - RESTORED */}
       {entity.health < entity.maxHealth && (
         <HealthBar 
           entity={entity} 
