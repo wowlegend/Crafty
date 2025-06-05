@@ -3,7 +3,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Box, Plane, Stars } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { MagicProjectileSystem, MagicImpactSystem } from './MagicSystem';
 import { 
   Pickaxe, 
   Package, 
