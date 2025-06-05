@@ -799,15 +799,33 @@ const BothHands = ({ selectedBlock, isAttacking }) => {
   );
 };
 
-// Enhanced Sky Component
+// ENHANCED Sky Component - Follows player like terrain
 const MinecraftSky = ({ isDay = true }) => {
+  const { camera } = useThree();
+  const skyRef = useRef();
+  const sunRef = useRef();
+  
   const skyColor = isDay ? '#87CEEB' : '#191970';
   const sunColor = isDay ? '#FFD700' : '#F5F5DC';
   
+  // Make sky follow player position
+  useFrame(() => {
+    if (skyRef.current && camera) {
+      skyRef.current.position.copy(camera.position);
+    }
+    if (sunRef.current && camera) {
+      sunRef.current.position.set(
+        camera.position.x,
+        camera.position.y + 50,
+        camera.position.z - 80
+      );
+    }
+  });
+  
   return (
     <group>
-      {/* Sky sphere */}
-      <mesh scale={[200, 200, 200]}>
+      {/* Sky sphere that follows player */}
+      <mesh ref={skyRef} scale={[200, 200, 200]}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial 
           color={skyColor}
@@ -815,8 +833,8 @@ const MinecraftSky = ({ isDay = true }) => {
         />
       </mesh>
       
-      {/* Sun/Moon */}
-      <mesh position={[0, 50, -80]}>
+      {/* Sun/Moon that follows player */}
+      <mesh ref={sunRef}>
         <sphereGeometry args={[3, 12, 12]} />
         <meshBasicMaterial color={sunColor} />
       </mesh>
