@@ -235,7 +235,11 @@ export const MinecraftWorld = ({ gameState }) => {
         
         // Add XP for placing blocks
         if (gameState.addExperience) {
-          gameState.addExperience('placeBlock', 1, gameState.selectedBlock);
+          try {
+            gameState.addExperience('placeBlock', 1, gameState.selectedBlock);
+          } catch (error) {
+            console.warn('Error adding place block XP:', error);
+          }
         }
         
         console.log(`🧱 Placed ${gameState.selectedBlock} at (${gridPos.x}, ${gridPos.y}, ${gridPos.z})`);
