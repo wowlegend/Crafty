@@ -326,11 +326,11 @@ export const MinecraftWorld = ({ gameState }) => {
 
   return (
     <group>
-      {/* Enhanced grass effects system */}
-      <EnhancedGrassSystem camera={camera} />
+      {/* Performance-optimized clouds */}
+      <MinecraftClouds />
       
-      {/* Magic system manager */}
-      <MagicSystemManager gameState={gameState} />
+      {/* Enhanced grass effects */}
+      <GrassEffects />
       
       {/* ULTRA-OPTIMIZED block rendering with advanced culling */}
       {useMemo(() => {
