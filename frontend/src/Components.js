@@ -782,7 +782,7 @@ export const Player = ({ gameState }) => {
       lastCameraUpdate.current = now;
     }
     
-    // Horizontal movement with performance optimization
+    // Horizontal movement with experience tracking
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0;
@@ -790,6 +790,15 @@ export const Player = ({ gameState }) => {
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       camera.position.x += scaledMovement.x;
       camera.position.z += scaledMovement.z;
+      
+      // Add experience for exploration (periodically)
+      if (experienceSystem && Math.random() < 0.001) {
+        try {
+          experienceSystem.addExperience('discoverArea', 25, 'exploration');
+        } catch (error) {
+          console.warn('Error adding exploration XP:', error);
+        }
+      }
     }
     
     // Optimized gravity and ground collision
