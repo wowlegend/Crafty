@@ -93,11 +93,11 @@ export const NPCSystem = ({ gameState }) => {
     ];
 
     const initialEntities = spawnPositions.map((pos, index) => {
-      // ROBUST ground level calculation for mobs
+      // FIXED ground level calculation for mobs using separate function
       let groundY = 15; // Safe default
       try {
-        if (window.getHighestBlockAt) {
-          const calculatedY = window.getHighestBlockAt(pos.x, pos.z);
+        if (window.getMobGroundLevel) {
+          const calculatedY = window.getMobGroundLevel(pos.x, pos.z);
           if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
             groundY = calculatedY + 1.5; // Spawn slightly above ground
           }
