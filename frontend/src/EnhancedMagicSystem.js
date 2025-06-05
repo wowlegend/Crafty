@@ -165,6 +165,8 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     
     // Update projectiles
     setProjectiles(prev => prev.map(projectile => {
+      console.log(`🚀 Updating projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
+      
       // Update position
       const newPos = projectile.position.clone().add(
         projectile.velocity.clone().multiplyScalar(delta)
