@@ -619,4 +619,38 @@ def run_all_tests():
     return test_results
 
 if __name__ == "__main__":
-    run_all_tests()
+    # Check if we should run only basic tests or all tests
+    if len(sys.argv) > 1 and sys.argv[1] == "--basic":
+        # Run only basic functionality tests
+        print(f"Starting basic backend API tests at {datetime.now().isoformat()}")
+        print(f"API URL: {API_URL}")
+        
+        run_test("API Health Check", test_api_health)
+        run_test("User Registration", test_user_registration)
+        run_test("User Registration (Duplicate)", test_user_registration_duplicate)
+        run_test("User Login", test_user_login)
+        run_test("User Login (Invalid)", test_user_login_invalid)
+        run_test("Protected Route", test_protected_route)
+        run_test("Protected Route (Invalid Token)", test_protected_route_invalid_token)
+        run_test("World Creation", test_world_creation)
+        run_test("World Retrieval", test_world_retrieval)
+        run_test("World Details", test_world_details)
+        run_test("Chat System", test_chat_system)
+        run_test("Chat Retrieval", test_chat_retrieval)
+        
+        # Print summary
+        print(f"\n{'='*80}\nTest Summary\n{'='*80}")
+        print(f"Total tests: {test_results['total']}")
+        print(f"Passed: {test_results['passed']}")
+        print(f"Failed: {test_results['failed']}")
+        print(f"Success rate: {(test_results['passed'] / test_results['total']) * 100:.2f}%")
+        
+        # Print detailed results for failed tests
+        if test_results['failed'] > 0:
+            print(f"\n{'='*80}\nFailed Tests\n{'='*80}")
+            for test in test_results['tests']:
+                if test['status'] != "PASSED":
+                    print(f"- {test['name']}: {test['result'].get('error', 'Unknown error')}")
+    else:
+        # Run all tests
+        run_all_tests()
