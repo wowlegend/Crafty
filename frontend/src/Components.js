@@ -729,15 +729,15 @@ const BothHands = ({ selectedBlock, isAttacking, selectedSpell = 'fireball' }) =
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* ENHANCED MAGIC WAND - Temporarily disabled to fix Three.js errors */}
-        {/* {EnhancedMagic && (
+        {/* ENHANCED MAGIC WAND - Safe implementation */}
+        {EnhancedMagic && EnhancedMagic.MagicWand && (
           <EnhancedMagic.MagicWand
             selectedSpell={selectedSpell}
             isAttacking={isAttacking}
             position={[0.15, 0.3, -0.2]}
             rotation={[0.2, 0.3, 0.1]}
           />
-        )} */}
+        )}
       </group>
       
       {/* LEFT HAND - Minecraft blocky style */}
