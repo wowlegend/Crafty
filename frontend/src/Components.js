@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 
 // Import simplified systems - no runtime errors
+// Import simplified systems - no runtime errors
 import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
 import { SimpleMagicProjectileSystem, SimpleMagicWand } from './SimpleMagicSystem';
+import { EnhancedGrassSystem } from './SimpleGrassSystem';
 
 
 
