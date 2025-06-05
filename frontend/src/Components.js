@@ -423,11 +423,10 @@ export const MinecraftWorld = ({ gameState }) => {
       {/* Enhanced grass effects */}
       <GrassEffects />
       
-      {/* Temporarily disabled enhanced systems to fix Three.js errors */}
-      {/* Enhanced Grass System with wind effects */}
-      {/* {EnhancedGrass && (
+      {/* Enhanced Grass System with wind effects - Safe implementation */}
+      {EnhancedGrass && EnhancedGrass.EnhancedGrassSystem && (
         <EnhancedGrass.EnhancedGrassSystem camera={camera} />
-      )} */}
+      )}
       
       {/* Enhanced Magic System Manager - Safe implementation */}
       {EnhancedMagic && EnhancedMagic.MagicSystemManager && (
