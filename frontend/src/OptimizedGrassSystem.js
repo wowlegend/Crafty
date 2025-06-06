@@ -96,15 +96,15 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   );
 };
 
-// Highly optimized individual grass blade
+// ENHANCED individual grass blade with wind-ready properties
 const OptimizedGrassBlade = React.memo(({ position }) => {
   return (
     <mesh position={position}>
-      <planeGeometry args={[0.08, 0.15]} />
+      <planeGeometry args={[0.1, 0.18]} />
       <meshBasicMaterial 
         color="#4a7c59"
         transparent
-        opacity={0.6}
+        opacity={0.7}
         side={THREE.DoubleSide}
       />
     </mesh>
