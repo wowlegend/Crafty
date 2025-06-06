@@ -219,7 +219,7 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       if (window.getHighestBlockAt) {
         const groundLevel = window.getHighestBlockAt(projectile.position.x, projectile.position.z);
         console.log(`🌍 Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
-        if (projectile.position.y <= groundLevel + 3) { // More lenient terrain collision
+        if (projectile.position.y <= groundLevel + 0.5) { // Only hit when actually AT ground level
           console.log(`🌍 TERRAIN HIT! Projectile hit ground`);
           createSpellImpact(projectile.position, projectile.type);
           return false;
