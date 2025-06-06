@@ -235,7 +235,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     });
   }, []);
 
-  // OPTIMIZED frame-based generation with throttling
+  // ENHANCED frame-based generation with better reliability
   useFrame(() => {
     if (!camera) return;
     
@@ -251,10 +251,10 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // Queue chunks for generation instead of generating immediately
+      // FIXED: Use reliable setTimeout instead of requestIdleCallback
       if (!isGenerating.current) {
         isGenerating.current = true;
-        requestIdleCallback(() => {
+        setTimeout(() => {
           for (let x = -renderDistance; x <= renderDistance; x++) {
             for (let z = -renderDistance; z <= renderDistance; z++) {
               const chunkX = currentChunkX + x;
@@ -263,7 +263,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
             }
           }
           isGenerating.current = false;
-        });
+          console.log(`🌍 Generated terrain around chunk (${currentChunkX}, ${currentChunkZ})`);
+        }, 50); // Small delay for performance
       }
     }
   });
