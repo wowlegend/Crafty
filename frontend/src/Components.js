@@ -359,26 +359,31 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     };
   }, [camera, gameState.selectedBlock, handleBlockBreak, handleBlockPlace]);
 
-  // SEPARATE ground level function for MOBS ONLY (doesn't affect player)
+  // ENHANCED ground level function for MOBS with better accuracy
   useEffect(() => {
-    // Player uses fixed ground level - NO OSCILLATION
+    // Player uses the actual terrain generation function for smooth terrain following
     window.getHighestBlockAt = (x, z) => {
-      return 15; // Fixed height for player to prevent oscillation
+      return generateTerrainHeight(x, z); // Use actual terrain height
     };
     
-    // SEPARATE ground detection for MOBS ONLY
+    // ENHANCED ground detection for MOBS using both blocks and terrain generation
     window.getMobGroundLevel = (x, z) => {
-      let maxY = 12;
+      // First try to get from actual terrain generation
+      let terrainHeight = generateTerrainHeight(x, z);
+      
+      // Then check if there are any placed blocks higher than terrain
+      let maxBlockY = terrainHeight;
       blocks.forEach(block => {
         if (Math.floor(block.position[0]) === Math.floor(x) && 
             Math.floor(block.position[2]) === Math.floor(z)) {
-          maxY = Math.max(maxY, block.position[1]);
+          maxBlockY = Math.max(maxBlockY, block.position[1]);
         }
       });
-      return Math.max(maxY, 12); // Proper terrain height for mobs
+      
+      return Math.max(maxBlockY, 12); // Use the higher of terrain or placed blocks
     };
     
-    console.log('🔧 FIXED: Separate ground detection - Player=fixed(15), Mobs=terrain-based');
+    console.log('🔧 ENHANCED: Ground detection using actual terrain generation for both player and mobs');
   }, [blocks]);
 
   // OPTIMIZED block rendering with culling
