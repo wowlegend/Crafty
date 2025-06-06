@@ -625,15 +625,15 @@ export const Player = ({ gameState }) => {
       targetPosition.current.z += scaledMovement.z;
     }
     
-    // FIXED: SMART terrain following - adapts to terrain but prevents oscillation
+    // ENHANCED: Smooth terrain following with stability
     velocity.current.y -= 20 * delta; // Reduced gravity
     
-    // SMART ground level calculation - uses terrain but with smoothing
+    // ENHANCED ground level calculation - uses actual terrain generation
     let targetGroundLevel = 15; // Safe default
     try {
-      if (window.getMobGroundLevel) {
-        // Use the mob ground detection for accurate terrain height
-        const actualGroundLevel = window.getMobGroundLevel(camera.position.x, camera.position.z);
+      if (window.getHighestBlockAt) {
+        // Use the accurate terrain height function
+        const actualGroundLevel = window.getHighestBlockAt(camera.position.x, camera.position.z);
         if (typeof actualGroundLevel === 'number' && !isNaN(actualGroundLevel)) {
           targetGroundLevel = actualGroundLevel;
         }
