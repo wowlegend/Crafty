@@ -419,7 +419,7 @@ export const NPCSystem = ({ gameState }) => {
             Math.pow(position.z - ez, 2)
           );
           // INCREASED collision radius for easier spell targeting
-          const hitRadius = size + 2.5; // Much larger hit box for spells
+          const hitRadius = size + 8.0; // Much larger hit box for spells (was 2.5)
           
           console.log(`🔍 Entity ${entity.type} at (${ex.toFixed(1)}, ${ey.toFixed(1)}, ${ez.toFixed(1)}) - Distance: ${distance.toFixed(2)}, Required: ${hitRadius.toFixed(2)}`);
           
