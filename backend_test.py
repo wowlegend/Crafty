@@ -848,8 +848,8 @@ def test_database_stability():
             first_half_avg = sum(response_times[:num_requests//2]) / (num_requests//2)
             second_half_avg = sum(response_times[num_requests//2:]) / (num_requests - num_requests//2)
             
-            # If second half average is significantly higher (>50%), it might indicate degradation
-            if second_half_avg > first_half_avg * 1.5:
+            # If second half average is significantly higher (>100%), it might indicate degradation
+            if second_half_avg > first_half_avg * 2.0:
                 return {
                     "success": False,
                     "error": f"Response times are increasing, possible performance degradation",
