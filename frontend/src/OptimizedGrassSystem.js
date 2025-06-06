@@ -48,15 +48,15 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
     }
   });
 
-  // Simplified grass particles for performance
+  // ENHANCED grass particles with more natural distribution
   const grassParticles = useMemo(() => {
     const particles = [];
-    for (let i = 0; i < 4; i++) { // Reduced count
+    for (let i = 0; i < 8; i++) { // Increased count for better visual effect
       particles.push({
         x: (Math.random() - 0.5) * 30,
         y: 12 + Math.random() * 8,
         z: (Math.random() - 0.5) * 30,
-        scale: 0.5 + Math.random() * 0.3
+        scale: 0.4 + Math.random() * 0.4 // Varied sizes
       });
     }
     return particles;
