@@ -205,8 +205,11 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       return updatedProjectile;
       
     }).filter(projectile => {
+      console.log(`🔍 FILTER: Checking projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)}), age: ${projectile.age}`);
+      
       // Check for expiration
       if (projectile.age > projectile.maxAge) {
+        console.log(`⏰ EXPIRED: Projectile ${projectile.id} expired (${projectile.age} > ${projectile.maxAge})`);
         createSpellImpact(projectile.position, projectile.type);
         return false;
       }
