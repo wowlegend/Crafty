@@ -171,23 +171,27 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     // Update projectiles
     setProjectiles(prev => prev.map(projectile => {
       console.log(`🚀 Updating projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
+      console.log(`🚀 Velocity: (${projectile.velocity.x.toFixed(1)}, ${projectile.velocity.y.toFixed(1)}, ${projectile.velocity.z.toFixed(1)}), delta: ${delta.toFixed(3)}`);
       
       // Update position
       const newPos = projectile.position.clone().add(
         projectile.velocity.clone().multiplyScalar(delta)
       );
       
-      // Add gravity for fire and ice
+      console.log(`🚀 NEW position should be: (${newPos.x.toFixed(1)}, ${newPos.y.toFixed(1)}, ${newPos.z.toFixed(1)})`);
+      
+      // Add gravity for fireball and iceball
       if (projectile.type === 'fireball' || projectile.type === 'iceball') {
         projectile.velocity.y -= 12 * delta;
       }
       
-      // Update trail positions
       const updatedProjectile = {
         ...projectile,
         position: newPos,
         age: projectile.age + deltaMs
       };
+      
+      console.log(`🚀 FINAL position: (${updatedProjectile.position.x.toFixed(1)}, ${updatedProjectile.position.y.toFixed(1)}, ${updatedProjectile.position.z.toFixed(1)})`);
       
       // Add to trail every few frames
       if (time - projectile.lastTrailUpdate > 0.05) {
