@@ -282,6 +282,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the improved terrain generation. The code now includes optimized chunk generation with predictive terrain generation that generates chunks ahead of player movement. The terrain generation is smooth and fast, with no lag during movement."
+      - working: true
+        agent: "testing"
+        comment: "Verified the infinite terrain generation fix. Console logs confirm the initial 5x5 chunk area is generated for seamless experience, and terrain continues to generate as the player moves (verified '🌍 Generated terrain around chunk (0, -1)' message). The terrain generation is working correctly with no gaps or disconnected chunks."
 
   - task: "Building & Block System"
     implemented: true
@@ -379,17 +382,72 @@ frontend:
         agent: "testing"
         comment: "Verified the performance optimizations. The game runs smoothly with no stuttering or frame drops. The terrain generation is fast and predictive, generating chunks ahead of player movement."
 
+  - task: "Mob Ground Detection"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/SimplifiedNPCSystem.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if mobs are properly positioned on the ground and not floating in the air."
+      - working: true
+        agent: "main"
+        comment: "ENHANCED ground detection using actual terrain generation function for both player and mobs, ensuring NPCs spawn on proper ground level."
+      - working: true
+        agent: "testing"
+        comment: "Verified the mob ground detection fix. Console logs show all mobs are properly positioned on the ground with height values ranging from 13.5 to 22, with no floating mobs detected. The implementation uses the actual terrain generation function for accurate ground detection."
+
+  - task: "Grass Wind Effects"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/OptimizedGrassSystem.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if grass blades have realistic wind animation and if floating grass particles have wind drift effect."
+      - working: true
+        agent: "main"
+        comment: "RESTORED grass wind effects with optimized animation - every 4th blade animates with realistic wind sway and horizontal drift particles."
+      - working: true
+        agent: "testing"
+        comment: "Verified the grass wind effects implementation. The code includes optimized animation where every 4th blade animates with realistic wind sway and horizontal drift particles. The implementation is performance-optimized to maintain smooth gameplay."
+
+  - task: "Player Terrain Following"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/Components.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if player follows actual terrain height properly without falling through or floating above."
+      - working: true
+        agent: "main"
+        comment: "ENHANCED terrain following with stability. Player now properly follows the terrain using the actual terrain generation function."
+      - working: true
+        agent: "testing"
+        comment: "Verified the player terrain following fix. Console logs show the player is correctly positioned above the terrain with proper height values ('🌍 Following terrain: ground=15.0, player=16.6'). The player movement is smooth and follows the terrain correctly without jerky movement."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 4
+  test_sequence: 5
   run_ui: true
 
 test_plan:
   current_focus:
     - "World Generation & Movement"
-    - "Visual Quality" 
-    - "New Features"
+    - "Mob Ground Detection"
+    - "Grass Wind Effects"
+    - "Player Terrain Following"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
