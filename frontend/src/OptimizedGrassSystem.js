@@ -82,11 +82,11 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
             position={[particle.x, particle.y, particle.z]}
             scale={[particle.scale, particle.scale, particle.scale]}
           >
-            <planeGeometry args={[0.06, 0.12]} />
+            <planeGeometry args={[0.08, 0.16]} />
             <meshBasicMaterial 
-              color="#90EE90" 
+              color="#7FB347" 
               transparent 
-              opacity={0.5}
+              opacity={0.6}
               side={THREE.DoubleSide}
             />
           </mesh>
