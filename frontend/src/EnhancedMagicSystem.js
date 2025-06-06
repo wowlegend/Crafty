@@ -214,8 +214,9 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         return false;
       }
       
-      // Check collision with terrain
-      console.log(`🌍 TERRAIN CHECK: Checking terrain collision...`);
+      // Check collision with terrain - TEMPORARILY DISABLED FOR TESTING
+      console.log(`🌍 TERRAIN CHECK: DISABLED for testing mob collision`);
+      /*
       if (window.getHighestBlockAt) {
         const groundLevel = window.getHighestBlockAt(projectile.position.x, projectile.position.z);
         console.log(`🌍 Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
@@ -227,6 +228,7 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       } else {
         console.log(`⚠️ window.getHighestBlockAt NOT FOUND`);
       }
+      */
       
       // SPELL COMBAT: Check collision with mobs - COMPREHENSIVE DEBUG
       console.log(`🔍 MOB CHECK: About to check mob collision...`);
