@@ -214,21 +214,25 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         return false;
       }
       
-      // Check collision with terrain - TEMPORARILY DISABLED FOR TESTING
-      console.log(`🌍 TERRAIN CHECK: DISABLED for testing mob collision`);
-      /*
-      if (window.getHighestBlockAt) {
-        const groundLevel = window.getHighestBlockAt(projectile.position.x, projectile.position.z);
-        console.log(`🌍 Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
+      // Check collision with terrain - FIXED to use correct ground detection
+      console.log(`🌍 TERRAIN CHECK: Using correct ground detection...`);
+      if (window.getMobGroundLevel) {
+        const groundLevel = window.getMobGroundLevel(projectile.position.x, projectile.position.z);
+        console.log(`🌍 CORRECT Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
         if (projectile.position.y <= groundLevel + 0.5) { // Only hit when actually AT ground level
           console.log(`🌍 TERRAIN HIT! Projectile hit ground`);
           createSpellImpact(projectile.position, projectile.type);
           return false;
         }
       } else {
-        console.log(`⚠️ window.getHighestBlockAt NOT FOUND`);
+        console.log(`⚠️ window.getMobGroundLevel NOT FOUND - using fallback`);
+        // Fallback to basic ground level
+        if (projectile.position.y <= 12.5) {
+          console.log(`🌍 TERRAIN HIT! Projectile hit fallback ground`);
+          createSpellImpact(projectile.position, projectile.type);
+          return false;
+        }
       }
-      */
       
       // SPELL COMBAT: Check collision with mobs - COMPREHENSIVE DEBUG
       console.log(`🔍 MOB CHECK: About to check mob collision...`);
