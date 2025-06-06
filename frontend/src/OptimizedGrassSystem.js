@@ -14,31 +14,39 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
       .slice(0, 50); // Limit for performance
   }, [blockPositions]);
 
-  // DISABLED useFrame to prevent camera conflicts
-  // useFrame((state) => {
-  //   if (!grassGroupRef.current) return;
+  // RESTORED wind effects with performance optimization
+  useFrame((state) => {
+    if (!grassGroupRef.current) return;
     
-  //   const time = state.clock.elapsedTime;
+    const time = state.clock.elapsedTime;
     
-  //   // Simplified animation for performance
-  //   grassGroupRef.current.children.forEach((grass, index) => {
-  //     if (index % 3 === 0) { // Only animate every 3rd grass blade
-  //       const offset = index * 0.1;
-  //       grass.rotation.z = Math.sin(time * 0.5 + offset) * 0.08;
-  //     }
-  //   });
+    // OPTIMIZED wind animation - only animate visible grass blades
+    grassGroupRef.current.children.forEach((grass, index) => {
+      if (index % 4 === 0) { // Only animate every 4th grass blade for performance
+        const offset = index * 0.1;
+        // Realistic wind sway effect
+        grass.rotation.z = Math.sin(time * 0.8 + offset) * 0.12;
+        grass.rotation.x = Math.cos(time * 0.6 + offset) * 0.06;
+      }
+    });
     
-  //   // Animate floating particles
-  //   if (particlesRef.current) {
-  //     particlesRef.current.children.forEach((particle, index) => {
-  //       const offset = index * 0.5;
-  //       particle.position.y = 15 + Math.sin(time * 0.3 + offset) * 1.5;
-  //       if (particle.position.y > 20) {
-  //         particle.position.y = 12;
-  //       }
-  //     });
-  //   }
-  // });
+    // ENHANCED floating grass particles with wind effect
+    if (particlesRef.current) {
+      particlesRef.current.children.forEach((particle, index) => {
+        const offset = index * 0.5;
+        // Floating motion with horizontal drift (wind effect)
+        particle.position.y = 15 + Math.sin(time * 0.4 + offset) * 1.8;
+        particle.position.x += Math.sin(time * 0.3 + offset) * 0.01; // Wind drift
+        particle.rotation.z = Math.sin(time * 0.5 + offset) * 0.3; // Rotation in wind
+        
+        // Reset particles that float too high or drift too far
+        if (particle.position.y > 22 || Math.abs(particle.position.x) > 35) {
+          particle.position.y = 12;
+          particle.position.x = (Math.random() - 0.5) * 30; // Reset x position
+        }
+      });
+    }
+  });
 
   // Simplified grass particles for performance
   const grassParticles = useMemo(() => {
