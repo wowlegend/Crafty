@@ -269,14 +269,15 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     }
   });
 
-  // Initial generation - smaller area
+  // ENHANCED initial generation - larger starting area for better experience
   useEffect(() => {
-    console.log('🌍 Optimized terrain generation starting...');
-    for (let x = -1; x <= 1; x++) {
-      for (let z = -1; z <= 1; z++) {
+    console.log('🌍 ENHANCED terrain generation starting with larger initial area...');
+    for (let x = -2; x <= 2; x++) {
+      for (let z = -2; z <= 2; z++) {
         generateChunk(x, z);
       }
     }
+    console.log('✅ Initial 5x5 chunk area generated for seamless experience');
   }, [generateChunk]);
 
   // OPTIMIZED block interactions - CONTROLLED XP
