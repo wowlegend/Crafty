@@ -152,7 +152,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
   const isGenerating = useRef(false);
   
   const chunkSize = 16;
-  const renderDistance = 3; // Increased for better experience
+  const renderDistance = 4; // INCREASED for better infinite world experience
   const updateThreshold = 100; // Only update every 100ms
 
   // OPTIMIZED chunk generation with batching
