@@ -215,15 +215,21 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       }
       
       // Check collision with terrain
+      console.log(`🌍 TERRAIN CHECK: Checking terrain collision...`);
       if (window.getHighestBlockAt) {
         const groundLevel = window.getHighestBlockAt(projectile.position.x, projectile.position.z);
+        console.log(`🌍 Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
         if (projectile.position.y <= groundLevel + 1) {
+          console.log(`🌍 TERRAIN HIT! Projectile hit ground`);
           createSpellImpact(projectile.position, projectile.type);
           return false;
         }
+      } else {
+        console.log(`⚠️ window.getHighestBlockAt NOT FOUND`);
       }
       
       // SPELL COMBAT: Check collision with mobs - COMPREHENSIVE DEBUG
+      console.log(`🔍 MOB CHECK: About to check mob collision...`);
       if (window.checkMobCollision) {
         console.log(`🔍 CHECKING collision for projectile at: (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
         const hitMob = window.checkMobCollision(projectile.position, projectile.size);
