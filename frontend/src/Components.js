@@ -1705,6 +1705,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
             </label>
           </div>
 
+          {/* FIXED: Single Game Progress section only */}
           <div className="space-y-2">
             <h3 className="text-white font-semibold">Game Progress</h3>
             <div className="flex space-x-2">
@@ -1723,6 +1724,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
             </div>
           </div>
 
+          {/* FIXED: Single Day/Night Control section only */}
           <div className="space-y-2">
             <h3 className="text-white font-semibold">Day/Night Control</h3>
             <div className="flex space-x-2">
