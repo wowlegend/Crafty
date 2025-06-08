@@ -65,27 +65,6 @@ export const NPCSystem = ({ gameState }) => {
     }
   };
 
-  useEffect(() => {
-    if (!terrainReady) return;
-
-    console.log('🎮 Initializing DISTRIBUTED mob ecosystem...');
-    
-    // DISTRIBUTED spawn system - spread across wider area
-    const spawnPositions = [];
-    
-    // Create wider distributed grid for better coverage
-    for (let x = -60; x <= 60; x += 12) {
-      for (let z = -60; z <= 60; z += 12) {
-        // Add random offset for natural distribution
-        const offsetX = x + (Math.random() - 0.5) * 8;
-        const offsetZ = z + (Math.random() - 0.5) * 8;
-        
-        if (Math.abs(offsetX) > 8 || Math.abs(offsetZ) > 8) { // Don't spawn too close to player
-          spawnPositions.push({ x: offsetX, z: offsetZ });
-        }
-      }
-    }
-
   // DAY/NIGHT mob variety - different mobs spawn based on time
   const getDayMobs = () => [
     'villager', 'pig', 'chicken', 'cow', 'sheep', 'wolf', // Peaceful day mobs
@@ -97,6 +76,28 @@ export const NPCSystem = ({ gameState }) => {
     'zombie', 'skeleton', 'creeper', // Extra hostile for challenge
     'pig', 'chicken' // Few peaceful mobs remain at night
   ];
+
+  // Spawn mobs based on day/night cycle
+  useEffect(() => {
+    if (!terrainReady) return;
+
+    console.log(`🌅 Initializing ${gameState.isDay ? 'DAY' : 'NIGHT'} mob ecosystem...`);
+    
+    // ENHANCED spawn system - only spawn on generated terrain
+    const spawnPositions = [];
+    
+    // Create smaller initial spawn area around player
+    for (let x = -40; x <= 40; x += 10) {
+      for (let z = -40; z <= 40; z += 10) {
+        // Add random offset for natural distribution
+        const offsetX = x + (Math.random() - 0.5) * 6;
+        const offsetZ = z + (Math.random() - 0.5) * 6;
+        
+        if (Math.abs(offsetX) > 8 || Math.abs(offsetZ) > 8) { // Don't spawn too close to player
+          spawnPositions.push({ x: offsetX, z: offsetZ });
+        }
+      }
+    }
 
     // Choose mobs based on day/night cycle
     const entityTypes = gameState.isDay ? getDayMobs() : getNightMobs();
@@ -152,7 +153,13 @@ export const NPCSystem = ({ gameState }) => {
     console.log(`✅ ${gameState.isDay ? 'DAY' : 'NIGHT'} ecosystem spawned: ${initialEntities.length} entities`);
   }, [terrainReady, gameState.isDay]); // Re-spawn when day/night changes
     
-    // DISTRIBUTED RESPAWNING SYSTEM - spawns around player position
+  // DISTRIBUTED RESPAWNING SYSTEM - spawns around player position
+  useEffect(() => {
+    if (!terrainReady) return;
+    
+    // Choose mobs based on day/night cycle
+    const entityTypes = gameState.isDay ? getDayMobs() : getNightMobs();
+    
     const respawnInterval = setInterval(() => {
       setEntities(currentEntities => {
         const targetMobCount = 30; // Balanced target
@@ -216,7 +223,7 @@ export const NPCSystem = ({ gameState }) => {
     }, 8000); // Spawn every 8 seconds
 
     return () => clearInterval(respawnInterval);
-  }, [terrainReady, camera]);
+  }, [terrainReady, camera, gameState.isDay, getDayMobs, getNightMobs]);
 
   // ENHANCED attack function with VISUAL EFFECTS, SOUND EFFECTS and weapon display
   const attackEntity = (entityId) => {
