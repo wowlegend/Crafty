@@ -86,38 +86,74 @@ export const NPCSystem = ({ gameState }) => {
       }
     }
 
-    // Balanced mob variety with more peaceful creatures
-    const entityTypes = [
-      'villager', 'pig', 'chicken', 'cow', 'sheep', 'wolf', // More peaceful
-      'zombie', 'skeleton', 'creeper', 'spider', 'witch', // Hostile
-      'pig', 'chicken', 'cow', 'sheep' // Extra peaceful for balance
-    ];
+  // DAY/NIGHT mob variety - different mobs spawn based on time
+  const getDayMobs = () => [
+    'villager', 'pig', 'chicken', 'cow', 'sheep', 'wolf', // Peaceful day mobs
+    'pig', 'chicken', 'cow', 'sheep', 'villager' // Extra peaceful for balance
+  ];
+  
+  const getNightMobs = () => [
+    'zombie', 'skeleton', 'creeper', 'spider', 'witch', 'enderman', // Hostile night mobs
+    'zombie', 'skeleton', 'creeper', // Extra hostile for challenge
+    'pig', 'chicken' // Few peaceful mobs remain at night
+  ];
+
+  useEffect(() => {
+    if (!terrainReady) return;
+
+    console.log(`🌅 Initializing ${gameState.isDay ? 'DAY' : 'NIGHT'} mob ecosystem...`);
+    
+    // ENHANCED spawn system - only spawn on generated terrain
+    const spawnPositions = [];
+    
+    // Create smaller initial spawn area around player
+    for (let x = -40; x <= 40; x += 10) {
+      for (let z = -40; z <= 40; z += 10) {
+        // Add random offset for natural distribution
+        const offsetX = x + (Math.random() - 0.5) * 6;
+        const offsetZ = z + (Math.random() - 0.5) * 6;
+        
+        if (Math.abs(offsetX) > 8 || Math.abs(offsetZ) > 8) { // Don't spawn too close to player
+          spawnPositions.push({ x: offsetX, z: offsetZ });
+        }
+      }
+    }
+
+    // Choose mobs based on day/night cycle
+    const entityTypes = gameState.isDay ? getDayMobs() : getNightMobs();
 
     const initialEntities = spawnPositions.map((pos, index) => {
-      // FIXED ground level calculation for mobs using separate function
+      // ENHANCED ground level calculation - wait for terrain generation
       let groundY = 15; // Safe default
-      try {
-        if (window.getMobGroundLevel) {
-          const calculatedY = window.getMobGroundLevel(pos.x, pos.z);
-          if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
-            groundY = calculatedY + 1.5; // Spawn slightly above ground
+      let attempts = 0;
+      
+      // Try multiple times to get accurate ground level
+      while (attempts < 3) {
+        try {
+          if (window.getMobGroundLevel) {
+            const calculatedY = window.getMobGroundLevel(pos.x, pos.z);
+            if (typeof calculatedY === 'number' && !isNaN(calculatedY) && calculatedY > 12) {
+              groundY = calculatedY + 0.5; // Spawn just above ground
+              break;
+            }
           }
+        } catch (error) {
+          console.warn(`Attempt ${attempts + 1}: Error calculating ground for mob at ${pos.x}, ${pos.z}:`, error);
         }
-      } catch (error) {
-        console.warn(`Error calculating ground for mob at ${pos.x}, ${pos.z}:`, error);
+        attempts++;
       }
       
       // SAFETY: Ensure reasonable spawn height
       groundY = Math.max(groundY, 13); // Never below 13
-      groundY = Math.min(groundY, 22); // Never above 22
+      groundY = Math.min(groundY, 20); // Never above 20
       
       const entityType = entityTypes[index % entityTypes.length];
       const stats = getEntityStats(entityType);
       
-      console.log(`🐺 Spawning ${entityType} at height ${groundY} (ground check)`);
+      console.log(`🐺 Spawning ${gameState.isDay ? 'DAY' : 'NIGHT'} ${entityType} at height ${groundY.toFixed(1)}`);
       
       return {
-        id: `entity_${index}`,
+        id: `entity_${index}_${Date.now()}`,
         type: entityType,
         position: [pos.x, groundY, pos.z],
         health: stats.health,
@@ -125,14 +161,17 @@ export const NPCSystem = ({ gameState }) => {
         hostile: stats.hostile,
         speed: stats.speed,
         initialPosition: [pos.x, groundY, pos.z],
-        wanderRadius: stats.hostile ? 10 : 6,
+        wanderRadius: stats.hostile ? 8 : 5,
         drops: getDrops(entityType),
-        spawnTime: Date.now()
+        spawnTime: Date.now(),
+        isNightMob: !gameState.isDay
       };
     });
 
     setEntities(initialEntities);
-    console.log(`✅ DISTRIBUTED mob ecosystem spawned: ${initialEntities.length} entities across wider area`);
+    setLastTimeOfDay(gameState.isDay);
+    console.log(`✅ ${gameState.isDay ? 'DAY' : 'NIGHT'} ecosystem spawned: ${initialEntities.length} entities`);
+  }, [terrainReady, gameState.isDay]); // Re-spawn when day/night changes
     
     // DISTRIBUTED RESPAWNING SYSTEM - spawns around player position
     const respawnInterval = setInterval(() => {
