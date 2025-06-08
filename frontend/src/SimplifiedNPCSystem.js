@@ -672,7 +672,7 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
       meshRef.current.position.y = targetY;
       
     } else if (entity.hostile) {
-      // Hostile mobs move toward player but stay on ground
+      // Hostile mobs move toward player but stay on ground with collision detection
       const playerPos = camera.position;
       const entityPos = new THREE.Vector3(initX, targetY, initZ);
       const distance = playerPos.distanceTo(entityPos);
@@ -683,15 +683,53 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
           .normalize();
         
         const moveDistance = entity.speed * Math.sin(time * 0.5) * 4;
-        meshRef.current.position.x = initX + direction.x * moveDistance;
-        meshRef.current.position.z = initZ + direction.z * moveDistance;
+        const newX = initX + direction.x * moveDistance;
+        const newZ = initZ + direction.z * moveDistance;
+        
+        // COLLISION DETECTION for hostile mobs
+        let canMove = true;
+        if (window.checkCollision) {
+          canMove = !window.checkCollision(newX, targetY, newZ) && 
+                    !window.checkCollision(newX, targetY + 0.5, newZ);
+        }
+        
+        if (canMove) {
+          meshRef.current.position.x = newX;
+          meshRef.current.position.z = newZ;
+        } else {
+          // Try to move around obstacle
+          const sideDirection = new THREE.Vector3(-direction.z, 0, direction.x);
+          const sideX = initX + sideDirection.x * moveDistance * 0.5;
+          const sideZ = initZ + sideDirection.z * moveDistance * 0.5;
+          
+          if (!window.checkCollision || !window.checkCollision(sideX, targetY, sideZ)) {
+            meshRef.current.position.x = sideX;
+            meshRef.current.position.z = sideZ;
+          } else {
+            meshRef.current.position.x = initX;
+            meshRef.current.position.z = initZ;
+          }
+        }
         meshRef.current.position.y = targetY;
       } else {
-        // Wander when player is far
+        // Wander when player is far with collision detection
         const offsetX = Math.sin(time * 0.3) * 2;
         const offsetZ = Math.cos(time * 0.3) * 2;
-        meshRef.current.position.x = initX + offsetX;
-        meshRef.current.position.z = initZ + offsetZ;
+        const newX = initX + offsetX;
+        const newZ = initZ + offsetZ;
+        
+        let canMove = true;
+        if (window.checkCollision) {
+          canMove = !window.checkCollision(newX, targetY, newZ);
+        }
+        
+        if (canMove) {
+          meshRef.current.position.x = newX;
+          meshRef.current.position.z = newZ;
+        } else {
+          meshRef.current.position.x = initX;
+          meshRef.current.position.z = initZ;
+        }
         meshRef.current.position.y = targetY;
       }
     }
