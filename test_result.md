@@ -402,9 +402,9 @@ frontend:
 
   - task: "Mob Ground Detection"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/SimplifiedNPCSystem.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -417,6 +417,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the mob ground detection fix. Console logs show all mobs are properly positioned on the ground with height values ranging from 13.5 to 22, with no floating mobs detected. The implementation uses the actual terrain generation function for accurate ground detection."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test mob ground detection due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show initialization of the mob ecosystem with '🎮 Initializing DISTRIBUTED mob ecosystem...', but cannot verify in-game behavior."
 
   - task: "Grass Wind Effects"
     implemented: true
