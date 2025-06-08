@@ -381,9 +381,9 @@ frontend:
 
   - task: "Performance & Stability"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -396,6 +396,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the performance optimizations. The game runs smoothly with no stuttering or frame drops. The terrain generation is fast and predictive, generating chunks ahead of player movement."
+      - working: false
+        agent: "testing"
+        comment: "Critical stability issue detected: React hooks error 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. The error appears to be related to how React hooks are being used in the game components, possibly in the Canvas or Three.js integration."
 
   - task: "Mob Ground Detection"
     implemented: true
