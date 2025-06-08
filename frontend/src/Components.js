@@ -381,6 +381,9 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   // ENHANCED ground level function for MOBS with better accuracy AND collision detection
   useEffect(() => {
+    // CRITICAL: Expose generated chunks to mob system for terrain verification
+    window.getGeneratedChunks = () => generatedChunks;
+    
     // Player uses the actual terrain generation function for smooth terrain following
     window.getHighestBlockAt = (x, z) => {
       return generateTerrainHeight(x, z); // Use actual terrain height
@@ -420,8 +423,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       return false; // No collision with air
     };
     
-    console.log('🔧 ENHANCED: Ground detection with collision system for blocks and trees');
-  }, [blocks]);
+    console.log('🔧 ENHANCED: Ground detection with collision system and chunk verification');
+  }, [blocks, generatedChunks]);
 
   // OPTIMIZED block rendering with culling
   const visibleBlocks = useMemo(() => {
