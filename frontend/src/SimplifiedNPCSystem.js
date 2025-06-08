@@ -235,13 +235,13 @@ export const NPCSystem = ({ gameState }) => {
           const mobsToSpawn = Math.min(15, targetMobCount - nearbyEntities.length); // Spawn more at once
           const newMobs = [];
           
-          console.log(`🌍 AGGRESSIVE SPAWNING: Player at (${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}), spawning ${mobsToSpawn} mobs`);
+          console.log(`🌍 FIXED SPAWNING: Player at (${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}), spawning ${mobsToSpawn} mobs with terrain verification`);
           
           for (let i = 0; i < mobsToSpawn; i++) {
-            // MUCH LARGER spawn area - spawn in 6 different rings for better coverage
-            const ring = Math.floor(Math.random() * 6); // 6 different rings
+            // FIXED: Spawn closer to player where terrain is more likely to exist
+            const ring = Math.floor(Math.random() * 3); // Reduced to 3 rings for better terrain coverage
             const angle = Math.random() * Math.PI * 2;
-            const distance = 20 + (ring * 20) + Math.random() * 15; // 20-140 blocks away
+            const distance = 15 + (ring * 15) + Math.random() * 10; // 15-70 blocks away (reduced range)
             
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
