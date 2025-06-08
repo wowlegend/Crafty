@@ -423,9 +423,9 @@ frontend:
 
   - task: "Grass Wind Effects"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/OptimizedGrassSystem.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -438,6 +438,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the grass wind effects implementation. The code includes optimized animation where every 4th blade animates with realistic wind sway and horizontal drift particles. The implementation is performance-optimized to maintain smooth gameplay."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test grass wind effects due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Code review confirms implementation of optimized grass wind effects with every 4th blade animating and horizontal drift particles, but cannot verify visual effects in-game."
 
   - task: "Player Terrain Following"
     implemented: true
