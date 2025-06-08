@@ -25,7 +25,6 @@ import {
 import './App.css';
 import { 
   MinecraftWorld, 
-  Player, 
   GameUI, 
   Inventory, 
   CraftingTable, 
@@ -37,6 +36,7 @@ import {
   MinecraftHealthHunger,
   PositionTracker
 } from './Components';
+import { FixedPlayer } from './FixedPlayer';
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
