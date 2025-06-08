@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timedelta
 import jwt
 import hashlib
+from bson import ObjectId
 
 
 ROOT_DIR = Path(__file__).parent
