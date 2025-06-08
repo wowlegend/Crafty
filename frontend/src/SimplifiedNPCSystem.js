@@ -130,6 +130,9 @@ export const NPCSystem = ({ gameState }) => {
     
     return () => clearTimeout(testSpawn);
   }, [camera, gameState.isDay]);
+
+  // Spawn mobs based on day/night cycle
+  useEffect(() => {
     if (!terrainReady) return;
 
     console.log(`🌅 Initializing ${gameState.isDay ? 'DAY' : 'NIGHT'} mob ecosystem...`);
