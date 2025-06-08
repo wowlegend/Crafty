@@ -1571,7 +1571,7 @@ export const BuildingTools = ({ gameState, onClose }) => {
       id: 'multi_select',
       name: 'Multi-Select',
       description: 'Select and manipulate multiple blocks',
-      icon: <Grid3X3 size={24} />
+      icon: <Grid size={24} />
     },
     {
       id: 'copy_paste',
