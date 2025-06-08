@@ -484,10 +484,22 @@ function GameApp() {
           // NO camera manipulation here - let PointerLockControls handle it
         }}
       >
-        {/* Enhanced lighting */}
+        {/* Enhanced day/night lighting */}
         <MinecraftSky isDay={gameState.isDay} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow={false} />
+        <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
+        <directionalLight 
+          position={[50, 50, 25]} 
+          intensity={gameState.isDay ? 1.2 : 0.3} 
+          castShadow={false} 
+        />
+        {!gameState.isDay && (
+          <pointLight 
+            position={[0, 20, 0]} 
+            intensity={0.1} 
+            distance={30}
+            color="#4169E1"
+          />
+        )}
 
         {/* Player Controls - Mouse Look Only */}
         <PointerLockControls makeDefault />
