@@ -309,11 +309,11 @@ async def delete_world(world_id: str, current_user: User = Depends(get_current_u
     
     return {"message": "World deleted successfully"}
 
-@app.post("/api/world/save")
-async def save_game(save_data: dict, current_user: dict = Depends(get_current_user)):
+@api_router.post("/world/save")
+async def save_game(save_data: dict, current_user: User = Depends(get_current_user)):
     """Save complete game state"""
     try:
-        user_id = current_user["user_id"]
+        user_id = current_user.id  # Use .id instead of ["user_id"]
         
         # Prepare save data with timestamp
         save_record = {
@@ -342,11 +342,11 @@ async def save_game(save_data: dict, current_user: dict = Depends(get_current_us
         logger.error(f"Error saving game: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save game: {str(e)}")
 
-@app.get("/api/world/saves")
-async def get_saves(current_user: dict = Depends(get_current_user)):
+@api_router.get("/world/saves")
+async def get_saves(current_user: User = Depends(get_current_user)):
     """Get all saves for current user"""
     try:
-        user_id = current_user["user_id"]
+        user_id = current_user.id  # Use .id instead of ["user_id"]
         
         saves = await db.game_saves.find(
             {"user_id": user_id},
@@ -363,11 +363,11 @@ async def get_saves(current_user: dict = Depends(get_current_user)):
         logger.error(f"Error fetching saves: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch saves: {str(e)}")
 
-@app.get("/api/world/load/{save_id}")
-async def load_game(save_id: str, current_user: dict = Depends(get_current_user)):
+@api_router.get("/world/load/{save_id}")
+async def load_game(save_id: str, current_user: User = Depends(get_current_user)):
     """Load a specific save"""
     try:
-        user_id = current_user["user_id"]
+        user_id = current_user.id  # Use .id instead of ["user_id"]
         
         save = await db.game_saves.find_one({
             "_id": ObjectId(save_id),
@@ -389,11 +389,11 @@ async def load_game(save_id: str, current_user: dict = Depends(get_current_user)
         logger.error(f"Error loading game: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to load game: {str(e)}")
 
-@app.delete("/api/world/save/{save_id}")
-async def delete_save(save_id: str, current_user: dict = Depends(get_current_user)):
+@api_router.delete("/world/save/{save_id}")
+async def delete_save(save_id: str, current_user: User = Depends(get_current_user)):
     """Delete a specific save"""
     try:
-        user_id = current_user["user_id"]
+        user_id = current_user.id  # Use .id instead of ["user_id"]
         
         result = await db.game_saves.delete_one({
             "_id": ObjectId(save_id),
