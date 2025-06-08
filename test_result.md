@@ -630,7 +630,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Performance & Stability"
+    - "Save Game API"
+    - "Get Saves API"
+    - "Load Game API"
+    - "Delete Save API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
