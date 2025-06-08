@@ -826,7 +826,11 @@ export const Player = ({ gameState }) => {
     const handleKeyDown = (event) => {
       // Handle WASD movement keys
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
-        setKeys(prev => ({ ...prev, [event.code]: true }));
+        setKeys(prev => {
+          const newKeys = { ...prev, [event.code]: true };
+          console.log('🎮 Key pressed:', event.code, 'Keys state:', newKeys);
+          return newKeys;
+        });
         return;
       }
       
