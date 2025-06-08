@@ -1,0 +1,78 @@
+FROM python:3.11-slim
+
+ARG GITHUB_TOKEN
+ARG PLUGIN_LIB_TAG
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# # Install system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    curl \
+    build-essential \
+    software-properties-common \
+    openssh-server \
+    tmux \
+    sudo \
+    wget \
+    git \
+    gnupg2 \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libncursesw5-dev \
+    libffi-dev \
+    vim \
+    jq \
+    supervisor\
+    liblzma-dev \
+    util-linux \
+    libgdbm-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install playwright
+RUN playwright install
+RUN playwright install-deps
+
+RUN curl -fsSL https://code-server.dev/install.sh | sh && \
+    # Install any VS Code extensions you want
+    code-server --install-extension ms-python.python || echo "Failed to install vscode extension"
+
+RUN python -m venv /root/.venv --system-site-packages
+ENV PATH="/root/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/root/.venv"
+
+WORKDIR /app
+
+RUN pip install "git+https://${GITHUB_TOKEN}@github.com/emergentbase/emergent.git@${PLUGIN_LIB_TAG}#subdirectory=plugin_library"
+
+RUN python -m pip install typer uvicorn fastapi
+
+COPY .devcontainer/entrypoint.sh /entrypoint.sh
+COPY .devcontainer/playwright_test.py .devcontainer/playwright_test.py
+RUN mkdir -p /root/.config/code-server
+COPY .devcontainer/code_server_config.yaml /root/.config/code-server/config.yaml
+COPY .devcontainer/context_params.json /root/.config/context_params.json
+COPY .devcontainer/supervisord_code_server.conf /etc/supervisor/conf.d/supervisord_code_server.conf
+
+# Set permissions for entrypoint script
+RUN chmod +x /entrypoint.sh
+
+RUN curl -fsSL https://code-server.dev/install.sh | sh && \
+    # Install any VS Code extensions you want
+    code-server --install-extension ms-python.python || echo "Failed to install vscode extension"
+
+WORKDIR /app
+RUN git init -b main
+RUN git config --global user.name 'E1' && git config --global user.email 'e1@emergent.sh'
+# RUN git add . && git commit --allow-empty -m 'Initial commit'
+# RUN git rev-parse HEAD  > /root/.git_init_commit_hash
+
+# Expose ports
+EXPOSE 3000 8001 22 1111 27017 8000 8088 8010
+EXPOSE 55000-55999
+
+ENTRYPOINT ["bash", "/entrypoint.sh"]

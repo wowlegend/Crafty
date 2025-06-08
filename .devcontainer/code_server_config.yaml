@@ -1,0 +1,4 @@
+bind-addr: 0.0.0.0:1111
+auth: password
+cert: false
+welcome-text: "Welcome to Emergent Code Server"

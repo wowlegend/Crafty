@@ -1,0 +1,8 @@
+{
+    "file_paths": [
+        "backend/server.py",
+        "frontend/src/App.js",
+        "frontend/src/App.css"
+    ],
+    "window_size": 2000
+}

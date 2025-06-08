@@ -1,0 +1,386 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+/* Minecraft-style font */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('data:font/truetype;charset=utf-8;base64,') format('truetype');
+}
+
+.pixel-font {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-weight: 700;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+}
+
+.text-shadow-lg {
+  text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8), 2px 2px 0px rgba(0, 0, 0, 0.6);
+}
+
+/* Authentic Minecraft Hotbar Styling */
+.minecraft-hotbar {
+  display: flex;
+  gap: 0;
+  background: linear-gradient(to bottom, #3a3a3a, #2a2a2a);
+  border: 2px solid #000000;
+  border-radius: 0;
+  padding: 4px;
+  box-shadow: 0 0 0 1px #5a5a5a;
+}
+
+.minecraft-hotbar-slot {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(to bottom, #8b8b8b, #5a5a5a);
+  border: 1px solid #000000;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 1px 1px 0 #c6c6c6, inset -1px -1px 0 #2a2a2a;
+}
+
+.minecraft-hotbar-slot:hover {
+  background: linear-gradient(to bottom, #9b9b9b, #6a6a6a);
+  box-shadow: inset 1px 1px 0 #d6d6d6, inset -1px -1px 0 #3a3a3a;
+}
+
+.minecraft-hotbar-slot.selected {
+  background: linear-gradient(to bottom, #ffffff, #c6c6c6);
+  border: 2px solid #ffffff;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #8b8b8b;
+}
+
+.minecraft-block-icon {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.minecraft-quantity {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #000000;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  min-width: 12px;
+  text-align: center;
+}
+
+.minecraft-hotkey {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 8px;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 #000000;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+}
+
+/* Minecraft Health and Hunger Bars */
+.minecraft-status-bars {
+  display: flex;
+  justify-content: space-between;
+  width: 400px;
+  padding: 0 20px;
+}
+
+.minecraft-health-bar, .minecraft-hunger-bar {
+  display: flex;
+  gap: 1px;
+}
+
+.minecraft-heart, .minecraft-hunger {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+  border: 1px solid #000000;
+  box-shadow: inset 1px 1px 0 #3a3a3a;
+}
+
+.minecraft-heart-icon {
+  color: #ff0000;
+  font-size: 12px;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.minecraft-hunger-icon {
+  color: #d4941e;
+  font-size: 10px;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+/* Minecraft UI Panels */
+.minecraft-info-panel {
+  background: linear-gradient(to bottom, #3a3a3a, #2a2a2a);
+  border: 2px solid #000000;
+  padding: 8px 12px;
+  box-shadow: 0 0 0 1px #5a5a5a;
+}
+
+.minecraft-debug-panel {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #5a5a5a;
+  padding: 8px;
+  font-family: 'Orbitron', monospace;
+}
+
+.minecraft-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: linear-gradient(to bottom, #3a3a3a, #2a2a2a);
+  border: 2px solid #000000;
+  padding: 4px;
+  box-shadow: 0 0 0 1px #5a5a5a;
+}
+
+.minecraft-tool-button {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(to bottom, #8b8b8b, #5a5a5a);
+  border: 1px solid #000000;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 1px 1px 0 #c6c6c6, inset -1px -1px 0 #2a2a2a;
+  transition: all 0.1s ease;
+}
+
+.minecraft-tool-button:hover {
+  background: linear-gradient(to bottom, #9b9b9b, #6a6a6a);
+  box-shadow: inset 1px 1px 0 #d6d6d6, inset -1px -1px 0 #3a3a3a;
+}
+
+.minecraft-tool-button:active {
+  background: linear-gradient(to bottom, #6a6a6a, #4a4a4a);
+  box-shadow: inset -1px -1px 0 #8b8b8b, inset 1px 1px 0 #2a2a2a;
+}
+
+.minecraft-button {
+  background: linear-gradient(to bottom, #8b8b8b, #5a5a5a);
+  border: 2px solid #000000;
+  color: #ffffff;
+  padding: 6px 12px;
+  cursor: pointer;
+  box-shadow: inset 1px 1px 0 #c6c6c6, inset -1px -1px 0 #2a2a2a;
+  transition: all 0.1s ease;
+}
+
+.minecraft-button:hover {
+  background: linear-gradient(to bottom, #9b9b9b, #6a6a6a);
+  box-shadow: inset 1px 1px 0 #d6d6d6, inset -1px -1px 0 #3a3a3a;
+}
+
+.minecraft-text {
+  font-family: 'Orbitron', monospace;
+  text-shadow: 1px 1px 0 #000000;
+  font-weight: 600;
+}
+
+/* Minecraft-style Sky Colors */
+.minecraft-sky-day {
+  background: linear-gradient(to bottom, #87CEEB 0%, #98D8F4 50%, #B8E6FF 100%);
+}
+
+.minecraft-sky-night {
+  background: linear-gradient(to bottom, #0B1426 0%, #1E3A5F 50%, #2D5A87 100%);
+}
+
+/* Game UI Styles */
+.game-ui {
+  font-family: 'Orbitron', 'Courier New', monospace;
+}
+
+/* Block hover effects */
+.block-hover {
+  transition: all 0.2s ease-in-out;
+  transform-style: preserve-3d;
+}
+
+.block-hover:hover {
+  transform: scale(1.05);
+  filter: brightness(1.2);
+}
+
+/* Inventory grid */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  padding: 16px;
+}
+
+.inventory-slot {
+  aspect-ratio: 1;
+  border: 2px solid #4b5563;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #374151, #1f2937);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.inventory-slot:hover {
+  border-color: #9ca3af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.inventory-slot.selected {
+  border-color: #fbbf24;
+  background: linear-gradient(145deg, #d97706, #92400e);
+}
+
+/* Modal animations */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: linear-gradient(145deg, #1f2937, #111827);
+  border: 2px solid #374151;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Button styles */
+.btn-primary {
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(145deg, #2563eb, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Crosshair pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.crosshair {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Text effects */
+.text-outline {
+  text-shadow: 
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 0 5px rgba(0, 0, 0, 0.8);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .minecraft-hotbar-slot {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .minecraft-block-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* COMBAT VISUAL EFFECTS - Screen shake animation */
+@keyframes shake {
+  0% { transform: translate(0); }
+  10% { transform: translate(-2px, 1px); }
+  20% { transform: translate(2px, -1px); }
+  30% { transform: translate(-1px, 2px); }
+  40% { transform: translate(1px, -2px); }
+  50% { transform: translate(-2px, 1px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, 2px); }
+  80% { transform: translate(1px, -2px); }
+  90% { transform: translate(-2px, 1px); }
+  100% { transform: translate(0); }
+}
+
+/* Enhanced combat feedback */
+.combat-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  border-radius: 50%;
+  animation: combatSpark 0.4s ease-out forwards;
+}
+
+@keyframes combatSpark {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+.damage-number {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  font-family: 'Orbitron', monospace;
+  font-weight: bold;
+  color: #ff4444;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  animation: damageFloat 1s ease-out forwards;
+}
+
+@keyframes damageFloat {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -150%) scale(1.5);
+    opacity: 0;
+  }
+  }
+  
+  .minecraft-tool-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Disable context menu */
+canvas {
+  outline: none;
+}
+
+/* Hide cursor when pointer is locked */
+body.pointer-locked {
+  cursor: none;
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
