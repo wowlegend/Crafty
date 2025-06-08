@@ -536,9 +536,6 @@ test_plan:
     - "Enhanced UI System"
     - "New Features"
     - "Visual Quality"
-    - "Mob Ground Detection"
-    - "Grass Wind Effects"
-    - "Player Terrain Following"
   test_all: false
   test_priority: "high_first"
 
