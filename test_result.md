@@ -444,9 +444,9 @@ frontend:
 
   - task: "Player Terrain Following"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -459,6 +459,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the player terrain following fix. Console logs show the player is correctly positioned above the terrain with proper height values ('🌍 Following terrain: ground=15.0, player=16.6'). The player movement is smooth and follows the terrain correctly without jerky movement."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test player terrain following due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show player initialization with '🎮 FIXED Player initialized - NO OSCILLATION MODE - Position: 0 18 0', but cannot verify terrain following behavior in-game."
 
 metadata:
   created_by: "testing_agent"
