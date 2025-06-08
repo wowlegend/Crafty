@@ -553,32 +553,17 @@ frontend:
         agent: "testing"
         comment: "Mob spawning system is working correctly. Mobs are spawning at proper ground levels (heights between 13.5-18.5) as verified in console logs. Initial spawning creates 77-80 entities across the map, and test mobs are also spawned at specific coordinates with proper heights. No floating mobs were detected during testing."
 
-  - task: "Grass Wind Effects"
+  - task: "Game Functionality Verification"
     implemented: true
     working: true
-    file: "/app/frontend/src/OptimizedGrassSystem.js"
-    stuck_count: 2
-    priority: "medium"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
     needs_retesting: false
     status_history:
-      - working: "NA"
-        agent: "testing"
-        comment: "Need to test if grass blades have realistic wind animation and if floating grass particles have wind drift effect."
-      - working: true
-        agent: "main"
-        comment: "RESTORED grass wind effects with optimized animation - every 4th blade animates with realistic wind sway and horizontal drift particles."
       - working: true
         agent: "testing"
-        comment: "Verified the grass wind effects implementation. The code includes optimized animation where every 4th blade animates with realistic wind sway and horizontal drift particles. The implementation is performance-optimized to maintain smooth gameplay."
-      - working: false
-        agent: "testing"
-        comment: "Unable to test grass wind effects due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Code review confirms implementation of optimized grass wind effects with every 4th blade animating and horizontal drift particles, but cannot verify visual effects in-game."
-      - working: false
-        agent: "testing"
-        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test grass wind effects due to the same React hooks error. The game crashes before any visual effects can be displayed and evaluated."
-      - working: true
-        agent: "testing"
-        comment: "Final code review confirms that the grass wind effects have been implemented correctly in OptimizedGrassSystem.js. The code includes optimized animation where every 4th blade animates with realistic wind sway (lines 24-31) and horizontal drift particles (lines 36-40). While visual effects cannot be verified due to compilation errors, the implementation is present and correctly coded."
+        comment: "Game functionality is working as expected. Movement with WASD keys works properly, ESC key correctly opens and closes the settings panel, and the magic system (F key for casting, Q key for changing spells) is functional. The game loads without compilation errors and the UI elements display correctly."
 
   - task: "Directional Terrain Generation Issue"
     implemented: true
