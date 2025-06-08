@@ -263,7 +263,7 @@ frontend:
     implemented: true
     working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 2
+    stuck_count: 3
     priority: "high"
     needs_retesting: false
     status_history:
@@ -288,12 +288,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "During testing, encountered a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show that terrain generation initialization starts correctly with '🌍 ENHANCED terrain generation starting with larger initial area...' and '✅ Initial 5x5 chunk area generated for seamless experience', but the game crashes before full interaction is possible."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, the game still crashes with the same React hooks error. The error first appears in the NPCSystem component, then propagates to the Canvas component. Despite the package version updates, there are still compatibility issues between React and the Three.js libraries that need to be resolved."
 
   - task: "Building & Block System"
     implemented: true
     working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -306,12 +309,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test block placement and breaking functionality due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the block system."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test block placement and breaking functionality due to the same React hooks error. The game crashes before any interaction with the block system is possible."
 
   - task: "Enhanced UI System"
     implemented: true
     working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -324,12 +330,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test the UI system due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the UI elements. The start screen loads, but clicking the start button triggers the React hooks error."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, the start screen loads but clicking 'Start Magical Adventure' still triggers the React hooks error. The UI elements on the start screen (sound controls, level display, controls information) are visible, but the game UI cannot be tested due to the crash."
 
   - task: "New Features"
     implemented: true
     working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 2
+    stuck_count: 3
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -351,12 +360,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test the new features due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the combat system and other new features."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test the new features due to the same React hooks error. The game crashes before any interaction with the combat system or other new features is possible."
 
   - task: "Visual Quality"
     implemented: true
     working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 2
+    stuck_count: 3
     priority: "high"
     needs_retesting: false
     status_history:
@@ -378,13 +390,16 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test visual quality due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and displaying the visual elements. Code review shows the implementation of enhanced hands system, but cannot verify in-game."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test visual quality due to the same React hooks error. The game crashes before any visual elements can be displayed and evaluated."
 
   - task: "Performance & Stability"
     implemented: true
     working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 1
-    priority: "medium"
+    stuck_count: 2
+    priority: "high"
     needs_retesting: false
     status_history:
       - working: "NA"
@@ -399,12 +414,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Critical stability issue detected: React hooks error 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. The error appears to be related to how React hooks are being used in the game components, possibly in the Canvas or Three.js integration."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, the critical stability issue persists. The React hooks error still occurs when attempting to start the game. The error first appears in the NPCSystem component, then propagates to the Canvas component. This is a critical blocker for testing all game functionality."
 
   - task: "Mob Ground Detection"
     implemented: true
     working: false
     file: "/app/frontend/src/SimplifiedNPCSystem.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -420,12 +438,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test mob ground detection due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show initialization of the mob ecosystem with '🎮 Initializing DISTRIBUTED mob ecosystem...', but cannot verify in-game behavior."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test mob ground detection. The React hooks error occurs specifically in the NPCSystem component first, indicating a potential issue with how hooks are used in this component."
 
   - task: "Grass Wind Effects"
     implemented: true
     working: false
     file: "/app/frontend/src/OptimizedGrassSystem.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -441,12 +462,15 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test grass wind effects due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Code review confirms implementation of optimized grass wind effects with every 4th blade animating and horizontal drift particles, but cannot verify visual effects in-game."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test grass wind effects due to the same React hooks error. The game crashes before any visual effects can be displayed and evaluated."
 
   - task: "Player Terrain Following"
     implemented: true
     working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -462,6 +486,9 @@ frontend:
       - working: false
         agent: "testing"
         comment: "Unable to test player terrain following due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show player initialization with '🎮 FIXED Player initialized - NO OSCILLATION MODE - Position: 0 18 0', but cannot verify terrain following behavior in-game."
+      - working: false
+        agent: "testing"
+        comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, still unable to test player terrain following due to the same React hooks error. The game crashes before any player movement can be tested."
 
 metadata:
   created_by: "testing_agent"
