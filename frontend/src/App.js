@@ -103,21 +103,112 @@ const useGameState = () => {
     }));
   };
 
-  const loadWorldData = (worldData) => {
-    if (worldData.world_data) {
-      const blockMap = new Map();
-      Object.entries(worldData.world_data).forEach(([key, value]) => {
-        blockMap.set(key, value);
+  // Save/Load functionality
+  const saveGame = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('authToken') || '{}');
+      if (!authData.token) {
+        alert('Please log in to save your game');
+        return;
+      }
+
+      const saveData = {
+        save_name: `Save_${new Date().toLocaleString()}`,
+        world_data: { blocks: worldBlocks },
+        player_data: { 
+          position: { x: 0, y: 18, z: 0 }, // Default position
+          inventory: inventory,
+          stats: playerStats
+        },
+        game_state: {
+          gameMode,
+          selectedBlock,
+          activeSpell,
+          isDay,
+          gameTime,
+          achievements
+        }
+      };
+
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(saveData)
       });
-      setWorldBlocks(blockMap);
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Game saved successfully: ${result.save_name}`);
+        console.log('✅ Game saved:', result);
+      } else {
+        throw new Error('Failed to save game');
+      }
+    } catch (error) {
+      console.error('❌ Save error:', error);
+      alert('Failed to save game. Please try again.');
     }
-    
-    if (worldData.settings) {
-      const settings = worldData.settings;
-      if (settings.gameMode) setGameMode(settings.gameMode);
-      if (settings.isDay !== undefined) setIsDay(settings.isDay);
-      if (settings.inventory) setInventory(settings.inventory);
-      if (settings.playerStats) setPlayerStats(settings.playerStats);
+  };
+
+  const loadGame = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('authToken') || '{}');
+      if (!authData.token) {
+        alert('Please log in to load your game');
+        return;
+      }
+
+      // Get list of saves
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/saves`, {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch saves');
+      }
+
+      const { saves } = await response.json();
+      
+      if (saves.length === 0) {
+        alert('No saved games found');
+        return;
+      }
+
+      // For now, load the most recent save
+      const mostRecentSave = saves[0];
+      
+      const loadResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`, {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!loadResponse.ok) {
+        throw new Error('Failed to load game');
+      }
+
+      const saveData = await loadResponse.json();
+      
+      // Restore game state
+      if (saveData.world_data?.blocks) setWorldBlocks(saveData.world_data.blocks);
+      if (saveData.player_data?.inventory) setInventory(saveData.player_data.inventory);
+      if (saveData.player_data?.stats) setPlayerStats(saveData.player_data.stats);
+      if (saveData.game_state?.gameMode) setGameMode(saveData.game_state.gameMode);
+      if (saveData.game_state?.selectedBlock) setSelectedBlock(saveData.game_state.selectedBlock);
+      if (saveData.game_state?.activeSpell) setActiveSpell(saveData.game_state.activeSpell);
+      if (saveData.game_state?.isDay !== undefined) setIsDay(saveData.game_state.isDay);
+      if (saveData.game_state?.gameTime) setGameTime(saveData.game_state.gameTime);
+      if (saveData.game_state?.achievements) setAchievements(saveData.game_state.achievements);
+
+      alert(`Game loaded successfully: ${saveData.save_name}`);
+      console.log('✅ Game loaded:', saveData);
+    } catch (error) {
+      console.error('❌ Load error:', error);
+      alert('Failed to load game. Please try again.');
     }
   };
 
