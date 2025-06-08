@@ -291,9 +291,9 @@ frontend:
 
   - task: "Building & Block System"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -303,6 +303,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Block placement and breaking functionality is working correctly. The console logs show successful block breaking with the message '💥 Broke stone at 0 0 -3'. Block selection with number keys and inventory management are also implemented correctly."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test block placement and breaking functionality due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the block system."
 
   - task: "Enhanced UI System"
     implemented: true
