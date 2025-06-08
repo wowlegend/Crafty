@@ -382,7 +382,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     };
   }, [camera, gameState.selectedBlock, handleBlockBreak, handleBlockPlace]);
 
-  // ENHANCED ground level function for MOBS with better accuracy
+  // ENHANCED ground level function for MOBS with better accuracy AND collision detection
   useEffect(() => {
     // Player uses the actual terrain generation function for smooth terrain following
     window.getHighestBlockAt = (x, z) => {
@@ -406,7 +406,24 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       return Math.max(maxBlockY, 12); // Use the higher of terrain or placed blocks
     };
     
-    console.log('🔧 ENHANCED: Ground detection using actual terrain generation for both player and mobs');
+    // COLLISION DETECTION SYSTEM - Check for solid blocks
+    window.checkCollision = (x, y, z) => {
+      const blockX = Math.floor(x);
+      const blockY = Math.floor(y);
+      const blockZ = Math.floor(z);
+      const key = `${blockX},${blockY},${blockZ}`;
+      
+      // Check if there's a solid block at this position
+      if (blocks.has(key)) {
+        const block = blocks.get(key);
+        // All block types are solid except glass and water
+        return block.type !== 'glass' && block.type !== 'water';
+      }
+      
+      return false; // No collision with air
+    };
+    
+    console.log('🔧 ENHANCED: Ground detection with collision system for blocks and trees');
   }, [blocks]);
 
   // OPTIMIZED block rendering with culling
