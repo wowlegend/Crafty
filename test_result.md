@@ -309,9 +309,9 @@ frontend:
 
   - task: "Enhanced UI System"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -321,6 +321,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "The UI system is working correctly. Fixed an issue in the GameUI component where the useThree hook was being used outside of the Canvas component. The authentication modal, sound controls, and other UI elements are rendering properly."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test the UI system due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the UI elements. The start screen loads, but clicking the start button triggers the React hooks error."
 
   - task: "New Features"
     implemented: true
