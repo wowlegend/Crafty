@@ -1344,9 +1344,9 @@ export const Inventory = ({ gameState, onClose }) => {
                 >
                   <div
                     className="w-8 h-8 mx-auto mb-2 rounded"
-                    style={{ backgroundColor: config.color }}
+                    style={{ backgroundColor: config?.color || '#567C35' }}
                   />
-                  <div className="text-xs text-white">{config.name}</div>
+                  <div className="text-xs text-white">{config?.name || 'Unknown'}</div>
                   <div className="text-xs text-gray-300">{count}</div>
                 </div>
               );
