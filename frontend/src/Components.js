@@ -1356,7 +1356,7 @@ export const Inventory = ({ gameState, onClose }) => {
             {Object.entries(gameState.inventory.tools).map(([tool, count]) => (
               <div key={tool} className="bg-gray-700 p-3 rounded-lg text-center">
                 <div className="text-white mb-1">
-                  {tool === 'pickaxe' && <Pickaxe size={24} className="mx-auto" />}
+                  {tool === 'pickaxe' && <PickaxeIcon size={24} className="mx-auto" />}
                   {tool === 'sword' && <Sword size={24} className="mx-auto" />}
                   {tool === 'shovel' && <div className="w-6 h-6 bg-brown-500 mx-auto" />}
                   {tool === 'axe' && <div className="w-6 h-6 bg-gray-500 mx-auto" />}
