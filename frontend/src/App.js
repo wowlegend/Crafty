@@ -656,35 +656,50 @@ function GameApp() {
         {gameState.showInventory && (
           <Inventory 
             gameState={gameState}
-            onClose={() => gameState.setShowInventory(false)}
+            onClose={() => {
+              gameState.setShowInventory(false);
+              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+            }}
           />
         )}
         
         {gameState.showCrafting && (
           <CraftingTable 
             gameState={gameState}
-            onClose={() => gameState.setShowCrafting(false)}
+            onClose={() => {
+              gameState.setShowCrafting(false);
+              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+            }}
           />
         )}
         
         {gameState.showMagic && (
           <MagicSystem 
             gameState={gameState}
-            onClose={() => gameState.setShowMagic(false)}
+            onClose={() => {
+              gameState.setShowMagic(false);
+              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+            }}
           />
         )}
         
         {gameState.showBuildingTools && (
           <BuildingTools 
             gameState={gameState}
-            onClose={() => gameState.setShowBuildingTools(false)}
+            onClose={() => {
+              gameState.setShowBuildingTools(false);
+              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+            }}
           />
         )}
         
         {gameState.showSettings && (
           <SettingsPanel 
             gameState={gameState}
-            onClose={() => gameState.setShowSettings(false)}
+            onClose={() => {
+              gameState.setShowSettings(false);
+              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+            }}
             showStats={showStats}
             setShowStats={setShowStats}
           />
