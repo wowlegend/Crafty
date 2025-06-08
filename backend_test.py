@@ -884,6 +884,238 @@ def test_database_stability():
             "error": str(e)
         }
 
+def test_game_save():
+    """Test 17: Save Game - POST /api/world/save"""
+    if not session_data["access_token"] or not session_data["world_id"]:
+        return {
+            "success": False,
+            "error": "No access token or world ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        # Create test save data
+        save_data = {
+            "save_name": f"Test Save {int(time.time())}",
+            "world_data": {
+                "blocks": [
+                    {"x": 0, "y": 0, "z": 0, "type": "grass"},
+                    {"x": 1, "y": 0, "z": 0, "type": "dirt"}
+                ],
+                "entities": [
+                    {"id": "player", "x": 0, "y": 1, "z": 0}
+                ]
+            },
+            "player_data": {
+                "position": [0, 1, 0],
+                "inventory": [
+                    {"slot": 0, "item": "dirt", "count": 64},
+                    {"slot": 1, "item": "grass", "count": 32}
+                ],
+                "health": 20,
+                "experience": 100
+            },
+            "game_state": {
+                "time": 12000,
+                "weather": "clear",
+                "difficulty": "normal"
+            }
+        }
+        
+        response = requests.post(
+            f"{API_URL}/world/save",
+            headers=headers,
+            json=save_data
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "save_id" in data and "message" in data:
+                # Store save ID for future tests
+                session_data["save_id"] = data["save_id"]
+                
+                return {
+                    "success": True,
+                    "data": data
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Invalid response format",
+                    "data": data
+                }
+        else:
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "data": response.json() if response.text else None
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_get_saves():
+    """Test 18: Get Saves - GET /api/world/saves"""
+    if not session_data["access_token"] or not session_data["save_id"]:
+        return {
+            "success": False,
+            "error": "No access token or save ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        response = requests.get(
+            f"{API_URL}/world/saves",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "saves" in data and isinstance(data["saves"], list):
+                # Check if our created save is in the list
+                save_found = False
+                for save in data["saves"]:
+                    if "save_id" in save and save["save_id"] == session_data["save_id"]:
+                        save_found = True
+                        break
+                
+                if save_found:
+                    return {
+                        "success": True,
+                        "data": data
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Created save not found in list",
+                        "data": data
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": "Invalid response format (expected 'saves' list)",
+                    "data": data
+                }
+        else:
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "data": response.json() if response.text else None
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_load_game():
+    """Test 19: Load Game - GET /api/world/load/{save_id}"""
+    if not session_data["access_token"] or not session_data["save_id"]:
+        return {
+            "success": False,
+            "error": "No access token or save ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        response = requests.get(
+            f"{API_URL}/world/load/{session_data['save_id']}",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Check if the response contains the expected game data structure
+            if "world_data" in data and "player_data" in data and "game_state" in data:
+                return {
+                    "success": True,
+                    "data": data
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "Invalid response format (missing expected game data)",
+                    "data": data
+                }
+        else:
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "data": response.json() if response.text else None
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def test_delete_save():
+    """Test 20: Delete Save - DELETE /api/world/save/{save_id}"""
+    if not session_data["access_token"] or not session_data["save_id"]:
+        return {
+            "success": False,
+            "error": "No access token or save ID available"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {session_data['access_token']}"
+        }
+        
+        response = requests.delete(
+            f"{API_URL}/world/save/{session_data['save_id']}",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "message" in data and "Save deleted successfully" in data["message"]:
+                # Verify deletion by trying to load the save
+                verify_response = requests.get(
+                    f"{API_URL}/world/load/{session_data['save_id']}",
+                    headers=headers
+                )
+                
+                if verify_response.status_code == 404:
+                    return {
+                        "success": True,
+                        "data": data
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Save was not actually deleted (still accessible)",
+                        "data": data
+                    }
+            else:
+                return {
+                    "success": False,
+                    "error": "Invalid response format",
+                    "data": data
+                }
+        else:
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}",
+                "data": response.json() if response.text else None
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 def run_all_tests():
     """Run all tests in sequence"""
     print(f"Starting backend API tests at {datetime.now().isoformat()}")
