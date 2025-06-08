@@ -493,7 +493,7 @@ frontend:
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 5
+  test_sequence: 6
   run_ui: true
 
 test_plan:
@@ -501,6 +501,14 @@ test_plan:
     - "Performance & Stability"
   stuck_tasks:
     - "Performance & Stability"
+    - "World Generation & Movement"
+    - "Building & Block System"
+    - "Enhanced UI System"
+    - "New Features"
+    - "Visual Quality"
+    - "Mob Ground Detection"
+    - "Grass Wind Effects"
+    - "Player Terrain Following"
   test_all: false
   test_priority: "high_first"
 
