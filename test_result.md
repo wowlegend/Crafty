@@ -547,13 +547,7 @@ metadata:
 test_plan:
   current_focus:
     - "Performance & Stability"
-  stuck_tasks:
-    - "Performance & Stability"
-    - "World Generation & Movement"
-    - "Building & Block System"
-    - "Enhanced UI System"
-    - "New Features"
-    - "Visual Quality"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
