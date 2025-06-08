@@ -261,9 +261,9 @@ backend:
 frontend:
   - task: "World Generation & Movement"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -285,6 +285,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the infinite terrain generation fix. Console logs confirm the initial 5x5 chunk area is generated for seamless experience, and terrain continues to generate as the player moves (verified '🌍 Generated terrain around chunk (0, -1)' message). The terrain generation is working correctly with no gaps or disconnected chunks."
+      - working: false
+        agent: "testing"
+        comment: "During testing, encountered a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly. Console logs show that terrain generation initialization starts correctly with '🌍 ENHANCED terrain generation starting with larger initial area...' and '✅ Initial 5x5 chunk area generated for seamless experience', but the game crashes before full interaction is possible."
 
   - task: "Building & Block System"
     implemented: true
