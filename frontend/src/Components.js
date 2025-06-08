@@ -61,6 +61,10 @@ export const MinecraftHotbar = React.memo(({ gameState }) => {
       <div className="minecraft-hotbar">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
+          if (!blockConfig) {
+            console.warn(`Unknown block type: ${blockType}`);
+            return null;
+          }
           const isSelected = gameState.selectedBlock === blockType;
           const quantity = gameState.inventory?.blocks?.[blockType] || 0;
           
@@ -73,7 +77,7 @@ export const MinecraftHotbar = React.memo(({ gameState }) => {
             >
               <div 
                 className="minecraft-block-icon"
-                style={{ backgroundColor: blockConfig.color }}
+                style={{ backgroundColor: blockConfig.color || '#567C35' }}
               />
               {quantity > 1 && (
                 <div className="minecraft-quantity">
