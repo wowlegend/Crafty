@@ -98,27 +98,6 @@ export const NPCSystem = ({ gameState }) => {
     'pig', 'chicken' // Few peaceful mobs remain at night
   ];
 
-  useEffect(() => {
-    if (!terrainReady) return;
-
-    console.log(`🌅 Initializing ${gameState.isDay ? 'DAY' : 'NIGHT'} mob ecosystem...`);
-    
-    // ENHANCED spawn system - only spawn on generated terrain
-    const spawnPositions = [];
-    
-    // Create smaller initial spawn area around player
-    for (let x = -40; x <= 40; x += 10) {
-      for (let z = -40; z <= 40; z += 10) {
-        // Add random offset for natural distribution
-        const offsetX = x + (Math.random() - 0.5) * 6;
-        const offsetZ = z + (Math.random() - 0.5) * 6;
-        
-        if (Math.abs(offsetX) > 8 || Math.abs(offsetZ) > 8) { // Don't spawn too close to player
-          spawnPositions.push({ x: offsetX, z: offsetZ });
-        }
-      }
-    }
-
     // Choose mobs based on day/night cycle
     const entityTypes = gameState.isDay ? getDayMobs() : getNightMobs();
 
