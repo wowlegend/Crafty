@@ -220,7 +220,8 @@ const useGameState = () => {
     showMagic, setShowMagic, showSettings, setShowSettings, 
     showBuildingTools, setShowBuildingTools, showWorldManager, setShowWorldManager, 
     isDay, setIsDay, gameTime, achievements, setAchievements,
-    playerStats, setPlayerStats, addToInventory, removeFromInventory, loadWorldData
+    playerStats, setPlayerStats, addToInventory, removeFromInventory, 
+    saveGame, loadGame
   };
 };
 
