@@ -471,11 +471,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "World Generation & Movement"
-    - "Mob Ground Detection"
-    - "Grass Wind Effects"
-    - "Player Terrain Following"
-  stuck_tasks: []
+    - "Performance & Stability"
+  stuck_tasks:
+    - "Performance & Stability"
   test_all: false
   test_priority: "high_first"
 
