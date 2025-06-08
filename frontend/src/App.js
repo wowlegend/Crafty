@@ -266,23 +266,29 @@ function GameApp() {
     }
   }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
 
-  // Basic key handlers with FIXED ESC and UI interaction
+  // ENHANCED ESC and UI key handlers with PROPER pointer lock management
   useEffect(() => {
     const handleKeyDown = (event) => {
       // FIXED: ESC opens Settings instead of returning to start
       if (event.code === 'Escape') {
         event.preventDefault();
-        event.stopPropagation();
-        console.log('🎮 ESC pressed - toggling settings');
+        event.stopImmediatePropagation(); // Stop ALL propagation
+        console.log('🎮 ESC pressed - Current settings state:', gameState.showSettings);
         
         if (gameState.showSettings) {
           // If settings is open, close it
           gameState.setShowSettings(false);
-          // Don't restore pointer lock immediately, let user click game area
+          console.log('🔒 Closing settings, will re-enable pointer lock on click');
         } else {
-          // Open settings and release pointer lock for UI interaction
+          // Open settings and IMMEDIATELY release pointer lock
+          console.log('🔓 Opening settings, releasing pointer lock');
           setIsPointerLocked(false);
           gameState.setShowSettings(true);
+          
+          // FORCE release pointer lock by exiting it
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          }
         }
         return;
       }
@@ -290,33 +296,45 @@ function GameApp() {
       // FIXED: UI interaction keys properly release pointer lock
       if (event.code === 'KeyE') {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         console.log('🎮 E pressed - toggling inventory, releasing pointer lock');
-        setIsPointerLocked(false); // Release pointer lock for UI interaction
+        setIsPointerLocked(false);
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
         gameState.setShowInventory(!gameState.showInventory);
         return;
       }
       if (event.code === 'KeyC') {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         console.log('🎮 C pressed - toggling crafting, releasing pointer lock');
-        setIsPointerLocked(false); // Release pointer lock for UI interaction
+        setIsPointerLocked(false);
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
         gameState.setShowCrafting(!gameState.showCrafting);
         return;
       }
       if (event.code === 'KeyM') {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         console.log('🎮 M pressed - toggling magic, releasing pointer lock');
-        setIsPointerLocked(false); // Release pointer lock for UI interaction
+        setIsPointerLocked(false);
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
         gameState.setShowMagic(!gameState.showMagic);
         return;
       }
       if (event.code === 'KeyB') {
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         console.log('🎮 B pressed - toggling building tools, releasing pointer lock');
-        setIsPointerLocked(false); // Release pointer lock for UI interaction
+        setIsPointerLocked(false);
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
         gameState.setShowBuildingTools(!gameState.showBuildingTools);
         return;
       }
@@ -327,8 +345,9 @@ function GameApp() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase to ensure this runs before other handlers
+    window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, gameState.showSettings, showStats]);
 
   const handlePointerLockChange = () => {
