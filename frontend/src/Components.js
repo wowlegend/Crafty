@@ -1690,6 +1690,45 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
           </div>
 
           <div className="space-y-2">
+            <h3 className="text-white font-semibold">Game Progress</h3>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => gameState.saveGame && gameState.saveGame()}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-3 rounded text-sm"
+              >
+                💾 Save Game
+              </button>
+              <button 
+                onClick={() => gameState.loadGame && gameState.loadGame()}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-3 rounded text-sm"
+              >
+                📁 Load Game
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold">Day/Night Control</h3>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => gameState.setIsDay(true)}
+                className={`flex-1 py-2 px-3 rounded text-sm ${gameState.isDay ? 'bg-yellow-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
+              >
+                ☀️ Day
+              </button>
+              <button 
+                onClick={() => gameState.setIsDay(false)}
+                className={`flex-1 py-2 px-3 rounded text-sm ${!gameState.isDay ? 'bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
+              >
+                🌙 Night
+              </button>
+            </div>
+            <div className="text-xs text-gray-400 text-center">
+              Tip: Press 'N' key to toggle day/night quickly
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <h3 className="text-white font-semibold">World Actions</h3>
             <div className="flex space-x-2">
               <button className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded text-sm">
