@@ -271,6 +271,7 @@ function GameApp() {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setIsPointerLocked(false);
+        gameState.setShowSettings(!gameState.showSettings);
         event.preventDefault();
       }
       if (event.key === 'e' || event.key === 'E') {
