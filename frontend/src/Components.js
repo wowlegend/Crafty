@@ -636,16 +636,60 @@ export const Player = ({ gameState }) => {
     if (keys.KeyA) moveVector.sub(rightVector.current);
     if (keys.KeyD) moveVector.add(rightVector.current);
     
-    // SMOOTH horizontal movement - NO JERKY UPDATES
+    // ENHANCED horizontal movement with COLLISION DETECTION
     if (moveVector.length() > 0) {
       moveVector.normalize();
       moveVector.y = 0; // Keep movement horizontal
       
       const scaledMovement = moveVector.multiplyScalar(speed * delta);
       
-      // Update target position instead of directly updating camera
-      targetPosition.current.x += scaledMovement.x;
-      targetPosition.current.z += scaledMovement.z;
+      // COLLISION DETECTION - Check for solid blocks before moving
+      const newX = targetPosition.current.x + scaledMovement.x;
+      const newZ = targetPosition.current.z + scaledMovement.z;
+      const playerY = targetPosition.current.y;
+      
+      // Check collision with blocks (including trees)
+      let canMoveX = true;
+      let canMoveZ = true;
+      
+      if (window.checkCollision) {
+        // Check horizontal collision in multiple points around player
+        const checkPoints = [
+          { x: newX, z: targetPosition.current.z, y: playerY },
+          { x: newX, z: targetPosition.current.z, y: playerY - 0.8 },
+          { x: newX + 0.3, z: targetPosition.current.z, y: playerY },
+          { x: newX - 0.3, z: targetPosition.current.z, y: playerY }
+        ];
+        
+        for (const point of checkPoints) {
+          if (window.checkCollision(point.x, point.y, point.z)) {
+            canMoveX = false;
+            break;
+          }
+        }
+        
+        const checkPointsZ = [
+          { x: targetPosition.current.x, z: newZ, y: playerY },
+          { x: targetPosition.current.x, z: newZ, y: playerY - 0.8 },
+          { x: targetPosition.current.x, z: newZ + 0.3, y: playerY },
+          { x: targetPosition.current.x, z: newZ - 0.3, y: playerY }
+        ];
+        
+        for (const point of checkPointsZ) {
+          if (window.checkCollision(point.x, point.y, point.z)) {
+            canMoveZ = false;
+            break;
+          }
+        }
+      }
+      
+      // Apply movement only if no collision
+      if (canMoveX) {
+        targetPosition.current.x += scaledMovement.x;
+      }
+      if (canMoveZ) {
+        targetPosition.current.z += scaledMovement.z;
+      }
     }
     
     // ENHANCED: Smooth terrain following with stability
