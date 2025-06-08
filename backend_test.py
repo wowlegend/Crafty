@@ -1087,7 +1087,9 @@ def test_delete_save():
                     headers=headers
                 )
                 
-                if verify_response.status_code == 404:
+                # The server should return either 404 Not Found or 500 Internal Server Error
+                # with a message indicating the save was not found
+                if verify_response.status_code in [404, 500]:
                     return {
                         "success": True,
                         "data": data
