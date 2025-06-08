@@ -4,17 +4,17 @@
   "private": true,
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@react-three/drei": "^9.120.3",
-    "@react-three/fiber": "^8.17.10",
+    "@react-three/drei": "^9.88.0",
+    "@react-three/fiber": "^8.15.11",
     "axios": "^1.8.4",
     "cra-template": "1.2.0",
-    "framer-motion": "^12.16.0",
-    "lucide-react": "^0.513.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.292.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.5.1",
+    "react-router-dom": "^6.18.0",
     "react-scripts": "5.0.1",
-    "three": "^0.177.0"
+    "three": "^0.158.0"
   },
   "scripts": {
     "start": "react-scripts start",
