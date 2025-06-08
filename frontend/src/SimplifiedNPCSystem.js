@@ -153,7 +153,7 @@ export const NPCSystem = ({ gameState }) => {
     console.log(`✅ ${gameState.isDay ? 'DAY' : 'NIGHT'} ecosystem spawned: ${initialEntities.length} entities`);
   }, [terrainReady, gameState.isDay]); // Re-spawn when day/night changes
     
-  // ENHANCED DISTRIBUTED RESPAWNING SYSTEM - spawns around player position in ALL areas
+  // AGGRESSIVE IMMEDIATE SPAWNING SYSTEM - spawns mobs EVERYWHERE the player goes
   useEffect(() => {
     if (!terrainReady) return;
     
@@ -162,56 +162,72 @@ export const NPCSystem = ({ gameState }) => {
     
     const respawnInterval = setInterval(() => {
       setEntities(currentEntities => {
-        const targetMobCount = 40; // Increased for better world coverage
+        const targetMobCount = 50; // Increased significantly
         
         if (currentEntities.length < targetMobCount) {
           const playerPos = camera?.position;
           if (!playerPos) return currentEntities;
           
-          // ENHANCED: Clean up old entities that are too far from player
+          // Clean up entities that are too far
           const nearbyEntities = currentEntities.filter(entity => {
             const [ex, ey, ez] = entity.position;
             const distance = Math.sqrt(
               Math.pow(playerPos.x - ex, 2) + 
               Math.pow(playerPos.z - ez, 2)
             );
-            return distance < 150; // Keep mobs within 150 blocks
+            return distance < 200; // Keep mobs within 200 blocks
           });
           
-          const mobsToSpawn = Math.min(8, targetMobCount - nearbyEntities.length);
+          const mobsToSpawn = Math.min(15, targetMobCount - nearbyEntities.length); // Spawn more at once
           const newMobs = [];
           
+          console.log(`🌍 AGGRESSIVE SPAWNING: Player at (${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}), spawning ${mobsToSpawn} mobs`);
+          
           for (let i = 0; i < mobsToSpawn; i++) {
-            // IMPROVED: Spawn in larger area around player for better coverage
-            const ring = Math.floor(Math.random() * 4); // 4 different rings
+            // MUCH LARGER spawn area - spawn in 6 different rings for better coverage
+            const ring = Math.floor(Math.random() * 6); // 6 different rings
             const angle = Math.random() * Math.PI * 2;
-            const distance = 25 + (ring * 25) + Math.random() * 20; // 25-120 blocks away
+            const distance = 20 + (ring * 20) + Math.random() * 15; // 20-140 blocks away
             
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
             
-            // FIXED spawn height calculation using separate mob function
+            // ENHANCED spawn height - multiple attempts for accuracy
             let spawnY = 15; // Safe default
-            try {
-              if (window.getMobGroundLevel) {
-                const calculatedY = window.getMobGroundLevel(spawnX, spawnZ);
-                if (typeof calculatedY === 'number' && !isNaN(calculatedY)) {
-                  spawnY = calculatedY + 1.5; // Spawn above ground
+            let attempts = 0;
+            
+            while (attempts < 5) { // Try 5 times
+              try {
+                if (window.getMobGroundLevel) {
+                  const calculatedY = window.getMobGroundLevel(spawnX, spawnZ);
+                  if (typeof calculatedY === 'number' && !isNaN(calculatedY) && calculatedY > 10) {
+                    spawnY = calculatedY + 1.5; // Spawn above ground
+                    break;
+                  }
                 }
+                // If failed, try using getHighestBlockAt
+                if (window.getHighestBlockAt) {
+                  const altY = window.getHighestBlockAt(spawnX, spawnZ);
+                  if (typeof altY === 'number' && !isNaN(altY) && altY > 10) {
+                    spawnY = altY + 1.5;
+                    break;
+                  }
+                }
+              } catch (error) {
+                console.warn(`Attempt ${attempts + 1}: Error calculating spawn height at ${spawnX}, ${spawnZ}:`, error);
               }
-            } catch (error) {
-              console.warn(`Error calculating spawn height at ${spawnX}, ${spawnZ}:`, error);
+              attempts++;
             }
             
             // SAFETY: Ensure reasonable spawn height
             spawnY = Math.max(spawnY, 13);
-            spawnY = Math.min(spawnY, 22);
+            spawnY = Math.min(spawnY, 25);
             
             const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
             const stats = getEntityStats(entityType);
             
             newMobs.push({
-              id: `entity_respawn_${Date.now()}_${i}`,
+              id: `entity_aggressive_${Date.now()}_${i}`,
               type: entityType,
               position: [spawnX, spawnY, spawnZ],
               health: stats.health,
@@ -219,20 +235,20 @@ export const NPCSystem = ({ gameState }) => {
               hostile: stats.hostile,
               speed: stats.speed,
               initialPosition: [spawnX, spawnY, spawnZ],
-              wanderRadius: stats.hostile ? 10 : 6,
+              wanderRadius: stats.hostile ? 12 : 8,
               drops: getDrops(entityType),
               spawnTime: Date.now()
             });
             
-            console.log(`🌍 NEW TERRAIN spawn: ${entityType} at (${spawnX}, ${spawnY.toFixed(1)}, ${spawnZ}) - Distance: ${distance.toFixed(1)}`);
+            console.log(`🐺 AGGRESSIVE spawn: ${entityType} at (${spawnX}, ${spawnY.toFixed(1)}, ${spawnZ}) - Ring: ${ring}, Distance: ${distance.toFixed(1)}`);
           }
           
-          console.log(`🔄 Enhanced respawn: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
+          console.log(`🔄 AGGRESSIVE respawn complete: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
           return [...nearbyEntities, ...newMobs];
         }
         return currentEntities;
       });
-    }, 6000); // Spawn every 6 seconds for faster coverage
+    }, 3000); // Spawn every 3 seconds for MUCH faster coverage
 
     return () => clearInterval(respawnInterval);
   }, [terrainReady, camera, gameState.isDay]);
