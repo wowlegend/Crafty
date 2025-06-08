@@ -545,7 +545,7 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
   const moonRef = useRef();
   const starsRef = useRef();
   
-  const skyColor = isDay ? '#87CEEB' : '#0B1426';
+  const skyColor = isDay ? '#87CEEB' : '#2F2F52';
   const sunColor = '#FFD700';
   const moonColor = '#F5F5DC';
   
