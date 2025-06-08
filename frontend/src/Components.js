@@ -486,9 +486,9 @@ const OptimizedBlock = React.memo(({ position, blockConfig, blockType }) => {
     <mesh position={position} userData={{ blockType }}>
       <boxGeometry args={[1, 1, 1]} />
       <meshLambertMaterial 
-        color={blockConfig.color}
-        transparent={blockConfig.transparent || false}
-        opacity={blockConfig.transparent ? 0.8 : 1}
+        color={blockConfig?.color || '#567C35'}
+        transparent={blockConfig?.transparent}
+        opacity={blockConfig?.transparent ? 0.8 : 1}
       />
     </mesh>
   );
