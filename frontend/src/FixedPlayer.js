@@ -83,50 +83,17 @@ export const FixedPlayer = ({ gameState, onPositionUpdate }) => {
       console.log('🏃 Moving right (D) - Speed:', moveSpeed);
     }
     
-    // Apply horizontal movement with collision detection
+    // Apply horizontal movement with **TEMPORARY DISABLED** collision detection for debugging
     if (moveVector.length() > 0) {
       moveVector.normalize();
       const scaledMovement = moveVector.multiplyScalar(moveSpeed * delta);
       
-      // Check collision before moving
-      const newX = playerPosition.current.x + scaledMovement.x;
-      const newZ = playerPosition.current.z + scaledMovement.z;
-      const playerY = playerPosition.current.y;
+      // TEMPORARY: Disable collision detection to test basic movement
+      console.log(`🔧 TEMP: Moving from (${playerPosition.current.x.toFixed(1)}, ${playerPosition.current.z.toFixed(1)}) by (${scaledMovement.x.toFixed(3)}, ${scaledMovement.z.toFixed(3)})`);
       
-      let canMoveX = true;
-      let canMoveZ = true;
-      
-      if (window.checkCollision) {
-        // IMPROVED: Check collision with better tolerance and logging
-        const checkX = window.checkCollision(newX, playerY, playerPosition.current.z) ||
-                      window.checkCollision(newX, playerY - 0.5, playerPosition.current.z);
-        
-        const checkZ = window.checkCollision(playerPosition.current.x, playerY, newZ) ||
-                      window.checkCollision(playerPosition.current.x, playerY - 0.5, newZ);
-        
-        if (checkX) {
-          canMoveX = false;
-          console.log(`🚫 X-movement blocked at (${newX.toFixed(1)}, ${playerY.toFixed(1)}, ${playerPosition.current.z.toFixed(1)})`);
-        }
-        
-        if (checkZ) {
-          canMoveZ = false;
-          console.log(`🚫 Z-movement blocked at (${playerPosition.current.x.toFixed(1)}, ${playerY.toFixed(1)}, ${newZ.toFixed(1)})`);
-        }
-      }
-      
-      // Apply movement with debugging
-      if (canMoveX) {
-        playerPosition.current.x += scaledMovement.x;
-      } else {
-        console.log(`❌ Cannot move in X direction: collision detected`);
-      }
-      
-      if (canMoveZ) {
-        playerPosition.current.z += scaledMovement.z;
-      } else {
-        console.log(`❌ Cannot move in Z direction: collision detected`);
-      }
+      // Apply movement directly without collision checking
+      playerPosition.current.x += scaledMovement.x;
+      playerPosition.current.z += scaledMovement.z;
       
       console.log(`📍 Player moved to: (${playerPosition.current.x.toFixed(1)}, ${playerPosition.current.y.toFixed(1)}, ${playerPosition.current.z.toFixed(1)})`);
     }
