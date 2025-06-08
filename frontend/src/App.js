@@ -266,39 +266,59 @@ function GameApp() {
     }
   }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
 
-  // Basic key handlers
+  // Basic key handlers with FIXED ESC and UI interaction
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // FIXED: ESC opens Settings instead of returning to start
       if (event.key === 'Escape') {
-        setIsPointerLocked(false);
-        gameState.setShowSettings(!gameState.showSettings);
         event.preventDefault();
+        if (gameState.showSettings) {
+          // If settings is open, close it
+          gameState.setShowSettings(false);
+          setIsPointerLocked(true); // Re-enable pointer lock
+        } else {
+          // Open settings and release pointer lock for UI interaction
+          setIsPointerLocked(false);
+          gameState.setShowSettings(true);
+        }
+        return;
       }
+      
+      // FIXED: UI interaction keys properly release pointer lock
       if (event.key === 'e' || event.key === 'E') {
+        event.preventDefault();
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowInventory(!gameState.showInventory);
+        return;
       }
       if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault();
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowCrafting(!gameState.showCrafting);
+        return;
       }
       if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault();
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowMagic(!gameState.showMagic);
+        return;
       }
       if (event.key === 'b' || event.key === 'B') {
+        event.preventDefault();
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowBuildingTools(!gameState.showBuildingTools);
+        return;
       }
       if (event.key === 'F3') {
         setShowStats(!showStats);
         event.preventDefault();
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, showStats]);
+  }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, gameState.showSettings, showStats]);
 
   const handlePointerLockChange = () => {
     // BULLETPROOF pointer lock state handling
