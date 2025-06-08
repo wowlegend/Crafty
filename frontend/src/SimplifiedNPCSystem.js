@@ -153,7 +153,7 @@ export const NPCSystem = ({ gameState }) => {
     console.log(`✅ ${gameState.isDay ? 'DAY' : 'NIGHT'} ecosystem spawned: ${initialEntities.length} entities`);
   }, [terrainReady, gameState.isDay]); // Re-spawn when day/night changes
     
-  // DISTRIBUTED RESPAWNING SYSTEM - spawns around player position
+  // ENHANCED DISTRIBUTED RESPAWNING SYSTEM - spawns around player position in ALL areas
   useEffect(() => {
     if (!terrainReady) return;
     
@@ -162,20 +162,30 @@ export const NPCSystem = ({ gameState }) => {
     
     const respawnInterval = setInterval(() => {
       setEntities(currentEntities => {
-        const targetMobCount = 30; // Balanced target
+        const targetMobCount = 40; // Increased for better world coverage
         
         if (currentEntities.length < targetMobCount) {
           const playerPos = camera?.position;
           if (!playerPos) return currentEntities;
           
-          const mobsToSpawn = Math.min(6, targetMobCount - currentEntities.length);
+          // ENHANCED: Clean up old entities that are too far from player
+          const nearbyEntities = currentEntities.filter(entity => {
+            const [ex, ey, ez] = entity.position;
+            const distance = Math.sqrt(
+              Math.pow(playerPos.x - ex, 2) + 
+              Math.pow(playerPos.z - ez, 2)
+            );
+            return distance < 150; // Keep mobs within 150 blocks
+          });
+          
+          const mobsToSpawn = Math.min(8, targetMobCount - nearbyEntities.length);
           const newMobs = [];
           
           for (let i = 0; i < mobsToSpawn; i++) {
-            // Spawn in multiple rings around player for better distribution
-            const ring = Math.floor(Math.random() * 3); // 3 different rings
+            // IMPROVED: Spawn in larger area around player for better coverage
+            const ring = Math.floor(Math.random() * 4); // 4 different rings
             const angle = Math.random() * Math.PI * 2;
-            const distance = 30 + (ring * 20) + Math.random() * 15; // 30-80 blocks away
+            const distance = 25 + (ring * 25) + Math.random() * 20; // 25-120 blocks away
             
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
@@ -213,17 +223,19 @@ export const NPCSystem = ({ gameState }) => {
               drops: getDrops(entityType),
               spawnTime: Date.now()
             });
+            
+            console.log(`🌍 NEW TERRAIN spawn: ${entityType} at (${spawnX}, ${spawnY.toFixed(1)}, ${spawnZ}) - Distance: ${distance.toFixed(1)}`);
           }
           
-          console.log(`🔄 Distributed respawn: ${newMobs.length} mobs across terrain (Total: ${currentEntities.length + newMobs.length})`);
-          return [...currentEntities, ...newMobs];
+          console.log(`🔄 Enhanced respawn: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
+          return [...nearbyEntities, ...newMobs];
         }
         return currentEntities;
       });
-    }, 8000); // Spawn every 8 seconds
+    }, 6000); // Spawn every 6 seconds for faster coverage
 
     return () => clearInterval(respawnInterval);
-  }, [terrainReady, camera, gameState.isDay, getDayMobs, getNightMobs]);
+  }, [terrainReady, camera, gameState.isDay]);
 
   // ENHANCED attack function with VISUAL EFFECTS, SOUND EFFECTS and weapon display
   const attackEntity = (entityId) => {
