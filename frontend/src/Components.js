@@ -1281,7 +1281,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition = { 
             className="minecraft-tool-button"
             title="Building Tools (B)"
           >
-            <Grid3X3 size={20} />
+            <Grid size={20} />
           </button>
         </div>
       </div>
