@@ -83,17 +83,50 @@ export const FixedPlayer = ({ gameState, onPositionUpdate }) => {
       console.log('🏃 Moving right (D) - Speed:', moveSpeed);
     }
     
-    // Apply horizontal movement with **TEMPORARY DISABLED** collision detection for debugging
+    // Apply horizontal movement with **SMART COLLISION DETECTION** (restored)
     if (moveVector.length() > 0) {
       moveVector.normalize();
       const scaledMovement = moveVector.multiplyScalar(moveSpeed * delta);
       
-      // TEMPORARY: Disable collision detection to test basic movement
-      console.log(`🔧 TEMP: Moving from (${playerPosition.current.x.toFixed(1)}, ${playerPosition.current.z.toFixed(1)}) by (${scaledMovement.x.toFixed(3)}, ${scaledMovement.z.toFixed(3)})`);
+      console.log(`🔧 SMART: Moving from (${playerPosition.current.x.toFixed(1)}, ${playerPosition.current.z.toFixed(1)}) by (${scaledMovement.x.toFixed(3)}, ${scaledMovement.z.toFixed(3)})`);
       
-      // Apply movement directly without collision checking
-      playerPosition.current.x += scaledMovement.x;
-      playerPosition.current.z += scaledMovement.z;
+      // SMART collision detection - check both X and Z separately for better movement
+      const newX = playerPosition.current.x + scaledMovement.x;
+      const newZ = playerPosition.current.z + scaledMovement.z;
+      const playerY = playerPosition.current.y;
+      
+      let canMoveX = true;
+      let canMoveZ = true;
+      
+      if (window.checkCollision) {
+        // Check X movement (left/right)
+        const xCollision = window.checkCollision(newX, playerY, playerPosition.current.z) ||
+                          window.checkCollision(newX, playerY - 0.5, playerPosition.current.z) ||
+                          window.checkCollision(newX, playerY + 0.5, playerPosition.current.z);
+        
+        // Check Z movement (forward/back)  
+        const zCollision = window.checkCollision(playerPosition.current.x, playerY, newZ) ||
+                          window.checkCollision(playerPosition.current.x, playerY - 0.5, newZ) ||
+                          window.checkCollision(playerPosition.current.x, playerY + 0.5, newZ);
+        
+        if (xCollision) {
+          canMoveX = false;
+          console.log(`🚫 X-movement blocked at (${newX.toFixed(1)}, ${playerY.toFixed(1)}, ${playerPosition.current.z.toFixed(1)})`);
+        }
+        
+        if (zCollision) {
+          canMoveZ = false;
+          console.log(`🚫 Z-movement blocked at (${playerPosition.current.x.toFixed(1)}, ${playerY.toFixed(1)}, ${newZ.toFixed(1)})`);
+        }
+      }
+      
+      // Apply movement independently for X and Z (allows sliding along walls)
+      if (canMoveX) {
+        playerPosition.current.x += scaledMovement.x;
+      }
+      if (canMoveZ) {
+        playerPosition.current.z += scaledMovement.z;
+      }
       
       console.log(`📍 Player moved to: (${playerPosition.current.x.toFixed(1)}, ${playerPosition.current.y.toFixed(1)}, ${playerPosition.current.z.toFixed(1)})`);
     }
