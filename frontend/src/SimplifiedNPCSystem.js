@@ -618,17 +618,57 @@ const Entity = ({ entity, gameState, camera, onAttack }) => {
       const offsetX = Math.sin(time * 0.1) * 0.3;
       const offsetZ = Math.cos(time * 0.1) * 0.3;
       
-      meshRef.current.position.x = initX + offsetX;
-      meshRef.current.position.z = initZ + offsetZ;
+      const newX = initX + offsetX;
+      const newZ = initZ + offsetZ;
+      
+      // COLLISION DETECTION for villagers
+      let canMove = true;
+      if (window.checkCollision) {
+        canMove = !window.checkCollision(newX, targetY, newZ);
+      }
+      
+      if (canMove) {
+        meshRef.current.position.x = newX;
+        meshRef.current.position.z = newZ;
+      } else {
+        meshRef.current.position.x = initX;
+        meshRef.current.position.z = initZ;
+      }
       meshRef.current.position.y = targetY;
       
     } else if (['pig', 'chicken', 'cow', 'sheep', 'wolf'].includes(entity.type)) {
-      // Passive animals wander but stay on ground
+      // Passive animals wander but stay on ground with collision detection
       const offsetX = Math.sin(time * 0.2 * entity.speed) * entity.wanderRadius;
       const offsetZ = Math.cos(time * 0.15 * entity.speed) * entity.wanderRadius;
       
-      meshRef.current.position.x = initX + offsetX;
-      meshRef.current.position.z = initZ + offsetZ;
+      const newX = initX + offsetX;
+      const newZ = initZ + offsetZ;
+      
+      // COLLISION DETECTION for animals
+      let canMove = true;
+      if (window.checkCollision) {
+        canMove = !window.checkCollision(newX, targetY, newZ) && 
+                  !window.checkCollision(newX, targetY + 0.5, newZ);
+      }
+      
+      if (canMove) {
+        meshRef.current.position.x = newX;
+        meshRef.current.position.z = newZ;
+      } else {
+        // If blocked, try alternative movement
+        const altOffsetX = Math.sin(time * 0.3 * entity.speed) * (entity.wanderRadius * 0.5);
+        const altOffsetZ = Math.cos(time * 0.25 * entity.speed) * (entity.wanderRadius * 0.5);
+        const altX = initX + altOffsetX;
+        const altZ = initZ + altOffsetZ;
+        
+        if (!window.checkCollision || !window.checkCollision(altX, targetY, altZ)) {
+          meshRef.current.position.x = altX;
+          meshRef.current.position.z = altZ;
+        } else {
+          meshRef.current.position.x = initX;
+          meshRef.current.position.z = initZ;
+        }
+      }
       meshRef.current.position.y = targetY;
       
     } else if (entity.hostile) {
