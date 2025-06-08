@@ -189,8 +189,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
           });
         }
         
-        // Fewer trees for performance - only 1% chance
-        if (blockType === 'grass' && Math.random() < 0.01) {
+        // Fewer trees for better navigation - reduced to 0.3% chance
+        if (blockType === 'grass' && Math.random() < 0.003) {
           generateTree(newBlocks, x, height, z);
         }
       }
