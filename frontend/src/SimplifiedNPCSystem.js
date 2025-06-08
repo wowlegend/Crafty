@@ -2,16 +2,17 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// ENHANCED NPC System with MORE MOBS and weapon display
+// ENHANCED NPC System with DAY/NIGHT cycle and better spawning
 export const NPCSystem = ({ gameState }) => {
   const [entities, setEntities] = useState([]);
   const { camera } = useThree();
   const [terrainReady, setTerrainReady] = useState(false);
+  const [lastTimeOfDay, setLastTimeOfDay] = useState(true);
 
   // Wait for terrain to be ready, then spawn NPCs
   useEffect(() => {
     const checkTerrain = () => {
-      if (window.getHighestBlockAt) {
+      if (window.getMobGroundLevel && window.checkCollision) {
         setTerrainReady(true);
         return true;
       }
