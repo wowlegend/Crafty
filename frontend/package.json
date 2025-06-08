@@ -4,8 +4,8 @@
   "private": true,
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@react-three/drei": "^10.1.2",
-    "@react-three/fiber": "^9.1.2",
+    "@react-three/drei": "^9.120.3",
+    "@react-three/fiber": "^8.17.10",
     "axios": "^1.8.4",
     "cra-template": "1.2.0",
     "framer-motion": "^12.16.0",
