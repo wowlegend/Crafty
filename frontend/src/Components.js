@@ -1572,17 +1572,109 @@ export const BuildingTools = ({ gameState, onClose }) => {
 };
 
 
+export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="absolute inset-0 bg-black/50 flex items-center justify-center z-30"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }}
+    >
+      <div
+        className="bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation(); 
+              onClose();
+            }} 
+            className="text-gray-400 hover:text-white"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-white font-semibold mb-2">Game Mode</label>
+            <select
+              value={gameState.gameMode}
+              onChange={(e) => gameState.setGameMode(e.target.value)}
+              className="w-full bg-gray-700 text-white p-2 rounded"
+            >
+              <option value="creative">Creative</option>
+              <option value="survival">Survival</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={showStats}
+                onChange={(e) => setShowStats(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-white">Show Performance Stats</span>
+            </label>
+          </div>
+
+          {/* FIXED: Single Game Progress section only */}
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold">Game Progress</h3>
+            <div className="flex space-x-2">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.saveGame && gameState.saveGame();
+                }}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-3 rounded text-sm"
+              >
+                💾 Save Game
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.loadGame && gameState.loadGame();
+                }}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-3 rounded text-sm"
+              >
+                📁 Load Game
+              </button>
+            </div>
+          </div>
+
+          {/* FIXED: Single Day/Night Control section only */}
           <div className="space-y-2">
             <h3 className="text-white font-semibold">Day/Night Control</h3>
             <div className="flex space-x-2">
               <button 
-                onClick={() => gameState.setIsDay(true)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.setIsDay(true);
+                }}
                 className={`flex-1 py-2 px-3 rounded text-sm ${gameState.isDay ? 'bg-yellow-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
               >
                 ☀️ Day
               </button>
               <button 
-                onClick={() => gameState.setIsDay(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.setIsDay(false);
+                }}
                 className={`flex-1 py-2 px-3 rounded text-sm ${!gameState.isDay ? 'bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
               >
                 🌙 Night
@@ -1623,4 +1715,7 @@ export const BuildingTools = ({ gameState, onClose }) => {
       </div>
     </motion.div>
   );
+};
+
+{/* CLEANED UP: Remove orphaned fragments */}
 };
