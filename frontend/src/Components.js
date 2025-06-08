@@ -712,10 +712,22 @@ export const Player = ({ gameState }) => {
     const moveVector = new THREE.Vector3();
     
     // Apply WASD movement based on camera direction
-    if (keys.KeyW) moveVector.add(forwardVector.current);
-    if (keys.KeyS) moveVector.sub(forwardVector.current);
-    if (keys.KeyA) moveVector.sub(rightVector.current);
-    if (keys.KeyD) moveVector.add(rightVector.current);
+    if (keys.KeyW) {
+      moveVector.add(forwardVector.current);
+      console.log('🏃 Moving forward (W)');
+    }
+    if (keys.KeyS) {
+      moveVector.sub(forwardVector.current);
+      console.log('🏃 Moving backward (S)');
+    }
+    if (keys.KeyA) {
+      moveVector.sub(rightVector.current);
+      console.log('🏃 Moving left (A)');
+    }
+    if (keys.KeyD) {
+      moveVector.add(rightVector.current);
+      console.log('🏃 Moving right (D)');
+    }
     
     // ENHANCED horizontal movement with COLLISION DETECTION
     if (moveVector.length() > 0) {
