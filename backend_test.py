@@ -1135,6 +1135,12 @@ def run_all_tests():
     run_test("Chat System", test_chat_system)
     run_test("Chat Retrieval", test_chat_retrieval)
     
+    # Run save/load system tests
+    run_test("Game Save", test_game_save)
+    run_test("Get Saves", test_get_saves)
+    run_test("Load Game", test_load_game)
+    run_test("Delete Save", test_delete_save)
+    
     # Run performance and stability tests
     run_test("API Performance", test_api_performance)
     run_test("Concurrent Requests", test_concurrent_requests)
