@@ -275,15 +275,19 @@ function GameApp() {
         event.preventDefault();
       }
       if (event.key === 'e' || event.key === 'E') {
+        setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowInventory(!gameState.showInventory);
       }
       if (event.key === 'c' || event.key === 'C') {
+        setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowCrafting(!gameState.showCrafting);
       }
       if (event.key === 'm' || event.key === 'M') {
+        setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowMagic(!gameState.showMagic);
       }
       if (event.key === 'b' || event.key === 'B') {
+        setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowBuildingTools(!gameState.showBuildingTools);
       }
       if (event.key === 'F3') {
