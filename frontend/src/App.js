@@ -270,12 +270,15 @@ function GameApp() {
   useEffect(() => {
     const handleKeyDown = (event) => {
       // FIXED: ESC opens Settings instead of returning to start
-      if (event.key === 'Escape') {
+      if (event.code === 'Escape') {
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎮 ESC pressed - toggling settings');
+        
         if (gameState.showSettings) {
           // If settings is open, close it
           gameState.setShowSettings(false);
-          setIsPointerLocked(true); // Re-enable pointer lock
+          // Don't restore pointer lock immediately, let user click game area
         } else {
           // Open settings and release pointer lock for UI interaction
           setIsPointerLocked(false);
