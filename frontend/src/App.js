@@ -353,7 +353,7 @@ function GameApp() {
                   } text-white`}
                   title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
                 >
-                  {soundEnabled ? <LucideIcons.Volume2 size={20} /> : <LucideIcons.VolumeX size={20} />}
+                  {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 </button>
                 <button
                   onClick={() => setMusicEnabled(!musicEnabled)}
