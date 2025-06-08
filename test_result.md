@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Complete all requested enhancements to the Crafty Minecraft Clone: 1) Enhanced Magic System with Diablo-style effects and magic wands as primary weapons, 2) Performance optimization for terrain generation lag/freezing, 3) Experience/leveling system with visual effects, 4) Enhanced grass with wind effects, 5) Focus on code elegance, efficiency and error-proof implementation. Fix any Three.js rendering pipeline issues and ensure no runtime errors."
+user_problem_statement: "Complete all requested enhancements to the Crafty Minecraft Clone: 1) Enhanced Magic System with Diablo-style effects and magic wands as primary weapons, 2) Performance optimization for terrain generation lag/freezing, 3) Experience/leveling system with visual effects, 4) Enhanced grass with wind effects, 5) Focus on code elegance, efficiency and error-proof implementation. Fix any Three.js rendering pipeline issues and ensure no runtime errors. CURRENT STATUS: User reported WASD movement not working, ESC key issues, UI mouse interaction problems, and save/load system needs testing."
 
 backend:
   - task: "API Health Check"
