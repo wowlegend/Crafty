@@ -9,15 +9,13 @@ export const NPCSystem = ({ gameState }) => {
   const [terrainReady, setTerrainReady] = useState(false);
   const [lastTimeOfDay, setLastTimeOfDay] = useState(true);
 
-  // FORCE terrain ready and start spawning immediately
+  // Wait for terrain to be ready, then spawn NPCs
   useEffect(() => {
     const checkTerrain = () => {
       if (window.getMobGroundLevel && window.checkCollision) {
-        console.log('✅ TERRAIN READY - Starting mob spawning system');
         setTerrainReady(true);
         return true;
       }
-      console.log('⏳ Waiting for terrain functions...');
       return false;
     };
 
@@ -31,17 +29,7 @@ export const NPCSystem = ({ gameState }) => {
       }
     }, 1000);
 
-    // FORCE start after 3 seconds regardless
-    const forceStart = setTimeout(() => {
-      console.log('🚀 FORCE STARTING mob system after 3 seconds');
-      setTerrainReady(true);
-      clearInterval(interval);
-    }, 3000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(forceStart);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   // Define drops for different mobs
