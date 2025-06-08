@@ -57,7 +57,8 @@ TEST_CHAT_MESSAGE = "Hello, this is a test message!"
 session_data = {
     "access_token": None,
     "user_id": None,
-    "world_id": None
+    "world_id": None,
+    "save_id": None
 }
 
 # Test results
