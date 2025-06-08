@@ -89,8 +89,47 @@ export const NPCSystem = ({ gameState }) => {
     'pig', 'chicken' // Few peaceful mobs remain at night
   ];
 
-  // Spawn mobs based on day/night cycle
+  // DEBUG: Add immediate spawn test
   useEffect(() => {
+    // Force spawn some test mobs after 5 seconds for testing
+    const testSpawn = setTimeout(() => {
+      console.log('🧪 DEBUG: Force spawning test mobs');
+      
+      if (camera?.position) {
+        const playerPos = camera.position;
+        const testMobs = [];
+        
+        for (let i = 0; i < 5; i++) {
+          const angle = (i / 5) * Math.PI * 2;
+          const distance = 30 + i * 10;
+          const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
+          const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
+          const spawnY = 16; // Fixed height for testing
+          
+          testMobs.push({
+            id: `test_mob_${i}`,
+            type: gameState.isDay ? 'pig' : 'zombie',
+            position: [spawnX, spawnY, spawnZ],
+            health: 60,
+            maxHealth: 60,
+            hostile: !gameState.isDay,
+            speed: 0.8,
+            initialPosition: [spawnX, spawnY, spawnZ],
+            wanderRadius: 8,
+            drops: ['meat'],
+            spawnTime: Date.now()
+          });
+          
+          console.log(`🧪 TEST SPAWN: ${gameState.isDay ? 'pig' : 'zombie'} at (${spawnX}, ${spawnY}, ${spawnZ})`);
+        }
+        
+        setEntities(prev => [...prev, ...testMobs]);
+        console.log(`🧪 Test spawn complete: Added ${testMobs.length} test mobs`);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(testSpawn);
+  }, [camera, gameState.isDay]);
     if (!terrainReady) return;
 
     console.log(`🌅 Initializing ${gameState.isDay ? 'DAY' : 'NIGHT'} mob ecosystem...`);
