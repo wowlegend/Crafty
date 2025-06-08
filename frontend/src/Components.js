@@ -3,28 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Box, Plane, Stars } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { 
-  Pickaxe, 
-  Package, 
-  Settings, 
-  Sun, 
-  Moon, 
-  Wand2, 
-  Copy, 
-  Download,
-  Upload,
-  Trash2,
-  Grid3X3,
-  Eye,
-  EyeOff,
-  Heart,
-  Zap,
-  Star,
-  Hammer,
-  Sword,
-  Shield,
-  Crown
-} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 // Import optimized systems with enhanced visual effects
 import { useSimpleExperience } from './SimpleExperienceSystem';
