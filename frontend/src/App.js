@@ -627,8 +627,11 @@ function GameApp() {
         {/* FIXED Game World with throttled infinite generation */}
         <MinecraftWorld gameState={gameState} />
         
-        {/* FIXED Player with properly positioned hands */}
-        <Player gameState={gameState} />
+        {/* FIXED Player with proper movement and camera separation */}
+        <FixedPlayer 
+          gameState={gameState} 
+          onPositionUpdate={setPlayerPosition}
+        />
 
         {/* NPCs */}
         <NPCSystem gameState={gameState} />
