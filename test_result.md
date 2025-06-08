@@ -585,10 +585,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Save Game API"
-    - "Get Saves API"
-    - "Load Game API"
-    - "Delete Save API"
+    - "Mob Spawning Verification"
+    - "Directional Terrain Generation Issue"
+    - "Game Functionality Verification"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
