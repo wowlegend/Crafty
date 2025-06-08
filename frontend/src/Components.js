@@ -255,42 +255,49 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // INCREMENTAL generation - generate one chunk per frame to prevent lag
-      if (!isGenerating.current) {
-        isGenerating.current = true;
-        
-        const chunksToGenerate = [];
-        for (let x = -renderDistance; x <= renderDistance; x++) {
-          for (let z = -renderDistance; z <= renderDistance; z++) {
-            const chunkX = currentChunkX + x;
-            const chunkZ = currentChunkZ + z;
-            const chunkKey = `${chunkX}_${chunkZ}`;
-            if (!generatedChunks.has(chunkKey)) {
-              chunksToGenerate.push({ x: chunkX, z: chunkZ });
-            }
+      // FIXED: Non-blocking terrain generation - allows generation in ALL directions
+      const chunksToGenerate = [];
+      for (let x = -renderDistance; x <= renderDistance; x++) {
+        for (let z = -renderDistance; z <= renderDistance; z++) {
+          const chunkX = currentChunkX + x;
+          const chunkZ = currentChunkZ + z;
+          const chunkKey = `${chunkX}_${chunkZ}`;
+          if (!generatedChunks.has(chunkKey)) {
+            chunksToGenerate.push({ x: chunkX, z: chunkZ });
           }
         }
-        
-        // Generate chunks incrementally - one per frame
-        let chunkIndex = 0;
-        const generateNextChunk = () => {
-          if (chunkIndex < chunksToGenerate.length) {
-            const chunk = chunksToGenerate[chunkIndex];
+      }
+      
+      // FIXED: Generate missing chunks immediately for critical directions
+      // Only use incremental generation for large batches to maintain smoothness
+      if (chunksToGenerate.length > 0) {
+        if (chunksToGenerate.length <= 4) {
+          // Small batches: Generate immediately to prevent air gaps
+          chunksToGenerate.forEach(chunk => {
             generateChunk(chunk.x, chunk.z);
-            chunkIndex++;
-            
-            // Generate next chunk on next frame
-            requestAnimationFrame(generateNextChunk);
-          } else {
-            isGenerating.current = false;
-            console.log(`✅ Smoothly generated ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
-          }
-        };
-        
-        if (chunksToGenerate.length > 0) {
-          generateNextChunk();
+          });
+          console.log(`🚀 IMMEDIATE generation: ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
         } else {
-          isGenerating.current = false;
+          // Large batches: Use incremental generation for smoothness
+          if (!isGenerating.current) {
+            isGenerating.current = true;
+            
+            let chunkIndex = 0;
+            const generateNextChunk = () => {
+              if (chunkIndex < chunksToGenerate.length) {
+                const chunk = chunksToGenerate[chunkIndex];
+                generateChunk(chunk.x, chunk.z);
+                chunkIndex++;
+                
+                // Generate next chunk on next frame
+                requestAnimationFrame(generateNextChunk);
+              } else {
+                isGenerating.current = false;
+                console.log(`✅ INCREMENTAL generation: ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
+              }
+            };
+            generateNextChunk();
+          }
         }
       }
     }
