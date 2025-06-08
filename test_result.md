@@ -354,9 +354,9 @@ frontend:
 
   - task: "Visual Quality"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -375,6 +375,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the enhanced hands system. The hands now have a clear fist shape with proper thumbs and knuckle details. Selected tools/weapons are properly displayed in the right hand, and the attack animation works correctly with the F key."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test visual quality due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and displaying the visual elements. Code review shows the implementation of enhanced hands system, but cannot verify in-game."
 
   - task: "Performance & Stability"
     implemented: true
