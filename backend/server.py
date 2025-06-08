@@ -309,7 +309,109 @@ async def delete_world(world_id: str, current_user: User = Depends(get_current_u
     
     return {"message": "World deleted successfully"}
 
-# ========== CHAT ENDPOINTS ==========
+@app.post("/api/world/save")
+async def save_game(save_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save complete game state"""
+    try:
+        user_id = current_user["user_id"]
+        
+        # Prepare save data with timestamp
+        save_record = {
+            "user_id": user_id,
+            "save_name": save_data.get("save_name", f"Save_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            "world_data": save_data.get("world_data", {}),
+            "player_data": save_data.get("player_data", {}),
+            "game_state": save_data.get("game_state", {}),
+            "timestamp": datetime.now(),
+            "version": "1.0"
+        }
+        
+        # Save to database
+        result = await db.game_saves.insert_one(save_record)
+        
+        logger.info(f"Game saved for user {user_id}: {save_record['save_name']}")
+        
+        return {
+            "message": "Game saved successfully",
+            "save_id": str(result.inserted_id),
+            "save_name": save_record["save_name"],
+            "timestamp": save_record["timestamp"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving game: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save game: {str(e)}")
+
+@app.get("/api/world/saves")
+async def get_saves(current_user: dict = Depends(get_current_user)):
+    """Get all saves for current user"""
+    try:
+        user_id = current_user["user_id"]
+        
+        saves = await db.game_saves.find(
+            {"user_id": user_id},
+            {"_id": 1, "save_name": 1, "timestamp": 1, "version": 1}
+        ).sort("timestamp", -1).to_list(length=None)
+        
+        # Convert ObjectId to string
+        for save in saves:
+            save["save_id"] = str(save.pop("_id"))
+        
+        return {"saves": saves}
+        
+    except Exception as e:
+        logger.error(f"Error fetching saves: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch saves: {str(e)}")
+
+@app.get("/api/world/load/{save_id}")
+async def load_game(save_id: str, current_user: dict = Depends(get_current_user)):
+    """Load a specific save"""
+    try:
+        user_id = current_user["user_id"]
+        
+        save = await db.game_saves.find_one({
+            "_id": ObjectId(save_id),
+            "user_id": user_id
+        })
+        
+        if not save:
+            raise HTTPException(status_code=404, detail="Save not found")
+        
+        # Remove internal fields
+        save.pop("_id", None)
+        save.pop("user_id", None)
+        
+        logger.info(f"Game loaded for user {user_id}: {save['save_name']}")
+        
+        return save
+        
+    except Exception as e:
+        logger.error(f"Error loading game: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load game: {str(e)}")
+
+@app.delete("/api/world/save/{save_id}")
+async def delete_save(save_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a specific save"""
+    try:
+        user_id = current_user["user_id"]
+        
+        result = await db.game_saves.delete_one({
+            "_id": ObjectId(save_id),
+            "user_id": user_id
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Save not found")
+        
+        logger.info(f"Save deleted for user {user_id}: {save_id}")
+        
+        return {"message": "Save deleted successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error deleting save: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete save: {str(e)}")
+
+# Chat endpoints
 
 @api_router.post("/worlds/{world_id}/chat")
 async def send_chat_message(world_id: str, message: str, current_user: User = Depends(get_current_user)):
