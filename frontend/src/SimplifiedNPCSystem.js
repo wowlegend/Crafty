@@ -246,6 +246,17 @@ export const NPCSystem = ({ gameState }) => {
             const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
             const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
             
+            // CRITICAL FIX: Verify terrain actually exists before spawning
+            const chunkX = Math.floor(spawnX / 16);
+            const chunkZ = Math.floor(spawnZ / 16);
+            const chunkKey = `${chunkX}_${chunkZ}`;
+            
+            // Only spawn if the chunk has been generated (terrain exists)
+            if (window.getGeneratedChunks && !window.getGeneratedChunks().has(chunkKey)) {
+              console.log(`⏭️ SKIPPING spawn at (${spawnX}, ${spawnZ}) - chunk (${chunkX}, ${chunkZ}) not generated yet`);
+              continue; // Skip this spawn location
+            }
+            
             // ENHANCED spawn height - multiple attempts for accuracy
             let spawnY = 15; // Safe default
             let attempts = 0;
