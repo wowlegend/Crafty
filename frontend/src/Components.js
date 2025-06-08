@@ -235,7 +235,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     });
   }, []);
 
-  // ENHANCED frame-based generation with better reliability
+  // ULTRA-SMOOTH incremental terrain generation - NO LAG
   useFrame(() => {
     if (!camera) return;
     
@@ -251,20 +251,43 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // FIXED: Use reliable setTimeout instead of requestIdleCallback
+      // INCREMENTAL generation - generate one chunk per frame to prevent lag
       if (!isGenerating.current) {
         isGenerating.current = true;
-        setTimeout(() => {
-          for (let x = -renderDistance; x <= renderDistance; x++) {
-            for (let z = -renderDistance; z <= renderDistance; z++) {
-              const chunkX = currentChunkX + x;
-              const chunkZ = currentChunkZ + z;
-              generateChunk(chunkX, chunkZ);
+        
+        const chunksToGenerate = [];
+        for (let x = -renderDistance; x <= renderDistance; x++) {
+          for (let z = -renderDistance; z <= renderDistance; z++) {
+            const chunkX = currentChunkX + x;
+            const chunkZ = currentChunkZ + z;
+            const chunkKey = `${chunkX}_${chunkZ}`;
+            if (!generatedChunks.has(chunkKey)) {
+              chunksToGenerate.push({ x: chunkX, z: chunkZ });
             }
           }
+        }
+        
+        // Generate chunks incrementally - one per frame
+        let chunkIndex = 0;
+        const generateNextChunk = () => {
+          if (chunkIndex < chunksToGenerate.length) {
+            const chunk = chunksToGenerate[chunkIndex];
+            generateChunk(chunk.x, chunk.z);
+            chunkIndex++;
+            
+            // Generate next chunk on next frame
+            requestAnimationFrame(generateNextChunk);
+          } else {
+            isGenerating.current = false;
+            console.log(`✅ Smoothly generated ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
+          }
+        };
+        
+        if (chunksToGenerate.length > 0) {
+          generateNextChunk();
+        } else {
           isGenerating.current = false;
-          console.log(`🌍 Generated terrain around chunk (${currentChunkX}, ${currentChunkZ})`);
-        }, 50); // Small delay for performance
+        }
       }
     }
   });
