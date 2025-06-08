@@ -1716,6 +1716,3 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
     </motion.div>
   );
 };
-
-{/* CLEANED UP: Remove orphaned fragments */}
-};
