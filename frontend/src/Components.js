@@ -239,7 +239,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     });
   }, []);
 
-  // ULTRA-SMOOTH incremental terrain generation - NO LAG
+  // ULTRA-SMOOTH incremental terrain generation - GUARANTEED GENERATION
   useFrame(() => {
     if (!camera) return;
     
@@ -255,7 +255,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // FIXED: Non-blocking terrain generation - allows generation in ALL directions
+      // COMPREHENSIVE FIX: Always ensure ALL surrounding chunks exist
       const chunksToGenerate = [];
       for (let x = -renderDistance; x <= renderDistance; x++) {
         for (let z = -renderDistance; z <= renderDistance; z++) {
@@ -263,42 +263,28 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
           const chunkZ = currentChunkZ + z;
           const chunkKey = `${chunkX}_${chunkZ}`;
           if (!generatedChunks.has(chunkKey)) {
-            chunksToGenerate.push({ x: chunkX, z: chunkZ });
+            chunksToGenerate.push({ x: chunkX, z: chunkZ, priority: Math.abs(x) + Math.abs(z) });
           }
         }
       }
       
-      // FIXED: Generate missing chunks immediately for critical directions
-      // Only use incremental generation for large batches to maintain smoothness
       if (chunksToGenerate.length > 0) {
-        if (chunksToGenerate.length <= 4) {
-          // Small batches: Generate immediately to prevent air gaps
-          chunksToGenerate.forEach(chunk => {
+        // FIXED: Sort by priority - generate closest chunks first
+        chunksToGenerate.sort((a, b) => a.priority - b.priority);
+        
+        console.log(`🔥 COMPREHENSIVE GENERATION: ${chunksToGenerate.length} chunks needed around (${currentChunkX}, ${currentChunkZ})`);
+        
+        // FIXED: Generate ALL missing chunks immediately to prevent air gaps
+        // This ensures no direction is left without terrain
+        chunksToGenerate.forEach((chunk, index) => {
+          // Use setTimeout to spread generation across frames for smoothness
+          setTimeout(() => {
             generateChunk(chunk.x, chunk.z);
-          });
-          console.log(`🚀 IMMEDIATE generation: ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
-        } else {
-          // Large batches: Use incremental generation for smoothness
-          if (!isGenerating.current) {
-            isGenerating.current = true;
-            
-            let chunkIndex = 0;
-            const generateNextChunk = () => {
-              if (chunkIndex < chunksToGenerate.length) {
-                const chunk = chunksToGenerate[chunkIndex];
-                generateChunk(chunk.x, chunk.z);
-                chunkIndex++;
-                
-                // Generate next chunk on next frame
-                requestAnimationFrame(generateNextChunk);
-              } else {
-                isGenerating.current = false;
-                console.log(`✅ INCREMENTAL generation: ${chunksToGenerate.length} chunks around (${currentChunkX}, ${currentChunkZ})`);
-              }
-            };
-            generateNextChunk();
-          }
-        }
+            console.log(`✅ Generated chunk (${chunk.x}, ${chunk.z}) - priority ${chunk.priority}`);
+          }, index * 16); // 16ms spacing (60fps) for smooth generation
+        });
+        
+        console.log(`🚀 BATCH GENERATION: Queued ${chunksToGenerate.length} chunks with priority system`);
       }
     }
   });
