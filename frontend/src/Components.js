@@ -533,28 +533,65 @@ const OptimizedClouds = React.memo(() => {
   );
 });
 
-// FIXED Sky Component - NO camera manipulation
+// ENHANCED Sky Component with improved day/night effects
 export const MinecraftSky = React.memo(({ isDay = true }) => {
   const { camera } = useThree();
   const skyRef = useRef();
   const sunRef = useRef();
+  const moonRef = useRef();
+  const starsRef = useRef();
   
-  const skyColor = isDay ? '#87CEEB' : '#191970';
-  const sunColor = isDay ? '#FFD700' : '#F5F5DC';
+  const skyColor = isDay ? '#87CEEB' : '#0B1426';
+  const sunColor = '#FFD700';
+  const moonColor = '#F5F5DC';
   
-  useFrame(() => {
+  useFrame((state) => {
+    const time = state.clock.elapsedTime;
+    
     // FIXED - Sky follows camera but DOESN'T modify camera position
     if (skyRef.current && camera) {
       skyRef.current.position.set(camera.position.x, camera.position.y, camera.position.z);
     }
+    
     if (sunRef.current && camera) {
       sunRef.current.position.set(
-        camera.position.x,
+        camera.position.x + (isDay ? 0 : -200),
         camera.position.y + 50,
         camera.position.z - 80
       );
+      sunRef.current.visible = isDay;
+    }
+    
+    if (moonRef.current && camera) {
+      moonRef.current.position.set(
+        camera.position.x + (isDay ? 200 : 0),
+        camera.position.y + 50,
+        camera.position.z - 80
+      );
+      moonRef.current.visible = !isDay;
+    }
+    
+    // Twinkling stars at night
+    if (starsRef.current && !isDay) {
+      starsRef.current.rotation.y = time * 0.1;
+      starsRef.current.children.forEach((star, index) => {
+        star.material.opacity = 0.5 + Math.sin(time * 2 + index) * 0.3;
+      });
     }
   });
+  
+  // Create stars for night sky
+  const stars = useMemo(() => {
+    if (isDay) return [];
+    const starArray = [];
+    for (let i = 0; i < 50; i++) {
+      const x = (Math.random() - 0.5) * 400;
+      const y = Math.random() * 100 + 20;
+      const z = (Math.random() - 0.5) * 400;
+      starArray.push([x, y, z]);
+    }
+    return starArray;
+  }, [isDay]);
   
   return (
     <group>
@@ -566,10 +603,33 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
         />
       </mesh>
       
+      {/* Sun */}
       <mesh ref={sunRef}>
         <sphereGeometry args={[3, 8, 8]} />
         <meshBasicMaterial color={sunColor} />
       </mesh>
+      
+      {/* Moon */}
+      <mesh ref={moonRef}>
+        <sphereGeometry args={[2.5, 8, 8]} />
+        <meshBasicMaterial color={moonColor} />
+      </mesh>
+      
+      {/* Stars */}
+      {!isDay && (
+        <group ref={starsRef}>
+          {stars.map(([x, y, z], index) => (
+            <mesh key={index} position={[x, y, z]}>
+              <sphereGeometry args={[0.1, 4, 4]} />
+              <meshBasicMaterial 
+                color="#FFFFFF" 
+                transparent 
+                opacity={0.8}
+              />
+            </mesh>
+          ))}
+        </group>
+      )}
     </group>
   );
 });
