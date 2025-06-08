@@ -327,9 +327,9 @@ frontend:
 
   - task: "New Features"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 1
+    stuck_count: 2
     priority: "medium"
     needs_retesting: false
     status_history:
@@ -348,6 +348,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "Verified the enhanced combat system. The code includes comprehensive visual effects for combat including attack particles, damage numbers, screen shake, death explosions, and mob damage flashing. Combat sound effects are also implemented with swing, hit, and defeat sounds."
+      - working: false
+        agent: "testing"
+        comment: "Unable to test the new features due to a critical React hooks error: 'Invalid hook call. Hooks can only be called inside of the body of a function component.' This prevents the game from running properly and interacting with the combat system and other new features."
 
   - task: "Visual Quality"
     implemented: true
