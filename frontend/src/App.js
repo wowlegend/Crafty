@@ -288,26 +288,34 @@ function GameApp() {
       }
       
       // FIXED: UI interaction keys properly release pointer lock
-      if (event.key === 'e' || event.key === 'E') {
+      if (event.code === 'KeyE') {
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎮 E pressed - toggling inventory, releasing pointer lock');
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowInventory(!gameState.showInventory);
         return;
       }
-      if (event.key === 'c' || event.key === 'C') {
+      if (event.code === 'KeyC') {
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎮 C pressed - toggling crafting, releasing pointer lock');
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowCrafting(!gameState.showCrafting);
         return;
       }
-      if (event.key === 'm' || event.key === 'M') {
+      if (event.code === 'KeyM') {
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎮 M pressed - toggling magic, releasing pointer lock');
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowMagic(!gameState.showMagic);
         return;
       }
-      if (event.key === 'b' || event.key === 'B') {
+      if (event.code === 'KeyB') {
         event.preventDefault();
+        event.stopPropagation();
+        console.log('🎮 B pressed - toggling building tools, releasing pointer lock');
         setIsPointerLocked(false); // Release pointer lock for UI interaction
         gameState.setShowBuildingTools(!gameState.showBuildingTools);
         return;
