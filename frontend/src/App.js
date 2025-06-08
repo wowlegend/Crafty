@@ -338,7 +338,7 @@ function GameApp() {
                     onClick={() => setShowAuthModal(true)}
                     className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font mr-4"
                   >
-                    <LucideIcons.LogIn className="inline mr-2" size={20} />
+                    <LogIn className="inline mr-2" size={20} />
                     Sign In / Register
                   </button>
                 </motion.div>
