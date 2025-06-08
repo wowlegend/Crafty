@@ -14,7 +14,7 @@ import {
   Download,
   Upload,
   Trash2,
-  Grid3X3,
+  Grid,
   Eye,
   EyeOff,
   Heart,
