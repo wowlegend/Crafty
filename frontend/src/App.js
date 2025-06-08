@@ -3,7 +3,25 @@ import { Canvas } from '@react-three/fiber';
 import { PointerLockControls, Sky, Stats } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
-import * as LucideIcons from 'lucide-react';
+import { 
+  Pickaxe, 
+  Package, 
+  Settings, 
+  Sun, 
+  Moon, 
+  Wand2, 
+  Copy, 
+  Download,
+  Upload,
+  Trash2,
+  Grid3X3,
+  Eye,
+  EyeOff,
+  LogIn,
+  Save,
+  Volume2,
+  VolumeX
+} from 'lucide-react';
 import './App.css';
 import { 
   MinecraftWorld, 
