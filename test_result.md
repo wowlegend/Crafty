@@ -263,7 +263,7 @@ frontend:
     implemented: true
     working: false
     file: "/app/frontend/src/Components.js"
-    stuck_count: 3
+    stuck_count: 4
     priority: "high"
     needs_retesting: false
     status_history:
@@ -291,6 +291,9 @@ frontend:
       - working: false
         agent: "testing"
         comment: "After React version downgrade to 18.2.0 and updating Three.js library versions, the game still crashes with the same React hooks error. The error first appears in the NPCSystem component, then propagates to the Canvas component. Despite the package version updates, there are still compatibility issues between React and the Three.js libraries that need to be resolved."
+      - working: false
+        agent: "testing"
+        comment: "Identified a specific compatibility issue between Three.js version 0.158.0 and the three-mesh-bvh library. The error 'BatchedMesh is not exported from three' occurs because the BatchedMesh class is not available in the current version of Three.js. Attempted to fix by downgrading three-mesh-bvh to version 0.5.23, but the issue persists. The game still shows the compilation error and cannot be properly tested."
 
   - task: "Building & Block System"
     implemented: true
