@@ -876,6 +876,14 @@ export const Player = ({ gameState }) => {
         return;
       }
       
+      // Handle day/night toggle
+      if (event.code === 'KeyN') {
+        event.preventDefault();
+        gameState.setIsDay(!gameState.isDay);
+        console.log(`🌅 Time changed to: ${gameState.isDay ? 'NIGHT' : 'DAY'}`);
+        return;
+      }
+      
       // Handle block selection
       if (event.code.startsWith('Digit')) {
         const num = parseInt(event.code.replace('Digit', ''));
