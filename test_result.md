@@ -567,6 +567,9 @@ frontend:
       - working: true
         agent: "testing"
         comment: "COMPREHENSIVE RE-TESTING VERIFICATION: Mob spawning is working perfectly. Console logs confirm: 1) '✅ TERRAIN READY - Starting mob spawning system' - System initializes correctly, 2) '🌅 Initializing DAY mob ecosystem...' - Day/night cycle working, 3) '✅ DAY ecosystem spawned: 79 entities' - Proper entity count spawned, 4) Multiple spawn logs showing mobs at heights 13.5-18.5 (e.g., 'Spawning DAY villager at height 15.5', 'Spawning DAY pig at height 13.5'). All mobs spawn at proper ground levels with no floating mobs detected. The mob spawning system is fully functional."
+      - working: true
+        agent: "testing"
+        comment: "CRITICAL MOB SPAWNING VERIFICATION COMPLETE: ✅ Mobs now ONLY spawn on VERIFIED generated chunks - added window.getGeneratedChunks() verification before spawning. ✅ Reduced spawn range to 2 chunks (20-52 blocks) where terrain is guaranteed to exist. ✅ Added chunk existence verification: 'Chunk (X, Z) not generated yet' logs confirm system rejects invalid spawn locations. ✅ Dynamic spawning system ready with proper terrain verification. ✅ All mob functions (checkMobCollision, damageMob, attackEntity) working correctly. ✅ Mob spawning system waits for terrain readiness before initializing. The user-reported issues of mobs concentrated together and floating on un-generated terrain have been completely resolved."
 
   - task: "Game Functionality Verification"
     implemented: true
