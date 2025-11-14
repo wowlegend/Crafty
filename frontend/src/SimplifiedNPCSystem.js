@@ -207,7 +207,7 @@ export const NPCSystem = ({ gameState }) => {
     console.log(`✅ ${gameState.isDay ? 'DAY' : 'NIGHT'} ecosystem spawned: ${initialEntities.length} entities`);
   }, [terrainReady, gameState.isDay]); // Re-spawn when day/night changes
     
-  // AGGRESSIVE IMMEDIATE SPAWNING SYSTEM - spawns mobs EVERYWHERE the player goes
+  // ENHANCED DYNAMIC SPAWNING - only spawn on VERIFIED generated chunks
   useEffect(() => {
     if (!terrainReady) return;
     
@@ -235,19 +235,28 @@ export const NPCSystem = ({ gameState }) => {
           const mobsToSpawn = Math.min(15, targetMobCount - nearbyEntities.length); // Spawn more at once
           const newMobs = [];
           
-          console.log(`🌍 FIXED SPAWNING: Player at (${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}), spawning ${mobsToSpawn} mobs with terrain verification`);
+          console.log(`🌍 DYNAMIC SPAWNING: Player at (${playerPos.x.toFixed(1)}, ${playerPos.z.toFixed(1)}), spawning ${mobsToSpawn} mobs`);
+          
+          // CRITICAL FIX: Get generated chunks to verify terrain exists
+          const generatedChunks = window.getGeneratedChunks ? window.getGeneratedChunks() : new Set();
           
           for (let i = 0; i < mobsToSpawn; i++) {
-            // FIXED: Spawn closer to player where terrain is more likely to exist
-            const ring = Math.floor(Math.random() * 3); // Reduced to 3 rings for better terrain coverage
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 15 + (ring * 15) + Math.random() * 10; // 15-70 blocks away (reduced range)
+            let spawnAttempts = 0;
+            let validSpawn = false;
+            let spawnX, spawnZ, groundY;
             
-            const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
-            const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
-            
-            // CRITICAL FIX: Verify terrain actually exists before spawning
-            const chunkX = Math.floor(spawnX / 16);
+            // Try up to 10 times to find a valid spawn location on generated terrain
+            while (spawnAttempts < 10 && !validSpawn) {
+              // Spawn within 2 chunks of player for better terrain coverage
+              const ring = Math.floor(Math.random() * 2); // Only 2 rings
+              const angle = Math.random() * Math.PI * 2;
+              const distance = 20 + (ring * 16); // 20-52 blocks away
+              
+              spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
+              spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
+              
+              // CRITICAL: Verify the chunk actually exists
+              const chunkX = Math.floor(spawnX / 16);
             const chunkZ = Math.floor(spawnZ / 16);
             const chunkKey = `${chunkX}_${chunkZ}`;
             
