@@ -285,16 +285,18 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     }
   });
 
-  // ENHANCED initial generation - larger starting area for better experience
+  // ENHANCED initial generation - generate full render distance immediately
   useEffect(() => {
-    console.log('🌍 ENHANCED terrain generation starting with larger initial area...');
-    for (let x = -2; x <= 2; x++) {
-      for (let z = -2; z <= 2; z++) {
+    console.log('🌍 ENHANCED terrain generation starting with FULL render distance...');
+    // Generate ALL chunks within render distance immediately
+    for (let x = -renderDistance; x <= renderDistance; x++) {
+      for (let z = -renderDistance; z <= renderDistance; z++) {
         generateChunk(x, z);
       }
     }
-    console.log('✅ Initial 5x5 chunk area generated for seamless experience');
-  }, [generateChunk]);
+    const totalChunks = (renderDistance * 2 + 1) * (renderDistance * 2 + 1);
+    console.log(`✅ Initial ${totalChunks} chunks generated for seamless experience (${renderDistance * 2 + 1}x${renderDistance * 2 + 1} area)`);
+  }, [generateChunk, renderDistance]);
 
   // OPTIMIZED block interactions - CONTROLLED XP
   const handleBlockPlace = useCallback((position, blockType) => {
