@@ -239,7 +239,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     });
   }, []);
 
-  // ULTRA-SMOOTH incremental terrain generation - GUARANTEED GENERATION
+  // IMMEDIATE SYNCHRONOUS terrain generation - GUARANTEED GENERATION
   useFrame(() => {
     if (!camera) return;
     
@@ -255,7 +255,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
       
-      // COMPREHENSIVE FIX: Always ensure ALL surrounding chunks exist
+      // CRITICAL FIX: Generate chunks IMMEDIATELY and SYNCHRONOUSLY
       const chunksToGenerate = [];
       for (let x = -renderDistance; x <= renderDistance; x++) {
         for (let z = -renderDistance; z <= renderDistance; z++) {
@@ -269,22 +269,18 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       }
       
       if (chunksToGenerate.length > 0) {
-        // FIXED: Sort by priority - generate closest chunks first
+        // Sort by priority - generate closest chunks first
         chunksToGenerate.sort((a, b) => a.priority - b.priority);
         
-        console.log(`🔥 COMPREHENSIVE GENERATION: ${chunksToGenerate.length} chunks needed around (${currentChunkX}, ${currentChunkZ})`);
+        console.log(`🔥 GENERATING ${chunksToGenerate.length} chunks IMMEDIATELY around (${currentChunkX}, ${currentChunkZ})`);
         
-        // FIXED: Generate ALL missing chunks immediately to prevent air gaps
-        // This ensures no direction is left without terrain
-        chunksToGenerate.forEach((chunk, index) => {
-          // Use setTimeout to spread generation across frames for smoothness
-          setTimeout(() => {
-            generateChunk(chunk.x, chunk.z);
-            console.log(`✅ Generated chunk (${chunk.x}, ${chunk.z}) - priority ${chunk.priority}`);
-          }, index * 16); // 16ms spacing (60fps) for smooth generation
+        // CRITICAL FIX: Generate ALL chunks SYNCHRONOUSLY - no delays or async
+        // This ensures terrain exists BEFORE mobs try to spawn on it
+        chunksToGenerate.forEach((chunk) => {
+          generateChunk(chunk.x, chunk.z);
         });
         
-        console.log(`🚀 BATCH GENERATION: Queued ${chunksToGenerate.length} chunks with priority system`);
+        console.log(`✅ IMMEDIATE GENERATION COMPLETE: ${chunksToGenerate.length} chunks generated`);
       }
     }
   });
