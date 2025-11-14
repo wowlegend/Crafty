@@ -257,64 +257,60 @@ export const NPCSystem = ({ gameState }) => {
               
               // CRITICAL: Verify the chunk actually exists
               const chunkX = Math.floor(spawnX / 16);
-            const chunkZ = Math.floor(spawnZ / 16);
-            const chunkKey = `${chunkX}_${chunkZ}`;
-            
-            // Only spawn if the chunk has been generated (terrain exists)
-            if (window.getGeneratedChunks && !window.getGeneratedChunks().has(chunkKey)) {
-              console.log(`⏭️ SKIPPING spawn at (${spawnX}, ${spawnZ}) - chunk (${chunkX}, ${chunkZ}) not generated yet`);
-              continue; // Skip this spawn location
-            }
-            
-            // ENHANCED spawn height - multiple attempts for accuracy
-            let spawnY = 15; // Safe default
-            let attempts = 0;
-            
-            while (attempts < 5) { // Try 5 times
+              const chunkZ = Math.floor(spawnZ / 16);
+              const chunkKey = `${chunkX}_${chunkZ}`;
+              
+              // Only spawn if the chunk has been generated (terrain exists)
+              if (!generatedChunks.has(chunkKey)) {
+                console.log(`⏭️ Attempt ${spawnAttempts + 1}: Chunk (${chunkX}, ${chunkZ}) not generated yet`);
+                spawnAttempts++;
+                continue; // Try another location
+              }
+              
+              // Get ground height at this location
               try {
                 if (window.getMobGroundLevel) {
-                  const calculatedY = window.getMobGroundLevel(spawnX, spawnZ);
-                  if (typeof calculatedY === 'number' && !isNaN(calculatedY) && calculatedY > 10) {
-                    spawnY = calculatedY + 1.5; // Spawn above ground
-                    break;
-                  }
-                }
-                // If failed, try using getHighestBlockAt
-                if (window.getHighestBlockAt) {
-                  const altY = window.getHighestBlockAt(spawnX, spawnZ);
-                  if (typeof altY === 'number' && !isNaN(altY) && altY > 10) {
-                    spawnY = altY + 1.5;
+                  groundY = window.getMobGroundLevel(spawnX, spawnZ);
+                  if (typeof groundY === 'number' && !isNaN(groundY) && groundY > 10) {
+                    groundY = groundY + 1.5; // Spawn above ground
+                    validSpawn = true;
                     break;
                   }
                 }
               } catch (error) {
-                console.warn(`Attempt ${attempts + 1}: Error calculating spawn height at ${spawnX}, ${spawnZ}:`, error);
+                console.warn(`Error getting ground level: ${error}`);
               }
-              attempts++;
+              
+              spawnAttempts++;
             }
             
-            // SAFETY: Ensure reasonable spawn height
-            spawnY = Math.max(spawnY, 13);
-            spawnY = Math.min(spawnY, 25);
-            
-            const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
-            const stats = getEntityStats(entityType);
-            
-            newMobs.push({
-              id: `entity_aggressive_${Date.now()}_${i}`,
-              type: entityType,
-              position: [spawnX, spawnY, spawnZ],
-              health: stats.health,
-              maxHealth: stats.health,
-              hostile: stats.hostile,
-              speed: stats.speed,
-              initialPosition: [spawnX, spawnY, spawnZ],
-              wanderRadius: stats.hostile ? 12 : 8,
-              drops: getDrops(entityType),
-              spawnTime: Date.now()
-            });
-            
-            console.log(`🐺 AGGRESSIVE spawn: ${entityType} at (${spawnX}, ${spawnY.toFixed(1)}, ${spawnZ}) - Ring: ${ring}, Distance: ${distance.toFixed(1)}`);
+            // Only add mob if we found a valid spawn location
+            if (validSpawn) {
+              // SAFETY: Ensure reasonable spawn height
+              groundY = Math.max(groundY, 13);
+              groundY = Math.min(groundY, 25);
+              
+              const entityType = entityTypes[Math.floor(Math.random() * entityTypes.length)];
+              const stats = getEntityStats(entityType);
+              
+              newMobs.push({
+                id: `entity_dynamic_${Date.now()}_${i}`,
+                type: entityType,
+                position: [spawnX, groundY, spawnZ],
+                health: stats.health,
+                maxHealth: stats.health,
+                hostile: stats.hostile,
+                speed: stats.speed,
+                initialPosition: [spawnX, groundY, spawnZ],
+                wanderRadius: stats.hostile ? 12 : 8,
+                drops: getDrops(entityType),
+                spawnTime: Date.now()
+              });
+              
+              console.log(`✅ Dynamic spawn: ${entityType} at (${spawnX}, ${groundY.toFixed(1)}, ${spawnZ}) on verified terrain`);
+            } else {
+              console.log(`❌ Failed to find valid spawn location after ${spawnAttempts} attempts`);
+            }
           }
           
           console.log(`🔄 AGGRESSIVE respawn complete: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
