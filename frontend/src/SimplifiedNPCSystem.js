@@ -313,7 +313,7 @@ export const NPCSystem = ({ gameState }) => {
             }
           }
           
-          console.log(`🔄 AGGRESSIVE respawn complete: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
+          console.log(`🔄 Dynamic respawn complete: ${newMobs.length} new mobs, ${nearbyEntities.length} existing (Total: ${nearbyEntities.length + newMobs.length})`);
           return [...nearbyEntities, ...newMobs];
         }
         return currentEntities;
