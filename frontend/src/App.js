@@ -558,79 +558,25 @@ function GameApp() {
 
               <motion.button
                 onClick={() => {
-                  // BULLETPROOF iframe detection and handling
-                  console.log('🎮 Starting game...');
+                  console.log('🎮 Starting game (Force Mode)...');
                   
-                  // Method 1: Check if we can access window.top (most reliable)
-                  let isInIframe = false;
-                  try {
-                    isInIframe = window.self !== window.top;
-                  } catch (e) {
-                    // SecurityError means we're definitely in a cross-origin iframe
-                    isInIframe = true;
-                  }
+                  // 1. ALWAYS transition state immediately to remove menu
+                  setIsPointerLocked(true);
                   
-                  // Method 2: Check for frameElement (secondary check)
-                  try {
-                    if (window.frameElement !== null) {
-                      isInIframe = true;
-                    }
-                  } catch (e) {
-                    // Cross-origin iframe
-                    isInIframe = true;
-                  }
-                  
-                  // Method 3: Check URL for iframe indicators
-                  if (window.location.href.includes('preview') || 
-                      window.location.href.includes('embed') ||
-                      window.location.href.includes('iframe')) {
-                    isInIframe = true;
-                  }
-                  
-                  if (isInIframe) {
-                    console.log('🔒 Iframe detected - starting without pointer lock');
-                    setIsPointerLocked(true);
-                    return;
-                  }
-                  
-                  // For standalone windows, try pointer lock with comprehensive fallbacks
-                  if (!document.body) {
-                    console.log('⚠️ No document.body - starting without pointer lock');
-                    setIsPointerLocked(true);
-                    return;
-                  }
-                  
-                  // Check if requestPointerLock exists
-                  if (typeof document.body.requestPointerLock !== 'function') {
-                    console.log('⚠️ Pointer lock not supported - starting anyway');
-                    setIsPointerLocked(true);
-                    return;
-                  }
-                  
-                  // Try pointer lock with ultimate error handling
-                  try {
-                    const lockPromise = document.body.requestPointerLock();
-                    
-                    // Handle promise-based API
-                    if (lockPromise && typeof lockPromise.catch === 'function') {
-                      lockPromise.catch((error) => {
-                        console.log('🔄 Pointer lock promise failed - starting anyway');
-                        setIsPointerLocked(true);
-                      });
-                    }
-                    
-                    // Fallback timeout
-                    setTimeout(() => {
-                      if (!document.pointerLockElement) {
-                        console.log('⏰ Pointer lock timeout - starting anyway');
-                        setIsPointerLocked(true);
+                  // 2. Attempt pointer lock as a secondary action
+                  // We use a small timeout to let the React render cycle finish hiding the menu
+                  setTimeout(() => {
+                    try {
+                      if (document.body && document.body.requestPointerLock) {
+                        const lockPromise = document.body.requestPointerLock();
+                        if (lockPromise && typeof lockPromise.catch === 'function') {
+                          lockPromise.catch(e => console.warn('Pointer lock failed (non-fatal):', e));
+                        }
                       }
-                    }, 150);
-                    
-                  } catch (error) {
-                    console.log('❌ Pointer lock error - starting anyway');
-                    setIsPointerLocked(true);
-                  }
+                    } catch (e) {
+                      console.warn('Pointer lock error (non-fatal):', e);
+                    }
+                  }, 100);
                 }}
                 className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
                 initial={{ y: 50, opacity: 0 }}
