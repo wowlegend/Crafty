@@ -447,15 +447,30 @@ export const NPCSystem = ({ gameState }) => {
     window.damageMob = attackEntity;
     
     // Check if mob at position
-    window.checkMobCollision = (position, radius = 3) => {
-      // Find the first mob within radius
+    window.checkMobCollision = (position, radius = 2) => {
+      // Find the first mob within radius - using simple distance check
+      // We check against entitiesRef to ensure we have latest data
+      if (!entitiesRef.current) return null;
+      
+      // Ignore the passed radius parameter (usually projectile size)
+      // Use a fixed generous hitbox for mobs to ensure spells hit easily
+      const MOB_HITBOX_RADIUS = 2.0; 
+      const MOB_HITBOX_HEIGHT = 3.0;
+
       return entitiesRef.current.find(entity => {
-        const distance = Math.sqrt(
-          Math.pow(entity.position[0] - position.x, 2) +
-          Math.pow(entity.position[1] - position.y, 2) +
-          Math.pow(entity.position[2] - position.z, 2)
-        );
-        return distance < radius;
+        // Ignore if entity is dead (health <= 0)
+        if (entity.health <= 0) return false;
+        
+        const dx = entity.position[0] - position.x;
+        const dy = entity.position[1] - position.y;
+        const dz = entity.position[2] - position.z;
+        
+        // Use a cylinder check
+        const horizontalDist = Math.sqrt(dx*dx + dz*dz);
+        const verticalDist = Math.abs(dy);
+        
+        // Hit if within horizontal radius AND reasonable vertical height
+        return horizontalDist < MOB_HITBOX_RADIUS && verticalDist < MOB_HITBOX_HEIGHT;
       });
     };
   }, []);
