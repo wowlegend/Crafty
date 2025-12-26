@@ -266,6 +266,29 @@ function GameApp() {
     return () => window.removeEventListener('error', resizeObserverError);
   }, []);
 
+  // PREVENT POINTER LOCK SECURITY ERROR (Iframe/Sandbox support)
+  useEffect(() => {
+    const originalRequestPointerLock = Element.prototype.requestPointerLock;
+    Element.prototype.requestPointerLock = function() {
+      try {
+        const promise = originalRequestPointerLock.apply(this, arguments);
+        if (promise && typeof promise.catch === 'function') {
+          return promise.catch(e => {
+            console.warn('Pointer lock failed (safely caught):', e);
+          });
+        }
+        return promise;
+      } catch (e) {
+        console.warn('Pointer lock blocked (safely caught):', e);
+        // Fallback for synchronous failures
+      }
+    };
+    
+    return () => {
+      Element.prototype.requestPointerLock = originalRequestPointerLock;
+    };
+  }, []);
+
   // Expose combat sounds globally for NPC system
   useEffect(() => {
     window.playAttackSounds = () => {
