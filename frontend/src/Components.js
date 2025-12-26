@@ -59,6 +59,9 @@ const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);
   // Create sky fog
   <fog attach="fog" args={['#87CEEB', 30, 90]} />
 
+  // Create sky fog
+  <fog attach="fog" args={['#87CEEB', 30, 90]} />
+
 
 // ULTRA-OPTIMIZED Minecraft Hotbar - Minimal re-renders
 export const MinecraftHotbar = React.memo(({ gameState }) => {
