@@ -2,6 +2,91 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
+
+// Basic Mob Model Component
+const MobModel = ({ type, color, isHit }) => {
+  const isAnimal = ['pig', 'cow', 'sheep', 'chicken'].includes(type);
+  const headColor = color;
+  const bodyColor = color;
+  const legColor = isAnimal ? color : '#1a1a1a'; // Dark legs for humanoid mobs
+
+  // Pulse effect when hit
+  const materialProps = {
+    color: isHit ? '#ff0000' : color,
+    emissive: isHit ? '#ff0000' : '#000000',
+    emissiveIntensity: isHit ? 0.5 : 0
+  };
+
+  if (isAnimal) {
+    // Quadruped Model (Pig, Cow, etc)
+    return (
+      <group>
+        {/* Body */}
+        <mesh position={[0, 0.6, 0]}>
+          <boxGeometry args={[0.8, 0.6, 1.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Head */}
+        <mesh position={[0, 1.1, 0.5]}>
+          <boxGeometry args={[0.5, 0.5, 0.5]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Legs */}
+        <mesh position={[-0.25, 0.15, 0.4]}>
+          <boxGeometry args={[0.2, 0.6, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[0.25, 0.15, 0.4]}>
+          <boxGeometry args={[0.2, 0.6, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[-0.25, 0.15, -0.4]}>
+          <boxGeometry args={[0.2, 0.6, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[0.25, 0.15, -0.4]}>
+          <boxGeometry args={[0.2, 0.6, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+      </group>
+    );
+  }
+
+  // Humanoid Model (Zombie, Skeleton, Player-like)
+  return (
+    <group>
+      {/* Head */}
+      <mesh position={[0, 1.4, 0]}>
+        <boxGeometry args={[0.5, 0.5, 0.5]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      {/* Body */}
+      <mesh position={[0, 0.75, 0]}>
+        <boxGeometry args={[0.6, 0.8, 0.3]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      {/* Arms */}
+      <mesh position={[-0.4, 1.1, 0]} rotation={[type === 'zombie' ? -Math.PI/2 : 0, 0, 0]}>
+        <boxGeometry args={[0.2, 0.8, 0.2]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      <mesh position={[0.4, 1.1, 0]} rotation={[type === 'zombie' ? -Math.PI/2 : 0, 0, 0]}>
+        <boxGeometry args={[0.2, 0.8, 0.2]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      {/* Legs */}
+      <mesh position={[-0.15, 0.15, 0]}>
+        <boxGeometry args={[0.25, 0.8, 0.25]} />
+        <meshLambertMaterial {...materialProps} color={legColor} />
+      </mesh>
+      <mesh position={[0.15, 0.15, 0]}>
+        <boxGeometry args={[0.25, 0.8, 0.25]} />
+        <meshLambertMaterial {...materialProps} color={legColor} />
+      </mesh>
+    </group>
+  );
+};
+
 // COMPLETELY REWRITTEN NPC System with proper terrain verification
 export const NPCSystem = ({ gameState }) => {
   const [entities, setEntities] = useState([]);
