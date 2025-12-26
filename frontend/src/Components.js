@@ -146,10 +146,16 @@ const generateTerrainHeight = (() => {
   };
 })();
 
-// OPTIMIZED World Generation - Drastically improved performance
+// COMPLETELY FIXED World Generation - NO stale closures
 export const MinecraftWorld = React.memo(({ gameState }) => {
   const [blocks, setBlocks] = useState(new Map());
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
+  
+  // CRITICAL FIX: Use refs to avoid stale closures
+  const blocksRef = useRef(new Map());
+  const generatedChunksRef = useRef(new Set());
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+  
   const { camera } = useThree();
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
   const lastUpdateTime = useRef(0);
@@ -159,10 +165,12 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
   const renderDistance = 4; // INCREASED for better infinite world experience
   const updateThreshold = 100; // Only update every 100ms
 
-  // OPTIMIZED chunk generation with batching
+  // FIXED chunk generation - uses ref to avoid stale closure
   const generateChunk = useCallback((chunkX, chunkZ) => {
     const chunkKey = `${chunkX}_${chunkZ}`;
-    if (generatedChunks.has(chunkKey)) return;
+    
+    // CRITICAL: Check ref instead of state
+    if (generatedChunksRef.current.has(chunkKey)) return false;
 
     const newBlocks = new Map();
     const startX = chunkX * chunkSize;
