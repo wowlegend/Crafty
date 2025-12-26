@@ -263,6 +263,16 @@ export const NPCSystem = ({ gameState }) => {
           const groundY = window.getMobGroundLevel(spawnX, spawnZ);
           
           if (groundY && groundY > 10 && groundY < 25) {
+            // CRITICAL FIX: Verify ground is solid using collision check
+            // This prevents spawning on "mathematical" ground that isn't visually generated yet
+            if (window.checkCollision) {
+               // Check slightly below the feet to ensure there is a block
+               if (!window.checkCollision(spawnX, groundY - 0.5, spawnZ)) {
+                 // console.log('👻 Ghost ground detected - skipping spawn');
+                 continue;
+               }
+            }
+
             return {
               x: spawnX,
               y: groundY + 1.5, // Spawn above ground
