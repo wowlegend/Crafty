@@ -6,10 +6,10 @@ import * as THREE from 'three';
 // Basic Mob Model Component
 const MobModel = ({ type, color, isHit }) => {
   const isAnimal = ['pig', 'cow', 'sheep', 'chicken'].includes(type);
-  const headColor = color;
-  const bodyColor = color;
-  const legColor = isAnimal ? color : '#1a1a1a'; // Dark legs for humanoid mobs
-
+  const isCreeper = type === 'creeper';
+  const isSpider = type === 'spider';
+  const isSkeleton = type === 'skeleton';
+  
   // Pulse effect when hit
   const materialProps = {
     color: isHit ? '#ff0000' : color,
@@ -17,8 +17,73 @@ const MobModel = ({ type, color, isHit }) => {
     emissiveIntensity: isHit ? 0.5 : 0
   };
 
+  if (isSpider) {
+    // Spider Model
+    return (
+      <group>
+        {/* Head */}
+        <mesh position={[0, 0.6, 0.4]}>
+          <boxGeometry args={[0.6, 0.5, 0.5]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Body */}
+        <mesh position={[0, 0.5, -0.2]}>
+          <boxGeometry args={[0.5, 0.4, 0.8]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Legs (8) */}
+        {[1, -1].map(side => (
+          [0, 1, 2, 3].map(i => (
+            <mesh key={`${side}-${i}`} position={[side * 0.5, 0.3, 0.4 - i * 0.3]} rotation={[0, 0, side * 0.5]}>
+              <boxGeometry args={[0.6, 0.1, 0.1]} />
+              <meshLambertMaterial {...materialProps} />
+            </mesh>
+          ))
+        ))}
+      </group>
+    );
+  }
+
+  if (isCreeper) {
+    // Creeper Model
+    return (
+      <group>
+        {/* Head */}
+        <mesh position={[0, 1.6, 0]}>
+          <boxGeometry args={[0.6, 0.6, 0.6]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Body */}
+        <mesh position={[0, 0.8, 0]}>
+          <boxGeometry args={[0.5, 1.0, 0.3]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        {/* Legs (4) */}
+        <mesh position={[-0.2, 0.2, 0.2]}>
+          <boxGeometry args={[0.2, 0.4, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[0.2, 0.2, 0.2]}>
+          <boxGeometry args={[0.2, 0.4, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[-0.2, 0.2, -0.2]}>
+          <boxGeometry args={[0.2, 0.4, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+        <mesh position={[0.2, 0.2, -0.2]}>
+          <boxGeometry args={[0.2, 0.4, 0.2]} />
+          <meshLambertMaterial {...materialProps} />
+        </mesh>
+      </group>
+    );
+  }
+
   if (isAnimal) {
     // Quadruped Model (Pig, Cow, etc)
+    const isCow = type === 'cow';
+    const isPig = type === 'pig';
+    
     return (
       <group>
         {/* Body */}
@@ -27,24 +92,44 @@ const MobModel = ({ type, color, isHit }) => {
           <meshLambertMaterial {...materialProps} />
         </mesh>
         {/* Head */}
-        <mesh position={[0, 1.1, 0.5]}>
+        <mesh position={[0, 1.1, 0.7]}>
           <boxGeometry args={[0.5, 0.5, 0.5]} />
           <meshLambertMaterial {...materialProps} />
         </mesh>
+        {/* Snout for Pig */}
+        {isPig && (
+          <mesh position={[0, 1.0, 1.0]}>
+            <boxGeometry args={[0.2, 0.15, 0.1]} />
+            <meshLambertMaterial {...materialProps} color="#ff9999" />
+          </mesh>
+        )}
+        {/* Horns for Cow */}
+        {isCow && (
+          <>
+            <mesh position={[-0.2, 1.4, 0.6]}>
+              <boxGeometry args={[0.05, 0.2, 0.05]} />
+              <meshLambertMaterial color="#333" />
+            </mesh>
+            <mesh position={[0.2, 1.4, 0.6]}>
+              <boxGeometry args={[0.05, 0.2, 0.05]} />
+              <meshLambertMaterial color="#333" />
+            </mesh>
+          </>
+        )}
         {/* Legs */}
-        <mesh position={[-0.25, 0.15, 0.4]}>
+        <mesh position={[-0.25, 0.3, 0.4]}>
           <boxGeometry args={[0.2, 0.6, 0.2]} />
           <meshLambertMaterial {...materialProps} />
         </mesh>
-        <mesh position={[0.25, 0.15, 0.4]}>
+        <mesh position={[0.25, 0.3, 0.4]}>
           <boxGeometry args={[0.2, 0.6, 0.2]} />
           <meshLambertMaterial {...materialProps} />
         </mesh>
-        <mesh position={[-0.25, 0.15, -0.4]}>
+        <mesh position={[-0.25, 0.3, -0.4]}>
           <boxGeometry args={[0.2, 0.6, 0.2]} />
           <meshLambertMaterial {...materialProps} />
         </mesh>
-        <mesh position={[0.25, 0.15, -0.4]}>
+        <mesh position={[0.25, 0.3, -0.4]}>
           <boxGeometry args={[0.2, 0.6, 0.2]} />
           <meshLambertMaterial {...materialProps} />
         </mesh>
@@ -53,6 +138,9 @@ const MobModel = ({ type, color, isHit }) => {
   }
 
   // Humanoid Model (Zombie, Skeleton, Player-like)
+  const limbThickness = isSkeleton ? 0.15 : 0.25;
+  const legColor = isSkeleton ? '#F5F5DC' : (isAnimal ? color : '#1a1a1a');
+
   return (
     <group>
       {/* Head */}
@@ -62,25 +150,25 @@ const MobModel = ({ type, color, isHit }) => {
       </mesh>
       {/* Body */}
       <mesh position={[0, 0.75, 0]}>
-        <boxGeometry args={[0.6, 0.8, 0.3]} />
+        <boxGeometry args={[isSkeleton ? 0.4 : 0.6, 0.8, 0.3]} />
         <meshLambertMaterial {...materialProps} />
       </mesh>
       {/* Arms */}
       <mesh position={[-0.4, 1.1, 0]} rotation={[type === 'zombie' ? -Math.PI/2 : 0, 0, 0]}>
-        <boxGeometry args={[0.2, 0.8, 0.2]} />
+        <boxGeometry args={[limbThickness, 0.8, limbThickness]} />
         <meshLambertMaterial {...materialProps} />
       </mesh>
       <mesh position={[0.4, 1.1, 0]} rotation={[type === 'zombie' ? -Math.PI/2 : 0, 0, 0]}>
-        <boxGeometry args={[0.2, 0.8, 0.2]} />
+        <boxGeometry args={[limbThickness, 0.8, limbThickness]} />
         <meshLambertMaterial {...materialProps} />
       </mesh>
       {/* Legs */}
       <mesh position={[-0.15, 0.15, 0]}>
-        <boxGeometry args={[0.25, 0.8, 0.25]} />
+        <boxGeometry args={[limbThickness, 0.8, limbThickness]} />
         <meshLambertMaterial {...materialProps} color={legColor} />
       </mesh>
       <mesh position={[0.15, 0.15, 0]}>
-        <boxGeometry args={[0.25, 0.8, 0.25]} />
+        <boxGeometry args={[limbThickness, 0.8, limbThickness]} />
         <meshLambertMaterial {...materialProps} color={legColor} />
       </mesh>
     </group>
@@ -335,7 +423,8 @@ export const NPCSystem = ({ gameState }) => {
     
     // Check if mob at position
     window.checkMobCollision = (position, radius = 3) => {
-      return entitiesRef.current.some(entity => {
+      // Find the first mob within radius
+      return entitiesRef.current.find(entity => {
         const distance = Math.sqrt(
           Math.pow(entity.position[0] - position.x, 2) +
           Math.pow(entity.position[1] - position.y, 2) +
