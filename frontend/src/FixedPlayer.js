@@ -276,11 +276,114 @@ export const FixedPlayer = ({ gameState, onPositionUpdate }) => {
   );
 };
 
+// RESTORED Spell-specific hand effects for right hand 
+const SpellHandEffects = ({ spellType }) => {
+  const effectRef = useRef();
+  
+  useFrame((state) => {
+    if (effectRef.current) {
+      const time = state.clock.elapsedTime;
+      
+      switch (spellType) {
+        case 'fireball':
+          effectRef.current.rotation.y += 0.04; // Controlled speed
+          effectRef.current.scale.setScalar(1 + Math.sin(time * 3) * 0.08); // Controlled intensity
+          break;
+        case 'iceball':
+          effectRef.current.rotation.x += 0.015;
+          effectRef.current.rotation.z += 0.025;
+          break;
+        case 'lightning':
+          effectRef.current.visible = Math.random() > 0.35; // Controlled flickering
+          break;
+        case 'arcane':
+          effectRef.current.rotation.y += 0.06;
+          effectRef.current.position.y = 0.2 + Math.sin(time * 2.5) * 0.02; // Controlled movement
+          break;
+      }
+    }
+  });
+  
+  if (spellType === 'fireball') {
+    return (
+      <mesh ref={effectRef} position={[0.1, 0.2, 0]}>
+        <coneGeometry args={[0.07, 0.22, 6]} />
+        <meshBasicMaterial color="#FF4500" transparent opacity={0.55} />
+      </mesh>
+    );
+  }
+  
+  if (spellType === 'iceball') {
+    return (
+      <group ref={effectRef}>
+        {[...Array(3)].map((_, i) => (
+          <mesh key={i} position={[0, 0.2, 0]} rotation={[0, (i * Math.PI) / 1.5, 0]}>
+            <coneGeometry args={[0.035, 0.13, 4]} />
+            <meshBasicMaterial color="#87CEEB" transparent opacity={0.65} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+  
+  if (spellType === 'lightning') {
+    return (
+      <mesh ref={effectRef} position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.25, 4]} />
+        <meshBasicMaterial color="#FFFF00" transparent opacity={0.75} />
+      </mesh>
+    );
+  }
+  
+  if (spellType === 'arcane') {
+    return (
+      <mesh ref={effectRef} position={[0, 0.2, 0]}>
+        <torusGeometry args={[0.10, 0.018, 6, 8]} />
+        <meshBasicMaterial color="#9932CC" transparent opacity={0.65} />
+      </mesh>
+    );
+  }
+  
+  return null;
+};
+
+// RESTORED Spell-specific effects for left hand
+const SpellLeftHandEffects = ({ spellType }) => {
+  const effectRef = useRef();
+  
+  useFrame((state) => {
+    if (effectRef.current) {
+      const time = state.clock.elapsedTime;
+      effectRef.current.rotation.y += 0.04; // Controlled speed
+      effectRef.current.scale.setScalar(1 + Math.sin(time * 1.8) * 0.04); // Controlled intensity
+    }
+  });
+  
+  const colors = {
+    fireball: '#FFD700',
+    iceball: '#E0FFFF',
+    lightning: '#FFFACD',
+    arcane: '#E6E6FA'
+  };
+  
+  return (
+    <mesh ref={effectRef} position={[0, 0.05, -0.11]}>
+      <sphereGeometry args={[0.035, 6, 6]} />
+      <meshBasicMaterial 
+        color={colors[spellType] || colors.fireball}
+        transparent 
+        opacity={0.45} 
+      />
+    </mesh>
+  );
+};
+
 // FIXED Magic Hands Component
 const FixedMagicHands = ({ selectedSpell, selectedBlock, isAttacking, camera }) => {
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   const wandRef = useRef();
+  const magicAuraRef = useRef();
   
   const SPELL_COLORS = {
     fireball: '#FF4500',
@@ -330,6 +433,13 @@ const FixedMagicHands = ({ selectedSpell, selectedBlock, isAttacking, camera }) 
           wandRef.current.position.y = 0.4;
         }
       }
+      
+      // Magic aura effects
+      if (magicAuraRef.current) {
+        const intensity = isAttacking ? 1.08 + Math.sin(time * 2) * 0.03 : 0.98 + Math.sin(time * 0.8) * 0.015;
+        magicAuraRef.current.scale.setScalar(intensity);
+        magicAuraRef.current.material.opacity = isAttacking ? 0.45 : 0.12;
+      }
     }
   });
 
@@ -368,7 +478,7 @@ const FixedMagicHands = ({ selectedSpell, selectedBlock, isAttacking, camera }) 
         
         {/* Magical aura during casting */}
         {isAttacking && (
-          <mesh position={[0, 0, 0]}>
+          <mesh ref={magicAuraRef} position={[0, 0, 0]}>
             <sphereGeometry args={[0.35, 8, 8]} />
             <meshBasicMaterial 
               color={currentSpellColor}
@@ -376,6 +486,11 @@ const FixedMagicHands = ({ selectedSpell, selectedBlock, isAttacking, camera }) 
               opacity={0.4}
             />
           </mesh>
+        )}
+        
+        {/* RESTORED spell-specific hand effects */}
+        {isAttacking && (
+          <SpellHandEffects spellType={selectedSpell} />
         )}
       </group>
       
@@ -405,36 +520,40 @@ const FixedMagicHands = ({ selectedSpell, selectedBlock, isAttacking, camera }) 
           <meshLambertMaterial color="#e6a69a" />
         </mesh>
         
-        {/* Spell effects */}
+        {/* RESTORED spell energy emanating from left hand */}
         {isAttacking && (
           <group>
+            {/* Main spell energy orb with authentic effects */}
             <mesh position={[0, 0.1, -0.2]}>
-              <sphereGeometry args={[0.08, 8, 8]} />
+              <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial 
                 color={currentSpellColor}
                 transparent
-                opacity={0.9}
+                opacity={0.85}
               />
             </mesh>
             
-            {/* Magical particles */}
+            {/* RESTORED magical particles */}
             {[...Array(5)].map((_, i) => (
               <mesh 
                 key={i}
                 position={[
-                  (Math.random() - 0.5) * 0.3,
-                  Math.random() * 0.2,
-                  -0.1 - Math.random() * 0.2
+                  (Math.random() - 0.5) * 0.25,
+                  Math.random() * 0.15,
+                  -0.1 - Math.random() * 0.15
                 ]}
               >
-                <sphereGeometry args={[0.015, 4, 4]} />
+                <sphereGeometry args={[0.012, 4, 4]} />
                 <meshBasicMaterial 
                   color={currentSpellColor}
                   transparent
-                  opacity={0.7}
+                  opacity={0.65}
                 />
               </mesh>
             ))}
+            
+            {/* RESTORED spell-specific left hand effects */}
+            <SpellLeftHandEffects spellType={selectedSpell} />
           </group>
         )}
         
