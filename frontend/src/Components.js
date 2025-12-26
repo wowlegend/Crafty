@@ -1588,3 +1588,124 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
             >
               <option value="creative">Creative</option>
               <option value="survival">Survival</option>
+              onClose();
+            }} 
+            className="text-gray-400 hover:text-white"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-white font-semibold mb-2">Game Mode</label>
+            <select
+              value={gameState.gameMode}
+              onChange={(e) => gameState.setGameMode(e.target.value)}
+              className="w-full bg-gray-700 text-white p-2 rounded"
+            >
+              <option value="creative">Creative</option>
+              <option value="survival">Survival</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={showStats}
+                onChange={(e) => setShowStats(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-white">Show Performance Stats</span>
+            </label>
+          </div>
+
+          {/* FIXED: Single Game Progress section only */}
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold">Game Progress</h3>
+            <div className="flex space-x-2">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.saveGame && gameState.saveGame();
+                }}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-3 rounded text-sm"
+              >
+                💾 Save Game
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.loadGame && gameState.loadGame();
+                }}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-3 rounded text-sm"
+              >
+                📁 Load Game
+              </button>
+            </div>
+          </div>
+
+          {/* FIXED: Single Day/Night Control section only */}
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold">Day/Night Control</h3>
+            <div className="flex space-x-2">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.setIsDay(true);
+                }}
+                className={`flex-1 py-2 px-3 rounded text-sm ${gameState.isDay ? 'bg-yellow-500' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
+              >
+                ☀️ Day
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  gameState.setIsDay(false);
+                }}
+                className={`flex-1 py-2 px-3 rounded text-sm ${!gameState.isDay ? 'bg-blue-700' : 'bg-gray-600 hover:bg-gray-500'} text-white`}
+              >
+                🌙 Night
+              </button>
+            </div>
+            <div className="text-xs text-gray-400 text-center">
+              Tip: Press 'N' key to toggle day/night quickly
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-white font-semibold">World Actions</h3>
+            <div className="flex space-x-2">
+              <button className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded text-sm">
+                <Download size={16} className="inline mr-1" />
+                Export World
+              </button>
+              <button className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded text-sm">
+                <Upload size={16} className="inline mr-1" />
+                Import World
+              </button>
+            </div>
+            <button className="w-full bg-red-600 hover:bg-red-500 text-white py-2 px-3 rounded text-sm">
+              <Trash2 size={16} className="inline mr-1" />
+              Reset World
+            </button>
+          </div>
+
+          <div>
+            <h3 className="text-white font-semibold mb-2">Statistics</h3>
+            <div className="bg-gray-700 p-3 rounded text-sm text-gray-300 space-y-1">
+              <div>Blocks Placed: {gameState.playerStats.blocksPlaced}</div>
+              <div>Blocks Destroyed: {gameState.playerStats.blocksDestroyed}</div>
+              <div>Time Played: {Math.floor(gameState.gameTime / 60)}m {gameState.gameTime % 60}s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
