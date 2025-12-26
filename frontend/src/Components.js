@@ -184,16 +184,31 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
         // Surface block - 95% grass for performance
         const blockType = Math.random() < 0.95 ? 'grass' : 'dirt';
         const key = `${x},${height},${z}`;
-        newBlocks.set(key, { 
+        
+        // CRITICAL: Add to ref
+        blocksRef.current.set(key, { 
           position: [x, height, z], 
           type: blockType,
           key // Store key for faster access
+        });
+        
+        newBlocks.set(key, { 
+          position: [x, height, z], 
+          type: blockType,
+          key
         });
         
         // Underground layers - optimized
         for (let y = height - 1; y >= Math.max(height - 2, 10); y--) {
           const undergroundType = y === height - 1 ? 'dirt' : 'stone';
           const undergroundKey = `${x},${y},${z}`;
+          
+          blocksRef.current.set(undergroundKey, { 
+            position: [x, y, z], 
+            type: undergroundType,
+            key: undergroundKey
+          });
+          
           newBlocks.set(undergroundKey, { 
             position: [x, y, z], 
             type: undergroundType,
@@ -208,15 +223,19 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       }
     }
     
-    // Batch update state
+    // CRITICAL: Update both ref and state
     setBlocks(prev => {
       const updated = new Map(prev);
       newBlocks.forEach((value, key) => updated.set(key, value));
       return updated;
     });
     
+    generatedChunksRef.current.add(chunkKey);
     setGeneratedChunks(prev => new Set(prev).add(chunkKey));
-  }, []);
+    
+    console.log(`✅ Chunk (${chunkX}, ${chunkZ}) generated - Total: ${generatedChunksRef.current.size}`);
+    return true;
+  }, [chunkSize]);
 
   const generateTree = useCallback((blockMap, x, baseY, z) => {
     const treeHeight = 2 + Math.floor(Math.random() * 2); // Smaller trees
