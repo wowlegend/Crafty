@@ -406,8 +406,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   // ENHANCED ground level function for MOBS with better accuracy AND collision detection
   useEffect(() => {
-    // CRITICAL: Expose generated chunks to mob system for terrain verification
-    window.getGeneratedChunks = () => generatedChunks;
+    // CRITICAL: Expose generated chunks using REF
+    window.getGeneratedChunks = () => generatedChunksRef.current;
     
     // Player uses the actual terrain generation function for smooth terrain following
     window.getHighestBlockAt = (x, z) => {
@@ -419,9 +419,9 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       // First try to get from actual terrain generation
       let terrainHeight = generateTerrainHeight(x, z);
       
-      // Then check if there are any placed blocks higher than terrain
+      // Then check if there are any placed blocks higher than terrain using REF
       let maxBlockY = terrainHeight;
-      blocks.forEach(block => {
+      blocksRef.current.forEach(block => {
         if (Math.floor(block.position[0]) === Math.floor(x) && 
             Math.floor(block.position[2]) === Math.floor(z)) {
           maxBlockY = Math.max(maxBlockY, block.position[1]);
@@ -431,16 +431,16 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
       return Math.max(maxBlockY, 12); // Use the higher of terrain or placed blocks
     };
     
-    // COLLISION DETECTION SYSTEM - Check for solid blocks
+    // COLLISION DETECTION SYSTEM - Check for solid blocks using REF
     window.checkCollision = (x, y, z) => {
       const blockX = Math.floor(x);
       const blockY = Math.floor(y);
       const blockZ = Math.floor(z);
       const key = `${blockX},${blockY},${blockZ}`;
       
-      // Check if there's a solid block at this position
-      if (blocks.has(key)) {
-        const block = blocks.get(key);
+      // Check if there's a solid block at this position using REF
+      if (blocksRef.current.has(key)) {
+        const block = blocksRef.current.get(key);
         // All block types are solid except glass and water
         return block.type !== 'glass' && block.type !== 'water';
       }
@@ -449,7 +449,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     };
     
     console.log('🔧 ENHANCED: Ground detection with collision system and chunk verification');
-  }, [blocks, generatedChunks]);
+  }, []);
 
   // OPTIMIZED block rendering with culling
   const visibleBlocks = useMemo(() => {
