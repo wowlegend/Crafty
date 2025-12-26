@@ -310,18 +310,20 @@ export const NPCSystem = ({ gameState }) => {
         
         return (
           <group key={entity.id} position={entity.position}>
-            {/* Mob body */}
-            <mesh 
-              onClick={() => attackEntity(entity.id)}
+            {/* Mob Model */}
+            <group 
+              onClick={(e) => {
+                e.stopPropagation();
+                attackEntity(entity.id);
+              }}
               userData={{ mobId: entity.id }}
             >
-              <boxGeometry args={[0.8, 1.2, 0.8]} />
-              <meshLambertMaterial 
-                color={isRecentlyHit ? '#FF0000' : config.color}
-                emissive={isRecentlyHit ? '#FF0000' : '#000000'}
-                emissiveIntensity={isRecentlyHit ? 0.5 : 0}
+              <MobModel 
+                type={entity.type} 
+                color={config.color} 
+                isHit={isRecentlyHit}
               />
-            </mesh>
+            </group>
             
             {/* Health bar */}
             {entity.health < entity.maxHealth && (

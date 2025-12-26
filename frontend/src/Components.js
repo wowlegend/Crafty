@@ -289,7 +289,8 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
           const chunkX = currentChunkX + x;
           const chunkZ = currentChunkZ + z;
           const chunkKey = `${chunkX}_${chunkZ}`;
-          if (!generatedChunks.has(chunkKey)) {
+          // CRITICAL FIX: Use REF to check generated status to avoid stale closure in useFrame loop
+          if (!generatedChunksRef.current.has(chunkKey)) {
             chunksToGenerate.push({ x: chunkX, z: chunkZ, priority: Math.abs(x) + Math.abs(z) });
           }
         }
