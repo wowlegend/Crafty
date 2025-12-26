@@ -235,12 +235,13 @@ export const NPCSystem = ({ gameState }) => {
 
   // Try to find a valid spawn position on generated terrain
   const findValidSpawnPosition = (playerPos) => {
-    const maxAttempts = 20;
+    const maxAttempts = 30; // Increased attempts
+    const minMobDistance = 8; // Don't spawn too close to other mobs
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // Spawn within 1-2 chunks of player (16-48 blocks)
+      // Spawn within 2-4 chunks of player (32-64 blocks) - Spread out more!
       const angle = Math.random() * Math.PI * 2;
-      const distance = 16 + Math.random() * 32; // 16-48 blocks away
+      const distance = 32 + Math.random() * 48; // 32-80 blocks away
       
       const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
       const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
@@ -260,22 +261,36 @@ export const NPCSystem = ({ gameState }) => {
       // Get ground level
       if (window.getMobGroundLevel) {
         try {
+          // Get the mathematical ground height from noise
           const groundY = window.getMobGroundLevel(spawnX, spawnZ);
           
+          // Basic height validity check
           if (groundY && groundY > 10 && groundY < 25) {
-            // CRITICAL FIX: Verify ground is solid using collision check
-            // This prevents spawning on "mathematical" ground that isn't visually generated yet
+            
+            // Check for solid block below to prevent floating
             if (window.checkCollision) {
-               // Check slightly below the feet to ensure there is a block
-               if (!window.checkCollision(spawnX, groundY - 0.5, spawnZ)) {
-                 // console.log('👻 Ghost ground detected - skipping spawn');
-                 continue;
+               // Check if there is a block at the calculated height
+               // Note: Blocks are centered at integer coordinates. Top face is at y + 0.5
+               if (!window.checkCollision(spawnX, groundY, spawnZ)) {
+                 continue; // No solid block found
                }
             }
 
+            // Check distance to other mobs to prevent clumping
+            const tooClose = entitiesRef.current.some(entity => {
+              const dx = entity.position[0] - spawnX;
+              const dz = entity.position[2] - spawnZ;
+              return (dx*dx + dz*dz) < (minMobDistance * minMobDistance);
+            });
+            
+            if (tooClose) continue;
+
+            // Successful spawn position
+            // The block center is at groundY. Top face is groundY + 0.5.
+            // Mob origin is at its feet (y=0). So we want to place it at groundY + 0.5
             return {
               x: spawnX,
-              y: groundY + 1.5, // Spawn above ground
+              y: groundY + 0.5, 
               z: spawnZ,
               valid: true
             };
@@ -467,7 +482,11 @@ export const NPCSystem = ({ gameState }) => {
           try {
             const groundY = window.getMobGroundLevel(newX, newZ);
             if (groundY && groundY > 10 && groundY < 25) {
-              newY = groundY + 1.5;
+              // Smoothly transition to new ground height
+              // Target is top of block (groundY + 0.5)
+              const targetY = groundY + 0.5;
+              // Lerp for smoothness (0.1 factor)
+              newY = entity.position[1] + (targetY - entity.position[1]) * 0.2;
             }
           } catch (error) {
             // Keep current Y if ground detection fails
