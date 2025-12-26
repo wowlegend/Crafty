@@ -447,156 +447,8 @@ function GameApp() {
       className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
       style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
     >
-      {/* Basic Loading screen */}
-      <AnimatePresence>
-        {!isPointerLocked && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-gradient-to-br from-green-600 via-green-700 to-green-900 flex items-center justify-center"
-          >
-            <div className="text-center text-white max-w-lg mx-4">
-              <motion.h1 
-                className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", duration: 0.8 }}
-              >
-                🧙‍♂️ Crafty
-              </motion.h1>
-              <motion.p 
-                className="text-2xl mb-8 text-green-100"
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                ENHANCED: Magic System • Experience • Wind Grass • Fixed Errors
-              </motion.p>
-
-              {/* Experience Display */}
-              <motion.div
-                className="mb-6 bg-black/30 rounded-lg p-4"
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <div className="text-yellow-400 font-bold text-lg mb-2">
-                  🌟 Level {experienceSystem.playerLevel} Mage
-                </div>
-                <div className="text-sm text-blue-200">
-                  XP: {experienceSystem.currentXP} / {experienceSystem.xpRequired}
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${experienceSystem.xpProgress}%` }}
-                  ></div>
-                </div>
-              </motion.div>
-              <motion.div
-                className="mb-6 text-left bg-black/20 rounded-lg p-4"
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <div className="text-center text-yellow-400 font-bold mb-3">🎮 Enhanced Controls</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>🔮 <strong>F:</strong> Cast Spell</div>
-                  <div>🔄 <strong>Q:</strong> Change Spell</div>
-                  <div>📦 <strong>E:</strong> Inventory</div>
-                  <div>⚒️ <strong>C:</strong> Crafting</div>
-                  <div>✨ <strong>M:</strong> Magic</div>
-                  <div>🏗️ <strong>B:</strong> Building</div>
-                </div>
-              </motion.div>
-
-              {/* Authentication Status */}
-              {isAuthenticated ? (
-                <div className="mb-6">
-                  <UserProfile onShowWorldManager={() => gameState.setShowWorldManager(true)} />
-                </div>
-              ) : (
-                <motion.div
-                  className="mb-6"
-                  initial={{ y: 30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <p className="text-green-200 mb-4">Sign in to save worlds and access multiplayer features</p>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font mr-4"
-                  >
-                    <LogIn className="inline mr-2" size={20} />
-                    Sign In / Register
-                  </button>
-                </motion.div>
-              )}
-
-              {/* Sound Controls */}
-              <div className="mb-6 flex justify-center space-x-4">
-                <button
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`p-3 rounded-lg transition-all ${
-                    soundEnabled ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 hover:bg-gray-500'
-                  } text-white`}
-                  title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
-                >
-                  {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-                </button>
-                <button
-                  onClick={() => setMusicEnabled(!musicEnabled)}
-                  className={`p-3 rounded-lg transition-all ${
-                    musicEnabled ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
-                  } text-white`}
-                  title={musicEnabled ? 'Disable Music' : 'Enable Music'}
-                >
-                  {musicEnabled ? '🎵' : '🔇'}
-                </button>
-              </div>
-
-              <motion.button
-                onClick={() => {
-                  console.log('🎮 Starting game (Force Mode)...');
-                  
-                  // 1. ALWAYS transition state immediately to remove menu
-                  setIsPointerLocked(true);
-                  
-                  // 2. Attempt pointer lock as a secondary action
-                  // We use a small timeout to let the React render cycle finish hiding the menu
-                  setTimeout(() => {
-                    try {
-                      if (document.body && document.body.requestPointerLock) {
-                        const lockPromise = document.body.requestPointerLock();
-                        if (lockPromise && typeof lockPromise.catch === 'function') {
-                          lockPromise.catch(e => console.warn('Pointer lock failed (non-fatal):', e));
-                        }
-                      }
-                    } catch (e) {
-                      console.warn('Pointer lock error (non-fatal):', e);
-                    }
-                  }, 100);
-                }}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                🧙‍♂️ Start Magical Adventure
-              </motion.button>
-              <p className="text-sm text-green-200 mt-4">
-                Click to lock mouse pointer and begin your magical journey
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* FIXED Game Canvas with proper camera settings */}
-      <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+      <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
         <Canvas
           shadows={false}
           className="w-full h-full"
@@ -785,6 +637,154 @@ function GameApp() {
           </div>
         </div>
       )}
+
+      {/* Basic Loading screen - MOVED TO END AND GIVEN HIGHER Z-INDEX */}
+      <AnimatePresence>
+        {!isPointerLocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] bg-gradient-to-br from-green-600 via-green-700 to-green-900 flex items-center justify-center pointer-events-auto"
+          >
+            <div className="text-center text-white max-w-lg mx-4">
+              <motion.h1 
+                className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
+                initial={{ scale: 0.5 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", duration: 0.8 }}
+              >
+                🧙‍♂️ Crafty
+              </motion.h1>
+              <motion.p 
+                className="text-2xl mb-8 text-green-100"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                ENHANCED: Magic System • Experience • Wind Grass • Fixed Errors
+              </motion.p>
+
+              {/* Experience Display */}
+              <motion.div
+                className="mb-6 bg-black/30 rounded-lg p-4"
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="text-yellow-400 font-bold text-lg mb-2">
+                  🌟 Level {experienceSystem.playerLevel} Mage
+                </div>
+                <div className="text-sm text-blue-200">
+                  XP: {experienceSystem.currentXP} / {experienceSystem.xpRequired}
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${experienceSystem.xpProgress}%` }}
+                  ></div>
+                </div>
+              </motion.div>
+              <motion.div
+                className="mb-6 text-left bg-black/20 rounded-lg p-4"
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="text-center text-yellow-400 font-bold mb-3">🎮 Enhanced Controls</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>🔮 <strong>F:</strong> Cast Spell</div>
+                  <div>🔄 <strong>Q:</strong> Change Spell</div>
+                  <div>📦 <strong>E:</strong> Inventory</div>
+                  <div>⚒️ <strong>C:</strong> Crafting</div>
+                  <div>✨ <strong>M:</strong> Magic</div>
+                  <div>🏗️ <strong>B:</strong> Building</div>
+                </div>
+              </motion.div>
+
+              {/* Authentication Status */}
+              {isAuthenticated ? (
+                <div className="mb-6">
+                  <UserProfile onShowWorldManager={() => gameState.setShowWorldManager(true)} />
+                </div>
+              ) : (
+                <motion.div
+                  className="mb-6"
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <p className="text-green-200 mb-4">Sign in to save worlds and access multiplayer features</p>
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font mr-4"
+                  >
+                    <LogIn className="inline mr-2" size={20} />
+                    Sign In / Register
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Sound Controls */}
+              <div className="mb-6 flex justify-center space-x-4">
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`p-3 rounded-lg transition-all ${
+                    soundEnabled ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 hover:bg-gray-500'
+                  } text-white`}
+                  title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
+                >
+                  {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                </button>
+                <button
+                  onClick={() => setMusicEnabled(!musicEnabled)}
+                  className={`p-3 rounded-lg transition-all ${
+                    musicEnabled ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
+                  } text-white`}
+                  title={musicEnabled ? 'Disable Music' : 'Enable Music'}
+                >
+                  {musicEnabled ? '🎵' : '🔇'}
+                </button>
+              </div>
+
+              <motion.button
+                onClick={() => {
+                  console.log('🎮 Starting game (Force Mode)...');
+                  
+                  // 1. ALWAYS transition state immediately to remove menu
+                  setIsPointerLocked(true);
+                  
+                  // 2. Attempt pointer lock as a secondary action
+                  // We use a small timeout to let the React render cycle finish hiding the menu
+                  setTimeout(() => {
+                    try {
+                      if (document.body && document.body.requestPointerLock) {
+                        const lockPromise = document.body.requestPointerLock();
+                        if (lockPromise && typeof lockPromise.catch === 'function') {
+                          lockPromise.catch(e => console.warn('Pointer lock failed (non-fatal):', e));
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Pointer lock error (non-fatal):', e);
+                    }
+                  }, 100);
+                }}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🧙‍♂️ Start Magical Adventure
+              </motion.button>
+              <p className="text-sm text-green-200 mt-4">
+                Click to lock mouse pointer and begin your magical journey
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
