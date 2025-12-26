@@ -420,7 +420,10 @@ function GameApp() {
   }
 
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative">
+    <div 
+      className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
+      style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
+    >
       {/* Basic Loading screen */}
       <AnimatePresence>
         {!isPointerLocked && (
@@ -624,68 +627,70 @@ function GameApp() {
       </AnimatePresence>
 
       {/* FIXED Game Canvas with proper camera settings */}
-      <Canvas
-        shadows={false}
-        className="w-full h-full"
-        gl={{ 
-          antialias: true,
-          alpha: false,
-          depth: true,
-          powerPreference: "high-performance"
-        }}
-        performance={{ min: 0.3 }}
-        camera={{
-          fov: 75,
-          near: 0.1,
-          far: 500,
-          position: [0, 18, 0]
-        }}
-        onCreated={({ gl }) => {
-          // Optimize WebGL settings for performance
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-          gl.shadowMap.enabled = false; // Disable shadows for performance
-          
-          // NO camera manipulation here - let PointerLockControls handle it
-        }}
-      >
-        {/* Enhanced day/night lighting */}
-        <MinecraftSky isDay={gameState.isDay} />
-        <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
-        <directionalLight 
-          position={[50, 50, 25]} 
-          intensity={gameState.isDay ? 1.2 : 0.3} 
-          castShadow={false} 
-        />
-        {!gameState.isDay && (
-          <pointLight 
-            position={[0, 20, 0]} 
-            intensity={0.1} 
-            distance={30}
-            color="#4169E1"
+      <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+        <Canvas
+          shadows={false}
+          className="w-full h-full"
+          gl={{ 
+            antialias: true,
+            alpha: false,
+            depth: true,
+            powerPreference: "high-performance"
+          }}
+          performance={{ min: 0.3 }}
+          camera={{
+            fov: 75,
+            near: 0.1,
+            far: 500,
+            position: [0, 18, 0]
+          }}
+          onCreated={({ gl }) => {
+            // Optimize WebGL settings for performance
+            gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            gl.shadowMap.enabled = false; // Disable shadows for performance
+            
+            // NO camera manipulation here - let PointerLockControls handle it
+          }}
+        >
+          {/* Enhanced day/night lighting */}
+          <MinecraftSky isDay={gameState.isDay} />
+          <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
+          <directionalLight 
+            position={[50, 50, 25]} 
+            intensity={gameState.isDay ? 1.2 : 0.3} 
+            castShadow={false} 
           />
-        )}
+          {!gameState.isDay && (
+            <pointLight 
+              position={[0, 20, 0]} 
+              intensity={0.1} 
+              distance={30}
+              color="#4169E1"
+            />
+          )}
 
-        {/* Player Controls - Mouse Look Only */}
-        <PointerLockControls makeDefault />
-        
-        {/* Position tracker */}
-        <PositionTracker onPositionUpdate={setPlayerPosition} />
-        
-        {/* FIXED Game World with throttled infinite generation */}
-        <MinecraftWorld gameState={gameState} />
-        
-        {/* FIXED Player with proper movement and camera separation */}
-        <FixedPlayer 
-          gameState={gameState} 
-          onPositionUpdate={setPlayerPosition}
-        />
+          {/* Player Controls - Mouse Look Only */}
+          <PointerLockControls makeDefault />
+          
+          {/* Position tracker */}
+          <PositionTracker onPositionUpdate={setPlayerPosition} />
+          
+          {/* FIXED Game World with throttled infinite generation */}
+          <MinecraftWorld gameState={gameState} />
+          
+          {/* FIXED Player with proper movement and camera separation */}
+          <FixedPlayer 
+            gameState={gameState} 
+            onPositionUpdate={setPlayerPosition}
+          />
 
-        {/* NPCs */}
-        <NPCSystem gameState={gameState} />
+          {/* NPCs */}
+          <NPCSystem gameState={gameState} />
 
-        {/* Performance Stats */}
-        {showStats && <Stats />}
-      </Canvas>
+          {/* Performance Stats */}
+          {showStats && <Stats />}
+        </Canvas>
+      </div>
 
       {/* Game UI */}
       <AnimatePresence>
