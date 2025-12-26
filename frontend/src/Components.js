@@ -486,8 +486,6 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     <group>
       <fog attach="fog" args={[fogColor, 20, (renderDistance * chunkSize) - 10]} />
 
-  // Fog for smoother world edge
-  const fogColor = gameState.isDay ? '#87CEEB' : '#1a1a2e';
       <EnhancedMagicSystem 
         gameState={gameState}
         playerPosition={camera?.position}
