@@ -37,24 +37,6 @@ import {
   PositionTracker
 } from './Components';
 import { FixedPlayer } from './FixedPlayer';
-  // PREVENT RUNTIME ERROR: ResizeObserver loop limit exceeded
-  useEffect(() => {
-    const resizeObserverError = (e) => {
-      if (e.message === 'ResizeObserver loop limit exceeded') {
-        const resizeObserverErrDiv = document.getElementById(
-          'webpack-dev-server-client-overlay-div'
-        );
-        const resizeObserverErrStyle = document.getElementById(
-          'webpack-dev-server-client-overlay'
-        );
-        if (resizeObserverErrDiv) resizeObserverErrDiv.setAttribute('style', 'display: none');
-        if (resizeObserverErrStyle) resizeObserverErrStyle.setAttribute('style', 'display: none');
-      }
-    };
-    window.addEventListener('error', resizeObserverError);
-    return () => window.removeEventListener('error', resizeObserverError);
-  }, []);
-
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
@@ -266,6 +248,23 @@ function GameApp() {
 
   // Initialize experience system
   const experienceSystem = useSimpleExperience();
+  // PREVENT RUNTIME ERROR: ResizeObserver loop limit exceeded
+  useEffect(() => {
+    const resizeObserverError = (e) => {
+      if (e.message === 'ResizeObserver loop limit exceeded') {
+        const resizeObserverErrDiv = document.getElementById(
+          'webpack-dev-server-client-overlay-div'
+        );
+        const resizeObserverErrStyle = document.getElementById(
+          'webpack-dev-server-client-overlay'
+        );
+        if (resizeObserverErrDiv) resizeObserverErrDiv.setAttribute('style', 'display: none');
+        if (resizeObserverErrStyle) resizeObserverErrStyle.setAttribute('style', 'display: none');
+      }
+    };
+    window.addEventListener('error', resizeObserverError);
+    return () => window.removeEventListener('error', resizeObserverError);
+  }, []);
 
   // Expose combat sounds globally for NPC system
   useEffect(() => {
