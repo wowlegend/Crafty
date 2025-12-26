@@ -1,0 +1,347 @@
+import React, { useRef, useState, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+
+// COMPLETELY REWRITTEN NPC System with proper terrain verification
+export const NPCSystem = ({ gameState }) => {
+  const [entities, setEntities] = useState([]);
+  const { camera } = useThree();
+  const [terrainReady, setTerrainReady] = useState(false);
+  const entitiesRef = useRef([]);
+
+  // Wait for terrain to be ready
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (window.getMobGroundLevel && window.getGeneratedChunks) {
+        console.log('✅ TERRAIN SYSTEM READY - Mob spawning enabled');
+        setTerrainReady(true);
+        clearInterval(checkInterval);
+      }
+    }, 500);
+
+    // Timeout after 5 seconds
+    const timeout = setTimeout(() => {
+      console.log('⚠️ Terrain check timeout - enabling mob spawning anyway');
+      setTerrainReady(true);
+      clearInterval(checkInterval);
+    }, 5000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // Mob configuration
+  const getMobConfig = (type) => {
+    const configs = {
+      // Peaceful mobs
+      pig: { health: 60, hostile: false, speed: 0.7, drops: ['pork'], color: '#FFC0CB' },
+      cow: { health: 70, hostile: false, speed: 0.6, drops: ['beef', 'leather'], color: '#8B4513' },
+      chicken: { health: 40, hostile: false, speed: 0.8, drops: ['feather', 'chicken'], color: '#FFFFFF' },
+      sheep: { health: 50, hostile: false, speed: 0.7, drops: ['wool', 'mutton'], color: '#F5F5F5' },
+      villager: { health: 120, hostile: false, speed: 0.6, drops: ['emerald'], color: '#654321' },
+      
+      // Hostile mobs
+      zombie: { health: 80, hostile: true, speed: 0.8, drops: ['flesh', 'iron'], color: '#228B22' },
+      skeleton: { health: 70, hostile: true, speed: 0.9, drops: ['bone', 'arrow'], color: '#F5F5DC' },
+      creeper: { health: 100, hostile: true, speed: 0.7, drops: ['gunpowder'], color: '#32CD32' },
+      spider: { health: 60, hostile: true, speed: 1.0, drops: ['string'], color: '#8B0000' },
+    };
+    return configs[type] || configs.pig;
+  };
+
+  // Get mob types based on day/night
+  const getMobTypes = (isDay) => {
+    if (isDay) {
+      return ['pig', 'cow', 'chicken', 'sheep', 'villager', 'pig', 'cow', 'chicken'];
+    } else {
+      return ['zombie', 'skeleton', 'creeper', 'spider', 'zombie', 'skeleton'];
+    }
+  };
+
+  // Try to find a valid spawn position on generated terrain
+  const findValidSpawnPosition = (playerPos) => {
+    const maxAttempts = 20;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Spawn within 1-2 chunks of player (16-48 blocks)
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 16 + Math.random() * 32; // 16-48 blocks away
+      
+      const spawnX = Math.floor(playerPos.x + Math.cos(angle) * distance);
+      const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * distance);
+      
+      // Check if chunk exists
+      if (window.getGeneratedChunks) {
+        const chunkX = Math.floor(spawnX / 16);
+        const chunkZ = Math.floor(spawnZ / 16);
+        const chunkKey = `${chunkX}_${chunkZ}`;
+        const generatedChunks = window.getGeneratedChunks();
+        
+        if (!generatedChunks.has(chunkKey)) {
+          continue; // Chunk not generated, try again
+        }
+      }
+      
+      // Get ground level
+      if (window.getMobGroundLevel) {
+        try {
+          const groundY = window.getMobGroundLevel(spawnX, spawnZ);
+          
+          if (groundY && groundY > 10 && groundY < 25) {
+            return {
+              x: spawnX,
+              y: groundY + 1.5, // Spawn above ground
+              z: spawnZ,
+              valid: true
+            };
+          }
+        } catch (error) {
+          console.warn(`Spawn position calculation error:`, error);
+        }
+      }
+    }
+    
+    return { valid: false };
+  };
+
+  // Initial mob spawning when terrain is ready
+  useEffect(() => {
+    if (!terrainReady || !camera) return;
+
+    console.log('🌍 Spawning initial mob population...');
+    
+    const playerPos = camera.position;
+    const mobTypes = getMobTypes(gameState.isDay || true);
+    const initialMobs = [];
+    
+    // Spawn 30-40 initial mobs
+    for (let i = 0; i < 35; i++) {
+      const spawnPos = findValidSpawnPosition(playerPos);
+      
+      if (spawnPos.valid) {
+        const mobType = mobTypes[Math.floor(Math.random() * mobTypes.length)];
+        const config = getMobConfig(mobType);
+        
+        initialMobs.push({
+          id: `mob_${Date.now()}_${i}`,
+          type: mobType,
+          position: [spawnPos.x, spawnPos.y, spawnPos.z],
+          health: config.health,
+          maxHealth: config.health,
+          hostile: config.hostile,
+          speed: config.speed,
+          drops: config.drops,
+          color: config.color,
+          wanderRadius: config.hostile ? 12 : 8,
+          initialPosition: [spawnPos.x, spawnPos.y, spawnPos.z],
+          spawnTime: Date.now()
+        });
+        
+        console.log(`✅ Spawned ${mobType} at (${spawnPos.x}, ${spawnPos.y.toFixed(1)}, ${spawnPos.z})`);
+      }
+    }
+    
+    console.log(`🎉 Initial spawn complete: ${initialMobs.length} mobs`);
+    setEntities(initialMobs);
+    entitiesRef.current = initialMobs;
+  }, [terrainReady, camera, gameState.isDay]);
+
+  // Dynamic spawning - add more mobs as player explores
+  useEffect(() => {
+    if (!terrainReady) return;
+
+    const spawnInterval = setInterval(() => {
+      const currentEntities = entitiesRef.current;
+      const playerPos = camera?.position;
+      
+      if (!playerPos || currentEntities.length >= 60) return; // Max 60 mobs
+
+      // Clean up distant mobs
+      const nearbyMobs = currentEntities.filter(mob => {
+        const distance = Math.sqrt(
+          Math.pow(mob.position[0] - playerPos.x, 2) +
+          Math.pow(mob.position[2] - playerPos.z, 2)
+        );
+        return distance < 150; // Keep mobs within 150 blocks
+      });
+
+      // Spawn new mobs if needed
+      const mobsNeeded = Math.min(5, 60 - nearbyMobs.length);
+      const newMobs = [];
+      
+      if (mobsNeeded > 0) {
+        const mobTypes = getMobTypes(gameState.isDay || true);
+        
+        for (let i = 0; i < mobsNeeded; i++) {
+          const spawnPos = findValidSpawnPosition(playerPos);
+          
+          if (spawnPos.valid) {
+            const mobType = mobTypes[Math.floor(Math.random() * mobTypes.length)];
+            const config = getMobConfig(mobType);
+            
+            newMobs.push({
+              id: `mob_dynamic_${Date.now()}_${i}`,
+              type: mobType,
+              position: [spawnPos.x, spawnPos.y, spawnPos.z],
+              health: config.health,
+              maxHealth: config.health,
+              hostile: config.hostile,
+              speed: config.speed,
+              drops: config.drops,
+              color: config.color,
+              wanderRadius: config.hostile ? 12 : 8,
+              initialPosition: [spawnPos.x, spawnPos.y, spawnPos.z],
+              spawnTime: Date.now()
+            });
+          }
+        }
+        
+        if (newMobs.length > 0) {
+          const updatedMobs = [...nearbyMobs, ...newMobs];
+          setEntities(updatedMobs);
+          entitiesRef.current = updatedMobs;
+          console.log(`🔄 Dynamic spawn: +${newMobs.length} mobs (Total: ${updatedMobs.length})`);
+        }
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(spawnInterval);
+  }, [terrainReady, camera, gameState.isDay]);
+
+  // Attack entity function
+  const attackEntity = (entityId) => {
+    if (window.playAttackSounds) {
+      window.playAttackSounds();
+    }
+
+    if (window.setPlayerAttacking) {
+      window.setPlayerAttacking(true);
+      setTimeout(() => window.setPlayerAttacking(false), 600);
+    }
+
+    setEntities(currentEntities => {
+      const updated = currentEntities.map(entity => {
+        if (entity.id === entityId) {
+          const newHealth = Math.max(0, entity.health - 20);
+          
+          if (newHealth <= 0) {
+            console.log(`💀 ${entity.type} defeated!`);
+            
+            if (window.addExperience) {
+              window.addExperience(10, `Defeated ${entity.type}`);
+            }
+            
+            return null; // Remove entity
+          }
+          
+          return { ...entity, health: newHealth, lastHitTime: Date.now() };
+        }
+        return entity;
+      }).filter(Boolean);
+      
+      entitiesRef.current = updated;
+      return updated;
+    });
+  };
+
+  // Expose attack function
+  useEffect(() => {
+    window.attackEntity = attackEntity;
+    window.damageMob = attackEntity;
+    
+    // Check if mob at position
+    window.checkMobCollision = (position, radius = 3) => {
+      return entitiesRef.current.some(entity => {
+        const distance = Math.sqrt(
+          Math.pow(entity.position[0] - position.x, 2) +
+          Math.pow(entity.position[1] - position.y, 2) +
+          Math.pow(entity.position[2] - position.z, 2)
+        );
+        return distance < radius;
+      });
+    };
+  }, []);
+
+  // Update mob positions (wandering AI)
+  useFrame((state, delta) => {
+    if (!terrainReady || entities.length === 0) return;
+
+    const time = state.clock.elapsedTime;
+    
+    setEntities(currentEntities => {
+      return currentEntities.map(entity => {
+        // Simple wandering AI
+        const timeSinceSpawn = (Date.now() - entity.spawnTime) / 1000;
+        const wanderSpeed = entity.speed * 0.3;
+        
+        // Wander around initial position
+        const newX = entity.initialPosition[0] + Math.sin(time * wanderSpeed + entity.id.length) * entity.wanderRadius;
+        const newZ = entity.initialPosition[2] + Math.cos(time * wanderSpeed + entity.id.length) * entity.wanderRadius;
+        
+        // Get ground level at new position
+        let newY = entity.position[1];
+        if (window.getMobGroundLevel) {
+          try {
+            const groundY = window.getMobGroundLevel(newX, newZ);
+            if (groundY && groundY > 10 && groundY < 25) {
+              newY = groundY + 1.5;
+            }
+          } catch (error) {
+            // Keep current Y if ground detection fails
+          }
+        }
+        
+        return {
+          ...entity,
+          position: [newX, newY, newZ]
+        };
+      });
+    });
+  });
+
+  // Render mobs
+  return (
+    <group>
+      {entities.map(entity => {
+        const config = getMobConfig(entity.type);
+        const isRecentlyHit = entity.lastHitTime && (Date.now() - entity.lastHitTime) < 500;
+        
+        return (
+          <group key={entity.id} position={entity.position}>
+            {/* Mob body */}
+            <mesh 
+              onClick={() => attackEntity(entity.id)}
+              userData={{ mobId: entity.id }}
+            >
+              <boxGeometry args={[0.8, 1.2, 0.8]} />
+              <meshLambertMaterial 
+                color={isRecentlyHit ? '#FF0000' : config.color}
+                emissive={isRecentlyHit ? '#FF0000' : '#000000'}
+                emissiveIntensity={isRecentlyHit ? 0.5 : 0}
+              />
+            </mesh>
+            
+            {/* Health bar */}
+            {entity.health < entity.maxHealth && (
+              <mesh position={[0, 1.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[0.8, 0.1]} />
+                <meshBasicMaterial color="#FF0000" />
+              </mesh>
+            )}
+            
+            {entity.health < entity.maxHealth && (
+              <mesh position={[0, 1.5, 0.01]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[0.8 * (entity.health / entity.maxHealth), 0.1]} />
+                <meshBasicMaterial color="#00FF00" />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
+    </group>
+  );
+};
+
+export default NPCSystem;
