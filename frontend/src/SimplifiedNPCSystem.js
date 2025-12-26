@@ -223,8 +223,6 @@ export const NPCSystem = ({ gameState }) => {
           initialPosition: [spawnPos.x, spawnPos.y, spawnPos.z],
           spawnTime: Date.now()
         });
-        
-        console.log(`✅ Spawned ${mobType} at (${spawnPos.x}, ${spawnPos.y.toFixed(1)}, ${spawnPos.z})`);
       }
     }
     
@@ -287,7 +285,6 @@ export const NPCSystem = ({ gameState }) => {
           const updatedMobs = [...nearbyMobs, ...newMobs];
           setEntities(updatedMobs);
           entitiesRef.current = updatedMobs;
-          console.log(`🔄 Dynamic spawn: +${newMobs.length} mobs (Total: ${updatedMobs.length})`);
         }
       }
     }, 5000); // Check every 5 seconds

@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Box, Plane, Stars } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { 
@@ -15,15 +14,9 @@ import {
   Upload,
   Trash2,
   Grid,
-  Eye,
-  EyeOff,
-  Heart,
-  Zap,
-  Star,
   Hammer,
   Sword,
-  Shield,
-  Crown
+  Star
 } from 'lucide-react';
 
 // Import optimized systems with enhanced visual effects
