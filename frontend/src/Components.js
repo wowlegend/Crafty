@@ -233,7 +233,6 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     generatedChunksRef.current.add(chunkKey);
     setGeneratedChunks(prev => new Set(prev).add(chunkKey));
     
-    console.log(`✅ Chunk (${chunkX}, ${chunkZ}) generated - Total: ${generatedChunksRef.current.size}`);
     return true;
   }, [chunkSize]);
 
@@ -300,15 +299,11 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
         // Sort by priority - generate closest chunks first
         chunksToGenerate.sort((a, b) => a.priority - b.priority);
         
-        console.log(`🔥 GENERATING ${chunksToGenerate.length} chunks IMMEDIATELY around (${currentChunkX}, ${currentChunkZ})`);
-        
         // CRITICAL FIX: Generate ALL chunks SYNCHRONOUSLY - no delays or async
         // This ensures terrain exists BEFORE mobs try to spawn on it
         chunksToGenerate.forEach((chunk) => {
           generateChunk(chunk.x, chunk.z);
         });
-        
-        console.log(`✅ IMMEDIATE GENERATION COMPLETE: ${chunksToGenerate.length} chunks generated`);
       }
     }
   });
