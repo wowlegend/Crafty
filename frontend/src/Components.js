@@ -44,29 +44,6 @@ export const BLOCK_TYPES = Object.freeze({
 // CACHED block type keys for performance
 const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
 const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
-
-  // Create sky fog
-  <fog attach="fog" args={['#87CEEB', 30, 90]} />
 
 
 // ULTRA-OPTIMIZED Minecraft Hotbar - Minimal re-renders
