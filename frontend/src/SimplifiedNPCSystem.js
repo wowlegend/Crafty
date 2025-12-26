@@ -345,3 +345,72 @@ export const NPCSystem = ({ gameState }) => {
 };
 
 export default NPCSystem;
+export const CombatInstructions = () => {
+  return (
+    <div className="absolute top-4 right-4 bg-black/90 text-white p-4 rounded-lg text-sm max-w-xs">
+      <h3 className="font-bold mb-2 text-red-400">⚔️ Combat Controls:</h3>
+      <ul className="space-y-1 text-xs">
+        <li><strong className="text-yellow-400">Shift + Click:</strong> Attack mob (shows weapon!)</li>
+        <li><strong className="text-green-400">Regular Click:</strong> Interact/Trade</li>
+        <li><strong className="text-red-300">Hostile:</strong> Zombies, Skeletons, Creepers, Spiders, Endermen, Witches</li>
+        <li><strong className="text-blue-300">Passive:</strong> Pigs, Chickens, Cows, Sheep, Wolves, Villagers</li>
+        <li><span className="text-orange-300">💰 Mobs drop items when defeated!</span></li>
+      </ul>
+    </div>
+  );
+};
+
+// Trading Interface
+export const TradingInterface = ({ villager, onClose, gameState }) => {
+  if (!villager) return null;
+
+  return (
+    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-40">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-white">🏪 Trading Post</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
+        </div>
+        
+        <div className="mb-4">
+          <p className="text-gray-300 italic">"Welcome, brave adventurer!"</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="p-3 rounded border-2 border-green-500 bg-green-900/20">
+            <div className="flex justify-between items-center">
+              <div className="text-white">
+                <span className="text-red-400">5 iron</span>
+                <span className="mx-2 text-yellow-400">→</span>
+                <span className="text-green-400">1 diamond</span>
+              </div>
+              <div className="text-sm text-gray-400">Stock: 3</div>
+            </div>
+          </div>
+          
+          <div className="p-3 rounded border-2 border-green-500 bg-green-900/20">
+            <div className="flex justify-between items-center">
+              <div className="text-white">
+                <span className="text-red-400">10 wood</span>
+                <span className="mx-2 text-yellow-400">→</span>
+                <span className="text-green-400">2 gold</span>
+              </div>
+              <div className="text-sm text-gray-400">Stock: 5</div>
+            </div>
+          </div>
+          
+          <div className="p-3 rounded border-2 border-green-500 bg-green-900/20">
+            <div className="flex justify-between items-center">
+              <div className="text-white">
+                <span className="text-red-400">3 string</span>
+                <span className="mx-2 text-yellow-400">→</span>
+                <span className="text-green-400">1 bow</span>
+              </div>
+              <div className="text-sm text-gray-400">Stock: 2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
