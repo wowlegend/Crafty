@@ -282,45 +282,53 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     });
   }, []);
 
-  // IMMEDIATE SYNCHRONOUS terrain generation - GUARANTEED GENERATION
+  // IMMEDIATE SYNCHRONOUS terrain generation - THROTTLED to prevent lag
   useFrame(() => {
     if (!camera) return;
     
     const now = performance.now();
-    if (now - lastUpdateTime.current < updateThreshold) return;
-    lastUpdateTime.current = now;
     
+    // Update player chunk position check
     const playerX = Math.floor(camera.position.x);
     const playerZ = Math.floor(camera.position.z);
     const currentChunkX = Math.floor(playerX / chunkSize);
     const currentChunkZ = Math.floor(playerZ / chunkSize);
     
-    if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z) {
+    // Check if we need to queue new chunks
+    if (currentChunkX !== lastPlayerChunk.current.x || currentChunkZ !== lastPlayerChunk.current.z || now - lastUpdateTime.current > 500) {
       lastPlayerChunk.current = { x: currentChunkX, z: currentChunkZ };
+      lastUpdateTime.current = now;
       
-      // CRITICAL FIX: Generate chunks IMMEDIATELY and SYNCHRONOUSLY
       const chunksToGenerate = [];
       for (let x = -renderDistance; x <= renderDistance; x++) {
         for (let z = -renderDistance; z <= renderDistance; z++) {
           const chunkX = currentChunkX + x;
           const chunkZ = currentChunkZ + z;
           const chunkKey = `${chunkX}_${chunkZ}`;
-          // CRITICAL FIX: Use REF to check generated status to avoid stale closure in useFrame loop
+          
           if (!generatedChunksRef.current.has(chunkKey)) {
-            chunksToGenerate.push({ x: chunkX, z: chunkZ, priority: Math.abs(x) + Math.abs(z) });
+            // Prioritize closest chunks
+            const dist = Math.abs(x) + Math.abs(z);
+            chunksToGenerate.push({ x: chunkX, z: chunkZ, priority: dist });
           }
         }
       }
       
       if (chunksToGenerate.length > 0) {
-        // Sort by priority - generate closest chunks first
+        // Sort by priority (closest first)
         chunksToGenerate.sort((a, b) => a.priority - b.priority);
         
-        // CRITICAL FIX: Generate ALL chunks SYNCHRONOUSLY - no delays or async
-        // This ensures terrain exists BEFORE mobs try to spawn on it
-        chunksToGenerate.forEach((chunk) => {
+        // Generate up to 2 chunks per frame to maintain 60fps
+        // Any more and we risk stuttering
+        const BATCH_SIZE = 2;
+        const batch = chunksToGenerate.slice(0, BATCH_SIZE);
+        
+        batch.forEach((chunk) => {
           generateChunk(chunk.x, chunk.z);
         });
+        
+        // Trigger visual update
+        setUpdateTrigger(prev => prev + 1);
       }
     }
   });
@@ -464,25 +472,37 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     console.log('🔧 ENHANCED: Ground detection with collision system and chunk verification');
   }, []);
 
-  // OPTIMIZED block rendering with culling
+  // OPTIMIZED block rendering with culling - Fixed Lag
   const visibleBlocks = useMemo(() => {
-    if (!camera) return [];
+    // Only re-calculate when blocks change or we move significantly (chunk based)
+    // We rely on the fact that blocks are grouped by chunks implicitly.
+    // Ideally we should structure blocks by chunk, but for now we filter.
     
-    const cameraPos = camera.position;
-    const viewDistance = 32; // Only render nearby blocks
+    // Performance optimization: Don't filter every frame. 
+    // Just return all blocks if total count is low, or implement chunk-based culling later.
+    // For now, increasing the render distance check in the filter effectively.
     
-    return Array.from(blocks.values()).filter(block => {
-      const distance = Math.sqrt(
-        Math.pow(block.position[0] - cameraPos.x, 2) +
-        Math.pow(block.position[2] - cameraPos.z, 2)
-      );
-      return distance <= viewDistance;
+    if (blocks.size === 0) return [];
+    
+    // Convert to array once
+    const allBlocks = Array.from(blocks.values());
+    
+    // Filter based on simple distance from player's LAST KNOWN chunk center
+    // We use the Ref to avoid re-calculating on every camera frame update
+    const centerX = lastPlayerChunk.current.x * chunkSize;
+    const centerZ = lastPlayerChunk.current.z * chunkSize;
+    const maxDist = (renderDistance + 1) * chunkSize; 
+    const maxDistSq = maxDist * maxDist;
+    
+    return allBlocks.filter(block => {
+      const dx = block.position[0] - centerX;
+      const dz = block.position[2] - centerZ;
+      return (dx * dx + dz * dz) <= maxDistSq;
     });
-  }, [blocks, camera]);
+  }, [blocks, renderDistance, chunkSize, updateTrigger]); // updateTrigger changes when we generate chunks
 
-  return (
-    <group>
-      {/* WORKING Enhanced Magic System - NO CHANGES */}
+  // Fog for smoother world edge
+  const fogColor = gameState.isDay ? '#87CEEB' : '#1a1a2e';
       <EnhancedMagicSystem 
         gameState={gameState}
         playerPosition={camera?.position}
