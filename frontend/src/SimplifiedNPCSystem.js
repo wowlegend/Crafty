@@ -406,7 +406,7 @@ export const NPCSystem = ({ gameState }) => {
   }, [terrainReady, camera, gameState.isDay]);
 
   // Attack entity function
-  const attackEntity = (entityId) => {
+  const attackEntity = (entityId, damage = 20) => {
     if (window.playAttackSounds) {
       window.playAttackSounds();
     }
@@ -419,7 +419,7 @@ export const NPCSystem = ({ gameState }) => {
     setEntities(currentEntities => {
       const updated = currentEntities.map(entity => {
         if (entity.id === entityId) {
-          const newHealth = Math.max(0, entity.health - 20);
+          const newHealth = Math.max(0, entity.health - damage);
           
           if (newHealth <= 0) {
             console.log(`💀 ${entity.type} defeated!`);
