@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Sky, Stats } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
@@ -36,7 +36,7 @@ import {
   MinecraftHealthHunger,
   PositionTracker
 } from './Components';
-import { FixedPlayer } from './FixedPlayer';
+import { Player } from './Components'; // Fixed import - Player is in Components.js now
 import { AuthProvider, useAuth } from './AuthContext';
 import { AuthModal, UserProfile } from './AuthComponents';
 import { WorldManager } from './WorldManager';
@@ -114,9 +114,9 @@ const useGameState = () => {
 
       const saveData = {
         save_name: `Save_${new Date().toLocaleString()}`,
-        world_data: { blocks: worldBlocks },
+        world_data: { blocks: worldBlocks }, // Note: Map needs serialization handling if sent as JSON
         player_data: { 
-          position: { x: 0, y: 18, z: 0 }, // Default position
+          position: { x: 0, y: 18, z: 0 }, 
           inventory: inventory,
           stats: playerStats
         },
@@ -130,13 +130,17 @@ const useGameState = () => {
         }
       };
 
+      // Simple map serialization for the example
+      const serializedBlocks = Array.from(worldBlocks.entries());
+      const payload = { ...saveData, world_data: { blocks: serializedBlocks } };
+
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
-        body: JSON.stringify(saveData)
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -160,7 +164,6 @@ const useGameState = () => {
         return;
       }
 
-      // Get list of saves
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/saves`, {
         headers: {
           'Authorization': `Bearer ${authData.token}`
@@ -178,7 +181,6 @@ const useGameState = () => {
         return;
       }
 
-      // For now, load the most recent save
       const mostRecentSave = saves[0];
       
       const loadResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`, {
@@ -194,7 +196,7 @@ const useGameState = () => {
       const saveData = await loadResponse.json();
       
       // Restore game state
-      if (saveData.world_data?.blocks) setWorldBlocks(saveData.world_data.blocks);
+      if (saveData.world_data?.blocks) setWorldBlocks(new Map(saveData.world_data.blocks));
       if (saveData.player_data?.inventory) setInventory(saveData.player_data.inventory);
       if (saveData.player_data?.stats) setPlayerStats(saveData.player_data.stats);
       if (saveData.game_state?.gameMode) setGameMode(saveData.game_state.gameMode);
@@ -243,11 +245,11 @@ function GameApp() {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [worldSeed, setWorldSeed] = useState('minecraft-clone-' + Date.now());
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
 
   // Initialize experience system
   const experienceSystem = useSimpleExperience();
+  
   // PREVENT RUNTIME ERROR: ResizeObserver loop limit exceeded
   useEffect(() => {
     const resizeObserverError = (e) => {
@@ -280,7 +282,6 @@ function GameApp() {
         return promise;
       } catch (e) {
         console.warn('Pointer lock blocked (safely caught):', e);
-        // Fallback for synchronous failures
       }
     };
     
@@ -306,26 +307,18 @@ function GameApp() {
     }
   }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
 
-  // ENHANCED ESC and UI key handlers with PROPER pointer lock management
+  // ENHANCED ESC and UI key handlers
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // FIXED: ESC opens Settings instead of returning to start
       if (event.code === 'Escape') {
         event.preventDefault();
-        event.stopImmediatePropagation(); // Stop ALL propagation
-        console.log('🎮 ESC pressed - Current settings state:', gameState.showSettings);
+        event.stopImmediatePropagation();
         
         if (gameState.showSettings) {
-          // If settings is open, close it
           gameState.setShowSettings(false);
-          console.log('🔒 Closing settings, will re-enable pointer lock on click');
         } else {
-          // Open settings and IMMEDIATELY release pointer lock
-          console.log('🔓 Opening settings, releasing pointer lock');
           setIsPointerLocked(false);
           gameState.setShowSettings(true);
-          
-          // FORCE release pointer lock by exiting it
           if (document.pointerLockElement) {
             document.exitPointerLock();
           }
@@ -333,51 +326,21 @@ function GameApp() {
         return;
       }
       
-      // FIXED: UI interaction keys properly release pointer lock
-      if (event.code === 'KeyE') {
+      const toggleUI = (setter, value) => {
         event.preventDefault();
         event.stopImmediatePropagation();
-        console.log('🎮 E pressed - toggling inventory, releasing pointer lock');
         setIsPointerLocked(false);
         if (document.pointerLockElement) {
           document.exitPointerLock();
         }
-        gameState.setShowInventory(!gameState.showInventory);
-        return;
-      }
-      if (event.code === 'KeyC') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        console.log('🎮 C pressed - toggling crafting, releasing pointer lock');
-        setIsPointerLocked(false);
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-        gameState.setShowCrafting(!gameState.showCrafting);
-        return;
-      }
-      if (event.code === 'KeyM') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        console.log('🎮 M pressed - toggling magic, releasing pointer lock');
-        setIsPointerLocked(false);
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-        gameState.setShowMagic(!gameState.showMagic);
-        return;
-      }
-      if (event.code === 'KeyB') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        console.log('🎮 B pressed - toggling building tools, releasing pointer lock');
-        setIsPointerLocked(false);
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-        gameState.setShowBuildingTools(!gameState.showBuildingTools);
-        return;
-      }
+        setter(!value);
+      };
+
+      if (event.code === 'KeyE') toggleUI(gameState.setShowInventory, gameState.showInventory);
+      if (event.code === 'KeyC') toggleUI(gameState.setShowCrafting, gameState.showCrafting);
+      if (event.code === 'KeyM') toggleUI(gameState.setShowMagic, gameState.showMagic);
+      if (event.code === 'KeyB') toggleUI(gameState.setShowBuildingTools, gameState.showBuildingTools);
+      
       if (event.key === 'F3') {
         setShowStats(!showStats);
         event.preventDefault();
@@ -385,50 +348,22 @@ function GameApp() {
       }
     };
 
-    // Use capture phase to ensure this runs before other handlers
     window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [gameState.showInventory, gameState.showCrafting, gameState.showMagic, gameState.showBuildingTools, gameState.showSettings, showStats]);
+  }, [gameState, showStats]);
 
   const handlePointerLockChange = () => {
-    // BULLETPROOF pointer lock state handling
     try {
       const isLocked = document.pointerLockElement !== null;
       setIsPointerLocked(isLocked);
     } catch (error) {
-      // If we can't check, assume we're locked (iframe fallback)
       setIsPointerLocked(true);
     }
   };
 
   useEffect(() => {
-    // COMPREHENSIVE event listener setup with error handling
-    try {
-      document.addEventListener('pointerlockchange', handlePointerLockChange);
-      document.addEventListener('pointerlockerror', (event) => {
-        console.log('⚠️ Pointer lock error - continuing anyway');
-        setIsPointerLocked(true);
-      });
-      
-      // Also handle vendor prefixes
-      document.addEventListener('webkitpointerlockchange', handlePointerLockChange);
-      document.addEventListener('mozpointerlockchange', handlePointerLockChange);
-    } catch (error) {
-      console.log('⚠️ Event listener setup failed - using fallback mode');
-      setIsPointerLocked(true);
-    }
-    
-    return () => {
-      // SAFE cleanup
-      try {
-        document.removeEventListener('pointerlockchange', handlePointerLockChange);
-        document.removeEventListener('pointerlockerror', () => {});
-        document.removeEventListener('webkitpointerlockchange', handlePointerLockChange);
-        document.removeEventListener('mozpointerlockchange', handlePointerLockChange);
-      } catch (error) {
-        // Ignore cleanup errors
-      }
-    };
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
+    return () => document.removeEventListener('pointerlockchange', handlePointerLockChange);
   }, []);
 
   if (loading) {
@@ -447,7 +382,7 @@ function GameApp() {
       className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
       style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
     >
-      {/* FIXED Game Canvas with proper camera settings */}
+      {/* Game Canvas */}
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
         <Canvas
           shadows={false}
@@ -458,7 +393,6 @@ function GameApp() {
             depth: true,
             powerPreference: "high-performance"
           }}
-          performance={{ min: 0.3 }}
           camera={{
             fov: 75,
             near: 0.1,
@@ -466,52 +400,43 @@ function GameApp() {
             position: [0, 18, 0]
           }}
           onCreated={({ gl }) => {
-            // Optimize WebGL settings for performance
             gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            gl.shadowMap.enabled = false; // Disable shadows for performance
-            
-            // NO camera manipulation here - let PointerLockControls handle it
           }}
         >
-          {/* Enhanced day/night lighting */}
           <MinecraftSky isDay={gameState.isDay} />
           <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
           <directionalLight 
             position={[50, 50, 25]} 
             intensity={gameState.isDay ? 1.2 : 0.3} 
-            castShadow={false} 
           />
           {!gameState.isDay && (
-            <pointLight 
-              position={[0, 20, 0]} 
-              intensity={0.1} 
-              distance={30}
-              color="#4169E1"
-            />
+            <pointLight position={[0, 20, 0]} intensity={0.1} distance={30} color="#4169E1" />
           )}
 
-          {/* Player Controls - Mouse Look Only */}
-          <PointerLockControls makeDefault />
+          <PointerLockControls 
+            makeDefault 
+            selector="#game-canvas-overlay" // Important: Only lock when clicking the overlay, not the menu
+          />
           
-          {/* Position tracker */}
           <PositionTracker onPositionUpdate={setPlayerPosition} />
           
-          {/* FIXED Game World with throttled infinite generation */}
+          {/* INSTANCED RENDERING WORLD */}
           <MinecraftWorld gameState={gameState} />
           
-          {/* FIXED Player with proper movement and camera separation */}
-          <FixedPlayer 
+          <Player 
             gameState={gameState} 
-            onPositionUpdate={setPlayerPosition}
           />
 
-          {/* NPCs */}
           <NPCSystem gameState={gameState} />
 
-          {/* Performance Stats */}
           {showStats && <Stats />}
         </Canvas>
       </div>
+
+      {/* Overlay for PointerLock - Only visible when we want to capture clicks */}
+      {isPointerLocked && (
+        <div id="game-canvas-overlay" className="absolute inset-0 z-10" />
+      )}
 
       {/* Game UI */}
       <AnimatePresence>
@@ -525,7 +450,6 @@ function GameApp() {
             />
             <CombatInstructions />
             
-            {/* Experience System UI - Outside Canvas */}
             <SimpleExperienceBar 
               level={experienceSystem.playerLevel}
               currentXP={experienceSystem.currentXP}
@@ -554,53 +478,48 @@ function GameApp() {
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
-              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+              setIsPointerLocked(true);
             }}
           />
         )}
-        
         {gameState.showCrafting && (
           <CraftingTable 
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
-              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+              setIsPointerLocked(true);
             }}
           />
         )}
-        
         {gameState.showMagic && (
           <MagicSystem 
             gameState={gameState}
             onClose={() => {
               gameState.setShowMagic(false);
-              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+              setIsPointerLocked(true);
             }}
           />
         )}
-        
         {gameState.showBuildingTools && (
           <BuildingTools 
             gameState={gameState}
             onClose={() => {
               gameState.setShowBuildingTools(false);
-              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+              setIsPointerLocked(true);
             }}
           />
         )}
-        
         {gameState.showSettings && (
           <SettingsPanel 
             gameState={gameState}
             onClose={() => {
               gameState.setShowSettings(false);
-              setIsPointerLocked(true); // Re-enable pointer lock when UI closes
+              setIsPointerLocked(true);
             }}
             showStats={showStats}
             setShowStats={setShowStats}
           />
         )}
-
         {gameState.showWorldManager && isAuthenticated && (
           <WorldManager 
             gameState={gameState}
@@ -610,7 +529,6 @@ function GameApp() {
         )}
       </AnimatePresence>
 
-      {/* Trading Interface */}
       {gameState.showTradingInterface && (
         <TradingInterface 
           villager={gameState.selectedVillager}
@@ -622,13 +540,11 @@ function GameApp() {
         />
       )}
 
-      {/* Authentication Modal */}
       <AuthModal 
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)} 
       />
 
-      {/* Crosshair */}
       {isPointerLocked && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30">
           <div className="w-6 h-6">
@@ -638,16 +554,17 @@ function GameApp() {
         </div>
       )}
 
-      {/* Basic Loading screen - MOVED TO END AND GIVEN HIGHER Z-INDEX */}
+      {/* MAIN MENU - HIGH Z-INDEX FIX */}
       <AnimatePresence>
         {!isPointerLocked && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] bg-gradient-to-br from-green-600 via-green-700 to-green-900 flex items-center justify-center pointer-events-auto"
+            className="fixed inset-0 flex items-center justify-center pointer-events-auto"
+            style={{ zIndex: 9999, background: 'linear-gradient(to bottom right, #1a202c, #2d3748)' }}
           >
-            <div className="text-center text-white max-w-lg mx-4">
+             <div className="text-center text-white max-w-lg mx-4">
               <motion.h1 
                 className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
                 initial={{ scale: 0.5 }}
@@ -656,131 +573,25 @@ function GameApp() {
               >
                 🧙‍♂️ Crafty
               </motion.h1>
-              <motion.p 
-                className="text-2xl mb-8 text-green-100"
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                ENHANCED: Magic System • Experience • Wind Grass • Fixed Errors
-              </motion.p>
+              <p className="text-2xl mb-8 text-green-100">
+                FIXED: High Performance • Infinite World • Working Menu
+              </p>
 
-              {/* Experience Display */}
-              <motion.div
-                className="mb-6 bg-black/30 rounded-lg p-4"
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <div className="text-yellow-400 font-bold text-lg mb-2">
-                  🌟 Level {experienceSystem.playerLevel} Mage
-                </div>
-                <div className="text-sm text-blue-200">
-                  XP: {experienceSystem.currentXP} / {experienceSystem.xpRequired}
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${experienceSystem.xpProgress}%` }}
-                  ></div>
-                </div>
-              </motion.div>
-              <motion.div
-                className="mb-6 text-left bg-black/20 rounded-lg p-4"
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <div className="text-center text-yellow-400 font-bold mb-3">🎮 Enhanced Controls</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>🔮 <strong>F:</strong> Cast Spell</div>
-                  <div>🔄 <strong>Q:</strong> Change Spell</div>
-                  <div>📦 <strong>E:</strong> Inventory</div>
-                  <div>⚒️ <strong>C:</strong> Crafting</div>
-                  <div>✨ <strong>M:</strong> Magic</div>
-                  <div>🏗️ <strong>B:</strong> Building</div>
-                </div>
-              </motion.div>
-
-              {/* Authentication Status */}
-              {isAuthenticated ? (
-                <div className="mb-6">
-                  <UserProfile onShowWorldManager={() => gameState.setShowWorldManager(true)} />
-                </div>
-              ) : (
-                <motion.div
-                  className="mb-6"
-                  initial={{ y: 30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <p className="text-green-200 mb-4">Sign in to save worlds and access multiplayer features</p>
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font mr-4"
-                  >
-                    <LogIn className="inline mr-2" size={20} />
-                    Sign In / Register
-                  </button>
-                </motion.div>
-              )}
-
-              {/* Sound Controls */}
-              <div className="mb-6 flex justify-center space-x-4">
-                <button
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className={`p-3 rounded-lg transition-all ${
-                    soundEnabled ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 hover:bg-gray-500'
-                  } text-white`}
-                  title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
-                >
-                  {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-                </button>
-                <button
-                  onClick={() => setMusicEnabled(!musicEnabled)}
-                  className={`p-3 rounded-lg transition-all ${
-                    musicEnabled ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'
-                  } text-white`}
-                  title={musicEnabled ? 'Disable Music' : 'Enable Music'}
-                >
-                  {musicEnabled ? '🎵' : '🔇'}
-                </button>
-              </div>
-
-              <motion.button
+              <button
                 onClick={() => {
-                  console.log('🎮 Starting game (Force Mode)...');
-                  
-                  // 1. ALWAYS transition state immediately to remove menu
+                  console.log('🎮 Starting game...');
                   setIsPointerLocked(true);
-                  
-                  // 2. Attempt pointer lock as a secondary action
-                  // We use a small timeout to let the React render cycle finish hiding the menu
+                  // Allow time for state update before requesting lock
                   setTimeout(() => {
-                    try {
-                      if (document.body && document.body.requestPointerLock) {
-                        const lockPromise = document.body.requestPointerLock();
-                        if (lockPromise && typeof lockPromise.catch === 'function') {
-                          lockPromise.catch(e => console.warn('Pointer lock failed (non-fatal):', e));
-                        }
-                      }
-                    } catch (e) {
-                      console.warn('Pointer lock error (non-fatal):', e);
+                    if (document.body.requestPointerLock) {
+                      document.body.requestPointerLock().catch(e => console.warn(e));
                     }
                   }, 100);
                 }}
                 className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 🧙‍♂️ Start Magical Adventure
-              </motion.button>
-              <p className="text-sm text-green-200 mt-4">
-                Click to lock mouse pointer and begin your magical journey
-              </p>
+              </button>
             </div>
           </motion.div>
         )}
