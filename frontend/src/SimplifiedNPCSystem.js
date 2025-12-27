@@ -4,7 +4,6 @@ import * as THREE from 'three';
 
 // Basic Mob Model Component
 const MobModel = ({ type, color, isHit }) => {
-  const isAnimal = ['pig', 'cow', 'sheep', 'chicken'].includes(type);
   const materialProps = {
     color: isHit ? '#ff0000' : color,
     emissive: isHit ? '#ff0000' : '#000000',
@@ -17,6 +16,7 @@ const MobModel = ({ type, color, isHit }) => {
         <boxGeometry args={[0.5, 0.5, 0.5]} />
         <meshLambertMaterial {...materialProps} />
       </mesh>
+      {/* Health Bar if needed */}
     </group>
   );
 };
@@ -31,7 +31,6 @@ export const NPCSystem = ({ gameState }) => {
   // Wait for terrain to be ready
   useEffect(() => {
     const checkInterval = setInterval(() => {
-      // Robust check: Ensure functions exist AND chunks are actually generated
       if (window.getMobGroundLevel && window.getGeneratedChunks && window.getGeneratedChunks().size > 0) {
         console.log('✅ TERRAIN SYSTEM READY - Mob spawning enabled');
         setTerrainReady(true);
@@ -41,40 +40,64 @@ export const NPCSystem = ({ gameState }) => {
     return () => clearInterval(checkInterval);
   }, []);
 
-  // Mob configuration
-  const getMobConfig = (type) => ({ health: 20, color: '#ff0000' });
-
-  // Initial mob spawning when terrain is ready
+  // Initial mob spawning
   useEffect(() => {
     if (!terrainReady || !camera) return;
     
-    // Spawn a few test mobs
     const mobs = [];
-    for(let i=0; i<10; i++) {
-        const x = Math.random() * 20 - 10;
-        const z = Math.random() * 20 - 10;
+    for(let i=0; i<15; i++) {
+        const x = Math.random() * 40 - 20;
+        const z = Math.random() * 40 - 20;
         let y = window.getMobGroundLevel(x, z);
-        
-        // Safety check
         if (isNaN(y)) y = 15;
 
         mobs.push({
             id: i,
             type: 'pig',
             position: [x, y + 1, z],
-            color: '#ffc0cb'
+            color: '#ffc0cb',
+            health: 100
         });
     }
     setEntities(mobs);
     entitiesRef.current = mobs;
-    
   }, [terrainReady, camera]);
+
+  // COMBAT LOGIC
+  const attackEntity = (id, damage = 25) => {
+      setEntities(prev => {
+          const next = prev.map(e => {
+              if (e.id === id) {
+                  return { ...e, health: e.health - damage, lastHit: Date.now() };
+              }
+              return e;
+          }).filter(e => e.health > 0);
+          
+          entitiesRef.current = next;
+          return next;
+      });
+  };
+
+  useEffect(() => {
+      window.attackEntity = attackEntity;
+      
+      // Simple collision check for spells
+      window.checkMobCollision = (pos, range = 3) => {
+          return entitiesRef.current.find(e => {
+              const dx = e.position[0] - pos.x;
+              const dy = e.position[1] - pos.y;
+              const dz = e.position[2] - pos.z;
+              const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+              return dist < range;
+          });
+      };
+  }, []);
 
   return (
     <group>
       {entities.map(entity => (
-          <group key={entity.id} position={entity.position}>
-            <MobModel type={entity.type} color={entity.color} />
+          <group key={entity.id} position={entity.position} onClick={(e) => { e.stopPropagation(); attackEntity(entity.id); }}>
+            <MobModel type={entity.type} color={entity.color} isHit={entity.lastHit && Date.now() - entity.lastHit < 300} />
           </group>
       ))}
     </group>
@@ -83,7 +106,7 @@ export const NPCSystem = ({ gameState }) => {
 
 export const CombatInstructions = () => (
     <div className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded">
-        Shift+Click to Attack
+        Shift+Click to Attack or Press F
     </div>
 );
 

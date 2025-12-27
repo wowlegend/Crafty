@@ -106,7 +106,7 @@ const generateTerrainHeight = (() => {
 })();
 
 
-// --- MAIN WORLD COMPONENT (REWRITTEN) ---
+// --- MAIN WORLD COMPONENT ---
 export const MinecraftWorld = React.memo(({ gameState }) => {
   const { camera } = useThree();
   
@@ -163,8 +163,6 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     if (generatedChunksRef.current.has(chunkKey)) return;
 
     generatedChunksRef.current.add(chunkKey);
-    // Sync state for UI if needed (rarely)
-    // setGeneratedChunks(prev => new Set(prev).add(chunkKey)); 
 
     const startX = chunkX * CHUNK_SIZE;
     const startZ = chunkZ * CHUNK_SIZE;
@@ -185,10 +183,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
         // Add to Instances (Rendering)
         newInstances[surfaceType].push({ position: [x, height, z] });
 
-        // Underground (optimize: only top 3 layers for performance, or full depth?)
-        // Let's do 2 layers for now to reduce object count, or deeper?
-        // Infinite terrain usually only needs surface rendering unless caves exist.
-        // Let's render down to y=10
+        // Underground
         for (let y = height - 1; y >= Math.max(height - 3, 10); y--) {
            const type = y === height - 1 ? 'dirt' : 'stone';
            const key = `${x},${y},${z}`;
@@ -282,30 +277,20 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
             const key = `${tx},${ty},${tz}`;
             if (blocksRef.current.has(key)) {
                 const block = blocksRef.current.get(key);
-                
-                // Remove from Map
                 blocksRef.current.delete(key);
-                
-                // Remove from Instances (Expensive array filter, but okay for single interactions)
                 setInstances(prev => ({
                     ...prev,
                     [block.type]: prev[block.type].filter(b => 
                         b.position[0] !== tx || b.position[1] !== ty || b.position[2] !== tz
                     )
                 }));
-                
-                // FX
                 if(window.playHitSound) window.playHitSound();
             }
         } else if (e.button === 2) { // Right Click - Place
             const key = `${tx},${ty},${tz}`;
-            if (!blocksRef.current.has(key)) { // Can only place in empty air (basic check)
-                 // Ideally raycast for 'face' to place against, but this is a simple fix for now
-                 // Let's place at the integer coordinate
-                 
+            if (!blocksRef.current.has(key)) { 
                  const type = gameState.selectedBlock;
                  blocksRef.current.set(key, { position: [tx, ty, tz], type });
-                 
                  setInstances(prev => ({
                      ...prev,
                      [type]: [...prev[type], { position: [tx, ty, tz] }]
@@ -313,7 +298,6 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
             }
         }
     };
-    
     window.addEventListener('mousedown', handleClick);
     return () => window.removeEventListener('mousedown', handleClick);
   }, [camera, gameState.selectedBlock]);
@@ -322,20 +306,10 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
   return (
     <group>
         <fog attach="fog" args={['#87CEEB', 20, (RENDER_DISTANCE * CHUNK_SIZE) - 5]} />
-        
         {BLOCK_TYPE_KEYS.map(type => (
-            <InstancedBlockLayer 
-                key={type} 
-                type={type} 
-                instances={instances[type]} 
-            />
+            <InstancedBlockLayer key={type} type={type} instances={instances[type]} />
         ))}
-
-        <EnhancedMagicSystem 
-            gameState={gameState}
-            playerPosition={camera?.position}
-        />
-        
+        <EnhancedMagicSystem gameState={gameState} playerPosition={camera?.position} />
          <OptimizedGrassSystem 
             chunkX={Math.floor(camera?.position?.x / 16) || 0}
             chunkZ={Math.floor(camera?.position?.z / 16) || 0}
@@ -363,10 +337,7 @@ export const MinecraftHotbar = React.memo(({ gameState }) => {
               onClick={() => gameState.setSelectedBlock(blockType)}
               title={`${blockConfig.name} (${quantity})`}
             >
-              <div 
-                className="minecraft-block-icon"
-                style={{ backgroundColor: blockConfig.color || '#567C35' }}
-              />
+              <div className="minecraft-block-icon" style={{ backgroundColor: blockConfig.color || '#567C35' }} />
               {quantity > 1 && <div className="minecraft-quantity">{quantity > 999 ? '999+' : quantity}</div>}
               <div className="minecraft-hotkey">{index + 1}</div>
             </div>
@@ -394,7 +365,6 @@ export const MinecraftHealthHunger = React.memo(() => {
   );
 });
 
-// Position tracker
 export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   const { camera } = useThree();
   const lastUpdate = useRef(0);
@@ -412,7 +382,6 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-// Sky
 export const MinecraftSky = React.memo(({ isDay = true }) => {
   const { camera } = useThree();
   const skyRef = useRef();
@@ -443,7 +412,6 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
   );
 });
 
-// Game UI
 export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
@@ -459,7 +427,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) =
       </div>
       <MinecraftHotbar gameState={gameState} />
       <MinecraftHealthHunger />
-      {/* Tools */}
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
         <div className="minecraft-toolbar">
           <button onClick={() => gameState.setShowInventory(true)} className="minecraft-tool-button"><Package size={20} /></button>
@@ -473,7 +440,7 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) =
 };
 
 
-// --- PLAYER & MAGIC (PRESERVED) ---
+// --- PLAYER & MAGIC (FIXED F-KEY DAMAGE) ---
 
 export const Player = ({ gameState }) => {
   const { camera } = useThree();
@@ -484,7 +451,6 @@ export const Player = ({ gameState }) => {
   const targetPosition = useRef(new THREE.Vector3(0, 18, 0));
   const isInitialized = useRef(false);
 
-  // Key handlers
   useEffect(() => {
     const handleKeyDown = (e) => {
         setKeys(prev => ({...prev, [e.code]: true}));
@@ -495,9 +461,18 @@ export const Player = ({ gameState }) => {
             setTimeout(() => setIsAttacking(false), 500);
             if(window.playAttackSounds) window.playAttackSounds();
             
-            // Trigger spell logic (simple raycast attack for now)
-            // TODO: Integrate actual spell projectiles
-            console.log("Casting Spell:", selectedSpell);
+            // RAYCAST ATTACK LOGIC
+            if (window.checkMobCollision && window.attackEntity) {
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                // Check 5 units ahead
+                const checkPos = camera.position.clone().add(direction.multiplyScalar(3)); 
+                const mob = window.checkMobCollision(checkPos, 5); // 5 radius tolerance
+                if (mob) {
+                    window.attackEntity(mob.id, 25);
+                    if(window.playHitSound) window.playHitSound();
+                }
+            }
         }
     };
     const handleKeyUp = (e) => setKeys(prev => ({...prev, [e.code]: false}));
@@ -507,7 +482,7 @@ export const Player = ({ gameState }) => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
     }
-  }, [selectedSpell]);
+  }, [selectedSpell, camera]);
 
   useFrame((state, delta) => {
     if (!isInitialized.current) {
@@ -517,26 +492,13 @@ export const Player = ({ gameState }) => {
         return;
     }
 
-    // Movement Logic
     const speed = 10;
-    const direction = new THREE.Vector3();
-    const frontVector = new THREE.Vector3(0, 0, 0);
-    const sideVector = new THREE.Vector3(0, 0, 0);
-    const upVector = new THREE.Vector3(0, 1, 0);
-
-    if (keys.KeyW) frontVector.z = 1; // Drei PointerLock controls inverts this? Check.
-    // Actually, typical three.js controls: Forward is -Z.
-    // But PointerLockControls logic handles camera rotation.
-    // We just need to move relative to camera direction.
-    
-    // Manual movement calculation relative to camera look direction
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     forward.y = 0;
     forward.normalize();
-    
     const right = new THREE.Vector3();
-    right.crossVectors(forward, upVector).normalize();
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
     const move = new THREE.Vector3();
     if (keys.KeyW) move.add(forward);
@@ -545,14 +507,11 @@ export const Player = ({ gameState }) => {
     if (keys.KeyA) move.sub(right);
     
     if (move.length() > 0) move.normalize().multiplyScalar(speed * delta);
-    
     targetPosition.current.add(move);
     
-    // Terrain Following
     const groundHeight = window.getMobGroundLevel ? window.getMobGroundLevel(targetPosition.current.x, targetPosition.current.z) : 0;
     const playerHeight = 1.6;
     
-    // Gravity / Jumping (Simple)
     if (targetPosition.current.y > groundHeight + playerHeight) {
         velocity.current.y -= 20 * delta;
     } else {
@@ -560,23 +519,15 @@ export const Player = ({ gameState }) => {
         targetPosition.current.y = groundHeight + playerHeight;
     }
     
-    if (keys.Space && velocity.current.y === 0) {
-        velocity.current.y = 8;
-    }
+    if (keys.Space && velocity.current.y === 0) velocity.current.y = 8;
     
     targetPosition.current.y += velocity.current.y * delta;
-    
-    // Smooth Camera
     camera.position.lerp(targetPosition.current, 0.5);
   });
 
   return (
     <group>
-      <StableMagicHands 
-        selectedSpell={selectedSpell}
-        selectedBlock={gameState.selectedBlock}
-        isAttacking={isAttacking}
-      />
+      <StableMagicHands selectedSpell={selectedSpell} selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
     </group>
   );
 };
@@ -588,20 +539,12 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   const leftHandRef = useRef();
   const wandRef = useRef();
   const magicAuraRef = useRef();
-  
-  const SPELL_COLORS = {
-    fireball: '#FF4500',
-    iceball: '#00BFFF', 
-    lightning: '#FFD700',
-    arcane: '#9932CC'
-  };
-  
+  const SPELL_COLORS = { fireball: '#FF4500', iceball: '#00BFFF', lightning: '#FFD700', arcane: '#9932CC' };
   const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
   useFrame((state) => {
     if (rightHandRef.current && leftHandRef.current && camera) {
       const time = state.clock.elapsedTime;
-      
       const rightPos = new THREE.Vector3(0.6, -0.8, -1.0);
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
@@ -627,7 +570,6 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
         rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.12; 
         rightHandRef.current.position.z += Math.sin(attackTime) * 0.02; 
         leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.08; 
-        
         if (wandRef.current) {
           wandRef.current.rotation.x = Math.sin(attackTime) * 0.06; 
           wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.02; 
@@ -663,7 +605,6 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
         )}
         {isAttacking && <SpellHandEffects spellType={selectedSpell} />}
       </group>
-      
       <group ref={leftHandRef}>
         <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
         <mesh position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
@@ -689,7 +630,6 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
   );
 };
 
-// Hand effects (Preserved)
 const SpellHandEffects = ({ spellType }) => {
   const effectRef = useRef();
   useFrame((state) => {
@@ -706,11 +646,9 @@ const SpellHandEffects = ({ spellType }) => {
 };
 
 const SpellLeftHandEffects = ({ spellType }) => {
-  return null; // Simplified for this file, original had more effects but space is tight.
+  return null; 
 };
 
-
-// --- EXPORTS for UI ---
 export const Inventory = ({ gameState, onClose }) => {
   return (
     <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30" onClick={onClose}>
@@ -732,4 +670,3 @@ export const CraftingTable = ({ onClose }) => <div className="absolute inset-0 b
 export const MagicSystem = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}>Magic</div>;
 export const BuildingTools = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}>Building</div>;
 export const SettingsPanel = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}><button className="bg-white p-2" onClick={onClose}>Close</button></div>;
-
