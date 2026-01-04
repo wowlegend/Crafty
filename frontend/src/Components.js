@@ -447,7 +447,8 @@ export const Player = ({ gameState }) => {
   const velocity = useRef(new THREE.Vector3());
   const [keys, setKeys] = useState({});
   const [isAttacking, setIsAttacking] = useState(false);
-  const [selectedSpell, setSelectedSpell] = useState('fireball');
+  const selectedSpellRef = useRef('fireball'); // Use ref to avoid closure issues
+  const [selectedSpell, setSelectedSpell] = useState('fireball'); // Keep state for UI updates
   const targetPosition = useRef(new THREE.Vector3(0, 30, 0)); // Start high, let gravity bring us down
   const isInitialized = useRef(false);
 
@@ -460,11 +461,23 @@ export const Player = ({ gameState }) => {
     const handleKeyDown = (e) => {
         setKeys(prev => ({...prev, [e.code]: true}));
         
-        // Spell selection with number keys
-        if (e.code === 'Digit1') setSelectedSpell('fireball');
-        if (e.code === 'Digit2') setSelectedSpell('iceball');
-        if (e.code === 'Digit3') setSelectedSpell('lightning');
-        if (e.code === 'Digit4') setSelectedSpell('arcane');
+        // Spell selection with number keys - update both ref and state
+        if (e.code === 'Digit1') {
+          selectedSpellRef.current = 'fireball';
+          setSelectedSpell('fireball');
+        }
+        if (e.code === 'Digit2') {
+          selectedSpellRef.current = 'iceball';
+          setSelectedSpell('iceball');
+        }
+        if (e.code === 'Digit3') {
+          selectedSpellRef.current = 'lightning';
+          setSelectedSpell('lightning');
+        }
+        if (e.code === 'Digit4') {
+          selectedSpellRef.current = 'arcane';
+          setSelectedSpell('arcane');
+        }
         
         // SPELL CASTING ON 'F' - Cast projectile spell AND melee attack
         if (e.code === 'KeyF') {
@@ -472,10 +485,11 @@ export const Player = ({ gameState }) => {
             setTimeout(() => setIsAttacking(false), 500);
             if(window.playAttackSounds) window.playAttackSounds();
             
-            // Cast spell projectile
+            // Cast spell projectile using ref for current spell
             if (window.castSpell) {
-                console.log(`🔮 Casting spell: ${selectedSpell}`);
-                window.castSpell(selectedSpell);
+                const currentSpell = selectedSpellRef.current;
+                console.log(`🔮 Casting spell: ${currentSpell}`);
+                window.castSpell(currentSpell);
             }
             
             // ALSO do melee attack for close range
@@ -499,7 +513,7 @@ export const Player = ({ gameState }) => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
     }
-  }, [selectedSpell, camera]);
+  }, [camera]); // Removed selectedSpell from dependencies
 
   useFrame((state, delta) => {
     // FIXED: Start camera high and let it drop to proper terrain height
