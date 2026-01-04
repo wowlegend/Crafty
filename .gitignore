@@ -67,4 +67,7 @@ __pycache__/
 *.dylib
 
 # Android SDK
-android-sdk/
+android-sdk/-e 
+# Environment files
+*.env
+*.env.*
