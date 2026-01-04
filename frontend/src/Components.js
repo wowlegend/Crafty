@@ -674,22 +674,202 @@ const SpellLeftHandEffects = ({ spellType }) => {
 
 export const Inventory = ({ gameState, onClose }) => {
   return (
-    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white" onClick={e=>e.stopPropagation()}>
-        <h2>Inventory</h2>
-        <div className="grid grid-cols-6 gap-2 mt-4">
-             {Object.entries(gameState.inventory.blocks).map(([type, count]) => (
-                 <div key={type} onClick={()=>{gameState.setSelectedBlock(type); onClose();}} className="bg-gray-700 p-2 cursor-pointer">
-                    {type} ({count})
-                 </div>
-             ))}
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px] max-w-[600px]" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">📦 Inventory</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div className="grid grid-cols-6 gap-2">
+          {Object.entries(gameState.inventory.blocks).map(([type, count]) => {
+            const blockConfig = BLOCK_TYPES[type];
+            return (
+              <div 
+                key={type} 
+                onClick={() => { gameState.setSelectedBlock(type); onClose(); }} 
+                className={`bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors border-2 ${
+                  gameState.selectedBlock === type ? 'border-yellow-400' : 'border-transparent'
+                }`}
+                title={blockConfig?.name || type}
+              >
+                <div 
+                  className="w-8 h-8 mx-auto rounded"
+                  style={{ backgroundColor: blockConfig?.color || '#888' }}
+                />
+                <div className="text-xs text-center mt-1 truncate">{type}</div>
+                <div className="text-xs text-center text-gray-400">{count}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 text-sm text-gray-400">
+          Press E to close • Click item to select
         </div>
       </div>
     </div>
   );
 };
 
-export const CraftingTable = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}>Crafting</div>;
-export const MagicSystem = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}>Magic</div>;
-export const BuildingTools = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}>Building</div>;
-export const SettingsPanel = ({ onClose }) => <div className="absolute inset-0 bg-black/50 z-30" onClick={onClose}><button className="bg-white p-2" onClick={onClose}>Close</button></div>;
+export const CraftingTable = ({ gameState, onClose }) => {
+  const recipes = [
+    { name: 'Stone Pickaxe', input: { cobblestone: 3, wood: 2 }, output: { pickaxe: 1 } },
+    { name: 'Torch', input: { coal: 1, wood: 1 }, output: { torch: 4 } },
+    { name: 'Glass', input: { sand: 1 }, output: { glass: 1 } },
+  ];
+
+  return (
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">🔨 Crafting Table</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div className="space-y-3">
+          {recipes.map((recipe, i) => (
+            <div key={i} className="bg-gray-700 p-3 rounded flex items-center justify-between">
+              <div>
+                <div className="font-medium">{recipe.name}</div>
+                <div className="text-xs text-gray-400">
+                  {Object.entries(recipe.input).map(([item, count]) => `${count}x ${item}`).join(' + ')}
+                </div>
+              </div>
+              <button className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm">
+                Craft
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-sm text-gray-400">
+          Press C to close
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const MagicSystem = ({ gameState, onClose }) => {
+  const spells = [
+    { name: 'Fireball', key: '1', color: '#FF4500', damage: 50, description: 'Launches a fiery projectile' },
+    { name: 'Iceball', key: '2', color: '#00BFFF', damage: 40, description: 'Freezes enemies on impact' },
+    { name: 'Lightning', key: '3', color: '#FFD700', damage: 75, description: 'Fast electric strike' },
+    { name: 'Arcane', key: '4', color: '#9932CC', damage: 60, description: 'Mystical energy blast' },
+  ];
+
+  return (
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">✨ Magic Spells</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div className="space-y-3">
+          {spells.map((spell, i) => (
+            <div key={i} className="bg-gray-700 p-3 rounded flex items-center gap-4">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: spell.color }}
+              >
+                <span className="text-xl">🔮</span>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">{spell.name}</div>
+                <div className="text-xs text-gray-400">{spell.description}</div>
+                <div className="text-xs text-yellow-400">Damage: {spell.damage}</div>
+              </div>
+              <div className="text-gray-500">
+                Press {spell.key}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-sm text-gray-400">
+          Press M to close • Click or F to cast selected spell
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const BuildingTools = ({ gameState, onClose }) => {
+  const tools = [
+    { name: 'Single Block', icon: '🧱', description: 'Place one block at a time' },
+    { name: 'Wall Builder', icon: '🏗️', description: 'Build walls quickly' },
+    { name: 'Floor Builder', icon: '📐', description: 'Create flat surfaces' },
+    { name: 'Delete Tool', icon: '🗑️', description: 'Remove blocks' },
+  ];
+
+  return (
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">🏠 Building Tools</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {tools.map((tool, i) => (
+            <div key={i} className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="text-3xl mb-2">{tool.icon}</div>
+              <div className="font-medium">{tool.name}</div>
+              <div className="text-xs text-gray-400">{tool.description}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-sm text-gray-400">
+          Press B to close • Left click to place, Right click to remove
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) => {
+  return (
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[350px]" onClick={e=>e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">⚙️ Settings</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span>Show Stats (F3)</span>
+            <button 
+              onClick={() => setShowStats(!showStats)}
+              className={`px-4 py-1 rounded ${showStats ? 'bg-green-600' : 'bg-gray-600'}`}
+            >
+              {showStats ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Game Mode</span>
+            <button 
+              onClick={() => gameState.setGameMode(gameState.gameMode === 'creative' ? 'survival' : 'creative')}
+              className="px-4 py-1 rounded bg-purple-600 hover:bg-purple-500"
+            >
+              {gameState.gameMode}
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Time</span>
+            <button 
+              onClick={() => gameState.setIsDay(!gameState.isDay)}
+              className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-500"
+            >
+              {gameState.isDay ? '☀️ Day' : '🌙 Night'}
+            </button>
+          </div>
+          <hr className="border-gray-600" />
+          <button 
+            onClick={onClose}
+            className="w-full bg-green-600 hover:bg-green-500 py-2 rounded font-medium"
+          >
+            Resume Game
+          </button>
+        </div>
+        <div className="mt-4 text-sm text-gray-400 text-center">
+          Press ESC to close
+        </div>
+      </div>
+    </div>
+  );
+};
