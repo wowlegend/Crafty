@@ -415,7 +415,6 @@ function GameApp() {
 
           <PointerLockControls 
             makeDefault 
-            selector="#game-canvas-overlay" // Important: Only lock when clicking the overlay, not the menu
           />
           
           <PositionTracker onPositionUpdate={setPlayerPosition} />
@@ -433,9 +432,9 @@ function GameApp() {
         </Canvas>
       </div>
 
-      {/* Overlay for PointerLock - Only visible when we want to capture clicks */}
+      {/* Overlay for capturing clicks when in game */}
       {isPointerLocked && (
-        <div id="game-canvas-overlay" className="absolute inset-0 z-10" />
+        <div className="absolute inset-0 z-10 cursor-crosshair" />
       )}
 
       {/* Game UI */}
