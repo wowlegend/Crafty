@@ -450,28 +450,44 @@ export const Player = ({ gameState }) => {
   const [selectedSpell, setSelectedSpell] = useState('fireball');
   const targetPosition = useRef(new THREE.Vector3(0, 30, 0)); // Start high, let gravity bring us down
   const isInitialized = useRef(false);
-  const spawnChecked = useRef(false);
+
+  // Expose camera globally for magic system
+  useEffect(() => {
+    window.gameCamera = camera;
+  }, [camera]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
         setKeys(prev => ({...prev, [e.code]: true}));
         
-        // SPELL CASTING ON 'F'
+        // Spell selection with number keys
+        if (e.code === 'Digit1') setSelectedSpell('fireball');
+        if (e.code === 'Digit2') setSelectedSpell('iceball');
+        if (e.code === 'Digit3') setSelectedSpell('lightning');
+        if (e.code === 'Digit4') setSelectedSpell('arcane');
+        
+        // SPELL CASTING ON 'F' - Cast projectile spell AND melee attack
         if (e.code === 'KeyF') {
             setIsAttacking(true);
             setTimeout(() => setIsAttacking(false), 500);
             if(window.playAttackSounds) window.playAttackSounds();
             
-            // RAYCAST ATTACK LOGIC
-            if (window.checkMobCollision && window.attackEntity) {
+            // Cast spell projectile
+            if (window.castSpell) {
+                console.log(`🔮 Casting spell: ${selectedSpell}`);
+                window.castSpell(selectedSpell);
+            }
+            
+            // ALSO do melee attack for close range
+            if (window.checkMobCollision && window.damageMob) {
                 const direction = new THREE.Vector3();
                 camera.getWorldDirection(direction);
-                // Check 5 units ahead
                 const checkPos = camera.position.clone().add(direction.multiplyScalar(3)); 
-                const mob = window.checkMobCollision(checkPos, 5); // 5 radius tolerance
+                const mob = window.checkMobCollision(checkPos, 4);
                 if (mob) {
-                    window.attackEntity(mob.id, 25);
+                    window.damageMob(mob.id, 25);
                     if(window.playHitSound) window.playHitSound();
+                    console.log(`⚔️ Melee hit on ${mob.type}!`);
                 }
             }
         }
