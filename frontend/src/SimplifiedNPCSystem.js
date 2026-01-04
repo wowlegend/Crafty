@@ -435,17 +435,20 @@ export const NPCSystem = ({ gameState }) => {
 
   return (
     <group>
-      {entities.map(entity => (
-        <group key={entity.id} position={entity.position}>
-          <MobModel 
-            type={entity.type} 
-            color={entity.color} 
-            isHit={entity.lastHit && Date.now() - entity.lastHit < 300}
-            rotation={entity.rotation}
-          />
-          <HealthBar health={entity.health} maxHealth={entity.maxHealth} />
-        </group>
-      ))}
+      {entities.map(entity => {
+        const isRecentlyHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
+        return (
+          <group key={entity.id} position={entity.position}>
+            <MobModel 
+              type={entity.type} 
+              color={entity.color} 
+              isHit={isRecentlyHit}
+              rotation={entity.rotation}
+            />
+            <HealthBar health={entity.health} maxHealth={entity.maxHealth} />
+          </group>
+        );
+      })}
       
       {/* Damage Numbers */}
       {damageNumbers.map(dmg => (
