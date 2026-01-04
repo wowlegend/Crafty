@@ -163,22 +163,12 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
     const deltaMs = delta * 1000;
     const time = state.clock.elapsedTime;
     
-    // DEBUG: Show projectile count
-    if (projectiles.length > 0) {
-      console.log(`🚀 useFrame: ${projectiles.length} projectiles active`);
-    }
-    
     // Update projectiles
     setProjectiles(prev => prev.map(projectile => {
-      console.log(`🚀 Updating projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
-      console.log(`🚀 Velocity: (${projectile.velocity.x.toFixed(1)}, ${projectile.velocity.y.toFixed(1)}, ${projectile.velocity.z.toFixed(1)}), delta: ${delta.toFixed(3)}`);
-      
       // Update position
       const newPos = projectile.position.clone().add(
         projectile.velocity.clone().multiplyScalar(delta)
       );
-      
-      console.log(`🚀 NEW position should be: (${newPos.x.toFixed(1)}, ${newPos.y.toFixed(1)}, ${newPos.z.toFixed(1)})`);
       
       // Add gravity for fireball and iceball
       if (projectile.type === 'fireball' || projectile.type === 'iceball') {
@@ -190,8 +180,6 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
         position: newPos,
         age: projectile.age + deltaMs
       };
-      
-      console.log(`🚀 FINAL position: (${updatedProjectile.position.x.toFixed(1)}, ${updatedProjectile.position.y.toFixed(1)}, ${updatedProjectile.position.z.toFixed(1)})`);
       
       // Add to trail every few frames
       if (time - projectile.lastTrailUpdate > 0.05) {
@@ -205,61 +193,35 @@ export const EnhancedMagicSystem = ({ gameState, playerPosition }) => {
       return updatedProjectile;
       
     }).filter(projectile => {
-      console.log(`🔍 FILTER: Checking projectile ${projectile.id} at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)}), age: ${projectile.age}`);
-      
       // Check for expiration
       if (projectile.age > projectile.maxAge) {
-        console.log(`⏰ EXPIRED: Projectile ${projectile.id} expired (${projectile.age} > ${projectile.maxAge})`);
         createSpellImpact(projectile.position, projectile.type);
         return false;
       }
       
-      // Check collision with terrain - FIXED to use correct ground detection
-      console.log(`🌍 TERRAIN CHECK: Using correct ground detection...`);
+      // Check collision with terrain
       if (window.getMobGroundLevel) {
         const groundLevel = window.getMobGroundLevel(projectile.position.x, projectile.position.z);
-        console.log(`🌍 CORRECT Ground level: ${groundLevel}, projectile Y: ${projectile.position.y}`);
-        if (projectile.position.y <= groundLevel + 0.5) { // Only hit when actually AT ground level
-          console.log(`🌍 TERRAIN HIT! Projectile hit ground`);
+        if (projectile.position.y <= groundLevel + 0.5) {
           createSpellImpact(projectile.position, projectile.type);
           return false;
         }
-      } else {
-        console.log(`⚠️ window.getMobGroundLevel NOT FOUND - using fallback`);
-        // Fallback to basic ground level
-        if (projectile.position.y <= 12.5) {
-          console.log(`🌍 TERRAIN HIT! Projectile hit fallback ground`);
-          createSpellImpact(projectile.position, projectile.type);
-          return false;
-        }
+      } else if (projectile.position.y <= 12.5) {
+        createSpellImpact(projectile.position, projectile.type);
+        return false;
       }
       
-      // SPELL COMBAT: Check collision with mobs - COMPREHENSIVE DEBUG
-      console.log(`🔍 MOB CHECK: About to check mob collision...`);
+      // Check collision with mobs
       if (window.checkMobCollision) {
-        console.log(`🔍 CHECKING collision for projectile at: (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
-        const hitMob = window.checkMobCollision(projectile.position, projectile.size);
+        const hitMob = window.checkMobCollision(projectile.position, projectile.size + 1.5);
         if (hitMob) {
-          console.log(`🎯 HIT DETECTED! Mob: ${hitMob.type}, ID: ${hitMob.id}`);
-          // Damage mob
+          console.log(`🎯 Spell hit ${hitMob.type}! Damage: ${projectile.damage}`);
           if (window.damageMob) {
-            console.log(`🔥 CALLING damageMob(${hitMob.id}, ${projectile.damage})`);
             window.damageMob(hitMob.id, projectile.damage);
-            console.log(`🔥 ENHANCED SPELL HIT ${hitMob.type}! Damage: ${projectile.damage}, Health: ${hitMob.health}`);
-          } else {
-            console.log(`❌ window.damageMob function NOT FOUND!`);
           }
-          // Create hit effect
           createSpellImpact(projectile.position, projectile.type);
-          return false; // Remove projectile after hit
-        } else {
-          // Debug: Show why no collision
-          if (Math.random() < 0.1) { // Occasionally log
-            console.log(`❌ No collision found at (${projectile.position.x.toFixed(1)}, ${projectile.position.y.toFixed(1)}, ${projectile.position.z.toFixed(1)})`);
-          }
+          return false;
         }
-      } else {
-        console.log(`❌ window.checkMobCollision function NOT FOUND!`);
       }
       
       return true;
