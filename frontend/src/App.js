@@ -397,7 +397,7 @@ function GameApp() {
             fov: 75,
             near: 0.1,
             far: 500,
-            position: [0, 18, 0]
+            position: [0, 30, 0]
           }}
           onCreated={({ gl }) => {
             gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));

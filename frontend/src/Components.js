@@ -448,8 +448,9 @@ export const Player = ({ gameState }) => {
   const [keys, setKeys] = useState({});
   const [isAttacking, setIsAttacking] = useState(false);
   const [selectedSpell, setSelectedSpell] = useState('fireball');
-  const targetPosition = useRef(new THREE.Vector3(0, 18, 0));
+  const targetPosition = useRef(new THREE.Vector3(0, 30, 0)); // Start high, let gravity bring us down
   const isInitialized = useRef(false);
+  const spawnChecked = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -485,9 +486,11 @@ export const Player = ({ gameState }) => {
   }, [selectedSpell, camera]);
 
   useFrame((state, delta) => {
+    // FIXED: Start camera high and let it drop to proper terrain height
     if (!isInitialized.current) {
-        camera.position.set(0, 18, 0);
-        targetPosition.current.set(0, 18, 0);
+        // Position camera ABOVE any possible terrain initially
+        camera.position.set(0, 30, 0);
+        targetPosition.current.set(0, 30, 0);
         isInitialized.current = true;
         return;
     }
@@ -509,19 +512,37 @@ export const Player = ({ gameState }) => {
     if (move.length() > 0) move.normalize().multiplyScalar(speed * delta);
     targetPosition.current.add(move);
     
-    const groundHeight = window.getMobGroundLevel ? window.getMobGroundLevel(targetPosition.current.x, targetPosition.current.z) : 0;
-    const playerHeight = 1.6;
-    
-    if (targetPosition.current.y > groundHeight + playerHeight) {
-        velocity.current.y -= 20 * delta;
-    } else {
-        velocity.current.y = 0;
-        targetPosition.current.y = groundHeight + playerHeight;
+    // FIXED: Use getHighestBlockAt for more reliable ground detection
+    // Default to 15 (middle of terrain range 12-22) if function not ready
+    let groundHeight = 15;
+    if (window.getHighestBlockAt) {
+        const height = window.getHighestBlockAt(targetPosition.current.x, targetPosition.current.z);
+        if (typeof height === 'number' && !isNaN(height)) {
+            groundHeight = height;
+        }
     }
     
-    if (keys.Space && velocity.current.y === 0) velocity.current.y = 8;
+    const playerHeight = 1.6;
+    const targetGroundY = groundHeight + playerHeight;
+    
+    // Gravity and ground collision
+    if (targetPosition.current.y > targetGroundY + 0.1) {
+        // In air - apply gravity
+        velocity.current.y -= 20 * delta;
+    } else {
+        // On ground - stop falling and snap to surface
+        velocity.current.y = 0;
+        targetPosition.current.y = targetGroundY;
+    }
+    
+    // Jump
+    if (keys.Space && Math.abs(targetPosition.current.y - targetGroundY) < 0.2) {
+        velocity.current.y = 8;
+    }
     
     targetPosition.current.y += velocity.current.y * delta;
+    
+    // Smooth camera follow
     camera.position.lerp(targetPosition.current, 0.5);
   });
 
