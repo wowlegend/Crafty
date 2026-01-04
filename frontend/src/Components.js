@@ -507,8 +507,6 @@ export const Player = ({ gameState }) => {
         // Position camera ABOVE any possible terrain initially
         camera.position.set(0, 30, 0);
         targetPosition.current.set(0, 30, 0);
-        // Set initial camera pitch to look slightly up at the horizon
-        camera.rotation.x = -0.1; // Look slightly up
         isInitialized.current = true;
         return;
     }
