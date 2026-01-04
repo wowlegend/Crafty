@@ -11,8 +11,8 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 ## Core Features
 - Procedural infinite terrain generation with chunks
 - Block placement and destruction
-- Magic system with spell casting (Fireball, Iceball, Lightning, Arcane)
-- NPC/Mob system with combat
+- Magic system with 4 spell types (Fireball, Iceball, Lightning, Arcane)
+- NPC/Mob system with 5 mob types, AI movement, health bars
 - Day/night cycle
 - Creative mode gameplay
 - Save/Load functionality (requires backend auth)
@@ -21,9 +21,9 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 ```
 /app/frontend/src/
 ├── App.js                    # Main app, game state, Canvas setup
-├── Components.js             # Terrain, Player, UI, Magic hands
-├── SimplifiedNPCSystem.js    # Mob spawning and combat
-├── EnhancedMagicSystem.js    # Advanced magic effects
+├── Components.js             # Terrain, Player, UI panels, Magic hands
+├── SimplifiedNPCSystem.js    # Mob spawning, AI, combat, damage numbers
+├── EnhancedMagicSystem.js    # Spell projectiles and effects
 ├── OptimizedGrassSystem.js   # Grass rendering optimization
 ├── SimpleExperienceSystem.js # XP and leveling
 ├── SoundManager.js           # Audio management
@@ -33,47 +33,88 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 ## What's Been Implemented
 
-### January 4, 2026 (Session 2)
-- **FIXED: Mouse Look / PointerLock** - Removed restrictive `selector` attribute from PointerLockControls. Clicking anywhere in game now enables mouse look.
-- **FIXED: Mob Visibility** - Made pig models much larger (full body, head, snout, legs). Spawned mobs in a ring around player (8-23 units away) for better visibility.
+### January 4, 2026 (Session 2) - Major Features
+- **MOB SYSTEM OVERHAUL**:
+  - Added 5 mob types: Pig (pink), Cow (brown), Zombie (green), Skeleton (beige), Spider (black)
+  - Mob wandering AI - mobs move randomly around the terrain
+  - Health bars above all mobs
+  - Floating damage numbers when attacking
+  - Continuous mob spawning as player explores new chunks
+  - Mobs despawn when too far from player
+
+- **UI PANELS REBUILT**:
+  - E - Inventory panel with block selection grid
+  - M - Magic panel with all 4 spells and descriptions
+  - C - Crafting panel with recipes
+  - B - Building Tools panel
+  - ESC - Settings panel with toggles and Resume button
+  
+- **SPELL SYSTEM FIXES**:
+  - F key now casts visible spell projectiles
+  - Number keys 1-4 change spell type (fixed closure bug)
+  - Spell projectiles hit mobs and deal damage
+  - Impact effects when spells hit terrain or mobs
+
+- **MOUSE LOOK FIX** - Click anywhere in game to enable mouse look
 
 ### January 4, 2026 (Session 1)
-- **FIXED: Green Screen / Camera Bug** - Camera was spawning at y=18 inside terrain blocks. Now spawns at y=30 and falls to proper terrain surface.
-- **FIXED: Initial View** - Added slight upward camera pitch so player sees sky and horizon on spawn.
-- **VERIFIED: Terrain Generation** - Chunks generate correctly as player moves. RENDER_DISTANCE = 4 chunks.
-- **VERIFIED: Mob Spawning** - Mobs spawn correctly on terrain surface using getMobGroundLevel + 1.
-- **VERIFIED: F Key Spell Damage** - Pressing F casts spell and damages nearby mobs within 5 unit radius.
-- **VERIFIED: Player Movement** - WASD movement works, player stays on terrain surface.
+- Fixed green screen camera bug
+- Fixed initial view angle
+- Verified terrain generation
+- Verified F key spell damage
 
-### Previous Sessions (Restored)
-- Menu system with working Start button
-- Instanced rendering for performance optimization
-- Magic hand effects with wand
-- Combat system (click and F key)
-- Experience/Level system
-- Health and hunger UI
+## Controls
+| Key | Action |
+|-----|--------|
+| WASD | Move |
+| Mouse | Look around (click to enable) |
+| F | Cast spell / Melee attack |
+| 1-4 | Select spell type |
+| E | Inventory |
+| M | Magic |
+| C | Crafting |
+| B | Building |
+| ESC | Settings |
+| Space | Jump |
+| Left Click | Break block |
+| Right Click | Place block |
 
-## Known Issues (Remaining)
-- P2: Codebase has unused/abandoned files (*.old, *_FIXED.js patterns may exist)
-- P2: PointerLock security error in some preview environments (handled with try-catch)
+## Mob Types
+| Type | Color | Health | Behavior |
+|------|-------|--------|----------|
+| Pig | Pink | 50 | Passive |
+| Cow | Brown | 80 | Passive |
+| Zombie | Green | 100 | Hostile |
+| Skeleton | Beige | 80 | Hostile |
+| Spider | Black | 60 | Hostile |
 
-## Future Enhancements (P3)
-1. Sound effects and background music
-2. Quest system
-3. Better mob AI
-4. More block types
-5. Refactor Components.js into smaller modules
+## Spell Types
+| Spell | Key | Damage | Effect |
+|-------|-----|--------|--------|
+| Fireball | 1 | 50 | Fire projectile with gravity |
+| Iceball | 2 | 40 | Ice projectile with gravity |
+| Lightning | 3 | 75 | Fast electric strike |
+| Arcane | 4 | 60 | Mystical energy blast |
 
 ## Testing Status
-- ✅ Camera spawning - PASS
-- ✅ Terrain generation - PASS  
-- ✅ Mob spawning - PASS
-- ✅ F key spell damage - PASS
-- ✅ WASD movement - PASS
+- ✅ Mob variety (5 types)
+- ✅ Mob movement AI
+- ✅ E key Inventory
+- ✅ M key Magic panel
+- ✅ C key Crafting panel
+- ✅ B key Building panel
+- ✅ ESC key Settings
+- ✅ F key spell casting
+- ✅ Spell selection (1-4)
+- ✅ Mob health bars
+- ✅ Damage numbers
+- ✅ Continuous spawning
+- ✅ Controls help panel
 
 ## Key Configuration
 - CHUNK_SIZE: 16 blocks
 - RENDER_DISTANCE: 4 chunks
 - Terrain height range: 12-22
 - Player height offset: 1.6 units
-- Initial spawn: (0, 30, 0) - falls to terrain
+- Initial spawn: (0, 30, 0)
+- Max mob distance: 100 units (despawn beyond)
