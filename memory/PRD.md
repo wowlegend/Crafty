@@ -33,7 +33,11 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 ## What's Been Implemented
 
-### January 4, 2026
+### January 4, 2026 (Session 2)
+- **FIXED: Mouse Look / PointerLock** - Removed restrictive `selector` attribute from PointerLockControls. Clicking anywhere in game now enables mouse look.
+- **FIXED: Mob Visibility** - Made pig models much larger (full body, head, snout, legs). Spawned mobs in a ring around player (8-23 units away) for better visibility.
+
+### January 4, 2026 (Session 1)
 - **FIXED: Green Screen / Camera Bug** - Camera was spawning at y=18 inside terrain blocks. Now spawns at y=30 and falls to proper terrain surface.
 - **FIXED: Initial View** - Added slight upward camera pitch so player sees sky and horizon on spawn.
 - **VERIFIED: Terrain Generation** - Chunks generate correctly as player moves. RENDER_DISTANCE = 4 chunks.
