@@ -12,11 +12,38 @@ const MobModel = ({ type, color, isHit }) => {
 
   return (
     <group>
-      <mesh position={[0, 0.6, 0]}>
-        <boxGeometry args={[0.5, 0.5, 0.5]} />
+      {/* Body - larger and more visible */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[1.2, 1, 1.6]} />
         <meshLambertMaterial {...materialProps} />
       </mesh>
-      {/* Health Bar if needed */}
+      {/* Head */}
+      <mesh position={[0, 1.2, 0.5]}>
+        <boxGeometry args={[0.8, 0.8, 0.8]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      {/* Snout */}
+      <mesh position={[0, 1.0, 1.0]}>
+        <boxGeometry args={[0.4, 0.3, 0.3]} />
+        <meshLambertMaterial color="#ffaaaa" />
+      </mesh>
+      {/* Legs */}
+      <mesh position={[-0.35, -0.2, 0.4]}>
+        <boxGeometry args={[0.3, 0.6, 0.3]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      <mesh position={[0.35, -0.2, 0.4]}>
+        <boxGeometry args={[0.3, 0.6, 0.3]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      <mesh position={[-0.35, -0.2, -0.4]}>
+        <boxGeometry args={[0.3, 0.6, 0.3]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
+      <mesh position={[0.35, -0.2, -0.4]}>
+        <boxGeometry args={[0.3, 0.6, 0.3]} />
+        <meshLambertMaterial {...materialProps} />
+      </mesh>
     </group>
   );
 };
@@ -45,22 +72,28 @@ export const NPCSystem = ({ gameState }) => {
     if (!terrainReady || !camera) return;
     
     const mobs = [];
+    // Spawn mobs closer to player (within 30 units) for visibility
     for(let i=0; i<15; i++) {
-        const x = Math.random() * 40 - 20;
-        const z = Math.random() * 40 - 20;
+        // Spawn in a ring around the player, not too close, not too far
+        const angle = (i / 15) * Math.PI * 2;
+        const distance = 8 + Math.random() * 15; // 8-23 units away
+        const x = Math.cos(angle) * distance;
+        const z = Math.sin(angle) * distance;
         let y = window.getMobGroundLevel(x, z);
         if (isNaN(y)) y = 15;
 
         mobs.push({
             id: i,
             type: 'pig',
-            position: [x, y + 1, z],
+            position: [x, y + 0.5, z], // Slightly above ground
             color: '#ffc0cb',
             health: 100
         });
+        console.log(`🐷 Spawned pig ${i} at (${x.toFixed(1)}, ${(y+0.5).toFixed(1)}, ${z.toFixed(1)})`);
     }
     setEntities(mobs);
     entitiesRef.current = mobs;
+    console.log(`✅ Spawned ${mobs.length} mobs`);
   }, [terrainReady, camera]);
 
   // COMBAT LOGIC
