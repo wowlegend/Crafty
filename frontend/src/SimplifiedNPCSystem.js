@@ -400,7 +400,7 @@ export const NPCSystem = ({ gameState }) => {
             window.grantXP(mobConfig.xp);
           }
 
-          return { ...e, health: newHealth, lastHit: Date.now() };
+          return { ...e, health: newHealth, lastHit: performance.now() };
         }
         return e;
       }).filter(e => e.health > 0);
