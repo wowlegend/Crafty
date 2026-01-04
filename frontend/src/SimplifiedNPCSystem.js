@@ -152,10 +152,13 @@ const HealthBar = ({ health, maxHealth }) => {
 // Floating Damage Number Component
 const DamageNumber = ({ damage, position, id, onComplete }) => {
   const meshRef = useRef();
-  const startTime = useRef(Date.now());
+  const startTime = useRef(null);
   
   useFrame(() => {
     if (meshRef.current) {
+      if (startTime.current === null) {
+        startTime.current = Date.now();
+      }
       const elapsed = (Date.now() - startTime.current) / 1000;
       meshRef.current.position.y = position[1] + 2 + elapsed * 2;
       meshRef.current.material.opacity = Math.max(0, 1 - elapsed);
