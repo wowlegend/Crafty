@@ -2,14 +2,14 @@ import React, { useRef, useEffect, useState, useMemo, useCallback, useLayoutEffe
 import { useFrame, useThree } from '@react-three/fiber';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { 
-  PickaxeIcon, 
-  Package, 
-  Settings, 
-  Sun, 
-  Moon, 
-  Wand2, 
-  Copy, 
+import {
+  PickaxeIcon,
+  Package,
+  Settings,
+  Sun,
+  Moon,
+  Wand2,
+  Copy,
   Download,
   Upload,
   Trash2,
@@ -72,8 +72,8 @@ const InstancedBlockLayer = React.memo(({ type, instances }) => {
   return (
     <instancedMesh ref={meshRef} args={[null, null, count]}>
       <boxGeometry args={[1, 1, 1]} />
-      <meshLambertMaterial 
-        color={config?.color || '#ff00ff'} 
+      <meshLambertMaterial
+        color={config?.color || '#ff00ff'}
         transparent={config?.transparent}
         opacity={config?.transparent ? 0.8 : 1}
       />
@@ -86,20 +86,20 @@ const InstancedBlockLayer = React.memo(({ type, instances }) => {
 const generateTerrainHeight = (() => {
   const cache = new Map();
   const maxCacheSize = 2000;
-  
+
   return (x, z) => {
     const key = `${Math.floor(x)}_${Math.floor(z)}`;
     if (cache.has(key)) return cache.get(key);
-    
+
     // Simple Perlin-like noise composition
     const noise1 = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2;
     const noise2 = Math.sin(x * 0.04) * Math.cos(z * 0.04) * 4;
     const height = Math.floor(Math.max(12, Math.min(22, noise1 + noise2 + 15)));
-    
+
     if (cache.size >= maxCacheSize) {
       cache.delete(cache.keys().next().value);
     }
-    
+
     cache.set(key, height);
     return height;
   };
@@ -109,10 +109,10 @@ const generateTerrainHeight = (() => {
 // --- MAIN WORLD COMPONENT ---
 export const MinecraftWorld = React.memo(({ gameState }) => {
   const { camera } = useThree();
-  
+
   // Logic State (Map for collision/picking)
   const blocksRef = useRef(new Map()); // Key -> { type, position }
-  
+
   // Rendering State (Arrays for InstancedMesh)
   const [instances, setInstances] = useState(() => {
     const initial = {};
@@ -122,9 +122,9 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   const [generatedChunks, setGeneratedChunks] = useState(new Set());
   const generatedChunksRef = useRef(new Set());
-  
+
   const lastPlayerChunk = useRef({ x: 0, z: 0 });
-  
+
   // Constants
   const CHUNK_SIZE = 16;
   const RENDER_DISTANCE = 4; // 4 chunks radius
@@ -132,7 +132,7 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
   // Expose for NPCs
   useEffect(() => {
     window.getGeneratedChunks = () => generatedChunksRef.current;
-    
+
     window.getMobGroundLevel = (x, z) => {
       let terrainHeight = generateTerrainHeight(x, z);
       // Check placed blocks
@@ -148,12 +148,12 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
     window.checkCollision = (x, y, z) => {
       const key = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
       if (blocksRef.current.has(key)) {
-         const block = blocksRef.current.get(key);
-         return !BLOCK_TYPES[block.type].transparent;
+        const block = blocksRef.current.get(key);
+        return !BLOCK_TYPES[block.type].transparent;
       }
       return false;
     };
-    
+
     window.getHighestBlockAt = generateTerrainHeight;
   }, []);
 
@@ -166,18 +166,18 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
     const startX = chunkX * CHUNK_SIZE;
     const startZ = chunkZ * CHUNK_SIZE;
-    
+
     const newInstances = {}; // Local buffer
     BLOCK_TYPE_KEYS.forEach(k => newInstances[k] = []);
 
     for (let x = startX; x < startX + CHUNK_SIZE; x++) {
       for (let z = startZ; z < startZ + CHUNK_SIZE; z++) {
         const height = generateTerrainHeight(x, z);
-        
+
         // Surface
         const surfaceType = Math.random() < 0.95 ? 'grass' : 'dirt';
         const surfaceKey = `${x},${height},${z}`;
-        
+
         // Add to Refs (Collision)
         blocksRef.current.set(surfaceKey, { position: [x, height, z], type: surfaceType });
         // Add to Instances (Rendering)
@@ -185,43 +185,43 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
         // Underground
         for (let y = height - 1; y >= Math.max(height - 3, 10); y--) {
-           const type = y === height - 1 ? 'dirt' : 'stone';
-           const key = `${x},${y},${z}`;
-           blocksRef.current.set(key, { position: [x, y, z], type });
-           newInstances[type].push({ position: [x, y, z] });
+          const type = y === height - 1 ? 'dirt' : 'stone';
+          const key = `${x},${y},${z}`;
+          blocksRef.current.set(key, { position: [x, y, z], type });
+          newInstances[type].push({ position: [x, y, z] });
         }
-        
+
         // Trees (Simple)
         if (surfaceType === 'grass' && Math.random() < 0.005) {
-             const treeHeight = 3;
-             // Trunk
-             for(let i=1; i<=treeHeight; i++) {
-                 const ty = height + i;
-                 const key = `${x},${ty},${z}`;
-                 blocksRef.current.set(key, { position: [x, ty, z], type: 'wood' });
-                 newInstances['wood'].push({ position: [x, ty, z] });
-             }
-             // Leaves
-             const ly = height + treeHeight + 1;
-             [[0,0], [1,0], [-1,0], [0,1], [0,-1]].forEach(([dx, dz]) => {
-                 const lx = x + dx, lz = z + dz;
-                 const key = `${lx},${ly},${lz}`;
-                 blocksRef.current.set(key, { position: [lx, ly, lz], type: 'grass' }); // Using grass as leaves
-                 newInstances['grass'].push({ position: [lx, ly, lz] });
-             });
+          const treeHeight = 3;
+          // Trunk
+          for (let i = 1; i <= treeHeight; i++) {
+            const ty = height + i;
+            const key = `${x},${ty},${z}`;
+            blocksRef.current.set(key, { position: [x, ty, z], type: 'wood' });
+            newInstances['wood'].push({ position: [x, ty, z] });
+          }
+          // Leaves
+          const ly = height + treeHeight + 1;
+          [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dz]) => {
+            const lx = x + dx, lz = z + dz;
+            const key = `${lx},${ly},${lz}`;
+            blocksRef.current.set(key, { position: [lx, ly, lz], type: 'grass' }); // Using grass as leaves
+            newInstances['grass'].push({ position: [lx, ly, lz] });
+          });
         }
       }
     }
 
     // Batch update state
     setInstances(prev => {
-        const next = { ...prev };
-        Object.keys(newInstances).forEach(type => {
-            if (newInstances[type].length > 0) {
-                next[type] = [...next[type], ...newInstances[type]];
-            }
-        });
-        return next;
+      const next = { ...prev };
+      Object.keys(newInstances).forEach(type => {
+        if (newInstances[type].length > 0) {
+          next[type] = [...next[type], ...newInstances[type]];
+        }
+      });
+      return next;
     });
 
   }, []);
@@ -229,74 +229,129 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
   // Update Loop
   useFrame(() => {
     if (!camera) return;
-    
+
     const cx = Math.floor(camera.position.x / CHUNK_SIZE);
     const cz = Math.floor(camera.position.z / CHUNK_SIZE);
-    
+
     // Only update if changed chunk
     if (cx !== lastPlayerChunk.current.x || cz !== lastPlayerChunk.current.z) {
-        lastPlayerChunk.current = { x: cx, z: cz };
-        
-        // Generate surroundings
-        for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
-            for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
-                generateChunk(cx + x, cz + z);
-            }
-        }
-    }
-  });
-  
-  // Initial Load
-  useEffect(() => {
-      console.log("Initializing World...");
+      lastPlayerChunk.current = { x: cx, z: cz };
+
+      // Generate surroundings
       for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
         for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
-            generateChunk(x, z);
+          generateChunk(cx + x, cz + z);
         }
+      }
+    }
+  });
+
+  // Initial Load
+  useEffect(() => {
+    console.log("Initializing World...");
+    for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
+      for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
+        generateChunk(x, z);
+      }
     }
   }, [generateChunk]);
 
 
-  // Interaction Handler (Raycasting manually)
+  // Interaction Handler (Raycasting manually) - WITH BUILDING MODE SUPPORT
   useEffect(() => {
     const handleClick = (e) => {
-        if (!document.pointerLockElement) return; // Only interact when locked
-        
-        const direction = new THREE.Vector3();
-        camera.getWorldDirection(direction);
-        const rayStart = camera.position.clone();
-        
-        // Raycast logic: step forward and check blocksRef
-        // Simple approximation: Check 4 units ahead
-        const targetPos = rayStart.add(direction.multiplyScalar(4));
-        const tx = Math.round(targetPos.x);
-        const ty = Math.round(targetPos.y);
-        const tz = Math.round(targetPos.z);
-        
-        if (e.button === 0) { // Left Click - Break
-            const key = `${tx},${ty},${tz}`;
-            if (blocksRef.current.has(key)) {
-                const block = blocksRef.current.get(key);
-                blocksRef.current.delete(key);
-                setInstances(prev => ({
-                    ...prev,
-                    [block.type]: prev[block.type].filter(b => 
-                        b.position[0] !== tx || b.position[1] !== ty || b.position[2] !== tz
-                    )
-                }));
-                if(window.playHitSound) window.playHitSound();
-            }
-        } else if (e.button === 2) { // Right Click - Place
-            const key = `${tx},${ty},${tz}`;
-            if (!blocksRef.current.has(key)) { 
-                 const type = gameState.selectedBlock;
-                 blocksRef.current.set(key, { position: [tx, ty, tz], type });
-                 setInstances(prev => ({
-                     ...prev,
-                     [type]: [...prev[type], { position: [tx, ty, tz] }]
-                 }));
-            }
+      if (!document.pointerLockElement) return; // Only interact when locked
+
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      const rayStart = camera.position.clone();
+
+      // Raycast logic: step forward and check blocksRef
+      // Simple approximation: Check 4 units ahead
+      const targetPos = rayStart.add(direction.multiplyScalar(4));
+      const tx = Math.round(targetPos.x);
+      const ty = Math.round(targetPos.y);
+      const tz = Math.round(targetPos.z);
+
+      const buildMode = window.buildingMode || 'single';
+      const buildSize = window.buildSize || 1;
+      const type = window.selectedBuildBlock || gameState.selectedBlock;
+
+      // Helper function to place a block at specific position
+      const placeBlock = (x, y, z) => {
+        const key = `${x},${y},${z}`;
+        if (!blocksRef.current.has(key)) {
+          blocksRef.current.set(key, { position: [x, y, z], type });
+          setInstances(prev => ({
+            ...prev,
+            [type]: [...prev[type], { position: [x, y, z] }]
+          }));
         }
+      };
+
+      // Helper function to delete a block at specific position
+      const deleteBlock = (x, y, z) => {
+        const key = `${x},${y},${z}`;
+        if (blocksRef.current.has(key)) {
+          const block = blocksRef.current.get(key);
+          blocksRef.current.delete(key);
+          setInstances(prev => ({
+            ...prev,
+            [block.type]: prev[block.type].filter(b =>
+              b.position[0] !== x || b.position[1] !== y || b.position[2] !== z
+            )
+          }));
+        }
+      };
+
+      if (e.button === 0) { // Left Click - Break
+        if (buildMode === 'delete') {
+          // Delete mode: remove multiple blocks based on size
+          for (let dy = 0; dy < buildSize; dy++) {
+            for (let dx = -Math.floor(buildSize / 2); dx <= Math.floor(buildSize / 2); dx++) {
+              for (let dz = -Math.floor(buildSize / 2); dz <= Math.floor(buildSize / 2); dz++) {
+                deleteBlock(tx + dx, ty + dy, tz + dz);
+              }
+            }
+          }
+        } else {
+          // Single block delete
+          deleteBlock(tx, ty, tz);
+        }
+        if (window.playHitSound) window.playHitSound();
+      } else if (e.button === 2) { // Right Click - Place
+        switch (buildMode) {
+          case 'wall':
+            // Build vertical wall (height = buildSize)
+            for (let dy = 0; dy < buildSize; dy++) {
+              placeBlock(tx, ty + dy, tz);
+            }
+            break;
+          case 'floor':
+            // Build horizontal floor (buildSize x buildSize)
+            for (let dx = -Math.floor(buildSize / 2); dx <= Math.floor(buildSize / 2); dx++) {
+              for (let dz = -Math.floor(buildSize / 2); dz <= Math.floor(buildSize / 2); dz++) {
+                placeBlock(tx + dx, ty, tz + dz);
+              }
+            }
+            break;
+          case 'cube':
+            // Build cube (buildSize x buildSize x buildSize)
+            for (let dy = 0; dy < buildSize; dy++) {
+              for (let dx = -Math.floor(buildSize / 2); dx <= Math.floor(buildSize / 2); dx++) {
+                for (let dz = -Math.floor(buildSize / 2); dz <= Math.floor(buildSize / 2); dz++) {
+                  placeBlock(tx + dx, ty + dy, tz + dz);
+                }
+              }
+            }
+            break;
+          case 'single':
+          default:
+            // Single block placement
+            placeBlock(tx, ty, tz);
+            break;
+        }
+      }
     };
     window.addEventListener('mousedown', handleClick);
     return () => window.removeEventListener('mousedown', handleClick);
@@ -305,16 +360,16 @@ export const MinecraftWorld = React.memo(({ gameState }) => {
 
   return (
     <group>
-        <fog attach="fog" args={['#87CEEB', 20, (RENDER_DISTANCE * CHUNK_SIZE) - 5]} />
-        {BLOCK_TYPE_KEYS.map(type => (
-            <InstancedBlockLayer key={type} type={type} instances={instances[type]} />
-        ))}
-        <EnhancedMagicSystem gameState={gameState} playerPosition={camera?.position} />
-         <OptimizedGrassSystem 
-            chunkX={Math.floor(camera?.position?.x / 16) || 0}
-            chunkZ={Math.floor(camera?.position?.z / 16) || 0}
-            blockPositions={instances.grass.map(b => [...b.position, 'grass'])}
-        />
+      <fog attach="fog" args={['#87CEEB', 20, (RENDER_DISTANCE * CHUNK_SIZE) - 5]} />
+      {BLOCK_TYPE_KEYS.map(type => (
+        <InstancedBlockLayer key={type} type={type} instances={instances[type]} />
+      ))}
+      <EnhancedMagicSystem gameState={gameState} playerPosition={camera?.position} />
+      <OptimizedGrassSystem
+        chunkX={Math.floor(camera?.position?.x / 16) || 0}
+        chunkZ={Math.floor(camera?.position?.z / 16) || 0}
+        blockPositions={instances.grass.map(b => [...b.position, 'grass'])}
+      />
     </group>
   );
 });
@@ -387,7 +442,7 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
   const skyRef = useRef();
   const sunRef = useRef();
   const moonRef = useRef();
-  
+
   useFrame(() => {
     if (skyRef.current && camera) skyRef.current.position.copy(camera.position);
     if (sunRef.current && camera) {
@@ -399,7 +454,7 @@ export const MinecraftSky = React.memo(({ isDay = true }) => {
       moonRef.current.visible = !isDay;
     }
   });
-  
+
   return (
     <group>
       <mesh ref={skyRef} scale={[200, 200, 200]}>
@@ -451,6 +506,8 @@ export const Player = ({ gameState }) => {
   const [selectedSpell, setSelectedSpell] = useState('fireball'); // Keep state for UI updates
   const targetPosition = useRef(new THREE.Vector3(0, 30, 0)); // Start high, let gravity bring us down
   const isInitialized = useRef(false);
+  const lastCastTime = useRef(0); // For continuous casting cooldown
+  const CAST_COOLDOWN = 333; // 333ms between casts (3 casts per second) - balanced with mana regen
 
   // Expose camera globally for magic system
   useEffect(() => {
@@ -459,70 +516,49 @@ export const Player = ({ gameState }) => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-        setKeys(prev => ({...prev, [e.code]: true}));
-        
-        // Spell selection with number keys - update both ref and state
-        if (e.code === 'Digit1') {
-          selectedSpellRef.current = 'fireball';
-          setSelectedSpell('fireball');
+      setKeys(prev => ({ ...prev, [e.code]: true }));
+
+      // Spell selection is handled by App.js (Digit1-4 keys)
+
+      // SPELL CASTING ON 'F' - Reset cooldown so first press always works
+      if (e.code === 'KeyF') {
+        // Reset lastCastTime to ensure immediate cast
+        lastCastTime.current = 0;
+        setIsAttacking(true);
+        setTimeout(() => setIsAttacking(false), 500);
+        if (window.playAttackSounds) window.playAttackSounds();
+
+        // Melee attack for close range (spell is handled in continuous loop)
+        if (window.checkMobCollision && window.damageMob) {
+          const direction = new THREE.Vector3();
+          camera.getWorldDirection(direction);
+          const checkPos = camera.position.clone().add(direction.multiplyScalar(3));
+          const mob = window.checkMobCollision(checkPos, 4);
+          if (mob) {
+            window.damageMob(mob.id, 25);
+            if (window.playHitSound) window.playHitSound();
+            console.log(`⚔️ Melee hit on ${mob.type}!`);
+          }
         }
-        if (e.code === 'Digit2') {
-          selectedSpellRef.current = 'iceball';
-          setSelectedSpell('iceball');
-        }
-        if (e.code === 'Digit3') {
-          selectedSpellRef.current = 'lightning';
-          setSelectedSpell('lightning');
-        }
-        if (e.code === 'Digit4') {
-          selectedSpellRef.current = 'arcane';
-          setSelectedSpell('arcane');
-        }
-        
-        // SPELL CASTING ON 'F' - Cast projectile spell AND melee attack
-        if (e.code === 'KeyF') {
-            setIsAttacking(true);
-            setTimeout(() => setIsAttacking(false), 500);
-            if(window.playAttackSounds) window.playAttackSounds();
-            
-            // Cast spell projectile using ref for current spell
-            if (window.castSpell) {
-                const currentSpell = selectedSpellRef.current;
-                console.log(`🔮 Casting spell: ${currentSpell}`);
-                window.castSpell(currentSpell);
-            }
-            
-            // ALSO do melee attack for close range
-            if (window.checkMobCollision && window.damageMob) {
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                const checkPos = camera.position.clone().add(direction.multiplyScalar(3)); 
-                const mob = window.checkMobCollision(checkPos, 4);
-                if (mob) {
-                    window.damageMob(mob.id, 25);
-                    if(window.playHitSound) window.playHitSound();
-                    console.log(`⚔️ Melee hit on ${mob.type}!`);
-                }
-            }
-        }
+      }
     };
-    const handleKeyUp = (e) => setKeys(prev => ({...prev, [e.code]: false}));
+    const handleKeyUp = (e) => setKeys(prev => ({ ...prev, [e.code]: false }));
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     }
   }, [camera]); // Removed selectedSpell from dependencies
 
   useFrame((state, delta) => {
     // FIXED: Start camera high and let it drop to proper terrain height
     if (!isInitialized.current) {
-        // Position camera ABOVE any possible terrain initially
-        camera.position.set(0, 30, 0);
-        targetPosition.current.set(0, 30, 0);
-        isInitialized.current = true;
-        return;
+      // Position camera ABOVE any possible terrain initially
+      camera.position.set(0, 30, 0);
+      targetPosition.current.set(0, 30, 0);
+      isInitialized.current = true;
+      return;
     }
 
     const speed = 10;
@@ -538,59 +574,90 @@ export const Player = ({ gameState }) => {
     if (keys.KeyS) move.sub(forward);
     if (keys.KeyD) move.add(right);
     if (keys.KeyA) move.sub(right);
-    
+
     if (move.length() > 0) move.normalize().multiplyScalar(speed * delta);
     targetPosition.current.add(move);
-    
+
     // FIXED: Use getHighestBlockAt for more reliable ground detection
     // Default to 15 (middle of terrain range 12-22) if function not ready
     let groundHeight = 15;
     if (window.getHighestBlockAt) {
-        const height = window.getHighestBlockAt(targetPosition.current.x, targetPosition.current.z);
-        if (typeof height === 'number' && !isNaN(height)) {
-            groundHeight = height;
-        }
+      const height = window.getHighestBlockAt(targetPosition.current.x, targetPosition.current.z);
+      if (typeof height === 'number' && !isNaN(height)) {
+        groundHeight = height;
+      }
     }
-    
+
     const playerHeight = 1.6;
     const targetGroundY = groundHeight + playerHeight;
-    
+
     // Gravity and ground collision
     if (targetPosition.current.y > targetGroundY + 0.1) {
-        // In air - apply gravity
-        velocity.current.y -= 20 * delta;
+      // In air - apply gravity
+      velocity.current.y -= 20 * delta;
     } else {
-        // On ground - stop falling and snap to surface
-        velocity.current.y = 0;
-        targetPosition.current.y = targetGroundY;
+      // On ground - stop falling and snap to surface
+      velocity.current.y = 0;
+      targetPosition.current.y = targetGroundY;
     }
-    
+
     // Jump
     if (keys.Space && Math.abs(targetPosition.current.y - targetGroundY) < 0.2) {
-        velocity.current.y = 8;
+      velocity.current.y = 8;
     }
-    
+
     targetPosition.current.y += velocity.current.y * delta;
-    
+
     // Smooth camera follow
     camera.position.lerp(targetPosition.current, 0.5);
+
+    // === CONTINUOUS SPELL CASTING when holding F ===
+    if (keys.KeyF) {
+      const now = performance.now();
+      if (now - lastCastTime.current >= CAST_COOLDOWN) {
+        lastCastTime.current = now;
+
+        // Cast spell - USE GLOBAL SELECTED SPELL FROM App.js
+        if (window.castSpell) {
+          const currentSpell = window.selectedSpell || 'fireball';
+          console.log(`🔮 Continuous cast: ${currentSpell}`);
+          window.castSpell(currentSpell);
+        }
+
+        // Trigger attack animation
+        setIsAttacking(true);
+        setTimeout(() => setIsAttacking(false), 150);
+      }
+    }
   });
 
   return (
     <group>
-      <StableMagicHands selectedSpell={selectedSpell} selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
+      <StableMagicHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
     </group>
   );
 };
 
-// RESTORED Magic Hands with ALL EFFECTS
-const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
+// RESTORED Magic Hands with ALL EFFECTS - Now syncs with global spell
+const StableMagicHands = ({ selectedBlock, isAttacking }) => {
   const { camera } = useThree();
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   const wandRef = useRef();
   const magicAuraRef = useRef();
   const SPELL_COLORS = { fireball: '#FF4500', iceball: '#00BFFF', lightning: '#FFD700', arcane: '#9932CC' };
+
+  // Sync with global selected spell from App.js
+  const [selectedSpell, setLocalSpell] = useState(window.selectedSpell || 'fireball');
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.selectedSpell && window.selectedSpell !== selectedSpell) {
+        setLocalSpell(window.selectedSpell);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [selectedSpell]);
+
   const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
 
   useFrame((state) => {
@@ -600,51 +667,51 @@ const StableMagicHands = ({ selectedSpell, selectedBlock, isAttacking }) => {
       rightPos.applyMatrix4(camera.matrixWorld);
       rightHandRef.current.position.copy(rightPos);
       rightHandRef.current.quaternion.copy(camera.quaternion);
-      
+
       if (!isAttacking) {
-        rightHandRef.current.position.y += Math.sin(time * 0.8) * 0.008; 
-        rightHandRef.current.rotation.z = Math.sin(time * 0.5) * 0.012; 
+        rightHandRef.current.position.y += Math.sin(time * 0.8) * 0.008;
+        rightHandRef.current.rotation.z = Math.sin(time * 0.5) * 0.012;
       }
-      
+
       const leftPos = new THREE.Vector3(-0.4, -0.7, -0.9);
       leftPos.applyMatrix4(camera.matrixWorld);
       leftHandRef.current.position.copy(leftPos);
       leftHandRef.current.quaternion.copy(camera.quaternion);
-      
+
       if (!isAttacking) {
-        leftHandRef.current.position.y += Math.sin(time * 0.8 + 0.5) * 0.006; 
-        leftHandRef.current.rotation.z = Math.sin(time * 0.5 + 0.5) * 0.008; 
+        leftHandRef.current.position.y += Math.sin(time * 0.8 + 0.5) * 0.006;
+        leftHandRef.current.rotation.z = Math.sin(time * 0.5 + 0.5) * 0.008;
       }
-      
+
       if (isAttacking) {
-        const attackTime = time * 6; 
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.12; 
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.02; 
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.08; 
+        const attackTime = time * 6;
+        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.12;
+        rightHandRef.current.position.z += Math.sin(attackTime) * 0.02;
+        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.08;
         if (wandRef.current) {
-          wandRef.current.rotation.x = Math.sin(attackTime) * 0.06; 
-          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.02; 
+          wandRef.current.rotation.x = Math.sin(attackTime) * 0.06;
+          wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.02;
         }
       } else {
         rightHandRef.current.rotation.x = 0;
         leftHandRef.current.rotation.x = 0;
         if (wandRef.current) {
-          wandRef.current.rotation.x = 0.1; 
-          wandRef.current.position.y = 0.4; 
+          wandRef.current.rotation.x = 0.1;
+          wandRef.current.position.y = 0.4;
         }
       }
-      
+
       if (magicAuraRef.current) {
         const intensity = isAttacking ? 1.08 + Math.sin(time * 2) * 0.03 : 0.98 + Math.sin(time * 0.8) * 0.015;
         magicAuraRef.current.scale.setScalar(intensity);
-        magicAuraRef.current.material.opacity = isAttacking ? 0.45 : 0.12; 
+        magicAuraRef.current.material.opacity = isAttacking ? 0.45 : 0.12;
       }
     }
   });
 
   return (
     <group>
-      <group ref={rightHandRef}>        
+      <group ref={rightHandRef}>
         <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
         <mesh position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
         <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}><MagicWand wandType={selectedSpell} /></group>
@@ -686,9 +753,9 @@ const SpellHandEffects = ({ spellType }) => {
   useFrame((state) => {
     if (effectRef.current) {
       const time = state.clock.elapsedTime;
-      if(spellType === 'fireball') {
-          effectRef.current.rotation.y += 0.04;
-          effectRef.current.scale.setScalar(1 + Math.sin(time * 3) * 0.08);
+      if (spellType === 'fireball') {
+        effectRef.current.rotation.y += 0.04;
+        effectRef.current.scale.setScalar(1 + Math.sin(time * 3) * 0.08);
       }
     }
   });
@@ -697,13 +764,13 @@ const SpellHandEffects = ({ spellType }) => {
 };
 
 const SpellLeftHandEffects = ({ spellType }) => {
-  return null; 
+  return null;
 };
 
 export const Inventory = ({ gameState, onClose }) => {
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px] max-w-[600px]" onClick={e=>e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px] max-w-[600px]" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">📦 Inventory</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -712,15 +779,14 @@ export const Inventory = ({ gameState, onClose }) => {
           {Object.entries(gameState.inventory.blocks).map(([type, count]) => {
             const blockConfig = BLOCK_TYPES[type];
             return (
-              <div 
-                key={type} 
-                onClick={() => { gameState.setSelectedBlock(type); onClose(); }} 
-                className={`bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors border-2 ${
-                  gameState.selectedBlock === type ? 'border-yellow-400' : 'border-transparent'
-                }`}
+              <div
+                key={type}
+                onClick={() => { gameState.setSelectedBlock(type); onClose(); }}
+                className={`bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors border-2 ${gameState.selectedBlock === type ? 'border-yellow-400' : 'border-transparent'
+                  }`}
                 title={blockConfig?.name || type}
               >
-                <div 
+                <div
                   className="w-8 h-8 mx-auto rounded"
                   style={{ backgroundColor: blockConfig?.color || '#888' }}
                 />
@@ -739,34 +805,113 @@ export const Inventory = ({ gameState, onClose }) => {
 };
 
 export const CraftingTable = ({ gameState, onClose }) => {
+  const [craftMessage, setCraftMessage] = React.useState(null);
+
   const recipes = [
-    { name: 'Stone Pickaxe', input: { cobblestone: 3, wood: 2 }, output: { pickaxe: 1 } },
-    { name: 'Torch', input: { coal: 1, wood: 1 }, output: { torch: 4 } },
-    { name: 'Glass', input: { sand: 1 }, output: { glass: 1 } },
+    // Tools
+    { name: 'Stone Pickaxe', category: 'Tools', input: { cobblestone: 3, wood: 2 }, output: { pickaxe: 1 } },
+    { name: 'Stone Sword', category: 'Tools', input: { cobblestone: 2, wood: 1 }, output: { sword: 1 } },
+    { name: 'Torch', category: 'Tools', input: { coal: 1, wood: 1 }, output: { torch: 4 } },
+
+    // Materials
+    { name: 'Glass', category: 'Materials', input: { sand: 1 }, output: { glass: 1 } },
+    { name: 'Cobblestone', category: 'Materials', input: { stone: 1 }, output: { cobblestone: 1 } },
+    { name: 'Planks', category: 'Materials', input: { wood: 1 }, output: { planks: 4 } },
+
+    // Magic Items
+    { name: 'Magic Crystal', category: 'Magic', input: { diamond: 1, gold: 1 }, output: { crystals: 4 } },
+    { name: 'Spell Scroll', category: 'Magic', input: { crystals: 2, wood: 1 }, output: { scrolls: 1 } },
+    { name: 'Enchanted Wand', category: 'Magic', input: { crystals: 4, gold: 2, wood: 1 }, output: { wand: 1 } },
+
+    // Food
+    { name: 'Cooked Porkchop', category: 'Food', input: { porkchop: 1, coal: 1 }, output: { cooked_porkchop: 1 } },
+    { name: 'Cooked Beef', category: 'Food', input: { beef: 1, coal: 1 }, output: { cooked_beef: 1 } },
   ];
+
+  const canCraft = (recipe) => {
+    return Object.entries(recipe.input).every(([item, count]) =>
+      (gameState.inventory?.blocks?.[item] || 0) >= count
+    );
+  };
+
+  const doCraft = (recipe) => {
+    if (!canCraft(recipe)) {
+      setCraftMessage({ type: 'error', text: 'Not enough materials!' });
+      setTimeout(() => setCraftMessage(null), 2000);
+      return;
+    }
+
+    // Remove input items
+    Object.entries(recipe.input).forEach(([item, count]) => {
+      gameState.removeFromInventory(item, count);
+    });
+
+    // Add output items
+    Object.entries(recipe.output).forEach(([item, count]) => {
+      gameState.addToInventory(item, count);
+    });
+
+    setCraftMessage({ type: 'success', text: `Crafted ${recipe.name}!` });
+    setTimeout(() => setCraftMessage(null), 2000);
+
+    // Grant XP for crafting
+    if (window.grantXP) window.grantXP(5);
+  };
+
+  const categories = [...new Set(recipes.map(r => r.category))];
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[450px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">🔨 Crafting Table</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
-        <div className="space-y-3">
-          {recipes.map((recipe, i) => (
-            <div key={i} className="bg-gray-700 p-3 rounded flex items-center justify-between">
-              <div>
-                <div className="font-medium">{recipe.name}</div>
-                <div className="text-xs text-gray-400">
-                  {Object.entries(recipe.input).map(([item, count]) => `${count}x ${item}`).join(' + ')}
-                </div>
-              </div>
-              <button className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm">
-                Craft
-              </button>
+
+        {craftMessage && (
+          <div className={`mb-4 p-2 rounded text-center ${craftMessage.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+            {craftMessage.text}
+          </div>
+        )}
+
+        {categories.map(category => (
+          <div key={category} className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">{category}</h3>
+            <div className="space-y-2">
+              {recipes.filter(r => r.category === category).map((recipe, i) => {
+                const craftable = canCraft(recipe);
+                return (
+                  <div key={i} className={`bg-gray-700 p-3 rounded flex items-center justify-between ${!craftable && 'opacity-60'}`}>
+                    <div>
+                      <div className="font-medium">{recipe.name}</div>
+                      <div className="text-xs text-gray-400">
+                        {Object.entries(recipe.input).map(([item, count]) => {
+                          const have = gameState.inventory?.blocks?.[item] || 0;
+                          return (
+                            <span key={item} className={have >= count ? 'text-green-400' : 'text-red-400'}>
+                              {count}x {item} ({have})
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="text-xs text-yellow-400">
+                        → {Object.entries(recipe.output).map(([item, count]) => `${count}x ${item}`).join(', ')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => doCraft(recipe)}
+                      disabled={!craftable}
+                      className={`px-3 py-1 rounded text-sm ${craftable ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 cursor-not-allowed'}`}
+                    >
+                      Craft
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+
         <div className="mt-4 text-sm text-gray-400">
           Press C to close
         </div>
@@ -777,15 +922,15 @@ export const CraftingTable = ({ gameState, onClose }) => {
 
 export const MagicSystem = ({ gameState, onClose }) => {
   const spells = [
-    { name: 'Fireball', key: '1', color: '#FF4500', damage: 50, description: 'Launches a fiery projectile' },
-    { name: 'Iceball', key: '2', color: '#00BFFF', damage: 40, description: 'Freezes enemies on impact' },
-    { name: 'Lightning', key: '3', color: '#FFD700', damage: 75, description: 'Fast electric strike' },
-    { name: 'Arcane', key: '4', color: '#9932CC', damage: 60, description: 'Mystical energy blast' },
+    { name: 'Fireball', key: '1', color: '#FF4500', damage: 50, mana: 15, description: 'Launches a fiery projectile that burns on impact' },
+    { name: 'Iceball', key: '2', color: '#00BFFF', damage: 40, mana: 12, description: 'Freezes and slows enemies on impact' },
+    { name: 'Lightning', key: '3', color: '#FFD700', damage: 75, mana: 25, description: 'Fast electric strike that chains to nearby enemies' },
+    { name: 'Arcane', key: '4', color: '#9932CC', damage: 60, mana: 18, description: 'Mystical blast that pierces through enemies' },
   ];
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">✨ Magic Spells</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -793,7 +938,7 @@ export const MagicSystem = ({ gameState, onClose }) => {
         <div className="space-y-3">
           {spells.map((spell, i) => (
             <div key={i} className="bg-gray-700 p-3 rounded flex items-center gap-4">
-              <div 
+              <div
                 className="w-12 h-12 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: spell.color }}
               >
@@ -802,7 +947,10 @@ export const MagicSystem = ({ gameState, onClose }) => {
               <div className="flex-1">
                 <div className="font-medium">{spell.name}</div>
                 <div className="text-xs text-gray-400">{spell.description}</div>
-                <div className="text-xs text-yellow-400">Damage: {spell.damage}</div>
+                <div className="flex gap-3 text-xs mt-1">
+                  <span className="text-yellow-400">⚔️ {spell.damage} DMG</span>
+                  <span className="text-blue-400">💧 {spell.mana} MP</span>
+                </div>
               </div>
               <div className="text-gray-500">
                 Press {spell.key}
@@ -819,31 +967,87 @@ export const MagicSystem = ({ gameState, onClose }) => {
 };
 
 export const BuildingTools = ({ gameState, onClose }) => {
+  const [selectedTool, setSelectedTool] = React.useState('single');
+  const [buildSize, setBuildSize] = React.useState(3);
+
   const tools = [
-    { name: 'Single Block', icon: '🧱', description: 'Place one block at a time' },
-    { name: 'Wall Builder', icon: '🏗️', description: 'Build walls quickly' },
-    { name: 'Floor Builder', icon: '📐', description: 'Create flat surfaces' },
-    { name: 'Delete Tool', icon: '🗑️', description: 'Remove blocks' },
+    { id: 'single', name: 'Single Block', icon: '🧱', description: 'Place one block at a time', hotkey: '1' },
+    { id: 'wall', name: 'Wall Builder', icon: '🏗️', description: `Build ${buildSize}-high walls`, hotkey: '2' },
+    { id: 'floor', name: 'Floor Builder', icon: '📐', description: `Create ${buildSize}x${buildSize} floors`, hotkey: '3' },
+    { id: 'cube', name: 'Cube Builder', icon: '📦', description: `Build ${buildSize}x${buildSize}x${buildSize} cubes`, hotkey: '4' },
+    { id: 'delete', name: 'Delete Tool', icon: '🗑️', description: 'Remove multiple blocks', hotkey: '5' },
   ];
+
+  // Set global building mode
+  React.useEffect(() => {
+    window.buildingMode = selectedTool;
+    window.buildSize = buildSize;
+    window.selectedBuildBlock = gameState.selectedBlock;
+
+    console.log(`🔧 Building mode: ${selectedTool}, size: ${buildSize}`);
+  }, [selectedTool, buildSize, gameState.selectedBlock]);
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[400px]" onClick={e=>e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[450px]" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">🏠 Building Tools</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
+
+        {/* Size Slider */}
+        <div className="mb-4 bg-gray-700 p-3 rounded">
+          <div className="flex justify-between items-center mb-2">
+            <span>Build Size</span>
+            <span className="font-bold text-yellow-400">{buildSize}</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={buildSize}
+            onChange={(e) => setBuildSize(parseInt(e.target.value))}
+            className="w-full accent-yellow-500"
+          />
+        </div>
+
+        {/* Tool Selection */}
         <div className="grid grid-cols-2 gap-3">
-          {tools.map((tool, i) => (
-            <div key={i} className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="text-3xl mb-2">{tool.icon}</div>
-              <div className="font-medium">{tool.name}</div>
-              <div className="text-xs text-gray-400">{tool.description}</div>
+          {tools.map((tool) => (
+            <div
+              key={tool.id}
+              onClick={() => setSelectedTool(tool.id)}
+              className={`bg-gray-700 p-3 rounded cursor-pointer transition-all ${selectedTool === tool.id
+                ? 'ring-2 ring-yellow-400 bg-gray-600'
+                : 'hover:bg-gray-600'
+                }`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="text-3xl">{tool.icon}</div>
+                <div>
+                  <div className="font-medium">{tool.name}</div>
+                  <div className="text-xs text-gray-400">{tool.description}</div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Press {tool.hotkey}</div>
             </div>
           ))}
         </div>
+
+        {/* Selected Block Preview */}
+        <div className="mt-4 bg-gray-700 p-3 rounded flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded"
+            style={{ backgroundColor: BLOCK_TYPES[gameState.selectedBlock]?.color || '#567C35' }}
+          />
+          <div>
+            <div className="text-sm text-gray-400">Selected Block</div>
+            <div className="font-medium">{BLOCK_TYPES[gameState.selectedBlock]?.name || gameState.selectedBlock}</div>
+          </div>
+        </div>
+
         <div className="mt-4 text-sm text-gray-400">
-          Press B to close • Left click to place, Right click to remove
+          Press B to close • Right-click to build • Left-click to remove
         </div>
       </div>
     </div>
@@ -853,7 +1057,7 @@ export const BuildingTools = ({ gameState, onClose }) => {
 export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) => {
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[350px]" onClick={e=>e.stopPropagation()}>
+      <div className="bg-gray-800 rounded-lg p-6 text-white min-w-[350px]" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">⚙️ Settings</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -861,7 +1065,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span>Show Stats (F3)</span>
-            <button 
+            <button
               onClick={() => setShowStats(!showStats)}
               className={`px-4 py-1 rounded ${showStats ? 'bg-green-600' : 'bg-gray-600'}`}
             >
@@ -870,7 +1074,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
           </div>
           <div className="flex items-center justify-between">
             <span>Game Mode</span>
-            <button 
+            <button
               onClick={() => gameState.setGameMode(gameState.gameMode === 'creative' ? 'survival' : 'creative')}
               className="px-4 py-1 rounded bg-purple-600 hover:bg-purple-500"
             >
@@ -879,7 +1083,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
           </div>
           <div className="flex items-center justify-between">
             <span>Time</span>
-            <button 
+            <button
               onClick={() => gameState.setIsDay(!gameState.isDay)}
               className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-500"
             >
@@ -887,7 +1091,7 @@ export const SettingsPanel = ({ gameState, onClose, showStats, setShowStats }) =
             </button>
           </div>
           <hr className="border-gray-600" />
-          <button 
+          <button
             onClick={onClose}
             className="w-full bg-green-600 hover:bg-green-500 py-2 rounded font-medium"
           >

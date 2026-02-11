@@ -90,12 +90,14 @@
   padding: 0 20px;
 }
 
-.minecraft-health-bar, .minecraft-hunger-bar {
+.minecraft-health-bar,
+.minecraft-hunger-bar {
   display: flex;
   gap: 1px;
 }
 
-.minecraft-heart, .minecraft-hunger {
+.minecraft-heart,
+.minecraft-hunger {
   width: 18px;
   height: 18px;
   display: flex;
@@ -247,6 +249,7 @@
 
 /* Modal animations */
 .modal-overlay {
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -276,8 +279,15 @@
 
 /* Crosshair pulse animation */
 @keyframes pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .crosshair {
@@ -286,7 +296,7 @@
 
 /* Text effects */
 .text-outline {
-  text-shadow: 
+  text-shadow:
     -1px -1px 0 #000,
     1px -1px 0 #000,
     -1px 1px 0 #000,
@@ -300,25 +310,63 @@
     width: 32px;
     height: 32px;
   }
-  
+
   .minecraft-block-icon {
     width: 18px;
     height: 18px;
+  }
+
+  .minecraft-tool-button {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 /* COMBAT VISUAL EFFECTS - Screen shake animation */
 @keyframes shake {
-  0% { transform: translate(0); }
-  10% { transform: translate(-2px, 1px); }
-  20% { transform: translate(2px, -1px); }
-  30% { transform: translate(-1px, 2px); }
-  40% { transform: translate(1px, -2px); }
-  50% { transform: translate(-2px, 1px); }
-  60% { transform: translate(2px, -1px); }
-  70% { transform: translate(-1px, 2px); }
-  80% { transform: translate(1px, -2px); }
-  90% { transform: translate(-2px, 1px); }
-  100% { transform: translate(0); }
+  0% {
+    transform: translate(0);
+  }
+
+  10% {
+    transform: translate(-2px, 1px);
+  }
+
+  20% {
+    transform: translate(2px, -1px);
+  }
+
+  30% {
+    transform: translate(-1px, 2px);
+  }
+
+  40% {
+    transform: translate(1px, -2px);
+  }
+
+  50% {
+    transform: translate(-2px, 1px);
+  }
+
+  60% {
+    transform: translate(2px, -1px);
+  }
+
+  70% {
+    transform: translate(-1px, 2px);
+  }
+
+  80% {
+    transform: translate(1px, -2px);
+  }
+
+  90% {
+    transform: translate(-2px, 1px);
+  }
+
+  100% {
+    transform: translate(0);
+  }
 }
 
 /* Enhanced combat feedback */
@@ -335,6 +383,7 @@
     transform: scale(1);
     opacity: 1;
   }
+
   100% {
     transform: scale(0);
     opacity: 0;
@@ -348,7 +397,7 @@
   font-family: 'Orbitron', monospace;
   font-weight: bold;
   color: #ff4444;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   animation: damageFloat 1s ease-out forwards;
 }
 
@@ -357,15 +406,10 @@
     transform: translate(-50%, -50%) scale(1);
     opacity: 1;
   }
+
   100% {
     transform: translate(-50%, -150%) scale(1.5);
     opacity: 0;
-  }
-  }
-  
-  .minecraft-tool-button {
-    width: 28px;
-    height: 28px;
   }
 }
 

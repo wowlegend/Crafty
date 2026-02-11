@@ -3,14 +3,14 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls, Sky, Stats } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
-import { 
-  Pickaxe, 
-  Package, 
-  Settings, 
-  Sun, 
-  Moon, 
-  Wand2, 
-  Copy, 
+import {
+  Pickaxe,
+  Package,
+  Settings,
+  Sun,
+  Moon,
+  Wand2,
+  Copy,
   Download,
   Upload,
   Trash2,
@@ -23,11 +23,11 @@ import {
   VolumeX
 } from 'lucide-react';
 import './App.css';
-import { 
-  MinecraftWorld, 
-  GameUI, 
-  Inventory, 
-  CraftingTable, 
+import {
+  MinecraftWorld,
+  GameUI,
+  Inventory,
+  CraftingTable,
   MagicSystem,
   BuildingTools,
   SettingsPanel,
@@ -45,6 +45,19 @@ import { NPCSystem, TradingInterface, CombatInstructions } from './SimplifiedNPC
 
 // Import experience system for UI outside Canvas
 import { useSimpleExperience, SimpleXPGainVisual, SimpleLevelUpEffect, SimpleExperienceBar } from './SimpleExperienceSystem';
+
+// Import game systems (health, mana, hunger, combat)
+import {
+  GameSystemsProvider,
+  useGameSystems,
+  PlayerHealthBar,
+  PlayerManaBar,
+  PlayerHungerBar,
+  DamageOverlay,
+  DeathScreen,
+  ActiveSpellIndicator,
+  SPELL_MANA_COSTS
+} from './GameSystems';
 
 // Game state management
 const useGameState = () => {
@@ -115,8 +128,8 @@ const useGameState = () => {
       const saveData = {
         save_name: `Save_${new Date().toLocaleString()}`,
         world_data: { blocks: worldBlocks }, // Note: Map needs serialization handling if sent as JSON
-        player_data: { 
-          position: { x: 0, y: 18, z: 0 }, 
+        player_data: {
+          position: { x: 0, y: 18, z: 0 },
           inventory: inventory,
           stats: playerStats
         },
@@ -175,14 +188,14 @@ const useGameState = () => {
       }
 
       const { saves } = await response.json();
-      
+
       if (saves.length === 0) {
         alert('No saved games found');
         return;
       }
 
       const mostRecentSave = saves[0];
-      
+
       const loadResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`, {
         headers: {
           'Authorization': `Bearer ${authData.token}`
@@ -194,7 +207,7 @@ const useGameState = () => {
       }
 
       const saveData = await loadResponse.json();
-      
+
       // Restore game state
       if (saveData.world_data?.blocks) setWorldBlocks(new Map(saveData.world_data.blocks));
       if (saveData.player_data?.inventory) setInventory(saveData.player_data.inventory);
@@ -217,12 +230,12 @@ const useGameState = () => {
   return {
     gameMode, setGameMode, selectedBlock, setSelectedBlock, worldBlocks, setWorldBlocks,
     activeSpell, setActiveSpell, showTradingInterface, setShowTradingInterface,
-    selectedVillager, setSelectedVillager, inventory, setInventory, 
+    selectedVillager, setSelectedVillager, inventory, setInventory,
     showInventory, setShowInventory, showCrafting, setShowCrafting,
-    showMagic, setShowMagic, showSettings, setShowSettings, 
-    showBuildingTools, setShowBuildingTools, showWorldManager, setShowWorldManager, 
+    showMagic, setShowMagic, showSettings, setShowSettings,
+    showBuildingTools, setShowBuildingTools, showWorldManager, setShowWorldManager,
     isDay, setIsDay, gameTime, achievements, setAchievements,
-    playerStats, setPlayerStats, addToInventory, removeFromInventory, 
+    playerStats, setPlayerStats, addToInventory, removeFromInventory,
     saveGame, loadGame
   };
 };
@@ -231,13 +244,29 @@ function App() {
   return (
     <AuthProvider>
       <SoundProvider>
-        <GameApp />
+        <GameAppWrapper />
       </SoundProvider>
     </AuthProvider>
   );
 }
 
-function GameApp() {
+// Wrapper to provide experience level to GameSystems
+function GameAppWrapper() {
+  const experienceSystem = useSimpleExperience();
+
+  // Expose XP functions globally
+  React.useEffect(() => {
+    window.grantXP = experienceSystem.addExperience;
+  }, [experienceSystem.addExperience]);
+
+  return (
+    <GameSystemsProvider playerLevel={experienceSystem.playerLevel}>
+      <GameApp experienceSystem={experienceSystem} />
+    </GameSystemsProvider>
+  );
+}
+
+function GameApp({ experienceSystem }) {
   const gameState = useGameState();
   const { isAuthenticated, loading } = useAuth();
   const { soundEnabled, setSoundEnabled, musicEnabled, setMusicEnabled, playBackgroundMusic } = useSounds();
@@ -246,10 +275,11 @@ function GameApp() {
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
+  const [selectedSpell, setSelectedSpell] = useState('fireball');
 
-  // Initialize experience system
-  const experienceSystem = useSimpleExperience();
-  
+  // Game systems (health, mana, hunger)
+  const gameSystems = useGameSystems();
+
   // PREVENT RUNTIME ERROR: ResizeObserver loop limit exceeded
   useEffect(() => {
     const resizeObserverError = (e) => {
@@ -271,7 +301,7 @@ function GameApp() {
   // PREVENT POINTER LOCK SECURITY ERROR (Iframe/Sandbox support)
   useEffect(() => {
     const originalRequestPointerLock = Element.prototype.requestPointerLock;
-    Element.prototype.requestPointerLock = function() {
+    Element.prototype.requestPointerLock = function () {
       try {
         const promise = originalRequestPointerLock.apply(this, arguments);
         if (promise && typeof promise.catch === 'function') {
@@ -284,7 +314,7 @@ function GameApp() {
         console.warn('Pointer lock blocked (safely caught):', e);
       }
     };
-    
+
     return () => {
       Element.prototype.requestPointerLock = originalRequestPointerLock;
     };
@@ -300,6 +330,12 @@ function GameApp() {
     window.playDefeatSound = playDefeat;
   }, [playAttack, playSwing, playHit, playDefeat]);
 
+  // Expose selected spell globally for Components.js to read
+  useEffect(() => {
+    window.selectedSpell = selectedSpell;
+    window.setSelectedSpell = setSelectedSpell;
+  }, [selectedSpell]);
+
   // Start background music
   useEffect(() => {
     if (isPointerLocked && musicEnabled) {
@@ -310,37 +346,92 @@ function GameApp() {
   // ENHANCED ESC and UI key handlers
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // Check if any UI panel is currently open
+      const anyPanelOpen = gameState.showInventory || gameState.showCrafting ||
+        gameState.showMagic || gameState.showBuildingTools ||
+        gameState.showSettings;
+
       if (event.code === 'Escape') {
         event.preventDefault();
         event.stopImmediatePropagation();
-        
-        if (gameState.showSettings) {
+
+        // If any UI panel is open, close it and return to game
+        if (anyPanelOpen) {
+          gameState.setShowInventory(false);
+          gameState.setShowCrafting(false);
+          gameState.setShowMagic(false);
+          gameState.setShowBuildingTools(false);
           gameState.setShowSettings(false);
-        } else {
-          setIsPointerLocked(false);
+          // Re-lock pointer to return to game
+          setTimeout(() => {
+            if (document.body.requestPointerLock) {
+              document.body.requestPointerLock().catch(e => console.warn(e));
+            }
+          }, 100);
+        } else if (isPointerLocked) {
+          // Open settings/pause menu
           gameState.setShowSettings(true);
           if (document.pointerLockElement) {
             document.exitPointerLock();
           }
+        } else {
+          // Main menu is showing, start the game
+          setIsPointerLocked(true);
+          setTimeout(() => {
+            if (document.body.requestPointerLock) {
+              document.body.requestPointerLock().catch(e => console.warn(e));
+            }
+          }, 100);
         }
         return;
       }
-      
-      const toggleUI = (setter, value) => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setIsPointerLocked(false);
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-        setter(!value);
-      };
 
-      if (event.code === 'KeyE') toggleUI(gameState.setShowInventory, gameState.showInventory);
-      if (event.code === 'KeyC') toggleUI(gameState.setShowCrafting, gameState.showCrafting);
-      if (event.code === 'KeyM') toggleUI(gameState.setShowMagic, gameState.showMagic);
-      if (event.code === 'KeyB') toggleUI(gameState.setShowBuildingTools, gameState.showBuildingTools);
-      
+      // UI Panel toggles - only work when in game (not on main menu)
+      if (isPointerLocked || anyPanelOpen) {
+        const toggleUI = (setter, currentValue) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+
+          // Close all other panels first
+          gameState.setShowInventory(false);
+          gameState.setShowCrafting(false);
+          gameState.setShowMagic(false);
+          gameState.setShowBuildingTools(false);
+          gameState.setShowSettings(false);
+
+          // Toggle the requested panel
+          const newValue = !currentValue;
+          setter(newValue);
+
+          // Exit pointer lock for mouse control in panel
+          if (newValue && document.pointerLockElement) {
+            document.exitPointerLock();
+          }
+
+          // If closing panel, re-lock pointer
+          if (!newValue) {
+            setTimeout(() => {
+              if (document.body.requestPointerLock) {
+                document.body.requestPointerLock().catch(e => console.warn(e));
+              }
+            }, 100);
+          }
+        };
+
+        if (event.code === 'KeyE') toggleUI(gameState.setShowInventory, gameState.showInventory);
+        if (event.code === 'KeyC') toggleUI(gameState.setShowCrafting, gameState.showCrafting);
+        if (event.code === 'KeyM') toggleUI(gameState.setShowMagic, gameState.showMagic);
+        if (event.code === 'KeyB') toggleUI(gameState.setShowBuildingTools, gameState.showBuildingTools);
+      }
+
+      // Spell selection (1-4 keys) - only when in game
+      if (isPointerLocked && !anyPanelOpen) {
+        if (event.code === 'Digit1') setSelectedSpell('fireball');
+        if (event.code === 'Digit2') setSelectedSpell('iceball');
+        if (event.code === 'Digit3') setSelectedSpell('lightning');
+        if (event.code === 'Digit4') setSelectedSpell('arcane');
+      }
+
       if (event.key === 'F3') {
         setShowStats(!showStats);
         event.preventDefault();
@@ -350,7 +441,7 @@ function GameApp() {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [gameState, showStats]);
+  }, [gameState, showStats, isPointerLocked]);
 
   const handlePointerLockChange = () => {
     try {
@@ -378,7 +469,7 @@ function GameApp() {
   }
 
   return (
-    <div 
+    <div
       className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
       style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
     >
@@ -387,7 +478,7 @@ function GameApp() {
         <Canvas
           shadows={false}
           className="w-full h-full"
-          gl={{ 
+          gl={{
             antialias: true,
             alpha: false,
             depth: true,
@@ -405,25 +496,25 @@ function GameApp() {
         >
           <MinecraftSky isDay={gameState.isDay} />
           <ambientLight intensity={gameState.isDay ? 0.6 : 0.2} />
-          <directionalLight 
-            position={[50, 50, 25]} 
-            intensity={gameState.isDay ? 1.2 : 0.3} 
+          <directionalLight
+            position={[50, 50, 25]}
+            intensity={gameState.isDay ? 1.2 : 0.3}
           />
           {!gameState.isDay && (
             <pointLight position={[0, 20, 0]} intensity={0.1} distance={30} color="#4169E1" />
           )}
 
-          <PointerLockControls 
-            makeDefault 
+          <PointerLockControls
+            makeDefault
           />
-          
+
           <PositionTracker onPositionUpdate={setPlayerPosition} />
-          
+
           {/* INSTANCED RENDERING WORLD */}
           <MinecraftWorld gameState={gameState} />
-          
-          <Player 
-            gameState={gameState} 
+
+          <Player
+            gameState={gameState}
           />
 
           <NPCSystem gameState={gameState} />
@@ -439,29 +530,47 @@ function GameApp() {
 
       {/* Game UI */}
       <AnimatePresence>
-        {isPointerLocked && (
+        {isPointerLocked && gameSystems.isAlive && (
           <>
-            <GameUI 
+            <GameUI
               gameState={gameState}
               showStats={showStats}
               setShowStats={setShowStats}
               playerPosition={playerPosition}
             />
             <CombatInstructions />
-            
-            <SimpleExperienceBar 
+
+            {/* NEW: Health, Mana, Hunger Bars */}
+            <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
+              <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
+              <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
+              <PlayerHungerBar hunger={gameSystems.hunger} />
+            </div>
+
+            {/* Active Spell Indicator */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+              <div className="bg-black/60 px-4 py-2 rounded-lg text-white text-sm text-center">
+                <span className="text-gray-400">Spell: </span>
+                <span style={{ color: selectedSpell === 'fireball' ? '#FF4500' : selectedSpell === 'iceball' ? '#00BFFF' : selectedSpell === 'lightning' ? '#FFD700' : '#9932CC' }}>
+                  {selectedSpell.toUpperCase()}
+                </span>
+                <span className="text-gray-400 ml-2">({SPELL_MANA_COSTS[selectedSpell]} MP)</span>
+              </div>
+            </div>
+
+            <SimpleExperienceBar
               level={experienceSystem.playerLevel}
               currentXP={experienceSystem.currentXP}
               xpRequired={experienceSystem.xpRequired}
               xpProgress={experienceSystem.xpProgress}
             />
-            
+
             <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
-            
-            <SimpleLevelUpEffect 
+
+            <SimpleLevelUpEffect
               levelUpEffects={experienceSystem.levelUpEffects}
               onEffectComplete={(id) => {
-                experienceSystem.setLevelUpEffects(prev => 
+                experienceSystem.setLevelUpEffects(prev =>
                   prev.filter(effect => effect.id !== id)
                 );
               }}
@@ -470,10 +579,21 @@ function GameApp() {
         )}
       </AnimatePresence>
 
+      {/* Damage Overlay */}
+      <DamageOverlay active={gameSystems.damageFlash} intensity={gameSystems.screenShake} />
+
+      {/* Death Screen */}
+      {!gameSystems.isAlive && (
+        <DeathScreen onRespawn={() => {
+          gameSystems.respawn();
+          setIsPointerLocked(true);
+        }} />
+      )}
+
       {/* UI Panels */}
       <AnimatePresence>
         {gameState.showInventory && (
-          <Inventory 
+          <Inventory
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
@@ -482,7 +602,7 @@ function GameApp() {
           />
         )}
         {gameState.showCrafting && (
-          <CraftingTable 
+          <CraftingTable
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
@@ -491,7 +611,7 @@ function GameApp() {
           />
         )}
         {gameState.showMagic && (
-          <MagicSystem 
+          <MagicSystem
             gameState={gameState}
             onClose={() => {
               gameState.setShowMagic(false);
@@ -500,7 +620,7 @@ function GameApp() {
           />
         )}
         {gameState.showBuildingTools && (
-          <BuildingTools 
+          <BuildingTools
             gameState={gameState}
             onClose={() => {
               gameState.setShowBuildingTools(false);
@@ -509,7 +629,7 @@ function GameApp() {
           />
         )}
         {gameState.showSettings && (
-          <SettingsPanel 
+          <SettingsPanel
             gameState={gameState}
             onClose={() => {
               gameState.setShowSettings(false);
@@ -520,7 +640,7 @@ function GameApp() {
           />
         )}
         {gameState.showWorldManager && isAuthenticated && (
-          <WorldManager 
+          <WorldManager
             gameState={gameState}
             onWorldLoad={gameState.loadWorldData}
             onClose={() => gameState.setShowWorldManager(false)}
@@ -529,7 +649,7 @@ function GameApp() {
       </AnimatePresence>
 
       {gameState.showTradingInterface && (
-        <TradingInterface 
+        <TradingInterface
           villager={gameState.selectedVillager}
           gameState={gameState}
           onClose={() => {
@@ -539,9 +659,9 @@ function GameApp() {
         />
       )}
 
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
 
       {isPointerLocked && (
@@ -553,47 +673,48 @@ function GameApp() {
         </div>
       )}
 
-      {/* MAIN MENU - HIGH Z-INDEX FIX */}
+      {/* MAIN MENU - Only show when not in game AND no panels open */}
       <AnimatePresence>
-        {!isPointerLocked && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center pointer-events-auto"
-            style={{ zIndex: 9999, background: 'linear-gradient(to bottom right, #1a202c, #2d3748)' }}
-          >
-             <div className="text-center text-white max-w-lg mx-4">
-              <motion.h1 
-                className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", duration: 0.8 }}
-              >
-                🧙‍♂️ Crafty
-              </motion.h1>
-              <p className="text-2xl mb-8 text-green-100">
-                FIXED: High Performance • Infinite World • Working Menu
-              </p>
+        {!isPointerLocked && !gameState.showInventory && !gameState.showCrafting &&
+          !gameState.showMagic && !gameState.showBuildingTools && !gameState.showSettings && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 flex items-center justify-center pointer-events-auto"
+              style={{ zIndex: 9999, background: 'linear-gradient(to bottom right, #1a202c, #2d3748)' }}
+            >
+              <div className="text-center text-white max-w-lg mx-4">
+                <motion.h1
+                  className="text-8xl font-bold mb-4 pixel-font text-shadow-lg"
+                  initial={{ scale: 0.5 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.8 }}
+                >
+                  🧙‍♂️ Crafty
+                </motion.h1>
+                <p className="text-2xl mb-8 text-green-100">
+                  Build, Craft, Cast Spells & Explore Infinite Worlds
+                </p>
 
-              <button
-                onClick={() => {
-                  console.log('🎮 Starting game...');
-                  setIsPointerLocked(true);
-                  // Allow time for state update before requesting lock
-                  setTimeout(() => {
-                    if (document.body.requestPointerLock) {
-                      document.body.requestPointerLock().catch(e => console.warn(e));
-                    }
-                  }, 100);
-                }}
-                className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
-              >
-                🧙‍♂️ Start Magical Adventure
-              </button>
-            </div>
-          </motion.div>
-        )}
+                <button
+                  onClick={() => {
+                    console.log('🎮 Starting game...');
+                    setIsPointerLocked(true);
+                    // Allow time for state update before requesting lock
+                    setTimeout(() => {
+                      if (document.body.requestPointerLock) {
+                        document.body.requestPointerLock().catch(e => console.warn(e));
+                      }
+                    }, 100);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg pixel-font"
+                >
+                  🧙‍♂️ Start Magical Adventure
+                </button>
+              </div>
+            </motion.div>
+          )}
       </AnimatePresence>
     </div>
   );
