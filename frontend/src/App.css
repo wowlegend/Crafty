@@ -12,10 +12,6 @@
   text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
 }
 
-.text-shadow-lg {
-  text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8), 2px 2px 0px rgba(0, 0, 0, 0.6);
-}
-
 /* Authentic Minecraft Hotbar Styling */
 .minecraft-hotbar {
   display: flex;
@@ -82,7 +78,7 @@
   font-weight: bold;
 }
 
-/* Minecraft Health and Hunger Bars */
+/* Health and Hunger Bars */
 .minecraft-status-bars {
   display: flex;
   justify-content: space-between;
@@ -120,19 +116,12 @@
   text-shadow: 1px 1px 0 #000000;
 }
 
-/* Minecraft UI Panels */
+/* UI Panels */
 .minecraft-info-panel {
   background: linear-gradient(to bottom, #3a3a3a, #2a2a2a);
   border: 2px solid #000000;
   padding: 8px 12px;
   box-shadow: 0 0 0 1px #5a5a5a;
-}
-
-.minecraft-debug-panel {
-  background: rgba(0, 0, 0, 0.7);
-  border: 1px solid #5a5a5a;
-  padding: 8px;
-  font-family: 'Orbitron', monospace;
 }
 
 .minecraft-toolbar {
@@ -190,120 +179,6 @@
   font-weight: 600;
 }
 
-/* Minecraft-style Sky Colors */
-.minecraft-sky-day {
-  background: linear-gradient(to bottom, #87CEEB 0%, #98D8F4 50%, #B8E6FF 100%);
-}
-
-.minecraft-sky-night {
-  background: linear-gradient(to bottom, #0B1426 0%, #1E3A5F 50%, #2D5A87 100%);
-}
-
-/* Game UI Styles */
-.game-ui {
-  font-family: 'Orbitron', 'Courier New', monospace;
-}
-
-/* Block hover effects */
-.block-hover {
-  transition: all 0.2s ease-in-out;
-  transform-style: preserve-3d;
-}
-
-.block-hover:hover {
-  transform: scale(1.05);
-  filter: brightness(1.2);
-}
-
-/* Inventory grid */
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  gap: 8px;
-  padding: 16px;
-}
-
-.inventory-slot {
-  aspect-ratio: 1;
-  border: 2px solid #4b5563;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(145deg, #374151, #1f2937);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.inventory-slot:hover {
-  border-color: #9ca3af;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.inventory-slot.selected {
-  border-color: #fbbf24;
-  background: linear-gradient(145deg, #d97706, #92400e);
-}
-
-/* Modal animations */
-.modal-overlay {
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background: linear-gradient(145deg, #1f2937, #111827);
-  border: 2px solid #374151;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-}
-
-/* Button styles */
-.btn-primary {
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-  border: none;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: linear-gradient(145deg, #2563eb, #1e40af);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-}
-
-/* Crosshair pulse animation */
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 0.8;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
-
-.crosshair {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-/* Text effects */
-.text-outline {
-  text-shadow:
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-    1px 1px 0 #000,
-    0 0 5px rgba(0, 0, 0, 0.8);
-}
-
 /* Responsive design */
 @media (max-width: 768px) {
   .minecraft-hotbar-slot {
@@ -322,7 +197,7 @@
   }
 }
 
-/* COMBAT VISUAL EFFECTS - Screen shake animation */
+/* Combat screen shake */
 @keyframes shake {
   0% {
     transform: translate(0);
@@ -369,62 +244,197 @@
   }
 }
 
-/* Enhanced combat feedback */
-.combat-particle {
-  position: absolute;
-  pointer-events: none;
-  z-index: 1000;
-  border-radius: 50%;
-  animation: combatSpark 0.4s ease-out forwards;
-}
-
-@keyframes combatSpark {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(0);
-    opacity: 0;
-  }
-}
-
-.damage-number {
-  position: absolute;
-  pointer-events: none;
-  z-index: 1000;
-  font-family: 'Orbitron', monospace;
-  font-weight: bold;
-  color: #ff4444;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  animation: damageFloat 1s ease-out forwards;
-}
-
-@keyframes damageFloat {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: translate(-50%, -150%) scale(1.5);
-    opacity: 0;
-  }
-}
-
-/* Disable context menu */
+/* Disable context menu on canvas */
 canvas {
   outline: none;
 }
 
-/* Hide cursor when pointer is locked */
-body.pointer-locked {
-  cursor: none;
+/* --- Main Menu Animations --- */
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+
+  75% {
+    transform: translateY(-25px) rotate(2deg);
+  }
 }
 
-/* Performance optimizations */
-.gpu-accelerated {
-  transform: translateZ(0);
-  will-change: transform, opacity;
+@keyframes float-slow {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(180deg) scale(1.1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.5), 0 0 40px rgba(147, 51, 234, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(147, 51, 234, 0.8), 0 0 60px rgba(147, 51, 234, 0.4), 0 0 80px rgba(147, 51, 234, 0.2);
+  }
+}
+
+@keyframes title-glow {
+
+  0%,
+  100% {
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 165, 0, 0.3), 4px 4px 0px rgba(0, 0, 0, 0.8);
+  }
+
+  50% {
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 165, 0, 0.5), 0 0 80px rgba(147, 51, 234, 0.3), 4px 4px 0px rgba(0, 0, 0, 0.8);
+  }
+}
+
+@keyframes star-twinkle {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes drift-left {
+  0% {
+    transform: translateX(100vw) translateY(0);
+  }
+
+  100% {
+    transform: translateX(-100px) translateY(-30px);
+  }
+}
+
+@keyframes drift-right {
+  0% {
+    transform: translateX(-100px) translateY(0);
+  }
+
+  100% {
+    transform: translateX(100vw) translateY(-20px);
+  }
+}
+
+.menu-particle {
+  position: absolute;
+  border-radius: 3px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.menu-particle:nth-child(odd) {
+  animation: drift-left linear infinite;
+}
+
+.menu-particle:nth-child(even) {
+  animation: drift-right linear infinite;
+}
+
+.menu-star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: star-twinkle ease-in-out infinite;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #FFD700, #FF8C00, #FF4500, #FFD700, #FFF8DC, #FFD700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+.glow-button {
+  animation: glow-pulse 2s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.glow-button:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 0 40px rgba(147, 51, 234, 0.9), 0 0 80px rgba(147, 51, 234, 0.5) !important;
+}
+
+/* --- Glassmorphic UI Panels --- */
+
+.game-panel {
+  background: linear-gradient(135deg, rgba(30, 30, 50, 0.85), rgba(20, 20, 40, 0.92));
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.game-panel-item {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.game-panel-item:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.game-panel-item.selected {
+  border-color: rgba(255, 215, 0, 0.5);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
+}
+
+/* --- Minimap --- */
+
+.minimap-container {
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.6);
 }
