@@ -511,3 +511,52 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - ✅ Camera horizontal initialization
 - ✅ Vite build system (CRA migration)
 - ✅ React 19 + Fiber 9 + Rapier 2.2 compatibility
+### April 2, 2026 (Cleanup Phase) — Comprehensive Project Audit & Cleanup
+
+- **STALE ARTIFACT REMOVAL**:
+  - Deleted obsolete `frontend/build/` directory (leftover from previous builds).
+  - Removed 3 `.DS_Store` files (`Crafty/`, `frontend/`, `.git/`).
+  - Deleted empty `frontend/src/entities/` directory.
+  - Total disk cleanup: ~27MB.
+
+- **DEPENDENCY & SOURCE AUDIT**:
+  - Verified 17/17 source files are actively imported and functional.
+  - Confirmed all 10 production dependencies (`react`, `three`, `zustand`, etc.) are in use.
+  - Verified no `console.log` statements remain in source code (only `console.warn`/`console.error` for legitimate system feedback).
+
+- **PERFORMANCE & QUALITY CHECK**:
+  - Confirmed React performance patterns: 18 `memo`, 26 `useCallback`, 7 `useMemo` implementations across the codebase.
+  - Verified Vite 6.4 build success (2.84s build time).
+  - Identified and documented heavy `window.*` global usage (12 files) for future consolidation into Zustand.
+  - Audited CSS: Identified 4 unused classes/rules in `App.css`.
+
+- **INFRASTRUCTURE**:
+  - Verified `.gitignore` and dotfiles are minimal and correct for the Vite/React stack.
+
+### April 3, 2026 (Cleanup Phase) — Routine Codebase Maintenance
+
+- **STALE ARTIFACT REMOVAL**:
+  - Deleted newly generated `frontend/build/` directory.
+  - Removed 2 `.DS_Store` files (`Crafty/`, `frontend/`).
+
+- **DEPENDENCY & SOURCE AUDIT**:
+  - Verified 17/17 source files are actively imported.
+  - Confirmed all production dependencies are in use.
+  - Verified no `console.log` debug statements exist.
+
+- **PERFORMANCE & QUALITY CHECK**:
+  - Verified Vite 6.4 build compiles successfully (production ready).
+
+### April 3, 2026 (Phase 3) — Architectural Overhaul & State Consolidation
+
+- **CONSOLIDATED STATE**:
+  - Migrated core combat and gameplay globals (`damagePlayer`, `healPlayer`, `useMana`, `isAlive`, `getPlayerHealth`, `getPlayerMana`, `consumeHunger`, `feedPlayer`, `respawn`) from `window.*` into `useGameStore` (Zustand).
+  - Cleaned up inefficient `setInterval` polling in `StableMagicHands` by reacting directly to `activeSpell` from the Zustand store.
+  - Eliminated legacy `window.selectedSpell` variable completely.
+
+- **WORLD STATE SYNCHRONIZATION**:
+  - Fixed Save/Load bug: Synchronized `blocksRef` in `Terrain.jsx` directly with the Zustand store (`gameState.worldBlocks`).
+  - Added `PlayerModifiedBlocks` component to correctly render saved blocks on load.
+
+- **SYSTEM IMPROVEMENTS**:
+  - Consolidated duplicate `BLOCK_TYPES` configurations into a single, immutable source of truth (`world/Blocks.js`), updating all imports across the codebase.

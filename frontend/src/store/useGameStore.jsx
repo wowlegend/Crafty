@@ -10,7 +10,7 @@ export const useGameStore = create((set, get) => ({
     worldBlocks: new Map(),
     setWorldBlocks: (blocks) => set({ worldBlocks: blocks }),
 
-    activeSpell: null,
+    activeSpell: 'fireball',
     setActiveSpell: (spell) => set({ activeSpell: spell }),
 
     showTradingInterface: false,
@@ -80,6 +80,98 @@ export const useGameStore = create((set, get) => ({
     setAchievements: (achievementsArg) => set((state) => ({
         achievements: typeof achievementsArg === 'function' ? achievementsArg(state.achievements) : achievementsArg
     })),
+
+    playerHealth: 100,
+    maxHealth: 100,
+    mana: 100,
+    maxMana: 100,
+    hunger: 100,
+    isAlive: true,
+    damageFlash: false,
+    screenShake: 0,
+    
+    setPlayerHealth: (healthArg) => set((state) => ({ playerHealth: typeof healthArg === 'function' ? healthArg(state.playerHealth) : healthArg })),
+    setMaxHealth: (max) => set({ maxHealth: max }),
+    setMana: (manaArg) => set((state) => ({ mana: typeof manaArg === 'function' ? manaArg(state.mana) : manaArg })),
+    setMaxMana: (max) => set({ maxMana: max }),
+    setHunger: (hungerArg) => set((state) => ({ hunger: typeof hungerArg === 'function' ? hungerArg(state.hunger) : hungerArg })),
+    setIsAlive: (alive) => set({ isAlive: alive }),
+    setDamageFlash: (flash) => set({ damageFlash: flash }),
+    setScreenShake: (shake) => set({ screenShake: shake }),
+
+    lastDamageTime: 0,
+    setLastDamageTime: (time) => set({ lastDamageTime: time }),
+
+    damagePlayer: (amount, source = 'unknown') => {
+        const state = get();
+        if (!state.isAlive) return;
+
+        const now = Date.now();
+        if (now - window._spawnTime < 5000) return;
+
+        if (now - state.lastDamageTime < 500) return;
+
+        set({
+            lastDamageTime: now,
+            damageFlash: true,
+            screenShake: amount / 10
+        });
+
+        setTimeout(() => {
+            set({ damageFlash: false, screenShake: 0 });
+        }, 200);
+
+        const newHealth = Math.max(0, state.playerHealth - amount);
+        set({ playerHealth: newHealth });
+        
+        if (newHealth <= 0) {
+            set({ isAlive: false });
+            if (window.playDefeatSound) window.playDefeatSound();
+        }
+
+        if (window.playHitSound) window.playHitSound();
+    },
+
+    healPlayer: (amount) => {
+        const state = get();
+        if (!state.isAlive) return;
+        set({ playerHealth: Math.min(state.playerHealth + amount, state.maxHealth) });
+    },
+
+    useMana: (cost) => {
+        const state = get();
+        if (state.mana >= cost) {
+            set({ mana: Math.max(0, state.mana - cost) });
+            return true;
+        }
+        return false;
+    },
+
+    consumeHunger: (amount = 0.5) => {
+        const state = get();
+        if (!state.isAlive) return;
+        const newHunger = Math.max(0, state.hunger - amount);
+        set({ hunger: newHunger });
+        if (newHunger <= 0) {
+            state.damagePlayer(1, 'starvation');
+        }
+    },
+
+    feedPlayer: (amount) => {
+        const state = get();
+        set({ hunger: Math.min(100, state.hunger + amount) });
+    },
+
+    respawn: () => {
+        const state = get();
+        set({
+            playerHealth: state.maxHealth,
+            mana: state.maxMana,
+            hunger: 100,
+            isAlive: true
+        });
+        window._spawnTime = Date.now();
+    },
 
     playerStats: {
         blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0

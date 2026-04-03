@@ -28,24 +28,7 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 
 // BLOCK TYPES - Immutable configuration
-export const BLOCK_TYPES = Object.freeze({
-  grass: Object.freeze({ color: '#567C35', name: 'Grass Block', texture: 'grass' }),
-  dirt: Object.freeze({ color: '#976D4D', name: 'Dirt', texture: 'dirt' }),
-  stone: Object.freeze({ color: '#707070', name: 'Stone', texture: 'stone' }),
-  wood: Object.freeze({ color: '#8F7748', name: 'Oak Wood', texture: 'wood' }),
-  glass: Object.freeze({ color: '#F0F8FF', name: 'Glass', texture: 'glass', transparent: true }),
-  water: Object.freeze({ color: '#3F76E4', name: 'Water', texture: 'water', transparent: true }),
-  lava: Object.freeze({ color: '#FF4500', name: 'Lava', texture: 'lava', emissive: true }),
-  diamond: Object.freeze({ color: '#4FD0E7', name: 'Diamond Ore', texture: 'diamond', emissive: true }),
-  gold: Object.freeze({ color: '#FCEE4B', name: 'Gold Ore', texture: 'gold' }),
-  iron: Object.freeze({ color: '#D8AF93', name: 'Iron Ore', texture: 'iron' }),
-  coal: Object.freeze({ color: '#2F2F2F', name: 'Coal Ore', texture: 'coal' }),
-  sand: Object.freeze({ color: '#DBD3A0', name: 'Sand', texture: 'sand' }),
-  cobblestone: Object.freeze({ color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' })
-});
-
-const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
-const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);
+import { BLOCK_TYPES, HOTBAR_BLOCKS } from './world/Blocks';
 
 // --- UI COMPONENTS (UNCHANGED) ---
 export const MinecraftHotbar = React.memo(({ gameState }) => {
@@ -298,7 +281,7 @@ export const Player = ({ isWorldBuilt }) => {
         lastCastTime.current = now;
 
         if (window.castSpell) {
-          const currentSpell = window.selectedSpell || 'fireball';
+          const currentSpell = gameState.activeSpell;
           window.castSpell(currentSpell);
           if (window.onSpellCast) window.onSpellCast();
         }
@@ -331,6 +314,7 @@ export const Player = ({ isWorldBuilt }) => {
 // Magic Hands with effects — uses smoothed camera matrix for zero-jitter rendering
 const StableMagicHands = ({ selectedBlock, isAttacking }) => {
   const { camera } = useThree();
+  const activeSpell = useGameStore(state => state.activeSpell) || 'fireball';
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   const wandRef = useRef();
@@ -339,25 +323,14 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
   const smoothCamPos = useRef(new THREE.Vector3(0, 40, 0));
   const smoothMatrix = useRef(new THREE.Matrix4());
 
-  // Sync with global selected spell
-  const [selectedSpell, setLocalSpell] = useState(window.selectedSpell || 'fireball');
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (window.selectedSpell && window.selectedSpell !== selectedSpell) {
-        setLocalSpell(window.selectedSpell);
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, [selectedSpell]);
-
-  const currentSpellColor = SPELL_COLORS[selectedSpell] || SPELL_COLORS.fireball;
+  const currentSpellColor = SPELL_COLORS[activeSpell] || SPELL_COLORS.fireball;
 
   useFrame((state) => {
     if (rightHandRef.current && leftHandRef.current && camera) {
       const time = state.clock.elapsedTime;
 
-      // Build a smoothed camera matrix — eliminates ALL physics jitter
-      smoothCamPos.current.lerp(camera.position, 0.08);
+      // Build a smoothed camera matrix — eliminates ALL physics jitter but tracks fast enough
+      smoothCamPos.current.lerp(camera.position, 0.4);
       smoothMatrix.current.compose(
         smoothCamPos.current,
         camera.quaternion,
@@ -413,7 +386,7 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
             <meshBasicMaterial color={currentSpellColor} transparent opacity={0.4} />
           </mesh>
         )}
-        {isAttacking && <SpellHandEffects spellType={selectedSpell} />}
+        {isAttacking && <SpellHandEffects spellType={activeSpell} />}
       </group>
       <group ref={leftHandRef}>
         <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
@@ -424,7 +397,7 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
               <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
-            <SpellLeftHandEffects spellType={selectedSpell} />
+            <SpellLeftHandEffects spellType={activeSpell} />
           </group>
         )}
         {!isAttacking && selectedBlock && (
@@ -458,3 +431,4 @@ const SpellHandEffects = ({ spellType }) => {
 const SpellLeftHandEffects = ({ spellType }) => {
   return null;
 };
+;

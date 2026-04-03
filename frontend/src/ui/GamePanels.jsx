@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { BLOCK_TYPES } from '../Components';
+import { BLOCK_TYPES } from '../world/Blocks';
 
 export const Inventory = ({ onClose }) => {
     const gameState = useGameStore();
@@ -15,17 +15,17 @@ export const Inventory = ({ onClose }) => {
 
         // Healing Items
         if (item.includes('Health Potion')) {
-            if (window.healPlayer) window.healPlayer(30);
+            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(30);
         } else if (item.includes('Cooked')) {
-            if (window.feedPlayer) window.feedPlayer(40);
-            if (window.healPlayer) window.healPlayer(10);
+            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(40);
+            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(10);
         } else if (item.includes('Apple')) {
-            if (window.feedPlayer) window.feedPlayer(20);
-            if (window.healPlayer) window.healPlayer(5);
+            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(20);
+            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(5);
         } else if (item.includes('Raw')) {
-            if (window.feedPlayer) window.feedPlayer(15);
+            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(15);
         } else if (item.includes('Rotten Flesh')) {
-            if (window.feedPlayer) window.feedPlayer(10);
+            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(10);
             // Maybe add a poison effect later
         }
         // Mana Items

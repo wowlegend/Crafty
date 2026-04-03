@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BLOCK_TYPES, BLOCK_TYPE_KEYS } from './Blocks';
 import { OptimizedGrassSystem } from '../OptimizedGrassSystem';
 import { useGameStore } from '../store/useGameStore';
-import { RigidBody, TrimeshCollider } from '@react-three/rapier';
+import { RigidBody, TrimeshCollider, CuboidCollider } from '@react-three/rapier';
 
 // --- VISUAL-ONLY CHUNK MESH (No Physics) ---
 // Each block type in a chunk gets its own InstancedMesh for batched GPU rendering.
@@ -239,6 +239,41 @@ const TerrainChunk = React.memo(({ cx, cz, blocksRef }) => {
     );
 });
 
+// --- PLAYER MODIFIED BLOCKS ---
+const PlayerModifiedBlocks = React.memo(({ blocks }) => {
+    if (!blocks || blocks.size === 0) return null;
+    
+    const { typeMap, colliderBlocks } = useMemo(() => {
+        const map = {};
+        BLOCK_TYPE_KEYS.forEach(key => map[key] = []);
+        const colliders = [];
+        
+        blocks.forEach((block, key) => {
+            if (block.type && block.type !== 'air') {
+                if (map[block.type]) map[block.type].push(block);
+                colliders.push({ key, pos: block.position });
+            }
+        });
+        return { typeMap: map, colliderBlocks: colliders };
+    }, [blocks]);
+
+    return (
+        <group>
+            {BLOCK_TYPE_KEYS.map(type => {
+                if (typeMap[type].length > 0) {
+                    return <ChunkMesh key={`player-${type}`} type={type} blocks={typeMap[type]} />;
+                }
+                return null;
+            })}
+            {colliderBlocks.map(b => (
+                <RigidBody key={`col-${b.key}`} type="fixed" position={b.pos}>
+                    <CuboidCollider args={[0.5, 0.5, 0.5]} />
+                </RigidBody>
+            ))}
+        </group>
+    );
+});
+
 // --- MAIN WORLD COMPONENT ---
 export const MinecraftWorld = React.memo(() => {
     const gameState = useGameStore();
@@ -248,6 +283,17 @@ export const MinecraftWorld = React.memo(() => {
     const [chunks, setChunks] = useState([]);
     const generatedChunksRef = useRef(new Set());
     const lastPlayerChunk = useRef({ x: 0, z: 0 });
+
+    // Track loaded game state
+    const lastLoadedWorld = useRef(null);
+    if (gameState.worldBlocks !== lastLoadedWorld.current) {
+        lastLoadedWorld.current = gameState.worldBlocks;
+        if (gameState.worldBlocks) {
+            gameState.worldBlocks.forEach((value, key) => {
+                blocksRef.current.set(key, value);
+            });
+        }
+    }
 
     const CHUNK_SIZE = 16;
     const RENDER_DISTANCE = 4;
@@ -282,7 +328,7 @@ export const MinecraftWorld = React.memo(() => {
         };
     }, []);
 
-    // Chunk loading around player
+    // Track player chunk movement for culling (Generation is handled by processChunks now)
     useFrame(() => {
         if (!camera) return;
 
@@ -291,29 +337,11 @@ export const MinecraftWorld = React.memo(() => {
 
         if (cx !== lastPlayerChunk.current.x || cz !== lastPlayerChunk.current.z) {
             lastPlayerChunk.current = { x: cx, z: cz };
-
-            const newChunks = [];
-            for (let x = -RENDER_DISTANCE; x <= RENDER_DISTANCE; x++) {
-                for (let z = -RENDER_DISTANCE; z <= RENDER_DISTANCE; z++) {
-                    const chunkKey = `${cx + x},${cz + z}`;
-                    if (!generatedChunksRef.current.has(chunkKey)) {
-                        generatedChunksRef.current.add(chunkKey);
-                        newChunks.push({ cx: cx + x, cz: cz + z, key: chunkKey });
-                    }
-                }
-            }
-
-            setChunks(prev => {
-                const combined = [...prev, ...newChunks];
-                return combined.filter(c =>
-                    Math.abs(c.cx - cx) <= RENDER_DISTANCE + 3 &&
-                    Math.abs(c.cz - cz) <= RENDER_DISTANCE + 3
-                );
-            });
+            // Let the processChunks useEffect handle generation and culling
         }
     });
 
-    // Progressive chunk loading
+    // Progressive chunk loading - Prioritizes chunks the player is looking at
     useEffect(() => {
         generatedChunksRef.current.add('0,0');
         setChunks([{ cx: 0, cz: 0, key: '0,0' }]);
@@ -326,22 +354,87 @@ export const MinecraftWorld = React.memo(() => {
             }
         }
 
-        initialChunks.sort((a, b) => a.dist - b.dist);
+        // Generate chunks in batches, prioritizing ones in front of the camera
+        let isProcessing = true;
 
-        let i = 0;
-        const loadInterval = setInterval(() => {
-            if (i >= initialChunks.length) {
-                clearInterval(loadInterval);
-                return;
+        const processChunks = () => {
+            if (!isProcessing || !camera) return;
+
+            // Get current camera direction projected onto XZ plane
+            const lookDir = new THREE.Vector3();
+            camera.getWorldDirection(lookDir);
+            lookDir.y = 0;
+            lookDir.normalize();
+
+            const playerCx = Math.floor(camera.position.x / CHUNK_SIZE);
+            const playerCz = Math.floor(camera.position.z / CHUNK_SIZE);
+
+            // Find missing chunks within render distance
+            const missing = [];
+            for (let nx = -RENDER_DISTANCE; nx <= RENDER_DISTANCE; nx++) {
+                for (let nz = -RENDER_DISTANCE; nz <= RENDER_DISTANCE; nz++) {
+                    const cx = playerCx + nx;
+                    const cz = playerCz + nz;
+                    const key = `${cx},${cz}`;
+                    if (!generatedChunksRef.current.has(key)) {
+                        // Calculate vector from player to chunk
+                        const chunkDir = new THREE.Vector3(nx, 0, nz).normalize();
+                        const dist = nx * nx + nz * nz;
+
+                        // Dot product: >0 means in front, <0 means behind
+                        const dot = lookDir.dot(chunkDir);
+
+                        // Score: Lower is better (prioritize front and close)
+                        // -dot * 5 gives heavy preference to chunks in front
+                        const score = dist - (dot * 5);
+
+                        missing.push({ cx, cz, key, score });
+                    }
+                }
             }
-            const chunk = initialChunks[i];
-            generatedChunksRef.current.add(chunk.key);
-            setChunks(prev => [...prev, chunk]);
-            i++;
-        }, 100);
 
-        return () => clearInterval(loadInterval);
-    }, []);
+            if (missing.length > 0) {
+                // Sort by prioritized score
+                missing.sort((a, b) => a.score - b.score);
+
+                // Process 2 chunks per frame to prevent stutter while keeping up with player
+                const batch = missing.slice(0, 2);
+                batch.forEach(c => generatedChunksRef.current.add(c.key));
+
+                setChunks(prev => {
+                    const next = [...prev, ...batch];
+                    // Cull chunks only if they are very far away to prevent popping when looking around
+                    const cullDistance = RENDER_DISTANCE + 6;
+
+                    const filtered = next.filter(c =>
+                        Math.abs(c.cx - playerCx) <= cullDistance &&
+                        Math.abs(c.cz - playerCz) <= cullDistance
+                    );
+
+                    // If a chunk is culled, we should also remove it from generatedChunksRef 
+                    // so it can be re-generated if the player walks back.
+                    // However, we only do this cleanup occasionally to save CPU
+                    if (filtered.length < next.length && Math.random() < 0.1) {
+                        const keptKeys = new Set(filtered.map(c => c.key));
+                        for (const key of generatedChunksRef.current) {
+                            if (!keptKeys.has(key)) generatedChunksRef.current.delete(key);
+                        }
+                    }
+
+                    return filtered;
+                });
+            }
+
+            if (isProcessing) {
+                setTimeout(processChunks, 40); // Slightly faster loop for smoother turning (25 batches/sec)
+            }
+        };
+
+        // Start processing
+        setTimeout(processChunks, 500);
+
+        return () => { isProcessing = false; };
+    }, [camera]);
 
     // Raycast interaction (building/destroying)
     useEffect(() => {
@@ -415,7 +508,7 @@ export const MinecraftWorld = React.memo(() => {
         };
         window.addEventListener('mousedown', handleClick);
         return () => window.removeEventListener('mousedown', handleClick);
-    }, [camera, gameState.selectedBlock]);
+    }, [camera, gameState]);
 
     return (
         <group>
@@ -424,6 +517,8 @@ export const MinecraftWorld = React.memo(() => {
             {chunks.map(chunk => (
                 <TerrainChunk key={chunk.key} cx={chunk.cx} cz={chunk.cz} blocksRef={blocksRef} />
             ))}
+
+            <PlayerModifiedBlocks blocks={gameState.worldBlocks} />
         </group>
     );
 });

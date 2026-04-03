@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore } from './store/useGameStore';
 
 // --- Player Stats, Mana, Combat, Progression ---
 
@@ -30,21 +31,11 @@ export const useGameSystems = () => {
 };
 
 export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
-    // === PLAYER HEALTH SYSTEM ===
-    const [playerHealth, setPlayerHealth] = useState(100);
-    const [maxHealth, setMaxHealth] = useState(100);
-    const [isAlive, setIsAlive] = useState(true);
-    const [lastDamageTime, setLastDamageTime] = useState(0);
-    const [damageFlash, setDamageFlash] = useState(false);
-    const [screenShake, setScreenShake] = useState(0);
+    const gameState = useGameStore();
+    const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
+    const { setPlayerHealth, setMaxHealth, setIsAlive, setDamageFlash, setScreenShake, setMana, setMaxMana, setHunger } = gameState;
 
-    // === MANA SYSTEM ===
-    const [mana, setMana] = useState(100);
-    const [maxMana, setMaxMana] = useState(100);
     const manaRegenTimer = useRef(null);
-
-    // === HUNGER SYSTEM ===
-    const [hunger, setHunger] = useState(100);
     const hungerTimer = useRef(null);
 
     // === LEVEL-BASED STAT BONUSES ===
@@ -74,112 +65,29 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
         // Heal to new max on level up
         setPlayerHealth(prev => Math.min(prev + 20, newMaxHealth));
         setMana(prev => Math.min(prev + 10, newMaxMana));
-    }, [playerLevel, getMaxHealthBonus, getManaBonus]);
-
-    // === DAMAGE PLAYER ===
-    const damagePlayer = useCallback((amount, source = 'unknown') => {
-        if (!isAlive) return;
-
-        const now = Date.now();
-        // Give player a 5 second grace period after spawning to avoid lag deaths
-        if (now - window._spawnTime < 5000) return;
-
-        // Invincibility frames (500ms)
-        if (now - lastDamageTime < 500) return;
-
-        setLastDamageTime(now);
-        setDamageFlash(true);
-        setScreenShake(amount / 10);
-
-        setTimeout(() => {
-            setDamageFlash(false);
-            setScreenShake(0);
-        }, 200);
-
-        setPlayerHealth(prev => {
-            const newHealth = Math.max(0, prev - amount);
-            if (newHealth <= 0) {
-                setIsAlive(false);
-                if (window.playDefeatSound) window.playDefeatSound();
-            }
-            return newHealth;
-        });
-
-        // Play damage sound
-        if (window.playHitSound) window.playHitSound();
-    }, [isAlive, lastDamageTime]);
-
-    // === HEAL PLAYER ===
-    const healPlayer = useCallback((amount) => {
-        if (!isAlive) return;
-        setPlayerHealth(prev => Math.min(prev + amount, maxHealth));
-    }, [isAlive, maxHealth]);
-
-    // === MANA SYSTEM ===
-    const useMana = useCallback((cost) => {
-        if (mana >= cost) {
-            setMana(prev => Math.max(0, prev - cost));
-            return true;
-        }
-        return false;
-    }, [mana]);
+    }, [playerLevel, getMaxHealthBonus, getManaBonus, setMaxHealth, setMaxMana, setPlayerHealth, setMana]);
 
     // Mana regeneration - FAST REGEN for action combat
     useEffect(() => {
         manaRegenTimer.current = setInterval(() => {
-            if (isAlive) {
-                setMana(prev => Math.min(prev + 10, maxMana)); // +10 mana per second (up from 2)
+            const state = useGameStore.getState();
+            if (state.isAlive) {
+                state.setMana(prev => Math.min(prev + 10, state.maxMana)); 
             }
         }, 1000);
         return () => clearInterval(manaRegenTimer.current);
-    }, [isAlive, maxMana]);
-
-    // === HUNGER SYSTEM ===
-    const consumeHunger = useCallback((amount = 0.5) => {
-        if (!isAlive) return;
-        setHunger(prev => {
-            const newHunger = Math.max(0, prev - amount);
-            // Starvation damage
-            if (newHunger <= 0) {
-                damagePlayer(1, 'starvation');
-            }
-            return newHunger;
-        });
-    }, [isAlive, damagePlayer]);
-
-    const feedPlayer = useCallback((amount) => {
-        setHunger(prev => Math.min(100, prev + amount));
     }, []);
 
     // Hunger depletes over time
     useEffect(() => {
         hungerTimer.current = setInterval(() => {
-            if (isAlive) {
-                consumeHunger(0.1); // Slow hunger drain
+            const state = useGameStore.getState();
+            if (state.isAlive) {
+                state.consumeHunger(0.1); 
             }
         }, 5000);
         return () => clearInterval(hungerTimer.current);
-    }, [isAlive, consumeHunger]);
-
-    // === RESPAWN ===
-    const respawn = useCallback(() => {
-        setPlayerHealth(maxHealth);
-        setMana(maxMana);
-        setHunger(100);
-        setIsAlive(true);
-        window._spawnTime = Date.now();
-    }, [maxHealth, maxMana]);
-
-    // Expose functions globally
-    useEffect(() => {
-        window.damagePlayer = damagePlayer;
-        window.healPlayer = healPlayer;
-        window.useMana = useMana;
-        window.getSpellDamageMultiplier = getSpellDamageMultiplier;
-        window.isPlayerAlive = () => isAlive;
-        window.getPlayerHealth = () => playerHealth;
-        window.getPlayerMana = () => mana;
-    }, [damagePlayer, healPlayer, useMana, getSpellDamageMultiplier, isAlive, playerHealth, mana]);
+    }, []);
 
     const value = {
         playerHealth,
@@ -190,12 +98,12 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
         isAlive,
         damageFlash,
         screenShake,
-        damagePlayer,
-        healPlayer,
-        useMana,
-        consumeHunger,
-        feedPlayer,
-        respawn,
+        damagePlayer: gameState.damagePlayer,
+        healPlayer: gameState.healPlayer,
+        useMana: gameState.useMana,
+        consumeHunger: gameState.consumeHunger,
+        feedPlayer: gameState.feedPlayer,
+        respawn: gameState.respawn,
         getSpellDamageMultiplier,
         getMaxHealthBonus,
     };
