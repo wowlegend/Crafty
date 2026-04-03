@@ -187,7 +187,6 @@ function GameApp({ experienceSystem }) {
   const [showStats, setShowStats] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
-  const [selectedSpell, setSelectedSpell] = useState('fireball');
   const [showAchievements, setShowAchievements] = useState(false);
   const [showSpellUpgrades, setShowSpellUpgrades] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
@@ -271,12 +270,6 @@ function GameApp({ experienceSystem }) {
     window.playHitSound = playHit;
     window.playDefeatSound = playDefeat;
   }, [playAttack, playSwing, playHit, playDefeat]);
-
-  // Expose selected spell globally for Components.js to read
-  useEffect(() => {
-    window.selectedSpell = selectedSpell;
-    window.setSelectedSpell = setSelectedSpell;
-  }, [selectedSpell]);
 
   useEffect(() => {
     window.addToInventory = gameState.addToInventory;
@@ -373,10 +366,10 @@ function GameApp({ experienceSystem }) {
 
       // Spell selection (1-4 keys) - only when in game
       if (isPointerLocked && !anyPanelOpen) {
-        if (event.code === 'Digit1') setSelectedSpell('fireball');
-        if (event.code === 'Digit2') setSelectedSpell('iceball');
-        if (event.code === 'Digit3') setSelectedSpell('lightning');
-        if (event.code === 'Digit4') setSelectedSpell('arcane');
+        if (event.code === 'Digit1') gameState.setActiveSpell('fireball');
+        if (event.code === 'Digit2') gameState.setActiveSpell('iceball');
+        if (event.code === 'Digit3') gameState.setActiveSpell('lightning');
+        if (event.code === 'Digit4') gameState.setActiveSpell('arcane');
       }
 
       // Q = Claim all completed quests
@@ -567,8 +560,7 @@ function GameApp({ experienceSystem }) {
               {/* Boss Mob 3D Entity */}
               <BossEntity
                 bossActive={bossSystem.bossActive}
-                bossPosition={bossSystem.bossPosition}
-                setBossPosition={bossSystem.setBossPosition}
+                bossPositionRef={bossSystem.bossPositionRef}
                 bossPhase={bossSystem.bossPhase}
                 playerPosition={playerPosition}
               />
@@ -619,10 +611,10 @@ function GameApp({ experienceSystem }) {
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
               <div className="bg-black/60 px-4 py-2 rounded-lg text-white text-sm text-center">
                 <span className="text-gray-400">Spell: </span>
-                <span style={{ color: selectedSpell === 'fireball' ? '#FF4500' : selectedSpell === 'iceball' ? '#00BFFF' : selectedSpell === 'lightning' ? '#FFD700' : '#9932CC' }}>
-                  {selectedSpell.toUpperCase()}
+                <span style={{ color: gameState.activeSpell === 'fireball' ? '#FF4500' : gameState.activeSpell === 'iceball' ? '#00BFFF' : gameState.activeSpell === 'lightning' ? '#FFD700' : '#9932CC' }}>
+                  {gameState.activeSpell.toUpperCase()}
                 </span>
-                <span className="text-gray-400 ml-2">({SPELL_MANA_COSTS[selectedSpell]} MP)</span>
+                <span className="text-gray-400 ml-2">({SPELL_MANA_COSTS[gameState.activeSpell]} MP)</span>
               </div>
             </div>
 

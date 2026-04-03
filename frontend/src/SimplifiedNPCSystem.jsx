@@ -356,8 +356,8 @@ export const NPCSystem = () => {
           if (distToPlayer3D < MELEE_RANGE) {
             const now = performance.now();
             const lastAtk = entity.lastAttackTime || 0;
-            if (now - lastAtk > ATTACK_COOLDOWN && window.damagePlayer) {
-              window.damagePlayer(mobConfig.damage, entity.type);
+            if (now - lastAtk > ATTACK_COOLDOWN && useGameStore.getState().damagePlayer) {
+              useGameStore.getState().damagePlayer(mobConfig.damage, entity.type);
               newEntity.lastAttackTime = now;
             }
           }

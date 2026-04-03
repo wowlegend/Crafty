@@ -189,7 +189,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
       // CHECK MANA COST
       const manaCost = SPELL_MANA_COSTS[spellType] || 15;
-      if (window.useMana && !window.useMana(manaCost)) {
+      if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         return; // Don't cast if not enough mana
       }
 
@@ -226,11 +226,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       };
 
       // CRITICAL: Add to ref immediately for reliable rapid casting
-      projectilesRef.current = [...projectilesRef.current, newProjectile];
+      projectilesRef.current.push(newProjectile);
       projectilesDirty.current = true;
-      // Immediately sync state for this new projectile (so it renders on next frame)
-      setProjectiles([...projectilesRef.current]);
 
+      // Let useFrame handle the state sync naturally to avoid React rate-limiting during rapid fire
+      // (Removed synchronous setProjectiles here)
 
       // Create initial spell trail from wand
       createSpellTrail(startPos, direction, spell);
@@ -266,7 +266,13 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       maxAge: 1000
     };
 
-    setSpellTrails(prev => [...prev, newTrail]);
+    // Use functional state update to prevent stale closures
+    setSpellTrails(prev => {
+      // Limit total trails to prevent memory leaks during rapid fire
+      const maxTrails = 20;
+      const next = [...prev, newTrail];
+      return next.length > maxTrails ? next.slice(next.length - maxTrails) : next;
+    });
   };
 
   // Create spell impact effect
@@ -393,7 +399,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
               case 'pierce':
                 // Heal player
                 const healAmount = Math.floor(projectile.damage * sec.lifestealPercent / 100);
-                if (window.healPlayer) window.healPlayer(healAmount);
+                if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(healAmount);
                 // Pierce continues (don't remove projectile)
                 projectile.pierceCount = (projectile.pierceCount || 0) + 1;
                 if (projectile.pierceCount < sec.pierceCount) {

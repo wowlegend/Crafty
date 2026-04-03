@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore } from './store/useGameStore';
 
 // Advanced Game Features: Survival Mode, Boss Mob, Pet System, Spell Upgrades
 
@@ -38,7 +39,7 @@ export const useSurvivalMode = (isDay) => {
     useEffect(() => {
         if (!isDay) {
             const nightHunger = setInterval(() => {
-                if (window.damagePlayer && window.isPlayerAlive && window.isPlayerAlive()) {
+                if (useGameStore.getState().damagePlayer && useGameStore.getState().isAlive && useGameStore.getState().isAlive) {
                     // Extra hunger drain represented as very small starvation pressure
                     // The actual hunger system in GameSystems.js handles the base drain
                 }
@@ -107,7 +108,7 @@ export const useBossSystem = (playerLevel, playerPosition) => {
     const [bossActive, setBossActive] = useState(false);
     const [bossHealth, setBossHealth] = useState(BOSS_CONFIG.health);
     const [bossMaxHealth] = useState(BOSS_CONFIG.health);
-    const [bossPosition, setBossPosition] = useState(null);
+    const bossPositionRef = useRef(null);
     const [bossDefeated, setBossDefeated] = useState(false);
     const [bossPhase, setBossPhase] = useState(0);
     const [bossNotification, setBossNotification] = useState(null);
@@ -132,7 +133,7 @@ export const useBossSystem = (playerLevel, playerPosition) => {
                     y = window.getMobGroundLevel(x, z);
                     if (isNaN(y)) y = 16;
                 }
-                setBossPosition([x, y + 2, z]);
+                bossPositionRef.current = [x, y + 2, z];
                 setBossActive(true);
             }
         }
@@ -176,12 +177,12 @@ export const useBossSystem = (playerLevel, playerPosition) => {
     // Expose boss damage globally
     useEffect(() => {
         window.damageBoss = damageBoss;
-        window.getBossPosition = () => bossPosition;
+        window.getBossPosition = () => bossPositionRef.current;
         window.isBossActive = () => bossActive;
-    }, [damageBoss, bossPosition, bossActive]);
+    }, [damageBoss, bossPositionRef, bossActive]);
 
     return {
-        bossActive, bossHealth, bossMaxHealth, bossPosition, setBossPosition,
+        bossActive, bossHealth, bossMaxHealth, bossPositionRef,
         bossDefeated, bossPhase, bossNotification, damageBoss,
     };
 };
@@ -223,19 +224,19 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
 });
 
 // Boss 3D Entity (renders inside Canvas)
-export const BossEntity = ({ bossActive, bossPosition, setBossPosition, bossPhase, playerPosition }) => {
+export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosition }) => {
     const meshRef = useRef();
     const { camera } = useThree();
     const lastAttack = useRef(0);
 
     useFrame((state, delta) => {
-        if (!bossActive || !bossPosition || !meshRef.current) return;
+        if (!bossActive || !bossPositionRef?.current || !meshRef.current) return;
 
         const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
         const playerX = camera.position.x;
         const playerZ = camera.position.z;
-        const bx = bossPosition[0];
-        const bz = bossPosition[2];
+        const bx = bossPositionRef.current[0];
+        const bz = bossPositionRef.current[2];
 
         // Chase player
         const dx = playerX - bx;
@@ -249,13 +250,13 @@ export const BossEntity = ({ bossActive, bossPosition, setBossPosition, bossPhas
             const newX = bx + nx * moveSpeed;
             const newZ = bz + nz * moveSpeed;
 
-            let newY = bossPosition[1];
+            let newY = bossPositionRef.current[1];
             if (window.getMobGroundLevel) {
                 const groundY = window.getMobGroundLevel(newX, newZ);
                 if (!isNaN(groundY)) newY = groundY + 2;
             }
 
-            setBossPosition([newX, newY, newZ]);
+            bossPositionRef.current = [newX, newY, newZ];
             meshRef.current.position.set(newX, newY, newZ);
 
             // Face player
@@ -267,8 +268,8 @@ export const BossEntity = ({ bossActive, bossPosition, setBossPosition, bossPhas
             const now = performance.now();
             if (now - lastAttack.current > BOSS_CONFIG.attackCooldown) {
                 lastAttack.current = now;
-                if (window.damagePlayer) {
-                    window.damagePlayer(phase.damage, 'Shadow Dragon');
+                if (useGameStore.getState().damagePlayer) {
+                    useGameStore.getState().damagePlayer(phase.damage, 'Shadow Dragon');
                 }
             }
         }
@@ -282,12 +283,12 @@ export const BossEntity = ({ bossActive, bossPosition, setBossPosition, bossPhas
         }
     });
 
-    if (!bossActive || !bossPosition) return null;
+    if (!bossActive || !bossPositionRef?.current) return null;
 
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
 
     return (
-        <group ref={meshRef} position={bossPosition}>
+        <group ref={meshRef} position={bossPositionRef.current}>
             {/* Body */}
             <mesh>
                 <boxGeometry args={[3, 2, 4]} />
