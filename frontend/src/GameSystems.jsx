@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 
-// --- Player Stats, Mana, Combat, Progression ---
 
 const GameSystemsContext = createContext();
 
@@ -38,7 +37,6 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
     const manaRegenTimer = useRef(null);
     const hungerTimer = useRef(null);
 
-    // === LEVEL-BASED STAT BONUSES ===
     const getMaxHealthBonus = useCallback(() => {
         return (playerLevel - 1) * 10; // +10 health per level
     }, [playerLevel]);
@@ -114,7 +112,6 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
         </GameSystemsContext.Provider>
     );
 };
-// --- Spell Colors (canonical source, import in other files) ---
 export const SPELL_COLORS = {
     fireball: '#FF4500',
     iceball: '#00BFFF',
@@ -122,7 +119,6 @@ export const SPELL_COLORS = {
     arcane: '#9932CC',
 };
 
-// --- Spell Mana Costs ---
 export const SPELL_MANA_COSTS = {
     fireball: 15,
     iceball: 12,
@@ -132,7 +128,6 @@ export const SPELL_MANA_COSTS = {
     heal: 40,
 };
 
-// --- Spell Secondary Effects ---
 export const SPELL_EFFECTS = {
     fireball: {
         burn: { duration: 3, damagePerSecond: 5 },
@@ -151,7 +146,6 @@ export const SPELL_EFFECTS = {
     },
 };
 
-// --- UI Components ---
 
 // Health Bar Component
 export const PlayerHealthBar = ({ health, maxHealth }) => {
