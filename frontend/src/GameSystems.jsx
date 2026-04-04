@@ -51,7 +51,7 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
 
     // Initialize spawn time to prevent instant fall damage when chunks generate
     useEffect(() => {
-        window._spawnTime = Date.now();
+        useGameStore.setState({ _spawnTime: Date.now() });
     }, []);
 
     // Update max stats based on level

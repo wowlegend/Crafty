@@ -43,19 +43,15 @@ function GameApp({ experienceSystem }) {
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (window.isSpawnChunkLoaded) {
-        setIsWorldBuilt(true);
-        clearInterval(interval);
-        setTimeout(() => {
-          if (document.body.requestPointerLock) {
-            document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e));
-          }
-        }, 100);
-      }
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
+    if (gameState.isSpawnChunkLoaded && !isWorldBuilt) {
+      setIsWorldBuilt(true);
+      setTimeout(() => {
+        if (document.body.requestPointerLock) {
+          document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e));
+        }
+      }, 100);
+    }
+  }, [gameState.isSpawnChunkLoaded, isWorldBuilt]);
 
   const gameSystems = useGameSystems();
   const questSystem = useQuestSystem();
@@ -73,7 +69,7 @@ function GameApp({ experienceSystem }) {
   } = useInputManager(gameState, gameSystems, questSystem);
 
   useEffect(() => {
-    window._playerLevel = experienceSystem.playerLevel;
+    useGameStore.getState().setGetPlayerLevel(() => experienceSystem.playerLevel);
   }, [experienceSystem.playerLevel]);
 
   useEffect(() => {
@@ -88,17 +84,17 @@ function GameApp({ experienceSystem }) {
   }, []);
 
   useEffect(() => {
-    window.playAttackSounds = () => {
+    useGameStore.setState({ playAttackSounds: () => {
       playSwing();
       setTimeout(() => playAttack(), 100);
-    };
-    window.playHitSound = playHit;
-    window.playDefeatSound = playDefeat;
+    }});
+    useGameStore.setState({ playHitSound: playHit });
+    useGameStore.setState({ playDefeatSound: playDefeat });
   }, [playAttack, playSwing, playHit, playDefeat]);
 
   useEffect(() => {
-    window.addToInventory = gameState.addToInventory;
-    window.removeFromInventory = gameState.removeFromInventory;
+    useGameStore.setState({ addToInventory: gameState.addToInventory });
+    useGameStore.setState({ removeFromInventory: gameState.removeFromInventory });
   }, [gameState.addToInventory, gameState.removeFromInventory]);
 
   useEffect(() => {

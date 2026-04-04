@@ -13,13 +13,14 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(null); // Tokens now stay in memory only (immune to XSS)
   const [loading, setLoading] = useState(true);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
-  // Configure axios defaults
+  // Configure axios defaults for secure HttpOnly cookie sessions
   useEffect(() => {
+    axios.defaults.withCredentials = true;
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
@@ -30,22 +31,19 @@ export const AuthProvider = ({ children }) => {
   // Check if user is logged in on app start
   useEffect(() => {
     const checkAuth = async () => {
-      if (token) {
-        try {
-          const response = await axios.get(`${BACKEND_URL}/api/auth/me`);
-          setUser(response.data);
-        } catch (error) {
-          // Token is invalid, remove it
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-        }
+      try {
+        const response = await axios.get(`${BACKEND_URL}/api/auth/me`);
+        setUser(response.data);
+      } catch (error) {
+        // Not authenticated
+        setToken(null);
+        setUser(null);
       }
       setLoading(false);
     };
 
     checkAuth();
-  }, [token, BACKEND_URL]);
+  }, [BACKEND_URL]);
 
   const login = async (username, password) => {
     try {
@@ -56,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
       const { access_token, user: userData } = response.data;
 
-      localStorage.setItem('token', access_token);
+      // Do NOT save to localStorage to prevent XSS
       setToken(access_token);
       setUser(userData);
 
@@ -79,7 +77,7 @@ export const AuthProvider = ({ children }) => {
 
       const { access_token, user: userData } = response.data;
 
-      localStorage.setItem('token', access_token);
+      // Do NOT save to localStorage to prevent XSS
       setToken(access_token);
       setUser(userData);
 
@@ -92,8 +90,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await axios.post(`${BACKEND_URL}/api/auth/logout`);
+    } catch(e) {}
     setToken(null);
     setUser(null);
   };

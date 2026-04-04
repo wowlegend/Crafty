@@ -1,3 +1,4 @@
+import { useGameStore } from './store/useGameStore';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -63,9 +64,9 @@ export const useSimpleExperience = () => {
   };
 
   useEffect(() => {
-    window.addExperience = addExperience;
-    window.getPlayerLevel = () => playerLevel;
-    window.getPlayerXP = () => ({ current: currentXP, total: totalXP, level: playerLevel });
+    useGameStore.setState({ grantXP: addExperience });
+    useGameStore.setState({ getPlayerLevel: () => playerLevel });
+    useGameStore.setState({ getPlayerXP: () => ({ current: currentXP, total: totalXP, level: playerLevel }) });
   }, [playerLevel, currentXP, totalXP]);
 
   return {

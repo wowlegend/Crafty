@@ -173,7 +173,7 @@ export const Player = ({ isWorldBuilt }) => {
 
   // Expose camera globally for magic system
   useEffect(() => {
-    window.gameCamera = camera;
+    useGameStore.setState({ gameCamera: camera });
   }, [camera]);
 
   useEffect(() => {
@@ -188,14 +188,14 @@ export const Player = ({ isWorldBuilt }) => {
         setIsAttacking(true);
         setTimeout(() => setIsAttacking(false), 500);
 
-        if (window.checkMobCollision && window.damageMob) {
+        if (useGameStore.getState().checkMobCollision && useGameStore.getState().damageMob) {
           const direction = new THREE.Vector3();
           camera.getWorldDirection(direction);
           const checkPos = camera.position.clone().add(direction.multiplyScalar(3));
-          const mob = window.checkMobCollision(checkPos, 4);
+          const mob = useGameStore.getState().checkMobCollision(checkPos, 4);
           if (mob) {
-            window.damageMob(mob.id, 25);
-            if (window.playHitSound) window.playHitSound();
+            useGameStore.getState().damageMob(mob.id, 25);
+            if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
           }
         }
       }
@@ -278,10 +278,10 @@ export const Player = ({ isWorldBuilt }) => {
       if (now - lastCastTime.current >= CAST_COOLDOWN) {
         lastCastTime.current = now;
 
-        if (window.castSpell) {
+        if (useGameStore.getState().castSpell) {
           const currentSpell = gameState.activeSpell;
-          window.castSpell(currentSpell);
-          if (window.onSpellCast) window.onSpellCast();
+          useGameStore.getState().castSpell(currentSpell);
+          if (useGameStore.getState().onSpellCast) useGameStore.getState().onSpellCast();
         }
 
         setIsAttacking(true);
