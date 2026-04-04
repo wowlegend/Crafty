@@ -109,11 +109,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
   const applyBurnEffect = (mobId, duration, dps) => {
     let ticksRemaining = Math.floor(duration);
     const burnInterval = setInterval(() => {
-      if (ticksRemaining <= 0 || !window.damageMob) {
+      if (ticksRemaining <= 0 || !useGameStore.getState().damageMob) {
         clearInterval(burnInterval);
         return;
       }
-      window.damageMob(mobId, dps);
+      useGameStore.getState().damageMob(mobId, dps);
       ticksRemaining--;
     }, 1000);
   };
@@ -121,7 +121,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
   // FREEZE EFFECT - Slow mob speed
   const applyFreezeEffect = (mobId, duration, slowPercent, freezeChance) => {
     // Apply slow via global mob modifier
-    if (!window.mobSlowEffects) window.mobSlowEffects = {};
+    if (!useGameStore.getState().mobSlowEffects) useGameStore.setState({ mobSlowEffects: {} });
     window.mobSlowEffects[mobId] = {
       slowMultiplier: 1 - (slowPercent / 100),
       endTime: Date.now() + (duration * 1000)
@@ -129,13 +129,13 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
     // Chance to fully freeze (stun)
     if (Math.random() < freezeChance) {
-      if (!window.mobStunEffects) window.mobStunEffects = {};
+      if (!useGameStore.getState().mobStunEffects) useGameStore.setState({ mobStunEffects: {} });
       window.mobStunEffects[mobId] = Date.now() + 2000; // 2 sec stun
     }
 
     // Clear effect after duration
     setTimeout(() => {
-      if (window.mobSlowEffects) delete window.mobSlowEffects[mobId];
+      if (useGameStore.getState().mobSlowEffects) delete window.mobSlowEffects[mobId];
     }, duration * 1000);
   };
 
@@ -167,8 +167,8 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
       if (nearestMob) {
         hitMobs.add(nearestMob.id);
-        if (window.damageMob) {
-          window.damageMob(nearestMob.id, Math.floor(currentDamage));
+        if (useGameStore.getState().damageMob) {
+          useGameStore.getState().damageMob(nearestMob.id, Math.floor(currentDamage));
         }
         lastPos = new THREE.Vector3(nearestMob.position[0], nearestMob.position[1], nearestMob.position[2]);
         currentDamage *= (1 - damageReduction);
@@ -180,9 +180,9 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
   // Enhanced spell casting with visual effects and MANA SYSTEM
   useEffect(() => {
-    window.castSpell = (spellType = 'fireball') => {
+    useGameStore.setState({ castSpell: (spellType = 'fireball') => {
       const spell = SPELL_TYPES[spellType];
-      const camera = window.gameCamera;
+      const camera = useGameStore.getState().gameCamera;
 
       if (!camera || !spell) return;
 
@@ -197,8 +197,8 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
         window.playMagicCast();
       } else if (window.playAttack) {
         window.playAttack();
-      } else if (window.playAttackSounds) {
-        window.playAttackSounds();
+      } else if (useGameStore.getState().playAttackSounds) {
+        useGameStore.getState().playAttackSounds();
       }
 
       const direction = new THREE.Vector3();
@@ -240,10 +240,10 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
 
       // Grant XP for spell cast
-      if (window.grantXP) {
-        window.grantXP(3);
+      if (useGameStore.getState().grantXP) {
+        useGameStore.getState().grantXP(3);
       }
-    };
+    }});
   }, [SPELL_TYPES]);
 
   // Create spell trail effect
@@ -297,8 +297,8 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       window.playMagicHit();
     } else if (window.playSpellImpactSound) {
       window.playSpellImpactSound(spellType);
-    } else if (window.playHitSound) {
-      window.playHitSound();
+    } else if (useGameStore.getState().playHitSound) {
+      useGameStore.getState().playHitSound();
     }
   };
 
@@ -347,8 +347,8 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
 
       // Check collision with terrain
-      if (window.getMobGroundLevel) {
-        const groundLevel = window.getMobGroundLevel(projectile.position.x, projectile.position.z);
+      if (useGameStore.getState().getMobGroundLevel) {
+        const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
         if (projectile.position.y <= groundLevel + 0.5) {
           createSpellImpact(projectile.position, projectile.type);
           return false;
@@ -359,13 +359,13 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
 
       // Check collision with mobs
-      if (window.checkMobCollision) {
-        const hitMob = window.checkMobCollision(projectile.position, projectile.size + 1.5);
+      if (useGameStore.getState().checkMobCollision) {
+        const hitMob = useGameStore.getState().checkMobCollision(projectile.position, projectile.size + 1.5);
         if (hitMob) {
           const spellConfig = SPELL_TYPES[projectile.type];
 
-          if (window.damageMob) {
-            window.damageMob(hitMob.id, projectile.damage);
+          if (useGameStore.getState().damageMob) {
+            useGameStore.getState().damageMob(hitMob.id, projectile.damage);
           }
 
           // APPLY SECONDARY EFFECTS
@@ -411,7 +411,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
           createSpellImpact(projectile.position, projectile.type);
 
           // Grant XP for hit
-          if (window.grantXP) window.grantXP(5);
+          if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(5);
 
           return false;
         }

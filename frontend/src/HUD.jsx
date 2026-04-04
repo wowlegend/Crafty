@@ -1,3 +1,4 @@
+import { useGameStore } from './store/useGameStore';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './Components';
@@ -41,7 +42,7 @@ export const Minimap = React.memo(({ playerPosition }) => {
       const cy = MAP_SIZE / 2;
       const scale = MAP_SIZE / MAP_RANGE;
 
-      if (window._mobEntities) {
+      if (useGameStore.getState().mobEntities) {
         window._mobEntities.forEach(mob => {
           const dx = (mob.position[0] - playerPosition.x) * scale;
           const dz = (mob.position[2] - playerPosition.z) * scale;
@@ -219,7 +220,7 @@ export function HUD({
       {!gameSystems.isAlive && (
         <DeathScreen onRespawn={() => {
           gameSystems.respawn();
-          if (window.onPlayerDeath) window.onPlayerDeath();
+          if (useGameStore.getState().onPlayerDeath) useGameStore.getState().onPlayerDeath();
           setIsPointerLocked(true);
         }} />
       )}

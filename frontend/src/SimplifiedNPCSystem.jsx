@@ -199,7 +199,8 @@ export const NPCSystem = () => {
   // Wait for terrain to be physically ready
   useEffect(() => {
     const checkInterval = setInterval(() => {
-      if (window.getMobGroundLevel && window.getGeneratedChunks && window.getGeneratedChunks().size > 0 && window.isSpawnChunkLoaded) {
+      const state = useGameStore.getState();
+      if (state.getMobGroundLevel && state.getGeneratedChunks && state.getGeneratedChunks().size > 0 && state.isSpawnChunkLoaded) {
         setTerrainReady(true);
         clearInterval(checkInterval);
       }
@@ -210,8 +211,8 @@ export const NPCSystem = () => {
   // Spawn a single mob at position
   const spawnMob = (x, z, forceType = null) => {
     let y = 15;
-    if (window.getMobGroundLevel) {
-      y = window.getMobGroundLevel(x, z);
+    if (useGameStore.getState().getMobGroundLevel) {
+      y = useGameStore.getState().getMobGroundLevel(x, z);
       if (isNaN(y)) y = 15;
     }
 
@@ -220,7 +221,7 @@ export const NPCSystem = () => {
     let type;
     if (forceType) {
       type = forceType;
-    } else if (window._isNightTime && Math.random() < 0.7) {
+    } else if (!useGameStore.getState().isDay && Math.random() < 0.7) {
       // At night, 70% chance to spawn hostile mob
       const hostileTypes = mobTypeKeys.filter(k => !MOB_TYPES[k].passive);
       type = hostileTypes[Math.floor(Math.random() * hostileTypes.length)];
@@ -392,8 +393,8 @@ export const NPCSystem = () => {
             let newZ = entity.position[2] + moveZ;
             let newY = entity.position[1];
 
-            if (window.getMobGroundLevel) {
-              newY = window.getMobGroundLevel(newX, newZ) + 0.5;
+            if (useGameStore.getState().getMobGroundLevel) {
+              newY = useGameStore.getState().getMobGroundLevel(newX, newZ) + 0.5;
               if (isNaN(newY)) newY = entity.position[1];
             }
 
@@ -419,7 +420,7 @@ export const NPCSystem = () => {
 
       entitiesRef.current = updated;
       // Expose for minimap
-      window._mobEntities = updated;
+      useGameStore.setState({ mobEntities: updated });
       return updated;
     });
   });
@@ -442,12 +443,12 @@ export const NPCSystem = () => {
           }]);
 
           // Grant XP if killed
-          if (newHealth <= 0 && window.grantXP) {
+          if (newHealth <= 0 && useGameStore.getState().grantXP) {
             const mobConfig = MOB_TYPES[e.type];
-            window.grantXP(mobConfig.xp);
+            useGameStore.getState().grantXP(mobConfig.xp);
             // Notify quest system of kill + generate loot
-            if (window.onMobKill) {
-              window.onMobKill(e.type, e.position);
+            if (useGameStore.getState().onMobKill) {
+              useGameStore.getState().onMobKill(e.type, e.position);
             }
           }
 
@@ -479,10 +480,10 @@ export const NPCSystem = () => {
 
   // Expose functions globally
   useEffect(() => {
-    window.attackEntity = damageMob;
-    window.damageMob = damageMob;
+    useGameStore.setState({ attackEntity: damageMob });
+    useGameStore.setState({ damageMob: damageMob });
 
-    window.checkMobCollision = (pos, range = 3) => {
+    useGameStore.setState({ checkMobCollision: (pos, range = 3) => {
       return entitiesRef.current.find(e => {
         const dx = e.position[0] - pos.x;
         const dy = e.position[1] - pos.y;
@@ -490,7 +491,7 @@ export const NPCSystem = () => {
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         return dist < range;
       });
-    };
+    }});
   }, []);
 
   return (

@@ -17,18 +17,12 @@ export const useSurvivalMode = (isDay) => {
             setNightCount(prev => prev + 1);
             setSurvivalWarning('☠️ Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
-
-            // Expose night multiplier globally so NPC system can read it
-            window._nightDangerMultiplier = 1.5 + nightCount * 0.1; // Gets harder each night
-            window._isNightTime = true;
         }
 
         // Detect transition to day
         if (!prevIsDay.current && isDay) {
             setSurvivalWarning('☀️ Dawn breaks! You survived the night!');
             setTimeout(() => setSurvivalWarning(null), 3000);
-            window._nightDangerMultiplier = 1.0;
-            window._isNightTime = false;
         }
 
         prevIsDay.current = isDay;
@@ -127,8 +121,8 @@ export const useBossSystem = (playerLevel, playerPosition) => {
                 const x = playerPosition.x + Math.cos(angle) * 30;
                 const z = playerPosition.z + Math.sin(angle) * 30;
                 let y = 16;
-                if (window.getMobGroundLevel) {
-                    y = window.getMobGroundLevel(x, z);
+                if (useGameStore.getState().getMobGroundLevel) {
+                    y = useGameStore.getState().getMobGroundLevel(x, z);
                     if (isNaN(y)) y = 16;
                 }
                 bossPositionRef.current = [x, y + 2, z];
@@ -165,8 +159,8 @@ export const useBossSystem = (playerLevel, playerPosition) => {
                 setBossDefeated(true);
                 setBossNotification('🏆 VICTORY! You defeated the Shadow Dragon! +500 XP!');
                 setTimeout(() => setBossNotification(null), 6000);
-                if (window.grantXP) window.grantXP(BOSS_CONFIG.xpReward);
-                if (window.addExperience) window.addExperience(BOSS_CONFIG.xpReward, 'Boss Defeated!');
+                if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(BOSS_CONFIG.xpReward);
+                if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(BOSS_CONFIG.xpReward, 'Boss Defeated!');
             }
             return newHealth;
         });
@@ -174,9 +168,9 @@ export const useBossSystem = (playerLevel, playerPosition) => {
 
     // Expose boss damage globally
     useEffect(() => {
-        window.damageBoss = damageBoss;
-        window.getBossPosition = () => bossPositionRef.current;
-        window.isBossActive = () => bossActive;
+        useGameStore.setState({ damageBoss: damageBoss });
+        useGameStore.setState({ getBossPosition: () => bossPositionRef.current });
+        useGameStore.setState({ isBossActive: () => bossActive });
     }, [damageBoss, bossPositionRef, bossActive]);
 
     return {
@@ -249,8 +243,8 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
             const newZ = bz + nz * moveSpeed;
 
             let newY = bossPositionRef.current[1];
-            if (window.getMobGroundLevel) {
-                const groundY = window.getMobGroundLevel(newX, newZ);
+            if (useGameStore.getState().getMobGroundLevel) {
+                const groundY = useGameStore.getState().getMobGroundLevel(newX, newZ);
                 if (!isNaN(groundY)) newY = groundY + 2;
             }
 
@@ -363,9 +357,8 @@ export const usePetSystem = () => {
 
     // Expose tame function globally
     useEffect(() => {
-        window.tameMob = tameMob;
-        window.getPets = () => pets;
-        window._playerPets = pets;
+        useGameStore.setState({ tameMob: tameMob });
+        useGameStore.setState({ getPets: () => pets });
     }, [tameMob, pets]);
 
     return { pets, petNotification, tameMob };
@@ -415,8 +408,8 @@ export const PetEntities = ({ pets }) => {
             const targetZ = camera.position.z + Math.sin(offsetAngle + state.clock.elapsedTime * 0.3) * followDist;
 
             let targetY = ref.position.y;
-            if (window.getMobGroundLevel) {
-                const groundY = window.getMobGroundLevel(targetX, targetZ);
+            if (useGameStore.getState().getMobGroundLevel) {
+                const groundY = useGameStore.getState().getMobGroundLevel(targetX, targetZ);
                 if (!isNaN(groundY)) targetY = groundY + 0.5;
             }
 
@@ -551,7 +544,7 @@ export const useSpellUpgrades = () => {
         // Check if player has enough XP (use addExperience with negative? No, just check level)
         // For simplicity, spend XP cost by requiring minimum player level
         const requiredLevel = nextLevel.xpCost <= 100 ? 2 : nextLevel.xpCost <= 200 ? 3 : 5;
-        const playerLevel = window._playerLevel || 1;
+        const playerLevel = useGameStore.getState().getPlayerLevel() || 1;
 
         if (playerLevel < requiredLevel) {
             setUpgradeNotification(`⚠️ Need Level ${requiredLevel} to upgrade ${upgrade.name}!`);
@@ -568,9 +561,9 @@ export const useSpellUpgrades = () => {
 
     // Expose spell stats globally for EnhancedMagicSystem to read
     useEffect(() => {
-        window._spellLevels = spellLevels;
-        window._getSpellStats = getSpellStats;
-        window.upgradeSpell = upgradeSpell;
+        useGameStore.setState({ spellLevels: spellLevels });
+        useGameStore.setState({ getSpellStats: getSpellStats });
+        useGameStore.setState({ upgradeSpell: upgradeSpell });
     }, [spellLevels, getSpellStats, upgradeSpell]);
 
     return { spellLevels, getSpellStats, upgradeSpell, upgradeNotification, SPELL_UPGRADES };

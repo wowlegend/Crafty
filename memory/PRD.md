@@ -590,3 +590,14 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
   - Removed remaining empty directories and stale `.DS_Store` files across the project workspace.
 - **FINAL VERIFICATION**:
   - Re-verified Vite 6.4 build passes with 0 errors after the final audit sweeps.
+
+### April 4, 2026 (DD Response) — Security Hardening & Complete Global Elimination
+
+- **SECURITY HARDENING (JWTs)**:
+  - Removed all usage of `localStorage` for authentication tokens in `AuthContext.jsx` and `useGameStore.jsx` to neutralize XSS vulnerabilities.
+  - Reconfigured `axios` globally with `withCredentials: true` to rely on secure, HttpOnly cookies.
+  - Refactored `saveGame` and `loadGame` to use `axios` instead of `fetch`, completely eliminating local token access.
+- **COMPLETE STATE CONSOLIDATION**:
+  - Eliminated all 45+ remaining `window.*` globals (e.g., `window.getGeneratedChunks`, `window.playHitSound`, `window.grantXP`, `window.onMobKill`, `window._mobEntities`).
+  - Added transient functions to `useGameStore` to safely dispatch cross-system events.
+  - Safely migrated all components (`SimplifiedNPCSystem`, `EnhancedMagicSystem`, `AdvancedGameFeatures`, etc.) to use `useGameStore.getState()` for purely non-reactive reads within the `useFrame` game loops, resolving brittle side-effects and ensuring a single source of truth.

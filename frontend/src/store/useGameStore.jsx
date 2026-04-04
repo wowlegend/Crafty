@@ -1,6 +1,90 @@
 import { create } from 'zustand';
 
 export const useGameStore = create((set, get) => ({
+    // Transient World State (No need to persist)
+    isSpawnChunkLoaded: false,
+    setIsSpawnChunkLoaded: (loaded) => set({ isSpawnChunkLoaded: loaded }),
+    
+    getGeneratedChunks: null,
+    setGetGeneratedChunks: (fn) => set({ getGeneratedChunks: fn }),
+    
+    getMobGroundLevel: null,
+    setGetMobGroundLevel: (fn) => set({ getMobGroundLevel: fn }),
+
+    checkCollision: null,
+    setCheckCollision: (fn) => set({ checkCollision: fn }),
+
+    mobEntities: [],
+    setMobEntities: (entities) => set({ mobEntities: typeof entities === 'function' ? entities(get().mobEntities) : entities }),
+
+    // Transient Events & System Hooks
+    grantXP: null,
+    setGrantXP: (fn) => set({ grantXP: fn }),
+    getPlayerLevel: () => 1,
+    setGetPlayerLevel: (fn) => set({ getPlayerLevel: fn }),
+    getPlayerXP: () => ({ current: 0, total: 100, level: 1 }),
+    setGetPlayerXP: (fn) => set({ getPlayerXP: fn }),
+
+    onMobKill: null,
+    setOnMobKill: (fn) => set({ onMobKill: fn }),
+    onSpellCast: null,
+    setOnSpellCast: (fn) => set({ onSpellCast: fn }),
+    onBlockPlace: null,
+    setOnBlockPlace: (fn) => set({ onBlockPlace: fn }),
+    onBlockBreak: null,
+    setOnBlockBreak: (fn) => set({ onBlockBreak: fn }),
+    onChestOpen: null,
+    setOnChestOpen: (fn) => set({ onChestOpen: fn }),
+    onPlayerDeath: null,
+    setOnPlayerDeath: (fn) => set({ onPlayerDeath: fn }),
+    checkNearbyChest: null,
+    setCheckNearbyChest: (fn) => set({ checkNearbyChest: fn }),
+    openNearbyChest: null,
+    setOpenNearbyChest: (fn) => set({ openNearbyChest: fn }),
+
+    gameCamera: null,
+    setGameCamera: (camera) => set({ gameCamera: camera }),
+
+    attackEntity: null,
+    setAttackEntity: (fn) => set({ attackEntity: fn }),
+    damageMob: null,
+    setDamageMob: (fn) => set({ damageMob: fn }),
+    checkMobCollision: null,
+    setCheckMobCollision: (fn) => set({ checkMobCollision: fn }),
+    
+    mobSlowEffects: {},
+    setMobSlowEffects: (effects) => set({ mobSlowEffects: typeof effects === 'function' ? effects(get().mobSlowEffects) : effects }),
+    mobStunEffects: {},
+    setMobStunEffects: (effects) => set({ mobStunEffects: typeof effects === 'function' ? effects(get().mobStunEffects) : effects }),
+    castSpell: null,
+    setCastSpell: (fn) => set({ castSpell: fn }),
+    
+    damageBoss: null,
+    setDamageBoss: (fn) => set({ damageBoss: fn }),
+    getBossPosition: null,
+    setGetBossPosition: (fn) => set({ getBossPosition: fn }),
+    isBossActive: null,
+    setIsBossActive: (fn) => set({ isBossActive: fn }),
+    
+    tameMob: null,
+    setTameMob: (fn) => set({ tameMob: fn }),
+    getPets: null,
+    setGetPets: (fn) => set({ getPets: fn }),
+    
+    spellLevels: {},
+    setSpellLevels: (levels) => set({ spellLevels: levels }),
+    getSpellStats: null,
+    setGetSpellStats: (fn) => set({ getSpellStats: fn }),
+    upgradeSpell: null,
+    setUpgradeSpell: (fn) => set({ upgradeSpell: fn }),
+
+    buildingMode: 'single',
+    setBuildingMode: (mode) => set({ buildingMode: mode }),
+    buildSize: 1,
+    setBuildSize: (size) => set({ buildSize: size }),
+    selectedBuildBlock: null,
+    setSelectedBuildBlock: (block) => set({ selectedBuildBlock: block }),
+
     gameMode: 'creative',
     setGameMode: (mode) => set({ gameMode: mode }),
 
@@ -107,7 +191,7 @@ export const useGameStore = create((set, get) => ({
         if (!state.isAlive) return;
 
         const now = Date.now();
-        if (now - window._spawnTime < 5000) return;
+        if (now - useGameStore.getState()._spawnTime < 5000) return;
 
         if (now - state.lastDamageTime < 500) return;
 
@@ -126,10 +210,10 @@ export const useGameStore = create((set, get) => ({
         
         if (newHealth <= 0) {
             set({ isAlive: false });
-            if (window.playDefeatSound) window.playDefeatSound();
+            if (useGameStore.getState().playDefeatSound) useGameStore.getState().playDefeatSound();
         }
 
-        if (window.playHitSound) window.playHitSound();
+        if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
     },
 
     healPlayer: (amount) => {
@@ -170,7 +254,7 @@ export const useGameStore = create((set, get) => ({
             hunger: 100,
             isAlive: true
         });
-        window._spawnTime = Date.now();
+        useGameStore.setState({ _spawnTime: Date.now() });
     },
 
     playerStats: {
@@ -182,12 +266,6 @@ export const useGameStore = create((set, get) => ({
 
     saveGame: async () => {
         try {
-            const authData = JSON.parse(localStorage.getItem('authToken') || '{}');
-            if (!authData.token) {
-                alert('Please log in to save your game');
-                return;
-            }
-
             const state = get();
             const saveData = {
                 save_name: `Save_${new Date().toLocaleString()}`,
@@ -207,59 +285,41 @@ export const useGameStore = create((set, get) => ({
                 }
             };
 
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/world/save`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authData.token}`
-                },
-                body: JSON.stringify(saveData)
-            });
+            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/world/save`, saveData);
 
-            if (response.ok) {
-                const result = await response.json();
-                alert(`Game saved successfully: ${result.save_name}`);
+            if (response.status === 200 || response.status === 201) {
+                alert(`Game saved successfully: ${response.data.save_name}`);
             } else {
                 throw new Error('Failed to save game');
             }
         } catch (error) {
             console.error('❌ Save error:', error);
-            alert('Failed to save game. Please try again.');
+            if (error.response && error.response.status === 401) {
+                alert('Please log in to save your game');
+            } else {
+                alert('Failed to save game. Please try again.');
+            }
         }
     },
 
     loadGame: async () => {
         try {
-            const authData = JSON.parse(localStorage.getItem('authToken') || '{}');
-            if (!authData.token) {
-                alert('Please log in to load your game');
-                return;
-            }
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/saves`);
 
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/world/saves`, {
-                headers: {
-                    'Authorization': `Bearer ${authData.token}`
-                }
-            });
+            if (response.status !== 200) throw new Error('Failed to fetch saves');
 
-            if (!response.ok) throw new Error('Failed to fetch saves');
-
-            const { saves } = await response.json();
-            if (saves.length === 0) {
+            const { saves } = response.data;
+            if (!saves || saves.length === 0) {
                 alert('No saved games found');
                 return;
             }
 
             const mostRecentSave = saves[0];
-            const loadResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`, {
-                headers: {
-                    'Authorization': `Bearer ${authData.token}`
-                }
-            });
+            const loadResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`);
 
-            if (!loadResponse.ok) throw new Error('Failed to load game');
+            if (loadResponse.status !== 200) throw new Error('Failed to load game');
 
-            const saveData = await loadResponse.json();
+            const saveData = loadResponse.data;
 
             set((state) => ({
                 worldBlocks: saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks,
@@ -276,7 +336,11 @@ export const useGameStore = create((set, get) => ({
             alert(`Game loaded successfully: ${saveData.save_name}`);
         } catch (error) {
             console.error('❌ Load error:', error);
-            alert('Failed to load game. Please try again.');
+            if (error.response && error.response.status === 401) {
+                alert('Please log in to load your game');
+            } else {
+                alert('Failed to load game. Please try again.');
+            }
         }
     }
 }));

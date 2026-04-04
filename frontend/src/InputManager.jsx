@@ -1,3 +1,4 @@
+import { useGameStore } from './store/useGameStore';
 import { useState, useEffect } from 'react';
 
 export function useInputManager(gameState, gameSystems, questSystem) {
@@ -143,8 +144,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyG' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
-        if (window.openNearbyChest) {
-          const loot = window.openNearbyChest();
+        if (useGameStore.getState().openNearbyChest) {
+          const loot = useGameStore.getState().openNearbyChest();
           if (loot && loot.length > 0) {
           }
         }
@@ -153,7 +154,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyT' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
-        if (window._mobEntities && window.gameCamera) {
+        if (useGameStore.getState().mobEntities && useGameStore.getState().gameCamera) {
           const px = window.gameCamera.position.x, pz = window.gameCamera.position.z;
           let nearest = null, nearestDist = 4;
           window._mobEntities.forEach(mob => {
@@ -163,8 +164,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
             const d = Math.sqrt(dx * dx + dz * dz);
             if (d < nearestDist) { nearest = mob; nearestDist = d; }
           });
-          if (nearest && window.tameMob) {
-            window.tameMob(nearest.id, nearest.type, nearest.position);
+          if (nearest && useGameStore.getState().tameMob) {
+            useGameStore.getState().tameMob(nearest.id, nearest.type, nearest.position);
           }
         }
         return;

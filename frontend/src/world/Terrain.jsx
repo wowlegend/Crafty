@@ -210,7 +210,7 @@ const TerrainChunk = React.memo(({ cx, cz, blocksRef }) => {
     useEffect(() => {
         if (cx === 0 && cz === 0) {
             setTimeout(() => {
-                window.isSpawnChunkLoaded = true;
+                useGameStore.setState({ isSpawnChunkLoaded: true });
             }, 1500);
         }
     }, [cx, cz]);
@@ -295,9 +295,9 @@ export const MinecraftWorld = React.memo(() => {
 
     // External hooks
     useEffect(() => {
-        window.getGeneratedChunks = () => generatedChunksRef.current;
+        gameState.setGetGeneratedChunks(() => () => generatedChunksRef.current);
 
-        window.getMobGroundLevel = (x, z) => {
+        gameState.setGetMobGroundLevel(() => (x, z) => {
             let terrainHeight = generateTerrainHeight(x, z);
             const xf = Math.floor(x), zf = Math.floor(z);
             for (let y = terrainHeight + 5; y >= terrainHeight; y--) {
@@ -305,21 +305,21 @@ export const MinecraftWorld = React.memo(() => {
                 if (blocksRef.current.has(key)) return y;
             }
             return terrainHeight;
-        };
+        });
 
-        window.checkCollision = (x, y, z) => {
+        gameState.setCheckCollision(() => (x, y, z) => {
             const key = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
             if (blocksRef.current.has(key)) {
                 const block = blocksRef.current.get(key);
                 return block.type !== 'flower_red' && block.type !== 'flower_yellow' && block.type !== 'grass_blade';
             }
             return false;
-        };
+        });
 
         return () => {
-            delete window.getGeneratedChunks;
-            delete window.getMobGroundLevel;
-            delete window.checkCollision;
+            gameState.setGetGeneratedChunks(null);
+            gameState.setGetMobGroundLevel(null);
+            gameState.setCheckCollision(null);
         };
     }, []);
 
@@ -464,9 +464,9 @@ export const MinecraftWorld = React.memo(() => {
             
             let tx, ty, tz;
 
-            const buildMode = window.buildingMode || 'single';
-            const buildSize = window.buildSize || 1;
-            const type = window.selectedBuildBlock || gameState.selectedBlock;
+            const buildMode = useGameStore.getState().buildingMode || 'single';
+            const buildSize = useGameStore.getState().buildSize || 1;
+            const type = useGameStore.getState().selectedBuildBlock || gameState.selectedBlock;
 
             if (e.button === 0) {
                 // DELETE: Step slightly INTO the block to ensure we target the hit block
@@ -509,7 +509,7 @@ export const MinecraftWorld = React.memo(() => {
                 } else {
                     deleteBlock(tx, ty, tz);
                 }
-                if (window.playHitSound) window.playHitSound();
+                if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
             } else if (e.button === 2) {
                 switch (buildMode) {
                     case 'wall':

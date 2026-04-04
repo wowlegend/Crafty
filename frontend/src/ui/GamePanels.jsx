@@ -35,11 +35,11 @@ export const Inventory = ({ onClose }) => {
         }
         // XP Items
         else if (item.includes('Diamond')) {
-            if (window.addExperience) window.addExperience(50, item);
+            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(50, item);
         } else if (item.includes('Golden Crown')) {
-            if (window.addExperience) window.addExperience(200, item);
+            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(200, item);
         } else if (item.includes('Star Fragment')) {
-            if (window.addExperience) window.addExperience(100, item);
+            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(100, item);
         }
 
         gameState.removeFromInventory(item, 1);
@@ -154,7 +154,7 @@ export const CraftingTable = ({ onClose }) => {
         setTimeout(() => setCraftMessage(null), 2000);
 
         // Grant XP for crafting
-        if (window.grantXP) window.grantXP(5);
+        if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(5);
     };
 
     const categories = [...new Set(recipes.map(r => r.category))];
@@ -281,9 +281,9 @@ export const BuildingTools = ({ onClose }) => {
 
     // Set global building mode
     React.useEffect(() => {
-        window.buildingMode = selectedTool;
-        window.buildSize = buildSize;
-        window.selectedBuildBlock = gameState.selectedBlock;
+        useGameStore.setState({ buildingMode: selectedTool });
+        useGameStore.setState({ buildSize: buildSize });
+        useGameStore.setState({ selectedBuildBlock: gameState.selectedBlock });
 
     }, [selectedTool, buildSize, gameState.selectedBlock]);
 

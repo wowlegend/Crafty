@@ -1,3 +1,4 @@
+import { useGameStore } from './store/useGameStore';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -187,8 +188,8 @@ export const useQuestSystem = () => {
         });
 
         // Grant XP reward
-        if (reward > 0 && window.addExperience) {
-            window.addExperience(reward, 'Quest Reward');
+        if (reward > 0 && useGameStore.getState().grantXP) {
+            useGameStore.getState().grantXP(reward, 'Quest Reward');
             addNotification(`🎁 +${reward} XP from quest reward!`, 'reward');
         }
     }, [completedQuestIds, addNotification]);
@@ -232,11 +233,11 @@ export const useQuestSystem = () => {
             // Auto-collect after delay + grant XP + add to inventory
             setTimeout(() => {
                 drops.forEach(drop => {
-                    if (window.addExperience) {
-                        window.addExperience(drop.xp, drop.item);
+                    if (useGameStore.getState().grantXP) {
+                        useGameStore.getState().grantXP(drop.xp, drop.item);
                     }
-                    if (window.addToInventory) {
-                        window.addToInventory(drop.item, 1);
+                    if (useGameStore.getState().addToInventory) {
+                        useGameStore.getState().addToInventory(drop.item, 1);
                     }
                 });
                 setLootDrops(prev => prev.filter(d => !drops.some(dd => dd.id === d.id)));
@@ -304,12 +305,12 @@ export const useQuestSystem = () => {
 
     // Expose globally for other systems to call
     useEffect(() => {
-        window.onMobKill = onMobKill;
-        window.onSpellCast = onSpellCast;
-        window.onBlockPlace = onBlockPlace;
-        window.onBlockBreak = onBlockBreak;
-        window.onChestOpen = onChestOpen;
-        window.onPlayerDeath = onDeath;
+        useGameStore.setState({ onMobKill: onMobKill });
+        useGameStore.setState({ onSpellCast: onSpellCast });
+        useGameStore.setState({ onBlockPlace: onBlockPlace });
+        useGameStore.setState({ onBlockBreak: onBlockBreak });
+        useGameStore.setState({ onChestOpen: onChestOpen });
+        useGameStore.setState({ onPlayerDeath: onDeath });
     }, [onMobKill, onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath]);
 
     return {
@@ -565,8 +566,8 @@ export const useTreasureChests = (playerPosition) => {
 
             // Get ground height securely
             let y = 15;
-            if (window.getMobGroundLevel) {
-                const h = window.getMobGroundLevel(x, z);
+            if (useGameStore.getState().getMobGroundLevel) {
+                const h = useGameStore.getState().getMobGroundLevel(x, z);
                 if (typeof h === 'number' && !isNaN(h)) y = h + 1;
             }
 
@@ -590,8 +591,8 @@ export const useTreasureChests = (playerPosition) => {
             const z = playerPosition.z + Math.sin(angle) * 15;
 
             let y = 15;
-            if (window.getMobGroundLevel) {
-                const h = window.getMobGroundLevel(x, z);
+            if (useGameStore.getState().getMobGroundLevel) {
+                const h = useGameStore.getState().getMobGroundLevel(x, z);
                 if (typeof h === 'number' && !isNaN(h)) y = h + 1;
             }
 
@@ -635,13 +636,13 @@ export const useTreasureChests = (playerPosition) => {
 
         // Push all looted items directly to the player's persistent inventory instead of instant consumption
         loot.forEach(item => {
-            if (window.addToInventory) {
-                window.addToInventory(item.item, 1);
+            if (useGameStore.getState().addToInventory) {
+                useGameStore.getState().addToInventory(item.item, 1);
             }
         });
 
         // Notify quest system
-        if (window.onChestOpen) window.onChestOpen();
+        if (useGameStore.getState().onChestOpen) useGameStore.getState().onChestOpen();
 
         // Remove chest after 5 seconds
         setTimeout(() => {
@@ -653,12 +654,12 @@ export const useTreasureChests = (playerPosition) => {
 
     // Expose check and open for the game
     useEffect(() => {
-        window.checkNearbyChest = checkChestProximity;
-        window.openNearbyChest = () => {
+        useGameStore.setState({ checkNearbyChest: checkChestProximity });
+        useGameStore.setState({ openNearbyChest: () => {
             const chest = checkChestProximity();
             if (chest) return openChest(chest.id);
             return null;
-        };
+        }});
     }, [checkChestProximity, openChest]);
 
     return { chests, openedChestIds, checkChestProximity, openChest };
