@@ -560,3 +560,13 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 - **SYSTEM IMPROVEMENTS**:
   - Consolidated duplicate `BLOCK_TYPES` configurations into a single, immutable source of truth (`world/Blocks.js`), updating all imports across the codebase.
+
+### April 3, 2026 (Phase 4) — Component Decomposition
+
+- **ARCHITECTURAL REFACTORING**:
+  - Decomposed the massive `App.jsx` (~960 lines) into smaller, specialized modules.
+  - Extracted 2D UI overlays (Minimap, HealthBar, QuestTracker, Notifications) into `frontend/src/HUD.jsx`.
+  - Encapsulated keyboard events and pointer lock logic into a `useInputManager` hook inside `frontend/src/InputManager.jsx`.
+  - Extracted the 3D Canvas, Physics, Player, and World rendering logic into `frontend/src/GameScene.jsx`.
+  - Extracted the interactive Main Menu and UI panels (Inventory, Crafting, Auth) into `frontend/src/MenuSystem.jsx`.
+  - Simplified `App.jsx` to function cleanly as a top-level orchestrator for providers and root components.
