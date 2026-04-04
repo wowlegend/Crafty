@@ -104,7 +104,6 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     }
   }), []);
 
-  // === SECONDARY EFFECT FUNCTIONS ===
 
   // BURN EFFECT - Damage over time
   const applyBurnEffect = (mobId, duration, dps) => {

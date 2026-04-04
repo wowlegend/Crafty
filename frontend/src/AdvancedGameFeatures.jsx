@@ -6,7 +6,6 @@ import { useGameStore } from './store/useGameStore';
 
 // Advanced Game Features: Survival Mode, Boss Mob, Pet System, Spell Upgrades
 
-// --- Survival Mode ---
 export const useSurvivalMode = (isDay) => {
     const [nightCount, setNightCount] = useState(0);
     const [survivalWarning, setSurvivalWarning] = useState(null);
@@ -83,7 +82,6 @@ export const SurvivalWarning = React.memo(({ message }) => {
 });
 
 
-// --- Boss Mob ---
 const BOSS_CONFIG = {
     name: 'Shadow Dragon',
     emoji: '🐉',
@@ -324,7 +322,6 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
 };
 
 
-// --- Pet System ---
 export const usePetSystem = () => {
     const [pets, setPets] = useState([]);
     const [petNotification, setPetNotification] = useState(null);
@@ -483,7 +480,6 @@ export const PetEntities = ({ pets }) => {
 };
 
 
-// --- Spell Upgrades ---
 const SPELL_UPGRADES = {
     fireball: {
         name: 'Fireball',

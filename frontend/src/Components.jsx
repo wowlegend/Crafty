@@ -30,7 +30,6 @@ import { useGameStore } from './store/useGameStore';
 // BLOCK TYPES - Immutable configuration
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from './world/Blocks';
 
-// --- UI COMPONENTS (UNCHANGED) ---
 export const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
   return (
@@ -151,7 +150,6 @@ export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) =
 };
 
 
-// --- PLAYER & MAGIC (PRODUCTION-READY) ---
 
 export const Player = ({ isWorldBuilt }) => {
   const isWorldBuiltRef = useRef(isWorldBuilt);

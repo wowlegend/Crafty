@@ -6,7 +6,6 @@ import { OptimizedGrassSystem } from '../OptimizedGrassSystem';
 import { useGameStore } from '../store/useGameStore';
 import { RigidBody, TrimeshCollider, CuboidCollider, useRapier } from '@react-three/rapier';
 
-// --- VISUAL-ONLY CHUNK MESH (No Physics) ---
 // Each block type in a chunk gets its own InstancedMesh for batched GPU rendering.
 // Physics is handled separately by a single HeightfieldCollider per chunk.
 const ChunkMesh = React.memo(({ type, blocks }) => {
@@ -62,7 +61,6 @@ const ChunkMesh = React.memo(({ type, blocks }) => {
     );
 });
 
-// --- TERRAIN GENERATION LOGIC ---
 const generateTerrainHeight = (() => {
     const cache = new Map();
     const maxCacheSize = 4000;
@@ -84,7 +82,6 @@ const generateTerrainHeight = (() => {
     };
 })();
 
-// --- TRIMESH COLLIDER PER CHUNK ---
 // Creates exact terrain surface mesh for collision. One per chunk (~50 total).
 // Uses world-space vertex positions directly — no centering/scale issues.
 const ChunkCollider = React.memo(({ cx, cz }) => {
@@ -130,7 +127,6 @@ const ChunkCollider = React.memo(({ cx, cz }) => {
     );
 });
 
-// --- INDIVIDUAL TERRAIN CHUNK ---
 const TerrainChunk = React.memo(({ cx, cz, blocksRef }) => {
     const CHUNK_SIZE = 16;
 
@@ -239,7 +235,6 @@ const TerrainChunk = React.memo(({ cx, cz, blocksRef }) => {
     );
 });
 
-// --- PLAYER MODIFIED BLOCKS ---
 const PlayerModifiedBlocks = React.memo(({ blocks }) => {
     if (!blocks || blocks.size === 0) return null;
     
@@ -274,7 +269,6 @@ const PlayerModifiedBlocks = React.memo(({ blocks }) => {
     );
 });
 
-// --- MAIN WORLD COMPONENT ---
 export const MinecraftWorld = React.memo(() => {
     const gameState = useGameStore();
     const { camera } = useThree();

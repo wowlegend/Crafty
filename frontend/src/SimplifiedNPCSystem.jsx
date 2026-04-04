@@ -345,7 +345,6 @@ export const NPCSystem = () => {
         const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
         const distToPlayer3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        // --- HOSTILE MOB CHASE AI ---
         if (!mobConfig.passive && distToPlayer2D < AGGRO_RANGE) {
           newEntity.isAggro = true;
           newEntity.isMoving = true;

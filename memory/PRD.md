@@ -580,3 +580,13 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - **PRECISE PHYSICS RAYCASTING**:
   - Upgraded block interaction (building/destroying) in `Terrain.jsx` from a naive scalar distance projection to accurate `@react-three/rapier` physics raycasting (`world.castRay`).
   - Player targeting is now driven by physical mesh intersections and normal calculation for flawless block placement against terrain shapes.
+
+### April 3, 2026 (Final Cleanup Phase) — Comprehensive Codebase Audit
+
+- **REDUNDANT COMMENT REMOVAL**:
+  - Cleaned up verbose structural dividers (`// ===`, `// ---`) across 6 core source files (`Components.jsx`, `AdvancedGameFeatures.jsx`, `EnhancedMagicSystem.jsx`, `Terrain.jsx`, `GameSystems.jsx`, `SimplifiedNPCSystem.jsx`).
+- **DEAD FILE & ARTIFACT CLEANUP**:
+  - Ran `unimported` check to verify 0 dead source files in the React frontend.
+  - Removed remaining empty directories and stale `.DS_Store` files across the project workspace.
+- **FINAL VERIFICATION**:
+  - Re-verified Vite 6.4 build passes with 0 errors after the final audit sweeps.
