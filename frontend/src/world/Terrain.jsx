@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BLOCK_TYPES, BLOCK_TYPE_KEYS } from './Blocks';
 import { OptimizedGrassSystem } from '../OptimizedGrassSystem';
 import { useGameStore } from '../store/useGameStore';
-import { RigidBody, TrimeshCollider, CuboidCollider } from '@react-three/rapier';
+import { RigidBody, TrimeshCollider, CuboidCollider, useRapier } from '@react-three/rapier';
 
 // --- VISUAL-ONLY CHUNK MESH (No Physics) ---
 // Each block type in a chunk gets its own InstancedMesh for batched GPU rendering.
@@ -278,6 +278,7 @@ const PlayerModifiedBlocks = React.memo(({ blocks }) => {
 export const MinecraftWorld = React.memo(() => {
     const gameState = useGameStore();
     const { camera } = useThree();
+    const { rapier, world } = useRapier();
 
     const blocksRef = useRef(new Map());
     const [chunks, setChunks] = useState([]);
@@ -444,14 +445,51 @@ export const MinecraftWorld = React.memo(() => {
             const direction = new THREE.Vector3();
             camera.getWorldDirection(direction);
             const rayStart = camera.position.clone();
-            const targetPos = rayStart.add(direction.multiplyScalar(4));
-            const tx = Math.round(targetPos.x);
-            const ty = Math.round(targetPos.y);
-            const tz = Math.round(targetPos.z);
+            
+            // 1. Setup Rapier Ray
+            const ray = new rapier.Ray(
+                { x: rayStart.x, y: rayStart.y, z: rayStart.z },
+                { x: direction.x, y: direction.y, z: direction.z }
+            );
+            
+            const maxToi = 8.0; // Reach distance
+            const solid = true; // Hit solid objects
+            
+            // 2. Cast ray against the physics world
+            const hit = world.castRay(ray, maxToi, solid);
+            
+            if (!hit) return; // Didn't hit anything
+            
+            // 3. Calculate hit point
+            const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
+            
+            // 4. Calculate normal (Rapier provides the normal on the hit object)
+            // For trimesh/cuboid, we can approximate the normal based on the hit point relative to block center
+            // A more robust way is to step slightly backward/forward along the ray
+            const normal = hit.normal || { x: 0, y: 1, z: 0 }; // Fallback to up if normal not provided by collider
+            
+            let tx, ty, tz;
 
             const buildMode = window.buildingMode || 'single';
             const buildSize = window.buildSize || 1;
             const type = window.selectedBuildBlock || gameState.selectedBlock;
+
+            if (e.button === 0) {
+                // DELETE: Step slightly INTO the block to ensure we target the hit block
+                const deletePos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
+                tx = Math.round(deletePos.x);
+                ty = Math.round(deletePos.y);
+                tz = Math.round(deletePos.z);
+            } else if (e.button === 2) {
+                // PLACE: Step slightly OUT OF the block using the normal (or reverse direction if normal fails)
+                const placeDirection = hit.normal ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : direction.clone().multiplyScalar(-1);
+                const placePos = hitPoint.clone().add(placeDirection.multiplyScalar(0.01));
+                tx = Math.round(placePos.x);
+                ty = Math.round(placePos.y);
+                tz = Math.round(placePos.z);
+            } else {
+                return;
+            }
 
             const placeBlock = (x, y, z) => {
                 const key = `${x},${y},${z}`;

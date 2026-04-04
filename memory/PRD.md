@@ -570,3 +570,13 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
   - Extracted the 3D Canvas, Physics, Player, and World rendering logic into `frontend/src/GameScene.jsx`.
   - Extracted the interactive Main Menu and UI panels (Inventory, Crafting, Auth) into `frontend/src/MenuSystem.jsx`.
   - Simplified `App.jsx` to function cleanly as a top-level orchestrator for providers and root components.
+
+### April 3, 2026 (Phase 5) — Global Cleanup & Physics Raycasting
+
+- **GLOBAL NAMESPACE POLLUTION CLEANUP**:
+  - Successfully migrated the remaining `window.*` globals (like `damagePlayer`, `healPlayer`, `useMana`, `consumeHunger`, `respawn`, etc.) into native `useGameStore.getState()` calls across all components (`AdvancedGameFeatures`, `NPCSystem`, `EnhancedMagicSystem`).
+  - Removed risky and brittle cross-system dependencies by enforcing a single Zustand state source.
+  
+- **PRECISE PHYSICS RAYCASTING**:
+  - Upgraded block interaction (building/destroying) in `Terrain.jsx` from a naive scalar distance projection to accurate `@react-three/rapier` physics raycasting (`world.castRay`).
+  - Player targeting is now driven by physical mesh intersections and normal calculation for flawless block placement against terrain shapes.
