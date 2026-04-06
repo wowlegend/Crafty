@@ -601,3 +601,13 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
   - Eliminated all 45+ remaining `window.*` globals (e.g., `window.getGeneratedChunks`, `window.playHitSound`, `window.grantXP`, `window.onMobKill`, `window._mobEntities`).
   - Added transient functions to `useGameStore` to safely dispatch cross-system events.
   - Safely migrated all components (`SimplifiedNPCSystem`, `EnhancedMagicSystem`, `AdvancedGameFeatures`, etc.) to use `useGameStore.getState()` for purely non-reactive reads within the `useFrame` game loops, resolving brittle side-effects and ensuring a single source of truth.
+
+### April 4, 2026 (Phase 6) — ECS Pivot (Entity Component System)
+
+- **AI PERFORMANCE BOTTLENECK REMOVED**:
+  - Fully refactored `SimplifiedNPCSystem.jsx` to strip entity AI, movement, and combat logic out of React's `useState` and component render cycle.
+  - Integrated `miniplex` and `@miniplex/react` to manage game logic in a pure data-oriented approach.
+  - Implemented `ECSSystemsLogic` to run purely in a single `useFrame` loop, processing pathfinding, physics knockbacks, and damage application entirely via non-reactive entity objects.
+- **DIRECT MESH MUTATION**:
+  - The `MobModel` components now track their own `entity` references and sync their own Three.js `ref.current.position` locally in a `useFrame`, eliminating cascading `setState` calls up to the `NPCSystem` root for massive FPS gains.
+  - React now *only* handles the high-level declarative mounting/unmounting of meshes, completely decoupled from the tight 60Hz physics/movement data stream.
