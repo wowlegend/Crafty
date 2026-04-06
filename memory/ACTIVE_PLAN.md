@@ -6,4 +6,5 @@
 *When the feature is complete and merged, this file is cleared or overwritten with the next plan.*
 
 ## Current Task: None
+
 *Ready for the next directive.*
