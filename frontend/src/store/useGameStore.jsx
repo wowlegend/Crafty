@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 
 export const useGameStore = create((set, get) => ({
     // Transient World State (No need to persist)

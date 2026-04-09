@@ -4,10 +4,7 @@ import { useGameStore } from './store/useGameStore';
 import * as THREE from 'three';
 import { World } from 'miniplex';
 import { useEntities } from '@miniplex/react';
-
-// --- ECS WORLD ---
-export const ecs = new World();
-export const mobsQuery = ecs.with('isMob', 'position', 'type');
+import { ecs, mobsQuery } from './ecs/world';
 
 // MOB TYPES with different stats and colors
 export const MOB_TYPES = {
@@ -244,7 +241,7 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
 
       // Despawn
       const maxDistance = 100;
-      for (const entity of mobsQuery.entities) {
+      for (const entity of [...mobsQuery.entities]) {
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
         if (dist > maxDistance) {
           ecs.remove(entity);
