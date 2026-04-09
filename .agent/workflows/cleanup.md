@@ -154,7 +154,7 @@ These checks go beyond basic cleanup into code quality and architecture:
 
 1. **Verify build**: `cd frontend && npx vite build`
 2. **Test dev server**: `cd frontend && npm run dev`
-3. **Run `/update-prd`** to document all cleanup in the PRD
+3. **Run `/update-docs`** to document all cleanup in the CHANGELOG
 
 ## Checklist
 
@@ -178,3 +178,4 @@ These checks go beyond basic cleanup into code quality and architecture:
 - [ ] React perf patterns verified (memo, useCallback, useMemo)
 - [ ] `npx vite build` passes with 0 errors
 - [ ] PRD updated with cleanup details
+tails

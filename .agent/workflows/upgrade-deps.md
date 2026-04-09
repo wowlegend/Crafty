@@ -59,7 +59,7 @@ npm run dev  # smoke test in browser
 
 ## 7. Update Documentation
 
-- Run `/update-prd` to update tech stack section
+- Run `/update-docs` to update tech stack section
 - Update workflow files if build commands changed
 - Update `.gitignore` if new artifacts are generated
 - Update `README.md` with new commands if applicable
