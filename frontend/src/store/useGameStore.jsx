@@ -19,6 +19,7 @@ export const useGameStore = create((set, get) => ({
     setMobEntities: (entities) => set((state) => ({ mobEntities: typeof entities === 'function' ? entities(state.mobEntities) : entities })),
 
     // Transient Events & System Hooks
+    _spawnTime: Date.now(),
     grantXP: null,
     setGrantXP: (fn) => set({ grantXP: fn }),
     getPlayerLevel: () => 1,
