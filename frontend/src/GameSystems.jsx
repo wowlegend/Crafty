@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
@@ -30,7 +31,30 @@ export const useGameSystems = () => {
 };
 
 export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
-    const gameState = useGameStore();
+    const gameState = useGameStore(useShallow(state => ({
+        playerHealth: state.playerHealth,
+        maxHealth: state.maxHealth,
+        isAlive: state.isAlive,
+        damageFlash: state.damageFlash,
+        screenShake: state.screenShake,
+        mana: state.mana,
+        maxMana: state.maxMana,
+        hunger: state.hunger,
+        setPlayerHealth: state.setPlayerHealth,
+        setMaxHealth: state.setMaxHealth,
+        setIsAlive: state.setIsAlive,
+        setDamageFlash: state.setDamageFlash,
+        setScreenShake: state.setScreenShake,
+        setMana: state.setMana,
+        setMaxMana: state.setMaxMana,
+        setHunger: state.setHunger,
+        damagePlayer: state.damagePlayer,
+        healPlayer: state.healPlayer,
+        useMana: state.useMana,
+        consumeHunger: state.consumeHunger,
+        feedPlayer: state.feedPlayer,
+        respawn: state.respawn
+    })));
     const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
     const { setPlayerHealth, setMaxHealth, setIsAlive, setDamageFlash, setScreenShake, setMana, setMaxMana, setHunger } = gameState;
 
