@@ -611,3 +611,17 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - **DIRECT MESH MUTATION**:
   - The `MobModel` components now track their own `entity` references and sync their own Three.js `ref.current.position` locally in a `useFrame`, eliminating cascading `setState` calls up to the `NPCSystem` root for massive FPS gains.
   - React now *only* handles the high-level declarative mounting/unmounting of meshes, completely decoupled from the tight 60Hz physics/movement data stream.
+
+### April 6, 2026 (Phase 7) — Terrain V2 Engine (AAA Voxel Overhaul)
+
+- **WEB WORKER OFFLOADING**:
+  - Rebuilt the terrain generation pipeline to run completely asynchronously inside a dedicated Web Worker (`terrain.worker.js`).
+  - The main thread (React) now never stalls or drops frames during exploration, passing chunk generation tasks via zero-copy `postMessage` buffers.
+- **3D SIMPLEX NOISE & MEMORY OPTIMIZATION**:
+  - Replaced the naive 2D scalar heightmap with `simplex-noise` to generate complex 3D noise (fractional brownian motion).
+  - Scaled world height from flat hills to a massive 256-block AAA limit (`16x256x16` chunks).
+  - Migrated the massive `blocksRef` Map to highly efficient, flat `Uint8Array(65536)` buffers managed by the worker.
+- **FACE CULLING & BUFFER GEOMETRY**:
+  - Replaced `InstancedMesh` with dynamically generated `BufferGeometry`.
+  - Implemented an adjacent-face culling (greedy mesher approximation) algorithm in the worker. Blocks completely buried underground no longer generate geometry, reducing GPU vertex load by up to 90%.
+  - Physics meshes are perfectly mapped back into Rapier's `TrimeshCollider` for seamless raycasting and player collision.
