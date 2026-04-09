@@ -121,29 +121,39 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
   // FREEZE EFFECT - Slow mob speed
   const applyFreezeEffect = (mobId, duration, slowPercent, freezeChance) => {
     // Apply slow via global mob modifier
-    if (!useGameStore.getState().mobSlowEffects) useGameStore.setState({ mobSlowEffects: {} });
-    window.mobSlowEffects[mobId] = {
-      slowMultiplier: 1 - (slowPercent / 100),
-      endTime: Date.now() + (duration * 1000)
-    };
+    useGameStore.setState(state => {
+      const slowEffects = { ...(state.mobSlowEffects || {}) };
+      slowEffects[mobId] = {
+        slowMultiplier: 1 - (slowPercent / 100),
+        endTime: Date.now() + (duration * 1000)
+      };
+      return { mobSlowEffects: slowEffects };
+    });
 
     // Chance to fully freeze (stun)
     if (Math.random() < freezeChance) {
-      if (!useGameStore.getState().mobStunEffects) useGameStore.setState({ mobStunEffects: {} });
-      window.mobStunEffects[mobId] = Date.now() + 2000; // 2 sec stun
+      useGameStore.setState(state => {
+        const stunEffects = { ...(state.mobStunEffects || {}) };
+        stunEffects[mobId] = Date.now() + 2000; // 2 sec stun
+        return { mobStunEffects: stunEffects };
+      });
     }
 
     // Clear effect after duration
     setTimeout(() => {
-      if (useGameStore.getState().mobSlowEffects) delete window.mobSlowEffects[mobId];
+      useGameStore.setState(state => {
+        const slowEffects = { ...(state.mobSlowEffects || {}) };
+        delete slowEffects[mobId];
+        return { mobSlowEffects: slowEffects };
+      });
     }, duration * 1000);
   };
 
   // CHAIN LIGHTNING - Jump to nearby mobs
   const applyChainLightning = (startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
-    if (!window.getAllMobs) return;
+    const allMobs = useGameStore.getState().mobEntities;
+    if (!allMobs) return;
 
-    const allMobs = window.getAllMobs();
     let currentDamage = baseDamage * damageReduction;
     let lastPos = startPos.clone ? startPos.clone() : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
     const hitMobs = new Set([excludeId]);
@@ -423,32 +433,32 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     // Sync ref always
     projectilesRef.current = updatedProjectiles;
 
-    // Throttle React state sync: only every 2 frames OR when dirty (new projectile added/removed)
-    frameCounter.current++;
+    // React state sync: ONLY when dirty (new projectile added/removed)
     const lengthChanged = updatedProjectiles.length !== projectiles.length;
-    if (frameCounter.current % 2 === 0 || projectilesDirty.current || lengthChanged) {
+    if (projectilesDirty.current || lengthChanged) {
       setProjectiles([...updatedProjectiles]);
       projectilesDirty.current = false;
     }
 
-    // Update spell trails (throttled)
-    if (frameCounter.current % 2 === 0) {
-      setSpellTrails(prev => {
-        const updated = prev.map(trail => ({
-          ...trail,
-          age: trail.age + deltaMs * 2 // Compensate for skipped frames
-        })).filter(trail => trail.age < trail.maxAge);
-        return updated.length !== prev.length || updated.length > 0 ? updated : prev;
-      });
+    // Mutate trail and impact ages outside of React state
+    let trailsChanged = false;
+    let impactsChanged = false;
 
-      // Update spell impacts
-      setSpellImpacts(prev => {
-        const updated = prev.map(impact => ({
-          ...impact,
-          age: impact.age + deltaMs * 2 // Compensate for skipped frames
-        })).filter(impact => impact.age < impact.maxAge);
-        return updated.length !== prev.length || updated.length > 0 ? updated : prev;
-      });
+    for (const trail of spellTrails) {
+      trail.age += deltaMs;
+      if (trail.age >= trail.maxAge) trailsChanged = true;
+    }
+
+    for (const impact of spellImpacts) {
+      impact.age += deltaMs;
+      if (impact.age >= impact.maxAge) impactsChanged = true;
+    }
+
+    if (trailsChanged) {
+      setSpellTrails(prev => prev.filter(t => t.age < t.maxAge));
+    }
+    if (impactsChanged) {
+      setSpellImpacts(prev => prev.filter(i => i.age < i.maxAge));
     }
   });
 

@@ -155,9 +155,10 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       if (event.code === 'KeyT' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
         if (useGameStore.getState().mobEntities && useGameStore.getState().gameCamera) {
-          const px = window.gameCamera.position.x, pz = window.gameCamera.position.z;
+          const camera = useGameStore.getState().gameCamera;
+          const px = camera.position.x, pz = camera.position.z;
           let nearest = null, nearestDist = 4;
-          window._mobEntities.forEach(mob => {
+          useGameStore.getState().mobEntities.forEach(mob => {
             if (!mob.passive) return;
             const dx = mob.position[0] - px;
             const dz = mob.position[2] - pz;

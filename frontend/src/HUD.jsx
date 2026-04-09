@@ -43,7 +43,7 @@ export const Minimap = React.memo(({ playerPosition }) => {
       const scale = MAP_SIZE / MAP_RANGE;
 
       if (useGameStore.getState().mobEntities) {
-        window._mobEntities.forEach(mob => {
+        useGameStore.getState().mobEntities.forEach(mob => {
           const dx = (mob.position[0] - playerPosition.x) * scale;
           const dz = (mob.position[2] - playerPosition.z) * scale;
           if (Math.abs(dx) < MAP_SIZE / 2 && Math.abs(dz) < MAP_SIZE / 2) {
