@@ -1,10 +1,10 @@
 ---
-description: how to update the PRD at the end of every major phase or session
+description: how to update the architecture and changelog at the end of every major phase or session
 ---
 
-# Update PRD After Major Phases
+# Update Documentation After Major Phases
 
-At the end of each major implementation phase (or before closing the session), update `memory/PRD.md` to reflect all changes.
+At the end of each major implementation phase (or before closing the session), update `memory/CHANGELOG.md` and `memory/ARCHITECTURE.md` to reflect all changes.
 
 ## Steps
 
@@ -12,27 +12,22 @@ At the end of each major implementation phase (or before closing the session), u
    - Check `git diff` or `git log` for recent changes
    - Review modified source files or completed task checklist items
 
-2. **Update the Development History section**
-   - Add a new dated entry under `## Development History` in `memory/PRD.md`
+2. **Update the Changelog**
+   - Add a new dated entry under `# Changelog & Development History` in `memory/CHANGELOG.md`
    - Use format: `### Month Day, Year (Phase N) — Brief Title`
    - List all features added, bugs fixed, and architectural changes
 
-3. **Update feature tables if needed**
+3. **Update Architecture details if needed (`memory/ARCHITECTURE.md`)**
    - New block types → update **Block Types** table
    - New mobs → update **Mob Types** table
    - New spells → update **Spell Types** table
    - New controls → update **Controls** table
    - New source files → update **Architecture** section
    - Deleted source files → remove from **Architecture** section
+   - If game constants changed (RENDER_DISTANCE, etc.), update **Key Configuration**.
+   - Add checkmarks for newly tested features under **Testing Status**.
 
-4. **Update Testing Status**
-   - Add checkmarks for newly tested features
-   - Note any known issues or incomplete features
-
-5. **Update Key Configuration**
-   - If any game constants changed (RENDER_DISTANCE, physics params, spell costs), reflect them
-
-6. **Document code cleanup or refactoring**
+4. **Document code cleanup or refactoring in `CHANGELOG.md`**
    - Dead files removed (which ones and why)
    - Dependencies added or removed
    - console.logs cleaned (count)
@@ -48,10 +43,11 @@ At the end of each major implementation phase (or before closing the session), u
 - **Build command**: `npx vite build`
 - **Physics**: @react-three/rapier (TrimeshCollider for terrain)
 - **3D**: @react-three/fiber + drei
+- **State**: Zustand (`useGameStore`)
+- **ECS**: miniplex (for NPC logic)
 
 ## Important Notes
 
-- Always use actual source code as source of truth, not memory
-- Keep entries concise but comprehensive
-- PRD lives at `/Users/kz/Code/Crafty/memory/PRD.md`
-- **Cleanup and refactoring work is a real change — always document it**
+- Always use actual source code as source of truth, not memory.
+- Keep entries concise but comprehensive.
+- **Cleanup and refactoring work is a real change — always document it.**

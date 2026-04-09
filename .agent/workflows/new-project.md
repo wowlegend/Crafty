@@ -80,7 +80,7 @@ mkdir -p .agent/workflows
 Copy over reusable workflows:
 
 - `cleanup.md` — Full codebase cleanup
-- `update-prd.md` — PRD documentation
+- `update-docs.md` — PRD documentation
 - `pre-commit.md` — Quality gate before commits
 - `upgrade-deps.md` — Safe dependency upgrades
 
@@ -114,4 +114,6 @@ EOF
 
 ```bash
 npx vite build 2>&1 | tail -5
+```
+>&1 | tail -5
 ```
