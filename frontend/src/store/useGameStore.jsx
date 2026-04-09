@@ -16,7 +16,7 @@ export const useGameStore = create((set, get) => ({
     setCheckCollision: (fn) => set({ checkCollision: fn }),
 
     mobEntities: [],
-    setMobEntities: (entities) => set({ mobEntities: typeof entities === 'function' ? entities(get().mobEntities) : entities }),
+    setMobEntities: (entities) => set((state) => ({ mobEntities: typeof entities === 'function' ? entities(state.mobEntities) : entities })),
 
     // Transient Events & System Hooks
     grantXP: null,
@@ -54,9 +54,9 @@ export const useGameStore = create((set, get) => ({
     setCheckMobCollision: (fn) => set({ checkMobCollision: fn }),
     
     mobSlowEffects: {},
-    setMobSlowEffects: (effects) => set({ mobSlowEffects: typeof effects === 'function' ? effects(get().mobSlowEffects) : effects }),
+    setMobSlowEffects: (effects) => set((state) => ({ mobSlowEffects: typeof effects === 'function' ? effects(state.mobSlowEffects) : effects })),
     mobStunEffects: {},
-    setMobStunEffects: (effects) => set({ mobStunEffects: typeof effects === 'function' ? effects(get().mobStunEffects) : effects }),
+    setMobStunEffects: (effects) => set((state) => ({ mobStunEffects: typeof effects === 'function' ? effects(state.mobStunEffects) : effects })),
     castSpell: null,
     setCastSpell: (fn) => set({ castSpell: fn }),
     
@@ -99,7 +99,7 @@ export const useGameStore = create((set, get) => ({
     setActiveSpell: (spell) => set({ activeSpell: spell }),
 
     showTradingInterface: false,
-    setShowTradingInterface: (show) => set({ showTradingInterface: typeof show === 'function' ? show(get().showTradingInterface) : show }),
+    setShowTradingInterface: (show) => set((state) => ({ showTradingInterface: typeof show === 'function' ? show(state.showTradingInterface) : show })),
 
     selectedVillager: null,
     setSelectedVillager: (villager) => set({ selectedVillager: villager }),

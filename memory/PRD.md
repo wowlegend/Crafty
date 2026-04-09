@@ -625,3 +625,13 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
   - Replaced `InstancedMesh` with dynamically generated `BufferGeometry`.
   - Implemented an adjacent-face culling (greedy mesher approximation) algorithm in the worker. Blocks completely buried underground no longer generate geometry, reducing GPU vertex load by up to 90%.
   - Physics meshes are perfectly mapped back into Rapier's `TrimeshCollider` for seamless raycasting and player collision.
+
+### April 6, 2026 (Wave 3 Patch) — The Polish Patch
+
+- **POINTER LOCK CONTEXT RECOVERED**:
+  - Removed asynchronous `setTimeout(..., 100)` wrappers around `requestPointerLock` across `InputManager.jsx`, `App.jsx`, and `MenuSystem.jsx` to ensure modern browsers don't block camera locking.
+- **AI LOGIC FIXES**:
+  - Replaced the flawed `distToPlayer2D` check with proper `distToPlayer3D` logic in the ECS so zombies can't infinitely aggro players towering directly above them.
+- **ZUSTAND CLOSURE & RENDER FIXES**:
+  - Swapped generic `const gameState = useGameStore()` initializers in root components (`App.jsx`, `GameSystems.jsx`) with highly specific `useShallow` selectors, completely eliminating catastrophic full-tree re-renders on minor state ticks.
+  - Rewrote Zustand functional setters (e.g., `setMobEntities`) to safely use their own closures rather than injecting stale state from `get()`.

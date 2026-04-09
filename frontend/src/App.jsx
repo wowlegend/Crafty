@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
@@ -33,7 +34,31 @@ function GameAppWrapper() {
 }
 
 function GameApp({ experienceSystem }) {
-  const gameState = useGameStore();
+  const gameState = useGameStore(useShallow(state => ({
+        isSpawnChunkLoaded: state.isSpawnChunkLoaded,
+        isDay: state.isDay,
+        addToInventory: state.addToInventory,
+        removeFromInventory: state.removeFromInventory,
+        setShowInventory: state.setShowInventory,
+        setShowCrafting: state.setShowCrafting,
+        setShowMagic: state.setShowMagic,
+        setShowBuildingTools: state.setShowBuildingTools,
+        setShowSettings: state.setShowSettings,
+        setShowTradingInterface: state.setShowTradingInterface,
+        showInventory: state.showInventory,
+        showCrafting: state.showCrafting,
+        showMagic: state.showMagic,
+        showBuildingTools: state.showBuildingTools,
+        showSettings: state.showSettings,
+        showTradingInterface: state.showTradingInterface,
+        showWorldManager: state.showWorldManager,
+        setShowWorldManager: state.setShowWorldManager,
+        selectedVillager: state.selectedVillager,
+        loadWorldData: state.loadWorldData,
+        selectedBlock: state.selectedBlock,
+        activeSpell: state.activeSpell,
+        setActiveSpell: state.setActiveSpell
+    })));
   const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();

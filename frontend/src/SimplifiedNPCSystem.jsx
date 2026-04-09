@@ -264,7 +264,7 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
       const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
       const distToPlayer3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-      if (!entity.passive && distToPlayer2D < AGGRO_RANGE) {
+      if (!entity.passive && distToPlayer3D < AGGRO_RANGE) {
         entity.isAggro = true;
         entity.isMoving = true;
         entity.targetX = playerX;
