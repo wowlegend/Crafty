@@ -87,6 +87,10 @@ self.onmessage = function(e) {
       ]);
     }
   }
+  else if (type === 'unload') {
+    const { cx, cz } = payload;
+    chunks.delete(`${cx}_${cz}`);
+  }
 };
 
 function getIndex(x, y, z) {

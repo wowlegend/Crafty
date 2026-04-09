@@ -377,7 +377,7 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
       <group ref={rightHandRef}>
         <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
         <mesh position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
-        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}><MagicWand wandType={selectedSpell} /></group>
+        <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}><MagicWand wandType={activeSpell} /></group>
         {isAttacking && (
           <mesh ref={magicAuraRef} position={[0, 0, 0]}>
             <sphereGeometry args={[0.32, 8, 8]} />

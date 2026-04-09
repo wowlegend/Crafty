@@ -127,6 +127,7 @@ export const MinecraftWorld = React.memo(() => {
                 Object.keys(newChunks).forEach(key => {
                     const c = newChunks[key];
                     if (Math.abs(c.cx - playerCx) > cullDist || Math.abs(c.cz - playerCz) > cullDist) {
+                        worker.postMessage({ type: 'unload', payload: { cx: c.cx, cz: c.cz } });
                         delete newChunks[key];
                         requestedChunks.delete(key);
                     }

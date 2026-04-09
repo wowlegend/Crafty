@@ -3,8 +3,22 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
 import * as THREE from 'three';
 import { World } from 'miniplex';
-import { useEntities } from '@miniplex/react';
 import { ecs, mobsQuery } from './ecs/world';
+
+// Custom miniplex React hook for compatibility
+const useEntities = (query) => {
+  const [entities, setEntities] = useState([...query.entities]);
+  useEffect(() => {
+    const update = () => setEntities([...query.entities]);
+    const unsubAdded = query.onEntityAdded.subscribe(update);
+    const unsubRemoved = query.onEntityRemoved.subscribe(update);
+    return () => {
+      unsubAdded();
+      unsubRemoved();
+    };
+  }, [query]);
+  return entities;
+};
 
 // MOB TYPES with different stats and colors
 export const MOB_TYPES = {
