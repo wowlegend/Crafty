@@ -80,31 +80,55 @@ mkdir -p .agent/workflows
 Copy over reusable workflows:
 
 - `cleanup.md` — Full codebase cleanup
-- `update-docs.md` — PRD documentation
+- `update-docs.md` — Documentation tracker
 - `pre-commit.md` — Quality gate before commits
 - `upgrade-deps.md` — Safe dependency upgrades
+- `use-active-plan.md` — Guide for using the volatile scratchpad
 
-## 7. Create PRD
+## 7. Create Modular Memory Structure
+
+Instead of a monolithic PRD, use the modern 4-file memory structure.
 
 ```bash
 mkdir -p memory
-cat > memory/PRD.md << 'EOF'
+```
+
+Create `memory/ARCHITECTURE.md` (The Blueprint):
+```bash
+cat > memory/ARCHITECTURE.md << 'EOF'
 # Project Name
-
-## Project Overview
-[Brief description]
-
 ## Tech Stack
 - **Build**: Vite
 - **UI**: React 19
 - **State**: Zustand
-
 ## Core Features
 - [Feature list]
+EOF
+```
 
-## Development History
+Create `memory/CHANGELOG.md` (The Past):
+```bash
+cat > memory/CHANGELOG.md << 'EOF'
+# Changelog & Development History
 ### [Date] — Initial Setup
 - Scaffolded project with Vite + React
+EOF
+```
+
+Create `memory/ROADMAP.md` (The Future):
+```bash
+cat > memory/ROADMAP.md << 'EOF'
+# Roadmap & Future Enhancements
+## Phase 1
+- [ ] First feature to build
+EOF
+```
+
+Create `memory/ACTIVE_PLAN.md` (The Present):
+```bash
+cat > memory/ACTIVE_PLAN.md << 'EOF'
+# Active Plan
+*Ready for the next directive.*
 EOF
 ```
 

@@ -1,33 +1,35 @@
 ---
-description: how to update the architecture and changelog at the end of every major phase or session
+description: how to update the architecture, changelog, and roadmap at the end of every major phase or session
 ---
 
 # Update Documentation After Major Phases
 
-At the end of each major implementation phase (or before closing the session), update `memory/CHANGELOG.md` and `memory/ARCHITECTURE.md` to reflect all changes.
+At the end of each major implementation phase (or before closing the session), update the modular memory structure (`CHANGELOG.md`, `ARCHITECTURE.md`, `ROADMAP.md`) to reflect all changes, and clear the `ACTIVE_PLAN.md`.
 
 ## Steps
 
 1. **Review what changed this phase/session**
    - Check `git diff` or `git log` for recent changes
-   - Review modified source files or completed task checklist items
+   - Review `memory/ACTIVE_PLAN.md` to see the completed checklist.
 
-2. **Update the Changelog**
-   - Add a new dated entry under `# Changelog & Development History` in `memory/CHANGELOG.md`
+2. **Update the Changelog (`memory/CHANGELOG.md`)**
+   - Add a new dated entry under `# Changelog & Development History`.
    - Use format: `### Month Day, Year (Phase N) — Brief Title`
-   - List all features added, bugs fixed, and architectural changes
+   - List all features added, bugs fixed, and architectural changes.
 
 3. **Update Architecture details if needed (`memory/ARCHITECTURE.md`)**
-   - New block types → update **Block Types** table
-   - New mobs → update **Mob Types** table
-   - New spells → update **Spell Types** table
-   - New controls → update **Controls** table
    - New source files → update **Architecture** section
    - Deleted source files → remove from **Architecture** section
-   - If game constants changed (RENDER_DISTANCE, etc.), update **Key Configuration**.
-   - Add checkmarks for newly tested features under **Testing Status**.
+   - If game constants/configs changed, update them.
 
-4. **Document code cleanup or refactoring in `CHANGELOG.md`**
+4. **Update the Roadmap (`memory/ROADMAP.md`)**
+   - If a feature was completed, remove it from the Roadmap (or check it off if you prefer preserving the history).
+   - Add any new technical debt or requested features discovered during the session to the Roadmap.
+
+5. **Clear the Active Plan (`memory/ACTIVE_PLAN.md`)**
+   - Reset the scratchpad to `*Ready for the next directive.*` so it is clean for the next agent session.
+
+6. **Document code cleanup or refactoring in `CHANGELOG.md`**
    - Dead files removed (which ones and why)
    - Dependencies added or removed
    - console.logs cleaned (count)
