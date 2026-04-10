@@ -90,6 +90,7 @@ export const MinecraftWorld = React.memo(() => {
     const { rapier, world } = useRapier();
 
     const [chunks, setChunks] = useState({});
+    const chunksRef = useRef(new Set());
 
     const CHUNK_SIZE = 16;
     const RENDER_DISTANCE = 4; // Max visible chunks radially
@@ -100,6 +101,7 @@ export const MinecraftWorld = React.memo(() => {
             const { type, payload } = e.data;
             if (type === 'chunk_mesh') {
                 const key = `${payload.cx}_${payload.cz}`;
+                chunksRef.current.add(key);
                 setChunks(prev => ({
                     ...prev,
                     [key]: { cx: payload.cx, cz: payload.cz, meshData: payload }
@@ -116,6 +118,8 @@ export const MinecraftWorld = React.memo(() => {
 
     // Provide ground level approximation for NPCs via top-down physics raycast
     useEffect(() => {
+        useGameStore.getState().setGetGeneratedChunks(() => () => chunksRef.current);
+        
         useGameStore.getState().setGetMobGroundLevel(() => (x, z) => {
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 300, true);
@@ -133,6 +137,7 @@ export const MinecraftWorld = React.memo(() => {
         });
 
         return () => {
+            useGameStore.getState().setGetGeneratedChunks(null);
             useGameStore.getState().setGetMobGroundLevel(null);
             useGameStore.getState().setCheckCollision(null);
         };

@@ -80,10 +80,8 @@ mkdir -p .agent/workflows
 Copy over reusable workflows:
 
 - `cleanup.md` — Full codebase cleanup
-- `update-docs.md` — Documentation tracker
 - `pre-commit.md` — Quality gate before commits
 - `upgrade-deps.md` — Safe dependency upgrades
-- `use-active-plan.md` — Guide for using the volatile scratchpad
 
 ## 7. Create Modular Memory Structure
 

@@ -446,3 +446,10 @@
   - `terrain.worker.js` now evaluates block deletions and posts a `block_broken` event back to the main thread containing the original block's parsed hex color and 3D coordinates.
   - Added a `BlockParticleSystem` component that listens for worker events and generates temporary `ParticleBurst` groups.
   - Bursts contain 8 tiny, physics-enabled `@react-three/rapier` `<RigidBody type="dynamic">` cubes that inherit the block's color, shoot upwards, bounce on the terrain, and shrink out of existence after 2 seconds to prevent memory leaks and physics clutter.
+
+### April 10, 2026 (Bug Fix) — Terrain Color & Mob Spawning
+
+- **TERRAIN COLOR CORRECTION**:
+  - Fixed the muddy/washed-out terrain colors by applying an sRGB-to-Linear conversion function inside `terrain.worker.js`. Three.js `BufferGeometry` with `vertexColors={true}` expects raw values in Linear color space, unlike `meshLambertMaterial color={string}` which auto-converts.
+- **MOB SPAWNING RESTORED**:
+  - Re-implemented the `getGeneratedChunks` transient Zustand method inside `Terrain.jsx` (which was accidentally dropped during the Web Worker rewrite). Mobs now successfully spawn and track valid physical chunks.
