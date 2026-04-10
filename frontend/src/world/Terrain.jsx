@@ -10,24 +10,23 @@ const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
 const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
-    const geometryRef = useRef();
+    if (!meshData || meshData.positions.length === 0) return null;
 
-    useEffect(() => {
-        if (!geometryRef.current || !meshData) return;
-        const geom = geometryRef.current;
+    const geometry = React.useMemo(() => {
+        const geom = new THREE.BufferGeometry();
         geom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
         geom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
         geom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
         geom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
         geom.computeBoundingSphere();
+        return geom;
     }, [meshData]);
 
-    if (!meshData || meshData.positions.length === 0) return null;
+    const geomKey = `${meshData.positions.length}_${meshData.indices.length}`;
 
     return (
-        <group>
-            <mesh>
-                <bufferGeometry ref={geometryRef} />
+        <group position={[cx * 16, 0, cz * 16]} key={geomKey}>
+            <mesh geometry={geometry}>
                 <meshLambertMaterial vertexColors={true} />
             </mesh>
             <RigidBody type="fixed" colliders={false}>
