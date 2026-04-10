@@ -155,11 +155,22 @@ function generateChunkData(cx, cz) {
   return blocks;
 }
 
-// Map BlockType to RGB colors matching existing Crafty palettes
+// Helper to convert sRGB to Linear for BufferGeometry vertex colors
+function toLinear(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  
+  const linear = (c) => c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);
+  
+  return [linear(r), linear(g), linear(b)];
+}
+
+// Map BlockType to RGB colors matching existing Crafty palettes (converted to Linear space)
 const BLOCK_COLORS = {
-  1: [86/255, 124/255, 53/255],   // Grass #567C35
-  2: [151/255, 109/255, 77/255],  // Dirt #976D4D
-  3: [112/255, 112/255, 112/255], // Stone #707070
+  1: toLinear('#567C35'),   // Grass
+  2: toLinear('#976D4D'),  // Dirt
+  3: toLinear('#707070'), // Stone
   // Fallback for others currently unused by worker default gen
   255: [1, 1, 1] 
 };
