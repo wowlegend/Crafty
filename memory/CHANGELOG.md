@@ -442,3 +442,7 @@
   - Implemented continuous physics raycasting within `Terrain.jsx` using `useFrame`.
   - Added a `TargetOutline` component that renders a subtle, transparent 3D wireframe box.
   - The outline dynamically snaps to the exact voxel grid block currently targeted by the player's crosshair via `@react-three/rapier` physics.
+- **BLOCK BREAKING PARTICLES**:
+  - `terrain.worker.js` now evaluates block deletions and posts a `block_broken` event back to the main thread containing the original block's parsed hex color and 3D coordinates.
+  - Added a `BlockParticleSystem` component that listens for worker events and generates temporary `ParticleBurst` groups.
+  - Bursts contain 8 tiny, physics-enabled `@react-three/rapier` `<RigidBody type="dynamic">` cubes that inherit the block's color, shoot upwards, bounce on the terrain, and shrink out of existence after 2 seconds to prevent memory leaks and physics clutter.

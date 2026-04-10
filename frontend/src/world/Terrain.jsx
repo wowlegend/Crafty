@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
+import { BlockParticleSystem } from './BlockParticleSystem';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -263,6 +264,7 @@ export const MinecraftWorld = React.memo(() => {
                 <ChunkMesh key={`${chunk.cx}_${chunk.cz}`} cx={chunk.cx} cz={chunk.cz} meshData={chunk.meshData} />
             ))}
             <TargetOutline />
+            <BlockParticleSystem worker={worker} />
         </group>
     );
 });

@@ -66,7 +66,21 @@ self.onmessage = function(e) {
     
     const index = getIndex(x, y, z);
     if (index >= 0 && index < VOLUME) {
+      const prevBlock = blocks[index];
       blocks[index] = blockType;
+
+      if (blockType === 0 && prevBlock !== 0) {
+        const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
+        self.postMessage({
+          type: 'block_broken',
+          payload: {
+            x: cx * CHUNK_SIZE + x,
+            y,
+            z: cz * CHUNK_SIZE + z,
+            color: `#${Math.round(colorArray[0]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[1]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[2]*255).toString(16).padStart(2,'0')}`
+          }
+        });
+      }
       
       // Re-mesh
       const meshData = generateMesh(cx, cz, blocks);
