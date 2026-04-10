@@ -453,3 +453,15 @@
   - Fixed the muddy/washed-out terrain colors by applying an sRGB-to-Linear conversion function inside `terrain.worker.js`. Three.js `BufferGeometry` with `vertexColors={true}` expects raw values in Linear color space, unlike `meshLambertMaterial color={string}` which auto-converts.
 - **MOB SPAWNING RESTORED**:
   - Re-implemented the `getGeneratedChunks` transient Zustand method inside `Terrain.jsx` (which was accidentally dropped during the Web Worker rewrite). Mobs now successfully spawn and track valid physical chunks.
+
+### April 10, 2026 (Ruthless Cleanup) — Comprehensive Project Audit & Simplification
+
+- **DEAD FILES & DIRECTORIES**:
+  - Identified and removed empty logic directories (`frontend/src/ecs/systems/`) using the dead-file audit tools.
+- **STALE ARTIFACT REMOVAL**:
+  - Deleted obsolete generated directories, `.DS_Store` across project scope, and temporary `.log` files to guarantee pristine local environments.
+- **SOURCE & QUALITY AUDIT**:
+  - Verified codebase is clean of any dead code and disconnected modules.
+  - Confirmed exactly 0 `console.log` statements remain active within frontend source code.
+  - Parsed `App.css` against source to verify no unused styling definitions.
+  - Rebuilt frontend with `Vite` successfully, ensuring zero compile or bundle deterioration.
