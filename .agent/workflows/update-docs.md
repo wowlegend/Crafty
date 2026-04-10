@@ -27,7 +27,7 @@ At the end of each major implementation phase (or before closing the session), u
    - Add any new technical debt or requested features discovered during the session to the Roadmap.
 
 5. **Clear the Active Plan (`memory/ACTIVE_PLAN.md`)**
-   - Reset the scratchpad to `*Ready for the next directive.*` so it is clean for the next agent session.
+   - Reset the scratchpad so the `Current Task:` section is wiped and ready for the next agent session, but **always preserve the instructional preamble sentences at the top of the file**.
 
 6. **Document code cleanup or refactoring in `CHANGELOG.md`**
    - Dead files removed (which ones and why)
