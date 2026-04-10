@@ -154,7 +154,7 @@ These checks go beyond basic cleanup into code quality and architecture:
 
 1. **Verify build**: `cd frontend && npx vite build`
 2. **Test dev server**: `cd frontend && npm run dev`
-3. **Run `/update-docs`** to document all cleanup in the CHANGELOG
+3. **Run `/wrapup`** to document all cleanup in the CHANGELOG
 
 ## Checklist
 
