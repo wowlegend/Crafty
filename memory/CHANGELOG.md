@@ -435,3 +435,10 @@
 - **ZUSTAND CLOSURE & RENDER FIXES**:
   - Swapped generic `const gameState = useGameStore()` initializers in root components (`App.jsx`, `GameSystems.jsx`) with highly specific `useShallow` selectors, completely eliminating catastrophic full-tree re-renders on minor state ticks.
   - Rewrote Zustand functional setters (e.g., `setMobEntities`) to safely use their own closures rather than injecting stale state from `get()`.
+
+### April 6, 2026 (Phase 8) — The "Juice" & Game Feel (Visual Polish)
+
+- **TARGET BLOCK OUTLINING**:
+  - Implemented continuous physics raycasting within `Terrain.jsx` using `useFrame`.
+  - Added a `TargetOutline` component that renders a subtle, transparent 3D wireframe box.
+  - The outline dynamically snaps to the exact voxel grid block currently targeted by the player's crosshair via `@react-three/rapier` physics.

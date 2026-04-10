@@ -3,7 +3,7 @@
 *(Validated via Swarm Code Review & Puppeteer Browser Verification - April 6, 2026)*
 
 ### Phase 8: The "Juice" & Game Feel (Visual Polish)
-- [ ] **Target Block Outlining**: Render a subtle 3D wireframe box around the block currently targeted by the Rapier raycast.
+- [x] **Target Block Outlining**: Render a subtle 3D wireframe box around the block currently targeted by the Rapier raycast.
 - [ ] **Block Breaking Particles**: Spawn physics-enabled colored cube particles when a block is destroyed.
 - [ ] **Player Animation**: Add a swinging hand/weapon model and subtle camera view-bobbing.
 - [ ] **Lighting**: Enable Day/Night mapped directional shadows and subtle SSAO for a modern voxel look.

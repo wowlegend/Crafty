@@ -36,6 +36,54 @@ const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
     );
 });
 
+// --- TARGET BLOCK OUTLINE ---
+const TargetOutline = () => {
+    const meshRef = useRef();
+    const { camera } = useThree();
+    const { rapier, world } = useRapier();
+
+    const boxGeometry = React.useMemo(() => new THREE.BoxGeometry(1.01, 1.01, 1.01), []);
+
+    useFrame(() => {
+        if (!meshRef.current || !world || !document.pointerLockElement) {
+            if (meshRef.current) meshRef.current.visible = false;
+            return;
+        }
+
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        const rayStart = camera.position.clone();
+        
+        const ray = new rapier.Ray(
+            { x: rayStart.x, y: rayStart.y, z: rayStart.z },
+            { x: direction.x, y: direction.y, z: direction.z }
+        );
+        
+        const hit = world.castRay(ray, 8.0, true);
+        if (hit) {
+            const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
+            // Step slightly IN to the block to ensure we target the hit block's voxel grid
+            const targetPos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
+            
+            const tx = Math.floor(targetPos.x) + 0.5;
+            const ty = Math.floor(targetPos.y) + 0.5;
+            const tz = Math.floor(targetPos.z) + 0.5;
+            
+            meshRef.current.position.set(tx, ty, tz);
+            meshRef.current.visible = true;
+        } else {
+            meshRef.current.visible = false;
+        }
+    });
+
+    return (
+        <lineSegments ref={meshRef} visible={false}>
+            <edgesGeometry args={[boxGeometry]} />
+            <lineBasicMaterial color="#ffffff" opacity={0.5} transparent depthTest={true} />
+        </lineSegments>
+    );
+};
+
 export const MinecraftWorld = React.memo(() => {
     const gameState = useGameStore();
     const { camera } = useThree();
@@ -214,6 +262,7 @@ export const MinecraftWorld = React.memo(() => {
             {Object.values(chunks).filter(c => c.meshData).map(chunk => (
                 <ChunkMesh key={`${chunk.cx}_${chunk.cz}`} cx={chunk.cx} cz={chunk.cz} meshData={chunk.meshData} />
             ))}
+            <TargetOutline />
         </group>
     );
 });
