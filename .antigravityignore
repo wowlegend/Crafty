@@ -1,0 +1,13 @@
+# Antigravity Indexer Exclusions
+# Prevents indexer segfaults on large dependency trees
+# See: https://discuss.ai.google.dev/t/knowledge-how-to-make-it-works/115505/19
+
+node_modules/
+.venv/
+venv/
+build/
+dist/
+.next/
+*.so
+*.dat
+.git/

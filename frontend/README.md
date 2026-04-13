@@ -43,3 +43,10 @@ npm run preview  # preview production build
 | C | Crafting |
 | B | Building |
 | ESC | Settings |
+
+## Documentation & Architecture
+
+This repository uses a structured 4-piece Agentic Memory framework. For deep contextual history, active development plans, and codebase architecture, refer to the `../memory/` directory:
+- [ARCHITECTURE.md](../memory/ARCHITECTURE.md): Component decay, React strategies, and math laws.
+- [CHANGELOG.md](../memory/CHANGELOG.md): Reverse-chronological historical updates.
+- [ROADMAP.md](../memory/ROADMAP.md): Priority list for future enhancements.

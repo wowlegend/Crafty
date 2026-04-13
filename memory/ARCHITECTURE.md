@@ -63,7 +63,6 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
     └── ui/GamePanels.jsx         # Extracted UI panel components
 ```
 
-
 ## Controls
 
 | Key | Action |
@@ -200,3 +199,9 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - ✅ Camera horizontal initialization
 - ✅ Vite build system (CRA migration)
 - ✅ React 19 + Fiber 9 + Rapier 2.2 compatibility
+
+## AI Structural Laws
+
+- **State Management**: When bridging React UI state with imperative 3D game loops (@react-three/fiber), prefer Zustand's `useStore.getState()` over globals or polling for fast, non-reactive reads without re-renders.
+- **Component Design**: Proactively decompose massive monolithic React orchestrator components into specialized layers (e.g., `GameScene`, `HUD`, `InputManager`) to prevent re-render cascading.
+- **3D Interaction**: For accurate block placement in 3D environments, always use physics engine raycasting (e.g., Rapier's `world.castRay`) for precise intersections, rather than naive scalar distance projection.
