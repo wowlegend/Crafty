@@ -202,6 +202,8 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 ## AI Structural Laws
 
-- **State Management**: When bridging React UI state with imperative 3D game loops (@react-three/fiber), prefer Zustand's `useStore.getState()` over globals or polling for fast, non-reactive reads without re-renders.
-- **Component Design**: Proactively decompose massive monolithic React orchestrator components into specialized layers (e.g., `GameScene`, `HUD`, `InputManager`) to prevent re-render cascading.
-- **3D Interaction**: For accurate block placement in 3D environments, always use physics engine raycasting (e.g., Rapier's `world.castRay`) for precise intersections, rather than naive scalar distance projection.
+- **State Management**: When bridging React UI state with imperative 3D game loops (@react-three/fiber), prefer Zustand's `useStore.getState()` over globals or polling for fast, non-reactive reads. Absolutely NEVER store non-serializable functions (like `damageMob` or `grantXP`) in Zustand; use the dedicated `GameMethods.js` module.
+- **Component Design**: Proactively decompose massive monolithic React orchestrator components into specialized layers (e.g., `GameScene`, `HUD`, `InputManager`) to prevent re-render cascading. Use `useShallow` when subscribing to Zustand stores in UI layers.
+- **3D Interaction**: For accurate block placement in 3D environments, always use physics engine raycasting (e.g., Rapier's `world.castRay`) for precise intersections. Throttle these raycasts spatially and temporally to avoid 60Hz CPU spikes.
+- **GPU Offloading**: When animating hundreds of similar objects (e.g., grass swaying), never compute matrix math in a CPU `useFrame`. Always use `InstancedMesh` combined with custom `onBeforeCompile` vertex shaders.
+- **Physics Pooling**: Never mount and unmount `<RigidBody>` components dynamically during high-frequency events (like block breaking). Use `<InstancedRigidBodies>` and manipulate the transform matrices of a fixed pool of hidden bodies to simulate spawning.

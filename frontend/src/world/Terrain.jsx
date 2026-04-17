@@ -41,14 +41,31 @@ const TargetOutline = () => {
     const meshRef = useRef();
     const { camera } = useThree();
     const { rapier, world } = useRapier();
+    const lastCast = useRef(0);
+    const lastCameraPos = useRef(new THREE.Vector3());
+    const lastCameraRot = useRef(new THREE.Vector3());
 
     const boxGeometry = React.useMemo(() => new THREE.BoxGeometry(1.01, 1.01, 1.01), []);
 
-    useFrame(() => {
+    useFrame((state) => {
         if (!meshRef.current || !world || !document.pointerLockElement) {
             if (meshRef.current) meshRef.current.visible = false;
             return;
         }
+
+        const now = state.clock.elapsedTime;
+        const camRotVec = new THREE.Vector3(camera.rotation.x, camera.rotation.y, camera.rotation.z);
+        const posDeltaSq = camera.position.distanceToSquared(lastCameraPos.current);
+        const rotDeltaSq = camRotVec.distanceToSquared(lastCameraRot.current);
+        
+        // Throttled raycast: Only update at 20Hz OR if camera moved/rotated significantly
+        if (now - lastCast.current < 0.05 && posDeltaSq < 0.001 && rotDeltaSq < 0.001) {
+            return; // Skip raycast, retain current outline position
+        }
+        
+        lastCast.current = now;
+        lastCameraPos.current.copy(camera.position);
+        lastCameraRot.current.copy(camRotVec);
 
         const direction = new THREE.Vector3();
         camera.getWorldDirection(direction);

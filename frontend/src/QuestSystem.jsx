@@ -1,4 +1,5 @@
 import { useGameStore } from './store/useGameStore';
+import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -188,8 +189,8 @@ export const useQuestSystem = () => {
         });
 
         // Grant XP reward
-        if (reward > 0 && useGameStore.getState().grantXP) {
-            useGameStore.getState().grantXP(reward, 'Quest Reward');
+        if (reward > 0 && GameMethods.grantXP) {
+            GameMethods.grantXP(reward, 'Quest Reward');
             addNotification(`🎁 +${reward} XP from quest reward!`, 'reward');
         }
     }, [completedQuestIds, addNotification]);
@@ -233,8 +234,8 @@ export const useQuestSystem = () => {
             // Auto-collect after delay + grant XP + add to inventory
             setTimeout(() => {
                 drops.forEach(drop => {
-                    if (useGameStore.getState().grantXP) {
-                        useGameStore.getState().grantXP(drop.xp, drop.item);
+                    if (GameMethods.grantXP) {
+                        GameMethods.grantXP(drop.xp, drop.item);
                     }
                     if (useGameStore.getState().addToInventory) {
                         useGameStore.getState().addToInventory(drop.item, 1);
@@ -647,6 +648,11 @@ export const useTreasureChests = (playerPosition) => {
         // Remove chest after 5 seconds
         setTimeout(() => {
             setChests(prev => prev.filter(c => c.id !== chestIdToOpen));
+            setOpenedChestIds(prev => {
+                const next = new Set(prev);
+                next.delete(chestIdToOpen);
+                return next;
+            });
         }, 5000);
 
         return loot;

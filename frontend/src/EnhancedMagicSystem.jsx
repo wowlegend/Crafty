@@ -1,5 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import * as THREE from 'three';
@@ -109,11 +110,15 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
   const applyBurnEffect = (mobId, duration, dps) => {
     let ticksRemaining = Math.floor(duration);
     const burnInterval = setInterval(() => {
-      if (ticksRemaining <= 0 || !useGameStore.getState().damageMob) {
+      if (ticksRemaining <= 0 || !GameMethods.damageMob) {
         clearInterval(burnInterval);
         return;
       }
-      useGameStore.getState().damageMob(mobId, dps);
+      const mob = GameMethods.damageMob(mobId, dps);
+      if (!mob) {
+        clearInterval(burnInterval);
+        return;
+      }
       ticksRemaining--;
     }, 1000);
   };
@@ -158,27 +163,37 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     let lastPos = startPos.clone ? startPos.clone() : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
     const hitMobs = new Set([excludeId]);
 
-    for (let i = 0; i < maxChains; i++) {
-      // Find nearest mob not yet hit
-      let nearestMob = null;
-      let nearestDist = range;
+    // Spatial optimization: Pre-filter mobs within maximum possible jump range
+    const maxPossibleRangeSq = (range * maxChains) ** 2;
+    const nearbyMobs = allMobs.filter(mob => {
+      const dx = mob.position[0] - lastPos.x;
+      const dy = mob.position[1] - lastPos.y;
+      const dz = mob.position[2] - lastPos.z;
+      return (dx*dx + dy*dy + dz*dz) <= maxPossibleRangeSq;
+    });
 
-      for (const mob of allMobs) {
+    for (let i = 0; i < maxChains; i++) {
+      let nearestMob = null;
+      let nearestDistSq = range * range; // Compare squared distances for speed
+
+      for (const mob of nearbyMobs) {
         if (hitMobs.has(mob.id)) continue;
 
-        const mobPos = new THREE.Vector3(mob.position[0], mob.position[1], mob.position[2]);
-        const dist = lastPos.distanceTo(mobPos);
+        const dx = mob.position[0] - lastPos.x;
+        const dy = mob.position[1] - lastPos.y;
+        const dz = mob.position[2] - lastPos.z;
+        const distSq = dx*dx + dy*dy + dz*dz;
 
-        if (dist < nearestDist) {
-          nearestDist = dist;
+        if (distSq < nearestDistSq) {
+          nearestDistSq = distSq;
           nearestMob = mob;
         }
       }
 
       if (nearestMob) {
         hitMobs.add(nearestMob.id);
-        if (useGameStore.getState().damageMob) {
-          useGameStore.getState().damageMob(nearestMob.id, Math.floor(currentDamage));
+        if (GameMethods.damageMob) {
+          GameMethods.damageMob(nearestMob.id, Math.floor(currentDamage));
         }
         lastPos = new THREE.Vector3(nearestMob.position[0], nearestMob.position[1], nearestMob.position[2]);
         currentDamage *= (1 - damageReduction);
@@ -250,8 +265,8 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
 
       // Grant XP for spell cast
-      if (useGameStore.getState().grantXP) {
-        useGameStore.getState().grantXP(3);
+      if (GameMethods.grantXP) {
+        GameMethods.grantXP(3);
       }
     }});
   }, [SPELL_TYPES]);
@@ -369,13 +384,13 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
 
       // Check collision with mobs
-      if (useGameStore.getState().checkMobCollision) {
-        const hitMob = useGameStore.getState().checkMobCollision(projectile.position, projectile.size + 1.5);
+      if (GameMethods.checkMobCollision) {
+        const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5);
         if (hitMob) {
           const spellConfig = SPELL_TYPES[projectile.type];
 
-          if (useGameStore.getState().damageMob) {
-            useGameStore.getState().damageMob(hitMob.id, projectile.damage);
+          if (GameMethods.damageMob) {
+            GameMethods.damageMob(hitMob.id, projectile.damage);
           }
 
           // APPLY SECONDARY EFFECTS
@@ -421,7 +436,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
           createSpellImpact(projectile.position, projectile.type);
 
           // Grant XP for hit
-          if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(5);
+          if (GameMethods.grantXP) GameMethods.grantXP(5);
 
           return false;
         }

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { GameMethods } from './GameMethods';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
@@ -188,13 +189,13 @@ export const Player = ({ isWorldBuilt }) => {
         setIsAttacking(true);
         setTimeout(() => setIsAttacking(false), 500);
 
-        if (useGameStore.getState().checkMobCollision && useGameStore.getState().damageMob) {
+        if (GameMethods.checkMobCollision && GameMethods.damageMob) {
           const direction = new THREE.Vector3();
           camera.getWorldDirection(direction);
           const checkPos = camera.position.clone().add(direction.multiplyScalar(3));
-          const mob = useGameStore.getState().checkMobCollision(checkPos, 4);
+          const mob = GameMethods.checkMobCollision(checkPos, 4);
           if (mob) {
-            useGameStore.getState().damageMob(mob.id, 25);
+            GameMethods.damageMob(mob.id, 25);
             if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
           }
         }

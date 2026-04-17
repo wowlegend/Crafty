@@ -252,7 +252,8 @@ export const PlayerHungerBar = ({ hunger }) => {
 };
 
 // Damage Overlay Component
-export const DamageOverlay = ({ active, intensity = 1 }) => {
+export const DamageOverlay = () => {
+    const { active, intensity } = useGameStore(useShallow(state => ({ active: state.damageFlash, intensity: state.screenShake })));
     if (!active) return null;
 
     return (
@@ -334,3 +335,4 @@ export const ActiveSpellIndicator = ({ spell, manaCost, currentMana }) => {
 };
 
 export default GameSystemsProvider;
+r;

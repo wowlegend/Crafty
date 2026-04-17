@@ -18,6 +18,13 @@ export const SoundProvider = ({ children }) => {
   // Audio context for sound effects
   const audioContext = useRef(null);
   const sounds = useRef({});
+  const ambientTimer = useRef(null);
+
+  useEffect(() => {
+    if (!musicEnabled && ambientTimer.current) {
+      clearTimeout(ambientTimer.current);
+    }
+  }, [musicEnabled]);
 
   useEffect(() => {
     // Initialize Web Audio API
@@ -359,12 +366,18 @@ export const SoundProvider = ({ children }) => {
   const playBackgroundMusic = () => {
     if (!musicEnabled || !audioContext.current) return;
 
+    if (audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+
+    if (ambientTimer.current) clearTimeout(ambientTimer.current);
+
     // Generate ambient background music
     const generateAmbientMusic = () => {
       const notes = [220, 246.94, 277.18, 329.63, 369.99, 415.30]; // A3 to G#4
       const duration = 2;
 
-      setTimeout(() => {
+      ambientTimer.current = setTimeout(() => {
         const randomNote = notes[Math.floor(Math.random() * notes.length)];
         const randomDuration = 1 + Math.random() * 2;
         playTone(randomNote, randomDuration, 0.1);

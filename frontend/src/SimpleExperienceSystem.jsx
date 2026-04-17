@@ -1,6 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GameMethods } from './GameMethods';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
@@ -65,6 +66,7 @@ export const useSimpleExperience = () => {
 
   useEffect(() => {
     useGameStore.setState({ grantXP: addExperience });
+    GameMethods.grantXP = addExperience;
     useGameStore.setState({ getPlayerLevel: () => playerLevel });
     useGameStore.setState({ getPlayerXP: () => ({ current: currentXP, total: totalXP, level: playerLevel }) });
   }, [playerLevel, currentXP, totalXP]);

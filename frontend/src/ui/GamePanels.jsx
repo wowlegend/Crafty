@@ -1,9 +1,16 @@
 import React from 'react';
+import { GameMethods } from '../GameMethods';
 import { useGameStore } from '../store/useGameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../world/Blocks';
 
 export const Inventory = ({ onClose }) => {
-    const gameState = useGameStore();
+    const gameState = useGameStore(useShallow(state => ({
+        inventory: state.inventory,
+        removeFromInventory: state.removeFromInventory,
+        setSelectedBlock: state.setSelectedBlock,
+        selectedBlock: state.selectedBlock
+    })));
 
     const isConsumable = (item) => {
         if (!item) return false;
@@ -35,11 +42,11 @@ export const Inventory = ({ onClose }) => {
         }
         // XP Items
         else if (item.includes('Diamond')) {
-            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(50, item);
+            if (GameMethods.grantXP) GameMethods.grantXP(50, item);
         } else if (item.includes('Golden Crown')) {
-            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(200, item);
+            if (GameMethods.grantXP) GameMethods.grantXP(200, item);
         } else if (item.includes('Star Fragment')) {
-            if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(100, item);
+            if (GameMethods.grantXP) GameMethods.grantXP(100, item);
         }
 
         gameState.removeFromInventory(item, 1);
@@ -154,7 +161,7 @@ export const CraftingTable = ({ onClose }) => {
         setTimeout(() => setCraftMessage(null), 2000);
 
         // Grant XP for crafting
-        if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(5);
+        if (GameMethods.grantXP) GameMethods.grantXP(5);
     };
 
     const categories = [...new Set(recipes.map(r => r.category))];

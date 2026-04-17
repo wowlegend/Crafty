@@ -4,6 +4,7 @@ import { useGameStore } from './store/useGameStore';
 import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';
+import { GameMethods } from './GameMethods';
 
 // Custom miniplex React hook for compatibility
 const useEntities = (query) => {
@@ -159,7 +160,7 @@ const DamageNumber = ({ damage, position, id, onComplete }) => {
 };
 
 // --- ECS SYSTEMS ---
-const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
+const SpawnerSystem = () => {
   const { camera } = useThree();
   const lastSpawnCheck = useRef(0);
   const spawnedChunks = useRef(new Set());
@@ -231,7 +232,6 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
     const store = useGameStore.getState();
     const now = performance.now();
 
-    // 1. SPAWNER SYSTEM
     if (now - lastSpawnCheck.current >= 2000) {
       lastSpawnCheck.current = now;
       const playerX = camera.position.x;
@@ -253,7 +253,6 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
         }
       }
 
-      // Despawn
       const maxDistance = 100;
       for (const entity of [...mobsQuery.entities]) {
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
@@ -262,8 +261,16 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
         }
       }
     }
+  });
+  return null;
+};
 
-    // 2. AI & MOVEMENT SYSTEM
+const AISystem = () => {
+  const { camera } = useThree();
+  useFrame((state, delta) => {
+    if (!camera) return;
+    const store = useGameStore.getState();
+    const now = performance.now();
     const playerX = camera.position.x;
     const playerY = camera.position.y;
     const playerZ = camera.position.z;
@@ -275,7 +282,6 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
       const dx = playerX - entity.position.x;
       const dy = playerY - entity.position.y;
       const dz = playerZ - entity.position.z;
-      const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
       const distToPlayer3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
       if (!entity.passive && distToPlayer3D < AGGRO_RANGE) {
@@ -304,7 +310,15 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
           }
         }
       }
+    }
+  });
+  return null;
+};
 
+const MovementSystem = () => {
+  useFrame((state, delta) => {
+    const store = useGameStore.getState();
+    for (const entity of mobsQuery.entities) {
       if (entity.isMoving) {
         const tdx = entity.targetX - entity.position.x;
         const tdz = entity.targetZ - entity.position.z;
@@ -336,9 +350,14 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
         entity.knockback = null;
       }
     }
-    
-    // 3. STORE SYNC FOR MINIMAP
-    // Throttle minimap updates to 4fps (every 250ms) to save CPU
+  });
+  return null;
+};
+
+const MinimapSyncSystem = () => {
+  useFrame(() => {
+    const now = performance.now();
+    const store = useGameStore.getState();
     if (now - (store._lastMinimapUpdate || 0) > 250) {
       store.setMobEntities(mobsQuery.entities.map(e => ({
         id: e.id, type: e.type, passive: e.passive, position: [e.position.x, e.position.y, e.position.z]
@@ -346,8 +365,10 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
       useGameStore.setState({ _lastMinimapUpdate: now });
     }
   });
+  return null;
+};
 
-  // Expose global methods cleanly
+const CombatSystem = ({ setDamageNumbers, damageId }) => {
   useEffect(() => {
     const damageMob = (id, damage = 25) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
@@ -364,7 +385,7 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
 
       if (entity.health <= 0) {
         const store = useGameStore.getState();
-        if (store.grantXP) store.grantXP(entity.xp);
+        if (GameMethods.grantXP) GameMethods.grantXP(entity.xp);
         if (store.onMobKill) store.onMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]);
         ecs.remove(entity);
       } else {
@@ -381,8 +402,9 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
 
     useGameStore.setState({ attackEntity: damageMob });
     useGameStore.setState({ damageMob: damageMob });
+    GameMethods.damageMob = damageMob;
 
-    useGameStore.setState({ checkMobCollision: (pos, range = 3) => {
+    const checkMobCollision = (pos, range = 3) => {
       return mobsQuery.entities.find(e => {
         const dx = e.position.x - pos.x;
         const dy = e.position.y - pos.y;
@@ -390,7 +412,10 @@ const ECSSystemsLogic = ({ setDamageNumbers, damageId }) => {
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
         return dist < range;
       });
-    }});
+    };
+
+    useGameStore.setState({ checkMobCollision: checkMobCollision });
+    GameMethods.checkMobCollision = checkMobCollision;
   }, [setDamageNumbers]);
 
   return null;
@@ -408,7 +433,11 @@ export const NPCSystem = () => {
 
   return (
     <group>
-      <ECSSystemsLogic setDamageNumbers={setDamageNumbers} damageId={damageId} />
+      <SpawnerSystem />
+      <AISystem />
+      <MovementSystem />
+      <MinimapSyncSystem />
+      <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
       
       {entities.map(entity => (
         <MobModel key={entity.id} entity={entity} />

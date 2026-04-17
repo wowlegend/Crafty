@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
@@ -159,8 +160,8 @@ export const useBossSystem = (playerLevel, playerPosition) => {
                 setBossDefeated(true);
                 setBossNotification('🏆 VICTORY! You defeated the Shadow Dragon! +500 XP!');
                 setTimeout(() => setBossNotification(null), 6000);
-                if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(BOSS_CONFIG.xpReward);
-                if (useGameStore.getState().grantXP) useGameStore.getState().grantXP(BOSS_CONFIG.xpReward, 'Boss Defeated!');
+                if (GameMethods.grantXP) GameMethods.grantXP(BOSS_CONFIG.xpReward);
+                if (GameMethods.grantXP) GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Boss Defeated!');
             }
             return newHealth;
         });

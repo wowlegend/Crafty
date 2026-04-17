@@ -1,114 +1,128 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// ULTRA-OPTIMIZED Grass System
-export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) => {
-  const grassGroupRef = useRef();
-  const particlesRef = useRef();
+// Custom materials with GPU-based wind swaying
+const grassMaterial = new THREE.MeshBasicMaterial({
+  color: '#4a7c59',
+  transparent: true,
+  opacity: 0.7,
+  side: THREE.DoubleSide
+});
 
-  // Optimized grass filtering with memoization
+grassMaterial.onBeforeCompile = (shader) => {
+  shader.uniforms.time = { value: 0 };
+  shader.vertexShader = `
+    uniform float time;
+    ${shader.vertexShader}
+  `;
+  shader.vertexShader = shader.vertexShader.replace(
+    `#include <begin_vertex>`,
+    `
+    #include <begin_vertex>
+    float offset = instanceMatrix[3][0] * 0.5 + instanceMatrix[3][2] * 0.5;
+    // Apply sway only to the top vertices
+    if (position.y > 0.0) {
+       transformed.x += sin(time * 2.0 + offset) * 0.15;
+       transformed.z += cos(time * 1.5 + offset) * 0.1;
+    }
+    `
+  );
+  grassMaterial.userData.shader = shader;
+};
+
+// Particles use CPU updates since there are only 8, but they are instanced
+const particleMaterial = new THREE.MeshBasicMaterial({
+  color: '#7FB347',
+  transparent: true,
+  opacity: 0.6,
+  side: THREE.DoubleSide
+});
+
+export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) => {
+  const grassMeshRef = useRef();
+  const particleMeshRef = useRef();
+
   const grassBlocks = useMemo(() => {
     return blockPositions
       .filter(([x, y, z, blockType]) => blockType === 'grass')
       .slice(0, 50); // Limit for performance
   }, [blockPositions]);
 
-  // RESTORED wind effects with performance optimization
-  useFrame((state) => {
-    if (!grassGroupRef.current) return;
-    
-    const time = state.clock.elapsedTime;
-    
-    // OPTIMIZED wind animation - only animate visible grass blades
-    grassGroupRef.current.children.forEach((grass, index) => {
-      if (index % 4 === 0) { // Only animate every 4th grass blade for performance
-        const offset = index * 0.1;
-        // Realistic wind sway effect
-        grass.rotation.z = Math.sin(time * 0.8 + offset) * 0.12;
-        grass.rotation.x = Math.cos(time * 0.6 + offset) * 0.06;
-      }
-    });
-    
-    // ENHANCED floating grass particles with wind effect
-    if (particlesRef.current) {
-      particlesRef.current.children.forEach((particle, index) => {
-        const offset = index * 0.5;
-        // Floating motion with horizontal drift (wind effect)
-        particle.position.y = 15 + Math.sin(time * 0.4 + offset) * 1.8;
-        particle.position.x += Math.sin(time * 0.3 + offset) * 0.01; // Wind drift
-        particle.rotation.z = Math.sin(time * 0.5 + offset) * 0.3; // Rotation in wind
-        
-        // Reset particles that float too high or drift too far
-        if (particle.position.y > 22 || Math.abs(particle.position.x) > 35) {
-          particle.position.y = 12;
-          particle.position.x = (Math.random() - 0.5) * 30; // Reset x position
-        }
-      });
-    }
-  });
-
-  // ENHANCED grass particles with more natural distribution
+  const grassCount = grassBlocks.length;
+  
   const grassParticles = useMemo(() => {
     const particles = [];
-    for (let i = 0; i < 8; i++) { // Increased count for better visual effect
+    for (let i = 0; i < 8; i++) {
       particles.push({
         x: (Math.random() - 0.5) * 30,
         y: 12 + Math.random() * 8,
         z: (Math.random() - 0.5) * 30,
-        scale: 0.4 + Math.random() * 0.4 // Varied sizes
+        scale: 0.4 + Math.random() * 0.4,
+        offset: i * 0.5
       });
     }
     return particles;
   }, [chunkX, chunkZ]);
 
+  const particleCount = grassParticles.length;
+
+  useEffect(() => {
+    if (!grassMeshRef.current) return;
+    const dummy = new THREE.Object3D();
+    
+    grassBlocks.forEach(([x, y, z], i) => {
+      dummy.position.set(x, y + 0.5, z);
+      dummy.updateMatrix();
+      grassMeshRef.current.setMatrixAt(i, dummy.matrix);
+    });
+    grassMeshRef.current.instanceMatrix.needsUpdate = true;
+  }, [grassBlocks]);
+
+  useFrame((state) => {
+    const time = state.clock.elapsedTime;
+    
+    // 1. Update GPU shader time uniform for grass
+    if (grassMaterial.userData.shader) {
+      grassMaterial.userData.shader.uniforms.time.value = time;
+    }
+
+    // 2. Update CPU particles (only 8 elements, minimal overhead)
+    if (particleMeshRef.current) {
+      const dummy = new THREE.Object3D();
+      grassParticles.forEach((p, i) => {
+        p.y = 15 + Math.sin(time * 0.4 + p.offset) * 1.8;
+        p.x += Math.sin(time * 0.3 + p.offset) * 0.01;
+        
+        if (p.y > 22 || Math.abs(p.x) > 35) {
+          p.y = 12;
+          p.x = (Math.random() - 0.5) * 30;
+        }
+
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.scale.setScalar(p.scale);
+        dummy.rotation.z = Math.sin(time * 0.5 + p.offset) * 0.3;
+        dummy.updateMatrix();
+        particleMeshRef.current.setMatrixAt(i, dummy.matrix);
+      });
+      particleMeshRef.current.instanceMatrix.needsUpdate = true;
+    }
+  });
+
   return (
     <group>
-      {/* Optimized grass blades */}
-      <group ref={grassGroupRef}>
-        {grassBlocks.map(([x, y, z], index) => (
-          <OptimizedGrassBlade 
-            key={`${x}-${y}-${z}`}
-            position={[x, y + 0.5, z]}
-          />
-        ))}
-      </group>
-      
-      {/* Wind particles */}
-      <group ref={particlesRef}>
-        {grassParticles.map((particle, index) => (
-          <mesh 
-            key={index} 
-            position={[particle.x, particle.y, particle.z]}
-            scale={[particle.scale, particle.scale, particle.scale]}
-          >
-            <planeGeometry args={[0.08, 0.16]} />
-            <meshBasicMaterial 
-              color="#7FB347" 
-              transparent 
-              opacity={0.6}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))}
-      </group>
+      {grassCount > 0 && (
+        <instancedMesh ref={grassMeshRef} args={[null, grassMaterial, grassCount]}>
+          <planeGeometry args={[0.1, 0.18]} />
+        </instancedMesh>
+      )}
+      {particleCount > 0 && (
+        <instancedMesh ref={particleMeshRef} args={[null, particleMaterial, particleCount]}>
+          <planeGeometry args={[0.08, 0.16]} />
+        </instancedMesh>
+      )}
     </group>
   );
 };
-
-// ENHANCED individual grass blade with wind-ready properties
-const OptimizedGrassBlade = React.memo(({ position }) => {
-  return (
-    <mesh position={position}>
-      <planeGeometry args={[0.1, 0.18]} />
-      <meshBasicMaterial 
-        color="#4a7c59"
-        transparent
-        opacity={0.7}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-});
 
 export default OptimizedGrassSystem;

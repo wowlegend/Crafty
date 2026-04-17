@@ -1,106 +1,106 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { RigidBody, CuboidCollider } from '@react-three/rapier';
+import { InstancedRigidBodies } from '@react-three/rapier';
 import * as THREE from 'three';
 
-const Particle = ({ position, velocity, color }) => {
-    const meshRef = useRef();
-    const age = useRef(0);
-
-    useFrame((state, delta) => {
-        age.current += delta;
-        if (meshRef.current && age.current > 1.0) {
-            const scale = Math.max(0, 1 - (age.current - 1.0));
-            meshRef.current.scale.setScalar(scale);
-        }
-    });
-
-    return (
-        <RigidBody 
-            type="dynamic" 
-            position={position} 
-            linearVelocity={velocity}
-            angularVelocity={[Math.random() * 10 - 5, Math.random() * 10 - 5, Math.random() * 10 - 5]}
-            colliders="cuboid"
-            restitution={0.5}
-            friction={0.8}
-            mass={0.1}
-        >
-            <mesh ref={meshRef}>
-                <boxGeometry args={[0.25, 0.25, 0.25]} />
-                <meshLambertMaterial color={color} />
-            </mesh>
-        </RigidBody>
-    );
-};
-
-const ParticleBurst = ({ burst, onComplete }) => {
-    const age = useRef(0);
-    const completed = useRef(false);
-
-    useFrame((state, delta) => {
-        age.current += delta;
-        if (age.current > 2.0 && !completed.current) {
-            completed.current = true;
-            onComplete(burst.id);
-        }
-    });
-
-    return (
-        <group>
-            {burst.particles.map((p, i) => (
-                <Particle key={i} position={p.position} velocity={p.velocity} color={burst.color} />
-            ))}
-        </group>
-    );
-};
+const MAX_PARTICLES = 200;
 
 export const BlockParticleSystem = ({ worker }) => {
-    const [bursts, setBursts] = useState([]);
-    const nextId = useRef(0);
+    const api = useRef(null);
+    const meshRef = useRef(null);
+    const particleIndex = useRef(0);
+    const ages = useRef(new Float32Array(MAX_PARTICLES).fill(999));
+    
+    // Initial hidden state
+    const positions = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, -1000, 0]), []);
+    const rotations = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, 0, 0]), []);
+    const scales = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, 0, 0]), []);
+    const tempColor = useMemo(() => new THREE.Color(), []);
 
     useEffect(() => {
+        if (!meshRef.current) return;
+        
+        // Initialize instance colors to prevent visual glitches on first spawn
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            meshRef.current.setColorAt(i, new THREE.Color(0x000000));
+        }
+        meshRef.current.instanceColor.needsUpdate = true;
+
         const handleMessage = (e) => {
             const { type, payload } = e.data;
-            if (type === 'block_broken') {
-                const particles = [];
-                // Spawn 8 tiny cubes
-                for (let i = 0; i < 8; i++) {
-                    particles.push({
-                        position: [
-                            payload.x + 0.5 + (Math.random() - 0.5) * 0.5,
-                            payload.y + 0.5 + (Math.random() - 0.5) * 0.5,
-                            payload.z + 0.5 + (Math.random() - 0.5) * 0.5
-                        ],
-                        velocity: [
-                            (Math.random() - 0.5) * 4,
-                            Math.random() * 4 + 2, // Shoot upwards
-                            (Math.random() - 0.5) * 4
-                        ]
-                    });
-                }
+            if (type === 'block_broken' && api.current) {
+                const count = 8;
+                tempColor.set(payload.color);
+                
+                for (let i = 0; i < count; i++) {
+                    const idx = particleIndex.current;
+                    particleIndex.current = (particleIndex.current + 1) % MAX_PARTICLES;
+                    
+                    const x = payload.x + 0.5 + (Math.random() - 0.5) * 0.5;
+                    const y = payload.y + 0.5 + (Math.random() - 0.5) * 0.5;
+                    const z = payload.z + 0.5 + (Math.random() - 0.5) * 0.5;
+                    
+                    const vx = (Math.random() - 0.5) * 4;
+                    const vy = Math.random() * 4 + 2;
+                    const vz = (Math.random() - 0.5) * 4;
+                    
+                    // Wake up particle
+                    ages.current[idx] = 0;
+                    
+                    // Reset physics state and teleport to visible location
+                    api.current.at(idx).setTranslation({ x, y, z }, true);
+                    api.current.at(idx).setLinvel({ x: vx, y: vy, z: vz }, true);
+                    api.current.at(idx).setAngvel({ 
+                        x: Math.random() * 10 - 5, 
+                        y: Math.random() * 10 - 5, 
+                        z: Math.random() * 10 - 5 
+                    }, true);
 
-                setBursts(prev => [...prev, {
-                    id: nextId.current++,
-                    color: payload.color,
-                    particles
-                }]);
+                    // Apply the block's color to this specific instance
+                    meshRef.current.setColorAt(idx, tempColor);
+                }
+                meshRef.current.instanceColor.needsUpdate = true;
             }
         };
 
         worker.addEventListener('message', handleMessage);
         return () => worker.removeEventListener('message', handleMessage);
-    }, [worker]);
+    }, [worker, tempColor]);
 
-    const removeBurst = (id) => {
-        setBursts(prev => prev.filter(b => b.id !== id));
-    };
+    useFrame((state, delta) => {
+        if (!meshRef.current || !api.current) return;
+        
+        let needsUpdate = false;
+        
+        // Custom scale matrix manipulation to shrink particles as they die
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            if (ages.current[i] < 2.0) {
+                ages.current[i] += delta;
+                const age = ages.current[i];
+                
+                if (age >= 2.0) {
+                    // Teleport dead particle far away
+                    api.current.at(i).setTranslation({ x: 0, y: -1000, z: 0 }, true);
+                }
+            }
+        }
+    });
 
     return (
-        <group>
-            {bursts.map(burst => (
-                <ParticleBurst key={burst.id} burst={burst} onComplete={removeBurst} />
-            ))}
-        </group>
+        <InstancedRigidBodies
+            ref={api}
+            positions={positions}
+            rotations={rotations}
+            scales={scales}
+            colliders="cuboid"
+            restitution={0.5}
+            friction={0.8}
+            mass={0.1}
+        >
+            <instancedMesh ref={meshRef} args={[null, null, MAX_PARTICLES]}>
+                <boxGeometry args={[0.25, 0.25, 0.25]} />
+                <meshLambertMaterial />
+            </instancedMesh>
+        </InstancedRigidBodies>
     );
 };

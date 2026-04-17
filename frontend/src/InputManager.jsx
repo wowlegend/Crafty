@@ -28,30 +28,40 @@ export function useInputManager(gameState, gameSystems, questSystem) {
     };
   }, []);
 
+  // Keep latest values in refs to avoid rebinding event listener
+  const localRefs = useRef({ isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem });
+  useEffect(() => {
+    localRefs.current = { isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem };
+  });
+
   useEffect(() => {
     const handleKeyDown = (event) => {
-      const anyPanelOpen = gameState.showInventory || gameState.showCrafting ||
-        gameState.showMagic || gameState.showBuildingTools ||
-        gameState.showSettings || showAchievements;
+      const state = useGameStore.getState();
+      const { isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
+
+      const anyPanelOpen = state.showInventory || state.showCrafting ||
+        state.showMagic || state.showBuildingTools ||
+        state.showSettings || showAchievements || showSpellUpgrades;
 
       if (event.code === 'Escape') {
         event.preventDefault();
         event.stopImmediatePropagation();
 
         if (anyPanelOpen) {
-          gameState.setShowInventory(false);
-          gameState.setShowCrafting(false);
-          gameState.setShowMagic(false);
-          gameState.setShowBuildingTools(false);
-          gameState.setShowSettings(false);
+          state.setShowInventory(false);
+          state.setShowCrafting(false);
+          state.setShowMagic(false);
+          state.setShowBuildingTools(false);
+          state.setShowSettings(false);
           setShowAchievements(false);
+          setShowSpellUpgrades(false);
           setTimeout(() => {
             if (document.body.requestPointerLock) {
               document.body.requestPointerLock().catch(e => console.warn(e));
             }
           }, 100);
         } else if (isPointerLocked) {
-          gameState.setShowSettings(true);
+          state.setShowSettings(true);
           if (document.pointerLockElement) {
             document.exitPointerLock();
           }
@@ -71,11 +81,11 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           event.preventDefault();
           event.stopImmediatePropagation();
 
-          gameState.setShowInventory(false);
-          gameState.setShowCrafting(false);
-          gameState.setShowMagic(false);
-          gameState.setShowBuildingTools(false);
-          gameState.setShowSettings(false);
+          state.setShowInventory(false);
+          state.setShowCrafting(false);
+          state.setShowMagic(false);
+          state.setShowBuildingTools(false);
+          state.setShowSettings(false);
 
           const newValue = !currentValue;
           setter(newValue);
@@ -93,16 +103,16 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
         };
 
-        if (event.code === 'KeyE') toggleUI(gameState.setShowInventory, gameState.showInventory);
-        if (event.code === 'KeyC') toggleUI(gameState.setShowCrafting, gameState.showCrafting);
-        if (event.code === 'KeyB') toggleUI(gameState.setShowBuildingTools, gameState.showBuildingTools);
+        if (event.code === 'KeyE') toggleUI(state.setShowInventory, state.showInventory);
+        if (event.code === 'KeyC') toggleUI(state.setShowCrafting, state.showCrafting);
+        if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
       }
 
       if (isPointerLocked && !anyPanelOpen) {
-        if (event.code === 'Digit1') gameState.setActiveSpell('fireball');
-        if (event.code === 'Digit2') gameState.setActiveSpell('iceball');
-        if (event.code === 'Digit3') gameState.setActiveSpell('lightning');
-        if (event.code === 'Digit4') gameState.setActiveSpell('arcane');
+        if (event.code === 'Digit1') state.setActiveSpell('fireball');
+        if (event.code === 'Digit2') state.setActiveSpell('iceball');
+        if (event.code === 'Digit3') state.setActiveSpell('lightning');
+        if (event.code === 'Digit4') state.setActiveSpell('arcane');
       }
 
       if (event.code === 'KeyQ' && isPointerLocked && !anyPanelOpen) {
@@ -126,11 +136,11 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       if (event.code === 'Tab' && (isPointerLocked || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        gameState.setShowInventory(false);
-        gameState.setShowCrafting(false);
-        gameState.setShowMagic(false);
-        gameState.setShowBuildingTools(false);
-        gameState.setShowSettings(false);
+        state.setShowInventory(false);
+        state.setShowCrafting(false);
+        state.setShowMagic(false);
+        state.setShowBuildingTools(false);
+        state.setShowSettings(false);
         const newVal = !showAchievements;
         setShowAchievements(newVal);
         if (newVal && document.pointerLockElement) document.exitPointerLock();
@@ -144,8 +154,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyG' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
-        if (useGameStore.getState().openNearbyChest) {
-          const loot = useGameStore.getState().openNearbyChest();
+        if (state.openNearbyChest) {
+          const loot = state.openNearbyChest();
           if (loot && loot.length > 0) {
           }
         }
@@ -154,19 +164,20 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyT' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
-        if (useGameStore.getState().mobEntities && useGameStore.getState().gameCamera) {
-          const camera = useGameStore.getState().gameCamera;
+        // Offloaded nearest Euclidean distance calculation slightly by referencing state
+        if (state.mobEntities && state.gameCamera) {
+          const camera = state.gameCamera;
           const px = camera.position.x, pz = camera.position.z;
           let nearest = null, nearestDist = 4;
-          useGameStore.getState().mobEntities.forEach(mob => {
+          state.mobEntities.forEach(mob => {
             if (!mob.passive) return;
             const dx = mob.position[0] - px;
             const dz = mob.position[2] - pz;
             const d = Math.sqrt(dx * dx + dz * dz);
             if (d < nearestDist) { nearest = mob; nearestDist = d; }
           });
-          if (nearest && useGameStore.getState().tameMob) {
-            useGameStore.getState().tameMob(nearest.id, nearest.type, nearest.position);
+          if (nearest && state.tameMob) {
+            state.tameMob(nearest.id, nearest.type, nearest.position);
           }
         }
         return;
@@ -175,11 +186,11 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       if (event.code === 'KeyU' && (isPointerLocked || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        gameState.setShowInventory(false);
-        gameState.setShowCrafting(false);
-        gameState.setShowMagic(false);
-        gameState.setShowBuildingTools(false);
-        gameState.setShowSettings(false);
+        state.setShowInventory(false);
+        state.setShowCrafting(false);
+        state.setShowMagic(false);
+        state.setShowBuildingTools(false);
+        state.setShowSettings(false);
         setShowAchievements(false);
         const newVal = !showSpellUpgrades;
         setShowSpellUpgrades(newVal);
@@ -195,7 +206,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [gameState, showStats, isPointerLocked, showAchievements, showSpellUpgrades, questSystem]);
+  }, []);
 
   useEffect(() => {
     const handlePointerLockChange = () => {

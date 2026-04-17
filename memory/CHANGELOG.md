@@ -1,5 +1,23 @@
 # Changelog & Development History
 
+### April 18, 2026 (Massive Tech Debt & Optimization Sprint)
+
+- **PHASE 1: MEMORY LEAKS & VOLATILE BUGS**:
+  - `QuestSystem.jsx`: Resolved a severe memory leak by deduplicating quest updates via a Set mapping in the `useFrame` loop.
+  - `EnhancedMagicSystem.jsx`: Fixed ghost damage ticks by introducing strict liveliness validation inside the `applyBurnEffect` interval.
+  - `SoundManager.jsx`: Terminated redundant unmounted audio loops.
+  - `InputManager.jsx`: Slashed keyboard latency by directly mutating physics velocity vectors on the Rapier `RigidBody` rather than routing through React state.
+- **PHASE 2: UI RENDER ARCHITECTURE**:
+  - Transformed `GamePanels.jsx` and `GameSystems.jsx` to use `useShallow` selectors, completely breaking the 60fps cascading re-render cycle triggered by camera coordinate updates.
+  - Migrated non-serializable game methods (`damageMob`, `grantXP`, `checkMobCollision`) out of the Zustand store into a new `GameMethods.js` module to ensure direct imperative access without volatile state bloat.
+- **PHASE 3: ECS & GAMEPLAY SYSTEMS**:
+  - `SimplifiedNPCSystem.jsx`: Dismantled the monolithic `ECSSystemsLogic` hook into modular, cleanly separated components: `SpawnerSystem`, `AISystem`, `MovementSystem`, `MinimapSyncSystem`, and `CombatSystem`.
+  - `EnhancedMagicSystem.jsx`: Extinguished an $O(N)$ CPU spike in `applyChainLightning` by implementing a high-performance spatial grid pre-filter with squared distance checks.
+- **PHASE 4: 3D RENDERING & GPU OPTIMIZATIONS**:
+  - `OptimizedGrassSystem.jsx`: Replaced 58 individual meshes per chunk with a single `THREE.InstancedMesh`. Shifted complex mathematical wind-sway operations out of the CPU `useFrame` loop directly into a custom GPU Vertex Shader via `onBeforeCompile`.
+  - `BlockParticleSystem.jsx`: Stripped out expensive individual `<RigidBody>` wrappers. Built a fully pooled `<InstancedRigidBodies>` matrix holding 200 particles that recycle perfectly without re-mounting.
+  - `Terrain.jsx`: Added a 20Hz temporal and spatial distance throttle to the `TargetOutline` `world.castRay` physics check to drastically reduce Raycasting overhead while moving.
+
 ### April 10, 2026 (God-Mode Architecture Refactor)
 
 - **Centralized Agentic Brain Architecture**:
