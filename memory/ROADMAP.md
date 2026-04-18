@@ -25,3 +25,7 @@
 ### Phase 11: Audio Overhaul
 
 - [ ] **Asset Replacement**: Migrate from basic Web Audio API oscillators to high-quality `.mp3`/`.ogg` spatial sound assets for footsteps, mining clinks, and combat impacts.
+
+### Technical Debt (Discovered during April 18, 2026 Audit)
+
+- [ ] **Monolithic Files**: Refactor massive >500 line files (`EnhancedMagicSystem.jsx`, `QuestSystem.jsx`, `AdvancedGameFeatures.jsx`) to improve maintainability and React rendering performance.
