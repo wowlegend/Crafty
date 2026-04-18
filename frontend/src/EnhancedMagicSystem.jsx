@@ -299,106 +299,109 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     const deltaMs = delta * 1000;
     const time = state.clock.elapsedTime;
 
-    const updatedProjectiles = projectilesRef.current.map(projectile => {
-      const velocity = projectile.velocity.clone();
+    let survivingProjectiles = [];
+
+    for (let i = 0; i < projectilesRef.current.length; i++) {
+      const projectile = projectilesRef.current[i];
+      projectile.age += deltaMs;
 
       if (projectile.type === 'fireball' || projectile.type === 'iceball') {
-        velocity.y -= 12 * delta;
+        projectile.velocity.y -= 12 * delta;
       }
 
-      const newPos = projectile.position.clone().add(
-        velocity.clone().multiplyScalar(delta)
-      );
-
-      const updatedProjectile = {
-        ...projectile,
-        position: newPos,
-        velocity: velocity,
-        age: projectile.age + deltaMs
-      };
+      projectile.position.x += projectile.velocity.x * delta;
+      projectile.position.y += projectile.velocity.y * delta;
+      projectile.position.z += projectile.velocity.z * delta;
 
       if (time - projectile.lastTrailUpdate > 0.05) {
-        updatedProjectile.trailPositions = [
-          ...projectile.trailPositions.slice(-projectile.trailLength),
-          newPos.clone()
-        ];
-        updatedProjectile.lastTrailUpdate = time;
+        if (projectile.trailPositions.length >= projectile.trailLength) {
+           const oldest = projectile.trailPositions.shift();
+           oldest.copy(projectile.position);
+           projectile.trailPositions.push(oldest);
+        } else {
+           projectile.trailPositions.push(projectile.position.clone());
+        }
+        projectile.lastTrailUpdate = time;
       }
 
-      return updatedProjectile;
-    }).filter(projectile => {
+      let keep = true;
+
       if (projectile.age > projectile.maxAge) {
         createSpellImpact(projectile.position, projectile.type);
-        return false;
-      }
-
-      if (useGameStore.getState().getMobGroundLevel) {
-        const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
-        if (projectile.position.y <= groundLevel + 0.5) {
-          createSpellImpact(projectile.position, projectile.type);
-          return false;
-        }
-      } else if (projectile.position.y <= 12.5) {
-        createSpellImpact(projectile.position, projectile.type);
-        return false;
-      }
-
-      if (GameMethods.checkMobCollision) {
-        const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5);
-        if (hitMob) {
-          const spellConfig = SPELL_TYPES[projectile.type];
-
-          if (GameMethods.damageMob) {
-            GameMethods.damageMob(hitMob.id, projectile.damage);
+        keep = false;
+      } else {
+        if (useGameStore.getState().getMobGroundLevel) {
+          const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
+          if (projectile.position.y <= groundLevel + 0.5) {
+            createSpellImpact(projectile.position, projectile.type);
+            keep = false;
           }
+        } else if (projectile.position.y <= 12.5) {
+          createSpellImpact(projectile.position, projectile.type);
+          keep = false;
+        }
 
-          if (spellConfig?.secondary) {
-            const sec = spellConfig.secondary;
+        if (keep && GameMethods.checkMobCollision) {
+          const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5);
+          if (hitMob) {
+            const spellConfig = SPELL_TYPES[projectile.type];
 
-            switch (sec.type) {
-              case 'burn':
-                applyBurnEffect(hitMob.id, sec.duration, sec.damagePerSecond);
-                break;
-              case 'freeze':
-                applyFreezeEffect(hitMob.id, sec.duration, sec.slowPercent, sec.freezeChance);
-                break;
-              case 'chain':
-                applyChainLightning(
-                  projectile.position,
-                  hitMob.id,
-                  projectile.damage,
-                  sec.maxChains,
-                  sec.chainRange,
-                  sec.chainDamageReduction
-                );
-                break;
-              case 'pierce':
-                const healAmount = Math.floor(projectile.damage * sec.lifestealPercent / 100);
-                if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(healAmount);
-                projectile.pierceCount = (projectile.pierceCount || 0) + 1;
-                if (projectile.pierceCount < sec.pierceCount) {
-                  return true;
-                }
-                break;
+            if (GameMethods.damageMob) {
+              GameMethods.damageMob(hitMob.id, projectile.damage);
             }
+
+            let willPierce = false;
+            if (spellConfig?.secondary) {
+              const sec = spellConfig.secondary;
+
+              switch (sec.type) {
+                case 'burn':
+                  applyBurnEffect(hitMob.id, sec.duration, sec.damagePerSecond);
+                  break;
+                case 'freeze':
+                  applyFreezeEffect(hitMob.id, sec.duration, sec.slowPercent, sec.freezeChance);
+                  break;
+                case 'chain':
+                  applyChainLightning(
+                    projectile.position,
+                    hitMob.id,
+                    projectile.damage,
+                    sec.maxChains,
+                    sec.chainRange,
+                    sec.chainDamageReduction
+                  );
+                  break;
+                case 'pierce':
+                  const healAmount = Math.floor(projectile.damage * sec.lifestealPercent / 100);
+                  if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(healAmount);
+                  projectile.pierceCount = (projectile.pierceCount || 0) + 1;
+                  if (projectile.pierceCount < sec.pierceCount) {
+                    willPierce = true;
+                  }
+                  break;
+              }
+            }
+
+            if (!willPierce) {
+              createSpellImpact(projectile.position, projectile.type);
+              keep = false;
+            }
+
+            if (GameMethods.grantXP) GameMethods.grantXP(5);
           }
-
-          createSpellImpact(projectile.position, projectile.type);
-
-          if (GameMethods.grantXP) GameMethods.grantXP(5);
-
-          return false;
         }
       }
 
-      return true;
-    });
+      if (keep) {
+        survivingProjectiles.push(projectile);
+      }
+    }
 
-    projectilesRef.current = updatedProjectiles;
+    projectilesRef.current = survivingProjectiles;
 
-    const lengthChanged = updatedProjectiles.length !== projectiles.length;
+    const lengthChanged = survivingProjectiles.length !== projectiles.length;
     if (projectilesDirty.current || lengthChanged) {
-      setProjectiles([...updatedProjectiles]);
+      setProjectiles([...survivingProjectiles]);
       projectilesDirty.current = false;
     }
 

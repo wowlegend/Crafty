@@ -1,5 +1,17 @@
 # Changelog & Development History
 
+### April 19, 2026 (Phase 8: Zero-Stutter Architecture)
+
+- **STRICT OBJECT POOLING**: Eradicated Garbage Collection micro-stutters by eliminating dynamic object allocations (`new Vector3`, `.clone()`, array mapping) within `useFrame` loops across `EnhancedMagicSystem`, `BlockParticleSystem`, and movement controllers.
+- **WEB WORKER AI**: Extracted all CPU-heavy AI distance calculations, pathfinding, and target interpolation from `SimplifiedNPCSystem` into a dedicated `src/workers/ai.worker.js`. The main thread now only handles batched state synchronization and Y-axis physics snapping.
+- **SHADER PRE-COMPILATION**: Integrated Drei's `<Preload all />` into the main `GameScene.jsx` `<Suspense>` boundary to guarantee all materials and shaders are pre-compiled during the initial loading sequence, completely eliminating mid-game stutter when viewing new spells or blocks.
+
+### April 19, 2026 (Ruthless Codebase Cleanup & Performance Audit)
+
+- **PHASE 4 (Stale Artifacts)**: Purged hidden `.DS_Store` files and stale `.log` files across the workspace.
+- **PHASE 5 (Deep Architectural Audit)**: Systematically refactored massive monolithic files (`EnhancedMagicSystem.jsx`, `QuestSystem.jsx`, `AdvancedGameFeatures.jsx`) by wrapping heavy components in `React.memo` and stabilizing inline references with `useCallback` to drastically reduce render cycles.
+- **PHASE 6 (Verification & Cleanup)**: Remedied a fatal syntax export error in `GameSystems.jsx`, removed dead/duplicate exports, and successfully verified the Vite production build.
+
 ### April 18, 2026 (Ruthless Codebase Cleanup)
 
 - **PHASE 2 (Dead Code & Unused Exports)**: Removed unused test files (`puppeteer_test.cjs`, `test_miniplex.cjs`) and stripped 17 unused exports across 13 frontend files to streamline module boundaries.

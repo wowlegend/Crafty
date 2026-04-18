@@ -324,6 +324,10 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
 
   const currentSpellColor = SPELL_COLORS[activeSpell] || SPELL_COLORS.fireball;
 
+  const rightTarget = useMemo(() => new THREE.Vector3(), []);
+  const leftTarget = useMemo(() => new THREE.Vector3(), []);
+  const scaleVec = useMemo(() => new THREE.Vector3(1, 1, 1), []);
+
   useFrame((state) => {
     if (rightHandRef.current && leftHandRef.current && camera) {
       const time = state.clock.elapsedTime;
@@ -333,17 +337,15 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
       smoothMatrix.current.compose(
         smoothCamPos.current,
         camera.quaternion,
-        new THREE.Vector3(1, 1, 1)
+        scaleVec
       );
 
       // Position hands using the smoothed matrix
-      const rightTarget = new THREE.Vector3(0.6, -0.8, -1.0);
-      rightTarget.applyMatrix4(smoothMatrix.current);
+      rightTarget.set(0.6, -0.8, -1.0).applyMatrix4(smoothMatrix.current);
       rightHandRef.current.position.copy(rightTarget);
       rightHandRef.current.quaternion.copy(camera.quaternion);
 
-      const leftTarget = new THREE.Vector3(-0.4, -0.7, -0.9);
-      leftTarget.applyMatrix4(smoothMatrix.current);
+      leftTarget.set(-0.4, -0.7, -0.9).applyMatrix4(smoothMatrix.current);
       leftHandRef.current.position.copy(leftTarget);
       leftHandRef.current.quaternion.copy(camera.quaternion);
 
@@ -430,4 +432,3 @@ const SpellHandEffects = ({ spellType }) => {
 const SpellLeftHandEffects = ({ spellType }) => {
   return null;
 };
-;

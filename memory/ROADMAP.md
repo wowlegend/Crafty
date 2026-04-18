@@ -4,9 +4,9 @@
 
 ### Phase 8: Flawless Execution (Zero-Stutter Architecture)
 *Performance must be secured before adding heavy graphics or physics.*
-- [ ] **Strict Object Pooling (New)**: Complete elimination of `useFrame` memory allocations for spells and particles to stop Garbage Collection micro-stutters.
-- [ ] **Web Worker AI Pathfinding (New)**: Offload all 3D grid navigation and collision checks to the worker thread to unblock the main React thread.
-- [ ] **Shader Pre-Compilation (New)**: A beautiful, cinematic loading sequence that guarantees zero mid-game compilation hitches when looking at new materials.
+- [x] **Strict Object Pooling (New)**: Complete elimination of `useFrame` memory allocations for spells and particles to stop Garbage Collection micro-stutters.
+- [x] **Web Worker AI Pathfinding (New)**: Offload all 3D grid navigation and collision checks to the worker thread to unblock the main React thread.
+- [x] **Shader Pre-Compilation (New)**: A beautiful, cinematic loading sequence that guarantees zero mid-game compilation hitches when looking at new materials.
 
 ### Phase 9: The "Juice" & Game Feel (Visual Polish & Visceral Impact)
 *Making the core combat and movement loop addictive. Sequenced from player-camera outward to the world.*

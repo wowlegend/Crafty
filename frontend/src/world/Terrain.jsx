@@ -46,6 +46,8 @@ const TargetOutline = () => {
     const lastCameraRot = useRef(new THREE.Vector3());
 
     const boxGeometry = React.useMemo(() => new THREE.BoxGeometry(1.01, 1.01, 1.01), []);
+    const camRotVec = React.useMemo(() => new THREE.Vector3(), []);
+    const direction = React.useMemo(() => new THREE.Vector3(), []);
 
     useFrame((state) => {
         if (!meshRef.current || !world || !document.pointerLockElement) {
@@ -54,7 +56,7 @@ const TargetOutline = () => {
         }
 
         const now = state.clock.elapsedTime;
-        const camRotVec = new THREE.Vector3(camera.rotation.x, camera.rotation.y, camera.rotation.z);
+        camRotVec.set(camera.rotation.x, camera.rotation.y, camera.rotation.z);
         const posDeltaSq = camera.position.distanceToSquared(lastCameraPos.current);
         const rotDeltaSq = camRotVec.distanceToSquared(lastCameraRot.current);
         
@@ -67,9 +69,8 @@ const TargetOutline = () => {
         lastCameraPos.current.copy(camera.position);
         lastCameraRot.current.copy(camRotVec);
 
-        const direction = new THREE.Vector3();
         camera.getWorldDirection(direction);
-        const rayStart = camera.position.clone();
+        const rayStart = camera.position;
         
         const ray = new rapier.Ray(
             { x: rayStart.x, y: rayStart.y, z: rayStart.z },

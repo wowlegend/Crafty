@@ -67,20 +67,19 @@ export const BlockParticleSystem = ({ worker }) => {
         return () => worker.removeEventListener('message', handleMessage);
     }, [worker, tempColor]);
 
+    const hidePosition = useMemo(() => ({ x: 0, y: -1000, z: 0 }), []);
+
     useFrame((state, delta) => {
         if (!meshRef.current || !api.current) return;
-        
-        let needsUpdate = false;
         
         // Custom scale matrix manipulation to shrink particles as they die
         for (let i = 0; i < MAX_PARTICLES; i++) {
             if (ages.current[i] < 2.0) {
                 ages.current[i] += delta;
-                const age = ages.current[i];
                 
-                if (age >= 2.0) {
+                if (ages.current[i] >= 2.0) {
                     // Teleport dead particle far away
-                    api.current.at(i).setTranslation({ x: 0, y: -1000, z: 0 }, true);
+                    api.current.at(i).setTranslation(hidePosition, true);
                 }
             }
         }

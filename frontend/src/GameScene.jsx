@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { PointerLockControls, Stats } from '@react-three/drei';
+import { PointerLockControls, Stats, Preload } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
 import { MinecraftSky, PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
@@ -73,6 +73,7 @@ export function GameScene({
 
             <PetEntities pets={petSystem.pets} />
           </Physics>
+          <Preload all />
         </Suspense>
 
         {showStats && <Stats />}

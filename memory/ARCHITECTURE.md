@@ -58,6 +58,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
     ├── index.jsx                 # App entry point
     ├── index.css                 # Base CSS reset + Tailwind directives
     ├── store/useGameStore.jsx    # Zustand global state store
+    ├── workers/ai.worker.js      # Web Worker for CPU-heavy AI pathfinding
     ├── world/Terrain.jsx         # Terrain generation + Rapier physics colliders
     ├── world/Blocks.js           # Block type definitions
     └── ui/GamePanels.jsx         # Extracted UI panel components

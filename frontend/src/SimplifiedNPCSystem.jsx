@@ -265,92 +265,102 @@ const SpawnerSystem = () => {
   return null;
 };
 
-const AISystem = () => {
+const AIWorkerSystem = () => {
   const { camera } = useThree();
+  const workerRef = useRef();
+
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('./workers/ai.worker.js', import.meta.url));
+    
+    workerRef.current.onmessage = (e) => {
+      const { type, updates, attacks } = e.data;
+      if (type === 'TICK_RESULT') {
+        const store = useGameStore.getState();
+        
+        // Handle attacks
+        for (const attack of attacks) {
+          if (store.damagePlayer) {
+            store.damagePlayer(attack.damage, attack.type);
+          }
+        }
+
+        // Apply updates
+        const entityMap = new Map();
+        for (const entity of mobsQuery.entities) {
+          entityMap.set(entity.id, entity);
+        }
+
+        for (const update of updates) {
+          const entity = entityMap.get(update.id);
+          if (entity) {
+            entity.position.x = update.x;
+            entity.position.z = update.z;
+            entity.rotation = update.rotation;
+            entity.isAggro = update.isAggro;
+            
+            // Sync back worker state
+            entity.isMoving = update.isMoving;
+            entity.targetX = update.targetX;
+            entity.targetZ = update.targetZ;
+            entity.lastAttackTime = update.lastAttackTime;
+            entity.moveTimer = update.moveTimer;
+
+            if (store.getMobGroundLevel) {
+              const newY = store.getMobGroundLevel(entity.position.x, entity.position.z) + 0.5;
+              if (!isNaN(newY)) entity.position.y = newY;
+            }
+          }
+        }
+      }
+    };
+
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+    };
+  }, []);
+
   useFrame((state, delta) => {
-    if (!camera) return;
-    const store = useGameStore.getState();
+    if (!camera || !workerRef.current) return;
     const now = performance.now();
-    const playerX = camera.position.x;
-    const playerY = camera.position.y;
-    const playerZ = camera.position.z;
-    const AGGRO_RANGE = 16;
-    const MELEE_RANGE = 2.5;
-    const ATTACK_COOLDOWN = 1000;
-
+    
+    // Process knockback in main thread
     for (const entity of mobsQuery.entities) {
-      const dx = playerX - entity.position.x;
-      const dy = playerY - entity.position.y;
-      const dz = playerZ - entity.position.z;
-      const distToPlayer3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-      if (!entity.passive && distToPlayer3D < AGGRO_RANGE) {
-        entity.isAggro = true;
-        entity.isMoving = true;
-        entity.targetX = playerX;
-        entity.targetZ = playerZ;
-
-        if (distToPlayer3D < MELEE_RANGE) {
-          if (now - entity.lastAttackTime > ATTACK_COOLDOWN && store.damagePlayer) {
-            store.damagePlayer(entity.damage, entity.type);
-            entity.lastAttackTime = now;
-          }
-        }
-      } else {
-        entity.isAggro = false;
-        entity.moveTimer -= delta;
-        if (entity.moveTimer <= 0) {
-          entity.moveTimer = 2 + Math.random() * 4;
-          entity.isMoving = Math.random() > 0.3;
-          if (entity.isMoving) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 3 + Math.random() * 5;
-            entity.targetX = entity.position.x + Math.cos(angle) * distance;
-            entity.targetZ = entity.position.z + Math.sin(angle) * distance;
-          }
-        }
-      }
-    }
-  });
-  return null;
-};
-
-const MovementSystem = () => {
-  useFrame((state, delta) => {
-    const store = useGameStore.getState();
-    for (const entity of mobsQuery.entities) {
-      if (entity.isMoving) {
-        const tdx = entity.targetX - entity.position.x;
-        const tdz = entity.targetZ - entity.position.z;
-        const dist = Math.sqrt(tdx * tdx + tdz * tdz);
-
-        if (dist > 0.5) {
-          const speedMult = entity.isAggro ? 1.5 : 1.0;
-          const speed = entity.speed * speedMult * delta;
-          const moveX = (tdx / dist) * speed;
-          const moveZ = (tdz / dist) * speed;
-
-          entity.position.x += moveX;
-          entity.position.z += moveZ;
-          
-          if (store.getMobGroundLevel) {
-            const newY = store.getMobGroundLevel(entity.position.x, entity.position.z) + 0.5;
-            if (!isNaN(newY)) entity.position.y = newY;
-          }
-
-          entity.rotation = Math.atan2(tdx, tdz);
-        } else {
-          entity.isMoving = false;
-        }
-      }
-
       if (entity.knockback) {
         entity.position.x += entity.knockback[0] * delta * 4;
         entity.position.z += entity.knockback[2] * delta * 4;
         entity.knockback = null;
       }
     }
+
+    const mobsData = mobsQuery.entities.map(e => ({
+      id: e.id,
+      passive: e.passive,
+      x: e.position.x,
+      y: e.position.y,
+      z: e.position.z,
+      targetX: e.targetX,
+      targetZ: e.targetZ,
+      isMoving: e.isMoving,
+      isAggro: e.isAggro,
+      lastAttackTime: e.lastAttackTime,
+      damage: e.damage,
+      type: e.type,
+      moveTimer: e.moveTimer,
+      speed: e.speed,
+      rotation: e.rotation
+    }));
+
+    workerRef.current.postMessage({
+      type: 'TICK',
+      playerPos: [camera.position.x, camera.position.y, camera.position.z],
+      now,
+      delta,
+      mobs: mobsData
+    });
   });
+
   return null;
 };
 
@@ -434,8 +444,7 @@ export const NPCSystem = () => {
   return (
     <group>
       <SpawnerSystem />
-      <AISystem />
-      <MovementSystem />
+      <AIWorkerSystem />
       <MinimapSyncSystem />
       <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
       
