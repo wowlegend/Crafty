@@ -335,4 +335,3 @@ export const ActiveSpellIndicator = ({ spell, manaCost, currentMana }) => {
 };
 
 export default GameSystemsProvider;
-r;

@@ -31,7 +31,7 @@ import { useGameStore } from './store/useGameStore';
 // BLOCK TYPES - Immutable configuration
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from './world/Blocks';
 
-export const MinecraftHotbar = React.memo(({ gameState }) => {
+const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
   return (
     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">

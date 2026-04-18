@@ -5,22 +5,18 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 
-// Advanced Game Features: Survival Mode, Boss Mob, Pet System, Spell Upgrades
-
 export const useSurvivalMode = (isDay) => {
     const [nightCount, setNightCount] = useState(0);
     const [survivalWarning, setSurvivalWarning] = useState(null);
     const prevIsDay = useRef(true);
 
     useEffect(() => {
-        // Detect transition to night
         if (prevIsDay.current && !isDay) {
             setNightCount(prev => prev + 1);
             setSurvivalWarning('☠️ Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
 
-        // Detect transition to day
         if (!prevIsDay.current && isDay) {
             setSurvivalWarning('☀️ Dawn breaks! You survived the night!');
             setTimeout(() => setSurvivalWarning(null), 3000);
@@ -29,13 +25,11 @@ export const useSurvivalMode = (isDay) => {
         prevIsDay.current = isDay;
     }, [isDay, nightCount]);
 
-    // Increase hunger drain at night
     useEffect(() => {
         if (!isDay) {
             const nightHunger = setInterval(() => {
                 if (useGameStore.getState().damagePlayer && useGameStore.getState().isAlive && useGameStore.getState().isAlive) {
                     // Extra hunger drain represented as very small starvation pressure
-                    // The actual hunger system in GameSystems.js handles the base drain
                 }
             }, 3000);
             return () => clearInterval(nightHunger);
@@ -45,7 +39,6 @@ export const useSurvivalMode = (isDay) => {
     return { nightCount, survivalWarning };
 };
 
-// Survival warning banner
 export const SurvivalWarning = React.memo(({ message }) => {
     if (!message) return null;
 
@@ -75,7 +68,6 @@ export const SurvivalWarning = React.memo(({ message }) => {
         </motion.div>
     );
 });
-
 
 const BOSS_CONFIG = {
     name: 'Shadow Dragon',
@@ -109,14 +101,12 @@ export const useBossSystem = (playerLevel, playerPosition) => {
     const lastBossAttack = useRef(0);
     const bossSpawned = useRef(false);
 
-    // Spawn boss when player reaches level 5
     useEffect(() => {
         if (playerLevel >= 5 && !bossSpawned.current && !bossDefeated) {
             bossSpawned.current = true;
             setBossNotification('🐉 A Shadow Dragon has appeared! Defeat it to prove your worth!');
             setTimeout(() => setBossNotification(null), 5000);
 
-            // Spawn boss 30 blocks away from player
             if (playerPosition) {
                 const angle = Math.random() * Math.PI * 2;
                 const x = playerPosition.x + Math.cos(angle) * 30;
@@ -132,7 +122,6 @@ export const useBossSystem = (playerLevel, playerPosition) => {
         }
     }, [playerLevel, playerPosition, bossDefeated]);
 
-    // Update boss phase based on health
     useEffect(() => {
         const hpPercent = bossHealth / bossMaxHealth;
         for (let i = BOSS_CONFIG.phases.length - 1; i >= 0; i--) {
@@ -149,7 +138,6 @@ export const useBossSystem = (playerLevel, playerPosition) => {
         }
     }, [bossHealth, bossMaxHealth, bossPhase]);
 
-    // Damage the boss
     const damageBoss = useCallback((amount) => {
         if (!bossActive || bossHealth <= 0) return;
 
@@ -167,7 +155,6 @@ export const useBossSystem = (playerLevel, playerPosition) => {
         });
     }, [bossActive, bossHealth]);
 
-    // Expose boss damage globally
     useEffect(() => {
         useGameStore.setState({ damageBoss: damageBoss });
         useGameStore.setState({ getBossPosition: () => bossPositionRef.current });
@@ -180,7 +167,6 @@ export const useBossSystem = (playerLevel, playerPosition) => {
     };
 };
 
-// Boss Health Bar UI
 export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase }) => {
     if (!bossActive) return null;
 
@@ -216,8 +202,7 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     );
 });
 
-// Boss 3D Entity (renders inside Canvas)
-export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosition }) => {
+export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, playerPosition }) => {
     const meshRef = useRef();
     const { camera } = useThree();
     const lastAttack = useRef(0);
@@ -231,7 +216,6 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
         const bx = bossPositionRef.current[0];
         const bz = bossPositionRef.current[2];
 
-        // Chase player
         const dx = playerX - bx;
         const dz = playerZ - bz;
         const dist = Math.sqrt(dx * dx + dz * dz);
@@ -252,11 +236,9 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
             bossPositionRef.current = [newX, newY, newZ];
             meshRef.current.position.set(newX, newY, newZ);
 
-            // Face player
             meshRef.current.rotation.y = Math.atan2(dx, dz);
         }
 
-        // Attack player when close
         if (dist < BOSS_CONFIG.attackRange) {
             const now = performance.now();
             if (now - lastAttack.current > BOSS_CONFIG.attackCooldown) {
@@ -267,10 +249,8 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
             }
         }
 
-        // Floating bob animation
         meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2) * 0.02;
 
-        // Rotation pulsing on phase
         if (bossPhase > 0) {
             meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 3) * 0.1;
         }
@@ -282,17 +262,14 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
 
     return (
         <group ref={meshRef} position={bossPositionRef.current}>
-            {/* Body */}
             <mesh>
                 <boxGeometry args={[3, 2, 4]} />
                 <meshStandardMaterial color={phase.color} emissive={phase.color} emissiveIntensity={0.3} />
             </mesh>
-            {/* Head */}
             <mesh position={[0, 1.5, 1.5]}>
                 <boxGeometry args={[1.5, 1.5, 2]} />
                 <meshStandardMaterial color={phase.color} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.4} />
             </mesh>
-            {/* Wings */}
             <mesh position={[-2.5, 1, 0]} rotation={[0, 0, 0.3]}>
                 <boxGeometry args={[2, 0.2, 3]} />
                 <meshStandardMaterial color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
@@ -301,7 +278,6 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
                 <boxGeometry args={[2, 0.2, 3]} />
                 <meshStandardMaterial color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
             </mesh>
-            {/* Eyes */}
             <mesh position={[-0.4, 1.8, 2.5]}>
                 <sphereGeometry args={[0.2, 8, 8]} />
                 <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
@@ -310,12 +286,10 @@ export const BossEntity = ({ bossActive, bossPositionRef, bossPhase, playerPosit
                 <sphereGeometry args={[0.2, 8, 8]} />
                 <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
             </mesh>
-            {/* Glow */}
             <pointLight color={phase.color} intensity={2} distance={15} />
         </group>
     );
-};
-
+});
 
 export const usePetSystem = () => {
     const [pets, setPets] = useState([]);
@@ -329,7 +303,6 @@ export const usePetSystem = () => {
             return false;
         }
 
-        // Only passive mobs can be tamed
         if (mobType !== 'pig' && mobType !== 'cow') {
             setPetNotification('❌ Only passive mobs (pigs & cows) can be tamed!');
             setTimeout(() => setPetNotification(null), 3000);
@@ -356,7 +329,6 @@ export const usePetSystem = () => {
         return true;
     }, [pets.length]);
 
-    // Expose tame function globally
     useEffect(() => {
         useGameStore.setState({ tameMob: tameMob });
         useGameStore.setState({ getPets: () => pets });
@@ -365,7 +337,6 @@ export const usePetSystem = () => {
     return { pets, petNotification, tameMob };
 };
 
-// Pet indicator UI
 export const PetIndicator = React.memo(({ pets }) => {
     if (pets.length === 0) return null;
 
@@ -392,8 +363,7 @@ export const PetIndicator = React.memo(({ pets }) => {
     );
 });
 
-// Pet 3D Entity — follows player (renders inside Canvas)
-export const PetEntities = ({ pets }) => {
+export const PetEntities = React.memo(({ pets }) => {
     const { camera } = useThree();
     const petRefs = useRef({});
 
@@ -402,7 +372,6 @@ export const PetEntities = ({ pets }) => {
             const ref = petRefs.current[pet.id];
             if (!ref) return;
 
-            // Follow player with offset
             const offsetAngle = (index / Math.max(pets.length, 1)) * Math.PI * 2;
             const followDist = 4 + index * 1.5;
             const targetX = camera.position.x + Math.cos(offsetAngle + state.clock.elapsedTime * 0.3) * followDist;
@@ -414,19 +383,16 @@ export const PetEntities = ({ pets }) => {
                 if (!isNaN(groundY)) targetY = groundY + 0.5;
             }
 
-            // Smooth follow
             ref.position.x += (targetX - ref.position.x) * 2 * delta;
             ref.position.z += (targetZ - ref.position.z) * 2 * delta;
             ref.position.y += (targetY - ref.position.y) * 3 * delta;
 
-            // Face direction of movement
             const dx = targetX - ref.position.x;
             const dz = targetZ - ref.position.z;
             if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
                 ref.rotation.y = Math.atan2(dx, dz);
             }
 
-            // Gentle bob
             ref.position.y += Math.sin(state.clock.elapsedTime * 3 + index) * 0.03;
         });
     });
@@ -441,7 +407,6 @@ export const PetEntities = ({ pets }) => {
                         ref={el => { if (el) petRefs.current[pet.id] = el; }}
                         position={pet.position}
                     >
-                        {/* Body */}
                         <mesh>
                             <boxGeometry args={isPig ? [0.8, 0.6, 1.0] : [1.0, 0.8, 1.2]} />
                             <meshStandardMaterial
@@ -450,7 +415,6 @@ export const PetEntities = ({ pets }) => {
                                 emissiveIntensity={0.15}
                             />
                         </mesh>
-                        {/* Head */}
                         <mesh position={[0, 0.4, isPig ? 0.5 : 0.6]}>
                             <boxGeometry args={isPig ? [0.5, 0.5, 0.5] : [0.6, 0.6, 0.4]} />
                             <meshStandardMaterial
@@ -459,20 +423,17 @@ export const PetEntities = ({ pets }) => {
                                 emissiveIntensity={0.15}
                             />
                         </mesh>
-                        {/* Heart above pet */}
                         <mesh position={[0, 1.2, 0]}>
                             <sphereGeometry args={[0.15, 8, 8]} />
                             <meshStandardMaterial color="#ff69b4" emissive="#ff69b4" emissiveIntensity={0.8} />
                         </mesh>
-                        {/* Name tag */}
                         <pointLight color={isPig ? '#ff69b4' : '#DEB887'} intensity={0.5} distance={5} />
                     </group>
                 );
             })}
         </>
     );
-};
-
+});
 
 const SPELL_UPGRADES = {
     fireball: {
@@ -519,7 +480,6 @@ export const useSpellUpgrades = () => {
     });
     const [upgradeNotification, setUpgradeNotification] = useState(null);
 
-    // Get current spell stats
     const getSpellStats = useCallback((spellType) => {
         const upgrade = SPELL_UPGRADES[spellType];
         if (!upgrade) return null;
@@ -527,7 +487,6 @@ export const useSpellUpgrades = () => {
         return upgrade.levels[level - 1];
     }, [spellLevels]);
 
-    // Upgrade a spell
     const upgradeSpell = useCallback((spellType) => {
         const upgrade = SPELL_UPGRADES[spellType];
         if (!upgrade) return false;
@@ -539,11 +498,9 @@ export const useSpellUpgrades = () => {
             return false;
         }
 
-        const nextLevel = upgrade.levels[currentLevel]; // 0-indexed, currentLevel is the next
+        const nextLevel = upgrade.levels[currentLevel];
         if (!nextLevel) return false;
 
-        // Check if player has enough XP (use addExperience with negative? No, just check level)
-        // For simplicity, spend XP cost by requiring minimum player level
         const requiredLevel = nextLevel.xpCost <= 100 ? 2 : nextLevel.xpCost <= 200 ? 3 : 5;
         const playerLevel = useGameStore.getState().getPlayerLevel() || 1;
 
@@ -560,7 +517,6 @@ export const useSpellUpgrades = () => {
         return true;
     }, [spellLevels]);
 
-    // Expose spell stats globally for EnhancedMagicSystem to read
     useEffect(() => {
         useGameStore.setState({ spellLevels: spellLevels });
         useGameStore.setState({ getSpellStats: getSpellStats });
@@ -570,7 +526,6 @@ export const useSpellUpgrades = () => {
     return { spellLevels, getSpellStats, upgradeSpell, upgradeNotification, SPELL_UPGRADES };
 };
 
-// Spell Upgrade Panel (accessed from Magic panel)
 export const SpellUpgradePanel = React.memo(({ spellLevels, onUpgrade, onClose }) => {
     return (
         <motion.div
@@ -662,5 +617,3 @@ export const SpellUpgradePanel = React.memo(({ spellLevels, onUpgrade, onClose }
         </motion.div>
     );
 });
-
-

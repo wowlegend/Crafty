@@ -1,28 +1,25 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import * as THREE from 'three';
 
-// ENHANCED Magic System with Authentic Visual Effects
-export const EnhancedMagicSystem = ({ playerPosition }) => {
+export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const gameState = useGameStore();
   const [projectiles, setProjectiles] = useState([]);
   const [spellTrails, setSpellTrails] = useState([]);
   const [spellImpacts, setSpellImpacts] = useState([]);
-  const [debuffs, setDebuffs] = useState([]); // Track active debuffs on mobs
+  const [debuffs, setDebuffs] = useState([]);
   const projectileId = useRef(0);
   const trailId = useRef(0);
   const impactId = useRef(0);
   const debuffId = useRef(0);
 
-  // CRITICAL: Use ref to track projectiles for reliable rapid casting
   const projectilesRef = useRef([]);
-  const frameCounter = useRef(0); // Throttle React state sync
-  const projectilesDirty = useRef(false); // Only re-render when changed
+  const frameCounter = useRef(0);
+  const projectilesDirty = useRef(false);
 
-  // Enhanced spell configurations with MUCH LARGER sizes and secondary effects
   const SPELL_TYPES = useMemo(() => ({
     fireball: {
       color: '#FF4500',
@@ -30,12 +27,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       particleColor: '#FFD700',
       glowColor: '#FF6600',
       speed: 25,
-      size: 1.2,  // MUCH BIGGER
+      size: 1.2,
       damage: 50,
       trailLength: 25,
       particleCount: 15,
       effect: 'fire',
-      // Secondary effect: BURN
       secondary: {
         type: 'burn',
         duration: 4,
@@ -49,12 +45,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       particleColor: '#E0FFFF',
       glowColor: '#00FFFF',
       speed: 20,
-      size: 1.0,  // MUCH BIGGER
+      size: 1.0,
       damage: 40,
       trailLength: 20,
       particleCount: 12,
       effect: 'ice',
-      // Secondary effect: FREEZE/SLOW
       secondary: {
         type: 'freeze',
         duration: 5,
@@ -68,13 +63,12 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       trailColor: '#FFFF00',
       particleColor: '#FFFFE0',
       glowColor: '#FFFF00',
-      speed: 60,  // Very fast
-      size: 0.8,  // Thinner but bright
+      speed: 60,
+      size: 0.8,
       damage: 75,
       trailLength: 30,
       particleCount: 20,
       effect: 'lightning',
-      // Secondary effect: CHAIN LIGHTNING
       secondary: {
         type: 'chain',
         maxChains: 3,
@@ -90,12 +84,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       particleColor: '#DDA0DD',
       glowColor: '#FF00FF',
       speed: 30,
-      size: 1.1,  // BIGGER
+      size: 1.1,
       damage: 60,
       trailLength: 22,
       particleCount: 14,
       effect: 'arcane',
-      // Secondary effect: PIERCE + LIFESTEAL
       secondary: {
         type: 'pierce',
         pierceCount: 3,
@@ -105,9 +98,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     }
   }), []);
 
-
-  // BURN EFFECT - Damage over time
-  const applyBurnEffect = (mobId, duration, dps) => {
+  const applyBurnEffect = useCallback((mobId, duration, dps) => {
     let ticksRemaining = Math.floor(duration);
     const burnInterval = setInterval(() => {
       if (ticksRemaining <= 0 || !GameMethods.damageMob) {
@@ -121,11 +112,9 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       }
       ticksRemaining--;
     }, 1000);
-  };
+  }, []);
 
-  // FREEZE EFFECT - Slow mob speed
-  const applyFreezeEffect = (mobId, duration, slowPercent, freezeChance) => {
-    // Apply slow via global mob modifier
+  const applyFreezeEffect = useCallback((mobId, duration, slowPercent, freezeChance) => {
     useGameStore.setState(state => {
       const slowEffects = { ...(state.mobSlowEffects || {}) };
       slowEffects[mobId] = {
@@ -135,16 +124,14 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       return { mobSlowEffects: slowEffects };
     });
 
-    // Chance to fully freeze (stun)
     if (Math.random() < freezeChance) {
       useGameStore.setState(state => {
         const stunEffects = { ...(state.mobStunEffects || {}) };
-        stunEffects[mobId] = Date.now() + 2000; // 2 sec stun
+        stunEffects[mobId] = Date.now() + 2000;
         return { mobStunEffects: stunEffects };
       });
     }
 
-    // Clear effect after duration
     setTimeout(() => {
       useGameStore.setState(state => {
         const slowEffects = { ...(state.mobSlowEffects || {}) };
@@ -152,10 +139,9 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
         return { mobSlowEffects: slowEffects };
       });
     }, duration * 1000);
-  };
+  }, []);
 
-  // CHAIN LIGHTNING - Jump to nearby mobs
-  const applyChainLightning = (startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
+  const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
     const allMobs = useGameStore.getState().mobEntities;
     if (!allMobs) return;
 
@@ -163,7 +149,6 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     let lastPos = startPos.clone ? startPos.clone() : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
     const hitMobs = new Set([excludeId]);
 
-    // Spatial optimization: Pre-filter mobs within maximum possible jump range
     const maxPossibleRangeSq = (range * maxChains) ** 2;
     const nearbyMobs = allMobs.filter(mob => {
       const dx = mob.position[0] - lastPos.x;
@@ -174,7 +159,7 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
     for (let i = 0; i < maxChains; i++) {
       let nearestMob = null;
-      let nearestDistSq = range * range; // Compare squared distances for speed
+      let nearestDistSq = range * range;
 
       for (const mob of nearbyMobs) {
         if (hitMobs.has(mob.id)) continue;
@@ -198,81 +183,12 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
         lastPos = new THREE.Vector3(nearestMob.position[0], nearestMob.position[1], nearestMob.position[2]);
         currentDamage *= (1 - damageReduction);
       } else {
-        break; // No more targets in range
+        break;
       }
     }
-  };
+  }, []);
 
-  // Enhanced spell casting with visual effects and MANA SYSTEM
-  useEffect(() => {
-    useGameStore.setState({ castSpell: (spellType = 'fireball') => {
-      const spell = SPELL_TYPES[spellType];
-      const camera = useGameStore.getState().gameCamera;
-
-      if (!camera || !spell) return;
-
-      // CHECK MANA COST
-      const manaCost = SPELL_MANA_COSTS[spellType] || 15;
-      if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
-        return; // Don't cast if not enough mana
-      }
-
-      // SOUND EFFECTS - Multiple fallbacks
-      if (window.playMagicCast) {
-        window.playMagicCast();
-      } else if (window.playAttack) {
-        window.playAttack();
-      } else if (useGameStore.getState().playAttackSounds) {
-        useGameStore.getState().playAttackSounds();
-      }
-
-      const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-
-      const startPos = camera.position.clone().add(direction.clone().multiplyScalar(2));
-
-      // Apply level-based damage multiplier
-      const damageMultiplier = window.getSpellDamageMultiplier ? window.getSpellDamageMultiplier() : 1;
-      const finalDamage = Math.floor(spell.damage * damageMultiplier);
-
-      // Create projectile with unique ID
-      const newProjectile = {
-        id: projectileId.current++,
-        type: spellType,
-        position: startPos.clone(),
-        velocity: direction.clone().multiplyScalar(spell.speed),
-        ...spell,
-        damage: finalDamage, // Use scaled damage
-        age: 0,
-        maxAge: 3000,
-        trailPositions: [startPos.clone()],
-        lastTrailUpdate: 0
-      };
-
-      // CRITICAL: Add to ref immediately for reliable rapid casting
-      projectilesRef.current.push(newProjectile);
-      projectilesDirty.current = true;
-
-      // Let useFrame handle the state sync naturally to avoid React rate-limiting during rapid fire
-      // (Removed synchronous setProjectiles here)
-
-      // Create initial spell trail from wand
-      createSpellTrail(startPos, direction, spell);
-
-      // Play spell casting sound
-      if (window.playSpellCastSound) {
-        window.playSpellCastSound(spellType);
-      }
-
-      // Grant XP for spell cast
-      if (GameMethods.grantXP) {
-        GameMethods.grantXP(3);
-      }
-    }});
-  }, [SPELL_TYPES]);
-
-  // Create spell trail effect
-  const createSpellTrail = (startPos, direction, spell) => {
+  const createSpellTrail = useCallback((startPos, direction, spell) => {
     const trailPoints = [];
     for (let i = 0; i < spell.trailLength; i++) {
       const point = startPos.clone().add(
@@ -290,17 +206,14 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       maxAge: 1000
     };
 
-    // Use functional state update to prevent stale closures
     setSpellTrails(prev => {
-      // Limit total trails to prevent memory leaks during rapid fire
       const maxTrails = 20;
       const next = [...prev, newTrail];
       return next.length > maxTrails ? next.slice(next.length - maxTrails) : next;
     });
-  };
+  }, []);
 
-  // Create spell impact effect
-  const createSpellImpact = (position, spellType) => {
+  const createSpellImpact = useCallback((position, spellType) => {
     const spell = SPELL_TYPES[spellType];
 
     const newImpact = {
@@ -317,7 +230,6 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
     setSpellImpacts(prev => [...prev, newImpact]);
 
-    // Play impact sound - Multiple fallbacks
     if (window.playMagicHit) {
       window.playMagicHit();
     } else if (window.playSpellImpactSound) {
@@ -325,24 +237,75 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
     } else if (useGameStore.getState().playHitSound) {
       useGameStore.getState().playHitSound();
     }
-  };
+  }, [SPELL_TYPES]);
 
-  // Update projectiles with enhanced effects
+  useEffect(() => {
+    useGameStore.setState({ castSpell: (spellType = 'fireball') => {
+      const spell = SPELL_TYPES[spellType];
+      const camera = useGameStore.getState().gameCamera;
+
+      if (!camera || !spell) return;
+
+      const manaCost = SPELL_MANA_COSTS[spellType] || 15;
+      if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
+        return;
+      }
+
+      if (window.playMagicCast) {
+        window.playMagicCast();
+      } else if (window.playAttack) {
+        window.playAttack();
+      } else if (useGameStore.getState().playAttackSounds) {
+        useGameStore.getState().playAttackSounds();
+      }
+
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+
+      const startPos = camera.position.clone().add(direction.clone().multiplyScalar(2));
+
+      const damageMultiplier = window.getSpellDamageMultiplier ? window.getSpellDamageMultiplier() : 1;
+      const finalDamage = Math.floor(spell.damage * damageMultiplier);
+
+      const newProjectile = {
+        id: projectileId.current++,
+        type: spellType,
+        position: startPos.clone(),
+        velocity: direction.clone().multiplyScalar(spell.speed),
+        ...spell,
+        damage: finalDamage,
+        age: 0,
+        maxAge: 3000,
+        trailPositions: [startPos.clone()],
+        lastTrailUpdate: 0
+      };
+
+      projectilesRef.current.push(newProjectile);
+      projectilesDirty.current = true;
+
+      createSpellTrail(startPos, direction, spell);
+
+      if (window.playSpellCastSound) {
+        window.playSpellCastSound(spellType);
+      }
+
+      if (GameMethods.grantXP) {
+        GameMethods.grantXP(3);
+      }
+    }});
+  }, [SPELL_TYPES, createSpellTrail]);
+
   useFrame((state, delta) => {
     const deltaMs = delta * 1000;
     const time = state.clock.elapsedTime;
 
-    // Update projectiles using REF for reliability
     const updatedProjectiles = projectilesRef.current.map(projectile => {
-      // Clone velocity to avoid mutation
       const velocity = projectile.velocity.clone();
 
-      // Add gravity for fireball and iceball
       if (projectile.type === 'fireball' || projectile.type === 'iceball') {
         velocity.y -= 12 * delta;
       }
 
-      // Update position using cloned velocity
       const newPos = projectile.position.clone().add(
         velocity.clone().multiplyScalar(delta)
       );
@@ -350,11 +313,10 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       const updatedProjectile = {
         ...projectile,
         position: newPos,
-        velocity: velocity, // Store updated velocity
+        velocity: velocity,
         age: projectile.age + deltaMs
       };
 
-      // Add to trail every few frames
       if (time - projectile.lastTrailUpdate > 0.05) {
         updatedProjectile.trailPositions = [
           ...projectile.trailPositions.slice(-projectile.trailLength),
@@ -365,13 +327,11 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
       return updatedProjectile;
     }).filter(projectile => {
-      // Check for expiration
       if (projectile.age > projectile.maxAge) {
         createSpellImpact(projectile.position, projectile.type);
         return false;
       }
 
-      // Check collision with terrain
       if (useGameStore.getState().getMobGroundLevel) {
         const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
         if (projectile.position.y <= groundLevel + 0.5) {
@@ -383,7 +343,6 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
         return false;
       }
 
-      // Check collision with mobs
       if (GameMethods.checkMobCollision) {
         const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5);
         if (hitMob) {
@@ -393,23 +352,17 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
             GameMethods.damageMob(hitMob.id, projectile.damage);
           }
 
-          // APPLY SECONDARY EFFECTS
           if (spellConfig?.secondary) {
             const sec = spellConfig.secondary;
 
             switch (sec.type) {
               case 'burn':
-                // Apply burn damage over time
                 applyBurnEffect(hitMob.id, sec.duration, sec.damagePerSecond);
                 break;
-
               case 'freeze':
-                // Apply slow effect
                 applyFreezeEffect(hitMob.id, sec.duration, sec.slowPercent, sec.freezeChance);
                 break;
-
               case 'chain':
-                // Chain lightning to nearby mobs
                 applyChainLightning(
                   projectile.position,
                   hitMob.id,
@@ -419,15 +372,12 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
                   sec.chainDamageReduction
                 );
                 break;
-
               case 'pierce':
-                // Heal player
                 const healAmount = Math.floor(projectile.damage * sec.lifestealPercent / 100);
                 if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(healAmount);
-                // Pierce continues (don't remove projectile)
                 projectile.pierceCount = (projectile.pierceCount || 0) + 1;
                 if (projectile.pierceCount < sec.pierceCount) {
-                  return true; // Continue through mob
+                  return true;
                 }
                 break;
             }
@@ -435,7 +385,6 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
           createSpellImpact(projectile.position, projectile.type);
 
-          // Grant XP for hit
           if (GameMethods.grantXP) GameMethods.grantXP(5);
 
           return false;
@@ -445,17 +394,14 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
       return true;
     });
 
-    // Sync ref always
     projectilesRef.current = updatedProjectiles;
 
-    // React state sync: ONLY when dirty (new projectile added/removed)
     const lengthChanged = updatedProjectiles.length !== projectiles.length;
     if (projectilesDirty.current || lengthChanged) {
       setProjectiles([...updatedProjectiles]);
       projectilesDirty.current = false;
     }
 
-    // Mutate trail and impact ages outside of React state
     let trailsChanged = false;
     let impactsChanged = false;
 
@@ -479,26 +425,22 @@ export const EnhancedMagicSystem = ({ playerPosition }) => {
 
   return (
     <group>
-      {/* Render projectiles with enhanced visuals */}
       {projectiles.map(projectile => (
         <EnhancedSpellProjectile key={projectile.id} projectile={projectile} />
       ))}
 
-      {/* Render spell trails */}
       {spellTrails.map(trail => (
         <SpellTrail key={trail.id} trail={trail} />
       ))}
 
-      {/* Render spell impacts */}
       {spellImpacts.map(impact => (
         <SpellImpact key={impact.id} impact={impact} />
       ))}
     </group>
   );
-};
+});
 
-// Enhanced Spell Projectile with authentic effects
-const EnhancedSpellProjectile = ({ projectile }) => {
+const EnhancedSpellProjectile = React.memo(({ projectile }) => {
   const meshRef = useRef();
   const particlesRef = useRef();
 
@@ -506,7 +448,6 @@ const EnhancedSpellProjectile = ({ projectile }) => {
     if (meshRef.current) {
       meshRef.current.position.copy(projectile.position);
 
-      // Spell-specific animations
       switch (projectile.type) {
         case 'fireball':
           meshRef.current.rotation.x += 0.15;
@@ -514,18 +455,15 @@ const EnhancedSpellProjectile = ({ projectile }) => {
           const firePulse = 1 + Math.sin(state.clock.elapsedTime * 8) * 0.3;
           meshRef.current.scale.setScalar(firePulse);
           break;
-
         case 'iceball':
           meshRef.current.rotation.y += 0.1;
           const icePulse = 1 + Math.sin(state.clock.elapsedTime * 6) * 0.2;
           meshRef.current.scale.setScalar(icePulse);
           break;
-
         case 'lightning':
           const lightningFlicker = 0.8 + Math.random() * 0.4;
           meshRef.current.scale.setScalar(lightningFlicker);
           break;
-
         case 'arcane':
           meshRef.current.rotation.x += 0.2;
           meshRef.current.rotation.y += 0.15;
@@ -535,7 +473,6 @@ const EnhancedSpellProjectile = ({ projectile }) => {
       }
     }
 
-    // Animate trailing particles
     if (particlesRef.current) {
       particlesRef.current.children.forEach((particle, index) => {
         const trailPos = projectile.trailPositions[Math.max(0, projectile.trailPositions.length - 1 - index)];
@@ -549,7 +486,6 @@ const EnhancedSpellProjectile = ({ projectile }) => {
 
   return (
     <group>
-      {/* Main projectile */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[projectile.size, 8, 8]} />
         <meshBasicMaterial
@@ -559,7 +495,6 @@ const EnhancedSpellProjectile = ({ projectile }) => {
         />
       </mesh>
 
-      {/* Trailing particles */}
       <group ref={particlesRef}>
         {projectile.trailPositions.slice(-projectile.particleCount).map((_, index) => (
           <mesh key={index}>
@@ -573,7 +508,6 @@ const EnhancedSpellProjectile = ({ projectile }) => {
         ))}
       </group>
 
-      {/* Spell-specific effects */}
       {projectile.type === 'fireball' && (
         <FireballAura projectile={projectile} />
       )}
@@ -583,10 +517,9 @@ const EnhancedSpellProjectile = ({ projectile }) => {
       )}
     </group>
   );
-};
+});
 
-// Fireball Aura Effect
-const FireballAura = ({ projectile }) => {
+const FireballAura = React.memo(({ projectile }) => {
   const auraRef = useRef();
 
   useFrame((state) => {
@@ -607,22 +540,20 @@ const FireballAura = ({ projectile }) => {
       />
     </mesh>
   );
-};
+});
 
-// Lightning Effect
-const LightningEffect = ({ projectile }) => {
+const LightningEffect = React.memo(({ projectile }) => {
   const lightningRef = useRef();
 
   useFrame((state) => {
     if (lightningRef.current) {
       lightningRef.current.position.copy(projectile.position);
-      lightningRef.current.visible = Math.random() > 0.3; // Flickering effect
+      lightningRef.current.visible = Math.random() > 0.3;
     }
   });
 
   return (
     <group ref={lightningRef}>
-      {/* Lightning bolts */}
       {[...Array(3)].map((_, i) => (
         <mesh key={i} rotation={[0, (i * Math.PI * 2) / 3, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 1, 4]} />
@@ -635,10 +566,9 @@ const LightningEffect = ({ projectile }) => {
       ))}
     </group>
   );
-};
+});
 
-// Spell Trail Component
-const SpellTrail = ({ trail }) => {
+const SpellTrail = React.memo(({ trail }) => {
   const trailRef = useRef();
 
   useFrame(() => {
@@ -662,10 +592,9 @@ const SpellTrail = ({ trail }) => {
       ))}
     </group>
   );
-};
+});
 
-// Spell Impact Effect
-const SpellImpact = ({ impact }) => {
+const SpellImpact = React.memo(({ impact }) => {
   const impactRef = useRef();
 
   useFrame((state) => {
@@ -683,7 +612,6 @@ const SpellImpact = ({ impact }) => {
 
   return (
     <group position={impact.position}>
-      {/* Main impact explosion */}
       <mesh ref={impactRef}>
         <sphereGeometry args={[0.5, 8, 8]} />
         <meshBasicMaterial
@@ -693,7 +621,6 @@ const SpellImpact = ({ impact }) => {
         />
       </mesh>
 
-      {/* Impact particles */}
       {[...Array(impact.particleCount)].map((_, i) => (
         <ImpactParticle
           key={i}
@@ -703,17 +630,15 @@ const SpellImpact = ({ impact }) => {
         />
       ))}
 
-      {/* Spell-specific impact effects */}
       {impact.type === 'fireball' && <FireImpactEffect impact={impact} />}
       {impact.type === 'iceball' && <IceImpactEffect impact={impact} />}
       {impact.type === 'lightning' && <LightningImpactEffect impact={impact} />}
       {impact.type === 'arcane' && <ArcaneImpactEffect impact={impact} />}
     </group>
   );
-};
+});
 
-// Impact Particle
-const ImpactParticle = ({ impact, index, total }) => {
+const ImpactParticle = React.memo(({ impact, index, total }) => {
   const particleRef = useRef();
   const angle = (index / total) * Math.PI * 2;
   const distance = 1 + Math.random();
@@ -740,10 +665,9 @@ const ImpactParticle = ({ impact, index, total }) => {
       />
     </mesh>
   );
-};
+});
 
-// Fire Impact Effect
-const FireImpactEffect = ({ impact }) => {
+const FireImpactEffect = React.memo(({ impact }) => {
   const fireRef = useRef();
 
   useFrame((state) => {
@@ -763,10 +687,9 @@ const FireImpactEffect = ({ impact }) => {
       />
     </mesh>
   );
-};
+});
 
-// Ice Impact Effect
-const IceImpactEffect = ({ impact }) => {
+const IceImpactEffect = React.memo(({ impact }) => {
   return (
     <group>
       {[...Array(6)].map((_, i) => (
@@ -789,10 +712,9 @@ const IceImpactEffect = ({ impact }) => {
       ))}
     </group>
   );
-};
+});
 
-// Lightning Impact Effect
-const LightningImpactEffect = ({ impact }) => {
+const LightningImpactEffect = React.memo(({ impact }) => {
   const lightningRef = useRef();
 
   useFrame(() => {
@@ -811,10 +733,9 @@ const LightningImpactEffect = ({ impact }) => {
       />
     </mesh>
   );
-};
+});
 
-// Arcane Impact Effect
-const ArcaneImpactEffect = ({ impact }) => {
+const ArcaneImpactEffect = React.memo(({ impact }) => {
   const arcaneRef = useRef();
 
   useFrame((state) => {
@@ -835,10 +756,9 @@ const ArcaneImpactEffect = ({ impact }) => {
       />
     </mesh>
   );
-};
+});
 
-// Enhanced Magic Wand with glowing effects
-export const MagicWand = ({ wandType = 'fireball', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
+export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const wandRef = useRef();
   const gemRef = useRef();
 
@@ -885,19 +805,16 @@ export const MagicWand = ({ wandType = 'fireball', position = [0, 0, 0], rotatio
 
   return (
     <group ref={wandRef} position={position} rotation={rotation}>
-      {/* Enhanced wand handle */}
       <mesh position={[0, -0.4, 0]}>
         <cylinderGeometry args={[0.03, 0.05, 0.8, 8]} />
         <meshLambertMaterial color={config.handleColor} />
       </mesh>
 
-      {/* Enhanced wand tip */}
       <mesh position={[0, 0.1, 0]}>
         <cylinderGeometry args={[0.02, 0.04, 0.3, 8]} />
         <meshLambertMaterial color={config.tipColor} />
       </mesh>
 
-      {/* Glowing magic gem */}
       <mesh ref={gemRef} position={[0, 0.3, 0]}>
         <sphereGeometry args={[0.1, 8, 8]} />
         <meshBasicMaterial
@@ -907,7 +824,6 @@ export const MagicWand = ({ wandType = 'fireball', position = [0, 0, 0], rotatio
         />
       </mesh>
 
-      {/* Magic aura around gem */}
       <mesh position={[0, 0.3, 0]}>
         <sphereGeometry args={[0.15, 8, 8]} />
         <meshBasicMaterial
@@ -918,4 +834,4 @@ export const MagicWand = ({ wandType = 'fireball', position = [0, 0, 0], rotatio
       </mesh>
     </group>
   );
-};
+});

@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 
-
-
 const LOOT_TABLES = {
     pig: [
         { item: '🥩 Raw Porkchop', chance: 0.8, xp: 5 },
@@ -34,7 +32,6 @@ const LOOT_TABLES = {
     ],
 };
 
-
 const CHEST_LOOT = [
     { item: '❤️ Health Potion', chance: 0.6, effect: 'heal', value: 30 },
     { item: '💙 Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
@@ -44,7 +41,6 @@ const CHEST_LOOT = [
     { item: '👑 Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
     { item: '🌟 Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
 ];
-
 
 const QUEST_LIST = [
     // Beginner quests
@@ -69,7 +65,6 @@ const QUEST_LIST = [
     { id: 'undead_destroyer', title: '💀 Undead Destroyer', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
 ];
 
-
 const ACHIEVEMENTS = [
     { id: 'first_step', title: '👣 First Steps', description: 'Enter the world', icon: '👣', auto: true },
     { id: 'first_kill', title: '⚔️ Warrior', description: 'Defeat your first mob', icon: '⚔️', stat: 'kills', target: 1 },
@@ -84,7 +79,6 @@ const ACHIEVEMENTS = [
     { id: 'miner_ach', title: '⛏️ Deep Digger', description: 'Break 100 blocks', icon: '⛏️', stat: 'blocks_broken', target: 100 },
     { id: 'builder_ach', title: '🏠 Master Builder', description: 'Place 200 blocks', icon: '🏠', stat: 'blocks_placed', target: 200 },
 ];
-
 
 export const useQuestSystem = () => {
     const [quests, setQuests] = useState(() => {
@@ -320,8 +314,6 @@ export const useQuestSystem = () => {
     };
 };
 
-
-
 export const QuestTracker = React.memo(({ quests, onClaim }) => {
     const [expanded, setExpanded] = useState(true);
 
@@ -406,8 +398,6 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
     );
 });
 
-
-
 export const NotificationStack = React.memo(({ notifications }) => {
     const colorMap = {
         quest: { bg: 'rgba(34, 197, 94, 0.9)', border: '#4ade80' },
@@ -445,11 +435,6 @@ export const NotificationStack = React.memo(({ notifications }) => {
         </div>
     );
 });
-
-
-
-
-
 
 export const AchievementsPanel = React.memo(({ achievements, unlockedAchievements, stats, onClose }) => {
     return (
@@ -542,8 +527,6 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
         </motion.div>
     );
 });
-
-
 
 export const useTreasureChests = (playerPosition) => {
     const [chests, setChests] = useState([]);
@@ -671,8 +654,6 @@ export const useTreasureChests = (playerPosition) => {
     return { chests, openedChestIds, checkChestProximity, openChest };
 };
 
-
-
 export const ChestIndicator = React.memo(({ playerPosition, chests, openedChestIds }) => {
     const [nearbyChest, setNearbyChest] = useState(null);
 
@@ -720,5 +701,4 @@ export const ChestIndicator = React.memo(({ playerPosition, chests, openedChestI
         </motion.div>
     );
 });
-
 
