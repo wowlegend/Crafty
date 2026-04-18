@@ -14,5 +14,8 @@ export default defineConfig({
     build: {
         outDir: 'build',
         sourcemap: false,
+        // Suppress chunk size warnings: 3D games (Three.js, Rapier) inherently produce large bundles.
+        // For zero-stutter gameplay, we intentionally want these loaded upfront.
+        chunkSizeWarningLimit: 4000,
     },
 });
