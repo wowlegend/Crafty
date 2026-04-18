@@ -721,4 +721,4 @@ export const ChestIndicator = React.memo(({ playerPosition, chests, openedChestI
     );
 });
 
-export default useQuestSystem;
+

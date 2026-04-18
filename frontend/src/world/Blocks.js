@@ -18,5 +18,5 @@ export const BLOCK_TYPES = Object.freeze({
     flower_yellow: Object.freeze({ color: '#FFD700', name: 'Yellow Flower', texture: 'flower', transparent: true })
 });
 
-export const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
+const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
 export const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);

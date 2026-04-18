@@ -171,7 +171,7 @@ export const AuthModal = ({ isOpen, onClose }) => {
   );
 };
 
-export const UserProfile = ({ onShowWorldManager }) => {
+const UserProfile = ({ onShowWorldManager }) => {
   const { user, logout } = useAuth();
 
   return (

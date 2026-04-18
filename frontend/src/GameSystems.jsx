@@ -152,7 +152,7 @@ export const SPELL_MANA_COSTS = {
     heal: 40,
 };
 
-export const SPELL_EFFECTS = {
+const SPELL_EFFECTS = {
     fireball: {
         burn: { duration: 3, damagePerSecond: 5 },
     },

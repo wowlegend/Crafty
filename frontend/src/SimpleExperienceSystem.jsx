@@ -184,5 +184,3 @@ export const SimpleExperienceBar = ({ level, currentXP, xpRequired, xpProgress }
     </div>
   );
 };
-
-export default useSimpleExperience;

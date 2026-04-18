@@ -59,7 +59,7 @@ export const MinecraftHotbar = React.memo(({ gameState }) => {
   );
 });
 
-export const MinecraftHealthHunger = React.memo(() => {
+const MinecraftHealthHunger = React.memo(() => {
   const hearts = useMemo(() => Array(10).fill(null).map((_, i) => i), []);
   const hunger = useMemo(() => Array(10).fill(null).map((_, i) => i), []);
   return (

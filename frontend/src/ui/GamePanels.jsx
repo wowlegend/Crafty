@@ -226,7 +226,7 @@ export const CraftingTable = ({ onClose }) => {
     );
 };
 
-export const MagicSystem = ({ onClose }) => {
+const MagicSystem = ({ onClose }) => {
     const gameState = useGameStore();
     const spells = [
         { name: 'Fireball', key: '1', color: '#FF4500', damage: 50, mana: 15, description: 'Launches a fiery projectile that burns on impact' },

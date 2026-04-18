@@ -125,4 +125,4 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   );
 };
 
-export default OptimizedGrassSystem;
+

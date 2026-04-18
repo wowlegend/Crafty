@@ -919,5 +919,3 @@ export const MagicWand = ({ wandType = 'fireball', position = [0, 0, 0], rotatio
     </group>
   );
 };
-
-export default EnhancedMagicSystem;

@@ -15,7 +15,7 @@ import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
 
-export const Minimap = React.memo(({ playerPosition }) => {
+const Minimap = React.memo(({ playerPosition }) => {
   const canvasRef = useRef(null);
   const MAP_SIZE = 130;
   const MAP_RANGE = 60;
