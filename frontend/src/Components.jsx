@@ -207,11 +207,19 @@ export const Player = ({ isWorldBuilt }) => {
         jumpRequested.current = false;
       }
     };
+    const handleMouseDown = (e) => {
+      if (document.pointerLockElement) {
+        setIsAttacking(true);
+        setTimeout(() => setIsAttacking(false), 200);
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousedown', handleMouseDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousedown', handleMouseDown);
     }
   }, [camera]);
 
@@ -263,9 +271,40 @@ export const Player = ({ isWorldBuilt }) => {
       jumpRequested.current = false;
     }
 
+    // Phase 9: Dynamic FOV Momentum & Camera Bobbing
+    const horizontalSpeed = Math.sqrt(currentVel.x * currentVel.x + currentVel.z * currentVel.z);
+    
+    let targetFov = 75;
+    if (currentVel.y < -15) targetFov = 85; // falling fast
+    else if (horizontalSpeed > 5) targetFov = 75 + (horizontalSpeed - 5) * 1.5; // moving fast
+
+    camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.1);
+    camera.updateProjectionMatrix();
+
+    const time = state.clock.elapsedTime;
+    let bobOffset = 0;
+    if (isGrounded && horizontalSpeed > 1) {
+      bobOffset = Math.sin(time * 15) * 0.06;
+    }
+
+    // Phase 9: Camera Shake
+    let shakeX = 0;
+    let shakeY = 0;
+    let shakeZ = 0;
+    const store = useGameStore.getState();
+    if (store.cameraShakeIntensity > 0.01) {
+      const intensity = store.cameraShakeIntensity;
+      shakeX = (Math.random() - 0.5) * 0.5 * intensity;
+      shakeY = (Math.random() - 0.5) * 0.5 * intensity;
+      shakeZ = (Math.random() - 0.5) * 0.5 * intensity;
+      store.triggerCameraShake(intensity * 0.85); // Decay
+    } else if (store.cameraShakeIntensity > 0) {
+      store.triggerCameraShake(0);
+    }
+
     // Sync camera to rigid body — direct snap for responsive FPS feel
     const translation = rigidBodyRef.current.translation();
-    camera.position.set(translation.x, translation.y + 1.2, translation.z);
+    camera.position.set(translation.x + shakeX, translation.y + 1.2 + bobOffset + shakeY, translation.z + shakeZ);
 
     // Force horizontal camera on first frame
     if (!cameraInitialized.current && translation.y > 0) {

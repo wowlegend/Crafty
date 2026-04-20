@@ -12,6 +12,10 @@ export const useGameStore = create((set, get) => ({
     getMobGroundLevel: null,
     setGetMobGroundLevel: (fn) => set({ getMobGroundLevel: fn }),
 
+    // Phase 9: Camera Shake
+    cameraShakeIntensity: 0,
+    triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),
+
     checkCollision: null,
     setCheckCollision: (fn) => set({ checkCollision: fn }),
 

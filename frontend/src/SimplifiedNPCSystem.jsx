@@ -33,6 +33,9 @@ const MOB_TYPES = {
 // Mob Model Component with variety - PURE ECS RENDERER
 const MobModel = ({ entity }) => {
   const groupRef = useRef();
+  const legRefs = useRef([]);
+  const prevPos = useRef(null);
+  
   const mobConfig = MOB_TYPES[entity.type] || MOB_TYPES.pig;
   const [bodyW, bodyH, bodyD] = mobConfig.bodySize;
   const [headW, headH, headD] = mobConfig.headSize;
@@ -58,6 +61,49 @@ const MobModel = ({ entity }) => {
          child.material.emissiveIntensity = isHit ? 0.5 : 0;
       }
     });
+
+    // 3. Phase 9: Procedural Mob Animations & IK
+    if (!prevPos.current) prevPos.current = { x: entity.position.x, z: entity.position.z };
+    const dx = entity.position.x - prevPos.current.x;
+    const dz = entity.position.z - prevPos.current.z;
+    const velocity = Math.sqrt(dx*dx + dz*dz);
+    prevPos.current = { x: entity.position.x, z: entity.position.z };
+
+    const time = performance.now() * 0.01;
+    const speed = velocity * 15; 
+    const swing = speed > 0.05 ? Math.sin(time) * 0.6 : 0;
+    
+    if (entity.type !== 'spider') {
+      if (legRefs.current[0]) legRefs.current[0].rotation.x = swing;
+      if (legRefs.current[1]) legRefs.current[1].rotation.x = -swing;
+      if (legRefs.current[2]) legRefs.current[2].rotation.x = -swing;
+      if (legRefs.current[3]) legRefs.current[3].rotation.x = swing;
+
+      // IK height snapping
+      const store = useGameStore.getState();
+      if (store.getMobGroundLevel && speed > 0) {
+        const checkIK = (mesh, offsetX, offsetZ) => {
+          if (!mesh) return;
+          const cosR = Math.cos(entity.rotation);
+          const sinR = Math.sin(entity.rotation);
+          const worldX = entity.position.x + (offsetX * cosR + offsetZ * sinR);
+          const worldZ = entity.position.z + (-offsetX * sinR + offsetZ * cosR);
+          const groundY = store.getMobGroundLevel(worldX, worldZ);
+          if (!isNaN(groundY)) {
+             const targetY = groundY - entity.position.y;
+             mesh.position.y += (Math.max(-0.3, targetY + 0.3) - mesh.position.y) * 0.2;
+          }
+        };
+        checkIK(legRefs.current[0], -bodyW / 3, bodyD / 4);
+        checkIK(legRefs.current[1], bodyW / 3, bodyD / 4);
+        checkIK(legRefs.current[2], -bodyW / 3, -bodyD / 4);
+        checkIK(legRefs.current[3], bodyW / 3, -bodyD / 4);
+      }
+    } else {
+      legRefs.current.forEach((leg, i) => {
+        if (leg) leg.rotation.x = speed > 0.05 ? Math.sin(time + i) * 0.3 : 0;
+      });
+    }
   });
 
   return (
@@ -88,14 +134,14 @@ const MobModel = ({ entity }) => {
       {/* Legs */}
       {entity.type !== 'spider' ? (
         <>
-          <mesh position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
+          <mesh ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
+          <mesh ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
+          <mesh ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
+          <mesh ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
         </>
       ) : (
         [...Array(8)].map((_, i) => (
-          <mesh key={i} position={[
+          <mesh ref={(el) => legRefs.current[i] = el} key={i} position={[
             Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
           ]} rotation={[0, 0, Math.PI / 4]}>
             <boxGeometry args={[0.1, 0.8, 0.1]} />
@@ -383,6 +429,13 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
     const damageMob = (id, damage = 25) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
+
+      // Phase 9: Visceral Hitstop (micro-freeze for game feel)
+      const hitstopEnd = performance.now() + 35;
+      while (performance.now() < hitstopEnd) { /* hitstop busy wait */ }
+      
+      const store = useGameStore.getState();
+      if (store.triggerCameraShake) store.triggerCameraShake(1.0);
 
       entity.health -= damage;
       entity.lastHit = performance.now();

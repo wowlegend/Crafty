@@ -12,12 +12,12 @@
 *Making the core combat and movement loop addictive. Sequenced from player-camera outward to the world.*
 - [x] **Target Block Outlining**: Render a subtle 3D wireframe box around the block currently targeted by the Rapier raycast.
 - [x] **Block Breaking Particles**: Spawn physics-enabled colored cube particles when a block is destroyed.
-- [ ] **Player Animation**: Add a swinging hand/weapon model and subtle camera view-bobbing.
-- [ ] **Hotbar Scrolling**: Bind Mouse Scroll Wheel events to cycle active hotbar slots.
-- [ ] **Hitstop & Camera Shake**: Add 50ms micro-freezes and violent camera shakes on heavy combat hits.
-- [ ] **Dynamic FOV Momentum (New)**: FOV dilation linked to physical velocity vectors (falling, sprinting).
-- [ ] **Procedural Mob Animations**: Add leg swing animations based on horizontal velocity vectors in the ECS movement loop.
-- [ ] **Procedural IK Mob Animation (New)**: Upgrade the procedural leg swings to dynamically snap to varying voxel heights via Inverse Kinematics.
+- [x] **Player Animation**: Add a swinging hand/weapon model and subtle camera view-bobbing.
+- [x] **Hotbar Scrolling**: Bind Mouse Scroll Wheel events to cycle active hotbar slots.
+- [x] **Hitstop & Camera Shake**: Add 50ms micro-freezes and violent camera shakes on heavy combat hits.
+- [x] **Dynamic FOV Momentum (New)**: FOV dilation linked to physical velocity vectors (falling, sprinting).
+- [x] **Procedural Mob Animations**: Add leg swing animations based on horizontal velocity vectors in the ECS movement loop.
+- [x] **Procedural IK Mob Animation (New)**: Upgrade the procedural leg swings to dynamically snap to varying voxel heights via Inverse Kinematics.
 
 ### Phase 10: High-Craft Graphics & Rendering (WebGPU/R3F 9.5 Standard)
 *Layering visuals in exact rendering pipeline order (Light -> Materials -> Post).*

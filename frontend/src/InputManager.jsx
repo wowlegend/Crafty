@@ -1,11 +1,37 @@
 import { useGameStore } from './store/useGameStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { HOTBAR_BLOCKS } from './world/Blocks';
 
 export function useInputManager(gameState, gameSystems, questSystem) {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showSpellUpgrades, setShowSpellUpgrades] = useState(false);
+
+  useEffect(() => {
+    const handleWheel = (event) => {
+      const state = useGameStore.getState();
+      const { isPointerLocked, showAchievements, showSpellUpgrades } = localRefs.current;
+      const anyPanelOpen = state.showInventory || state.showCrafting ||
+        state.showMagic || state.showBuildingTools ||
+        state.showSettings || showAchievements || showSpellUpgrades;
+
+      if (isPointerLocked && !anyPanelOpen) {
+        const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
+        if (currentIndex === -1) return;
+
+        let nextIndex;
+        if (event.deltaY > 0) {
+          nextIndex = (currentIndex + 1) % HOTBAR_BLOCKS.length;
+        } else {
+          nextIndex = (currentIndex - 1 + HOTBAR_BLOCKS.length) % HOTBAR_BLOCKS.length;
+        }
+        state.setSelectedBlock(HOTBAR_BLOCKS[nextIndex]);
+      }
+    };
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    return () => window.removeEventListener('wheel', handleWheel);
+  }, []);
 
   useEffect(() => {
     const originalRequestPointerLock = Element.prototype.requestPointerLock;

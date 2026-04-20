@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### April 19, 2026 (Phase 9: The "Juice" & Game Feel)
+
+- **PLAYER ANIMATION & FOV**: Integrated dynamic FOV dilation into `Components.jsx` based on falling/sprinting velocity vectors, alongside subtle sinusoidal camera view-bobbing when walking. Upgraded hand models to swing procedurally upon mouse-click (mining/attacking).
+- **COMBAT HITSTOP & CAMERA SHAKE**: Implemented visceral combat feedback in `SimplifiedNPCSystem.jsx` and `Components.jsx` by injecting a 35ms thread-blocking hitstop during mob damage calculation, paired with a decaying randomized camera shake effect stored globally.
+- **PROCEDURAL IK MOB ANIMATION**: Re-wrote the `MobModel` in `SimplifiedNPCSystem.jsx` to support true ECS-driven animation. Mobs now calculate their horizontal velocity to procedurally swing their 4 legs. Inverse Kinematics (IK) was implemented by projecting raycasts to `getMobGroundLevel` to dynamically snap individual leg heights to uneven voxel terrain.
+- **HOTBAR SCROLLING**: Bound the mouse scroll wheel (`deltaY`) in `InputManager.jsx` to dynamically cycle the `selectedBlock` via modulo arithmetic on the `HOTBAR_BLOCKS` array.
+
 ### April 19, 2026 (Phase 8: Zero-Stutter Architecture)
 
 - **STRICT OBJECT POOLING**: Eradicated Garbage Collection micro-stutters by eliminating dynamic object allocations (`new Vector3`, `.clone()`, array mapping) within `useFrame` loops across `EnhancedMagicSystem`, `BlockParticleSystem`, and movement controllers.
