@@ -810,12 +810,12 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
     <group ref={wandRef} position={position} rotation={rotation}>
       <mesh position={[0, -0.4, 0]}>
         <cylinderGeometry args={[0.03, 0.05, 0.8, 8]} />
-        <meshLambertMaterial color={config.handleColor} />
+        <meshStandardMaterial roughness={0.8} metalness={0.1} color={config.handleColor} />
       </mesh>
 
       <mesh position={[0, 0.1, 0]}>
         <cylinderGeometry args={[0.02, 0.04, 0.3, 8]} />
-        <meshLambertMaterial color={config.tipColor} />
+        <meshStandardMaterial roughness={0.8} metalness={0.1} color={config.tipColor} />
       </mesh>
 
       <mesh ref={gemRef} position={[0, 0.3, 0]}>

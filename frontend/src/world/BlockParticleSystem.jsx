@@ -98,7 +98,7 @@ export const BlockParticleSystem = ({ worker }) => {
         >
             <instancedMesh ref={meshRef} args={[null, null, MAX_PARTICLES]}>
                 <boxGeometry args={[0.25, 0.25, 0.25]} />
-                <meshLambertMaterial />
+                <meshStandardMaterial roughness={0.8} metalness={0.1} />
             </instancedMesh>
         </InstancedRigidBodies>
     );

@@ -8,6 +8,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 - **Runtime**: React 19, Three.js 0.172
 - **3D Engine**: @react-three/fiber 9.5, @react-three/drei 10.7
+- **Post-Processing**: @react-three/postprocessing 2.16
 - **Physics**: @react-three/rapier 2.2 (Rapier WASM)
 - **Styling**: Tailwind CSS 3.x, Framer Motion 12.x
 - **State**: Zustand 5.x (global store), React hooks

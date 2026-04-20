@@ -21,10 +21,10 @@
 
 ### Phase 10: High-Craft Graphics & Rendering (WebGPU/R3F 9.5 Standard)
 *Layering visuals in exact rendering pipeline order (Light -> Materials -> Post).*
-- [ ] **Lighting**: Enable Day/Night mapped directional shadows and subtle SSAO for a modern voxel look.
-- [ ] **Dynamic Sky & CSM Shadows (New)**: Physically based scattering for sun/moon, paired with Cascaded Shadow Maps for razor-sharp, distant rendering.
-- [ ] **PBR Material Upgrade (New)**: Transition blocks from `meshLambertMaterial` to Physically Based Rendering (PBR) with roughness and metallic properties.
-- [ ] **Post-Processing Stack (New)**: Volumetric God Rays and Temporal Anti-Aliasing (TAA) for a flawless voxel aesthetic.
+- [x] **Lighting**: Enable Day/Night mapped directional shadows and subtle SSAO for a modern voxel look.
+- [x] **Dynamic Sky & CSM Shadows (New)**: Physically based scattering for sun/moon, paired with Cascaded Shadow Maps for razor-sharp, distant rendering.
+- [x] **PBR Material Upgrade (New)**: Transition blocks from `meshLambertMaterial` to Physically Based Rendering (PBR) with roughness and metallic properties.
+- [x] **Post-Processing Stack (New)**: Volumetric God Rays and Temporal Anti-Aliasing (TAA) for a flawless voxel aesthetic.
 
 ### Phase 11: Spatial Audio & Foley (Acoustic Realism)
 *Completing the sensory immersion.*

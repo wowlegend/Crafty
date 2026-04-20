@@ -417,8 +417,8 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
   return (
     <group>
       <group ref={rightHandRef}>
-        <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
-        <mesh position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
+        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
+        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
         <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}><MagicWand wandType={activeSpell} /></group>
         {isAttacking && (
           <mesh ref={magicAuraRef} position={[0, 0, 0]}>
@@ -429,11 +429,11 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
         {isAttacking && <SpellHandEffects spellType={activeSpell} />}
       </group>
       <group ref={leftHandRef}>
-        <mesh position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
-        <mesh position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshLambertMaterial color="#fdbcb4" /></mesh>
+        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
+        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
         {isAttacking && (
           <group>
-            <mesh position={[0, 0.1, -0.2]}>
+            <mesh castShadow receiveShadow position={[0, 0.1, -0.2]}>
               <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
@@ -442,9 +442,9 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
         )}
         {!isAttacking && selectedBlock && (
           <group position={[-0.1, 0.2, -0.15]} scale={[0.3, 0.3, 0.3]}>
-            <mesh>
+            <mesh castShadow receiveShadow>
               <boxGeometry args={[1, 1, 1]} />
-              <meshLambertMaterial color={BLOCK_TYPES[selectedBlock]?.color || '#567C35'} />
+              <meshStandardMaterial roughness={0.8} metalness={0.1} color={BLOCK_TYPES[selectedBlock]?.color || '#567C35'} />
             </mesh>
           </group>
         )}

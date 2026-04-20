@@ -109,23 +109,23 @@ const MobModel = ({ entity }) => {
   return (
     <group ref={groupRef} position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
       {/* Body */}
-      <mesh position={[0, bodyH / 2, 0]}>
+      <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
         <boxGeometry args={[bodyW, bodyH, bodyD]} />
-        <meshLambertMaterial color={entity.color} />
+        <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
       </mesh>
       {/* Head */}
-      <mesh position={[0, bodyH + headH / 2, bodyD / 3]}>
+      <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
         <boxGeometry args={[headW, headH, headD]} />
-        <meshLambertMaterial color={entity.color} />
+        <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
       </mesh>
       {/* Eyes for hostile mobs */}
       {!mobConfig.passive && (
         <>
-          <mesh position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
+          <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
             <boxGeometry args={[0.15, 0.1, 0.02]} />
             <meshBasicMaterial name="eye" color="#ff0000" />
           </mesh>
-          <mesh position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
+          <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
             <boxGeometry args={[0.15, 0.1, 0.02]} />
             <meshBasicMaterial name="eye" color="#ff0000" />
           </mesh>
@@ -134,18 +134,18 @@ const MobModel = ({ entity }) => {
       {/* Legs */}
       {entity.type !== 'spider' ? (
         <>
-          <mesh ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
-          <mesh ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshLambertMaterial color={entity.color} /></mesh>
+          <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+          <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+          <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+          <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
         </>
       ) : (
         [...Array(8)].map((_, i) => (
-          <mesh ref={(el) => legRefs.current[i] = el} key={i} position={[
+          <mesh castShadow receiveShadow ref={(el) => legRefs.current[i] = el} key={i} position={[
             Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
           ]} rotation={[0, 0, Math.PI / 4]}>
             <boxGeometry args={[0.1, 0.8, 0.1]} />
-            <meshLambertMaterial color={entity.color} />
+            <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
           </mesh>
         ))
       )}

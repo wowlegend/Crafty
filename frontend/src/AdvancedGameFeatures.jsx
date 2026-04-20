@@ -262,29 +262,29 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
     return (
         <group ref={meshRef} position={bossPositionRef.current}>
-            <mesh>
+            <mesh castShadow receiveShadow>
                 <boxGeometry args={[3, 2, 4]} />
-                <meshStandardMaterial color={phase.color} emissive={phase.color} emissiveIntensity={0.3} />
+                <meshStandardMaterial roughness={0.6} metalness={0.4} color={phase.color} emissive={phase.color} emissiveIntensity={0.3} />
             </mesh>
-            <mesh position={[0, 1.5, 1.5]}>
+            <mesh castShadow receiveShadow position={[0, 1.5, 1.5]}>
                 <boxGeometry args={[1.5, 1.5, 2]} />
-                <meshStandardMaterial color={phase.color} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.4} />
+                <meshStandardMaterial roughness={0.6} metalness={0.4} color={phase.color} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.4} />
             </mesh>
-            <mesh position={[-2.5, 1, 0]} rotation={[0, 0, 0.3]}>
+            <mesh castShadow receiveShadow position={[-2.5, 1, 0]} rotation={[0, 0, 0.3]}>
                 <boxGeometry args={[2, 0.2, 3]} />
-                <meshStandardMaterial color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
+                <meshStandardMaterial roughness={0.4} metalness={0.8} color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
             </mesh>
-            <mesh position={[2.5, 1, 0]} rotation={[0, 0, -0.3]}>
+            <mesh castShadow receiveShadow position={[2.5, 1, 0]} rotation={[0, 0, -0.3]}>
                 <boxGeometry args={[2, 0.2, 3]} />
-                <meshStandardMaterial color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
+                <meshStandardMaterial roughness={0.4} metalness={0.8} color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
             </mesh>
-            <mesh position={[-0.4, 1.8, 2.5]}>
+            <mesh castShadow receiveShadow position={[-0.4, 1.8, 2.5]}>
                 <sphereGeometry args={[0.2, 8, 8]} />
-                <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
+                <meshStandardMaterial roughness={0.2} metalness={0.9} color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
             </mesh>
-            <mesh position={[0.4, 1.8, 2.5]}>
+            <mesh castShadow receiveShadow position={[0.4, 1.8, 2.5]}>
                 <sphereGeometry args={[0.2, 8, 8]} />
-                <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
+                <meshStandardMaterial roughness={0.2} metalness={0.9} color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
             </mesh>
             <pointLight color={phase.color} intensity={2} distance={15} />
         </group>

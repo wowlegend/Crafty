@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### April 19, 2026 (Phase 10: High-Craft Graphics & Rendering)
+
+- **PBR MATERIAL UPGRADE**: Successfully transitioned all world and entity materials from `meshLambertMaterial` to `meshStandardMaterial`. Blocks, mobs, and players now feature realistic Physically Based Rendering (PBR) with controlled roughness and metallic properties.
+- **DYNAMIC DAY/NIGHT SHADOWS**: Enabled `castShadow` and `receiveShadow` across all world chunks, player models, and mobs. Configured a high-resolution `directionalLight` shadow map (2048x2048) with a 200m frustum that dynamically follows the sun/moon position.
+- **PHYSICALLY-BASED SKY**: Replaced the manual sphere sky with Drei's `<Sky />` component for realistic Rayleigh/Mie scattering, providing a high-craft atmosphere during all times of day.
+- **POST-PROCESSING PIPELINE**: Integrated `@react-three/postprocessing` with a custom stack including **N8AO** (next-gen Ambient Occlusion), **Bloom** with mipmap blur, **Noise** for filmic texture, and **Vignette** for cinematic focus.
+
 ### April 19, 2026 (Phase 9: The "Juice" & Game Feel)
 
 - **PLAYER ANIMATION & FOV**: Integrated dynamic FOV dilation into `Components.jsx` based on falling/sprinting velocity vectors, alongside subtle sinusoidal camera view-bobbing when walking. Upgraded hand models to swing procedurally upon mouse-click (mining/attacking).

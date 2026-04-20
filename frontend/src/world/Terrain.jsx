@@ -26,8 +26,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
 
     return (
         <group position={[cx * 16, 0, cz * 16]} key={geomKey}>
-            <mesh geometry={geometry}>
-                <meshLambertMaterial vertexColors={true} />
+            <mesh geometry={geometry} castShadow receiveShadow>
+                <meshStandardMaterial roughness={0.8} metalness={0.1} vertexColors={true} />
             </mesh>
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
