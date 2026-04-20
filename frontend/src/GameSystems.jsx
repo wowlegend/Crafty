@@ -307,31 +307,3 @@ export const DeathScreen = ({ onRespawn }) => {
         </motion.div>
     );
 };
-
-// Active Spell Indicator
-export const ActiveSpellIndicator = ({ spell, manaCost, currentMana }) => {
-    const canCast = currentMana >= manaCost;
-
-    return (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{
-                    boxShadow: `0 0 20px ${canCast ? SPELL_COLORS[spell] : '#666'}`,
-                    opacity: canCast ? 1 : 0.5
-                }}
-            >
-                <div className="w-4 h-0.5 bg-white absolute" />
-                <div className="w-0.5 h-4 bg-white absolute" />
-            </div>
-            <div
-                className="text-xs text-center mt-2 font-bold"
-                style={{ color: canCast ? SPELL_COLORS[spell] : '#666' }}
-            >
-                {spell.toUpperCase()} ({manaCost} MP)
-            </div>
-        </div>
-    );
-};
-
-export default GameSystemsProvider;

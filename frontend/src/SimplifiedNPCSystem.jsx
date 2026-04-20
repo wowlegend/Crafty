@@ -566,7 +566,7 @@ const EnemyProjectileSystem = () => {
   );
 };
 
-export const NPCSystem = () => {
+export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery); // Only re-renders when entities array changes (add/remove)
@@ -597,9 +597,9 @@ export const NPCSystem = () => {
       ))}
     </group>
   );
-};
+});
 
-export const CombatInstructions = () => (
+export const CombatInstructions = React.memo(() => (
   <div className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded text-sm pointer-events-none z-50">
     <div>🎮 Controls:</div>
     <div>• Click or F - Attack/Cast Spell</div>
@@ -609,9 +609,9 @@ export const CombatInstructions = () => (
     <div>• B - Building</div>
     <div>• ESC - Settings</div>
   </div>
-);
+));
 
-export const TradingInterface = ({ villager, onClose }) => {
+export const TradingInterface = React.memo(({ villager, onClose }) => {
   const gameState = useGameStore();
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
@@ -627,4 +627,4 @@ export const TradingInterface = ({ villager, onClose }) => {
       </div>
     </div>
   );
-};
+});

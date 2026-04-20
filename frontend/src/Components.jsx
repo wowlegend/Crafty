@@ -93,36 +93,6 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-export const MinecraftSky = React.memo(({ isDay = true }) => {
-  const { camera } = useThree();
-  const skyRef = useRef();
-  const sunRef = useRef();
-  const moonRef = useRef();
-
-  useFrame(() => {
-    if (skyRef.current && camera) skyRef.current.position.copy(camera.position);
-    if (sunRef.current && camera) {
-      sunRef.current.position.set(camera.position.x + (isDay ? 0 : -200), camera.position.y + 50, camera.position.z - 80);
-      sunRef.current.visible = isDay;
-    }
-    if (moonRef.current && camera) {
-      moonRef.current.position.set(camera.position.x + (isDay ? 200 : 0), camera.position.y + 50, camera.position.z - 80);
-      moonRef.current.visible = !isDay;
-    }
-  });
-
-  return (
-    <group>
-      <mesh ref={skyRef} scale={[200, 200, 200]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshBasicMaterial color={isDay ? '#87CEEB' : '#2F2F52'} side={THREE.BackSide} />
-      </mesh>
-      <mesh ref={sunRef}><sphereGeometry args={[3, 8, 8]} /><meshBasicMaterial color="#FFD700" /></mesh>
-      <mesh ref={moonRef}><sphereGeometry args={[2.5, 8, 8]} /><meshBasicMaterial color="#F5F5DC" /></mesh>
-    </group>
-  );
-});
-
 export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">

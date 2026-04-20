@@ -104,7 +104,7 @@ export const Inventory = ({ onClose }) => {
     );
 };
 
-export const CraftingTable = ({ onClose }) => {
+export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore();
     const [grid, setGrid] = React.useState(Array(9).fill(null));
     const [result, setResult] = React.useState(null);
@@ -319,7 +319,7 @@ export const CraftingTable = ({ onClose }) => {
             </div>
         </div>
     );
-};
+});
 
 const MagicSystem = ({ onClose }) => {
     const gameState = useGameStore();
@@ -368,7 +368,7 @@ const MagicSystem = ({ onClose }) => {
     );
 };
 
-export const BuildingTools = ({ onClose }) => {
+export const BuildingTools = React.memo(({ onClose }) => {
     const gameState = useGameStore();
     const [selectedTool, setSelectedTool] = React.useState('single');
     const [buildSize, setBuildSize] = React.useState(3);
@@ -451,9 +451,9 @@ export const BuildingTools = ({ onClose }) => {
             </div>
         </div>
     );
-};
+});
 
-export const SettingsPanel = ({ onClose, showStats, setShowStats }) => {
+export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats }) => {
     const gameState = useGameStore();
     return (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
@@ -498,10 +498,10 @@ export const SettingsPanel = ({ onClose, showStats, setShowStats }) => {
                         Resume Game
                     </button>
                 </div>
-                <div className="mt-4 text-sm text-gray-400 text-center">
-                    Press ESC to close
+                <div className="mt-6 text-sm text-gray-400 text-center">
+                    Press ESC to return to game
                 </div>
-            </div>
-        </div>
-    );
-};
+                </div>
+                </div>
+                );
+                });
