@@ -77,7 +77,8 @@ self.onmessage = function(e) {
             x: cx * CHUNK_SIZE + x,
             y,
             z: cz * CHUNK_SIZE + z,
-            color: `#${Math.round(colorArray[0]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[1]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[2]*255).toString(16).padStart(2,'0')}`
+            color: `#${Math.round(colorArray[0]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[1]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[2]*255).toString(16).padStart(2,'0')}`,
+            blockType: prevBlock
           }
         });
       }
@@ -116,17 +117,32 @@ function generateChunkData(cx, cz) {
   const startX = cx * CHUNK_SIZE;
   const startZ = cz * CHUNK_SIZE;
 
-  // Simple generation: 2D base height + 3D caves
+  // 1. Biome & Height Generation
   for (let z = 0; z < CHUNK_SIZE; z++) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = startX + x;
       const worldZ = startZ + z;
       
-      // Base height
-      let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5; // 0 to 1
-      n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.2; // details
+      // Moisture & Temperature for Biomes
+      const moisture = noise2D(worldX * 0.005, worldZ * 0.005) * 0.5 + 0.5;
+      const temperature = noise2D((worldX + 500) * 0.005, (worldZ + 500) * 0.005) * 0.5 + 0.5;
       
-      const surfaceY = Math.floor(20 + n * 30); // Surface between 20 and 50
+      // Base height
+      let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5;
+      n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.1;
+      
+      const surfaceY = Math.floor(30 + n * 40);
+
+      // Determine Biome
+      let surfaceBlock = 1; // Grass
+      let secondaryBlock = 2; // Dirt
+      if (temperature > 0.7 && moisture < 0.3) {
+          surfaceBlock = 4; // Desert (Sand)
+          secondaryBlock = 4;
+      } else if (temperature < 0.3) {
+          surfaceBlock = 5; // Snow
+          secondaryBlock = 3; // Stone underneath snow
+      }
 
       for (let y = 0; y < CHUNK_HEIGHT; y++) {
         const index = getIndex(x, y, z);
@@ -134,21 +150,51 @@ function generateChunkData(cx, cz) {
         if (y > surfaceY) {
           blocks[index] = 0; // Air
         } else {
-          // Deep caves using 3D noise
-          const caveNoise = noise3D(worldX * 0.05, y * 0.05, worldZ * 0.05);
-          
-          if (caveNoise > 0.3 && y < surfaceY - 5) {
-            blocks[index] = 0; // Cave air
+          // 2. Deep Caves Logic (Swiss Cheese)
+          const caveNoise = noise3D(worldX * 0.04, y * 0.08, worldZ * 0.04);
+          const caveThreshold = y < 20 ? 0.3 : 0.45; // More caves lower down
+
+          if (y < surfaceY - 4 && caveNoise > caveThreshold) {
+            blocks[index] = 0;
           } else {
             if (y === surfaceY) {
-              blocks[index] = 1; // Grass
+              blocks[index] = surfaceBlock;
             } else if (y >= surfaceY - 3) {
-              blocks[index] = 2; // Dirt
+              blocks[index] = secondaryBlock;
             } else {
               blocks[index] = 3; // Stone
             }
           }
         }
+      }
+
+      // 3. Foliage Decorators (Only on surface)
+      if (blocks[getIndex(x, surfaceY, z)] !== 0 && Math.random() < 0.02) {
+          if (surfaceBlock === 1) { // Trees in Forest/Grass
+              const treeHeight = 4 + Math.floor(Math.random() * 3);
+              for (let ty = 1; ty <= treeHeight; ty++) {
+                  if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 6;
+              }
+              // Leaves
+              for (let lx = -1; lx <= 1; lx++) {
+                  for (let lz = -1; lz <= 1; lz++) {
+                      for (let ly = 0; ly <= 2; ly++) {
+                          const nx = x + lx;
+                          const nz = z + lz;
+                          const ny = surfaceY + treeHeight + ly;
+                          if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+                              const leafIdx = getIndex(nx, ny, nz);
+                              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+                          }
+                      }
+                  }
+              }
+          } else if (surfaceBlock === 4) { // Cacti in Desert
+              const cactusHeight = 2 + Math.floor(Math.random() * 2);
+              for (let ty = 1; ty <= cactusHeight; ty++) {
+                  if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
+              }
+          }
       }
     }
   }
@@ -171,7 +217,11 @@ const BLOCK_COLORS = {
   1: toLinear('#567C35'),   // Grass
   2: toLinear('#976D4D'),  // Dirt
   3: toLinear('#707070'), // Stone
-  // Fallback for others currently unused by worker default gen
+  4: toLinear('#C2B280'), // Sand
+  5: toLinear('#FFFFFF'), // Snow
+  6: toLinear('#5D4037'), // Wood/Trunk
+  7: toLinear('#2E7D32'), // Leaves
+  8: toLinear('#2E7D32'), // Cactus
   255: [1, 1, 1] 
 };
 
@@ -221,13 +271,34 @@ function generateMesh(cx, cz, blocks) {
           if (drawFace) {
             for (const pos of corners) {
               // Local chunk coordinates
-              positions.push(
-                x + pos[0], 
-                y + pos[1], 
-                z + pos[2]
-              );
+              const px = x + pos[0];
+              const py = y + pos[1];
+              const pz = z + pos[2];
+              
+              positions.push(px, py, pz);
               normals.push(...dir);
-              colors.push(...color);
+
+              // Simple Ambient Occlusion calculation
+              // Check 3 neighbors around each corner
+              let ao = 0;
+              const n1 = [dir[0] === 0 ? (pos[0] === 0 ? -1 : 1) : 0, dir[1] === 0 ? (pos[1] === 0 ? -1 : 1) : 0, dir[2] === 0 ? (pos[2] === 0 ? -1 : 1) : 0];
+              const n2 = [dir[0] !== 0 ? 0 : (pos[0] === 0 ? -1 : 1), dir[1] !== 0 ? 0 : (pos[1] === 0 ? -1 : 1), dir[2] !== 0 ? 0 : (pos[2] === 0 ? -1 : 1)];
+              
+              // This is a simplified AO check: check neighbors in the plane of the face
+              const checkNeighbor = (ox, oy, oz) => {
+                  const nx = x + ox;
+                  const ny = y + oy;
+                  const nz = z + oz;
+                  if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_HEIGHT || nz < 0 || nz >= CHUNK_SIZE) return 0;
+                  return blocks[getIndex(nx, ny, nz)] !== 0 ? 1 : 0;
+              };
+
+              ao = checkNeighbor(n1[0], n1[1], n1[2]) + 
+                   checkNeighbor(n2[0], n2[1], n2[2]) + 
+                   checkNeighbor(n1[0]+n2[0], n1[1]+n2[1], n1[2]+n2[2]);
+              
+              const aoMult = 1.0 - (ao * 0.2); // Each neighbor darkens by 20%
+              colors.push(color[0] * aoMult, color[1] * aoMult, color[2] * aoMult);
             }
 
             indices.push(

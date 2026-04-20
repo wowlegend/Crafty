@@ -325,7 +325,24 @@ const AIWorkerSystem = () => {
         
         // Handle attacks
         for (const attack of attacks) {
-          if (store.damagePlayer) {
+          if (attack.type === 'projectile') {
+            // Phase 12: Archer System - Spawn Arrow
+            if (store.spawnEnemyProjectile) {
+              store.spawnEnemyProjectile(attack.position, [camera.position.x, camera.position.y, camera.position.z]);
+            }
+          } else if (attack.type === 'leap') {
+            // Phase 12: Leap System - Physics Impulse
+            const entity = mobsQuery.entities.find(ent => ent.id === attack.id);
+            if (entity) {
+                const dir = [
+                    camera.position.x - entity.position.x,
+                    8, // Vertical boost
+                    camera.position.z - entity.position.z
+                ];
+                const mag = Math.sqrt(dir[0]*dir[0] + dir[2]*dir[2]);
+                entity.knockback = [dir[0]/mag * 15, dir[1], dir[2]/mag * 15]; // Reuse knockback for leap
+            }
+          } else if (store.damagePlayer) {
             store.damagePlayer(attack.damage, attack.type);
             
             // Phase 11: Spatial Attack Sound
@@ -498,6 +515,57 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
 };
 
 // --- ORCHESTRATOR ---
+const EnemyProjectileSystem = () => {
+  const [projectiles, setProjectiles] = useState([]);
+  const projectileId = useRef(0);
+  const { camera } = useThree();
+
+  useEffect(() => {
+    useGameStore.setState({ spawnEnemyProjectile: (pos, target) => {
+        const dir = new THREE.Vector3(target[0] - pos[0], target[1] - pos[1], target[2] - pos[2]).normalize();
+        setProjectiles(prev => [...prev, {
+            id: projectileId.current++,
+            position: new THREE.Vector3(...pos).add(dir.clone().multiplyScalar(1)),
+            velocity: dir.multiplyScalar(0.4),
+            age: 0
+        }]);
+    }});
+  }, []);
+
+  useFrame((state, delta) => {
+    setProjectiles(prev => {
+        const next = [];
+        const store = useGameStore.getState();
+        const playerPos = camera.position;
+
+        for (const p of prev) {
+            p.position.add(p.velocity.clone().multiplyScalar(delta * 60));
+            p.age += delta;
+
+            const distToPlayer = p.position.distanceTo(playerPos);
+            if (distToPlayer < 1.5) {
+                if (store.damagePlayer) store.damagePlayer(15, 'projectile');
+                continue;
+            }
+
+            if (p.age < 3) next.push(p);
+        }
+        return next;
+    });
+  });
+
+  return (
+    <group>
+        {projectiles.map(p => (
+            <mesh key={p.id} position={p.position}>
+                <boxGeometry args={[0.2, 0.2, 0.5]} />
+                <meshStandardMaterial color="#F5F5DC" emissive="#ffffff" emissiveIntensity={0.5} />
+            </mesh>
+        ))}
+    </group>
+  );
+};
+
 export const NPCSystem = () => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const damageId = useRef(0);
@@ -513,9 +581,9 @@ export const NPCSystem = () => {
       <AIWorkerSystem />
       <MinimapSyncSystem />
       <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
-      
-      {entities.map(entity => (
-        <MobModel key={entity.id} entity={entity} />
+      <EnemyProjectileSystem />
+
+      {entities.map(entity => (        <MobModel key={entity.id} entity={entity} />
       ))}
 
       {damageNumbers.map(dmg => (

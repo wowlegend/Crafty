@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### April 19, 2026 (Phase 12: Expanded Mechanics & Depth)
+
+- **3x3 CRAFTING GRID**: Replaced the simple list-based crafting with a full pattern-matching 3x3 grid system. Players can now craft tools (Pickaxe, Sword), materials (Planks, Glass), and light sources (Torches) by placing ingredients in specific patterns.
+- **ADVANCED AI BEHAVIORS**: Upgraded the AI Web Worker to support specialized mob attacks. Skeletons now maintain range and fire projectiles (Archer System), and Spiders perform physics-based leap attacks when within close range.
+- **BIOME SYSTEM**: Implemented a noise-based moisture and temperature map that generates three distinct biomes: Forest (Grass/Dirt), Desert (Sand/Cacti), and Snowy Mountains (Snow/Stone).
+- **DEEP CAVERNS**: Enhanced the terrain generator with 3D Simplex "Swiss Cheese" noise subtraction at lower Y-levels, creating massive, interconnected cavern networks.
+- **AMBIENT OCCLUSION**: Added vertex-based AO (Ambient Occlusion) to the chunk meshing algorithm. Interior cave corners and block intersections now feature realistic soft shadowing.
+- **BLOCK COLLECTION**: Connected the block-breaking event to the player's inventory system. Breaking any world-generated block now adds the corresponding item to the inventory.
+
 ### April 19, 2026 (Phase 11: Spatial Audio & Foley)
 
 - **3D POSITIONAL AUDIO**: Overhauled the audio system to use Three.js `PositionalAudio`. A new `SpatialAudioController` bridges procedural Web Audio buffers to 3D sources that emanate from specific world coordinates (block breaks, mob hits, spell impacts).

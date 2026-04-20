@@ -32,12 +32,13 @@
 - [x] **Dynamic Material Foley (New)**: Footsteps and impacts read the targeted voxel type (Stone vs. Grass vs. Wood) to trigger specific high-fidelity assets.
 - [x] **Acoustic Reverb Zones (New)**: Deep Y-level coordinates trigger a subtle low-pass filter and reverb for cavernous atmospheres.
 
-### Phase 12: Expanded Mechanics & Depth (The "Fun" Loop)
-*Executing the original structural depth features. Terrain generation is sequenced carefully.*
-- [ ] **Crafting Logic**: Implement functional 3x3 crafting grid logic in the UI converting raw materials.
-- [ ] **Advanced AI Behaviors**: Add skeletal projectile attacks (arrows) and spider leap attacks via Miniplex ECS systems.
-- [ ] **Deep Cave Systems**: Add 3D "Worm" or "Swiss Cheese" noise subtraction to the `terrain.worker.js` to generate cavern networks.
-- [ ] **Biomes & Foliage Decorators**: Add 3D trees and scattered biome layers (Desert, Snow, Forest) in the terrain worker before meshing. *(Must occur after caves to prevent floating trees).*
+### Phase 12: Expanded Mechanics & Depth (Production-Ready)
+*Executing the final structural depth features.*
+- [x] **3x3 Crafting Logic**: Pattern-matching recipe engine (Stone Pickaxe, Sword, Torch).
+- [x] **Advanced AI Behaviors**: Skeletal archery and spider leap attacks via worker-driven action state.
+- [x] **Deep Cave Systems**: 3D Simplex "Swiss Cheese" noise subtraction and vertex-based Ambient Occlusion (AO).
+- [x] **BiomeSystem & Foliage**: Temperature/Moisture-based biomes (Forest, Desert, Snow) with procedural trees and cacti.
+- [x] **Collectable Blocks**: Breaking blocks now correctly adds them to the player's inventory based on their material ID.
 
 ### Technical Debt (Discovered during April 18, 2026 Audit)
 - [x] **Monolithic Files**: Refactor massive >500 line files (`EnhancedMagicSystem.jsx`, `QuestSystem.jsx`, `AdvancedGameFeatures.jsx`) to improve maintainability and React rendering performance.

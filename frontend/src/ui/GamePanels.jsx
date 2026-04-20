@@ -106,120 +106,215 @@ export const Inventory = ({ onClose }) => {
 
 export const CraftingTable = ({ onClose }) => {
     const gameState = useGameStore();
+    const [grid, setGrid] = React.useState(Array(9).fill(null));
+    const [result, setResult] = React.useState(null);
     const [craftMessage, setCraftMessage] = React.useState(null);
 
-    const recipes = [
+    const RECIPES = React.useMemo(() => [
         // Tools & Weapons
-        { name: 'Stone Pickaxe', category: 'Tools', input: { cobblestone: 3, wood: 2 }, output: { pickaxe: 1 } },
-        { name: 'Stone Sword', category: 'Tools', input: { cobblestone: 2, wood: 1 }, output: { sword: 1 } },
-        { name: 'Iron Sword', category: 'Tools', input: { '🗡️ Iron Nugget': 4, wood: 1 }, output: { sword: 1 } },
-        { name: 'Bow', category: 'Tools', input: { '🧵 String': 3, wood: 3 }, output: { '🏹 Arrow': 5 } },
-        { name: 'Torch', category: 'Tools', input: { coal: 1, wood: 1 }, output: { torch: 4 } },
-
+        {
+            name: 'Stone Pickaxe',
+            pattern: [['cobblestone', 'cobblestone', 'cobblestone'], [null, 'wood', null], [null, 'wood', null]],
+            output: { pickaxe: 1 }
+        },
+        {
+            name: 'Stone Sword',
+            pattern: [[null, 'cobblestone', null], [null, 'cobblestone', null], [null, 'wood', null]],
+            output: { sword: 1 }
+        },
+        {
+            name: 'Iron Sword',
+            pattern: [[null, '🗡️ Iron Nugget', null], [null, '🗡️ Iron Nugget', null], [null, 'wood', null]],
+            output: { sword: 1 }
+        },
+        {
+            name: 'Bow',
+            pattern: [['wood', '🧵 String', null], ['wood', null, '🧵 String'], ['wood', '🧵 String', null]],
+            output: { '🏹 Arrow': 5 }
+        },
+        {
+            name: 'Torch',
+            pattern: [['coal'], ['wood']],
+            output: { torch: 4 }
+        },
         // Materials
-        { name: 'Glass', category: 'Materials', input: { sand: 1 }, output: { glass: 1 } },
-        { name: 'Cobblestone', category: 'Materials', input: { stone: 1 }, output: { cobblestone: 1 } },
-        { name: 'Planks', category: 'Materials', input: { wood: 1 }, output: { planks: 4 } },
-        { name: 'Bone Meal', category: 'Materials', input: { '🦴 Bone': 1 }, output: { 'Bone Meal': 3 } },
+        {
+            name: 'Glass',
+            pattern: [['sand']],
+            output: { glass: 1 }
+        },
+        {
+            name: 'Planks',
+            pattern: [['wood']],
+            output: { planks: 4 }
+        },
+        {
+            name: 'Magic Crystal',
+            pattern: [['diamond', 'gold']],
+            output: { crystals: 4 }
+        }
+    ], []);
 
-        // Magic Items
-        { name: 'Magic Crystal', category: 'Magic', input: { diamond: 1, gold: 1 }, output: { crystals: 4 } },
-        { name: 'Spell Scroll', category: 'Magic', input: { crystals: 2, wood: 1 }, output: { scrolls: 1 } },
-        { name: 'Enchanted Wand', category: 'Magic', input: { crystals: 4, gold: 2, wood: 1 }, output: { wand: 1 } },
-        { name: 'Ender Staff', category: 'Magic', input: { '💜 Ender Pearl': 1, crystals: 2 }, output: { wand: 1 } },
-        { name: 'Mana Potion', category: 'Magic', input: { '🕸️ Spider Eye': 1, water: 1 }, output: { '💙 Mana Potion': 1 } },
+    const normalizeGrid = (g) => {
+        // Find boundaries
+        let minX = 3, minY = 3, maxX = -1, maxY = -1;
+        let hasItems = false;
+        for (let i = 0; i < 9; i++) {
+            if (g[i]) {
+                const x = i % 3;
+                const y = Math.floor(i / 3);
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+                hasItems = true;
+            }
+        }
+        if (!hasItems) return null;
 
-        // Food
-        { name: 'Cooked Porkchop', category: 'Food', input: { '🥩 Raw Porkchop': 1, coal: 1 }, output: { '🍖 Cooked Porkchop': 1 } },
-        { name: 'Cooked Beef', category: 'Food', input: { '🥩 Raw Beef': 1, coal: 1 }, output: { '🍖 Cooked Beef': 1 } },
-    ];
-
-    const canCraft = (recipe) => {
-        return Object.entries(recipe.input).every(([item, count]) =>
-            (gameState.inventory?.blocks?.[item] || 0) >= count
-        );
+        // Extract sub-grid
+        const rows = [];
+        for (let y = minY; y <= maxY; y++) {
+            const row = [];
+            for (let x = minX; x <= maxX; x++) {
+                row.push(g[y * 3 + x]);
+            }
+            rows.push(row);
+        }
+        return rows;
     };
 
-    const doCraft = (recipe) => {
-        if (!canCraft(recipe)) {
-            setCraftMessage({ type: 'error', text: 'Not enough materials!' });
-            setTimeout(() => setCraftMessage(null), 2000);
+    const gridsEqual = (g1, g2) => {
+        if (!g1 || !g2) return false;
+        if (g1.length !== g2.length) return false;
+        for (let i = 0; i < g1.length; i++) {
+            if (g1[i].length !== g2[i].length) return false;
+            for (let j = 0; j < g1[i].length; j++) {
+                if (g1[i][j] !== g2[i][j]) return false;
+            }
+        }
+        return true;
+    };
+
+    React.useEffect(() => {
+        const normalized = normalizeGrid(grid);
+        if (!normalized) {
+            setResult(null);
             return;
         }
 
-        // Remove input items
-        Object.entries(recipe.input).forEach(([item, count]) => {
-            gameState.removeFromInventory(item, count);
-        });
+        const match = RECIPES.find(r => gridsEqual(normalized, r.pattern));
+        setResult(match || null);
+    }, [grid, RECIPES]);
 
-        // Add output items
-        Object.entries(recipe.output).forEach(([item, count]) => {
+    const handleGridClick = (index) => {
+        const newGrid = [...grid];
+        if (newGrid[index]) {
+            // Remove item and put back in inventory (simplification: just remove)
+            gameState.addToInventory(newGrid[index], 1);
+            newGrid[index] = null;
+        } else if (gameState.selectedBlock && (gameState.inventory.blocks[gameState.selectedBlock] || 0) > 0) {
+            newGrid[index] = gameState.selectedBlock;
+            gameState.removeFromInventory(gameState.selectedBlock, 1);
+        }
+        setGrid(newGrid);
+    };
+
+    const doCraft = () => {
+        if (!result) return;
+
+        // Add result to inventory
+        Object.entries(result.output).forEach(([item, count]) => {
             gameState.addToInventory(item, count);
         });
 
-        setCraftMessage({ type: 'success', text: `Crafted ${recipe.name}!` });
+        setGrid(Array(9).fill(null));
+        setResult(null);
+        setCraftMessage({ type: 'success', text: `Crafted ${result.name}!` });
         setTimeout(() => setCraftMessage(null), 2000);
 
-        // Grant XP for crafting
-        if (GameMethods.grantXP) GameMethods.grantXP(5);
+        if (GameMethods.grantXP) GameMethods.grantXP(10);
     };
-
-    const categories = [...new Set(recipes.map(r => r.category))];
 
     return (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="game-panel p-6 text-white min-w-[450px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">🔨 Crafting Table</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+            <div className="game-panel p-8 text-white min-w-[600px] flex flex-col gap-6" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-3xl font-bold tracking-tight">🔨 Advanced Crafting</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-3xl">&times;</button>
+                </div>
+
+                <div className="flex flex-row justify-around items-center gap-12 py-4">
+                    {/* 3x3 Grid */}
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-black/40 rounded-lg shadow-inner">
+                        {grid.map((item, i) => {
+                            const blockConfig = item ? BLOCK_TYPES[item] : null;
+                            return (
+                                <div
+                                    key={i}
+                                    onClick={() => handleGridClick(i)}
+                                    className="w-16 h-16 bg-white/5 border-2 border-white/10 rounded flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all relative overflow-hidden"
+                                >
+                                    {item ? (
+                                        <div className="flex flex-col items-center">
+                                            <div
+                                                className="w-8 h-8 rounded shadow-lg flex items-center justify-center text-xl"
+                                                style={{ backgroundColor: blockConfig?.color || '#333' }}
+                                            >
+                                                {item.match(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g) || ''}
+                                            </div>
+                                            <span className="text-[10px] opacity-60 mt-1 truncate w-14 text-center">
+                                                {item.replace(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g, '').trim()}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="w-4 h-4 rounded-full border border-white/5" />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="text-4xl text-white/20 animate-pulse">→</div>
+
+                    {/* Result Slot */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div 
+                            onClick={doCraft}
+                            className={`w-24 h-24 rounded-lg border-4 transition-all flex items-center justify-center ${result ? 'border-green-500/50 bg-green-500/10 cursor-pointer hover:scale-105 shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'border-white/10 bg-white/5 cursor-not-allowed'}`}
+                        >
+                            {result ? (
+                                <div className="text-center">
+                                    <div className="text-3xl">✨</div>
+                                    <div className="text-xs font-bold mt-1 text-green-400">
+                                        {Object.values(result.output)[0]}x {result.name}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-gray-600 text-xs italic">Empty</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {craftMessage && (
-                    <div className={`mb-4 p-2 rounded text-center ${craftMessage.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+                    <div className="text-center p-2 bg-green-500/20 text-green-400 rounded-full text-sm font-bold border border-green-500/30 animate-bounce">
                         {craftMessage.text}
                     </div>
                 )}
 
-                {categories.map(category => (
-                    <div key={category} className="mb-4">
-                        <h3 className="text-lg font-semibold text-gray-300 mb-2">{category}</h3>
-                        <div className="space-y-2">
-                            {recipes.filter(r => r.category === category).map((recipe, i) => {
-                                const craftable = canCraft(recipe);
-                                return (
-                                    <div key={i} className={`game-panel-item p-3 flex items-center justify-between ${!craftable && 'opacity-60'}`}>
-                                        <div>
-                                            <div className="font-medium">{recipe.name}</div>
-                                            <div className="text-xs text-gray-400">
-                                                {Object.entries(recipe.input).map(([item, count]) => {
-                                                    const have = gameState.inventory?.blocks?.[item] || 0;
-                                                    return (
-                                                        <span key={item} className={have >= count ? 'text-green-400' : 'text-red-400'}>
-                                                            {count}x {item} ({have})
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                            <div className="text-xs text-yellow-400">
-                                                → {Object.entries(recipe.output).map(([item, count]) => `${count}x ${item}`).join(', ')}
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => doCraft(recipe)}
-                                            disabled={!craftable}
-                                            className={`px-3 py-1 rounded text-sm ${craftable ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 cursor-not-allowed'}`}
-                                        >
-                                            Craft
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                {/* Quick Info */}
+                <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Inventory Tip</h3>
+                    <div className="text-sm text-gray-400 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs">i</div>
+                        <span>Select an item in your hotbar, then click a slot to place it. Click placed items to remove them.</span>
                     </div>
-                ))}
+                </div>
 
-                <div className="mt-4 text-sm text-gray-400">
-                    Press C to close
+                <div className="text-center text-[10px] text-gray-600 uppercase tracking-widest">
+                    Pattern Matcher v2.0 • Press C to close
                 </div>
             </div>
         </div>

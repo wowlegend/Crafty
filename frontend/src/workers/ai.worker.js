@@ -5,9 +5,11 @@ self.onmessage = function(e) {
     const { playerPos, now, delta, mobs } = e.data;
     const [playerX, playerY, playerZ] = playerPos;
     
-    const AGGRO_RANGE = 16;
+    const AGGRO_RANGE = 20;
     const MELEE_RANGE = 2.5;
-    const ATTACK_COOLDOWN = 1000;
+    const ARCHERY_RANGE = 12;
+    const LEAP_RANGE = 6;
+    const ATTACK_COOLDOWN = 1500;
     
     const updates = [];
     const attacks = [];
@@ -16,25 +18,57 @@ self.onmessage = function(e) {
       const entity = mobs[i];
       let { id, passive, x, y, z, targetX, targetZ, isMoving, isAggro, lastAttackTime, damage, type, moveTimer, speed, rotation } = entity;
       
-      // AISystem Logic
       const dx = playerX - x;
-      const dy = playerY - y;
       const dz = playerZ - z;
-      const distToPlayer3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
       
-      if (!passive && distToPlayer3D < AGGRO_RANGE) {
+      if (!passive && distToPlayer2D < AGGRO_RANGE) {
         isAggro = true;
-        isMoving = true;
-        targetX = playerX;
-        targetZ = playerZ;
         
-        if (distToPlayer3D < MELEE_RANGE) {
-          if (now - lastAttackTime > ATTACK_COOLDOWN) {
-            attacks.push({ damage, type });
+        if (type === 'skeleton') {
+          // Archery Logic: Maintain distance
+          if (distToPlayer2D < 8) {
+            // Back away
+            targetX = x - dx;
+            targetZ = z - dz;
+            isMoving = true;
+          } else if (distToPlayer2D > ARCHERY_RANGE) {
+            // Close in
+            targetX = playerX;
+            targetZ = playerZ;
+            isMoving = true;
+          } else {
+            // Stay put and shoot
+            isMoving = false;
+            if (now - lastAttackTime > ATTACK_COOLDOWN + 500) {
+                attacks.push({ id, type: 'projectile', damage: 15, position: [x, y, z] });
+                lastAttackTime = now;
+            }
+          }
+        } else if (type === 'spider') {
+          // Leap Logic
+          isMoving = true;
+          targetX = playerX;
+          targetZ = playerZ;
+          if (distToPlayer2D < LEAP_RANGE && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
+            attacks.push({ id, type: 'leap', damage: 8, position: [x, y, z] });
+            lastAttackTime = now;
+          } else if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
+            attacks.push({ damage, type: 'melee' });
+            lastAttackTime = now;
+          }
+        } else {
+          // Standard Melee (Zombie)
+          isMoving = true;
+          targetX = playerX;
+          targetZ = playerZ;
+          if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
+            attacks.push({ damage, type: 'melee' });
             lastAttackTime = now;
           }
         }
       } else {
+        // Wandering logic
         isAggro = false;
         moveTimer -= delta;
         if (moveTimer <= 0) {
@@ -56,7 +90,7 @@ self.onmessage = function(e) {
         const dist = Math.sqrt(tdx * tdx + tdz * tdz);
         
         if (dist > 0.5) {
-          const speedMult = isAggro ? 1.5 : 1.0;
+          const speedMult = isAggro ? (type === 'spider' ? 2.0 : 1.5) : 1.0;
           const actualSpeed = speed * speedMult * delta;
           const moveX = (tdx / dist) * actualSpeed;
           const moveZ = (tdz / dist) * actualSpeed;

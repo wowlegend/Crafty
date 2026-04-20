@@ -130,6 +130,14 @@ export const MinecraftWorld = React.memo(() => {
                 if (payload.cx === 0 && payload.cz === 0) {
                     useGameStore.getState().setIsSpawnChunkLoaded(true);
                 }
+            } else if (type === 'block_broken') {
+                // Phase 12: Collect block logic
+                const store = useGameStore.getState();
+                const BLOCK_ID_MAP = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood', 7: 'leaves', 8: 'cactus' };
+                const blockName = BLOCK_ID_MAP[payload.blockType];
+                if (blockName && store.addToInventory) {
+                    store.addToInventory(blockName, 1);
+                }
             }
         };
         worker.addEventListener('message', handleMessage);
