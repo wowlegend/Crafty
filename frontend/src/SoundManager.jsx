@@ -424,7 +424,9 @@ export const SoundProvider = ({ children }) => {
     setVolume,
     playSound,
     playBackgroundMusic,
-    playTone
+    playTone,
+    audioContext: audioContext.current,
+    sounds: sounds.current
   };
 
   return (
@@ -436,12 +438,25 @@ export const SoundProvider = ({ children }) => {
 
 // Sound effect hooks for different actions
 export const useGameSounds = () => {
-  const { playSound } = useSounds();
+  const { playSound, playSpatialSound } = useSounds();
+  const spatialTrigger = useGameStore(state => state.playSpatialSound);
 
   return {
-    playBlockPlace: () => playSound('blockPlace', 0.8 + Math.random() * 0.4),
-    playBlockBreak: () => playSound('blockBreak', 0.8 + Math.random() * 0.4),
-    playFootstep: () => playSound('footstep', 0.9 + Math.random() * 0.2),
+    playBlockPlace: (pos, type = 'grass') => {
+      const rate = type === 'stone' || type === 'cobblestone' ? 0.7 : type === 'wood' ? 1.2 : 1;
+      if (spatialTrigger && pos) spatialTrigger('blockPlace', pos, rate);
+      else playSound('blockPlace', rate);
+    },
+    playBlockBreak: (pos, type = 'grass') => {
+      const rate = type === 'stone' || type === 'cobblestone' ? 0.6 : type === 'wood' ? 1.3 : 0.9;
+      if (spatialTrigger && pos) spatialTrigger('blockBreak', pos, rate);
+      else playSound('blockBreak', rate);
+    },
+    playFootstep: (pos, type = 'grass') => {
+      const rate = type === 'stone' || type === 'cobblestone' ? 0.8 : 1.1;
+      if (spatialTrigger && pos) spatialTrigger('footstep', pos, rate, 5);
+      else playSound('footstep', rate);
+    },
     playJump: () => playSound('jump'),
     playPickup: () => playSound('pickup'),
     playCraft: () => playSound('craft'),

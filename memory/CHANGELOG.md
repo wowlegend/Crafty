@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### April 19, 2026 (Phase 11: Spatial Audio & Foley)
+
+- **3D POSITIONAL AUDIO**: Overhauled the audio system to use Three.js `PositionalAudio`. A new `SpatialAudioController` bridges procedural Web Audio buffers to 3D sources that emanate from specific world coordinates (block breaks, mob hits, spell impacts).
+- **UNDERGROUND ACOUSTICS**: Implemented a dynamic environmental filter that muffs all sounds as the player descends below Y=10. This uses a real-time `BiquadFilterNode` (Low-pass) controlled by the player's Y-coordinate.
+- **DYNAMIC MATERIAL FOLEY**: Upgraded the `SoundManager` to support material-based pitch and playback rate shifts. Stone blocks sound deeper and heavier, while wood and grass sound higher and crisper.
+- **AMBIENT WIND SYSTEM**: Added a procedurally generated ambient wind loop that dynamically scales its intensity and frequency based on altitude and the Day/Night cycle.
+
 ### April 19, 2026 (Phase 10: High-Craft Graphics & Rendering)
 
 - **PBR MATERIAL UPGRADE**: Successfully transitioned all world and entity materials from `meshLambertMaterial` to `meshStandardMaterial`. Blocks, mobs, and players now feature realistic Physically Based Rendering (PBR) with controlled roughness and metallic properties.

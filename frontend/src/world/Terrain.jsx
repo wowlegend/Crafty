@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
+import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
@@ -106,6 +107,7 @@ export const MinecraftWorld = React.memo(() => {
     const gameState = useGameStore();
     const { camera } = useThree();
     const { rapier, world } = useRapier();
+    const { playBlockPlace, playBlockBreak } = useGameSounds();
 
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());
@@ -257,7 +259,7 @@ export const MinecraftWorld = React.memo(() => {
                 const lz = tz - cz * CHUNK_SIZE;
                 
                 worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
-                if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
+                playBlockBreak(hitPoint);
 
             } else if (e.button === 2) {
                 // PLACE
@@ -273,6 +275,7 @@ export const MinecraftWorld = React.memo(() => {
                 const lz = tz - cz * CHUNK_SIZE;
                 
                 worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: numericType } });
+                playBlockPlace(placePos, useGameStore.getState().selectedBlock);
             }
         };
         window.addEventListener('mousedown', handleClick);

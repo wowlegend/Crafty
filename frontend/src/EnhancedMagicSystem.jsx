@@ -2,11 +2,13 @@ import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
+import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import * as THREE from 'three';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const gameState = useGameStore();
+  const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
   const [spellTrails, setSpellTrails] = useState([]);
   const [spellImpacts, setSpellImpacts] = useState([]);
@@ -230,14 +232,15 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
     setSpellImpacts(prev => [...prev, newImpact]);
 
-    if (window.playMagicHit) {
-      window.playMagicHit();
-    } else if (window.playSpellImpactSound) {
-      window.playSpellImpactSound(spellType);
-    } else if (useGameStore.getState().playHitSound) {
-      useGameStore.getState().playHitSound();
+    // Phase 11: Spatial Impact Sound
+    if (gameState.playSpatialSound) {
+      gameState.playSpatialSound('magicHit', position, 1.0, 30);
+      if (spellType === 'fireball') gameState.playSpatialSound('magicExplosion', position, 0.8, 50);
+    } else {
+      playMagicHit();
+      if (spellType === 'fireball') playMagicExplosion();
     }
-  }, [SPELL_TYPES]);
+  }, [gameState, playMagicHit, playMagicExplosion]);
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
@@ -251,12 +254,11 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         return;
       }
 
-      if (window.playMagicCast) {
-        window.playMagicCast();
-      } else if (window.playAttack) {
-        window.playAttack();
-      } else if (useGameStore.getState().playAttackSounds) {
-        useGameStore.getState().playAttackSounds();
+      // Phase 11: Spatial Cast Sound
+      if (gameState.playSpatialSound && camera) {
+        gameState.playSpatialSound('magicCast', camera.position, 1.0, 10);
+      } else {
+        playMagicCast();
       }
 
       const direction = new THREE.Vector3();

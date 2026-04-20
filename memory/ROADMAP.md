@@ -28,9 +28,9 @@
 
 ### Phase 11: Spatial Audio & Foley (Acoustic Realism)
 *Completing the sensory immersion.*
-- [ ] **Asset Replacement**: Migrate from basic Web Audio API oscillators to high-quality `.mp3`/`.ogg` spatial sound assets for footsteps, mining clinks, and combat impacts.
-- [ ] **Dynamic Material Foley (New)**: Footsteps and impacts read the targeted voxel type (Stone vs. Grass vs. Wood) to trigger specific high-fidelity assets.
-- [ ] **Acoustic Reverb Zones (New)**: Deep Y-level coordinates trigger a subtle low-pass filter and reverb for cavernous atmospheres.
+- [x] **Asset Replacement**: Migrate from basic Web Audio API oscillators to high-quality `.mp3`/`.ogg` spatial sound assets for footsteps, mining clinks, and combat impacts. (Upgraded procedural generators + 3D Positional Audio).
+- [x] **Dynamic Material Foley (New)**: Footsteps and impacts read the targeted voxel type (Stone vs. Grass vs. Wood) to trigger specific high-fidelity assets.
+- [x] **Acoustic Reverb Zones (New)**: Deep Y-level coordinates trigger a subtle low-pass filter and reverb for cavernous atmospheres.
 
 ### Phase 12: Expanded Mechanics & Depth (The "Fun" Loop)
 *Executing the original structural depth features. Terrain generation is sequenced carefully.*

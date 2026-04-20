@@ -327,6 +327,11 @@ const AIWorkerSystem = () => {
         for (const attack of attacks) {
           if (store.damagePlayer) {
             store.damagePlayer(attack.damage, attack.type);
+            
+            // Phase 11: Spatial Attack Sound
+            if (store.playSpatialSound) {
+              store.playSpatialSound('attack', attack.position, 1.1, 15);
+            }
           }
         }
 
@@ -425,6 +430,7 @@ const MinimapSyncSystem = () => {
 };
 
 const CombatSystem = ({ setDamageNumbers, damageId }) => {
+  const { playHit } = useGameSounds();
   useEffect(() => {
     const damageMob = (id, damage = 25) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
@@ -436,6 +442,13 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
       
       const store = useGameStore.getState();
       if (store.triggerCameraShake) store.triggerCameraShake(1.0);
+      
+      // Phase 11: Spatial Hit Sound
+      if (store.playSpatialSound) {
+        store.playSpatialSound('hit', [entity.position.x, entity.position.y, entity.position.z]);
+      } else {
+        playHit();
+      }
 
       entity.health -= damage;
       entity.lastHit = performance.now();
