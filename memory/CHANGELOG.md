@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### April 19, 2026 (Bug Fixes & Audit)
+
+- **PHYSICS NaN FIX**: Fixed a fatal bug where looking perfectly straight down or up caused a `NaN` velocity vector, breaking the Rapier rigid body and permanently freezing the player on spawn.
+- **NPC SPAWNING FIX**: Corrected a Zustand state setter bug where passing a function to `setGetMobGroundLevel` was interpreted as a state updater, returning `NaN` for ground height and trapping all mobs underneath the terrain.
+- **POINTER LOCK MOVEMENT**: Bound movement keys exclusively to the `document.pointerLockElement` state to prevent the player from walking while interacting with UI panels.
+- **UI CONTEXT MENU**: Bound a global `contextmenu` event listener to suppress the default browser right-click menu while the pointer is locked, ensuring smooth block placement.
+- **CRAFTING INVENTORY PICKER**: Added a mini-inventory block selector to the Advanced Crafting UI to prevent UX confusion where clicking an empty slot mistakenly placed "grass" (the default selected block).
+- **VELOCITY JUMP FIX**: Re-architected `Components.jsx` to independently calculate X, Y, and Z velocity components before applying them in a single `setLinvel` call, fixing an issue where jumping while moving diagonally cancelled momentum.
+
 ### April 19, 2026 (Ruthless Codebase Cleanup)
 
 - **UNUSED EXPORTS & DEAD CODE**: Purged unused exports (`MinecraftSky`, `ActiveSpellIndicator`, duplicate default exports) based on AST analysis via `knip`.
