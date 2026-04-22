@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### April 19, 2026 (Ruthless Codebase Cleanup)
+
+- **UNUSED EXPORTS & DEAD CODE**: Purged unused exports (`MinecraftSky`, `ActiveSpellIndicator`, duplicate default exports) based on AST analysis via `knip`.
+- **REACT.MEMO OPTIMIZATIONS**: Analyzed monolithic files and wrapped all heavy rendering UI components (`Inventory`, `CraftingTable`, `BuildingTools`, `SettingsPanel`, `NPCSystem`, `CombatInstructions`, `TradingInterface`) in `React.memo` to prevent unnecessary main-thread rendering cycles.
+- **BUILD ARTIFACTS**: Removed stale `.DS_Store` hidden files across the project directory.
+- **VERIFIED BUILD**: Compiled and verified the Vite build successfully without regressions.
+
 ### April 19, 2026 (Phase 12: Expanded Mechanics & Depth)
 
 - **3x3 CRAFTING GRID**: Replaced the simple list-based crafting with a full pattern-matching 3x3 grid system. Players can now craft tools (Pickaxe, Sword), materials (Planks, Glass), and light sources (Torches) by placing ingredients in specific patterns.

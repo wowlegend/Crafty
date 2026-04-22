@@ -298,6 +298,33 @@ export const CraftingTable = React.memo(({ onClose }) => {
                     </div>
                 </div>
 
+                {/* Mini Inventory for Selection */}
+                <div className="mt-4 border-t border-white/10 pt-4">
+                    <h3 className="text-sm font-bold text-gray-400 mb-2">Select Item to Craft With</h3>
+                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-2">
+                        {Object.entries(gameState.inventory?.blocks || {}).map(([type, count]) => {
+                            if (count <= 0) return null;
+                            const blockConfig = BLOCK_TYPES[type];
+                            return (
+                                <div
+                                    key={type}
+                                    onClick={() => gameState.setSelectedBlock(type)}
+                                    className={`p-2 rounded cursor-pointer border ${gameState.selectedBlock === type ? 'border-blue-400 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'} flex items-center gap-2`}
+                                >
+                                    <div
+                                        className="w-6 h-6 rounded flex items-center justify-center text-sm"
+                                        style={{ backgroundColor: blockConfig?.color || '#333' }}
+                                    >
+                                        {type.match(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g) || ''}
+                                    </div>
+                                    <span className="text-xs">{type.replace(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g, '').trim()}</span>
+                                    <span className="text-[10px] text-gray-400">x{count}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {craftMessage && (
                     <div className="text-center p-2 bg-green-500/20 text-green-400 rounded-full text-sm font-bold border border-green-500/30 animate-bounce">
                         {craftMessage.text}

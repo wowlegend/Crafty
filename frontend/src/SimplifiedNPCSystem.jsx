@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
+import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';

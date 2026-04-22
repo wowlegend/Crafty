@@ -136,6 +136,7 @@ export const Player = ({ isWorldBuilt }) => {
   // FIX #1: Use useRef for keyboard state — prevents 60+ re-renders/sec
   // useState caused stale closures inside useFrame AND triggered full React re-renders on every keypress
   const keysRef = useRef({});
+  const spawnPosSet = useRef(false);
 
   const lastCastTime = useRef(0);
   const CAST_COOLDOWN = 333;
@@ -203,9 +204,25 @@ export const Player = ({ isWorldBuilt }) => {
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
+    // Freeze player in sky until world is built to prevent falling through floor
+    if (!isWorldBuiltRef.current) {
+      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      return;
+    } else if (!spawnPosSet.current) {
+      const getGroundLevel = useGameStore.getState().getMobGroundLevel;
+      const groundY = getGroundLevel ? getGroundLevel(0, 0) : 50;
+      // If raycast fails (NaN) or gives a weird number, fallback to 60.
+      const safeY = (!isNaN(groundY) && groundY > 0) ? groundY + 2 : 60;
+      rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
+      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      spawnPosSet.current = true;
+      return;
+    }
+
     // Void catch — teleport back up if fallen through terrain
-    if (currentTrans.y < -10) {
-      rigidBodyRef.current.setTranslation({ x: 0, y: 40, z: 0 }, true);
+    if (currentTrans.y < -50) {
+      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
     }
@@ -213,33 +230,53 @@ export const Player = ({ isWorldBuilt }) => {
     // Get camera look direction projected onto ground plane (robust, no Euler issues)
     const cameraDir = new THREE.Vector3();
     camera.getWorldDirection(cameraDir);
-    const forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z).normalize();
+    let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z);
+    if (forwardDir.lengthSq() < 0.001) {
+      // Fallback if looking straight down/up
+      forwardDir.set(0, 0, -1);
+    }
+    forwardDir.normalize();
     const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x); // perpendicular right
 
     // Read from keysRef instead of stale keys state
     const keys = keysRef.current;
-    const moveW = keys.KeyW ? 1 : 0;
-    const moveS = keys.KeyS ? 1 : 0;
-    const moveA = keys.KeyA ? 1 : 0;
-    const moveD = keys.KeyD ? 1 : 0;
+    
+    // Only process movement if pointer is locked
+    const isLocked = !!document.pointerLockElement;
+    const moveW = (isLocked && keys.KeyW) ? 1 : 0;
+    const moveS = (isLocked && keys.KeyS) ? 1 : 0;
+    const moveA = (isLocked && keys.KeyA) ? 1 : 0;
+    const moveD = (isLocked && keys.KeyD) ? 1 : 0;
 
     const direction = new THREE.Vector3()
       .addScaledVector(forwardDir, moveW - moveS)
       .addScaledVector(sideDir, moveD - moveA);
 
+    let nextVelX = currentVel.x;
+    let nextVelZ = currentVel.z;
+
     if (direction.lengthSq() > 0) {
       direction.normalize().multiplyScalar(speed);
-      rigidBodyRef.current.setLinvel({ x: direction.x, y: currentVel.y, z: direction.z }, true);
-    } else if (Math.abs(currentVel.x) > 0.1 || Math.abs(currentVel.z) > 0.1) {
-      rigidBodyRef.current.setLinvel({ x: currentVel.x * 0.8, y: currentVel.y, z: currentVel.z * 0.8 }, true);
+      nextVelX = direction.x;
+      nextVelZ = direction.z;
+    } else {
+      // Always decelerate if no input
+      nextVelX = currentVel.x * 0.8;
+      nextVelZ = currentVel.z * 0.8;
+      if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
+      if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
     }
 
+    let nextVelY = currentVel.y;
     // Jump
     const isGrounded = Math.abs(currentVel.y) < 0.2;
-    if (jumpRequested.current && isGrounded) {
-      rigidBodyRef.current.setLinvel({ x: currentVel.x, y: 12, z: currentVel.z }, true);
+    if (isLocked && jumpRequested.current && isGrounded) {
+      nextVelY = 12;
       jumpRequested.current = false;
     }
+
+    // Apply combined velocity in a single physics tick
+    rigidBodyRef.current.setLinvel({ x: nextVelX, y: nextVelY, z: nextVelZ }, true);
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
     const horizontalSpeed = Math.sqrt(currentVel.x * currentVel.x + currentVel.z * currentVel.z);
@@ -307,7 +344,7 @@ export const Player = ({ isWorldBuilt }) => {
         colliders={false}
         mass={1}
         type="dynamic"
-        position={[0, 40, 0]}
+        position={[0, 100, 0]}
         enabledRotations={[false, false, false]}
         ccd={true}
         friction={0}

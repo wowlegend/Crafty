@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useEffect, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
@@ -193,7 +193,7 @@ export function GameScene({
           mieDirectionalG={0.8}
         />
         
-        <ambientLight intensity={gameState.isDay ? 0.4 : 0.1} />
+        <ambientLight intensity={gameState.isDay ? 0.6 : 0.25} />
         
         <directionalLight
           castShadow
@@ -239,18 +239,19 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
+          {/* 
           <EffectComposer disableNormalPass>
             <N8AO intensity={1.5} radius={2} color="black" />
-            <Bloom 
-              intensity={0.5} 
-              luminanceThreshold={0.9} 
-              luminanceSmoothing={0.025} 
-              mipmapBlur 
+            <Bloom
+              intensity={0.5}
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.025}
+              mipmapBlur
             />
             <Noise opacity={0.02} />
             <Vignette eskil={false} offset={0.1} darkness={1.1} />
           </EffectComposer>
-
+          */}
           <Preload all />
         </Suspense>
 

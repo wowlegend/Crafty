@@ -37,6 +37,7 @@ function GameApp({ experienceSystem }) {
   const gameState = useGameStore(useShallow(state => ({
         isSpawnChunkLoaded: state.isSpawnChunkLoaded,
         isDay: state.isDay,
+        inventory: state.inventory,
         addToInventory: state.addToInventory,
         removeFromInventory: state.removeFromInventory,
         setShowInventory: state.setShowInventory,
@@ -116,6 +117,16 @@ function GameApp({ experienceSystem }) {
     useGameStore.setState({ playHitSound: playHit });
     useGameStore.setState({ playDefeatSound: playDefeat });
   }, [playAttack, playSwing, playHit, playDefeat]);
+
+  useEffect(() => {
+    const handleContextMenu = (e) => {
+      if (document.pointerLockElement) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
+  }, []);
 
   useEffect(() => {
     useGameStore.setState({ addToInventory: gameState.addToInventory });

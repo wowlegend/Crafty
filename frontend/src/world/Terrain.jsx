@@ -28,7 +28,7 @@ const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
     return (
         <group position={[cx * 16, 0, cz * 16]} key={geomKey}>
             <mesh geometry={geometry} castShadow receiveShadow>
-                <meshStandardMaterial roughness={0.8} metalness={0.1} vertexColors={true} />
+                <meshStandardMaterial roughness={1.0} metalness={0.0} vertexColors={true} />
             </mesh>
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
@@ -146,9 +146,9 @@ export const MinecraftWorld = React.memo(() => {
 
     // Provide ground level approximation for NPCs via top-down physics raycast
     useEffect(() => {
-        useGameStore.getState().setGetGeneratedChunks(() => () => chunksRef.current);
+        useGameStore.getState().setGetGeneratedChunks(() => chunksRef.current);
         
-        useGameStore.getState().setGetMobGroundLevel(() => (x, z) => {
+        useGameStore.getState().setGetMobGroundLevel((x, z) => {
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 300, true);
             if (hit) {
@@ -158,7 +158,7 @@ export const MinecraftWorld = React.memo(() => {
         });
 
         // Simplified collision check using physics
-        useGameStore.getState().setCheckCollision(() => (x, y, z) => {
+        useGameStore.getState().setCheckCollision((x, y, z) => {
             const ray = new rapier.Ray({ x, y: y + 0.1, z }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 0.2, true);
             return !!hit;
@@ -248,7 +248,7 @@ export const MinecraftWorld = React.memo(() => {
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
             
             let tx, ty, tz;
-            const type = useGameStore.getState().selectedBuildBlock || 'grass';
+            const type = useGameStore.getState().selectedBlock || 'grass';
             
             // Map string ID to worker numeric ID
             const blockIdMap = { 'grass': 1, 'dirt': 2, 'stone': 3, 'wood': 3, 'sand': 2 };

@@ -125,9 +125,9 @@ export function HUD({
             <CombatInstructions />
 
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
-              <PlayerHealthBar />
-              <PlayerManaBar />
-              <PlayerHungerBar />
+              <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
+              <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
+              <PlayerHungerBar hunger={gameSystems.hunger} />
             </div>
 
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
