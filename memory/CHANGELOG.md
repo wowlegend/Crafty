@@ -1,6 +1,14 @@
 # Changelog & Development History
 
+### May 20, 2026 (Ruthless Codebase Cleanup & Optimization Audit)
+
+- **CLEANED REDUNDANT STATE UPDATE**: Removed a redundant `useEffect` hook in `App.jsx` that was setting `addToInventory` and `removeFromInventory` back on the global Zustand store they originated from. This eliminates unnecessary React lifecycle tracking and micro-render triggers.
+- **ELIMINATED DEVELOPER LOG SPAM**: Purged the final remaining verbose `console.log` statement in `Components.jsx` that logged player spawn positioning, achieving a completely clean developer console output.
+- **AST DEPENDENCY ALIGNMENT**: Confirmed a zero-debt project configuration where running `npx knip` produces absolutely zero warnings (exit code 0), verifying exactly zero unused files, exports, or devDependencies across the codebase.
+- **PRISTINE BUILD VERIFICATION**: Audited and compiled the production build of the Vite React application cleanly with zero errors, warnings, or regressions.
+
 ### April 19, 2026 (Bug Fixes & Audit)
+
 
 - **PHYSICS NaN FIX**: Fixed a fatal bug where looking perfectly straight down or up caused a `NaN` velocity vector, breaking the Rapier rigid body and permanently freezing the player on spawn.
 - **NPC SPAWNING FIX**: Corrected a Zustand state setter bug where passing a function to `setGetMobGroundLevel` was interpreted as a state updater, returning `NaN` for ground height and trapping all mobs underneath the terrain.
