@@ -158,6 +158,9 @@ function GameApp({ experienceSystem }) {
         bossSystem={bossSystem}
         petSystem={petSystem}
         showStats={showStats}
+        showAchievements={showAchievements}
+        showSpellUpgrades={showSpellUpgrades}
+        showAuthModal={showAuthModal}
       />
 
       {!isWorldBuilt && (

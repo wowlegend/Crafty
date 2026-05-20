@@ -25,7 +25,7 @@ import {
 import { useSimpleExperience } from './SimpleExperienceSystem';
 import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
 import { OptimizedGrassSystem } from './OptimizedGrassSystem';
-import { RigidBody, CapsuleCollider } from '@react-three/rapier';
+import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 
 // BLOCK TYPES - Immutable configuration
@@ -132,6 +132,7 @@ export const Player = ({ isWorldBuilt }) => {
   const { camera } = useThree();
   const [isAttacking, setIsAttacking] = useState(false);
   const rigidBodyRef = useRef();
+  const { rapier, world } = useRapier();
 
   // FIX #1: Use useRef for keyboard state — prevents 60+ re-renders/sec
   // useState caused stale closures inside useFrame AND triggered full React re-renders on every keypress
@@ -302,8 +303,25 @@ export const Player = ({ isWorldBuilt }) => {
     }
 
     let nextVelY = currentVel.y;
+    // Downward raycast for precise grounded check
+    let isGrounded = false;
+    if (world && rigidBodyRef.current) {
+      const translation = rigidBodyRef.current.translation();
+      const ray = new rapier.Ray(
+        { x: translation.x, y: translation.y, z: translation.z },
+        { x: 0, y: -1, z: 0 }
+      );
+      // Capsule height is ~1.8 (halfHeight 0.4 + radius 0.5 = 0.9 from center to bottom).
+      // Cast a ray from center downwards with a 0.15 cushion to detect ground contacts cleanly.
+      const hit = world.castRay(ray, 1.05, true);
+      if (hit) {
+        isGrounded = true;
+      }
+    } else {
+      isGrounded = Math.abs(currentVel.y) < 0.2;
+    }
+
     // Jump
-    const isGrounded = Math.abs(currentVel.y) < 0.2;
     if (isLocked && jumpRequested.current && isGrounded) {
       nextVelY = 12;
       jumpRequested.current = false;
@@ -343,9 +361,16 @@ export const Player = ({ isWorldBuilt }) => {
       store.triggerCameraShake(0);
     }
 
-    // Sync camera to rigid body — direct snap for responsive FPS feel
+    // Sync camera to rigid body — smoothly lerp to eliminate 120Hz/ProMotion physics sync stutter
     const translation = rigidBodyRef.current.translation();
-    camera.position.set(translation.x + shakeX, translation.y + 1.2 + bobOffset + shakeY, translation.z + shakeZ);
+    const targetX = translation.x + shakeX;
+    const targetY = translation.y + 1.2 + bobOffset + shakeY;
+    const targetZ = translation.z + shakeZ;
+
+    // Use 0.35 lerp factor: coupling lag is 2-3 frames (imperceptible), but absorbs all physics micro-stutters
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.35);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.35);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.35);
 
     // Force horizontal camera on first frame
     if (!cameraInitialized.current && translation.y > 0) {
@@ -385,64 +410,60 @@ export const Player = ({ isWorldBuilt }) => {
       >
         <CapsuleCollider args={[0.5, 0.4]} />
       </RigidBody>
-      <StableMagicHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
+      <primitive object={camera}>
+        <StableMagicHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
+      </primitive>
     </group>
   );
 };
 
-// Magic Hands with effects — uses smoothed camera matrix for zero-jitter rendering
+// Magic Hands with effects — locks to camera's local coordinate space for zero-jitter rendering
 const StableMagicHands = ({ selectedBlock, isAttacking }) => {
-  const { camera } = useThree();
   const activeSpell = useGameStore(state => state.activeSpell) || 'fireball';
   const rightHandRef = useRef();
   const leftHandRef = useRef();
   const wandRef = useRef();
   const magicAuraRef = useRef();
-  // Smoothed camera position — decouples hand rendering from physics micro-bounce
-  const smoothCamPos = useRef(new THREE.Vector3(0, 40, 0));
-  const smoothMatrix = useRef(new THREE.Matrix4());
 
   const currentSpellColor = SPELL_COLORS[activeSpell] || SPELL_COLORS.fireball;
 
-  const rightTarget = useMemo(() => new THREE.Vector3(), []);
-  const leftTarget = useMemo(() => new THREE.Vector3(), []);
-  const scaleVec = useMemo(() => new THREE.Vector3(1, 1, 1), []);
+  // Local positions relative to camera center
+  const baseRightPos = useMemo(() => new THREE.Vector3(0.6, -0.8, -1.0), []);
+  const baseLeftPos = useMemo(() => new THREE.Vector3(-0.4, -0.7, -0.9), []);
 
   useFrame((state) => {
-    if (rightHandRef.current && leftHandRef.current && camera) {
+    if (rightHandRef.current && leftHandRef.current) {
       const time = state.clock.elapsedTime;
-
-      // Build a smoothed camera matrix — eliminates ALL physics jitter but tracks fast enough
-      smoothCamPos.current.lerp(camera.position, 0.4);
-      smoothMatrix.current.compose(
-        smoothCamPos.current,
-        camera.quaternion,
-        scaleVec
-      );
-
-      // Position hands using the smoothed matrix
-      rightTarget.set(0.6, -0.8, -1.0).applyMatrix4(smoothMatrix.current);
-      if (rightHandRef.current.position) rightHandRef.current.position.set(rightTarget.x, rightTarget.y, rightTarget.z);
-      if (rightHandRef.current.quaternion && camera.quaternion) rightHandRef.current.quaternion.copy(camera.quaternion);
-
-      leftTarget.set(-0.4, -0.7, -0.9).applyMatrix4(smoothMatrix.current);
-      if (leftHandRef.current.position) leftHandRef.current.position.set(leftTarget.x, leftTarget.y, leftTarget.z);
-      if (leftHandRef.current.quaternion && camera.quaternion) leftHandRef.current.quaternion.copy(camera.quaternion);
 
       if (isAttacking) {
         const attackTime = time * 6;
-        rightHandRef.current.rotation.x = Math.sin(attackTime) * 0.12;
-        rightHandRef.current.position.z += Math.sin(attackTime) * 0.02;
-        leftHandRef.current.rotation.x = Math.sin(attackTime + 1) * 0.08;
+        rightHandRef.current.position.set(
+          baseRightPos.x,
+          baseRightPos.y,
+          baseRightPos.z + Math.sin(attackTime) * 0.04
+        );
+        rightHandRef.current.rotation.set(Math.sin(attackTime) * 0.15, 0, 0);
+
+        leftHandRef.current.position.set(
+          baseLeftPos.x,
+          baseLeftPos.y,
+          baseLeftPos.z
+        );
+        leftHandRef.current.rotation.set(Math.sin(attackTime + 1) * 0.1, 0, 0);
+
         if (wandRef.current) {
           wandRef.current.rotation.x = Math.sin(attackTime) * 0.06;
           wandRef.current.position.y = 0.4 + Math.sin(attackTime) * 0.02;
         }
       } else {
-        rightHandRef.current.rotation.x = 0;
-        leftHandRef.current.rotation.x = 0;
+        rightHandRef.current.position.copy(baseRightPos);
+        rightHandRef.current.rotation.set(0, 0, 0);
+
+        leftHandRef.current.position.copy(baseLeftPos);
+        leftHandRef.current.rotation.set(0, 0, 0);
+
         if (wandRef.current) {
-          wandRef.current.rotation.x = 0.1;
+          wandRef.current.rotation.set(0.1, 0, 0);
           wandRef.current.position.y = 0.4;
         }
       }
