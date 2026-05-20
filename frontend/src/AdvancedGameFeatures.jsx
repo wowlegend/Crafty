@@ -89,7 +89,7 @@ const BOSS_CONFIG = {
     ],
 };
 
-export const useBossSystem = (playerLevel, playerPosition) => {
+export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
     const [bossHealth, setBossHealth] = useState(BOSS_CONFIG.health);
     const [bossMaxHealth] = useState(BOSS_CONFIG.health);
@@ -107,10 +107,11 @@ export const useBossSystem = (playerLevel, playerPosition) => {
             setBossNotification('🐉 A Shadow Dragon has appeared! Defeat it to prove your worth!');
             setTimeout(() => setBossNotification(null), 5000);
 
-            if (playerPosition) {
+            const playerPos = useGameStore.getState().playerPosition;
+            if (playerPos) {
                 const angle = Math.random() * Math.PI * 2;
-                const x = playerPosition.x + Math.cos(angle) * 30;
-                const z = playerPosition.z + Math.sin(angle) * 30;
+                const x = playerPos.x + Math.cos(angle) * 30;
+                const z = playerPos.z + Math.sin(angle) * 30;
                 let y = 16;
                 if (useGameStore.getState().getMobGroundLevel) {
                     y = useGameStore.getState().getMobGroundLevel(x, z);
@@ -120,7 +121,7 @@ export const useBossSystem = (playerLevel, playerPosition) => {
                 setBossActive(true);
             }
         }
-    }, [playerLevel, playerPosition, bossDefeated]);
+    }, [playerLevel, bossDefeated]);
 
     useEffect(() => {
         const hpPercent = bossHealth / bossMaxHealth;
@@ -202,7 +203,7 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     );
 });
 
-export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, playerPosition }) => {
+export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }) => {
     const meshRef = useRef();
     const { camera } = useThree();
     const lastAttack = useRef(0);

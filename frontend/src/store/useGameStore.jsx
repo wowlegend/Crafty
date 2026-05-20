@@ -18,6 +18,9 @@ export const useGameStore = create((set, get) => ({
     playerRigidBodyRef: null,
     setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
+    playerPosition: { x: 0, y: 0, z: 0 },
+    setPlayerPosition: (pos) => set({ playerPosition: pos }),
+
     // Phase 9: Camera Shake
     cameraShakeIntensity: 0,
     triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),

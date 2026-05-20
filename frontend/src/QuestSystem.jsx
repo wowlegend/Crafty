@@ -528,7 +528,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
     );
 });
 
-export const useTreasureChests = (playerPosition) => {
+export const useTreasureChests = () => {
     const [chests, setChests] = useState([]);
     const [openedChestIds, setOpenedChestIds] = useState(new Set());
     const lastChestCheck = useRef(0);
@@ -537,7 +537,8 @@ export const useTreasureChests = (playerPosition) => {
     // Generate chest near player periodically
     useEffect(() => {
         const interval = setInterval(() => {
-            if (!playerPosition) return;
+            const playerPos = useGameStore.getState().playerPosition;
+            if (!playerPos) return;
 
             // Max 5 chests at a time
             if (chests.length - openedChestIds.size >= 5) return;
@@ -545,8 +546,8 @@ export const useTreasureChests = (playerPosition) => {
             // Random position 20-60 blocks from player
             const angle = Math.random() * Math.PI * 2;
             const dist = 20 + Math.random() * 40;
-            const x = playerPosition.x + Math.cos(angle) * dist;
-            const z = playerPosition.z + Math.sin(angle) * dist;
+            const x = playerPos.x + Math.cos(angle) * dist;
+            const z = playerPos.z + Math.sin(angle) * dist;
 
             // Get ground height securely
             let y = 15;
@@ -565,14 +566,15 @@ export const useTreasureChests = (playerPosition) => {
         }, 30000); // New chest every 30 seconds
 
         return () => clearInterval(interval);
-    }, [playerPosition, chests.length, openedChestIds.size]);
+    }, [chests.length, openedChestIds.size]);
 
     // Spawn initial chest near player
     useEffect(() => {
-        if (playerPosition && chests.length === 0) {
+        const playerPos = useGameStore.getState().playerPosition;
+        if (playerPos && chests.length === 0) {
             const angle = Math.random() * Math.PI * 2;
-            const x = playerPosition.x + Math.cos(angle) * 15;
-            const z = playerPosition.z + Math.sin(angle) * 15;
+            const x = playerPos.x + Math.cos(angle) * 15;
+            const z = playerPos.z + Math.sin(angle) * 15;
 
             let y = 15;
             if (useGameStore.getState().getMobGroundLevel) {
@@ -582,24 +584,25 @@ export const useTreasureChests = (playerPosition) => {
 
             setChests([{ id: chestId.current++, position: [x, y, z], opened: false }]);
         }
-    }, [playerPosition]);
+    }, [chests.length]);
 
     // Check if player is near a chest (Strict 3D Proximity)
     const checkChestProximity = useCallback(() => {
-        if (!playerPosition) return null;
+        const playerPos = useGameStore.getState().playerPosition;
+        if (!playerPos) return null;
 
         for (const chest of chests) {
             if (openedChestIds.has(chest.id)) continue;
 
-            const dx = playerPosition.x - chest.position[0];
-            const dy = playerPosition.y - chest.position[1];
-            const dz = playerPosition.z - chest.position[2];
+            const dx = playerPos.x - chest.position[0];
+            const dy = playerPos.y - chest.position[1];
+            const dz = playerPos.z - chest.position[2];
             const dist3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
             if (dist3D < 3) return chest;
         }
         return null;
-    }, [playerPosition, chests, openedChestIds]);
+    }, [chests, openedChestIds]);
 
     // Open a chest
     const openChest = useCallback((chestIdToOpen) => {
@@ -654,17 +657,18 @@ export const useTreasureChests = (playerPosition) => {
     return { chests, openedChestIds, checkChestProximity, openChest };
 };
 
-export const ChestIndicator = React.memo(({ playerPosition, chests, openedChestIds }) => {
+export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
     const [nearbyChest, setNearbyChest] = useState(null);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            if (!playerPosition) return;
+            const playerPos = useGameStore.getState().playerPosition;
+            if (!playerPos) return;
 
             for (const chest of chests) {
                 if (openedChestIds.has(chest.id)) continue;
-                const dx = playerPosition.x - chest.position[0];
-                const dz = playerPosition.z - chest.position[2];
+                const dx = playerPos.x - chest.position[0];
+                const dz = playerPos.z - chest.position[2];
                 const dist = Math.sqrt(dx * dx + dz * dz);
                 if (dist < 3) {
                     setNearbyChest(chest);
@@ -675,7 +679,7 @@ export const ChestIndicator = React.memo(({ playerPosition, chests, openedChestI
         }, 250);
 
         return () => clearInterval(interval);
-    }, [playerPosition, chests, openedChestIds]);
+    }, [chests, openedChestIds]);
 
     if (!nearbyChest) return null;
 

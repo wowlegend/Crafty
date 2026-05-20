@@ -142,8 +142,6 @@ const SpatialAudioController = () => {
 
 export function GameScene({
   gameState,
-  playerPosition,
-  setPlayerPosition,
   isWorldBuilt,
   bossSystem,
   petSystem,
@@ -225,7 +223,7 @@ export function GameScene({
 
         {!anyPanelOpen && <PointerLockControls makeDefault />}
 
-        <PositionTracker onPositionUpdate={setPlayerPosition} />
+        <PositionTracker />
 
         <Suspense fallback={null}>
           <Physics gravity={[0, -30, 0]}>
@@ -233,7 +231,7 @@ export function GameScene({
 
             <Player isWorldBuilt={isWorldBuilt} />
 
-            <EnhancedMagicSystem playerPosition={playerPosition} />
+            <EnhancedMagicSystem />
 
             <NPCSystem />
 
@@ -241,7 +239,6 @@ export function GameScene({
               bossActive={bossSystem.bossActive}
               bossPositionRef={bossSystem.bossPositionRef}
               bossPhase={bossSystem.bossPhase}
-              playerPosition={playerPosition}
             />
 
             <PetEntities pets={petSystem.pets} />

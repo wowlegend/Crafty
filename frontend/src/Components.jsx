@@ -76,14 +76,14 @@ const MinecraftHealthHunger = React.memo(() => {
   );
 });
 
-export const PositionTracker = React.memo(({ onPositionUpdate }) => {
+export const PositionTracker = React.memo(() => {
   const { camera } = useThree();
   const lastUpdate = useRef(0);
   useFrame(() => {
     const now = performance.now();
-    if (camera && onPositionUpdate && now - lastUpdate.current > 200) {
+    if (camera && now - lastUpdate.current > 200) {
       lastUpdate.current = now;
-      onPositionUpdate({
+      useGameStore.getState().setPlayerPosition({
         x: Math.round(camera.position.x),
         y: Math.round(camera.position.y),
         z: Math.round(camera.position.z)
@@ -93,7 +93,7 @@ export const PositionTracker = React.memo(({ onPositionUpdate }) => {
   return null;
 });
 
-export const GameUI = ({ gameState, showStats, setShowStats, playerPosition }) => {
+export const GameUI = ({ gameState, showStats, setShowStats }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">

@@ -64,7 +64,6 @@ function GameApp({ experienceSystem }) {
   const { musicEnabled, playBackgroundMusic } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
   
-  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0, z: 0 });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
 
@@ -81,9 +80,9 @@ function GameApp({ experienceSystem }) {
 
   const gameSystems = useGameSystems();
   const questSystem = useQuestSystem();
-  const treasureChests = useTreasureChests(playerPosition);
+  const treasureChests = useTreasureChests();
   const survivalMode = useSurvivalMode(gameState.isDay);
-  const bossSystem = useBossSystem(experienceSystem.playerLevel, playerPosition);
+  const bossSystem = useBossSystem(experienceSystem.playerLevel);
   const petSystem = usePetSystem();
   const spellUpgrades = useSpellUpgrades();
 
@@ -152,8 +151,6 @@ function GameApp({ experienceSystem }) {
     >
       <GameScene
         gameState={gameState}
-        playerPosition={playerPosition}
-        setPlayerPosition={setPlayerPosition}
         isWorldBuilt={isWorldBuilt}
         bossSystem={bossSystem}
         petSystem={petSystem}
@@ -185,7 +182,6 @@ function GameApp({ experienceSystem }) {
         bossSystem={bossSystem}
         petSystem={petSystem}
         spellUpgrades={spellUpgrades}
-        playerPosition={playerPosition}
         showStats={showStats}
         setShowStats={setShowStats}
         setIsPointerLocked={setIsPointerLocked}

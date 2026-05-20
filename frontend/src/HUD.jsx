@@ -15,10 +15,11 @@ import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
 
-const Minimap = React.memo(({ playerPosition }) => {
+const Minimap = React.memo(() => {
   const canvasRef = useRef(null);
   const MAP_SIZE = 130;
   const MAP_RANGE = 60;
+  const [coords, setCoords] = React.useState({ x: 0, z: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -26,6 +27,11 @@ const Minimap = React.memo(({ playerPosition }) => {
     const ctx = canvas.getContext('2d');
 
     const draw = () => {
+      const playerPos = useGameStore.getState().playerPosition;
+      if (!playerPos) return;
+
+      setCoords({ x: playerPos.x, z: playerPos.z });
+
       ctx.fillStyle = 'rgba(10, 10, 20, 0.85)';
       ctx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
 
@@ -44,8 +50,8 @@ const Minimap = React.memo(({ playerPosition }) => {
 
       if (useGameStore.getState().mobEntities) {
         useGameStore.getState().mobEntities.forEach(mob => {
-          const dx = (mob.position[0] - playerPosition.x) * scale;
-          const dz = (mob.position[2] - playerPosition.z) * scale;
+          const dx = (mob.position[0] - playerPos.x) * scale;
+          const dz = (mob.position[2] - playerPos.z) * scale;
           if (Math.abs(dx) < MAP_SIZE / 2 && Math.abs(dz) < MAP_SIZE / 2) {
             ctx.beginPath();
             ctx.arc(cx + dx, cy + dz, 2.5, 0, Math.PI * 2);
@@ -80,7 +86,7 @@ const Minimap = React.memo(({ playerPosition }) => {
     const interval = setInterval(draw, 250);
     draw();
     return () => clearInterval(interval);
-  }, [playerPosition]);
+  }, []);
 
   return (
     <div className="absolute bottom-20 right-4 z-20 pointer-events-none">
@@ -88,7 +94,7 @@ const Minimap = React.memo(({ playerPosition }) => {
         <canvas ref={canvasRef} width={MAP_SIZE} height={MAP_SIZE} />
       </div>
       <div className="text-center text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, monospace' }}>
-        {playerPosition.x}, {playerPosition.z}
+        {coords.x}, {coords.z}
       </div>
     </div>
   );
@@ -106,7 +112,6 @@ export function HUD({
   bossSystem,
   petSystem,
   spellUpgrades,
-  playerPosition,
   showStats,
   setShowStats,
   setIsPointerLocked
@@ -120,7 +125,6 @@ export function HUD({
               gameState={gameState}
               showStats={showStats}
               setShowStats={setShowStats}
-              playerPosition={playerPosition}
             />
             <CombatInstructions />
 
@@ -158,14 +162,13 @@ export function HUD({
               }}
             />
 
-            <Minimap playerPosition={playerPosition} />
+            <Minimap />
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
             <NotificationStack notifications={questSystem.notifications} />
 
             <ChestIndicator
-              playerPosition={playerPosition}
               chests={treasureChests.chests}
               openedChestIds={treasureChests.openedChestIds}
             />

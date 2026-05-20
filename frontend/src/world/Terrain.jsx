@@ -105,7 +105,6 @@ const TargetOutline = () => {
 };
 
 export const MinecraftWorld = React.memo(() => {
-    const gameState = useGameStore();
     const { camera } = useThree();
     const { rapier, world } = useRapier();
     const { playBlockPlace, playBlockBreak } = useGameSounds();
@@ -210,6 +209,7 @@ export const MinecraftWorld = React.memo(() => {
             setChunks(currentChunks => {
                 const newChunks = { ...currentChunks };
                 let requestsThisTick = 0;
+                let changed = false;
 
                 // Box generation around player
                 for (let nx = -RENDER_DISTANCE; nx <= RENDER_DISTANCE; nx++) {
@@ -236,10 +236,11 @@ export const MinecraftWorld = React.memo(() => {
                         worker.postMessage({ type: 'unload', payload: { cx: c.cx, cz: c.cz } });
                         delete newChunks[key];
                         requestedChunks.delete(key);
+                        changed = true;
                     }
                 });
 
-                return newChunks;
+                return changed ? newChunks : currentChunks;
             });
 
             if (isProcessing) {
