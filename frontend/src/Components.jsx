@@ -212,7 +212,7 @@ export const Player = ({ isWorldBuilt }) => {
       return;
     } else if (!spawnPosSet.current) {
       const store = useGameStore.getState();
-      let groundY = 60;
+      let groundY = null;
 
       // 1. Try to use placed blocks (if loading from a save)
       if (store.worldBlocks && store.worldBlocks.size > 0) {
@@ -224,7 +224,7 @@ export const Player = ({ isWorldBuilt }) => {
         }
       } 
       // 2. Otherwise use the physics raycast to find the generated terrain mesh height
-      else if (store.getMobGroundLevel) {
+      if (groundY === null && store.getMobGroundLevel) {
         let physicsY = store.getMobGroundLevel(0, 0);
         if (isNaN(physicsY)) physicsY = 15; // Fallback if toi is undefined
 
@@ -234,10 +234,14 @@ export const Player = ({ isWorldBuilt }) => {
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
             return; // Wait for next frame
         }
-        groundY = Math.max(physicsY, 60);
+        groundY = physicsY;
       }
 
-      const safeY = groundY + 3; // Spawn 3 units above the highest block
+      if (groundY === null) {
+        groundY = 60; // Fallback
+      }
+
+      const safeY = groundY + 1.2; // Spawns the player center exactly 1.2 units above ground level (instantly lands)
       rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       spawnPosSet.current = true;
@@ -289,20 +293,8 @@ export const Player = ({ isWorldBuilt }) => {
 
     let nextVelX = currentVel.x;
     let nextVelZ = currentVel.z;
-
-    if (direction.lengthSq() > 0) {
-      direction.normalize().multiplyScalar(speed);
-      nextVelX = direction.x;
-      nextVelZ = direction.z;
-    } else {
-      // Always decelerate if no input
-      nextVelX = currentVel.x * 0.8;
-      nextVelZ = currentVel.z * 0.8;
-      if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
-      if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
-    }
-
     let nextVelY = currentVel.y;
+
     // Downward raycast for precise grounded check
     let isGrounded = false;
     if (world && rigidBodyRef.current) {
@@ -312,13 +304,75 @@ export const Player = ({ isWorldBuilt }) => {
         { x: 0, y: -1, z: 0 }
       );
       // Capsule height is ~1.8 (halfHeight 0.4 + radius 0.5 = 0.9 from center to bottom).
-      // Cast a ray from center downwards with a 0.15 cushion to detect ground contacts cleanly.
       const hit = world.castRay(ray, 1.05, true);
       if (hit) {
         isGrounded = true;
       }
     } else {
       isGrounded = Math.abs(currentVel.y) < 0.2;
+    }
+
+    if (direction.lengthSq() > 0) {
+      direction.normalize().multiplyScalar(speed);
+      let desiredVelX = direction.x;
+      let desiredVelZ = direction.z;
+
+      // Wall Sliding & Auto-Jump (Step-Up) Physics Override
+      if (world) {
+        const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
+        
+        // Ray origins at head (+0.6) and knee (-0.5)
+        const headRay = new rapier.Ray(
+          { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
+          { x: moveDir.x, y: 0, z: moveDir.z }
+        );
+        const kneeRay = new rapier.Ray(
+          { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
+          { x: moveDir.x, y: 0, z: moveDir.z }
+        );
+
+        const headHit = world.castRay(headRay, 0.65, true);
+        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.65, true);
+
+        // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
+        if (kneeHit && !headHit && isGrounded) {
+          rigidBodyRef.current.setTranslation({
+            x: currentTrans.x + moveDir.x * 0.08,
+            y: currentTrans.y + 0.35,
+            z: currentTrans.z + moveDir.z * 0.08
+          }, true);
+        }
+
+        // Wall Sliding: find wall normal to project horizontal velocity
+        let wallNormal = null;
+        if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
+          wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
+        } else if (headHit) {
+          const headHitNormal = world.castRayAndGetNormal(headRay, 0.65, true);
+          if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
+            wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
+          }
+        }
+
+        if (wallNormal) {
+          const vel = new THREE.Vector3(desiredVelX, 0, desiredVelZ);
+          const dot = vel.dot(wallNormal);
+          if (dot < 0) { // Only project if moving INTO the wall surface
+            vel.addScaledVector(wallNormal, -dot);
+            desiredVelX = vel.x;
+            desiredVelZ = vel.z;
+          }
+        }
+      }
+
+      nextVelX = desiredVelX;
+      nextVelZ = desiredVelZ;
+    } else {
+      // Always decelerate if no input
+      nextVelX = currentVel.x * 0.8;
+      nextVelZ = currentVel.z * 0.8;
+      if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
+      if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
     }
 
     // Jump

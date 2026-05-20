@@ -253,7 +253,7 @@ export const MinecraftWorld = React.memo(() => {
                 { x: direction.x, y: direction.y, z: direction.z }
             );
             
-            const hit = world.castRay(ray, 8.0, true);
+            const hit = world.castRayAndGetNormal(ray, 8.0, true);
             if (!hit) return;
             
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
