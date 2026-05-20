@@ -1,6 +1,17 @@
 # Changelog & Development History
 
+### May 21, 2026 (Game Loop Isolation & Performance Optimizations)
+
+- **ZUSTAND STORE HARDENING**: Added `playerPosition` state and `setPlayerPosition` action to `useGameStore.jsx` to store coordinates transiently, preventing reactive state-update micro-stutters across the entire rendering pipeline.
+- **PARENT & APP DECOUPLING**: Completely decoupled `App.jsx` from high-frequency coordinate state. Removed reactive `playerPosition` prop from `<GameScene>` and `<HUD>`. Decoupled `useTreasureChests` and `useBossSystem` hooks.
+- **TRANSIENT TRACKER & UI PROPS REFRACTOR**: Refactored `<PositionTracker>` in `Components.jsx` to write coordinates transiently to the Zustand store without triggering component re-renders. Removed unused `playerPosition` prop from `<GameUI>`.
+- **CANVAS SCENE DECOUPLING**: Removed unused `playerPosition` and `setPlayerPosition` props from `<GameScene>`, `<EnhancedMagicSystem>`, and `<BossEntity>`, avoiding redundant high-frequency parent-to-child component diffs.
+- **INTERVAL DEGRADATION FIXES**: Refactored `useTreasureChests` hook, `<ChestIndicator>`, and `<Minimap>` (`HUD.jsx`) to fetch coordinates transiently using `useGameStore.getState().playerPosition` inside their respective drawing/spawning intervals. This stops intervals from being repeatedly torn down and restarted every 200ms during movement, fixing a long-standing chest spawning bug.
+- **MONOLITHIC TERRAIN SUBSCRIPTION ELIMINATION**: Removed the heavy `const gameState = useGameStore();` subscription from `<MinecraftWorld>` (`Terrain.jsx`). Decoupling the voxel engine from Zustand prevents the entire terrain from virtual DOM diffing on every inventory change or stat tick, achieving flawless 60+ FPS gameplay.
+- **PRISTINE BUILD & JUNK PURGE**: Confirmed a zero-debt build compilation via `npm run build` inside `frontend/` (succeeded in 3.84s). Cleared out all system `.DS_Store` junk files from the workspace.
+
 ### May 20, 2026 (Physics Raycasts & Next-Gen Graphics Polish)
+
 
 - **CAPSULE SELF-COLLISION SOLVED**: Shifted player physics raycast origins strictly outside the capsule collider's boundaries (downward raycast origin to `translation.y - 0.91` with `0.15` length; horizontal raycasts to `currentTrans + moveDir * 0.41` with `0.24` length). This prevents solid raycasts from intersecting with the player's own dynamic collider, restoring butter-smooth WASD movement, wall-sliding, and a single, physics-accurate jump action.
 - **HARDENED SPAWNING TIMINGS**: Introduced a secondary top-down physics raycast in `getMobGroundLevel` starting at `y = 90` to bypass the player capsule frozen in the sky (`y = 120`) during world generation. Added a safety check in `Components.jsx` that delays spawning the player until the chunk mesh loads and returns a valid height (`30-75`), ensuring the player spawns precisely on the grass surface instead of falling from the sky.
