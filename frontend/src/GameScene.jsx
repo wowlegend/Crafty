@@ -247,7 +247,6 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
-          {/* 
           <EffectComposer disableNormalPass>
             <N8AO intensity={1.5} radius={2} color="black" />
             <Bloom
@@ -259,7 +258,6 @@ export function GameScene({
             <Noise opacity={0.02} />
             <Vignette eskil={false} offset={0.1} darkness={1.1} />
           </EffectComposer>
-          */}
           <Preload all />
         </Suspense>
 

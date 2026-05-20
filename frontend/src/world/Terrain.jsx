@@ -163,7 +163,18 @@ export const MinecraftWorld = React.memo(() => {
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 300, true);
             if (hit) {
-                return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
+                const hitY = 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
+                // If we hit something above height 90, it is likely the player capsule in the sky (y=120).
+                // Re-run the raycast starting below the player capsule height (y=90) to query the true terrain mesh.
+                if (hitY > 90) {
+                    const secondRay = new rapier.Ray({ x, y: 90, z }, { x: 0, y: -1, z: 0 });
+                    const secondHit = world.castRay(secondRay, 90, true);
+                    if (secondHit) {
+                        return 90 - (secondHit.toi !== undefined ? secondHit.toi : secondHit.timeOfImpact);
+                    }
+                    return 15;
+                }
+                return hitY;
             }
             return 15;
         });
@@ -262,7 +273,25 @@ export const MinecraftWorld = React.memo(() => {
             const type = useGameStore.getState().selectedBlock || 'grass';
             
             // Map string ID to worker numeric ID
-            const blockIdMap = { 'grass': 1, 'dirt': 2, 'stone': 3, 'wood': 3, 'sand': 2 };
+            const blockIdMap = {
+                'grass': 1,
+                'dirt': 2,
+                'stone': 3,
+                'wood': 6,
+                'birch_wood': 6,
+                'leaves': 7,
+                'glass': 3,
+                'water': 4,
+                'lava': 3,
+                'diamond': 3,
+                'gold': 3,
+                'iron': 3,
+                'coal': 3,
+                'sand': 4,
+                'cobblestone': 3,
+                'flower_red': 7,
+                'flower_yellow': 7
+            };
             const numericType = blockIdMap[type] || 1;
 
             if (e.button === 0) {

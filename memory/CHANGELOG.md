@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 20, 2026 (Physics Raycasts & Next-Gen Graphics Polish)
+
+- **CAPSULE SELF-COLLISION SOLVED**: Shifted player physics raycast origins strictly outside the capsule collider's boundaries (downward raycast origin to `translation.y - 0.91` with `0.15` length; horizontal raycasts to `currentTrans + moveDir * 0.41` with `0.24` length). This prevents solid raycasts from intersecting with the player's own dynamic collider, restoring butter-smooth WASD movement, wall-sliding, and a single, physics-accurate jump action.
+- **HARDENED SPAWNING TIMINGS**: Introduced a secondary top-down physics raycast in `getMobGroundLevel` starting at `y = 90` to bypass the player capsule frozen in the sky (`y = 120`) during world generation. Added a safety check in `Components.jsx` that delays spawning the player until the chunk mesh loads and returns a valid height (`30-75`), ensuring the player spawns precisely on the grass surface instead of falling from the sky.
+- **BLOCK PLACEMENT EXPANSION**: Updated the block mapping dictionary `blockIdMap` to resolve and place all inventory/hotbar block types (including wood, leaves, ores) rather than falling back to grass. Supressed the browser's right-click context menu while pointer locked to ensure seamless building.
+- **RE-ENABLED NEXT-GEN POST-PROCESSING**: Activated the high-performance post-processing pipeline in `GameScene.jsx`, rendering screen-space ambient occlusion (`N8AO`) for gorgeous soft shadows in block corners, magical bloom/glows (`Bloom`), subtle cinema grain (`Noise`), and vignetting (`Vignette`), transforming the visual style from toy-plastic flat blocks to immersive premium voxel graphics.
+- **ZERO-DEBT COMPILE**: Successfully ran full Vite production builds with 0 errors and 0 warnings.
+
 ### May 20, 2026 (Gameplay Controls & Pointer Lock Optimizations)
 
 - **SHAKE-FREE FIRST-PERSON HANDS**: Re-parented `<StableMagicHands>` as a direct local child of `<primitive object={camera}>` in `Components.jsx`, locking them natively to the viewport with local offsets. This completely eliminated wobbly hand meshes and trailing camera matrix tracking micro-vibrations during strafing and jumping.

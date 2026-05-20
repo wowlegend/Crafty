@@ -228,8 +228,9 @@ export const Player = ({ isWorldBuilt }) => {
         let physicsY = store.getMobGroundLevel(0, 0);
         if (isNaN(physicsY)) physicsY = 15; // Fallback if toi is undefined
 
-        // If it returns the default 15 (or lower), the collider might not be added to the physics world yet. Delay spawn.
-        if (physicsY <= 15) {
+        // If it returns the default 15 (or lower) or a temporary height hitting player in sky (> 90),
+        // the collider might not be added to the physics world yet. Delay spawn.
+        if (physicsY <= 15 || physicsY > 90) {
             rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
             return; // Wait for next frame
@@ -299,12 +300,13 @@ export const Player = ({ isWorldBuilt }) => {
     let isGrounded = false;
     if (world && rigidBodyRef.current) {
       const translation = rigidBodyRef.current.translation();
+      // Capsule height is ~1.8 (halfHeight 0.5 + radius 0.4 = 0.9 from center to bottom).
+      // Origin starts strictly below the player's capsule collider to prevent self-collision.
       const ray = new rapier.Ray(
-        { x: translation.x, y: translation.y, z: translation.z },
+        { x: translation.x, y: translation.y - 0.91, z: translation.z },
         { x: 0, y: -1, z: 0 }
       );
-      // Capsule height is ~1.8 (halfHeight 0.4 + radius 0.5 = 0.9 from center to bottom).
-      const hit = world.castRay(ray, 1.05, true);
+      const hit = world.castRay(ray, 0.15, true);
       if (hit) {
         isGrounded = true;
       }
@@ -321,18 +323,21 @@ export const Player = ({ isWorldBuilt }) => {
       if (world) {
         const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
         
-        // Ray origins at head (+0.6) and knee (-0.5)
+        // Ray origins shifted strictly outside the player's capsule radius (0.4) to prevent self-collision
+        const startX = currentTrans.x + moveDir.x * 0.41;
+        const startZ = currentTrans.z + moveDir.z * 0.41;
+
         const headRay = new rapier.Ray(
-          { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
+          { x: startX, y: currentTrans.y + 0.6, z: startZ },
           { x: moveDir.x, y: 0, z: moveDir.z }
         );
         const kneeRay = new rapier.Ray(
-          { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
+          { x: startX, y: currentTrans.y - 0.5, z: startZ },
           { x: moveDir.x, y: 0, z: moveDir.z }
         );
 
-        const headHit = world.castRay(headRay, 0.65, true);
-        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.65, true);
+        const headHit = world.castRay(headRay, 0.24, true);
+        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.24, true);
 
         // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
         if (kneeHit && !headHit && isGrounded) {
@@ -348,7 +353,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
           wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
         } else if (headHit) {
-          const headHitNormal = world.castRayAndGetNormal(headRay, 0.65, true);
+          const headHitNormal = world.castRayAndGetNormal(headRay, 0.24, true);
           if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
             wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
           }
