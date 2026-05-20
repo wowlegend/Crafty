@@ -8,7 +8,7 @@ import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
+const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
 
 // Custom miniplex React hook for compatibility
 const useEntities = (query) => {
