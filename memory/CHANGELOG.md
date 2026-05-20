@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 20, 2026 (Gameplay Controls & Pointer Lock Optimizations)
+
+- **SHAKE-FREE FIRST-PERSON HANDS**: Re-parented `<StableMagicHands>` as a direct local child of `<primitive object={camera}>` in `Components.jsx`, locking them natively to the viewport with local offsets. This completely eliminated wobbly hand meshes and trailing camera matrix tracking micro-vibrations during strafing and jumping.
+- **PHYSICS STEP INTERPOLATION**: Implemented sub-frame physics camera smoothing in `Components.jsx` by smoothly lerping coordinates by a factor of `0.35` (`THREE.MathUtils.lerp`). This absorbs the 60Hz physics update disparity on 120Hz/ProMotion high-refresh screens without perceptible lag.
+- **PHYSICAL RAYCAST GROUNDING**: Replaced the fragile velocity-based grounded check (`Math.abs(currentVel.y) < 0.2`) with a robust downward `world.castRay` check spanning 1.05 units from player capsule center. This resolves jumping flickering and bobbing stutters caused by voxel triangle seam contact fluctuations.
+- **CONDITIONED POINTER LOCKING**: Wired conditional rendering on `<PointerLockControls makeDefault />` in `GameScene.jsx` using a comprehensive `anyPanelOpen` condition matching all UI menus (Inventory, Crafting, Magic, Building Tools, Settings, Trading, Selected Villager, World Manager, Achievements, Spell Upgrades, Auth Modal). This prevents Drei's pointer lock DOM click-hijacking during menu navigation, ensuring a stable cursor.
+- **ZERO DEBT VERIFICATION**: Ran production Vite compilations with 0 errors or warnings, and purged remaining hidden system junk files (`.DS_Store`) from the repository.
+
 ### May 20, 2026 (Phase 13: Progression & Expanded Interactions)
 
 - **OFFLINE WORLD SAVING**: Unlocked world creation, saving, loading, and deletion for guest/offline players, removing the authentication gateway. Handled local browser storage gracefully with a map-to-entries JSON serialization fix.
