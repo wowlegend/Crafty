@@ -309,26 +309,41 @@ function generateMesh(cx, cz, blocks) {
               positions.push(px, py, pz);
               normals.push(...dir);
 
-              // Simple Ambient Occlusion calculation
-              // Check 3 neighbors around each corner
-              let ao = 0;
-              const n1 = [dir[0] === 0 ? (pos[0] === 0 ? -1 : 1) : 0, dir[1] === 0 ? (pos[1] === 0 ? -1 : 1) : 0, dir[2] === 0 ? (pos[2] === 0 ? -1 : 1) : 0];
-              const n2 = [dir[0] !== 0 ? 0 : (pos[0] === 0 ? -1 : 1), dir[1] !== 0 ? 0 : (pos[1] === 0 ? -1 : 1), dir[2] !== 0 ? 0 : (pos[2] === 0 ? -1 : 1)];
-              
-              // This is a simplified AO check: check neighbors in the plane of the face
+              // Mathematically correct face-aligned Ambient Occlusion corner checks (Minecraft formula)
+              let s1 = [0, 0, 0];
+              let s2 = [0, 0, 0];
+
+              if (dir[0] !== 0) { // X-aligned face (Right/Left)
+                s1 = [0, pos[1] === 0 ? -1 : 1, 0];
+                s2 = [0, 0, pos[2] === 0 ? -1 : 1];
+              } else if (dir[1] !== 0) { // Y-aligned face (Top/Bottom)
+                s1 = [pos[0] === 0 ? -1 : 1, 0, 0];
+                s2 = [0, 0, pos[2] === 0 ? -1 : 1];
+              } else if (dir[2] !== 0) { // Z-aligned face (Front/Back)
+                s1 = [pos[0] === 0 ? -1 : 1, 0, 0];
+                s2 = [0, pos[1] === 0 ? -1 : 1, 0];
+              }
+
               const checkNeighbor = (ox, oy, oz) => {
-                  const nx = x + ox;
-                  const ny = y + oy;
-                  const nz = z + oz;
-                  if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_HEIGHT || nz < 0 || nz >= CHUNK_SIZE) return 0;
-                  return blocks[getIndex(nx, ny, nz)] !== 0 ? 1 : 0;
+                const nx = x + ox;
+                const ny = y + oy;
+                const nz = z + oz;
+                if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_HEIGHT || nz < 0 || nz >= CHUNK_SIZE) return 0;
+                return blocks[getIndex(nx, ny, nz)] !== 0 ? 1 : 0;
               };
 
-              ao = checkNeighbor(n1[0], n1[1], n1[2]) + 
-                   checkNeighbor(n2[0], n2[1], n2[2]) + 
-                   checkNeighbor(n1[0]+n2[0], n1[1]+n2[1], n1[2]+n2[2]);
-              
-              const aoMult = 1.0 - (ao * 0.2); // Each neighbor darkens by 20%
+              const side1 = checkNeighbor(dir[0] + s1[0], dir[1] + s1[1], dir[2] + s1[2]);
+              const side2 = checkNeighbor(dir[0] + s2[0], dir[1] + s2[1], dir[2] + s2[2]);
+              const corner = checkNeighbor(dir[0] + s1[0] + s2[0], dir[1] + s1[1] + s2[1], dir[2] + s1[2] + s2[2]);
+
+              let aoValue;
+              if (side1 === 1 && side2 === 1) {
+                aoValue = 3;
+              } else {
+                aoValue = side1 + side2 + corner;
+              }
+
+              const aoMult = 1.0 - (aoValue * 0.18);
               colors.push(color[0] * aoMult, color[1] * aoMult, color[2] * aoMult);
             }
 

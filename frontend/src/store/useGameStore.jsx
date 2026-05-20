@@ -15,6 +15,9 @@ export const useGameStore = create((set, get) => ({
     getMobGroundLevel: null,
     setGetMobGroundLevel: (fn) => set({ getMobGroundLevel: fn }),
 
+    playerRigidBodyRef: null,
+    setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
+
     // Phase 9: Camera Shake
     cameraShakeIntensity: 0,
     triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),

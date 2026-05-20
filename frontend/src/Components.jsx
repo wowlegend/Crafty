@@ -149,6 +149,14 @@ export const Player = ({ isWorldBuilt }) => {
     useGameStore.setState({ gameCamera: camera });
   }, [camera]);
 
+  // Expose player rigid body globally for raycast filtering
+  useEffect(() => {
+    useGameStore.setState({ playerRigidBodyRef: rigidBodyRef });
+    return () => {
+      useGameStore.setState({ playerRigidBodyRef: null });
+    };
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       keysRef.current[e.code] = true;
@@ -245,6 +253,10 @@ export const Player = ({ isWorldBuilt }) => {
       const safeY = groundY + 1.2; // Spawns the player center exactly 1.2 units above ground level (instantly lands)
       rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      
+      // Cancel skyfall lerp transition: set camera position instantly
+      camera.position.set(0, safeY + 1.2, 0);
+
       spawnPosSet.current = true;
       return;
     }
@@ -306,7 +318,7 @@ export const Player = ({ isWorldBuilt }) => {
         { x: translation.x, y: translation.y - 0.91, z: translation.z },
         { x: 0, y: -1, z: 0 }
       );
-      const hit = world.castRay(ray, 0.15, true);
+      const hit = world.castRay(ray, 0.15, true, undefined, undefined, undefined, rigidBodyRef.current);
       if (hit) {
         isGrounded = true;
       }
@@ -336,8 +348,8 @@ export const Player = ({ isWorldBuilt }) => {
           { x: moveDir.x, y: 0, z: moveDir.z }
         );
 
-        const headHit = world.castRay(headRay, 0.24, true);
-        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.24, true);
+        const headHit = world.castRay(headRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
+        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
 
         // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
         if (kneeHit && !headHit && isGrounded) {
@@ -353,7 +365,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
           wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
         } else if (headHit) {
-          const headHitNormal = world.castRayAndGetNormal(headRay, 0.24, true);
+          const headHitNormal = world.castRayAndGetNormal(headRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
           if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
             wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
           }
