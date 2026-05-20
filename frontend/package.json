@@ -22,7 +22,8 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node test_swarm.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.0",

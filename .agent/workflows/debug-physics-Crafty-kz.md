@@ -6,7 +6,7 @@ description: "[CRAFTY] debug physics collision issues — player falling through
 
 Use when the player falls through terrain, colliders don't match visuals, or physics bodies behave unexpectedly.
 
-**Tech context**: Crafty uses `@react-three/rapier` with `TrimeshCollider` for terrain and `CapsuleCollider` for the player.
+**Tech context**: Crafty uses `@react-three/rapier` with `TrimeshCollider` for terrain and `CapsuleCollider` for the player, heavily integrated with a `miniplex` ECS architecture.
 
 ## 1. Enable Debug Renderer
 
@@ -35,7 +35,14 @@ const vy = height + 1;  // +1 to match block top surface
 const vz = (localZ + chunkWorldZ);
 ```
 
-## 3. Check Chunk Loading/Unloading
+## 3. ECS-Physics Sync (Critical for 2026 Architecture)
+
+In Crafty's `miniplex` ECS, physics bodies and visual meshes are decoupled entities.
+
+- **Check the Sync System:** Verify that the ECS `System` responsible for syncing Miniplex spatial components (e.g., `position`, `velocity`) with Rapier `RigidBody` refs is firing in the correct phase of the `useFrame` loop.
+- **Order of Execution:** The physics step MUST occur before the visual transform sync. Ensure your ECS systems process rigid body updates before writing to the Three.js object matrix.
+
+## 4. Check Chunk Loading/Unloading
 
 Terrain disappears if chunks unload too aggressively:
 
@@ -46,31 +53,33 @@ Keep radius = RENDER_DISTANCE + 3  (how far to KEEP — must be larger)
 
 If terrain vanishes underfoot, increase keep radius.
 
-## 4. Check Void Catch
+## 5. Check Void Catch
 
-Player should be teleported back if falling below terrain:
+Player should be teleported back up if falling below terrain (e.g., through chunk seams). Apply this guard block inside `useFrame` using the rigid body reference:
 
 ```jsx
-if (pos.y < -10) {
-  rigidBodyRef.current.setTranslation({ x: pos.x, y: 40, z: pos.z }, true);
+// ✅ CORRECT — Matches Components.jsx Player implementation
+if (currentTrans.y < -50) {
+  rigidBodyRef.current.setTranslation({ x: 0, y: 100, z: 0 }, true);
   rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-  return;  // IMPORTANT: return guard prevents further physics processing
+  console.log(`[DEBUG] Player fell into void! Teleported back to safety.`);
+  return;  // IMPORTANT: return guard prevents further physics processing this frame
 }
 ```
 
-## 5. Physics Body Count
+## 6. Physics Body Count
 
 Too many physics bodies = lag + instability. Check count:
 
 ```bash
 # Search for collider components
-grep -c "Collider\|RigidBody\|InstancedRigidBodies" frontend/src/**/*.jsx frontend/src/*.jsx
+grep -c "Collider\|RigidBody\|InstancedRigidBodies" frontend/src/**/*.jsx frontend/src/**/*.tsx frontend/src/*.jsx
 ```
 
 - Good: ~50 TrimeshColliders (one per chunk) + 1 player + ~20 mobs
 - Bad: 80,000 individual CuboidColliders (one per terrain block)
 
-## 6. CCD (Continuous Collision Detection)
+## 7. CCD (Continuous Collision Detection)
 
 For fast-moving bodies (spell projectiles), enable CCD:
 

@@ -57,9 +57,9 @@ const MobModel = ({ entity }) => {
     
     groupRef.current.traverse((child) => {
       if (child.isMesh && child.material && child.material.name !== "eye") {
-         child.material.color.copy(isHit ? hitColor : baseColor);
-         child.material.emissive.copy(isHit ? hitColor : blackColor);
-         child.material.emissiveIntensity = isHit ? 0.5 : 0;
+         if (child.material.color) child.material.color.copy(isHit ? hitColor : baseColor);
+         if (child.material.emissive) child.material.emissive.copy(isHit ? hitColor : blackColor);
+         if (child.material.emissiveIntensity !== undefined) child.material.emissiveIntensity = isHit ? 0.5 : 0;
       }
     });
 

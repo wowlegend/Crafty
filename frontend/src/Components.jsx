@@ -210,14 +210,53 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
     } else if (!spawnPosSet.current) {
-      const getGroundLevel = useGameStore.getState().getMobGroundLevel;
-      const groundY = getGroundLevel ? getGroundLevel(0, 0) : 50;
-      // If raycast fails (NaN) or gives a weird number, fallback to 60.
-      const safeY = (!isNaN(groundY) && groundY > 0) ? groundY + 2 : 60;
+      const store = useGameStore.getState();
+      let groundY = 60;
+
+      // 1. Try to use placed blocks (if loading from a save)
+      if (store.worldBlocks && store.worldBlocks.size > 0) {
+        for (let y = 150; y > 0; y--) {
+          if (store.worldBlocks.has(`0,${y},0`)) {
+            groundY = y;
+            break;
+          }
+        }
+      } 
+      // 2. Otherwise use the physics raycast to find the generated terrain mesh height
+      else if (store.getMobGroundLevel) {
+        let physicsY = store.getMobGroundLevel(0, 0);
+        if (isNaN(physicsY)) physicsY = 15; // Fallback if toi is undefined
+
+        // If it returns the default 15 (or lower), the collider might not be added to the physics world yet. Delay spawn.
+        if (physicsY <= 15) {
+            rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+            rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+            return; // Wait for next frame
+        }
+        groundY = Math.max(physicsY, 60);
+      }
+
+      const safeY = groundY + 3; // Spawn 3 units above the highest block
       rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       spawnPosSet.current = true;
       return;
+    }
+    if (isNaN(currentVel.x) || isNaN(currentTrans.y)) {
+      console.error(`[DEBUG] Physics corrupted! vel:`, currentVel, `trans:`, currentTrans);
+    }
+
+    // Read from keysRef instead of stale keys state
+    const keys = keysRef.current;
+    // Only process movement if pointer is locked
+    const isLocked = !!document.pointerLockElement;
+
+    // Anti-stuck: if player is deeply embedded in a block or void
+    if (currentTrans.y < -50 || (isLocked && keys.KeyW && Math.abs(currentVel.x) < 0.1 && Math.abs(currentVel.z) < 0.1 && currentVel.y === 0)) {
+      // Small upward nudge if pressing W but perfectly stuck
+      if (currentTrans.y > -50 && isLocked) {
+         rigidBodyRef.current.setTranslation({ x: currentTrans.x, y: currentTrans.y + 0.1, z: currentTrans.z }, true);
+      }
     }
 
     // Void catch — teleport back up if fallen through terrain
@@ -238,11 +277,6 @@ export const Player = ({ isWorldBuilt }) => {
     forwardDir.normalize();
     const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x); // perpendicular right
 
-    // Read from keysRef instead of stale keys state
-    const keys = keysRef.current;
-    
-    // Only process movement if pointer is locked
-    const isLocked = !!document.pointerLockElement;
     const moveW = (isLocked && keys.KeyW) ? 1 : 0;
     const moveS = (isLocked && keys.KeyS) ? 1 : 0;
     const moveA = (isLocked && keys.KeyA) ? 1 : 0;
@@ -388,12 +422,12 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
 
       // Position hands using the smoothed matrix
       rightTarget.set(0.6, -0.8, -1.0).applyMatrix4(smoothMatrix.current);
-      rightHandRef.current.position.copy(rightTarget);
-      rightHandRef.current.quaternion.copy(camera.quaternion);
+      if (rightHandRef.current.position) rightHandRef.current.position.set(rightTarget.x, rightTarget.y, rightTarget.z);
+      if (rightHandRef.current.quaternion && camera.quaternion) rightHandRef.current.quaternion.copy(camera.quaternion);
 
       leftTarget.set(-0.4, -0.7, -0.9).applyMatrix4(smoothMatrix.current);
-      leftHandRef.current.position.copy(leftTarget);
-      leftHandRef.current.quaternion.copy(camera.quaternion);
+      if (leftHandRef.current.position) leftHandRef.current.position.set(leftTarget.x, leftTarget.y, leftTarget.z);
+      if (leftHandRef.current.quaternion && camera.quaternion) leftHandRef.current.quaternion.copy(camera.quaternion);
 
       if (isAttacking) {
         const attackTime = time * 6;

@@ -6,7 +6,7 @@ description: "[CRAFTY] debug WASD, camera, and pointer lock movement issues"
 
 Use when WASD directions are wrong, camera flips, strafing is inverted, or controls feel laggy.
 
-**Tech context**: Crafty uses `PointerLockControls` from drei, `RigidBody` from rapier, and `useFrame` for movement updates.
+**Tech context**: Crafty uses `PointerLockControls` from drei, `RigidBody` from rapier, and `miniplex` ECS / `Zustand` for state management.
 
 ## 1. Check Direction Extraction
 
@@ -37,31 +37,49 @@ const moveVec = forward.multiplyScalar(moveW - moveS)
 
 If strafing is inverted, the sign is wrong.
 
-## 3. Check Keyboard Input Method
+## 3. Check Keyboard Input Method (Local keysRef or Zustand/ECS Standard)
 
-**MUST use `useRef`** inside `useFrame` — never `useState`:
+**MUST use transient reads** inside `useFrame` — never local `useState` or reactive state subscriptions which cause massive re-renders. Crafty supports two acceptable high-performance patterns:
+
+### Pattern A: Local Component-Level `keysRef` (Used in `Player` Component)
+Define a local, non-reactive reference containing active keyboard states, updating it via raw window event listeners inside `useEffect`:
 
 ```jsx
-// ✅ CORRECT — useRef reads current value without closures
+// ✅ CORRECT — Used in Components.jsx Player
 const keysRef = useRef({});
 useEffect(() => {
   const down = (e) => { keysRef.current[e.code] = true; };
   const up = (e) => { keysRef.current[e.code] = false; };
   window.addEventListener('keydown', down);
   window.addEventListener('keyup', up);
-  return () => { /* cleanup */ };
+  return () => {
+    window.removeEventListener('keydown', down);
+    window.removeEventListener('keyup', up);
+  };
 }, []);
 
 useFrame(() => {
-  const moveW = keysRef.current['KeyW'] ? 1 : 0;  // Always fresh
+  const keys = keysRef.current;
+  const moveW = keys['KeyW'] ? 1 : 0; // High-frequency non-reactive read
+});
+```
+
+### Pattern B: Centralized Zustand/ECS Transient Inputs
+Alternatively, centralize inputs into a global store or ECS components, reading it transiently:
+
+```jsx
+// ✅ CORRECT — Alternative decoupled standard
+useFrame(() => {
+  const { forward, backward, left, right } = useStore.getState().inputs;
+  const moveW = forward ? 1 : 0;
 });
 ```
 
 ```jsx
-// ❌ WRONG — useState creates stale closures in useFrame
+// ❌ WRONG — useState inside frame updates
 const [keys, setKeys] = useState({});
 useFrame(() => {
-  const moveW = keys['KeyW'] ? 1 : 0;  // Stale! Reads initial value forever
+  const moveW = keys['KeyW'] ? 1 : 0; // Stale closure or extreme rendering lag!
 });
 ```
 

@@ -152,7 +152,7 @@ export const MinecraftWorld = React.memo(() => {
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 300, true);
             if (hit) {
-                return 255 - hit.toi;
+                return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
             }
             return 15;
         });

@@ -129,11 +129,6 @@ function GameApp({ experienceSystem }) {
   }, []);
 
   useEffect(() => {
-    useGameStore.setState({ addToInventory: gameState.addToInventory });
-    useGameStore.setState({ removeFromInventory: gameState.removeFromInventory });
-  }, [gameState.addToInventory, gameState.removeFromInventory]);
-
-  useEffect(() => {
     if (isPointerLocked && musicEnabled) {
       playBackgroundMusic();
     }
