@@ -557,18 +557,18 @@
 - Expanded spell effects and combat feedback
 - Improved grass and environment rendering
 
-### November 14, 2025 — Feature Expansion (Emergent Platform)
+### November 14, 2025 — Feature Expansion
 
-*9+ commits by `emergent-agent-e1` — extended core systems*
+*9+ commits — extended core systems*
 
 - Enhanced magic system with improved projectile effects
 - Expanded game systems and combat mechanics
 - Added grass rendering optimization systems
 - Refined terrain generation and world rendering
 
-### June 8, 2025 — Original Creation (Emergent / SnapLaunch Platform)
+### June 8, 2025 — Original Creation
 
-*200+ commits by `Snap-Launch-Studio1` — built the entire game from scratch in one session*
+*200+ commits — built the entire game from scratch in one session*
 
 - Created React + Three.js project scaffold
 - Implemented procedural infinite terrain generation with chunk system
