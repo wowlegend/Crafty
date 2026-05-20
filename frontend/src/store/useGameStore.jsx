@@ -6,6 +6,9 @@ export const useGameStore = create((set, get) => ({
     isSpawnChunkLoaded: false,
     setIsSpawnChunkLoaded: (loaded) => set({ isSpawnChunkLoaded: loaded }),
     
+    terrainWorker: null,
+    setTerrainWorker: (worker) => set({ terrainWorker: worker }),
+    
     getGeneratedChunks: null,
     setGetGeneratedChunks: (fn) => set({ getGeneratedChunks: fn }),
     
@@ -308,6 +311,51 @@ export const useGameStore = create((set, get) => ({
         }
     },
 
+    loadWorldData: (saveData) => {
+        set((state) => {
+            const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
+            const inventory = saveData.player_data?.inventory || state.inventory;
+            const playerStats = saveData.player_data?.stats || state.playerStats;
+            const gameMode = saveData.game_state?.gameMode || state.gameMode;
+            const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
+            const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
+            const isDay = saveData.game_state?.isDay !== undefined ? saveData.game_state.isDay : state.isDay;
+            const gameTime = saveData.game_state?.gameTime || state.gameTime;
+            const achievements = saveData.game_state?.achievements || state.achievements;
+
+            if (state.terrainWorker) {
+                const modifications = [];
+                for (const [key, blockType] of worldBlocks.entries()) {
+                    const [wxStr, wyStr, wzStr] = key.split('_');
+                    const wx = parseInt(wxStr);
+                    const wy = parseInt(wyStr);
+                    const wz = parseInt(wzStr);
+
+                    const cx = Math.floor(wx / 16);
+                    const cz = Math.floor(wz / 16);
+                    const lx = wx - cx * 16;
+                    const lz = wz - cz * 16;
+                    const index = lx + lz * 16 + wy * 256;
+
+                    modifications.push([cx, cz, index, blockType]);
+                }
+                state.terrainWorker.postMessage({ type: 'load_modifications', payload: { modifications } });
+            }
+
+            return {
+                worldBlocks,
+                inventory,
+                playerStats,
+                gameMode,
+                selectedBlock,
+                activeSpell,
+                isDay,
+                gameTime,
+                achievements
+            };
+        });
+    },
+
     loadGame: async () => {
         try {
             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/saves`);
@@ -327,17 +375,7 @@ export const useGameStore = create((set, get) => ({
 
             const saveData = loadResponse.data;
 
-            set((state) => ({
-                worldBlocks: saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks,
-                inventory: saveData.player_data?.inventory || state.inventory,
-                playerStats: saveData.player_data?.stats || state.playerStats,
-                gameMode: saveData.game_state?.gameMode || state.gameMode,
-                selectedBlock: saveData.game_state?.selectedBlock || state.selectedBlock,
-                activeSpell: saveData.game_state?.activeSpell || state.activeSpell,
-                isDay: saveData.game_state?.isDay !== undefined ? saveData.game_state.isDay : state.isDay,
-                gameTime: saveData.game_state?.gameTime || state.gameTime,
-                achievements: saveData.game_state?.achievements || state.achievements
-            }));
+            get().loadWorldData(saveData);
 
             alert(`Game loaded successfully: ${saveData.save_name}`);
         } catch (error) {

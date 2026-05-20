@@ -480,7 +480,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
     );
 });
 
-export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats }) => {
+export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager }) => {
     const gameState = useGameStore();
     return (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
@@ -518,6 +518,14 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats }) =
                         </button>
                     </div>
                     <hr className="border-gray-600" />
+                    {onOpenWorldManager && (
+                        <button
+                            onClick={onOpenWorldManager}
+                            className="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded font-medium mb-2 flex items-center justify-center gap-2 transition-colors duration-200"
+                        >
+                            <span>🗺️</span> Manage Worlds
+                        </button>
+                    )}
                     <button
                         onClick={onClose}
                         className="w-full bg-green-600 hover:bg-green-500 py-2 rounded font-medium"

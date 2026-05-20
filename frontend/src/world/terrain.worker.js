@@ -11,6 +11,7 @@ let noise3D;
 // In-memory chunk storage (so we can re-mesh on block updates)
 // Map of chunkKey ("cx_cz") to Uint8Array
 const chunks = new Map();
+const chunkModifications = new Map();
 
 self.onmessage = function(e) {
   const { type, payload } = e.data;
@@ -68,6 +69,12 @@ self.onmessage = function(e) {
     if (index >= 0 && index < VOLUME) {
       const prevBlock = blocks[index];
       blocks[index] = blockType;
+      
+      const modKey = `${cx}_${cz}`;
+      if (!chunkModifications.has(modKey)) {
+        chunkModifications.set(modKey, new Map());
+      }
+      chunkModifications.get(modKey).set(index, blockType);
 
       if (blockType === 0 && prevBlock !== 0) {
         const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
@@ -105,6 +112,22 @@ self.onmessage = function(e) {
   else if (type === 'unload') {
     const { cx, cz } = payload;
     chunks.delete(`${cx}_${cz}`);
+  }
+  else if (type === 'load_modifications') {
+    const { modifications } = payload;
+    chunkModifications.clear();
+    chunks.clear();
+    
+    if (Array.isArray(modifications)) {
+      for (const [cx, cz, index, blockType] of modifications) {
+        const modKey = `${cx}_${cz}`;
+        if (!chunkModifications.has(modKey)) {
+          chunkModifications.set(modKey, new Map());
+        }
+        chunkModifications.get(modKey).set(index, blockType);
+      }
+    }
+    self.postMessage({ type: 'load_modifications_done' });
   }
 };
 
@@ -198,6 +221,14 @@ function generateChunkData(cx, cz) {
       }
     }
   }
+  const modKey = `${cx}_${cz}`;
+  if (chunkModifications.has(modKey)) {
+    const mods = chunkModifications.get(modKey);
+    for (const [idx, type] of mods.entries()) {
+      blocks[idx] = type;
+    }
+  }
+
   return blocks;
 }
 

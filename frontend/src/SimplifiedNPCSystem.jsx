@@ -6,6 +6,9 @@ import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
 
 // Custom miniplex React hook for compatibility
 const useEntities = (query) => {
@@ -28,7 +31,8 @@ const MOB_TYPES = {
   cow: { color: '#8B4513', health: 80, speed: 1.2, damage: 0, xp: 15, passive: true, bodySize: [1.2, 1.0, 1.6], headSize: [0.8, 0.8, 0.6] },
   zombie: { color: '#228B22', health: 100, speed: 2.0, damage: 10, xp: 25, passive: false, bodySize: [0.8, 1.6, 0.5], headSize: [0.7, 0.7, 0.7] },
   skeleton: { color: '#F5F5DC', health: 80, speed: 2.5, damage: 15, xp: 30, passive: false, bodySize: [0.6, 1.5, 0.4], headSize: [0.6, 0.6, 0.6] },
-  spider: { color: '#2F2F2F', health: 60, speed: 3.0, damage: 8, xp: 20, passive: false, bodySize: [1.2, 0.5, 1.5], headSize: [0.6, 0.4, 0.6] }
+  spider: { color: '#2F2F2F', health: 60, speed: 3.0, damage: 8, xp: 20, passive: false, bodySize: [1.2, 0.5, 1.5], headSize: [0.6, 0.4, 0.6] },
+  villager: { color: '#8b5a2b', health: 120, speed: 1.2, damage: 0, xp: 0, passive: true, bodySize: [0.8, 1.5, 0.6], headSize: [0.7, 0.8, 0.7] }
 };
 
 // Mob Model Component with variety - PURE ECS RENDERER
@@ -120,7 +124,7 @@ const MobModel = ({ entity }) => {
         <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
       </mesh>
       {/* Eyes for hostile mobs */}
-      {!mobConfig.passive && (
+      {!mobConfig.passive && entity.type !== 'villager' && (
         <>
           <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
             <boxGeometry args={[0.15, 0.1, 0.02]} />
@@ -129,6 +133,25 @@ const MobModel = ({ entity }) => {
           <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
             <boxGeometry args={[0.15, 0.1, 0.02]} />
             <meshBasicMaterial name="eye" color="#ff0000" />
+          </mesh>
+        </>
+      )}
+      {/* Custom villager details: green eyes + protruding nose */}
+      {entity.type === 'villager' && (
+        <>
+          {/* Green eyes */}
+          <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
+            <boxGeometry args={[0.1, 0.08, 0.02]} />
+            <meshBasicMaterial name="eye" color="#00aa44" />
+          </mesh>
+          <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
+            <boxGeometry args={[0.1, 0.08, 0.02]} />
+            <meshBasicMaterial name="eye" color="#00aa44" />
+          </mesh>
+          {/* Protruding nose */}
+          <mesh castShadow receiveShadow position={[0, bodyH + headH / 2 - 0.1, bodyD / 3 + headD / 2 + 0.06]}>
+            <boxGeometry args={[0.12, 0.25, 0.15]} />
+            <meshStandardMaterial roughness={0.8} metalness={0.1} color="#d2b48c" />
           </mesh>
         </>
       )}
@@ -181,8 +204,8 @@ const HealthBar = ({ entity }) => {
   );
 };
 
-// Floating Damage Number Component
-const DamageNumber = ({ damage, position, id, onComplete }) => {
+// Floating Damage/XP Notification Component
+const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
   const meshRef = useRef();
   const startTime = useRef(null);
 
@@ -197,10 +220,13 @@ const DamageNumber = ({ damage, position, id, onComplete }) => {
     }
   });
 
+  const color = isXP ? '#00ff88' : (damage >= 50 ? '#ff0000' : damage >= 25 ? '#ff8800' : '#ffff00');
+  const scale = isXP ? [1.0, 0.4, 1] : [1.5, 0.5, 1];
+
   return (
     <group position={[position[0], position[1] + 2, position[2]]}>
-      <sprite ref={meshRef} scale={[1.5, 0.5, 1]}>
-        <spriteMaterial color={damage >= 50 ? '#ff0000' : damage >= 25 ? '#ff8800' : '#ffff00'} transparent opacity={1} />
+      <sprite ref={meshRef} scale={scale}>
+        <spriteMaterial color={color} transparent opacity={1} />
       </sprite>
     </group>
   );
@@ -479,7 +505,28 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
 
       if (entity.health <= 0) {
         const store = useGameStore.getState();
-        if (GameMethods.grantXP) GameMethods.grantXP(entity.xp);
+        
+        // Spawn glowing physical green XP orbs scattered explosively
+        const orbValue = 5;
+        const totalXP = entity.xp || 10;
+        const count = Math.max(1, Math.floor(totalXP / orbValue));
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.5 + Math.random() * 2.5;
+          const vx = Math.cos(angle) * speed;
+          const vy = 4 + Math.random() * 4; // Upward impulse
+          const vz = Math.sin(angle) * speed;
+
+          ecs.add({
+            isXPOrb: true,
+            position: new THREE.Vector3(entity.position.x, entity.position.y + 0.2, entity.position.z),
+            velocity: new THREE.Vector3(vx, vy, vz),
+            amount: orbValue,
+            spawnTime: performance.now(),
+            age: 0
+          });
+        }
+
         if (store.onMobKill) store.onMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]);
         ecs.remove(entity);
       } else {
@@ -567,14 +614,110 @@ const EnemyProjectileSystem = () => {
   );
 };
 
+// --- XP Orb Physics & Pull System ---
+const XPOrbSystem = () => {
+  const { camera } = useThree();
+  const { playPickup } = useGameSounds();
+
+  useFrame((state, delta) => {
+    if (!camera) return;
+    const store = useGameStore.getState();
+    const playerPos = camera.position;
+
+    for (const entity of [...xpOrbsQuery.entities]) {
+      entity.age += delta;
+
+      // 0.8s physical upward explosion phase with gravity
+      if (entity.age < 0.8) {
+        entity.velocity.y -= 12 * delta; // Gravity
+        entity.position.addScaledVector(entity.velocity, delta);
+
+        // Simple ground collision
+        if (store.getMobGroundLevel) {
+          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
+          if (!isNaN(groundY) && entity.position.y < groundY + 0.1) {
+            entity.position.y = groundY + 0.1;
+            entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
+            entity.velocity.x *= 0.7; // Friction
+            entity.velocity.z *= 0.7;
+          }
+        }
+      } else {
+        // Magnetic pull phase when within 12 units of player
+        const dx = playerPos.x - entity.position.x;
+        const dy = (playerPos.y - 0.5) - entity.position.y; // Pull towards player core
+        const dz = playerPos.z - entity.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist < 12) {
+          const dir = new THREE.Vector3(dx, dy, dz).normalize();
+          // Quadratic magnetic pull: speed increases rapidly as distance decreases
+          const pullSpeed = Math.max(4, 80 / (dist + 0.2));
+          entity.position.addScaledVector(dir, pullSpeed * delta);
+        } else if (store.getMobGroundLevel) {
+          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
+          if (!isNaN(groundY)) {
+            entity.position.y = groundY + 0.1;
+          }
+        }
+
+        // Collection distance check
+        if (dist < 1.2) {
+          if (GameMethods.grantXP) {
+            GameMethods.grantXP(entity.amount);
+          }
+          if (GameMethods.spawnXPText) {
+            GameMethods.spawnXPText(entity.amount, entity.position);
+          }
+          playPickup();
+          ecs.remove(entity);
+        }
+      }
+    }
+  });
+
+  return null;
+};
+
+// --- XP Orb Render Component ---
+const XPOrbRender = ({ entity }) => {
+  const meshRef = useRef();
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    meshRef.current.position.copy(entity.position);
+    meshRef.current.rotation.x += 0.02;
+    meshRef.current.rotation.y += 0.02;
+  });
+
+  return (
+    <mesh ref={meshRef} position={[entity.position.x, entity.position.y, entity.position.z]} castShadow>
+      <icosahedronGeometry args={[0.15, 0]} />
+      <meshStandardMaterial color="#00ff44" emissive="#00ff44" emissiveIntensity={0.8} roughness={0.1} metalness={0.9} />
+    </mesh>
+  );
+};
+
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const damageId = useRef(0);
-  const entities = useEntities(mobsQuery); // Only re-renders when entities array changes (add/remove)
+  const entities = useEntities(mobsQuery);
+  const xpOrbs = useEntities(xpOrbsQuery);
 
   const removeDamageNumber = (id) => {
     setDamageNumbers(prev => prev.filter(d => d.id !== id));
   };
+
+  useEffect(() => {
+    GameMethods.spawnXPText = (amount, position) => {
+      setDamageNumbers(prev => [...prev, {
+        id: damageId.current++,
+        isXP: true,
+        damage: amount,
+        position: [position.x, position.y, position.z]
+      }]);
+    };
+  }, []);
 
   return (
     <group>
@@ -583,8 +726,14 @@ export const NPCSystem = React.memo(() => {
       <MinimapSyncSystem />
       <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
       <EnemyProjectileSystem />
+      <XPOrbSystem />
 
-      {entities.map(entity => (        <MobModel key={entity.id} entity={entity} />
+      {entities.map(entity => (
+        <MobModel key={entity.id} entity={entity} />
+      ))}
+
+      {xpOrbs.map(orb => (
+        <XPOrbRender key={orb.id} entity={orb} />
       ))}
 
       {damageNumbers.map(dmg => (
@@ -592,6 +741,7 @@ export const NPCSystem = React.memo(() => {
           key={dmg.id}
           id={dmg.id}
           damage={dmg.damage}
+          isXP={dmg.isXP}
           position={dmg.position}
           onComplete={removeDamageNumber}
         />
@@ -614,18 +764,185 @@ export const CombatInstructions = React.memo(() => (
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
   const gameState = useGameStore();
+  const { playPickup, playLevelUpSound } = useGameSounds();
+  const [tradeMessage, setTradeMessage] = useState('');
+
+  const blocks = gameState.inventory?.blocks || {};
+  const magic = gameState.inventory?.magic || {};
+
+  const executeBlockTrade = (blockType, required, resultItem, resultCount = 1) => {
+    const currentCount = blocks[blockType] || 0;
+    if (currentCount < required) {
+      setTradeMessage(`Not enough ${blockType}! Need ${required}.`);
+      return;
+    }
+
+    gameState.setInventory(prev => ({
+      ...prev,
+      blocks: {
+        ...prev.blocks,
+        [blockType]: currentCount - required
+      },
+      magic: {
+        ...prev.magic,
+        [resultItem]: (prev.magic[resultItem] || 0) + resultCount
+      }
+    }));
+    playPickup();
+    setTradeMessage(`Traded ${required} ${blockType} for ${resultCount} ${resultItem}!`);
+  };
+
+  const executeCrystalTrade = (magicItem, requiredCrystals, resultCount = 1) => {
+    const currentCrystals = magic.crystals || 0;
+    if (currentCrystals < requiredCrystals) {
+      setTradeMessage(`Not enough Crystals! Need ${requiredCrystals}.`);
+      return;
+    }
+
+    gameState.setInventory(prev => ({
+      ...prev,
+      magic: {
+        ...prev.magic,
+        crystals: currentCrystals - requiredCrystals,
+        [magicItem]: (prev.magic[magicItem] || 0) + resultCount
+      }
+    }));
+    if (magicItem === 'wand') {
+      playLevelUpSound();
+    } else {
+      playPickup();
+    }
+    setTradeMessage(`Traded ${requiredCrystals} Crystals for ${resultCount} ${magicItem}!`);
+  };
+
+  const trades = [
+    { type: 'block', name: 'Stone to Crystal', cost: 16, costItem: 'stone', get: 1, getItem: 'crystals', costColor: 'text-gray-400', getColor: 'text-cyan-400' },
+    { type: 'block', name: 'Coal to Crystal', cost: 8, costItem: 'coal', get: 1, getItem: 'crystals', costColor: 'text-slate-500', getColor: 'text-cyan-400' },
+    { type: 'block', name: 'Iron to Crystal', cost: 4, costItem: 'iron', get: 1, getItem: 'crystals', costColor: 'text-orange-300', getColor: 'text-cyan-400' },
+    { type: 'block', name: 'Gold to Crystal', cost: 2, costItem: 'gold', get: 1, getItem: 'crystals', costColor: 'text-yellow-400', getColor: 'text-cyan-400' },
+    { type: 'crystal', name: 'Crystals to Scroll', cost: 5, costItem: 'crystals', get: 1, getItem: 'scrolls', costColor: 'text-cyan-400', getColor: 'text-purple-400' },
+    { type: 'crystal', name: 'Crystals to Wand', cost: 15, costItem: 'crystals', get: 1, getItem: 'wand', costColor: 'text-cyan-400', getColor: 'text-red-400' },
+  ];
+
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
-      <div className="bg-gray-800 p-6 rounded-lg text-white max-w-md" onClick={e => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4">Trading</h2>
-        <p className="text-gray-300 mb-4">Trade with villagers coming soon!</p>
-        <button
-          className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded"
-          onClick={onClose}
-        >
-          Close
-        </button>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-lg overflow-hidden border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-md rounded-2xl p-6 text-white"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+            <h2 className="text-2xl font-bold tracking-wide bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+              Villager Merchant
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors text-lg"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Resources Panel */}
+        <div className="bg-white/5 border border-white/5 rounded-xl p-3 mb-4 grid grid-cols-4 gap-2 text-xs text-center">
+          <div>
+            <span className="text-gray-400 block">Stone</span>
+            <span className="font-semibold text-gray-300">{blocks.stone || 0}</span>
+          </div>
+          <div>
+            <span className="text-gray-400 block">Coal</span>
+            <span className="font-semibold text-slate-400">{blocks.coal || 0}</span>
+          </div>
+          <div>
+            <span className="text-gray-400 block">Iron</span>
+            <span className="font-semibold text-orange-300">{blocks.iron || 0}</span>
+          </div>
+          <div>
+            <span className="text-gray-400 block">Gold</span>
+            <span className="font-semibold text-yellow-400">{blocks.gold || 0}</span>
+          </div>
+          <div className="col-span-2 border-t border-white/5 pt-2 mt-2">
+            <span className="text-cyan-400 block font-medium">Crystals</span>
+            <span className="font-bold text-cyan-300 text-sm">{magic.crystals || 0}</span>
+          </div>
+          <div className="col-span-1 border-t border-white/5 pt-2 mt-2">
+            <span className="text-purple-400 block font-medium">Scrolls</span>
+            <span className="font-bold text-purple-300 text-sm">{magic.scrolls || 0}</span>
+          </div>
+          <div className="col-span-1 border-t border-white/5 pt-2 mt-2">
+            <span className="text-red-400 block font-medium">Wands</span>
+            <span className="font-bold text-red-300 text-sm">{magic.wand || 0}</span>
+          </div>
+        </div>
+
+        {/* Trade Message Feedback */}
+        {tradeMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={`text-center py-2 px-3 mb-4 rounded-lg text-sm font-medium border ${
+              tradeMessage.includes('Not enough')
+                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            }`}
+          >
+            {tradeMessage}
+          </motion.div>
+        )}
+
+        {/* Trades Scroll Area */}
+        <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+          {trades.map((t, idx) => {
+            const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0) : (magic[t.costItem] || 0);
+            const canTrade = currentStock >= t.cost;
+
+            return (
+              <motion.div
+                key={idx}
+                whileHover={{ scale: 1.01 }}
+                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all"
+              >
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold tracking-wide text-gray-200">{t.name}</span>
+                  <span className="text-xs text-gray-400 mt-0.5">
+                    Cost: <span className={`font-semibold ${t.costColor}`}>{t.cost} {t.costItem}</span> (Have: {currentStock})
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="text-right flex flex-col">
+                    <span className="text-xs text-gray-400">Receive</span>
+                    <span className={`text-sm font-bold tracking-wide ${t.getColor}`}>+{t.get} {t.getItem}</span>
+                  </div>
+                  <button
+                    disabled={!canTrade}
+                    onClick={() => {
+                      if (t.type === 'block') {
+                        executeBlockTrade(t.costItem, t.cost, t.getItem, t.get);
+                      } else {
+                        executeCrystalTrade(t.getItem, t.cost, t.get);
+                      }
+                    }}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all shadow-md ${
+                      canTrade
+                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white cursor-pointer active:scale-95'
+                        : 'bg-white/5 border border-white/5 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Trade
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
     </div>
   );
 });

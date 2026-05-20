@@ -14,7 +14,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       const { isPointerLocked, showAchievements, showSpellUpgrades } = localRefs.current;
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
-        state.showSettings || showAchievements || showSpellUpgrades;
+        state.showSettings || showAchievements || showSpellUpgrades ||
+        state.showTradingInterface;
 
       if (isPointerLocked && !anyPanelOpen) {
         const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
@@ -67,7 +68,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
-        state.showSettings || showAchievements || showSpellUpgrades;
+        state.showSettings || showAchievements || showSpellUpgrades ||
+        state.showTradingInterface;
 
       if (event.code === 'Escape') {
         event.preventDefault();
@@ -79,6 +81,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowMagic(false);
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
+          state.setShowTradingInterface(false);
+          state.setSelectedVillager(null);
           setShowAchievements(false);
           setShowSpellUpgrades(false);
           setTimeout(() => {
@@ -180,7 +184,31 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyG' && isPointerLocked && !anyPanelOpen) {
         event.preventDefault();
-        if (state.openNearbyChest) {
+        let nearestVillager = null;
+        if (state.mobEntities && state.gameCamera) {
+          const camera = state.gameCamera;
+          const px = camera.position.x, pz = camera.position.z;
+          let nearestDist = 4;
+          state.mobEntities.forEach(mob => {
+            if (mob.type === 'villager') {
+              const dx = mob.position[0] - px;
+              const dz = mob.position[2] - pz;
+              const d = Math.sqrt(dx * dx + dz * dz);
+              if (d < nearestDist) {
+                nearestVillager = mob;
+                nearestDist = d;
+              }
+            }
+          });
+        }
+
+        if (nearestVillager) {
+          state.setSelectedVillager(nearestVillager);
+          state.setShowTradingInterface(true);
+          if (document.exitPointerLock) {
+            document.exitPointerLock();
+          }
+        } else if (state.openNearbyChest) {
           const loot = state.openNearbyChest();
           if (loot && loot.length > 0) {
           }

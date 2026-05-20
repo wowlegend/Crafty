@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### May 20, 2026 (Phase 13: Progression & Expanded Interactions)
+
+- **OFFLINE WORLD SAVING**: Unlocked world creation, saving, loading, and deletion for guest/offline players, removing the authentication gateway. Handled local browser storage gracefully with a map-to-entries JSON serialization fix.
+- **PASSIVE VILLAGERS**: Registered passive merchant `villager` mobs with detail-rich geometries (emerald eyes, brown robes, tan box nose) spawned in world loops.
+- **CONTEXTUAL KEYG PROXIMITY LOBBYING**: Replaced the simple KeyG handler in `InputManager.jsx` with a contextual distance sweep. Walks to villager (<4 units) -> exits pointer lock -> opens glassmorphic trading panel; else falls back to nearby chest looting.
+- **GLASSMORPHIC TRADING INTERFACE**: Implemented a beautiful visual trading panel using Framer Motion micro-animations supporting basic item swapping for magic crystals and spells.
+- **PHYSICAL XP ORBS**: Wired physical XP icosahedron entities inside ECS. Handled physical upward explosive scatter, ground bounces, high-fidelity quadratic magnetic pull to the player, +XP HUD floating sprites, and chime audio, running at solid 60 FPS fully decoupled from React's declarative state loop.
+- **BUILD & JUNK SWEEPS**: Verified pristine production build successfully compiling with 0 errors or warnings. Purged `.DS_Store` junk files from the directory.
+
 ### May 20, 2026 (Ruthless Codebase Cleanup & Optimization Audit)
 
 - **CLEANED REDUNDANT STATE UPDATE**: Removed a redundant `useEffect` hook in `App.jsx` that was setting `addToInventory` and `removeFromInventory` back on the global Zustand store they originated from. This eliminates unnecessary React lifecycle tracking and micro-render triggers.

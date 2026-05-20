@@ -96,11 +96,16 @@ export function MenuSystem({
               gameState.setShowSettings(false);
               setIsPointerLocked(true);
             }}
+            onOpenWorldManager={() => {
+              gameState.setShowSettings(false);
+              gameState.setShowWorldManager(true);
+              setIsPointerLocked(false);
+            }}
             showStats={showStats}
             setShowStats={setShowStats}
           />
         )}
-        {gameState.showWorldManager && isAuthenticated && (
+        {gameState.showWorldManager && (
           <WorldManager
             gameState={gameState}
             onWorldLoad={gameState.loadWorldData}

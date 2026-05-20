@@ -112,6 +112,14 @@ export const MinecraftWorld = React.memo(() => {
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());
 
+    // Expose worker to Zustand store
+    useEffect(() => {
+        useGameStore.setState({ terrainWorker: worker });
+        return () => {
+            useGameStore.setState({ terrainWorker: null });
+        };
+    }, []);
+
     const CHUNK_SIZE = 16;
     const RENDER_DISTANCE = 4; // Max visible chunks radially
 
@@ -138,6 +146,9 @@ export const MinecraftWorld = React.memo(() => {
                 if (blockName && store.addToInventory) {
                     store.addToInventory(blockName, 1);
                 }
+            } else if (type === 'load_modifications_done') {
+                setChunks({});
+                chunksRef.current.clear();
             }
         };
         worker.addEventListener('message', handleMessage);
@@ -269,6 +280,12 @@ export const MinecraftWorld = React.memo(() => {
                 worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
                 playBlockBreak(hitPoint);
 
+                // Update worldBlocks in Zustand Map
+                const store = useGameStore.getState();
+                const newBlocks = new Map(store.worldBlocks);
+                newBlocks.set(`${tx}_${ty}_${tz}`, 0);
+                store.setWorldBlocks(newBlocks);
+
             } else if (e.button === 2) {
                 // PLACE
                 const placeDirection = hit.normal ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : direction.clone().multiplyScalar(-1);
@@ -284,6 +301,12 @@ export const MinecraftWorld = React.memo(() => {
                 
                 worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: numericType } });
                 playBlockPlace(placePos, useGameStore.getState().selectedBlock);
+
+                // Update worldBlocks in Zustand Map
+                const store = useGameStore.getState();
+                const newBlocks = new Map(store.worldBlocks);
+                newBlocks.set(`${tx}_${ty}_${tz}`, numericType);
+                store.setWorldBlocks(newBlocks);
             }
         };
         window.addEventListener('mousedown', handleClick);
