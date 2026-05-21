@@ -872,43 +872,6 @@ export const PetEntities = React.memo(({ pets }) => {
     );
 });
 
-    return (
-        <>
-            {pets.map(pet => {
-                const isPig = pet.type === 'pig';
-                return (
-                    <group
-                        key={pet.id}
-                        ref={el => { if (el) petRefs.current[pet.id] = el; }}
-                        position={pet.position}
-                    >
-                        <mesh>
-                            <boxGeometry args={isPig ? [0.8, 0.6, 1.0] : [1.0, 0.8, 1.2]} />
-                            <meshStandardMaterial
-                                color={isPig ? '#ffb6c1' : '#8B5A2B'}
-                                emissive={isPig ? '#ff69b4' : '#DEB887'}
-                                emissiveIntensity={0.15}
-                            />
-                        </mesh>
-                        <mesh position={[0, 0.4, isPig ? 0.5 : 0.6]}>
-                            <boxGeometry args={isPig ? [0.5, 0.5, 0.5] : [0.6, 0.6, 0.4]} />
-                            <meshStandardMaterial
-                                color={isPig ? '#ffb6c1' : '#8B5A2B'}
-                                emissive={isPig ? '#ff69b4' : '#DEB887'}
-                                emissiveIntensity={0.15}
-                            />
-                        </mesh>
-                        <mesh position={[0, 1.2, 0]}>
-                            <sphereGeometry args={[0.15, 8, 8]} />
-                            <meshStandardMaterial color="#ff69b4" emissive="#ff69b4" emissiveIntensity={0.8} />
-                        </mesh>
-                        <pointLight color={isPig ? '#ff69b4' : '#DEB887'} intensity={0.5} distance={5} />
-                    </group>
-                );
-            })}
-        </>
-    );
-});
 
 const SPELL_UPGRADES = {
     fireball: {
