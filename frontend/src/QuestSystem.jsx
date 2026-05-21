@@ -211,32 +211,16 @@ export const useQuestSystem = () => {
         const drops = [];
         lootTable.forEach(loot => {
             if (Math.random() < loot.chance) {
-                drops.push({
-                    id: lootId.current++,
-                    ...loot,
-                    position: [...position],
-                    timestamp: Date.now(),
-                });
+                drops.push(loot);
+                if (GameMethods.spawnLootDrop) {
+                    GameMethods.spawnLootDrop(loot.item, loot.xp || 5, position);
+                }
             }
         });
 
         if (drops.length > 0) {
-            setLootDrops(prev => [...prev, ...drops]);
             const dropNames = drops.map(d => d.item).join(', ');
-            addNotification(`💎 Loot: ${dropNames}`, 'loot');
-
-            // Auto-collect after delay + grant XP + add to inventory
-            setTimeout(() => {
-                drops.forEach(drop => {
-                    if (GameMethods.grantXP) {
-                        GameMethods.grantXP(drop.xp, drop.item);
-                    }
-                    if (useGameStore.getState().addToInventory) {
-                        useGameStore.getState().addToInventory(drop.item, 1);
-                    }
-                });
-                setLootDrops(prev => prev.filter(d => !drops.some(dd => dd.id === d.id)));
-            }, 2000);
+            addNotification(`💎 Mob dropped: ${dropNames}`, 'loot');
         }
     }, [updateQuestProgress, checkAchievements, addNotification]);
 
@@ -306,7 +290,8 @@ export const useQuestSystem = () => {
         useGameStore.setState({ onBlockBreak: onBlockBreak });
         useGameStore.setState({ onChestOpen: onChestOpen });
         useGameStore.setState({ onPlayerDeath: onDeath });
-    }, [onMobKill, onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath]);
+        useGameStore.setState({ addNotification: addNotification });
+    }, [onMobKill, onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, addNotification]);
 
     return {
         quests, stats, lootDrops, achievements: ACHIEVEMENTS,
@@ -621,12 +606,19 @@ export const useTreasureChests = () => {
             loot.push(CHEST_LOOT[0]); // Health potion fallback
         }
 
-        // Push all looted items directly to the player's persistent inventory instead of instant consumption
+        const chest = chests.find(c => c.id === chestIdToOpen);
+        const position = chest ? chest.position : [0, 15, 0];
+
+        // Spawn physical loot items in the 3D scene
         loot.forEach(item => {
-            if (useGameStore.getState().addToInventory) {
-                useGameStore.getState().addToInventory(item.item, 1);
+            const xpValue = item.effect === 'xp' ? item.value : 10;
+            if (GameMethods.spawnLootDrop) {
+                GameMethods.spawnLootDrop(item.item, xpValue, position);
             }
         });
+
+        const dropNames = loot.map(l => l.item).join(', ');
+        addNotification(`🎁 Chest dropped: ${dropNames}`, 'loot');
 
         // Notify quest system
         if (useGameStore.getState().onChestOpen) useGameStore.getState().onChestOpen();
@@ -642,7 +634,7 @@ export const useTreasureChests = () => {
         }, 5000);
 
         return loot;
-    }, []);
+    }, [chests, addNotification]);
 
     // Expose check and open for the game
     useEffect(() => {

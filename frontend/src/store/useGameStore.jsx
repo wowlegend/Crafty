@@ -1,6 +1,32 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
+export const EQUIPMENT_STATS = {
+    // Weapons
+    'sword': { strength: 2, agility: 1 },
+    'pickaxe': { strength: 1 },
+    'Stone Sword': { strength: 4, agility: 2 },
+    'Iron Sword': { strength: 8, agility: 4 },
+    'Diamond Sword': { strength: 15, agility: 8 },
+    // Shields / Off-hands
+    'Wooden Shield': { armor: 5, strength: 1 },
+    'Iron Shield': { armor: 15, strength: 3 },
+    'Diamond Shield': { armor: 30, strength: 6 },
+    // Helmets
+    'Golden Crown': { intellect: 10, armor: 5 },
+    'Leather Helmet': { armor: 2, agility: 2 },
+    'Iron Helmet': { armor: 6, strength: 2 },
+    'Diamond Helmet': { armor: 15, strength: 4, intellect: 2 },
+    // Chests
+    'Leather Chestplate': { armor: 5, agility: 4 },
+    'Iron Chestplate': { armor: 15, strength: 5 },
+    'Diamond Chestplate': { armor: 35, strength: 10, intellect: 5 },
+    // Boots
+    'Leather Boots': { armor: 2, agility: 5 },
+    'Iron Boots': { armor: 5, agility: 2 },
+    'Diamond Boots': { armor: 12, agility: 6, strength: 3 }
+};
+
 export const useGameStore = create((set, get) => ({
     // Transient World State (No need to persist)
     isSpawnChunkLoaded: false,
@@ -20,6 +46,196 @@ export const useGameStore = create((set, get) => ({
 
     playerPosition: { x: 0, y: 0, z: 0 },
     setPlayerPosition: (pos) => set({ playerPosition: pos }),
+
+    // RPG Stats & Equipment Systems (Decoupled & Optimized)
+    attributes: {
+        strength: 10,
+        agility: 10,
+        intellect: 10,
+        armor: 0,
+        attributePoints: 0
+    },
+    equipment: {
+        head: null,
+        chest: null,
+        boots: null,
+        weapon: null,
+        offhand: null
+    },
+    isPlayerInvincible: () => false,
+
+    getEffectiveAttributes: () => {
+        const state = get();
+        const base = state.attributes || { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 };
+        const equip = state.equipment || { head: null, chest: null, boots: null, weapon: null, offhand: null };
+        const effective = { ...base };
+        
+        Object.values(equip).forEach(itemName => {
+            if (itemName && EQUIPMENT_STATS[itemName]) {
+                const bonuses = EQUIPMENT_STATS[itemName];
+                if (bonuses.strength) effective.strength += bonuses.strength;
+                if (bonuses.agility) effective.agility += bonuses.agility;
+                if (bonuses.intellect) effective.intellect += bonuses.intellect;
+                if (bonuses.armor) effective.armor += bonuses.armor;
+            }
+        });
+        return effective;
+    },
+
+    equipItem: (slot, itemName) => set((state) => {
+        const currentEquipped = state.equipment[slot];
+        const newEquipment = { ...state.equipment, [slot]: itemName };
+        
+        const updatedBlocks = { ...state.inventory.blocks };
+        const updatedTools = { ...state.inventory.tools };
+        const updatedMagic = { ...state.inventory.magic };
+        
+        let found = false;
+        if (updatedBlocks[itemName] > 0) {
+            updatedBlocks[itemName]--;
+            found = true;
+        } else if (updatedTools[itemName] > 0) {
+            updatedTools[itemName]--;
+            found = true;
+        } else if (updatedMagic[itemName] > 0) {
+            updatedMagic[itemName]--;
+            found = true;
+        }
+        
+        if (!found) return {};
+        
+        if (currentEquipped) {
+            if (currentEquipped in updatedBlocks) {
+                updatedBlocks[currentEquipped]++;
+            } else if (currentEquipped in updatedTools) {
+                updatedTools[currentEquipped]++;
+            } else if (currentEquipped in updatedMagic) {
+                updatedMagic[currentEquipped]++;
+            } else {
+                updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
+            }
+        }
+        
+        const base = state.attributes;
+        const effective = { ...base };
+        Object.entries(newEquipment).forEach(([s, name]) => {
+            if (name && EQUIPMENT_STATS[name]) {
+                const bonuses = EQUIPMENT_STATS[name];
+                if (bonuses.strength) effective.strength += bonuses.strength;
+                if (bonuses.agility) effective.agility += bonuses.agility;
+                if (bonuses.intellect) effective.intellect += bonuses.intellect;
+                if (bonuses.armor) effective.armor += bonuses.armor;
+            }
+        });
+        
+        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
+        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
+        
+        return {
+            equipment: newEquipment,
+            inventory: {
+                ...state.inventory,
+                blocks: updatedBlocks,
+                tools: updatedTools,
+                magic: updatedMagic
+            },
+            maxHealth: newMaxHealth,
+            maxMana: newMaxMana,
+            playerHealth: Math.min(state.playerHealth, newMaxHealth),
+            mana: Math.min(state.mana, newMaxMana)
+        };
+    }),
+
+    unequipItem: (slot) => set((state) => {
+        const currentEquipped = state.equipment[slot];
+        if (!currentEquipped) return {};
+        
+        const newEquipment = { ...state.equipment, [slot]: null };
+        const updatedBlocks = { ...state.inventory.blocks };
+        const updatedTools = { ...state.inventory.tools };
+        const updatedMagic = { ...state.inventory.magic };
+        
+        if (currentEquipped in updatedBlocks) {
+            updatedBlocks[currentEquipped]++;
+        } else if (currentEquipped in updatedTools) {
+            updatedTools[currentEquipped]++;
+        } else if (currentEquipped in updatedMagic) {
+            updatedMagic[currentEquipped]++;
+        } else {
+            updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
+        }
+        
+        const base = state.attributes;
+        const effective = { ...base };
+        Object.entries(newEquipment).forEach(([s, name]) => {
+            if (name && EQUIPMENT_STATS[name]) {
+                const bonuses = EQUIPMENT_STATS[name];
+                if (bonuses.strength) effective.strength += bonuses.strength;
+                if (bonuses.agility) effective.agility += bonuses.agility;
+                if (bonuses.intellect) effective.intellect += bonuses.intellect;
+                if (bonuses.armor) effective.armor += bonuses.armor;
+            }
+        });
+        
+        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
+        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
+        
+        return {
+            equipment: newEquipment,
+            inventory: {
+                ...state.inventory,
+                blocks: updatedBlocks,
+                tools: updatedTools,
+                magic: updatedMagic
+            },
+            maxHealth: newMaxHealth,
+            maxMana: newMaxMana,
+            playerHealth: Math.min(state.playerHealth, newMaxHealth),
+            mana: Math.min(state.mana, newMaxMana)
+        };
+    }),
+
+    allocateAttribute: (attr) => set((state) => {
+        if (state.attributes.attributePoints <= 0) return {};
+        
+        const newAttributes = {
+            ...state.attributes,
+            [attr]: state.attributes[attr] + 1,
+            attributePoints: state.attributes.attributePoints - 1
+        };
+        
+        const effective = { ...newAttributes };
+        Object.entries(state.equipment).forEach(([s, name]) => {
+            if (name && EQUIPMENT_STATS[name]) {
+                const bonuses = EQUIPMENT_STATS[name];
+                if (bonuses.strength) effective.strength += bonuses.strength;
+                if (bonuses.agility) effective.agility += bonuses.agility;
+                if (bonuses.intellect) effective.intellect += bonuses.intellect;
+                if (bonuses.armor) effective.armor += bonuses.armor;
+            }
+        });
+        
+        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
+        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
+        
+        return {
+            attributes: newAttributes,
+            maxHealth: newMaxHealth,
+            maxMana: newMaxMana,
+            playerHealth: Math.min(state.playerHealth, newMaxHealth),
+            mana: Math.min(state.mana, newMaxMana)
+        };
+    }),
+
+    addAttributePoints: (amount) => set((state) => ({
+        attributes: {
+            ...state.attributes,
+            attributePoints: state.attributes.attributePoints + amount
+        }
+    })),
 
     // Phase 9: Camera Shake
     cameraShakeIntensity: 0,
@@ -121,7 +337,13 @@ export const useGameStore = create((set, get) => ({
     inventory: {
         blocks: {
             grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,
-            lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, cobblestone: 32
+            lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, cobblestone: 32,
+            'Stone Sword': 1, 'Iron Sword': 1, 'Diamond Sword': 1,
+            'Wooden Shield': 1, 'Iron Shield': 1,
+            'Golden Crown': 1, 'Iron Helmet': 1,
+            'Iron Chestplate': 1, 'Leather Chestplate': 1,
+            'Leather Boots': 1, 'Iron Boots': 1,
+            'Health Potion': 5, 'Mana Potion': 5
         },
         tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
         magic: { wand: 1, crystals: 8, scrolls: 4 }
@@ -205,22 +427,36 @@ export const useGameStore = create((set, get) => ({
         const state = get();
         if (!state.isAlive) return;
 
+        // Ignore damage if player is currently in invincible dodge roll i-frames
+        if (state.isPlayerInvincible && state.isPlayerInvincible()) {
+            console.log(`🛡️ Damage ignored due to i-frames (source: ${source})`);
+            return;
+        }
+
         const now = Date.now();
         if (now - useGameStore.getState()._spawnTime < 5000) return;
 
         if (now - state.lastDamageTime < 500) return;
 
+        // Apply Armor Damage Reduction Curve: DR = Armor / (Armor + 100)
+        const effective = state.getEffectiveAttributes();
+        const armor = effective.armor || 0;
+        const dr = armor / (armor + 100);
+        const finalDamage = Math.max(1, Math.round(amount * (1.0 - dr)));
+
+        console.log(`💥 Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
+
         set({
             lastDamageTime: now,
             damageFlash: true,
-            screenShake: amount / 10
+            screenShake: finalDamage / 10
         });
 
         setTimeout(() => {
             set({ damageFlash: false, screenShake: 0 });
         }, 200);
 
-        const newHealth = Math.max(0, state.playerHealth - amount);
+        const newHealth = Math.max(0, state.playerHealth - finalDamage);
         set({ playerHealth: newHealth });
         
         if (newHealth <= 0) {

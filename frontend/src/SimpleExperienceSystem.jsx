@@ -43,6 +43,12 @@ export const useSimpleExperience = () => {
       setPlayerLevel(newLevel);
       setCurrentXP(newXP - requiredXP);
 
+      // Award 5 Attribute Points
+      const store = useGameStore.getState();
+      if (store.addAttributePoints) {
+        store.addAttributePoints(5);
+      }
+
       // Trigger level up effect
       const levelUpEffect = {
         id: Date.now(),

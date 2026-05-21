@@ -53,7 +53,10 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
         useMana: state.useMana,
         consumeHunger: state.consumeHunger,
         feedPlayer: state.feedPlayer,
-        respawn: state.respawn
+        respawn: state.respawn,
+        attributes: state.attributes,
+        equipment: state.equipment,
+        getEffectiveAttributes: state.getEffectiveAttributes
     })));
     const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
     const { setPlayerHealth, setMaxHealth, setIsAlive, setDamageFlash, setScreenShake, setMana, setMaxMana, setHunger } = gameState;
@@ -78,16 +81,19 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
         useGameStore.setState({ _spawnTime: Date.now() });
     }, []);
 
-    // Update max stats based on level
+    // Update max stats based on level & attributes
     useEffect(() => {
-        const newMaxHealth = 100 + getMaxHealthBonus();
-        const newMaxMana = 100 + getManaBonus();
+        const effective = gameState.getEffectiveAttributes ? gameState.getEffectiveAttributes() : { strength: 10, intellect: 10 };
+        const newMaxHealth = 100 + getMaxHealthBonus() + (effective.strength * 5);
+        const newMaxMana = 100 + getManaBonus() + (effective.intellect * 2);
+        
         setMaxHealth(newMaxHealth);
         setMaxMana(newMaxMana);
+        
         // Heal to new max on level up
         setPlayerHealth(prev => Math.min(prev + 20, newMaxHealth));
         setMana(prev => Math.min(prev + 10, newMaxMana));
-    }, [playerLevel, getMaxHealthBonus, getManaBonus, setMaxHealth, setMaxMana, setPlayerHealth, setMana]);
+    }, [playerLevel, getMaxHealthBonus, getManaBonus, setMaxHealth, setMaxMana, setPlayerHealth, setMana, gameState.attributes, gameState.equipment, gameState.getEffectiveAttributes]);
 
     // Mana regeneration - FAST REGEN for action combat
     useEffect(() => {
@@ -306,4 +312,46 @@ export const DeathScreen = ({ onRespawn }) => {
             </div>
         </motion.div>
     );
+};
+
+export const solveMeleeDamage = (attackerStats, baseWeaponDmg = 5) => {
+    const strength = attackerStats.strength || 10;
+    const agility = attackerStats.agility || 10;
+    const baseDmg = baseWeaponDmg + (strength * 1.5);
+    const critChance = Math.min(0.75, 0.05 + (agility * 0.005));
+    const isCrit = Math.random() < critChance;
+    const multiplier = isCrit ? 2.0 : 1.0;
+    
+    return {
+        damage: Math.round(baseDmg * multiplier),
+        isCrit,
+        color: isCrit ? '#FF4500' : '#FFFFFF'
+    };
+};
+
+export const solveSpellDamage = (attackerStats, baseSpellDmg = 20, spellType = 'fireball') => {
+    const intellect = attackerStats.intellect || 10;
+    const agility = attackerStats.agility || 10;
+    const intellectMultiplier = 1.0 + (intellect * 0.02);
+    const finalDmg = Math.round(baseSpellDmg * intellectMultiplier);
+    const critChance = Math.min(0.50, 0.05 + (agility * 0.003));
+    const isCrit = Math.random() < critChance;
+    
+    let color = '#9932CC'; // arcane
+    if (spellType === 'fireball') color = '#FF4500';
+    else if (spellType === 'iceball') color = '#00BFFF';
+    else if (spellType === 'lightning') color = '#FFD700';
+
+    return {
+        damage: Math.round(isCrit ? finalDmg * 1.8 : finalDmg),
+        isCrit,
+        color
+    };
+};
+
+export const mitigateDamage = (targetStats, incomingDmg) => {
+    const armor = targetStats.armor || 0;
+    const dr = armor / (armor + 100);
+    const finalDmg = Math.max(1, Math.round(incomingDmg * (1.0 - dr)));
+    return finalDmg;
 };

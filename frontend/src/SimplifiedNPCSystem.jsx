@@ -9,6 +9,30 @@ import { GameMethods } from './GameMethods';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
+const lootDropsQuery = ecs.with('isLootDrop', 'position', 'item', 'xp');
+
+const spawnLootDrop = (item, xp, pos) => {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 1.0 + Math.random() * 2.0;
+  const vx = Math.cos(angle) * speed;
+  const vy = 3 + Math.random() * 3; // vertical pop
+  const vz = Math.sin(angle) * speed;
+  
+  const spawnPos = pos 
+    ? new THREE.Vector3(pos[0], pos[1] + 0.3, pos[2]) 
+    : new THREE.Vector3(0, 15, 0);
+
+  ecs.add({
+    isLootDrop: true,
+    item,
+    xp: xp || 0,
+    position: spawnPos,
+    velocity: new THREE.Vector3(vx, vy, vz),
+    spawnTime: performance.now(),
+    age: 0
+  });
+};
+GameMethods.spawnLootDrop = spawnLootDrop;
 
 // Custom miniplex React hook for compatibility
 const useEntities = (query) => {
@@ -46,7 +70,7 @@ const MobModel = ({ entity }) => {
   const [headW, headH, headD] = mobConfig.headSize;
 
   const baseColor = useMemo(() => new THREE.Color(entity.color), [entity.color]);
-  const hitColor = useMemo(() => new THREE.Color('#ff0000'), []);
+  const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
   const blackColor = useMemo(() => new THREE.Color('#000000'), []);
 
   useFrame(() => {
@@ -63,7 +87,7 @@ const MobModel = ({ entity }) => {
       if (child.isMesh && child.material && child.material.name !== "eye") {
          if (child.material.color) child.material.color.copy(isHit ? hitColor : baseColor);
          if (child.material.emissive) child.material.emissive.copy(isHit ? hitColor : blackColor);
-         if (child.material.emissiveIntensity !== undefined) child.material.emissiveIntensity = isHit ? 0.5 : 0;
+         if (child.material.emissiveIntensity !== undefined) child.material.emissiveIntensity = isHit ? 1.5 : 0;
       }
     });
 
@@ -209,26 +233,80 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
   const meshRef = useRef();
   const startTime = useRef(null);
 
-  useFrame(() => {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    // Clear background
+    ctx.clearRect(0, 0, 256, 128);
+    
+    const isCrit = !isXP && damage >= 40;
+    const fontSize = isCrit ? 'bold 64px Outfit, Inter, Impact' : 'bold 50px Outfit, Inter, Impact';
+    ctx.font = fontSize;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const text = isXP ? `+${damage} XP` : (isCrit ? `💥 ${damage}!` : `${damage}`);
+    
+    // Text styling color selection
+    const fillStyle = isXP 
+      ? '#00ff88' 
+      : (isCrit ? '#ff3300' : (damage >= 25 ? '#ffa500' : '#ffff00'));
+    
+    // Premium text outline
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#000000';
+    ctx.strokeText(text, 128, 64);
+    
+    // Text fill
+    ctx.fillStyle = fillStyle;
+    ctx.fillText(text, 128, 64);
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }, [damage, isXP]);
+
+  // Premium physically simulated arc bounce trajectory
+  const velocity = useMemo(() => {
+    const angle = (Math.random() - 0.5) * 2.0; // wider drift angle
+    const speed = 1.0 + Math.random() * 2.0;
+    return {
+      x: Math.sin(angle) * speed,
+      y: 4.5 + Math.random() * 2.0, // initial vertical pop
+      z: Math.cos(angle) * speed
+    };
+  }, []);
+
+  useFrame((state, delta) => {
     if (meshRef.current) {
       if (startTime.current === null) startTime.current = Date.now();
       const elapsed = (Date.now() - startTime.current) / 1000;
-      meshRef.current.position.y = position[1] + 2 + elapsed * 2;
+      
+      const t = elapsed;
+      // Arc formula: y pop and deceleration under gravity, x/z horizontal drift
+      const currentY = position[1] + 1.8 + (velocity.y * t - 0.5 * 12.0 * t * t);
+      const currentX = position[0] + velocity.x * t;
+      const currentZ = position[2] + velocity.z * t;
+      
+      meshRef.current.position.set(currentX, currentY, currentZ);
       meshRef.current.material.opacity = Math.max(0, 1 - elapsed);
 
-      if (elapsed > 1) onComplete(id);
+      if (elapsed > 1) {
+        texture.dispose(); // clean up texture memory allocation
+        onComplete(id);
+      }
     }
   });
 
-  const color = isXP ? '#00ff88' : (damage >= 50 ? '#ff0000' : damage >= 25 ? '#ff8800' : '#ffff00');
-  const scale = isXP ? [1.0, 0.4, 1] : [1.5, 0.5, 1];
+  const scale = isXP ? [1.8, 0.9, 1] : [2.2, 1.1, 1];
 
   return (
-    <group position={[position[0], position[1] + 2, position[2]]}>
-      <sprite ref={meshRef} scale={scale}>
-        <spriteMaterial color={color} transparent opacity={1} />
-      </sprite>
-    </group>
+    <sprite ref={meshRef} position={[position[0], position[1] + 1.8, position[2]]} scale={scale}>
+      <spriteMaterial map={texture} transparent opacity={1} depthWrite={false} />
+    </sprite>
   );
 };
 
@@ -555,8 +633,28 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
       });
     };
 
-    useGameStore.setState({ checkMobCollision: checkMobCollision });
+    const checkMobsInMeleeCone = (playerPos, lookDir, range = 4.5, angleRad = Math.PI / 2) => {
+      const forward2D = new THREE.Vector2(lookDir.x, lookDir.z).normalize();
+      const minDot = Math.cos(angleRad / 2);
+      
+      return mobsQuery.entities.filter(e => {
+        const dx = e.position.x - playerPos.x;
+        const dy = e.position.y - playerPos.y;
+        const dz = e.position.z - playerPos.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        
+        if (dist > range) return false;
+        if (Math.abs(dy) > 2.2) return false; // horizontal plane vertical cutoff
+        
+        const toMob2D = new THREE.Vector2(dx, dz).normalize();
+        const dot = forward2D.dot(toMob2D);
+        return dot >= minDot;
+      });
+    };
+
+    useGameStore.setState({ checkMobCollision: checkMobCollision, checkMobsInMeleeCone: checkMobsInMeleeCone });
     GameMethods.checkMobCollision = checkMobCollision;
+    GameMethods.checkMobsInMeleeCone = checkMobsInMeleeCone;
   }, [setDamageNumbers]);
 
   return null;
@@ -698,11 +796,195 @@ const XPOrbRender = ({ entity }) => {
   );
 };
 
+// --- Physical Loot Helpers ---
+const getItemRarity = (itemName) => {
+  if (!itemName) return 'common';
+  if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment' || itemName.includes('💎')) return 'legendary';
+  if (itemName.includes('Iron') || itemName === 'Mana Potion' || itemName.includes('🗡️') || itemName.includes('🛡️') || itemName.includes('💧')) return 'epic';
+  if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef' || itemName.includes('❤️') || itemName.includes('🍖')) return 'rare';
+  return 'common';
+};
+
+const getEmoji = (itemName) => {
+  if (!itemName) return '📦';
+  const match = itemName.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji})/u);
+  if (match) return match[1];
+
+  if (itemName === 'Golden Crown') return '👑';
+  if (itemName.includes('Helmet')) return '🪖';
+  if (itemName.includes('Chestplate')) return '👕';
+  if (itemName.includes('Boots')) return '🥾';
+  if (itemName.includes('Shield')) return '🛡️';
+  if (itemName.includes('Sword') || itemName === 'sword') return '🗡️';
+  if (itemName === 'pickaxe') return '⛏️';
+  if (itemName === 'Health Potion') return '❤️';
+  if (itemName === 'Mana Potion') return '💧';
+  return '📦';
+};
+
+// --- Loot Physics & Pull System ---
+const LootSystem = () => {
+  const { camera } = useThree();
+  const { playPickup } = useGameSounds();
+
+  useFrame((state, delta) => {
+    if (!camera) return;
+    const store = useGameStore.getState();
+    const playerPos = camera.position;
+
+    for (const entity of [...lootDropsQuery.entities]) {
+      entity.age += delta;
+
+      // 0.8s physical upward explosion phase with gravity
+      if (entity.age < 0.8) {
+        entity.velocity.y -= 12 * delta; // Gravity
+        entity.position.addScaledVector(entity.velocity, delta);
+
+        // Ground collision
+        if (store.getMobGroundLevel) {
+          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
+          if (!isNaN(groundY) && entity.position.y < groundY + 0.1) {
+            entity.position.y = groundY + 0.1;
+            entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
+            entity.velocity.x *= 0.7; // Friction
+            entity.velocity.z *= 0.7;
+          }
+        }
+      } else {
+        // Magnetic pull phase when within 7 units of player
+        const dx = playerPos.x - entity.position.x;
+        const dy = (playerPos.y - 0.5) - entity.position.y; // Pull towards player core
+        const dz = playerPos.z - entity.position.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dist < 7) {
+          const dir = new THREE.Vector3(dx, dy, dz).normalize();
+          const pullSpeed = Math.max(3, 40 / (dist + 0.2));
+          entity.position.addScaledVector(dir, pullSpeed * delta);
+        } else if (store.getMobGroundLevel) {
+          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
+          if (!isNaN(groundY)) {
+            entity.position.y = groundY + 0.1;
+          }
+        }
+
+        // Collection distance check
+        if (dist < 1.2) {
+          if (store.addToInventory) {
+            store.addToInventory(entity.item, 1);
+          }
+          if (entity.xp > 0 && GameMethods.grantXP) {
+            GameMethods.grantXP(entity.xp, entity.item);
+          }
+          if (entity.xp > 0 && GameMethods.spawnXPText) {
+            GameMethods.spawnXPText(entity.xp, entity.position);
+          }
+          if (store.addNotification) {
+            store.addNotification(`🎒 Looted: ${entity.item}`, 'loot');
+          }
+          playPickup();
+          ecs.remove(entity);
+        }
+      }
+    }
+  });
+
+  return null;
+};
+
+// --- Loot Render Component ---
+const LootDropRender = ({ entity }) => {
+  const meshRef = useRef();
+  const beamRef = useRef();
+  const spriteRef = useRef();
+  
+  const rarity = useMemo(() => getItemRarity(entity.item), [entity.item]);
+  
+  const color = useMemo(() => {
+    switch (rarity) {
+      case 'legendary': return '#f97316';
+      case 'epic': return '#a855f7';
+      case 'rare': return '#3b82f6';
+      case 'common':
+      default: return '#9ca3af';
+    }
+  }, [rarity]);
+
+  const emoji = useMemo(() => getEmoji(entity.item), [entity.item]);
+
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.font = '72px Outfit, Inter, Impact';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(emoji, 64, 64);
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }, [emoji]);
+
+  useFrame((state) => {
+    if (!meshRef.current) return;
+    meshRef.current.position.copy(entity.position);
+    meshRef.current.rotation.y += 0.03;
+    meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 2) * 0.2;
+    
+    if (beamRef.current) {
+      beamRef.current.position.copy(entity.position);
+      beamRef.current.position.y += 1.5;
+    }
+    
+    if (spriteRef.current) {
+      spriteRef.current.position.copy(entity.position);
+      spriteRef.current.position.y += 0.8 + Math.sin(state.clock.getElapsedTime() * 4) * 0.08;
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={meshRef} castShadow>
+        <octahedronGeometry args={[0.25, 0]} />
+        <meshStandardMaterial 
+          color={color} 
+          emissive={color} 
+          emissiveIntensity={0.6} 
+          roughness={0.2} 
+          metalness={0.8} 
+        />
+      </mesh>
+      
+      <mesh ref={beamRef}>
+        <cylinderGeometry args={[0.08, 0.25, 3.0, 8, 1, true]} />
+        <meshBasicMaterial 
+          color={color} 
+          transparent 
+          opacity={0.15} 
+          depthWrite={false} 
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      <sprite ref={spriteRef} scale={[0.8, 0.8, 1]}>
+        <spriteMaterial map={texture} transparent depthWrite={false} />
+      </sprite>
+    </group>
+  );
+};
+
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery);
   const xpOrbs = useEntities(xpOrbsQuery);
+  const lootDrops = useEntities(lootDropsQuery);
 
   const removeDamageNumber = (id) => {
     setDamageNumbers(prev => prev.filter(d => d.id !== id));
@@ -727,6 +1009,7 @@ export const NPCSystem = React.memo(() => {
       <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
       <EnemyProjectileSystem />
       <XPOrbSystem />
+      <LootSystem />
 
       {entities.map(entity => (
         <MobModel key={entity.id} entity={entity} />
@@ -734,6 +1017,10 @@ export const NPCSystem = React.memo(() => {
 
       {xpOrbs.map(orb => (
         <XPOrbRender key={orb.id} entity={orb} />
+      ))}
+
+      {lootDrops.map(loot => (
+        <LootDropRender key={loot.id} entity={loot} />
       ))}
 
       {damageNumbers.map(dmg => (

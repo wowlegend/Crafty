@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { SPELL_COLORS } from './GameSystems';
+import { SPELL_COLORS, solveMeleeDamage } from './GameSystems';
 import {
   PickaxeIcon,
   Package,
@@ -144,6 +144,20 @@ export const Player = ({ isWorldBuilt }) => {
   const CAST_COOLDOWN = 333;
   const jumpRequested = useRef(false);
   const cameraInitialized = useRef(false);
+  
+  const dodgeRequested = useRef(false);
+  const dodgeStateRef = useRef({
+    isActive: false,
+    duration: 0.4,       // total dodge duration (seconds)
+    iframeDuration: 0.2, // invincibility window (~12 frames at 60fps)
+    timeElapsed: 0,
+    direction: new THREE.Vector3(),
+    cooldown: 0.8,       // dodge cooldown (seconds)
+    lastDodgeTime: 0
+  });
+
+  const lastAttackTime = useRef(0);
+  const MELEE_COOLDOWN = 300; // milliseconds
 
   // Expose camera globally for magic system
   useEffect(() => {
@@ -158,6 +172,60 @@ export const Player = ({ isWorldBuilt }) => {
     };
   }, []);
 
+  const triggerMeleeAttack = useCallback(() => {
+    const now = performance.now();
+    if (now - lastAttackTime.current < MELEE_COOLDOWN) return;
+    lastAttackTime.current = now;
+
+    setIsAttacking(true);
+    setTimeout(() => setIsAttacking(false), 200);
+
+    const store = useGameStore.getState();
+    const effectiveStats = store.getEffectiveAttributes ? store.getEffectiveAttributes() : { strength: 10, agility: 10 };
+    
+    // Solve weapon base damage based on equipped weapon
+    const equippedWeapon = store.equipment?.weapon;
+    let baseWeaponDmg = 5;
+    if (equippedWeapon === 'Stone Sword') baseWeaponDmg = 12;
+    else if (equippedWeapon === 'Iron Sword') baseWeaponDmg = 20;
+    else if (equippedWeapon === 'Diamond Sword') baseWeaponDmg = 35;
+    else if (equippedWeapon === 'pickaxe') baseWeaponDmg = 8;
+    else if (equippedWeapon === 'sword') baseWeaponDmg = 10;
+    
+    const { damage, isCrit } = solveMeleeDamage(effectiveStats, baseWeaponDmg);
+
+    if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
+      const lookDir = new THREE.Vector3();
+      camera.getWorldDirection(lookDir);
+      
+      lookDir.y = 0;
+      lookDir.normalize();
+
+      const playerPos = camera.position.clone();
+      playerPos.y -= 0.8; // shift down to chest/feet level
+
+      const range = 4.5;
+      const angleRad = Math.PI / 2; // 90-degree front arc sweep
+
+      const hitMobs = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, range, angleRad);
+      
+      if (hitMobs && hitMobs.length > 0) {
+        hitMobs.forEach(mob => {
+          GameMethods.damageMob(mob.id, damage);
+        });
+        
+        if (isCrit && store.triggerCameraShake) {
+          store.triggerCameraShake(1.2);
+        }
+      } else {
+        // Play miss sound
+        if (store.playSpatialSound) {
+          store.playSpatialSound('swing', [camera.position.x, camera.position.y, camera.position.z], 0.7, 10);
+        }
+      }
+    }
+  }, [camera]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       keysRef.current[e.code] = true;
@@ -166,20 +234,12 @@ export const Player = ({ isWorldBuilt }) => {
         jumpRequested.current = true;
       }
 
-      if (e.code === 'KeyF') {
-        setIsAttacking(true);
-        setTimeout(() => setIsAttacking(false), 500);
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        dodgeRequested.current = true;
+      }
 
-        if (GameMethods.checkMobCollision && GameMethods.damageMob) {
-          const direction = new THREE.Vector3();
-          camera.getWorldDirection(direction);
-          const checkPos = camera.position.clone().add(direction.multiplyScalar(3));
-          const mob = GameMethods.checkMobCollision(checkPos, 4);
-          if (mob) {
-            GameMethods.damageMob(mob.id, 25);
-            if (useGameStore.getState().playHitSound) useGameStore.getState().playHitSound();
-          }
-        }
+      if (e.code === 'KeyF') {
+        triggerMeleeAttack();
       }
     };
     const handleKeyUp = (e) => {
@@ -189,9 +249,8 @@ export const Player = ({ isWorldBuilt }) => {
       }
     };
     const handleMouseDown = (e) => {
-      if (document.pointerLockElement) {
-        setIsAttacking(true);
-        setTimeout(() => setIsAttacking(false), 200);
+      if (document.pointerLockElement && e.button === 0) {
+        triggerMeleeAttack();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -202,7 +261,7 @@ export const Player = ({ isWorldBuilt }) => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
     }
-  }, [camera]);
+  }, [camera, triggerMeleeAttack]);
 
   useFrame((state, delta) => {
     if (!rigidBodyRef.current) return;
@@ -270,44 +329,60 @@ export const Player = ({ isWorldBuilt }) => {
     // Only process movement if pointer is locked
     const isLocked = !!document.pointerLockElement;
 
-    // Anti-stuck: if player is deeply embedded in a block or void
-    if (currentTrans.y < -50 || (isLocked && keys.KeyW && Math.abs(currentVel.x) < 0.1 && Math.abs(currentVel.z) < 0.1 && currentVel.y === 0)) {
-      // Small upward nudge if pressing W but perfectly stuck
-      if (currentTrans.y > -50 && isLocked) {
-         rigidBodyRef.current.setTranslation({ x: currentTrans.x, y: currentTrans.y + 0.1, z: currentTrans.z }, true);
+    // Handle dodge roll state machine
+    const dodge = dodgeStateRef.current;
+    const nowTime = state.clock.getElapsedTime();
+
+    if (isLocked && dodgeRequested.current) {
+      dodgeRequested.current = false;
+      
+      // Check cooldown
+      if (!dodge.isActive && nowTime - dodge.lastDodgeTime >= dodge.cooldown) {
+        const moveW = (isLocked && keys.KeyW) ? 1 : 0;
+        const moveS = (isLocked && keys.KeyS) ? 1 : 0;
+        const moveA = (isLocked && keys.KeyA) ? 1 : 0;
+        const moveD = (isLocked && keys.KeyD) ? 1 : 0;
+
+        const cameraDir = new THREE.Vector3();
+        camera.getWorldDirection(cameraDir);
+        let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z).normalize();
+        if (forwardDir.lengthSq() < 0.001) forwardDir.set(0, 0, -1);
+        const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x);
+
+        let dodgeDir = new THREE.Vector3()
+          .addScaledVector(forwardDir, moveW - moveS)
+          .addScaledVector(sideDir, moveD - moveA);
+
+        if (dodgeDir.lengthSq() < 0.001) {
+          dodgeDir.copy(forwardDir);
+        } else {
+          dodgeDir.normalize();
+        }
+
+        // Initialize dodge
+        dodge.isActive = true;
+        dodge.timeElapsed = 0;
+        dodge.direction.copy(dodgeDir);
+        dodge.lastDodgeTime = nowTime;
+
+        // Set invincible callback in store
+        useGameStore.setState({
+          isPlayerInvincible: () => {
+            return dodge.isActive && dodge.timeElapsed <= dodge.iframeDuration;
+          }
+        });
+
+        // Trigger spatial audio
+        if (useGameStore.getState().playSpatialSound) {
+          useGameStore.getState().playSpatialSound('swing', currentTrans, 1.4, 15);
+        }
+
+        // Trigger camera shake
+        if (useGameStore.getState().triggerCameraShake) {
+          useGameStore.getState().triggerCameraShake(0.5);
+        }
       }
     }
-
-    // Void catch — teleport back up if fallen through terrain
-    if (currentTrans.y < -50) {
-      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
-      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      return;
-    }
-
-    // Get camera look direction projected onto ground plane (robust, no Euler issues)
-    const cameraDir = new THREE.Vector3();
-    camera.getWorldDirection(cameraDir);
-    let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z);
-    if (forwardDir.lengthSq() < 0.001) {
-      // Fallback if looking straight down/up
-      forwardDir.set(0, 0, -1);
-    }
-    forwardDir.normalize();
-    const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x); // perpendicular right
-
-    const moveW = (isLocked && keys.KeyW) ? 1 : 0;
-    const moveS = (isLocked && keys.KeyS) ? 1 : 0;
-    const moveA = (isLocked && keys.KeyA) ? 1 : 0;
-    const moveD = (isLocked && keys.KeyD) ? 1 : 0;
-
-    const direction = new THREE.Vector3()
-      .addScaledVector(forwardDir, moveW - moveS)
-      .addScaledVector(sideDir, moveD - moveA);
-
-    let nextVelX = currentVel.x;
-    let nextVelZ = currentVel.z;
-    let nextVelY = currentVel.y;
 
     // Set up robust player physics exclusions to prevent self-collision
     const playerHandle = rigidBodyRef.current.handle;
@@ -320,8 +395,6 @@ export const Player = ({ isWorldBuilt }) => {
     let isGrounded = false;
     if (world) {
       const translation = rigidBodyRef.current.translation();
-      // Capsule height is ~1.8 (halfHeight 0.5 + radius 0.4 = 0.9 from center to bottom).
-      // Origin starts at player center; we cast down 1.05 units to cover radius + 0.15 margin.
       const ray = new rapier.Ray(
         { x: translation.x, y: translation.y, z: translation.z },
         { x: 0, y: -1, z: 0 }
@@ -334,72 +407,160 @@ export const Player = ({ isWorldBuilt }) => {
       isGrounded = Math.abs(currentVel.y) < 0.2;
     }
 
-    if (direction.lengthSq() > 0) {
-      direction.normalize().multiplyScalar(speed);
-      let desiredVelX = direction.x;
-      let desiredVelZ = direction.z;
+    let nextVelX = currentVel.x;
+    let nextVelZ = currentVel.z;
+    let nextVelY = currentVel.y;
 
-      // Wall Sliding & Auto-Jump (Step-Up) Physics Override
-      if (world) {
-        const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
-        
-        // Ray origins start from the player's capsule center. Exclusions are handled by playerHandle and predicate.
-        const headRay = new rapier.Ray(
-          { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
-          { x: moveDir.x, y: 0, z: moveDir.z }
-        );
-        const kneeRay = new rapier.Ray(
-          { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
-          { x: moveDir.x, y: 0, z: moveDir.z }
-        );
+    if (dodge.isActive) {
+      // Progressively update dodge elapsed time
+      dodge.timeElapsed += delta;
+      
+      if (dodge.timeElapsed >= dodge.duration) {
+        dodge.isActive = false;
+        useGameStore.setState({ isPlayerInvincible: null });
+      } else {
+        // Juicy dodge speed curve
+        const progress = dodge.timeElapsed / dodge.duration;
+        const dodgeSpeed = THREE.MathUtils.lerp(28, 10, progress);
+        let desiredDodgeVelX = dodge.direction.x * dodgeSpeed;
+        let desiredDodgeVelZ = dodge.direction.z * dodgeSpeed;
 
-        // maxToi set to 0.55 (capsule radius 0.40 + 0.15 margin)
-        const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
-        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+        // Apply Wall Sliding and Auto-Jump inside dodge
+        if (world) {
+          const moveDir = dodge.direction.clone().normalize();
+          const headRay = new rapier.Ray(
+            { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
+            { x: moveDir.x, y: 0, z: moveDir.z }
+          );
+          const kneeRay = new rapier.Ray(
+            { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
+            { x: moveDir.x, y: 0, z: moveDir.z }
+          );
 
-        // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
-        if (kneeHit && !headHit && isGrounded) {
-          rigidBodyRef.current.setTranslation({
-            x: currentTrans.x + moveDir.x * 0.08,
-            y: currentTrans.y + 0.35,
-            z: currentTrans.z + moveDir.z * 0.08
-          }, true);
-        }
+          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
 
-        // Wall Sliding: find wall normal to project horizontal velocity
-        let wallNormal = null;
-        if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
-          wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
-        } else if (headHit) {
-          const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
-          if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
-            wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
+          // Auto-Jump
+          if (kneeHit && !headHit && isGrounded) {
+            rigidBodyRef.current.setTranslation({
+              x: currentTrans.x + moveDir.x * 0.08,
+              y: currentTrans.y + 0.35,
+              z: currentTrans.z + moveDir.z * 0.08
+            }, true);
+          }
+
+          let wallNormal = null;
+          if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
+            wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
+          } else if (headHit) {
+            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
+              wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
+            }
+          }
+
+          if (wallNormal) {
+            const vel = new THREE.Vector3(desiredDodgeVelX, 0, desiredDodgeVelZ);
+            const dot = vel.dot(wallNormal);
+            if (dot < 0) {
+              vel.addScaledVector(wallNormal, -dot);
+              desiredDodgeVelX = vel.x;
+              desiredDodgeVelZ = vel.z;
+            }
           }
         }
 
-        if (wallNormal) {
-          const vel = new THREE.Vector3(desiredVelX, 0, desiredVelZ);
-          const dot = vel.dot(wallNormal);
-          if (dot < 0) { // Only project if moving INTO the wall surface
-            vel.addScaledVector(wallNormal, -dot);
-            desiredVelX = vel.x;
-            desiredVelZ = vel.z;
-          }
-        }
+        nextVelX = desiredDodgeVelX;
+        nextVelZ = desiredDodgeVelZ;
       }
-
-      nextVelX = desiredVelX;
-      nextVelZ = desiredVelZ;
     } else {
-      // Always decelerate if no input
-      nextVelX = currentVel.x * 0.8;
-      nextVelZ = currentVel.z * 0.8;
-      if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
-      if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
+      // Normal WASD movement
+      // Get camera look direction projected onto ground plane (robust, no Euler issues)
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir);
+      let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z);
+      if (forwardDir.lengthSq() < 0.001) {
+        forwardDir.set(0, 0, -1);
+      }
+      forwardDir.normalize();
+      const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x); // perpendicular right
+
+      const moveW = (isLocked && keys.KeyW) ? 1 : 0;
+      const moveS = (isLocked && keys.KeyS) ? 1 : 0;
+      const moveA = (isLocked && keys.KeyA) ? 1 : 0;
+      const moveD = (isLocked && keys.KeyD) ? 1 : 0;
+
+      const direction = new THREE.Vector3()
+        .addScaledVector(forwardDir, moveW - moveS)
+        .addScaledVector(sideDir, moveD - moveA);
+
+      if (direction.lengthSq() > 0) {
+        direction.normalize().multiplyScalar(speed);
+        let desiredVelX = direction.x;
+        let desiredVelZ = direction.z;
+
+        // Wall Sliding & Auto-Jump (Step-Up) Physics Override
+        if (world) {
+          const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
+          
+          // Ray origins start from the player's capsule center. Exclusions are handled by playerHandle and predicate.
+          const headRay = new rapier.Ray(
+            { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
+            { x: moveDir.x, y: 0, z: moveDir.z }
+          );
+          const kneeRay = new rapier.Ray(
+            { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
+            { x: moveDir.x, y: 0, z: moveDir.z }
+          );
+
+          // maxToi set to 0.55 (capsule radius 0.40 + 0.15 margin)
+          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+
+          // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
+          if (kneeHit && !headHit && isGrounded) {
+            rigidBodyRef.current.setTranslation({
+              x: currentTrans.x + moveDir.x * 0.08,
+              y: currentTrans.y + 0.35,
+              z: currentTrans.z + moveDir.z * 0.08
+            }, true);
+          }
+
+          // Wall Sliding: find wall normal to project horizontal velocity
+          let wallNormal = null;
+          if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
+            wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
+          } else if (headHit) {
+            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
+              wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
+            }
+          }
+
+          if (wallNormal) {
+            const vel = new THREE.Vector3(desiredVelX, 0, desiredVelZ);
+            const dot = vel.dot(wallNormal);
+            if (dot < 0) { // Only project if moving INTO the wall surface
+              vel.addScaledVector(wallNormal, -dot);
+              desiredVelX = vel.x;
+              desiredVelZ = vel.z;
+            }
+          }
+        }
+
+        nextVelX = desiredVelX;
+        nextVelZ = desiredVelZ;
+      } else {
+        // Always decelerate if no input
+        nextVelX = currentVel.x * 0.8;
+        nextVelZ = currentVel.z * 0.8;
+        if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
+        if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
+      }
     }
 
     // Jump
-    if (isLocked && jumpRequested.current && isGrounded) {
+    if (isLocked && jumpRequested.current && isGrounded && !dodge.isActive) {
       nextVelY = 12;
       jumpRequested.current = false;
     }
