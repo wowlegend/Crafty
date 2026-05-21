@@ -1,5 +1,16 @@
 # Changelog & Development History
 
+### May 21, 2026 (Phase 4 RPG Pathfinding, 3-Phase Boss & Pet Orders)
+
+- **3D HEIGHT-AWARE A* SOLVER**: Re-engineered the background Web Worker [ai.worker.js](file:///Users/kz/Code/Crafty/frontend/src/workers/ai.worker.js) A* pathfinding system to consume a 9x9 local voxel height grid centered around active hostiles. Enables mobs to dynamically climb slopes, step up 1-block obstacles, and jump across gaps, fully avoiding terrain walls.
+- **PACK ALERT AGGRO LINKING**: Built linked pack-aggro mechanics within 12 units squared. Alerting/attacking a hostile mob signals nearby pack cohorts to draw aggro synchronously.
+- **3-PHASE EPIC SHADOW DRAGON**: Implemented the Shadow Dragon boss event inside [AdvancedGameFeatures.jsx](file:///Users/kz/Code/Crafty/frontend/src/AdvancedGameFeatures.jsx) with stateful mutable ref transitions inside `useFrame` to protect frame rates:
+  - *Phase 1 (Flight Mode)*: Circles player at high altitude (+13 units), raining down home-targeted fireballs.
+  - *Phase 2 (Grounded Rage)*: Lands on terrain, charges player, and triggers physical Knockback Roars (applying physics impulses directly to player body).
+  - *Phase 3 (Enraged Fire)*: Swaps skin to glowing red, spawns Skeleton Cohorts, and lays down visual damage-over-time Lava Zones.
+- **KEYBOARD PET COMMANDS**: Created visual T-key Pet Command overlay UI (cycling Follow, Stay, Attack orders) and wired them to dynamic behaviors. Pets orbitally circle player on follow, hold absolute terrain coordinates on stay, or actively charge the nearest hostile entity on attack.
+- **PRODUCTION COMPILE SANITIZATION**: Cleared esbuild syntax errors (duplicate return block in `PetEntities`) and verified that the entire Vite production pipeline compiles with zero warnings or errors.
+
 ### May 21, 2026 (Pointer Lock, Raycast Filter & Controls Overhaul)
 
 - **SYNCHRONOUS USER-GESTURE POINTER LOCK**: Stripped the asynchronous `setTimeout` wrappers from keydown handlers (Escape, KeyE, KeyC, KeyB, Tab, KeyU) in `InputManager.jsx`, ensuring that `requestPointerLock()` is invoked in the synchronous user-gesture thread context to prevent security DOMExceptions.

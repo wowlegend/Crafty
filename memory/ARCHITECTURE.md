@@ -201,6 +201,27 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - ✅ Camera horizontal initialization
 - ✅ Vite build system (CRA migration)
 - ✅ React 19 + Fiber 9 + Rapier 2.2 compatibility
+## RPG Overhaul Architecture (SOTA Systems)
+
+### 1. 3D Voxel-Height Aware Pathfinding Worker
+To maintain 60+ FPS gameplay, all CPU-heavy pathfinding calculations are offloaded to a dedicated Web Worker (`ai.worker.js`).
+- **Dynamic Local Voxel Grids**: For every active, aggroed hostile, the main thread samples a 9x9 local terrain height grid via Rapier physics raycasts (`getMobGroundLevel`). This compact array is sent to the worker, avoiding the high cost of serializing global voxel maps.
+- **Voxel A* Solver**: Inside the worker, a custom 3D A* search is executed over the 9x9 grid, calculating 8-way diagonal pathways, slope scaling (caps climbs at 1.25 blocks), and gap-jumping.
+- **Pack Alert Aggro Linking**: Mobs within a 12-unit radius are linked; alerting one mob pulls nearby pack cohorts into the combat cycle synchronously.
+
+### 2. Stateful 3-Phase Epic Boss Event (Shadow Dragon)
+The Shadow Dragon boss event is designed to be highly immersive and visually spectacular while keeping main-thread overhead near zero.
+- **Direct Mesh Ref Mutations**: The fireball projectiles, boss rotations, and expanding Lava Zone meshes are updated imperatively in the `useFrame` game loop using Three.js mutable references, completely bypassing React virtual DOM diffing.
+- **State Machine Transitions**:
+  - *Phase 1 (Flight Mode)*: Boss circles at Y=+13 units, launching home-targeted falling fireballs.
+  - *Phase 2 (Grounded Rage)*: Boss lands, executing melee charges and Knockback Roars (applying physics impulses directly to the player capsule core).
+  - *Phase 3 (Enraged Fire)*: Boss spawns Skeleton Cohorts, turns glowing red, and emits expanding damage-over-time Lava Zones with custom shader-like opacity fades.
+
+### 3. Keyboard Pet Commands Interface
+A dedicated pet command system (T key) allows the player to dynamically direct their tamed entities.
+- **Follow Mode**: Pets circle the player orbitally, maintaining a close visual perimeter.
+- **Stay Mode**: Pets anchor themselves to the current coordinates and guard the zone.
+- **Attack Mode**: Pets sweep for active hostile entities (prioritizing the Shadow Dragon) and charge them to draw aggro and deal damage.
 
 ## AI Structural Laws
 
