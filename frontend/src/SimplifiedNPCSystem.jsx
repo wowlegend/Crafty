@@ -362,6 +362,7 @@ const SpawnerSystem = () => {
   };
 
   useEffect(() => {
+    useGameStore.setState({ spawnMob: spawnMob });
     const checkInterval = setInterval(() => {
       const state = useGameStore.getState();
       if (state.getMobGroundLevel && state.getGeneratedChunks && state.getGeneratedChunks().size > 0 && state.isSpawnChunkLoaded) {
@@ -375,7 +376,10 @@ const SpawnerSystem = () => {
         clearInterval(checkInterval);
       }
     }, 500);
-    return () => clearInterval(checkInterval);
+    return () => {
+      clearInterval(checkInterval);
+      useGameStore.setState({ spawnMob: null });
+    };
   }, []);
 
   useFrame((state, delta) => {
@@ -507,23 +511,43 @@ const AIWorkerSystem = () => {
       }
     }
 
-    const mobsData = mobsQuery.entities.map(e => ({
-      id: e.id,
-      passive: e.passive,
-      x: e.position.x,
-      y: e.position.y,
-      z: e.position.z,
-      targetX: e.targetX,
-      targetZ: e.targetZ,
-      isMoving: e.isMoving,
-      isAggro: e.isAggro,
-      lastAttackTime: e.lastAttackTime,
-      damage: e.damage,
-      type: e.type,
-      moveTimer: e.moveTimer,
-      speed: e.speed,
-      rotation: e.rotation
-    }));
+    const getMobGroundLevel = store.getMobGroundLevel;
+    const mobsData = mobsQuery.entities.map(e => {
+      let heightGrid = null;
+      if (!e.passive && e.isAggro) {
+        heightGrid = [];
+        const startX = Math.round(e.position.x) - 4;
+        const startZ = Math.round(e.position.z) - 4;
+        if (getMobGroundLevel) {
+          for (let gz = 0; gz < 9; gz++) {
+            for (let gx = 0; gx < 9; gx++) {
+              const worldX = startX + gx;
+              const worldZ = startZ + gz;
+              const h = getMobGroundLevel(worldX, worldZ);
+              heightGrid.push(isNaN(h) ? e.position.y : h);
+            }
+          }
+        }
+      }
+      return {
+        id: e.id,
+        passive: e.passive,
+        x: e.position.x,
+        y: e.position.y,
+        z: e.position.z,
+        targetX: e.targetX,
+        targetZ: e.targetZ,
+        isMoving: e.isMoving,
+        isAggro: e.isAggro,
+        lastAttackTime: e.lastAttackTime,
+        damage: e.damage,
+        type: e.type,
+        moveTimer: e.moveTimer,
+        speed: e.speed,
+        rotation: e.rotation,
+        heightGrid: heightGrid
+      };
+    });
 
     workerRef.current.postMessage({
       type: 'TICK',

@@ -74,18 +74,18 @@ const BOSS_CONFIG = {
     emoji: '🐉',
     color: '#4B0082',
     secondaryColor: '#8B00FF',
-    health: 500,
+    health: 700, // Increased health for a more epic multi-phase encounter
     damage: 20,
     speed: 3.5,
-    size: 3.0,
+    size: 3.2,
     aggroRange: 30,
     attackRange: 5,
     attackCooldown: 2000,
-    xpReward: 500,
+    xpReward: 600,
     phases: [
-        { hpPercent: 1.0, speed: 3.5, damage: 20, color: '#4B0082' },
-        { hpPercent: 0.6, speed: 4.5, damage: 25, color: '#8B0000' },
-        { hpPercent: 0.3, speed: 5.5, damage: 35, color: '#FF0000' },
+        { hpPercent: 1.0, speed: 4.0, damage: 20, color: '#4B0082' }, // Phase 1: Aerial Strike
+        { hpPercent: 0.6, speed: 5.5, damage: 25, color: '#8B0000' }, // Phase 2: Grounded Rage
+        { hpPercent: 0.3, speed: 7.0, damage: 35, color: '#ff3300' }, // Phase 3: Enraged Inferno
     ],
 };
 
@@ -97,29 +97,24 @@ export const useBossSystem = (playerLevel) => {
     const [bossDefeated, setBossDefeated] = useState(false);
     const [bossPhase, setBossPhase] = useState(0);
     const [bossNotification, setBossNotification] = useState(null);
-    const bossRef = useRef(null);
-    const lastBossAttack = useRef(0);
     const bossSpawned = useRef(false);
 
     useEffect(() => {
         if (playerLevel >= 5 && !bossSpawned.current && !bossDefeated) {
             bossSpawned.current = true;
-            setBossNotification('🐉 A Shadow Dragon has appeared! Defeat it to prove your worth!');
-            setTimeout(() => setBossNotification(null), 5000);
+            setBossNotification('🐉 Warning: A Shadow Dragon is descending from the skies! [Level 5 Boss Event]');
+            setTimeout(() => setBossNotification(null), 6000);
 
             const playerPos = useGameStore.getState().playerPosition;
-            if (playerPos) {
-                const angle = Math.random() * Math.PI * 2;
-                const x = playerPos.x + Math.cos(angle) * 30;
-                const z = playerPos.z + Math.sin(angle) * 30;
-                let y = 16;
-                if (useGameStore.getState().getMobGroundLevel) {
-                    y = useGameStore.getState().getMobGroundLevel(x, z);
-                    if (isNaN(y)) y = 16;
-                }
-                bossPositionRef.current = [x, y + 2, z];
-                setBossActive(true);
+            const x = playerPos ? playerPos.x + 25 : 25;
+            const z = playerPos ? playerPos.z + 25 : 25;
+            let y = 35; // Spawn high up
+            if (useGameStore.getState().getMobGroundLevel) {
+                const gy = useGameStore.getState().getMobGroundLevel(x, z);
+                if (!isNaN(gy)) y = gy + 15;
             }
+            bossPositionRef.current = [x, y, z];
+            setBossActive(true);
         }
     }, [playerLevel, bossDefeated]);
 
@@ -129,9 +124,15 @@ export const useBossSystem = (playerLevel) => {
             if (hpPercent <= BOSS_CONFIG.phases[i].hpPercent) {
                 if (bossPhase !== i) {
                     setBossPhase(i);
-                    if (i > 0) {
-                        setBossNotification(`🐉 The Shadow Dragon enters Phase ${i + 1}! It's getting angrier!`);
-                        setTimeout(() => setBossNotification(null), 3000);
+                    let alertMsg = '';
+                    if (i === 1) {
+                        alertMsg = '🐉 PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
+                    } else if (i === 2) {
+                        alertMsg = '🔥 PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
+                    }
+                    if (alertMsg) {
+                        setBossNotification(alertMsg);
+                        setTimeout(() => setBossNotification(null), 5000);
                     }
                 }
                 break;
@@ -147,10 +148,17 @@ export const useBossSystem = (playerLevel) => {
             if (newHealth <= 0) {
                 setBossActive(false);
                 setBossDefeated(true);
-                setBossNotification('🏆 VICTORY! You defeated the Shadow Dragon! +500 XP!');
+                setBossNotification('🏆 BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
                 setTimeout(() => setBossNotification(null), 6000);
-                if (GameMethods.grantXP) GameMethods.grantXP(BOSS_CONFIG.xpReward);
-                if (GameMethods.grantXP) GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Boss Defeated!');
+                if (GameMethods.grantXP) {
+                    GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!');
+                }
+                // Reward player with Legendary Crown or material drops
+                const store = useGameStore.getState();
+                if (store.addToInventory) {
+                    store.addToInventory('Crown of the Dragon King', 1, 'Legendary');
+                    store.addToInventory('Dragon Scale', 3, 'Epic');
+                }
             }
             return newHealth;
         });
@@ -174,30 +182,38 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
     const hpPercent = (bossHealth / bossMaxHealth) * 100;
 
+    let subText = 'Phase 1: Aerial Barrage ✈️';
+    if (bossPhase === 1) subText = 'Phase 2: Grounded Carnage 🦖 [Knockback Roars]';
+    if (bossPhase === 2) subText = 'Phase 3: Enraged Inferno 💀 [Lava Circles & Summons]';
+
     return (
-        <div className="absolute top-40 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 400 }}>
-            <div className="text-center mb-1">
-                <span className="text-white font-bold text-sm" style={{ textShadow: '0 0 10px rgba(75,0,130,0.8)' }}>
-                    🐉 {BOSS_CONFIG.name} {bossPhase > 0 ? `(Phase ${bossPhase + 1})` : ''}
+        <div className="absolute top-36 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 450 }}>
+            <div className="text-center mb-1 flex items-center justify-between px-1">
+                <span className="text-purple-300 font-extrabold text-sm tracking-wider uppercase" style={{ textShadow: '0 0 10px rgba(168,85,247,0.7)' }}>
+                    🐉 {BOSS_CONFIG.name}
+                </span>
+                <span className="text-red-400 font-bold text-xs">
+                    {subText}
                 </span>
             </div>
-            <div className="h-4 rounded-full overflow-hidden" style={{
-                background: 'rgba(0,0,0,0.7)',
+            <div className="h-4 rounded-full overflow-hidden p-0.5" style={{
+                background: 'rgba(5, 5, 10, 0.9)',
                 border: `2px solid ${phase.color}`,
-                boxShadow: `0 0 15px ${phase.color}60`,
+                boxShadow: `0 0 20px ${phase.color}80, inset 0 0 10px rgba(0,0,0,0.8)`,
             }}>
                 <motion.div
                     className="h-full rounded-full"
                     style={{
-                        background: `linear-gradient(90deg, ${phase.color}, ${BOSS_CONFIG.secondaryColor})`,
-                        boxShadow: `inset 0 0 10px rgba(255,255,255,0.3)`,
+                        background: `linear-gradient(90deg, ${phase.color}, #a855f7, #ec4899)`,
+                        boxShadow: `0 0 10px #f43f5e, inset 0 1px 2px rgba(255,255,255,0.4)`,
                     }}
                     animate={{ width: `${hpPercent}%` }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.2 }}
                 />
             </div>
-            <div className="text-center mt-0.5">
-                <span className="text-gray-400 text-xs">{bossHealth} / {bossMaxHealth}</span>
+            <div className="text-center mt-1 flex justify-between text-[10px] text-gray-400 font-semibold px-2">
+                <span>HP {bossHealth} / {bossMaxHealth}</span>
+                <span>{Math.round(hpPercent)}% REMAINING</span>
             </div>
         </div>
     );
@@ -206,54 +222,294 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }) => {
     const meshRef = useRef();
     const { camera } = useThree();
+    
+    // Advanced tactical action cooldown timers
     const lastAttack = useRef(0);
+    const lastFireballTime = useRef(0);
+    const lastRoarTime = useRef(0);
+    const lastLavaTime = useRef(0);
+    const lastSummonTime = useRef(0);
+    
+    // High-performance bullet references to bypass React overhead
+    const fireballsRef = useRef([]);
+    const lavaZonesRef = useRef([]);
+    const fireballMeshes = useRef({});
+    const lavaZoneMeshes = useRef({});
+    
+    // Low-frequency trigger state to spawn/de-spawn bullet groups in the React tree
+    const [effects, setEffects] = useState({ fireballs: [], lavaZones: [] });
+
+    // Instanced Spawner callbacks
+    const spawnFireball = useCallback((startPos, dir) => {
+        const id = Math.random();
+        const fireball = {
+            id,
+            position: startPos.clone(),
+            velocity: dir.clone().multiplyScalar(16.0), // Fast flight
+            life: 3.5
+        };
+        fireballsRef.current.push(fireball);
+        setEffects(prev => ({ ...prev, fireballs: [...fireballsRef.current] }));
+    }, []);
+
+    const spawnLavaZone = useCallback((pos) => {
+        const id = Math.random();
+        const lava = {
+            id,
+            position: pos.clone(),
+            life: 6.0,
+            lastDamageTime: 0
+        };
+        lavaZonesRef.current.push(lava);
+        setEffects(prev => ({ ...prev, lavaZones: [...lavaZonesRef.current] }));
+    }, []);
 
     useFrame((state, delta) => {
-        if (!bossActive || !bossPositionRef?.current || !meshRef.current) return;
+        if (!bossActive || !bossPositionRef?.current || !meshRef.current) {
+            // Clean up any remaining visual effects if boss becomes inactive
+            if (fireballsRef.current.length > 0 || lavaZonesRef.current.length > 0) {
+                fireballsRef.current = [];
+                lavaZonesRef.current = [];
+                setEffects({ fireballs: [], lavaZones: [] });
+            }
+            return;
+        }
 
         const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
         const playerX = camera.position.x;
         const playerZ = camera.position.z;
         const bx = bossPositionRef.current[0];
+        const by = bossPositionRef.current[1];
         const bz = bossPositionRef.current[2];
 
         const dx = playerX - bx;
         const dz = playerZ - bz;
         const dist = Math.sqrt(dx * dx + dz * dz);
 
-        if (dist > 2) {
-            const moveSpeed = phase.speed * delta;
-            const nx = dx / dist;
-            const nz = dz / dist;
-            const newX = bx + nx * moveSpeed;
-            const newZ = bz + nz * moveSpeed;
-
-            let newY = bossPositionRef.current[1];
-            if (useGameStore.getState().getMobGroundLevel) {
-                const groundY = useGameStore.getState().getMobGroundLevel(newX, newZ);
-                if (!isNaN(groundY)) newY = groundY + 2;
-            }
-
-            bossPositionRef.current = [newX, newY, newZ];
-            meshRef.current.position.set(newX, newY, newZ);
-
-            meshRef.current.rotation.y = Math.atan2(dx, dz);
+        // --- Step 1: Phase-Specific Tactical Flight & Movement Vector Solvers ---
+        let targetX = playerX;
+        let targetZ = playerZ;
+        let targetY = by;
+        
+        let currentGroundY = 16;
+        if (useGameStore.getState().getMobGroundLevel) {
+            const gy = useGameStore.getState().getMobGroundLevel(bx, bz);
+            if (!isNaN(gy)) currentGroundY = gy;
         }
 
+        if (bossPhase === 0) {
+            // Phase 1 (Aerial Strike Mode): Dragon circles high in the sky and swoops
+            const time = state.clock.elapsedTime;
+            const orbitRadius = 14;
+            const orbitSpeed = 0.6;
+            targetX = playerX + Math.cos(time * orbitSpeed) * orbitRadius;
+            targetZ = playerZ + Math.sin(time * orbitSpeed) * orbitRadius;
+            targetY = currentGroundY + 13.0 + Math.sin(time * 1.5) * 2.0; // Graceful vertical bobbing
+        } else {
+            // Phase 2 & 3 (Grounded Modes): Charge direct at player on the ground surface
+            targetX = playerX;
+            targetZ = playerZ;
+            targetY = currentGroundY + 0.8;
+        }
+
+        // Interpolate 3D position smoothly towards coordinates targets
+        const moveSpeed = phase.speed * delta;
+        const tdx = targetX - bx;
+        const tdz = targetZ - bz;
+        const tdy = targetY - by;
+        const tdist = Math.sqrt(tdx * tdx + tdz * tdz);
+
+        let nextX = bx;
+        let nextZ = bz;
+        if (tdist > 0.5) {
+            nextX = bx + (tdx / tdist) * Math.min(moveSpeed, tdist);
+            nextZ = bz + (tdz / tdist) * Math.min(moveSpeed, tdist);
+        }
+        const nextY = by + tdy * delta * 2.0; // Smooth vertical interpolation
+
+        bossPositionRef.current = [nextX, nextY, nextZ];
+        meshRef.current.position.set(nextX, nextY, nextZ);
+
+        // Rotate facing direction towards target path
+        if (tdist > 0.1) {
+            meshRef.current.rotation.y = Math.atan2(tdx, tdz);
+        }
+
+        // --- Step 2: Phase-Specific Tactical Attack Routines ---
+        const now = performance.now();
+
+        // 1. Common Melee Damage Routine
         if (dist < BOSS_CONFIG.attackRange) {
-            const now = performance.now();
             if (now - lastAttack.current > BOSS_CONFIG.attackCooldown) {
                 lastAttack.current = now;
                 if (useGameStore.getState().damagePlayer) {
-                    useGameStore.getState().damagePlayer(phase.damage, 'Shadow Dragon');
+                    useGameStore.getState().damagePlayer(phase.damage, 'Shadow Dragon Bite');
                 }
             }
         }
 
-        meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2) * 0.02;
+        // 2. Phase 1 Aerial Fireball Rain
+        if (bossPhase === 0) {
+            if (now - lastFireballTime.current > 2400) {
+                lastFireballTime.current = now;
+                
+                // Spawn fireball starting at mouth and aiming directly at player capsule core
+                const headPos = new THREE.Vector3(bx, by + 1.2, bz + 1.5).applyEuler(meshRef.current.rotation);
+                const targetPos = new THREE.Vector3(playerX, camera.position.y - 0.5, playerZ);
+                const fireballDir = targetPos.clone().sub(headPos).normalize();
+                
+                spawnFireball(headPos, fireballDir);
+                
+                if (useGameStore.getState().addNotification) {
+                    useGameStore.getState().addNotification('🔥 The Shadow Dragon drops a FIREBALL from above!', 'warning');
+                }
+            }
+        }
 
+        // 3. Phase 2 Grounded Knockback Roars
+        if (bossPhase === 1) {
+            if (now - lastRoarTime.current > 4200) {
+                lastRoarTime.current = now;
+                
+                // Roar causes directional camera shakes
+                if (useGameStore.getState().setScreenShake) {
+                    useGameStore.getState().setScreenShake(3.5);
+                    setTimeout(() => useGameStore.getState().setScreenShake(0), 200);
+                }
+
+                // Physical knockback vector computation
+                const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
+                if (playerRigidBody) {
+                    const pushX = dx / (dist || 1);
+                    const pushZ = dz / (dist || 1);
+                    // Heavy Rapier impulse: pushes player back and up
+                    playerRigidBody.applyImpulse({ x: pushX * 36.0, y: 14.0, z: pushZ * 36.0 }, true);
+                }
+
+                if (useGameStore.getState().damagePlayer) {
+                    useGameStore.getState().damagePlayer(phase.damage * 1.3, 'Shadow Dragon Shockwave');
+                }
+
+                if (useGameStore.getState().addNotification) {
+                    useGameStore.getState().addNotification('🔊 Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!', 'danger');
+                }
+            }
+        }
+
+        // 4. Phase 3 Enraged Inferno (Lava Circles & Minions)
+        if (bossPhase === 2) {
+            // A. Persistent Lava Zone breath
+            if (now - lastLavaTime.current > 5200) {
+                lastLavaTime.current = now;
+                
+                let playerGroundY = camera.position.y - 1.5;
+                if (useGameStore.getState().getMobGroundLevel) {
+                    const pgy = useGameStore.getState().getMobGroundLevel(playerX, playerZ);
+                    if (!isNaN(pgy)) playerGroundY = pgy;
+                }
+                
+                spawnLavaZone(new THREE.Vector3(playerX, playerGroundY + 0.05, playerZ));
+                
+                if (useGameStore.getState().addNotification) {
+                    useGameStore.getState().addNotification('🔥 The ground is melting! Step out of the LAVA ZONES!', 'danger');
+                }
+            }
+
+            // B. Summon Skeleton Cohort Minions
+            if (now - lastSummonTime.current > 8500) {
+                lastSummonTime.current = now;
+                const spawnMob = useGameStore.getState().spawnMob;
+                
+                if (spawnMob) {
+                    const angle1 = Math.random() * Math.PI * 2;
+                    const angle2 = angle1 + Math.PI;
+                    spawnMob(bx + Math.cos(angle1) * 7, bz + Math.sin(angle1) * 7, 'skeleton');
+                    spawnMob(bx + Math.cos(angle2) * 7, bz + Math.sin(angle2) * 7, 'skeleton');
+                    
+                    if (useGameStore.getState().addNotification) {
+                        useGameStore.getState().addNotification('💀 The Shadow Dragon calls upon Skeleton Cohorts!', 'warning');
+                    }
+                }
+            }
+        }
+
+        // --- Step 3: High-Performance Visual Bullets Solver Loops ---
+        
+        // 1. Move active fireballs in 3D WebGL Canvas
+        let hasDeadFireball = false;
+        fireballsRef.current.forEach(f => {
+            f.position.addScaledVector(f.velocity, delta);
+            f.life -= delta;
+
+            // Direct mesh property manipulation to bypass React DOM updates
+            const mesh = fireballMeshes.current[f.id];
+            if (mesh) {
+                mesh.position.copy(f.position);
+                mesh.rotation.x += delta * 10;
+                mesh.rotation.y += delta * 10;
+            }
+
+            // Target collision detector
+            const distToPlayer = f.position.distanceTo(camera.position);
+            if (distToPlayer < 1.6) {
+                f.life = -1; // Flag as dead to explode
+                if (useGameStore.getState().damagePlayer) {
+                    useGameStore.getState().damagePlayer(18, 'Dragon Fireball impact');
+                }
+                if (useGameStore.getState().setScreenShake) {
+                    useGameStore.getState().setScreenShake(2.0);
+                    setTimeout(() => useGameStore.getState().setScreenShake(0), 150);
+                }
+            }
+
+            if (f.life <= 0) hasDeadFireball = true;
+        });
+
+        // 2. Process active lava circles
+        let hasDeadLava = false;
+        lavaZonesRef.current.forEach(l => {
+            l.life -= delta;
+
+            const mesh = lavaZoneMeshes.current[l.id];
+            if (mesh) {
+                // Smoothly fade out transparency scale over time
+                mesh.material.opacity = 0.5 * Math.max(0, l.life / 6.0);
+                mesh.scale.setScalar(1.0 + Math.sin(state.clock.elapsedTime * 4) * 0.05); // Pulsing
+            }
+
+            // Lava burning area-of-effect solver
+            const pX = camera.position.x;
+            const pZ = camera.position.z;
+            const dxL = pX - l.position.x;
+            const dzL = pZ - l.position.z;
+            const distSq = dxL * dxL + dzL * dzL;
+
+            if (distSq < 7.56) { // 2.75 units radius burning threshold
+                if (now - l.lastDamageTime > 500) {
+                    l.lastDamageTime = now;
+                    if (useGameStore.getState().damagePlayer) {
+                        useGameStore.getState().damagePlayer(6, 'Burning Lava AOE');
+                    }
+                }
+            }
+
+            if (l.life <= 0) hasDeadLava = true;
+        });
+
+        // Re-mesh cleanup on bullet destruction (very low frequency compared to frame ticks)
+        if (hasDeadFireball) {
+            fireballsRef.current = fireballsRef.current.filter(f => f.life > 0);
+            setEffects(prev => ({ ...prev, fireballs: [...fireballsRef.current] }));
+        }
+        if (hasDeadLava) {
+            lavaZonesRef.current = lavaZonesRef.current.filter(l => l.life > 0);
+            setEffects(prev => ({ ...prev, lavaZones: [...lavaZonesRef.current] }));
+        }
+
+        // Animate Boss wings/tail mesh
+        meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2.5) * 0.015;
         if (bossPhase > 0) {
-            meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 3) * 0.1;
+            meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 4) * 0.08;
         }
     });
 
@@ -262,32 +518,88 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
 
     return (
-        <group ref={meshRef} position={bossPositionRef.current}>
-            <mesh castShadow receiveShadow>
-                <boxGeometry args={[3, 2, 4]} />
-                <meshStandardMaterial roughness={0.6} metalness={0.4} color={phase.color} emissive={phase.color} emissiveIntensity={0.3} />
-            </mesh>
-            <mesh castShadow receiveShadow position={[0, 1.5, 1.5]}>
-                <boxGeometry args={[1.5, 1.5, 2]} />
-                <meshStandardMaterial roughness={0.6} metalness={0.4} color={phase.color} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.4} />
-            </mesh>
-            <mesh castShadow receiveShadow position={[-2.5, 1, 0]} rotation={[0, 0, 0.3]}>
-                <boxGeometry args={[2, 0.2, 3]} />
-                <meshStandardMaterial roughness={0.4} metalness={0.8} color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
-            </mesh>
-            <mesh castShadow receiveShadow position={[2.5, 1, 0]} rotation={[0, 0, -0.3]}>
-                <boxGeometry args={[2, 0.2, 3]} />
-                <meshStandardMaterial roughness={0.4} metalness={0.8} color={BOSS_CONFIG.secondaryColor} emissive={BOSS_CONFIG.secondaryColor} emissiveIntensity={0.2} transparent opacity={0.8} />
-            </mesh>
-            <mesh castShadow receiveShadow position={[-0.4, 1.8, 2.5]}>
-                <sphereGeometry args={[0.2, 8, 8]} />
-                <meshStandardMaterial roughness={0.2} metalness={0.9} color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
-            </mesh>
-            <mesh castShadow receiveShadow position={[0.4, 1.8, 2.5]}>
-                <sphereGeometry args={[0.2, 8, 8]} />
-                <meshStandardMaterial roughness={0.2} metalness={0.9} color="#ff0000" emissive="#ff0000" emissiveIntensity={1} />
-            </mesh>
-            <pointLight color={phase.color} intensity={2} distance={15} />
+        <group>
+            {/* --- Dragon Core 3D Mesh Representation --- */}
+            <group ref={meshRef} position={bossPositionRef.current}>
+                {/* Torso */}
+                <mesh castShadow receiveShadow>
+                    <boxGeometry args={[3, 2, 4]} />
+                    <meshStandardMaterial 
+                        roughness={0.5} 
+                        metalness={0.5} 
+                        color={phase.color} 
+                        emissive={phase.color} 
+                        emissiveIntensity={bossPhase === 2 ? 0.6 : 0.2} 
+                    />
+                </mesh>
+                {/* Neck & Head */}
+                <mesh castShadow receiveShadow position={[0, 1.4, 1.8]}>
+                    <boxGeometry args={[1.4, 1.4, 2]} />
+                    <meshStandardMaterial 
+                        roughness={0.5} 
+                        metalness={0.5} 
+                        color={phase.color} 
+                        emissive={BOSS_CONFIG.secondaryColor} 
+                        emissiveIntensity={0.3} 
+                    />
+                </mesh>
+                {/* Wings (Left / Right flapping) */}
+                <mesh castShadow receiveShadow position={[-2.6, 0.8, 0]} rotation={[0, 0, 0.2]}>
+                    <boxGeometry args={[2.2, 0.15, 3]} />
+                    <meshStandardMaterial 
+                        roughness={0.3} 
+                        metalness={0.8} 
+                        color={BOSS_CONFIG.secondaryColor} 
+                        transparent 
+                        opacity={0.85} 
+                    />
+                </mesh>
+                <mesh castShadow receiveShadow position={[2.6, 0.8, 0]} rotation={[0, 0, -0.2]}>
+                    <boxGeometry args={[2.2, 0.15, 3]} />
+                    <meshStandardMaterial 
+                        roughness={0.3} 
+                        metalness={0.8} 
+                        color={BOSS_CONFIG.secondaryColor} 
+                        transparent 
+                        opacity={0.85} 
+                    />
+                </mesh>
+                {/* Glowing Eyes */}
+                <mesh castShadow receiveShadow position={[-0.4, 1.7, 2.7]}>
+                    <sphereGeometry args={[0.22, 8, 8]} />
+                    <meshBasicMaterial color="#ff0000" toneMapped={false} />
+                </mesh>
+                <mesh castShadow receiveShadow position={[0.4, 1.7, 2.7]}>
+                    <sphereGeometry args={[0.22, 8, 8]} />
+                    <meshBasicMaterial color="#ff0000" toneMapped={false} />
+                </mesh>
+                <pointLight color={phase.color} intensity={2.5} distance={15} />
+            </group>
+
+            {/* --- High Performance Instanced/Mesh Effects Rendering Sheets --- */}
+            
+            {/* 1. Aerial Fireballs */}
+            {effects.fireballs.map(f => (
+                <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; }} position={f.position}>
+                    <sphereGeometry args={[0.45, 12, 12]} />
+                    <meshBasicMaterial color="#f97316" toneMapped={false} />
+                    <pointLight color="#f97316" intensity={2.0} distance={6} />
+                </mesh>
+            ))}
+
+            {/* 2. Dynamic Burn Lava Zones */}
+            {effects.lavaZones.map(l => (
+                <mesh 
+                    key={l.id} 
+                    ref={el => { if (el) lavaZoneMeshes.current[l.id] = el; }} 
+                    position={l.position} 
+                    rotation={[-Math.PI / 2, 0, 0]} 
+                    receiveShadow
+                >
+                    <ringGeometry args={[0.1, 2.75, 32]} />
+                    <meshBasicMaterial color="#ef4444" transparent opacity={0.4} depthWrite={false} />
+                </mesh>
+            ))}
         </group>
     );
 });
@@ -295,22 +607,24 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }
 export const usePetSystem = () => {
     const [pets, setPets] = useState([]);
     const [petNotification, setPetNotification] = useState(null);
+    const [petOrder, setPetOrder] = useState('follow'); // 'follow', 'stay', 'attack'
+    const stayCoordinates = useRef([0, 0, 0]);
     const maxPets = 3;
 
     const tameMob = useCallback((mobId, mobType, mobPosition) => {
         if (pets.length >= maxPets) {
-            setPetNotification('❌ You already have 3 pets! Max reached.');
+            setPetNotification('❌ You already have 3 pets! Release one first.');
             setTimeout(() => setPetNotification(null), 3000);
             return false;
         }
 
         if (mobType !== 'pig' && mobType !== 'cow') {
-            setPetNotification('❌ Only passive mobs (pigs & cows) can be tamed!');
+            setPetNotification('❌ Only pigs and cows can be tamed with wheat/apples!');
             setTimeout(() => setPetNotification(null), 3000);
             return false;
         }
 
-        const petNames = ['Buddy', 'Patches', 'Muffin', 'Cookie', 'Biscuit', 'Nugget', 'Pumpkin', 'Sprinkles'];
+        const petNames = ['Buddy', 'Patches', 'Barnaby', 'Coco', 'Fudge', 'Nugget', 'Waffles', 'Cookie'];
         const name = petNames[Math.floor(Math.random() * petNames.length)];
 
         const newPet = {
@@ -318,47 +632,111 @@ export const usePetSystem = () => {
             type: mobType,
             name,
             position: [...mobPosition],
-            health: mobType === 'cow' ? 80 : 50,
-            maxHealth: mobType === 'cow' ? 80 : 50,
+            health: mobType === 'cow' ? 120 : 70, // Slightly stronger stats
+            maxHealth: mobType === 'cow' ? 120 : 70,
             tamedAt: Date.now(),
         };
 
         setPets(prev => [...prev, newPet]);
-        setPetNotification(`❤️ You tamed a ${mobType}! Say hello to ${name}!`);
+        setPetNotification(`❤️ Tamed! Say hello to your new pet ${name}!`);
         setTimeout(() => setPetNotification(null), 4000);
 
         return true;
     }, [pets.length]);
 
+    // keydown listener for keyboard T key to cycle pet commands
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key.toLowerCase() === 't') {
+                setPets(currentPets => {
+                    if (currentPets.length === 0) return currentPets;
+                    
+                    setPetOrder(prev => {
+                        let next = 'follow';
+                        if (prev === 'follow') next = 'stay';
+                        else if (prev === 'stay') next = 'attack';
+                        
+                        let msg = '';
+                        if (next === 'follow') {
+                            msg = '🐾 Pets ordered to: FOLLOW player';
+                        } else if (next === 'stay') {
+                            msg = '🐾 Pets ordered to: STAY at current location';
+                            const pPos = useGameStore.getState().playerPosition;
+                            if (pPos) {
+                                stayCoordinates.current = [pPos.x, pPos.y, pPos.z];
+                            }
+                        } else if (next === 'attack') {
+                            msg = '⚔️ Pets ordered to: ATTACK nearest hostile!';
+                        }
+                        
+                        setPetNotification(msg);
+                        setTimeout(() => setPetNotification(null), 3500);
+                        return next;
+                    });
+                    return currentPets;
+                });
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     useEffect(() => {
         useGameStore.setState({ tameMob: tameMob });
         useGameStore.setState({ getPets: () => pets });
-    }, [tameMob, pets]);
+        useGameStore.setState({ petOrder: petOrder });
+        useGameStore.setState({ stayCoordinates: stayCoordinates.current });
+    }, [tameMob, pets, petOrder]);
 
-    return { pets, petNotification, tameMob };
+    return { pets, petNotification, tameMob, petOrder };
 };
 
 export const PetIndicator = React.memo(({ pets }) => {
+    const petOrder = useGameStore(state => state.petOrder || 'follow');
     if (pets.length === 0) return null;
+
+    let badgeColor = 'rgba(34, 197, 94, 0.4)'; // green
+    if (petOrder === 'stay') badgeColor = 'rgba(234, 179, 8, 0.4)'; // yellow
+    if (petOrder === 'attack') badgeColor = 'rgba(239, 68, 68, 0.4)'; // red
 
     return (
         <div className="absolute bottom-40 left-4 z-20 pointer-events-none">
             <div
-                className="px-3 py-2 rounded-lg space-y-1"
+                className="px-4 py-3 rounded-xl space-y-2 max-w-[200px]"
                 style={{
-                    background: 'rgba(15, 15, 30, 0.85)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 150, 200, 0.3)',
+                    background: 'rgba(10, 10, 20, 0.85)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
                 }}
             >
-                <div className="text-pink-400 text-xs font-bold">🐾 Pets ({pets.length}/3)</div>
-                {pets.map(pet => (
-                    <div key={pet.id} className="flex items-center gap-2 text-xs">
-                        <span>{pet.type === 'pig' ? '🐷' : '🐮'}</span>
-                        <span className="text-white">{pet.name}</span>
-                        <span className="text-green-400">❤️ {pet.health}</span>
-                    </div>
-                ))}
+                <div className="flex items-center justify-between border-b border-purple-500/20 pb-1">
+                    <span className="text-purple-300 font-black text-[10px] uppercase tracking-wider">🐾 Pets ({pets.length}/3)</span>
+                </div>
+                
+                {/* Active Command Overlay Badge */}
+                <div 
+                    className="text-center py-1 rounded-md text-[9px] font-extrabold uppercase text-white tracking-widest border border-white/10"
+                    style={{ background: badgeColor }}
+                >
+                    Order: {petOrder}
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                    {pets.map(pet => (
+                        <div key={pet.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[14px]">{pet.type === 'pig' ? '🐷' : '🐮'}</span>
+                                <span className="text-gray-200 font-bold truncate max-w-[80px]">{pet.name}</span>
+                            </div>
+                            <span className="text-green-400 font-extrabold text-[10px]">HP {pet.health}</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="text-[8px] text-gray-500 text-center font-bold uppercase tracking-wider pt-0.5 border-t border-purple-500/10">
+                    Press T to cycle order
+                </div>
             </div>
         </div>
     );
@@ -369,34 +747,130 @@ export const PetEntities = React.memo(({ pets }) => {
     const petRefs = useRef({});
 
     useFrame((state, delta) => {
+        const store = useGameStore.getState();
+        const petOrder = store.petOrder || 'follow';
+        const stayCoords = store.stayCoordinates || [0, 0, 0];
+
         pets.forEach((pet, index) => {
             const ref = petRefs.current[pet.id];
             if (!ref) return;
 
-            const offsetAngle = (index / Math.max(pets.length, 1)) * Math.PI * 2;
-            const followDist = 4 + index * 1.5;
-            const targetX = camera.position.x + Math.cos(offsetAngle + state.clock.elapsedTime * 0.3) * followDist;
-            const targetZ = camera.position.z + Math.sin(offsetAngle + state.clock.elapsedTime * 0.3) * followDist;
+            let targetX = camera.position.x;
+            let targetZ = camera.position.z;
 
+            // --- Step 1: Pet Orders Location Selector ---
+            if (petOrder === 'stay') {
+                // Keep coordinates to the stay origin spot
+                targetX = stayCoords[0] + (index - 1) * 1.5;
+                targetZ = stayCoords[2];
+            } else if (petOrder === 'attack') {
+                // Target the Shadow Dragon first if active, otherwise check standard hostile mob entities
+                const bossActive = store.isBossActive && store.isBossActive();
+                const bossPos = bossActive ? store.getBossPosition() : null;
+
+                if (bossActive && bossPos) {
+                    targetX = bossPos[0];
+                    targetZ = bossPos[2];
+                } else {
+                    const hostiles = store.mobEntities || [];
+                    let closest = null;
+                    let minDist = Infinity;
+                    
+                    for (const m of hostiles) {
+                        if (m.passive) continue;
+                        const dx = m.x - ref.position.x;
+                        const dz = m.z - ref.position.z;
+                        const distSq = dx * dx + dz * dz;
+                        if (distSq < minDist) {
+                            minDist = distSq;
+                            closest = m;
+                        }
+                    }
+                    if (closest) {
+                        targetX = closest.x;
+                        targetZ = closest.z;
+                    } else {
+                        // Default to follow player if no hostiles are near
+                        const offsetAngle = (index / Math.max(pets.length, 1)) * Math.PI * 2;
+                        targetX = camera.position.x + Math.cos(offsetAngle + state.clock.elapsedTime * 0.3) * 4;
+                        targetZ = camera.position.z + Math.sin(offsetAngle + state.clock.elapsedTime * 0.3) * 4;
+                    }
+                }
+            } else {
+                // Default: Follow player circling orbitally
+                const offsetAngle = (index / Math.max(pets.length, 1)) * Math.PI * 2;
+                const followDist = 4.0 + index * 1.2;
+                targetX = camera.position.x + Math.cos(offsetAngle + state.clock.elapsedTime * 0.35) * followDist;
+                targetZ = camera.position.z + Math.sin(offsetAngle + state.clock.elapsedTime * 0.35) * followDist;
+            }
+
+            // Snap Y-axis ground snapping checks
             let targetY = ref.position.y;
-            if (useGameStore.getState().getMobGroundLevel) {
-                const groundY = useGameStore.getState().getMobGroundLevel(targetX, targetZ);
+            if (store.getMobGroundLevel) {
+                const groundY = store.getMobGroundLevel(ref.position.x, ref.position.z);
                 if (!isNaN(groundY)) targetY = groundY + 0.5;
             }
 
-            ref.position.x += (targetX - ref.position.x) * 2 * delta;
-            ref.position.z += (targetZ - ref.position.z) * 2 * delta;
-            ref.position.y += (targetY - ref.position.y) * 3 * delta;
+            // Smooth physical translations
+            ref.position.x += (targetX - ref.position.x) * 2.2 * delta;
+            ref.position.z += (targetZ - ref.position.z) * 2.2 * delta;
+            ref.position.y += (targetY - ref.position.y) * 3.5 * delta;
 
             const dx = targetX - ref.position.x;
             const dz = targetZ - ref.position.z;
-            if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+            if (Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05) {
                 ref.rotation.y = Math.atan2(dx, dz);
             }
 
-            ref.position.y += Math.sin(state.clock.elapsedTime * 3 + index) * 0.03;
+            // Walking animations
+            ref.position.y += Math.sin(state.clock.elapsedTime * 4.5 + index) * 0.025;
         });
     });
+
+    return (
+        <>
+            {pets.map(pet => {
+                const isPig = pet.type === 'pig';
+                return (
+                    <group
+                        key={pet.id}
+                        ref={el => { if (el) petRefs.current[pet.id] = el; }}
+                        position={pet.position}
+                    >
+                        {/* Body */}
+                        <mesh castShadow receiveShadow>
+                            <boxGeometry args={isPig ? [0.8, 0.6, 1.0] : [1.0, 0.8, 1.2]} />
+                            <meshStandardMaterial
+                                color={isPig ? '#ffa6c9' : '#8B5A2B'}
+                                roughness={0.4}
+                                metalness={0.2}
+                            />
+                        </mesh>
+                        {/* Head */}
+                        <mesh castShadow receiveShadow position={[0, 0.4, isPig ? 0.55 : 0.65]}>
+                            <boxGeometry args={isPig ? [0.5, 0.5, 0.5] : [0.6, 0.6, 0.4]} />
+                            <meshStandardMaterial
+                                color={isPig ? '#ffa6c9' : '#8B5A2B'}
+                                roughness={0.4}
+                            />
+                        </mesh>
+                        {/* Tamed Collar Badge */}
+                        <mesh position={[0, 0.35, isPig ? 0.25 : 0.3]}>
+                            <boxGeometry args={[0.85, 0.1, 0.85]} />
+                            <meshBasicMaterial color="#a855f7" />
+                        </mesh>
+                        {/* Floating heart highlight */}
+                        <mesh position={[0, 1.15, 0]}>
+                            <octahedronGeometry args={[0.13]} />
+                            <meshBasicMaterial color="#ec4899" toneMapped={false} />
+                        </mesh>
+                        <pointLight color="#a855f7" intensity={0.4} distance={4} />
+                    </group>
+                );
+            })}
+        </>
+    );
+});
 
     return (
         <>
