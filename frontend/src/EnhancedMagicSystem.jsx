@@ -7,7 +7,7 @@ import { SPELL_MANA_COSTS } from './GameSystems';
 import * as THREE from 'three';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
-  const gameState = useGameStore();
+  const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
   const [spellTrails, setSpellTrails] = useState([]);
@@ -233,14 +233,14 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     setSpellImpacts(prev => [...prev, newImpact]);
 
     // Phase 11: Spatial Impact Sound
-    if (gameState.playSpatialSound) {
-      gameState.playSpatialSound('magicHit', position, 1.0, 30);
-      if (spellType === 'fireball') gameState.playSpatialSound('magicExplosion', position, 0.8, 50);
+    if (playSpatialSound) {
+      playSpatialSound('magicHit', position, 1.0, 30);
+      if (spellType === 'fireball') playSpatialSound('magicExplosion', position, 0.8, 50);
     } else {
       playMagicHit();
       if (spellType === 'fireball') playMagicExplosion();
     }
-  }, [gameState, playMagicHit, playMagicExplosion]);
+  }, [playSpatialSound, playMagicHit, playMagicExplosion]);
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
@@ -255,8 +255,8 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       }
 
       // Phase 11: Spatial Cast Sound
-      if (gameState.playSpatialSound && camera) {
-        gameState.playSpatialSound('magicCast', camera.position, 1.0, 10);
+      if (playSpatialSound && camera) {
+        playSpatialSound('magicCast', camera.position, 1.0, 10);
       } else {
         playMagicCast();
       }

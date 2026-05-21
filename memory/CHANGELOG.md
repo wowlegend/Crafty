@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### May 21, 2026 (Pointer Lock, Raycast Filter & Controls Overhaul)
+
+- **SYNCHRONOUS USER-GESTURE POINTER LOCK**: Stripped the asynchronous `setTimeout` wrappers from keydown handlers (Escape, KeyE, KeyC, KeyB, Tab, KeyU) in `InputManager.jsx`, ensuring that `requestPointerLock()` is invoked in the synchronous user-gesture thread context to prevent security DOMExceptions.
+- **DREI CONTROLS PANEL BLOCK**: Configured `<PointerLockControls>` in `GameScene.jsx` with `enabled={!anyPanelOpen}` to block click-hijacking and pointer lock recapture when UI panels are active.
+- **GAME LOOP ISOLATION & SELECTOR OPTIMIZATION**: Optimized Zustand store subscriptions in `Components.jsx`'s `Player` component (using selective queries for `activeSpell` and `selectedBlock`) and in `EnhancedMagicSystem.jsx` (for `playSpatialSound`), decoupling these heavy rendering systems from high-frequency coordinate updates.
+- **VOXEL INTERACTION RAYCAST CRASH RESOLUTION**: Refactored mouse placement/removal raycasting in `world/Terrain.jsx` to dynamically fetch the player's rigid body ref and synchronously construct the `rapier.Ray` object inside the click listener. Resolved `playerRigidBody is not defined` and `ray is not defined` ReferenceErrors.
+
 ### May 21, 2026 (Game Loop Isolation & Performance Optimizations)
 
 - **ZUSTAND STORE HARDENING**: Added `playerPosition` state and `setPlayerPosition` action to `useGameStore.jsx` to store coordinates transiently, preventing reactive state-update micro-stutters across the entire rendering pipeline.

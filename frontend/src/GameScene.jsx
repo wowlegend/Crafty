@@ -221,7 +221,7 @@ export function GameScene({
 
         <SpatialAudioController />
 
-        {!anyPanelOpen && <PointerLockControls makeDefault />}
+        <PointerLockControls makeDefault enabled={!anyPanelOpen} />
 
         <PositionTracker />
 

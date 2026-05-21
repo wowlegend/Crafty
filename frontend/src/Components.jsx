@@ -128,7 +128,8 @@ export const Player = ({ isWorldBuilt }) => {
     isWorldBuiltRef.current = isWorldBuilt;
   }, [isWorldBuilt]);
 
-  const gameState = useGameStore();
+  const activeSpell = useGameStore(state => state.activeSpell);
+  const selectedBlock = useGameStore(state => state.selectedBlock);
   const { camera } = useThree();
   const [isAttacking, setIsAttacking] = useState(false);
   const rigidBodyRef = useRef();
@@ -308,17 +309,24 @@ export const Player = ({ isWorldBuilt }) => {
     let nextVelZ = currentVel.z;
     let nextVelY = currentVel.y;
 
+    // Set up robust player physics exclusions to prevent self-collision
+    const playerHandle = rigidBodyRef.current.handle;
+    const filterPredicate = (collider) => {
+      const parent = collider.parent();
+      return !parent || parent.handle !== playerHandle;
+    };
+
     // Downward raycast for precise grounded check
     let isGrounded = false;
-    if (world && rigidBodyRef.current) {
+    if (world) {
       const translation = rigidBodyRef.current.translation();
       // Capsule height is ~1.8 (halfHeight 0.5 + radius 0.4 = 0.9 from center to bottom).
-      // Origin starts strictly below the player's capsule collider to prevent self-collision.
+      // Origin starts at player center; we cast down 1.05 units to cover radius + 0.15 margin.
       const ray = new rapier.Ray(
-        { x: translation.x, y: translation.y - 0.91, z: translation.z },
+        { x: translation.x, y: translation.y, z: translation.z },
         { x: 0, y: -1, z: 0 }
       );
-      const hit = world.castRay(ray, 0.15, true, undefined, undefined, undefined, rigidBodyRef.current);
+      const hit = world.castRay(ray, 1.05, true, undefined, undefined, undefined, playerHandle, filterPredicate);
       if (hit) {
         isGrounded = true;
       }
@@ -335,21 +343,19 @@ export const Player = ({ isWorldBuilt }) => {
       if (world) {
         const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
         
-        // Ray origins shifted strictly outside the player's capsule radius (0.4) to prevent self-collision
-        const startX = currentTrans.x + moveDir.x * 0.41;
-        const startZ = currentTrans.z + moveDir.z * 0.41;
-
+        // Ray origins start from the player's capsule center. Exclusions are handled by playerHandle and predicate.
         const headRay = new rapier.Ray(
-          { x: startX, y: currentTrans.y + 0.6, z: startZ },
+          { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
           { x: moveDir.x, y: 0, z: moveDir.z }
         );
         const kneeRay = new rapier.Ray(
-          { x: startX, y: currentTrans.y - 0.5, z: startZ },
+          { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
           { x: moveDir.x, y: 0, z: moveDir.z }
         );
 
-        const headHit = world.castRay(headRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
-        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
+        // maxToi set to 0.55 (capsule radius 0.40 + 0.15 margin)
+        const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+        const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
 
         // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
         if (kneeHit && !headHit && isGrounded) {
@@ -365,7 +371,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
           wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
         } else if (headHit) {
-          const headHitNormal = world.castRayAndGetNormal(headRay, 0.24, true, undefined, undefined, undefined, rigidBodyRef.current);
+          const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
           if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
             wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
           }
@@ -438,10 +444,10 @@ export const Player = ({ isWorldBuilt }) => {
     const targetY = translation.y + 1.2 + bobOffset + shakeY;
     const targetZ = translation.z + shakeZ;
 
-    // Use 0.35 lerp factor: coupling lag is 2-3 frames (imperceptible), but absorbs all physics micro-stutters
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.35);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.35);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.35);
+    // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
 
     // Force horizontal camera on first frame
     if (!cameraInitialized.current && translation.y > 0) {
@@ -456,7 +462,7 @@ export const Player = ({ isWorldBuilt }) => {
         lastCastTime.current = now;
 
         if (useGameStore.getState().castSpell) {
-          const currentSpell = gameState.activeSpell;
+          const currentSpell = activeSpell;
           useGameStore.getState().castSpell(currentSpell);
           if (useGameStore.getState().onSpellCast) useGameStore.getState().onSpellCast();
         }
@@ -482,7 +488,7 @@ export const Player = ({ isWorldBuilt }) => {
         <CapsuleCollider args={[0.5, 0.4]} />
       </RigidBody>
       <primitive object={camera}>
-        <StableMagicHands selectedBlock={gameState.selectedBlock} isAttacking={isAttacking} />
+        <StableMagicHands selectedBlock={selectedBlock} isAttacking={isAttacking} />
       </primitive>
     </group>
   );

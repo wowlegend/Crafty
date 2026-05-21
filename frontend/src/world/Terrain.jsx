@@ -79,7 +79,13 @@ const TargetOutline = () => {
             { x: direction.x, y: direction.y, z: direction.z }
         );
         
-        const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerRigidBodyRef?.current);
+        const playerHandle = playerRigidBodyRef?.current?.handle;
+        const filterPredicate = (collider) => {
+            if (playerHandle === undefined) return true;
+            const parent = collider.parent();
+            return !parent || parent.handle !== playerHandle;
+        };
+        const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerHandle, filterPredicate);
         if (hit) {
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
             // Step slightly IN to the block to ensure we target the hit block's voxel grid
@@ -161,21 +167,17 @@ export const MinecraftWorld = React.memo(() => {
         
         useGameStore.getState().setGetMobGroundLevel((x, z) => {
             const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
+            const playerHandle = playerRigidBody?.handle;
+            const filterPredicate = (collider) => {
+                if (playerHandle === undefined) return true;
+                const parent = collider.parent();
+                return !parent || parent.handle !== playerHandle;
+            };
+
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerRigidBody);
+            const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerHandle, filterPredicate);
             if (hit) {
-                const hitY = 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
-                // If we hit something above height 90, it is likely the player capsule in the sky (y=120).
-                // Re-run the raycast starting below the player capsule height (y=90) to query the true terrain mesh.
-                if (hitY > 90) {
-                    const secondRay = new rapier.Ray({ x, y: 90, z }, { x: 0, y: -1, z: 0 });
-                    const secondHit = world.castRay(secondRay, 90, true, undefined, undefined, undefined, playerRigidBody);
-                    if (secondHit) {
-                        return 90 - (secondHit.toi !== undefined ? secondHit.toi : secondHit.timeOfImpact);
-                    }
-                    return 15;
-                }
-                return hitY;
+                return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
             }
             return 15;
         });
@@ -183,8 +185,15 @@ export const MinecraftWorld = React.memo(() => {
         // Simplified collision check using physics
         useGameStore.getState().setCheckCollision((x, y, z) => {
             const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
+            const playerHandle = playerRigidBody?.handle;
+            const filterPredicate = (collider) => {
+                if (playerHandle === undefined) return true;
+                const parent = collider.parent();
+                return !parent || parent.handle !== playerHandle;
+            };
+
             const ray = new rapier.Ray({ x, y: y + 0.1, z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 0.2, true, undefined, undefined, undefined, playerRigidBody);
+            const hit = world.castRay(ray, 0.2, true, undefined, undefined, undefined, playerHandle, filterPredicate);
             return !!hit;
         });
 
@@ -259,17 +268,25 @@ export const MinecraftWorld = React.memo(() => {
         const handleClick = (e) => {
             if (!document.pointerLockElement) return;
 
+            const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
+            const playerHandle = playerRigidBody?.handle;
+
             const direction = new THREE.Vector3();
             camera.getWorldDirection(direction);
             const rayStart = camera.position.clone();
             
-            const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
             const ray = new rapier.Ray(
                 { x: rayStart.x, y: rayStart.y, z: rayStart.z },
                 { x: direction.x, y: direction.y, z: direction.z }
             );
             
-            const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody);
+            const filterPredicate = (collider) => {
+                if (playerHandle === undefined) return true;
+                const parent = collider.parent();
+                return !parent || parent.handle !== playerHandle;
+            };
+            
+            const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerHandle, filterPredicate);
             if (!hit) return;
             
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
