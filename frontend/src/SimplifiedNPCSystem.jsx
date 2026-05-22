@@ -568,10 +568,9 @@ const SpawnerSystem = () => {
 
           let spawnedThisTick = 0;
           let attempts = 0;
-          const maxAttempts = 6;
+          const maxAttempts = 12;
           
           while (spawnedThisTick < spawnCount && attempts < maxAttempts) {
-            attempts++;
             const randomKey = candidateChunks[Math.floor(Math.random() * candidateChunks.length)];
             const [cx, cz] = randomKey.split('_').map(Number);
             const x = cx * 16 + Math.random() * 16;
@@ -580,6 +579,7 @@ const SpawnerSystem = () => {
             
             // Only spawn if not too close (avoid visible spawning) and not too far
             if (dist >= 28 && dist <= 85) {
+              attempts++;
               const success = spawnMob(x, z);
               if (success) {
                 spawnedThisTick++;

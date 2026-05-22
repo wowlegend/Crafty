@@ -10,8 +10,16 @@ import { BlockParticleSystem } from './BlockParticleSystem';
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
-const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
+const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     if (!meshData || meshData.positions.length === 0) return null;
+
+    React.useEffect(() => {
+        const key = `${cx}_${cz}`;
+        if (onMount) onMount(key);
+        return () => {
+            if (onUnmount) onUnmount(key);
+        };
+    }, [cx, cz, onMount, onUnmount]);
 
     const geometry = React.useMemo(() => {
         const geom = new THREE.BufferGeometry();
@@ -23,10 +31,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData }) => {
         return geom;
     }, [meshData]);
 
-    const geomKey = `${meshData.positions.length}_${meshData.indices.length}`;
-
     return (
-        <group position={[cx * 16, 0, cz * 16]} key={geomKey}>
+        <group position={[cx * 16, 0, cz * 16]}>
             <mesh geometry={geometry} castShadow receiveShadow>
                 <meshStandardMaterial roughness={1.0} metalness={0.0} vertexColors={true} />
             </mesh>
@@ -119,6 +125,14 @@ export const MinecraftWorld = React.memo(() => {
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());
 
+    const handleMount = React.useCallback((key) => {
+        chunksRef.current.add(key);
+    }, []);
+
+    const handleUnmount = React.useCallback((key) => {
+        chunksRef.current.delete(key);
+    }, []);
+
     // Expose chunks state for debugging
     useEffect(() => {
         useGameStore.setState({ debugChunks: chunks });
@@ -144,7 +158,6 @@ export const MinecraftWorld = React.memo(() => {
             const { type, payload } = e.data;
             if (type === 'chunk_mesh') {
                 const key = `${payload.cx}_${payload.cz}`;
-                chunksRef.current.add(key);
                 setChunks(prev => ({
                     ...prev,
                     [key]: { cx: payload.cx, cz: payload.cz, meshData: payload }
@@ -258,7 +271,6 @@ export const MinecraftWorld = React.memo(() => {
                         worker.postMessage({ type: 'unload', payload: { cx: c.cx, cz: c.cz } });
                         delete newChunks[key];
                         requestedChunks.delete(key);
-                        chunksRef.current.delete(key); // Fix memory leak and stale keys!
                         changed = true;
                     }
                 });
@@ -382,7 +394,14 @@ export const MinecraftWorld = React.memo(() => {
         <group>
             <fog attach="fog" args={['#87CEEB', 20, (RENDER_DISTANCE * CHUNK_SIZE) - 5]} />
             {Object.values(chunks).filter(c => c.meshData).map(chunk => (
-                <ChunkMesh key={`${chunk.cx}_${chunk.cz}`} cx={chunk.cx} cz={chunk.cz} meshData={chunk.meshData} />
+                <ChunkMesh 
+                    key={`${chunk.cx}_${chunk.cz}`} 
+                    cx={chunk.cx} 
+                    cz={chunk.cz} 
+                    meshData={chunk.meshData} 
+                    onMount={handleMount}
+                    onUnmount={handleUnmount}
+                />
             ))}
             <TargetOutline />
             <BlockParticleSystem worker={worker} />
