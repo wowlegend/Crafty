@@ -281,15 +281,8 @@ const BLOCK_COLORS = {
   255: [1, 1, 1] 
 };
 
-// Face definitions
-const FACES = [
-  { dir: [0, 1, 0], corners: [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]] }, // Top
-  { dir: [0, -1, 0], corners: [[1, 0, 0], [1, 0, 1], [0, 0, 1], [0, 0, 0]] }, // Bottom
-  { dir: [1, 0, 0], corners: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] }, // Right
-  { dir: [-1, 0, 0], corners: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] }, // Left
-  { dir: [0, 0, 1], corners: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] }, // Front
-  { dir: [0, 0, -1], corners: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] } // Back
-];
+// Pre-allocated reusable buffer to prevent GC churn (max size: 16x256 = 4096 entries)
+const mask = new Uint16Array(4096);
 
 function generateMesh(cx, cz, blocks) {
   const positions = [];
@@ -298,96 +291,194 @@ function generateMesh(cx, cz, blocks) {
   const indices = [];
   let indexOffset = 0;
 
-  for (let y = 0; y < CHUNK_HEIGHT; y++) {
-    for (let z = 0; z < CHUNK_SIZE; z++) {
-      for (let x = 0; x < CHUNK_SIZE; x++) {
-        const index = getIndex(x, y, z);
-        const blockType = blocks[index];
-        if (blockType === 0) continue; // Skip air
+  const CHUNK_SIZE = 16;
+  const CHUNK_HEIGHT = 256;
 
-        const color = BLOCK_COLORS[blockType] || [1, 1, 1];
+  // Helper to read blocks safely with boundary culling
+  function getBlock(bx, by, bz) {
+    if (bx < 0 || bx >= 16 || by < 0 || by >= 256 || bz < 0 || bz >= 16) return 0;
+    return blocks[bx + bz * 16 + by * 256];
+  }
 
-        // Check all 6 faces
-        for (const { dir, corners } of FACES) {
-          const nx = x + dir[0];
-          const ny = y + dir[1];
-          const nz = z + dir[2];
-          
-          let drawFace = false;
-          // If neighbor is outside this chunk, we draw it for now.
-          if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_HEIGHT || nz < 0 || nz >= CHUNK_SIZE) {
-            drawFace = true;
+  // Sweep along the 3 primary axes: d = 0 (X), 1 (Y), 2 (Z)
+  for (let d = 0; d < 3; d++) {
+    // Perpendicular plane axes cyclic permutation: u = (d+1)%3, v = (d+2)%3
+    const u = (d + 1) % 3;
+    const v = (d + 2) % 3;
+
+    const sizeD = d === 1 ? 256 : 16;
+    const sizeU = u === 1 ? 256 : 16;
+    const sizeV = v === 1 ? 256 : 16;
+
+    // Slice boundary q between voxel coordinate q and q+1 along axis d
+    for (let q = -1; q < sizeD; q++) {
+      // 1. Reset our reusable mask
+      mask.fill(0);
+
+      // Populate mask for this slice boundary
+      for (let cv = 0; cv < sizeV; cv++) {
+        for (let cu = 0; cu < sizeU; cu++) {
+          // Resolve A (voxels at q) and B (voxels at q+1) along direction d
+          let blockA = 0;
+          let blockB = 0;
+
+          if (d === 0) {
+            // d = X, u = Z, v = Y
+            blockA = getBlock(q, cv, cu);
+            blockB = getBlock(q + 1, cv, cu);
+          } else if (d === 1) {
+            // d = Y, u = Z, v = X
+            blockA = getBlock(cv, q, cu);
+            blockB = getBlock(cv, q + 1, cu);
           } else {
-            const neighborIndex = getIndex(nx, ny, nz);
-            const neighborType = blocks[neighborIndex];
-            
-            if (blockType === 9) {
-              // Water block ONLY renders its face if the neighbor is Air (0)
-              if (neighborType === 0) {
-                drawFace = true;
+            // d = Z, u = X, v = Y
+            blockA = getBlock(cu, cv, q);
+            blockB = getBlock(cu, cv, q + 1);
+          }
+
+          // Evaluate face culling rules
+          const aIsSolid = blockA > 0 && blockA !== 9;
+          const aIsWater = blockA === 9;
+          const bIsSolid = blockB > 0 && blockB !== 9;
+          const bIsWater = blockB === 9;
+
+          if (blockA > 0 && blockB === 0) {
+            // Positive face of block A (facing +d)
+            mask[cu + cv * sizeU] = blockA | (1 << 8);
+          } else if (blockA === 0 && blockB > 0) {
+            // Negative face of block B (facing -d)
+            mask[cu + cv * sizeU] = blockB | (2 << 8);
+          } else if (aIsSolid && bIsWater) {
+            // Solid block next to water -> Draw solid face facing +d
+            mask[cu + cv * sizeU] = blockA | (1 << 8);
+          } else if (bIsSolid && aIsWater) {
+            // Solid block next to water -> Draw solid face facing -d
+            mask[cu + cv * sizeU] = blockB | (2 << 8);
+          }
+        }
+      }
+
+      // 2. Greedy search inside the populated mask to combine adjacent matching faces
+      for (let cv = 0; cv < sizeV; cv++) {
+        for (let cu = 0; cu < sizeU; cu++) {
+          const val = mask[cu + cv * sizeU];
+          if (val === 0) continue;
+
+          const blockType = val & 0xFF;
+          const dirFlag = val >> 8;
+
+          // Find maximum horizontal width w along axis u
+          let w = 1;
+          while (cu + w < sizeU && mask[(cu + w) + cv * sizeU] === val) {
+            w++;
+          }
+
+          // Find maximum vertical height h along axis v
+          let h = 1;
+          let hPossible = true;
+          while (cv + h < sizeV) {
+            for (let k = 0; k < w; k++) {
+              if (mask[(cu + k) + (cv + h) * sizeU] !== val) {
+                hPossible = false;
+                break;
               }
+            }
+            if (!hPossible) break;
+            h++;
+          }
+
+          // Clear masked cells covered by the greedy quad
+          for (let dy = 0; dy < h; dy++) {
+            for (let dx = 0; dx < w; dx++) {
+              mask[(cu + dx) + (cv + dy) * sizeU] = 0;
+            }
+          }
+
+          // Map quad coordinates, normals and CCW winding indices based on axis
+          let c0, c1, c2, c3;
+          let normalVector;
+
+          if (d === 0) {
+            // Axis X: width is along Z (u), height is along Y (v)
+            const y = cv;
+            const z = cu;
+            normalVector = dirFlag === 1 ? [1, 0, 0] : [-1, 0, 0];
+
+            if (dirFlag === 1) {
+              // Right (+X)
+              const x = q;
+              c0 = [x + 1, y, z];
+              c1 = [x + 1, y + h, z];
+              c2 = [x + 1, y + h, z + w];
+              c3 = [x + 1, y, z + w];
             } else {
-              // Solid blocks render their face if the neighbor is Air (0) OR Water (9)
-              if (neighborType === 0 || neighborType === 9) {
-                drawFace = true;
-              }
+              // Left (-X)
+              const x = q + 1;
+              c0 = [x, y, z + w];
+              c1 = [x, y + h, z + w];
+              c2 = [x, y + h, z];
+              c3 = [x, y, z];
+            }
+          } else if (d === 1) {
+            // Axis Y: width is along Z (u), height is along X (v)
+            const x = cv;
+            const z = cu;
+            normalVector = dirFlag === 1 ? [0, 1, 0] : [0, -1, 0];
+
+            if (dirFlag === 1) {
+              // Top (+Y)
+              const y = q;
+              c0 = [x, y + 1, z];
+              c1 = [x, y + 1, z + w];
+              c2 = [x + h, y + 1, z + w];
+              c3 = [x + h, y + 1, z];
+            } else {
+              // Bottom (-Y)
+              const y = q + 1;
+              c0 = [x + h, y, z];
+              c1 = [x + h, y, z + w];
+              c2 = [x, y, z + w];
+              c3 = [x, y, z];
+            }
+          } else {
+            // Axis Z: width is along X (u), height is along Y (v)
+            const x = cu;
+            const y = cv;
+            normalVector = dirFlag === 1 ? [0, 0, 1] : [0, 0, -1];
+
+            if (dirFlag === 1) {
+              // Front (+Z)
+              const z = q;
+              c0 = [x + w, y, z + 1];
+              c1 = [x + w, y + h, z + 1];
+              c2 = [x, y + h, z + 1];
+              c3 = [x, y, z + 1];
+            } else {
+              // Back (-Z)
+              const z = q + 1;
+              c0 = [x, y, z];
+              c1 = [x, y + h, z];
+              c2 = [x + w, y + h, z];
+              c3 = [x + w, y, z];
             }
           }
 
-          if (drawFace) {
-            for (const pos of corners) {
-              // Local chunk coordinates
-              const px = x + pos[0];
-              const py = y + pos[1];
-              const pz = z + pos[2];
-              
-              positions.push(px, py, pz);
-              normals.push(...dir);
+          positions.push(...c0, ...c1, ...c2, ...c3);
+          normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-              // Mathematically correct face-aligned Ambient Occlusion corner checks (Minecraft formula)
-              let s1 = [0, 0, 0];
-              let s2 = [0, 0, 0];
+          const color = BLOCK_COLORS[blockType] || [1, 1, 1];
+          colors.push(
+            color[0], color[1], color[2],
+            color[0], color[1], color[2],
+            color[0], color[1], color[2],
+            color[0], color[1], color[2]
+          );
 
-              if (dir[0] !== 0) { // X-aligned face (Right/Left)
-                s1 = [0, pos[1] === 0 ? -1 : 1, 0];
-                s2 = [0, 0, pos[2] === 0 ? -1 : 1];
-              } else if (dir[1] !== 0) { // Y-aligned face (Top/Bottom)
-                s1 = [pos[0] === 0 ? -1 : 1, 0, 0];
-                s2 = [0, 0, pos[2] === 0 ? -1 : 1];
-              } else if (dir[2] !== 0) { // Z-aligned face (Front/Back)
-                s1 = [pos[0] === 0 ? -1 : 1, 0, 0];
-                s2 = [0, pos[1] === 0 ? -1 : 1, 0];
-              }
-
-              const checkNeighbor = (ox, oy, oz) => {
-                const nx = x + ox;
-                const ny = y + oy;
-                const nz = z + oz;
-                if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_HEIGHT || nz < 0 || nz >= CHUNK_SIZE) return 0;
-                return blocks[getIndex(nx, ny, nz)] !== 0 ? 1 : 0;
-              };
-
-              const side1 = checkNeighbor(dir[0] + s1[0], dir[1] + s1[1], dir[2] + s1[2]);
-              const side2 = checkNeighbor(dir[0] + s2[0], dir[1] + s2[1], dir[2] + s2[2]);
-              const corner = checkNeighbor(dir[0] + s1[0] + s2[0], dir[1] + s1[1] + s2[1], dir[2] + s1[2] + s2[2]);
-
-              let aoValue;
-              if (side1 === 1 && side2 === 1) {
-                aoValue = 3;
-              } else {
-                aoValue = side1 + side2 + corner;
-              }
-
-              const aoMult = 1.0 - (aoValue * 0.18);
-              colors.push(color[0] * aoMult, color[1] * aoMult, color[2] * aoMult);
-            }
-
-            indices.push(
-              indexOffset, indexOffset + 1, indexOffset + 2,
-              indexOffset, indexOffset + 2, indexOffset + 3
-            );
-            indexOffset += 4;
-          }
+          indices.push(
+            indexOffset, indexOffset + 1, indexOffset + 2,
+            indexOffset, indexOffset + 2, indexOffset + 3
+          );
+          indexOffset += 4;
         }
       }
     }
@@ -400,3 +491,4 @@ function generateMesh(cx, cz, blocks) {
     indices: new Uint32Array(indices)
   };
 }
+
