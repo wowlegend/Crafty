@@ -212,7 +212,7 @@ export const Player = ({ isWorldBuilt }) => {
       
       if (hitMobs && hitMobs.length > 0) {
         hitMobs.forEach(mob => {
-          GameMethods.damageMob(mob.id, damage);
+          GameMethods.damageMob(mob.id, damage, 'physical');
         });
         
         if (isCrit && store.triggerCameraShake) {
@@ -708,19 +708,24 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
     if (rightHandRef.current && leftHandRef.current) {
       const time = state.clock.elapsedTime;
 
+      // Subtle high-frequency channeling vibrations on attack
+      const noiseX = isAttacking ? (Math.sin(time * 65) + Math.cos(time * 87)) * 0.005 : 0;
+      const noiseY = isAttacking ? (Math.sin(time * 73) + Math.cos(time * 59)) * 0.005 : 0;
+      const noiseZ = isAttacking ? (Math.sin(time * 81) + Math.cos(time * 95)) * 0.005 : 0;
+
       if (isAttacking) {
         const attackTime = time * 6;
         rightHandRef.current.position.set(
-          baseRightPos.x,
-          baseRightPos.y,
-          baseRightPos.z + Math.sin(attackTime) * 0.04
+          baseRightPos.x + noiseX,
+          baseRightPos.y + noiseY,
+          baseRightPos.z + Math.sin(attackTime) * 0.04 + noiseZ
         );
         rightHandRef.current.rotation.set(Math.sin(attackTime) * 0.15, 0, 0);
 
         leftHandRef.current.position.set(
-          baseLeftPos.x,
-          baseLeftPos.y,
-          baseLeftPos.z
+          baseLeftPos.x + noiseX,
+          baseLeftPos.y + noiseY,
+          baseLeftPos.z + noiseZ
         );
         leftHandRef.current.rotation.set(Math.sin(attackTime + 1) * 0.1, 0, 0);
 
@@ -742,9 +747,15 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
       }
 
       if (magicAuraRef.current) {
-        const intensity = isAttacking ? 1.08 + Math.sin(time * 2) * 0.03 : 0.98 + Math.sin(time * 0.8) * 0.015;
-        magicAuraRef.current.scale.setScalar(intensity);
-        magicAuraRef.current.material.opacity = isAttacking ? 0.45 : 0.12;
+        const auraSpeed = isAttacking ? 12 : 3;
+        const scaleBase = isAttacking ? 1.3 : 0.8;
+        const scalePulse = Math.sin(time * auraSpeed) * (isAttacking ? 0.08 : 0.02);
+        const finalScale = scaleBase + scalePulse;
+        magicAuraRef.current.scale.set(finalScale, finalScale, finalScale);
+        
+        const opacityBase = isAttacking ? 0.5 : 0.12;
+        const opacityPulse = Math.cos(time * auraSpeed) * (isAttacking ? 0.08 : 0.015);
+        magicAuraRef.current.material.opacity = opacityBase + opacityPulse;
       }
     }
   });
@@ -755,12 +766,10 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
         <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
         <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
         <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}><MagicWand wandType={activeSpell} /></group>
-        {isAttacking && (
-          <mesh ref={magicAuraRef} position={[0, 0, 0]}>
-            <sphereGeometry args={[0.32, 8, 8]} />
-            <meshBasicMaterial color={currentSpellColor} transparent opacity={0.4} />
-          </mesh>
-        )}
+        <mesh ref={magicAuraRef} position={[0, 0, 0]}>
+          <sphereGeometry args={[0.32, 16, 16]} />
+          <meshBasicMaterial color={currentSpellColor} transparent opacity={0.15} depthWrite={false} />
+        </mesh>
         {isAttacking && <SpellHandEffects spellType={activeSpell} />}
       </group>
       <group ref={leftHandRef}>
@@ -772,6 +781,7 @@ const StableMagicHands = ({ selectedBlock, isAttacking }) => {
               <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
+            <pointLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} castShadow />
             <SpellLeftHandEffects spellType={activeSpell} />
           </group>
         )}

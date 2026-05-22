@@ -108,7 +108,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         clearInterval(burnInterval);
         return;
       }
-      const mob = GameMethods.damageMob(mobId, dps);
+      const mob = GameMethods.damageMob(mobId, dps, 'fireball');
       if (!mob) {
         clearInterval(burnInterval);
         return;
@@ -181,7 +181,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       if (nearestMob) {
         hitMobs.add(nearestMob.id);
         if (GameMethods.damageMob) {
-          GameMethods.damageMob(nearestMob.id, Math.floor(currentDamage));
+          GameMethods.damageMob(nearestMob.id, Math.floor(currentDamage), 'lightning');
         }
         lastPos = new THREE.Vector3(nearestMob.position[0], nearestMob.position[1], nearestMob.position[2]);
         currentDamage *= (1 - damageReduction);
@@ -351,7 +351,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
             const spellConfig = SPELL_TYPES[projectile.type];
 
             if (GameMethods.damageMob) {
-              GameMethods.damageMob(hitMob.id, projectile.damage);
+              GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type);
             }
 
             let willPierce = false;

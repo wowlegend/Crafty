@@ -65,6 +65,7 @@ const MobModel = ({ entity }) => {
   const groupRef = useRef();
   const legRefs = useRef([]);
   const prevPos = useRef(null);
+  const modelRef = useRef();
   
   const mobConfig = MOB_TYPES[entity.type] || MOB_TYPES.pig;
   const [bodyW, bodyH, bodyD] = mobConfig.bodySize;
@@ -109,14 +110,33 @@ const MobModel = ({ entity }) => {
     return () => clearInterval(interval);
   }, [entity.position, entity.type]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (!groupRef.current) return;
     
     // 1. Sync position and rotation from ECS entity directly (No React State!)
     groupRef.current.position.copy(entity.position);
     groupRef.current.rotation.y = entity.rotation;
 
-    // 2. Handle hit flash visually
+    // 2. Squash & Tilt Flinch Animation
+    if (modelRef.current) {
+      const hitElapsed = entity.lastHit ? (performance.now() - entity.lastHit) : Infinity;
+      if (hitElapsed < 250) {
+        const t = hitElapsed / 250;
+        const wave = Math.sin(t * Math.PI); // sine curve 0 -> 1 -> 0
+        const scaleY = 1.0 - wave * 0.15; // Y squishes down to 0.85
+        const scaleXZ = 1.0 + wave * 0.1; // X/Z swells to 1.10
+        modelRef.current.scale.set(scaleXZ, scaleY, scaleXZ);
+
+        // Tilt backward relative to hit direction
+        modelRef.current.rotation.x = -0.2 * wave;
+        modelRef.current.rotation.z = (entity.id % 2 === 0 ? 1 : -1) * 0.08 * wave;
+      } else {
+        modelRef.current.scale.set(1, 1, 1);
+        modelRef.current.rotation.set(0, 0, 0);
+      }
+    }
+
+    // 3. Handle hit flash visually
     const isHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
     
     groupRef.current.traverse((child) => {
@@ -127,7 +147,7 @@ const MobModel = ({ entity }) => {
       }
     });
 
-    // 3. Phase 9: Procedural Mob Animations & IK
+    // 4. Procedural Mob Animations & IK
     if (!prevPos.current) prevPos.current = { x: entity.position.x, z: entity.position.z };
     const dx = entity.position.x - prevPos.current.x;
     const dz = entity.position.z - prevPos.current.z;
@@ -173,66 +193,68 @@ const MobModel = ({ entity }) => {
 
   return (
     <group ref={groupRef} position={[entity.position.x, entity.position.y, entity.position.z]} rotation={[0, entity.rotation, 0]}>
-      {/* Body */}
-      <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
-        <boxGeometry args={[bodyW, bodyH, bodyD]} />
-        <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
-      </mesh>
-      {/* Head */}
-      <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
-        <boxGeometry args={[headW, headH, headD]} />
-        <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
-      </mesh>
-      {/* Eyes for hostile mobs */}
-      {!mobConfig.passive && entity.type !== 'villager' && (
-        <>
-          <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
-            <boxGeometry args={[0.15, 0.1, 0.02]} />
-            <meshBasicMaterial name="eye" color="#ff0000" />
-          </mesh>
-          <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
-            <boxGeometry args={[0.15, 0.1, 0.02]} />
-            <meshBasicMaterial name="eye" color="#ff0000" />
-          </mesh>
-        </>
-      )}
-      {/* Custom villager details: green eyes + protruding nose */}
-      {entity.type === 'villager' && (
-        <>
-          {/* Green eyes */}
-          <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
-            <boxGeometry args={[0.1, 0.08, 0.02]} />
-            <meshBasicMaterial name="eye" color="#00aa44" />
-          </mesh>
-          <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
-            <boxGeometry args={[0.1, 0.08, 0.02]} />
-            <meshBasicMaterial name="eye" color="#00aa44" />
-          </mesh>
-          {/* Protruding nose */}
-          <mesh castShadow receiveShadow position={[0, bodyH + headH / 2 - 0.1, bodyD / 3 + headD / 2 + 0.06]}>
-            <boxGeometry args={[0.12, 0.25, 0.15]} />
-            <meshStandardMaterial roughness={0.8} metalness={0.1} color="#d2b48c" />
-          </mesh>
-        </>
-      )}
-      {/* Legs */}
-      {entity.type !== 'spider' ? (
-        <>
-          <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
-          <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
-          <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
-          <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
-        </>
-      ) : (
-        [...Array(8)].map((_, i) => (
-          <mesh castShadow receiveShadow ref={(el) => legRefs.current[i] = el} key={i} position={[
-            Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
-          ]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.1, 0.8, 0.1]} />
-            <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
-          </mesh>
-        ))
-      )}
+      <group ref={modelRef}>
+        {/* Body */}
+        <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
+          <boxGeometry args={[bodyW, bodyH, bodyD]} />
+          <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
+        </mesh>
+        {/* Head */}
+        <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
+          <boxGeometry args={[headW, headH, headD]} />
+          <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
+        </mesh>
+        {/* Eyes for hostile mobs */}
+        {!mobConfig.passive && entity.type !== 'villager' && (
+          <>
+            <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
+              <boxGeometry args={[0.15, 0.1, 0.02]} />
+              <meshBasicMaterial name="eye" color="#ff0000" />
+            </mesh>
+            <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
+              <boxGeometry args={[0.15, 0.1, 0.02]} />
+              <meshBasicMaterial name="eye" color="#ff0000" />
+            </mesh>
+          </>
+        )}
+        {/* Custom villager details: green eyes + protruding nose */}
+        {entity.type === 'villager' && (
+          <>
+            {/* Green eyes */}
+            <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
+              <boxGeometry args={[0.1, 0.08, 0.02]} />
+              <meshBasicMaterial name="eye" color="#00aa44" />
+            </mesh>
+            <mesh castShadow receiveShadow position={[0.15, bodyH + headH / 2 + 0.05, bodyD / 3 + headD / 2 + 0.01]}>
+              <boxGeometry args={[0.1, 0.08, 0.02]} />
+              <meshBasicMaterial name="eye" color="#00aa44" />
+            </mesh>
+            {/* Protruding nose */}
+            <mesh castShadow receiveShadow position={[0, bodyH + headH / 2 - 0.1, bodyD / 3 + headD / 2 + 0.06]}>
+              <boxGeometry args={[0.12, 0.25, 0.15]} />
+              <meshStandardMaterial roughness={0.8} metalness={0.1} color="#d2b48c" />
+            </mesh>
+          </>
+        )}
+        {/* Legs */}
+        {entity.type !== 'spider' ? (
+          <>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} /></mesh>
+          </>
+        ) : (
+          [...Array(8)].map((_, i) => (
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[i] = el} key={i} position={[
+              Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
+            ]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[0.1, 0.8, 0.1]} />
+              <meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />
+            </mesh>
+          ))
+        )}
+      </group>
       <HealthBar entity={entity} />
       {dialogue && (
         <Html position={[0, bodyH + headH + 0.8, 0]} center distanceFactor={8}>
@@ -284,7 +306,7 @@ const HealthBar = ({ entity }) => {
 };
 
 // Floating Damage/XP Notification Component
-const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
+const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
   const meshRef = useRef();
   const startTime = useRef(null);
 
@@ -305,10 +327,41 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
     
     const text = isXP ? `+${damage} XP` : (isCrit ? `💥 ${damage}!` : `${damage}`);
     
-    // Text styling color selection
-    const fillStyle = isXP 
-      ? '#00ff88' 
-      : (isCrit ? '#ff3300' : (damage >= 25 ? '#ffa500' : '#ffff00'));
+    // Create gradient
+    const gradient = ctx.createLinearGradient(0, 30, 0, 98);
+    if (isXP) {
+      gradient.addColorStop(0, '#a3ffb4');
+      gradient.addColorStop(1, '#00ff88');
+    } else {
+      switch (type) {
+        case 'fireball':
+          gradient.addColorStop(0, '#ffaa00');
+          gradient.addColorStop(1, '#ff3300');
+          break;
+        case 'iceball':
+          gradient.addColorStop(0, '#ffffff');
+          gradient.addColorStop(1, '#00d2ff');
+          break;
+        case 'lightning':
+          gradient.addColorStop(0, '#ffffdd');
+          gradient.addColorStop(1, '#ffff00');
+          break;
+        case 'arcane':
+          gradient.addColorStop(0, '#e87cff');
+          gradient.addColorStop(1, '#8a00ff');
+          break;
+        case 'physical':
+        default:
+          if (isCrit) {
+            gradient.addColorStop(0, '#ff9999');
+            gradient.addColorStop(1, '#ff0000');
+          } else {
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(1, '#cccccc');
+          }
+          break;
+      }
+    }
     
     // Premium text outline
     ctx.lineWidth = 10;
@@ -316,13 +369,13 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
     ctx.strokeText(text, 128, 64);
     
     // Text fill
-    ctx.fillStyle = fillStyle;
+    ctx.fillStyle = gradient;
     ctx.fillText(text, 128, 64);
     
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
     return tex;
-  }, [damage, isXP]);
+  }, [damage, isXP, type]);
 
   // Premium physically simulated arc bounce trajectory
   const velocity = useMemo(() => {
@@ -362,6 +415,50 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP }) => {
     <sprite ref={meshRef} position={[position[0], position[1] + 1.8, position[2]]} scale={scale}>
       <spriteMaterial map={texture} transparent opacity={1} depthWrite={false} />
     </sprite>
+  );
+};
+
+// Pooled Shockwave Ring Component
+const ImpactShockwave = ({ position, id, onComplete, type }) => {
+  const meshRef = useRef();
+  const startTime = useRef(null);
+
+  const color = useMemo(() => {
+    switch (type) {
+      case 'fireball': return '#ffaa00';
+      case 'iceball': return '#00d2ff';
+      case 'lightning': return '#ffff00';
+      case 'arcane': return '#d900ff';
+      case 'physical':
+      default: return '#ffffff';
+    }
+  }, [type]);
+
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      if (startTime.current === null) startTime.current = performance.now();
+      const elapsed = performance.now() - startTime.current;
+      const duration = 300; // 300ms
+      const t = Math.min(1, elapsed / duration);
+      
+      // Radius scale from 0.2 to 2.5
+      const scale = 0.2 + (2.5 - 0.2) * t;
+      meshRef.current.scale.set(scale, scale, 1);
+      
+      // Opacity fade out from 0.8 to 0.0
+      meshRef.current.material.opacity = 0.8 * (1 - t);
+
+      if (t >= 1) {
+        onComplete(id);
+      }
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.9, 1.0, 32]} />
+      <meshBasicMaterial color={color} transparent opacity={0.8} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
   );
 };
 
@@ -634,10 +731,10 @@ const MinimapSyncSystem = () => {
   return null;
 };
 
-const CombatSystem = ({ setDamageNumbers, damageId }) => {
+const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
   const { playHit } = useGameSounds();
   useEffect(() => {
-    const damageMob = (id, damage = 25) => {
+    const damageMob = (id, damage = 25, type = 'physical') => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
 
@@ -658,10 +755,29 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
       entity.health -= damage;
       entity.lastHit = performance.now();
 
+      // Store hit direction for flinch tilt
+      const camera = useGameStore.getState().gameCamera;
+      if (camera) {
+        const kx = entity.position.x - camera.position.x;
+        const kz = entity.position.z - camera.position.z;
+        const kd = Math.sqrt(kx * kx + kz * kz) || 1;
+        entity.knockback = [kx / kd * 2, 0, kz / kd * 2];
+        entity.hitDirection = new THREE.Vector3(kx / kd, 0, kz / kd);
+      } else {
+        entity.hitDirection = new THREE.Vector3(0, 0, -1);
+      }
+
       setDamageNumbers(nums => [...nums, {
         id: damageId.current++,
         damage,
+        type,
         position: [entity.position.x, entity.position.y, entity.position.z]
+      }]);
+
+      setShockwaves(waves => [...waves, {
+        id: damageId.current++,
+        type,
+        position: [entity.position.x, entity.position.y + 0.1, entity.position.z]
       }]);
 
       if (entity.health <= 0) {
@@ -690,14 +806,6 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
 
         if (store.onMobKill) store.onMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]);
         ecs.remove(entity);
-      } else {
-        const camera = useGameStore.getState().gameCamera;
-        if (camera) {
-          const kx = entity.position.x - camera.position.x;
-          const kz = entity.position.z - camera.position.z;
-          const kd = Math.sqrt(kx * kx + kz * kz) || 1;
-          entity.knockback = [kx / kd * 2, 0, kz / kd * 2];
-        }
       }
       return entity;
     };
@@ -738,7 +846,7 @@ const CombatSystem = ({ setDamageNumbers, damageId }) => {
     useGameStore.setState({ checkMobCollision: checkMobCollision, checkMobsInMeleeCone: checkMobsInMeleeCone });
     GameMethods.checkMobCollision = checkMobCollision;
     GameMethods.checkMobsInMeleeCone = checkMobsInMeleeCone;
-  }, [setDamageNumbers]);
+  }, [setDamageNumbers, setShockwaves]);
 
   return null;
 };
@@ -1064,6 +1172,7 @@ const LootDropRender = ({ entity }) => {
 
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
+  const [shockwaves, setShockwaves] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery);
   const xpOrbs = useEntities(xpOrbsQuery);
@@ -1089,7 +1198,7 @@ export const NPCSystem = React.memo(() => {
       <SpawnerSystem />
       <AIWorkerSystem />
       <MinimapSyncSystem />
-      <CombatSystem setDamageNumbers={setDamageNumbers} damageId={damageId} />
+      <CombatSystem setDamageNumbers={setDamageNumbers} setShockwaves={setShockwaves} damageId={damageId} />
       <EnemyProjectileSystem />
       <XPOrbSystem />
       <LootSystem />
@@ -1112,8 +1221,19 @@ export const NPCSystem = React.memo(() => {
           id={dmg.id}
           damage={dmg.damage}
           isXP={dmg.isXP}
+          type={dmg.type}
           position={dmg.position}
           onComplete={removeDamageNumber}
+        />
+      ))}
+
+      {shockwaves.map(wave => (
+        <ImpactShockwave
+          key={wave.id}
+          id={wave.id}
+          position={wave.position}
+          type={wave.type}
+          onComplete={(id) => setShockwaves(prev => prev.filter(w => w.id !== id))}
         />
       ))}
     </group>
