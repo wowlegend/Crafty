@@ -1,7 +1,7 @@
-# Active Plan: Dynamic Infinite Mob Spawning & Terrain Chunk Memory Leak Resolution
+# Active Plan: SOTA Visuals, Volumetric Weather, Cavern Acoustics & GPU Grass
 
 ## Goal
-Deeply investigate and resolve the issue where mobs stop spawning in farther regions of the map once the player travels beyond the initial spawn area. Fix the chunk culling memory leak in `Terrain.jsx` and re-engineer the spawner in `SimplifiedNPCSystem.jsx` to dynamically populate loaded chunks surrounding the player with zero performance spikes.
+Successfully implement high-fidelity SOTA interactive GPU grass, bioluminescent liquid wave shaders, volumetric weather/fireflies, and cavern depth-reverb acoustics in Crafty while maintaining 60+ FPS performance targets and zero-debt production builds.
 
 ## Current Task: None
-All planned phases are completed. The dynamic spawner and chunk lifecycle mount/unmount memory safety have been fully implemented, optimized, and validated for production builds.
+All planned SOTA graphics, volumetric weather, and cavern acoustics upgrades are fully completed, committed, and validated under clean production builds with zero warnings or errors.

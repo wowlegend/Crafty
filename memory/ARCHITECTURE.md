@@ -257,3 +257,27 @@ A premium, continuous soundscape synthesizer is built in `SoundManager.jsx`:
 - **Hybrid Timber**: Employs sawtooth and triangle oscillators with warm low-pass filters.
 - **Filter Sweeps**: Filter cutoff is swept continuously by a slow 0.08 Hz LFO.
 - **Step-Scheduled Transitions**: Rotates chord progressions every 8 seconds with 3.5 seconds of portamento exponential glide. Dynamic chord libraries: Lydian progression (Day), mysterious Dorian progression (Night), and augmented chords (Boss).
+
+## SOTA Visuals, Volumetric Weather & Cavern Acoustics (May 2026)
+
+### 1. Interactive GPU Grass Displacement
+To render high-fidelity, high-performance foliage, `OptimizedGrassSystem.jsx` utilizes an instanced mesh with vertex-level displacement:
+- **Global Uniform Binding**: The player's 3D coordinates from the Zustand store are bound as a global uniform `playerPosition` into the shared grass material.
+- **Quadratic Bending Shaders**: In the `onBeforeCompile` vertex shader, the distance from each instance to the player is calculated. Vertices are pushed away dynamically using a quadratic falloff equation, allowing grass to bend naturally as the player walks through it.
+
+### 2. Bioluminescent Liquid Wave Shaders
+Procedural fluid surface dynamics are compiled inside `Terrain.jsx`:
+- **Shared Material Architecture**: All terrain chunks share a single custom standard material (`terrainMaterial`), reducing draw calls and context pressure.
+- **Wave Displacement**: An `onBeforeCompile` hook filters water vertices (`color.b > 0.6 && color.r < 0.15`) in the vertex shader, displacing height dynamically using high-frequency procedural wave equations.
+- **Night Bioluminescence**: In the fragment shader, a pulsating neon-blue glow is blended during Night cycles (`1.0 - timeOfDay`), driven by time-pulsed noise equations.
+
+### 3. Volumetric Weather Systems & Night Fireflies
+Immersive atmospheric weather is implemented via a `<WeatherSystem />` canvas component in `GameScene.jsx`:
+- **Instanced Bounding Boxes**: Animates 500 stretched raindrop boxes and 300 snow quads in a 40m bounding box centered on the player.
+- **Terrain Colliders**: Particles query `getMobGroundLevel` to snap, splatter, and reset upon hitting the ground, avoiding underground particle clipping.
+- **Night Fireflies**: Spawns 40 glowing yellow-green firefly particles orbiting organically around the player at Night, fading out during the Day.
+
+### 4. Cavern Acoustics & Depth-Based Reverb
+Procedural Web Audio routing is added to `SpatialAudioController` (`GameScene.jsx`):
+- **Delay-Feedback Graph**: Routes spatial sounds into a lowpass filter, delay node (240ms), feedback gain loop (35% decay), and a dedicated wet gain controller.
+- **Depth-Based Modulation**: Continually monitors camera height. When the player descends underground (`y < 10`), the feedback wet gain scales up to produce a haunting cavern echo.

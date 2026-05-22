@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA Visuals, Volumetric Weather, Cavern Acoustics & GPU Grass)
+
+- **INTERACTIVE GPU GRASS DISPLACEMENT**: Bound the player's 3D coordinates from the Zustand store as a global uniform into the shared grass material in `OptimizedGrassSystem.jsx`. Injected custom `onBeforeCompile` vertex shader logic to compute player distance and apply smooth quadratic bending, pushing grass blades away dynamically as the player walks through them.
+- **BIOLUMINESCENT WAVE SHADER SYSTEM**: Refactored `Terrain.jsx` to compile a single shared `terrainMaterial` for all chunks, eliminating massive WebGL compile pressure. Implemented a custom `onBeforeCompile` vertex shader to detect water vertices (`color.b > 0.6 && color.r < 0.15`) and displace height dynamically using procedurally combined high-frequency sine and cosine waves. Integrated fragment shader night-cycle bioluminescence with neon blue pulsing.
+- **VOLUMETRIC WEATHER & NIGHT FIREFLIES**: Created a canvas-integrated `<WeatherSystem />` component inside `GameScene.jsx` driving clear, rain, and snow weather machines. Generated 500 raindrops and 300 snow particles inside a bounding box around the player. Implemented top-down ground-level snapping using `getMobGroundLevel` to splatter particles dynamically on the terrain. Spawned 40 glowing yellow-green fireflies with organic orbital drift at Night.
+- **CAVERN ACOUSTICS REVERB NETWORK**: Built a procedural delay-feedback audio graph (`filter -> delayNode (240ms) -> reverbFilter (1200Hz lowpass) -> feedbackGain (35%) -> delayNode / wetGain -> destination`) inside `SpatialAudioController` (`GameScene.jsx`) to handle Web Audio. Dynamic depth modulation lerps wet gain based on player depth (`camera.position.y < 10`) to produce an eerie cave reverb.
+- **PRODUCTION COMPILE & VALIDATION**: Confirmed a zero-debt build compilation via `npm run build` inside `frontend/` (succeeded in under 4 seconds) with zero compiler or bundler warnings.
+
 ### May 23, 2026 (Infinite World Spawner & Terrain Memory Leak Resolution)
 
 - **TERRAIN CHUNK MEMORY LEAK FIXED**: Fixed progressive chunk unloading in `Terrain.jsx` by surgically deleting culled chunk keys from the central `chunksRef.current` Set, terminating the perpetual memory footprint growth leak.

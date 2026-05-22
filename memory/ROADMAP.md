@@ -2,6 +2,13 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+### Phase 16: SOTA Visuals, Volumetric Weather, Cavern Acoustics & GPU Grass [COMPLETED]
+*Deeply enhancing environmental visuals, weather cycles, acoustics, and foliage animations.*
+- [x] **Interactive GPU Grass Displacement**: Implemented player position uniform binding and vertex-level quadratic grass bending in `OptimizedGrassSystem.jsx`.
+- [x] **Bioluminescent Wave Shaders**: Added procedural wave displacements on water blocks and pulsating neon blue night bioluminescence via `onBeforeCompile` material shaders in `Terrain.jsx`.
+- [x] **Volumetric Weather & Fireflies**: Integrated `<WeatherSystem />` in `GameScene.jsx` driving rain, snow, and night firefly cycles, using `getMobGroundLevel` raycasts for physics-ground snapping.
+- [x] **Cavern Acoustics Reverb Loop**: Created a procedural delay-feedback audio graph in `SpatialAudioController` that dynamically modulates cave wetness echo based on depth (`y < 10`).
+
 ### Phase 15: Infinite Map Spawning & Chunk Culling Memory Leak [COMPLETED]
 *Deeply resolving spawning radius failures and memory leaks for infinite world exploration.*
 - [x] **Terrain Chunk Memory Leak Resolution**: Fixed the Progressive Chunk loading in `Terrain.jsx` to surgically delete culled chunk keys from the central `chunksRef.current` Set, preventing perpetual memory footprint growth.
