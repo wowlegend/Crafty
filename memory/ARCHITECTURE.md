@@ -232,3 +232,28 @@ A dedicated pet command system (T key) allows the player to dynamically direct t
 - **3D Interaction**: For accurate block placement in 3D environments, always use physics engine raycasting (e.g., Rapier's `world.castRay`) for precise intersections. Throttle these raycasts spatially and temporally to avoid 60Hz CPU spikes.
 - **GPU Offloading**: When animating hundreds of similar objects (e.g., grass swaying), never compute matrix math in a CPU `useFrame`. Always use `InstancedMesh` combined with custom `onBeforeCompile` vertex shaders.
 - **Physics Pooling**: Never mount and unmount `<RigidBody>` components dynamically during high-frequency events (like block breaking). Use `<InstancedRigidBodies>` and manipulate the transform matrices of a fixed pool of hidden bodies to simulate spawning.
+
+## Interactive SOTA Overhaul (May 2026)
+
+### 1. Visceral Combat Impact Engine
+To achieve SOTA browser-game combat feel, a comprehensive impact pipeline is implemented in `SimplifiedNPCSystem.jsx`:
+- **Directional Squash & Tilt**: Mob geometries dynamically squash on the Y axis (peak at 15%) and stretch on the XZ plane, coupled with a 0.2 radian directional tilt away from the incoming hit vector. The deformation decays using high-frequency spring-dampers (`Math.exp(-delta * 12)`).
+- **Pooled Expanding Shockwaves**: Flat circular rings spawn on hit coordinates, scaling to 4.5 units and fading opacity over 300ms. Color-coded per damage type (orange: Fire, cyan: Lightning, gold: Arcane, white: Melee).
+- **Canvas-Gradient Floating Damage**: floating billboard text sprites render high-contrast dynamic linear gradients matched to spell colors (e.g., yellow-red for Fireball, cyan-blue for Lightning).
+
+### 2. Spell-Casting Hands & Aura Visuals
+The player hands `<StableMagicHands>` in `Components.jsx` are upgraded with immersive visual feedback:
+- **Channeling Vibrations**: Subtle high-frequency viewport vibrations (0.005 units at 65-95 Hz) are applied during casting to communicate raw power.
+- **Dynamic Casting PointLights**: Real-time `<pointLight>` source lights up the left hand during attack frames, throwing colored light bounces onto the surroundings.
+- **Pulse-Pulsed Aura**: Persistent aura pulses are driven at speed-factor 12 during casting and speed-factor 3 when idle.
+
+### 3. Atmospheric Day/Night Fog
+Dynamic atmospheric immersion in `GameScene.jsx`:
+- **Responsive FogEXP2**: A dedicated `<EnvironmentalFog />` component smoothly lerps scene fog color (`#e0f7fa` $\leftrightarrow$ `#0a0a23`) and density (`0.007` $\leftrightarrow$ `0.025`) as the sun rises/sets.
+- **Seamless Skybox Blending**: Copies the active fog color directly to `scene.background` on every frame, achieving perfect camera horizon blending.
+
+### 4. 4-Voice Procedural FM Synth Pad
+A premium, continuous soundscape synthesizer is built in `SoundManager.jsx`:
+- **Hybrid Timber**: Employs sawtooth and triangle oscillators with warm low-pass filters.
+- **Filter Sweeps**: Filter cutoff is swept continuously by a slow 0.08 Hz LFO.
+- **Step-Scheduled Transitions**: Rotates chord progressions every 8 seconds with 3.5 seconds of portamento exponential glide. Dynamic chord libraries: Lydian progression (Day), mysterious Dorian progression (Night), and augmented chords (Boss).

@@ -1,6 +1,15 @@
 # Roadmap & Future Enhancements
 
-*(Updated via Session Archivist - April 19, 2026)*
+*(Updated via Session Archivist - May 23, 2026)*
+
+### Phase 14: Interactive SOTA Overhaul & Immersive Atmosphere [COMPLETED]
+*Deeply enhancing combat feel, visual casting indicators, environmental fog, and procedural synth soundscapes.*
+- [x] **Visceral Combat Squash & Tilt**: Directional squash/tilt flinch on mobs combined with dampening springs.
+- [x] **Expanding Impact Rings**: Pooled expanding shockwaves color-coded by hit type.
+- [x] **Spell-Specific Floating Gradients**: High-contrast damage numbers with spell-colored linear gradients.
+- [x] **Channeling Hands & Aura**: Channeling vibrations, colored left-hand pointLights, and attack-pulsed auras.
+- [x] **Atmospheric Day/Night Fog**: Seamless EXP2 fog color/density transitions blended to background color.
+- [x] **4-Voice Procedural FM Synth**: Step-scheduled chords with resonant filters, LFO frequency sweeps, and exponential portamento glides.
 
 ### Phase 13: Progression & Progression Loop [COMPLETED]
 *Structuring the underlying progression systems and expanding world interactions.*
