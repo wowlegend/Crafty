@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (Ruthless Codebase Cleanup & Optimization Audit)
+
+- **SURGICAL DEAD EXPORT PURGE**: Eliminated completely unused exports identified via precise AST-based analysis using Knip. Purged dead functions `solveSpellDamage` and `mitigateDamage` from [GameSystems.jsx](file:///Users/kz/Code/Crafty/frontend/src/GameSystems.jsx).
+- **PRODUCTION CONSOLE STRIPPING**: Configured the Vite production bundler in [vite.config.js](file:///Users/kz/Code/Crafty/frontend/vite.config.js) using the `esbuild.drop: ['console', 'debugger']` compiler option. This safely strips all debugging `console.log` statements during final production builds for zero-bloat releases, while preserving local debugging feedback logs that power the custom in-game UI debug panel in development.
+- **DIAGNOSTIC & SCRATCH FILE PURGE**: Permanently deleted temporary diagnostic/scratch scripts (`diagnostic.js`, `scratch_debug.js`, `scratch_inspect_scene.js`, `scratch_state_query.js`) and visual captures (`diagnostic_screenshot.png`, `scene_screenshot.png`, `screenshot.png`, `test-scene.png`, `world-fixed.png`) to keep the repository extremely lightweight and pristine.
+- **METADATA & EMPTY DIRECTORY CLEANUP**: Purged OS-generated hidden system metadata (`.DS_Store`) in both root and frontend folders, and safely pruned the empty, non-hidden `./tests` directory.
+- **PRODUCTION INTEGRATION & BUILD VERIFICATION**: Staged the premium `DebugOverlay.jsx` component in Git tracking, and verified full compilation of the Vite asset pipeline using `npm run build` which succeeded cleanly in `3.15s` with zero errors or warnings.
+
 ### May 23, 2026 (SOTA RPG Overhaul & Premium Spell Variety)
 
 - **PREMIUM EMISSIVE SPELL VARIETY**: Upgraded the spell projectile rendering system inside [EnhancedMagicSystem.jsx](file:///Users/kz/Code/Crafty/frontend/src/EnhancedMagicSystem.jsx). Replaced generic spheres and basic materials with specific custom geometries per spell type: standard spheres (`sphereGeometry`) for fireballs, jagged dodecahedrons (`dodecahedronGeometry`) for iceballs, glowing vertical kinetic rods (`cylinderGeometry`) for lightning, and cosmic rings (`torusGeometry`) for arcane projectiles. Converted all materials to advanced Standard materials (`meshStandardMaterial`) configured with custom metallic/roughness properties, custom color profiles, and vivid emissive intensities ranging from `2.0` to `3.0` for high-fidelity glowing bloom effects under next-gen post-processing.
