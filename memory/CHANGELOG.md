@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### May 23, 2026 (Sky Boss Camera Fix, 3D Hit Detection & Metallic Obsidian Visual Polish)
+
+- **CAMERA GIMBAL LOCK FIXED**: Addressed Euler order quaternion conflicts causing the camera to lock when pointing straight up at the sky boss. Forced `camera.rotation.order = 'YXZ'` in both `GameScene.jsx` onCreated and `Components.jsx` useFrame loop clamps, and configured custom `minPolarAngle`/`maxPolarAngle` in `<PointerLockControls>` to allow a near vertical look angle up to 87 degrees (`0.05` to `Math.PI - 0.05` radians).
+- **FLYING BOSS 3D HIT REGISTRATION**: Implemented dynamic 3D spherical distance collision check in `EnhancedMagicSystem.jsx` tracking active projectile vectors within a 6.0 unit radius of `store.getBossPosition()`. Registered spell projectile impacts dynamically, applying proper damage, triggering 3D spatial collision audio (`magicHit`), and spawning particle explosion effects.
+- **VISUAL DAMAGE FLASH INTEGRATION**: Wired the `bossHealth` prop directly from the boss system state to `<BossEntity>` in `GameScene.jsx`, ensuring its internal hook triggers instantly upon damage to initiate visual damage flashes.
+- **MAJESTIC METALLIC OBSIDIAN GRAPHICS**: Upgraded the Shadow Dragon's body, wing, and head materials to low-roughness (`0.15`), high-metallic (`0.95`) obsidian color gradients (`#111029`). Configured brilliant, phase-reactive emissive intensifiers (flashing up to `3.0` on hit) and tone-mapped bypassed emissive glowing eye colors (purple, gold/amber, and crimson red) mapped to fight stages.
+- **POST-PROCESSING PIPELINE OPTIMIZATION**: Activated next-gen post-processing Composer in `GameScene.jsx` using high-efficiency screen-space Bloom (`intensity={1.2}`, `luminanceThreshold={0.6}`), subtle cinematic camera Noise (`opacity={0.01}`), and realistic Vignette borders (`darkness={0.8}`).
+- **PRISTINE PRODUCTION COMPILE**: Confirmed a zero-debt build compilation via `npm run build` inside `frontend/` (succeeded in 3.35s) with zero bundler errors or warnings.
+
 ### May 23, 2026 (RPG Combat Utility & Decoupled Spell Scaling Integration)
 
 - **DECOUPLED COMBAT FORMULAS UTILITY**: Extracted all combat calculations to a framework-agnostic utility module at [combat.js](file:///Users/kz/Code/Crafty/frontend/src/utils/combat.js). Decoupled the pure mathematical functions `solveMeleeDamage`, `solveSpellDamage`, and `mitigateDamage` to enforce clean domain boundaries.

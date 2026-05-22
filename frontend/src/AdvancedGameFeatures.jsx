@@ -219,9 +219,22 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     );
 });
 
-export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }) => {
+export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth }) => {
     const meshRef = useRef();
     const { camera } = useThree();
+    
+    // Premium visual animation and hit reaction refs
+    const leftWingRef = useRef();
+    const rightWingRef = useRef();
+    const prevHealth = useRef(bossHealth);
+    const flashTime = useRef(0);
+
+    useEffect(() => {
+        if (bossHealth < prevHealth.current) {
+            flashTime.current = 0.18; // Flash red for 180ms
+        }
+        prevHealth.current = bossHealth;
+    }, [bossHealth]);
     
     // Advanced tactical action cooldown timers
     const lastAttack = useRef(0);
@@ -511,11 +524,31 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }
         if (bossPhase > 0) {
             meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 4) * 0.08;
         }
+
+        // Damage hit visual flash timer decay
+        if (flashTime.current > 0) {
+            flashTime.current -= delta;
+        }
+
+        // Premium wing flapping motion
+        if (leftWingRef.current && rightWingRef.current) {
+            const flapSpeed = bossPhase === 0 ? 5.5 : 2.5;
+            const flapAngle = Math.sin(state.clock.elapsedTime * flapSpeed) * 0.4;
+            leftWingRef.current.rotation.z = 0.2 + flapAngle;
+            rightWingRef.current.rotation.z = -0.2 - flapAngle;
+        }
     });
 
     if (!bossActive || !bossPositionRef?.current) return null;
 
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
+    
+    // Satisfying damage indicator color values and majestic obsidian styling
+    const isFlashing = flashTime.current > 0;
+    const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black
+    const bodyEmissive = isFlashing ? "#ef4444" : phase.color; // Emissive phase color highlight
+    const emissiveIntensityVal = isFlashing ? 3.0 : (bossPhase === 2 ? 2.2 : (bossPhase === 1 ? 1.5 : 0.8));
+    const eyeColor = isFlashing ? "#ffffff" : (bossPhase === 2 ? "#f43f5e" : (bossPhase === 1 ? "#fbbf24" : "#c084fc"));
 
     return (
         <group>
@@ -525,41 +558,45 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }
                 <mesh castShadow receiveShadow>
                     <boxGeometry args={[3, 2, 4]} />
                     <meshStandardMaterial 
-                        roughness={0.5} 
-                        metalness={0.5} 
-                        color={phase.color} 
-                        emissive={phase.color} 
-                        emissiveIntensity={bossPhase === 2 ? 0.6 : 0.2} 
+                        roughness={0.15} 
+                        metalness={0.9} 
+                        color={bodyColor} 
+                        emissive={bodyEmissive} 
+                        emissiveIntensity={emissiveIntensityVal} 
                     />
                 </mesh>
                 {/* Neck & Head */}
                 <mesh castShadow receiveShadow position={[0, 1.4, 1.8]}>
                     <boxGeometry args={[1.4, 1.4, 2]} />
                     <meshStandardMaterial 
-                        roughness={0.5} 
-                        metalness={0.5} 
-                        color={phase.color} 
-                        emissive={BOSS_CONFIG.secondaryColor} 
-                        emissiveIntensity={0.3} 
+                        roughness={0.15} 
+                        metalness={0.9} 
+                        color={bodyColor} 
+                        emissive={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
+                        emissiveIntensity={isFlashing ? 3.0 : 0.6} 
                     />
                 </mesh>
                 {/* Wings (Left / Right flapping) */}
-                <mesh castShadow receiveShadow position={[-2.6, 0.8, 0]} rotation={[0, 0, 0.2]}>
+                <mesh ref={leftWingRef} castShadow receiveShadow position={[-2.6, 0.8, 0]} rotation={[0, 0, 0.2]}>
                     <boxGeometry args={[2.2, 0.15, 3]} />
                     <meshStandardMaterial 
-                        roughness={0.3} 
-                        metalness={0.8} 
-                        color={BOSS_CONFIG.secondaryColor} 
+                        roughness={0.1} 
+                        metalness={0.95} 
+                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
+                        emissive={isFlashing ? "#ef4444" : phase.color}
+                        emissiveIntensity={isFlashing ? 3.0 : emissiveIntensityVal * 0.4}
                         transparent 
                         opacity={0.85} 
                     />
                 </mesh>
-                <mesh castShadow receiveShadow position={[2.6, 0.8, 0]} rotation={[0, 0, -0.2]}>
+                <mesh ref={rightWingRef} castShadow receiveShadow position={[2.6, 0.8, 0]} rotation={[0, 0, -0.2]}>
                     <boxGeometry args={[2.2, 0.15, 3]} />
                     <meshStandardMaterial 
-                        roughness={0.3} 
-                        metalness={0.8} 
-                        color={BOSS_CONFIG.secondaryColor} 
+                        roughness={0.1} 
+                        metalness={0.95} 
+                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
+                        emissive={isFlashing ? "#ef4444" : phase.color}
+                        emissiveIntensity={isFlashing ? 3.0 : emissiveIntensityVal * 0.4}
                         transparent 
                         opacity={0.85} 
                     />
@@ -567,11 +604,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase }
                 {/* Glowing Eyes */}
                 <mesh castShadow receiveShadow position={[-0.4, 1.7, 2.7]}>
                     <sphereGeometry args={[0.22, 8, 8]} />
-                    <meshBasicMaterial color="#ff0000" toneMapped={false} />
+                    <meshBasicMaterial color={eyeColor} toneMapped={false} />
                 </mesh>
                 <mesh castShadow receiveShadow position={[0.4, 1.7, 2.7]}>
                     <sphereGeometry args={[0.22, 8, 8]} />
-                    <meshBasicMaterial color="#ff0000" toneMapped={false} />
+                    <meshBasicMaterial color={eyeColor} toneMapped={false} />
                 </mesh>
                 <pointLight color={phase.color} intensity={2.5} distance={15} />
             </group>

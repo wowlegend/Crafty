@@ -191,6 +191,7 @@ export function GameScene({
         }}
         onCreated={({ gl, camera, scene }) => {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          camera.rotation.order = 'YXZ';
           camera.rotation.set(0, 0, 0);
           camera.lookAt(0, 30, -100);
 
@@ -245,7 +246,12 @@ export function GameScene({
 
         <SpatialAudioController />
 
-        <PointerLockControls makeDefault enabled={!anyPanelOpen} />
+        <PointerLockControls 
+          makeDefault 
+          enabled={!anyPanelOpen} 
+          minPolarAngle={0.05} 
+          maxPolarAngle={Math.PI - 0.05} 
+        />
 
         <PositionTracker />
 
@@ -263,21 +269,22 @@ export function GameScene({
               bossActive={bossSystem.bossActive}
               bossPositionRef={bossSystem.bossPositionRef}
               bossPhase={bossSystem.bossPhase}
+              bossHealth={bossSystem.bossHealth}
             />
 
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
-          {/* <EffectComposer>
+          <EffectComposer disableNormalPass>
             <Bloom
-              intensity={0.5}
-              luminanceThreshold={0.9}
-              luminanceSmoothing={0.025}
+              intensity={1.2}
+              luminanceThreshold={0.6}
+              luminanceSmoothing={0.1}
               mipmapBlur
             />
-            <Noise opacity={0.02} />
-            <Vignette eskil={false} offset={0.1} darkness={1.1} />
-          </EffectComposer> */}
+            <Noise opacity={0.01} />
+            <Vignette eskil={false} offset={0.3} darkness={0.8} />
+          </EffectComposer>
           <Preload all />
         </Suspense>
 

@@ -1,1 +1,0 @@
-[2026-05-22T16:47:09Z] PreCompact (Crafty): 14 dirty file(s), 1 recent commit(s). State regenerated to disk; any unflushed conversational learning may be lost.

@@ -394,6 +394,28 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
             if (GameMethods.grantXP) GameMethods.grantXP(5);
           }
         }
+
+        if (keep) {
+          const store = useGameStore.getState();
+          const isBossActive = store.isBossActive && store.isBossActive();
+          if (isBossActive && store.getBossPosition) {
+            const bossPos = store.getBossPosition();
+            if (bossPos) {
+              const bVec = new THREE.Vector3(bossPos[0], bossPos[1], bossPos[2]);
+              // Satisfying 3D hit registration for flying Shadow Dragon
+              if (projectile.position.distanceTo(bVec) < 6.0) {
+                if (store.damageBoss) {
+                  store.damageBoss(projectile.damage);
+                }
+                createSpellImpact(projectile.position, projectile.type);
+                if (playSpatialSound) {
+                  playSpatialSound('magicHit', projectile.position, 1.2, 30);
+                }
+                keep = false;
+              }
+            }
+          }
+        }
       }
 
       if (keep) {

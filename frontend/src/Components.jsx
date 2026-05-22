@@ -640,6 +640,11 @@ export const Player = ({ isWorldBuilt }) => {
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
     camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
 
+    // Defensive camera pitch clamp to prevent gimbal lock or out-of-bounds rotation
+    camera.rotation.order = 'YXZ';
+    const maxPitch = Math.PI / 2 - 0.05;
+    camera.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, camera.rotation.x));
+
     // Force horizontal camera on first frame
     if (!cameraInitialized.current && translation.y > 0) {
       camera.rotation.set(0, 0, 0);
