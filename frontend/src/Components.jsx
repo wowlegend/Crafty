@@ -273,6 +273,15 @@ export const Player = ({ isWorldBuilt }) => {
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
+    // Void Skyfall Guard: if player clips/falls through floor into the void (< 10), reset
+    if (spawnPosSet.current && currentTrans.y < 10) {
+      console.warn("[DEBUG] Player fell into void! Teleporting to safety.");
+      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      spawnPosSet.current = false;
+      return;
+    }
+
     // Freeze player in sky until world is built to prevent falling through floor
     if (!isWorldBuiltRef.current) {
       rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
@@ -399,7 +408,7 @@ export const Player = ({ isWorldBuilt }) => {
         { x: translation.x, y: translation.y, z: translation.z },
         { x: 0, y: -1, z: 0 }
       );
-      const hit = world.castRay(ray, 1.05, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+      const hit = world.castRay(ray, 1.05, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
       if (hit) {
         isGrounded = true;
       }
@@ -437,8 +446,8 @@ export const Player = ({ isWorldBuilt }) => {
             { x: moveDir.x, y: 0, z: moveDir.z }
           );
 
-          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
-          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
+          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
 
           // Auto-Jump
           if (kneeHit && !headHit && isGrounded) {
@@ -453,7 +462,7 @@ export const Player = ({ isWorldBuilt }) => {
           if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
             wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
           } else if (headHit) {
-            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
             if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
               wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
             }
@@ -514,8 +523,8 @@ export const Player = ({ isWorldBuilt }) => {
           );
 
           // maxToi set to 0.55 (capsule radius 0.40 + 0.15 margin)
-          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
-          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
+          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
 
           // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
           if (kneeHit && !headHit && isGrounded) {
@@ -531,7 +540,7 @@ export const Player = ({ isWorldBuilt }) => {
           if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
             wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
           } else if (headHit) {
-            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
             if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
               wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
             }

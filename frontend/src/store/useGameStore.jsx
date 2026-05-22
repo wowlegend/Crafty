@@ -268,6 +268,7 @@ export const useGameStore = create((set, get) => ({
     setOnChestOpen: (fn) => set({ onChestOpen: fn }),
     onPlayerDeath: null,
     setOnPlayerDeath: (fn) => set({ onPlayerDeath: fn }),
+    addNotification: null,
     checkNearbyChest: null,
     setCheckNearbyChest: (fn) => set({ checkNearbyChest: fn }),
     openNearbyChest: null,

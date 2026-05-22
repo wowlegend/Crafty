@@ -61,6 +61,8 @@ async function agentCrafting(browser) {
 async function agentCombat(browser) {
   console.log('[Agent Combat] Starting...');
   const page = await browser.newPage();
+  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+  page.on('pageerror', err => console.error('PAGE ERROR:', err.toString()));
   await page.goto(URL);
   
   await page.waitForFunction('typeof window.useGameStore === "function"', { timeout: 15000 });

@@ -79,13 +79,14 @@ const TargetOutline = () => {
             { x: direction.x, y: direction.y, z: direction.z }
         );
         
-        const playerHandle = playerRigidBodyRef?.current?.handle;
+        const playerRigidBody = playerRigidBodyRef?.current;
+        const playerHandle = playerRigidBody?.handle;
         const filterPredicate = (collider) => {
             if (playerHandle === undefined) return true;
             const parent = collider.parent();
             return !parent || parent.handle !== playerHandle;
         };
-        const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+        const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
         if (hit) {
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
             // Step slightly IN to the block to ensure we target the hit block's voxel grid
@@ -175,7 +176,7 @@ export const MinecraftWorld = React.memo(() => {
             };
 
             const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
             if (hit) {
                 return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
             }
@@ -193,7 +194,7 @@ export const MinecraftWorld = React.memo(() => {
             };
 
             const ray = new rapier.Ray({ x, y: y + 0.1, z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 0.2, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            const hit = world.castRay(ray, 0.2, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
             return !!hit;
         });
 
@@ -286,7 +287,7 @@ export const MinecraftWorld = React.memo(() => {
                 return !parent || parent.handle !== playerHandle;
             };
             
-            const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerHandle, filterPredicate);
+            const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
             if (!hit) return;
             
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));

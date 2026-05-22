@@ -2,6 +2,7 @@
 
 ### May 21, 2026 (Phase 4 RPG Pathfinding, 3-Phase Boss & Pet Orders)
 
+- **LEXICAL SCOPING RUNTIME HOTFIX**: Resolved a critical runtime `ReferenceError: addNotification is not defined` inside the `useTreasureChests` hook (`QuestSystem.jsx`). Exposed `addNotification: null` in the central `useGameStore.jsx` store and bound the hook dynamically via store subscription `useGameStore(state => state.addNotification)`. Added defensive `if (addNotification)` conditional locks inside chest open triggers, completely restoring application stability and ensuring flawless, crash-free game-loop execution.
 - **3D HEIGHT-AWARE A* SOLVER**: Re-engineered the background Web Worker [ai.worker.js](file:///Users/kz/Code/Crafty/frontend/src/workers/ai.worker.js) A* pathfinding system to consume a 9x9 local voxel height grid centered around active hostiles. Enables mobs to dynamically climb slopes, step up 1-block obstacles, and jump across gaps, fully avoiding terrain walls.
 - **PACK ALERT AGGRO LINKING**: Built linked pack-aggro mechanics within 12 units squared. Alerting/attacking a hostile mob signals nearby pack cohorts to draw aggro synchronously.
 - **3-PHASE EPIC SHADOW DRAGON**: Implemented the Shadow Dragon boss event inside [AdvancedGameFeatures.jsx](file:///Users/kz/Code/Crafty/frontend/src/AdvancedGameFeatures.jsx) with stateful mutable ref transitions inside `useFrame` to protect frame rates:

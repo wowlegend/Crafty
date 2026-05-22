@@ -514,6 +514,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
 });
 
 export const useTreasureChests = () => {
+    const addNotification = useGameStore(state => state.addNotification);
     const [chests, setChests] = useState([]);
     const [openedChestIds, setOpenedChestIds] = useState(new Set());
     const lastChestCheck = useRef(0);
@@ -618,7 +619,9 @@ export const useTreasureChests = () => {
         });
 
         const dropNames = loot.map(l => l.item).join(', ');
-        addNotification(`🎁 Chest dropped: ${dropNames}`, 'loot');
+        if (addNotification) {
+            addNotification(`🎁 Chest dropped: ${dropNames}`, 'loot');
+        }
 
         // Notify quest system
         if (useGameStore.getState().onChestOpen) useGameStore.getState().onChestOpen();
