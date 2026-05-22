@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### May 22, 2026 (Bug Fixes & Client Crash Resolution)
+
+- **POST-PROCESSING CIRCULAR DEPTH-STENCIL RESOLUTION**: Resolved a severe, silent WebGL rendering freeze where the player would see a blank sky and UI overlays but no physical terrain blocks. Diagnosed repeating console warnings of `GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image`. Identified that the `@react-three/postprocessing` `EffectComposer` had `disableNormalPass` set to `true` while rendering `<N8AO>` (Ambient Occlusion), forcing a circular framebuffer depth stencil bind conflict on every frame. Commented out the `<N8AO>` pass and removed `disableNormalPass` to restore the WebGL graphics rendering pipeline, allowing the gorgeous voxel terrain chunks and progressive mesh geometries to render beautifully around the player on startup.
+- **MOB TICK USEFRAME LOOP CRASH RESOLUTION**: Resolved a fatal client-side crash in `SimplifiedNPCSystem.jsx` where the `useFrame` loop in the `AIWorkerSystem` component referenced `store` without declaring it first, resulting in `ReferenceError: store is not defined`. Properly defined the store variable at the beginning of the `useFrame` hook using `const store = useGameStore.getState()`. This fully restores the R3F/Three.js frame loop, allowing chunks, movement, and Progressive Voxel Terrain to load and render perfectly on startup.
+- **SUCCESSFUL PRODUCTION INTEGRATION**: Validated the hotfix under Puppeteer headless end-to-end tests and confirmed full production compilation of the Vite asset pipeline with zero errors.
+
+
 ### May 21, 2026 (Phase 4 RPG Pathfinding, 3-Phase Boss & Pet Orders)
 
 - **LEXICAL SCOPING RUNTIME HOTFIX**: Resolved a critical runtime `ReferenceError: addNotification is not defined` inside the `useTreasureChests` hook (`QuestSystem.jsx`). Exposed `addNotification: null` in the central `useGameStore.jsx` store and bound the hook dynamically via store subscription `useGameStore(state => state.addNotification)`. Added defensive `if (addNotification)` conditional locks inside chest open triggers, completely restoring application stability and ensuring flawless, crash-free game-loop execution.

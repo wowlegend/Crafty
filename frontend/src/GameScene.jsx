@@ -244,8 +244,8 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
-          <EffectComposer disableNormalPass>
-            <N8AO intensity={1.5} radius={2} color="black" />
+          <EffectComposer>
+            {/* <N8AO intensity={1.5} radius={2} color="black" /> */}
             <Bloom
               intensity={0.5}
               luminanceThreshold={0.9}

@@ -119,6 +119,14 @@ export const MinecraftWorld = React.memo(() => {
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());
 
+    // Expose chunks state for debugging
+    useEffect(() => {
+        useGameStore.setState({ debugChunks: chunks });
+        return () => {
+            useGameStore.setState({ debugChunks: null });
+        };
+    }, [chunks]);
+
     // Expose worker to Zustand store
     useEffect(() => {
         useGameStore.setState({ terrainWorker: worker });
