@@ -192,7 +192,7 @@ export const MinecraftWorld = React.memo(() => {
             if (hit) {
                 return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
             }
-            return 15;
+            return null;
         });
 
         // Simplified collision check using physics
@@ -258,6 +258,7 @@ export const MinecraftWorld = React.memo(() => {
                         worker.postMessage({ type: 'unload', payload: { cx: c.cx, cz: c.cz } });
                         delete newChunks[key];
                         requestedChunks.delete(key);
+                        chunksRef.current.delete(key); // Fix memory leak and stale keys!
                         changed = true;
                     }
                 });

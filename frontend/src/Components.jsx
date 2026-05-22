@@ -324,11 +324,7 @@ export const Player = ({ isWorldBuilt }) => {
       // 2. Otherwise use the physics raycast to find the generated terrain mesh height
       if (groundY === null && store.getMobGroundLevel) {
         let physicsY = store.getMobGroundLevel(0, 0);
-        if (isNaN(physicsY)) physicsY = 15; // Fallback if toi is undefined
-
-        // If it returns the default 15 (or lower) or a temporary height hitting player in sky (> 90),
-        // the collider might not be added to the physics world yet. Delay spawn.
-        if (physicsY <= 15 || physicsY > 90) {
+        if (physicsY === null || isNaN(physicsY) || physicsY <= 15 || physicsY > 90) {
             rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
             return; // Wait for next frame

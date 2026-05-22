@@ -336,7 +336,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       } else {
         if (useGameStore.getState().getMobGroundLevel) {
           const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
-          if (projectile.position.y <= groundLevel + 0.5) {
+          if (groundLevel !== null && !isNaN(groundLevel) && projectile.position.y <= groundLevel + 0.5) {
             createSpellImpact(projectile.position, projectile.type);
             keep = false;
           }

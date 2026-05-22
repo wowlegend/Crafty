@@ -2,6 +2,11 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+### Phase 15: Infinite Map Spawning & Chunk Culling Memory Leak [COMPLETED]
+*Deeply resolving spawning radius failures and memory leaks for infinite world exploration.*
+- [x] **Terrain Chunk Memory Leak Resolution**: Fixed the Progressive Chunk loading in `Terrain.jsx` to surgically delete culled chunk keys from the central `chunksRef.current` Set, preventing perpetual memory footprint growth.
+- [x] **Dynamic Infinite Spawner Loop Engine**: Re-engineered the 2-second `SpawnerSystem` tick in `SimplifiedNPCSystem.jsx`. Replaced chunk-specific Set tracking with an active-mobs population cap check (max 16) that dynamically spawns mobs inside a ring range of `[28, 85]` blocks inside active generated chunks around the player.
+
 ### Phase 14: Interactive SOTA Overhaul & Immersive Atmosphere [COMPLETED]
 *Deeply enhancing combat feel, visual casting indicators, environmental fog, and procedural synth soundscapes.*
 - [x] **Visceral Combat Squash & Tilt**: Directional squash/tilt flinch on mobs combined with dampening springs.

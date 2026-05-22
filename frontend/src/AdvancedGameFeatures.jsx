@@ -111,7 +111,7 @@ export const useBossSystem = (playerLevel) => {
             let y = 35; // Spawn high up
             if (useGameStore.getState().getMobGroundLevel) {
                 const gy = useGameStore.getState().getMobGroundLevel(x, z);
-                if (!isNaN(gy)) y = gy + 15;
+                if (gy !== null && !isNaN(gy)) y = gy + 15;
             }
             bossPositionRef.current = [x, y, z];
             setBossActive(true);
@@ -307,7 +307,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         let currentGroundY = 16;
         if (useGameStore.getState().getMobGroundLevel) {
             const gy = useGameStore.getState().getMobGroundLevel(bx, bz);
-            if (!isNaN(gy)) currentGroundY = gy;
+            if (gy !== null && !isNaN(gy)) currentGroundY = gy;
         }
 
         if (bossPhase === 0) {
@@ -418,7 +418,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 let playerGroundY = camera.position.y - 1.5;
                 if (useGameStore.getState().getMobGroundLevel) {
                     const pgy = useGameStore.getState().getMobGroundLevel(playerX, playerZ);
-                    if (!isNaN(pgy)) playerGroundY = pgy;
+                    if (pgy !== null && !isNaN(pgy)) playerGroundY = pgy;
                 }
                 
                 spawnLavaZone(new THREE.Vector3(playerX, playerGroundY + 0.05, playerZ));
@@ -845,7 +845,7 @@ export const PetEntities = React.memo(({ pets }) => {
             let targetY = ref.position.y;
             if (store.getMobGroundLevel) {
                 const groundY = store.getMobGroundLevel(ref.position.x, ref.position.z);
-                if (!isNaN(groundY)) targetY = groundY + 0.5;
+                if (groundY !== null && !isNaN(groundY)) targetY = groundY + 0.5;
             }
 
             // Smooth physical translations

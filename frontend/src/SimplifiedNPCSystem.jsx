@@ -174,7 +174,7 @@ const MobModel = ({ entity }) => {
           const worldX = entity.position.x + (offsetX * cosR + offsetZ * sinR);
           const worldZ = entity.position.z + (-offsetX * sinR + offsetZ * cosR);
           const groundY = store.getMobGroundLevel(worldX, worldZ);
-          if (!isNaN(groundY)) {
+          if (groundY !== null && !isNaN(groundY)) {
              const targetY = groundY - entity.position.y;
              mesh.position.y += (Math.max(-0.3, targetY + 0.3) - mesh.position.y) * 0.2;
           }
@@ -466,15 +466,14 @@ const ImpactShockwave = ({ position, id, onComplete, type }) => {
 const SpawnerSystem = () => {
   const { camera } = useThree();
   const lastSpawnCheck = useRef(0);
-  const spawnedChunks = useRef(new Set());
   const nextId = useRef(0);
 
   const spawnMob = (x, z, forceType = null) => {
-    let y = 15;
     const store = useGameStore.getState();
-    if (store.getMobGroundLevel) {
-      y = store.getMobGroundLevel(x, z);
-      if (isNaN(y)) y = 15;
+    if (!store.getMobGroundLevel) return false;
+    const y = store.getMobGroundLevel(x, z);
+    if (y === null || isNaN(y)) {
+      return false;
     }
 
     const mobTypeKeys = Object.keys(MOB_TYPES);
@@ -511,6 +510,7 @@ const SpawnerSystem = () => {
       knockback: null,
       lastHit: 0
     });
+    return true;
   };
 
   useEffect(() => {
@@ -539,23 +539,52 @@ const SpawnerSystem = () => {
     const store = useGameStore.getState();
     const now = performance.now();
 
-    if (now - lastSpawnCheck.current >= 2000) {
+    if (now - lastSpawnCheck.current >= 1000) {
       lastSpawnCheck.current = now;
       const playerX = camera.position.x;
       const playerZ = camera.position.z;
-      const chunkX = Math.floor(playerX / 16);
-      const chunkZ = Math.floor(playerZ / 16);
-      const chunkKey = `${chunkX}_${chunkZ}`;
 
-      if (!spawnedChunks.current.has(chunkKey) && store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
-        spawnedChunks.current.add(chunkKey);
-        const count = 2 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < count; i++) {
-          const x = chunkX * 16 + Math.random() * 16;
-          const z = chunkZ * 16 + Math.random() * 16;
-          const dist = Math.sqrt((x - playerX) ** 2 + (z - playerZ) ** 2);
-          if (dist > 25) {
-            spawnMob(x, z);
+      // Dynamic spawning based on loaded chunks
+      if (store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
+        const activeMobs = mobsQuery.entities.filter(e => e.health > 0).length;
+        const maxMobs = 16;
+        if (activeMobs < maxMobs) {
+          const mobsNeeded = maxMobs - activeMobs;
+          const spawnCount = Math.min(mobsNeeded, 3); // Spawn up to 3 per tick to prevent spikes
+          const loadedChunkKeys = Array.from(store.getGeneratedChunks());
+          
+          // Pre-filter chunks whose center distance to the player is in [20, 90]
+          let candidateChunks = loadedChunkKeys.filter(key => {
+            const [cx, cz] = key.split('_').map(Number);
+            const centerX = cx * 16 + 8;
+            const centerZ = cz * 16 + 8;
+            const chunkDist = Math.sqrt((centerX - playerX) ** 2 + (centerZ - playerZ) ** 2);
+            return chunkDist >= 20 && chunkDist <= 90;
+          });
+          
+          if (candidateChunks.length === 0) {
+            candidateChunks = loadedChunkKeys;
+          }
+
+          let spawnedThisTick = 0;
+          let attempts = 0;
+          const maxAttempts = 6;
+          
+          while (spawnedThisTick < spawnCount && attempts < maxAttempts) {
+            attempts++;
+            const randomKey = candidateChunks[Math.floor(Math.random() * candidateChunks.length)];
+            const [cx, cz] = randomKey.split('_').map(Number);
+            const x = cx * 16 + Math.random() * 16;
+            const z = cz * 16 + Math.random() * 16;
+            const dist = Math.sqrt((x - playerX) ** 2 + (z - playerZ) ** 2);
+            
+            // Only spawn if not too close (avoid visible spawning) and not too far
+            if (dist >= 28 && dist <= 85) {
+              const success = spawnMob(x, z);
+              if (success) {
+                spawnedThisTick++;
+              }
+            }
           }
         }
       }
@@ -637,8 +666,10 @@ const AIWorkerSystem = () => {
             entity.moveTimer = update.moveTimer;
 
             if (store.getMobGroundLevel) {
-              const newY = store.getMobGroundLevel(entity.position.x, entity.position.z) + 0.5;
-              if (!isNaN(newY)) entity.position.y = newY;
+              const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
+              if (groundY !== null && !isNaN(groundY)) {
+                entity.position.y = groundY + 0.5;
+              }
             }
           }
         }
@@ -680,7 +711,7 @@ const AIWorkerSystem = () => {
               const worldX = startX + gx;
               const worldZ = startZ + gz;
               const h = getMobGroundLevel(worldX, worldZ);
-              heightGrid.push(isNaN(h) ? e.position.y : h);
+              heightGrid.push((h === null || isNaN(h)) ? e.position.y : h);
             }
           }
         }
@@ -924,7 +955,7 @@ const XPOrbSystem = () => {
         // Simple ground collision
         if (store.getMobGroundLevel) {
           const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (!isNaN(groundY) && entity.position.y < groundY + 0.1) {
+          if (groundY !== null && !isNaN(groundY) && entity.position.y < groundY + 0.1) {
             entity.position.y = groundY + 0.1;
             entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
             entity.velocity.x *= 0.7; // Friction
@@ -945,7 +976,7 @@ const XPOrbSystem = () => {
           entity.position.addScaledVector(dir, pullSpeed * delta);
         } else if (store.getMobGroundLevel) {
           const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (!isNaN(groundY)) {
+          if (groundY !== null && !isNaN(groundY)) {
             entity.position.y = groundY + 0.1;
           }
         }
@@ -1034,7 +1065,7 @@ const LootSystem = () => {
         // Ground collision
         if (store.getMobGroundLevel) {
           const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (!isNaN(groundY) && entity.position.y < groundY + 0.1) {
+          if (groundY !== null && !isNaN(groundY) && entity.position.y < groundY + 0.1) {
             entity.position.y = groundY + 0.1;
             entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
             entity.velocity.x *= 0.7; // Friction
@@ -1054,7 +1085,7 @@ const LootSystem = () => {
           entity.position.addScaledVector(dir, pullSpeed * delta);
         } else if (store.getMobGroundLevel) {
           const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (!isNaN(groundY)) {
+          if (groundY !== null && !isNaN(groundY)) {
             entity.position.y = groundY + 0.1;
           }
         }
