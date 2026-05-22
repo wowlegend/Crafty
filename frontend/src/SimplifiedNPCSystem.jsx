@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
@@ -72,6 +73,41 @@ const MobModel = ({ entity }) => {
   const baseColor = useMemo(() => new THREE.Color(entity.color), [entity.color]);
   const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
   const blackColor = useMemo(() => new THREE.Color('#000000'), []);
+
+  const [dialogue, setDialogue] = useState(null);
+
+  useEffect(() => {
+    if (entity.type !== 'villager') return;
+
+    const greetings = [
+      "Greetings traveler! Left-Click attacks, Right-Click casts active magic!",
+      "A storm is brewing. Press U to upgrade spells with attribute points!",
+      "Unopened chests hold rich loot. Stand close and press G to unlock!",
+      "The deep ocean hides many secrets... Sand beaches are safe!",
+      "I heard rumors of a Shadow Dragon... Train and prepare!",
+      "Keep practicing your dodge-rolls. Snapping up voxel blocks is easy now!"
+    ];
+
+    const myGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    const interval = setInterval(() => {
+      const playerPos = useGameStore.getState().playerPosition;
+      if (!playerPos) return;
+
+      const dx = entity.position.x - playerPos.x;
+      const dy = entity.position.y - playerPos.y;
+      const dz = entity.position.z - playerPos.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+      if (dist < 3.5) {
+        setDialogue(myGreeting);
+      } else {
+        setDialogue(null);
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [entity.position, entity.type]);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -198,6 +234,25 @@ const MobModel = ({ entity }) => {
         ))
       )}
       <HealthBar entity={entity} />
+      {dialogue && (
+        <Html position={[0, bodyH + headH + 0.8, 0]} center distanceFactor={8}>
+          <div 
+            className="px-3 py-1.5 rounded-xl border border-white/20 text-white font-medium text-xs whitespace-nowrap bg-slate-900/80 backdrop-blur-md shadow-lg pointer-events-none select-none text-center flex flex-col items-center justify-center animate-bounce"
+            style={{
+              fontFamily: 'Outfit, Inter, sans-serif',
+              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              minWidth: '160px',
+              maxWidth: '240px',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word'
+            }}
+          >
+            <div className="text-blue-400 font-bold mb-0.5 text-[10px] tracking-wider uppercase font-mono">🧙‍♂️ Villager</div>
+            <div className="text-[11px] leading-snug">{dialogue}</div>
+          </div>
+        </Html>
+      )}
     </group>
   );
 };
@@ -410,6 +465,7 @@ const SpawnerSystem = () => {
 
       const maxDistance = 100;
       for (const entity of [...mobsQuery.entities]) {
+        if (entity.health <= 0) continue;
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
         if (dist > maxDistance) {
           ecs.remove(entity);
@@ -464,12 +520,13 @@ const AIWorkerSystem = () => {
         // Apply updates
         const entityMap = new Map();
         for (const entity of mobsQuery.entities) {
+          if (entity.health <= 0) continue;
           entityMap.set(entity.id, entity);
         }
 
         for (const update of updates) {
           const entity = entityMap.get(update.id);
-          if (entity) {
+          if (entity && entity.health > 0) {
             entity.position.x = update.x;
             entity.position.z = update.z;
             entity.rotation = update.rotation;
@@ -504,6 +561,7 @@ const AIWorkerSystem = () => {
     
     // Process knockback in main thread
     for (const entity of mobsQuery.entities) {
+      if (entity.health <= 0) continue;
       if (entity.knockback) {
         entity.position.x += entity.knockback[0] * delta * 4;
         entity.position.z += entity.knockback[2] * delta * 4;
@@ -513,7 +571,7 @@ const AIWorkerSystem = () => {
 
     const store = useGameStore.getState();
     const getMobGroundLevel = store.getMobGroundLevel;
-    const mobsData = mobsQuery.entities.map(e => {
+    const mobsData = mobsQuery.entities.filter(e => e && e.health > 0).map(e => {
       let heightGrid = null;
       if (!e.passive && e.isAggro) {
         heightGrid = [];
@@ -567,7 +625,7 @@ const MinimapSyncSystem = () => {
     const now = performance.now();
     const store = useGameStore.getState();
     if (now - (store._lastMinimapUpdate || 0) > 250) {
-      store.setMobEntities(mobsQuery.entities.map(e => ({
+      store.setMobEntities(mobsQuery.entities.filter(e => e && e.health > 0).map(e => ({
         id: e.id, type: e.type, passive: e.passive, position: [e.position.x, e.position.y, e.position.z]
       })));
       useGameStore.setState({ _lastMinimapUpdate: now });
@@ -1036,7 +1094,7 @@ export const NPCSystem = React.memo(() => {
       <XPOrbSystem />
       <LootSystem />
 
-      {entities.map(entity => (
+      {entities.filter(entity => entity && entity.health > 0).map(entity => (
         <MobModel key={entity.id} entity={entity} />
       ))}
 

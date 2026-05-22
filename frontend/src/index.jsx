@@ -1,3 +1,50 @@
+if (typeof window !== 'undefined') {
+  window.__debugLogs = window.__debugLogs || [];
+  window.__debugListeners = window.__debugListeners || new Set();
+
+  const addLog = (type, args) => {
+    const message = args.map(arg => {
+      if (arg instanceof Error) return arg.stack || arg.toString();
+      if (typeof arg === 'object') {
+        try { return JSON.stringify(arg); } catch (e) { return String(arg); }
+      }
+      return String(arg);
+    }).join(' ');
+
+    const logEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toLocaleTimeString(),
+      type,
+      message
+    };
+
+    window.__debugLogs.push(logEntry);
+    if (window.__debugLogs.length > 100) {
+      window.__debugLogs.shift();
+    }
+
+    window.__debugListeners.forEach(listener => {
+      try { listener(logEntry); } catch(e) {}
+    });
+  };
+
+  const origLog = console.log;
+  const origWarn = console.warn;
+  const origError = console.error;
+
+  console.log = (...args) => { origLog(...args); addLog('info', args); };
+  console.warn = (...args) => { origWarn(...args); addLog('warn', args); };
+  console.error = (...args) => { origError(...args); addLog('error', args); };
+
+  window.onerror = (message, source, lineno, colno, error) => {
+    addLog('error', [`window.onerror: ${message} at ${source}:${lineno}:${colno}`, error]);
+  };
+
+  window.onunhandledrejection = (event) => {
+    addLog('error', [`window.onunhandledrejection: ${event.reason}`]);
+  };
+}
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

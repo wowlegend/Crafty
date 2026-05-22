@@ -183,7 +183,11 @@ export const MinecraftWorld = React.memo(() => {
                 return !parent || parent.handle !== playerHandle;
             };
 
-            const ray = new rapier.Ray({ x, y: 255, z }, { x: 0, y: -1, z: 0 });
+            // Jitter the coordinates slightly by +0.1 to avoid falling directly between voxel seams
+            const jitterX = x + 0.1;
+            const jitterZ = z + 0.1;
+
+            const ray = new rapier.Ray({ x: jitterX, y: 255, z: jitterZ }, { x: 0, y: -1, z: 0 });
             const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
             if (hit) {
                 return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);

@@ -226,6 +226,22 @@ export const Player = ({ isWorldBuilt }) => {
     }
   }, [camera]);
 
+  const triggerSpellCast = useCallback(() => {
+    const now = performance.now();
+    if (now - lastCastTime.current < CAST_COOLDOWN) return;
+    lastCastTime.current = now;
+
+    const store = useGameStore.getState();
+    if (store.castSpell) {
+      const currentSpell = store.activeSpell || 'fireball';
+      store.castSpell(currentSpell);
+      if (store.onSpellCast) store.onSpellCast();
+    }
+
+    setIsAttacking(true);
+    setTimeout(() => setIsAttacking(false), 150);
+  }, [activeSpell]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       keysRef.current[e.code] = true;
@@ -249,8 +265,12 @@ export const Player = ({ isWorldBuilt }) => {
       }
     };
     const handleMouseDown = (e) => {
-      if (document.pointerLockElement && e.button === 0) {
-        triggerMeleeAttack();
+      if (document.pointerLockElement) {
+        if (e.button === 0) {
+          triggerMeleeAttack();
+        } else if (e.button === 2) {
+          triggerSpellCast();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -261,7 +281,7 @@ export const Player = ({ isWorldBuilt }) => {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
     }
-  }, [camera, triggerMeleeAttack]);
+  }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
   useFrame((state, delta) => {
     if (!rigidBodyRef.current) return;
@@ -449,12 +469,12 @@ export const Player = ({ isWorldBuilt }) => {
           const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
           const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
 
-          // Auto-Jump
+          // Auto-Jump (Step-Up inside dodge roll)
           if (kneeHit && !headHit && isGrounded) {
             rigidBodyRef.current.setTranslation({
-              x: currentTrans.x + moveDir.x * 0.08,
-              y: currentTrans.y + 0.35,
-              z: currentTrans.z + moveDir.z * 0.08
+              x: currentTrans.x + moveDir.x * 0.15,
+              y: currentTrans.y + 1.05,
+              z: currentTrans.z + moveDir.z * 0.15
             }, true);
           }
 
@@ -529,9 +549,9 @@ export const Player = ({ isWorldBuilt }) => {
           // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
           if (kneeHit && !headHit && isGrounded) {
             rigidBodyRef.current.setTranslation({
-              x: currentTrans.x + moveDir.x * 0.08,
-              y: currentTrans.y + 0.35,
-              z: currentTrans.z + moveDir.z * 0.08
+              x: currentTrans.x + moveDir.x * 0.15,
+              y: currentTrans.y + 1.05,
+              z: currentTrans.z + moveDir.z * 0.15
             }, true);
           }
 

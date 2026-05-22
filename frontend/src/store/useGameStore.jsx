@@ -31,6 +31,9 @@ export const useGameStore = create((set, get) => ({
     // Transient World State (No need to persist)
     isSpawnChunkLoaded: false,
     setIsSpawnChunkLoaded: (loaded) => set({ isSpawnChunkLoaded: loaded }),
+
+    isWebGLContextLost: false,
+    setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
     
     terrainWorker: null,
     setTerrainWorker: (worker) => set({ terrainWorker: worker }),

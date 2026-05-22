@@ -15,3 +15,6 @@
 {"ts":"2026-05-22T11:23:08Z","event":"precompact","dirty":6,"recent_commits":0,"regen":""}
 {"ts":"2026-05-22T12:02:41Z","event":"precompact","dirty":5,"recent_commits":0,"regen":""}
 {"ts":"2026-05-22T13:24:50Z","event":"precompact","dirty":3,"recent_commits":2,"regen":""}
+{"ts":"2026-05-22T15:16:11Z","event":"precompact","dirty":7,"recent_commits":3,"regen":""}
+{"ts":"2026-05-22T15:28:16Z","event":"precompact","dirty":11,"recent_commits":2,"regen":""}
+{"ts":"2026-05-22T16:47:09Z","event":"precompact","dirty":14,"recent_commits":1,"regen":""}

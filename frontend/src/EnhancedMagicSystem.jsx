@@ -466,6 +466,8 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
           meshRef.current.scale.setScalar(icePulse);
           break;
         case 'lightning':
+          meshRef.current.rotation.x += 0.1;
+          meshRef.current.rotation.z += 0.2;
           const lightningFlicker = 0.8 + Math.random() * 0.4;
           meshRef.current.scale.setScalar(lightningFlicker);
           break;
@@ -489,23 +491,99 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
     }
   });
 
+  const renderGeometry = () => {
+    switch (projectile.type) {
+      case 'fireball':
+        return <sphereGeometry args={[projectile.size * 0.8, 16, 16]} />;
+      case 'iceball':
+        return <dodecahedronGeometry args={[projectile.size * 0.8, 0]} />;
+      case 'lightning':
+        return <cylinderGeometry args={[projectile.size * 0.15, projectile.size * 0.15, projectile.size * 2.2, 6]} />;
+      case 'arcane':
+        return <torusGeometry args={[projectile.size * 0.65, projectile.size * 0.22, 8, 24]} />;
+      default:
+        return <sphereGeometry args={[projectile.size * 0.8, 8, 8]} />;
+    }
+  };
+
+  const renderMaterial = () => {
+    switch (projectile.type) {
+      case 'fireball':
+        return (
+          <meshStandardMaterial
+            color="#FF4500"
+            emissive="#FF4500"
+            emissiveIntensity={2.5}
+            roughness={0.1}
+            metalness={0.8}
+            transparent
+            opacity={0.95}
+          />
+        );
+      case 'iceball':
+        return (
+          <meshStandardMaterial
+            color="#00BFFF"
+            emissive="#00FFFF"
+            emissiveIntensity={2.0}
+            roughness={0.2}
+            metalness={0.9}
+            transparent
+            opacity={0.9}
+          />
+        );
+      case 'lightning':
+        return (
+          <meshStandardMaterial
+            color="#FFD700"
+            emissive="#FFFF00"
+            emissiveIntensity={3.0}
+            roughness={0.1}
+            metalness={0.5}
+            transparent
+            opacity={0.95}
+          />
+        );
+      case 'arcane':
+        return (
+          <meshStandardMaterial
+            color="#9932CC"
+            emissive="#FF00FF"
+            emissiveIntensity={2.8}
+            roughness={0.1}
+            metalness={0.7}
+            transparent
+            opacity={0.9}
+          />
+        );
+      default:
+        return (
+          <meshStandardMaterial
+            color={projectile.color}
+            emissive={projectile.color}
+            emissiveIntensity={2.0}
+            transparent
+            opacity={0.9}
+          />
+        );
+    }
+  };
+
   return (
     <group>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[projectile.size, 8, 8]} />
-        <meshBasicMaterial
-          color={projectile.color}
-          transparent
-          opacity={0.9}
-        />
+        {renderGeometry()}
+        {renderMaterial()}
       </mesh>
 
       <group ref={particlesRef}>
         {projectile.trailPositions.slice(-projectile.particleCount).map((_, index) => (
           <mesh key={index}>
-            <sphereGeometry args={[projectile.size * 0.3, 4, 4]} />
-            <meshBasicMaterial
+            <sphereGeometry args={[projectile.size * 0.25, 6, 6]} />
+            <meshStandardMaterial
               color={projectile.particleColor}
+              emissive={projectile.particleColor}
+              emissiveIntensity={1.5}
               transparent
               opacity={0.6}
             />

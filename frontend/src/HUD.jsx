@@ -100,6 +100,163 @@ const Minimap = React.memo(() => {
   );
 });
 
+const Compass = React.memo(({ treasureChests, bossSystem }) => {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    let animFrame;
+    
+    const updateCompass = () => {
+      animFrame = requestAnimationFrame(updateCompass);
+      
+      const container = containerRef.current;
+      if (!container) return;
+
+      const state = useGameStore.getState();
+      const camera = state.gameCamera;
+      const playerPos = state.playerPosition;
+      if (!camera || !camera.matrixWorld || !playerPos) return;
+
+      // Extract horizontal heading from the camera's matrixWorld
+      const el = camera.matrixWorld.elements;
+      const fx = -el[8];
+      const fz = -el[10];
+      const heading = Math.atan2(fx, -fz);
+
+      // 180 degrees field of view (visible markers)
+      const fov = Math.PI; 
+      
+      // Cardinal points definitions
+      const cardinals = [
+        { label: 'N', angle: 0 },
+        { label: 'NE', angle: Math.PI / 4 },
+        { label: 'E', angle: Math.PI / 2 },
+        { label: 'SE', angle: 3 * Math.PI / 4 },
+        { label: 'S', angle: Math.PI },
+        { label: 'SW', angle: -3 * Math.PI / 4 },
+        { label: 'W', angle: -Math.PI / 2 },
+        { label: 'NW', angle: -Math.PI / 4 },
+      ];
+
+      const markersHtml = [];
+
+      // 1. Render Cardinal Ticks
+      cardinals.forEach(c => {
+        let diff = c.angle - heading;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        if (Math.abs(diff) < fov / 2) {
+          const pct = ((diff / (fov / 2)) * 50) + 50; // Map [-fov/2, fov/2] to [0, 100]
+          markersHtml.push(`
+            <div class="absolute top-0 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
+              <span class="text-[10px] font-bold text-slate-200 tracking-wider">${c.label}</span>
+              <div class="w-[1px] h-1.5 bg-slate-400/50 mt-0.5"></div>
+            </div>
+          `);
+        }
+      });
+
+      // 2. Render Boss Marker
+      const bossActive = bossSystem?.bossActive;
+      const getBossPosition = state.getBossPosition;
+      const bossPos = (bossActive && getBossPosition) ? getBossPosition() : null;
+      if (bossPos) {
+        const dx = bossPos[0] - playerPos.x;
+        const dz = bossPos[2] - playerPos.z;
+        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
+        const targetAngle = Math.atan2(dx, -dz);
+        
+        let diff = targetAngle - heading;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        if (Math.abs(diff) < fov / 2) {
+          const pct = ((diff / (fov / 2)) * 50) + 50;
+          markersHtml.push(`
+            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
+              <span class="text-[9px] font-bold text-rose-500 animate-pulse drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">🐉 BOSS (${dist}m)</span>
+              <div class="w-1.5 h-1.5 bg-rose-500 rounded-full mt-0.5 animate-ping"></div>
+            </div>
+          `);
+        }
+      }
+
+      // 3. Render Chest Markers
+      const chests = treasureChests?.chests || [];
+      const openedChestIds = treasureChests?.openedChestIds || new Set();
+      chests.forEach(chest => {
+        const isOpened = openedChestIds instanceof Set ? openedChestIds.has(chest.id) : openedChestIds.includes(chest.id);
+        if (isOpened) return;
+        
+        const dx = chest.position[0] - playerPos.x;
+        const dz = chest.position[2] - playerPos.z;
+        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
+        if (dist > 80) return; // Hide distant chests
+
+        const targetAngle = Math.atan2(dx, -dz);
+        let diff = targetAngle - heading;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        if (Math.abs(diff) < fov / 2) {
+          const pct = ((diff / (fov / 2)) * 50) + 50;
+          markersHtml.push(`
+            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
+              <span class="text-[8px] font-semibold text-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.3)]">📦 Chest (${dist}m)</span>
+              <div class="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>
+            </div>
+          `);
+        }
+      });
+
+      // 4. Render Villager NPC Markers
+      const mobEntities = state.mobEntities || [];
+      mobEntities.forEach(mob => {
+        if (mob.type !== 'villager') return;
+        const dx = mob.position[0] - playerPos.x;
+        const dz = mob.position[2] - playerPos.z;
+        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
+        if (dist > 60) return; // Hide distant NPCs
+
+        const targetAngle = Math.atan2(dx, -dz);
+        let diff = targetAngle - heading;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        if (Math.abs(diff) < fov / 2) {
+          const pct = ((diff / (fov / 2)) * 50) + 50;
+          markersHtml.push(`
+            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
+              <span class="text-[8px] font-semibold text-emerald-400 drop-shadow-[0_0_2px_rgba(52,211,153,0.3)]">🧙‍♂️ NPC (${dist}m)</span>
+              <div class="w-1 h-1 bg-emerald-400 rounded-full mt-1"></div>
+            </div>
+          `);
+        }
+      });
+
+      container.innerHTML = markersHtml.join('');
+    };
+
+    updateCompass();
+    return () => cancelAnimationFrame(animFrame);
+  }, [treasureChests, bossSystem]);
+
+  return (
+    <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
+      <div className="w-[320px] h-[34px] bg-slate-950/70 border border-slate-700/50 rounded-xl relative flex items-center justify-center overflow-hidden" style={{
+        boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8), 0 4px 15px rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(8px)',
+      }}>
+        {/* Alignment reticle line */}
+        <div className="absolute top-0 bottom-0 w-[1.5px] bg-sky-400/80 z-20 shadow-[0_0_6px_rgba(56,189,248,0.8)]"></div>
+        {/* Scrolling Marker track */}
+        <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
+      </div>
+    </div>
+  );
+});
+
 export function HUD({
   isPointerLocked,
   isWorldBuilt,
@@ -128,13 +285,15 @@ export function HUD({
             />
             <CombatInstructions />
 
+            <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
+
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
               <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <PlayerHungerBar hunger={gameSystems.hunger} />
             </div>
 
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+            <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
               <div className="bg-black/60 px-4 py-2 rounded-lg text-white text-sm text-center">
                 <span className="text-gray-400">Spell: </span>
                 <span style={{ color: gameState.activeSpell === 'fireball' ? '#FF4500' : gameState.activeSpell === 'iceball' ? '#00BFFF' : gameState.activeSpell === 'lightning' ? '#FFD700' : '#9932CC' }}>

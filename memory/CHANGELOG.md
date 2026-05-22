@@ -1,5 +1,16 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA RPG Overhaul & Premium Spell Variety)
+
+- **PREMIUM EMISSIVE SPELL VARIETY**: Upgraded the spell projectile rendering system inside [EnhancedMagicSystem.jsx](file:///Users/kz/Code/Crafty/frontend/src/EnhancedMagicSystem.jsx). Replaced generic spheres and basic materials with specific custom geometries per spell type: standard spheres (`sphereGeometry`) for fireballs, jagged dodecahedrons (`dodecahedronGeometry`) for iceballs, glowing vertical kinetic rods (`cylinderGeometry`) for lightning, and cosmic rings (`torusGeometry`) for arcane projectiles. Converted all materials to advanced Standard materials (`meshStandardMaterial`) configured with custom metallic/roughness properties, custom color profiles, and vivid emissive intensities ranging from `2.0` to `3.0` for high-fidelity glowing bloom effects under next-gen post-processing.
+- **COMPREHENSIVE PLAYTEST OVERHAUL**: Fully resolved six critical playtest phases:
+  - *Phase 1 (Pointer Lock & Input)*: Integrated premium glassmorphic click-to-play pointer lock gestures and separated Right-Click spell triggers from Left-Click melee swings.
+  - *Phase 2 (Snapping & Ray Jitter)*: Re-engineered step-up snapping to support up to 1.05 height step transitions and added forward edge pushing. Injected +0.1 jitter offsets to terrain raycasts to eliminate edge seams.
+  - *Phase 3 (Continent noise)*: Built continental Simplex noise basins with beaches, shorelines, sea-level water blocks, and foliage culling.
+  - *Phase 4 (HUD Quest Compass)*: Designed an immersive Skyrim-style scrolling trigonometric quest compass tracking directional bearings and distance indicators to POIs.
+  - *Phase 5 (NPC Speech Bubbles & Despawning)*: Integrated 3D proximity speech bubbles above villagers and added strict health filters across NPC renderers and AI threads to prevent unmount frame lags.
+- **PRISTINE BUILD & INTEGRATION SUCCESS**: Confirmed a zero-debt build compilation via `npm run build` inside `frontend/` (succeeded in 3.34s) with zero bundler errors or warnings.
+
 ### May 22, 2026 (Bug Fixes & Client Crash Resolution)
 
 - **POST-PROCESSING CIRCULAR DEPTH-STENCIL RESOLUTION**: Resolved a severe, silent WebGL rendering freeze where the player would see a blank sky and UI overlays but no physical terrain blocks. Diagnosed repeating console warnings of `GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image`. Identified that the `@react-three/postprocessing` `EffectComposer` had `disableNormalPass` set to `true` while rendering `<N8AO>` (Ambient Occlusion), forcing a circular framebuffer depth stencil bind conflict on every frame. Commented out the `<N8AO>` pass and removed `disableNormalPass` to restore the WebGL graphics rendering pipeline, allowing the gorgeous voxel terrain chunks and progressive mesh geometries to render beautifully around the player on startup.

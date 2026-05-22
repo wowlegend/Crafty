@@ -21,6 +21,10 @@ const SpatialAudioController = () => {
 
   useEffect(() => {
     if (!camera || !audioContext) return;
+    if (typeof window !== 'undefined') {
+      window.__threeScene = scene;
+      window.__threeCamera = camera;
+    }
 
     // 1. Create and attach listener to camera
     const listener = new THREE.AudioListener();
@@ -185,10 +189,30 @@ export function GameScene({
           far: 500,
           position: [0, 30, 0]
         }}
-        onCreated={({ gl, camera }) => {
+        onCreated={({ gl, camera, scene }) => {
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           camera.rotation.set(0, 0, 0);
           camera.lookAt(0, 30, -100);
+
+          if (typeof window !== 'undefined') {
+            window.__threeScene = scene;
+            window.__threeCamera = camera;
+            console.log('Exposed scene and camera on window in onCreated');
+          }
+
+          const canvasEl = gl.domElement;
+          const handleContextLost = (e) => {
+            e.preventDefault();
+            console.error('WebGL context lost detected in GameScene!');
+            useGameStore.getState().setIsWebGLContextLost(true);
+          };
+          const handleContextRestored = () => {
+            console.log('WebGL context successfully restored in GameScene.');
+            useGameStore.getState().setIsWebGLContextLost(false);
+          };
+          
+          canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
+          canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
         }}
       >
         <Sky 
@@ -244,8 +268,7 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
-          <EffectComposer>
-            {/* <N8AO intensity={1.5} radius={2} color="black" /> */}
+          {/* <EffectComposer>
             <Bloom
               intensity={0.5}
               luminanceThreshold={0.9}
@@ -254,7 +277,7 @@ export function GameScene({
             />
             <Noise opacity={0.02} />
             <Vignette eskil={false} offset={0.1} darkness={1.1} />
-          </EffectComposer>
+          </EffectComposer> */}
           <Preload all />
         </Suspense>
 

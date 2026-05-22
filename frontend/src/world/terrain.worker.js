@@ -146,6 +146,9 @@ function generateChunkData(cx, cz) {
       const worldX = startX + x;
       const worldZ = startZ + z;
       
+      // Continental simplex noise for oceans
+      const continent = noise2D(worldX * 0.002, worldZ * 0.002);
+      
       // Moisture & Temperature for Biomes
       const moisture = noise2D(worldX * 0.005, worldZ * 0.005) * 0.5 + 0.5;
       const temperature = noise2D((worldX + 500) * 0.005, (worldZ + 500) * 0.005) * 0.5 + 0.5;
@@ -154,7 +157,17 @@ function generateChunkData(cx, cz) {
       let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5;
       n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.1;
       
-      const surfaceY = Math.floor(30 + n * 40);
+      const baseHeight = 30 + n * 40;
+      
+      // Ocean Basin Interpolation: If continent < -0.15, smoothly transition to deep seabed (height 12 to 24)
+      let surfaceY;
+      if (continent < -0.15) {
+        const oceanT = Math.min(1, Math.max(0, (-0.15 - continent) / 0.15));
+        const targetOceanHeight = 12 + n * 12;
+        surfaceY = Math.floor(baseHeight * (1 - oceanT) + targetOceanHeight * oceanT);
+      } else {
+        surfaceY = Math.floor(baseHeight);
+      }
 
       // Determine Biome
       let surfaceBlock = 1; // Grass
@@ -167,11 +180,22 @@ function generateChunkData(cx, cz) {
           secondaryBlock = 3; // Stone underneath snow
       }
 
+      // Set beach contours: sand beaches for any surface below height 30
+      if (surfaceY < 30) {
+          surfaceBlock = 4; // Sand
+          secondaryBlock = 4;
+      }
+
       for (let y = 0; y < CHUNK_HEIGHT; y++) {
         const index = getIndex(x, y, z);
         
         if (y > surfaceY) {
-          blocks[index] = 0; // Air
+          // Fill columns up to sea level 28 with Water blocks
+          if (y <= 28) {
+            blocks[index] = 9; // Water
+          } else {
+            blocks[index] = 0; // Air
+          }
         } else {
           // 2. Deep Caves Logic (Swiss Cheese)
           const caveNoise = noise3D(worldX * 0.04, y * 0.08, worldZ * 0.04);
@@ -191,8 +215,8 @@ function generateChunkData(cx, cz) {
         }
       }
 
-      // 3. Foliage Decorators (Only on surface)
-      if (blocks[getIndex(x, surfaceY, z)] !== 0 && Math.random() < 0.02) {
+      // 3. Foliage Decorators (Only above sea level and on solid ground)
+      if (surfaceY > 28 && blocks[getIndex(x, surfaceY, z)] !== 0 && Math.random() < 0.02) {
           if (surfaceBlock === 1) { // Trees in Forest/Grass
               const treeHeight = 4 + Math.floor(Math.random() * 3);
               for (let ty = 1; ty <= treeHeight; ty++) {
@@ -253,6 +277,7 @@ const BLOCK_COLORS = {
   6: toLinear('#5D4037'), // Wood/Trunk
   7: toLinear('#2E7D32'), // Leaves
   8: toLinear('#2E7D32'), // Cactus
+  9: toLinear('#3F76E4'), // Water
   255: [1, 1, 1] 
 };
 
@@ -294,8 +319,18 @@ function generateMesh(cx, cz, blocks) {
             drawFace = true;
           } else {
             const neighborIndex = getIndex(nx, ny, nz);
-            if (blocks[neighborIndex] === 0) {
-              drawFace = true; // Air neighbor = visible face
+            const neighborType = blocks[neighborIndex];
+            
+            if (blockType === 9) {
+              // Water block ONLY renders its face if the neighbor is Air (0)
+              if (neighborType === 0) {
+                drawFace = true;
+              }
+            } else {
+              // Solid blocks render their face if the neighbor is Air (0) OR Water (9)
+              if (neighborType === 0 || neighborType === 9) {
+                drawFace = true;
+              }
             }
           }
 
