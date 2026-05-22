@@ -144,6 +144,32 @@ const SpatialAudioController = () => {
   return null;
 };
 
+// Dynamic environmental fog with smooth transitions matching scene background
+const EnvironmentalFog = () => {
+  const { scene } = useThree();
+  const isDay = useGameStore(state => state.isDay);
+  
+  const targetColor = useMemo(() => new THREE.Color(isDay ? '#e0f7fa' : '#0a0a23'), [isDay]);
+  const targetDensity = isDay ? 0.007 : 0.025;
+
+  useFrame((state, delta) => {
+    if (!scene.fog) {
+      scene.fog = new THREE.FogExp2('#e0f7fa', 0.007);
+    }
+    
+    const factor = Math.min(1.0, delta * 2.0);
+    scene.fog.color.lerp(targetColor, factor);
+    scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, targetDensity, factor);
+    
+    if (!scene.background) {
+      scene.background = new THREE.Color();
+    }
+    scene.background.copy(scene.fog.color);
+  });
+
+  return null;
+};
+
 export function GameScene({
   gameState,
   isWorldBuilt,
@@ -223,6 +249,8 @@ export function GameScene({
           mieCoefficient={0.005}
           mieDirectionalG={0.8}
         />
+        
+        <EnvironmentalFog />
         
         <ambientLight intensity={gameState.isDay ? 0.6 : 0.25} />
         

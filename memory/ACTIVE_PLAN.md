@@ -19,12 +19,12 @@ Implement a premium, state-of-the-art interactive layer including:
 2. [x] **Phase 2: Hand Glow & Spell Casting Vibrations**
     - Modify `<StableMagicHands>` in `Components.jsx` to implement vibrant spell-specific color-shifting indicators.
     - Add hand vibration/channeling movement inside the hand updates.
-3. [ ] **Phase 3: Dynamic Environmental Fog**
+3. [x] **Phase 3: Dynamic Environmental Fog**
     - Modify `GameScene.jsx` to smoothly shift `<fog>` or `<fogExp2>` color and density bounds between day and night based on `gameState.isDay`.
-4. [ ] **Phase 4: Procedural Synth Pad Soundscape**
+4. [x] **Phase 4: Procedural Synth Pad Soundscape**
     - Upgrade `playBackgroundMusic` inside `SoundManager.jsx` to synthesise warm, multi-voice FM synth pads.
     - Program Day chords (Lydian), Night chords (Dorian), and Boss chords (augmented/climbing).
     - Implement smooth parameters and transitions between moods.
-5. [ ] **Verification & Validation**
+5. [x] **Verification & Validation**
     - Run production compiler `npm run build` inside `frontend/` directory.
     - Verify game builds cleanly with no dependency or type conflicts.

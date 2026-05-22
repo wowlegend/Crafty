@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useGameStore } from './store/useGameStore';
 
 const SoundContext = createContext();
 
@@ -20,11 +21,187 @@ export const SoundProvider = ({ children }) => {
   const sounds = useRef({});
   const ambientTimer = useRef(null);
 
+  const synthPadRef = useRef({
+    oscillators: [],
+    gains: [],
+    filter: null,
+    lfo: null,
+    lfoGain: null,
+    masterGain: null,
+    active: false,
+    timer: null
+  });
+
+  const stopSynthPad = () => {
+    const pad = synthPadRef.current;
+    if (!pad.active || !audioContext.current) return;
+
+    try {
+      const now = audioContext.current.currentTime;
+      if (pad.masterGain) {
+        pad.masterGain.gain.cancelScheduledValues(now);
+        pad.masterGain.gain.setValueAtTime(pad.masterGain.gain.value, now);
+        pad.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+      }
+
+      if (pad.timer) {
+        clearInterval(pad.timer);
+        pad.timer = null;
+      }
+
+      const oscsToStop = [...pad.oscillators, pad.lfo].filter(Boolean);
+      const masterToDisconnect = pad.masterGain;
+
+      setTimeout(() => {
+        oscsToStop.forEach(osc => {
+          try { osc.stop(); } catch(e) {}
+          try { osc.disconnect(); } catch(e) {}
+        });
+        
+        try { pad.lfoGain.disconnect(); } catch(e) {}
+        try { pad.filter.disconnect(); } catch(e) {}
+        try { masterToDisconnect.disconnect(); } catch(e) {}
+      }, 1600);
+    } catch (e) {
+      console.warn('Error stopping synth pad:', e);
+    }
+
+    pad.oscillators = [];
+    pad.gains = [];
+    pad.filter = null;
+    pad.lfo = null;
+    pad.lfoGain = null;
+    pad.masterGain = null;
+    pad.active = false;
+  };
+
+  const startSynthPad = () => {
+    if (!musicEnabled || !audioContext.current) return;
+
+    if (audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+
+    const pad = synthPadRef.current;
+    if (pad.active) return;
+
+    try {
+      const now = audioContext.current.currentTime;
+
+      // 1. Create nodes
+      pad.masterGain = audioContext.current.createGain();
+      pad.masterGain.gain.setValueAtTime(0, now);
+      pad.masterGain.gain.linearRampToValueAtTime(0.22 * volume, now + 2.0);
+
+      pad.filter = audioContext.current.createBiquadFilter();
+      pad.filter.type = 'lowpass';
+      pad.filter.frequency.setValueAtTime(750, now);
+      pad.filter.Q.setValueAtTime(5.0, now);
+
+      pad.lfo = audioContext.current.createOscillator();
+      pad.lfo.type = 'sine';
+      pad.lfo.frequency.setValueAtTime(0.08, now);
+
+      pad.lfoGain = audioContext.current.createGain();
+      pad.lfoGain.gain.setValueAtTime(320, now);
+
+      // 2. Connect LFO to Filter
+      pad.lfo.connect(pad.lfoGain);
+      pad.lfoGain.connect(pad.filter.frequency);
+
+      // 3. Create 4 voice oscillators
+      const dayChords = [
+        [220.00, 329.63, 493.88, 739.99],
+        [261.63, 392.00, 587.33, 880.00]
+      ];
+      const nightChords = [
+        [146.83, 220.00, 329.63, 349.23],
+        [164.81, 246.94, 369.99, 392.00]
+      ];
+      const bossChords = [
+        [130.81, 164.81, 207.65, 261.63],
+        [146.83, 185.00, 233.08, 293.66]
+      ];
+
+      const isBoss = useGameStore.getState().bossActive;
+      const isDay = useGameStore.getState().isDay;
+      const currentProg = isBoss ? bossChords : (isDay ? dayChords : nightChords);
+      const startingChord = currentProg[0];
+
+      for (let i = 0; i < 4; i++) {
+        const osc = audioContext.current.createOscillator();
+        osc.type = (i % 2 === 0) ? 'triangle' : 'sawtooth';
+        osc.frequency.setValueAtTime(startingChord[i], now);
+
+        const vGain = audioContext.current.createGain();
+        const baseVolume = (osc.type === 'sawtooth') ? 0.06 : 0.12;
+        vGain.gain.setValueAtTime(baseVolume, now);
+
+        osc.connect(vGain);
+        vGain.connect(pad.filter);
+
+        pad.oscillators.push(osc);
+        pad.gains.push(vGain);
+      }
+
+      pad.filter.connect(pad.masterGain);
+      pad.masterGain.connect(audioContext.current.destination);
+
+      pad.lfo.start(now);
+      pad.oscillators.forEach(osc => osc.start(now));
+      pad.active = true;
+
+      // 4. Step-Scheduler loop
+      let step = 0;
+      pad.timer = setInterval(() => {
+        if (!audioContext.current) return;
+        step++;
+
+        const freshState = useGameStore.getState();
+        const loopBoss = freshState.bossActive;
+        const loopDay = freshState.isDay;
+        const prog = loopBoss ? bossChords : (loopDay ? dayChords : nightChords);
+        const nextChord = prog[step % prog.length];
+        
+        const changeTime = audioContext.current.currentTime;
+        nextChord.forEach((freq, idx) => {
+          if (pad.oscillators[idx]) {
+            pad.oscillators[idx].frequency.cancelScheduledValues(changeTime);
+            pad.oscillators[idx].frequency.setValueAtTime(pad.oscillators[idx].frequency.value, changeTime);
+            pad.oscillators[idx].frequency.exponentialRampToValueAtTime(freq, changeTime + 3.5);
+          }
+        });
+      }, 8000);
+
+    } catch (e) {
+      console.warn('Error starting synth pad:', e);
+    }
+  };
+
   useEffect(() => {
-    if (!musicEnabled && ambientTimer.current) {
-      clearTimeout(ambientTimer.current);
+    if (musicEnabled) {
+      if (audioContext.current) startSynthPad();
+    } else {
+      stopSynthPad();
+      if (ambientTimer.current) clearTimeout(ambientTimer.current);
     }
   }, [musicEnabled]);
+
+  useEffect(() => {
+    if (synthPadRef.current.masterGain && synthPadRef.current.active && audioContext.current) {
+      const now = audioContext.current.currentTime;
+      synthPadRef.current.masterGain.gain.cancelScheduledValues(now);
+      synthPadRef.current.masterGain.gain.setValueAtTime(synthPadRef.current.masterGain.gain.value, now);
+      synthPadRef.current.masterGain.gain.linearRampToValueAtTime(0.22 * volume, now + 0.5);
+    }
+  }, [volume]);
+
+  useEffect(() => {
+    return () => {
+      stopSynthPad();
+      if (ambientTimer.current) clearTimeout(ambientTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     // Initialize Web Audio API
@@ -364,31 +541,7 @@ export const SoundProvider = ({ children }) => {
   };
 
   const playBackgroundMusic = () => {
-    if (!musicEnabled || !audioContext.current) return;
-
-    if (audioContext.current.state === 'suspended') {
-      audioContext.current.resume();
-    }
-
-    if (ambientTimer.current) clearTimeout(ambientTimer.current);
-
-    // Generate ambient background music
-    const generateAmbientMusic = () => {
-      const notes = [220, 246.94, 277.18, 329.63, 369.99, 415.30]; // A3 to G#4
-      const duration = 2;
-
-      ambientTimer.current = setTimeout(() => {
-        const randomNote = notes[Math.floor(Math.random() * notes.length)];
-        const randomDuration = 1 + Math.random() * 2;
-        playTone(randomNote, randomDuration, 0.1);
-
-        if (musicEnabled) {
-          generateAmbientMusic();
-        }
-      }, duration * 1000 + Math.random() * 3000);
-    };
-
-    generateAmbientMusic();
+    startSynthPad();
   };
 
   const playTone = (frequency, duration, volumeLevel = 0.3) => {
