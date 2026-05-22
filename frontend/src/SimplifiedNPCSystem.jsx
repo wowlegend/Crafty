@@ -511,6 +511,7 @@ const AIWorkerSystem = () => {
       }
     }
 
+    const store = useGameStore.getState();
     const getMobGroundLevel = store.getMobGroundLevel;
     const mobsData = mobsQuery.entities.map(e => {
       let heightGrid = null;
