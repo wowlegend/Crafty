@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { mitigateDamage } from '../utils/combat';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -442,11 +443,11 @@ export const useGameStore = create((set, get) => ({
 
         if (now - state.lastDamageTime < 500) return;
 
-        // Apply Armor Damage Reduction Curve: DR = Armor / (Armor + 100)
+        // Apply Armor Damage Mitigation
         const effective = state.getEffectiveAttributes();
         const armor = effective.armor || 0;
         const dr = armor / (armor + 100);
-        const finalDamage = Math.max(1, Math.round(amount * (1.0 - dr)));
+        const finalDamage = mitigateDamage(effective, amount);
 
         console.log(`💥 Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
 

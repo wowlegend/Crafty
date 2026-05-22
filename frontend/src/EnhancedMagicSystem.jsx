@@ -4,6 +4,7 @@ import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
+import { solveSpellDamage } from './utils/combat';
 import * as THREE from 'three';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
@@ -266,8 +267,9 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       const startPos = camera.position.clone().add(direction.clone().multiplyScalar(2));
 
-      const damageMultiplier = window.getSpellDamageMultiplier ? window.getSpellDamageMultiplier() : 1;
-      const finalDamage = Math.floor(spell.damage * damageMultiplier);
+      // Apply pure RPG spell damage solving scaling with intellect & agility
+      const effectiveStats = useGameStore.getState().getEffectiveAttributes();
+      const { damage: finalDamage } = solveSpellDamage(effectiveStats, spell.damage, spellType);
 
       const newProjectile = {
         id: projectileId.current++,

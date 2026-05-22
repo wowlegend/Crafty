@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (RPG Combat Utility & Decoupled Spell Scaling Integration)
+
+- **DECOUPLED COMBAT FORMULAS UTILITY**: Extracted all combat calculations to a framework-agnostic utility module at [combat.js](file:///Users/kz/Code/Crafty/frontend/src/utils/combat.js). Decoupled the pure mathematical functions `solveMeleeDamage`, `solveSpellDamage`, and `mitigateDamage` to enforce clean domain boundaries.
+- **CIRCULAR DEPENDENCY RESOLUTION**: Resolved a latent circular import where the Zustand store (`useGameStore.jsx`) could not import calculations from `GameSystems.jsx` because `GameSystems.jsx` imports `useGameStore.jsx`. Refactored imports to consume the new `combat.js` module.
+- **INTEGRATED RPG STATS SPELL SCALING**: Replaced a silent bug where `EnhancedMagicSystem.jsx` fell back to a missing `window.getSpellDamageMultiplier` global. Integrated direct `solveSpellDamage` solving that dynamically scales spell projectile damage based on the player's intellect, and critical strikes chance based on agility.
+- **UNIFIED DAMAGE MITIGATION**: Bound the player's damage intake inside the Zustand store (`useGameStore.jsx`) to `mitigateDamage`, eliminating redundant, duplicate calculations and unifying RPG statistics integration.
+- **PRODUCTION QUALITY VERIFICATION**: Confirmed successful zero-debt compilation under `npm run build` in 3.33s with zero warnings, circular dependency conflicts, or typescript regressions.
+
 ### May 23, 2026 (Ruthless Codebase Cleanup & Optimization Audit)
 
 - **SURGICAL DEAD EXPORT PURGE**: Eliminated completely unused exports identified via precise AST-based analysis using Knip. Purged dead functions `solveSpellDamage` and `mitigateDamage` from [GameSystems.jsx](file:///Users/kz/Code/Crafty/frontend/src/GameSystems.jsx).

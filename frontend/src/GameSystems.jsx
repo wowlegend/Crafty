@@ -314,17 +314,4 @@ export const DeathScreen = ({ onRespawn }) => {
     );
 };
 
-export const solveMeleeDamage = (attackerStats, baseWeaponDmg = 5) => {
-    const strength = attackerStats.strength || 10;
-    const agility = attackerStats.agility || 10;
-    const baseDmg = baseWeaponDmg + (strength * 1.5);
-    const critChance = Math.min(0.75, 0.05 + (agility * 0.005));
-    const isCrit = Math.random() < critChance;
-    const multiplier = isCrit ? 2.0 : 1.0;
-    
-    return {
-        damage: Math.round(baseDmg * multiplier),
-        isCrit,
-        color: isCrit ? '#FF4500' : '#FFFFFF'
-    };
-};
+export { solveMeleeDamage, solveSpellDamage, mitigateDamage } from './utils/combat';

@@ -3,7 +3,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
-import { SPELL_COLORS, solveMeleeDamage } from './GameSystems';
+import { SPELL_COLORS } from './GameSystems';
+import { solveMeleeDamage } from './utils/combat';
 import {
   PickaxeIcon,
   Package,
