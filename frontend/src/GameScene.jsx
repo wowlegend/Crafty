@@ -12,12 +12,13 @@ import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 
-// Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio
+// Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
   const { camera, scene } = useThree();
   const { audioContext, sounds, soundEnabled, volume } = useSounds();
   const listenerRef = useRef();
   const filterRef = useRef();
+  const wetGainRef = useRef();
 
   useEffect(() => {
     if (!camera || !audioContext) return;
@@ -35,14 +36,38 @@ const SpatialAudioController = () => {
     const filter = audioContext.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(20000, audioContext.currentTime);
-    
-    // Connect listener gain to filter, then filter to destination
+
+    // 3. Construct SOTA Cavern Reverb Delay-Feedback Network
+    const delayNode = audioContext.createDelay(1.0);
+    delayNode.delayTime.setValueAtTime(0.24, audioContext.currentTime);
+
+    const feedbackGain = audioContext.createGain();
+    feedbackGain.gain.setValueAtTime(0.35, audioContext.currentTime); // decay multiplier
+
+    const reverbFilter = audioContext.createBiquadFilter();
+    reverbFilter.type = 'lowpass';
+    reverbFilter.frequency.setValueAtTime(1200, audioContext.currentTime); // damp echoes
+
+    const wetGain = audioContext.createGain();
+    wetGain.gain.setValueAtTime(0.0, audioContext.currentTime); // dry to start
+
+    // Connect routing
     listener.gain.disconnect();
     listener.gain.connect(filter);
     filter.connect(audioContext.destination);
-    filterRef.current = filter;
 
-    // 3. Expose spatial trigger globally
+    // Reverb loop path
+    filter.connect(delayNode);
+    delayNode.connect(reverbFilter);
+    reverbFilter.connect(feedbackGain);
+    feedbackGain.connect(delayNode);
+    feedbackGain.connect(wetGain);
+    wetGain.connect(audioContext.destination);
+
+    filterRef.current = filter;
+    wetGainRef.current = wetGain;
+
+    // 4. Expose spatial trigger globally
     useGameStore.setState({ 
       playSpatialSound: (soundName, position, playbackRate = 1, distance = 20) => {
         if (!soundEnabled || !sounds || !sounds[soundName] || !listenerRef.current) return;
@@ -51,7 +76,7 @@ const SpatialAudioController = () => {
           const sound = new THREE.PositionalAudio(listenerRef.current);
           sound.setBuffer(sounds[soundName]);
           sound.setRefDistance(distance);
-          sound.setRolloffFactor(2); // Volume falls off more realistically
+          sound.setRolloffFactor(2); // volume falloff roll
           sound.setPlaybackRate(playbackRate);
           sound.setVolume(volume);
           
@@ -77,6 +102,12 @@ const SpatialAudioController = () => {
     return () => {
       camera.remove(listener);
       filter.disconnect();
+      try {
+        delayNode.disconnect();
+        reverbFilter.disconnect();
+        feedbackGain.disconnect();
+        wetGain.disconnect();
+      } catch (err) {}
     };
   }, [camera, scene, audioContext, sounds, soundEnabled, volume]);
 
@@ -131,6 +162,14 @@ const SpatialAudioController = () => {
       
       filterRef.current.frequency.setTargetAtTime(targetFreq, audioContext.currentTime, 0.1);
 
+      // Dynamically modulate cavern echo reverb wetness based on player depth
+      if (wetGainRef.current) {
+        const targetWet = y < undergroundLimit
+          ? THREE.MathUtils.lerp(0.5, 0.0, Math.max(0, y / undergroundLimit)) * volume
+          : 0.0;
+        wetGainRef.current.gain.setTargetAtTime(targetWet, audioContext.currentTime, 0.1);
+      }
+
       // Adjust wind based on height and day/night
       if (ambientWind.current && windGain.current) {
         const heightFactor = Math.min(2, Math.max(0.5, y / 30));
@@ -142,6 +181,234 @@ const SpatialAudioController = () => {
   });
 
   return null;
+};
+
+// Volumetric Weather System Materials
+const rainMaterial = new THREE.MeshBasicMaterial({
+  color: '#A9C6D3',
+  transparent: true,
+  opacity: 0.45,
+  depthWrite: false
+});
+
+const snowMaterial = new THREE.MeshBasicMaterial({
+  color: '#FFFFFF',
+  transparent: true,
+  opacity: 0.8,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
+
+const fireflyMaterial = new THREE.MeshBasicMaterial({
+  color: '#CCFF33',
+  transparent: true,
+  opacity: 0.9,
+  depthWrite: false
+});
+
+// Step 4: Volumetric Weather & Firefly Cycles Controller
+const WeatherSystem = () => {
+  const rainMeshRef = useRef();
+  const snowMeshRef = useRef();
+  const firefliesMeshRef = useRef();
+  
+  const weatherRef = useRef('clear');
+
+  // Weather loop state machine: clear -> rain -> snow -> loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const states = ['clear', 'rain', 'snow'];
+      const currentIndex = states.indexOf(weatherRef.current);
+      const nextWeather = states[(currentIndex + 1) % states.length];
+      weatherRef.current = nextWeather;
+
+      const store = useGameStore.getState();
+      if (store.addNotification) {
+        if (nextWeather === 'rain') {
+          store.addNotification('🌧️ Atmospheric shift... Dynamic rain storm has started!', 'info');
+        } else if (nextWeather === 'snow') {
+          store.addNotification('❄️ Cold front moving in... White volumetric snow begins to drift!', 'info');
+        } else {
+          store.addNotification('☀️ The storm passes. Clear skies and warm rays return!', 'success');
+        }
+      }
+    }, 90000); // 90 seconds per cycle
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const rainCount = 400;
+  const rainData = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < rainCount; i++) {
+      data.push({
+        x: (Math.random() - 0.5) * 40,
+        y: Math.random() * 40,
+        z: (Math.random() - 0.5) * 40,
+        speed: 15 + Math.random() * 8
+      });
+    }
+    return data;
+  }, []);
+
+  const snowCount = 200;
+  const snowData = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < snowCount; i++) {
+      data.push({
+        x: (Math.random() - 0.5) * 40,
+        y: Math.random() * 40,
+        z: (Math.random() - 0.5) * 40,
+        speed: 3 + Math.random() * 3,
+        wobbleSpeed: 1 + Math.random() * 2,
+        wobbleScale: 0.1 + Math.random() * 0.2,
+        seed: Math.random() * 100
+      });
+    }
+    return data;
+  }, []);
+
+  const fireflyCount = 30;
+  const fireflyData = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < fireflyCount; i++) {
+      data.push({
+        x: (Math.random() - 0.5) * 20,
+        y: 2 + Math.random() * 8,
+        z: (Math.random() - 0.5) * 20,
+        wobbleSpeed: 0.5 + Math.random() * 1.0,
+        seed: Math.random() * 100
+      });
+    }
+    return data;
+  }, []);
+
+  useFrame((state, delta) => {
+    const time = state.clock.elapsedTime;
+    const playerPos = useGameStore.getState().playerPosition;
+    if (!playerPos) return;
+
+    const px = playerPos.x;
+    const py = playerPos.y;
+    const pz = playerPos.z;
+
+    const isDay = useGameStore.getState().isDay;
+    const activeWeather = weatherRef.current;
+    const isRaining = activeWeather === 'rain';
+    const isSnowing = activeWeather === 'snow';
+
+    const getMobGroundLevel = useGameStore.getState().getMobGroundLevel;
+
+    // 1. Instanced Rain Particle displacement
+    if (rainMeshRef.current) {
+      const dummy = new THREE.Object3D();
+      rainData.forEach((r, i) => {
+        if (isRaining) {
+          r.y -= r.speed * delta;
+          const worldY = py + r.y;
+          
+          let groundLevel = null;
+          if (getMobGroundLevel) {
+            groundLevel = getMobGroundLevel(px + r.x, pz + r.z);
+          }
+
+          // Reset particle if hits bottom or collides with ground level
+          if (r.y < -15 || (groundLevel !== null && worldY < groundLevel)) {
+            r.y = 25;
+            r.x = (Math.random() - 0.5) * 40;
+            r.z = (Math.random() - 0.5) * 40;
+          }
+
+          dummy.position.set(px + r.x, py + r.y, pz + r.z);
+          dummy.scale.set(1, 1, 1);
+        } else {
+          dummy.scale.set(0, 0, 0); // Hide
+        }
+        dummy.updateMatrix();
+        rainMeshRef.current.setMatrixAt(i, dummy.matrix);
+      });
+      rainMeshRef.current.instanceMatrix.needsUpdate = true;
+    }
+
+    // 2. Instanced Snow Particle drift
+    if (snowMeshRef.current) {
+      const dummy = new THREE.Object3D();
+      snowData.forEach((s, i) => {
+        if (isSnowing) {
+          s.y -= s.speed * delta;
+          const wobbleX = Math.sin(time * s.wobbleSpeed + s.seed) * s.wobbleScale;
+          const wobbleZ = Math.cos(time * s.wobbleSpeed * 0.9 + s.seed) * s.wobbleScale;
+
+          const worldY = py + s.y;
+          let groundLevel = null;
+          if (getMobGroundLevel) {
+            groundLevel = getMobGroundLevel(px + s.x + wobbleX, pz + s.z + wobbleZ);
+          }
+
+          if (s.y < -15 || (groundLevel !== null && worldY < groundLevel)) {
+            s.y = 25;
+            s.x = (Math.random() - 0.5) * 40;
+            s.z = (Math.random() - 0.5) * 40;
+          }
+
+          dummy.position.set(px + s.x + wobbleX, py + s.y, pz + s.z + wobbleZ);
+          dummy.scale.set(1, 1, 1);
+          dummy.rotation.set(s.seed, time * 0.2, 0);
+        } else {
+          dummy.scale.set(0, 0, 0);
+        }
+        dummy.updateMatrix();
+        snowMeshRef.current.setMatrixAt(i, dummy.matrix);
+      });
+      snowMeshRef.current.instanceMatrix.needsUpdate = true;
+    }
+
+    // 3. Glowing Firefly drift (Night cycles only)
+    if (firefliesMeshRef.current) {
+      const dummy = new THREE.Object3D();
+      fireflyData.forEach((f, i) => {
+        if (!isDay) {
+          const wobbleX = Math.sin(time * 0.5 + f.seed) * 0.05;
+          const wobbleY = Math.cos(time * 0.8 + f.seed) * 0.03;
+          const wobbleZ = Math.sin(time * 0.4 + f.seed * 1.5) * 0.05;
+
+          f.x += wobbleX;
+          f.y += wobbleY;
+          f.z += wobbleZ;
+
+          // Reposition if drifts too far from player
+          if (Math.abs(f.x) > 15 || Math.abs(f.y - 5) > 8 || Math.abs(f.z) > 15) {
+            f.x = (Math.random() - 0.5) * 20;
+            f.y = 2 + Math.random() * 8;
+            f.z = (Math.random() - 0.5) * 20;
+          }
+
+          dummy.position.set(px + f.x, py + f.y, pz + f.z);
+          const pulse = 0.5 + 0.5 * Math.sin(time * f.wobbleSpeed * 2.0 + f.seed);
+          dummy.scale.setScalar(pulse * 0.22);
+        } else {
+          dummy.scale.set(0, 0, 0);
+        }
+        dummy.updateMatrix();
+        firefliesMeshRef.current.setMatrixAt(i, dummy.matrix);
+      });
+      firefliesMeshRef.current.instanceMatrix.needsUpdate = true;
+    }
+  });
+
+  return (
+    <group>
+      <instancedMesh ref={rainMeshRef} args={[null, rainMaterial, rainCount]}>
+        <boxGeometry args={[0.02, 1.0, 0.02]} />
+      </instancedMesh>
+      <instancedMesh ref={snowMeshRef} args={[null, snowMaterial, snowCount]}>
+        <planeGeometry args={[0.12, 0.12]} />
+      </instancedMesh>
+      <instancedMesh ref={firefliesMeshRef} args={[null, fireflyMaterial, fireflyCount]}>
+        <sphereGeometry args={[0.1, 4, 4]} />
+      </instancedMesh>
+    </group>
+  );
 };
 
 // Dynamic environmental fog with smooth transitions matching scene background
@@ -273,6 +540,7 @@ export function GameScene({
         )}
 
         <SpatialAudioController />
+        <WeatherSystem />
 
         <PointerLockControls 
           makeDefault 

@@ -10,6 +10,65 @@ import { BlockParticleSystem } from './BlockParticleSystem';
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
+// Shared SOTA Terrain Material with GPU wave sways and night bioluminescence
+const terrainMaterial = new THREE.MeshStandardMaterial({
+    roughness: 1.0,
+    metalness: 0.0,
+    vertexColors: true
+});
+
+terrainMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.time = { value: 0 };
+    shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
+
+    // Vertex Shader: Procedural undulating waves for water blocks
+    shader.vertexShader = `
+        uniform float time;
+        uniform float timeOfDay;
+        ${shader.vertexShader}
+    `;
+
+    shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `
+        #include <begin_vertex>
+        // Check if vertex is water by its color signature (high blue, low red/green)
+        bool isWater = (color.b > 0.6 && color.r < 0.15);
+        if (isWater) {
+            // Compute a world-aligned coordinate for coherent wave structures across chunk boundaries
+            vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+            float waveX = sin(time * 2.5 + worldPosition.x * 0.8) * 0.12;
+            float waveZ = cos(time * 2.0 + worldPosition.z * 0.8) * 0.12;
+            transformed.y += waveX + waveZ - 0.05; // slightly lower to reduce z-fighting with shorelines
+        }
+        `
+    );
+
+    // Fragment Shader: Glowing neon blue bioluminescent pulse during Night
+    shader.fragmentShader = `
+        uniform float time;
+        uniform float timeOfDay;
+        ${shader.fragmentShader}
+    `;
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `
+        #include <opaque_fragment>
+        bool isWaterPixel = (vColor.b > 0.6 && vColor.r < 0.15);
+        if (isWaterPixel) {
+            float nightFactor = 1.0 - timeOfDay;
+            // Pulsing bioluminescence frequency
+            float pulse = sin(time * 1.5 + vViewPosition.y * 3.0) * 0.5 + 0.5;
+            vec3 bioluminescence = vec3(0.0, 0.45, 0.9) * pulse * 0.65 * nightFactor;
+            gl_FragColor.rgb += bioluminescence;
+        }
+        `
+    );
+
+    terrainMaterial.userData.shader = shader;
+};
+
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     if (!meshData || meshData.positions.length === 0) return null;
 
@@ -33,9 +92,7 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
 
     return (
         <group position={[cx * 16, 0, cz * 16]}>
-            <mesh geometry={geometry} castShadow receiveShadow>
-                <meshStandardMaterial roughness={1.0} metalness={0.0} vertexColors={true} />
-            </mesh>
+            <mesh geometry={geometry} material={terrainMaterial} castShadow receiveShadow />
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
             </RigidBody>
@@ -121,6 +178,23 @@ export const MinecraftWorld = React.memo(() => {
     const { camera } = useThree();
     const { rapier, world } = useRapier();
     const { playBlockPlace, playBlockBreak } = useGameSounds();
+
+    // Update shared terrain shader uniforms
+    useFrame((state) => {
+        const time = state.clock.elapsedTime;
+        const isDay = useGameStore.getState().isDay;
+        const terrainShader = terrainMaterial.userData.shader;
+        if (terrainShader) {
+            terrainShader.uniforms.time.value = time;
+            // Smoothly transition timeOfDay uniform for bioluminescent fade-in/out
+            const targetTimeOfDay = isDay ? 1.0 : 0.0;
+            terrainShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
+                terrainShader.uniforms.timeOfDay.value,
+                targetTimeOfDay,
+                0.05
+            );
+        }
+    });
 
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());

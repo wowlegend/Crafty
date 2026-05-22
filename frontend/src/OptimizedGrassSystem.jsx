@@ -1,8 +1,9 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useGameStore } from './store/useGameStore';
 
-// Custom materials with GPU-based wind swaying
+// Custom materials with GPU-based wind swaying & player displacement
 const grassMaterial = new THREE.MeshBasicMaterial({
   color: '#4a7c59',
   transparent: true,
@@ -12,8 +13,10 @@ const grassMaterial = new THREE.MeshBasicMaterial({
 
 grassMaterial.onBeforeCompile = (shader) => {
   shader.uniforms.time = { value: 0 };
+  shader.uniforms.playerPosition = { value: new THREE.Vector3(0, 0, 0) };
   shader.vertexShader = `
     uniform float time;
+    uniform vec3 playerPosition;
     ${shader.vertexShader}
   `;
   shader.vertexShader = shader.vertexShader.replace(
@@ -23,8 +26,22 @@ grassMaterial.onBeforeCompile = (shader) => {
     float offset = instanceMatrix[3][0] * 0.5 + instanceMatrix[3][2] * 0.5;
     // Apply sway only to the top vertices
     if (position.y > 0.0) {
+       // Natural wind sway
        transformed.x += sin(time * 2.0 + offset) * 0.15;
        transformed.z += cos(time * 1.5 + offset) * 0.1;
+       
+       // GPU proximity grass bending
+       vec3 instancePosition = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+       vec3 diff = instancePosition - playerPosition;
+       float dist = length(diff);
+       if (dist < 2.2) {
+          float force = (2.2 - dist) / 2.2;
+          vec3 bendDir = normalize(vec3(diff.x, 0.0, diff.z));
+          if (length(bendDir) < 0.01) bendDir = vec3(1.0, 0.0, 0.0);
+          transformed.x += bendDir.x * force * force * 0.7;
+          transformed.z += bendDir.z * force * force * 0.7;
+          transformed.y -= force * force * 0.25;
+       }
     }
     `
   );
@@ -82,9 +99,13 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // 1. Update GPU shader time uniform for grass
+    // 1. Update GPU shader time and playerPosition uniforms for grass
     if (grassMaterial.userData.shader) {
       grassMaterial.userData.shader.uniforms.time.value = time;
+      const playerPos = useGameStore.getState().playerPosition;
+      if (playerPos) {
+        grassMaterial.userData.shader.uniforms.playerPosition.value.set(playerPos.x, playerPos.y, playerPos.z);
+      }
     }
 
     // 2. Update CPU particles (only 8 elements, minimal overhead)
