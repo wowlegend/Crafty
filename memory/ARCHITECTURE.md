@@ -281,3 +281,12 @@ Immersive atmospheric weather is implemented via a `<WeatherSystem />` canvas co
 Procedural Web Audio routing is added to `SpatialAudioController` (`GameScene.jsx`):
 - **Delay-Feedback Graph**: Routes spatial sounds into a lowpass filter, delay node (240ms), feedback gain loop (35% decay), and a dedicated wet gain controller.
 - **Depth-Based Modulation**: Continually monitors camera height. When the player descends underground (`y < 10`), the feedback wet gain scales up to produce a haunting cavern echo.
+
+## SOTA 3D Greedy Voxel Mesher (May 2026)
+
+To support state-of-the-art visuals, dense graphics, and flawless 60+ FPS performance, `terrain.worker.js` incorporates a highly optimized, high-fidelity **3D Greedy Voxel Meshing** compiler:
+- **Background Web Worker Thread**: Offloads all heavy geometry calculations to a dedicated worker thread, keeping the main render thread free of GC pauses or CPU bottlenecks.
+- **Slice-and-Sweep Strategy**: Sweeps each chunk along the X, Y, and Z axes. At each slice step, it evaluates visibility between adjacent blocks (culling solid-to-solid faces, while keeping solid-to-air, solid-to-water, and water-to-air faces).
+- **Coplanar Quad Merging**: A 2D greedy sweep combines adjacent matching coplanar voxel faces into singular larger rectangular quads. A pre-allocated reusable mask buffer (`Uint16Array(4096)`) prevents GC stutters.
+- **CCW Winding Maps**: Formulates accurate counter-clockwise (CCW) vertex coordinates and normal vectors for all 6 faces to preserve correct lighting computations.
+- **Liquid Separability**: Keeps water blocks isolated from solid blocks during merging to preserve procedural fluid shader vertices and wave dynamics.

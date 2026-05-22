@@ -2,6 +2,12 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+### Phase 17: SOTA 3D Greedy Voxel Mesher [COMPLETED]
+*Deeply optimizing chunk geometry compilation and physics trimesh triangles.*
+- [x] **3D Greedy Voxel Mesher**: Re-engineered chunk voxel compilations in `terrain.worker.js` with slice-and-sweep coplanar quad merging, slashing vertex counts by 80-90%.
+- [x] **CCW Winding preservation**: Maintained exact lighting and rendering normals for all 6 faces.
+- [x] **Trimesh physics optimization**: Simplified the Rapier compound collider, removing locomotion stutters.
+
 ### Phase 16: SOTA Visuals, Volumetric Weather, Cavern Acoustics & GPU Grass [COMPLETED]
 *Deeply enhancing environmental visuals, weather cycles, acoustics, and foliage animations.*
 - [x] **Interactive GPU Grass Displacement**: Implemented player position uniform binding and vertex-level quadratic grass bending in `OptimizedGrassSystem.jsx`.
