@@ -29,10 +29,10 @@
 - [x] **Placeable Chest Entities**: Set up placable voxel container chests saving mapped inventories inside Zustand state trees.
 - [x] **Skill Talent Tree Panels**: Construct interactive grid overlays to unlock and progress elemental spell enhancements.
 
-### Phase 24: AI Behavior Trees Cover Systems & Dynamic Boss Block Destruction [PLANNED]
+### Phase 24: AI Behavior Trees Cover Systems & Dynamic Boss Voxel Destruction [COMPLETED]
 *Upgrading hostile combat logic with tactically smart behavior selectors and dynamic environment destruction.*
-- [ ] **AI Behavior Trees**: Integrate dynamic state-selection trees enabling hostiles to seek blocked cover lines when health thresholds fall below 25%.
-- [ ] **Dynamic Boss Voxel Destruction**: Enable Phase 2/3 Shadow Dragon shockwaves to convert struck solid blocks into dynamic falling rigid-body entities.
+- [x] **AI Behavior Trees**: Integrate dynamic state-selection trees enabling hostiles to seek blocked cover lines when health thresholds fall below 25%.
+- [x] **Dynamic Boss Voxel Destruction**: Enable Phase 2/3 Shadow Dragon shockwaves to convert struck solid blocks into dynamic falling rigid-body entities.
 
 ### Phase 25: Multiplayer WebSockets Delta Sync & RLE Chunk Compression [PLANNED]
 *Paving the way for online lobbies and highly optimized network chunk serialization.*

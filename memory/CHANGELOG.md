@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### May 23, 2026 (AI Behavior Trees Cover Systems & Dynamic Boss Voxel Destruction)
+
+- **AI BEHAVIOR TREES COVER SYSTEM**: Integrated tactical behavior trees in `ai.worker.js` that monitor hostile mobs (Skeletons/Zombies/Spiders) health. When health drops below **25%** of maximum, the mob transitions to **Cover Seeking Mode** and scans the local 9x9 local grid to navigate to safety.
+- **2D LINE-OF-SIGHT HEIGHT RAYCASTING**: Implemented an optimized 2D line tracing algorithm `hasLineOfSight(heightGrid, x1, z1, x2, z2)` in the background AI worker, tracing intermediate grid cells to calculate elevations. If intermediate blocks rise at least 1.2 blocks higher than player/mob elevations, the path is designated as valid cover, shielding the mob.
+- **LOCOMOTION RETREAT SPEED BOOST & AURA**: Programmed cover-seeking mobs to run **20% faster** to hide behind the cover cells, accompanied by a dynamic, glowing **cyan neon wireframe shield aura** rendered around the mob's 3D mesh inside the Miniplex ECS `MobModel` system.
+- **DYNAMIC BOSS VOXEL DESTRUCTION**: Created `destroyVoxelsInRadius(centerPos, radius, maxCount)` in `AdvancedGameFeatures.jsx` utilizing Zustand's real-time Rapier physics height-mapper. During Shadow Dragon **Phase 2 (Knockback Roars)** and **Phase 3 (Lava Zones)** attacks, struck solid blocks in a 5-unit radius are converted to Air (`0`), dynamically posting block updates to the terrain worker.
+- **INSTANCED PHYSICS DEBRIS PARTICLE BINDING**: Leveraging the existing instanced rigid-body block particle system, dynamic block destruction on the voxel grid automatically triggers high-fidelity physical block-shattering debris particles with zero additional CPU overhead.
+- **SWARM INTEGRATION VERIFICATION**: Confirmed that the entire AI behavior tree, pathfinding, and boss voxel destruction systems compile cleanly via `npm run build` (4.16s) and pass all concurrent Puppeteer playtest swarm tests (Combat, World, and Crafting all green) with flying colors.
+
 ### May 23, 2026 (Ledge Parkour, Placeable Container Chests & Skill Talent Trees)
 
 - **KINEMATIC LEDGE PARKOUR & CLIMBING**: Implemented dynamic horizontal parallel sweeps (chest-level raycast checking close intersections paired with head-level raycast checking empty space) inside `Player` useFrame locomotion in `Components.jsx`. When holding forward against a ledge, player triggers a kinematic vault climbing boost (`velocityY.current = 8.5` and lookup forward drift force) accompanied by a premium vault swing audio.

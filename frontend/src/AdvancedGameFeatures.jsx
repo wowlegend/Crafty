@@ -219,6 +219,70 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     );
 });
 
+const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
+    const store = useGameStore.getState();
+    const worker = store.terrainWorker;
+    const getGround = store.getMobGroundLevel;
+    if (!worker || !getGround) return;
+
+    const blocksToBreak = [];
+    const minX = Math.floor(centerPos.x - radius);
+    const maxX = Math.ceil(centerPos.x + radius);
+    const minZ = Math.floor(centerPos.z - radius);
+    const maxZ = Math.ceil(centerPos.z + radius);
+
+    for (let x = minX; x <= maxX; x++) {
+        for (let z = minZ; z <= maxZ; z++) {
+            const dx = x + 0.5 - centerPos.x;
+            const dz = z + 0.5 - centerPos.z;
+            if (dx * dx + dz * dz <= radius * radius) {
+                const groundY = getGround(x, z);
+                if (groundY !== null && !isNaN(groundY)) {
+                    const blockY = Math.floor(groundY);
+                    const dy = blockY + 0.5 - centerPos.y;
+                    if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                        if (blockY > 1) {
+                            blocksToBreak.push({ x, y: blockY, z });
+                            if (blockY - 1 > 1) {
+                                const dy2 = blockY - 0.5 - centerPos.y;
+                                if (dx * dx + dy2 * dy2 + dz * dz <= radius * radius) {
+                                    blocksToBreak.push({ x, y: blockY - 1, z });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (blocksToBreak.length === 0) return;
+
+    const countToBreak = Math.min(blocksToBreak.length, maxCount);
+    const chosen = [];
+    for (let i = 0; i < countToBreak; i++) {
+        const randIdx = Math.floor(Math.random() * blocksToBreak.length);
+        chosen.push(blocksToBreak.splice(randIdx, 1)[0]);
+    }
+
+    const newBlocks = new Map(store.worldBlocks);
+    chosen.forEach(b => {
+        const cx = Math.floor(b.x / 16);
+        const cz = Math.floor(b.z / 16);
+        const lx = b.x - cx * 16;
+        const lz = b.z - cz * 16;
+
+        worker.postMessage({
+            type: 'update_block',
+            payload: { cx, cz, x: lx, y: b.y, z: lz, blockType: 0 }
+        });
+
+        newBlocks.set(`${b.x}_${b.y}_${b.z}`, 0);
+    });
+
+    store.setWorldBlocks(newBlocks);
+};
+
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth }) => {
     const meshRef = useRef();
     const { camera } = useThree();
@@ -406,6 +470,9 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 if (useGameStore.getState().addNotification) {
                     useGameStore.getState().addNotification('🔊 Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!', 'danger');
                 }
+
+                // Trigger dynamic boss voxel destruction in Phase 2
+                destroyVoxelsInRadius(new THREE.Vector3(bx, by, bz), 5.0, Math.floor(Math.random() * 5) + 4);
             }
         }
 
@@ -426,6 +493,9 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 if (useGameStore.getState().addNotification) {
                     useGameStore.getState().addNotification('🔥 The ground is melting! Step out of the LAVA ZONES!', 'danger');
                 }
+
+                // Trigger dynamic boss voxel destruction in Phase 3
+                destroyVoxelsInRadius(new THREE.Vector3(playerX, playerGroundY, playerZ), 5.0, Math.floor(Math.random() * 5) + 4);
             }
 
             // B. Summon Skeleton Cohort Minions

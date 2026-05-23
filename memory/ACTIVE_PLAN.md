@@ -1,15 +1,17 @@
-# Active Plan: Ledge Parkour, Placeable Chests, & Skill Talent Trees (Phase 23)
+# Active Plan: AI Behavior Trees Cover Systems & Dynamic Boss Voxel Destruction (Phase 24)
 
 ## Goal
-Implement Phase 23: Ledge Parkour kinematic locomotion vaulting, placeable chest entities with container inventories synced directly to Zustand Map coordinates, and a premium interactive grid Skill Talent Tree with connected lock paths and progression enhancements.
+Implement Phase 24: AI Behavior Trees with dynamic cover-seeking tactical logic, intermediate 2D height-map line-of-sight raycasting inside the AI worker, shadow dragon dynamic voxel terrain destruction, and global Zustand terrain worker binding.
 
 ## Proposed Checklist
 - [x] Research & obtain user approval on the detailed implementation plan.
-- [x] Initialize Talent Points, Chests Map, and Talent actions in `useGameStore.jsx`.
-- [x] Inject Talent Point reward on player level-up in `SimpleExperienceSystem.jsx`.
-- [x] Implement Kinematic Ledge Parkour and chest placement raycasts in `Components.jsx`.
-- [x] Add Placeable Chest Block mapping and interaction keys in `Terrain.jsx`.
-- [x] Re-engineer spell upgrading panel into a premium, interactive grid Skill Talent Tree in `AdvancedGameFeatures.jsx`.
-- [x] Build the double-panel glassmorphic Chest Inventory Transfer interface in `AdvancedGameFeatures.jsx`.
-- [x] Compile assets and run verification playtest swarm.
-- [x] Execute Git commit and push all Phase 23 updates to GitHub.
+- [x] Expose the active terrain worker instance to Zustand store (`terrainWorker`) inside `Terrain.jsx`.
+- [x] Implement `destroyVoxelsInRadius` in `AdvancedGameFeatures.jsx` and hook it into Shadow Dragon Phase 2 roar and Phase 3 lava zone spawning.
+- [x] Update NPC health and maxHealth serialization inside `SimplifiedNPCSystem.jsx` TICK data.
+- [x] Parse worker result `isCoverSeeking` status in `SimplifiedNPCSystem.jsx` and apply 20% speed boost + cyan particle effects.
+- [x] Implement 2D Line-of-Sight height raycasting `hasLineOfSight(heightGrid, x1, z1, x2, z2)` in `ai.worker.js`.
+- [x] Build Behavior Tree logic in `ai.worker.js` for Skeleton, Zombie, and Spider mobs to seek tactical cover when health < 25% max health.
+- [x] Verify build compilation (`npm run build`) and run automated Puppeteer playtest swarm (`npm run test`).
+- [ ] Execute Git commit and push all Phase 24 updates to GitHub.
+
+

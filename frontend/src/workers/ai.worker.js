@@ -89,7 +89,33 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
       }
     }
   }
-  return null;
+}
+
+// 2D Line-Of-Sight height check on a local 9x9 height grid
+// x1, z1 are starting grid coords (typically 4, 4)
+// x2, z2 are destination grid coords
+function hasLineOfSight(heightGrid, x1, z1, x2, z2) {
+  const cols = 9;
+  const startH = heightGrid[x1 + z1 * cols];
+  const endH = heightGrid[x2 + z2 * cols];
+  
+  // Trace cells from (x1, z1) to (x2, z2)
+  const steps = Math.max(Math.abs(x2 - x1), Math.abs(z2 - z1));
+  if (steps === 0) return true;
+  
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const px = Math.round(x1 + (x2 - x1) * t);
+    const pz = Math.round(z1 + (z2 - z1) * t);
+    const idx = px + pz * cols;
+    const cellH = heightGrid[idx];
+    
+    // An intermediate column is blocking if it rises significantly higher than both ends
+    if (cellH > Math.max(startH, endH) + 1.2) {
+      return false; // Obstruction found!
+    }
+  }
+  return true;
 }
 
 self.onmessage = function(e) {
@@ -131,7 +157,7 @@ self.onmessage = function(e) {
       const entity = mobs[i];
       let { 
         id, passive, x, y, z, targetX, targetZ, isMoving, isAggro, 
-        lastAttackTime, damage, type, moveTimer, speed, rotation, heightGrid 
+        lastAttackTime, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid 
       } = entity;
       
       const dx = playerX - x;
@@ -143,8 +169,67 @@ self.onmessage = function(e) {
         isAggro = true;
       }
       
+      let isCoverSeeking = false;
       if (isAggro) {
-        if (type === 'skeleton') {
+        // AI State Tree - Cover seeking behavior tree selection
+        if (health < maxHealth * 0.25 && heightGrid && heightGrid.length === 81) {
+          const mobGridX = Math.round(x);
+          const mobGridZ = Math.round(z);
+          const startXGrid = mobGridX - 4;
+          const startZGrid = mobGridZ - 4;
+          
+          const relPlayerX = Math.round(playerX - startXGrid);
+          const relPlayerZ = Math.round(playerZ - startZGrid);
+          
+          let bestCoverX = -1;
+          let bestCoverZ = -1;
+          let minCoverDistSq = 999;
+          
+          for (let cz = 0; cz < 9; cz++) {
+            for (let cx = 0; cx < 9; cx++) {
+              if (cx === 4 && cz === 4) continue;
+              if (cx === relPlayerX && cz === relPlayerZ) continue;
+              
+              const hIdx = cx + cz * 9;
+              const ch = heightGrid[hIdx];
+              const hDiffFromMob = Math.abs(ch - y);
+              if (hDiffFromMob > 2.0) continue;
+              
+              const inLOS = hasLineOfSight(heightGrid, cx, cz, relPlayerX, relPlayerZ);
+              if (!inLOS) {
+                const dxCenter = cx - 4;
+                const dzCenter = cz - 4;
+                const distSq = dxCenter * dxCenter + dzCenter * dzCenter;
+                if (distSq < minCoverDistSq) {
+                  minCoverDistSq = distSq;
+                  bestCoverX = cx;
+                  bestCoverZ = cz;
+                }
+              }
+            }
+          }
+          
+          if (bestCoverX !== -1 && bestCoverZ !== -1) {
+            targetX = startXGrid + bestCoverX;
+            targetZ = startZGrid + bestCoverZ;
+            isMoving = true;
+            isCoverSeeking = true;
+            
+            const targetGridX = Math.max(0, Math.min(8, bestCoverX));
+            const targetGridZ = Math.max(0, Math.min(8, bestCoverZ));
+            
+            const path = findAStarPath(heightGrid, 4, 4, targetGridX, targetGridZ);
+            if (path && path.length > 1) {
+              const nextNode = path[1];
+              targetX = startXGrid + nextNode[0];
+              targetZ = startZGrid + nextNode[1];
+            }
+          }
+        }
+
+        if (isCoverSeeking) {
+          // If seeking cover, steer towards target cover point
+        } else if (type === 'skeleton') {
           // Archery Logic: Maintain tactical range
           if (distToPlayer2D < 8) {
             // Retreat: Walk away from player
@@ -189,7 +274,7 @@ self.onmessage = function(e) {
         
         // --- Step 3: Voxel Height-Aware 3D A* Path Steering ---
         // If we have a local height grid from the main thread, steer around blocks
-        if (isMoving && heightGrid && heightGrid.length === 81) {
+        if (isMoving && !isCoverSeeking && heightGrid && heightGrid.length === 81) {
           const mobGridX = Math.round(x);
           const mobGridZ = Math.round(z);
           const startXGrid = mobGridX - 4;
@@ -241,7 +326,8 @@ self.onmessage = function(e) {
         
         if (dist > 0.15) {
           const speedMult = isAggro ? (type === 'spider' ? 2.0 : 1.5) : 1.0;
-          const actualSpeed = speed * speedMult * delta;
+          const coverBoost = isCoverSeeking ? 1.2 : 1.0;
+          const actualSpeed = speed * speedMult * coverBoost * delta;
           
           // Cap movement to prevent overshooting small local cells
           const moveDist = Math.min(actualSpeed, dist);
@@ -254,7 +340,7 @@ self.onmessage = function(e) {
       }
       
       updates.push({
-        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, moveTimer
+        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, moveTimer, isCoverSeeking
       });
     }
     

@@ -254,6 +254,13 @@ const MobModel = ({ entity }) => {
             </mesh>
           ))
         )}
+        {/* Dynamic cover-seeking shield aura */}
+        {entity.isCoverSeeking && (
+          <mesh position={[0, bodyH / 2, 0]}>
+            <boxGeometry args={[bodyW * 1.5, bodyH * 1.5, bodyD * 1.5]} />
+            <meshBasicMaterial color="#06b6d4" transparent opacity={0.35} wireframe />
+          </mesh>
+        )}
       </group>
       <HealthBar entity={entity} />
       {dialogue && (
@@ -677,6 +684,7 @@ const AIWorkerSystem = () => {
             entity.targetZ = update.targetZ;
             entity.lastAttackTime = update.lastAttackTime;
             entity.moveTimer = update.moveTimer;
+            entity.isCoverSeeking = update.isCoverSeeking;
 
             if (store.getMobGroundLevel) {
               const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
@@ -745,6 +753,8 @@ const AIWorkerSystem = () => {
         moveTimer: e.moveTimer,
         speed: e.speed,
         rotation: e.rotation,
+        health: e.health,
+        maxHealth: e.maxHealth,
         heightGrid: heightGrid
       };
     });

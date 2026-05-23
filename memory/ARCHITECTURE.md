@@ -209,6 +209,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 To maintain 60+ FPS gameplay, all CPU-heavy pathfinding calculations are offloaded to a dedicated Web Worker (`ai.worker.js`).
 - **Dynamic Local Voxel Grids**: For every active, aggroed hostile, the main thread samples a 9x9 local terrain height grid via Rapier physics raycasts (`getMobGroundLevel`). This compact array is sent to the worker, avoiding the high cost of serializing global voxel maps.
 - **Voxel A* Solver**: Inside the worker, a custom 3D A* search is executed over the 9x9 grid, calculating 8-way diagonal pathways, slope scaling (caps climbs at 1.25 blocks), and gap-jumping.
+- **Cover Seeking Behavior Trees**: Hosts tactical state-selection trees that monitor hostile health. If health falls below **25%**, hostiles transition to cover-seeking state, using a 2D line-of-sight raycast solver (`hasLineOfSight`) to locate cells behind high intervening block columns hidden from the player's sight, steering and moving **20% faster** to hide behind them. Mobs in cover retreat render a glowing **cyan wireframe shield aura** on the main thread.
 - **Pack Alert Aggro Linking**: Mobs within a 12-unit radius are linked; alerting one mob pulls nearby pack cohorts into the combat cycle synchronously.
 
 ### 2. Stateful 3-Phase Epic Boss Event (Shadow Dragon)
@@ -216,8 +217,8 @@ The Shadow Dragon boss event is designed to be highly immersive and visually spe
 - **Direct Mesh Ref Mutations**: The fireball projectiles, boss rotations, and expanding Lava Zone meshes are updated imperatively in the `useFrame` game loop using Three.js mutable references, completely bypassing React virtual DOM diffing.
 - **State Machine Transitions**:
   - *Phase 1 (Flight Mode)*: Boss circles at Y=+13 units, launching home-targeted falling fireballs.
-  - *Phase 2 (Grounded Rage)*: Boss lands, executing melee charges and Knockback Roars (applying physics impulses directly to the player capsule core).
-  - *Phase 3 (Enraged Fire)*: Boss spawns Skeleton Cohorts, turns glowing red, and emits expanding damage-over-time Lava Zones with custom shader-like opacity fades.
+  - *Phase 2 (Grounded Rage)*: Boss lands, executing melee charges and Knockback Roars (applying physics impulses directly to the player capsule core). Unleashes roaring shockwaves that physically shatter and convert solid blocks in a 5-unit radius to Air (`0`).
+  - *Phase 3 (Enraged Fire)*: Boss spawns Skeleton Cohorts, turns glowing red, and emits expanding damage-over-time Lava Zones with custom shader-like opacity fades, tearing down adjacent terrain blocks on impact to trigger instanced physical falling debris particles.
 
 ### 3. Keyboard Pet Commands Interface
 A dedicated pet command system (T key) allows the player to dynamically direct their tamed entities.
