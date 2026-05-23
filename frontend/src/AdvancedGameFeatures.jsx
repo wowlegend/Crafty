@@ -1001,92 +1001,272 @@ export const useSpellUpgrades = () => {
     return { spellLevels, getSpellStats, upgradeSpell, upgradeNotification, SPELL_UPGRADES };
 };
 
-export const SpellUpgradePanel = React.memo(({ spellLevels, onUpgrade, onClose }) => {
+export const SpellUpgradePanel = React.memo(({ onClose }) => {
+    const talentPoints = useGameStore(state => state.talentPoints || 0);
+    const unlockedTalents = useGameStore(state => state.unlockedTalents || {});
+    const spendTalentPoint = useGameStore(state => state.spendTalentPoint);
+    const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
+    const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
+
+    const branches = [
+        {
+            title: '🔥 Pyromancy & Storm',
+            color: 'border-orange-500/40 text-orange-400 bg-orange-950/20',
+            glow: 'rgba(249, 115, 22, 0.15)',
+            nodes: [
+                { id: 'ember_core', name: 'Ember Core', desc: 'Unlocks Fireball. Increases Fireball damage +15% per point.', limit: 3, prereq: null },
+                { id: 'fire_blast', name: 'Fire Blast', desc: 'Adds +20% critical strike chance to Fireball.', limit: 3, prereq: 'ember_core' },
+                { id: 'conflagration', name: 'Conflagration', desc: 'Adds dynamic explosion splash to Fireball impacts.', limit: 1, prereq: 'fire_blast' },
+                { id: 'storm_caller', name: 'Storm Caller', desc: 'Unlocks Lightning. Increases Lightning damage +20% per point.', limit: 3, prereq: null },
+                { id: 'chain_overload', name: 'Chain Overload', desc: 'Lightning strikes have 30% chance to chain to mobs.', limit: 2, prereq: 'storm_caller' }
+            ]
+        },
+        {
+            title: '❄️ Cryomancy & Abjuration',
+            color: 'border-cyan-500/40 text-cyan-400 bg-cyan-950/20',
+            glow: 'rgba(6, 182, 212, 0.15)',
+            nodes: [
+                { id: 'frost_shield', name: 'Frost Shield', desc: 'Unlocks Iceball. Grants +5 physical armor per point.', limit: 3, prereq: null },
+                { id: 'permafrost', name: 'Permafrost', desc: 'Iceball slows mob movement speed by 40% for 3 seconds.', limit: 2, prereq: 'frost_shield' },
+                { id: 'glacial_chill', name: 'Glacial Chill', desc: 'Iceball freezes mobs completely for 1.5s on critical hits.', limit: 1, prereq: 'permafrost' }
+            ]
+        },
+        {
+            title: '🔮 Arcane & Chronomancy',
+            color: 'border-purple-500/40 text-purple-400 bg-purple-950/20',
+            glow: 'rgba(168, 85, 247, 0.15)',
+            nodes: [
+                { id: 'mana_flow', name: 'Mana Flow', desc: 'Unlocks Arcane. Increases maximum mana limit by +30 per point.', limit: 3, prereq: null },
+                { id: 'time_warp', name: 'Time Warp', desc: 'Reduces dodge roll cooldown by 20% per point.', limit: 2, prereq: 'mana_flow' },
+                { id: 'astral_focus', name: 'Astral Focus', desc: 'Regenerates +5 Mana per second passively.', limit: 2, prereq: 'mana_flow' }
+            ]
+        }
+    ];
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.7)' }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            style={{ background: 'rgba(5, 5, 12, 0.85)', backdropFilter: 'blur(8px)' }}
         >
             <motion.div
-                initial={{ scale: 0.8, y: 30 }}
+                initial={{ scale: 0.9, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.8, y: 30 }}
-                className="p-6 max-w-md w-full mx-4"
+                exit={{ scale: 0.9, y: 30 }}
+                className="max-w-5xl w-full p-6 flex flex-col relative"
                 style={{
-                    background: 'linear-gradient(135deg, rgba(15, 15, 35, 0.95), rgba(40, 10, 60, 0.95))',
-                    border: '1px solid rgba(147, 51, 234, 0.4)',
-                    borderRadius: '16px',
-                    boxShadow: '0 0 40px rgba(147, 51, 234, 0.15)',
+                    background: 'linear-gradient(135deg, rgba(10, 10, 25, 0.98), rgba(25, 10, 45, 0.98))',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    borderRadius: '24px',
+                    boxShadow: '0 0 50px rgba(168, 85, 247, 0.25)',
                 }}
             >
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-purple-400 text-xl font-bold">✨ Spell Upgrades</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-lg">✕</button>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-500/20">
+                    <div>
+                        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-200 to-purple-400">
+                            ✨ Class Skill Talent Tree
+                        </h2>
+                        <p className="text-gray-400 text-xs mt-1">Spend Talent Points earned by leveling up to unlock powerful elemental abilities</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center">
+                            <div className="text-xs text-purple-300 font-bold uppercase tracking-wider">Talent Points</div>
+                            <div className="text-2xl font-black text-purple-400">{talentPoints}</div>
+                        </div>
+                        <div className="px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-center">
+                            <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Player Level</div>
+                            <div className="text-2xl font-black text-indigo-400">{playerLevel}</div>
+                        </div>
+                        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center font-bold text-lg transition-all duration-200">✕</button>
+                    </div>
                 </div>
 
-                <div className="space-y-3">
-                    {Object.entries(SPELL_UPGRADES).map(([key, spell]) => {
-                        const currentLevel = spellLevels[key] || 1;
-                        const currentStats = spell.levels[currentLevel - 1];
-                        const nextStats = currentLevel < 3 ? spell.levels[currentLevel] : null;
-                        const isMaxed = currentLevel >= 3;
+                {/* Branches Columns Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {branches.map((branch, index) => (
+                        <div
+                            key={index}
+                            className="p-4 rounded-2xl border flex flex-col gap-4"
+                            style={{
+                                borderColor: 'rgba(255,255,255,0.05)',
+                                background: 'rgba(255,255,255,0.02)',
+                                boxShadow: `inset 0 0 20px ${branch.glow}`,
+                            }}
+                        >
+                            <h3 className={`text-lg font-black text-center border-b pb-2 ${branch.color}`}>{branch.title}</h3>
+                            <div className="flex flex-col gap-3.5">
+                                {branch.nodes.map((node) => {
+                                    const currentLvl = unlockedTalents[node.id] || 0;
+                                    const isPrereqMet = !node.prereq || (unlockedTalents[node.prereq] || 0) > 0;
+                                    const isMaxed = currentLvl >= node.limit;
+                                    const canUpgrade = talentPoints > 0 && isPrereqMet && !isMaxed;
 
-                        return (
-                            <div
-                                key={key}
-                                className="p-3 rounded-xl"
-                                style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <span className="text-lg mr-2">{spell.icon}</span>
-                                        <span className="text-white font-bold text-sm">{currentStats.name}</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3].map(l => (
-                                            <div
-                                                key={l}
-                                                className="w-3 h-3 rounded-full"
-                                                style={{
-                                                    background: l <= currentLevel
-                                                        ? 'linear-gradient(135deg, #9333ea, #c084fc)'
-                                                        : 'rgba(255,255,255,0.1)',
-                                                    boxShadow: l <= currentLevel ? '0 0 5px #9333ea' : 'none',
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="mt-2 flex items-center justify-between text-xs">
-                                    <div className="text-gray-400">
-                                        ⚔️ {currentStats.damage} DMG • 💙 {currentStats.manaCost} MP
-                                    </div>
-                                    {!isMaxed && nextStats ? (
-                                        <button
-                                            onClick={() => onUpgrade(key)}
-                                            className="px-3 py-1 rounded-lg text-xs font-bold"
-                                            style={{
-                                                background: 'linear-gradient(135deg, #9333ea, #7c3aed)',
-                                                color: 'white',
-                                                boxShadow: '0 0 10px rgba(147,51,234,0.3)',
-                                            }}
+                                    return (
+                                        <div
+                                            key={node.id}
+                                            className={`p-3 rounded-xl border transition-all duration-300 relative ${
+                                                isMaxed 
+                                                    ? 'border-yellow-500/30 bg-yellow-500/5' 
+                                                    : !isPrereqMet 
+                                                    ? 'border-white/5 opacity-40 bg-black/40' 
+                                                    : 'border-white/10 bg-white/5'
+                                            }`}
                                         >
-                                            → {nextStats.damage} DMG (Lvl {nextStats.xpCost <= 100 ? 2 : nextStats.xpCost <= 200 ? 3 : 5})
-                                        </button>
-                                    ) : (
-                                        <span className="text-yellow-400 text-xs font-bold">MAX ⭐</span>
-                                    )}
-                                </div>
+                                            {/* Prerequisite lock overlay */}
+                                            {!isPrereqMet && (
+                                                <div className="absolute top-2 right-2 text-xs text-red-400 flex items-center gap-1 font-bold">
+                                                    🔒 Locked
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="font-extrabold text-sm text-white">{node.name}</div>
+                                                <div className="flex gap-0.5">
+                                                    {Array.from({ length: node.limit }).map((_, l) => (
+                                                        <div
+                                                            key={l}
+                                                            className={`w-2.5 h-2.5 rounded-full border ${
+                                                                l < currentLvl 
+                                                                    ? 'bg-purple-500 border-purple-400 shadow-sm shadow-purple-500' 
+                                                                    : 'bg-white/10 border-white/5'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            
+                                            <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">{node.desc}</p>
+                                            
+                                            {node.prereq && (
+                                                <div className="text-[10px] text-indigo-300 mt-1 font-bold">
+                                                    Prerequisite: {branch.nodes.find(n => n.id === node.prereq)?.name || node.prereq}
+                                                </div>
+                                            )}
+
+                                            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2">
+                                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                    Rank {currentLvl}/{node.limit}
+                                                </span>
+                                                {isMaxed ? (
+                                                    <span className="text-[10px] text-yellow-400 font-black uppercase tracking-wider">Max Rank ⭐</span>
+                                                ) : isPrereqMet ? (
+                                                    <button
+                                                        disabled={!canUpgrade}
+                                                        onClick={() => spendTalentPoint(node.id)}
+                                                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                                                            canUpgrade 
+                                                                ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer active:scale-95 shadow-md shadow-purple-600/30' 
+                                                                : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                                                        }`}
+                                                    >
+                                                        Upgrade
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[10px] text-red-400/80 font-bold">Requires Parent Node</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        );
-                    })}
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+});
+
+export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
+    const playerInventory = useGameStore(state => state.inventory?.blocks || {});
+    const chestsMap = useGameStore(state => state.chests || new Map());
+    const transferItem = useGameStore(state => state.transferItem);
+    
+    const chestData = chestsMap.get(coords) || { inventory: {}, name: 'Wooden Chest' };
+    const chestInventory = chestData.inventory || {};
+
+    const availableItems = Object.entries(playerInventory).filter(([_, qty]) => qty > 0);
+    const chestItems = Object.entries(chestInventory).filter(([_, qty]) => qty > 0);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+            style={{ background: 'rgba(5,5,10,0.85)', backdropFilter: 'blur(8px)' }}
+        >
+            <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="max-w-3xl w-full p-6 flex flex-col"
+                style={{
+                    background: 'linear-gradient(135deg, rgba(12,12,24,0.98), rgba(30,15,45,0.98))',
+                    border: '1px solid rgba(168,85,247,0.3)',
+                    borderRadius: '24px',
+                    boxShadow: '0 0 50px rgba(168,85,247,0.25)',
+                }}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-500/20">
+                    <div>
+                        <h2 className="text-2xl font-black text-purple-400 flex items-center gap-2">
+                            📦 Storage Container Chest
+                        </h2>
+                        <p className="text-gray-400 text-xs mt-1">Coordinate Grid Position: {coords}</p>
+                    </div>
+                    <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center font-bold text-lg transition-all duration-200">✕</button>
+                </div>
+
+                {/* Double Columns grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Player inventory panel */}
+                    <div className="p-4 rounded-2xl border border-white/5 bg-white/2 flex flex-col gap-3">
+                        <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-widest border-b border-white/5 pb-2">🎒 Player Backpack Inventory</h3>
+                        {availableItems.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-gray-500">Your backpack is completely empty.</div>
+                        ) : (
+                            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
+                                {availableItems.map(([item, qty]) => (
+                                    <div
+                                        key={item}
+                                        onClick={() => transferItem(coords, item, 1, 'to_chest')}
+                                        className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-purple-500/20 hover:border-purple-500/40 cursor-pointer active:scale-95 transition-all duration-150 text-center flex flex-col justify-between items-center group min-h-16"
+                                    >
+                                        <div className="text-white text-xs font-bold truncate max-w-full group-hover:text-purple-300">{item}</div>
+                                        <div className="px-2 py-0.5 rounded bg-black/40 text-[10px] text-gray-300 font-bold mt-1">x{qty}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="text-[10px] text-gray-500 text-center mt-2">💡 Click on items to transfer them to the chest.</p>
+                    </div>
+
+                    {/* Chest inventory panel */}
+                    <div className="p-4 rounded-2xl border border-white/5 bg-white/2 flex flex-col gap-3">
+                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-widest border-b border-white/5 pb-2">📦 Storage Vault Inventory</h3>
+                        {chestItems.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-gray-500">This chest container is currently empty.</div>
+                        ) : (
+                            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
+                                {chestItems.map(([item, qty]) => (
+                                    <div
+                                        key={item}
+                                        onClick={() => transferItem(coords, item, 1, 'from_chest')}
+                                        className="p-2 rounded-xl bg-purple-950/20 border border-purple-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 cursor-pointer active:scale-95 transition-all duration-150 text-center flex flex-col justify-between items-center group min-h-16"
+                                    >
+                                        <div className="text-purple-300 text-xs font-bold truncate max-w-full group-hover:text-indigo-300">{item}</div>
+                                        <div className="px-2 py-0.5 rounded bg-black/40 text-[10px] text-purple-400 font-bold mt-1">x{qty}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="text-[10px] text-gray-500 text-center mt-2">💡 Click on items to retrieve them to your backpack.</p>
+                    </div>
                 </div>
             </motion.div>
         </motion.div>

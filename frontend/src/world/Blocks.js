@@ -15,8 +15,9 @@ export const BLOCK_TYPES = Object.freeze({
     sand: Object.freeze({ color: '#DBD3A0', name: 'Sand', texture: 'sand' }),
     cobblestone: Object.freeze({ color: '#7F7F7F', name: 'Cobblestone', texture: 'cobblestone' }),
     flower_red: Object.freeze({ color: '#FF3333', name: 'Red Flower', texture: 'flower', transparent: true }),
-    flower_yellow: Object.freeze({ color: '#FFD700', name: 'Yellow Flower', texture: 'flower', transparent: true })
+    flower_yellow: Object.freeze({ color: '#FFD700', name: 'Yellow Flower', texture: 'flower', transparent: true }),
+    chest: Object.freeze({ color: '#A0522D', name: 'Wooden Chest', texture: 'wood' })
 });
 
 const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
-export const HOTBAR_BLOCKS = BLOCK_TYPE_KEYS.slice(0, 9);
+export const HOTBAR_BLOCKS = ['grass', 'dirt', 'stone', 'wood', 'glass', 'diamond', 'sand', 'cobblestone', 'chest'];

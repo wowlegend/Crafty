@@ -317,6 +317,70 @@ export const useGameStore = create((set, get) => ({
     upgradeSpell: null,
     setUpgradeSpell: (fn) => set({ upgradeSpell: fn }),
 
+    // Phase 23: Skill Talent Tree & Placeable Container Chests
+    talentPoints: 0,
+    unlockedTalents: {},
+    chests: new Map(),
+    activeChestCoords: null,
+    showChestInterface: false,
+    setShowChestInterface: (show) => set({ showChestInterface: show }),
+    setActiveChestCoords: (coords) => set({ activeChestCoords: coords }),
+    addTalentPoint: (amount) => set((state) => ({ talentPoints: state.talentPoints + amount })),
+    spendTalentPoint: (talentId) => set((state) => {
+        if (state.talentPoints <= 0) return {};
+        const currentVal = state.unlockedTalents[talentId] || 0;
+        const limits = {
+            'ember_core': 3, 'fire_blast': 3, 'conflagration': 1, 'storm_caller': 3, 'chain_overload': 2,
+            'frost_shield': 3, 'permafrost': 2, 'glacial_chill': 1,
+            'mana_flow': 3, 'time_warp': 2, 'astral_focus': 2
+        };
+        const limit = limits[talentId] || 3;
+        if (currentVal >= limit) return {};
+        
+        const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
+        
+        let newAttributes = { ...state.attributes };
+        if (talentId === 'frost_shield') {
+            newAttributes.armor = (newAttributes.armor || 0) + 5;
+        }
+        
+        return {
+            talentPoints: state.talentPoints - 1,
+            unlockedTalents: newUnlocked,
+            attributes: newAttributes
+        };
+    }),
+    setChestInventory: (coords, inventory) => set((state) => {
+        const newChests = new Map(state.chests);
+        newChests.set(coords, { ...newChests.get(coords), inventory });
+        return { chests: newChests };
+    }),
+    transferItem: (coords, item, quantity = 1, direction) => set((state) => {
+        const chest = state.chests.get(coords) || { inventory: {} };
+        const chestInv = { ...chest.inventory };
+        const playerBlocks = { ...state.inventory.blocks };
+        
+        if (direction === 'to_chest') {
+            const playerQty = playerBlocks[item] || 0;
+            if (playerQty < quantity) return {};
+            playerBlocks[item] = playerQty - quantity;
+            chestInv[item] = (chestInv[item] || 0) + quantity;
+        } else {
+            const chestQty = chestInv[item] || 0;
+            if (chestQty < quantity) return {};
+            chestInv[item] = chestQty - quantity;
+            playerBlocks[item] = (playerBlocks[item] || 0) + quantity;
+        }
+        
+        const newChests = new Map(state.chests);
+        newChests.set(coords, { ...chest, inventory: chestInv });
+        
+        return {
+            inventory: { ...state.inventory, blocks: playerBlocks },
+            chests: newChests
+        };
+    }),
+
     buildingMode: 'single',
     setBuildingMode: (mode) => set({ buildingMode: mode }),
     buildSize: 1,

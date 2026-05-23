@@ -10,7 +10,7 @@ import { WorldManager } from './WorldManager';
 import { TradingInterface } from './SimplifiedNPCSystem';
 import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
-import { SpellUpgradePanel } from './AdvancedGameFeatures';
+import { SpellUpgradePanel, ChestInventoryPanel } from './AdvancedGameFeatures';
 
 export function MenuSystem({
   gameState,
@@ -49,10 +49,23 @@ export function MenuSystem({
       <AnimatePresence>
         {showSpellUpgrades && (
           <SpellUpgradePanel
-            spellLevels={spellUpgrades.spellLevels}
-            onUpgrade={spellUpgrades.upgradeSpell}
             onClose={() => {
               setShowSpellUpgrades(false);
+              setTimeout(() => {
+                if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              }, 100);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {gameState.showChestInterface && (
+          <ChestInventoryPanel
+            coords={gameState.activeChestCoords}
+            onClose={() => {
+              gameState.setShowChestInterface(false);
+              gameState.setActiveChestCoords(null);
               setTimeout(() => {
                 if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
               }, 100);

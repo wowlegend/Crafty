@@ -15,7 +15,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
         state.showSettings || showAchievements || showSpellUpgrades ||
-        state.showTradingInterface;
+        state.showTradingInterface || state.showChestInterface;
 
       if (isPointerLocked && !anyPanelOpen) {
         const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
@@ -71,7 +71,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
         state.showSettings || showAchievements || showSpellUpgrades ||
-        state.showTradingInterface;
+        state.showTradingInterface || state.showChestInterface;
 
       if (event.code === 'Escape') {
         event.preventDefault();
@@ -85,6 +85,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowSettings(false);
           state.setShowTradingInterface(false);
           state.setSelectedVillager(null);
+          state.setShowChestInterface(false);
+          state.setActiveChestCoords(null);
           setShowAchievements(false);
           setShowSpellUpgrades(false);
           if (document.body.requestPointerLock) {

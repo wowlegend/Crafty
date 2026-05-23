@@ -23,11 +23,11 @@
 - [x] **Cellular Automata Dungeons**: Implement background worker generators to carve out stone chambers and support beams in lower cave zones (`Y < 20`).
 - [x] **Blueprint Stamp System**: Build asynchronous structure arrays to stamp complex architectural L-systems (huge dungeons, custom trees) into chunk streams.
 
-### Phase 23: Ledge parkour, Placeable Chests, & Skill Talent Trees [PLANNED]
+### Phase 23: Ledge parkour, Placeable Chests, & Skill Talent Trees [COMPLETED]
 *Deepening locomotion freedom, inventory storage solutions, and attributes progression paths.*
-- [ ] **Ledge Parkour**: Deploy parallel horizontal collision raycast sweeps to trigger climbing states when leaping against wall edges.
-- [ ] **Placeable Chest Entities**: Set up placable voxel container chests saving mapped inventories inside Zustand state trees.
-- [ ] **Skill Talent Tree Panels**: Construct interactive grid overlays to unlock and progress elemental spell enhancements.
+- [x] **Ledge Parkour**: Deploy parallel horizontal collision raycast sweeps to trigger climbing states when leaping against wall edges.
+- [x] **Placeable Chest Entities**: Set up placable voxel container chests saving mapped inventories inside Zustand state trees.
+- [x] **Skill Talent Tree Panels**: Construct interactive grid overlays to unlock and progress elemental spell enhancements.
 
 ### Phase 24: AI Behavior Trees Cover Systems & Dynamic Boss Block Destruction [PLANNED]
 *Upgrading hostile combat logic with tactically smart behavior selectors and dynamic environment destruction.*

@@ -458,6 +458,58 @@ export const Player = ({ isWorldBuilt }) => {
     // Kinematic ground check from Rapier character controller
     const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
 
+    // Phase 23: Ledge Parkour Climb/Vault System
+    if (!isGrounded && isLocked && keys.KeyW && velocityY.current <= 2.0 && controllerRef.current) {
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir);
+      const lookDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z).normalize();
+      
+      const chestRayStart = { x: currentTrans.x, y: currentTrans.y - 0.2, z: currentTrans.z };
+      const rayDirection = { x: lookDir.x, y: 0, z: lookDir.z };
+      
+      const chestRay = new rapier.Ray(chestRayStart, rayDirection);
+      const chestHit = world.castRay(
+        chestRay,
+        0.8,
+        true,
+        undefined,
+        undefined,
+        undefined,
+        rigidBodyRef.current,
+        filterPredicate
+      );
+
+      if (chestHit) {
+        const headRayStart = { x: currentTrans.x, y: currentTrans.y + 0.8, z: currentTrans.z };
+        const headRay = new rapier.Ray(headRayStart, rayDirection);
+        const headHit = world.castRay(
+          headRay,
+          1.0,
+          true,
+          undefined,
+          undefined,
+          undefined,
+          rigidBodyRef.current,
+          filterPredicate
+        );
+
+        if (!headHit) {
+          // Ledge detected! Perform vault boost
+          velocityY.current = 8.5;
+          
+          // Apply a gentle forward push to land on top
+          knockbackVelocity.current.x = lookDir.x * 3.5;
+          knockbackVelocity.current.z = lookDir.z * 3.5;
+          
+          // Play a premium vault audio sound
+          const store = useGameStore.getState();
+          if (store.playSpatialSound) {
+            store.playSpatialSound('swing', currentTrans, 1.2, 10);
+          }
+        }
+      }
+    }
+
     // Handle jumping & gravity
     if (isGrounded) {
       if (isLocked && jumpRequested.current && !dodge.isActive) {

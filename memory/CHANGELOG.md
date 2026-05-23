@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (Ledge Parkour, Placeable Container Chests & Skill Talent Trees)
+
+- **KINEMATIC LEDGE PARKOUR & CLIMBING**: Implemented dynamic horizontal parallel sweeps (chest-level raycast checking close intersections paired with head-level raycast checking empty space) inside `Player` useFrame locomotion in `Components.jsx`. When holding forward against a ledge, player triggers a kinematic vault climbing boost (`velocityY.current = 8.5` and lookup forward drift force) accompanied by a premium vault swing audio.
+- **PLACEABLE CONTAINER CHESTS**: Added the placeable `'chest'` block type to the selection hotbar, represented physically as an oak wood block and registered dynamically under coordinate keys inside the Zustand store `chests` Map. Interacting with chest blocks stops drops and triggers container menus.
+- **DOUBLE-PANEL GLASSMORPHIC TRANSFER UI**: Built a premium double-column overlay in `AdvancedGameFeatures.jsx` displaying player inventory slots on the left, and targeted chest inventory slots on the right. Synchronized click-to-transfer item actions across inventories in the central store.
+- **SOTA INTERACTIVE SKILL TALENT TREE**: Rebuilt the spell upgrade panel into an interactive grid Talent Tree displaying the player's level, unspent Talent Points (awarded on level-ups), and three vertical elemental disciplines (Pyromancy & Storm, Cryomancy & Abjuration, Arcane & Chronomancy) with SVG connectors, hover tooltips, and lock prerequisites.
+- **SWARM INTEGRATION VERIFICATION**: Successfully verified that all Phase 23 features compile cleanly (`npm run build` in 3.19s) and pass the Puppeteer playtest swarm tests concurrently (Combat, World, and Crafting all green).
+
 ### May 23, 2026 (Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems)
 
 - **3D CELLULAR AUTOMATA CAVE SMOOTHING**: Added dynamic 3D local neighborhood smoothing passes inside `terrain.worker.js` below Y < 20. Evaluates local 3x3x3 volume densities (27-voxel neighborhood checks) over 2 iterations, automatically hollowing out choke points (<= 11 solid blocks -> Air) and consolidating solid cavern walls (>= 16 solid blocks -> Stone) to create highly organic, navigate-ready cavern structures.

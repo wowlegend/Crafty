@@ -48,6 +48,9 @@ export const useSimpleExperience = () => {
       if (store.addAttributePoints) {
         store.addAttributePoints(5);
       }
+      if (store.addTalentPoint) {
+        store.addTalentPoint(1);
+      }
 
       // Trigger level up effect
       const levelUpEffect = {

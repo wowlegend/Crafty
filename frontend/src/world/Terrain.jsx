@@ -448,16 +448,35 @@ export const MinecraftWorld = React.memo(() => {
                 'sand': 4,
                 'cobblestone': 3,
                 'flower_red': 7,
-                'flower_yellow': 7
+                'flower_yellow': 7,
+                'chest': 6
             };
             const numericType = blockIdMap[type] || 1;
 
+            const deletePos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
+            const targetedX = Math.floor(deletePos.x);
+            const targetedY = Math.floor(deletePos.y);
+            const targetedZ = Math.floor(deletePos.z);
+            const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
+            const store = useGameStore.getState();
+
+            if (e.button === 2) {
+                // Intercept Right Click if targeting an existing placed chest
+                if (store.chests && store.chests.has(targetCoords)) {
+                    store.setActiveChestCoords(targetCoords);
+                    store.setShowChestInterface(true);
+                    if (document.exitPointerLock) {
+                        document.exitPointerLock();
+                    }
+                    return;
+                }
+            }
+
             if (e.button === 0) {
                 // DELETE
-                const deletePos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
-                tx = Math.floor(deletePos.x);
-                ty = Math.floor(deletePos.y);
-                tz = Math.floor(deletePos.z);
+                tx = targetedX;
+                ty = targetedY;
+                tz = targetedZ;
                 
                 const cx = Math.floor(tx / CHUNK_SIZE);
                 const cz = Math.floor(tz / CHUNK_SIZE);
@@ -468,10 +487,16 @@ export const MinecraftWorld = React.memo(() => {
                 playBlockBreak(hitPoint);
 
                 // Update worldBlocks in Zustand Map
-                const store = useGameStore.getState();
                 const newBlocks = new Map(store.worldBlocks);
                 newBlocks.set(`${tx}_${ty}_${tz}`, 0);
                 store.setWorldBlocks(newBlocks);
+
+                // Clean up chest in Zustand Map
+                if (store.chests && store.chests.has(targetCoords)) {
+                    const newChests = new Map(store.chests);
+                    newChests.delete(targetCoords);
+                    useGameStore.setState({ chests: newChests });
+                }
 
             } else if (e.button === 2) {
                 // PLACE
@@ -490,10 +515,16 @@ export const MinecraftWorld = React.memo(() => {
                 playBlockPlace(placePos, useGameStore.getState().selectedBlock);
 
                 // Update worldBlocks in Zustand Map
-                const store = useGameStore.getState();
                 const newBlocks = new Map(store.worldBlocks);
                 newBlocks.set(`${tx}_${ty}_${tz}`, numericType);
                 store.setWorldBlocks(newBlocks);
+
+                // Initialize chest in Zustand Map
+                if (type === 'chest') {
+                    const newChests = new Map(store.chests);
+                    newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
+                    useGameStore.setState({ chests: newChests });
+                }
             }
         };
         window.addEventListener('mousedown', handleClick);

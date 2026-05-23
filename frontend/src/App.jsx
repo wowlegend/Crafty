@@ -98,7 +98,7 @@ function GameApp({ experienceSystem }) {
     gameState.showMagic || gameState.showBuildingTools ||
     gameState.showSettings || gameState.showTradingInterface ||
     gameState.showWorldManager || showAchievements || showSpellUpgrades ||
-    showAuthModal;
+    showAuthModal || gameState.showChestInterface;
 
   const showClickToPlay = isWorldBuilt && !isPointerLocked && !anyPanelOpen && (gameSystems?.isAlive !== false);
 
