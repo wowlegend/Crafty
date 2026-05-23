@@ -2,6 +2,19 @@ import { useGameStore } from './store/useGameStore';
 import { useState, useEffect, useRef } from 'react';
 import { HOTBAR_BLOCKS } from './world/Blocks';
 
+const requestPointerLockSafely = (state) => {
+  if (state.requestPointerLock) {
+    state.requestPointerLock();
+  } else {
+    const canvas = document.querySelector('canvas');
+    if (canvas && canvas.requestPointerLock) {
+      canvas.requestPointerLock();
+    } else if (document.body.requestPointerLock) {
+      document.body.requestPointerLock();
+    }
+  }
+};
+
 export function useInputManager(gameState, gameSystems, questSystem) {
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -68,11 +81,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setActiveChestCoords(null);
           setShowAchievements(false);
           setShowSpellUpgrades(false);
-          if (state.requestPointerLock) {
-            state.requestPointerLock();
-          } else if (document.body.requestPointerLock) {
-            document.body.requestPointerLock();
-          }
+          requestPointerLockSafely(state);
         } else if (isPointerLocked) {
           state.setShowSettings(true);
           if (document.pointerLockElement) {
@@ -80,11 +89,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
         } else {
           setIsPointerLocked(true);
-          if (state.requestPointerLock) {
-            state.requestPointerLock();
-          } else if (document.body.requestPointerLock) {
-            document.body.requestPointerLock();
-          }
+          requestPointerLockSafely(state);
         }
         return;
       }
@@ -108,11 +113,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
 
           if (!newValue) {
-            if (state.requestPointerLock) {
-              state.requestPointerLock();
-            } else if (document.body.requestPointerLock) {
-              document.body.requestPointerLock();
-            }
+            requestPointerLockSafely(state);
           }
         };
 
@@ -158,8 +159,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         setShowAchievements(newVal);
         if (newVal && document.pointerLockElement) document.exitPointerLock();
         if (!newVal) {
-          if (state.requestPointerLock) state.requestPointerLock();
-          else if (document.body.requestPointerLock) document.body.requestPointerLock();
+          requestPointerLockSafely(state);
         }
         return;
       }
@@ -232,8 +232,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         setShowSpellUpgrades(newVal);
         if (newVal && document.pointerLockElement) document.exitPointerLock();
         if (!newVal) {
-          if (state.requestPointerLock) state.requestPointerLock();
-          else if (document.body.requestPointerLock) document.body.requestPointerLock();
+          requestPointerLockSafely(state);
         }
         return;
       }

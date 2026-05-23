@@ -665,16 +665,16 @@ function generateMesh(cx, cz, blocks) {
             if (dirFlag === 1) {
               // Top (+Y)
               const y = q;
-              c0 = [x, y + 1, z];
-              c1 = [x + h, y + 1, z];
-              c2 = [x + h, y + 1, z + w];
-              c3 = [x, y + 1, z + w];
+              c0 = [x, y + 1, z + w];
+              c1 = [x + h, y + 1, z + w];
+              c2 = [x + h, y + 1, z];
+              c3 = [x, y + 1, z];
             } else {
               // Bottom (-Y)
               const y = q + 1;
-              c0 = [x + h, y, z];
+              c0 = [x, y, z + w];
               c1 = [x + h, y, z + w];
-              c2 = [x, y, z + w];
+              c2 = [x + h, y, z];
               c3 = [x, y, z];
             }
           } else {
@@ -686,17 +686,17 @@ function generateMesh(cx, cz, blocks) {
             if (dirFlag === 1) {
               // Front (+Z)
               const z = q;
-              c0 = [x + w, y, z + 1];
-              c1 = [x + w, y + h, z + 1];
-              c2 = [x, y + h, z + 1];
-              c3 = [x, y, z + 1];
+              c0 = [x, y, z + 1];
+              c1 = [x, y + h, z + 1];
+              c2 = [x + w, y + h, z + 1];
+              c3 = [x + w, y, z + 1];
             } else {
               // Back (-Z)
               const z = q + 1;
-              c0 = [x, y, z];
-              c1 = [x, y + h, z];
-              c2 = [x + w, y + h, z];
-              c3 = [x + w, y, z];
+              c0 = [x + w, y, z];
+              c1 = [x + w, y + h, z];
+              c2 = [x, y + h, z];
+              c3 = [x, y, z];
             }
           }
 

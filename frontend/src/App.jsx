@@ -72,8 +72,16 @@ function GameApp({ experienceSystem }) {
     if (gameState.isSpawnChunkLoaded && !isWorldBuilt) {
       setIsWorldBuilt(true);
       setTimeout(() => {
-        if (document.body.requestPointerLock) {
-          document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e));
+        const state = useGameStore.getState();
+        if (state.requestPointerLock) {
+          state.requestPointerLock();
+        } else {
+          const canvas = document.querySelector('canvas');
+          if (canvas && canvas.requestPointerLock) {
+            canvas.requestPointerLock();
+          } else if (document.body.requestPointerLock) {
+            document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e));
+          }
         }
       }, 100);
     }
@@ -182,8 +190,16 @@ function GameApp({ experienceSystem }) {
       {showClickToPlay && (
         <div 
           onClick={() => {
-            if (document.body.requestPointerLock) {
-              document.body.requestPointerLock();
+            const state = useGameStore.getState();
+            if (state.requestPointerLock) {
+              state.requestPointerLock();
+            } else {
+              const canvas = document.querySelector('canvas');
+              if (canvas && canvas.requestPointerLock) {
+                canvas.requestPointerLock();
+              } else if (document.body.requestPointerLock) {
+                document.body.requestPointerLock();
+              }
             }
           }}
           className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-md cursor-pointer transition-all duration-300 hover:bg-slate-950/50 pointer-events-auto"
