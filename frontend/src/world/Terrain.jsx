@@ -70,7 +70,7 @@ terrainMaterial.onBeforeCompile = (shader) => {
     `;
 
     shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <opaque_fragment>',
+        '#include <color_fragment>',
         `
         float layerIndex = vColor.r; // Extract packed blockType layer index
         
@@ -84,11 +84,18 @@ terrainMaterial.onBeforeCompile = (shader) => {
             customAlpha = 0.75;
         }
 
-        // Apply diffuse lighting and texturing color
+        // Set the diffuse color to the sampled texture (before lighting calculations)
         diffuseColor = vec4(diffuse * texColor.rgb, texColor.a * customAlpha);
-        
+        `
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `
         #include <opaque_fragment>
         
+        float layerIndex = vColor.r;
+        bool isWaterPixel = (abs(layerIndex - 9.0) < 0.1);
         if (isWaterPixel) {
             float nightFactor = 1.0 - timeOfDay;
             // Pulsing bioluminescence frequency
