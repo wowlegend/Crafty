@@ -2,6 +2,43 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+### Phase 19: WebGL2 Texture2DArray Voxel Texturing & Wind Foliage [PLANNED]
+*Upgrading flat voxel coloring to high-resolution material batched arrays and dynamic wind-swayed foliage fields.*
+- [ ] **WebGL2 Texture2DArray Atlas**: Replace basic vertex colors with a single `Texture2DArray` sampler with dynamic coordinates pre-baked into compact vertex attributes.
+- [ ] **Wind Instanced Foliage Vectors**: Upgrade vegetation systems to support interactive multi-entity displacement and dynamic ambient wind sway animations.
+
+### Phase 20: Procedural Melee Weapon Trails & GPU Spark Particles [PLANNED]
+*Polishing combat sensory feedback with procedural ribbon meshes and high-performance particle cascades.*
+- [ ] **Procedural Ribbon Trails**: Generate dynamic ribbon meshes trailing player weapon swing arcs to convey weight and velocity.
+- [ ] **GPU Particle Spark Systems**: Offload particle impact bursts to optimized GPU vertex shader instances, scattering hundreds of glowing embers.
+- [ ] **Impact Critical Camera Shake**: Add brief, directional camera shake and elemental gradient text color pulses on critical hit registry.
+
+### Phase 21: Acoustic Voxel Ray-Tracing Occlusion & Dynamic Combat Soundtrack [PLANNED]
+*Implementing dynamic spatial audio occlusion raycasts and interactive tension arpeggiators.*
+- [ ] **Acoustic Occlusion Raycasts**: Cast low-overhead audio rays from emitters to listener. Reduce high-frequency filter thresholds if >3 solid voxel blocks intersect.
+- [ ] **Dynamic Combat Arpeggiators**: Synchronize chord arpeggiations and synthesizer tempos to scale with active combat hostiles population counts.
+
+### Phase 22: Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems [PLANNED]
+*Expanding world procedural depth with subterranean dungeon chambers and complex structural trees.*
+- [ ] **Cellular Automata Dungeons**: Implement background worker generators to carve out stone chambers and support beams in lower cave zones (`Y < 20`).
+- [ ] **Blueprint Stamp System**: Build asynchronous structure arrays to stamp complex architectural L-systems (huge dungeons, custom trees) into chunk streams.
+
+### Phase 23: Ledge parkour, Placeable Chests, & Skill Talent Trees [PLANNED]
+*Deepening locomotion freedom, inventory storage solutions, and attributes progression paths.*
+- [ ] **Ledge Parkour**: Deploy parallel horizontal collision raycast sweeps to trigger climbing states when leaping against wall edges.
+- [ ] **Placeable Chest Entities**: Set up placable voxel container chests saving mapped inventories inside Zustand state trees.
+- [ ] **Skill Talent Tree Panels**: Construct interactive grid overlays to unlock and progress elemental spell enhancements.
+
+### Phase 24: AI Behavior Trees Cover Systems & Dynamic Boss Block Destruction [PLANNED]
+*Upgrading hostile combat logic with tactically smart behavior selectors and dynamic environment destruction.*
+- [ ] **AI Behavior Trees**: Integrate dynamic state-selection trees enabling hostiles to seek blocked cover lines when health thresholds fall below 25%.
+- [ ] **Dynamic Boss Voxel Destruction**: Enable Phase 2/3 Shadow Dragon shockwaves to convert struck solid blocks into dynamic falling rigid-body entities.
+
+### Phase 25: Multiplayer WebSockets Delta Sync & RLE Chunk Compression [PLANNED]
+*Paving the way for online lobbies and highly optimized network chunk serialization.*
+- [ ] **WebSocket Multiplayer State Sync**: Decouple player inputs to support network-interpolated guest character visual models.
+- [ ] **Run-Length Encoded Chunk Compression**: Compress terrain data streams into run-length array packages before local or network saves.
+
 ### Phase 18: Rapier Kinematic Character Controller [COMPLETED]
 *Deeply optimizing character locomotion, ground-snapping, slope navigation, and walled sliding.*
 - [x] **WASM-Native Character Controller**: Integrated Rapier KCC to offload collision checking directly to WASM, resolving capsule sliding jitters.
