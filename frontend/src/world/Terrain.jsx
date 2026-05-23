@@ -85,7 +85,7 @@ terrainMaterial.onBeforeCompile = (shader) => {
         }
 
         // Apply diffuse lighting and texturing color
-        vec4 diffuseColor = vec4(diffuse * texColor.rgb, texColor.a * customAlpha);
+        diffuseColor = vec4(diffuse * texColor.rgb, texColor.a * customAlpha);
         
         #include <opaque_fragment>
         
