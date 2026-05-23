@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### May 24, 2026 (SOTA Voxel Winding Correction & Declarative Pointer Lock Sync - Phase 26)
+
+- **SOTA GREEDY VOXEL WINDING CORRECTION**: Surgically corrected the Greedy Mesher's Top (+Y) face winding coordinates inside `terrain.worker.js` from Clockwise (CW) to Counter-Clockwise (CCW). Swapped vertices `c1` and `c3` to establish perfect CCW alignment across all 6 voxel faces.
+- **THREE.FRONTSIDE CULLING TRANSITION**: Transitioned `opaqueMaterial` and `waterMaterial` inside `Terrain.jsx` from the heavy `THREE.DoubleSide` fallback to strict, optimized `THREE.FrontSide` culling. This cleanly culls all internal back faces, completely eliminating rendering cracks, slits, and skybox bleed artifacts under strict WebGL2 hardware depth testing while slashing fragment overdraw overhead.
+- **ENVIRONMENTAL FOG CONFLICT RESOLUTION**: Removed the duplicate linear `<fog />` component from `Terrain.jsx`, allowing the dynamic, exp2-based environmental cavern mist in `GameScene.jsx` to manage lighting and cavern depth seamlessly without color collisions.
+- **DECLARATIVE ZUSTAND POINTER LOCK SYNC**: Banished the hacky, conflict-prone `Element.prototype.requestPointerLock` monkey-patch inside `InputManager.jsx`. Exposed Drei's `PointerLockControls` instance reference directly to the Zustand store inside `GameScene.jsx` (`state.requestPointerLock`), enabling all overlay panels and escape menus to declaratively call `state.requestPointerLock()` during user gestures. This completely eliminates cursor desynchronization freezes and restores perfect locomotion recovery.
+
 ### May 24, 2026 (WebGL Opaque/Transparent Pass Split & Synchronous Pointer Lock Recovery)
 
 - **WEBGL OPAQUE/TRANSPARENT PASS SPLIT**: Surgically separated procedurally generated chunk geometry index buffers into solid opaque blocks (`opaqueGeometry`) and transparent water blocks (`waterGeometry`). Added separate standard mesh materials (`opaqueMaterial` and `waterMaterial`), turning `transparent` to `false` for solids. This completely eliminated transparent-pass self-sorting artifacts, ensuring solid ground is 100% opaque and correctly occludes cave and sky voids under hardware depth testing, while maintaining translucent procedural liquid waves.

@@ -38,7 +38,8 @@ export function MenuSystem({
             stats={questSystem.stats}
             onClose={() => {
               setShowAchievements(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -49,7 +50,8 @@ export function MenuSystem({
           <SpellUpgradePanel
             onClose={() => {
               setShowSpellUpgrades(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -62,7 +64,8 @@ export function MenuSystem({
             onClose={() => {
               gameState.setShowChestInterface(false);
               gameState.setActiveChestCoords(null);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -74,7 +77,8 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -83,7 +87,8 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -92,7 +97,8 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowBuildingTools(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -101,7 +107,8 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowSettings(false);
-              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
             onOpenWorldManager={() => {
               gameState.setShowSettings(false);
@@ -221,7 +228,9 @@ export function MenuSystem({
                   transition={{ delay: 0.9, duration: 0.5 }}
                   onClick={() => {
                     setIsPointerLocked(true);
-                    if (document.body.requestPointerLock) {
+                    if (gameState.requestPointerLock) {
+                      gameState.requestPointerLock();
+                    } else if (document.body.requestPointerLock) {
                       document.body.requestPointerLock().catch(e => console.warn(e));
                     }
                   }}

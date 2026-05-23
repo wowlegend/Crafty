@@ -21,7 +21,7 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true,
     transparent: false,
     depthWrite: true,
-    side: THREE.DoubleSide
+    side: THREE.FrontSide
 });
 
 const waterMaterial = new THREE.MeshStandardMaterial({
@@ -30,7 +30,7 @@ const waterMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true,
     transparent: true,
     depthWrite: false,
-    side: THREE.DoubleSide
+    side: THREE.FrontSide
 });
 
 const compileShader = (shader) => {
@@ -607,7 +607,6 @@ export const MinecraftWorld = React.memo(() => {
 
     return (
         <group>
-            <fog attach="fog" args={['#87CEEB', 20, (RENDER_DISTANCE * CHUNK_SIZE) - 5]} />
             {Object.values(chunks).filter(c => c.meshData).map(chunk => (
                 <ChunkMesh 
                     key={`${chunk.cx}_${chunk.cz}`} 

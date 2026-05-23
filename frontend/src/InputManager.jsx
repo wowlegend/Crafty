@@ -34,28 +34,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
     return () => window.removeEventListener('wheel', handleWheel);
   }, []);
 
-  useEffect(() => {
-    const originalRequestPointerLock = Element.prototype.requestPointerLock;
-    Element.prototype.requestPointerLock = function () {
-      try {
-        const canvas = document.querySelector('canvas');
-        const target = canvas || this;
-        const promise = originalRequestPointerLock.apply(target, arguments);
-        if (promise && typeof promise.catch === 'function') {
-          return promise.catch(e => {
-            console.warn('Pointer lock failed (safely caught):', e);
-          });
-        }
-        return promise;
-      } catch (e) {
-        console.warn('Pointer lock blocked (safely caught):', e);
-      }
-    };
-
-    return () => {
-      Element.prototype.requestPointerLock = originalRequestPointerLock;
-    };
-  }, []);
+  // Declared clean state-bound pointer lock requester
 
   // Keep latest values in refs to avoid rebinding event listener
   const localRefs = useRef({ isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem });
@@ -89,7 +68,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setActiveChestCoords(null);
           setShowAchievements(false);
           setShowSpellUpgrades(false);
-          if (document.body.requestPointerLock) {
+          if (state.requestPointerLock) {
+            state.requestPointerLock();
+          } else if (document.body.requestPointerLock) {
             document.body.requestPointerLock();
           }
         } else if (isPointerLocked) {
@@ -99,7 +80,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
         } else {
           setIsPointerLocked(true);
-          if (document.body.requestPointerLock) {
+          if (state.requestPointerLock) {
+            state.requestPointerLock();
+          } else if (document.body.requestPointerLock) {
             document.body.requestPointerLock();
           }
         }
@@ -125,7 +108,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
 
           if (!newValue) {
-            if (document.body.requestPointerLock) {
+            if (state.requestPointerLock) {
+              state.requestPointerLock();
+            } else if (document.body.requestPointerLock) {
               document.body.requestPointerLock();
             }
           }
@@ -173,7 +158,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         setShowAchievements(newVal);
         if (newVal && document.pointerLockElement) document.exitPointerLock();
         if (!newVal) {
-          if (document.body.requestPointerLock) document.body.requestPointerLock();
+          if (state.requestPointerLock) state.requestPointerLock();
+          else if (document.body.requestPointerLock) document.body.requestPointerLock();
         }
         return;
       }
@@ -246,7 +232,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         setShowSpellUpgrades(newVal);
         if (newVal && document.pointerLockElement) document.exitPointerLock();
         if (!newVal) {
-          if (document.body.requestPointerLock) document.body.requestPointerLock();
+          if (state.requestPointerLock) state.requestPointerLock();
+          else if (document.body.requestPointerLock) document.body.requestPointerLock();
         }
         return;
       }

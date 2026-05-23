@@ -666,9 +666,9 @@ function generateMesh(cx, cz, blocks) {
               // Top (+Y)
               const y = q;
               c0 = [x, y + 1, z];
-              c1 = [x, y + 1, z + w];
+              c1 = [x + h, y + 1, z];
               c2 = [x + h, y + 1, z + w];
-              c3 = [x + h, y + 1, z];
+              c3 = [x, y + 1, z + w];
             } else {
               // Bottom (-Y)
               const y = q + 1;

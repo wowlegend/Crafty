@@ -572,6 +572,21 @@ export function GameScene({
   showSpellUpgrades,
   showAuthModal
 }) {
+  const controlsRef = useRef();
+
+  useEffect(() => {
+    useGameStore.setState({
+      requestPointerLock: () => {
+        if (controlsRef.current) {
+          controlsRef.current.lock();
+        }
+      }
+    });
+    return () => {
+      useGameStore.setState({ requestPointerLock: null });
+    };
+  }, []);
+
   const shadowConfig = useMemo(() => ({
     mapSize: [2048, 2048],
     camera: {
@@ -662,6 +677,7 @@ export function GameScene({
         <WeatherSystem />
 
         <PointerLockControls 
+          ref={controlsRef}
           makeDefault 
           enabled={true} 
           minPolarAngle={0.05} 
