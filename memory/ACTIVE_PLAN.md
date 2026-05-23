@@ -12,6 +12,7 @@ Implement Phase 24: AI Behavior Trees with dynamic cover-seeking tactical logic,
 - [x] Implement 2D Line-of-Sight height raycasting `hasLineOfSight(heightGrid, x1, z1, x2, z2)` in `ai.worker.js`.
 - [x] Build Behavior Tree logic in `ai.worker.js` for Skeleton, Zombie, and Spider mobs to seek tactical cover when health < 25% max health.
 - [x] Verify build compilation (`npm run build`) and run automated Puppeteer playtest swarm (`npm run test`).
-- [ ] Execute Git commit and push all Phase 24 updates to GitHub.
+- [x] Execute Git commit and push all Phase 24 updates to GitHub.
+
 
 
