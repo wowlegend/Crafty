@@ -139,31 +139,238 @@ function getIndex(x, y, z) {
   return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
 }
 
+const DUNGEON_BLUEPRINT = [];
+
+function initDungeonBlueprint() {
+  const h = 6;
+  const halfW = 6;
+  const halfD = 6;
+
+  for (let dy = 0; dy < h; dy++) {
+    for (let dz = -halfD; dz <= halfD; dz++) {
+      for (let dx = -halfW; dx <= halfW; dx++) {
+        let blockType = 0; // Air to carve out center
+
+        const isWall = dx === -halfW || dx === halfW || dz === -halfD || dz === halfD;
+        const isFloor = dy === 0;
+        const isCeiling = dy === h - 1;
+
+        if (isFloor || isCeiling) {
+          blockType = 3; // Stone floor/ceiling
+        } else if (isWall) {
+          blockType = 3; // Stone walls
+        }
+
+        // Corner Pillars inside the room
+        const isCorner = (Math.abs(dx) === halfW - 1) && (Math.abs(dz) === halfD - 1);
+        if (isCorner && !isFloor && !isCeiling) {
+          blockType = 6; // Wood pillars
+        }
+
+        // Central Altar Pedestal (dy = 1)
+        if (dy === 1 && Math.abs(dx) <= 1 && Math.abs(dz) <= 1) {
+          if (dx === 0 && dz === 0) {
+            blockType = 4; // Treasure block (Sand)
+          } else {
+            blockType = 5; // Marble border (Snow)
+          }
+        }
+
+        // Entries
+        const isDoorway = (dz === -halfD || dz === halfD) && Math.abs(dx) <= 1 && dy >= 1 && dy <= 3;
+        if (isDoorway) {
+          blockType = 0;
+        }
+
+        DUNGEON_BLUEPRINT.push([dx, dy, dz, blockType]);
+      }
+    }
+  }
+}
+
+function isDungeonChunk(dcx, dcz) {
+  const hash = Math.sin(dcx * 12.9898 + dcz * 78.233) * 43758.5453;
+  return (hash - Math.floor(hash)) < 0.025; // 2.5% chance per chunk
+}
+
+function stampStructures(blocks, cx, cz) {
+  if (DUNGEON_BLUEPRINT.length === 0) {
+    initDungeonBlueprint();
+  }
+
+  for (let dcx = cx - 1; dcx <= cx + 1; dcx++) {
+    for (let dcz = cz - 1; dcz <= cz + 1; dcz++) {
+      if (isDungeonChunk(dcx, dcz)) {
+        const dCenterX = dcx * CHUNK_SIZE + 8;
+        const dCenterY = 12; // deep level Y = 12
+        const dCenterZ = dcz * CHUNK_SIZE + 8;
+
+        for (const [dx, dy, dz, blockType] of DUNGEON_BLUEPRINT) {
+          const ax = dCenterX + dx;
+          const ay = dCenterY + dy;
+          const az = dCenterZ + dz;
+
+          const lx = ax - cx * CHUNK_SIZE;
+          const lz = az - cz * CHUNK_SIZE;
+
+          if (lx >= 0 && lx < CHUNK_SIZE && lz >= 0 && lz < CHUNK_SIZE && ay >= 0 && ay < CHUNK_HEIGHT) {
+            blocks[getIndex(lx, ay, lz)] = blockType;
+          }
+        }
+      }
+    }
+  }
+}
+
+function applyCellularAutomata(blocks) {
+  const caRangeHeight = 20;
+  const tempSlice = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * caRangeHeight);
+
+  function getTempBlockAt(tempArr, bx, by, bz) {
+    if (bx < 0 || bx >= CHUNK_SIZE || bz < 0 || bz >= CHUNK_SIZE) return 3;
+    if (by < 0 || by >= caRangeHeight) return 3;
+    return tempArr[bx + bz * CHUNK_SIZE + by * CHUNK_SIZE * CHUNK_SIZE];
+  }
+
+  for (let pass = 0; pass < 2; pass++) {
+    // Copy active slice
+    for (let y = 0; y < caRangeHeight; y++) {
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        for (let x = 0; x < CHUNK_SIZE; x++) {
+          tempSlice[x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blocks[x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
+        }
+      }
+    }
+
+    // Run local 3D neighborhood evaluation
+    for (let y = 1; y < caRangeHeight - 1; y++) {
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        for (let x = 0; x < CHUNK_SIZE; x++) {
+          const index = x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
+          const currentType = tempSlice[index];
+          
+          let solidCount = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const neighborType = getTempBlockAt(tempSlice, x + dx, y + dy, z + dz);
+                if (neighborType > 0 && neighborType !== 9) {
+                  solidCount++;
+                }
+              }
+            }
+          }
+
+          if (currentType > 0 && currentType !== 9) {
+            if (solidCount <= 11) {
+              blocks[index] = 0; // Carve bottlenecks
+            }
+          } else if (currentType === 0) {
+            if (solidCount >= 16) {
+              blocks[index] = 3; // Consolidate walls
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function spawnSupportBeams(blocks, cx, cz) {
+  const startX = cx * CHUNK_SIZE;
+  const startZ = cz * CHUNK_SIZE;
+
+  for (let z = 0; z < CHUNK_SIZE; z++) {
+    const worldZ = startZ + z;
+    if (worldZ % 10 !== 0) continue;
+
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const worldX = startX + x;
+      if (worldX % 10 !== 0) continue;
+
+      for (let y = 1; y < 18; y++) {
+        const floorIdx = getIndex(x, y - 1, z);
+        const cellIdx = getIndex(x, y, z);
+        
+        if (blocks[cellIdx] === 0 && blocks[floorIdx] === 3) {
+          let ceilingY = -1;
+          for (let cy = y + 1; cy < 22; cy++) {
+            const ceilingIdx = getIndex(x, cy, z);
+            if (blocks[ceilingIdx] === 3) {
+              ceilingY = cy;
+              break;
+            }
+            if (blocks[ceilingIdx] !== 0) {
+              break;
+            }
+          }
+
+          if (ceilingY !== -1) {
+            const tunnelHeight = ceilingY - y;
+            if (tunnelHeight >= 3 && tunnelHeight <= 6) {
+              const isAlignX = (worldX % 20 === 0);
+              
+              const offsetL = isAlignX ? { dx: 0, dz: -1 } : { dx: -1, dz: 0 };
+              const offsetR = isAlignX ? { dx: 0, dz: 1 } : { dx: 1, dz: 0 };
+
+              const lxL = x + offsetL.dx;
+              const lzL = z + offsetL.dz;
+              const lxR = x + offsetR.dx;
+              const lzR = z + offsetR.dz;
+
+              // Left Post
+              if (lxL >= 0 && lxL < CHUNK_SIZE && lzL >= 0 && lzL < CHUNK_SIZE) {
+                for (let py = y; py < ceilingY; py++) {
+                  blocks[getIndex(lxL, py, lzL)] = 6;
+                }
+              }
+
+              // Right Post
+              if (lxR >= 0 && lxR < CHUNK_SIZE && lzR >= 0 && lzR < CHUNK_SIZE) {
+                for (let py = y; py < ceilingY; py++) {
+                  blocks[getIndex(lxR, py, lzR)] = 6;
+                }
+              }
+
+              // Top horizontal support arch crossbar
+              const topY = ceilingY - 1;
+              for (let step = -1; step <= 1; step++) {
+                const cxVal = x + (isAlignX ? 0 : step);
+                const czVal = z + (isAlignX ? step : 0);
+                if (cxVal >= 0 && cxVal < CHUNK_SIZE && czVal >= 0 && czVal < CHUNK_SIZE) {
+                  blocks[getIndex(cxVal, topY, czVal)] = 6;
+                }
+              }
+              
+              y = ceilingY;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 function generateChunkData(cx, cz) {
   const blocks = new Uint8Array(VOLUME);
   const startX = cx * CHUNK_SIZE;
   const startZ = cz * CHUNK_SIZE;
 
-  // 1. Biome & Height Generation
+  // 1. Raw Biome & Height Grid Generation
   for (let z = 0; z < CHUNK_SIZE; z++) {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const worldX = startX + x;
       const worldZ = startZ + z;
       
-      // Continental simplex noise for oceans
       const continent = noise2D(worldX * 0.002, worldZ * 0.002);
-      
-      // Moisture & Temperature for Biomes
       const moisture = noise2D(worldX * 0.005, worldZ * 0.005) * 0.5 + 0.5;
       const temperature = noise2D((worldX + 500) * 0.005, (worldZ + 500) * 0.005) * 0.5 + 0.5;
       
-      // Base height
       let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5;
       n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.1;
       
       const baseHeight = 30 + n * 40;
       
-      // Ocean Basin Interpolation: If continent < -0.15, smoothly transition to deep seabed (height 12 to 24)
       let surfaceY;
       if (continent < -0.15) {
         const oceanT = Math.min(1, Math.max(0, (-0.15 - continent) / 0.15));
@@ -173,7 +380,6 @@ function generateChunkData(cx, cz) {
         surfaceY = Math.floor(baseHeight);
       }
 
-      // Determine Biome
       let surfaceBlock = 1; // Grass
       let secondaryBlock = 2; // Dirt
       if (temperature > 0.7 && moisture < 0.3) {
@@ -181,12 +387,11 @@ function generateChunkData(cx, cz) {
           secondaryBlock = 4;
       } else if (temperature < 0.3) {
           surfaceBlock = 5; // Snow
-          secondaryBlock = 3; // Stone underneath snow
+          secondaryBlock = 3; // Stone
       }
 
-      // Set beach contours: sand beaches for any surface below height 30
       if (surfaceY < 30) {
-          surfaceBlock = 4; // Sand
+          surfaceBlock = 4; // Sand beach
           secondaryBlock = 4;
       }
 
@@ -194,19 +399,18 @@ function generateChunkData(cx, cz) {
         const index = getIndex(x, y, z);
         
         if (y > surfaceY) {
-          // Fill columns up to sea level 28 with Water blocks
           if (y <= 28) {
             blocks[index] = 9; // Water
           } else {
             blocks[index] = 0; // Air
           }
         } else {
-          // 2. Deep Caves Logic (Swiss Cheese)
+          // Swiss Cheese 3D Caves Noise carving
           const caveNoise = noise3D(worldX * 0.04, y * 0.08, worldZ * 0.04);
-          const caveThreshold = y < 20 ? 0.3 : 0.45; // More caves lower down
+          const caveThreshold = y < 20 ? 0.3 : 0.45;
 
           if (y < surfaceY - 4 && caveNoise > caveThreshold) {
-            blocks[index] = 0;
+            blocks[index] = 0; // Cave hollow
           } else {
             if (y === surfaceY) {
               blocks[index] = surfaceBlock;
@@ -218,37 +422,65 @@ function generateChunkData(cx, cz) {
           }
         }
       }
+    }
+  }
 
-      // 3. Foliage Decorators (Only above sea level and on solid ground)
-      if (surfaceY > 28 && blocks[getIndex(x, surfaceY, z)] !== 0 && Math.random() < 0.02) {
-          if (surfaceBlock === 1) { // Trees in Forest/Grass
-              const treeHeight = 4 + Math.floor(Math.random() * 3);
-              for (let ty = 1; ty <= treeHeight; ty++) {
-                  if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 6;
-              }
-              // Leaves
-              for (let lx = -1; lx <= 1; lx++) {
-                  for (let lz = -1; lz <= 1; lz++) {
-                      for (let ly = 0; ly <= 2; ly++) {
-                          const nx = x + lx;
-                          const nz = z + lz;
-                          const ny = surfaceY + treeHeight + ly;
-                          if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
-                              const leafIdx = getIndex(nx, ny, nz);
-                              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
-                          }
-                      }
-                  }
-              }
-          } else if (surfaceBlock === 4) { // Cacti in Desert
-              const cactusHeight = 2 + Math.floor(Math.random() * 2);
-              for (let ty = 1; ty <= cactusHeight; ty++) {
-                  if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
-              }
+  // 2. Smooth Deep Caves via 3D Cellular Automata (below Y < 20)
+  applyCellularAutomata(blocks);
+
+  // 3. Stamp Asynchronous Blueprint Structures (Cobblestone Dungeon chambers)
+  stampStructures(blocks, cx, cz);
+
+  // 4. Spawn Cavern Wooden Support Arch Beams (inside tunnels)
+  spawnSupportBeams(blocks, cx, cz);
+
+  // 5. Foliage Decorators Pass (Trees / Cacti, on top surface solid blocks)
+  for (let z = 0; z < CHUNK_SIZE; z++) {
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+      const worldX = startX + x;
+      const worldZ = startZ + z;
+      
+      let surfaceY = -1;
+      for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+        const type = blocks[x + z * CHUNK_SIZE + y * 256];
+        if (type > 0 && type !== 9) {
+          surfaceY = y;
+          break;
+        }
+      }
+
+      if (surfaceY > 28 && Math.random() < 0.02) {
+        const surfaceBlock = blocks[x + z * CHUNK_SIZE + surfaceY * 256];
+        if (surfaceBlock === 1) { // Forest Trees
+          const treeHeight = 4 + Math.floor(Math.random() * 3);
+          for (let ty = 1; ty <= treeHeight; ty++) {
+            if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 6;
           }
+          // Leaves
+          for (let lx = -1; lx <= 1; lx++) {
+            for (let lz = -1; lz <= 1; lz++) {
+              for (let ly = 0; ly <= 2; ly++) {
+                const nx = x + lx;
+                const nz = z + lz;
+                const ny = surfaceY + treeHeight + ly;
+                if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+                  const leafIdx = getIndex(nx, ny, nz);
+                  if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+                }
+              }
+            }
+          }
+        } else if (surfaceBlock === 4) { // Desert Cacti
+          const cactusHeight = 2 + Math.floor(Math.random() * 2);
+          for (let ty = 1; ty <= cactusHeight; ty++) {
+            if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
+          }
+        }
       }
     }
   }
+
+  // 6. Apply late player in-game block modifications over the chunk data
   const modKey = `${cx}_${cz}`;
   if (chunkModifications.has(modKey)) {
     const mods = chunkModifications.get(modKey);

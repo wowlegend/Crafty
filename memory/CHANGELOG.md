@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems)
+
+- **3D CELLULAR AUTOMATA CAVE SMOOTHING**: Added dynamic 3D local neighborhood smoothing passes inside `terrain.worker.js` below Y < 20. Evaluates local 3x3x3 volume densities (27-voxel neighborhood checks) over 2 iterations, automatically hollowing out choke points (<= 11 solid blocks -> Air) and consolidating solid cavern walls (>= 16 solid blocks -> Stone) to create highly organic, navigate-ready cavern structures.
+- **DETERMINISTIC MINE SUPPORT TIMBERS**: Programmed a deterministic, spacing-aligned wooden framing generator (vertical posts and horizontal crossbars conforming dynamically to tunnel height) placed at precise modulo intervals (`worldX % 10 === 0 && worldZ % 10 === 0`) inside low-ceiling cave tunnels (3 to 6 blocks high).
+- **ASYNCHRONOUS VOXEL BLUEPRINT STAMP ENGINE**: Built a boundary-seamless multi-chunk stamping engine reading structures from a relative coordinate offset array. Calculates offset translations over a 2-chunk radius to dynamically stamp structures into chunk blocks without edge seam clipping or boundary-crossing void leaks.
+- **EPIC DUNGEON CHAMBER BLUEPRINTS**: Designed a detailed hollowed `12x6x12` Stone dungeon chamber containing wooden support pillars in the corners, doorway entries, a marble altar (Snow block borders), and a central treasure pedestal (Sand block) holding loot.
+- **SWARM INTEGRATION VERIFICATION**: Successfully verified the complete terrain generation upgrades under Puppeteer playtest swarm tests (green status across Combat, World, and Crafting) and compiled production-grade Vite assets with zero stutters, warnings, or errors.
+
 ### May 23, 2026 (SOTA Acoustic Voxel Occlusion & Dynamic Combat Soundtrack)
 
 - **WASM-NATIVE PHYSICS SOUND OCCLUSION**: Implemented a recursive, low-overhead voxel obstruction calculation inside `SpatialAudioController` (`GameScene.jsx`). Casts native WASM physics rays (`world.castRay` in Rapier) from positional sound emitters directly to the camera listener, bypasses non-static colliders (player/NPCs), and counts solid voxel block intersections.

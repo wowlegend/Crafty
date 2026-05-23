@@ -13,15 +13,15 @@
 - [x] **GPU Particle Spark Systems**: Offload particle impact bursts to optimized GPU vertex shader instances, scattering hundreds of glowing embers.
 - [x] **Impact Critical Camera Shake**: Add brief, directional camera shake and elemental gradient text color pulses on critical hit registry.
 
-### Phase 21: Acoustic Voxel Ray-Tracing Occlusion & Dynamic Combat Soundtrack [PLANNED]
+### Phase 21: Acoustic Voxel Ray-Tracing Occlusion & Dynamic Combat Soundtrack [COMPLETED]
 *Implementing dynamic spatial audio occlusion raycasts and interactive tension arpeggiators.*
-- [ ] **Acoustic Occlusion Raycasts**: Cast low-overhead audio rays from emitters to listener. Reduce high-frequency filter thresholds if >3 solid voxel blocks intersect.
-- [ ] **Dynamic Combat Arpeggiators**: Synchronize chord arpeggiations and synthesizer tempos to scale with active combat hostiles population counts.
+- [x] **Acoustic Occlusion Raycasts**: Cast low-overhead audio rays from emitters to listener. Reduce high-frequency filter thresholds if >3 solid voxel blocks intersect.
+- [x] **Dynamic Combat Arpeggiators**: Synchronize chord arpeggiations and synthesizer tempos to scale with active combat hostiles population counts.
 
-### Phase 22: Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems [PLANNED]
+### Phase 22: Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems [COMPLETED]
 *Expanding world procedural depth with subterranean dungeon chambers and complex structural trees.*
-- [ ] **Cellular Automata Dungeons**: Implement background worker generators to carve out stone chambers and support beams in lower cave zones (`Y < 20`).
-- [ ] **Blueprint Stamp System**: Build asynchronous structure arrays to stamp complex architectural L-systems (huge dungeons, custom trees) into chunk streams.
+- [x] **Cellular Automata Dungeons**: Implement background worker generators to carve out stone chambers and support beams in lower cave zones (`Y < 20`).
+- [x] **Blueprint Stamp System**: Build asynchronous structure arrays to stamp complex architectural L-systems (huge dungeons, custom trees) into chunk streams.
 
 ### Phase 23: Ledge parkour, Placeable Chests, & Skill Talent Trees [PLANNED]
 *Deepening locomotion freedom, inventory storage solutions, and attributes progression paths.*

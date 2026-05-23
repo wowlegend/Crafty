@@ -1,12 +1,13 @@
-# Active Plan: Acoustic Occlusion & Dynamic Music (Phase 21)
+# Active Plan: Cellular Automata Dungeons & Blueprint Systems (Phase 22)
 
 ## Goal
-Implement Phase 21: Acoustic Voxel Ray-Tracing Occlusion & Dynamic Combat Soundtrack. This phase introduces subterranean sound wave voxel occlusion calculations and interactive arpeggiated music elements syncing with hostile population densities.
+Implement Phase 22: Cellular Automata Dungeon Structures & Voxel Blueprint Stamp Systems. This phase introduces underground smoothed caverns, deterministic mine wood support structures, and an asynchronous cross-chunk blueprint stamping engine for epic stone dungeons.
 
 ## Proposed Checklist
 - [x] Research & obtain user approval on the detailed implementation plan.
-- [x] Implement WASM-native Rapier recursive raycasting occlusion inside `SpatialAudioController` in `GameScene.jsx`.
-- [x] Add `activeHostilesCount` tracking to `useGameStore.jsx` and count hostiles inside `SimplifiedNPCSystem.jsx`.
-- [x] Implement dynamic plucked arpeggiator voice with BPM and chord scaling in `SoundManager.jsx`.
-- [x] Verify dynamic music scaling and audio muffling manually and via playtests.
-- [ ] Execute Git commit and push all Phase 21 updates to GitHub.
+- [x] Implement 3D Cellular Automata cave smoothing inside `terrain.worker.js`.
+- [x] Implement deterministic wooden mine support structures in tunnels.
+- [x] Build the Asynchronous Cross-Chunk Voxel Blueprint Stamp engine in `terrain.worker.js`.
+- [x] Design and stamp the Stone Dungeon Blueprint with corner pillars and a central altar.
+- [x] Verify voxel dungeons and support columns manually and via integration tests.
+- [x] Execute Git commit and push all Phase 22 updates to GitHub.
