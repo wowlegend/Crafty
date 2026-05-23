@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './store/useGameStore';
+import { ecs } from './ecs/world';
 
 // Custom materials with GPU-based wind swaying & player displacement
 const grassMaterial = new THREE.MeshBasicMaterial({
@@ -13,35 +14,50 @@ const grassMaterial = new THREE.MeshBasicMaterial({
 
 grassMaterial.onBeforeCompile = (shader) => {
   shader.uniforms.time = { value: 0 };
-  shader.uniforms.playerPosition = { value: new THREE.Vector3(0, 0, 0) };
+  shader.uniforms.entityPositions = {
+    value: Array.from({ length: 8 }, () => new THREE.Vector3(9999, 9999, 9999))
+  };
+
   shader.vertexShader = `
     uniform float time;
-    uniform vec3 playerPosition;
+    uniform vec3 entityPositions[8];
     ${shader.vertexShader}
   `;
+
   shader.vertexShader = shader.vertexShader.replace(
     `#include <begin_vertex>`,
     `
     #include <begin_vertex>
     float offset = instanceMatrix[3][0] * 0.5 + instanceMatrix[3][2] * 0.5;
-    // Apply sway only to the top vertices
+    // Apply sway and bending only to the top vertices of grass blades
     if (position.y > 0.0) {
-       // Natural wind sway
-       transformed.x += sin(time * 2.0 + offset) * 0.15;
-       transformed.z += cos(time * 1.5 + offset) * 0.1;
+       // Premium multi-frequency wind sway
+       float windSwayX = sin(time * 2.2 + offset) * 0.12 + sin(time * 0.8 + offset * 2.0) * 0.06;
+       float windSwayZ = cos(time * 1.8 + offset) * 0.08 + cos(time * 0.6 + offset * 1.5) * 0.04;
+       transformed.x += windSwayX;
+       transformed.z += windSwayZ;
        
-       // GPU proximity grass bending
+       // GPU proximity grass bending for multiple entities (player, pets, mobs)
        vec3 instancePosition = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
-       vec3 diff = instancePosition - playerPosition;
-       float dist = length(diff);
-       if (dist < 2.2) {
-          float force = (2.2 - dist) / 2.2;
-          vec3 bendDir = normalize(vec3(diff.x, 0.0, diff.z));
-          if (length(bendDir) < 0.01) bendDir = vec3(1.0, 0.0, 0.0);
-          transformed.x += bendDir.x * force * force * 0.7;
-          transformed.z += bendDir.z * force * force * 0.7;
-          transformed.y -= force * force * 0.25;
+       vec3 totalDisplacement = vec3(0.0);
+
+       for (int i = 0; i < 8; i++) {
+          vec3 pos = entityPositions[i];
+          if (pos.y > 9990.0) continue; // Skip inactive/unassigned slots
+          
+          vec3 diff = instancePosition - pos;
+          float dist = length(diff);
+          if (dist < 2.2) {
+             float force = (2.2 - dist) / 2.2;
+             vec3 bendDir = normalize(vec3(diff.x, 0.0, diff.z));
+             if (length(bendDir) < 0.01) bendDir = vec3(1.0, 0.0, 0.0);
+             
+             totalDisplacement.x += bendDir.x * force * force * 0.7;
+             totalDisplacement.z += bendDir.z * force * force * 0.7;
+             totalDisplacement.y -= force * force * 0.25;
+          }
        }
+       transformed.xyz += totalDisplacement;
     }
     `
   );
@@ -99,12 +115,34 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // 1. Update GPU shader time and playerPosition uniforms for grass
+    // 1. Update GPU shader time and entityPositions uniforms for grass
     if (grassMaterial.userData.shader) {
       grassMaterial.userData.shader.uniforms.time.value = time;
+      const uniforms = grassMaterial.userData.shader.uniforms;
+      const positions = uniforms.entityPositions.value;
+
+      // Reset all slots to inactive coordinate sentinels
+      for (let k = 0; k < 8; k++) {
+        positions[k].set(9999, 9999, 9999);
+      }
+
+      let index = 0;
+
+      // Slot 0: Player Position coordinates
       const playerPos = useGameStore.getState().playerPosition;
       if (playerPos) {
-        grassMaterial.userData.shader.uniforms.playerPosition.value.set(playerPos.x, playerPos.y, playerPos.z);
+        positions[index].set(playerPos.x, playerPos.y, playerPos.z);
+        index++;
+      }
+
+      // Slots 1-7: Active mobs from the ECS world
+      if (ecs && ecs.entities) {
+        ecs.entities.forEach(entity => {
+          if (entity.isMob && entity.position && index < 8) {
+            positions[index].set(entity.position[0], entity.position[1], entity.position[2]);
+            index++;
+          }
+        });
       }
     }
 

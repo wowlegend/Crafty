@@ -47,12 +47,14 @@ self.onmessage = function(e) {
         positions: meshData.positions,
         normals: meshData.normals,
         colors: meshData.colors,
+        uvs: meshData.uvs,
         indices: meshData.indices
       }
     }, [
       meshData.positions.buffer, 
       meshData.normals.buffer, 
       meshData.colors.buffer, 
+      meshData.uvs.buffer, 
       meshData.indices.buffer
     ]);
   }
@@ -99,12 +101,14 @@ self.onmessage = function(e) {
           positions: meshData.positions,
           normals: meshData.normals,
           colors: meshData.colors,
+          uvs: meshData.uvs,
           indices: meshData.indices
         }
       }, [
         meshData.positions.buffer, 
         meshData.normals.buffer, 
         meshData.colors.buffer, 
+        meshData.uvs.buffer, 
         meshData.indices.buffer
       ]);
     }
@@ -288,6 +292,7 @@ function generateMesh(cx, cz, blocks) {
   const positions = [];
   const normals = [];
   const colors = [];
+  const uvs = [];
   const indices = [];
   let indexOffset = 0;
 
@@ -466,12 +471,20 @@ function generateMesh(cx, cz, blocks) {
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-          const color = BLOCK_COLORS[blockType] || [1, 1, 1];
+          // Pack blockType in color.r for standard material vertexColor reading
           colors.push(
-            color[0], color[1], color[2],
-            color[0], color[1], color[2],
-            color[0], color[1], color[2],
-            color[0], color[1], color[2]
+            blockType, 0, 0,
+            blockType, 0, 0,
+            blockType, 0, 0,
+            blockType, 0, 0
+          );
+
+          // Tiled repeats UV coordinates mapping matching CCW corners
+          uvs.push(
+            0, 0,
+            0, h,
+            w, h,
+            w, 0
           );
 
           indices.push(
@@ -488,6 +501,7 @@ function generateMesh(cx, cz, blocks) {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
     colors: new Float32Array(colors),
+    uvs: new Float32Array(uvs),
     indices: new Uint32Array(indices)
   };
 }

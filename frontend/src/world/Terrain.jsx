@@ -6,34 +6,49 @@ import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
+import { createProceduralVoxelTextures } from './proceduralTextures';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
+const voxelTextures = createProceduralVoxelTextures();
+
 // Shared SOTA Terrain Material with GPU wave sways and night bioluminescence
 const terrainMaterial = new THREE.MeshStandardMaterial({
-    roughness: 1.0,
-    metalness: 0.0,
-    vertexColors: true
+    roughness: 0.85,
+    metalness: 0.1,
+    vertexColors: true,
+    transparent: true,
+    side: THREE.DoubleSide
 });
 
 terrainMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.time = { value: 0 };
     shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
+    shader.uniforms.voxelTextures = { value: voxelTextures };
 
     // Vertex Shader: Procedural undulating waves for water blocks
     shader.vertexShader = `
         uniform float time;
         uniform float timeOfDay;
+        varying vec2 vUv;
         ${shader.vertexShader}
     `;
+
+    shader.vertexShader = shader.vertexShader.replace(
+        'void main() {',
+        `
+        void main() {
+            vUv = uv;
+        `
+    );
 
     shader.vertexShader = shader.vertexShader.replace(
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
-        // Check if vertex is water by its color signature (high blue, low red/green)
-        bool isWater = (color.b > 0.6 && color.r < 0.15);
+        // Check if vertex is water by its blockType packed in color.r (9.0)
+        bool isWater = (abs(color.r - 9.0) < 0.1);
         if (isWater) {
             // Compute a world-aligned coordinate for coherent wave structures across chunk boundaries
             vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
@@ -46,16 +61,34 @@ terrainMaterial.onBeforeCompile = (shader) => {
 
     // Fragment Shader: Glowing neon blue bioluminescent pulse during Night
     shader.fragmentShader = `
+        precision highp sampler2DArray;
+        uniform sampler2DArray voxelTextures;
         uniform float time;
         uniform float timeOfDay;
+        varying vec2 vUv;
         ${shader.fragmentShader}
     `;
 
     shader.fragmentShader = shader.fragmentShader.replace(
         '#include <opaque_fragment>',
         `
+        float layerIndex = vColor.r; // Extract packed blockType layer index
+        
+        // Sample nearest pixel-art repeating tile coordinates from array layer
+        vec4 texColor = texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layerIndex));
+        
+        // Set ocean block transparency
+        float customAlpha = 1.0;
+        bool isWaterPixel = (abs(layerIndex - 9.0) < 0.1);
+        if (isWaterPixel) {
+            customAlpha = 0.75;
+        }
+
+        // Apply diffuse lighting and texturing color
+        vec4 diffuseColor = vec4(diffuse * texColor.rgb, texColor.a * customAlpha);
+        
         #include <opaque_fragment>
-        bool isWaterPixel = (vColor.b > 0.6 && vColor.r < 0.15);
+        
         if (isWaterPixel) {
             float nightFactor = 1.0 - timeOfDay;
             // Pulsing bioluminescence frequency
@@ -85,6 +118,9 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         geom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
         geom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
         geom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
+        if (meshData.uvs) {
+            geom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
+        }
         geom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
         geom.computeBoundingSphere();
         return geom;
