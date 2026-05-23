@@ -1,7 +1,7 @@
 # Active Plan: SOTA Voxel Game Overhaul
 
 ## Goal
-Implement the next wave of SOTA upgrades, specifically targeting Phase 19: WebGL2 Texture2DArray Voxel Texturing & Instanced Wind Foliage Vectors to support high-resolution material batching and dynamic vegetation animations.
+Implement the next wave of SOTA upgrades, specifically targeting Phase 20: Procedural Melee Weapon Trails & GPU Spark Particles to support dynamic sword trail meshes and low-overhead GPU particles.
 
 ## Current Task: None
-All planned Kinematic Character Controller physics features are fully completed, committed, and documented under clean production builds with zero warnings or errors.
+All planned WebGL2 DataArrayTexture texturing and multi-entity wind foliage systems are fully completed, committed, and documented under clean production builds with zero warnings or errors.

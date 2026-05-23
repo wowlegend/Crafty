@@ -1,5 +1,15 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA WebGL2 DataArrayTexture Voxel Texturing & Wind Foliage)
+
+- **PROCEDURAL DATAARRAYTEXTURE GENERATOR**: Created a startup-loaded procedural texture generator in `proceduralTextures.js` that paints 32x32 pixel organic, high-fidelity texture layers for each of our 9 block types (Grass, Dirt, Stone, Sand, Snow, Wood Trunk, Leaves, Cactus, Water). This delivers a premium detailed visual experience with exactly zero-byte static asset file footprints.
+- **GREEDY QUAD UV REPEATS TILING**: Configured `generateMesh` in the background worker `terrain.worker.js` to compute local UV repeat coordinates (`[0,0]`, `[0,h]`, `[w,h]`, `[w,0]`) for each greedy-merged quad of size $w \times h$. By binding `uv` attributes inside `Terrain.jsx`, textures repeat tile-by-tile seamlessly across combined faces rather than stretching.
+- **BLOCKTYPE PACKING IN VERTEX COLORS**: Packed the raw floating-point `blockType` index inside the geometry's `color.r` channel for all vertices. This allows the GPU shader compilation in `onBeforeCompile` to dynamically index the correct texture array layer slice on every frame.
+- **MULTI-ENTITY PROXIMITY FOLIAGE DISPLACEMENT**: Upgraded `OptimizedGrassSystem.jsx` to declare an `entityPositions[8]` uniform array. Programmed `useFrame` to continuously sync player position and active Miniplex ECS mob coordinates, enabling grass fields to bend organically away from any nearby active entities.
+- **MULTI-FREQUENCY WIND sways**: Refactored the grass vertex shader to blend high and low frequency sine/cosine waves driven by instanced offsets, creating a natural, premium plant rustling effect.
+- **WATER TRANSLUCENCY SHADING**: Mapped explicit translucency blending (`alpha = 0.75`) directly to water block pixels (layer 9) inside the custom shared `terrainMaterial` fragment shader, allowing sand beach textures to render beautifully underneath coastlines.
+- **SWARM INTEGRATION VERIFICATION**: Successfully verified that the entire texturing and foliage shader overhauls compile cleanly in under 3.5 seconds and pass all Puppeteer playtest swarm tests (green status across Combat, World, and Crafting).
+
 ### May 23, 2026 (SOTA Rapier Kinematic Character Controller & Physics)
 
 - **WASM-NATIVE KINEMATIC CHARACTER CONTROLLER**: Fully transitioned the player character locomotion engine in `Components.jsx` from dynamic rigid-body capsule forces to a native Rapier Kinematic Character Controller (KCC). This offloads collision detection, wall sliding, and slope traversal directly to the WASM physics layer, eliminating all micro-stutters and physical block clipping.

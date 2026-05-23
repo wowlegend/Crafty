@@ -299,3 +299,13 @@ To deliver premium, industry-grade action RPG locomotion controls, `Components.j
 - **Automatic Step-Up Snapping**: Employs built-in autostep parameters capping block step climbs at 1.05m and ground snapping at 0.5m, enabling the player to run up staircases, ridges, and slopes flawlessly.
 - **Dynamic Gravity & Trajectories**: Tracks vertical velocity manually (`velocityY.current`), applying constant gravity acceleration (`-32.0 * delta`) and cap parameters (`-50.0` terminal velocity) to simulate realistic jumping and falling curves.
 - **Decayed Impulse Redirection**: Overrides the standard `applyImpulse` method directly on the player rigid body ref instance upon mount. Intercepts boss-inflicted combat knockbacks and channels them into a decoupled knockback velocity ref (`knockbackVelocity`), which decays smoothly using high-frequency exponential spring dampers.
+
+## SOTA WebGL2 DataArrayTexture Voxel Texturing & Wind Foliage (May 2026)
+
+To support AAA-grade detailed voxel graphics and interactive vegetation fields, the graphics system incorporates a custom high-performance **WebGL2 DataArrayTexture** pipeline:
+- **Procedural Array Painting**: Generates dynamic 32x32 pixel organic texture slices for 9 layers (Grass, Dirt, Stone, Sand, Snow, Wood, Leaves, Cactus, Water) using deterministic sine/cosine noise offsets at startup (`proceduralTextures.js`), maintaining a 0-byte static file size asset footprint.
+- **Tiled UV Repeat Compilation**: The worker `terrain.worker.js` calculates local UV coordinates matching CCW corners `[0,0]`, `[0,h]`, `[w,h]`, `[w,0]` for each greedy quad of size $w \times h$. By binding `uv` attributes inside `Terrain.jsx`, textures tile perfectly tile-by-tile across merged faces without stretching.
+- **Vertex Color Layer Packing**: Packs the raw `blockType` integer inside the geometry's `color.r` channel. The fragment shader updates in `onBeforeCompile` read this coordinate on every frame, sampling the precise layer slice using `texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layer))`.
+- **Translucent Water Shading**: Enables explicit transparency blending (`alpha = 0.75`) for water block layers inside the fragment shader, revealing detailed sandy beaches underneath ocean shorelines.
+- **Instanced Multi-Entity Bending**: Upgrades `OptimizedGrassSystem.jsx` to bind an `entityPositions[8]` uniform array. The vertex shader loops through all active entity slots (player, pets, and mobs from the central Miniplex ECS `world` synced in `useFrame`) to apply quadratic bent displacement vectors, creating a highly interactive world field.
+- **Multi-Frequency Wind Sway**: Synthesizes high and low frequency sine/cosine wind waves driven by instanced offsets to simulate realistic foliage rustling.

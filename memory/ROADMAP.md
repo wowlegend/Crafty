@@ -2,10 +2,10 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
-### Phase 19: WebGL2 Texture2DArray Voxel Texturing & Wind Foliage [PLANNED]
+### Phase 19: WebGL2 Texture2DArray Voxel Texturing & Wind Foliage [COMPLETED]
 *Upgrading flat voxel coloring to high-resolution material batched arrays and dynamic wind-swayed foliage fields.*
-- [ ] **WebGL2 Texture2DArray Atlas**: Replace basic vertex colors with a single `Texture2DArray` sampler with dynamic coordinates pre-baked into compact vertex attributes.
-- [ ] **Wind Instanced Foliage Vectors**: Upgrade vegetation systems to support interactive multi-entity displacement and dynamic ambient wind sway animations.
+- [x] **WebGL2 Texture2DArray Atlas**: Replace basic vertex colors with a single `Texture2DArray` sampler with dynamic coordinates pre-baked into compact vertex attributes.
+- [x] **Wind Instanced Foliage Vectors**: Upgrade vegetation systems to support interactive multi-entity displacement and dynamic ambient wind sway animations.
 
 ### Phase 20: Procedural Melee Weapon Trails & GPU Spark Particles [PLANNED]
 *Polishing combat sensory feedback with procedural ribbon meshes and high-performance particle cascades.*
