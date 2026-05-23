@@ -766,10 +766,15 @@ const MinimapSyncSystem = () => {
     const now = performance.now();
     const store = useGameStore.getState();
     if (now - (store._lastMinimapUpdate || 0) > 250) {
-      store.setMobEntities(mobsQuery.entities.filter(e => e && e.health > 0).map(e => ({
+      const activeMobs = mobsQuery.entities.filter(e => e && e.health > 0);
+      store.setMobEntities(activeMobs.map(e => ({
         id: e.id, type: e.type, passive: e.passive, position: [e.position.x, e.position.y, e.position.z]
       })));
-      useGameStore.setState({ _lastMinimapUpdate: now });
+      const hostileCount = activeMobs.filter(e => !e.passive).length;
+      useGameStore.setState({ 
+        _lastMinimapUpdate: now,
+        activeHostilesCount: hostileCount 
+      });
     }
   });
   return null;

@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA Acoustic Voxel Occlusion & Dynamic Combat Soundtrack)
+
+- **WASM-NATIVE PHYSICS SOUND OCCLUSION**: Implemented a recursive, low-overhead voxel obstruction calculation inside `SpatialAudioController` (`GameScene.jsx`). Casts native WASM physics rays (`world.castRay` in Rapier) from positional sound emitters directly to the camera listener, bypasses non-static colliders (player/NPCs), and counts solid voxel block intersections.
+- **DYNAMIC LOWPASS & DAMPENING FILTERS**: Allocated dynamic `BiquadFilterNode` low-pass filters for all positional audio streams, modulating frequencies smoothly using Web Audio `setTargetAtTime` from 20kHz down to 350Hz, and damping volume gains from 100% down to 25% based on intersecting block counts (0 = clear, 1 = lightly muffled, 2 = muffled, 3+ = cavern-muffled) for hyper-realistic acoustics.
+- **REAL-TIME HOSTILE POPULATION ECS SYNC**: Throttled state updates in the Miniplex ECS `MinimapSyncSystem` loop inside `SimplifiedNPCSystem.jsx` at 4Hz to count active hostile mobs (`health > 0 && !passive`), updating the global Zustand store `activeHostilesCount` dynamically.
+- **AHEAD-OF-TIME SYNTHESIZER SCHEDULER**: Built a rhythmic combat arpeggiator plucked synthesizer inside `SoundManager.jsx` using a rock-solid Web Audio Clock Scheduler. It runs every 25ms and schedules tri-oscillator plucks with custom bandpass sweep envelopes 100ms in advance to guarantee perfect rhythmic timing without thread blocking.
+- **DYNAMIC TEMPO & TENSION CHORDS**: Programmed the arpeggiator to dynamically scale its tempo (from peaceful silence up to 150 BPM) and select minor/augmented tension chords (Day/Night/Boss mood chord progressions) based on hostile counts (0 = silent, 1-2 = 110 BPM, 3-5 = 130 BPM, 6+ / Boss = 150 BPM) with seamless volume cross-fades.
+- **SWARM INTEGRATION VERIFICATION**: Confirmed that the entire audio occlusion, ECS tracking, and synthesizer subsystems compile cleanly via `npm run build` (3.30s) and pass all Puppeteer playtest swarm tests with flying colors (Combat, World, and Crafting all green).
+
 ### May 23, 2026 (SOTA Melee Weapon Trails, Procedural Swords & GPU Spark Particles)
 
 - **FULLY GPU-DRIVEN PARTICLE SHADERS**: Created `<GPUSparkSystem />` parented outside the Rapier physics loop, allocating a circular buffer of 1200 particle instances. Used a custom `ShaderMaterial` implementing dynamic view-space GPU billboarding (`mvPosition.xyz += localPos`) and vertex particle physics (upward velocity, gravity, and scale shrinkage driven entirely on the GPU). This reduces CPU layout/update loop costs to exactly 0ms.

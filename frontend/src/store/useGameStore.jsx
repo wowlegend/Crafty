@@ -35,6 +35,9 @@ export const useGameStore = create((set, get) => ({
 
     isWebGLContextLost: false,
     setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
+
+    activeHostilesCount: 0,
+    setActiveHostilesCount: (count) => set({ activeHostilesCount: count }),
     
     terrainWorker: null,
     setTerrainWorker: (worker) => set({ terrainWorker: worker }),

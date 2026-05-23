@@ -1,6 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useGameStore } from './store/useGameStore';
 
+// Ambient chord progressions for mood adjustments
+const DAY_CHORDS = [
+  [220.00, 329.63, 493.88, 739.99],
+  [261.63, 392.00, 587.33, 880.00]
+];
+const NIGHT_CHORDS = [
+  [146.83, 220.00, 329.63, 349.23],
+  [164.81, 246.94, 369.99, 392.00]
+];
+const BOSS_CHORDS = [
+  [130.81, 164.81, 207.65, 261.63],
+  [146.83, 185.00, 233.08, 293.66]
+];
+
 const SoundContext = createContext();
 
 export const useSounds = () => {
@@ -20,6 +34,19 @@ export const SoundProvider = ({ children }) => {
   const audioContext = useRef(null);
   const sounds = useRef({});
   const ambientTimer = useRef(null);
+
+  // Subscribe reactively to hostile counts and boss state for dynamic soundtrack scaling
+  const activeHostiles = useGameStore(state => state.activeHostilesCount) || 0;
+  const bossActive = useGameStore(state => state.bossActive) || false;
+
+  const arpeggiatorRef = useRef({
+    timer: null,
+    nextNoteTime: 0.0,
+    noteIndex: 0,
+    masterGain: null,
+    active: false,
+    fadeTimer: null
+  });
 
   const synthPadRef = useRef({
     oscillators: [],
@@ -109,23 +136,10 @@ export const SoundProvider = ({ children }) => {
       pad.lfo.connect(pad.lfoGain);
       pad.lfoGain.connect(pad.filter.frequency);
 
-      // 3. Create 4 voice oscillators
-      const dayChords = [
-        [220.00, 329.63, 493.88, 739.99],
-        [261.63, 392.00, 587.33, 880.00]
-      ];
-      const nightChords = [
-        [146.83, 220.00, 329.63, 349.23],
-        [164.81, 246.94, 369.99, 392.00]
-      ];
-      const bossChords = [
-        [130.81, 164.81, 207.65, 261.63],
-        [146.83, 185.00, 233.08, 293.66]
-      ];
-
+      // 3. Create 4 voice oscillators referencing global mood chords
       const isBoss = useGameStore.getState().bossActive;
       const isDay = useGameStore.getState().isDay;
-      const currentProg = isBoss ? bossChords : (isDay ? dayChords : nightChords);
+      const currentProg = isBoss ? BOSS_CHORDS : (isDay ? DAY_CHORDS : NIGHT_CHORDS);
       const startingChord = currentProg[0];
 
       for (let i = 0; i < 4; i++) {
@@ -160,7 +174,7 @@ export const SoundProvider = ({ children }) => {
         const freshState = useGameStore.getState();
         const loopBoss = freshState.bossActive;
         const loopDay = freshState.isDay;
-        const prog = loopBoss ? bossChords : (loopDay ? dayChords : nightChords);
+        const prog = loopBoss ? BOSS_CHORDS : (loopDay ? DAY_CHORDS : NIGHT_CHORDS);
         const nextChord = prog[step % prog.length];
         
         const changeTime = audioContext.current.currentTime;
@@ -196,10 +210,179 @@ export const SoundProvider = ({ children }) => {
     }
   }, [volume]);
 
+  const getArpeggiatorBpm = () => {
+    const boss = useGameStore.getState().bossActive;
+    const hostiles = useGameStore.getState().activeHostilesCount || 0;
+    if (boss) return 150;
+    if (hostiles >= 6) return 150;
+    if (hostiles >= 3) return 130;
+    if (hostiles >= 1) return 110;
+    return 110;
+  };
+
+  const stopArpeggiator = () => {
+    const arp = arpeggiatorRef.current;
+    if (!arp.active) return;
+    
+    if (arp.timer) {
+      clearInterval(arp.timer);
+      arp.timer = null;
+    }
+    
+    if (arp.masterGain && audioContext.current) {
+      try {
+        const now = audioContext.current.currentTime;
+        arp.masterGain.gain.cancelScheduledValues(now);
+        arp.masterGain.gain.setValueAtTime(arp.masterGain.gain.value, now);
+        arp.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+      } catch (e) {}
+    }
+    
+    arp.active = false;
+  };
+
+  const startArpeggiator = () => {
+    if (!musicEnabled || !audioContext.current) return;
+
+    if (audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+
+    const arp = arpeggiatorRef.current;
+    if (arp.active) return;
+
+    try {
+      const now = audioContext.current.currentTime;
+      if (!arp.masterGain) {
+        arp.masterGain = audioContext.current.createGain();
+        arp.masterGain.connect(audioContext.current.destination);
+      }
+      arp.masterGain.gain.cancelScheduledValues(now);
+      arp.masterGain.gain.setValueAtTime(0, now);
+      arp.masterGain.gain.linearRampToValueAtTime(0.75 * volume, now + 1.2);
+
+      arp.nextNoteTime = now + 0.05;
+      arp.noteIndex = 0;
+      arp.active = true;
+
+      // Ahead-of-time scheduler tick loop (checks note queue every 25ms)
+      arp.timer = setInterval(() => {
+        if (!audioContext.current || !arp.active) return;
+
+        const currentBpm = getArpeggiatorBpm();
+        const secondsPerBeat = 60.0 / currentBpm;
+        const stepDuration = secondsPerBeat / 4; // 16th notes progression
+
+        const scheduleAheadTime = 0.1; // schedule 100ms in advance
+        const ctxTime = audioContext.current.currentTime;
+
+        while (arp.nextNoteTime < ctxTime + scheduleAheadTime) {
+          const playTime = arp.nextNoteTime;
+          
+          const isBoss = useGameStore.getState().bossActive;
+          const isDay = useGameStore.getState().isDay;
+          const currentProg = isBoss ? BOSS_CHORDS : (isDay ? DAY_CHORDS : NIGHT_CHORDS);
+          
+          // Rotate chord divisions every 16 steps
+          const chordIndex = Math.floor(arp.noteIndex / 16) % currentProg.length;
+          const chord = currentProg[chordIndex] || currentProg[0];
+          
+          // Evolving 16th pluck patterns representing dynamic danger
+          const pattern = [0, 2, 1, 3, 2, 1, 3, 1];
+          const noteFreq = chord[pattern[arp.noteIndex % pattern.length]];
+
+          // Tri-oscillator synthesised plucked timbre
+          const osc = audioContext.current.createOscillator();
+          const noteGain = audioContext.current.createGain();
+          const filter = audioContext.current.createBiquadFilter();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(noteFreq, playTime);
+
+          noteGain.gain.setValueAtTime(0, playTime);
+          noteGain.gain.linearRampToValueAtTime(0.24, playTime + 0.005);
+          noteGain.gain.exponentialRampToValueAtTime(0.001, playTime + 0.16);
+
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(900 + (Math.sin(arp.noteIndex * 0.5) * 200), playTime);
+          filter.frequency.exponentialRampToValueAtTime(280, playTime + 0.14);
+          filter.Q.setValueAtTime(4.0, playTime);
+
+          osc.connect(filter);
+          filter.connect(noteGain);
+          noteGain.connect(arp.masterGain);
+
+          osc.start(playTime);
+          osc.stop(playTime + 0.28);
+
+          const cachedOsc = osc;
+          const cachedFilter = filter;
+          const cachedGain = noteGain;
+          setTimeout(() => {
+            try {
+              cachedOsc.disconnect();
+              cachedFilter.disconnect();
+              cachedGain.disconnect();
+            } catch(e) {}
+          }, 400);
+
+          arp.nextNoteTime += stepDuration;
+          arp.noteIndex = (arp.noteIndex + 1) % 64;
+        }
+      }, 25);
+    } catch(e) {
+      console.warn('Error starting arpeggiator:', e);
+    }
+  };
+
+  // Dynamic arpeggiator scaling hook reacting to hostile tally
+  useEffect(() => {
+    if (!audioContext.current) return;
+
+    if (musicEnabled && (activeHostiles > 0 || bossActive)) {
+      if (arpeggiatorRef.current.fadeTimer) {
+        clearTimeout(arpeggiatorRef.current.fadeTimer);
+        arpeggiatorRef.current.fadeTimer = null;
+      }
+      
+      if (!arpeggiatorRef.current.active) {
+        startArpeggiator();
+      } else {
+        try {
+          const now = audioContext.current.currentTime;
+          arpeggiatorRef.current.masterGain.gain.cancelScheduledValues(now);
+          arpeggiatorRef.current.masterGain.gain.setValueAtTime(arpeggiatorRef.current.masterGain.gain.value, now);
+          arpeggiatorRef.current.masterGain.gain.linearRampToValueAtTime(0.75 * volume, now + 0.5);
+        } catch(e) {}
+      }
+    } else {
+      if (arpeggiatorRef.current.active && arpeggiatorRef.current.masterGain) {
+        try {
+          const now = audioContext.current.currentTime;
+          arpeggiatorRef.current.masterGain.gain.cancelScheduledValues(now);
+          arpeggiatorRef.current.masterGain.gain.setValueAtTime(arpeggiatorRef.current.masterGain.gain.value, now);
+          arpeggiatorRef.current.masterGain.gain.linearRampToValueAtTime(0.0, now + 1.8);
+          
+          if (arpeggiatorRef.current.fadeTimer) {
+            clearTimeout(arpeggiatorRef.current.fadeTimer);
+          }
+          
+          arpeggiatorRef.current.fadeTimer = setTimeout(() => {
+            stopArpeggiator();
+          }, 2000);
+        } catch(e) {
+          stopArpeggiator();
+        }
+      }
+    }
+  }, [activeHostiles, bossActive, musicEnabled, volume]);
+
   useEffect(() => {
     return () => {
       stopSynthPad();
+      stopArpeggiator();
       if (ambientTimer.current) clearTimeout(ambientTimer.current);
+      if (arpeggiatorRef.current.fadeTimer) clearTimeout(arpeggiatorRef.current.fadeTimer);
     };
   }, []);
 

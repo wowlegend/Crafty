@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, Sky, ContactShadows } from '@react-three/drei';
-import { Physics } from '@react-three/rapier';
+import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, SSAO, Bloom, Noise, Vignette, N8AO } from '@react-three/postprocessing';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
@@ -17,9 +17,60 @@ import { GPUSparkSystem } from './world/GPUSparkSystem';
 const SpatialAudioController = () => {
   const { camera, scene } = useThree();
   const { audioContext, sounds, soundEnabled, volume } = useSounds();
+  const { rapier, world } = useRapier();
   const listenerRef = useRef();
   const filterRef = useRef();
   const wetGainRef = useRef();
+  const activeSpatialSoundsRef = useRef([]);
+  const playerRigidBodyRef = useGameStore(state => state.playerRigidBodyRef);
+
+  const countVoxelIntersections = (start, dir, maxDist) => {
+    if (!world || !rapier) return 0;
+    let intersections = 0;
+    let currentDist = 0.15; // start offset to bypass soundSource emitter collider
+    const playerRigidBody = playerRigidBodyRef?.current;
+    const playerHandle = playerRigidBody?.handle;
+    
+    const filterPredicate = (collider) => {
+      if (collider.isSensor()) return false;
+      const parent = collider.parent();
+      if (!parent) return true;
+      if (playerHandle !== undefined && parent.handle === playerHandle) return false;
+      return parent.bodyType() === rapier.BodyType.Static;
+    };
+
+    while (currentDist < maxDist && intersections < 5) {
+      const rayStart = new THREE.Vector3().addScaledVector(dir, currentDist).add(start);
+      const remainingDist = maxDist - currentDist;
+      
+      if (remainingDist <= 0.02) break;
+
+      const ray = new rapier.Ray(
+        { x: rayStart.x, y: rayStart.y, z: rayStart.z },
+        { x: dir.x, y: dir.y, z: dir.z }
+      );
+      
+      const hit = world.castRay(
+        ray,
+        remainingDist,
+        true,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        filterPredicate
+      );
+
+      if (hit) {
+        intersections++;
+        currentDist += hit.toi + 0.15;
+      } else {
+        break;
+      }
+    }
+    
+    return intersections;
+  };
 
   useEffect(() => {
     if (!camera || !audioContext) return;
@@ -68,7 +119,7 @@ const SpatialAudioController = () => {
     filterRef.current = filter;
     wetGainRef.current = wetGain;
 
-    // 4. Expose spatial trigger globally
+    // 4. Expose spatial trigger globally with lowpass occlusion node allocation
     useGameStore.setState({ 
       playSpatialSound: (soundName, position, playbackRate = 1, distance = 20) => {
         if (!soundEnabled || !sounds || !sounds[soundName] || !listenerRef.current) return;
@@ -80,6 +131,11 @@ const SpatialAudioController = () => {
           sound.setRolloffFactor(2); // volume falloff roll
           sound.setPlaybackRate(playbackRate);
           sound.setVolume(volume);
+
+          const filterNode = audioContext.createBiquadFilter();
+          filterNode.type = 'lowpass';
+          filterNode.frequency.setValueAtTime(20000, audioContext.currentTime);
+          sound.setFilter(filterNode);
           
           const soundSource = new THREE.Object3D();
           if (Array.isArray(position)) soundSource.position.set(...position);
@@ -90,9 +146,21 @@ const SpatialAudioController = () => {
           scene.add(soundSource);
           
           sound.play();
+
+          const activeSoundObj = {
+            sound,
+            filterNode,
+            soundSource,
+            initialVolume: volume
+          };
+          activeSpatialSoundsRef.current.push(activeSoundObj);
+
           sound.onEnded = () => {
-            sound.disconnect();
-            soundSource.removeFromParent();
+            try {
+              sound.disconnect();
+              soundSource.removeFromParent();
+            } catch(e) {}
+            activeSpatialSoundsRef.current = activeSpatialSoundsRef.current.filter(item => item.sound !== sound);
           };
         } catch (e) {
           console.warn('Positional Audio failed:', e);
@@ -177,6 +245,58 @@ const SpatialAudioController = () => {
         const dayFactor = useGameStore.getState().isDay ? 1.0 : 0.6;
         ambientWind.current.frequency.setTargetAtTime(400 * heightFactor * dayFactor, audioContext.currentTime, 0.5);
         windGain.current.gain.setTargetAtTime(0.03 * heightFactor * volume, audioContext.currentTime, 0.5);
+      }
+
+      // Dynamic recursive raycasting audio occlusion calculations
+      const freshVolume = useGameStore.getState().volume !== undefined ? useGameStore.getState().volume : volume;
+      const activeSounds = activeSpatialSoundsRef.current;
+      const listenerPos = camera.position;
+
+      // Prune dead spatial sounds
+      activeSpatialSoundsRef.current = activeSounds.filter(item => {
+        if (!item.sound.isPlaying) {
+          try {
+            item.sound.disconnect();
+            item.soundSource.removeFromParent();
+          } catch (e) {}
+          return false;
+        }
+        return true;
+      });
+
+      // Update spatial filter frequency and gain muffling dynamically based on block intersections
+      for (const item of activeSpatialSoundsRef.current) {
+        const soundPos = item.soundSource.position;
+        const dir = new THREE.Vector3().subVectors(listenerPos, soundPos);
+        const dist = dir.length();
+        dir.normalize();
+
+        let intersections = 0;
+        if (world && rapier) {
+          intersections = countVoxelIntersections(soundPos, dir, dist);
+        }
+
+        let targetSoundFreq = 20000;
+        let targetGainFactor = 1.0;
+
+        if (intersections === 1) {
+          targetSoundFreq = 3500;
+          targetGainFactor = 0.70;
+        } else if (intersections === 2) {
+          targetSoundFreq = 1200;
+          targetGainFactor = 0.45;
+        } else if (intersections >= 3) {
+          targetSoundFreq = 350;
+          targetGainFactor = 0.25;
+        }
+
+        const time = audioContext.currentTime;
+        item.filterNode.frequency.setTargetAtTime(targetSoundFreq, time, 0.08);
+        
+        if (item.sound.gain && item.sound.gain.gain) {
+          const targetVol = item.initialVolume * targetGainFactor * freshVolume;
+          item.sound.gain.gain.setTargetAtTime(targetVol, time, 0.08);
+        }
       }
     }
   });
@@ -540,7 +660,6 @@ export function GameScene({
           <pointLight position={[0, 20, 0]} intensity={0.5} distance={50} color="#4169E1" />
         )}
 
-        <SpatialAudioController />
         <WeatherSystem />
 
         <PointerLockControls 
@@ -555,6 +674,7 @@ export function GameScene({
         <Suspense fallback={null}>
           <GPUSparkSystem />
           <Physics gravity={[0, -30, 0]}>
+            <SpatialAudioController />
             <MinecraftWorld />
 
             <Player isWorldBuilt={isWorldBuilt} />
