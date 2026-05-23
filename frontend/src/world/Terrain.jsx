@@ -14,15 +14,26 @@ worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 const voxelTextures = createProceduralVoxelTextures();
 
 // Shared SOTA Terrain Material with GPU wave sways and night bioluminescence
-const terrainMaterial = new THREE.MeshStandardMaterial({
+// Shared SOTA Terrain Materials with GPU wave sways and night bioluminescence
+const opaqueMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.1,
     vertexColors: true,
-    transparent: true,
+    transparent: false,
+    depthWrite: true,
     side: THREE.DoubleSide
 });
 
-terrainMaterial.onBeforeCompile = (shader) => {
+const waterMaterial = new THREE.MeshStandardMaterial({
+    roughness: 0.15,
+    metalness: 0.1,
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide
+});
+
+const compileShader = (shader) => {
     shader.uniforms.time = { value: 0 };
     shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
     shader.uniforms.voxelTextures = { value: voxelTextures };
@@ -103,8 +114,16 @@ terrainMaterial.onBeforeCompile = (shader) => {
         }
         `
     );
+};
 
-    terrainMaterial.userData.shader = shader;
+opaqueMaterial.onBeforeCompile = (shader) => {
+    compileShader(shader);
+    opaqueMaterial.userData.shader = shader;
+};
+
+waterMaterial.onBeforeCompile = (shader) => {
+    compileShader(shader);
+    waterMaterial.userData.shader = shader;
 };
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
@@ -118,22 +137,62 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         };
     }, [cx, cz, onMount, onUnmount]);
 
-    const geometry = React.useMemo(() => {
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
-        geom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-        geom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
-        if (meshData.uvs) {
-            geom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
+    const [opaqueGeometry, waterGeometry] = React.useMemo(() => {
+        const indices = meshData.indices;
+        const colors = meshData.colors;
+        
+        const opaqueIndicesArr = [];
+        const waterIndicesArr = [];
+        
+        for (let i = 0; i < indices.length; i += 3) {
+            const idx0 = indices[i];
+            const blockType = colors[idx0 * 3];
+            const isWater = Math.abs(blockType - 9.0) < 0.1;
+            
+            if (isWater) {
+                waterIndicesArr.push(indices[i], indices[i+1], indices[i+2]);
+            } else {
+                opaqueIndicesArr.push(indices[i], indices[i+1], indices[i+2]);
+            }
         }
-        geom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
-        geom.computeBoundingSphere();
-        return geom;
+        
+        let opaqueGeom = null;
+        if (opaqueIndicesArr.length > 0) {
+            opaqueGeom = new THREE.BufferGeometry();
+            opaqueGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
+            opaqueGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
+            opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
+            if (meshData.uvs) {
+                opaqueGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
+            }
+            opaqueGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(opaqueIndicesArr), 1));
+            opaqueGeom.computeBoundingSphere();
+        }
+        
+        let waterGeom = null;
+        if (waterIndicesArr.length > 0) {
+            waterGeom = new THREE.BufferGeometry();
+            waterGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
+            waterGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
+            waterGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
+            if (meshData.uvs) {
+                waterGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
+            }
+            waterGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(waterIndicesArr), 1));
+            waterGeom.computeBoundingSphere();
+        }
+        
+        return [opaqueGeom, waterGeom];
     }, [meshData]);
 
     return (
         <group position={[cx * 16, 0, cz * 16]}>
-            <mesh geometry={geometry} material={terrainMaterial} castShadow receiveShadow />
+            {opaqueGeometry && (
+                <mesh geometry={opaqueGeometry} material={opaqueMaterial} castShadow receiveShadow />
+            )}
+            {waterGeometry && (
+                <mesh geometry={waterGeometry} material={waterMaterial} castShadow receiveShadow />
+            )}
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
             </RigidBody>
@@ -224,13 +283,23 @@ export const MinecraftWorld = React.memo(() => {
     useFrame((state) => {
         const time = state.clock.elapsedTime;
         const isDay = useGameStore.getState().isDay;
-        const terrainShader = terrainMaterial.userData.shader;
-        if (terrainShader) {
-            terrainShader.uniforms.time.value = time;
-            // Smoothly transition timeOfDay uniform for bioluminescent fade-in/out
-            const targetTimeOfDay = isDay ? 1.0 : 0.0;
-            terrainShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
-                terrainShader.uniforms.timeOfDay.value,
+        const targetTimeOfDay = isDay ? 1.0 : 0.0;
+
+        const opaqueShader = opaqueMaterial.userData.shader;
+        if (opaqueShader) {
+            opaqueShader.uniforms.time.value = time;
+            opaqueShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
+                opaqueShader.uniforms.timeOfDay.value,
+                targetTimeOfDay,
+                0.05
+            );
+        }
+
+        const waterShader = waterMaterial.userData.shader;
+        if (waterShader) {
+            waterShader.uniforms.time.value = time;
+            waterShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
+                waterShader.uniforms.timeOfDay.value,
                 targetTimeOfDay,
                 0.05
             );

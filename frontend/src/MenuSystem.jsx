@@ -38,27 +38,23 @@ export function MenuSystem({
             stats={questSystem.stats}
             onClose={() => {
               setShowAchievements(false);
-              setTimeout(() => {
-                if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
-              }, 100);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
       </AnimatePresence>
-
+ 
       <AnimatePresence>
         {showSpellUpgrades && (
           <SpellUpgradePanel
             onClose={() => {
               setShowSpellUpgrades(false);
-              setTimeout(() => {
-                if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
-              }, 100);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
       </AnimatePresence>
-
+ 
       <AnimatePresence>
         {gameState.showChestInterface && (
           <ChestInventoryPanel
@@ -66,21 +62,19 @@ export function MenuSystem({
             onClose={() => {
               gameState.setShowChestInterface(false);
               gameState.setActiveChestCoords(null);
-              setTimeout(() => {
-                if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
-              }, 100);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
       </AnimatePresence>
-
+ 
       <AnimatePresence>
         {gameState.showInventory && (
           <Inventory
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
-              setIsPointerLocked(true);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -89,7 +83,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
-              setIsPointerLocked(true);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -98,7 +92,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowBuildingTools(false);
-              setIsPointerLocked(true);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
           />
         )}
@@ -107,7 +101,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowSettings(false);
-              setIsPointerLocked(true);
+              if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
             }}
             onOpenWorldManager={() => {
               gameState.setShowSettings(false);
@@ -227,11 +221,9 @@ export function MenuSystem({
                   transition={{ delay: 0.9, duration: 0.5 }}
                   onClick={() => {
                     setIsPointerLocked(true);
-                    setTimeout(() => {
-                      if (document.body.requestPointerLock) {
-                        document.body.requestPointerLock().catch(e => console.warn(e));
-                      }
-                    }, 100);
+                    if (document.body.requestPointerLock) {
+                      document.body.requestPointerLock().catch(e => console.warn(e));
+                    }
                   }}
                   className="glow-button bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-10 rounded-xl text-xl pixel-font"
                   style={{ border: '1px solid rgba(255,255,255,0.15)' }}

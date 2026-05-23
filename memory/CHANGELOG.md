@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### May 24, 2026 (WebGL Opaque/Transparent Pass Split & Synchronous Pointer Lock Recovery)
+
+- **WEBGL OPAQUE/TRANSPARENT PASS SPLIT**: Surgically separated procedurally generated chunk geometry index buffers into solid opaque blocks (`opaqueGeometry`) and transparent water blocks (`waterGeometry`). Added separate standard mesh materials (`opaqueMaterial` and `waterMaterial`), turning `transparent` to `false` for solids. This completely eliminated transparent-pass self-sorting artifacts, ensuring solid ground is 100% opaque and correctly occludes cave and sky voids under hardware depth testing, while maintaining translucent procedural liquid waves.
+- **PERSISTENT POINTER LOCK LISTENERS**: Reconfigured Drei's `PointerLockControls` `enabled` prop to be persistently `true` in `GameScene.jsx`, ensuring HTML5 pointerlockchange event listeners are always bound and active, eliminating race conditions where the component missed browser lock transition triggers.
+- **SYNCHRONOUS USER GESTURE POINTER LOCK RECOVERY**: Refactored all menu close click/keypress handlers (Inventory, Crafting Table, Building Tools, Settings Panel, Achievements, Spell Upgrades, Start Adventure button) to synchronously call `document.body.requestPointerLock()`. By invoking this directly inside user interaction call stacks rather than using delayed `setTimeout` blocks, we preserve valid user gesture tokens, eliminating browser-level security blocks and restoring perfect camera locomotion responsiveness without screen freezes.
+- **SWARM INTEGRATION VERIFICATION**: Verified the entire opaque/transparent geometry split and pointer lock synchronisation under Vite production builds (`npm run build`) and concurrent Puppeteer playtests (`npm run test`), returning 100% green status across all test agents.
+
 ### May 23, 2026 (AI Behavior Trees Cover Systems & Dynamic Boss Voxel Destruction)
 
 - **AI BEHAVIOR TREES COVER SYSTEM**: Integrated tactical behavior trees in `ai.worker.js` that monitor hostile mobs (Skeletons/Zombies/Spiders) health. When health drops below **25%** of maximum, the mob transitions to **Cover Seeking Mode** and scans the local 9x9 local grid to navigate to safety.

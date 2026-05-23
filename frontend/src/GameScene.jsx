@@ -572,11 +572,6 @@ export function GameScene({
   showSpellUpgrades,
   showAuthModal
 }) {
-  const anyPanelOpen = gameState.showInventory || gameState.showCrafting ||
-    gameState.showMagic || gameState.showBuildingTools ||
-    gameState.showSettings || gameState.showTradingInterface ||
-    gameState.selectedVillager || gameState.showWorldManager ||
-    showAchievements || showSpellUpgrades || showAuthModal;
   const shadowConfig = useMemo(() => ({
     mapSize: [2048, 2048],
     camera: {
@@ -668,7 +663,7 @@ export function GameScene({
 
         <PointerLockControls 
           makeDefault 
-          enabled={!anyPanelOpen} 
+          enabled={true} 
           minPolarAngle={0.05} 
           maxPolarAngle={Math.PI - 0.05} 
         />

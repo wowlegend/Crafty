@@ -1,18 +1,12 @@
-# Active Plan: AI Behavior Trees Cover Systems & Dynamic Boss Voxel Destruction (Phase 24)
+# Active Plan: WebGL Opaque/Transparent Pass Split & Synchronous Pointer Lock Recovery (Phase 25)
 
 ## Goal
-Implement Phase 24: AI Behavior Trees with dynamic cover-seeking tactical logic, intermediate 2D height-map line-of-sight raycasting inside the AI worker, shadow dragon dynamic voxel terrain destruction, and global Zustand terrain worker binding.
+Resolve the WebGL transparent-pass self-occlusion artifacts causing the see-through landscape, and eliminate the Pointer Lock desynchronization bug that causes the camera and mouse movement to freeze when returning from the Settings (ESC) or inventory/crafting menus.
 
 ## Proposed Checklist
-- [x] Research & obtain user approval on the detailed implementation plan.
-- [x] Expose the active terrain worker instance to Zustand store (`terrainWorker`) inside `Terrain.jsx`.
-- [x] Implement `destroyVoxelsInRadius` in `AdvancedGameFeatures.jsx` and hook it into Shadow Dragon Phase 2 roar and Phase 3 lava zone spawning.
-- [x] Update NPC health and maxHealth serialization inside `SimplifiedNPCSystem.jsx` TICK data.
-- [x] Parse worker result `isCoverSeeking` status in `SimplifiedNPCSystem.jsx` and apply 20% speed boost + cyan particle effects.
-- [x] Implement 2D Line-of-Sight height raycasting `hasLineOfSight(heightGrid, x1, z1, x2, z2)` in `ai.worker.js`.
-- [x] Build Behavior Tree logic in `ai.worker.js` for Skeleton, Zombie, and Spider mobs to seek tactical cover when health < 25% max health.
-- [x] Verify build compilation (`npm run build`) and run automated Puppeteer playtest swarm (`npm run test`).
-- [x] Execute Git commit and push all Phase 24 updates to GitHub.
-
-
-
+- [x] Decompose chunk meshes into two distinct geometries: Opaque (solid terrain blocks) and Water (transparent liquid).
+- [x] Implement separate materials for opaque (`opaqueMaterial`) and transparent (`waterMaterial`) passes with identical shader compiler hooks.
+- [x] Update uniform setters inside `useFrame` to continuously bind clock time and night-cycle timeOfDay parameters for both materials.
+- [x] Reconfigure `@react-three/drei`'s `PointerLockControls` to be persistently `enabled={true}`, ensuring its HTML5 event listeners never miss browser `pointerlockchange` transitions.
+- [x] Refactor all menu close callbacks (Inventory, Crafting, Building Tools, Settings, World Manager, achievements, spell upgrades) to request pointer lock **synchronously** inside their user gesture event handlers rather than inside a `setTimeout` wrapper.
+- [x] Verify build compilation (`npm run build`) and run automated Puppeteer playtests to confirm correct depth occlusion and zero pointer lock latency.
