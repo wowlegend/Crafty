@@ -74,6 +74,10 @@ const SpatialAudioController = () => {
 
   useEffect(() => {
     if (!camera || !audioContext) return;
+
+    // Unify Three.js AudioContext with our SoundManager provider context to avoid connection mismatch crashes
+    THREE.AudioContext.setContext(audioContext);
+
     if (typeof window !== 'undefined') {
       window.__threeScene = scene;
       window.__threeCamera = camera;
