@@ -290,3 +290,12 @@ To support state-of-the-art visuals, dense graphics, and flawless 60+ FPS perfor
 - **Coplanar Quad Merging**: A 2D greedy sweep combines adjacent matching coplanar voxel faces into singular larger rectangular quads. A pre-allocated reusable mask buffer (`Uint16Array(4096)`) prevents GC stutters.
 - **CCW Winding Maps**: Formulates accurate counter-clockwise (CCW) vertex coordinates and normal vectors for all 6 faces to preserve correct lighting computations.
 - **Liquid Separability**: Keeps water blocks isolated from solid blocks during merging to preserve procedural fluid shader vertices and wave dynamics.
+
+## SOTA Rapier Kinematic Character Controller (May 2026)
+
+To deliver premium, industry-grade action RPG locomotion controls, `Components.jsx` integrates a WASM-native **Rapier Kinematic Character Controller (KCC)**:
+- **Kinematic Position Body**: Player physics body `type` is changed to `kinematicPosition`, granting absolute movement precision and rendering the character immune to erratic dynamic rigid-body sliding and jitter.
+- **WASM-Native Collision Sweeps**: Offloads all obstacle collision detection, wall sliding, and slope deceleration directly to the WASM physics layer via `controller.computeColliderMovement(...)`.
+- **Automatic Step-Up Snapping**: Employs built-in autostep parameters capping block step climbs at 1.05m and ground snapping at 0.5m, enabling the player to run up staircases, ridges, and slopes flawlessly.
+- **Dynamic Gravity & Trajectories**: Tracks vertical velocity manually (`velocityY.current`), applying constant gravity acceleration (`-32.0 * delta`) and cap parameters (`-50.0` terminal velocity) to simulate realistic jumping and falling curves.
+- **Decayed Impulse Redirection**: Overrides the standard `applyImpulse` method directly on the player rigid body ref instance upon mount. Intercepts boss-inflicted combat knockbacks and channels them into a decoupled knockback velocity ref (`knockbackVelocity`), which decays smoothly using high-frequency exponential spring dampers.

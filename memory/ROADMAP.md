@@ -2,6 +2,12 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+### Phase 18: Rapier Kinematic Character Controller [COMPLETED]
+*Deeply optimizing character locomotion, ground-snapping, slope navigation, and walled sliding.*
+- [x] **WASM-Native Character Controller**: Integrated Rapier KCC to offload collision checking directly to WASM, resolving capsule sliding jitters.
+- [x] **Automatic Slope Snapping & Step-Ups**: Enabled 1.05m autostep and 0.5m snapping to ensure perfect stairs and cliff climbing.
+- [x] **Decayed Impulse Knockbacks**: Patched custom compatibility redirection that intercepts boss attacks and channels them into decayed spring dampers.
+
 ### Phase 17: SOTA 3D Greedy Voxel Mesher [COMPLETED]
 *Deeply optimizing chunk geometry compilation and physics trimesh triangles.*
 - [x] **3D Greedy Voxel Mesher**: Re-engineered chunk voxel compilations in `terrain.worker.js` with slice-and-sweep coplanar quad merging, slashing vertex counts by 80-90%.

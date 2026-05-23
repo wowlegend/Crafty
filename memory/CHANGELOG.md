@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA Rapier Kinematic Character Controller & Physics)
+
+- **WASM-NATIVE KINEMATIC CHARACTER CONTROLLER**: Fully transitioned the player character locomotion engine in `Components.jsx` from dynamic rigid-body capsule forces to a native Rapier Kinematic Character Controller (KCC). This offloads collision detection, wall sliding, and slope traversal directly to the WASM physics layer, eliminating all micro-stutters and physical block clipping.
+- **AUTOMATIC STEP-UP CLIMBING & SNAPPING**: Configured WASM-native autostep parameters capping steps at 1.05m and ground snapping at 0.5m, allowing the player to climb block staircases, hills, and ridges instantly and seamlessly.
+- **MANUAL GRAVITY & JUMP TRAJECTORIES**: Implemented dynamic horizontal input integration paired with active vertical velocity tracking (`velocityY.current`) to simulate precise falling gravity curves and jumping thresholds on kinematic bodies.
+- **COMPATIBLE KNOCKBACK IMPULSE INJECTION**: Created a dynamic method override that injects custom `applyImpulse` support directly onto the kinematic rigid body ref instance upon mount. This intercepts the flying boss's linear knockback roars cleanly and decays the vectors via exponential spring dampers, maintaining perfect combat compatibility without editing boss files.
+- **SWARM INTEGRATION VERIFICATION**: Successfully validated the complete character controller overhaul under Puppeteer playtest swarm tests (green status across Combat, World, and Crafting) and compiled Vite assets with zero compilation stutters or warnings.
+
 ### May 23, 2026 (SOTA 3D Greedy Voxel Mesher & Performance Optimization)
 
 - **3D GREEDY VOXEL MESHER ALGORITHM**: Implemented a highly optimized 3D slice-and-sweep Greedy Meshing algorithm in the background Web Worker (`terrain.worker.js`). Rather than performing face-by-face culling on every voxel in a chunk, the mesher sweeps the chunk along each of the three major axes, constructing a 2D mask of coplanar faces, and combining adjacent matching rectangular faces into singular large quads.
