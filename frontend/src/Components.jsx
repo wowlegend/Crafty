@@ -136,6 +136,26 @@ export const Player = ({ isWorldBuilt }) => {
   const rigidBodyRef = useRef();
   const { rapier, world } = useRapier();
 
+  const velocityY = useRef(0);
+  const controllerRef = useRef(null);
+  const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
+
+  // Initialize Rapier Kinematic Character Controller
+  useEffect(() => {
+    if (world) {
+      const offset = 0.05; // Gap offset between character capsule and environment
+      const c = world.createCharacterController(offset);
+      c.enableAutostep(1.05, 0.2, true); // Step-up height of 1.05m
+      c.enableSnapToGround(0.5); // snap to ground when descending slopes
+      c.setMaxSlopeClimbAngle(Math.PI / 4); // 45 degrees
+      controllerRef.current = c;
+      return () => {
+        world.removeCharacterController(c);
+        controllerRef.current = null;
+      };
+    }
+  }, [world]);
+
   // FIX #1: Use useRef for keyboard state — prevents 60+ re-renders/sec
   // useState caused stale closures inside useFrame AND triggered full React re-renders on every keypress
   const keysRef = useRef({});
@@ -167,6 +187,13 @@ export const Player = ({ isWorldBuilt }) => {
 
   // Expose player rigid body globally for raycast filtering
   useEffect(() => {
+    if (rigidBodyRef.current) {
+      rigidBodyRef.current.applyImpulse = (impulse) => {
+        knockbackVelocity.current.x += impulse.x;
+        velocityY.current += impulse.y;
+        knockbackVelocity.current.z += impulse.z;
+      };
+    }
     useGameStore.setState({ playerRigidBodyRef: rigidBodyRef });
     return () => {
       useGameStore.setState({ playerRigidBodyRef: null });
@@ -346,8 +373,17 @@ export const Player = ({ isWorldBuilt }) => {
       spawnPosSet.current = true;
       return;
     }
-    if (isNaN(currentVel.x) || isNaN(currentTrans.y)) {
-      console.error(`[DEBUG] Physics corrupted! vel:`, currentVel, `trans:`, currentTrans);
+    if (isNaN(velocityY.current) || isNaN(currentTrans.y)) {
+      console.error(`[DEBUG] Physics corrupted! vel:`, velocityY.current, `trans:`, currentTrans);
+    }
+
+    // Ensure applyImpulse is bound on the rigid body for boss compatibility
+    if (rigidBodyRef.current && !rigidBodyRef.current.applyImpulse) {
+      rigidBodyRef.current.applyImpulse = (impulse) => {
+        knockbackVelocity.current.x += impulse.x;
+        velocityY.current += impulse.y;
+        knockbackVelocity.current.z += impulse.z;
+      };
     }
 
     // Read from keysRef instead of stale keys state
@@ -417,25 +453,33 @@ export const Player = ({ isWorldBuilt }) => {
       return !parent || parent.handle !== playerHandle;
     };
 
-    // Downward raycast for precise grounded check
-    let isGrounded = false;
-    if (world) {
-      const translation = rigidBodyRef.current.translation();
-      const ray = new rapier.Ray(
-        { x: translation.x, y: translation.y, z: translation.z },
-        { x: 0, y: -1, z: 0 }
-      );
-      const hit = world.castRay(ray, 1.05, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-      if (hit) {
-        isGrounded = true;
+    // Kinematic ground check from Rapier character controller
+    const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
+
+    // Handle jumping & gravity
+    if (isGrounded) {
+      if (isLocked && jumpRequested.current && !dodge.isActive) {
+        velocityY.current = 12.0;
+        jumpRequested.current = false;
+      } else {
+        // Small downward force to stay glued to slopes and stairs
+        velocityY.current = -0.5;
       }
     } else {
-      isGrounded = Math.abs(currentVel.y) < 0.2;
+      // Apply gravity over time
+      velocityY.current += -32.0 * delta;
+      // Cap at terminal velocity
+      if (velocityY.current < -50.0) velocityY.current = -50.0;
     }
 
-    let nextVelX = currentVel.x;
-    let nextVelZ = currentVel.z;
-    let nextVelY = currentVel.y;
+    // Decay knockback velocity using exponential spring dampening
+    knockbackVelocity.current.x *= Math.exp(-delta * 8.0);
+    knockbackVelocity.current.z *= Math.exp(-delta * 8.0);
+    if (Math.abs(knockbackVelocity.current.x) < 0.05) knockbackVelocity.current.x = 0;
+    if (Math.abs(knockbackVelocity.current.z) < 0.05) knockbackVelocity.current.z = 0;
+
+    let desiredVelX = 0;
+    let desiredVelZ = 0;
 
     if (dodge.isActive) {
       // Progressively update dodge elapsed time
@@ -448,60 +492,11 @@ export const Player = ({ isWorldBuilt }) => {
         // Juicy dodge speed curve
         const progress = dodge.timeElapsed / dodge.duration;
         const dodgeSpeed = THREE.MathUtils.lerp(28, 10, progress);
-        let desiredDodgeVelX = dodge.direction.x * dodgeSpeed;
-        let desiredDodgeVelZ = dodge.direction.z * dodgeSpeed;
-
-        // Apply Wall Sliding and Auto-Jump inside dodge
-        if (world) {
-          const moveDir = dodge.direction.clone().normalize();
-          const headRay = new rapier.Ray(
-            { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
-            { x: moveDir.x, y: 0, z: moveDir.z }
-          );
-          const kneeRay = new rapier.Ray(
-            { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
-            { x: moveDir.x, y: 0, z: moveDir.z }
-          );
-
-          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-
-          // Auto-Jump (Step-Up inside dodge roll)
-          if (kneeHit && !headHit && isGrounded) {
-            rigidBodyRef.current.setTranslation({
-              x: currentTrans.x + moveDir.x * 0.15,
-              y: currentTrans.y + 1.05,
-              z: currentTrans.z + moveDir.z * 0.15
-            }, true);
-          }
-
-          let wallNormal = null;
-          if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
-            wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
-          } else if (headHit) {
-            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-            if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
-              wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
-            }
-          }
-
-          if (wallNormal) {
-            const vel = new THREE.Vector3(desiredDodgeVelX, 0, desiredDodgeVelZ);
-            const dot = vel.dot(wallNormal);
-            if (dot < 0) {
-              vel.addScaledVector(wallNormal, -dot);
-              desiredDodgeVelX = vel.x;
-              desiredDodgeVelZ = vel.z;
-            }
-          }
-        }
-
-        nextVelX = desiredDodgeVelX;
-        nextVelZ = desiredDodgeVelZ;
+        desiredVelX = dodge.direction.x * dodgeSpeed;
+        desiredVelZ = dodge.direction.z * dodgeSpeed;
       }
-    } else {
-      // Normal WASD movement
-      // Get camera look direction projected onto ground plane (robust, no Euler issues)
+    } else if (isLocked) {
+      // Normal WASD movement input direction
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z);
@@ -509,12 +504,12 @@ export const Player = ({ isWorldBuilt }) => {
         forwardDir.set(0, 0, -1);
       }
       forwardDir.normalize();
-      const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x); // perpendicular right
+      const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x);
 
-      const moveW = (isLocked && keys.KeyW) ? 1 : 0;
-      const moveS = (isLocked && keys.KeyS) ? 1 : 0;
-      const moveA = (isLocked && keys.KeyA) ? 1 : 0;
-      const moveD = (isLocked && keys.KeyD) ? 1 : 0;
+      const moveW = keys.KeyW ? 1 : 0;
+      const moveS = keys.KeyS ? 1 : 0;
+      const moveA = keys.KeyA ? 1 : 0;
+      const moveD = keys.KeyD ? 1 : 0;
 
       const direction = new THREE.Vector3()
         .addScaledVector(forwardDir, moveW - moveS)
@@ -522,83 +517,46 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (direction.lengthSq() > 0) {
         direction.normalize().multiplyScalar(speed);
-        let desiredVelX = direction.x;
-        let desiredVelZ = direction.z;
-
-        // Wall Sliding & Auto-Jump (Step-Up) Physics Override
-        if (world) {
-          const moveDir = new THREE.Vector3(desiredVelX, 0, desiredVelZ).normalize();
-          
-          // Ray origins start from the player's capsule center. Exclusions are handled by playerHandle and predicate.
-          const headRay = new rapier.Ray(
-            { x: currentTrans.x, y: currentTrans.y + 0.6, z: currentTrans.z },
-            { x: moveDir.x, y: 0, z: moveDir.z }
-          );
-          const kneeRay = new rapier.Ray(
-            { x: currentTrans.x, y: currentTrans.y - 0.5, z: currentTrans.z },
-            { x: moveDir.x, y: 0, z: moveDir.z }
-          );
-
-          // maxToi set to 0.55 (capsule radius 0.40 + 0.15 margin)
-          const headHit = world.castRay(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-          const kneeHit = world.castRayAndGetNormal(kneeRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-
-          // Auto-Jump (Step-Up): knee is blocked, head/chest space clear, player grounded
-          if (kneeHit && !headHit && isGrounded) {
-            rigidBodyRef.current.setTranslation({
-              x: currentTrans.x + moveDir.x * 0.15,
-              y: currentTrans.y + 1.05,
-              z: currentTrans.z + moveDir.z * 0.15
-            }, true);
-          }
-
-          // Wall Sliding: find wall normal to project horizontal velocity
-          let wallNormal = null;
-          if (kneeHit && kneeHit.normal && Math.abs(kneeHit.normal.y) < 0.7) {
-            wallNormal = new THREE.Vector3(kneeHit.normal.x, 0, kneeHit.normal.z).normalize();
-          } else if (headHit) {
-            const headHitNormal = world.castRayAndGetNormal(headRay, 0.55, true, undefined, undefined, undefined, rigidBodyRef.current, filterPredicate);
-            if (headHitNormal && headHitNormal.normal && Math.abs(headHitNormal.normal.y) < 0.7) {
-              wallNormal = new THREE.Vector3(headHitNormal.normal.x, 0, headHitNormal.normal.z).normalize();
-            }
-          }
-
-          if (wallNormal) {
-            const vel = new THREE.Vector3(desiredVelX, 0, desiredVelZ);
-            const dot = vel.dot(wallNormal);
-            if (dot < 0) { // Only project if moving INTO the wall surface
-              vel.addScaledVector(wallNormal, -dot);
-              desiredVelX = vel.x;
-              desiredVelZ = vel.z;
-            }
-          }
-        }
-
-        nextVelX = desiredVelX;
-        nextVelZ = desiredVelZ;
-      } else {
-        // Always decelerate if no input
-        nextVelX = currentVel.x * 0.8;
-        nextVelZ = currentVel.z * 0.8;
-        if (Math.abs(nextVelX) < 0.1) nextVelX = 0;
-        if (Math.abs(nextVelZ) < 0.1) nextVelZ = 0;
+        desiredVelX = direction.x;
+        desiredVelZ = direction.z;
       }
     }
 
-    // Jump
-    if (isLocked && jumpRequested.current && isGrounded && !dodge.isActive) {
-      nextVelY = 12;
-      jumpRequested.current = false;
+    // Combine keyboard input velocity and knockback
+    const nextVelX = desiredVelX + knockbackVelocity.current.x;
+    const nextVelZ = desiredVelZ + knockbackVelocity.current.z;
+
+    // Calculate displacement vector
+    const displacement = new THREE.Vector3(nextVelX * delta, velocityY.current * delta, nextVelZ * delta);
+
+    // Call Rapier WASM Kinematic collision sweeps
+    const collider = rigidBodyRef.current.collider(0);
+    if (collider && controllerRef.current) {
+      controllerRef.current.computeColliderMovement(
+        collider,
+        displacement,
+        undefined,
+        undefined,
+        filterPredicate
+      );
+
+      // Get corrected movements
+      const corrected = controllerRef.current.computedMovement();
+
+      // Set next kinematic translation coordinates
+      const currentPos = rigidBodyRef.current.translation();
+      rigidBodyRef.current.setNextKinematicTranslation({
+        x: currentPos.x + corrected.x,
+        y: currentPos.y + corrected.y,
+        z: currentPos.z + corrected.z
+      });
     }
 
-    // Apply combined velocity in a single physics tick
-    rigidBodyRef.current.setLinvel({ x: nextVelX, y: nextVelY, z: nextVelZ }, true);
-
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
-    const horizontalSpeed = Math.sqrt(currentVel.x * currentVel.x + currentVel.z * currentVel.z);
+    const horizontalSpeed = Math.sqrt(nextVelX * nextVelX + nextVelZ * nextVelZ);
     
     let targetFov = 75;
-    if (currentVel.y < -15) targetFov = 85; // falling fast
+    if (velocityY.current < -15) targetFov = 85; // falling fast
     else if (horizontalSpeed > 5) targetFov = 75 + (horizontalSpeed - 5) * 1.5; // moving fast
 
     camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.1);
@@ -670,12 +628,9 @@ export const Player = ({ isWorldBuilt }) => {
       <RigidBody
         ref={rigidBodyRef}
         colliders={false}
-        mass={1}
-        type="dynamic"
+        type="kinematicPosition"
         position={[0, 100, 0]}
         enabledRotations={[false, false, false]}
-        ccd={true}
-        friction={0}
       >
         <CapsuleCollider args={[0.5, 0.4]} />
       </RigidBody>
