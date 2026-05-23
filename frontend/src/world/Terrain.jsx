@@ -94,9 +94,7 @@ terrainMaterial.onBeforeCompile = (shader) => {
         `
         #include <opaque_fragment>
         
-        float layerIndex = vColor.r;
-        bool isWaterPixel = (abs(layerIndex - 9.0) < 0.1);
-        if (isWaterPixel) {
+        if (abs(vColor.r - 9.0) < 0.1) {
             float nightFactor = 1.0 - timeOfDay;
             // Pulsing bioluminescence frequency
             float pulse = sin(time * 1.5 + vViewPosition.y * 3.0) * 0.5 + 0.5;
