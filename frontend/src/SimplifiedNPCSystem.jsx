@@ -394,10 +394,23 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
       const elapsed = (Date.now() - startTime.current) / 1000;
       
       const t = elapsed;
+      const isCrit = !isXP && damage >= 40;
+
       // Arc formula: y pop and deceleration under gravity, x/z horizontal drift
-      const currentY = position[1] + 1.8 + (velocity.y * t - 0.5 * 12.0 * t * t);
-      const currentX = position[0] + velocity.x * t;
-      const currentZ = position[2] + velocity.z * t;
+      let currentY = position[1] + 1.8 + (velocity.y * t - 0.5 * 12.0 * t * t);
+      let currentX = position[0] + velocity.x * t;
+      let currentZ = position[2] + velocity.z * t;
+
+      if (isCrit) {
+        // High frequency vibration/shake on critical hit numbers decaying quickly
+        const shake = 0.09 * Math.exp(-elapsed * 3.8);
+        currentX += Math.sin(t * 75) * shake;
+        currentY += Math.cos(t * 90) * shake;
+        
+        // Pulsate scale dynamically using a cosine wave
+        const pulse = 1.0 + Math.cos(t * 24) * 0.16 * Math.exp(-elapsed * 2.2);
+        meshRef.current.scale.set(scale[0] * pulse, scale[1] * pulse, scale[2]);
+      }
       
       meshRef.current.position.set(currentX, currentY, currentZ);
       meshRef.current.material.opacity = Math.max(0, 1 - elapsed);
@@ -409,7 +422,7 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
     }
   });
 
-  const scale = isXP ? [1.8, 0.9, 1] : [2.2, 1.1, 1];
+  const scale = isXP ? [1.8, 0.9, 1] : (damage >= 40 ? [2.8, 1.4, 1] : [2.2, 1.1, 1]); // larger scale for crits!
 
   return (
     <sprite ref={meshRef} position={[position[0], position[1] + 1.8, position[2]]} scale={scale}>
@@ -774,13 +787,48 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       while (performance.now() < hitstopEnd) { /* hitstop busy wait */ }
       
       const store = useGameStore.getState();
-      if (store.triggerCameraShake) store.triggerCameraShake(1.0);
+      const isCrit = damage >= 40;
+      if (store.triggerCameraShake) {
+        store.triggerCameraShake(isCrit ? 1.6 : 1.0);
+      }
       
       // Phase 11: Spatial Hit Sound
       if (store.playSpatialSound) {
         store.playSpatialSound('hit', [entity.position.x, entity.position.y, entity.position.z]);
       } else {
         playHit();
+      }
+
+      // SOTA High-performance fully GPU-driven particle burst triggering
+      if (store.triggerGPUSparks) {
+        let sparkColor = '#ffffff';
+        const count = isCrit ? 60 : 25; // Massive spray on crits!
+        
+        switch (type) {
+          case 'fireball':
+            sparkColor = '#ff5500';
+            break;
+          case 'iceball':
+            sparkColor = '#00d2ff';
+            break;
+          case 'lightning':
+            sparkColor = '#ffff00';
+            break;
+          case 'arcane':
+            sparkColor = '#d900ff';
+            break;
+          case 'physical':
+          default:
+            sparkColor = isCrit ? '#ffcc00' : '#ff2200'; // Glowing gold for crits, crimson red for normals
+            break;
+        }
+
+        store.triggerGPUSparks(
+          new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), 
+          sparkColor, 
+          count, 
+          type
+        );
       }
 
       entity.health -= damage;

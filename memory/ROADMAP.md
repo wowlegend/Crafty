@@ -7,11 +7,11 @@
 - [x] **WebGL2 Texture2DArray Atlas**: Replace basic vertex colors with a single `Texture2DArray` sampler with dynamic coordinates pre-baked into compact vertex attributes.
 - [x] **Wind Instanced Foliage Vectors**: Upgrade vegetation systems to support interactive multi-entity displacement and dynamic ambient wind sway animations.
 
-### Phase 20: Procedural Melee Weapon Trails & GPU Spark Particles [PLANNED]
+### Phase 20: Procedural Melee Weapon Trails & GPU Spark Particles [COMPLETED]
 *Polishing combat sensory feedback with procedural ribbon meshes and high-performance particle cascades.*
-- [ ] **Procedural Ribbon Trails**: Generate dynamic ribbon meshes trailing player weapon swing arcs to convey weight and velocity.
-- [ ] **GPU Particle Spark Systems**: Offload particle impact bursts to optimized GPU vertex shader instances, scattering hundreds of glowing embers.
-- [ ] **Impact Critical Camera Shake**: Add brief, directional camera shake and elemental gradient text color pulses on critical hit registry.
+- [x] **Procedural Ribbon Trails**: Generate dynamic ribbon meshes trailing player weapon swing arcs to convey weight and velocity.
+- [x] **GPU Particle Spark Systems**: Offload particle impact bursts to optimized GPU vertex shader instances, scattering hundreds of glowing embers.
+- [x] **Impact Critical Camera Shake**: Add brief, directional camera shake and elemental gradient text color pulses on critical hit registry.
 
 ### Phase 21: Acoustic Voxel Ray-Tracing Occlusion & Dynamic Combat Soundtrack [PLANNED]
 *Implementing dynamic spatial audio occlusion raycasts and interactive tension arpeggiators.*

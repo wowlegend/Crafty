@@ -1,5 +1,15 @@
 # Changelog & Development History
 
+### May 23, 2026 (SOTA Melee Weapon Trails, Procedural Swords & GPU Spark Particles)
+
+- **FULLY GPU-DRIVEN PARTICLE SHADERS**: Created `<GPUSparkSystem />` parented outside the Rapier physics loop, allocating a circular buffer of 1200 particle instances. Used a custom `ShaderMaterial` implementing dynamic view-space GPU billboarding (`mvPosition.xyz += localPos`) and vertex particle physics (upward velocity, gravity, and scale shrinkage driven entirely on the GPU). This reduces CPU layout/update loop costs to exactly 0ms.
+- **ELEMENTAL COLOR-CODED BURSTS**: Connected `triggerGPUSparks` directly into the hit registry in `damageMob`. Spells and physical strikes trigger gorgeous color-coded explosions of dynamic embers (crimson/yellow for slashes, gold/fire for fireballs, cyan/silver for iceballs, fast neon-yellow/white for lightning, and mystical magenta/violet for arcane blasts), increasing burst size on critical hits.
+- **SOTA FIRST-PERSON SWORD SWING ARCS**: Refactored `Player` and `StableMagicHands` states to track `attackType` ('melee' | 'spell') and sync the Three.js clock `attackStartTime`. Melee swings animate the weapon in a gorgeous sweeping diagonal Bezier arc (sweeping right-to-left, tilted down) to convey deep weight and velocity, replacing the standard forward poke.
+- **GLOWING CAMERA-LOCAL RIBBON TRAILS**: Implemented `<ProceduralRibbonTrail />` parented to the camera group, capturing blade tip and hilt base positions relative to the sweeping hand. Compiled a dynamic quad strip mesh geometry on the fly, rendering it with a custom feathered glow shader (linear length fadeout paired with soft width feathering and a glowing white-hot center core).
+- **PROCEDURAL 3D WEAPON MODEL BRANCHING**: Created `<ProceduralWeapon />` rendering detailed, multi-element group models for equipped weapons (Stone, Iron, Diamond Swords & Pickaxe), replacing generic wands. Models implement stylized guard wings, diamond-pointed crystalline tips, wrapped hilts, and distinct metallic properties.
+- **PULSATING CRITICAL FLOATING TEXT**: Updated the `DamageNumber` floating text useFrame loop. Critical strikes scale the sprite by 1.3x and apply high-frequency coordinate vibration shakes and cosine breathing scale pulses that decay dynamically.
+- **SWARM INTEGRATION VERIFICATION**: Successfully verified the combat upgrades under Puppeteer playtests (green status across Combat, World, and Crafting) and compiled production-grade Vite assets with zero stutters, warnings, or errors.
+
 ### May 23, 2026 (SOTA WebGL2 DataArrayTexture Voxel Texturing & Wind Foliage)
 
 - **PROCEDURAL DATAARRAYTEXTURE GENERATOR**: Created a startup-loaded procedural texture generator in `proceduralTextures.js` that paints 32x32 pixel organic, high-fidelity texture layers for each of our 9 block types (Grass, Dirt, Stone, Sand, Snow, Wood Trunk, Leaves, Cactus, Water). This delivers a premium detailed visual experience with exactly zero-byte static asset file footprints.

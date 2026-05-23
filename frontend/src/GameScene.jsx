@@ -11,6 +11,7 @@ import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
+import { GPUSparkSystem } from './world/GPUSparkSystem';
 
 // Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
@@ -552,6 +553,7 @@ export function GameScene({
         <PositionTracker />
 
         <Suspense fallback={null}>
+          <GPUSparkSystem />
           <Physics gravity={[0, -30, 0]}>
             <MinecraftWorld />
 
