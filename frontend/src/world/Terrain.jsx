@@ -42,14 +42,10 @@ const compileShader = (shader) => {
     shader.vertexShader = `
         uniform float time;
         uniform float timeOfDay;
-        #ifndef USE_COLOR
-        attribute vec3 color;
-        #endif
         flat varying float vBlockType;
         #ifndef USE_UV
-        attribute vec2 uv;
-        #endif
         varying vec2 vUv;
+        #endif
         ${shader.vertexShader}
     `;
 
