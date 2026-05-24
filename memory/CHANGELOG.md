@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### May 25, 2026 (Comprehensive First-Principles Codebase Audit & Memory Disposal Hardening - Phase 34)
+
+- **COMPREHENSIVE CODEBASE AUDIT**: Conducted a thorough multi-vector diagnostic audit across all 32+ developmental phases, verifying high-frequency game loop isolation, WebGL2 and custom shader compliance, native Rapier WASM raycasting signatures, and canvas-level pointer lock menus.
+- **GPU VRAM GEOMETRY LEAK RESOLVED**: Resolved a dynamic chunk loading memory leak inside `Terrain.jsx`. Created Three.js `BufferGeometry` instances in `ChunkMesh`'s `useMemo` block were not automatically cleaned up on unmount. Added a strict `React.useEffect` cleanup listener calling `.dispose()` on unmount, completely stabilizing dynamic VRAM footprints.
+- **PUPPETEER PLAYTEST SWARM PASS**: Verified production bundle compiles cleanly (`npm run build` in 3.15s) and that the headless playtest swarm (`npm run test`) runs 100% green with zero console errors or warnings.
+
 ### May 24, 2026 (Flat Voxel Shader Varying & Resilient Cavern Snapping - Phase 31)
 
 - **GLSL FLAT SHADER VARYING INTEGRATION**: Upgraded the custom geometry attribute `vBlockType` in both vertex and fragment shaders inside `Terrain.jsx` to be a `flat varying float vBlockType;`. This leverages WebGL2 (GLSL ES 3.00) flat shading to completely prevent non-linear floating-point interpolation drift and precision loss across greedy-meshed quads. This guarantees all solid blocks render perfectly opaque and never sample transparent layers, resolving all see-through terrain visual anomalies.
