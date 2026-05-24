@@ -1,6 +1,13 @@
 # Changelog & Development History
 
+### May 24, 2026 (Flat Voxel Shader Varying & Resilient Cavern Snapping - Phase 31)
+
+- **GLSL FLAT SHADER VARYING INTEGRATION**: Upgraded the custom geometry attribute `vBlockType` in both vertex and fragment shaders inside `Terrain.jsx` to be a `flat varying float vBlockType;`. This leverages WebGL2 (GLSL ES 3.00) flat shading to completely prevent non-linear floating-point interpolation drift and precision loss across greedy-meshed quads. This guarantees all solid blocks render perfectly opaque and never sample transparent layers, resolving all see-through terrain visual anomalies.
+- **ALTITUDE-RESILIENT CHEST SNAPPING**: Redesigned the chest ground altitude resolver inside `QuestSystem.jsx` to track snaps using a new `resolved` state attribute. Relaxed snapped height constraints from `h > 16` to `h > 0`, allowing chests to snap successfully to deep cavern floors or sea-level beaches rather than remaining trapped inside solid stone at default height `15`.
+- **PRE-COMMIT QUALITY ASSURANCE**: Audited the entire production Vite bundle (`npm run build` in 3.63s) and validated all Puppeteer playtests (`npm run test`), successfully obtaining a 100% green status across all concurrent agents.
+
 ### May 24, 2026 (Voxel Greedy Meshing Axis Winding & Death Loop Holistics - Phase 28)
+
 
 - **HOLISTIC GREEDY VOXEL AXIS WINDING CORRECTIONS**: Surgically corrected all 6 voxel faces inside `terrain.worker.js` to 100% CCW winding alignment, resolving the CW orientation of Bottom (-Y), Front (+Z), and Back (-Z) faces. This establishes perfect mathematical compatibility with strict `THREE.FrontSide` culling, completely eliminating all see-through terrain cliffs, ceilings, and landscape cracks.
 - **DYNAMIC DEATH SCREEN POINTER RELEASE**: Subscribed the main `App.jsx` and `<PointerLockControls>` component in `GameScene.jsx` to the `isAlive` store state, dynamically disabling pointer lock when the player dies. This releases browser cursor locking instantly upon death, allowing full mouse control to click the "Respawn" button.
