@@ -42,7 +42,7 @@ const compileShader = (shader) => {
     shader.vertexShader = `
         uniform float time;
         uniform float timeOfDay;
-        attribute float blockType;
+        attribute vec3 color;
         flat varying float vBlockType;
         #ifndef USE_UV
         attribute vec2 uv;
@@ -55,7 +55,7 @@ const compileShader = (shader) => {
         'void main() {',
         `
         void main() {
-            vBlockType = blockType;
+            vBlockType = color.r;
             vUv = uv;
         `
     );
@@ -64,8 +64,8 @@ const compileShader = (shader) => {
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
-        // Check if vertex is water by its blockType custom attribute (9.0)
-        bool isWater = (abs(blockType - 9.0) < 0.1);
+        // Check if vertex is water by its blockType index in color.r attribute (9.0)
+        bool isWater = (abs(color.r - 9.0) < 0.1);
         if (isWater) {
             // Compute a world-aligned coordinate for coherent wave structures across chunk boundaries
             vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
@@ -173,12 +173,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             if (meshData.uvs) {
                 opaqueGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
             }
-            // Create float blockType attribute
-            const blockTypeArr = new Float32Array(meshData.positions.length / 3);
-            for (let i = 0; i < blockTypeArr.length; i++) {
-                blockTypeArr[i] = colors[i * 3];
-            }
-            opaqueGeom.setAttribute('blockType', new THREE.BufferAttribute(blockTypeArr, 1));
+            // Bind the standard colors array directly to the 'color' attribute
+            opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
             
             opaqueGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(opaqueIndicesArr), 1));
             opaqueGeom.computeBoundingSphere();
@@ -192,12 +188,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             if (meshData.uvs) {
                 waterGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
             }
-            // Create float blockType attribute
-            const blockTypeArr = new Float32Array(meshData.positions.length / 3);
-            for (let i = 0; i < blockTypeArr.length; i++) {
-                blockTypeArr[i] = colors[i * 3];
-            }
-            waterGeom.setAttribute('blockType', new THREE.BufferAttribute(blockTypeArr, 1));
+            // Bind the standard colors array directly to the 'color' attribute
+            waterGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
             
             waterGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(waterIndicesArr), 1));
             waterGeom.computeBoundingSphere();
