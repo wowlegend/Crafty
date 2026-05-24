@@ -202,6 +202,20 @@ export const Player = ({ isWorldBuilt }) => {
     };
   }, []);
 
+  // Safe-respawn coordinator: when player isAlive transitions from false to true, teleport player back to safe spawn coordinates
+  const isAlive = useGameStore(state => state.isAlive);
+  const lastAliveRef = useRef(true);
+  useEffect(() => {
+    if (isAlive && !lastAliveRef.current) {
+      spawnPosSet.current = false;
+      if (rigidBodyRef.current) {
+        rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+        rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    }
+    lastAliveRef.current = isAlive;
+  }, [isAlive]);
+
   const triggerMeleeAttack = useCallback(() => {
     const now = performance.now();
     if (now - lastAttackTime.current < MELEE_COOLDOWN) return;

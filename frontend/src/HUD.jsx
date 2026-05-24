@@ -383,6 +383,19 @@ export function HUD({
         <DeathScreen onRespawn={() => {
           gameSystems.respawn();
           if (useGameStore.getState().onPlayerDeath) useGameStore.getState().onPlayerDeath();
+          
+          // Re-acquire pointer lock upon respawning
+          const state = useGameStore.getState();
+          if (state.requestPointerLock) {
+            state.requestPointerLock();
+          } else {
+            const canvas = document.querySelector('canvas');
+            if (canvas && canvas.requestPointerLock) {
+              canvas.requestPointerLock();
+            } else if (document.body.requestPointerLock) {
+              document.body.requestPointerLock();
+            }
+          }
           setIsPointerLocked(true);
         }} />
       )}

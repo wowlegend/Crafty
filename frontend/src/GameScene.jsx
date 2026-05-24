@@ -679,7 +679,7 @@ export function GameScene({
         <PointerLockControls 
           ref={controlsRef}
           makeDefault 
-          enabled={true} 
+          enabled={gameState.isAlive} 
           minPolarAngle={0.05} 
           maxPolarAngle={Math.PI - 0.05} 
         />

@@ -38,6 +38,7 @@ function GameApp({ experienceSystem }) {
   const gameState = useGameStore(useShallow(state => ({
         isSpawnChunkLoaded: state.isSpawnChunkLoaded,
         isDay: state.isDay,
+        isAlive: state.isAlive,
         inventory: state.inventory,
         addToInventory: state.addToInventory,
         removeFromInventory: state.removeFromInventory,

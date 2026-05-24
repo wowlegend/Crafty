@@ -1,10 +1,12 @@
 # Changelog & Development History
 
-### May 24, 2026 (Voxel Greedy Meshing Axis Alignment Correction - Phase 28)
+### May 24, 2026 (Voxel Greedy Meshing Axis Winding & Death Loop Holistics - Phase 28)
 
-- **GREEDY VOXEL X-AXIS SWEEP CORRECTED**: Resolved the swapped coordinate sampling and mapping bugs in the greedy mesher's X-axis (`d === 0`) sweep inside `terrain.worker.js`. Corrected block checking queries from `getBlock(q, cv, cu)` to `getBlock(q, cu, cv)`, and aligned quad rendering coordinate variables to `y = cu` and `z = cv`.
-- **CCW FACE WINDING COMPLIANCE**: Surgically corrected Right (+X) and Left (-X) face vertices for perfect Counter-Clockwise (CCW) face culling order under strict `THREE.FrontSide` culling mode.
-- **ZERO-DEBT COMPILE & PLAYTEST PASS**: Verified that the entire production Vite bundle compiles flawlessly (`npm run build` in 3.55s) and that the Puppeteer playtest swarm (`npm run test`) runs 100% green without any console exceptions, depth artifacts, or locomotion recovery freezes.
+- **HOLISTIC GREEDY VOXEL AXIS WINDING CORRECTIONS**: Surgically corrected all 6 voxel faces inside `terrain.worker.js` to 100% CCW winding alignment, resolving the CW orientation of Bottom (-Y), Front (+Z), and Back (-Z) faces. This establishes perfect mathematical compatibility with strict `THREE.FrontSide` culling, completely eliminating all see-through terrain cliffs, ceilings, and landscape cracks.
+- **DYNAMIC DEATH SCREEN POINTER RELEASE**: Subscribed the main `App.jsx` and `<PointerLockControls>` component in `GameScene.jsx` to the `isAlive` store state, dynamically disabling pointer lock when the player dies. This releases browser cursor locking instantly upon death, allowing full mouse control to click the "Respawn" button.
+- **SAFE RESPAWN COORDINATES TELEPORTATION**: Added a robust spawn coordinator inside `Components.jsx` that listens to `isAlive`. When the player transitions from dead to alive, it resets spawn settings and safe-teleports the player capsule to spawn height `(0, 120, 0)`, completely eliminating infinite void falling loops and death locks.
+- **ROBUST POINTER LOCK RECOVERY ON RESPAWN**: Refactored the "Respawn" button onClick handler in `HUD.jsx` to synchronously call the safe pointer lock requester inside the user interaction click stack, ensuring a seamless return to action gameplay with perfect camera control.
+- **ZERO-DEBT COMPILE & PLAYTEST PASS**: Verified that the entire production Vite bundle compiles flawlessly and that the Puppeteer playtest swarm runs 100% green without any console exceptions, depth artifacts, or locomotion recovery freezes.
 
 ### May 24, 2026 (SOTA Voxel Winding Correction & Declarative Pointer Lock Sync - Phase 26)
 

@@ -673,9 +673,9 @@ function generateMesh(cx, cz, blocks) {
               // Bottom (-Y)
               const y = q + 1;
               c0 = [x, y, z + w];
-              c1 = [x + h, y, z + w];
+              c1 = [x, y, z];
               c2 = [x + h, y, z];
-              c3 = [x, y, z];
+              c3 = [x + h, y, z + w];
             }
           } else {
             // Axis Z: width is along X (u), height is along Y (v)
@@ -687,16 +687,16 @@ function generateMesh(cx, cz, blocks) {
               // Front (+Z)
               const z = q;
               c0 = [x, y, z + 1];
-              c1 = [x, y + h, z + 1];
+              c1 = [x + w, y, z + 1];
               c2 = [x + w, y + h, z + 1];
-              c3 = [x + w, y, z + 1];
+              c3 = [x, y + h, z + 1];
             } else {
               // Back (-Z)
               const z = q + 1;
               c0 = [x + w, y, z];
-              c1 = [x + w, y + h, z];
+              c1 = [x, y, z];
               c2 = [x, y + h, z];
-              c3 = [x, y, z];
+              c3 = [x + w, y + h, z];
             }
           }
 
