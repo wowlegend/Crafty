@@ -18,7 +18,7 @@ const voxelTextures = createProceduralVoxelTextures();
 const opaqueMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.1,
-    vertexColors: false,
+    vertexColors: true,
     transparent: false,
     depthWrite: true,
     side: THREE.FrontSide
@@ -27,7 +27,7 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
 const waterMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.15,
     metalness: 0.1,
-    vertexColors: false,
+    vertexColors: true,
     transparent: true,
     depthWrite: false,
     side: THREE.FrontSide
@@ -42,7 +42,9 @@ const compileShader = (shader) => {
     shader.vertexShader = `
         uniform float time;
         uniform float timeOfDay;
+        #ifndef USE_COLOR
         attribute vec3 color;
+        #endif
         flat varying float vBlockType;
         #ifndef USE_UV
         attribute vec2 uv;
