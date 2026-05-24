@@ -1,6 +1,10 @@
-# Active Plan: None
+# Active Plan: Fix See-Through Terrain & Chest Interaction
 
 ## Goal
-All tasks are completed. Ready for the next phase.
+Resolve production see-through terrain visual anomalies and fix chests trapped underground.
 
-## Current Task: None
+## Checklist
+- [x] Upgrade `vBlockType` varying to `flat varying` in `Terrain.jsx` shaders.
+- [x] Lower chest altitude snapping threshold from `h > 16` to `h > 0` in `QuestSystem.jsx`.
+- [x] Compile and verify production build locally.
+- [x] Run playtest swarm tests to ensure stability.

@@ -537,15 +537,20 @@ export const useTreasureChests = () => {
 
             // Get ground height securely
             let y = 15;
+            let resolved = false;
             if (useGameStore.getState().getMobGroundLevel) {
                 const h = useGameStore.getState().getMobGroundLevel(x, z);
-                if (typeof h === 'number' && !isNaN(h)) y = h + 1;
+                if (typeof h === 'number' && !isNaN(h)) {
+                    y = h + 1;
+                    resolved = true;
+                }
             }
 
             const newChest = {
                 id: chestId.current++,
                 position: [x, y, z],
                 opened: false,
+                resolved,
             };
 
             setChests(prev => [...prev, newChest]);
@@ -563,12 +568,16 @@ export const useTreasureChests = () => {
             const z = playerPos.z + Math.sin(angle) * 15;
 
             let y = 15;
+            let resolved = false;
             if (useGameStore.getState().getMobGroundLevel) {
                 const h = useGameStore.getState().getMobGroundLevel(x, z);
-                if (typeof h === 'number' && !isNaN(h)) y = h + 1;
+                if (typeof h === 'number' && !isNaN(h)) {
+                    y = h + 1;
+                    resolved = true;
+                }
             }
 
-            setChests([{ id: chestId.current++, position: [x, y, z], opened: false }]);
+            setChests([{ id: chestId.current++, position: [x, y, z], opened: false, resolved }]);
         }
     }, [chests.length]);
 
@@ -648,13 +657,14 @@ export const useTreasureChests = () => {
             if (!getLevel) return;
             
             setChests(prev => prev.map(chest => {
-                if (chest.position[1] <= 16) {
+                if (!chest.resolved) {
                     const h = getLevel(chest.position[0], chest.position[2]);
-                    if (typeof h === 'number' && !isNaN(h) && h > 16) {
+                    if (typeof h === 'number' && !isNaN(h) && h > 0) {
                         console.log(`[DEBUG] Resolved underground chest ${chest.id} ground level to Y=${h+1}`);
                         return {
                             ...chest,
-                            position: [chest.position[0], h + 1, chest.position[2]]
+                            position: [chest.position[0], h + 1, chest.position[2]],
+                            resolved: true
                         };
                     }
                 }

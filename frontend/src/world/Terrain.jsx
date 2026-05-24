@@ -43,7 +43,7 @@ const compileShader = (shader) => {
         uniform float time;
         uniform float timeOfDay;
         attribute float blockType;
-        varying float vBlockType;
+        flat varying float vBlockType;
         #ifndef USE_UV
         attribute vec2 uv;
         #endif
@@ -82,7 +82,7 @@ const compileShader = (shader) => {
         uniform sampler2DArray voxelTextures;
         uniform float time;
         uniform float timeOfDay;
-        varying float vBlockType;
+        flat varying float vBlockType;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
