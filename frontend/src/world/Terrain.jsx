@@ -92,7 +92,7 @@ const compileShader = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
         '#include <color_fragment>',
         `
-        float layerIndex = vBlockType; // Extract packed blockType layer index
+        float layerIndex = floor(vBlockType + 0.5); // Round to nearest integer to prevent floating-point interpolation drift/truncation to layer 0
         
         // Sample nearest pixel-art repeating tile coordinates from array layer
         vec4 texColor = texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layerIndex));

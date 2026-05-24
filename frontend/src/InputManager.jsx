@@ -191,9 +191,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
             document.exitPointerLock();
           }
         } else if (state.openNearbyChest) {
-          const loot = state.openNearbyChest();
-          if (loot && loot.length > 0) {
-          }
+          state.openNearbyChest();
         }
         return;
       }

@@ -585,7 +585,9 @@ export const useTreasureChests = () => {
             const dz = playerPos.z - chest.position[2];
             const dist3D = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            if (dist3D < 3) return chest;
+            if (dist3D < 4.5) {
+                return chest;
+            }
         }
         return null;
     }, [chests, openedChestIds]);
@@ -690,7 +692,7 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
                 const dy = playerPos.y - chest.position[1];
                 const dz = playerPos.z - chest.position[2];
                 const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                if (dist < 3) {
+                if (dist < 4.5) {
                     setNearbyChest(chest);
                     return;
                 }
