@@ -560,9 +560,9 @@ function generateMesh(cx, cz, blocks) {
           let blockB = 0;
 
           if (d === 0) {
-            // d = X, u = Z, v = Y
-            blockA = getBlock(q, cv, cu);
-            blockB = getBlock(q + 1, cv, cu);
+            // d = X, u = Y, v = Z
+            blockA = getBlock(q, cu, cv);
+            blockB = getBlock(q + 1, cu, cv);
           } else if (d === 1) {
             // d = Y, u = Z, v = X
             blockA = getBlock(cv, q, cu);
@@ -636,24 +636,24 @@ function generateMesh(cx, cz, blocks) {
           let normalVector;
 
           if (d === 0) {
-            // Axis X: width is along Z (u), height is along Y (v)
-            const y = cv;
-            const z = cu;
+            // Axis X: width is along Y (u), height is along Z (v)
+            const y = cu;
+            const z = cv;
             normalVector = dirFlag === 1 ? [1, 0, 0] : [-1, 0, 0];
 
             if (dirFlag === 1) {
               // Right (+X)
               const x = q;
               c0 = [x + 1, y, z];
-              c1 = [x + 1, y + h, z];
-              c2 = [x + 1, y + h, z + w];
-              c3 = [x + 1, y, z + w];
+              c1 = [x + 1, y + w, z];
+              c2 = [x + 1, y + w, z + h];
+              c3 = [x + 1, y, z + h];
             } else {
               // Left (-X)
               const x = q + 1;
-              c0 = [x, y, z + w];
-              c1 = [x, y + h, z + w];
-              c2 = [x, y + h, z];
+              c0 = [x, y, z + h];
+              c1 = [x, y + w, z + h];
+              c2 = [x, y + w, z];
               c3 = [x, y, z];
             }
           } else if (d === 1) {

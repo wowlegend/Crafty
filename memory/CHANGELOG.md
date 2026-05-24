@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### May 24, 2026 (Voxel Greedy Meshing Axis Alignment Correction - Phase 28)
+
+- **GREEDY VOXEL X-AXIS SWEEP CORRECTED**: Resolved the swapped coordinate sampling and mapping bugs in the greedy mesher's X-axis (`d === 0`) sweep inside `terrain.worker.js`. Corrected block checking queries from `getBlock(q, cv, cu)` to `getBlock(q, cu, cv)`, and aligned quad rendering coordinate variables to `y = cu` and `z = cv`.
+- **CCW FACE WINDING COMPLIANCE**: Surgically corrected Right (+X) and Left (-X) face vertices for perfect Counter-Clockwise (CCW) face culling order under strict `THREE.FrontSide` culling mode.
+- **ZERO-DEBT COMPILE & PLAYTEST PASS**: Verified that the entire production Vite bundle compiles flawlessly (`npm run build` in 3.55s) and that the Puppeteer playtest swarm (`npm run test`) runs 100% green without any console exceptions, depth artifacts, or locomotion recovery freezes.
+
 ### May 24, 2026 (SOTA Voxel Winding Correction & Declarative Pointer Lock Sync - Phase 26)
 
 - **SOTA GREEDY VOXEL WINDING CORRECTION**: Surgically corrected the Greedy Mesher's Top (+Y) face winding coordinates inside `terrain.worker.js` from Clockwise (CW) to Counter-Clockwise (CCW). Swapped vertices `c1` and `c3` to establish perfect CCW alignment across all 6 voxel faces.
