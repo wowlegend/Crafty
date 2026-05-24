@@ -143,11 +143,9 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             if (onUnmount) onUnmount(key);
         };
     }, [cx, cz, onMount, onUnmount]);
-
     const [opaqueGeometry, waterGeometry] = React.useMemo(() => {
         const indices = meshData.indices;
         const colors = meshData.colors;
-        
         const opaqueIndicesArr = [];
         const waterIndicesArr = [];
         
@@ -195,6 +193,13 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         
         return [opaqueGeom, waterGeom];
     }, [meshData]);
+ 
+    React.useEffect(() => {
+        return () => {
+            if (opaqueGeometry) opaqueGeometry.dispose();
+            if (waterGeometry) waterGeometry.dispose();
+        };
+    }, [opaqueGeometry, waterGeometry]);
 
     return (
         <group position={[cx * 16, 0, cz * 16]}>
