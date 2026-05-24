@@ -18,7 +18,7 @@ const voxelTextures = createProceduralVoxelTextures();
 const opaqueMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.1,
-    vertexColors: true,
+    vertexColors: false,
     transparent: false,
     depthWrite: true,
     side: THREE.FrontSide
@@ -27,7 +27,7 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
 const waterMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.15,
     metalness: 0.1,
-    vertexColors: true,
+    vertexColors: false,
     transparent: true,
     depthWrite: false,
     side: THREE.FrontSide
@@ -42,6 +42,11 @@ const compileShader = (shader) => {
     shader.vertexShader = `
         uniform float time;
         uniform float timeOfDay;
+        attribute float blockType;
+        varying float vBlockType;
+        #ifndef USE_UV
+        attribute vec2 uv;
+        #endif
         varying vec2 vUv;
         ${shader.vertexShader}
     `;
@@ -50,6 +55,7 @@ const compileShader = (shader) => {
         'void main() {',
         `
         void main() {
+            vBlockType = blockType;
             vUv = uv;
         `
     );
@@ -58,8 +64,8 @@ const compileShader = (shader) => {
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
-        // Check if vertex is water by its blockType packed in color.r (9.0)
-        bool isWater = (abs(color.r - 9.0) < 0.1);
+        // Check if vertex is water by its blockType custom attribute (9.0)
+        bool isWater = (abs(blockType - 9.0) < 0.1);
         if (isWater) {
             // Compute a world-aligned coordinate for coherent wave structures across chunk boundaries
             vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
@@ -76,14 +82,17 @@ const compileShader = (shader) => {
         uniform sampler2DArray voxelTextures;
         uniform float time;
         uniform float timeOfDay;
+        varying float vBlockType;
+        #ifndef USE_UV
         varying vec2 vUv;
+        #endif
         ${shader.fragmentShader}
     `;
 
     shader.fragmentShader = shader.fragmentShader.replace(
         '#include <color_fragment>',
         `
-        float layerIndex = vColor.r; // Extract packed blockType layer index
+        float layerIndex = vBlockType; // Extract packed blockType layer index
         
         // Sample nearest pixel-art repeating tile coordinates from array layer
         vec4 texColor = texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layerIndex));
@@ -105,7 +114,7 @@ const compileShader = (shader) => {
         `
         #include <opaque_fragment>
         
-        if (abs(vColor.r - 9.0) < 0.1) {
+        if (abs(vBlockType - 9.0) < 0.1) {
             float nightFactor = 1.0 - timeOfDay;
             // Pulsing bioluminescence frequency
             float pulse = sin(time * 1.5 + vViewPosition.y * 3.0) * 0.5 + 0.5;
@@ -161,10 +170,16 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             opaqueGeom = new THREE.BufferGeometry();
             opaqueGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
             opaqueGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-            opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
             if (meshData.uvs) {
                 opaqueGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
             }
+            // Create float blockType attribute
+            const blockTypeArr = new Float32Array(meshData.positions.length / 3);
+            for (let i = 0; i < blockTypeArr.length; i++) {
+                blockTypeArr[i] = colors[i * 3];
+            }
+            opaqueGeom.setAttribute('blockType', new THREE.BufferAttribute(blockTypeArr, 1));
+            
             opaqueGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(opaqueIndicesArr), 1));
             opaqueGeom.computeBoundingSphere();
         }
@@ -174,10 +189,16 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             waterGeom = new THREE.BufferGeometry();
             waterGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
             waterGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-            waterGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
             if (meshData.uvs) {
                 waterGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
             }
+            // Create float blockType attribute
+            const blockTypeArr = new Float32Array(meshData.positions.length / 3);
+            for (let i = 0; i < blockTypeArr.length; i++) {
+                blockTypeArr[i] = colors[i * 3];
+            }
+            waterGeom.setAttribute('blockType', new THREE.BufferAttribute(blockTypeArr, 1));
+            
             waterGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(waterIndicesArr), 1));
             waterGeom.computeBoundingSphere();
         }
@@ -271,6 +292,42 @@ const TargetOutline = () => {
             <edgesGeometry args={[boxGeometry]} />
             <lineBasicMaterial color="#ffffff" opacity={0.5} transparent depthTest={true} />
         </lineSegments>
+    );
+};
+
+// --- 3D TREASURE CHEST RENDERER ---
+const TreasureChestsRender = () => {
+    const chests = useGameStore(state => state.treasureChestsList || []);
+    
+    return (
+        <group>
+            {chests.map(chest => (
+                <group key={chest.id} position={chest.position}>
+                    {/* Visual chest box */}
+                    <mesh castShadow receiveShadow>
+                        <boxGeometry args={[1.0, 0.8, 0.8]} />
+                        <meshStandardMaterial 
+                            color="#d4af37" // Premium Gold
+                            roughness={0.15}
+                            metalness={0.85}
+                            emissive="#b8860b" // Goldenrod pulse
+                            emissiveIntensity={0.2}
+                        />
+                    </mesh>
+                    {/* Locked clasp (silver latch) */}
+                    <mesh position={[0, 0, 0.41]}>
+                        <boxGeometry args={[0.15, 0.25, 0.05]} />
+                        <meshStandardMaterial color="#c0c0c0" roughness={0.1} metalness={0.9} />
+                    </mesh>
+                    {/* Floating beacon orb */}
+                    <mesh position={[0, 1.1, 0]}>
+                        <sphereGeometry args={[0.12, 8, 8]} />
+                        <meshBasicMaterial color="#ffd700" />
+                    </mesh>
+                    <pointLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
+                </group>
+            ))}
+        </group>
     );
 };
 
@@ -619,6 +676,7 @@ export const MinecraftWorld = React.memo(() => {
             ))}
             <TargetOutline />
             <BlockParticleSystem worker={worker} />
+            <TreasureChestsRender />
         </group>
     );
 });

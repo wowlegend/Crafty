@@ -333,6 +333,17 @@ export const Player = ({ isWorldBuilt }) => {
     // Wake up physics body
     rigidBodyRef.current.wakeUp();
 
+    // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
+    const isPlayerAlive = useGameStore.getState().isAlive;
+    if (!isPlayerAlive) {
+      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      const translation = rigidBodyRef.current.translation();
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, translation.x, 0.85);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, translation.y + 1.2, 0.85);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, translation.z, 0.85);
+      return;
+    }
+
     const speed = 10;
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();

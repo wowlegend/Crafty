@@ -639,7 +639,30 @@ export const useTreasureChests = () => {
         return loot;
     }, [chests, addNotification]);
 
-    // Expose check and open for the game
+    // Periodically update un-opened chests Y coordinates if they were spawned with default Y <= 16
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const getLevel = useGameStore.getState().getMobGroundLevel;
+            if (!getLevel) return;
+            
+            setChests(prev => prev.map(chest => {
+                if (chest.position[1] <= 16) {
+                    const h = getLevel(chest.position[0], chest.position[2]);
+                    if (typeof h === 'number' && !isNaN(h) && h > 16) {
+                        console.log(`[DEBUG] Resolved underground chest ${chest.id} ground level to Y=${h+1}`);
+                        return {
+                            ...chest,
+                            position: [chest.position[0], h + 1, chest.position[2]]
+                        };
+                    }
+                }
+                return chest;
+            }));
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Expose check and open for the game, as well as the active treasure chests list
     useEffect(() => {
         useGameStore.setState({ checkNearbyChest: checkChestProximity });
         useGameStore.setState({ openNearbyChest: () => {
@@ -647,7 +670,8 @@ export const useTreasureChests = () => {
             if (chest) return openChest(chest.id);
             return null;
         }});
-    }, [checkChestProximity, openChest]);
+        useGameStore.setState({ treasureChestsList: chests.filter(c => !openedChestIds.has(c.id)) });
+    }, [checkChestProximity, openChest, chests, openedChestIds]);
 
     return { chests, openedChestIds, checkChestProximity, openChest };
 };
@@ -663,8 +687,9 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
             for (const chest of chests) {
                 if (openedChestIds.has(chest.id)) continue;
                 const dx = playerPos.x - chest.position[0];
+                const dy = playerPos.y - chest.position[1];
                 const dz = playerPos.z - chest.position[2];
-                const dist = Math.sqrt(dx * dx + dz * dz);
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 if (dist < 3) {
                     setNearbyChest(chest);
                     return;
