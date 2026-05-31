@@ -8,6 +8,7 @@ import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
+import { moodRef } from '../render/mood';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -37,6 +38,7 @@ const waterMaterial = new THREE.MeshStandardMaterial({
 const compileShader = (shader) => {
     shader.uniforms.time = { value: 0 };
     shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
+    shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
 
     // Vertex Shader: Procedural undulating waves for water blocks
@@ -81,6 +83,7 @@ const compileShader = (shader) => {
         uniform sampler2DArray voxelTextures;
         uniform float time;
         uniform float timeOfDay;
+        uniform float mood;
         flat varying float vBlockType;
         #ifndef USE_UV
         varying vec2 vUv;
@@ -108,6 +111,15 @@ const compileShader = (shader) => {
         // custom sampler2DArray (so material.colorSpace is a no-op). Decode to linear
         // here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);
+
+        // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
+        // at obsidian. LUMINANCE-PRESERVING (no darkening) so dusk stays readable — the per-mood
+        // LIGHTING sets brightness. Gentle at dusk (danger<=1), strong only at obsidian (danger 1->2).
+        float danger = clamp(mood, 0.0, 2.0);
+        float moodLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+        float desat = danger <= 1.0 ? danger * 0.18 : 0.18 + (danger - 1.0) * 0.54;
+        vec3 coolGrey = vec3(moodLum * 0.92, moodLum * 0.96, moodLum * 1.06);
+        diffuseColor.rgb = mix(diffuseColor.rgb, coolGrey, clamp(desat, 0.0, 0.75));
         `
     );
 
@@ -338,27 +350,20 @@ export const MinecraftWorld = React.memo(() => {
     // Update shared terrain shader uniforms
     useFrame((state) => {
         const time = state.clock.elapsedTime;
-        const isDay = useGameStore.getState().isDay;
-        const targetTimeOfDay = isDay ? 1.0 : 0.0;
+        const mood = moodRef.current;                                   // smoothed by <Atmosphere>
+        const timeOfDay = 1.0 - THREE.MathUtils.clamp(mood, 0.0, 1.0);   // night/obsidian → 0 (biolum on)
 
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
             opaqueShader.uniforms.time.value = time;
-            opaqueShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
-                opaqueShader.uniforms.timeOfDay.value,
-                targetTimeOfDay,
-                0.05
-            );
+            opaqueShader.uniforms.timeOfDay.value = timeOfDay;
+            opaqueShader.uniforms.mood.value = mood;
         }
-
         const waterShader = waterMaterial.userData.shader;
         if (waterShader) {
             waterShader.uniforms.time.value = time;
-            waterShader.uniforms.timeOfDay.value = THREE.MathUtils.lerp(
-                waterShader.uniforms.timeOfDay.value,
-                targetTimeOfDay,
-                0.05
-            );
+            waterShader.uniforms.timeOfDay.value = timeOfDay;
+            waterShader.uniforms.mood.value = mood;
         }
     });
 
