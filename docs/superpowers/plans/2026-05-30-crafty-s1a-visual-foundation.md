@@ -447,6 +447,12 @@ git commit -m "feat(devtest): dev-only test bridge to drive game states for the 
 
 ## Task 5: Visual-regression suite (the can-go-red core)
 
+> **⚠️ CORRECTIONS (from Task 4 findings):**
+> 1. **Drive `vite dev`, NOT `vite preview`.** The test-bridge (`window.__craftyTest`) is `import.meta.env.DEV`-guarded and is tree-shaken out of prod builds, so it does **not** exist under `vite preview`. The capture script must spawn the dev server: `npx vite --port 4178 --strictPort --no-open` (the `--no-open` suppresses the config's `server.open:true` so no browser pops on the host). No `npm run build` needed for capture.
+> 2. **Wait for world-built before `start`.** The `start` hook flips pointer-lock state; call it only after the app is ready, and after `start` wait for the spawn chunk to load (poll `window.useGameStore.getState().isSpawnChunkLoaded === true`, with a time fallback) before screenshotting `explore-day`, so the terrain has streamed in.
+> 3. The `setTimeOfDay` hook exists (Task 4): `setTimeOfDay(0.5)`→day, `setTimeOfDay(0.0)`→night.
+> 4. While here, **delete the leftover `frontend/_s0_capture.mjs`** (superseded by this task's `scripts/visual/capture.mjs`); `git rm` it in this task's commit.
+
 **Files:**
 - Modify: `package.json` (deps + `test:visual` script)
 - Create: `scripts/visual/capture.mjs`
