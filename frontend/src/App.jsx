@@ -14,6 +14,7 @@ import { useInputManager } from './InputManager';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
+import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 
 function App() {
   return (
@@ -102,6 +103,26 @@ function GameApp({ experienceSystem }) {
     showAchievements, setShowAchievements,
     showSpellUpgrades, setShowSpellUpgrades
   } = useInputManager(gameState, gameSystems, questSystem);
+
+  // Dev-only test bridge: lets the visual-regression harness drive the running
+  // game into known states (leave the menu, force day/night). No-op in prod.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    // `start` mirrors the "Start Adventure" button (MenuSystem): flip the menu
+    // gate via the real setIsPointerLocked setter, then best-effort pointer lock.
+    registerTestHook('start', () => {
+      setIsPointerLocked(true);
+      const state = useGameStore.getState();
+      if (state.requestPointerLock) {
+        state.requestPointerLock();
+      } else if (document.body.requestPointerLock) {
+        document.body.requestPointerLock().catch(() => {});
+      }
+    });
+    // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
+    registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
+    installTestBridge();
+  }, []);
 
   const anyPanelOpen = gameState.showInventory || gameState.showCrafting ||
     gameState.showMagic || gameState.showBuildingTools ||

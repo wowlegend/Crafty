@@ -469,6 +469,15 @@ export const useGameStore = create((set, get) => ({
         return { gameTime: newTime };
     }),
 
+    // Force the day/night cycle to a normalized time-of-day fraction in [0, 1).
+    // The sky/lighting reads `isDay`; daytime spans [0.25, 0.75), night otherwise.
+    // Used by the dev test bridge to drive the world into known lighting states.
+    setTimeOfDay: (t) => set(() => {
+        const frac = ((Number(t) % 1) + 1) % 1; // wrap into [0, 1)
+        const isDay = frac >= 0.25 && frac < 0.75;
+        return { gameTime: Math.round(frac * 1200), isDay };
+    }),
+
     achievements: [],
     setAchievements: (achievementsArg) => set((state) => ({
         achievements: typeof achievementsArg === 'function' ? achievementsArg(state.achievements) : achievementsArg
