@@ -146,6 +146,21 @@ function GameApp({ experienceSystem }) {
     });
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
     registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));
+    // Character-render fixture: a deterministic close-up of ONE zombie beside ONE
+    // chest, framed by a tight camera, for the `character-closeup` visual state.
+    // Spawns directly (bypassing the suppressed auto-spawner) after terrain loads.
+    registerTestHook('spawnCharacterCloseup', () => {
+      const store = useGameStore.getState();
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5); // flattering midday
+      const MX = 3, MZ = 3;
+      const groundY = store.getMobGroundLevel ? store.getMobGroundLevel(MX, MZ) : 53;
+      if (store.spawnMob) store.spawnMob(MX, MZ, 'zombie');
+      useGameStore.setState({
+        treasureChestsList: [{ id: 'closeup-chest', position: [MX + 1.6, groundY + 0.4, MZ] }],
+      });
+      enterCaptureMode({ camera: { position: [MX + 2.6, groundY + 1.7, MZ + 4.2], lookAt: [MX + 0.8, groundY + 0.7, MZ] } });
+    });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);

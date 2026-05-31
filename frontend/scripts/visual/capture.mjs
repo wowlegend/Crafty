@@ -1,6 +1,7 @@
 // Spawns `vite dev`, drives the app to known states via window.__craftyTest
 // (DEV-only bridge), and screenshots each to tests/visual/<current|baseline>/<state>.png.
-// Reachable states today: menu, explore-day, explore-night (dusk), boss-obsidian.
+// Reachable states today: menu, explore-day, explore-night (dusk), boss-obsidian,
+// character-closeup.
 // Per spec §4, dusk IS the everyday night, so `explore-night` already covers the dusk
 // state; `boss-obsidian` (Tier 2) is the genuinely new danger mood.
 //
@@ -96,6 +97,13 @@ async function main() {
     await delay(1500);
     await page.screenshot({ path: resolve(OUT, 'boss-obsidian.png') });
     console.log('captured boss-obsidian');
+
+    // character-closeup: deterministic single-zombie + chest close-up that gates the
+    // M2b character render language (toon + rim + outline). Resets danger/day first.
+    await page.evaluate(() => window.__craftyTest.call('spawnCharacterCloseup'));
+    await delay(1800); // mob mounts + spawn-pop settles + mood/lighting lerp completes
+    await page.screenshot({ path: resolve(OUT, 'character-closeup.png') });
+    console.log('captured character-closeup');
   } finally {
     await browser.close();
     server.kill('SIGTERM');
