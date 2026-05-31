@@ -723,8 +723,9 @@ const AIWorkerSystem = () => {
 
   useFrame((state, delta) => {
     if (!camera || !workerRef.current) return;
+    if (isCaptureMode()) return; // freeze mob AI/movement so capture frames are byte-stable
     const now = performance.now();
-    
+
     // Process knockback in main thread
     for (const entity of mobsQuery.entities) {
       if (entity.health <= 0) continue;
