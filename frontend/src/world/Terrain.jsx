@@ -7,6 +7,7 @@ import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
+import { isCaptureMode } from '../devtest/captureMode';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -657,10 +658,21 @@ export const MinecraftWorld = React.memo(() => {
         return () => window.removeEventListener('mousedown', handleClick);
     }, [camera, rapier, world]);
 
+    // Worker `chunk_mesh` messages arrive in non-deterministic order, so the chunk
+    // insertion order (and thus three.js transparent-mesh sort order for water) varies
+    // per run. In dev capture mode, sort chunks by key so the rendered frame is stable.
+    const renderChunks = (() => {
+        const list = Object.values(chunks).filter(c => c.meshData);
+        if (isCaptureMode()) {
+            list.sort((a, b) => (a.cx - b.cx) || (a.cz - b.cz));
+        }
+        return list;
+    })();
+
     return (
         <group>
-            {Object.values(chunks).filter(c => c.meshData).map(chunk => (
-                <ChunkMesh 
+            {renderChunks.map(chunk => (
+                <ChunkMesh
                     key={`${chunk.cx}_${chunk.cz}`} 
                     cx={chunk.cx} 
                     cz={chunk.cz} 

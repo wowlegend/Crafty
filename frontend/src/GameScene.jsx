@@ -673,7 +673,7 @@ export function GameScene({
         <ambientLight intensity={gameState.isDay ? 0.6 : 0.25} />
         
         <directionalLight
-          castShadow
+          castShadow={!isCaptureMode}
           position={gameState.isDay ? [50, 100, 50] : [-50, 50, -50]}
           intensity={gameState.isDay ? 1.5 : 0.2}
           shadow-mapSize={shadowConfig.mapSize}
@@ -731,7 +731,9 @@ export function GameScene({
               luminanceSmoothing={0.1}
               mipmapBlur
             />
-            <Noise opacity={0.01} />
+            {/* Per-frame random film grain — disabled in dev capture mode because it
+                makes every frame pixel-different (defeats the visual-regression diff). */}
+            {!isCaptureMode && <Noise opacity={0.01} />}
             <Vignette eskil={false} offset={0.3} darkness={0.8} />
           </EffectComposer>
           <Preload all />
