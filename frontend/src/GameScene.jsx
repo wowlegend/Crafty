@@ -3,9 +3,9 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
-import { PointerLockControls, Stats, Preload, Sky, ContactShadows } from '@react-three/drei';
+import { PointerLockControls, Stats, Preload, Sky } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
-import { EffectComposer, SSAO, Bloom, Noise, Vignette, N8AO } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Noise, Vignette, N8AO } from '@react-three/postprocessing';
 import { TIERS } from './render/quality';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
@@ -727,7 +727,17 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
-          <EffectComposer disableNormalPass>
+          <EffectComposer>
+            {q.ao && (
+              <N8AO
+                halfRes
+                aoRadius={1.2}
+                distanceFalloff={1.0}
+                intensity={2.0}
+                quality="medium"
+                color="black"
+              />
+            )}
             <Bloom
               intensity={1.2}
               luminanceThreshold={0.9}

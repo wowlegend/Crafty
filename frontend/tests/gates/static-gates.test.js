@@ -51,7 +51,11 @@ describe('static gates', () => {
   // silently forgotten; .todo keeps them visible in test output.
   it.todo('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)');
   it.todo('S1-C: single UI design language — no minecraft-bevel + glass + neon coexisting');
-  it.todo('S1-B: AO pass present in the EffectComposer (render-probe)');
+  it('S1-B: AO pass present in the EffectComposer', () => {
+    const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
+    expect(src, 'N8AO must be rendered inside the composer, not just imported')
+      .toMatch(/<N8AO\b/);
+  });
 
   it('S1-B: bloom luminanceThreshold >= 0.85', () => {
     const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
