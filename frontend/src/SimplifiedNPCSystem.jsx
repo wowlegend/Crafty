@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, Outlines } from '@react-three/drei';
 import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
@@ -9,7 +9,6 @@ import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { isCaptureMode } from './devtest/captureMode';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Outlines } from '@react-three/drei';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -78,8 +77,9 @@ const MobModel = ({ entity }) => {
   const [bodyW, bodyH, bodyD] = mobConfig.bodySize;
   const [headW, headH, headD] = mobConfig.headSize;
 
-  const qualityTier = useGameStore(state => state.qualityTier) || 'high';
-  const q = TIERS[qualityTier] || TIERS.high;
+  const qualityTier = useGameStore(state => state.qualityTier) || 'low';
+  const q = TIERS[qualityTier] || TIERS.low;
+  const rimStrength = q.charRim ? OUTLINE_RIM_STRENGTH : 0;
 
   const baseColor = useMemo(() => new THREE.Color(entity.color), [entity.color]);
   const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
@@ -210,13 +210,13 @@ const MobModel = ({ entity }) => {
         {/* Body */}
         <mesh castShadow receiveShadow position={[0, bodyH / 2, 0]}>
           <boxGeometry args={[bodyW, bodyH, bodyD]} />
-          <MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} />
+          <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Head */}
         <mesh castShadow receiveShadow position={[0, bodyH + headH / 2, bodyD / 3]}>
           <boxGeometry args={[headW, headH, headD]} />
-          <MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} />
+          <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Eyes for hostile mobs */}
@@ -247,17 +247,17 @@ const MobModel = ({ entity }) => {
             {/* Protruding nose */}
             <mesh castShadow receiveShadow position={[0, bodyH + headH / 2 - 0.1, bodyD / 3 + headD / 2 + 0.06]}>
               <boxGeometry args={[0.12, 0.25, 0.15]} />
-              <MobToonMaterial color="#d2b48c" rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} />
+              <MobToonMaterial color="#d2b48c" rimStrength={rimStrength} />
             </mesh>
           </>
         )}
         {/* Legs */}
         {entity.type !== 'spider' ? (
           <>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} /></mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} /></mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} /></mesh>
-            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[2] = el} position={[-bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} /></mesh>
+            <mesh castShadow receiveShadow ref={(el) => legRefs.current[3] = el} position={[bodyW / 3, -0.3, -bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} /></mesh>
           </>
         ) : (
           [...Array(8)].map((_, i) => (
@@ -265,7 +265,7 @@ const MobModel = ({ entity }) => {
               Math.cos((i / 8) * Math.PI * 2) * 0.8, 0, Math.sin((i / 8) * Math.PI * 2) * 0.8
             ]} rotation={[0, 0, Math.PI / 4]}>
               <boxGeometry args={[0.1, 0.8, 0.1]} />
-              <MobToonMaterial color={entity.color} rimStrength={q.charRim ? OUTLINE_RIM_STRENGTH : 0} />
+              <MobToonMaterial color={entity.color} rimStrength={rimStrength} />
             </mesh>
           ))
         )}
