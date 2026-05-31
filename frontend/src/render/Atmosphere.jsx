@@ -8,7 +8,7 @@ import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { isCaptureMode } from '../devtest/captureMode.js';
-import { moodRef, moodTarget, sampleMood } from './atmosphere.js';
+import { moodRef, moodTarget, sampleMood } from './mood.js';
 
 // A 3-stop gradient skydome (horizon -> mid -> top) + soft sun glow. Always drawn
 // behind everything (depthTest/Write off, renderOrder -1, fog off) and follows the

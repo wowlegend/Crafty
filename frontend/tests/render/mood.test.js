@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { moodTarget, sampleMood, moodRef } from '../../src/render/atmosphere.js';
+import { moodTarget, sampleMood, moodRef } from '../../src/render/mood.js';
 import { PALETTE } from '../../src/theme/tokens.js';
 
 describe('moodTarget', () => {
