@@ -45,6 +45,11 @@ export const useGameStore = create((set, get) => ({
     qualityTier: 'low',
     setQualityTier: (tier) => set({ qualityTier: tier }),
 
+    // Danger mood input (spec §4): 0 = explore, 1 = dusk, 2 = obsidian. Gameplay
+    // triggers (night/combat/boss) wire this in S2; the test bridge drives it now.
+    dangerLevel: 0,
+    setDangerLevel: (n) => set({ dangerLevel: Number(n) || 0 }),
+
     isWebGLContextLost: false,
     setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
 
