@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
-import { PointerLockControls, Stats, Preload, Sky } from '@react-three/drei';
+import { PointerLockControls, Stats, Preload, Sky, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 import { TIERS } from './render/quality';
@@ -607,7 +607,7 @@ export function GameScene({
   }, []);
 
   const shadowConfig = useMemo(() => ({
-    mapSize: [2048, 2048],
+    mapSize: [q.shadowMapSize, q.shadowMapSize],
     camera: {
       left: -100,
       right: 100,
@@ -616,12 +616,13 @@ export function GameScene({
       near: 0.1,
       far: 200
     }
-  }), []);
+  }), [q.shadowMapSize]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
       <Canvas
         shadows
+        dpr={[1, q.dprCap]}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
@@ -637,7 +638,6 @@ export function GameScene({
           position: [0, 30, 0]
         }}
         onCreated={({ gl, camera, scene }) => {
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
           camera.rotation.order = 'YXZ';
           camera.rotation.set(0, 0, 0);
           camera.lookAt(0, 30, -100);
@@ -671,8 +671,19 @@ export function GameScene({
           mieDirectionalG={0.8}
         />
         
+        {!isCaptureMode && (
+          <PerformanceMonitor
+            onDecline={() => {
+              const cur = useGameStore.getState().qualityTier;
+              const next = cur === 'high' ? 'med' : 'low';
+              if (next !== cur) useGameStore.getState().setQualityTier(next);
+            }}
+          />
+        )}
+        {!isCaptureMode && <AdaptiveDpr pixelated />}
+
         <EnvironmentalFog />
-        
+
         <ambientLight intensity={gameState.isDay ? 0.6 : 0.25} />
         
         <directionalLight
