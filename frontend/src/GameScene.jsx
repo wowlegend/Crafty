@@ -3,10 +3,11 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
-import { PointerLockControls, Stats, Preload, Sky, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 import { TIERS } from './render/quality';
+import { Atmosphere } from './render/Atmosphere.jsx';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -550,32 +551,6 @@ const WeatherSystem = () => {
   );
 };
 
-// Dynamic environmental fog with smooth transitions matching scene background
-const EnvironmentalFog = () => {
-  const { scene } = useThree();
-  const isDay = useGameStore(state => state.isDay);
-  
-  const targetColor = useMemo(() => new THREE.Color(isDay ? '#e0f7fa' : '#0a0a23'), [isDay]);
-  const targetDensity = isDay ? 0.007 : 0.025;
-
-  useFrame((state, delta) => {
-    if (!scene.fog) {
-      scene.fog = new THREE.FogExp2('#e0f7fa', 0.007);
-    }
-    
-    const factor = Math.min(1.0, delta * 2.0);
-    scene.fog.color.lerp(targetColor, factor);
-    scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, targetDensity, factor);
-    
-    if (!scene.background) {
-      scene.background = new THREE.Color();
-    }
-    scene.background.copy(scene.fog.color);
-  });
-
-  return null;
-};
-
 export function GameScene({
   gameState,
   isWorldBuilt,
@@ -663,14 +638,6 @@ export function GameScene({
           canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
         }}
       >
-        <Sky 
-          sunPosition={gameState.isDay ? [100, 20, 100] : [-100, -20, -100]} 
-          turbidity={0.1}
-          rayleigh={2}
-          mieCoefficient={0.005}
-          mieDirectionalG={0.8}
-        />
-        
         {!isCaptureMode && (
           <PerformanceMonitor
             onDecline={() => {
@@ -682,27 +649,7 @@ export function GameScene({
         )}
         {!isCaptureMode && <AdaptiveDpr pixelated />}
 
-        <EnvironmentalFog />
-
-        <ambientLight intensity={gameState.isDay ? 0.6 : 0.25} />
-        
-        <directionalLight
-          castShadow={!isCaptureMode}
-          position={gameState.isDay ? [50, 100, 50] : [-50, 50, -50]}
-          intensity={gameState.isDay ? 1.5 : 0.2}
-          shadow-mapSize={shadowConfig.mapSize}
-          shadow-camera-left={shadowConfig.camera.left}
-          shadow-camera-right={shadowConfig.camera.right}
-          shadow-camera-top={shadowConfig.camera.top}
-          shadow-camera-bottom={shadowConfig.camera.bottom}
-          shadow-camera-near={shadowConfig.camera.near}
-          shadow-camera-far={shadowConfig.camera.far}
-          shadow-bias={-0.0001}
-        />
-
-        {!gameState.isDay && (
-          <pointLight position={[0, 20, 0]} intensity={0.5} distance={50} color="#4169E1" />
-        )}
+        <Atmosphere shadowConfig={shadowConfig} />
 
         <WeatherSystem />
 
