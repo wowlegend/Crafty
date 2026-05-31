@@ -10,9 +10,13 @@ export const TOON = { shadow: 0.55, lit: 1.0 }; // 2 bands, hard step at dotNL=0
 export const RIM = { color: '#bfe2ff', power: 2.5, strength: 0.35 }; // high tier only
 export const OUTLINE = {
   color: '#0b0e14',
-  mob:  { thickness: 0.025 },
-  boss: { thickness: 0.04 },
-  prop: { thickness: 0.02 },
+  // drei <Outlines> default mode (screenspace=false) → `thickness` is ≈ constant
+  // SCREEN PIXELS (resolution-buffer px), NOT world units. ~3-5px reads as a crisp
+  // ink line at any distance (gameplay-robust). (drei's 0.05 default is for the
+  // screenspace=true world-unit mode, which we don't use.)
+  mob:  { thickness: 4 },
+  boss: { thickness: 6 },
+  prop: { thickness: 3 },
 };
 
 // --- 2-band toon gradient (memoized singleton) ---
