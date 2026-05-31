@@ -725,6 +725,11 @@ export const Player = ({ isWorldBuilt }) => {
     }
   });
 
+  // Hide the camera-attached first-person hands + held FX during capture so the
+  // visual-regression fixture is a clean world vista (the render recipe operates on
+  // terrain/sky/AO; the character render language is validated separately in S1-B M2).
+  const inCapture = useGameStore((s) => s.isCaptureMode);
+
   return (
     <group>
       <RigidBody
@@ -737,7 +742,9 @@ export const Player = ({ isWorldBuilt }) => {
         <CapsuleCollider args={[0.5, 0.4]} />
       </RigidBody>
       <primitive object={camera}>
-        <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />
+        {!inCapture && (
+          <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />
+        )}
       </primitive>
     </group>
   );

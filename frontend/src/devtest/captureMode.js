@@ -17,11 +17,13 @@ const BASE_SEED = 0x9e3779b9; // golden-ratio constant, fixed across all runs
 let _captureMode = false;
 let _opts = {
   // A known, fixed camera pose so the follow-cam stops drifting during capture.
-  // Matches the natural spawn view: the player spawns at x=0,z=0 on terrain near y≈53
-  // with the camera at eye level looking horizontally toward -Z across the lit terrain.
+  // Elevated ~25° "diorama" down-angle over the spawn terrain (x=0,z=0, surface ≈ y53)
+  // instead of an eye-level horizontal stare — so the visual-regression frame actually
+  // samples what the render recipe changes (AO crevices, foliage saturation, sky grade,
+  // water, silhouettes) rather than a single flat trunk/wall filling the frame.
   camera: {
-    position: [0, 54.5, 0],
-    lookAt: [0, 54.5, -100],
+    position: [0, 72, 20],
+    lookAt: [0, 40, -50],
   },
 };
 
