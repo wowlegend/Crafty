@@ -49,7 +49,8 @@ The current guard is `child.material.name !== "eye"`. drei's OutlinesMaterial ha
 ## File Structure
 
 **Create:**
-- `src/render/characterStyle.js` — the look's single source of truth: `getToonGradient()` (memoized 2-band `DataTexture`), `TOON`, `OUTLINE`, `RIM` config, `installRim(material, opts)` (fresnel `onBeforeCompile`), `MobToonMaterial` (R3F wrapper component), `flashableMaterial(mat)` (the hit-flash allow-list predicate).
+- `src/render/characterStyle.js` — PURE look data + helpers (no JSX, no R3F import → node/vitest-testable): `getToonGradient()` (memoized 2-band `DataTexture`), `TOON`/`OUTLINE`/`RIM` config, `installRim(material, opts)` (fresnel `onBeforeCompile`), `flashableMaterial(mat)` (the hit-flash allow-list predicate).
+- `src/render/MobToonMaterial.jsx` — the R3F wrapper component (`extend` + `<MobToonMaterial>`); imports the pure helpers from `characterStyle.js`. (JSX lives in a `.jsx` file — this project's Vite config parses JSX only in `.jsx`; and keeping `extend()` out of the pure module keeps the unit test renderer-free.)
 - `tests/render/characterStyle.test.js` — unit tests for the pure pieces.
 - `tests/gates/character-render-gates.test.js` — static source gates (boss emissive preserved; AI tick capture-gated; STATES updated).
 
@@ -138,13 +139,12 @@ Expected: FAIL — cannot resolve `../../src/render/characterStyle.js`.
 - [ ] **Step 3: Implement `src/render/characterStyle.js`**
 
 ```js
-// Character render language (S1-B M2b): the single source of truth for the
+// Character render language (S1-B M2b): PURE single source of truth for the
 // stylized mob/boss/prop look — a subtle 2-band toon gradient, a fresnel
 // rim-light shader patch, the inverted-hull outline config, and the hit-flash
-// material allow-list. Pure data + helpers; consumers apply it declaratively.
+// material allow-list. No JSX / no R3F import here (keeps it node-testable);
+// the React <MobToonMaterial> wrapper lives in MobToonMaterial.jsx.
 import * as THREE from 'three';
-import { MeshToonMaterial } from 'three';
-import { extend } from '@react-three/fiber';
 
 // --- Art direction (re-tune here; Kevin's eye is the judge at re-baseline) ---
 export const TOON = { shadow: 0.55, lit: 1.0 }; // 2 bands, hard step at dotNL=0.5
@@ -208,15 +208,27 @@ export function installRim(material, { color = RIM.color, power = RIM.power, str
 export function flashableMaterial(mat) {
   return !!mat && (mat.isMeshStandardMaterial === true || mat.isMeshToonMaterial === true);
 }
+```
 
-// --- R3F wrapper: a per-instance toon material with the rim patch baked in.
-// `rim` strength is tier-gated by the caller (0 disables the rim cheaply
-// without a shader recompile). gradientMap is the shared singleton.
+> **Implementer note (VBA):** before trusting `vNormal`/`vViewPosition`, confirm they're declared in the compiled toon shader (they are for lit materials — toon derives from the same chunks as phong). If a future three version renames them, the `tests/render/characterStyle.test.js` shader-injection assertion still passes (string replace), but the **visual** rim would vanish — caught at re-baseline.
+
+- [ ] **Step 3b: Implement `src/render/MobToonMaterial.jsx` (the R3F wrapper)**
+
+```jsx
+// R3F wrapper: a per-instance MeshToonMaterial with the shared 2-band gradient
+// + the fresnel rim baked in at construction (so onBeforeCompile is set before
+// first compile). `rimStrength` is tier-gated by the caller (0 disables the rim
+// cheaply without a recompile). Kept in a .jsx file (JSX) + isolated from the
+// pure characterStyle.js so the unit test stays renderer-free.
+import { MeshToonMaterial } from 'three';
+import { extend } from '@react-three/fiber';
+import { getToonGradient, installRim, RIM } from './characterStyle';
+
 class MobToonMaterialImpl extends MeshToonMaterial {
   constructor() {
     super();
     this.gradientMap = getToonGradient();
-    installRim(this); // strength can be overridden per-instance via userData.rim
+    installRim(this); // strength overridable per-instance via userData.rim
   }
 }
 extend({ MobToonMaterialImpl });
@@ -233,7 +245,7 @@ export function MobToonMaterial({ color, rimStrength = RIM.strength, ...props })
 }
 ```
 
-> **Implementer note (VBA):** before trusting `vNormal`/`vViewPosition`, confirm they're declared in the compiled toon shader (they are for lit materials — toon derives from the same chunks as phong). If a future three version renames them, the `tests/render/characterStyle.test.js` shader-injection assertion still passes (string replace), but the **visual** rim would vanish — caught at re-baseline.
+> **Implementer note:** `<mobToonMaterialImpl>` is the lowercase R3F element name auto-derived from the `extend({ MobToonMaterialImpl })` key — verify it renders (a quick `npm run build` + dev smoke). If R3F's `attach="material"` + a custom material class misbehaves, fall back to a plain `<meshToonMaterial gradientMap={getToonGradient()} ...>` with `onUpdate`-installed rim, and report it as DONE_WITH_CONCERNS.
 
 - [ ] **Step 4: Run the unit test to verify it passes**
 
@@ -262,7 +274,7 @@ Expected: PASS (new keys are additive; `selectTier` unchanged).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/src/render/characterStyle.js frontend/tests/render/characterStyle.test.js frontend/src/render/quality.js
+git add frontend/src/render/characterStyle.js frontend/src/render/MobToonMaterial.jsx frontend/tests/render/characterStyle.test.js frontend/src/render/quality.js
 git commit -m "feat(render): character-style module (2-band toon + fresnel rim + outline config) and tier flags"
 ```
 
@@ -279,9 +291,12 @@ At the top of `src/SimplifiedNPCSystem.jsx`, add:
 
 ```js
 import { Outlines } from '@react-three/drei';
-import { MobToonMaterial, flashableMaterial, OUTLINE } from './render/characterStyle';
+import { MobToonMaterial } from './render/MobToonMaterial';
+import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
 ```
+
+(Task 2 Step 2 also references `OUTLINE_RIM_STRENGTH = RIM.strength` — `RIM` is now imported on the line above; drop the separate `import { RIM }` shown later in that step.)
 
 Inside `MobModel`, near the other `useGameStore` reads (the component already calls `useGameStore.getState()` in useFrame; for render-time tier read a reactive selector is fine since tier changes are rare):
 
