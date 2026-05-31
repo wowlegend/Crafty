@@ -65,6 +65,8 @@ function GameApp({ experienceSystem }) {
         activeSpell: state.activeSpell,
         setActiveSpell: state.setActiveSpell
     })));
+  // Capture-only HUD suppression (character-studio shots). Default false in gameplay.
+  const hudHidden = useGameStore(s => s.hudHidden);
   const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
@@ -153,21 +155,24 @@ function GameApp({ experienceSystem }) {
     registerTestHook('spawnCharacterCloseup', () => {
       const store = useGameStore.getState();
       store.setDangerLevel(0);
+      store.setHudHidden(true); // clean character-studio card: suppress HUD + its toast
       store.setTimeOfDay(0.5); // flattering midday
-      const SX = 0, SZ = -8, SY = 100; // high above the ~y53 terrain so the distant
+      const SX = 0, SZ = -8, SY = 140; // far above the ~y53 terrain so even the distant
       // terrain horizon falls >37.5° (half the 75° vFOV) below a level camera and
-      // drops out of frame entirely → clean sky backdrop.
+      // drops out of frame entirely → clean, uninterrupted sky backdrop.
       if (store.spawnMob) store.spawnMob(SX, SZ, 'zombie', SY);
-      // The mob group sits at world y=SY+0.5; its body spans ~y(SY+0.2)→(SY+2.3),
-      // vertical center ~SY+1.25, eyes ~SY+2.4. Camera: a slight +X 3/4 angle, level
-      // at the subject's mid-height, pulled back in +Z (mob faces +Z) so the full
-      // character (head→feet) is framed with sky margin — showcasing the toon body,
-      // red eyes, rim light and dark contour outline against the sky.
-      enterCaptureMode({ camera: { position: [SX + 1.4, SY + 1.3, SZ + 3.6], lookAt: [SX, SY + 1.25, SZ] } });
+      // The mob group sits at world y=SY+0.5; the body spans ~y(SY+0.2 feet)→(SY+2.3
+      // head-top), vertical center ~SY+1.3. Camera: a slight +X 3/4 angle, level at the
+      // subject's mid-height, pulled in +Z (mob faces +Z) so the full character (head→
+      // feet) fills ~55-65% of the frame — a clean character-studio card showcasing the
+      // toon body, red eyes, rim light and dark contour outline. HealthBar suppressed in
+      // capture (SimplifiedNPCSystem) so the silhouette reads clean.
+      enterCaptureMode({ camera: { position: [SX + 0.8, SY + 1.3, SZ + 2.9], lookAt: [SX, SY + 1.3, SZ] } });
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);
+      useGameStore.getState().setHudHidden(false);
     });
     installTestBridge();
   }, []);
@@ -331,22 +336,24 @@ function GameApp({ experienceSystem }) {
         </div>
       )}
 
-      <HUD
-        isPointerLocked={isPointerLocked}
-        isWorldBuilt={isWorldBuilt}
-        gameState={gameState}
-        gameSystems={gameSystems}
-        experienceSystem={experienceSystem}
-        questSystem={questSystem}
-        treasureChests={treasureChests}
-        survivalMode={survivalMode}
-        bossSystem={bossSystem}
-        petSystem={petSystem}
-        spellUpgrades={spellUpgrades}
-        showStats={showStats}
-        setShowStats={setShowStats}
-        setIsPointerLocked={setIsPointerLocked}
-      />
+      {!hudHidden && (
+        <HUD
+          isPointerLocked={isPointerLocked}
+          isWorldBuilt={isWorldBuilt}
+          gameState={gameState}
+          gameSystems={gameSystems}
+          experienceSystem={experienceSystem}
+          questSystem={questSystem}
+          treasureChests={treasureChests}
+          survivalMode={survivalMode}
+          bossSystem={bossSystem}
+          petSystem={petSystem}
+          spellUpgrades={spellUpgrades}
+          showStats={showStats}
+          setShowStats={setShowStats}
+          setIsPointerLocked={setIsPointerLocked}
+        />
+      )}
 
       <MenuSystem
         gameState={gameState}
@@ -365,7 +372,7 @@ function GameApp({ experienceSystem }) {
         setShowAuthModal={setShowAuthModal}
       />
 
-      <DebugOverlay isWorldBuilt={isWorldBuilt} />
+      {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
     </div>
   );
 }

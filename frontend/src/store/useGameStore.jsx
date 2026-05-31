@@ -40,6 +40,12 @@ export const useGameStore = create((set, get) => ({
     isCaptureMode: false,
     setCaptureMode: (on) => set({ isCaptureMode: !!on }),
 
+    // Capture-only: hide the gameplay HUD for clean character-studio shots
+    // (e.g. the character-closeup visual fixture). Default false → HUD always shows
+    // in gameplay and in the other capture states.
+    hudHidden: false,
+    setHudHidden: (on) => set({ hudHidden: !!on }),
+
     // Device-gated render quality tier (spec §8). Default 'low' = conservative;
     // App.jsx selects up at startup via selectTier(readDeviceSignals()).
     qualityTier: 'low',

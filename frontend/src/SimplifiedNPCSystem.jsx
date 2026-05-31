@@ -277,7 +277,9 @@ const MobModel = ({ entity }) => {
           </mesh>
         )}
       </group>
-      <HealthBar entity={entity} />
+      {/* Suppress the floating health bar in capture mode so character-studio
+          fixtures (e.g. character-closeup) render a clean silhouette. No-op in gameplay. */}
+      {!isCaptureMode() && <HealthBar entity={entity} />}
       {dialogue && (
         <Html position={[0, bodyH + headH + 0.8, 0]} center distanceFactor={8}>
           <div 
