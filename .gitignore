@@ -26,3 +26,6 @@ yarn-error.log*
 # misc
 /coverage
 *.tsbuildinfo
+
+# brainstorming visual-companion sessions
+.superpowers/
