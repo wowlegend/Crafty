@@ -52,5 +52,11 @@ describe('static gates', () => {
   it.todo('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)');
   it.todo('S1-C: single UI design language — no minecraft-bevel + glass + neon coexisting');
   it.todo('S1-B: AO pass present in the EffectComposer (render-probe)');
-  it.todo('S1-B: bloom luminanceThreshold >= 0.85');
+
+  it('S1-B: bloom luminanceThreshold >= 0.85', () => {
+    const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
+    const m = src.match(/luminanceThreshold=\{\s*([0-9.]+)\s*\}/);
+    expect(m, 'Bloom luminanceThreshold prop not found').not.toBeNull();
+    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.85);
+  });
 });

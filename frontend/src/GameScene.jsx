@@ -6,6 +6,7 @@ import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, Sky, ContactShadows } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, SSAO, Bloom, Noise, Vignette, N8AO } from '@react-three/postprocessing';
+import { TIERS } from './render/quality';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -589,6 +590,8 @@ export function GameScene({
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
   // Always false in normal gameplay → Physics runs exactly as before.
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
+  const qualityTier = useGameStore((s) => s.qualityTier);
+  const q = TIERS[qualityTier] || TIERS.low;
 
   useEffect(() => {
     useGameStore.setState({
@@ -727,9 +730,9 @@ export function GameScene({
           <EffectComposer disableNormalPass>
             <Bloom
               intensity={1.2}
-              luminanceThreshold={0.6}
+              luminanceThreshold={0.9}
               luminanceSmoothing={0.1}
-              mipmapBlur
+              mipmapBlur={q.bloomMipmap}
             />
             {/* Per-frame random film grain — disabled in dev capture mode because it
                 makes every frame pixel-different (defeats the visual-regression diff). */}
