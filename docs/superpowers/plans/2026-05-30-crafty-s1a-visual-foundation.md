@@ -445,6 +445,24 @@ git commit -m "feat(devtest): dev-only test bridge to drive game states for the 
 
 ---
 
+## Task 4b: Capture-determinism layer (dev-only) — ADDED after Task 5 first attempt
+
+> **Why:** Task 5's first attempt proved the harness mechanism works (day-vs-night diffs at 45–58%) but the live scene is **non-deterministic** — the SAME state self-diffs 6–44% across runs (continuous clock animation, per-load `Math.random()` in weather/fireflies/foliage/menu-stars, Rapier physics drift, async terrain-worker RNG ordering, mob spawns). A tight-threshold gate is impossible without a dev-only deterministic capture mode. Kevin approved building it (2026-05-31).
+
+**Goal:** in dev capture mode, a given state renders byte-stable across runs → the same state self-diffs **< 2%** across two fresh captures.
+
+**Files:** Create `src/devtest/captureMode.js`; modify `src/devtest/testBridge.js` (add an `enterCapture` hook), `src/App.jsx` (wire), `src/GameScene.jsx` (decorative RNG + camera + physics + mob-spawn under capture mode), `src/MenuSystem.jsx` (seed stars + force-show menu state), and the store if needed.
+
+**Approach:**
+1. `captureMode.js`: `isCaptureMode()`, `enterCaptureMode(opts)`, and `makeSeededRandom(key)` — a per-key mulberry32 PRNG seeded from a FIXED seed + a stable string key per system/instance, so async completion order does NOT change results (the root cause of the residual non-determinism). Order-independence is the load-bearing property.
+2. `enterCapture` bridge hook: turns capture mode on, **pauses Rapier physics**, **pins the day/night clock** to the requested time, **fixes the camera** to a known pose (disable bob/sway/physics-follow), **suppresses mob spawns**. Must composite correctly with `@react-three/postprocessing` (keep frameloop running with a pinned clock rather than `setFrameloop('never')`, which the first attempt found fights the EffectComposer).
+3. Route every decorative `Math.random()` (GameScene WeatherSystem snow/rain/fireflies, foliage, MenuSystem stars) through `makeSeededRandom(<system-key>)` **when `isCaptureMode()`** (leave normal gameplay untouched).
+4. Redefine the `menu` state: the app has no title screen + auto-locks into the world, so `menu` must explicitly force the menu overlay visible with seeded stars (or be replaced by a deterministic pre-world state).
+
+**Acceptance:** capture the same state twice in two fresh `node` runs and assert self-diff < 2% (a temporary script is fine; don't commit it). Only once deterministic do baselines mean anything. Then proceed to Task 5.
+
+---
+
 ## Task 5: Visual-regression suite (the can-go-red core)
 
 > **⚠️ CORRECTIONS (from Task 4 findings):**
