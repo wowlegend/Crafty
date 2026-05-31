@@ -439,7 +439,7 @@ git commit -m "fix(capture): freeze mob AI tick in capture mode for deterministi
 
 ---
 
-## Task 4: `character-closeup` capture fixture (mob + chest) + visual baseline
+## Task 4: `character-closeup` capture fixture (mob-only, sky-studio) + visual baseline
 
 **Files:**
 - Modify: `src/App.jsx:119-154` (add `spawnCharacterCloseup` hook)
@@ -448,29 +448,40 @@ git commit -m "fix(capture): freeze mob AI tick in capture mode for deterministi
 
 - [ ] **Step 1: Add the `spawnCharacterCloseup` test hook in `src/App.jsx`**
 
-Inside the DEV test-bridge `useEffect` (after the `setDangerLevel` hook at `:148`), add:
+> **Implementation discovery (2026-05-31):** capture mounts `<Physics paused={isCaptureMode}>`, so Rapier never steps and the query pipeline is empty → `getMobGroundLevel(x,z)` (a raycast) returns `null` in capture. That makes `spawnMob` bail AND collapses `groundY`-relative placement to ~world-origin (vacuous frame). FIX: (a) extend `spawnMob` with an explicit-Y overload; (b) place the subject at a FIXED elevated Y framed against the sky horizon (terrain below frame). Chest moves to Task 5.
+
+**Step 0: Extend `spawnMob` with an explicit-Y overload (`src/SimplifiedNPCSystem.jsx`):**
+```js
+const spawnMob = (x, z, forceType = null, explicitY = null) => {
+  const store = useGameStore.getState();
+  let y = explicitY;
+  if (y === null) {
+    if (!store.getMobGroundLevel) return false;
+    y = store.getMobGroundLevel(x, z);
+    if (y === null || isNaN(y)) return false;
+  }
+  // ...rest unchanged (position uses `new THREE.Vector3(x, y + 0.5, z)`)...
+```
+(Existing `spawnMob(x,z)` / `spawnMob(x,z,type)` callers unaffected — explicitY defaults null → old behavior.)
+
+Inside the DEV test-bridge `useEffect` (after the `setDangerLevel` hook), add (MOB-ONLY sky-studio):
 
 ```jsx
-// Character-render fixture: a deterministic close-up of ONE zombie beside ONE
-// chest, framed by a tight camera, for the `character-closeup` visual state.
-// Spawns directly (bypassing the suppressed auto-spawner) AFTER terrain loads.
+// Character-render fixture: a deterministic close-up of ONE zombie, framed against
+// the sky horizon. Capture pauses physics → getMobGroundLevel (raycast) is null, so
+// we place the subject at a FIXED elevated Y and frame the camera so the terrain
+// sits below the frame (clean sky backdrop showcases toon/rim/outline).
 registerTestHook('spawnCharacterCloseup', () => {
   const store = useGameStore.getState();
   store.setDangerLevel(0);
   store.setTimeOfDay(0.5); // flattering midday
-  // Deterministic mob + chest near the spawn surface (≈ y53).
-  const MX = 3, MZ = 3;
-  const groundY = store.getMobGroundLevel ? store.getMobGroundLevel(MX, MZ) : 53;
-  if (store.spawnMob) store.spawnMob(MX, MZ, 'zombie');
-  useGameStore.setState({
-    treasureChestsList: [{ id: 'closeup-chest', position: [MX + 1.6, groundY + 0.4, MZ] }],
-  });
-  // Tight 3/4 camera on the pair (Kevin re-tunes at re-baseline).
-  enterCaptureMode({ camera: { position: [MX + 2.6, groundY + 1.7, MZ + 4.2], lookAt: [MX + 0.8, groundY + 0.7, MZ] } });
+  const SX = 0, SZ = -8, SY = 70; // elevated, above the ~y53 terrain → sky backdrop
+  if (store.spawnMob) store.spawnMob(SX, SZ, 'zombie', SY);
+  enterCaptureMode({ camera: { position: [SX + 1.2, SY + 1.1, SZ + 4.6], lookAt: [SX + 0.4, SY + 0.7, SZ] } });
 });
 ```
 
-(`enterCaptureMode` is already imported in `App.jsx`. `setDangerLevel`/`setTimeOfDay`/`getMobGroundLevel`/`spawnMob` are all on the store.)
+(`enterCaptureMode` is already imported in `App.jsx`. Camera coords are Kevin's-eye-tunable at re-baseline.)
 
 - [ ] **Step 2: Add the capture sequence in `frontend/scripts/visual/capture.mjs`**
 
@@ -495,27 +506,24 @@ Line 7:
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup'];
 ```
 
-- [ ] **Step 4: Generate the baseline + HUMAN REVIEW (do NOT blind-accept)**
+- [ ] **Step 4: Generate the baseline SURGICALLY (don't clobber the existing 4) + HUMAN REVIEW**
 
 ```bash
-cd frontend && npm run visual:capture -- --baseline
+cd frontend && npm run visual:capture                 # current/, all 5 states
+npm run test:visual                                   # existing 4 MUST pass (regression check); closeup errors "missing baseline"
+cp tests/visual/current/character-closeup.png tests/visual/baseline/character-closeup.png   # add ONLY the new baseline
+npm run test:visual                                   # all 5 pass
+npm run visual:capture && npm run test:visual         # determinism: report the closeup self-diff % (<1% ideal)
 ```
+**If the existing 4 drift at the regression check → STOP** (the change leaked into a shared path). Then **open `tests/visual/baseline/character-closeup.png` and eyeball it** (Kevin's anti-blind-harness gate): the zombie must show the 2-band toon banding + a cool rim on the silhouette edge + a crisp dark contour outline, framed against the sky (NOT an empty frame).
 
-Then **open `tests/visual/baseline/character-closeup.png` and eyeball it** (Kevin's gate per the anti-blind-harness mandate): the zombie must show the 2-band toon banding + a visible cool rim on the silhouette edge + a crisp dark contour outline; the chest beside it must show its contour outline; the frame must be stable (re-run capture once and self-diff < 1%). Confirm the **existing 4 baselines are unchanged** by this run (they should be — mobs/chest are absent from those frames).
-
-- [ ] **Step 5: Run the full visual suite**
-
-```bash
-cd frontend && npm run visual:capture && npm run test:visual
-```
-Expected: all 5 states (incl. `character-closeup`) within 6%. If the existing 4 drift, STOP — the toon/quality change leaked into a shared path; diagnose before re-baselining.
-
-- [ ] **Step 6: Commit (baseline image + harness)**
+- [ ] **Step 5: Commit (baseline image + harness)**
 
 ```bash
-git add frontend/src/App.jsx frontend/scripts/visual/capture.mjs frontend/tests/visual/diff.test.js frontend/tests/visual/baseline/character-closeup.png
+git add frontend/src/SimplifiedNPCSystem.jsx frontend/src/App.jsx frontend/scripts/visual/capture.mjs frontend/tests/visual/diff.test.js frontend/tests/visual/baseline/character-closeup.png
 git commit -m "test(visual): character-closeup fixture + baseline (toon/rim/outline gate)"
 ```
+(Source split across commits is fine — the spawnMob overload + hook may land in a follow-up fix commit if the first capture reveals a placement issue.)
 
 ---
 
@@ -552,15 +560,22 @@ const charOutline = (TIERS[qualityTier] || TIERS.high).charOutline;
 
 (Leave the clasp + beacon orb un-outlined — the box contour reads the chest silhouette.)
 
-- [ ] **Step 3: Verify via the closeup baseline**
+- [ ] **Step 3: Add a chest to the closeup fixture + re-baseline**
 
-The `character-closeup` fixture (Task 4) injects a chest beside the zombie. Re-capture + re-baseline if the chest outline changed the closeup frame:
-
-```bash
-cd frontend && npm run visual:capture -- --baseline   # regenerate character-closeup
-# eyeball tests/visual/baseline/character-closeup.png — chest now has a contour
-cd frontend && npm run test:visual
+Task 4 made the closeup mob-only (sky-studio). Add ONE deterministic chest beside the zombie so the outline is verified in-frame. In the `spawnCharacterCloseup` hook (`src/App.jsx`), after the `spawnMob(...)` line, inject the chest at the same elevated Y (slightly toward camera, on the implied ground line):
+```jsx
+useGameStore.setState({
+  treasureChestsList: [{ id: 'closeup-chest', position: [SX + 1.9, SY - 0.4, SZ + 0.4] }],
+});
 ```
+(`SX/SY/SZ` are already in scope from Step 1.) Re-baseline SURGICALLY (only the closeup; don't touch the other 4):
+```bash
+cd frontend && npm run visual:capture            # current/, all 5
+npm run test:visual                              # existing 4 PASS; closeup mismatches old baseline (expected)
+cp tests/visual/current/character-closeup.png tests/visual/baseline/character-closeup.png
+npm run test:visual                              # all 5 pass; eyeball the chest now has a dark contour
+```
+Commit `src/world/Terrain.jsx` + `src/App.jsx` + the updated `tests/visual/baseline/character-closeup.png`.
 
 - [ ] **Step 4: Commit**
 
