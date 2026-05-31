@@ -29,6 +29,11 @@ describe('characterStyle', () => {
     expect(shader.uniforms.uRimStrength).toBe(m.userData.rim.uRimStrength);
     expect(shader.fragmentShader).toContain('uRimColor');
     expect(shader.fragmentShader).toContain('uRimStrength');
+    // ordering guard (regression vs a future three chunk rename): rim write
+    // lands AFTER <common> uniform decls and BEFORE the dithering include.
+    const fs = shader.fragmentShader;
+    expect(fs.indexOf('gl_FragColor.rgb +=')).toBeGreaterThan(fs.indexOf('#include <common>'));
+    expect(fs.indexOf('gl_FragColor.rgb +=')).toBeLessThan(fs.indexOf('#include <dithering_fragment>'));
   });
 
   it('flashableMaterial allows Standard+Toon, rejects Basic+Shader (outline)', () => {

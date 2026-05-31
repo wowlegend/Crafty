@@ -16,6 +16,7 @@ export const OUTLINE = {
 };
 
 // --- 2-band toon gradient (memoized singleton) ---
+// Intentionally process-lifetime: never disposed, shared by every toon material by design.
 let _gradient = null;
 export function getToonGradient() {
   if (_gradient) return _gradient;
