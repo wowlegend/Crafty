@@ -1,13 +1,14 @@
-import React, { Suspense, useMemo, useEffect, useRef } from 'react';
+import React, { Suspense, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
-import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays } from '@react-three/postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
+import { moodRef, sampleMood } from './render/mood';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -15,6 +16,29 @@ import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { captureRandom, isCaptureMode } from './devtest/captureMode';
+
+// Bright sun disc in the sky — the GodRays light source. Follows the camera at a
+// fixed mood-driven direction (reads as infinitely far) and tints with the mood sun colour.
+const Sun = ({ onReady }) => {
+  const ref = useRef();
+  const { camera } = useThree();
+  const _dir = useMemo(() => new THREE.Vector3(), []);
+  useEffect(() => { if (ref.current) onReady(ref.current); }, [onReady]);
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = sampleMood(moodRef.current);
+    _dir.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
+    mesh.position.copy(camera.position).addScaledVector(_dir, 380);
+    mesh.material.color.copy(m.sun);
+  });
+  return (
+    <mesh ref={ref} frustumCulled={false}>
+      <sphereGeometry args={[15, 24, 24]} />
+      <meshBasicMaterial color="#FFF6E0" toneMapped={false} fog={false} />
+    </mesh>
+  );
+};
 
 // Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
@@ -567,6 +591,7 @@ export function GameScene({
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
   const qualityTier = useGameStore((s) => s.qualityTier);
   const q = TIERS[qualityTier] || TIERS.low;
+  const [sunMesh, setSunMesh] = useState(null);
 
   useEffect(() => {
     useGameStore.setState({
@@ -685,6 +710,8 @@ export function GameScene({
             <PetEntities pets={petSystem.pets} />
           </Physics>
 
+          <Sun onReady={setSunMesh} />
+
           <EffectComposer>
             {q.ao && (
               <N8AO
@@ -696,11 +723,14 @@ export function GameScene({
                 color="black"
               />
             )}
+            {q.godRays && sunMesh && (
+              <GodRays sun={sunMesh} samples={60} density={0.95} decay={0.93} weight={0.5} exposure={0.45} clampMax={1} blur />
+            )}
             {/* Subtle baseline tone grade (saturation + contrast pop). The warm
                 "magic-hour" tint is delivered by M2's palette-driven Atmosphere
                 (ambient/fog/sun in warm tokens), not a whole-image hue shift here. */}
-            <HueSaturation saturation={0.08} />
-            <BrightnessContrast brightness={0.0} contrast={0.06} />
+            <HueSaturation saturation={0.18} />
+            <BrightnessContrast brightness={0.04} contrast={0.08} />
             <Bloom
               intensity={1.2}
               luminanceThreshold={0.9}

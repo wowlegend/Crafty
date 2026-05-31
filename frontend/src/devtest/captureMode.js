@@ -22,8 +22,8 @@ let _opts = {
   // samples what the render recipe changes (AO crevices, foliage saturation, sky grade,
   // water, silhouettes) rather than a single flat trunk/wall filling the frame.
   camera: {
-    position: [0, 72, 20],
-    lookAt: [0, 40, -50],
+    position: [0, 70, 24],
+    lookAt: [0, 64, -66],
   },
 };
 

@@ -14,7 +14,7 @@ const STATES = ['explore', 'dusk', 'obsidian']; // index === integer mood
 
 // Per-state lighting scalars (tunable). Colours are sourced from tokens.PALETTE.
 export const MOOD_SCALARS = {
-  explore:  { ambientIntensity: 0.60, sunIntensity: 1.50, fogDensity: 0.0070, fillIntensity: 0.00, sunPos: [50, 100, 50] },
+  explore:  { ambientIntensity: 0.85, sunIntensity: 1.85, fogDensity: 0.0045, fillIntensity: 0.00, sunPos: [20, 45, -90] },
   dusk:     { ambientIntensity: 0.40, sunIntensity: 0.60, fogDensity: 0.0120, fillIntensity: 0.45, sunPos: [-30, 40, -50] },
   obsidian: { ambientIntensity: 0.22, sunIntensity: 0.18, fogDensity: 0.0200, fillIntensity: 0.85, sunPos: [-50, 30, -50] },
 };
