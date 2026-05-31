@@ -13,6 +13,19 @@ let noise3D;
 const chunks = new Map();
 const chunkModifications = new Map();
 
+// Deterministic per-coordinate PRNG for vegetation placement. Trees/cacti previously used
+// raw Math.random(), which made the world layout DIFFERENT on every load (non-deterministic
+// silhouette) — that broke visual-regression baselines and meant a given seed never produced
+// the same world twice. Hashing the world coordinates yields a stable [0,1) value per column,
+// independent of chunk-generation order, so the same seed regenerates the identical world.
+const WORLD_SEED = 12345;
+function vegRandom(worldX, worldZ, salt) {
+  let h = (WORLD_SEED ^ Math.imul(worldX | 0, 0x27d4eb2d) ^ Math.imul(worldZ | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 self.onmessage = function(e) {
   const { type, payload } = e.data;
 
@@ -449,10 +462,10 @@ function generateChunkData(cx, cz) {
         }
       }
 
-      if (surfaceY > 28 && Math.random() < 0.02) {
+      if (surfaceY > 28 && vegRandom(worldX, worldZ, 1) < 0.02) {
         const surfaceBlock = blocks[x + z * CHUNK_SIZE + surfaceY * 256];
         if (surfaceBlock === 1) { // Forest Trees
-          const treeHeight = 4 + Math.floor(Math.random() * 3);
+          const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
           for (let ty = 1; ty <= treeHeight; ty++) {
             if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 6;
           }
@@ -471,7 +484,7 @@ function generateChunkData(cx, cz) {
             }
           }
         } else if (surfaceBlock === 4) { // Desert Cacti
-          const cactusHeight = 2 + Math.floor(Math.random() * 2);
+          const cactusHeight = 2 + Math.floor(vegRandom(worldX, worldZ, 3) * 2);
           for (let ty = 1; ty <= cactusHeight; ty++) {
             if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
           }
