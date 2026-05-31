@@ -1,7 +1,8 @@
 // Spawns `vite dev`, drives the app to known states via window.__craftyTest
 // (DEV-only bridge), and screenshots each to tests/visual/<current|baseline>/<state>.png.
-// Reachable states today: menu, explore-day, explore-night. The two danger states
-// (dusk-danger, boss-obsidian) are added when S1-B introduces dangerLevel.
+// Reachable states today: menu, explore-day, explore-night (dusk), boss-obsidian.
+// Per spec §4, dusk IS the everyday night, so `explore-night` already covers the dusk
+// state; `boss-obsidian` (Tier 2) is the genuinely new danger mood.
 //
 // Determinism: `enterCapture` flips the dev-only capture-determinism layer ON before any
 // frame is taken — seeded decorative RNG, paused physics, a pinned follow-cam pose, and
@@ -88,6 +89,13 @@ async function main() {
     await delay(1500);
     await page.screenshot({ path: resolve(OUT, 'explore-night.png') });
     console.log('captured explore-night');
+
+    // boss-obsidian: the obsidian danger mood (spec §4 Tier 2 — boss). <Atmosphere>
+    // snaps the mood in capture mode, so the frame settles within the delay.
+    await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 2));
+    await delay(1500);
+    await page.screenshot({ path: resolve(OUT, 'boss-obsidian.png') });
+    console.log('captured boss-obsidian');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

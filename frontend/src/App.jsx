@@ -145,6 +145,7 @@ function GameApp({ experienceSystem }) {
       }
     });
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
+    registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);
