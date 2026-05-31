@@ -5,7 +5,7 @@ import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, Sky } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
-import { EffectComposer, Bloom, Noise, Vignette, N8AO } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 import { TIERS } from './render/quality';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
@@ -738,12 +738,18 @@ export function GameScene({
                 color="black"
               />
             )}
+            {/* Subtle baseline tone grade (saturation + contrast pop). The warm
+                "magic-hour" tint is delivered by M2's palette-driven Atmosphere
+                (ambient/fog/sun in warm tokens), not a whole-image hue shift here. */}
+            <HueSaturation saturation={0.08} />
+            <BrightnessContrast brightness={0.0} contrast={0.06} />
             <Bloom
               intensity={1.2}
               luminanceThreshold={0.9}
               luminanceSmoothing={0.1}
               mipmapBlur={q.bloomMipmap}
             />
+            <SMAA />
             {/* Per-frame random film grain — disabled in dev capture mode because it
                 makes every frame pixel-different (defeats the visual-regression diff). */}
             {!isCaptureMode && <Noise opacity={0.01} />}
