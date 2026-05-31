@@ -12,6 +12,7 @@ import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
+import { captureRandom, isCaptureMode } from './devtest/captureMode';
 
 // Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
@@ -366,11 +367,13 @@ const WeatherSystem = () => {
   const rainData = useMemo(() => {
     const data = [];
     for (let i = 0; i < rainCount; i++) {
+      // Per-instance seeded RNG in capture mode (order-independent); native Math.random in gameplay.
+      const r = captureRandom(`weather-rain-${i}`);
       data.push({
-        x: (Math.random() - 0.5) * 40,
-        y: Math.random() * 40,
-        z: (Math.random() - 0.5) * 40,
-        speed: 15 + Math.random() * 8
+        x: (r() - 0.5) * 40,
+        y: r() * 40,
+        z: (r() - 0.5) * 40,
+        speed: 15 + r() * 8
       });
     }
     return data;
@@ -380,14 +383,15 @@ const WeatherSystem = () => {
   const snowData = useMemo(() => {
     const data = [];
     for (let i = 0; i < snowCount; i++) {
+      const r = captureRandom(`weather-snow-${i}`);
       data.push({
-        x: (Math.random() - 0.5) * 40,
-        y: Math.random() * 40,
-        z: (Math.random() - 0.5) * 40,
-        speed: 3 + Math.random() * 3,
-        wobbleSpeed: 1 + Math.random() * 2,
-        wobbleScale: 0.1 + Math.random() * 0.2,
-        seed: Math.random() * 100
+        x: (r() - 0.5) * 40,
+        y: r() * 40,
+        z: (r() - 0.5) * 40,
+        speed: 3 + r() * 3,
+        wobbleSpeed: 1 + r() * 2,
+        wobbleScale: 0.1 + r() * 0.2,
+        seed: r() * 100
       });
     }
     return data;
@@ -397,19 +401,24 @@ const WeatherSystem = () => {
   const fireflyData = useMemo(() => {
     const data = [];
     for (let i = 0; i < fireflyCount; i++) {
+      const r = captureRandom(`weather-firefly-${i}`);
       data.push({
-        x: (Math.random() - 0.5) * 20,
-        y: 2 + Math.random() * 8,
-        z: (Math.random() - 0.5) * 20,
-        wobbleSpeed: 0.5 + Math.random() * 1.0,
-        seed: Math.random() * 100
+        x: (r() - 0.5) * 20,
+        y: 2 + r() * 8,
+        z: (r() - 0.5) * 20,
+        wobbleSpeed: 0.5 + r() * 1.0,
+        seed: r() * 100
       });
     }
     return data;
   }, []);
 
-  useFrame((state, delta) => {
-    const time = state.clock.elapsedTime;
+  useFrame((state, frameDelta) => {
+    // Dev capture mode: pin the animation clock + delta to fixed constants so all
+    // time-driven particle motion renders at a deterministic pose. No-op in gameplay.
+    const capture = isCaptureMode();
+    const time = capture ? 0 : state.clock.elapsedTime;
+    const delta = capture ? 0 : frameDelta;
     const playerPos = useGameStore.getState().playerPosition;
     if (!playerPos) return;
 
@@ -497,9 +506,13 @@ const WeatherSystem = () => {
           const wobbleY = Math.cos(time * 0.8 + f.seed) * 0.03;
           const wobbleZ = Math.sin(time * 0.4 + f.seed * 1.5) * 0.05;
 
-          f.x += wobbleX;
-          f.y += wobbleY;
-          f.z += wobbleZ;
+          // In capture mode the per-frame drift accumulation is suppressed so the
+          // firefly cloud holds a fixed, repeatable pose (positions stay at seeded base).
+          if (!capture) {
+            f.x += wobbleX;
+            f.y += wobbleY;
+            f.z += wobbleZ;
+          }
 
           // Reposition if drifts too far from player
           if (Math.abs(f.x) > 15 || Math.abs(f.y - 5) > 8 || Math.abs(f.z) > 15) {
@@ -573,6 +586,9 @@ export function GameScene({
   showAuthModal
 }) {
   const controlsRef = useRef();
+  // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
+  // Always false in normal gameplay → Physics runs exactly as before.
+  const isCaptureMode = useGameStore(state => state.isCaptureMode);
 
   useEffect(() => {
     useGameStore.setState({
@@ -688,7 +704,7 @@ export function GameScene({
 
         <Suspense fallback={null}>
           <GPUSparkSystem />
-          <Physics gravity={[0, -30, 0]}>
+          <Physics gravity={[0, -30, 0]} paused={isCaptureMode}>
             <SpatialAudioController />
             <MinecraftWorld />
 

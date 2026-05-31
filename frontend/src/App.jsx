@@ -15,6 +15,7 @@ import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
+import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 
 function App() {
   return (
@@ -75,6 +76,9 @@ function GameApp({ experienceSystem }) {
       setIsWorldBuilt(true);
       setTimeout(() => {
         const state = useGameStore.getState();
+        // Dev capture mode: keep the menu overlay visible by NOT auto-locking the pointer;
+        // the harness drives the menu→explore transition explicitly via the `start` hook.
+        if (state.isCaptureMode) return;
         if (state.requestPointerLock) {
           state.requestPointerLock();
         } else {
@@ -121,6 +125,20 @@ function GameApp({ experienceSystem }) {
     });
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
+    // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded
+    // decorative RNG, paused physics, pinned follow-cam, suppressed mob spawns. Optional
+    // { timeOfDay } pins the lighting in the same call. No-op in prod (bridge tree-shaken).
+    registerTestHook('enterCapture', (opts = {}) => {
+      enterCaptureMode(opts);
+      useGameStore.getState().setCaptureMode(true);
+      if (typeof opts.timeOfDay === 'number') {
+        useGameStore.getState().setTimeOfDay(opts.timeOfDay);
+      }
+    });
+    registerTestHook('exitCapture', () => {
+      exitCaptureMode();
+      useGameStore.getState().setCaptureMode(false);
+    });
     installTestBridge();
   }, []);
 

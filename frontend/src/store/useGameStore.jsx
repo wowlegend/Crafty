@@ -33,6 +33,13 @@ export const useGameStore = create((set, get) => ({
     isSpawnChunkLoaded: false,
     setIsSpawnChunkLoaded: (loaded) => set({ isSpawnChunkLoaded: loaded }),
 
+    // Dev-only visual-regression capture mode. When true, the scene is driven into a
+    // byte-stable state: physics paused, follow-cam pinned to a fixed pose, mob spawns
+    // suppressed. Set ONLY by the `enterCapture` test-bridge hook on the dev server;
+    // always false in production (the bridge is tree-shaken out of prod builds).
+    isCaptureMode: false,
+    setCaptureMode: (on) => set({ isCaptureMode: !!on }),
+
     isWebGLContextLost: false,
     setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
 

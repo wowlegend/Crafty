@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
+import { isCaptureMode } from './devtest/captureMode';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
@@ -537,6 +538,8 @@ const SpawnerSystem = () => {
     useGameStore.setState({ spawnMob: spawnMob });
     const checkInterval = setInterval(() => {
       const state = useGameStore.getState();
+      // Dev capture mode: suppress mob spawns so frames are byte-stable. No-op in gameplay.
+      if (isCaptureMode()) { clearInterval(checkInterval); return; }
       if (state.getMobGroundLevel && state.getGeneratedChunks && state.getGeneratedChunks().size > 0 && state.isSpawnChunkLoaded) {
         for (let i = 0; i < 20; i++) {
           const angle = (i / 20) * Math.PI * 2;

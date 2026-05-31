@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isCaptureMode, captureRandom } from './devtest/captureMode';
 import {
   Inventory,
   CraftingTable,
@@ -28,6 +29,49 @@ export function MenuSystem({
   showAuthModal,
   setShowAuthModal
 }) {
+  // Menu starfield/particles. In dev capture mode positions are seeded (order-independent)
+  // and CSS twinkle/float animations are frozen, so the menu frame is byte-stable. In normal
+  // gameplay this is identical to the original random, animated decoration.
+  const capture = isCaptureMode();
+  const menuStars = useMemo(() => {
+    return Array.from({ length: 40 }, (_, i) => {
+      const r = captureRandom(`menu-star-${i}`);
+      const left = r() * 100, top = r() * 100;
+      const dur = 1.5 + r() * 3, delay = r() * 3;
+      const w = 2 + r() * 2, h = 2 + r() * 2;
+      const style = {
+        left: `${left}%`, top: `${top}%`,
+        width: `${w}px`, height: `${h}px`,
+      };
+      if (capture) { style.animation = 'none'; style.opacity = 1; }
+      else { style.animationDuration = `${dur}s`; style.animationDelay = `${delay}s`; }
+      return { key: `star-${i}`, style };
+    });
+  }, [capture]);
+
+  const menuParticles = useMemo(() => {
+    const colors = ['#567C35', '#976D4D', '#808080', '#8B6914', '#5B9BD5', '#9932CC', '#FF4500', '#00BFFF'];
+    return Array.from({ length: 15 }, (_, i) => {
+      const r = captureRandom(`menu-particle-${i}`);
+      const color = colors[i % colors.length];
+      const size = 12 + r() * 20;
+      const top = 10 + r() * 80;
+      const dur = 8 + r() * 12, delay = r() * 8;
+      const opacity = 0.3 + r() * 0.4;
+      const blur = r() > 0.5 ? 1 : 0;
+      const style = {
+        width: `${size}px`, height: `${size}px`,
+        backgroundColor: color, top: `${top}%`,
+        opacity,
+        filter: `blur(${blur}px)`,
+        boxShadow: `0 0 ${size / 2}px ${color}40`,
+      };
+      if (capture) { style.animation = 'none'; style.left = `${(i / 15) * 100}%`; }
+      else { style.animationDuration = `${dur}s`; style.animationDelay = `${delay}s`; }
+      return { key: `particle-${i}`, style };
+    });
+  }, [capture]);
+
   return (
     <>
       <AnimatePresence>
@@ -154,43 +198,21 @@ export function MenuSystem({
               className="fixed inset-0 flex items-center justify-center pointer-events-auto"
               style={{ zIndex: 9999, background: 'radial-gradient(ellipse at 50% 30%, #1a1040 0%, #0a0a1a 50%, #050510 100%)' }}
             >
-              {Array.from({ length: 40 }, (_, i) => (
+              {menuStars.map((s) => (
                 <div
-                  key={`star-${i}`}
+                  key={s.key}
                   className="menu-star"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    animationDuration: `${1.5 + Math.random() * 3}s`,
-                    animationDelay: `${Math.random() * 3}s`,
-                    width: `${2 + Math.random() * 2}px`,
-                    height: `${2 + Math.random() * 2}px`,
-                  }}
+                  style={s.style}
                 />
               ))}
 
-              {Array.from({ length: 15 }, (_, i) => {
-                const colors = ['#567C35', '#976D4D', '#808080', '#8B6914', '#5B9BD5', '#9932CC', '#FF4500', '#00BFFF'];
-                const color = colors[i % colors.length];
-                const size = 12 + Math.random() * 20;
-                return (
-                  <div
-                    key={`particle-${i}`}
-                    className="menu-particle"
-                    style={{
-                      width: `${size}px`,
-                      height: `${size}px`,
-                      backgroundColor: color,
-                      top: `${10 + Math.random() * 80}%`,
-                      animationDuration: `${8 + Math.random() * 12}s`,
-                      animationDelay: `${Math.random() * 8}s`,
-                      opacity: 0.3 + Math.random() * 0.4,
-                      filter: `blur(${Math.random() > 0.5 ? 1 : 0}px)`,
-                      boxShadow: `0 0 ${size / 2}px ${color}40`,
-                    }}
-                  />
-                );
-              })}
+              {menuParticles.map((p) => (
+                <div
+                  key={p.key}
+                  className="menu-particle"
+                  style={p.style}
+                />
+              ))}
 
               <div className="text-center text-white max-w-xl mx-4 relative z-10">
                 <motion.div

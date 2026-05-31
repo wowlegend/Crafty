@@ -28,6 +28,7 @@ import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
 import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
+import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
 
 // BLOCK TYPES - Immutable configuration
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from './world/Blocks';
@@ -329,6 +330,20 @@ export const Player = ({ isWorldBuilt }) => {
 
   useFrame((state, delta) => {
     if (!rigidBodyRef.current) return;
+
+    // Dev capture mode: pin the follow-cam to a fixed pose so frames are byte-stable.
+    // Physics is paused in this mode, so we bypass all rigidbody-driven camera logic
+    // (lerp/bob/shake/FOV) and hard-set a known camera. No-op in normal gameplay.
+    if (isCaptureMode()) {
+      const { position, lookAt } = getCaptureOpts().camera;
+      const { camera } = state;
+      camera.position.set(position[0], position[1], position[2]);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(lookAt[0], lookAt[1], lookAt[2]);
+      camera.fov = 75;
+      camera.updateProjectionMatrix();
+      return;
+    }
 
     // Wake up physics body
     rigidBodyRef.current.wakeUp();
