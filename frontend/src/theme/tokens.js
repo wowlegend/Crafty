@@ -11,9 +11,9 @@ export const PALETTE_KEYS = [
 export const DANGER_STATES = ['dusk', 'obsidian'];
 
 export const PALETTE = {
-  // Explore (day) — warm-heroic, de-pinked
+  // Explore (day) — bright Caribbean/Mediterranean noon (invigorating, high-luminance, clear)
   explore: {
-    skyTop: '#2E4A7A', skyMid: '#6FB7C9', skyHorizon: '#FFD9A0', sun: '#FFE9B0', fog: '#CFE6E4',
+    skyTop: '#1A5AD0', skyMid: '#2E8AE0', skyHorizon: '#CDEAF5', sun: '#FFFBF2', fog: '#CFEAF2',
     grass: '#7FB85E', rock: '#C2A06A', rockShadow: '#8A6B41', waterShallow: '#8FD3D8', waterDeep: '#3E86A6',
     leaf: '#4F9E63', leafHi: '#74C07E', trunk: '#6E4A30', heroCloth: '#E8C07A', heroAccent: '#2F6FAE',
     mobBody: '#58C6A2', mobShadow: '#2E8E74',

@@ -5,7 +5,8 @@ import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
-import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { moodRef, sampleMood } from './render/mood';
@@ -34,8 +35,8 @@ const Sun = ({ onReady }) => {
   });
   return (
     <mesh ref={ref} frustumCulled={false}>
-      <sphereGeometry args={[15, 24, 24]} />
-      <meshBasicMaterial color="#FFF6E0" toneMapped={false} fog={false} />
+      <sphereGeometry args={[24, 28, 28]} />
+      <meshBasicMaterial color="#FFFAF0" toneMapped={false} fog={false} />
     </mesh>
   );
 };
@@ -641,6 +642,8 @@ export function GameScene({
           camera.rotation.order = 'YXZ';
           camera.rotation.set(0, 0, 0);
           camera.lookAt(0, 30, -100);
+          // NOTE: tone mapping is controlled by the <ToneMapping> EFFECT in the composer
+          // (the EffectComposer overrides gl.toneMapping), so it is intentionally not set here.
 
           if (typeof window !== 'undefined') {
             window.__threeScene = scene;
@@ -724,24 +727,25 @@ export function GameScene({
               />
             )}
             {q.godRays && sunMesh && (
-              <GodRays sun={sunMesh} samples={60} density={0.95} decay={0.93} weight={0.5} exposure={0.45} clampMax={1} blur />
+              <GodRays sun={sunMesh} samples={100} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
             )}
             {/* Subtle baseline tone grade (saturation + contrast pop). The warm
                 "magic-hour" tint is delivered by M2's palette-driven Atmosphere
                 (ambient/fog/sun in warm tokens), not a whole-image hue shift here. */}
-            <HueSaturation saturation={0.18} />
+            <HueSaturation saturation={0.22} />
             <BrightnessContrast brightness={0.04} contrast={0.08} />
             <Bloom
-              intensity={1.2}
-              luminanceThreshold={0.9}
+              intensity={0.8}
+              luminanceThreshold={1.0}
               luminanceSmoothing={0.1}
               mipmapBlur={q.bloomMipmap}
             />
             <SMAA />
+            <ToneMapping mode={ToneMappingMode.NEUTRAL} />
             {/* Per-frame random film grain — disabled in dev capture mode because it
                 makes every frame pixel-different (defeats the visual-regression diff). */}
             {!isCaptureMode && <Noise opacity={0.01} />}
-            <Vignette eskil={false} offset={0.3} darkness={0.8} />
+            <Vignette eskil={false} offset={0.45} darkness={0.35} />
           </EffectComposer>
           <Preload all />
         </Suspense>

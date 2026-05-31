@@ -35,11 +35,12 @@ function makeSkyDomeMaterial() {
       varying vec3 vDir;
       void main() {
         float h = vDir.y;
-        vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.40, h));
-        col = mix(col, topColor, smoothstep(0.35, 0.90, h));
-        col = mix(col, horizonColor, smoothstep(0.0, -0.25, h)); // ground fade below horizon
+        vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.22, h)); // thin pale horizon band
+        col = mix(col, topColor, smoothstep(0.28, 0.85, h));             // vivid blue dominates the dome
+        col = mix(col, horizonColor, smoothstep(0.0, -0.25, h));         // ground fade below horizon
         float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
-        col += sunColor * pow(s, 8.0) * 0.4;                      // soft sun glow
+        col += sunColor * pow(s, 9.0) * 0.45;                            // tighter warm sun glow
+        col += sunColor * pow(s, 120.0) * 1.3;                           // bright sun disc (blooms)
         gl_FragColor = vec4(col, 1.0);
       }
     `,

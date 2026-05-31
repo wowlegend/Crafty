@@ -118,12 +118,12 @@ export function createProceduralVoxelTextures() {
       }
 
       // Layer 9: Water (blockType 9)
-      // Premium ocean blue depth ripples
+      // Caribbean turquoise — vivid teal shallows rippling to bright aqua
       {
         const ripple = Math.sin(x * 0.4 + y * 0.3) * 0.5 + 0.5;
-        const r = Math.floor(63 + ripple * 20);
-        const g = Math.floor(118 + ripple * 30);
-        const b = Math.floor(228 + ripple * 20);
+        const r = Math.floor(40 + ripple * 28);
+        const g = Math.floor(186 + ripple * 40);
+        const b = Math.floor(178 + ripple * 42);
         setPixel(9, x, y, r, g, b, 255);
       }
     }
