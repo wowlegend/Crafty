@@ -103,8 +103,11 @@ const compileShader = (shader) => {
             customAlpha = 0.75;
         }
 
-        // Set the diffuse color to the sampled texture (before lighting calculations)
-        diffuseColor = vec4(diffuse * texColor.rgb, texColor.a * customAlpha);
+        // Set the diffuse color to the sampled texture (before lighting calculations).
+        // The DataArrayTexture stores sRGB-display bytes but is sampled through a
+        // custom sampler2DArray (so material.colorSpace is a no-op). Decode to linear
+        // here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
+        diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);
         `
     );
 

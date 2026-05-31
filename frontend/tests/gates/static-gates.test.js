@@ -41,6 +41,12 @@ describe('static gates', () => {
     expect(total).toBeGreaterThanOrEqual(0); // reporter only
   });
 
+  it('S1-B: voxel texture sRGB decode present (washout fix)', () => {
+    const src = readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8');
+    expect(src, 'voxel color_fragment must sRGB-decode the sampled texColor (pow 2.2)')
+      .toMatch(/pow\(\s*texColor\.rgb\s*,\s*vec3\(\s*2\.2\s*\)\s*\)/);
+  });
+
   // DEFERRED HARD GATES (enabled by later plans). Documented so they are not
   // silently forgotten; .todo keeps them visible in test output.
   it.todo('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)');
