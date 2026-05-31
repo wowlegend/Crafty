@@ -146,20 +146,24 @@ function GameApp({ experienceSystem }) {
     });
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
     registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));
-    // Character-render fixture: a deterministic close-up of ONE zombie beside ONE
-    // chest, framed by a tight camera, for the `character-closeup` visual state.
-    // Spawns directly (bypassing the suppressed auto-spawner) after terrain loads.
+    // Character-render fixture: a deterministic close-up of ONE zombie, framed
+    // against the sky horizon. Capture pauses physics → getMobGroundLevel (raycast)
+    // is null, so we place the subject at a FIXED elevated Y and frame the camera so
+    // the terrain sits below the frame (clean sky backdrop showcases toon/rim/outline).
     registerTestHook('spawnCharacterCloseup', () => {
       const store = useGameStore.getState();
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5); // flattering midday
-      const MX = 3, MZ = 3;
-      const groundY = store.getMobGroundLevel ? store.getMobGroundLevel(MX, MZ) : 53;
-      if (store.spawnMob) store.spawnMob(MX, MZ, 'zombie');
-      useGameStore.setState({
-        treasureChestsList: [{ id: 'closeup-chest', position: [MX + 1.6, groundY + 0.4, MZ] }],
-      });
-      enterCaptureMode({ camera: { position: [MX + 2.6, groundY + 1.7, MZ + 4.2], lookAt: [MX + 0.8, groundY + 0.7, MZ] } });
+      const SX = 0, SZ = -8, SY = 100; // high above the ~y53 terrain so the distant
+      // terrain horizon falls >37.5° (half the 75° vFOV) below a level camera and
+      // drops out of frame entirely → clean sky backdrop.
+      if (store.spawnMob) store.spawnMob(SX, SZ, 'zombie', SY);
+      // The mob group sits at world y=SY+0.5; its body spans ~y(SY+0.2)→(SY+2.3),
+      // vertical center ~SY+1.25, eyes ~SY+2.4. Camera: a slight +X 3/4 angle, level
+      // at the subject's mid-height, pulled back in +Z (mob faces +Z) so the full
+      // character (head→feet) is framed with sky margin — showcasing the toon body,
+      // red eyes, rim light and dark contour outline against the sky.
+      enterCaptureMode({ camera: { position: [SX + 1.4, SY + 1.3, SZ + 3.6], lookAt: [SX, SY + 1.25, SZ] } });
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();

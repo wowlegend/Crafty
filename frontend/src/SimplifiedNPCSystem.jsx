@@ -503,12 +503,15 @@ const SpawnerSystem = () => {
   const lastSpawnCheck = useRef(0);
   const nextId = useRef(0);
 
-  const spawnMob = (x, z, forceType = null) => {
+  const spawnMob = (x, z, forceType = null, explicitY = null) => {
     const store = useGameStore.getState();
-    if (!store.getMobGroundLevel) return false;
-    const y = store.getMobGroundLevel(x, z);
-    if (y === null || isNaN(y)) {
-      return false;
+    let y = explicitY;
+    if (y === null) {
+      if (!store.getMobGroundLevel) return false;
+      y = store.getMobGroundLevel(x, z);
+      if (y === null || isNaN(y)) {
+        return false;
+      }
     }
 
     const mobTypeKeys = Object.keys(MOB_TYPES);
@@ -537,7 +540,9 @@ const SpawnerSystem = () => {
       xp: mobConfig.xp,
       targetX: x,
       targetZ: z,
-      rotation: Math.random() * Math.PI * 2,
+      // Explicit-Y placement (visual-capture fixtures) faces the mob toward +Z so the
+      // camera, posed on the +Z side, sees the front (eyes). Gameplay spawns stay random.
+      rotation: explicitY !== null ? 0 : Math.random() * Math.PI * 2,
       moveTimer: Math.random() * 3,
       isMoving: false,
       isAggro: false,
