@@ -40,6 +40,11 @@ export const useGameStore = create((set, get) => ({
     isCaptureMode: false,
     setCaptureMode: (on) => set({ isCaptureMode: !!on }),
 
+    // Device-gated render quality tier (spec §8). Default 'low' = conservative;
+    // App.jsx selects up at startup via selectTier(readDeviceSignals()).
+    qualityTier: 'low',
+    setQualityTier: (tier) => set({ qualityTier: tier }),
+
     isWebGLContextLost: false,
     setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
 

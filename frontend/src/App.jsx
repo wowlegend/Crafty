@@ -16,6 +16,7 @@ import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
+import { selectTier, readDeviceSignals } from './render/quality';
 
 function App() {
   return (
@@ -108,6 +109,11 @@ function GameApp({ experienceSystem }) {
     showSpellUpgrades, setShowSpellUpgrades
   } = useInputManager(gameState, gameSystems, questSystem);
 
+  // Select the device quality tier once at startup (runs in prod + dev).
+  useEffect(() => {
+    useGameStore.getState().setQualityTier(selectTier(readDeviceSignals()));
+  }, []);
+
   // Dev-only test bridge: lets the visual-regression harness drive the running
   // game into known states (leave the menu, force day/night). No-op in prod.
   useEffect(() => {
@@ -131,10 +137,14 @@ function GameApp({ experienceSystem }) {
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
       useGameStore.getState().setCaptureMode(true);
+      // Force a deterministic tier so visual baselines never depend on the
+      // capture machine's deviceMemory/cores.
+      useGameStore.getState().setQualityTier('high');
       if (typeof opts.timeOfDay === 'number') {
         useGameStore.getState().setTimeOfDay(opts.timeOfDay);
       }
     });
+    registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);
