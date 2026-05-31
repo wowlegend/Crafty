@@ -7,9 +7,16 @@ const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 describe('M2b static gates', () => {
   it('mob AI worker tick is capture-gated (deterministic closeup)', () => {
     const src = read('src/SimplifiedNPCSystem.jsx');
-    // the per-frame TICK useFrame must early-return in capture mode, before it
-    // builds the mob snapshot and posts the TICK to the worker (the body between
-    // the guard and postMessage is the real knockback + mobsData mapping, ~1.8KB)
-    expect(src).toMatch(/if \(isCaptureMode\(\)\) return;[\s\S]{0,2000}workerRef\.current\.postMessage/);
+    // The worker-tick useFrame must early-return in capture mode BEFORE it posts the
+    // AI TICK to the worker, so a spawned closeup mob never moves. Asserted as two
+    // length-independent facts (guard exists + precedes the post) rather than a
+    // brittle length-bounded span. Both anchors are unique in the file: the only
+    // brace-less `if (isCaptureMode()) return;` is the worker-tick guard (the spawn
+    // guard at ~line 556 is braced), and there is exactly one `postMessage`.
+    const guardIdx = src.indexOf('if (isCaptureMode()) return;');
+    const postIdx = src.indexOf('workerRef.current.postMessage');
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(postIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(postIdx); // capture guard precedes the AI TICK post
   });
 });
