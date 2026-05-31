@@ -2,9 +2,9 @@
 // render pipeline; S1-A only defines the config + the pure selection logic.
 
 export const TIERS = {
-  low:  { ao: false, godRays: false, bloomMipmap: false, shadowMapSize: 512,  renderDistance: 2, weather: 0.25, dprCap: 1.5, outlineWorldEdge: false },
-  med:  { ao: true,  godRays: false, bloomMipmap: true,  shadowMapSize: 1024, renderDistance: 3, weather: 0.6,  dprCap: 2,   outlineWorldEdge: false },
-  high: { ao: true,  godRays: true,  bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 2,   outlineWorldEdge: true },
+  low:  { ao: false, godRays: false, bloomMipmap: false, shadowMapSize: 512,  renderDistance: 2, weather: 0.25, dprCap: 1.5, outlineWorldEdge: false, charOutline: false, charRim: false },
+  med:  { ao: true,  godRays: false, bloomMipmap: true,  shadowMapSize: 1024, renderDistance: 3, weather: 0.6,  dprCap: 2,   outlineWorldEdge: false, charOutline: true,  charRim: false },
+  high: { ao: true,  godRays: true,  bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 2,   outlineWorldEdge: true,  charOutline: true,  charRim: true  },
 };
 
 /**
