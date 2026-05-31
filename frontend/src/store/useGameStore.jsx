@@ -327,7 +327,9 @@ export const useGameStore = create((set, get) => ({
     setGetBossPosition: (fn) => set({ getBossPosition: fn }),
     isBossActive: null,
     setIsBossActive: (fn) => set({ isBossActive: fn }),
-    
+    // Dev-only: visual-fixture force-spawn for the boss-closeup state (set by useBossSystem).
+    forceBossSpawn: null,
+
     tameMob: null,
     setTameMob: (fn) => set({ tameMob: fn }),
     getPets: null,

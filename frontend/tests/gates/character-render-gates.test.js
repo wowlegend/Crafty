@@ -19,4 +19,29 @@ describe('M2b static gates', () => {
     expect(postIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(postIdx); // capture guard precedes the AI TICK post
   });
+
+  it('boss emissive telegraph is PRESERVED (not stripped by the outline pass)', () => {
+    const src = read('src/AdvancedGameFeatures.jsx');
+    // The boss's attack language is its emissive glow — the M2b outline must be purely
+    // additive. Both the torso emissive binding and its intensity binding must remain.
+    expect(src).toMatch(/emissive=\{bodyEmissive\}/);
+    expect(src).toMatch(/emissiveIntensity=\{emissiveIntensityVal\}/);
+  });
+
+  it('boss is NOT converted to a toon material', () => {
+    const src = read('src/AdvancedGameFeatures.jsx');
+    // The boss keeps meshStandardMaterial; it must never reference the toon material.
+    expect(src).not.toMatch(/MobToonMaterial|meshToonMaterial/);
+  });
+
+  it('boss useFrame is capture-gated BEFORE it moves the boss (deterministic closeup)', () => {
+    const src = read('src/AdvancedGameFeatures.jsx');
+    // In capture the boss freezes; the `if (isCaptureMode())` guard must precede the
+    // movement write `bossPositionRef.current = [next...` so the dragon never moves.
+    const guardIdx = src.indexOf('if (isCaptureMode()) {');
+    const moveIdx = src.indexOf('bossPositionRef.current = [next');
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(moveIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(moveIdx); // capture guard precedes the movement write
+  });
 });

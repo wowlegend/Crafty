@@ -175,6 +175,27 @@ function GameApp({ experienceSystem }) {
       // outline on BOTH the character and the prop chest. HealthBar/beacon suppressed.
       enterCaptureMode({ camera: { position: [SX + 1.0, SY + 1.5, SZ + 4.0], lookAt: [SX + 0.4, SY + 1.0, SZ] } });
     });
+    // Boss-render fixture: a deterministic close-up of the (frozen) Shadow Dragon
+    // against a bright sky studio, so the dark obsidian body + emissive telegraph +
+    // inverted-hull contour read clearly (a character card, not an in-context danger
+    // scene). force-spawn bypasses the level/HP gate; BossEntity freezes in capture.
+    registerTestHook('spawnBossCloseup', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);
+      // Clear the character-closeup chest so it can't leak into this frame. (The
+      // character-closeup zombie lives at (0,140,-8) in the ECS and can't be cleared
+      // from a hook, so we spawn the boss far away on +X and frame there — the zombie
+      // falls off-frame.)
+      useGameStore.setState({ treasureChestsList: [] });
+      const BX = 40, BY = 140, BZ = -8; // sky-studio, far from the closeup zombie at x=0
+      if (store.forceBossSpawn) store.forceBossSpawn([BX, BY, BZ]);
+      // The dragon is ~7.4 wide (wingspan) × ~3 tall; frame the full body+head+wings
+      // from the +Z front (the frozen boss faces +Z) with margin (~65-70% fill). The
+      // camera is pulled back ~6.5 units so the wing tips clear the frame edges.
+      enterCaptureMode({ camera: { position: [BX + 1.8, BY + 1.2, BZ + 6.5], lookAt: [BX, BY + 0.7, BZ] } });
+    });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);

@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Outlines } from '@react-three/drei';
 import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
+import { isCaptureMode } from './devtest/captureMode';
+import { OUTLINE } from './render/characterStyle';
+import { TIERS } from './render/quality';
 
 export const useSurvivalMode = (isDay) => {
     const [nightCount, setNightCount] = useState(0);
@@ -168,6 +172,16 @@ export const useBossSystem = (playerLevel) => {
         useGameStore.setState({ damageBoss: damageBoss });
         useGameStore.setState({ getBossPosition: () => bossPositionRef.current });
         useGameStore.setState({ isBossActive: () => bossActive });
+        // Dev-only force-spawn for the boss-closeup visual fixture: drops the dragon at a
+        // fixed sky-studio position with no level/HP gate. Tree-shaken from prod builds.
+        if (import.meta.env.DEV) {
+            useGameStore.setState({ forceBossSpawn: (pos) => {
+                bossSpawned.current = true;
+                bossPositionRef.current = pos;
+                setBossActive(true);
+                setBossPhase(0);
+            } });
+        }
     }, [damageBoss, bossPositionRef, bossActive]);
 
     return {
@@ -286,7 +300,12 @@ const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth }) => {
     const meshRef = useRef();
     const { camera } = useThree();
-    
+
+    // Inverted-hull contour outline gate (matches mob/prop pattern). The boss keeps its
+    // emissive telegraph + standard materials — the outline is purely additive ink.
+    const qualityTier = useGameStore(s => s.qualityTier) || 'low';
+    const charOutline = (TIERS[qualityTier] || TIERS.low).charOutline;
+
     // Premium visual animation and hit reaction refs
     const leftWingRef = useRef();
     const rightWingRef = useRef();
@@ -348,6 +367,20 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 fireballsRef.current = [];
                 lavaZonesRef.current = [];
                 setEffects({ fireballs: [], lavaZones: [] });
+            }
+            return;
+        }
+
+        // Capture-determinism freeze: pin the dragon to its forced spawn pose and skip
+        // ALL movement / attacks / fireballs / wing-flap so the boss-closeup fixture is
+        // byte-stable. No-op in gameplay (isCaptureMode() is always false there).
+        if (isCaptureMode()) {
+            if (leftWingRef.current && rightWingRef.current) {
+                leftWingRef.current.rotation.z = 0.2;   // rest pose
+                rightWingRef.current.rotation.z = -0.2;
+            }
+            if (meshRef.current && bossPositionRef.current) {
+                meshRef.current.position.set(...bossPositionRef.current);
             }
             return;
         }
@@ -627,24 +660,26 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 {/* Torso */}
                 <mesh castShadow receiveShadow>
                     <boxGeometry args={[3, 2, 4]} />
-                    <meshStandardMaterial 
-                        roughness={0.15} 
-                        metalness={0.9} 
-                        color={bodyColor} 
-                        emissive={bodyEmissive} 
-                        emissiveIntensity={emissiveIntensityVal} 
+                    <meshStandardMaterial
+                        roughness={0.15}
+                        metalness={0.9}
+                        color={bodyColor}
+                        emissive={bodyEmissive}
+                        emissiveIntensity={emissiveIntensityVal}
                     />
+                    {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                 </mesh>
                 {/* Neck & Head */}
                 <mesh castShadow receiveShadow position={[0, 1.4, 1.8]}>
                     <boxGeometry args={[1.4, 1.4, 2]} />
-                    <meshStandardMaterial 
-                        roughness={0.15} 
-                        metalness={0.9} 
-                        color={bodyColor} 
-                        emissive={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
-                        emissiveIntensity={isFlashing ? 3.0 : 0.6} 
+                    <meshStandardMaterial
+                        roughness={0.15}
+                        metalness={0.9}
+                        color={bodyColor}
+                        emissive={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor}
+                        emissiveIntensity={isFlashing ? 3.0 : 0.6}
                     />
+                    {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                 </mesh>
                 {/* Wings (Left / Right flapping) */}
                 <mesh ref={leftWingRef} castShadow receiveShadow position={[-2.6, 0.8, 0]} rotation={[0, 0, 0.2]}>
@@ -853,6 +888,11 @@ export const PetEntities = React.memo(({ pets }) => {
     const { camera } = useThree();
     const petRefs = useRef({});
 
+    // Inverted-hull contour outline gate (matches mob pattern). Pets keep their
+    // existing standard materials — the outline is purely additive ink.
+    const qualityTier = useGameStore(s => s.qualityTier) || 'low';
+    const charOutline = (TIERS[qualityTier] || TIERS.low).charOutline;
+
     useFrame((state, delta) => {
         const store = useGameStore.getState();
         const petOrder = store.petOrder || 'follow';
@@ -952,6 +992,7 @@ export const PetEntities = React.memo(({ pets }) => {
                                 roughness={0.4}
                                 metalness={0.2}
                             />
+                            {charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
                         </mesh>
                         {/* Head */}
                         <mesh castShadow receiveShadow position={[0, 0.4, isPig ? 0.55 : 0.65]}>
@@ -960,6 +1001,7 @@ export const PetEntities = React.memo(({ pets }) => {
                                 color={isPig ? '#ffa6c9' : '#8B5A2B'}
                                 roughness={0.4}
                             />
+                            {charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
                         </mesh>
                         {/* Tamed Collar Badge */}
                         <mesh position={[0, 0.35, isPig ? 0.25 : 0.3]}>

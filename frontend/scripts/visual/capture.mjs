@@ -1,7 +1,7 @@
 // Spawns `vite dev`, drives the app to known states via window.__craftyTest
 // (DEV-only bridge), and screenshots each to tests/visual/<current|baseline>/<state>.png.
 // Reachable states today: menu, explore-day, explore-night (dusk), boss-obsidian,
-// character-closeup.
+// character-closeup, boss-closeup.
 // Per spec §4, dusk IS the everyday night, so `explore-night` already covers the dusk
 // state; `boss-obsidian` (Tier 2) is the genuinely new danger mood.
 //
@@ -104,6 +104,14 @@ async function main() {
     await delay(1800); // mob mounts + spawn-pop settles + mood/lighting lerp completes
     await page.screenshot({ path: resolve(OUT, 'character-closeup.png') });
     console.log('captured character-closeup');
+
+    // boss-closeup: deterministic frozen Shadow Dragon close-up that gates the boss
+    // render language (emissive telegraph PRESERVED + inverted-hull contour, NO toon).
+    // force-spawns the boss and freezes its movement/attacks/flap in capture.
+    await page.evaluate(() => window.__craftyTest.call('spawnBossCloseup'));
+    await delay(1800); // boss mounts + freezes + mood/lighting lerp completes
+    await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
+    console.log('captured boss-closeup');
   } finally {
     await browser.close();
     server.kill('SIGTERM');
