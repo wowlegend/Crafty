@@ -1,5 +1,7 @@
 # Roadmap & Future Enhancements
 
+> ⚠️ **Superseded framing (2026-05-31):** the "Phase 19–25" roadmap below is the pre-initiative Gemini plan. The ACTIVE roadmap is now the **Crafty → SOTA initiative**, decomposed into streams: **S0** reality audit (DONE) · **S1** art direction (locked; **S1-A foundation DONE**, S1-B render recipe next, then S1-C UI, S1-D signatures) · **S2** game design · **S3** engine (touch input, de-monolith, ECS hardening, WebGPU/TSL migration) · **S4** multiplayer + monetization. See `SOTA-INITIATIVE.md` + `docs/superpowers/`. Items below are retained as historical/backlog reference.
+
 *(Updated via Session Archivist - May 23, 2026)*
 
 ### Phase 19: WebGL2 Texture2DArray Voxel Texturing & Wind Foliage [COMPLETED]

@@ -1,5 +1,14 @@
 # Changelog & Development History
 
+### May 31, 2026 (Crafty → SOTA Initiative — S0 reality audit · S1 art direction · S1-A visual foundation)
+
+> ⚠️ **Honesty marker:** entries BELOW this line (the "Phase 13–34" history) are Gemini-3.5-Flash self-descriptions; many "SOTA / 100% green / verified" claims were **disproved by the S0 audit** (the repo's only test, `test_swarm.js`, was a blind rubber-stamp that could not fail on visuals/perf). Treat them as aspirational, not ground truth. Authoritative baseline: `REALITY-AUDIT-2026-05-30.md`.
+
+- **S0 reality audit** (`memory/REALITY-AUDIT-2026-05-30.md`) — independent, adversarially-verified real-vs-claimed baseline. Root finding: the blind test gate is why broken systems passed "green". Engine core is genuinely real (greedy mesher, Rapier KCC, A* worker, day/night); biggest gap = touch/mobile is unbuilt; real-GPU FPS unknown (headless software-render floor).
+- **Monetization/virality scan** (`memory/MONETIZATION-VIRALITY-SCAN-2026-05-30.md`) — commercial art-direction call → **Vanguard+Toon**; monetize via cosmetics + transparent pass, **NO gacha/loot boxes** (PEGI-16 from Jun 2026 / FTC Genshin / COPPA).
+- **S1 art direction LOCKED** (`docs/superpowers/specs/2026-05-30-crafty-visual-direction-design.md`) — Vanguard+Toon base + 2-tier danger mode + 3 signatures (Atmosphere/Spell-VFX/Mascot). Foundation stays R3F/Three.js (+ WebGPU/TSL renderer migration + ECS hardening deferred to S3).
+- **S1-A Visual Foundation SHIPPED** (`docs/superpowers/plans/2026-05-30-crafty-s1a-visual-foundation.md`) — Vitest unit harness; **design-token source-of-truth** (`src/theme/tokens.js`); device **quality-tiers** (`src/render/quality.js`); dev **test-bridge** + **capture-determinism layer** (`src/devtest/`, DEV-only/tree-shaken); **deterministic visual-regression gate** (puppeteer + pixelmatch, 6% threshold, can-go-red proven — **replaces the blind `test_swarm.js`**); static emoji/hex burn-down reporters + 4 deferred hard-gate todos; `docs/PERF-PROTOCOL.md`. Fixed `terrain.worker.js` tree/cactus placement to a deterministic world-coord hash (was raw `Math.random()` → world differed every load). Verified green on a fresh clone; normal gameplay provably unaffected.
+
 ### May 25, 2026 (Comprehensive First-Principles Codebase Audit & Memory Disposal Hardening - Phase 34)
 
 - **COMPREHENSIVE CODEBASE AUDIT**: Conducted a thorough multi-vector diagnostic audit across all 32+ developmental phases, verifying high-frequency game loop isolation, WebGL2 and custom shader compliance, native Rapier WASM raycasting signatures, and canvas-level pointer lock menus.

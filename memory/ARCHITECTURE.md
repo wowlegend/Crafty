@@ -1,5 +1,7 @@
 # Crafty - 3D Minecraft-Style Browser Game
 
+> ⚠️ **Doc-reality caveat (2026-05-31):** the blueprint below is the pre-initiative Gemini-3.5-Flash self-description; the S0 audit found several "SOTA / verified" claims over-stated and parts of the architecture framing wrong (e.g. the miniplex ECS is **load-bearing for mobs/loot/XP, NOT vestigial**). Until this file is rewritten against reality, ground truth = git `main` + `REALITY-AUDIT-2026-05-30.md` + `SOTA-INITIATIVE.md` + `docs/superpowers/specs/`. The full reality-rewrite is a deferred task.
+
 ## Project Overview
 
 A 3D browser game built with React and Three.js, featuring Minecraft-style gameplay with block building, magic system, NPCs, and procedural terrain generation.
