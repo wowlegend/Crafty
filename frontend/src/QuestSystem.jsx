@@ -2,6 +2,7 @@ import { useGameStore } from './store/useGameStore';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isCaptureMode } from './devtest/captureMode';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 
@@ -682,7 +683,11 @@ export const useTreasureChests = () => {
             if (chest) return openChest(chest.id);
             return null;
         }});
-        useGameStore.setState({ treasureChestsList: chests.filter(c => !openedChestIds.has(c.id)) });
+        // In capture mode the visual fixtures own treasureChestsList (e.g. the
+        // character-closeup studio chest); don't let the quest system clobber it.
+        if (!isCaptureMode()) {
+            useGameStore.setState({ treasureChestsList: chests.filter(c => !openedChestIds.has(c.id)) });
+        }
     }, [checkChestProximity, openChest, chests, openedChestIds]);
 
     return { chests, openedChestIds, checkChestProximity, openChest };

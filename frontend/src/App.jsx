@@ -161,13 +161,19 @@ function GameApp({ experienceSystem }) {
       // terrain horizon falls >37.5° (half the 75° vFOV) below a level camera and
       // drops out of frame entirely → clean, uninterrupted sky backdrop.
       if (store.spawnMob) store.spawnMob(SX, SZ, 'zombie', SY);
+      // ONE chest beside the zombie (lower-right, near the zombie's depth so it reads
+      // as a smaller secondary prop, not a foreground giant) so the prop inverted-hull
+      // outline is verified in-frame while the zombie stays the dominant hero.
+      useGameStore.setState({
+        treasureChestsList: [{ id: 'closeup-chest', position: [SX + 2.2, SY + 0.3, SZ - 0.3] }],
+      });
       // The mob group sits at world y=SY+0.5; the body spans ~y(SY+0.2 feet)→(SY+2.3
-      // head-top), vertical center ~SY+1.3. Camera: a slight +X 3/4 angle, level at the
-      // subject's mid-height, pulled in +Z (mob faces +Z) so the full character (head→
-      // feet) fills ~55-65% of the frame — a clean character-studio card showcasing the
-      // toon body, red eyes, rim light and dark contour outline. HealthBar suppressed in
-      // capture (SimplifiedNPCSystem) so the silhouette reads clean.
-      enterCaptureMode({ camera: { position: [SX + 0.8, SY + 1.3, SZ + 2.9], lookAt: [SX, SY + 1.3, SZ] } });
+      // head-top). Camera: a +X 3/4 angle, pulled back and only mildly downward (lookAt
+      // near the body center) so BOTH the hero zombie (dominant, left-of-center) and the
+      // secondary chest (lower-right) fit while the distant terrain horizon still falls
+      // below the frame. Showcases toon body, red eyes, rim light, and the dark contour
+      // outline on BOTH the character and the prop chest. HealthBar/beacon suppressed.
+      enterCaptureMode({ camera: { position: [SX + 1.0, SY + 1.5, SZ + 4.0], lookAt: [SX + 0.4, SY + 1.0, SZ] } });
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();

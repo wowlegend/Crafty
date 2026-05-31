@@ -9,6 +9,9 @@ import { BlockParticleSystem } from './BlockParticleSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { moodRef } from '../render/mood';
+import { Outlines } from '@react-three/drei';
+import { OUTLINE } from '../render/characterStyle';
+import { TIERS } from '../render/quality';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -309,7 +312,9 @@ const TargetOutline = () => {
 // --- 3D TREASURE CHEST RENDERER ---
 const TreasureChestsRender = () => {
     const chests = useGameStore(state => state.treasureChestsList || []);
-    
+    const qualityTier = useGameStore(state => state.qualityTier) || 'low';
+    const charOutline = (TIERS[qualityTier] || TIERS.low).charOutline;
+
     return (
         <group>
             {chests.map(chest => (
@@ -317,25 +322,32 @@ const TreasureChestsRender = () => {
                     {/* Visual chest box */}
                     <mesh castShadow receiveShadow>
                         <boxGeometry args={[1.0, 0.8, 0.8]} />
-                        <meshStandardMaterial 
+                        <meshStandardMaterial
                             color="#d4af37" // Premium Gold
                             roughness={0.15}
                             metalness={0.85}
                             emissive="#b8860b" // Goldenrod pulse
                             emissiveIntensity={0.2}
                         />
+                        {charOutline && <Outlines thickness={OUTLINE.prop.thickness} color={OUTLINE.color} toneMapped={false} />}
                     </mesh>
                     {/* Locked clasp (silver latch) */}
                     <mesh position={[0, 0, 0.41]}>
                         <boxGeometry args={[0.15, 0.25, 0.05]} />
                         <meshStandardMaterial color="#c0c0c0" roughness={0.1} metalness={0.9} />
                     </mesh>
-                    {/* Floating beacon orb */}
-                    <mesh position={[0, 1.1, 0]}>
-                        <sphereGeometry args={[0.12, 8, 8]} />
-                        <meshBasicMaterial color="#ffd700" />
-                    </mesh>
-                    <pointLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
+                    {/* Floating beacon orb — suppressed in capture so the studio
+                        character-closeup card reads clean (orb + its pointLight are
+                        gameplay affordances, not part of the prop's render language). */}
+                    {!isCaptureMode() && (
+                        <>
+                            <mesh position={[0, 1.1, 0]}>
+                                <sphereGeometry args={[0.12, 8, 8]} />
+                                <meshBasicMaterial color="#ffd700" />
+                            </mesh>
+                            <pointLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
+                        </>
+                    )}
                 </group>
             ))}
         </group>
