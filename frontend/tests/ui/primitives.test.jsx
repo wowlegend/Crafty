@@ -95,3 +95,35 @@ describe('Icon', () => {
     expect(container.querySelector('svg')).toBeNull();
   });
 });
+
+import { Toast } from '../../src/ui/primitives/Toast.jsx';
+import { Tooltip } from '../../src/ui/primitives/Tooltip.jsx';
+
+describe('Toast', () => {
+  it('renders status-tinted bold-flat chrome with a message', () => {
+    render(<Toast status="success" data-testid="t">Quest complete!</Toast>);
+    const el = screen.getByTestId('t');
+    expect(el).toHaveTextContent('Quest complete!');
+    expect(el.className).toMatch(/border-chrome/);
+    expect(el.className).toMatch(/bg-success|border-success|border-l-success/);
+  });
+});
+describe('Tooltip', () => {
+  it('shows its content', () => {
+    render(<Tooltip data-testid="tt">+15 ATK</Tooltip>);
+    expect(screen.getByTestId('tt')).toHaveTextContent('+15 ATK');
+  });
+});
+
+import { LocaleToggle } from '../../src/ui/LocaleToggle.jsx';
+import { useGameStore } from '../../src/store/useGameStore.jsx';
+
+describe('LocaleToggle', () => {
+  it('toggles the store locale on click', () => {
+    useGameStore.getState().setLocale('en');
+    render(<LocaleToggle />);
+    const btn = screen.getByRole('button');
+    btn.click();
+    expect(useGameStore.getState().locale).toBe('zh-CN');
+  });
+});
