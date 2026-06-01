@@ -48,8 +48,12 @@ if (typeof window !== 'undefined') {
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import './theme/fonts.css';
+import { applyThemeVars } from './theme/cssVars.js';
 import App from './App';
 import { useGameStore } from './store/useGameStore';
+
+applyThemeVars(); // write --ui-* onto :root before first paint
 
 if (typeof window !== 'undefined') {
   window.useGameStore = useGameStore;
