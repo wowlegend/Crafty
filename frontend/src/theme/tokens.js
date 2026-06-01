@@ -40,15 +40,72 @@ export const MAGIC = {
   arcane: '#B36BFF', nature: '#7FE0A0', default: '#46E0FF',
 };
 
-// UI design-system tokens (consumed by S1-C). Derived from the game palette.
+// ── UI design-system tokens (S1-C "bold-flat", locked 2026-06-01 §9). ──────────
+// SoT for chrome. Derived into CSS vars + Tailwind by src/theme/cssVars.js.
+// Bold-flat = SOLID saturated fills · uniform 4px near-black ink on every chrome
+// element · hard blur-0 offset shadows · radius <=14 · NO glass/blur/gradient-chrome.
 export const UI = {
-  surface: 'rgba(20, 26, 38, 0.62)',
-  surfaceBorder: 'rgba(255, 255, 255, 0.14)',
-  ink: '#ECECEF',
-  inkMuted: '#9AA0AD',
-  accent: '#C9A86A',
-  accentCool: MAGIC.default,
-  danger: '#FF4D6E',
-  radius: { sm: 8, md: 14, lg: 20 },
-  space: { xs: 4, sm: 8, md: 14, lg: 22, xl: 36 },
+  color: {
+    ink: '#0B0E14',                 // the uniform chrome outline + text-on-light
+    panel:      '#161C2C',          // primary panel fill (SOLID, no translucency)
+    panelRaise: '#202A44',          // raised / active panel
+    panelInset: '#0E1320',          // inset well (slot field, track grooves)
+    slot:       '#0E1320',          // empty inventory/hotbar slot fill
+    text:       '#F4F1E8',          // primary (warm off-white)
+    textMuted:  '#9AA0AD',
+    textInverse:'#0B0E14',          // on gold/light fills
+    accent:      '#C9A86A',         // brand warm gold — hairline + CTA
+    accentRaise: '#DCC089',
+    danger:  '#FF4D6E',
+    success: '#5BC98C',
+    warn:    '#F2B33D',
+    info:    '#5AA9FF',
+    rarity: {
+      common:    '#9AA4B2',
+      rare:      '#4FA3FF',
+      epic:      '#B36BFF',
+      legendary: '#FFC23D',          // HOT gold, distinct from the trim accent
+    },
+    spell: {
+      fire:      '#FF7A3C',          // fire-warm dominant
+      ice:       '#6FC8FF',
+      lightning: '#FFE066',
+      arcane:    '#B36BFF',          // demoted to one element (no purple-as-chrome)
+      nature:    '#7FE0A0',
+    },
+    gray: {
+      g950: '#0B0E14', g900: '#11151F', g800: '#1A2030', g700: '#283149',
+      g500: '#5C6478', g300: '#9AA0AD', g100: '#D7DAE0', g50: '#F4F1E8',
+    },
+  },
+  radius: { sm: 6, md: 10, lg: 14 },          // <=14 cap (§9)
+  border: { chrome: 4, hairline: 1.5 },       // 4px ink everywhere; gold hairline accent
+  space:  { xs: 4, sm: 8, md: 14, lg: 22, xl: 36 },
+  // hard offset shadows (blur 0, spread 0) — the bold-flat signature. The md value
+  // is the locked `5px 5px 0 0 #0b0e14` recolored to the ink var.
+  elevation: {
+    sm: '3px 3px 0 0 rgb(var(--ui-ink))',
+    md: '5px 5px 0 0 rgb(var(--ui-ink))',
+    lg: '8px 8px 0 0 rgb(var(--ui-ink))',
+  },
+  type: {
+    family: {
+      display:    "'Lilita One', system-ui, sans-serif",
+      body:       "'Space Grotesk', system-ui, sans-serif",
+      displayCjk: "'Smiley Sans', '得意黑', 'Lilita One', sans-serif",
+      bodyCjk:    "'Alibaba PuHuiTi 3.0', '阿里巴巴普惠体', 'Space Grotesk', sans-serif",
+    },
+    size:   { xs: 12, sm: 14, base: 16, md: 18, lg: 22, xl: 28, xxl: 36, display: 48 },
+    weight: { regular: 400, medium: 500, bold: 700, black: 900 },
+    leading:{ tight: 1.05, snug: 1.2, normal: 1.4 },
+  },
+  z: { scene: 1, hud: 100, panel: 200, modal: 300, toast: 400, tooltip: 500, devOverlay: 9000 },
+  motion: {
+    duration: { fast: 120, base: 200, slow: 320 },
+    easing: {
+      standard:   'cubic-bezier(0.2, 0, 0, 1)',
+      emphasized: 'cubic-bezier(0.3, 0, 0, 1)',
+      exit:       'cubic-bezier(0.4, 0, 1, 1)',
+    },
+  },
 };
