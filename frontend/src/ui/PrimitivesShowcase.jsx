@@ -31,7 +31,7 @@ export function PrimitivesShowcase() {
           <div className="grid grid-cols-4 gap-2 mb-4">
             {rarities.map((r, i) => (
               <Slot key={r} rarity={r} selected={i === 3} className="w-full">
-                <Icon name={['sword', 'shield', 'gem', 'sparkles'][i]} size={28} className="text-text" />
+                <Icon name={['sword', 'shield', 'gem', 'magic'][i]} size={28} className="text-text" />
               </Slot>
             ))}
             {Array.from({ length: 4 }).map((_, i) => <Slot key={`e${i}`} className="w-full" />)}
@@ -80,7 +80,7 @@ export function PrimitivesShowcase() {
           <Panel className="p-4 flex gap-3">
             {spells.map((s) => (
               <div key={s} className={`grid place-items-center w-12 h-12 rounded-lg border-chrome border-ink bg-panel text-spell-${s}`}>
-                <Icon name={s === 'arcane' ? 'sparkles' : s} size={26} />
+                <Icon name={s} size={26} />
               </div>
             ))}
           </Panel>

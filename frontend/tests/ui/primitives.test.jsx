@@ -84,11 +84,16 @@ describe('StatBar', () => {
 import { Icon } from '../../src/ui/primitives/Icon.jsx';
 
 describe('Icon', () => {
-  it('renders a sized currentColor svg for a known name', () => {
-    render(<Icon name="heart" size={24} data-testid="i" />);
+  it('renders a sized 2-tone game-icon svg for a known game name (currentColor)', () => {
+    render(<Icon name="sword" size={24} data-testid="i" />);
     const svg = screen.getByTestId('i');
     expect(svg.tagName.toLowerCase()).toBe('svg');
     expect(svg.getAttribute('width')).toBe('24');
+    expect(svg.innerHTML).toMatch(/path|g/i); // baked inner markup present
+  });
+  it('renders a lucide chrome icon for a chrome name', () => {
+    render(<Icon name="settings" size={18} data-testid="i" />);
+    expect(screen.getByTestId('i').tagName.toLowerCase()).toBe('svg');
   });
   it('renders nothing (no crash) for an unknown name', () => {
     const { container } = render(<Icon name="totally-unknown" />);
