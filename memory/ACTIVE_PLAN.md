@@ -2,7 +2,13 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: S1-B Render recipe (Crafty → SOTA) — **M1 + M2a + M2b DONE; S1-C NEXT**
+## Current Task: S1-C UI design system (Crafty → SOTA) — **design LOCKED; M1 BUILD NEXT** (S1-B M1+M2a+M2b DONE+merged)
+
+**S1-C status (2026-06-01):** design phase COMPLETE + LOCKED. Audit + tool-stack + cool-gaming-font research done; 4-round generate→separate-critic mockup loop → **LOCKED: bold-flat finish** (flat saturated + hard offset shadows + uniform 4px near-black `#0b0e14` ink + flat-2-tone icons) · EN=**Lilita One**+Space Grotesk, zh=**得意黑/Smiley Sans**+阿里巴巴普惠体 (OFL) · dark-navy+warm-gold+vivid-rarity · English-default + zh-toggle (CJK lazy-load). **Full spec: `frontend/docs/superpowers/specs/2026-06-01-crafty-s1c-ui-system-brief.md` §9 (+ tool-stack §7, i18n §8); reference comps: `frontend/docs/superpowers/specs/s1c-ui-reference/LOCKED-bold-flat-{en,zh}.png`.** Scope M1→M3, touch deferred to S3. **NEXT = author the S1-C-M1 plan** (wire tokens.js→Tailwind+CSS-vars + extend tokens + component primitives Panel/Slot/Button/StatBar/Icon in the locked language + i18n layer) via `superpowers:writing-plans` → subagent-driven build. Kevin paused here (clean break / pre-compaction). Exploration mockups in `.superpowers/s1c-mockups/` (gitignored).
+
+---
+
+### (archived) S1-B Render recipe — DONE + merged
 
 **Status:** ✅ **M2b MERGED to `main`** (branch `s1b-m2b-character-render`, 2026-05-31) — the **character render language** (toon + fresnel rim + inverted-hull outlines; boss emissive telegraph preserved). Built autonomously via subagent-driven-development (Opus per-task; spec + quality reviews all APPROVED; every baseline self-gated visually). `test:unit` **40+2todo** · `npm run build` clean · `test:visual` **6/6** (menu / explore-day / explore-night / boss-obsidian / **character-closeup** / **boss-closeup**). M1 (render correctness) + M2a (mood/atmosphere + Caribbean art) merged earlier.
 
