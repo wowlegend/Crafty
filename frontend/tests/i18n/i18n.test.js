@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { t, LOCALES } from '../../src/i18n/i18n.js';
 import { STRINGS } from '../../src/i18n/strings.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
@@ -35,5 +35,25 @@ describe('i18n', () => {
 
   it('LOCALES lists the two supported locales', () => {
     expect(LOCALES).toEqual(['en', 'zh-CN']);
+  });
+});
+
+describe('cjkFonts lazy loader', () => {
+  it('is idempotent — injects the faces at most once', async () => {
+    const added = [];
+    const g = globalThis;
+    g.document = g.document || {};
+    g.document.fonts = { add: (f) => added.push(f), load: async () => {}, ready: Promise.resolve() };
+    g.FontFace = class { constructor(family) { this.family = family; } async load() { return this; } };
+    // Fresh module instance: earlier setLocale('zh-CN') calls already imported
+    // cjkFonts and tripped its module-level _loaded flag in the bare-node env.
+    vi.resetModules();
+    const { loadCjkFonts, _cjkLoadedForTest } = await import('../../src/i18n/cjkFonts.js');
+    await loadCjkFonts();
+    const firstCount = added.length;
+    expect(firstCount).toBeGreaterThan(0);
+    await loadCjkFonts(); // second call must be a no-op
+    expect(added.length).toBe(firstCount);
+    expect(_cjkLoadedForTest()).toBe(true);
   });
 });

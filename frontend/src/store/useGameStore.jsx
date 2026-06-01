@@ -59,7 +59,11 @@ export const useGameStore = create((set, get) => ({
     // UI locale (S1-C): 'en' default + togglable 'zh-CN'. (A later task makes
     // setLocale also lazy-load CJK fonts on the flip to zh-CN.)
     locale: 'en',
-    setLocale: (loc) => set({ locale: loc === 'zh-CN' ? 'zh-CN' : 'en' }),
+    setLocale: (loc) => {
+      const next = loc === 'zh-CN' ? 'zh-CN' : 'en';
+      set({ locale: next });
+      if (next === 'zh-CN') import('../i18n/cjkFonts.js').then((m) => m.loadCjkFonts());
+    },
 
     // Dev-only: full-screen primitives showcase for the visual-regression gate.
     showcaseView: false,
