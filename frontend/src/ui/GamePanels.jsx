@@ -530,6 +530,7 @@ export const Inventory = ({ onClose }) => {
 
 export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore();
+    const t = useT();
     const [grid, setGrid] = React.useState(Array(9).fill(null));
     const [result, setResult] = React.useState(null);
     const [craftMessage, setCraftMessage] = React.useState(null);
@@ -739,114 +740,144 @@ export const CraftingTable = React.memo(({ onClose }) => {
         if (GameMethods.grantXP) GameMethods.grantXP(10);
     };
 
+    // Strip private-use + emoji glyphs from a block/item key so the cell shows a
+    // clean text label alongside the color swatch (mirrors the old extraction).
+    const EMOJI_RE = /[-]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g;
+    const cleanName = (s) => (s || '').replace(EMOJI_RE, '').trim();
+
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="game-panel p-8 text-white min-w-[600px] flex flex-col gap-6" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center">
-                    <h2 className="text-3xl font-bold tracking-tight">🔨 Advanced Crafting</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-3xl">&times;</button>
+        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+            <Panel
+                variant="raise"
+                className="w-[640px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+                    <div className="flex items-center gap-3">
+                        <Icon name="pickaxe" size={26} className="text-accent" />
+                        <span className="font-display text-xxl tracking-wide">{t('ui.craft')}</span>
+                        <span className="text-xs font-bold tracking-[2px] uppercase text-accent">Pattern Matcher</span>
+                    </div>
+                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                        <Icon name="close" size={18} />
+                    </Button>
                 </div>
 
-                <div className="flex flex-row justify-around items-center gap-12 py-4">
-                    {/* 3x3 Grid */}
-                    <div className="grid grid-cols-3 gap-2 p-2 bg-black/40 rounded-lg shadow-inner">
-                        {grid.map((item, i) => {
-                            const blockConfig = item ? BLOCK_TYPES[item] : null;
-                            return (
-                                <div
-                                    key={i}
-                                    onClick={() => handleGridClick(i)}
-                                    className="w-16 h-16 bg-white/5 border-2 border-white/10 rounded flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all relative overflow-hidden"
-                                >
-                                    {item ? (
-                                        <div className="flex flex-col items-center">
-                                            <div
-                                                className="w-8 h-8 rounded shadow-lg flex items-center justify-center text-xl"
-                                                style={{ backgroundColor: blockConfig?.color || '#333' }}
-                                            >
-                                                {item.match(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g) || ''}
-                                            </div>
-                                            <span className="text-[10px] opacity-60 mt-1 truncate w-14 text-center">
-                                                {item.replace(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g, '').trim()}
+                {/* Body */}
+                <div className="flex flex-col gap-5 px-5 pt-5 pb-5">
+                    {/* Craft bench: 3x3 grid, arrow, result */}
+                    <div className="flex flex-row justify-around items-center gap-8">
+                        {/* 3x3 Grid */}
+                        <Panel variant="inset" className="grid grid-cols-3 gap-2 p-3 bg-well">
+                            {grid.map((item, i) => {
+                                const blockColor = item ? BLOCK_TYPES[item]?.color : null;
+                                return (
+                                    <div
+                                        key={i}
+                                        onClick={() => handleGridClick(i)}
+                                        className="cursor-pointer"
+                                        title={item ? cleanName(item) : undefined}
+                                    >
+                                        <Slot className="w-16 h-16">
+                                            {item ? (
+                                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                                    <div
+                                                        className="w-8 h-8 rounded-sm grid place-items-center text-xl border-chrome border-ink"
+                                                        style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
+                                                    >
+                                                        {item.match(EMOJI_RE) || ''}
+                                                    </div>
+                                                    <span className="text-[9px] text-text-muted truncate w-14 text-center leading-tight">
+                                                        {cleanName(item)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="w-3.5 h-3.5 rounded-full border-chrome border-ink opacity-30" />
+                                            )}
+                                        </Slot>
+                                    </div>
+                                );
+                            })}
+                        </Panel>
+
+                        {/* Arrow */}
+                        <div className="font-display text-4xl text-accent">{'→'}</div>
+
+                        {/* Result Slot */}
+                        <div className="flex flex-col items-center gap-2">
+                            <div
+                                onClick={doCraft}
+                                className={result ? 'cursor-pointer transition-transform hover:scale-105' : 'cursor-not-allowed'}
+                                title={result ? `${Object.values(result.output)[0]} ${result.name}` : undefined}
+                            >
+                                <Slot rarity={result ? getItemRarity(result.name) : undefined} className="w-24 h-24">
+                                    {result ? (
+                                        <div className="flex flex-col items-center justify-center gap-1 px-1">
+                                            <ItemIcon itemName={result.name} size={36} />
+                                            <span className="text-[10px] font-bold text-center text-text leading-tight">
+                                                {Object.values(result.output)[0]}{'×'} {result.name}
                                             </span>
                                         </div>
                                     ) : (
-                                        <div className="w-4 h-4 rounded-full border border-white/5" />
+                                        <span className="text-text-muted text-xs italic">Empty</span>
                                     )}
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Arrow */}
-                    <div className="text-4xl text-white/20 animate-pulse">→</div>
-
-                    {/* Result Slot */}
-                    <div className="flex flex-col items-center gap-4">
-                        <div 
-                            onClick={doCraft}
-                            className={`w-24 h-24 rounded-lg border-4 transition-all flex items-center justify-center ${result ? 'border-green-500/50 bg-green-500/10 cursor-pointer hover:scale-105 shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'border-white/10 bg-white/5 cursor-not-allowed'}`}
-                        >
-                            {result ? (
-                                <div className="text-center">
-                                    <div className="text-3xl">✨</div>
-                                    <div className="text-xs font-bold mt-1 text-green-400">
-                                        {Object.values(result.output)[0]}x {result.name}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-gray-600 text-xs italic">Empty</div>
-                            )}
+                                </Slot>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Mini Inventory for Selection */}
-                <div className="mt-4 border-t border-white/10 pt-4">
-                    <h3 className="text-sm font-bold text-gray-400 mb-2">Select Item to Craft With</h3>
-                    <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-2">
-                        {Object.entries(gameState.inventory?.blocks || {}).map(([type, count]) => {
-                            if (count <= 0) return null;
-                            const blockConfig = BLOCK_TYPES[type];
-                            return (
-                                <div
-                                    key={type}
-                                    onClick={() => gameState.setSelectedBlock(type)}
-                                    className={`p-2 rounded cursor-pointer border ${gameState.selectedBlock === type ? 'border-blue-400 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'} flex items-center gap-2`}
-                                >
-                                    <div
-                                        className="w-6 h-6 rounded flex items-center justify-center text-sm"
-                                        style={{ backgroundColor: blockConfig?.color || '#333' }}
+                    {/* Mini Inventory for Selection */}
+                    <div className="border-t-chrome border-ink pt-4">
+                        <h3 className="font-display text-sm font-bold tracking-[2px] uppercase text-text-muted mb-2.5">Select Item to Craft With</h3>
+                        <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
+                            {Object.entries(gameState.inventory?.blocks || {}).map(([type, count]) => {
+                                if (count <= 0) return null;
+                                const blockColor = BLOCK_TYPES[type]?.color;
+                                const isSelected = gameState.selectedBlock === type;
+                                return (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => gameState.setSelectedBlock(type)}
+                                        title={cleanName(type)}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md border-chrome transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
                                     >
-                                        {type.match(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g) || ''}
-                                    </div>
-                                    <span className="text-xs">{type.replace(/[\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g, '').trim()}</span>
-                                    <span className="text-[10px] text-gray-400">x{count}</span>
-                                </div>
-                            );
-                        })}
+                                        <div
+                                            className="w-6 h-6 rounded-sm grid place-items-center text-sm border-chrome border-ink"
+                                            style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
+                                        >
+                                            {type.match(EMOJI_RE) || ''}
+                                        </div>
+                                        <span className="text-xs text-text">{cleanName(type)}</span>
+                                        <span className="text-[10px] text-text-muted tabular-nums">{'×'}{count}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    {craftMessage && (
+                        <div className="text-center px-3 py-2 rounded-md font-bold text-sm bg-slot text-success border-chrome border-success animate-fade-in">
+                            {craftMessage.text}
+                        </div>
+                    )}
+
+                    {/* Quick Info */}
+                    <Panel variant="base" className="bg-slot px-4 py-3">
+                        <h3 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">Inventory Tip</h3>
+                        <div className="text-sm text-text-muted flex items-center gap-2">
+                            <span className="w-6 h-6 flex-none rounded-sm grid place-items-center text-accent text-xs font-bold border-chrome border-ink bg-panel-inset">i</span>
+                            <span>Select an item in your hotbar, then click a slot to place it. Click placed items to remove them.</span>
+                        </div>
+                    </Panel>
                 </div>
 
-                {craftMessage && (
-                    <div className="text-center p-2 bg-green-500/20 text-green-400 rounded-full text-sm font-bold border border-green-500/30 animate-bounce">
-                        {craftMessage.text}
-                    </div>
-                )}
-
-                {/* Quick Info */}
-                <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Inventory Tip</h3>
-                    <div className="text-sm text-gray-400 flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center text-blue-400 text-xs">i</div>
-                        <span>Select an item in your hotbar, then click a slot to place it. Click placed items to remove them.</span>
-                    </div>
+                {/* Footer Tip */}
+                <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
+                    Pattern Matcher v2.0 {'•'} Press C to close
                 </div>
-
-                <div className="text-center text-[10px] text-gray-600 uppercase tracking-widest">
-                    Pattern Matcher v2.0 • Press C to close
-                </div>
-            </div>
+            </Panel>
         </div>
     );
 });
