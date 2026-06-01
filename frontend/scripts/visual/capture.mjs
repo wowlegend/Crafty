@@ -117,6 +117,7 @@ async function main() {
     // driven via the test bridge. Wait for fonts to finish loading so the Lilita/
     // Space-Grotesk swap is painted (these states are about typography + chrome).
     await page.evaluate(() => window.__craftyTest.call('showPrimitivesShowcase', 'en'));
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="showcase-root"]'), { timeout: 8000 });
     await page.evaluate(() => document.fonts.ready);
     await delay(700);
     await page.screenshot({ path: resolve(OUT, 'primitives-showcase-en.png') });
@@ -125,6 +126,7 @@ async function main() {
     // primitives-showcase (zh-CN): proves the i18n swap + lazy CJK render. Loading
     // CJK is async (FontFace.load), so wait for fonts.ready AGAIN + a settle delay.
     await page.evaluate(() => window.__craftyTest.call('showPrimitivesShowcase', 'zh-CN'));
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="showcase-root"]'), { timeout: 8000 });
     await page.evaluate(() => document.fonts.ready);
     await delay(1200);
     await page.screenshot({ path: resolve(OUT, 'primitives-showcase-zh.png') });

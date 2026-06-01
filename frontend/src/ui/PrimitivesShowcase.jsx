@@ -68,7 +68,7 @@ export function PrimitivesShowcase() {
   ];
 
   return (
-    <div className={`fixed inset-0 z-dev-overlay overflow-hidden ${bodyFont} text-text`}>
+    <div data-testid="showcase-root" className={`fixed inset-0 z-dev-overlay overflow-hidden ${bodyFont} text-text`}>
       {/* ── Scene backdrop (the game world) + readability scrim ── */}
       <div
         className="absolute inset-0 bg-cover bg-center"

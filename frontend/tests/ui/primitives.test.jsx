@@ -136,6 +136,12 @@ describe('Toast', () => {
     expect(el.className).toMatch(/border-chrome/);
     expect(el.className).toMatch(/bg-success|border-success|border-l-success/);
   });
+  it('uses role=alert for danger, role=status otherwise', () => {
+    const { rerender } = render(<Toast status="danger" data-testid="t">x</Toast>);
+    expect(screen.getByTestId('t')).toHaveAttribute('role', 'alert');
+    rerender(<Toast status="success" data-testid="t">y</Toast>);
+    expect(screen.getByTestId('t')).toHaveAttribute('role', 'status');
+  });
 });
 describe('Tooltip', () => {
   it('shows its content', () => {

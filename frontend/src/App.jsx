@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
@@ -14,10 +14,16 @@ import { useInputManager } from './InputManager';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
-import { PrimitivesShowcase } from './ui/PrimitivesShowcase';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { selectTier, readDeviceSignals } from './render/quality';
+
+// DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
+// whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
+// is tree-shaken out of the production bundle.
+const PrimitivesShowcase = import.meta.env.DEV
+  ? lazy(() => import('./ui/PrimitivesShowcase').then((m) => ({ default: m.PrimitivesShowcase })))
+  : () => null;
 
 function App() {
   return (
@@ -412,7 +418,7 @@ function GameApp({ experienceSystem }) {
 
       {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
 
-      {import.meta.env.DEV && showcaseView && <PrimitivesShowcase />}
+      {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
     </div>
   );
 }
