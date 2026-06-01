@@ -3,6 +3,8 @@ import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
+import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
+import { useT } from './i18n/i18n.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 
@@ -305,23 +307,17 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
 
     return (
         <div className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: 280 }}>
-            <motion.div
-                className="rounded-xl overflow-hidden"
-                style={{
-                    background: 'linear-gradient(135deg, rgba(15, 15, 30, 0.9), rgba(30, 20, 50, 0.85))',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 215, 0, 0.2)',
-                    boxShadow: '0 0 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
-                }}
-            >
-                <div
-                    className="flex items-center justify-between px-3 py-2 cursor-pointer"
+            <Panel variant="raise" className="overflow-hidden p-0">
+                <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-3 py-2 bg-panel-raise"
                     onClick={() => setExpanded(!expanded)}
-                    style={{ borderBottom: expanded ? '1px solid rgba(255,215,0,0.15)' : 'none' }}
                 >
-                    <span className="text-yellow-400 font-bold text-sm">📜 Quests</span>
-                    <span className="text-gray-400 text-xs">{expanded ? '▼' : '▶'}</span>
-                </div>
+                    <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-accent text-sm">
+                        <Icon name="scroll" size={16} className="text-accent" /> Quests
+                    </span>
+                    <Icon name="chevron" size={14} className={`text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                </button>
 
                 <AnimatePresence>
                     {expanded && (
@@ -330,74 +326,71 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
-                            className="px-3 py-2 space-y-2"
+                            className="px-3 py-2 space-y-2 border-t-chrome border-ink overflow-hidden"
                         >
                             {quests.map(quest => (
                                 <div key={quest.id} className="relative">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1 mr-2">
-                                            <div className="text-white text-xs font-semibold">{quest.title}</div>
-                                            <div className="text-gray-400 text-xs">{quest.description}</div>
+                                            <div className="text-text text-xs font-bold">{quest.title}</div>
+                                            <div className="text-text-muted text-xs">{quest.description}</div>
                                         </div>
                                         {quest.completed && !quest.claimed && (
-                                            <span
-                                                className="px-2 py-0.5 rounded text-xs font-bold animate-pulse"
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                                                    color: '#000',
-                                                    boxShadow: '0 0 10px rgba(255,215,0,0.4)',
-                                                }}
+                                            <Button
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => onClaim(quest.id)}
+                                                className="px-2 py-0.5 text-xs"
                                             >
                                                 Press Q
-                                            </span>
+                                            </Button>
                                         )}
                                     </div>
 
-                                    {/* Progress bar */}
-                                    <div className="mt-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                                    {/* Progress bar — bold-flat inset track + flat fill */}
+                                    <div className="mt-1 h-2 bg-track rounded-sm border-chrome border-ink overflow-hidden">
                                         <motion.div
-                                            className="h-full rounded-full"
-                                            style={{
-                                                background: quest.completed
-                                                    ? 'linear-gradient(90deg, #4ade80, #22c55e)'
-                                                    : 'linear-gradient(90deg, #FFD700, #FFA500)',
-                                                boxShadow: quest.completed ? '0 0 6px #4ade80' : '0 0 6px rgba(255,215,0,0.3)',
-                                            }}
+                                            className={`h-full ${quest.completed ? 'bg-success' : 'bg-accent'}`}
                                             animate={{ width: `${(quest.progress / quest.target) * 100}%` }}
                                             transition={{ duration: 0.3 }}
                                         />
                                     </div>
-                                    <div className="text-gray-500 text-xs mt-0.5 text-right">
+                                    <div className="text-text-muted text-xs mt-0.5 text-right tabular-nums">
                                         {quest.progress}/{quest.target} {quest.completed && '✅'}
                                     </div>
                                 </div>
                             ))}
 
                             {quests.length === 0 && (
-                                <div className="text-gray-500 text-xs text-center py-2">All quests completed! 🎉</div>
+                                <div className="text-text-muted text-xs text-center py-2">All quests completed! 🎉</div>
                             )}
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </motion.div>
+            </Panel>
         </div>
     );
 });
 
 export const NotificationStack = React.memo(({ notifications }) => {
-    const colorMap = {
-        quest: { bg: 'rgba(34, 197, 94, 0.9)', border: '#4ade80' },
-        achievement: { bg: 'rgba(234, 179, 8, 0.9)', border: '#FFD700' },
-        loot: { bg: 'rgba(139, 92, 246, 0.9)', border: '#a78bfa' },
-        reward: { bg: 'rgba(59, 130, 246, 0.9)', border: '#60a5fa' },
-        info: { bg: 'rgba(107, 114, 128, 0.9)', border: '#9ca3af' },
+    // Map the data-level notification type → a Toast status. quest/achievement =
+    // success, loot/reward = info, anything else = info; warnings/dangers map through
+    // if a future type uses them.
+    const statusMap = {
+        quest: 'success',
+        achievement: 'success',
+        reward: 'success',
+        loot: 'info',
+        info: 'info',
+        warn: 'warn',
+        danger: 'danger',
     };
 
     return (
         <div className="absolute top-20 right-4 z-30 pointer-events-none space-y-2" style={{ maxWidth: 320 }}>
             <AnimatePresence>
                 {notifications.map(notif => {
-                    const colors = colorMap[notif.type] || colorMap.info;
+                    const status = statusMap[notif.type] || 'info';
                     return (
                         <motion.div
                             key={notif.id}
@@ -405,15 +398,10 @@ export const NotificationStack = React.memo(({ notifications }) => {
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 100, scale: 0.8 }}
                             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                            className="px-4 py-2 rounded-lg text-white text-sm font-semibold shadow-lg"
-                            style={{
-                                background: colors.bg,
-                                border: `1px solid ${colors.border}`,
-                                backdropFilter: 'blur(8px)',
-                                boxShadow: `0 0 15px ${colors.border}40`,
-                            }}
                         >
-                            {notif.text}
+                            <Toast status={status} className="w-full text-sm font-bold">
+                                {notif.text}
+                            </Toast>
                         </motion.div>
                     );
                 })}
@@ -423,94 +411,81 @@ export const NotificationStack = React.memo(({ notifications }) => {
 });
 
 export const AchievementsPanel = React.memo(({ achievements, unlockedAchievements, stats, onClose }) => {
+    const t = useT();
+    const statCells = [
+        { value: stats.kills, label: 'Kills', color: 'text-danger' },
+        { value: stats.spells, label: 'Spells', color: 'text-spell-arcane' },
+        { value: stats.chests, label: 'Chests', color: 'text-accent' },
+        { value: stats.blocks_placed, label: 'Built', color: 'text-success' },
+        { value: stats.blocks_broken, label: 'Mined', color: 'text-info' },
+        { value: stats.deaths, label: 'Deaths', color: 'text-warn' },
+    ];
+
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.7)' }}
+        <div
+            className="absolute inset-0 z-50 grid place-items-center bg-ink/75 animate-fade-in"
+            onClick={onClose}
         >
             <motion.div
                 initial={{ scale: 0.8, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.8, y: 30 }}
-                className="game-panel p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
-                style={{
-                    background: 'linear-gradient(135deg, rgba(15, 15, 35, 0.95), rgba(30, 20, 60, 0.95))',
-                    border: '1px solid rgba(255, 215, 0, 0.3)',
-                    borderRadius: '16px',
-                    boxShadow: '0 0 40px rgba(255, 215, 0, 0.1)',
-                }}
+                className="max-w-lg w-full mx-4 max-h-[80vh]"
+                onClick={e => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-yellow-400 text-xl font-bold">🏆 Achievements</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-lg">✕</button>
-                </div>
+                <Panel variant="raise" className="overflow-hidden p-0 max-h-[80vh] flex flex-col">
+                    {/* Header bar */}
+                    <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink flex-none">
+                        <span className="flex items-center gap-2 font-display text-xl uppercase tracking-wide text-accent">
+                            <Icon name="star" size={24} className="text-accent" /> Achievements
+                        </span>
+                        <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                            <Icon name="close" size={18} />
+                        </Button>
+                    </div>
 
-                <div className="text-gray-400 text-xs mb-4">
-                    {unlockedAchievements.size} / {achievements.length} unlocked
-                </div>
+                    <div className="p-5 overflow-y-auto">
+                        <div className="text-text-muted text-xs mb-4 tabular-nums">
+                            {unlockedAchievements.size} / {achievements.length} unlocked
+                        </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    {achievements.map(ach => {
-                        const unlocked = unlockedAchievements.has(ach.id);
-                        return (
-                            <div
-                                key={ach.id}
-                                className="rounded-xl p-3 relative overflow-hidden"
-                                style={{
-                                    background: unlocked
-                                        ? 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.1))'
-                                        : 'rgba(255,255,255,0.03)',
-                                    border: unlocked
-                                        ? '1px solid rgba(255,215,0,0.4)'
-                                        : '1px solid rgba(255,255,255,0.08)',
-                                    opacity: unlocked ? 1 : 0.5,
-                                }}
-                            >
-                                <div className="text-2xl mb-1">{unlocked ? ach.icon : '🔒'}</div>
-                                <div className={`text-xs font-bold ${unlocked ? 'text-yellow-400' : 'text-gray-500'}`}>
-                                    {ach.title}
-                                </div>
-                                <div className="text-gray-400 text-xs mt-0.5">{ach.description}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {achievements.map(ach => {
+                                const unlocked = unlockedAchievements.has(ach.id);
+                                return (
+                                    <Panel
+                                        key={ach.id}
+                                        variant="inset"
+                                        className={`p-3 ${unlocked ? 'bg-slot' : 'bg-panel-inset opacity-50'}`}
+                                    >
+                                        <div className="text-2xl mb-1">{unlocked ? ach.icon : '🔒'}</div>
+                                        <div className={`text-xs font-bold ${unlocked ? 'text-accent' : 'text-text-muted'}`}>
+                                            {ach.title}
+                                        </div>
+                                        <div className="text-text-muted text-xs mt-0.5">{ach.description}</div>
+                                    </Panel>
+                                );
+                            })}
+                        </div>
+
+                        {/* Stats summary */}
+                        <div className="mt-5 pt-4 border-t-chrome border-ink">
+                            <h3 className="flex items-center gap-1.5 font-display text-sm uppercase tracking-wide text-text mb-2">
+                                <Icon name="upgrade" size={16} className="text-text-muted" /> Stats
+                            </h3>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                                {statCells.map(cell => (
+                                    <Panel key={cell.label} variant="inset" className="bg-slot text-center p-2">
+                                        <div className={`${cell.color} font-bold text-lg tabular-nums`}>{cell.value}</div>
+                                        <div className="text-text-muted">{cell.label}</div>
+                                    </Panel>
+                                ))}
                             </div>
-                        );
-                    })}
-                </div>
-
-                {/* Stats summary */}
-                <div className="mt-5 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    <h3 className="text-white text-sm font-bold mb-2">📊 Stats</h3>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-red-400 font-bold text-lg">{stats.kills}</div>
-                            <div className="text-gray-400">Kills</div>
-                        </div>
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-purple-400 font-bold text-lg">{stats.spells}</div>
-                            <div className="text-gray-400">Spells</div>
-                        </div>
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-yellow-400 font-bold text-lg">{stats.chests}</div>
-                            <div className="text-gray-400">Chests</div>
-                        </div>
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-green-400 font-bold text-lg">{stats.blocks_placed}</div>
-                            <div className="text-gray-400">Built</div>
-                        </div>
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-blue-400 font-bold text-lg">{stats.blocks_broken}</div>
-                            <div className="text-gray-400">Mined</div>
-                        </div>
-                        <div className="text-center p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            <div className="text-orange-400 font-bold text-lg">{stats.deaths}</div>
-                            <div className="text-gray-400">Deaths</div>
                         </div>
                     </div>
-                </div>
+                </Panel>
             </motion.div>
-        </motion.div>
+        </div>
     );
 });
 
@@ -737,17 +712,13 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none"
             style={{ marginTop: 60 }}
         >
-            <div
-                className="px-4 py-2 rounded-lg text-center"
-                style={{
-                    background: 'linear-gradient(135deg, rgba(255,215,0,0.9), rgba(255,165,0,0.9))',
-                    boxShadow: '0 0 20px rgba(255,215,0,0.5)',
-                    border: '2px solid #FFD700',
-                }}
-            >
-                <div className="text-black font-bold text-sm">📦 Treasure Chest!</div>
-                <div className="text-yellow-900 text-xs">Press G to open</div>
-            </div>
+            <Panel variant="base" className="bg-accent text-text-inverse px-4 py-2 text-center flex items-center gap-2">
+                <Icon name="chest" size={22} className="text-text-inverse flex-none" />
+                <div className="text-left">
+                    <div className="font-display uppercase tracking-wide text-sm leading-tight">Treasure Chest!</div>
+                    <div className="text-xs font-bold opacity-80">Press G to open</div>
+                </div>
+            </Panel>
         </motion.div>
     );
 });
