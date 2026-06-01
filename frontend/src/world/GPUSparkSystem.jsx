@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
+import { isCaptureMode } from '../devtest/captureMode';
 
 const MAX_SPARKS = 1200;
 
@@ -179,7 +180,9 @@ export const GPUSparkSystem = () => {
 
   useFrame(() => {
     if (meshRef.current) {
-      uniforms.uTime.value = clockRef.current.getElapsedTime();
+      // Dev capture-determinism: pin the ember clock so any in-flight sparks hold a
+      // frozen frame across capture runs. Inert in normal gameplay — live elapsed time.
+      uniforms.uTime.value = isCaptureMode() ? 0 : clockRef.current.getElapsedTime();
     }
   });
 

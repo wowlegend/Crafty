@@ -1,4 +1,5 @@
 import { useGameStore } from './store/useGameStore';
+import { isCaptureMode } from './devtest/captureMode';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './Components';
@@ -107,8 +108,14 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
     let animFrame;
     
     const updateCompass = () => {
-      animFrame = requestAnimationFrame(updateCompass);
-      
+      // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
+      // compass markers are fully determined by the frozen camera + marker positions.
+      // Render ONCE and do NOT reschedule the rAF loop — a continuously running loop
+      // re-derives the float `left: %` each frame and rounds to sub-pixel-different
+      // marker x-positions between runs (a ~500px top-of-frame flicker). Inert in
+      // normal gameplay: the loop runs every frame exactly as before.
+      if (!isCaptureMode()) animFrame = requestAnimationFrame(updateCompass);
+
       const container = containerRef.current;
       if (!container) return;
 

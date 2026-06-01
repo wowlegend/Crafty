@@ -16,6 +16,7 @@ import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
+import { ecs, mobsQuery } from './ecs/world';
 import { selectTier, readDeviceSignals } from './render/quality';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
@@ -150,6 +151,18 @@ function GameApp({ experienceSystem }) {
       // Force a deterministic tier so visual baselines never depend on the
       // capture machine's deviceMemory/cores.
       useGameStore.getState().setQualityTier('high');
+      // Purge any mobs that won the spawn race before this flag flipped. The mob
+      // spawn setInterval starts when the Canvas mounts (page-load), BEFORE the
+      // harness calls enterCapture; whether the spawn condition (chunks loaded +
+      // spawn chunk ready) is met before or after this flip is a wall-clock race,
+      // so an inconsistent set of hostile mobs would otherwise appear in the
+      // foreground of the world-scene frames (dominant explore-night flake source).
+      // Clearing here + the spawn suppression in NPCSystem guarantees a
+      // deterministically mob-free world scene. Dev-capture-only: this hook is only
+      // reachable through the test bridge (tree-shaken out of prod). The character/
+      // boss close-up fixtures spawn their subject AFTER calling enterCaptureMode
+      // directly (not this hook), so they are unaffected.
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
       if (typeof opts.timeOfDay === 'number') {
         useGameStore.getState().setTimeOfDay(opts.timeOfDay);
       }

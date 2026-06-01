@@ -167,8 +167,12 @@ const MobModel = ({ entity }) => {
     const velocity = Math.sqrt(dx*dx + dz*dz);
     prevPos.current = { x: entity.position.x, z: entity.position.z };
 
-    const time = performance.now() * 0.01;
-    const speed = velocity * 15; 
+    // Dev capture-determinism: pin the gait clock so any mob present in a capture
+    // frame holds a fixed leg pose (wall-clock performance.now() differs run-to-run).
+    // Inert in normal gameplay. (Mob movement is already frozen in capture, so speed
+    // is ~0 and the swing is usually 0 anyway — this also covers the close-up fixtures.)
+    const time = isCaptureMode() ? 0 : performance.now() * 0.01;
+    const speed = velocity * 15;
     const swing = speed > 0.05 ? Math.sin(time) * 0.6 : 0;
     
     if (entity.type !== 'spider') {

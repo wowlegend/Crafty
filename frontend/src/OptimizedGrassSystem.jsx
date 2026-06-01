@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './store/useGameStore';
 import { ecs } from './ecs/world';
+import { isCaptureMode } from './devtest/captureMode';
 
 // Custom materials with GPU-based wind swaying & player displacement
 const grassMaterial = new THREE.MeshBasicMaterial({
@@ -113,8 +114,12 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   }, [grassBlocks]);
 
   useFrame((state) => {
-    const time = state.clock.elapsedTime;
-    
+    // Dev capture-determinism: pin the wind-sway clock to a fixed value so the
+    // grass holds a frozen pose across capture runs (wall-clock elapsedTime differs
+    // run-to-run → frame jitter, dominant ~3-4% self-diff on explore-night). Inert in
+    // normal gameplay — falls through to the live clock so wind animates as before.
+    const time = isCaptureMode() ? 0 : state.clock.elapsedTime;
+
     // 1. Update GPU shader time and entityPositions uniforms for grass
     if (grassMaterial.userData.shader) {
       grassMaterial.userData.shader.uniforms.time.value = time;
