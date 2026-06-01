@@ -1,6 +1,8 @@
 # Crafty S1-C-M2b — Modals Consolidation (glassmorphic → bold-flat primitives) — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. `- [ ]` checkboxes. **Opus 4.8 subagents. Sequential (shared `GamePanels.jsx`). NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`).**
+> **STATUS: ✅ COMPLETE + MERGED (2026-06-01)** — all 5 glass modals (Inventory/CraftingTable/MagicSystem/BuildingTools/SettingsPanel) → bold-flat primitives; `.game-panel-item` glass removed (`.game-panel` base kept — still used by QuestSystem AchievementsPanel → M2c); `inventory-open` capture state added; handlers preserved. `test:unit` 89+2todo · `test:visual` 9/9. Glass language dead; neon (M2c) next.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. `- [x]` checkboxes. **Opus 4.8 subagents. Sequential (shared `GamePanels.jsx`). NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`).**
 
 **Goal:** Migrate the 5 glassmorphic modals in `src/ui/GamePanels.jsx` (Inventory / CraftingTable / MagicSystem / BuildingTools / SettingsPanel) to the locked bold-flat primitives (`Panel`/`Slot`/`Button`/`Icon`/`Tooltip`/`StatBar`), kill the `.game-panel`/`.game-panel-item` glass CSS + the emoji headers, and gate them with new modal capture states — without changing any modal behavior/data/handlers. This is the GLASS-killing second third of M2 (bevel=M2a done, neon=M2c next).
 
@@ -32,32 +34,32 @@ tests/visual/baseline/inventory-open.png  NEW (generated, reviewed)
 
 ### Task 1: Inventory modal → bold-flat (mirror the showcase)
 **Files:** `src/ui/GamePanels.jsx` (Inventory:173-442, PaperDollSlot:57, GearInspector:89).
-- [ ] **Step 1 — Read** the Inventory + PaperDollSlot + GearInspector + the rarity helper in GamePanels.jsx, the primitives, and `PrimitivesShowcase.jsx`'s inventory card (the visual target).
-- [ ] **Step 2 — Rewrite** the Inventory's chrome: the `.game-panel` glass shell → `Panel variant="raise"` (header bar `bg-panel-raise` + 4px ink + `shadow-elev-xl`); paper-doll well → `Panel variant="inset"`/`bg-well` + gear `Slot`s (`gear` filled when equipped, empty otherwise); the item grid `.game-panel-item`s → `Slot` with `rarity` mapped from the existing rarity helper + a 2-tone `Icon` (map item→game-icon name; fallback to a color swatch where no icon maps) + quantity badge; the stats → a bold-flat stats `Panel` (colored stat `Icon`s + tabular values) like the showcase; gold + Equip `Button variant="primary"`; close → `Button variant="ghost"` + `Icon name="close"`. `GearInspector` hover → the `Tooltip` primitive. **Preserve** every handler (equip/unequip/select/hover/onClose) + the data reads.
-- [ ] **Step 3 — Verify** build + unit green; the equip/unequip/hover logic intact (grep the diff).
-- [ ] **Step 4 — Commit** `git commit -m "feat(s1c-m2b): Inventory modal → bold-flat primitives (mirror showcase; preserve equip/inspect logic)"`
+- [x] **Step 1 — Read** the Inventory + PaperDollSlot + GearInspector + the rarity helper in GamePanels.jsx, the primitives, and `PrimitivesShowcase.jsx`'s inventory card (the visual target).
+- [x] **Step 2 — Rewrite** the Inventory's chrome: the `.game-panel` glass shell → `Panel variant="raise"` (header bar `bg-panel-raise` + 4px ink + `shadow-elev-xl`); paper-doll well → `Panel variant="inset"`/`bg-well` + gear `Slot`s (`gear` filled when equipped, empty otherwise); the item grid `.game-panel-item`s → `Slot` with `rarity` mapped from the existing rarity helper + a 2-tone `Icon` (map item→game-icon name; fallback to a color swatch where no icon maps) + quantity badge; the stats → a bold-flat stats `Panel` (colored stat `Icon`s + tabular values) like the showcase; gold + Equip `Button variant="primary"`; close → `Button variant="ghost"` + `Icon name="close"`. `GearInspector` hover → the `Tooltip` primitive. **Preserve** every handler (equip/unequip/select/hover/onClose) + the data reads.
+- [x] **Step 3 — Verify** build + unit green; the equip/unequip/hover logic intact (grep the diff).
+- [x] **Step 4 — Commit** `git commit -m "feat(s1c-m2b): Inventory modal → bold-flat primitives (mirror showcase; preserve equip/inspect logic)"`
 
 ### Task 2: CraftingTable → bold-flat
 **Files:** `src/ui/GamePanels.jsx` (CraftingTable:443-765).
-- [ ] Read CraftingTable + the showcase. Rewrite: glass shell → `Panel`; recipe/ingredient tiles → `Slot`s; the craft action → `Button variant="primary"`; `🔨` header → `Icon name="pickaxe"`/`Hammer` + text. Preserve recipe-match + craft + close logic. Verify build+unit. Commit `feat(s1c-m2b): CraftingTable → bold-flat primitives`.
+- [x] Read CraftingTable + the showcase. Rewrite: glass shell → `Panel`; recipe/ingredient tiles → `Slot`s; the craft action → `Button variant="primary"`; `🔨` header → `Icon name="pickaxe"`/`Hammer` + text. Preserve recipe-match + craft + close logic. Verify build+unit. Commit `feat(s1c-m2b): CraftingTable → bold-flat primitives`.
 
 ### Task 3: MagicSystem + BuildingTools + SettingsPanel → bold-flat
 **Files:** `src/ui/GamePanels.jsx` (MagicSystem:766-812, BuildingTools:813-897, SettingsPanel:898-957).
-- [ ] Read the 3 + showcase. Rewrite each: glass shell → `Panel`; `.game-panel-item` rows → `Slot`/bold-flat rows; buttons → `Button`; emoji headers (`✨`/`🏠`/`⚙️`) → `Icon` (magic/`Grid`/settings) + text; SettingsPanel toggles → bold-flat (keep `showStats`/`setShowStats`/`onOpenWorldManager` + all toggles). Preserve all handlers. Verify build+unit. Commit `feat(s1c-m2b): MagicSystem + BuildingTools + SettingsPanel → bold-flat primitives`.
+- [x] Read the 3 + showcase. Rewrite each: glass shell → `Panel`; `.game-panel-item` rows → `Slot`/bold-flat rows; buttons → `Button`; emoji headers (`✨`/`🏠`/`⚙️`) → `Icon` (magic/`Grid`/settings) + text; SettingsPanel toggles → bold-flat (keep `showStats`/`setShowStats`/`onOpenWorldManager` + all toggles). Preserve all handlers. Verify build+unit. Commit `feat(s1c-m2b): MagicSystem + BuildingTools + SettingsPanel → bold-flat primitives`.
 
 ### Task 4: Remove `.game-panel`/`.game-panel-item` glass CSS + emoji-header cleanup
 **Files:** `src/App.css`.
-- [ ] Grep-guard `.game-panel` + `.game-panel-item` across `src/` — if no remaining references after T1-3, delete the rules (App.css ~398-430). KEEP `.glow-button` if MenuSystem still uses it (flag for M2c). Confirm `grep -rn "game-panel" src/` clean (or report kept refs). Verify build+unit. Commit `feat(s1c-m2b): remove orphaned .game-panel glass CSS`.
+- [x] Grep-guard `.game-panel` + `.game-panel-item` across `src/` — if no remaining references after T1-3, delete the rules (App.css ~398-430). KEEP `.glow-button` if MenuSystem still uses it (flag for M2c). Confirm `grep -rn "game-panel" src/` clean (or report kept refs). Verify build+unit. Commit `feat(s1c-m2b): remove orphaned .game-panel glass CSS`.
 
 ### Task 5: Modal capture state(s)
 **Files:** `src/App.jsx` (DEV test hook), `scripts/visual/capture.mjs`, `tests/visual/diff.test.js`.
-- [ ] Add a DEV test hook (in the existing `registerTestHook` block) `openModal(which)` → sets `showInventory`/`showCrafting` true (+ `setHudHidden` as appropriate / or keep HUD). In `capture.mjs`, after the showcase shots, drive `start`→stable→`openModal('inventory')`→`document.fonts.ready`→settle→screenshot `inventory-open.png` (optionally `crafting-open.png`). Add the state(s) to `diff.test.js` STATES. (Mind determinism: open the modal from a known state; the inventory starting items are fixed.) Verify capture produces a non-blank modal frame. Commit `feat(s1c-m2b): inventory-open capture state + modal test hook`.
+- [x] Add a DEV test hook (in the existing `registerTestHook` block) `openModal(which)` → sets `showInventory`/`showCrafting` true (+ `setHudHidden` as appropriate / or keep HUD). In `capture.mjs`, after the showcase shots, drive `start`→stable→`openModal('inventory')`→`document.fonts.ready`→settle→screenshot `inventory-open.png` (optionally `crafting-open.png`). Add the state(s) to `diff.test.js` STATES. (Mind determinism: open the modal from a known state; the inventory starting items are fixed.) Verify capture produces a non-blank modal frame. Commit `feat(s1c-m2b): inventory-open capture state + modal test hook`.
 
 ### Task 6 (CONTROLLER): re-baseline + visual review
-- [ ] `npm run visual:capture`; the 8 existing states stay green; view `inventory-open` (+ crafting) — verify the migrated modal reads bold-flat (matches the showcase inventory). Baseline the new state(s) (`cp current→baseline`); `npx vitest run --config vitest.visual.config.js` → all green. Add the frame to `KEVIN-REVIEW-BATCH.md`. Commit baselines.
+- [x] `npm run visual:capture`; the 8 existing states stay green; view `inventory-open` (+ crafting) — verify the migrated modal reads bold-flat (matches the showcase inventory). Baseline the new state(s) (`cp current→baseline`); `npx vitest run --config vitest.visual.config.js` → all green. Add the frame to `KEVIN-REVIEW-BATCH.md`. Commit baselines.
 
 ### Task 7 (CONTROLLER): final review + docs + merge
-- [ ] Focused review: modal behavior/handlers preserved, no collateral, glass removed. Full gate. Update docs (this plan STATUS; CHANGELOG M2b; ACTIVE_PLAN → M2c; native memory + flush marker). Merge `s1c-m2b-modals` → main, push. The single-language hard gate still waits for M2c.
+- [x] Focused review: modal behavior/handlers preserved, no collateral, glass removed. Full gate. Update docs (this plan STATUS; CHANGELOG M2b; ACTIVE_PLAN → M2c; native memory + flush marker). Merge `s1c-m2b-modals` → main, push. The single-language hard gate still waits for M2c.
 
 ---
 
