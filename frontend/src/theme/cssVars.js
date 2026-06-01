@@ -105,8 +105,11 @@ export const TW_SCALES = {
     'body-cjk': UI.type.family.bodyCjk.split(',').map((s) => s.trim().replace(/^'|'$/g, '')),
   },
   fontSize: Object.fromEntries(
-    Object.entries(UI.type.size).map(([k, v]) => [k, [`${v}px`, { lineHeight: String(UI.type.leading.snug) }]]),
+    Object.entries(UI.type.size).map(([k, v]) => {
+      const lh = (k === 'xl' || k === 'xxl' || k === 'display') ? UI.type.leading.tight : UI.type.leading.snug;
+      return [k, [`${v}px`, { lineHeight: String(lh) }]];
+    }),
   ),
   boxShadow: { 'elev-sm': UI.elevation.sm, 'elev-md': UI.elevation.md, 'elev-lg': UI.elevation.lg },
-  zIndex: Object.fromEntries(Object.entries(UI.z).map(([k, v]) => [k, String(v)])),
+  zIndex: Object.fromEntries(Object.entries(UI.z).map(([k, v]) => [k.replace(/([A-Z])/g, '-$1').toLowerCase(), String(v)])),
 };

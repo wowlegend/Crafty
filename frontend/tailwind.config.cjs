@@ -49,8 +49,8 @@ module.exports = {
           nature: c('--ui-spell-nature'),
         },
       },
-      borderRadius: { sm: '6px', md: '10px', lg: '14px' },
-      borderWidth: { chrome: '4px' },
+      borderRadius: { sm: 'var(--ui-radius-sm)', md: 'var(--ui-radius-md)', lg: 'var(--ui-radius-lg)' },
+      borderWidth: { chrome: 'var(--ui-border-chrome)' },
       fontFamily: {
         display: ['Lilita One', 'system-ui', 'sans-serif'],
         body: ['Space Grotesk', 'system-ui', 'sans-serif'],
@@ -68,9 +68,9 @@ module.exports = {
         display: ['48px', { lineHeight: '1.05' }],
       },
       boxShadow: {
-        'elev-sm': '3px 3px 0 0 rgb(var(--ui-ink))',
-        'elev-md': '5px 5px 0 0 rgb(var(--ui-ink))',
-        'elev-lg': '8px 8px 0 0 rgb(var(--ui-ink))',
+        'elev-sm': 'var(--ui-elev-sm)',
+        'elev-md': 'var(--ui-elev-md)',
+        'elev-lg': 'var(--ui-elev-lg)',
       },
       zIndex: { 'scene': '1', 'hud': '100', 'panel': '200', 'modal': '300', 'toast': '400', 'tooltip': '500', 'dev-overlay': '9000' },
     },
