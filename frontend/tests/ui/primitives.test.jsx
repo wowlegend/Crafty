@@ -49,17 +49,27 @@ describe('Button', () => {
 import { Slot } from '../../src/ui/primitives/Slot.jsx';
 
 describe('Slot', () => {
-  it('renders an empty slot with the inset field + 4px ink', () => {
+  it('empty slot uses the slot fill + 4px ink', () => {
     render(<Slot data-testid="s" />);
     const el = screen.getByTestId('s');
     expect(el.className).toMatch(/bg-slot/);
     expect(el.className).toMatch(/border-chrome/);
   });
-  it('rarity tints the border and selected adds the accent ring', () => {
-    render(<Slot rarity="legendary" selected data-testid="s">x</Slot>);
+  it('rarity fills with a gradient + inner ring + 2-tone icon color (inline)', () => {
+    render(<Slot rarity="legendary" data-testid="s"><span>x</span></Slot>);
     const el = screen.getByTestId('s');
-    expect(el.className).toMatch(/border-rarity-legendary/);
-    expect(el.className).toMatch(/ring/);
+    expect(el.getAttribute('style')).toMatch(/linear-gradient/);
+    expect(el.getAttribute('style')).toMatch(/inset/);
+  });
+  it('selected adds the gold ring + accent border', () => {
+    render(<Slot rarity="rare" selected data-testid="s">x</Slot>);
+    const el = screen.getByTestId('s');
+    expect(el.className).toMatch(/border-accent-raise/);
+    expect(el.getAttribute('style')).toMatch(/var\(--ui-accent\)/);
+  });
+  it('gear slot uses the gold gear fill', () => {
+    render(<Slot gear data-testid="s">x</Slot>);
+    expect(screen.getByTestId('s').getAttribute('style')).toMatch(/linear-gradient/);
   });
 });
 
@@ -69,15 +79,29 @@ describe('StatBar', () => {
   it('clamps fill 0..1 and renders a tabular-nums value', () => {
     render(<StatBar kind="health" value={150} max={100} showValue data-testid="b" />);
     const el = screen.getByTestId('b');
-    const fill = el.querySelector('[data-fill]');
-    expect(fill).toHaveStyle({ width: '100%' });
-    expect(el.className).toMatch(/border-chrome/);
+    expect(el.querySelector('[data-fill]')).toHaveStyle({ width: '100%' });
     expect(el).toHaveTextContent('100');
     expect(el.querySelector('.tabular-nums')).toBeTruthy();
   });
-  it('kind selects the fill color (mana = info/blue)', () => {
+  it('kind selects the fill color (mana=info)', () => {
     render(<StatBar kind="mana" value={50} max={100} data-testid="b" />);
     expect(screen.getByTestId('b').querySelector('[data-fill]').className).toMatch(/bg-info/);
+  });
+  it('renders a leading icon when given', () => {
+    render(<StatBar kind="health" icon="health" value={50} max={100} data-testid="b" />);
+    expect(screen.getByTestId('b').querySelector('svg')).toBeTruthy();
+  });
+});
+
+import { SpellRing } from '../../src/ui/primitives/SpellRing.jsx';
+
+describe('SpellRing', () => {
+  it('renders a circular ring; active adds the spell glow', () => {
+    render(<SpellRing spell="fire" active keyLabel="Q" data-testid="r"><span>x</span></SpellRing>);
+    const el = screen.getByTestId('r');
+    expect(el.className).toMatch(/rounded-full/);
+    expect(el.getAttribute('style')).toMatch(/spell-fire/);
+    expect(el).toHaveTextContent('Q');
   });
 });
 

@@ -1,31 +1,47 @@
 import { forwardRef } from 'react';
-import { cva } from 'class-variance-authority';
 import { cn } from './cn.js';
+import { RARITY_FILL } from '../../theme/tokens.js';
 
-// Inventory/hotbar cell. Empty = inset slot fill + ink. rarity tints the border
-// (common keeps the plain ink). selected adds a gold ring. Always 4px ink (the
-// world-outline tie). square via aspect-square; size set by the parent (w-*).
-const slot = cva(
-  'relative grid place-items-center aspect-square bg-slot rounded-sm border-chrome ' +
-  'shadow-elev-sm overflow-hidden',
-  {
-    variants: {
-      rarity: {
-        none:      'border-ink',
-        common:    'border-rarity-common',
-        rare:      'border-rarity-rare',
-        epic:      'border-rarity-epic',
-        legendary: 'border-rarity-legendary',
-      },
-      selected: { true: 'ring-2 ring-accent ring-offset-0', false: '' },
-    },
-    defaultVariants: { rarity: 'none', selected: false },
-  },
-);
+// Inventory/hotbar/gear cell — bold-flat comp. A filled tile (rarity or gear) is a
+// flat-saturated 2-stop vertical gradient + a thin colored INNER ring + the 2-tone
+// icon color (the child <Icon> inherits via currentColor). Empty = the lighter slot
+// slate. selected adds a gold accent border + a 3px gold ring on top of the hard
+// offset shadow. Gradients + composed inset shadows are inline (they don't map to the
+// single-color --ui-* token layer); the ink in inline shadows = rgb(var(--ui-ink)).
+const INK = 'rgb(var(--ui-ink))';
+const ACCENT = 'rgb(var(--ui-accent))';
 
-export const Slot = forwardRef(function Slot({ rarity = 'none', selected = false, className, children, ...props }, ref) {
+export const Slot = forwardRef(function Slot(
+  { rarity, gear, selected = false, className, children, ...props }, ref) {
+  const fill = gear ? RARITY_FILL.gear : (rarity ? RARITY_FILL[rarity] : null);
+
+  const base = 'relative grid place-items-center aspect-square border-chrome rounded-md overflow-hidden';
+  const borderCls = selected ? 'border-accent-raise' : 'border-ink';
+
+  const style = {};
+  let cls;
+  if (fill) {
+    // Filled tile: gradient + inner ring + hard offset. Legendary gets a slightly
+    // thicker ring so the gold reads as "premium".
+    const rw = rarity === 'legendary' ? 2.5 : 2;
+    let boxShadow = `5px 5px 0 0 ${INK}, inset 0 0 0 ${rw}px ${fill.ring}`;
+    if (selected) boxShadow += `, 0 0 0 3px ${ACCENT}`;
+    style.background = `linear-gradient(180deg, ${fill.from}, ${fill.to})`;
+    style.boxShadow = boxShadow;
+    style.color = fill.icon; // 2-tone icon color via currentColor
+    cls = cn(base, borderCls, className);
+  } else {
+    // Empty slot: the lighter slot slate + the hard offset shadow.
+    if (selected) {
+      style.boxShadow = `5px 5px 0 0 ${INK}, 0 0 0 3px ${ACCENT}`;
+      cls = cn(base, borderCls, 'bg-slot', className);
+    } else {
+      cls = cn(base, borderCls, 'bg-slot shadow-elev-md', className);
+    }
+  }
+
   return (
-    <div ref={ref} className={cn(slot({ rarity, selected }), className)} {...props}>
+    <div ref={ref} className={cls} style={style} {...props}>
       {children}
     </div>
   );

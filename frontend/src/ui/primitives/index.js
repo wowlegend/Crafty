@@ -3,6 +3,7 @@ export { Panel } from './Panel.jsx';
 export { Button } from './Button.jsx';
 export { Slot } from './Slot.jsx';
 export { StatBar } from './StatBar.jsx';
+export { SpellRing } from './SpellRing.jsx';
 export { Icon } from './Icon.jsx';
 export { Toast } from './Toast.jsx';
 export { Tooltip } from './Tooltip.jsx';
