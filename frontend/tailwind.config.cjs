@@ -8,6 +8,16 @@ const c = (v) => `rgb(var(${v}) / <alpha-value>)`;
 
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}', './index.html'],
+  // PrimitivesShowcase builds spell color classes via `text-spell-${s}` interpolation,
+  // which the JIT scanner can't see (it reads raw source text, not runtime values).
+  // Safelist the full set so the utilities are always emitted.
+  safelist: [
+    'text-spell-fire',
+    'text-spell-ice',
+    'text-spell-lightning',
+    'text-spell-arcane',
+    'text-spell-nature',
+  ],
   theme: {
     extend: {
       colors: {
