@@ -15,6 +15,16 @@ import {
 import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
+import { Panel } from './ui/primitives/index.js';
+
+// Map a game activeSpell id -> bold-flat token spell color (mirrors the old inline-hex
+// mapping: fireball=fire, iceball=ice, lightning=lightning, everything else=arcane).
+const SPELL_COLOR_CLASS = {
+  fireball: 'text-spell-fire',
+  iceball: 'text-spell-ice',
+  lightning: 'text-spell-lightning',
+  arcane: 'text-spell-arcane',
+};
 
 const Minimap = React.memo(() => {
   const canvasRef = useRef(null);
@@ -91,10 +101,10 @@ const Minimap = React.memo(() => {
 
   return (
     <div className="absolute bottom-20 right-4 z-20 pointer-events-none">
-      <div className="minimap-container">
-        <canvas ref={canvasRef} width={MAP_SIZE} height={MAP_SIZE} />
-      </div>
-      <div className="text-center text-xs mt-1" style={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, monospace' }}>
+      <Panel variant="base" className="overflow-hidden p-0 leading-none">
+        <canvas ref={canvasRef} width={MAP_SIZE} height={MAP_SIZE} className="block" />
+      </Panel>
+      <div className="text-center text-xs mt-1 tabular-nums text-text-muted">
         {coords.x}, {coords.z}
       </div>
     </div>
@@ -257,12 +267,9 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
 
   return (
     <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-      <div className="w-[320px] h-[34px] bg-slate-950/70 border border-slate-700/50 rounded-xl relative flex items-center justify-center overflow-hidden" style={{
-        boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8), 0 4px 15px rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(8px)',
-      }}>
+      <div className="w-[320px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
         {/* Alignment reticle line */}
-        <div className="absolute top-0 bottom-0 w-[1.5px] bg-sky-400/80 z-20 shadow-[0_0_6px_rgba(56,189,248,0.8)]"></div>
+        <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         {/* Scrolling Marker track */}
         <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
       </div>
@@ -307,13 +314,13 @@ export function HUD({
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-              <div className="bg-black/60 px-4 py-2 rounded-lg text-white text-sm text-center">
-                <span className="text-gray-400">Spell: </span>
-                <span style={{ color: gameState.activeSpell === 'fireball' ? '#FF4500' : gameState.activeSpell === 'iceball' ? '#00BFFF' : gameState.activeSpell === 'lightning' ? '#FFD700' : '#9932CC' }}>
+              <Panel variant="base" className="px-4 py-2 text-sm text-center">
+                <span className="text-text-muted">Spell: </span>
+                <span className={`font-bold ${SPELL_COLOR_CLASS[gameState.activeSpell] || 'text-spell-arcane'}`}>
                   {gameState.activeSpell.toUpperCase()}
                 </span>
-                <span className="text-gray-400 ml-2">({SPELL_MANA_COSTS[gameState.activeSpell]} MP)</span>
-              </div>
+                <span className="text-text-muted ml-2 tabular-nums">({SPELL_MANA_COSTS[gameState.activeSpell]} MP)</span>
+              </Panel>
             </div>
 
             <SimpleExperienceBar
