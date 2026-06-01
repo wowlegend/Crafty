@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **All subagents: Opus 4.8. Sequential only (never parallel — many tasks edit `tokens.js`/`tailwind.config.cjs`/`index.jsx`). NEVER add a Claude footer / Co-Authored-By to commits. Fix-ups = NEW commits (never `git commit --amend`/`reset`). AST-safe edits for source `.js/.jsx` (no `sed` on code).**
 
+> **STATUS: ✅ COMPLETE + MERGED to `main` (2026-06-01)** — all tasks done; `test:unit` 81+2todo · `test:visual` 8/8 · `build` clean. Final whole-branch review APPROVED_WITH_NITS → 2 SoT nits fixed render-neutral. See CHANGELOG 2026-06-01. Tech-debt: PuHuiTi/Noto zh-body swap · explore-night capture flake · Toast danger `role`.
+
 **Goal:** Build the locked **bold-flat** UI design system as a wired, tested token foundation (`tokens.js`→Tailwind+CSS-vars), an i18n layer (English-default + lazy zh-CN), self-hosted fonts, and seven component primitives (Panel/Button/Slot/StatBar/Icon/Toast/Tooltip + LocaleToggle), proven by a two-locale primitives-showcase visual-regression state — **without touching the 3D scene** (the 6 existing baselines stay green).
 
 **Architecture:** `src/theme/tokens.js` is the single source of truth (SoT). `src/theme/cssVars.js` derives (a) a `--ui-*` CSS-custom-property map applied to `:root` at boot via `applyThemeVars()`, and (b) a Tailwind color/scale object. `tailwind.config.cjs` references the `--ui-*` vars by **name** as literal `rgb(var(--ui-x) / <alpha-value>)` strings (no ESM import → no postcss-discovery risk); a **parity unit test** imports `tokens.js`+`cssVars.js` (ESM, in vitest) and asserts the `.cjs` config references exactly the tokens that exist — making SoT drift a CI failure. Mood-reactive tints (S1-D) become free imperative `setProperty('--ui-...')` writes. Primitives are `.jsx` (the `@vitejs/plugin-react` transform only covers `.js/.jsx`), styled via Tailwind utility classes that resolve to the vars, variant logic via `class-variance-authority` + a `cn()` (`clsx`+`tailwind-merge`) helper. i18n is a tiny store-backed `t(key)` + `useT()`; CJK fonts inject lazily on the zh-CN toggle so English users download zero CJK bytes. The showcase is a DEV-only full-screen gallery driven by the existing `__craftyTest` bridge + a new store flag, captured by `scripts/visual/capture.mjs` in both locales.
@@ -67,7 +69,7 @@ frontend/
 **Files:**
 - Modify: `frontend/package.json` (devDependencies, via `npm i -D`)
 
-- [ ] **Step 1: Create the feature branch (from repo root `/Users/kz/Code/Crafty`)**
+- [x] **Step 1: Create the feature branch (from repo root `/Users/kz/Code/Crafty`)**
 
 ```bash
 cd /Users/kz/Code/Crafty
@@ -76,7 +78,7 @@ git checkout -b s1c-m1-ui-foundation
 ```
 Expected: on a clean `s1c-m1-ui-foundation` off `38ae917` (ignore the auto `.state/compaction-events.jsonl`).
 
-- [ ] **Step 2: Install dev dependencies**
+- [x] **Step 2: Install dev dependencies**
 
 ```bash
 cd /Users/kz/Code/Crafty/frontend
@@ -89,12 +91,12 @@ npm i clsx tailwind-merge class-variance-authority
 npm i -D jsdom @testing-library/react@^16 @testing-library/jest-dom
 ```
 
-- [ ] **Step 3: Verify the build + unit suite are still green (baseline before any change)**
+- [x] **Step 3: Verify the build + unit suite are still green (baseline before any change)**
 
 Run: `cd /Users/kz/Code/Crafty/frontend && npm run build && npm run test:unit`
 Expected: build succeeds; all existing unit tests pass (40+2todo per the M2b record).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/package.json frontend/package-lock.json
@@ -109,7 +111,7 @@ git commit -m "chore(s1c-m1): add cva + clsx + tailwind-merge + jsdom + testing-
 - Modify: `frontend/src/theme/tokens.js` (replace the `UI` export; leave `PALETTE`/`MAGIC`/`DANGER_STATES` untouched)
 - Modify: `frontend/tests/theme/tokens.test.js` (add a `UI tokens` describe block)
 
-- [ ] **Step 1: Write the failing test** — append to `tests/theme/tokens.test.js`:
+- [x] **Step 1: Write the failing test** — append to `tests/theme/tokens.test.js`:
 
 ```javascript
 import { UI } from '../../src/theme/tokens.js';
@@ -169,12 +171,12 @@ describe('UI design-system tokens (S1-C bold-flat)', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to confirm it fails**
+- [x] **Step 2: Run it to confirm it fails**
 
 Run: `cd /Users/kz/Code/Crafty/frontend && npm run test:unit -- tokens`
 Expected: FAIL (`UI.color` undefined — old `UI` is flat).
 
-- [ ] **Step 3: Replace the `UI` export** in `src/theme/tokens.js` (delete the current lines 43-54 `export const UI = {...};` and replace with the structured object below — keep everything above it intact):
+- [x] **Step 3: Replace the `UI` export** in `src/theme/tokens.js` (delete the current lines 43-54 `export const UI = {...};` and replace with the structured object below — keep everything above it intact):
 
 ```javascript
 // ── UI design-system tokens (S1-C "bold-flat", locked 2026-06-01 §9). ──────────
@@ -256,12 +258,12 @@ export const UI = {
 };
 ```
 
-- [ ] **Step 4: Run the token tests to verify pass**
+- [x] **Step 4: Run the token tests to verify pass**
 
 Run: `npm run test:unit -- tokens`
 Expected: PASS (both the existing palette tests and the new UI block).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/theme/tokens.js frontend/tests/theme/tokens.test.js
@@ -276,7 +278,7 @@ git commit -m "feat(s1c-m1): extend UI tokens — bold-flat semantic color/rarit
 - Create: `frontend/src/theme/cssVars.js`
 - Create: `frontend/tests/theme/cssVars.test.js`
 
-- [ ] **Step 1: Write the failing test** — `tests/theme/cssVars.test.js`:
+- [x] **Step 1: Write the failing test** — `tests/theme/cssVars.test.js`:
 
 ```javascript
 import { describe, it, expect } from 'vitest';
@@ -324,9 +326,9 @@ describe('cssVars', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail** (`npm run test:unit -- cssVars`): module not found.
+- [x] **Step 2: Run → fail** (`npm run test:unit -- cssVars`): module not found.
 
-- [ ] **Step 3: Implement** `src/theme/cssVars.js`:
+- [x] **Step 3: Implement** `src/theme/cssVars.js`:
 
 ```javascript
 // Derives the runtime CSS-custom-property layer AND the Tailwind theme objects
@@ -447,9 +449,9 @@ export const TW_SCALES = {
 };
 ```
 
-- [ ] **Step 4: Run → pass** (`npm run test:unit -- cssVars`).
+- [x] **Step 4: Run → pass** (`npm run test:unit -- cssVars`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/theme/cssVars.js frontend/tests/theme/cssVars.test.js
@@ -464,7 +466,7 @@ git commit -m "feat(s1c-m1): cssVars — derive :root CSS vars + Tailwind theme 
 - Modify: `frontend/tailwind.config.cjs`
 - Create: `frontend/tests/theme/tailwind-wiring.test.js`
 
-- [ ] **Step 1: Write the failing parity test** — `tests/theme/tailwind-wiring.test.js`:
+- [x] **Step 1: Write the failing parity test** — `tests/theme/tailwind-wiring.test.js`:
 
 ```javascript
 import { describe, it, expect } from 'vitest';
@@ -494,9 +496,9 @@ describe('tailwind ↔ tokens SoT parity', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail** (`npm run test:unit -- tailwind-wiring`): `extend: {}` still empty.
+- [x] **Step 2: Run → fail** (`npm run test:unit -- tailwind-wiring`): `extend: {}` still empty.
 
-- [ ] **Step 3: Replace** `tailwind.config.cjs`. Because the config is CommonJS and `cssVars.js` is ESM, the config inlines the var-reference strings + scales as **literal values** (kept honest by the parity test above + the keys mirror `TW_COLORS`/`TW_SCALES` exactly):
+- [x] **Step 3: Replace** `tailwind.config.cjs`. Because the config is CommonJS and `cssVars.js` is ESM, the config inlines the var-reference strings + scales as **literal values** (kept honest by the parity test above + the keys mirror `TW_COLORS`/`TW_SCALES` exactly):
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
@@ -572,14 +574,14 @@ module.exports = {
 
 > Note the boxShadow uses `var(--ui-ink)` directly (not channels) — that's intentional: a box-shadow color needs a full color, and the `--ui-ink` channels need wrapping. **Fix:** the shadow must wrap the channels: `5px 5px 0 0 rgb(var(--ui-ink))`. Use this corrected form in `boxShadow` AND in `tokens.js` `UI.elevation` (update Task 2's elevation strings to `'5px 5px 0 0 rgb(var(--ui-ink))'`) AND in `cssVars.js` `--ui-elev-*` accordingly. Make the three consistent. (The token test in Task 2 checks `contains('var(--ui-ink)')` which still holds.)
 
-- [ ] **Step 3a: Apply the `rgb(var(--ui-ink))` correction** in all three places (`tokens.js` `UI.elevation`, `cssVars.js` is derived so automatic, `tailwind.config.cjs` `boxShadow`). Re-run `npm run test:unit -- tokens cssVars` → still green.
+- [x] **Step 3a: Apply the `rgb(var(--ui-ink))` correction** in all three places (`tokens.js` `UI.elevation`, `cssVars.js` is derived so automatic, `tailwind.config.cjs` `boxShadow`). Re-run `npm run test:unit -- tokens cssVars` → still green.
 
-- [ ] **Step 4: Run the parity test + a build to confirm Tailwind compiles the new theme**
+- [x] **Step 4: Run the parity test + a build to confirm Tailwind compiles the new theme**
 
 Run: `npm run test:unit -- tailwind-wiring && npm run build`
 Expected: parity test PASS; build succeeds (Tailwind generates `bg-ink`, `shadow-elev-md`, `font-display`, `text-display`, `rounded-md`, `border-chrome`, `z-modal`, `bg-rarity-legendary`, etc.).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/tailwind.config.cjs frontend/tests/theme/tailwind-wiring.test.js frontend/src/theme/tokens.js frontend/src/theme/cssVars.js
@@ -595,11 +597,11 @@ git commit -m "feat(s1c-m1): wire tokens→Tailwind theme.extend via --ui-* vars
 - Modify: `frontend/src/index.jsx`
 - (font binaries land in Task 7; this task wires the @font-face + boot call — the faces fall back to `system-ui` until Task 7 drops the woff2, which is fine and keeps the build green)
 
-- [ ] **Step 1: Read** `src/index.jsx` to find the mount point.
+- [x] **Step 1: Read** `src/index.jsx` to find the mount point.
 
 Run: `sed -n '1,40p' src/index.jsx`
 
-- [ ] **Step 2: Create** `src/theme/fonts.css` (eager Latin faces, `font-display: swap`):
+- [x] **Step 2: Create** `src/theme/fonts.css` (eager Latin faces, `font-display: swap`):
 
 ```css
 /* Eager Latin display + body faces (English default). CJK faces are injected
@@ -621,7 +623,7 @@ Run: `sed -n '1,40p' src/index.jsx`
 }
 ```
 
-- [ ] **Step 3: Wire boot** — in `src/index.jsx`, add imports + the `applyThemeVars()` call **before** `ReactDOM ... render`:
+- [x] **Step 3: Wire boot** — in `src/index.jsx`, add imports + the `applyThemeVars()` call **before** `ReactDOM ... render`:
 
 ```javascript
 import './theme/fonts.css';
@@ -632,12 +634,12 @@ applyThemeVars(); // write --ui-* onto :root before first paint
 
 (Place `import './theme/fonts.css'` next to the existing `./index.css` import; place the `applyThemeVars()` call at module top-level after imports.)
 
-- [ ] **Step 4: Verify build + the existing visual baselines are untouched**
+- [x] **Step 4: Verify build + the existing visual baselines are untouched**
 
 Run: `npm run build && npm run test:visual`
 Expected: build OK. Visual: the 6 existing states still pass (`applyThemeVars` only ADDS `--ui-*` vars; no existing selector consumes them yet, and `body` font is unchanged → menu/explore frames are byte-identical). If any existing state regresses >6%, STOP — something changed a consumed global; revert and isolate.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/theme/fonts.css frontend/src/index.jsx
@@ -654,7 +656,7 @@ git commit -m "feat(s1c-m1): apply --ui-* vars at boot + eager Latin @font-face 
 - Create: `frontend/src/i18n/i18n.js`
 - Create: `frontend/tests/i18n/i18n.test.js`
 
-- [ ] **Step 1: Write the failing test** — `tests/i18n/i18n.test.js`:
+- [x] **Step 1: Write the failing test** — `tests/i18n/i18n.test.js`:
 
 ```javascript
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -700,9 +702,9 @@ describe('i18n', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail** (module + store field missing).
+- [x] **Step 2: Run → fail** (module + store field missing).
 
-- [ ] **Step 3: Add to the store** — in `src/store/useGameStore.jsx`, immediately after the `dangerLevel`/`setDangerLevel` block (after line 57), insert:
+- [x] **Step 3: Add to the store** — in `src/store/useGameStore.jsx`, immediately after the `dangerLevel`/`setDangerLevel` block (after line 57), insert:
 
 ```javascript
     // UI locale (S1-C): 'en' default + togglable 'zh-CN'. CJK fonts lazy-load on
@@ -715,7 +717,7 @@ describe('i18n', () => {
     setShowcaseView: (on) => set({ showcaseView: !!on }),
 ```
 
-- [ ] **Step 4: Create** `src/i18n/strings.js` (flat dotted keys; cover all showcase + core-HUD labels):
+- [x] **Step 4: Create** `src/i18n/strings.js` (flat dotted keys; cover all showcase + core-HUD labels):
 
 ```javascript
 // Flat dotted-key string tables. en is the source/fallback; zh-CN must cover
@@ -785,7 +787,7 @@ export const STRINGS = {
 };
 ```
 
-- [ ] **Step 5: Create** `src/i18n/i18n.js`:
+- [x] **Step 5: Create** `src/i18n/i18n.js`:
 
 ```javascript
 import { useGameStore } from '../store/useGameStore.jsx';
@@ -813,9 +815,9 @@ export function useT() {
 }
 ```
 
-- [ ] **Step 6: Run → pass** (`npm run test:unit -- i18n`).
+- [x] **Step 6: Run → pass** (`npm run test:unit -- i18n`).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/store/useGameStore.jsx frontend/src/i18n/strings.js frontend/src/i18n/i18n.js frontend/tests/i18n/i18n.test.js
@@ -834,7 +836,7 @@ git commit -m "feat(s1c-m1): i18n layer — locale store + t()/useT() + en/zh-CN
 
 > **If any download URL 404s or the host is unreachable, report `BLOCKED` with the failing URL** — the controller will supply an alternative source. Do NOT commit placeholder/empty font files.
 
-- [ ] **Step 1: Acquire the 2 eager Latin faces** (google-webfonts-helper CDN — OFL):
+- [x] **Step 1: Acquire the 2 eager Latin faces** (google-webfonts-helper CDN — OFL):
 
 ```bash
 cd /Users/kz/Code/Crafty/frontend && mkdir -p public/fonts && cd public/fonts
@@ -847,7 +849,7 @@ ls -la *.woff2
 ```
 Expected: two non-empty `.woff2` files (each ~20-60KB). Verify with `file *.woff2` (should report "Web Open Font Format (Version 2)").
 
-- [ ] **Step 2: Acquire the 2 lazy CJK faces** (display = Smiley Sans / 得意黑 OFL; body = Alibaba PuHuiTi):
+- [x] **Step 2: Acquire the 2 lazy CJK faces** (display = Smiley Sans / 得意黑 OFL; body = Alibaba PuHuiTi):
 
 ```bash
 cd /Users/kz/Code/Crafty/frontend/public/fonts
@@ -863,7 +865,7 @@ ls -la *.woff2 && file *.woff2
 ```
 > **Scope note for the reviewer:** §9 locks zh BODY = Alibaba PuHuiTi. If a one-call clean woff2 of PuHuiTi isn't available, M1 ships the Noto Sans SC subset as the **body stand-in** (the loader's `@font-face` family name stays `'Alibaba PuHuiTi 3.0'` so swapping the file later needs no code change), and a tech-debt note is added to the plan + CHANGELOG: "swap PuHuiTi woff2 + cn-font-split subsetting in a later perf pass." This keeps the zh showcase truthful (real CJK renders) without blocking M1 on font subsetting.
 
-- [ ] **Step 3: Write the failing idempotency test** — append to `tests/i18n/i18n.test.js`:
+- [x] **Step 3: Write the failing idempotency test** — append to `tests/i18n/i18n.test.js`:
 
 ```javascript
 import { loadCjkFonts, _cjkLoadedForTest } from '../../src/i18n/cjkFonts.js';
@@ -887,9 +889,9 @@ describe('cjkFonts lazy loader', () => {
 ```
 > Add `// @vitest-environment node` is the default; the stub above avoids needing jsdom. Keep this test in `tests/i18n/i18n.test.js` (node env).
 
-- [ ] **Step 4: Run → fail** (module missing).
+- [x] **Step 4: Run → fail** (module missing).
 
-- [ ] **Step 5: Implement** `src/i18n/cjkFonts.js`:
+- [x] **Step 5: Implement** `src/i18n/cjkFonts.js`:
 
 ```javascript
 // Lazy CJK font loader. Called only when the locale flips to zh-CN, so English
@@ -924,7 +926,7 @@ export async function loadCjkFonts() {
 }
 ```
 
-- [ ] **Step 6: Hook the loader into `setLocale`** — update the `setLocale` line added in Task 6 so flipping to zh-CN triggers the lazy load:
+- [x] **Step 6: Hook the loader into `setLocale`** — update the `setLocale` line added in Task 6 so flipping to zh-CN triggers the lazy load:
 
 ```javascript
     setLocale: (loc) => {
@@ -935,9 +937,9 @@ export async function loadCjkFonts() {
 ```
 (Dynamic `import()` keeps the loader + its intent out of the initial bundle for English users.)
 
-- [ ] **Step 7: Run → pass** (`npm run test:unit -- i18n`) + `npm run build` (confirm dynamic import chunk is emitted, no error).
+- [x] **Step 7: Run → pass** (`npm run test:unit -- i18n`) + `npm run build` (confirm dynamic import chunk is emitted, no error).
 
-- [ ] **Step 8: Commit** (binaries included — they are required app assets)
+- [x] **Step 8: Commit** (binaries included — they are required app assets)
 
 ```bash
 git add frontend/public/fonts frontend/src/i18n/cjkFonts.js frontend/src/store/useGameStore.jsx frontend/tests/i18n/i18n.test.js
@@ -953,7 +955,7 @@ git commit -m "feat(s1c-m1): self-host Latin fonts + lazy CJK loader (zh-CN-gate
 - Create: `frontend/src/ui/primitives/Panel.jsx`
 - Create: `frontend/tests/ui/primitives.test.jsx` (jsdom; this file accumulates all primitive tests)
 
-- [ ] **Step 1: Create** `src/ui/primitives/cn.js`:
+- [x] **Step 1: Create** `src/ui/primitives/cn.js`:
 
 ```javascript
 import { clsx } from 'clsx';
@@ -962,7 +964,7 @@ import { twMerge } from 'tailwind-merge';
 export function cn(...inputs) { return twMerge(clsx(inputs)); }
 ```
 
-- [ ] **Step 2: Write the failing test** — create `tests/ui/primitives.test.jsx` with a jsdom docblock:
+- [x] **Step 2: Write the failing test** — create `tests/ui/primitives.test.jsx` with a jsdom docblock:
 
 ```jsx
 // @vitest-environment jsdom
@@ -993,9 +995,9 @@ describe('Panel', () => {
 });
 ```
 
-- [ ] **Step 3: Run → fail** (`npm run test:unit -- primitives`): Panel missing.
+- [x] **Step 3: Run → fail** (`npm run test:unit -- primitives`): Panel missing.
 
-- [ ] **Step 4: Implement** `src/ui/primitives/Panel.jsx`:
+- [x] **Step 4: Implement** `src/ui/primitives/Panel.jsx`:
 
 ```jsx
 import { forwardRef } from 'react';
@@ -1023,9 +1025,9 @@ export const Panel = forwardRef(function Panel({ variant, className, ...props },
 });
 ```
 
-- [ ] **Step 5: Run → pass** (`npm run test:unit -- primitives`).
+- [x] **Step 5: Run → pass** (`npm run test:unit -- primitives`).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/ui/primitives/cn.js frontend/src/ui/primitives/Panel.jsx frontend/tests/ui/primitives.test.jsx
@@ -1040,7 +1042,7 @@ git commit -m "feat(s1c-m1): cn() helper + Panel primitive (bold-flat: solid fil
 - Create: `frontend/src/ui/primitives/Button.jsx`
 - Modify: `frontend/tests/ui/primitives.test.jsx` (append Button describe)
 
-- [ ] **Step 1: Append the failing test** to `tests/ui/primitives.test.jsx`:
+- [x] **Step 1: Append the failing test** to `tests/ui/primitives.test.jsx`:
 
 ```jsx
 import { Button } from '../../src/ui/primitives/Button.jsx';
@@ -1066,9 +1068,9 @@ describe('Button', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail.**
+- [x] **Step 2: Run → fail.**
 
-- [ ] **Step 3: Implement** `src/ui/primitives/Button.jsx`:
+- [x] **Step 3: Implement** `src/ui/primitives/Button.jsx`:
 
 ```jsx
 import { forwardRef } from 'react';
@@ -1108,7 +1110,7 @@ export const Button = forwardRef(function Button({ variant, size, className, typ
 });
 ```
 
-- [ ] **Step 4: Run → pass.** **Step 5: Commit** `git commit -m "feat(s1c-m1): Button primitive (bold-flat CTA, cva variants, reduced-motion safe)"`.
+- [x] **Step 4: Run → pass.** **Step 5: Commit** `git commit -m "feat(s1c-m1): Button primitive (bold-flat CTA, cva variants, reduced-motion safe)"`.
 
 ---
 
@@ -1118,7 +1120,7 @@ export const Button = forwardRef(function Button({ variant, size, className, typ
 - Create: `frontend/src/ui/primitives/Slot.jsx`
 - Modify: `frontend/tests/ui/primitives.test.jsx`
 
-- [ ] **Step 1: Append the failing test:**
+- [x] **Step 1: Append the failing test:**
 
 ```jsx
 import { Slot } from '../../src/ui/primitives/Slot.jsx';
@@ -1139,7 +1141,7 @@ describe('Slot', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/Slot.jsx`:
+- [x] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/Slot.jsx`:
 
 ```jsx
 import { forwardRef } from 'react';
@@ -1176,7 +1178,7 @@ export const Slot = forwardRef(function Slot({ rarity = 'none', selected = false
 });
 ```
 
-- [ ] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Slot primitive (rarity-tinted, selectable, 4px ink)"`.
+- [x] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Slot primitive (rarity-tinted, selectable, 4px ink)"`.
 
 ---
 
@@ -1186,7 +1188,7 @@ export const Slot = forwardRef(function Slot({ rarity = 'none', selected = false
 - Create: `frontend/src/ui/primitives/StatBar.jsx`
 - Modify: `frontend/tests/ui/primitives.test.jsx`
 
-- [ ] **Step 1: Append the failing test:**
+- [x] **Step 1: Append the failing test:**
 
 ```jsx
 import { StatBar } from '../../src/ui/primitives/StatBar.jsx';
@@ -1208,7 +1210,7 @@ describe('StatBar', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/StatBar.jsx`:
+- [x] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/StatBar.jsx`:
 
 ```jsx
 import { forwardRef } from 'react';
@@ -1236,7 +1238,7 @@ export const StatBar = forwardRef(function StatBar(
 });
 ```
 
-- [ ] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): StatBar primitive (flat fill + ink frame + tabular-nums)"`.
+- [x] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): StatBar primitive (flat fill + ink frame + tabular-nums)"`.
 
 ---
 
@@ -1246,7 +1248,7 @@ export const StatBar = forwardRef(function StatBar(
 - Create: `frontend/src/ui/primitives/Icon.jsx`
 - Modify: `frontend/tests/ui/primitives.test.jsx`
 
-- [ ] **Step 1: Append the failing test:**
+- [x] **Step 1: Append the failing test:**
 
 ```jsx
 import { Icon } from '../../src/ui/primitives/Icon.jsx';
@@ -1265,7 +1267,7 @@ describe('Icon', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/Icon.jsx`:
+- [x] **Step 2: Run → fail. Step 3: Implement** `src/ui/primitives/Icon.jsx`:
 
 ```jsx
 import { Heart, Droplet, Drumstick, Sword, Shield, Gem, Settings, X, Sparkles, Flame, Snowflake, Zap } from 'lucide-react';
@@ -1287,7 +1289,7 @@ export function Icon({ name, size = 20, strokeWidth = 2.5, ...props }) {
 ```
 > `strokeWidth 2.5` reads chunkier — aligned with the bold-flat language. Game-semantic icons + the full emoji-decouple are M3.
 
-- [ ] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Icon primitive (lucide-backed chrome set, currentColor)"`.
+- [x] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Icon primitive (lucide-backed chrome set, currentColor)"`.
 
 ---
 
@@ -1297,7 +1299,7 @@ export function Icon({ name, size = 20, strokeWidth = 2.5, ...props }) {
 - Create: `frontend/src/ui/primitives/Toast.jsx`, `frontend/src/ui/primitives/Tooltip.jsx`, `frontend/src/ui/primitives/index.js`
 - Modify: `frontend/tests/ui/primitives.test.jsx`
 
-- [ ] **Step 1: Append the failing tests:**
+- [x] **Step 1: Append the failing tests:**
 
 ```jsx
 import { Toast } from '../../src/ui/primitives/Toast.jsx';
@@ -1320,7 +1322,7 @@ describe('Tooltip', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail. Step 3: Implement.**
+- [x] **Step 2: Run → fail. Step 3: Implement.**
 
 `src/ui/primitives/Toast.jsx`:
 ```jsx
@@ -1369,7 +1371,7 @@ export { Toast } from './Toast.jsx';
 export { Tooltip } from './Tooltip.jsx';
 ```
 
-- [ ] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Toast + Tooltip primitives + barrel export"`.
+- [x] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): Toast + Tooltip primitives + barrel export"`.
 
 ---
 
@@ -1379,7 +1381,7 @@ export { Tooltip } from './Tooltip.jsx';
 - Create: `frontend/src/ui/LocaleToggle.jsx`
 - Modify: `frontend/tests/ui/primitives.test.jsx`
 
-- [ ] **Step 1: Append the failing test:**
+- [x] **Step 1: Append the failing test:**
 
 ```jsx
 import { LocaleToggle } from '../../src/ui/LocaleToggle.jsx';
@@ -1396,7 +1398,7 @@ describe('LocaleToggle', () => {
 });
 ```
 
-- [ ] **Step 2: Run → fail. Step 3: Implement** `src/ui/LocaleToggle.jsx`:
+- [x] **Step 2: Run → fail. Step 3: Implement** `src/ui/LocaleToggle.jsx`:
 
 ```jsx
 import { useGameStore } from '../store/useGameStore.jsx';
@@ -1418,7 +1420,7 @@ export function LocaleToggle({ className }) {
 }
 ```
 
-- [ ] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): LocaleToggle chip (en↔zh-CN, triggers lazy CJK)"`.
+- [x] **Step 4: Run → pass. Step 5: Commit** `git commit -m "feat(s1c-m1): LocaleToggle chip (en↔zh-CN, triggers lazy CJK)"`.
 
 ---
 
@@ -1429,7 +1431,7 @@ export function LocaleToggle({ className }) {
 
 > No unit test (it's a visual composition gated by the capture state in Task 17). It MUST use `t()`/`useT()` for every label, the `font-display`/`font-display-cjk` swap by locale, and exercise EVERY primitive + a recreation of the locked inventory-card comp.
 
-- [ ] **Step 1: Implement** `src/ui/PrimitivesShowcase.jsx`:
+- [x] **Step 1: Implement** `src/ui/PrimitivesShowcase.jsx`:
 
 ```jsx
 import { useGameStore } from '../store/useGameStore.jsx';
@@ -1539,12 +1541,12 @@ export function PrimitivesShowcase() {
 ```
 > The `font-body-cjk`/`text-spell-*` classes must exist. `text-spell-fire` etc. resolve via the `spell` color group (Tailwind generates `text-spell-fire`). `font-body-cjk`/`font-display-cjk` resolve via the fontFamily keys. Confirm Tailwind emits them (they're referenced statically here so the JIT scanner picks them up).
 
-- [ ] **Step 2: Verify it compiles + build picks up the dynamic classes**
+- [x] **Step 2: Verify it compiles + build picks up the dynamic classes**
 
 Run: `npm run build`
 Expected: success. (No unit test here — Task 17 captures it visually.)
 
-- [ ] **Step 3: Commit** `git commit -m "feat(s1c-m1): PrimitivesShowcase DEV gallery (all primitives + locked inventory card, bilingual)"`.
+- [x] **Step 3: Commit** `git commit -m "feat(s1c-m1): PrimitivesShowcase DEV gallery (all primitives + locked inventory card, bilingual)"`.
 
 ---
 
@@ -1554,7 +1556,7 @@ Expected: success. (No unit test here — Task 17 captures it visually.)
 - Modify: `frontend/src/App.jsx` (render the showcase overlay behind the dev flag)
 - Modify: `frontend/tests/gates/static-gates.test.js` (add the primitives-consume-tokens gate)
 
-- [ ] **Step 1: Mount the overlay** — in `src/App.jsx`, add the import + render. Import near the other ui imports:
+- [x] **Step 1: Mount the overlay** — in `src/App.jsx`, add the import + render. Import near the other ui imports:
 
 ```javascript
 import { PrimitivesShowcase } from './ui/PrimitivesShowcase';
@@ -1572,7 +1574,7 @@ Render it as the TOP overlay (DEV-only) — add immediately inside the outer ret
       {import.meta.env.DEV && showcaseView && <PrimitivesShowcase />}
 ```
 
-- [ ] **Step 2: Add the new static gate** — append inside the `describe('static gates', ...)` block in `tests/gates/static-gates.test.js`:
+- [x] **Step 2: Add the new static gate** — append inside the `describe('static gates', ...)` block in `tests/gates/static-gates.test.js`:
 
 ```javascript
   // S1-C-M1: the new primitives must consume tokens (no raw hex chrome) — keeps the
@@ -1588,12 +1590,12 @@ Render it as the TOP overlay (DEV-only) — add immediately inside the outer ret
   });
 ```
 
-- [ ] **Step 3: Run the unit suite + build**
+- [x] **Step 3: Run the unit suite + build**
 
 Run: `npm run test:unit && npm run build`
 Expected: all green (the new gate passes — primitives use only Tailwind token classes).
 
-- [ ] **Step 4: Commit** `git commit -m "feat(s1c-m1): mount PrimitivesShowcase (DEV+capture) + primitives-no-raw-hex gate"`.
+- [x] **Step 4: Commit** `git commit -m "feat(s1c-m1): mount PrimitivesShowcase (DEV+capture) + primitives-no-raw-hex gate"`.
 
 ---
 
@@ -1604,7 +1606,7 @@ Expected: all green (the new gate passes — primitives use only Tailwind token 
 - Modify: `frontend/scripts/visual/capture.mjs` (2 screenshots + fonts.ready wait)
 - Modify: `frontend/tests/visual/diff.test.js` (STATES array)
 
-- [ ] **Step 1: Register the test hook** — in `src/App.jsx`, inside the DEV `useEffect` that registers hooks (after `registerTestHook('spawnBossCloseup', ...)`, before `registerTestHook('exitCapture', ...)`, line ~198):
+- [x] **Step 1: Register the test hook** — in `src/App.jsx`, inside the DEV `useEffect` that registers hooks (after `registerTestHook('spawnBossCloseup', ...)`, before `registerTestHook('exitCapture', ...)`, line ~198):
 
 ```javascript
     // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,
@@ -1618,7 +1620,7 @@ Expected: all green (the new gate passes — primitives use only Tailwind token 
     });
 ```
 
-- [ ] **Step 2: Add the captures** — in `scripts/visual/capture.mjs`, after the `boss-closeup` screenshot block (line ~114, before the `} finally {`), append:
+- [x] **Step 2: Add the captures** — in `scripts/visual/capture.mjs`, after the `boss-closeup` screenshot block (line ~114, before the `} finally {`), append:
 
 ```javascript
     // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay,
@@ -1639,20 +1641,20 @@ Expected: all green (the new gate passes — primitives use only Tailwind token 
     console.log('captured primitives-showcase-zh');
 ```
 
-- [ ] **Step 3: Extend the STATES array** — in `tests/visual/diff.test.js` line 7:
+- [x] **Step 3: Extend the STATES array** — in `tests/visual/diff.test.js` line 7:
 
 ```javascript
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh'];
 ```
 
-- [ ] **Step 4: Capture CURRENT for all states + confirm the 6 existing are unregressed**
+- [x] **Step 4: Capture CURRENT for all states + confirm the 6 existing are unregressed**
 
 Run: `npm run visual:capture` then `npx vitest run --config vitest.visual.config.js`
 Expected: the 6 existing states PASS (<6% — ideally ~0.00%, since M1 didn't touch the 3D scene). The 2 NEW states FAIL with "missing baseline" — **this is expected**; baselines are generated + human-reviewed in the controller's Task 18 (NOT auto-generated by a subagent).
 
 > If any of the 6 existing states regresses >6%: STOP, report BLOCKED. The most likely cause is a global style leak (an applyThemeVars/font change touching `body`/menu). Isolate before proceeding.
 
-- [ ] **Step 5: Commit** (current/ pngs are gitignored per existing setup; commit only source)
+- [x] **Step 5: Commit** (current/ pngs are gitignored per existing setup; commit only source)
 
 ```bash
 git add frontend/src/App.jsx frontend/scripts/visual/capture.mjs frontend/tests/visual/diff.test.js
@@ -1665,18 +1667,18 @@ git commit -m "feat(s1c-m1): primitives-showcase capture states (en+zh) + visual
 
 > This task is performed by the orchestrator, NOT dispatched — it requires Kevin's human eyeball on the rendered showcase before the baselines are blessed (per the visual re-baseline rule).
 
-- [ ] **Step 1:** Open `tests/visual/current/primitives-showcase-en.png` + `...-zh.png`; visually audit against the locked comps (`docs/superpowers/specs/s1c-ui-reference/LOCKED-bold-flat-{en,zh}.png`) — check: 4px ink on ALL chrome, hard offset shadows, gold CTA, vivid rarity (legendary distinct), CJK renders crisply in the zh frame, tabular-nums aligned, no glass/blur.
-- [ ] **Step 2:** Surface both PNGs to Kevin for sign-off (he reviews PNGs on wake).
-- [ ] **Step 3 (after sign-off):** `npm run visual:baseline` (regenerates ALL baselines incl. the 2 new) → `npm run test:visual` → all 8 states green. Commit baselines: `git add frontend/tests/visual/baseline && git commit -m "test(s1c-m1): baseline the primitives-showcase states (en+zh)"`.
+- [x] **Step 1:** Open `tests/visual/current/primitives-showcase-en.png` + `...-zh.png`; visually audit against the locked comps (`docs/superpowers/specs/s1c-ui-reference/LOCKED-bold-flat-{en,zh}.png`) — check: 4px ink on ALL chrome, hard offset shadows, gold CTA, vivid rarity (legendary distinct), CJK renders crisply in the zh frame, tabular-nums aligned, no glass/blur.
+- [x] **Step 2:** Surface both PNGs to Kevin for sign-off (he reviews PNGs on wake).
+- [x] **Step 3 (after sign-off):** `npm run visual:baseline` (regenerates ALL baselines incl. the 2 new) → `npm run test:visual` → all 8 states green. Commit baselines: `git add frontend/tests/visual/baseline && git commit -m "test(s1c-m1): baseline the primitives-showcase states (en+zh)"`.
 
 ---
 
 ### Task 19 (CONTROLLER): final review, docs, merge
 
-- [ ] **Step 1:** Dispatch a final code-quality reviewer over the whole branch diff (Opus 4.8). Address any blocking findings as NEW commits.
-- [ ] **Step 2:** Full gate: `npm run test:unit && npm run test:visual && npm run build` → all green.
-- [ ] **Step 3:** Update docs: `docs/superpowers/plans/2026-06-01-crafty-s1c-m1-ui-foundation.md` STATUS→COMPLETE (flip all checkboxes); the S1-C brief §9 scope note (M1 ✅); `memory/{ACTIVE_PLAN,CHANGELOG,ARCHITECTURE,ROADMAP}.md` (ACTIVE_PLAN → M2 next; CHANGELOG → M1 entry + the PuHuiTi-subset tech-debt note; ARCHITECTURE → the tokens→cssVars→Tailwind wiring + i18n layer). Update native memory `project_crafty.md`.
-- [ ] **Step 4:** `superpowers:finishing-a-development-branch` → merge `s1c-m1-ui-foundation` → `main`, push.
+- [x] **Step 1:** Dispatch a final code-quality reviewer over the whole branch diff (Opus 4.8). Address any blocking findings as NEW commits.
+- [x] **Step 2:** Full gate: `npm run test:unit && npm run test:visual && npm run build` → all green.
+- [x] **Step 3:** Update docs: `docs/superpowers/plans/2026-06-01-crafty-s1c-m1-ui-foundation.md` STATUS→COMPLETE (flip all checkboxes); the S1-C brief §9 scope note (M1 ✅); `memory/{ACTIVE_PLAN,CHANGELOG,ARCHITECTURE,ROADMAP}.md` (ACTIVE_PLAN → M2 next; CHANGELOG → M1 entry + the PuHuiTi-subset tech-debt note; ARCHITECTURE → the tokens→cssVars→Tailwind wiring + i18n layer). Update native memory `project_crafty.md`.
+- [x] **Step 4:** `superpowers:finishing-a-development-branch` → merge `s1c-m1-ui-foundation` → `main`, push.
 
 ---
 

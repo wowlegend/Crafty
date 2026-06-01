@@ -15,6 +15,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - **Styling**: Tailwind CSS 3.x, Framer Motion 12.x
 - **State**: Zustand 5.x (global store), React hooks
 - **Build**: Vite 6.x (migrated from CRA Feb 2026)
+- **UI Design System (S1-C-M1, bold-flat)**: single SoT chain — `src/theme/tokens.js` (semantic tokens) → `src/theme/cssVars.js` (`--ui-*` CSS vars via `applyThemeVars()` at boot + `TW_COLORS`/`TW_SCALES`) → `tailwind.config.cjs` `theme.extend` referencing the vars (parity-tested by `tests/theme/tailwind-wiring.test.js`). Component primitives in `src/ui/primitives/` (Panel/Button/Slot/StatBar/Icon/Toast/Tooltip + `cn()`). i18n in `src/i18n/` (`t()`/`useT()`, en default + lazy-CJK zh-CN). DEV-only `PrimitivesShowcase` gates the system via 2 visual-regression states.
 
 ## Core Features
 
