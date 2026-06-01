@@ -1,6 +1,8 @@
 # Crafty S1-C-M2a — HUD Consolidation (Minecraft-bevel → bold-flat primitives) — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use `- [ ]` checkboxes. **All subagents: Opus 4.8. Sequential only (shared HUD files). NEVER add a Claude footer / Co-Authored-By. Fix-ups = NEW commits. AST-safe edits for `.js/.jsx` (no `sed` on code).**
+> **STATUS: ✅ COMPLETE + MERGED (2026-06-01)** — HUD migrated to bold-flat (StatBars/Slot-hotbar/spell-chip/minimap/XP); fake `MinecraftHealthHunger` + ❤/🍖 emoji + `.minecraft-*` bevel CSS (App.css 440→238) removed; handlers preserved; `test:unit` 89+2todo · `test:visual` 8/8 (explore-day/night/boss-obsidian re-baselined). Glass(M2b)+neon(M2c) remain; single-language gate flips in M2c.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use `- [x]` checkboxes. **All subagents: Opus 4.8. Sequential only (shared HUD files). NEVER add a Claude footer / Co-Authored-By. Fix-ups = NEW commits. AST-safe edits for `.js/.jsx` (no `sed` on code).**
 
 **Goal:** Migrate Crafty's always-on gameplay HUD from the Minecraft pixel-bevel language (+ its emoji bars) to the locked bold-flat primitives (`StatBar`/`Slot`/`Button`/`Panel`/`Icon`), matching the HUD already built in `PrimitivesShowcase`, and delete the redundant fake health/hunger display + the `.minecraft-*` CSS — without changing gameplay behavior.
 
@@ -38,8 +40,8 @@ tests/gates/static-gates.test.js  MOD (optional) note the bevel removal; do NOT 
 
 **Files:** Modify `src/GameSystems.jsx` (PlayerHealthBar:181, PlayerManaBar:210, PlayerHungerBar:232); verify `src/HUD.jsx` call sites (~290-294).
 
-- [ ] **Step 1 — Read** `src/ui/primitives/StatBar.jsx` + the showcase's StatBar usage (`PrimitivesShowcase.jsx`) + the current bars + `HUD.jsx:288-295`.
-- [ ] **Step 2 — Rewrite the three bars** to render the `StatBar` primitive (data-driven, leading game-icon, tabular value, NO emoji). Replace the bodies:
+- [x] **Step 1 — Read** `src/ui/primitives/StatBar.jsx` + the showcase's StatBar usage (`PrimitivesShowcase.jsx`) + the current bars + `HUD.jsx:288-295`.
+- [x] **Step 2 — Rewrite the three bars** to render the `StatBar` primitive (data-driven, leading game-icon, tabular value, NO emoji). Replace the bodies:
 
 ```jsx
 import { StatBar } from './ui/primitives/StatBar.jsx';
@@ -56,8 +58,8 @@ export const PlayerHungerBar = ({ hunger }) => (
 ```
 (Keep the exports + prop names so `HUD.jsx` call sites are unchanged. Remove the now-unused `motion`/emoji code in these three functions only. `DamageOverlay`/`DeathScreen`/`SPELL_*` stay untouched.)
 
-- [ ] **Step 3 — Verify** `npm run test:unit` green (no test imports these directly; if one does, update); `npm run build` succeeds.
-- [ ] **Step 4 — Commit** `git commit -m "feat(s1c-m2a): player health/mana/hunger bars → StatBar primitive (data-driven, game-icons, drop emoji)"`
+- [x] **Step 3 — Verify** `npm run test:unit` green (no test imports these directly; if one does, update); `npm run build` succeeds.
+- [x] **Step 4 — Commit** `git commit -m "feat(s1c-m2a): player health/mana/hunger bars → StatBar primitive (data-driven, game-icons, drop emoji)"`
 
 ---
 
@@ -65,12 +67,12 @@ export const PlayerHungerBar = ({ hunger }) => (
 
 **Files:** Modify `src/Components.jsx` (MinecraftHotbar:36, DELETE MinecraftHealthHunger:64, GameUI:98).
 
-- [ ] **Step 1 — Read** `Components.jsx:1-126` (imports, HOTBAR_BLOCKS/BLOCK_TYPES, MinecraftHotbar, MinecraftHealthHunger, GameUI) + the showcase hotbar.
-- [ ] **Step 2 — Rewrite `MinecraftHotbar`** as a `Panel` row of `Slot`s (mirror the showcase hotbar): each block = a `Slot` (selected → `selected`), an `Icon` or the block-color swatch inside, a hotkey badge, a quantity badge. Keep the `onClick={() => gameState.setSelectedBlock(blockType)}` + `title`. Use `bg-panel-frame`/`border-ink` Panel + `Slot`s. (Block-color swatch may keep its `blockConfig.color` inline — that's gameplay/3D data, not UI-chrome hex.)
-- [ ] **Step 3 — DELETE `MinecraftHealthHunger`** (the static fake bars) entirely + remove its `<MinecraftHealthHunger />` usage in `GameUI` (line 112). The real bars in `HUD.jsx` are the single source.
-- [ ] **Step 4 — Migrate `GameUI`'s chrome:** the info-panel (`.minecraft-info-panel` "Mode:") → a small bold-flat `Panel`; the settings button (`.minecraft-button`) + the left toolbar (`.minecraft-toolbar` inventory/craft/magic/build) → bold-flat `Button variant="ghost"`/`Panel` with the lucide `Icon`s (settings/Package→ use Icon names; keep the onClick handlers). Match the showcase's left-rail + top-right chrome.
-- [ ] **Step 5 — Verify** build + unit green; confirm the click handlers still fire (the buttons keep their onClick).
-- [ ] **Step 6 — Commit** `git commit -m "feat(s1c-m2a): hotbar → Slot row + GameUI chrome → bold-flat; delete redundant static health/hunger display"`
+- [x] **Step 1 — Read** `Components.jsx:1-126` (imports, HOTBAR_BLOCKS/BLOCK_TYPES, MinecraftHotbar, MinecraftHealthHunger, GameUI) + the showcase hotbar.
+- [x] **Step 2 — Rewrite `MinecraftHotbar`** as a `Panel` row of `Slot`s (mirror the showcase hotbar): each block = a `Slot` (selected → `selected`), an `Icon` or the block-color swatch inside, a hotkey badge, a quantity badge. Keep the `onClick={() => gameState.setSelectedBlock(blockType)}` + `title`. Use `bg-panel-frame`/`border-ink` Panel + `Slot`s. (Block-color swatch may keep its `blockConfig.color` inline — that's gameplay/3D data, not UI-chrome hex.)
+- [x] **Step 3 — DELETE `MinecraftHealthHunger`** (the static fake bars) entirely + remove its `<MinecraftHealthHunger />` usage in `GameUI` (line 112). The real bars in `HUD.jsx` are the single source.
+- [x] **Step 4 — Migrate `GameUI`'s chrome:** the info-panel (`.minecraft-info-panel` "Mode:") → a small bold-flat `Panel`; the settings button (`.minecraft-button`) + the left toolbar (`.minecraft-toolbar` inventory/craft/magic/build) → bold-flat `Button variant="ghost"`/`Panel` with the lucide `Icon`s (settings/Package→ use Icon names; keep the onClick handlers). Match the showcase's left-rail + top-right chrome.
+- [x] **Step 5 — Verify** build + unit green; confirm the click handlers still fire (the buttons keep their onClick).
+- [x] **Step 6 — Commit** `git commit -m "feat(s1c-m2a): hotbar → Slot row + GameUI chrome → bold-flat; delete redundant static health/hunger display"`
 
 ---
 
@@ -78,12 +80,12 @@ export const PlayerHungerBar = ({ hunger }) => (
 
 **Files:** Modify `src/HUD.jsx` (spell display ~296-304, Minimap ~91-100, Compass ~246-256), `src/SimpleExperienceSystem.jsx` (SimpleExperienceBar:176).
 
-- [ ] **Step 1 — Read** the HUD spell-display block, the Minimap/Compass container markup, `SimpleExperienceBar`, and the showcase's spell/minimap/xp/level treatment.
-- [ ] **Step 2 — Spell display** (`HUD.jsx` top-center "Spell: X (n MP)") → a bold-flat `Panel`/chip using `t()` + the spell color from tokens (`text-spell-*`), tabular MP. (Optionally use a `SpellRing` — but the in-HUD spell *indicator* can stay a chip; the bottom-right spell SELECTOR rings are a later/optional add.)
-- [ ] **Step 3 — Minimap + Compass chrome** → wrap in a bold-flat `Panel` (4px ink + offset + `bg-panel-frame`), replacing the `.minimap-container` glass + the slate/blur compass bar. Keep the canvas/marker LOGIC (the rAF/draw code) intact — only the frame chrome changes. (Note: the Compass rAF is already capture-gated from the residuals fix — preserve that guard.)
-- [ ] **Step 4 — XP bar + level badge** (`SimpleExperienceBar`) → bold-flat (a `StatBar kind="xp"` or a thin gold bar in a `Panel` + a level badge `Panel`), mirroring the showcase top-left. Keep the level/XP props + logic.
-- [ ] **Step 5 — Verify** build + unit green.
-- [ ] **Step 6 — Commit** `git commit -m "feat(s1c-m2a): HUD spell display + minimap/compass + XP/level chrome → bold-flat"`
+- [x] **Step 1 — Read** the HUD spell-display block, the Minimap/Compass container markup, `SimpleExperienceBar`, and the showcase's spell/minimap/xp/level treatment.
+- [x] **Step 2 — Spell display** (`HUD.jsx` top-center "Spell: X (n MP)") → a bold-flat `Panel`/chip using `t()` + the spell color from tokens (`text-spell-*`), tabular MP. (Optionally use a `SpellRing` — but the in-HUD spell *indicator* can stay a chip; the bottom-right spell SELECTOR rings are a later/optional add.)
+- [x] **Step 3 — Minimap + Compass chrome** → wrap in a bold-flat `Panel` (4px ink + offset + `bg-panel-frame`), replacing the `.minimap-container` glass + the slate/blur compass bar. Keep the canvas/marker LOGIC (the rAF/draw code) intact — only the frame chrome changes. (Note: the Compass rAF is already capture-gated from the residuals fix — preserve that guard.)
+- [x] **Step 4 — XP bar + level badge** (`SimpleExperienceBar`) → bold-flat (a `StatBar kind="xp"` or a thin gold bar in a `Panel` + a level badge `Panel`), mirroring the showcase top-left. Keep the level/XP props + logic.
+- [x] **Step 5 — Verify** build + unit green.
+- [x] **Step 6 — Commit** `git commit -m "feat(s1c-m2a): HUD spell display + minimap/compass + XP/level chrome → bold-flat"`
 
 ---
 
@@ -91,25 +93,25 @@ export const PlayerHungerBar = ({ hunger }) => (
 
 **Files:** Modify `src/App.css` (1-185).
 
-- [ ] **Step 1 — Grep-guard:** for each `.minecraft-*` class in App.css:1-185, `grep -rn "minecraft-<class>" src/` — if it has ZERO remaining references after Tasks 1-3, delete the rule. KEEP any class still referenced (flag it for M2b/c). Also remove the now-unused `Minecraft` @font-face (the broken empty-base64 one) if nothing references `font-family: 'Minecraft'`. Decide on the Orbitron @import: if the minimap canvas still draws `Orbitron` text, keep it for now (flag for M2c); else remove.
-- [ ] **Step 2 — Migrate HUD UI-chrome hex** that Tasks 1-3 left inline → tokens (only true UI-chrome; leave gameplay/3D/block colors). Re-run the hex burn-down reporter to confirm the HUD count dropped.
-- [ ] **Step 3 — Verify** build + unit green; no broken styles (grep clean).
-- [ ] **Step 4 — Commit** `git commit -m "feat(s1c-m2a): remove orphaned .minecraft-* bevel CSS + migrate HUD chrome hex to tokens"`
+- [x] **Step 1 — Grep-guard:** for each `.minecraft-*` class in App.css:1-185, `grep -rn "minecraft-<class>" src/` — if it has ZERO remaining references after Tasks 1-3, delete the rule. KEEP any class still referenced (flag it for M2b/c). Also remove the now-unused `Minecraft` @font-face (the broken empty-base64 one) if nothing references `font-family: 'Minecraft'`. Decide on the Orbitron @import: if the minimap canvas still draws `Orbitron` text, keep it for now (flag for M2c); else remove.
+- [x] **Step 2 — Migrate HUD UI-chrome hex** that Tasks 1-3 left inline → tokens (only true UI-chrome; leave gameplay/3D/block colors). Re-run the hex burn-down reporter to confirm the HUD count dropped.
+- [x] **Step 3 — Verify** build + unit green; no broken styles (grep clean).
+- [x] **Step 4 — Commit** `git commit -m "feat(s1c-m2a): remove orphaned .minecraft-* bevel CSS + migrate HUD chrome hex to tokens"`
 
 ---
 
 ### Task 5 (CONTROLLER): re-baseline explore-day/night + visual review
 
-- [ ] **Step 1** `npm run visual:capture` → the 6 non-HUD states should still pass; `explore-day`/`explore-night` now show the bold-flat HUD (changed). View both current frames; verify the HUD reads as the locked bold-flat language (matches the showcase HUD — StatBars with icons, Slot hotbar, bold-flat chrome, no emoji hearts/drumsticks, no bevel).
-- [ ] **Step 2** Surface the 2 re-baselined frames for Kevin. After sign-off: `npm run visual:baseline` re-captures ONLY if needed — surgically `cp current → baseline` for explore-day/night; run `npx vitest run --config vitest.visual.config.js` → 8/8 green. Commit the baselines.
+- [x] **Step 1** `npm run visual:capture` → the 6 non-HUD states should still pass; `explore-day`/`explore-night` now show the bold-flat HUD (changed). View both current frames; verify the HUD reads as the locked bold-flat language (matches the showcase HUD — StatBars with icons, Slot hotbar, bold-flat chrome, no emoji hearts/drumsticks, no bevel).
+- [x] **Step 2** Surface the 2 re-baselined frames for Kevin. After sign-off: `npm run visual:baseline` re-captures ONLY if needed — surgically `cp current → baseline` for explore-day/night; run `npx vitest run --config vitest.visual.config.js` → 8/8 green. Commit the baselines.
 
 ---
 
 ### Task 6 (CONTROLLER): final review + docs + merge
-- [ ] Final whole-branch review (Opus): gameplay-handler preservation (no click/behavior change), no collateral, bevel removal clean, primitives consumed correctly. Fix blocking findings as NEW commits.
-- [ ] Full gate: `test:unit` · `test:visual` 8/8 · `build` green.
-- [ ] Update docs: this plan STATUS→COMPLETE; CHANGELOG (M2a); ACTIVE_PLAN (M2a done → M2b next); ARCHITECTURE (HUD now bold-flat); native memory. The single-language hard gate stays `it.todo` (flips in M2c).
-- [ ] `superpowers:finishing-a-development-branch` → merge `s1c-m2a-hud` → `main`, push.
+- [x] Final whole-branch review (Opus): gameplay-handler preservation (no click/behavior change), no collateral, bevel removal clean, primitives consumed correctly. Fix blocking findings as NEW commits.
+- [x] Full gate: `test:unit` · `test:visual` 8/8 · `build` green.
+- [x] Update docs: this plan STATUS→COMPLETE; CHANGELOG (M2a); ACTIVE_PLAN (M2a done → M2b next); ARCHITECTURE (HUD now bold-flat); native memory. The single-language hard gate stays `it.todo` (flips in M2c).
+- [x] `superpowers:finishing-a-development-branch` → merge `s1c-m2a-hud` → `main`, push.
 
 ---
 
