@@ -176,6 +176,20 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'inventory-open.png') });
     console.log('captured inventory-open');
+
+    // achievements-open: the migrated bold-flat Achievements panel over the world.
+    // Dismiss the inventory first, then open Achievements via the DEV bridge.
+    // `showAchievements` is useState inside useInputManager (not the store), so the
+    // `openAchievements` hook drives the local setter. Achievement/stat values are
+    // fixed at a clean explore state, so this is deterministic.
+    await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
+    await page.evaluate(() => window.__craftyTest.call('openAchievements'));
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="achievements-panel"]'), { timeout: 8000 });
+    await flushFrames(page, 8);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
+    console.log('captured achievements-open');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

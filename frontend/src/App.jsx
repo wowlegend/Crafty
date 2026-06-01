@@ -237,6 +237,11 @@ function GameApp({ experienceSystem }) {
       if (which === 'inventory') store.setShowInventory(true);
       else if (which === 'crafting') store.setShowCrafting(true);
     });
+    // Open the Achievements panel for the visual gate. DEV-only. `showAchievements`
+    // is useState inside useInputManager (not the store), so we drive the local
+    // setter directly. useState setters are identity-stable, so capturing it in
+    // this []-dep effect is safe.
+    registerTestHook('openAchievements', () => setShowAchievements?.(true));
     installTestBridge();
   }, []);
 

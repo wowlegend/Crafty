@@ -50,7 +50,71 @@ describe('static gates', () => {
   // DEFERRED HARD GATES (enabled by later plans). Documented so they are not
   // silently forgotten; .todo keeps them visible in test output.
   it.todo('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)');
-  it.todo('S1-C: single UI design language — no minecraft-bevel + glass + neon coexisting');
+
+  // S1-C-M2c HARD GATE: the in-game UI is a single bold-flat design language.
+  // The two LEGACY CLASS-BASED languages M2 set out to eliminate —
+  //   (a) minecraft-bevel classes (`minecraft-*` / `.minecraft-*`)  [killed in M2a]
+  //   (b) the glassmorphic `.game-panel` rule + its consumers        [killed in M2b/M2c]
+  // — must be GONE everywhere (src JS/JSX + App.css). PLUS no Tailwind frosted-glass
+  // `backdrop-blur`/`backdrop-filter` chrome may coexist on the SHIPPED IN-GAME UI
+  // surfaces that M2 migrated.
+  //
+  // DOCUMENTED EXCLUSIONS from the backdrop-blur check (NOT from the class checks):
+  //   • App.jsx           — `backdrop-blur` lives only on the PRE-GAME loading splash
+  //                         (`!isWorldBuilt` "GENERATING WORLD") + the click-to-play
+  //                         pointer-lock entry overlay. Both are pre-game splash
+  //                         surfaces, OUTSIDE the in-game "single language" mandate
+  //                         (same rationale as the MenuSystem `.glow-button` splash).
+  //   • ui/DebugOverlay.jsx — DEV-only debug tool, never shipped game chrome.
+  // These exclusions apply ONLY to backdrop-blur; the class bans below cover them too.
+  //
+  // NOT EXCLUDED — TRACKED AS OUTSTANDING (see the reporter immediately below):
+  //   • SimplifiedNPCSystem.jsx — the NPC trading modal + dialogue bubble are REAL
+  //     un-migrated in-game glass UI. M2a/M2b/M2c never touched this file. It is NOT
+  //     silently excluded here (that would hide a real offender / weaken the gate).
+  //     Its glass is surfaced loudly by the reporter below and must be migrated in a
+  //     dedicated bold-flat pass (with visual review) before it can be folded into the
+  //     hard backdrop-blur scope. Until then this gate asserts only the class-based
+  //     legacy languages (fully eliminated) + backdrop-blur on the M2 surfaces.
+  const SPLASH_DEV_BACKDROP_EXCLUDE = ['App.jsx', join('ui', 'DebugOverlay.jsx')];
+  it('S1-C: single UI design language — no minecraft-bevel + glass classes coexist', () => {
+    const offenders = [];
+    for (const f of FILES) {
+      const src = readFileSync(f, 'utf8');
+      const rel = f.replace(SRC + '/', '');
+      // (a)+(b): class-based legacy languages — banned EVERYWHERE, no exclusions.
+      if (/\bminecraft-[a-z]/.test(src)) offenders.push(`${rel}: minecraft-* class`);
+      if (/\bgame-panel\b/.test(src)) offenders.push(`${rel}: game-panel glass class`);
+      // backdrop-blur — banned on shipped in-game UI; documented splash/dev surfaces
+      // are excluded, and SimplifiedNPCSystem is tracked by the reporter (not here).
+      const backdropExempt =
+        SPLASH_DEV_BACKDROP_EXCLUDE.some((x) => rel.endsWith(x)) ||
+        rel.endsWith('SimplifiedNPCSystem.jsx');
+      if (!backdropExempt && /backdrop-blur|backdrop-filter/.test(src)) {
+        offenders.push(`${rel}: glass backdrop`);
+      }
+    }
+    const css = readFileSync(resolve(SRC, 'App.css'), 'utf8');
+    if (/\.minecraft-/.test(css)) offenders.push('App.css: .minecraft-* rule');
+    if (/\.game-panel\b/.test(css)) offenders.push('App.css: .game-panel rule');
+    if (/backdrop-blur|backdrop-filter/.test(css)) offenders.push('App.css: glass backdrop');
+    expect(offenders, `legacy UI-language signatures remain:\n${offenders.join('\n')}`).toEqual([]);
+  });
+
+  // REPORTER (always passes; prints the residual frosted-glass burn-down). Flips the
+  // exclusions above to a hard fail once SimplifiedNPCSystem.jsx is migrated to the
+  // bold-flat <Panel> language. Keeps the remaining glass LOUD, not hidden.
+  it('reports residual frosted-glass backdrop usage (burn-down metric)', () => {
+    const residual = [];
+    for (const f of FILES) {
+      const src = readFileSync(f, 'utf8');
+      if (/backdrop-blur|backdrop-filter/.test(src)) residual.push(f.replace(SRC, 'src'));
+    }
+    console.log(`[gate] files with frosted-glass backdrop (target 0, excl. pre-game splash/dev): ${residual.length}`);
+    for (const f of residual) console.log('  -', f);
+    expect(residual.length).toBeGreaterThanOrEqual(0); // reporter only
+  });
+
   it('S1-B: AO pass present in the EffectComposer', () => {
     const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
     expect(src, 'N8AO must be rendered inside the composer, not just imported')

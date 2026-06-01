@@ -423,6 +423,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
 
     return (
         <div
+            data-testid="achievements-panel"
             className="absolute inset-0 z-50 grid place-items-center bg-ink/75 animate-fade-in"
             onClick={onClose}
         >
