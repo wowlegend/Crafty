@@ -4,7 +4,8 @@ import { useGameStore, EQUIPMENT_STATS } from '../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
-import { Panel, Button, Slot, Icon } from './primitives/index.js';
+import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
+import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 
 // Paper-doll avatar voxel-body colors (CHARACTER ART, not chrome — mirrors the
 // PrimitivesShowcase inventory comp / mockup .ava). Inline hex is intentional here:
@@ -884,47 +885,66 @@ export const CraftingTable = React.memo(({ onClose }) => {
 
 const MagicSystem = ({ onClose }) => {
     const gameState = useGameStore();
+    const t = useT();
+    // `spell` keys the bold-flat SpellRing comp (color via --ui-spell-<spell>); `icon`
+    // keys the 2-tone game-icon. Each ring's color IS the spell's MAGIC color.
     const spells = [
-        { name: 'Fireball', key: '1', color: '#FF4500', damage: 50, mana: 15, description: 'Launches a fiery projectile that burns on impact' },
-        { name: 'Iceball', key: '2', color: '#00BFFF', damage: 40, mana: 12, description: 'Freezes and slows enemies on impact' },
-        { name: 'Lightning', key: '3', color: '#FFD700', damage: 75, mana: 25, description: 'Fast electric strike that chains to nearby enemies' },
-        { name: 'Arcane', key: '4', color: '#9932CC', damage: 60, mana: 18, description: 'Mystical blast that pierces through enemies' },
+        { name: 'Fireball', spell: 'fire', icon: 'fire', key: '1', damage: 50, mana: 15, description: 'Launches a fiery projectile that burns on impact' },
+        { name: 'Iceball', spell: 'ice', icon: 'ice', key: '2', damage: 40, mana: 12, description: 'Freezes and slows enemies on impact' },
+        { name: 'Lightning', spell: 'lightning', icon: 'lightning', key: '3', damage: 75, mana: 25, description: 'Fast electric strike that chains to nearby enemies' },
+        { name: 'Arcane', spell: 'arcane', icon: 'magic', key: '4', damage: 60, mana: 18, description: 'Mystical blast that pierces through enemies' },
     ];
 
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="game-panel p-6 text-white min-w-[400px]" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">✨ Magic Spells</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+            <Panel
+                variant="raise"
+                className="w-[440px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+                    <div className="flex items-center gap-3">
+                        <Icon name="magic" size={26} className="text-spell-arcane" />
+                        <span className="font-display text-xxl tracking-wide">Magic Spells</span>
+                    </div>
+                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                        <Icon name="close" size={18} />
+                    </Button>
                 </div>
-                <div className="space-y-3">
+
+                {/* Body — spell rows */}
+                <div className="flex flex-col gap-3 px-5 pt-5 pb-5">
                     {spells.map((spell, i) => (
-                        <div key={i} className="game-panel-item p-3 flex items-center gap-4">
-                            <div
-                                className="w-12 h-12 rounded-full flex items-center justify-center"
-                                style={{ backgroundColor: spell.color }}
-                            >
-                                <span className="text-xl">🔮</span>
-                            </div>
-                            <div className="flex-1">
-                                <div className="font-medium">{spell.name}</div>
-                                <div className="text-xs text-gray-400">{spell.description}</div>
-                                <div className="flex gap-3 text-xs mt-1">
-                                    <span className="text-yellow-400">⚔️ {spell.damage} DMG</span>
-                                    <span className="text-blue-400">💧 {spell.mana} MP</span>
+                        <Panel
+                            key={i}
+                            variant="inset"
+                            className={`flex items-center gap-4 p-3 bg-slot text-spell-${spell.spell}`}
+                        >
+                            <SpellRing spell={spell.spell} keyLabel={spell.key} size={52} className="flex-none">
+                                <Icon name={spell.icon} size={28} />
+                            </SpellRing>
+                            <div className="flex-1 min-w-0">
+                                <div className="font-display font-bold tracking-wide text-text">{spell.name}</div>
+                                <div className="text-xs text-text-muted leading-tight">{spell.description}</div>
+                                <div className="flex gap-4 text-xs mt-1.5">
+                                    <span className="flex items-center gap-1 text-stat-atk font-bold tabular-nums">
+                                        <Icon name="sword" size={13} className="flex-none" />{spell.damage} DMG
+                                    </span>
+                                    <span className="flex items-center gap-1 text-spell-ice font-bold tabular-nums">
+                                        <Icon name="mana" size={13} className="flex-none" />{spell.mana} MP
+                                    </span>
                                 </div>
                             </div>
-                            <div className="text-gray-500">
-                                Press {spell.key}
-                            </div>
-                        </div>
+                        </Panel>
                     ))}
                 </div>
-                <div className="mt-4 text-sm text-gray-400">
+
+                {/* Footer Tip */}
+                <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
                     Press M to close • Click or F to cast selected spell
                 </div>
-            </div>
+            </Panel>
         </div>
     );
 };
@@ -934,12 +954,14 @@ export const BuildingTools = React.memo(({ onClose }) => {
     const [selectedTool, setSelectedTool] = React.useState('single');
     const [buildSize, setBuildSize] = React.useState(3);
 
+    const t = useT();
+    // ToolIcon = lucide chrome glyph per build mode (app-chrome, not game-icon content).
     const tools = [
-        { id: 'single', name: 'Single Block', icon: '🧱', description: 'Place one block at a time', hotkey: '1' },
-        { id: 'wall', name: 'Wall Builder', icon: '🏗️', description: `Build ${buildSize}-high walls`, hotkey: '2' },
-        { id: 'floor', name: 'Floor Builder', icon: '📐', description: `Create ${buildSize}x${buildSize} floors`, hotkey: '3' },
-        { id: 'cube', name: 'Cube Builder', icon: '📦', description: `Build ${buildSize}x${buildSize}x${buildSize} cubes`, hotkey: '4' },
-        { id: 'delete', name: 'Delete Tool', icon: '🗑️', description: 'Remove multiple blocks', hotkey: '5' },
+        { id: 'single', name: 'Single Block', ToolIcon: Square, description: 'Place one block at a time', hotkey: '1' },
+        { id: 'wall', name: 'Wall Builder', ToolIcon: Layers, description: `Build ${buildSize}-high walls`, hotkey: '2' },
+        { id: 'floor', name: 'Floor Builder', ToolIcon: Grid3x3, description: `Create ${buildSize}x${buildSize} floors`, hotkey: '3' },
+        { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${buildSize}x${buildSize}x${buildSize} cubes`, hotkey: '4' },
+        { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: 'Remove multiple blocks', hotkey: '5' },
     ];
 
     // Set global building mode
@@ -951,126 +973,180 @@ export const BuildingTools = React.memo(({ onClose }) => {
     }, [selectedTool, buildSize, gameState.selectedBlock]);
 
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="game-panel p-6 text-white min-w-[450px]" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">🏠 Building Tools</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
-                </div>
-
-                {/* Size Slider */}
-                <div className="mb-4 bg-gray-700 p-3 rounded">
-                    <div className="flex justify-between items-center mb-2">
-                        <span>Build Size</span>
-                        <span className="font-bold text-yellow-400">{buildSize}</span>
+        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+            <Panel
+                variant="raise"
+                className="w-[480px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+                    <div className="flex items-center gap-3">
+                        <Grid width={26} height={26} strokeWidth={2.5} className="text-accent" aria-hidden />
+                        <span className="font-display text-xxl tracking-wide">Building Tools</span>
                     </div>
-                    <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={buildSize}
-                        onChange={(e) => setBuildSize(parseInt(e.target.value))}
-                        className="w-full accent-yellow-500"
-                    />
+                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                        <Icon name="close" size={18} />
+                    </Button>
                 </div>
 
-                {/* Tool Selection */}
-                <div className="grid grid-cols-2 gap-3">
-                    {tools.map((tool) => (
-                        <div
-                            key={tool.id}
-                            onClick={() => setSelectedTool(tool.id)}
-                            className={`game-panel-item p-3 cursor-pointer ${selectedTool === tool.id ? 'selected' : ''}`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <div className="text-3xl">{tool.icon}</div>
-                                <div>
-                                    <div className="font-medium">{tool.name}</div>
-                                    <div className="text-xs text-gray-400">{tool.description}</div>
-                                </div>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">Press {tool.hotkey}</div>
+                {/* Body */}
+                <div className="flex flex-col gap-4 px-5 pt-5 pb-5">
+                    {/* Size Slider */}
+                    <Panel variant="inset" className="bg-slot p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Build Size</span>
+                            <span className="font-display font-bold text-accent tabular-nums text-lg">{buildSize}</span>
                         </div>
-                    ))}
-                </div>
+                        <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={buildSize}
+                            onChange={(e) => setBuildSize(parseInt(e.target.value))}
+                            className="w-full accent-[rgb(var(--ui-accent))]"
+                        />
+                    </Panel>
 
-                {/* Selected Block Preview */}
-                <div className="mt-4 bg-gray-700 p-3 rounded flex items-center gap-3">
-                    <div
-                        className="w-10 h-10 rounded"
-                        style={{ backgroundColor: BLOCK_TYPES[gameState.selectedBlock]?.color || '#567C35' }}
-                    />
-                    <div>
-                        <div className="text-sm text-gray-400">Selected Block</div>
-                        <div className="font-medium">{BLOCK_TYPES[gameState.selectedBlock]?.name || gameState.selectedBlock}</div>
+                    {/* Tool Selection */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {tools.map((tool) => {
+                            const isSelected = selectedTool === tool.id;
+                            return (
+                                <button
+                                    key={tool.id}
+                                    type="button"
+                                    onClick={() => setSelectedTool(tool.id)}
+                                    className={`text-left rounded-md border-chrome p-3 transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
+                                >
+                                    <div className="flex items-center gap-2.5">
+                                        <Slot selected={isSelected} className="w-11 h-11 flex-none">
+                                            <tool.ToolIcon width={22} height={22} strokeWidth={2.5} className={isSelected ? 'text-accent' : 'text-text-muted'} aria-hidden />
+                                        </Slot>
+                                        <div className="min-w-0">
+                                            <div className="font-display font-bold text-sm text-text leading-tight">{tool.name}</div>
+                                            <div className="text-[11px] text-text-muted leading-tight">{tool.description}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-text-muted uppercase tracking-widest mt-1.5">Press {tool.hotkey}</div>
+                                </button>
+                            );
+                        })}
                     </div>
+
+                    {/* Selected Block Preview */}
+                    <Panel variant="inset" className="bg-slot p-3 flex items-center gap-3">
+                        <div
+                            className="w-10 h-10 rounded-sm border-chrome border-ink flex-none"
+                            style={{ backgroundColor: BLOCK_TYPES[gameState.selectedBlock]?.color || '#567C35' }}
+                        />
+                        <div>
+                            <div className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px]">Selected Block</div>
+                            <div className="font-bold text-text">{BLOCK_TYPES[gameState.selectedBlock]?.name || gameState.selectedBlock}</div>
+                        </div>
+                    </Panel>
                 </div>
 
-                <div className="mt-4 text-sm text-gray-400">
+                {/* Footer Tip */}
+                <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
                     Press B to close • Right-click to build • Left-click to remove
                 </div>
-            </div>
+            </Panel>
         </div>
     );
 });
 
 export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager }) => {
     const gameState = useGameStore();
+    const t = useT();
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="game-panel p-6 text-white min-w-[350px]" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">⚙️ Settings</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+            <Panel
+                variant="raise"
+                className="w-[380px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+                    <div className="flex items-center gap-3">
+                        <Icon name="settings" size={26} className="text-accent" />
+                        <span className="font-display text-xxl tracking-wide">{t('ui.settings')}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                        <Icon name="close" size={18} />
+                    </Button>
                 </div>
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <span>Show Stats (F3)</span>
-                        <button
+
+                {/* Body */}
+                <div className="flex flex-col gap-3 px-5 pt-5 pb-5">
+                    {/* Show Stats toggle */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">Show Stats (F3)</span>
+                        <Button
+                            variant={showStats ? 'primary' : 'secondary'}
+                            size="sm"
                             onClick={() => setShowStats(!showStats)}
-                            className={`px-4 py-1 rounded ${showStats ? 'bg-green-600' : 'bg-gray-600'}`}
+                            className="min-w-[64px]"
                         >
                             {showStats ? 'ON' : 'OFF'}
-                        </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span>Game Mode</span>
-                        <button
+                        </Button>
+                    </Panel>
+
+                    {/* Game Mode toggle */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">Game Mode</span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => gameState.setGameMode(gameState.gameMode === 'creative' ? 'survival' : 'creative')}
-                            className="px-4 py-1 rounded bg-purple-600 hover:bg-purple-500"
+                            className="min-w-[96px]"
                         >
                             {gameState.gameMode}
-                        </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span>Time</span>
-                        <button
+                        </Button>
+                    </Panel>
+
+                    {/* Time toggle */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">Time</span>
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => gameState.setIsDay(!gameState.isDay)}
-                            className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-500"
+                            className="min-w-[96px] gap-1.5"
                         >
-                            {gameState.isDay ? '☀️ Day' : '🌙 Night'}
-                        </button>
-                    </div>
-                    <hr className="border-gray-600" />
+                            {gameState.isDay
+                                ? (<><Sun width={15} height={15} strokeWidth={2.5} aria-hidden /> Day</>)
+                                : (<><Moon width={15} height={15} strokeWidth={2.5} aria-hidden /> Night</>)}
+                        </Button>
+                    </Panel>
+
+                    <hr className="border-ink border-t-chrome my-1" />
+
                     {onOpenWorldManager && (
-                        <button
+                        <Button
+                            variant="secondary"
+                            size="md"
                             onClick={onOpenWorldManager}
-                            className="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded font-medium mb-2 flex items-center justify-center gap-2 transition-colors duration-200"
+                            className="w-full gap-2"
                         >
-                            <span>🗺️</span> Manage Worlds
-                        </button>
+                            <MapIcon width={18} height={18} strokeWidth={2.5} aria-hidden /> Manage Worlds
+                        </Button>
                     )}
-                    <button
+                    <Button
+                        variant="primary"
+                        size="md"
                         onClick={onClose}
-                        className="w-full bg-green-600 hover:bg-green-500 py-2 rounded font-medium"
+                        className="w-full"
                     >
                         Resume Game
-                    </button>
+                    </Button>
                 </div>
-                <div className="mt-6 text-sm text-gray-400 text-center">
+
+                {/* Footer Tip */}
+                <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
                     Press ESC to return to game
                 </div>
-                </div>
-                </div>
-                );
-                });
+            </Panel>
+        </div>
+    );
+});
