@@ -46,33 +46,47 @@ export const MAGIC = {
 // element · hard blur-0 offset shadows · radius <=14 · NO glass/blur/gradient-chrome.
 export const UI = {
   color: {
-    ink: '#0B0E14',                 // the uniform chrome outline + text-on-light
-    panel:      '#161C2C',          // primary panel fill (SOLID, no translucency)
-    panelRaise: '#202A44',          // raised / active panel
-    panelInset: '#0E1320',          // inset well (slot field, track grooves)
-    slot:       '#0E1320',          // empty inventory/hotbar slot fill
-    text:       '#F4F1E8',          // primary (warm off-white)
+    ink: '#0B0E14',
+    // navy surface ladder (from the locked bold-flat comp — lighter slate so the ink pops)
+    panel:      '#16213A',   // modal / main card body
+    panelRaise: '#22304E',   // header bar / raised surface
+    panelFrame: '#1C2942',   // HUD panel / toast / hotbar frame fill
+    panelInset: '#0D1320',   // deep page background / behind-panels
+    well:       '#1A2740',   // inset well (paper-doll, deep grooves)
+    slot:       '#233458',   // empty slot / tile / statbox / spell-ring fill (the key lighter slate)
+    control:    '#2A3C61',   // icon-button / close / secondary-button fill
+    track:      '#0A0F1A',   // stat-bar / xp track groove
+    // text
+    text:       '#ECECEF',
     textMuted:  '#9AA0AD',
-    textInverse:'#0B0E14',          // on gold/light fills
-    accent:      '#C9A86A',         // brand warm gold — hairline + CTA
-    accentRaise: '#DCC089',
+    textInverse:'#231708',   // text on gold fills
+    // warm-gold accent
+    accent:     '#C9A86A',
+    accentRaise:'#E4C892',   // gold-hi
+    accentDeep: '#9A8049',   // gold-deep (gradient stop)
+    // status
     danger:  '#FF4D6E',
-    success: '#5BC98C',
+    success: '#7FE0A0',
     warn:    '#F2B33D',
     info:    '#5AA9FF',
+    // rarity (border / inner-ring / text color)
     rarity: {
-      common:    '#9AA4B2',
-      rare:      '#4FA3FF',
+      common:    '#8A93A6',
+      rare:      '#4F9BE0',
       epic:      '#B36BFF',
-      legendary: '#FFC23D',          // HOT gold, distinct from the trim accent
+      legendary: '#FFC23D',
     },
+    // spell-state glows (mirror MAGIC; fire-warm dominant)
     spell: {
-      fire:      '#FF7A3C',          // fire-warm dominant
+      fire:      '#FF7A3C',
       ice:       '#6FC8FF',
       lightning: '#FFE066',
-      arcane:    '#B36BFF',          // demoted to one element (no purple-as-chrome)
+      arcane:    '#B36BFF',
       nature:    '#7FE0A0',
     },
+    // stat-row icon tints (comp)
+    statIcon: { atk: '#FF8A5C', def: '#46E0FF', spd: '#7FE0A0', crit: '#FFE066' },
+    // neutral ramp (kept)
     gray: {
       g950: '#0B0E14', g900: '#11151F', g800: '#1A2030', g700: '#283149',
       g500: '#5C6478', g300: '#9AA0AD', g100: '#D7DAE0', g50: '#F4F1E8',
@@ -86,7 +100,8 @@ export const UI = {
   elevation: {
     sm: '3px 3px 0 0 rgb(var(--ui-ink))',
     md: '5px 5px 0 0 rgb(var(--ui-ink))',
-    lg: '8px 8px 0 0 rgb(var(--ui-ink))',
+    lg: '6px 6px 0 0 rgb(var(--ui-ink))',
+    xl: '10px 10px 0 0 rgb(var(--ui-ink))',
   },
   type: {
     family: {
@@ -108,4 +123,15 @@ export const UI = {
       exit:       'cubic-bezier(0.4, 0, 1, 1)',
     },
   },
+};
+
+// Rarity TILE fills (bold-flat comp): a flat-saturated 2-stop vertical gradient +
+// a thin colored INNER ring + the 2-tone icon color. Consumed by the Slot primitive
+// (inline style — gradients don't map to the single-color --ui-* var layer).
+export const RARITY_FILL = {
+  common:    { from: '#3A4664', to: '#2A344C', ring: 'rgba(174,184,204,0.65)', icon: '#E6EBF4' },
+  rare:      { from: '#1F5A92', to: '#143A60', ring: '#4F9BE0',               icon: '#A6D6FF' },
+  epic:      { from: '#4F2C7C', to: '#301A4E', ring: '#B36BFF',               icon: '#DEBEFF' },
+  legendary: { from: '#A06E12', to: '#523807', ring: '#FFC23D',               icon: '#FFE9A8' },
+  gear:      { from: '#594516', to: '#312610', ring: 'rgba(201,168,106,0.72)', icon: '#E9CF95' },
 };

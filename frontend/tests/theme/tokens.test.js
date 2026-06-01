@@ -30,13 +30,21 @@ describe('palette tokens', () => {
   });
 });
 
-import { UI } from '../../src/theme/tokens.js';
+import { UI, RARITY_FILL } from '../../src/theme/tokens.js';
 
 describe('UI design-system tokens (S1-C bold-flat)', () => {
   const HEX6 = /^#[0-9A-Fa-f]{6}$/;
 
   it('ink is the locked near-black', () => {
     expect(UI.color.ink).toBe('#0B0E14');
+  });
+
+  it('the navy surface ladder matches the locked comp (lighter slate)', () => {
+    expect(UI.color.panel).toBe('#16213A');
+    expect(UI.color.slot).toBe('#233458');
+    expect(UI.color.panelFrame).toBe('#1C2942');
+    expect(UI.color.control).toBe('#2A3C61');
+    expect(UI.color.track).toBe('#0A0F1A');
   });
 
   it('every color leaf is a valid 6-digit hex', () => {
@@ -83,5 +91,18 @@ describe('UI design-system tokens (S1-C bold-flat)', () => {
     expect(UI.border.chrome).toBe(4);
     expect(UI.motion.duration.base).toBeGreaterThan(0);
     expect(UI.motion.easing.standard).toMatch(/cubic-bezier/);
+  });
+
+  it('RARITY_FILL has the 5 tiers, each a 2-stop hex gradient + ring + icon', () => {
+    expect(Object.keys(RARITY_FILL).sort())
+      .toEqual(['common', 'epic', 'gear', 'legendary', 'rare']);
+    for (const [tier, fill] of Object.entries(RARITY_FILL)) {
+      expect(fill.from, `${tier}.from`).toMatch(HEX6);
+      expect(fill.to, `${tier}.to`).toMatch(HEX6);
+      expect(typeof fill.ring, `${tier}.ring`).toBe('string');
+      expect(fill.ring.length, `${tier}.ring`).toBeGreaterThan(0);
+      expect(typeof fill.icon, `${tier}.icon`).toBe('string');
+      expect(fill.icon.length, `${tier}.icon`).toBeGreaterThan(0);
+    }
   });
 });
