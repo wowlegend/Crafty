@@ -231,6 +231,12 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setCaptureMode(false);
       useGameStore.getState().setHudHidden(false);
     });
+    // Open a modal (inventory/crafting) for the visual gate. DEV-only.
+    registerTestHook('openModal', (which = 'inventory') => {
+      const store = useGameStore.getState();
+      if (which === 'inventory') store.setShowInventory(true);
+      else if (which === 'crafting') store.setShowCrafting(true);
+    });
     installTestBridge();
   }, []);
 

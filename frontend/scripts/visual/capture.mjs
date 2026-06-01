@@ -155,6 +155,27 @@ async function main() {
     await delay(1200);
     await page.screenshot({ path: resolve(OUT, 'primitives-showcase-zh.png') });
     console.log('captured primitives-showcase-zh');
+
+    // inventory-open: the migrated bold-flat Inventory modal over the world. The world
+    // is already built (`start` ran for explore-day). Dismiss the showcase overlay +
+    // restore HUD/locale/danger to a clean explore state, then open the inventory. The
+    // inventory's starting items are fixed, so this is deterministic.
+    await page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      s.setShowcaseView(false);
+      s.setLocale('en');
+      s.setHudHidden(false);
+    });
+    await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 0));
+    await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
+    await page.evaluate(() => window.__craftyTest.call('openModal', 'inventory'));
+    await page.evaluate(() => document.fonts.ready);
+    // The migrated modal no longer carries `.game-panel`; gate on the stable test id.
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="inventory-modal"]'), { timeout: 8000 });
+    await flushFrames(page, 8);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'inventory-open.png') });
+    console.log('captured inventory-open');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

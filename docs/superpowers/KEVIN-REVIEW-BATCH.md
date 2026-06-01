@@ -21,3 +21,5 @@
 - S1-C-M1 (token foundation + primitives + i18n) + fidelity pass + all tech-debt + residuals.
 - S1-C-M2a (HUD consolidation → bold-flat).
 - _(appended as phases complete…)_
+
+- **S1-C-M2b modals (DONE):** `frontend/tests/visual/baseline/inventory-open.png` — the migrated Inventory modal (glass→bold-flat: Panel shell, paper-doll + gear Slots, rarity-FILLED item grid w/ 2-tone icons, Combat-Stats panel, gold Equip). All 5 modals migrated. (CraftingTable/Magic/Building/Settings not separately captured — verified via build + the shared pattern.) Note: `AchievementsPanel` (QuestSystem) still glass → migrating in M2c.
