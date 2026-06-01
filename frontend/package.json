@@ -9,12 +9,15 @@
     "@react-three/postprocessing": "^3.0.4",
     "@react-three/rapier": "^2.2.0",
     "axios": "^1.16.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.439.0",
     "miniplex": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "simplex-noise": "^4.0.3",
+    "tailwind-merge": "^3.6.0",
     "three": "^0.172.0",
     "zustand": "^5.0.11"
   },
@@ -31,8 +34,11 @@
     "test:visual": "node scripts/visual/capture.mjs && vitest run --config vitest.visual.config.js"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.13",
+    "jsdom": "^29.1.1",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
     "postcss": "^8.5.15",

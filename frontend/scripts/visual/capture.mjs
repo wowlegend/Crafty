@@ -112,6 +112,23 @@ async function main() {
     await delay(1800); // boss mounts + freezes + mood/lighting lerp completes
     await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
     console.log('captured boss-closeup');
+
+    // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay
+    // driven via the test bridge. Wait for fonts to finish loading so the Lilita/
+    // Space-Grotesk swap is painted (these states are about typography + chrome).
+    await page.evaluate(() => window.__craftyTest.call('showPrimitivesShowcase', 'en'));
+    await page.evaluate(() => document.fonts.ready);
+    await delay(700);
+    await page.screenshot({ path: resolve(OUT, 'primitives-showcase-en.png') });
+    console.log('captured primitives-showcase-en');
+
+    // primitives-showcase (zh-CN): proves the i18n swap + lazy CJK render. Loading
+    // CJK is async (FontFace.load), so wait for fonts.ready AGAIN + a settle delay.
+    await page.evaluate(() => window.__craftyTest.call('showPrimitivesShowcase', 'zh-CN'));
+    await page.evaluate(() => document.fonts.ready);
+    await delay(1200);
+    await page.screenshot({ path: resolve(OUT, 'primitives-showcase-zh.png') });
+    console.log('captured primitives-showcase-zh');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

@@ -14,6 +14,7 @@ import { useInputManager } from './InputManager';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
+import { PrimitivesShowcase } from './ui/PrimitivesShowcase';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { selectTier, readDeviceSignals } from './render/quality';
@@ -67,6 +68,7 @@ function GameApp({ experienceSystem }) {
     })));
   // Capture-only HUD suppression (character-studio shots). Default false in gameplay.
   const hudHidden = useGameStore(s => s.hudHidden);
+  const showcaseView = useGameStore(s => s.showcaseView);
   const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
@@ -195,6 +197,15 @@ function GameApp({ experienceSystem }) {
       // from the +Z front (the frozen boss faces +Z) with margin (~65-70% fill). The
       // camera is pulled back ~6.5 units so the wing tips clear the frame edges.
       enterCaptureMode({ camera: { position: [BX + 1.8, BY + 1.2, BZ + 6.5], lookAt: [BX, BY + 0.7, BZ] } });
+    });
+    // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,
+    // and (for zh-CN) loads CJK fonts. The capture script waits for document.fonts.ready
+    // before screenshotting so the font swap is fully painted.
+    registerTestHook('showPrimitivesShowcase', (locale = 'en') => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setLocale(locale);          // zh-CN triggers the lazy CJK load (async)
+      store.setShowcaseView(true);
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
@@ -400,6 +411,8 @@ function GameApp({ experienceSystem }) {
       />
 
       {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
+
+      {import.meta.env.DEV && showcaseView && <PrimitivesShowcase />}
     </div>
   );
 }

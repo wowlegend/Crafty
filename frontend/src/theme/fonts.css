@@ -1,0 +1,17 @@
+/* Eager Latin display + body faces (English default). CJK faces are injected
+   lazily by src/i18n/cjkFonts.js only when the zh-CN locale is toggled, so
+   English users download ZERO CJK bytes. woff2 files live in public/fonts/. */
+@font-face {
+  font-family: 'Lilita One';
+  src: url('/fonts/lilita-one-v15-latin-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-v16-latin-regular.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

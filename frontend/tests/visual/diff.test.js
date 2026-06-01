@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup'];
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 

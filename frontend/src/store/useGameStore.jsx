@@ -56,6 +56,19 @@ export const useGameStore = create((set, get) => ({
     dangerLevel: 0,
     setDangerLevel: (n) => set({ dangerLevel: Number(n) || 0 }),
 
+    // UI locale (S1-C): 'en' default + togglable 'zh-CN'. (A later task makes
+    // setLocale also lazy-load CJK fonts on the flip to zh-CN.)
+    locale: 'en',
+    setLocale: (loc) => {
+      const next = loc === 'zh-CN' ? 'zh-CN' : 'en';
+      set({ locale: next });
+      if (next === 'zh-CN') import('../i18n/cjkFonts.js').then((m) => m.loadCjkFonts());
+    },
+
+    // Dev-only: full-screen primitives showcase for the visual-regression gate.
+    showcaseView: false,
+    setShowcaseView: (on) => set({ showcaseView: !!on }),
+
     isWebGLContextLost: false,
     setIsWebGLContextLost: (lost) => set({ isWebGLContextLost: lost }),
 
