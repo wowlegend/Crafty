@@ -63,3 +63,11 @@ A 6-lane research workflow (multi-backend search + repo-fetch + adversarial-mini
 - **REJECTED (web/greenfield-biased, fight R3F/tokens/gate, no game-UI or CJK competence):** all hosted AI UI generators (v0/Lovable/Bolt/Subframe/Onlook/Stitch/UX-Pilot/Tempo), all Figma-gated MCPs + Figma-to-code token-sync (DesignxCode/ForgeKit/Tokens Studio), shadcn-registry-MCP (conditional — only if menus adopt shadcn), react-game-kit (stale 2018).
 
 **Net:** the lean stack spends ZERO context on web-product retrieval and ALL of it on game-specific direction + a real judge gradient. The first mockups under-delivered because the art direction wasn't game-bold enough AND there was no separate critic — both now fixed by this stack.
+
+## 8. i18n + font strategy (DECIDED 2026-06-01 — Kevin)
+
+**The whole game defaults to ENGLISH, with a togglable Simplified-Chinese (zh-CN) mode.** (Supersedes the earlier "CJK first-class" framing — Marcus is served by the *toggle*, not by CJK-primary.) Architecture implications for S1-C:
+- **i18n layer:** all UI copy goes through a `t(key)` lookup with `en` (default) + `zh-CN` string tables — no hardcoded user-facing English. A `locale` store flag + a toggle in settings. (S1-C builds the layer + the toggle; full zh-CN translation can lag.)
+- **Font strategy (revised):** the PRIMARY display + body fonts are now **Latin** (English-default): a bold game display (e.g. **Lilita One** chunky / **Fredoka** rounded — OFL) + a clean body (**Inter**/**Outfit**). The **CJK fonts (Noto Sans SC / Source Han Sans SC body + ZCOOL KuaiLe / Smiley Sans display) load ONLY when the zh-CN toggle is active** — a lazy `@font-face` / dynamic import keyed off `locale`. This is both correct (English-default) AND a **payload win** (the ~6MB CJK WOFF2 isn't shipped to default English users).
+- **Design must read right in BOTH:** the layout/components are designed English-primary but must not break when zh-CN strings (shorter, denser) swap in — test both locales at the visual gate.
+- Mockups henceforth render **English-primary** with a visible **中文** locale-toggle chip (proving the toggle exists).
