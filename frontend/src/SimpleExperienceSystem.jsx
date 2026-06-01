@@ -2,6 +2,7 @@ import { useGameStore } from './store/useGameStore';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
+import { Panel } from './ui/primitives/index.js';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
@@ -172,24 +173,37 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
   );
 };
 
-// Experience Bar UI Component
+// Experience Bar UI Component — bold-flat: a gold LV badge (level in font-display) +
+// a thin gold XP track (4px ink frame, flat accent fill at xpProgress%), mirroring the
+// showcase's top-left level+XP treatment. Props + values + clamp logic unchanged.
 export const SimpleExperienceBar = ({ level, currentXP, xpRequired, xpProgress }) => {
   return (
     <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-      <div className="bg-black/70 rounded-lg p-3 min-w-80">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-white font-bold text-sm">Level {level}</div>
-          <div className="text-yellow-400 font-bold text-sm">{currentXP} / {xpRequired} XP</div>
+      <Panel variant="base" className="flex items-center gap-3 p-3 min-w-80">
+        {/* LV badge — gold sticker, ink frame, level number in display face */}
+        <div
+          className="flex-none w-[44px] h-[44px] grid place-items-center rounded-md border-chrome border-ink shadow-elev-md text-text-inverse leading-none"
+          style={{ background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
+        >
+          <span className="font-display text-lg tabular-nums">{level}</span>
+          <span className="text-[8px] font-bold tracking-widest opacity-85 mt-0.5">LV</span>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${xpProgress}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-text font-bold text-sm">Level {level}</div>
+            <div className="text-accent-raise font-bold text-sm tabular-nums">{currentXP} / {xpRequired} XP</div>
+          </div>
+          {/* Thin gold XP track — inset groove + 4px ink frame; flat accent fill */}
+          <div className="w-full h-3 rounded-md bg-track border-chrome border-ink overflow-hidden relative">
+            <motion.div
+              className="absolute inset-y-0 left-0 bg-accent"
+              initial={{ width: 0 }}
+              animate={{ width: `${xpProgress}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 };
