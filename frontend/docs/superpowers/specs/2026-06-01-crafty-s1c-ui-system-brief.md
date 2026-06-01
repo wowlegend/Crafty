@@ -1,0 +1,48 @@
+# Crafty S1-C — UI Design System: Audit + Direction Brief
+
+> Kickoff brief for S1-C (the visual-direction spec §6/§10 is the parent spec — this grounds the upcoming `writing-plans`). Produced 2026-06-01 from a 5-lane audit + SOTA research workflow. This is DESIGN-PHASE groundwork; implementation is gated on Kevin's direction + scope decisions (below).
+
+## 1. Current-state audit (what S1-C is fixing)
+
+**The 3 clashing UI "languages"** (the §6 mandate names exactly these):
+1. **Retro Minecraft pixel-bevel** — `App.css:16-180` (hotbar, health/hunger, toolbar): hard 1px borders, inset light/dark bevel shadows, Orbitron monospace, flat gradients. Used in the bottom HUD.
+2. **Glassmorphic** — `App.css:398-430` `.game-panel` + `ui/GamePanels.jsx` (Inventory/Crafting/Settings modals): `backdrop-filter: blur(8-16px)`, rgba surfaces (0.62-0.95, inconsistent), soft layered shadows, Tailwind sans.
+3. **Neon-glow animated** — `QuestSystem.jsx:425-515` (achievements) + `AdvancedGameFeatures.jsx:1116-1293` (spell tree, chest UI): high-saturation colored borders, emissive box-shadow glows, Framer-Motion spring entries, gradient bg-clip text.
+Plus **5 font voices** (Orbitron / Outfit / Inter / Minecraft / system+mono), a **scattered z-index** strategy (20/30/49/50/9999), and **no touch affordances** (hover-only actions, <44px targets).
+
+**Emoji debt — deeper than the "10 files" baseline:** ~140+ emoji instances, ~45 unique, across 10 files. CRITICAL: emoji are **baked into data structures as match-keys** — loot-table item names (`'🥩 Raw Porkchop'`), crafting-recipe patterns (exact-emoji match), and `getItemRarity()` (`itemName.includes('💎')`), with **duplicate `getItemEmoji()` mappers** in `SimplifiedNPCSystem.jsx` + `GamePanels.jsx`. So killing emoji = an icon system **+ a data refactor** (decouple icon from item-name → stable IDs), not a cosmetic swap. Tiers: functional (item/spell/mob/build icons ~60), decorative (notification/header prefixes ~40), dev-log (drop).
+
+**Hardcoded hex:** 259 outside `src/theme` (gate count; ~400 total incl. theme). ~40-50 are **UI-chrome** (migrate to tokens); ~80+ are **gameplay/3D** (mob/block/VFX colors — leave). `tokens.js` already has a clean 3-tier foundation (PALETTE/MAGIC/UI) BUT: **UI files consume ZERO tokens**, and `tailwind.config.cjs` `theme.extend` is **empty** — the token source-of-truth is disconnected from both Tailwind and the components. **This disconnect is the root cause** of the hex scatter (devs reach for inline hex because the tokens aren't wired).
+
+**Favorable stack already present:** Tailwind **3.2** (JS config, NOT v4 `@theme`), framer-motion **12** (ad-hoc in 10 files — needs motion tokens), lucide-react **0.439** (partial, 4 files, mixed with emoji). The pieces exist; they're ungoverned. **Two `it.todo()` S1-C gates** await (zero-emoji; single-language).
+
+## 2. Anatomy of the target system (from SOTA research — 2026 best practice)
+Token 3-tier (primitive → semantic role-named → component); type scale (16pt min in-game, weight-not-just-size hierarchy, distinct display/UI/numeric roles); semantic color carrying meaning + WCAG AA + never color-only; **SVG icons not icon-font** + never mix libraries in the same context; 4/8 spacing + ≤2 radii + one elevation method; **HUD ≠ menu** (HUD gets ~20% attention → progressive disclosure, inverted-pyramid priority; build HUD first); **tokenized motion** (named durations/easings, purposeful not decorative, respect `prefers-reduced-motion`); non-diegetic core HUD (legibility wins) with spatial/meta accents. Reference tools: GameUIDatabase, InterfaceInGame. Exemplars: Brawl Stars/Clash (bold-flat-readable + thumb-zone controls), Fortnite (cross-platform/touch master — semi-transparent + relocatable buttons), Hytale (lit-voxel art comp + stated token-cohesion goal), Persona 5 (bold ≠ unclear). The high-leverage pattern (open-sourced Leap-of-Legends design system): **"tokens not hex" single-file theme + a `.mobile` flip class = mobile parity is free + new screens ship in hours.**
+
+## 3. Recommended building blocks
+- **Icons (2-set, SVG, tree-shaken, `currentColor`):** `game-icons.net` for game-semantic icons (4,180+, fantasy/RPG-native, via Iconify `@iconify-json/game-icons`) — **license CC BY 3.0, ATTRIBUTION REQUIRED → plan a credits screen** (the one real licensing string). `Lucide` (already installed, ISC/no-attribution) for app-chrome (settings/close/arrows). Two contexts (game content vs chrome) kept strictly separate; author custom SVGs in game-icons style for gaps. (Tree-shaken SVG ~0.8KB/icon — the only defensible choice given Crafty's 3.84MB-chunk problem.)
+- **Fonts (per-role Latin+CJK pairs, license-clean, CJK first-class for Marcus):** Body/UI = **Noto Sans SC / Source Han Sans SC** (OFL, complete pan-CJK) + Inter/Outfit (Latin). Display = **ZCOOL KuaiLe** (OFL — playful/rounded/cartoon, most kid-friendly) OR **Smiley Sans 得意黑** (OFL, RFN — energetic condensed/geometric). Numerics = body face `tabular-nums` (Kevin's IB-grade discipline). Avoid the current `Minecraft` font (murky license, no CJK) + demote Orbitron. Self-host + subset CJK (large files).
+- **Wiring (Tailwind 3.2-specific — most 2026 guides assume v4):** `tokens.js` → `tailwind.config.cjs theme.extend` (colors/spacing/radius/font/shadow) AND emitted as `:root` CSS custom properties. Static tokens (radii/spacing/type/chrome) via Tailwind; **mood-reactive UI tints** (danger-mode) via imperative CSS-var writes (NOT React state — must not fight R3F's frame loop, per the coding-overlay rule). Component primitives: `Panel`, `Button` (cva variants), `Icon`, `StatBar`, `Toast`, `Tooltip`. Keep the S1-A static reporters as CI burn-down gates.
+
+## 4. Direction options (the taste decision — Kevin's call)
+Base locked by spec: Vanguard+Toon, non-diegetic core HUD, dark-first, token-driven. Three finishes:
+- **A — Bold-Flat (Brawl/Clash):** flat saturated fills, thick ink outlines on panels echoing the world's outlines, oversized icons, big bright CTAs, minimal translucency. Highest readability, lowest risk, best at 96-160px thumbnail/clip discovery (ties to the monetization thesis), cheapest to execute well. Risk: crowded camp; reads "generic" if outlines/spacing undisciplined.
+- **B — Premium-Glass (Vanguard):** frosted translucent panels (the existing `UI.surface` rgba points here), refined weight contrast, restrained `MAGIC`-tied accent glow. Most premium feel (justifies cosmetic ARPPU). Risk: 2026 trend literature warns over-glass reads dated; translucency hurts contrast on mobile/busy-3D (needs solid-scrim fallback).
+- **C — Clean-Diegetic-Accent:** A or B chrome + ONE diegetic/meta signature (e.g. in-world rune spell-selector, danger-mode screen-edge meta-feedback riding the existing mood lerp, mascot-framed menu). Most distinctive; the "one signature flourish" the monetization scan prescribed. Risk: diegetic costs most effort + readability-under-pressure — keep additive, never the core HUD.
+
+**Engineering recommendation (not taste):** start from **Option A's discipline** (de-risks readability/touch/clip-discovery — the actual commercial drivers), wire tokens→Tailwind+CSS-vars, consolidate to ZCOOL-KuaiLe/Smiley + Noto Sans SC, swap emoji→game-icons+Lucide, then layer **one Option-C flourish** once the system is solid. Option B's glass = a later token-level theme variant (it's literally a `UI.surface` opacity token), not a foundational fork.
+
+## 5. Proposed decomposition (S1-C is multi-milestone, like S1-B was M1/M2a/M2b)
+- **S1-C-M1 — Token foundation + design language:** wire `tokens.js`→Tailwind 3.2 `theme.extend` + `:root` CSS vars; extend `tokens.UI` (semantic color incl. status/spell/grayscale, type scale, elevation, z-index stack, motion tokens); build component primitives (`Panel`/`Button`/`Icon`/`StatBar`/`Toast`/`Tooltip`); lock fonts. Ship the system + a primitives showcase capture state. (Smallest shippable foundation.)
+- **S1-C-M2 — Consolidate surfaces:** migrate HUD → then modals → then panels to the unified language; kill the 3-language clash; migrate the ~40-50 UI-chrome hex to tokens. Flip the single-language gate green.
+- **S1-C-M3 — Icon system + emoji kill:** `Icon` primitive (game-icons + Lucide); decouple emoji from data (stable item/spell/etc IDs; centralize the mappers); replace all functional + decorative emoji; flip the zero-emoji gate green; credits screen for CC BY.
+- **S1-C-M4 — Touch-visual (or defer to S3):** responsive layout, `env(safe-area-inset-*)`, scalable HUD, the `.mobile`-flip token pattern, ≥44px targets. (Touch INPUT wiring is S3 per spec; the touch-VISUAL layer is arguably S1-C — scope decision below.)
+
+## 6. Decisions needed from Kevin (before `writing-plans`)
+1. **Finish direction** — A / B / C (recommendation: A-discipline + one C flourish; B as later theme variant).
+2. **Scope** — full M1→M4 incl. touch-visual, or focus M1→M3 (design-system + consolidation + icons) and defer touch-visual to S3?
+3. **Display font lean** — ZCOOL KuaiLe (playful/cartoon) vs Smiley Sans (energetic/geometric) — or decide from mockups.
+4. **Cadence** — start with M1 (foundation) and re-plan per milestone (the S1-B rhythm), confirmed?
+5. **(Flag, not blocking)** game-icons.net **CC BY 3.0 attribution** (credits screen) acceptable? (Alternative: Lucide-only + custom SVGs — weaker game-semantic coverage.)
+
+**Tradeoff flags:** CC BY 3.0 attribution obligation (game-icons) · Tailwind 3.2-not-v4 wiring differs from 2026 guides · CJK fonts large (subset) · mood-reactive tints via CSS vars not React state · touch = the single biggest effort + the real commercial blocker.
