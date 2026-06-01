@@ -9,6 +9,7 @@ import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { isCaptureMode } from './devtest/captureMode';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -288,21 +289,16 @@ const MobModel = ({ entity }) => {
       {!isCaptureMode() && <HealthBar entity={entity} />}
       {dialogue && (
         <Html position={[0, bodyH + headH + 0.8, 0]} center distanceFactor={8}>
-          <div 
-            className="px-3 py-1.5 rounded-xl border border-white/20 text-white font-medium text-xs whitespace-nowrap bg-slate-900/80 backdrop-blur-md shadow-lg pointer-events-none select-none text-center flex flex-col items-center justify-center animate-bounce"
-            style={{
-              fontFamily: 'Outfit, Inter, sans-serif',
-              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.25)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              minWidth: '160px',
-              maxWidth: '240px',
-              whiteSpace: 'normal',
-              wordBreak: 'break-word'
-            }}
+          <Panel
+            variant="raise"
+            className="px-3 py-1.5 text-text text-xs text-center flex flex-col items-center justify-center pointer-events-none select-none animate-bounce"
+            style={{ minWidth: '160px', maxWidth: '240px', whiteSpace: 'normal', wordBreak: 'break-word' }}
           >
-            <div className="text-blue-400 font-bold mb-0.5 text-[10px] tracking-wider uppercase font-mono">🧙‍♂️ Villager</div>
+            <div className="flex items-center gap-1 text-accent font-display mb-0.5 text-[10px] tracking-wider uppercase">
+              <Icon name="rune" size={12} /> Villager
+            </div>
             <div className="text-[11px] leading-snug">{dialogue}</div>
-          </div>
+          </Panel>
         </Html>
       )}
     </group>
@@ -1370,15 +1366,18 @@ export const NPCSystem = React.memo(() => {
 });
 
 export const CombatInstructions = React.memo(() => (
-  <div className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded text-sm pointer-events-none z-50">
-    <div>🎮 Controls:</div>
-    <div>• Click or F - Attack/Cast Spell</div>
-    <div>• E - Inventory</div>
-    <div>• M - Magic</div>
-    <div>• C - Crafting</div>
-    <div>• B - Building</div>
-    <div>• ESC - Settings</div>
-  </div>
+  <Panel
+    variant="base"
+    className="absolute top-4 right-4 p-3 text-text text-sm pointer-events-none z-hud"
+  >
+    <div className="font-display uppercase text-xs tracking-wider text-accent mb-1">Controls</div>
+    <div>Click or F - Attack/Cast Spell</div>
+    <div>E - Inventory</div>
+    <div>M - Magic</div>
+    <div>C - Crafting</div>
+    <div>B - Building</div>
+    <div>ESC - Settings</div>
+  </Panel>
 ));
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
@@ -1444,123 +1443,122 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-lg overflow-hidden border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-md rounded-2xl p-6 text-white"
         onClick={e => e.stopPropagation()}
+        className="w-full max-w-lg"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <h2 className="text-2xl font-bold tracking-wide bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-              Villager Merchant
-            </h2>
+        <Panel variant="raise" className="relative overflow-hidden p-0">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+            <div className="flex items-center gap-3">
+              <Icon name="coins" size={22} className="text-accent" />
+              <h2 className="font-display text-xl tracking-wide text-accent uppercase">
+                Villager Merchant
+              </h2>
+            </div>
+            <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+              <Icon name="close" size={18} />
+            </Button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-lg"
-          >
-            ✕
-          </button>
-        </div>
 
-        {/* Resources Panel */}
-        <div className="bg-white/5 border border-white/5 rounded-xl p-3 mb-4 grid grid-cols-4 gap-2 text-xs text-center">
-          <div>
-            <span className="text-gray-400 block">Stone</span>
-            <span className="font-semibold text-gray-300">{blocks.stone || 0}</span>
-          </div>
-          <div>
-            <span className="text-gray-400 block">Coal</span>
-            <span className="font-semibold text-slate-400">{blocks.coal || 0}</span>
-          </div>
-          <div>
-            <span className="text-gray-400 block">Iron</span>
-            <span className="font-semibold text-orange-300">{blocks.iron || 0}</span>
-          </div>
-          <div>
-            <span className="text-gray-400 block">Gold</span>
-            <span className="font-semibold text-yellow-400">{blocks.gold || 0}</span>
-          </div>
-          <div className="col-span-2 border-t border-white/5 pt-2 mt-2">
-            <span className="text-cyan-400 block font-medium">Crystals</span>
-            <span className="font-bold text-cyan-300 text-sm">{magic.crystals || 0}</span>
-          </div>
-          <div className="col-span-1 border-t border-white/5 pt-2 mt-2">
-            <span className="text-purple-400 block font-medium">Scrolls</span>
-            <span className="font-bold text-purple-300 text-sm">{magic.scrolls || 0}</span>
-          </div>
-          <div className="col-span-1 border-t border-white/5 pt-2 mt-2">
-            <span className="text-red-400 block font-medium">Wands</span>
-            <span className="font-bold text-red-300 text-sm">{magic.wand || 0}</span>
-          </div>
-        </div>
+          <div className="p-5">
+            {/* Resources Panel */}
+            <Panel variant="inset" className="p-3 mb-4 grid grid-cols-4 gap-2 text-xs text-center">
+              <div>
+                <span className="text-text-muted block uppercase tracking-wider">Stone</span>
+                <span className="font-display text-text">{blocks.stone || 0}</span>
+              </div>
+              <div>
+                <span className="text-text-muted block uppercase tracking-wider">Coal</span>
+                <span className="font-display text-text">{blocks.coal || 0}</span>
+              </div>
+              <div>
+                <span className="text-text-muted block uppercase tracking-wider">Iron</span>
+                <span className="font-display text-text">{blocks.iron || 0}</span>
+              </div>
+              <div>
+                <span className="text-text-muted block uppercase tracking-wider">Gold</span>
+                <span className="font-display text-text">{blocks.gold || 0}</span>
+              </div>
+              <div className="col-span-2 border-t-chrome border-ink pt-2 mt-2">
+                <span className="text-accent block font-bold uppercase tracking-wider">Crystals</span>
+                <span className="font-display text-text text-sm">{magic.crystals || 0}</span>
+              </div>
+              <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
+                <span className="text-accent block font-bold uppercase tracking-wider">Scrolls</span>
+                <span className="font-display text-text text-sm">{magic.scrolls || 0}</span>
+              </div>
+              <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
+                <span className="text-accent block font-bold uppercase tracking-wider">Wands</span>
+                <span className="font-display text-text text-sm">{magic.wand || 0}</span>
+              </div>
+            </Panel>
 
-        {/* Trade Message Feedback */}
-        {tradeMessage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className={`text-center py-2 px-3 mb-4 rounded-lg text-sm font-medium border ${
-              tradeMessage.includes('Not enough')
-                ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-            }`}
-          >
-            {tradeMessage}
-          </motion.div>
-        )}
-
-        {/* Trades Scroll Area */}
-        <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-          {trades.map((t, idx) => {
-            const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0) : (magic[t.costItem] || 0);
-            const canTrade = currentStock >= t.cost;
-
-            return (
+            {/* Trade Message Feedback */}
+            {tradeMessage && (
               <motion.div
-                key={idx}
-                whileHover={{ scale: 1.01 }}
-                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mb-4"
               >
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold tracking-wide text-gray-200">{t.name}</span>
-                  <span className="text-xs text-gray-400 mt-0.5">
-                    Cost: <span className={`font-semibold ${t.costColor}`}>{t.cost} {t.costItem}</span> (Have: {currentStock})
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-right flex flex-col">
-                    <span className="text-xs text-gray-400">Receive</span>
-                    <span className={`text-sm font-bold tracking-wide ${t.getColor}`}>+{t.get} {t.getItem}</span>
-                  </div>
-                  <button
-                    disabled={!canTrade}
-                    onClick={() => {
-                      if (t.type === 'block') {
-                        executeBlockTrade(t.costItem, t.cost, t.getItem, t.get);
-                      } else {
-                        executeCrystalTrade(t.getItem, t.cost, t.get);
-                      }
-                    }}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all shadow-md ${
-                      canTrade
-                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white cursor-pointer active:scale-95'
-                        : 'bg-white/5 border border-white/5 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    Trade
-                  </button>
-                </div>
+                <Toast
+                  status={tradeMessage.includes('Not enough') ? 'danger' : 'success'}
+                  className="w-full justify-center text-sm"
+                >
+                  {tradeMessage}
+                </Toast>
               </motion.div>
-            );
-          })}
-        </div>
+            )}
+
+            {/* Trades Scroll Area */}
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {trades.map((t, idx) => {
+                const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0) : (magic[t.costItem] || 0);
+                const canTrade = currentStock >= t.cost;
+
+                return (
+                  <Panel
+                    key={idx}
+                    variant="inset"
+                    className="flex items-center justify-between p-3"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-display tracking-wide text-text uppercase">{t.name}</span>
+                      <span className="text-xs text-text-muted mt-0.5">
+                        Cost: <span className="font-bold text-text">{t.cost} {t.costItem}</span> (Have: {currentStock})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right flex flex-col">
+                        <span className="text-xs text-text-muted uppercase tracking-wider">Receive</span>
+                        <span className="text-sm font-display tracking-wide text-accent">+{t.get} {t.getItem}</span>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={!canTrade}
+                        onClick={() => {
+                          if (t.type === 'block') {
+                            executeBlockTrade(t.costItem, t.cost, t.getItem, t.get);
+                          } else {
+                            executeCrystalTrade(t.getItem, t.cost, t.get);
+                          }
+                        }}
+                      >
+                        Trade
+                      </Button>
+                    </div>
+                  </Panel>
+                );
+              })}
+            </div>
+          </div>
+        </Panel>
       </motion.div>
     </div>
   );
