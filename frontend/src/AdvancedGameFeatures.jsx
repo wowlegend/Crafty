@@ -8,6 +8,8 @@ import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
 import { OUTLINE } from './render/characterStyle';
 import { TIERS } from './render/quality';
+import { Panel, Button, Slot, StatBar, Icon, Toast } from './ui/primitives/index.js';
+import { useT } from './i18n/i18n.js';
 
 export const useSurvivalMode = (isDay) => {
     const [nightCount, setNightCount] = useState(0);
@@ -46,6 +48,7 @@ export const useSurvivalMode = (isDay) => {
 export const SurvivalWarning = React.memo(({ message }) => {
     if (!message) return null;
 
+    // Nightfall warnings read as danger; the dawn "you survived" message reads as a warn.
     const isNight = message.includes('Night') || message.includes('☠️');
 
     return (
@@ -55,20 +58,9 @@ export const SurvivalWarning = React.memo(({ message }) => {
             exit={{ opacity: 0, y: -30, scale: 0.9 }}
             className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none"
         >
-            <div
-                className="px-6 py-3 rounded-xl text-center font-bold text-lg"
-                style={{
-                    background: isNight
-                        ? 'linear-gradient(135deg, rgba(139, 0, 0, 0.9), rgba(75, 0, 0, 0.9))'
-                        : 'linear-gradient(135deg, rgba(255, 200, 50, 0.9), rgba(255, 150, 0, 0.9))',
-                    border: `2px solid ${isNight ? '#ff4444' : '#FFD700'}`,
-                    boxShadow: `0 0 30px ${isNight ? 'rgba(255,0,0,0.4)' : 'rgba(255,215,0,0.4)'}`,
-                    color: 'white',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                }}
-            >
+            <Toast status={isNight ? 'danger' : 'warn'} className="text-center font-bold text-lg px-6 py-3">
                 {message}
-            </div>
+            </Toast>
         </motion.div>
     );
 });
@@ -193,7 +185,6 @@ export const useBossSystem = (playerLevel) => {
 export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase }) => {
     if (!bossActive) return null;
 
-    const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
     const hpPercent = (bossHealth / bossMaxHealth) * 100;
 
     let subText = 'Phase 1: Aerial Barrage ✈️';
@@ -202,33 +193,22 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
 
     return (
         <div className="absolute top-36 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 450 }}>
-            <div className="text-center mb-1 flex items-center justify-between px-1">
-                <span className="text-purple-300 font-extrabold text-sm tracking-wider uppercase" style={{ textShadow: '0 0 10px rgba(168,85,247,0.7)' }}>
-                    🐉 {BOSS_CONFIG.name}
-                </span>
-                <span className="text-red-400 font-bold text-xs">
-                    {subText}
-                </span>
-            </div>
-            <div className="h-4 rounded-full overflow-hidden p-0.5" style={{
-                background: 'rgba(5, 5, 10, 0.9)',
-                border: `2px solid ${phase.color}`,
-                boxShadow: `0 0 20px ${phase.color}80, inset 0 0 10px rgba(0,0,0,0.8)`,
-            }}>
-                <motion.div
-                    className="h-full rounded-full"
-                    style={{
-                        background: `linear-gradient(90deg, ${phase.color}, #a855f7, #ec4899)`,
-                        boxShadow: `0 0 10px #f43f5e, inset 0 1px 2px rgba(255,255,255,0.4)`,
-                    }}
-                    animate={{ width: `${hpPercent}%` }}
-                    transition={{ duration: 0.2 }}
-                />
-            </div>
-            <div className="text-center mt-1 flex justify-between text-[10px] text-gray-400 font-semibold px-2">
-                <span>HP {bossHealth} / {bossMaxHealth}</span>
-                <span>{Math.round(hpPercent)}% REMAINING</span>
-            </div>
+            <Panel variant="raise" className="px-4 py-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-danger text-base leading-none">
+                        🐉 {BOSS_CONFIG.name}
+                    </span>
+                    <span className="text-text-muted font-bold text-xs text-right">
+                        {subText}
+                    </span>
+                </div>
+                {/* Bold-flat boss bar: inset danger StatBar replaces the emissive gradient. */}
+                <StatBar kind="health" value={bossHealth} max={bossMaxHealth} className="w-full" />
+                <div className="mt-1.5 flex justify-between text-[10px] text-text-muted font-semibold tabular-nums">
+                    <span>HP {bossHealth} / {bossMaxHealth}</span>
+                    <span>{Math.round(hpPercent)}% REMAINING</span>
+                </div>
+            </Panel>
         </div>
     );
 });
@@ -838,30 +818,20 @@ export const PetIndicator = React.memo(({ pets }) => {
     const petOrder = useGameStore(state => state.petOrder || 'follow');
     if (pets.length === 0) return null;
 
-    let badgeColor = 'rgba(34, 197, 94, 0.4)'; // green
-    if (petOrder === 'stay') badgeColor = 'rgba(234, 179, 8, 0.4)'; // yellow
-    if (petOrder === 'attack') badgeColor = 'rgba(239, 68, 68, 0.4)'; // red
+    // Order badge → flat status fill (follow=success/green, stay=warn/amber, attack=danger/red).
+    let orderFill = 'bg-success';
+    if (petOrder === 'stay') orderFill = 'bg-warn';
+    if (petOrder === 'attack') orderFill = 'bg-danger';
 
     return (
         <div className="absolute bottom-40 left-4 z-20 pointer-events-none">
-            <div
-                className="px-4 py-3 rounded-xl space-y-2 max-w-[200px]"
-                style={{
-                    background: 'rgba(10, 10, 20, 0.85)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(168, 85, 247, 0.3)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                }}
-            >
-                <div className="flex items-center justify-between border-b border-purple-500/20 pb-1">
-                    <span className="text-purple-300 font-black text-[10px] uppercase tracking-wider">🐾 Pets ({pets.length}/3)</span>
+            <Panel variant="raise" className="px-4 py-3 space-y-2 max-w-[200px]">
+                <div className="flex items-center justify-between border-b-chrome border-ink pb-1">
+                    <span className="font-display text-[10px] uppercase tracking-wider text-accent">🐾 Pets ({pets.length}/3)</span>
                 </div>
-                
-                {/* Active Command Overlay Badge */}
-                <div 
-                    className="text-center py-1 rounded-md text-[9px] font-extrabold uppercase text-white tracking-widest border border-white/10"
-                    style={{ background: badgeColor }}
-                >
+
+                {/* Active Command Overlay Badge — flat status fill */}
+                <div className={`text-center py-1 rounded-sm text-[9px] font-display uppercase text-text-inverse tracking-widest border-chrome border-ink ${orderFill}`}>
                     Order: {petOrder}
                 </div>
 
@@ -870,16 +840,16 @@ export const PetIndicator = React.memo(({ pets }) => {
                         <div key={pet.id} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5">
                                 <span className="text-[14px]">{pet.type === 'pig' ? '🐷' : '🐮'}</span>
-                                <span className="text-gray-200 font-bold truncate max-w-[80px]">{pet.name}</span>
+                                <span className="text-text font-bold truncate max-w-[80px]">{pet.name}</span>
                             </div>
-                            <span className="text-green-400 font-extrabold text-[10px]">HP {pet.health}</span>
+                            <span className="text-success font-bold text-[10px] tabular-nums">HP {pet.health}</span>
                         </div>
                     ))}
                 </div>
-                <div className="text-[8px] text-gray-500 text-center font-bold uppercase tracking-wider pt-0.5 border-t border-purple-500/10">
+                <div className="text-[8px] text-text-muted text-center font-bold uppercase tracking-wider pt-0.5 border-t-chrome border-ink">
                     Press T to cycle order
                 </div>
-            </div>
+            </Panel>
         </div>
     );
 });
@@ -1114,17 +1084,21 @@ export const useSpellUpgrades = () => {
 };
 
 export const SpellUpgradePanel = React.memo(({ onClose }) => {
+    const t = useT();
     const talentPoints = useGameStore(state => state.talentPoints || 0);
     const unlockedTalents = useGameStore(state => state.unlockedTalents || {});
     const spendTalentPoint = useGameStore(state => state.spendTalentPoint);
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
 
+    // Branch accents map to the spell token family (fire / ice / lightning -> shown as
+    // arcane purple to match the original indigo column). `accent` drives the header text
+    // color + the filled rank pip; `dot` is the filled-pip token class.
     const branches = [
         {
             title: '🔥 Pyromancy & Storm',
-            color: 'border-orange-500/40 text-orange-400 bg-orange-950/20',
-            glow: 'rgba(249, 115, 22, 0.15)',
+            accent: 'text-spell-fire',
+            dot: 'bg-spell-fire',
             nodes: [
                 { id: 'ember_core', name: 'Ember Core', desc: 'Unlocks Fireball. Increases Fireball damage +15% per point.', limit: 3, prereq: null },
                 { id: 'fire_blast', name: 'Fire Blast', desc: 'Adds +20% critical strike chance to Fireball.', limit: 3, prereq: 'ember_core' },
@@ -1135,8 +1109,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
         },
         {
             title: '❄️ Cryomancy & Abjuration',
-            color: 'border-cyan-500/40 text-cyan-400 bg-cyan-950/20',
-            glow: 'rgba(6, 182, 212, 0.15)',
+            accent: 'text-spell-ice',
+            dot: 'bg-spell-ice',
             nodes: [
                 { id: 'frost_shield', name: 'Frost Shield', desc: 'Unlocks Iceball. Grants +5 physical armor per point.', limit: 3, prereq: null },
                 { id: 'permafrost', name: 'Permafrost', desc: 'Iceball slows mob movement speed by 40% for 3 seconds.', limit: 2, prereq: 'frost_shield' },
@@ -1145,8 +1119,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
         },
         {
             title: '🔮 Arcane & Chronomancy',
-            color: 'border-purple-500/40 text-purple-400 bg-purple-950/20',
-            glow: 'rgba(168, 85, 247, 0.15)',
+            accent: 'text-spell-arcane',
+            dot: 'bg-spell-arcane',
             nodes: [
                 { id: 'mana_flow', name: 'Mana Flow', desc: 'Unlocks Arcane. Increases maximum mana limit by +30 per point.', limit: 3, prereq: null },
                 { id: 'time_warp', name: 'Time Warp', desc: 'Reduces dodge roll cooldown by 20% per point.', limit: 2, prereq: 'mana_flow' },
@@ -1160,143 +1134,130 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-            style={{ background: 'rgba(5, 5, 12, 0.85)', backdropFilter: 'blur(8px)' }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"
         >
             <motion.div
                 initial={{ scale: 0.9, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 30 }}
-                className="max-w-5xl w-full p-6 flex flex-col relative"
-                style={{
-                    background: 'linear-gradient(135deg, rgba(10, 10, 25, 0.98), rgba(25, 10, 45, 0.98))',
-                    border: '1px solid rgba(168, 85, 247, 0.3)',
-                    borderRadius: '24px',
-                    boxShadow: '0 0 50px rgba(168, 85, 247, 0.25)',
-                }}
+                className="max-w-5xl w-full"
             >
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-500/20">
-                    <div>
-                        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-200 to-purple-400">
-                            ✨ Class Skill Talent Tree
-                        </h2>
-                        <p className="text-gray-400 text-xs mt-1">Spend Talent Points earned by leveling up to unlock powerful elemental abilities</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-center">
-                            <div className="text-xs text-purple-300 font-bold uppercase tracking-wider">Talent Points</div>
-                            <div className="text-2xl font-black text-purple-400">{talentPoints}</div>
+                <Panel variant="raise" className="p-6 flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
+                        <div>
+                            <h2 className="font-display text-3xl uppercase tracking-wide text-accent">
+                                ✨ Class Skill Talent Tree
+                            </h2>
+                            <p className="text-text-muted text-xs mt-1">Spend Talent Points earned by leveling up to unlock powerful elemental abilities</p>
                         </div>
-                        <div className="px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-center">
-                            <div className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Player Level</div>
-                            <div className="text-2xl font-black text-indigo-400">{playerLevel}</div>
+                        <div className="flex items-center gap-4">
+                            <Panel variant="inset" className="px-4 py-2 bg-slot text-center">
+                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Talent Points</div>
+                                <div className="font-display text-2xl text-accent tabular-nums">{talentPoints}</div>
+                            </Panel>
+                            <Panel variant="inset" className="px-4 py-2 bg-slot text-center">
+                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Player Level</div>
+                                <div className="font-display text-2xl text-spell-arcane tabular-nums">{playerLevel}</div>
+                            </Panel>
+                            <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
+                                <Icon name="close" size={18} />
+                            </Button>
                         </div>
-                        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center font-bold text-lg transition-all duration-200">✕</button>
                     </div>
-                </div>
 
-                {/* Branches Columns Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {branches.map((branch, index) => (
-                        <div
-                            key={index}
-                            className="p-4 rounded-2xl border flex flex-col gap-4"
-                            style={{
-                                borderColor: 'rgba(255,255,255,0.05)',
-                                background: 'rgba(255,255,255,0.02)',
-                                boxShadow: `inset 0 0 20px ${branch.glow}`,
-                            }}
-                        >
-                            <h3 className={`text-lg font-black text-center border-b pb-2 ${branch.color}`}>{branch.title}</h3>
-                            <div className="flex flex-col gap-3.5">
-                                {branch.nodes.map((node) => {
-                                    const currentLvl = unlockedTalents[node.id] || 0;
-                                    const isPrereqMet = !node.prereq || (unlockedTalents[node.prereq] || 0) > 0;
-                                    const isMaxed = currentLvl >= node.limit;
-                                    const canUpgrade = talentPoints > 0 && isPrereqMet && !isMaxed;
+                    {/* Branches Columns Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {branches.map((branch, index) => (
+                            <Panel key={index} variant="inset" className="p-4 bg-panel flex flex-col gap-4">
+                                <h3 className={`font-display text-lg text-center border-b-chrome border-ink pb-2 ${branch.accent}`}>{branch.title}</h3>
+                                <div className="flex flex-col gap-3.5">
+                                    {branch.nodes.map((node) => {
+                                        const currentLvl = unlockedTalents[node.id] || 0;
+                                        const isPrereqMet = !node.prereq || (unlockedTalents[node.prereq] || 0) > 0;
+                                        const isMaxed = currentLvl >= node.limit;
+                                        const canUpgrade = talentPoints > 0 && isPrereqMet && !isMaxed;
 
-                                    return (
-                                        <div
-                                            key={node.id}
-                                            className={`p-3 rounded-xl border transition-all duration-300 relative ${
-                                                isMaxed 
-                                                    ? 'border-yellow-500/30 bg-yellow-500/5' 
-                                                    : !isPrereqMet 
-                                                    ? 'border-white/5 opacity-40 bg-black/40' 
-                                                    : 'border-white/10 bg-white/5'
-                                            }`}
-                                        >
-                                            {/* Prerequisite lock overlay */}
-                                            {!isPrereqMet && (
-                                                <div className="absolute top-2 right-2 text-xs text-red-400 flex items-center gap-1 font-bold">
-                                                    🔒 Locked
-                                                </div>
-                                            )}
-
-                                            <div className="flex items-center justify-between">
-                                                <div className="font-extrabold text-sm text-white">{node.name}</div>
-                                                <div className="flex gap-0.5">
-                                                    {Array.from({ length: node.limit }).map((_, l) => (
-                                                        <div
-                                                            key={l}
-                                                            className={`w-2.5 h-2.5 rounded-full border ${
-                                                                l < currentLvl 
-                                                                    ? 'bg-purple-500 border-purple-400 shadow-sm shadow-purple-500' 
-                                                                    : 'bg-white/10 border-white/5'
-                                                            }`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            
-                                            <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">{node.desc}</p>
-                                            
-                                            {node.prereq && (
-                                                <div className="text-[10px] text-indigo-300 mt-1 font-bold">
-                                                    Prerequisite: {branch.nodes.find(n => n.id === node.prereq)?.name || node.prereq}
-                                                </div>
-                                            )}
-
-                                            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2">
-                                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                                                    Rank {currentLvl}/{node.limit}
-                                                </span>
-                                                {isMaxed ? (
-                                                    <span className="text-[10px] text-yellow-400 font-black uppercase tracking-wider">Max Rank ⭐</span>
-                                                ) : isPrereqMet ? (
-                                                    <button
-                                                        disabled={!canUpgrade}
-                                                        onClick={() => spendTalentPoint(node.id)}
-                                                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
-                                                            canUpgrade 
-                                                                ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer active:scale-95 shadow-md shadow-purple-600/30' 
-                                                                : 'bg-white/5 text-gray-500 cursor-not-allowed'
-                                                        }`}
-                                                    >
-                                                        Upgrade
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-[10px] text-red-400/80 font-bold">Requires Parent Node</span>
+                                        return (
+                                            <Panel
+                                                key={node.id}
+                                                variant="inset"
+                                                className={`p-3 relative ${
+                                                    isMaxed
+                                                        ? 'bg-slot'
+                                                        : !isPrereqMet
+                                                        ? 'bg-panel-inset opacity-40'
+                                                        : 'bg-slot'
+                                                }`}
+                                            >
+                                                {/* Prerequisite lock overlay */}
+                                                {!isPrereqMet && (
+                                                    <div className="absolute top-2 right-2 text-xs text-danger flex items-center gap-1 font-bold">
+                                                        🔒 Locked
+                                                    </div>
                                                 )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="font-bold text-sm text-text">{node.name}</div>
+                                                    <div className="flex gap-0.5">
+                                                        {Array.from({ length: node.limit }).map((_, l) => (
+                                                            <div
+                                                                key={l}
+                                                                className={`w-2.5 h-2.5 rounded-sm border-chrome border-ink ${
+                                                                    l < currentLvl ? branch.dot : 'bg-track'
+                                                                }`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-text-muted text-xs mt-1.5 leading-relaxed">{node.desc}</p>
+
+                                                {node.prereq && (
+                                                    <div className="text-[10px] text-spell-arcane mt-1 font-bold">
+                                                        Prerequisite: {branch.nodes.find(n => n.id === node.prereq)?.name || node.prereq}
+                                                    </div>
+                                                )}
+
+                                                <div className="mt-3 flex items-center justify-between border-t-chrome border-ink pt-2">
+                                                    <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider tabular-nums">
+                                                        Rank {currentLvl}/{node.limit}
+                                                    </span>
+                                                    {isMaxed ? (
+                                                        <span className="text-[10px] text-accent font-display uppercase tracking-wider">Max Rank ⭐</span>
+                                                    ) : isPrereqMet ? (
+                                                        <Button
+                                                            variant="primary"
+                                                            size="sm"
+                                                            disabled={!canUpgrade}
+                                                            onClick={() => spendTalentPoint(node.id)}
+                                                            className="px-3 py-1 text-[10px] tracking-widest"
+                                                        >
+                                                            Upgrade
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-[10px] text-danger font-bold">Requires Parent Node</span>
+                                                    )}
+                                                </div>
+                                            </Panel>
+                                        );
+                                    })}
+                                </div>
+                            </Panel>
+                        ))}
+                    </div>
+                </Panel>
             </motion.div>
         </motion.div>
     );
 });
 
 export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
+    const t = useT();
     const playerInventory = useGameStore(state => state.inventory?.blocks || {});
     const chestsMap = useGameStore(state => state.chests || new Map());
     const transferItem = useGameStore(state => state.transferItem);
-    
+
     const chestData = chestsMap.get(coords) || { inventory: {}, name: 'Wooden Chest' };
     const chestInventory = chestData.inventory || {};
 
@@ -1308,78 +1269,75 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-            style={{ background: 'rgba(5,5,10,0.85)', backdropFilter: 'blur(8px)' }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"
         >
             <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="max-w-3xl w-full p-6 flex flex-col"
-                style={{
-                    background: 'linear-gradient(135deg, rgba(12,12,24,0.98), rgba(30,15,45,0.98))',
-                    border: '1px solid rgba(168,85,247,0.3)',
-                    borderRadius: '24px',
-                    boxShadow: '0 0 50px rgba(168,85,247,0.25)',
-                }}
+                className="max-w-3xl w-full"
             >
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-500/20">
-                    <div>
-                        <h2 className="text-2xl font-black text-purple-400 flex items-center gap-2">
-                            📦 Storage Container Chest
-                        </h2>
-                        <p className="text-gray-400 text-xs mt-1">Coordinate Grid Position: {coords}</p>
-                    </div>
-                    <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center font-bold text-lg transition-all duration-200">✕</button>
-                </div>
-
-                {/* Double Columns grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Player inventory panel */}
-                    <div className="p-4 rounded-2xl border border-white/5 bg-white/2 flex flex-col gap-3">
-                        <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-widest border-b border-white/5 pb-2">🎒 Player Backpack Inventory</h3>
-                        {availableItems.length === 0 ? (
-                            <div className="py-8 text-center text-xs text-gray-500">Your backpack is completely empty.</div>
-                        ) : (
-                            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
-                                {availableItems.map(([item, qty]) => (
-                                    <div
-                                        key={item}
-                                        onClick={() => transferItem(coords, item, 1, 'to_chest')}
-                                        className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-purple-500/20 hover:border-purple-500/40 cursor-pointer active:scale-95 transition-all duration-150 text-center flex flex-col justify-between items-center group min-h-16"
-                                    >
-                                        <div className="text-white text-xs font-bold truncate max-w-full group-hover:text-purple-300">{item}</div>
-                                        <div className="px-2 py-0.5 rounded bg-black/40 text-[10px] text-gray-300 font-bold mt-1">x{qty}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <p className="text-[10px] text-gray-500 text-center mt-2">💡 Click on items to transfer them to the chest.</p>
+                <Panel variant="raise" className="p-6 flex flex-col">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
+                        <div>
+                            <h2 className="font-display text-2xl uppercase tracking-wide text-accent flex items-center gap-2">
+                                📦 Storage Container Chest
+                            </h2>
+                            <p className="text-text-muted text-xs mt-1">Coordinate Grid Position: {coords}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
+                            <Icon name="close" size={18} />
+                        </Button>
                     </div>
 
-                    {/* Chest inventory panel */}
-                    <div className="p-4 rounded-2xl border border-white/5 bg-white/2 flex flex-col gap-3">
-                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-widest border-b border-white/5 pb-2">📦 Storage Vault Inventory</h3>
-                        {chestItems.length === 0 ? (
-                            <div className="py-8 text-center text-xs text-gray-500">This chest container is currently empty.</div>
-                        ) : (
-                            <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
-                                {chestItems.map(([item, qty]) => (
-                                    <div
-                                        key={item}
-                                        onClick={() => transferItem(coords, item, 1, 'from_chest')}
-                                        className="p-2 rounded-xl bg-purple-950/20 border border-purple-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 cursor-pointer active:scale-95 transition-all duration-150 text-center flex flex-col justify-between items-center group min-h-16"
-                                    >
-                                        <div className="text-purple-300 text-xs font-bold truncate max-w-full group-hover:text-indigo-300">{item}</div>
-                                        <div className="px-2 py-0.5 rounded bg-black/40 text-[10px] text-purple-400 font-bold mt-1">x{qty}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <p className="text-[10px] text-gray-500 text-center mt-2">💡 Click on items to retrieve them to your backpack.</p>
+                    {/* Double Columns grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Player inventory panel */}
+                        <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
+                            <h3 className="font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2">🎒 Player Backpack Inventory</h3>
+                            {availableItems.length === 0 ? (
+                                <div className="py-8 text-center text-xs text-text-muted">Your backpack is completely empty.</div>
+                            ) : (
+                                <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
+                                    {availableItems.map(([item, qty]) => (
+                                        <Slot
+                                            key={item}
+                                            onClick={() => transferItem(coords, item, 1, 'to_chest')}
+                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
+                                        >
+                                            <div className="text-text text-xs font-bold truncate max-w-full">{item}</div>
+                                            <div className="px-2 py-0.5 rounded-sm bg-track text-[10px] text-text-muted font-bold mt-1 tabular-nums">x{qty}</div>
+                                        </Slot>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-[10px] text-text-muted text-center mt-2">💡 Click on items to transfer them to the chest.</p>
+                        </Panel>
+
+                        {/* Chest inventory panel */}
+                        <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
+                            <h3 className="font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2">📦 Storage Vault Inventory</h3>
+                            {chestItems.length === 0 ? (
+                                <div className="py-8 text-center text-xs text-text-muted">This chest container is currently empty.</div>
+                            ) : (
+                                <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
+                                    {chestItems.map(([item, qty]) => (
+                                        <Slot
+                                            key={item}
+                                            onClick={() => transferItem(coords, item, 1, 'from_chest')}
+                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
+                                        >
+                                            <div className="text-accent text-xs font-bold truncate max-w-full">{item}</div>
+                                            <div className="px-2 py-0.5 rounded-sm bg-track text-[10px] text-text-muted font-bold mt-1 tabular-nums">x{qty}</div>
+                                        </Slot>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-[10px] text-text-muted text-center mt-2">💡 Click on items to retrieve them to your backpack.</p>
+                        </Panel>
                     </div>
-                </div>
+                </Panel>
             </motion.div>
         </motion.div>
     );
