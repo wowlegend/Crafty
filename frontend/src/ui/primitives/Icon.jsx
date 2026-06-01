@@ -1,16 +1,95 @@
-import { Heart, Droplet, Drumstick, Sword, Shield, Gem, Settings, X, Sparkles, Flame, Snowflake, Zap } from 'lucide-react';
+import { Settings, X, ChevronRight, Compass } from 'lucide-react';
+import { GAME_ICONS } from './gameIcons.js';
 
-// Chrome/semantic icon primitive (M1: lucide-backed app-chrome set). M3 extends the
-// `name` map to game-icons.net for game-semantic content + decouples emoji from data.
+// Icon primitive (S1C-M1): flat-2-tone GAME-SEMANTIC icons + lucide app-chrome.
+// Game-semantic content uses the locked comp's baked game-icons.net set (gameIcons.js):
+// a single `currentColor` fill IS the flat-2-tone look (tile fill = tone 1, icon = tone 2).
+// App-chrome (settings/close/chevron/compass) stays on lucide-react outline icons.
 // All icons inherit `currentColor` (color via Tailwind text-* on the parent).
-const MAP = {
-  heart: Heart, mana: Droplet, hunger: Drumstick, sword: Sword, shield: Shield,
-  gem: Gem, settings: Settings, close: X, sparkles: Sparkles,
-  fire: Flame, ice: Snowflake, lightning: Zap,
+
+// Lucide chrome icons (outline, stroke-driven — not game content).
+const CHROME = {
+  settings: Settings,
+  close: X,
+  chevron: ChevronRight,
+  compass: Compass,
 };
 
-export function Icon({ name, size = 20, strokeWidth = 2.5, ...props }) {
-  const Cmp = MAP[name];
-  if (!Cmp) return null;
-  return <Cmp width={size} height={size} strokeWidth={strokeWidth} aria-hidden {...props} />;
+// Friendly name -> baked game-icon key (keys exactly as in gameIcons.js).
+const GAME_NAMES = {
+  sword: 'broadsword',
+  weapon: 'broadsword',
+  dagger: 'bowie-knife',
+  mace: 'wooden-club',
+  club: 'wooden-club',
+  bow: 'bow-arrow',
+  pickaxe: 'mining',
+  necklace: 'gem-pendant',
+  pendant: 'gem-pendant',
+  gem: 'gem-pendant',
+  potion: 'round-potion',
+  apple: 'apple',
+  meat: 'meat',
+  food: 'meat',
+  scroll: 'scroll-unfurled',
+  rune: 'rune-stone',
+  magic: 'magic-swirl',
+  arcane: 'magic-swirl',
+  coins: 'two-coins',
+  gold: 'two-coins',
+  star: 'star-formation',
+  upgrade: 'upgrade',
+  up: 'upgrade',
+  impact: 'gooey-impact',
+  helmet: 'crested-helmet',
+  chest: 'chest-armor',
+  chestplate: 'chest-armor',
+  vest: 'armor-vest',
+  legs: 'leg-armor',
+  boots: 'leather-boot',
+  shield: 'checked-shield',
+  force: 'mighty-force',
+  crit: 'mighty-force',
+  run: 'run',
+  spd: 'run',
+  woundatk: 'sword-wound',
+  fire: 'fire',
+  ice: 'snowflake-2',
+  snow: 'snowflake-2',
+  lightning: 'lightning-arc',
+  health: 'health-normal',
+  water: 'water-drop',
+  mana: 'water-drop',
+};
+
+export function Icon({ name, size = 20, strokeWidth = 2.5, className, ...props }) {
+  const Chrome = CHROME[name];
+  if (Chrome) {
+    return (
+      <Chrome
+        width={size}
+        height={size}
+        strokeWidth={strokeWidth}
+        className={className}
+        aria-hidden
+        {...props}
+      />
+    );
+  }
+
+  const gi = GAME_ICONS[GAME_NAMES[name]];
+  if (!gi) return null;
+  return (
+    <svg
+      viewBox={gi.vb}
+      width={size}
+      height={size}
+      className={className}
+      style={{ fill: 'currentColor' }}
+      aria-hidden
+      {...props}
+    >
+      <g dangerouslySetInnerHTML={{ __html: gi.inner }} />
+    </svg>
+  );
 }

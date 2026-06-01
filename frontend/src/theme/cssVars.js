@@ -20,13 +20,18 @@ const COLOR_VARS = {
   '--ui-ink': C.ink,
   '--ui-panel': C.panel,
   '--ui-panel-raise': C.panelRaise,
+  '--ui-panel-frame': C.panelFrame,
   '--ui-panel-inset': C.panelInset,
+  '--ui-well': C.well,
   '--ui-slot': C.slot,
+  '--ui-control': C.control,
+  '--ui-track': C.track,
   '--ui-text': C.text,
   '--ui-text-muted': C.textMuted,
   '--ui-text-inverse': C.textInverse,
   '--ui-accent': C.accent,
   '--ui-accent-raise': C.accentRaise,
+  '--ui-accent-deep': C.accentDeep,
   '--ui-danger': C.danger,
   '--ui-success': C.success,
   '--ui-warn': C.warn,
@@ -40,6 +45,10 @@ const COLOR_VARS = {
   '--ui-spell-lightning': C.spell.lightning,
   '--ui-spell-arcane': C.spell.arcane,
   '--ui-spell-nature': C.spell.nature,
+  '--ui-stat-atk': C.statIcon.atk,
+  '--ui-stat-def': C.statIcon.def,
+  '--ui-stat-spd': C.statIcon.spd,
+  '--ui-stat-crit': C.statIcon.crit,
 };
 
 const SCALAR_VARS = {
@@ -50,6 +59,7 @@ const SCALAR_VARS = {
   '--ui-elev-sm': UI.elevation.sm,
   '--ui-elev-md': UI.elevation.md,
   '--ui-elev-lg': UI.elevation.lg,
+  '--ui-elev-xl': UI.elevation.xl,
 };
 
 /** The full map applied to :root. Colors as channels, scalars as values. */
@@ -69,13 +79,18 @@ export const TW_COLORS = {
   ink: tw('--ui-ink'),
   panel: tw('--ui-panel'),
   'panel-raise': tw('--ui-panel-raise'),
+  'panel-frame': tw('--ui-panel-frame'),
   'panel-inset': tw('--ui-panel-inset'),
+  well: tw('--ui-well'),
   slot: tw('--ui-slot'),
+  control: tw('--ui-control'),
+  track: tw('--ui-track'),
   text: tw('--ui-text'),
   'text-muted': tw('--ui-text-muted'),
   'text-inverse': tw('--ui-text-inverse'),
   accent: tw('--ui-accent'),
   'accent-raise': tw('--ui-accent-raise'),
+  'accent-deep': tw('--ui-accent-deep'),
   danger: tw('--ui-danger'),
   success: tw('--ui-success'),
   warn: tw('--ui-warn'),
@@ -92,6 +107,12 @@ export const TW_COLORS = {
     lightning: tw('--ui-spell-lightning'),
     arcane: tw('--ui-spell-arcane'),
     nature: tw('--ui-spell-nature'),
+  },
+  stat: {
+    atk: tw('--ui-stat-atk'),
+    def: tw('--ui-stat-def'),
+    spd: tw('--ui-stat-spd'),
+    crit: tw('--ui-stat-crit'),
   },
 };
 
@@ -110,6 +131,6 @@ export const TW_SCALES = {
       return [k, [`${v}px`, { lineHeight: String(lh) }]];
     }),
   ),
-  boxShadow: { 'elev-sm': UI.elevation.sm, 'elev-md': UI.elevation.md, 'elev-lg': UI.elevation.lg },
+  boxShadow: { 'elev-sm': UI.elevation.sm, 'elev-md': UI.elevation.md, 'elev-lg': UI.elevation.lg, 'elev-xl': UI.elevation.xl },
   zIndex: Object.fromEntries(Object.entries(UI.z).map(([k, v]) => [k.replace(/([A-Z])/g, '-$1').toLowerCase(), String(v)])),
 };

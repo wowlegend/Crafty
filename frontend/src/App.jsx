@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
@@ -14,10 +14,17 @@ import { useInputManager } from './InputManager';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
-import { PrimitivesShowcase } from './ui/PrimitivesShowcase';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
+import { ecs, mobsQuery } from './ecs/world';
 import { selectTier, readDeviceSignals } from './render/quality';
+
+// DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
+// whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
+// is tree-shaken out of the production bundle.
+const PrimitivesShowcase = import.meta.env.DEV
+  ? lazy(() => import('./ui/PrimitivesShowcase').then((m) => ({ default: m.PrimitivesShowcase })))
+  : () => null;
 
 function App() {
   return (
@@ -144,6 +151,18 @@ function GameApp({ experienceSystem }) {
       // Force a deterministic tier so visual baselines never depend on the
       // capture machine's deviceMemory/cores.
       useGameStore.getState().setQualityTier('high');
+      // Purge any mobs that won the spawn race before this flag flipped. The mob
+      // spawn setInterval starts when the Canvas mounts (page-load), BEFORE the
+      // harness calls enterCapture; whether the spawn condition (chunks loaded +
+      // spawn chunk ready) is met before or after this flip is a wall-clock race,
+      // so an inconsistent set of hostile mobs would otherwise appear in the
+      // foreground of the world-scene frames (dominant explore-night flake source).
+      // Clearing here + the spawn suppression in NPCSystem guarantees a
+      // deterministically mob-free world scene. Dev-capture-only: this hook is only
+      // reachable through the test bridge (tree-shaken out of prod). The character/
+      // boss close-up fixtures spawn their subject AFTER calling enterCaptureMode
+      // directly (not this hook), so they are unaffected.
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
       if (typeof opts.timeOfDay === 'number') {
         useGameStore.getState().setTimeOfDay(opts.timeOfDay);
       }
@@ -412,7 +431,7 @@ function GameApp({ experienceSystem }) {
 
       {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
 
-      {import.meta.env.DEV && showcaseView && <PrimitivesShowcase />}
+      {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
     </div>
   );
 }

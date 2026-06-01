@@ -15,5 +15,5 @@ const toast = cva(
   },
 );
 export const Toast = forwardRef(function Toast({ status, className, ...props }, ref) {
-  return <div ref={ref} role="status" className={cn(toast({ status }), className)} {...props} />;
+  return <div ref={ref} role={status === 'danger' || status === 'warn' ? 'alert' : 'status'} className={cn(toast({ status }), className)} {...props} />;
 });
