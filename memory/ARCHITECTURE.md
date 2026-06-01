@@ -10,7 +10,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 
 - **Runtime**: React 19, Three.js 0.172
 - **3D Engine**: @react-three/fiber 9.5, @react-three/drei 10.7
-- **Post-Processing**: @react-three/postprocessing 2.16
+- **Post-Processing**: @react-three/postprocessing 3.0 (`postprocessing` peer)
 - **Physics**: @react-three/rapier 2.2 (Rapier WASM)
 - **Styling**: Tailwind CSS 3.x, Framer Motion 12.x
 - **State**: Zustand 5.x (global store), React hooks
@@ -34,6 +34,21 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - Loot drop system (mobs drop items on death)
 - Treasure chests with random world spawning
 - Achievement system with 12 badges and stats tracking
+
+## S1 Render Systems (Crafty → SOTA initiative — CURRENT, post-Gemini; supersedes the stale blueprint below for the render layer)
+
+The render layer was rebuilt in S1 against the visual-direction spec (`docs/superpowers/specs/2026-05-30-crafty-visual-direction-design.md`), Vanguard+Toon. New/load-bearing modules (ground truth — all on `main`, gated by the deterministic visual-regression suite):
+
+- **`src/theme/tokens.js`** — design-token source of truth (explore/dusk/obsidian palettes, lerp-safe; magic + UI tokens). [S1-A]
+- **`src/render/quality.js`** — device quality tiers (`low`/`med`/`high`); flags `ao`/`godRays`/`bloomMipmap`/`shadowMapSize`/`renderDistance`/`weather`/`dprCap` + `charOutline` (med+) / `charRim` (high). Capture forces `high` for hardware-independent baselines. [S1-A/B]
+- **`src/devtest/`** — DEV-only test bridge (`window.__craftyTest`, tree-shaken in prod) + capture-determinism layer (`captureMode.js`: per-key seeded RNG, paused physics, pinned camera, frozen clock). [S1-A]
+- **`src/render/mood.js` + `src/render/Atmosphere.jsx`** — continuous `mood∈[0,2]` (explore→dusk→obsidian) via a `moodRef` singleton; `<Atmosphere>` = camera-following gradient SkyDome + mood-lerped ambient/sun/fill/fog off `tokens.PALETTE` (replaced the inline `<Sky>`/fog/ternary lights). [M2a]
+- **`src/render/characterStyle.js` (pure) + `src/render/MobToonMaterial.jsx` (R3F wrapper)** — the character render language: memoized 2-band toon gradient `DataTexture`, fresnel-rim `onBeforeCompile` patch, `OUTLINE`/`RIM`/`TOON` config, `flashableMaterial` hit-flash allow-list. [M2b]
+- **GameScene `<EffectComposer>`** — N8AO → GodRays (sun mesh) → HueSaturation → BrightnessContrast → Bloom → SMAA → **ToneMapping `NEUTRAL`** (ACES muted the stylized palette; the composer overrides `gl.toneMapping`, so tone mapping MUST be a composer effect) → Noise → Vignette. Terrain uses an in-shader sRGB decode (`pow(rgb,2.2)`) + a `mood` desaturation uniform. [M1/M2a]
+
+**Character render language (M2b):** mobs = 2-band toon (body/head/legs/nose) + tier-gated fresnel rim + inverted-hull `drei <Outlines>` on ALL body parts; the per-frame hit-flash traversal is a positive material-type allow-list (Standard/Toon) so it flashes the toon body but skips the outline `ShaderMaterial`. Boss = outline on torso+neck ONLY, emissive attack-telegraph preserved (no toon), capture freeze-gate + DEV-only `forceBossSpawn`. Chests + pets outlined. **drei `<Outlines>` `thickness` is screen-PIXELS at the default `screenspace=false`** (not world units). Two deterministic capture states gate the look: `character-closeup` + `boss-closeup`. Static gates in `tests/gates/character-render-gates.test.js`.
+
+**Visual-regression gate:** `npm run test:visual` (puppeteer + pixelmatch, 6% threshold, 6 states) — replaces the blind `test_swarm.js`; re-baseline per intended look change under forced `high` tier, human-reviewed.
 
 ## Architecture
 

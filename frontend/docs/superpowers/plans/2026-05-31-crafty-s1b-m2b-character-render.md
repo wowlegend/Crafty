@@ -1,5 +1,7 @@
 # Crafty S1-B M2b — Character Render Language Implementation Plan
 
+> ✅ **STATUS: COMPLETE — merged to `main` 2026-05-31** (`s1b-m2b-character-render` ff-merged). Executed via subagent-driven-development (Opus per task; spec + quality reviews all APPROVED). `test:visual` 6/6 · 40+2todo unit/gate · build clean. Execution DEVIATED from the original Task 4/5 step text and the deviations are documented inline (the `character-closeup` became a HUD-suppressed sky-studio shot because capture pauses physics → `getMobGroundLevel` raycast is null; `spawnMob` gained an explicit-Y overload; the chest moved into Task 5; the outline was later extended to ALL mob/pet parts + bolder thickness after Kevin flagged inconsistency). Checkboxes below marked complete at the task level. Follow-up polish (outline-consistency) is a separate commit on `main`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give Crafty's characters (mobs, boss, pets) and key props a cohesive stylized render language — a subtle 2-band toon shade + a fresnel rim-light on mobs, plus inverted-hull contour outlines on mobs/boss/pets/chests — without disturbing the mob hit-flash feedback or the boss emissive attack-telegraphing, and gated behind a new deterministic visual-capture fixture.
@@ -74,7 +76,7 @@ The current guard is `child.material.name !== "eye"`. drei's OutlinesMaterial ha
 - Create: `tests/render/characterStyle.test.js`
 - Modify: `src/render/quality.js:4-8`
 
-- [ ] **Step 1: Write the failing unit test**
+- [x] **Step 1: Write the failing unit test**
 
 Create `tests/render/characterStyle.test.js`:
 
@@ -131,12 +133,12 @@ describe('characterStyle', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `cd frontend && npx vitest run tests/render/characterStyle.test.js`
 Expected: FAIL — cannot resolve `../../src/render/characterStyle.js`.
 
-- [ ] **Step 3: Implement `src/render/characterStyle.js`**
+- [x] **Step 3: Implement `src/render/characterStyle.js`**
 
 ```js
 // Character render language (S1-B M2b): PURE single source of truth for the
@@ -212,7 +214,7 @@ export function flashableMaterial(mat) {
 
 > **Implementer note (VBA):** before trusting `vNormal`/`vViewPosition`, confirm they're declared in the compiled toon shader (they are for lit materials — toon derives from the same chunks as phong). If a future three version renames them, the `tests/render/characterStyle.test.js` shader-injection assertion still passes (string replace), but the **visual** rim would vanish — caught at re-baseline.
 
-- [ ] **Step 3b: Implement `src/render/MobToonMaterial.jsx` (the R3F wrapper)**
+- [x] **Step 3b: Implement `src/render/MobToonMaterial.jsx` (the R3F wrapper)**
 
 ```jsx
 // R3F wrapper: a per-instance MeshToonMaterial with the shared 2-band gradient
@@ -247,12 +249,12 @@ export function MobToonMaterial({ color, rimStrength = RIM.strength, ...props })
 
 > **Implementer note:** `<mobToonMaterialImpl>` is the lowercase R3F element name auto-derived from the `extend({ MobToonMaterialImpl })` key — verify it renders (a quick `npm run build` + dev smoke). If R3F's `attach="material"` + a custom material class misbehaves, fall back to a plain `<meshToonMaterial gradientMap={getToonGradient()} ...>` with `onUpdate`-installed rim, and report it as DONE_WITH_CONCERNS.
 
-- [ ] **Step 4: Run the unit test to verify it passes**
+- [x] **Step 4: Run the unit test to verify it passes**
 
 Run: `cd frontend && npx vitest run tests/render/characterStyle.test.js`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Add tier flags to `src/render/quality.js`**
+- [x] **Step 5: Add tier flags to `src/render/quality.js`**
 
 Modify lines 4-8 — add `charOutline` + `charRim` (leave the dead `outlineWorldEdge` untouched to avoid scope creep):
 
@@ -266,12 +268,12 @@ export const TIERS = {
 
 (Toon shading itself is applied on ALL tiers — it is no costlier than Standard PBR. Outlines double character draw calls → med+. Rim is a shader add → high only. Capture forces `high` → closeup baselines show the full look.)
 
-- [ ] **Step 6: Run the existing quality unit tests to confirm no regression**
+- [x] **Step 6: Run the existing quality unit tests to confirm no regression**
 
 Run: `cd frontend && npx vitest run tests/render/quality.test.js` (if present) and `npx vitest run`
 Expected: PASS (new keys are additive; `selectTier` unchanged).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/render/characterStyle.js frontend/src/render/MobToonMaterial.jsx frontend/tests/render/characterStyle.test.js frontend/src/render/quality.js
@@ -285,7 +287,7 @@ git commit -m "feat(render): character-style module (2-band toon + fresnel rim +
 **Files:**
 - Modify: `src/SimplifiedNPCSystem.jsx` (imports; `MobModel` materials @195-257; hit-flash guard @143-149)
 
-- [ ] **Step 1: Add imports + read the quality tier in `MobModel`**
+- [x] **Step 1: Add imports + read the quality tier in `MobModel`**
 
 At the top of `src/SimplifiedNPCSystem.jsx`, add:
 
@@ -305,7 +307,7 @@ const qualityTier = useGameStore(state => state.qualityTier) || 'high';
 const q = TIERS[qualityTier] || TIERS.high;
 ```
 
-- [ ] **Step 2: Swap body/head/leg/nose materials to `<MobToonMaterial>`**
+- [x] **Step 2: Swap body/head/leg/nose materials to `<MobToonMaterial>`**
 
 Replace each mob body part's `<meshStandardMaterial roughness={0.8} metalness={0.1} color={entity.color} />` with the toon wrapper, passing the tier-gated rim strength. Body (`:199-202`):
 
@@ -332,11 +334,11 @@ const OUTLINE_RIM_STRENGTH = RIM.strength;
 
 > **Note on `<Outlines>` as a child of a `<mesh>`:** drei's `<Outlines>` detects the parent mesh geometry and injects a `BackSide` outline mesh as `group.children[0]`. Placed inside the body/head `<mesh>`, the outline rides the flinch deformation with the body (correct). It is a child of `groupRef` so the hit-flash traversal will visit it — Step 4 ensures it is skipped.
 
-- [ ] **Step 3: Verify the toon material still receives the hit-flash white-flash**
+- [x] **Step 3: Verify the toon material still receives the hit-flash white-flash**
 
 `MeshToonMaterial` has `.color`, `.emissive`, and `.emissiveIntensity`, so the existing hit-flash (white color + emissive flash) keeps working on toon body/head/legs once Step 4's guard allows toon materials. No extra code — this step is a reasoning checkpoint, validated by the Task 4 visual capture (no hit in closeup) and by gameplay smoke-test.
 
-- [ ] **Step 4: Harden the hit-flash traversal guard (`:143-149`)**
+- [x] **Step 4: Harden the hit-flash traversal guard (`:143-149`)**
 
 Replace:
 
@@ -367,12 +369,12 @@ groupRef.current.traverse((child) => {
 
 (The inner `if (child.material.color)` existence guards are now unnecessary — Standard/Toon always have those properties — but the `name !== "eye"` check is kept as belt-and-suspenders.)
 
-- [ ] **Step 5: Build smoke-test (no test runner for this visual step yet — gate is Task 4)**
+- [x] **Step 5: Build smoke-test (no test runner for this visual step yet — gate is Task 4)**
 
 Run: `cd frontend && npm run build`
 Expected: clean build (no unresolved imports, JSX valid). Then a quick manual `npm run dev` sanity check that mobs render with the toon look + outline (Kevin's eye), and that hitting a mob still flashes it white with the outline intact.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/SimplifiedNPCSystem.jsx
@@ -386,7 +388,7 @@ git commit -m "feat(mobs): 2-band toon + fresnel rim + contour outline; harden h
 **Files:**
 - Modify: `src/SimplifiedNPCSystem.jsx` (`NPCSystem` AI-tick useFrame @710)
 
-- [ ] **Step 1: Add the failing static gate**
+- [x] **Step 1: Add the failing static gate**
 
 Create `tests/gates/character-render-gates.test.js`:
 
@@ -406,12 +408,12 @@ describe('M2b static gates', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `cd frontend && npx vitest run tests/gates/character-render-gates.test.js`
 Expected: FAIL — the capture guard isn't present in the AI tick yet.
 
-- [ ] **Step 3: Gate the AI tick**
+- [x] **Step 3: Gate the AI tick**
 
 In `NPCSystem`'s movement useFrame (`:710`), add the guard as the first line after the existing early-return:
 
@@ -425,12 +427,12 @@ useFrame((state, delta) => {
 
 (`isCaptureMode` is already imported at `:10`.)
 
-- [ ] **Step 4: Run the gate to verify it passes**
+- [x] **Step 4: Run the gate to verify it passes**
 
 Run: `cd frontend && npx vitest run tests/gates/character-render-gates.test.js`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/SimplifiedNPCSystem.jsx frontend/tests/gates/character-render-gates.test.js
@@ -446,7 +448,7 @@ git commit -m "fix(capture): freeze mob AI tick in capture mode for deterministi
 - Modify: `frontend/scripts/visual/capture.mjs` (add the closeup sequence)
 - Modify: `frontend/tests/visual/diff.test.js:7` (add the state)
 
-- [ ] **Step 1: Add the `spawnCharacterCloseup` test hook in `src/App.jsx`**
+- [x] **Step 1: Add the `spawnCharacterCloseup` test hook in `src/App.jsx`**
 
 > **Implementation discovery (2026-05-31):** capture mounts `<Physics paused={isCaptureMode}>`, so Rapier never steps and the query pipeline is empty → `getMobGroundLevel(x,z)` (a raycast) returns `null` in capture. That makes `spawnMob` bail AND collapses `groundY`-relative placement to ~world-origin (vacuous frame). FIX: (a) extend `spawnMob` with an explicit-Y overload; (b) place the subject at a FIXED elevated Y framed against the sky horizon (terrain below frame). Chest moves to Task 5.
 
@@ -483,7 +485,7 @@ registerTestHook('spawnCharacterCloseup', () => {
 
 (`enterCaptureMode` is already imported in `App.jsx`. Camera coords are Kevin's-eye-tunable at re-baseline.)
 
-- [ ] **Step 2: Add the capture sequence in `frontend/scripts/visual/capture.mjs`**
+- [x] **Step 2: Add the capture sequence in `frontend/scripts/visual/capture.mjs`**
 
 After the `boss-obsidian` block (`:98`), add:
 
@@ -498,7 +500,7 @@ console.log('captured character-closeup');
 
 Also update the header comment (`:3`) to list `character-closeup`.
 
-- [ ] **Step 3: Add the state to `frontend/tests/visual/diff.test.js`**
+- [x] **Step 3: Add the state to `frontend/tests/visual/diff.test.js`**
 
 Line 7:
 
@@ -506,7 +508,7 @@ Line 7:
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup'];
 ```
 
-- [ ] **Step 4: Generate the baseline SURGICALLY (don't clobber the existing 4) + HUMAN REVIEW**
+- [x] **Step 4: Generate the baseline SURGICALLY (don't clobber the existing 4) + HUMAN REVIEW**
 
 ```bash
 cd frontend && npm run visual:capture                 # current/, all 5 states
@@ -517,7 +519,7 @@ npm run visual:capture && npm run test:visual         # determinism: report the 
 ```
 **If the existing 4 drift at the regression check → STOP** (the change leaked into a shared path). Then **open `tests/visual/baseline/character-closeup.png` and eyeball it** (Kevin's anti-blind-harness gate): the zombie must show the 2-band toon banding + a cool rim on the silhouette edge + a crisp dark contour outline, framed against the sky (NOT an empty frame).
 
-- [ ] **Step 5: Commit (baseline image + harness)**
+- [x] **Step 5: Commit (baseline image + harness)**
 
 ```bash
 git add frontend/src/SimplifiedNPCSystem.jsx frontend/src/App.jsx frontend/scripts/visual/capture.mjs frontend/tests/visual/diff.test.js frontend/tests/visual/baseline/character-closeup.png
@@ -532,7 +534,7 @@ git commit -m "test(visual): character-closeup fixture + baseline (toon/rim/outl
 **Files:**
 - Modify: `src/world/Terrain.jsx:310-343` (`TreasureChestsRender`)
 
-- [ ] **Step 1: Add imports + tier read**
+- [x] **Step 1: Add imports + tier read**
 
 ```js
 import { Outlines } from '@react-three/drei';
@@ -547,7 +549,7 @@ const qualityTier = useGameStore(state => state.qualityTier) || 'high';
 const charOutline = (TIERS[qualityTier] || TIERS.high).charOutline;
 ```
 
-- [ ] **Step 2: Add `<Outlines>` to the chest box (`:318-327`)**
+- [x] **Step 2: Add `<Outlines>` to the chest box (`:318-327`)**
 
 ```jsx
 {/* Visual chest box */}
@@ -560,7 +562,7 @@ const charOutline = (TIERS[qualityTier] || TIERS.high).charOutline;
 
 (Leave the clasp + beacon orb un-outlined — the box contour reads the chest silhouette.)
 
-- [ ] **Step 3: Add a chest to the closeup fixture + re-baseline**
+- [x] **Step 3: Add a chest to the closeup fixture + re-baseline**
 
 Task 4 made the closeup mob-only (sky-studio). Add ONE deterministic chest beside the zombie so the outline is verified in-frame. In the `spawnCharacterCloseup` hook (`src/App.jsx`), after the `spawnMob(...)` line, inject the chest at the same elevated Y (slightly toward camera, on the implied ground line):
 ```jsx
@@ -577,7 +579,7 @@ npm run test:visual                              # all 5 pass; eyeball the chest
 ```
 Commit `src/world/Terrain.jsx` + `src/App.jsx` + the updated `tests/visual/baseline/character-closeup.png`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/world/Terrain.jsx frontend/tests/visual/baseline/character-closeup.png
@@ -596,7 +598,7 @@ git commit -m "feat(props): contour outline on treasure chests (tier-gated)"
 - Modify: `frontend/scripts/visual/capture.mjs` + `frontend/tests/visual/diff.test.js`
 - Modify: `tests/gates/character-render-gates.test.js` (boss-emissive-preserved gate)
 
-- [ ] **Step 1: Add the boss-emissive-preserved static gate (failing)**
+- [x] **Step 1: Add the boss-emissive-preserved static gate (failing)**
 
 Append to `tests/gates/character-render-gates.test.js`:
 
@@ -616,7 +618,7 @@ it('boss wing-flap is capture-gated for a deterministic boss-closeup', () => {
 
 Run: `cd frontend && npx vitest run tests/gates/character-render-gates.test.js` → the new two FAIL.
 
-- [ ] **Step 2: Add imports**
+- [x] **Step 2: Add imports**
 
 ```js
 import { Outlines } from '@react-three/drei';
@@ -625,7 +627,7 @@ import { OUTLINE } from './render/characterStyle';
 import { TIERS } from './render/quality';
 ```
 
-- [ ] **Step 3: Outline boss torso + neck (NOT wings/eyes/emissive)**
+- [x] **Step 3: Outline boss torso + neck (NOT wings/eyes/emissive)**
 
 Read `q.charOutline` (reactive selector) in `BossEntity`, then add `<Outlines>` inside the torso (`:628`) and neck (`:639`) meshes only — leave every `emissive*` prop untouched:
 
@@ -640,7 +642,7 @@ Read `q.charOutline` (reactive selector) in `BossEntity`, then add `<Outlines>` 
 
 (Wings are transparent — an opaque BackSide outline around them looks wrong, so skip. Eyes are glow basic-material — skip.)
 
-- [ ] **Step 4: Gate the wing-flap for determinism (`:604-609`)**
+- [x] **Step 4: Gate the wing-flap for determinism (`:604-609`)**
 
 ```jsx
 if (leftWingRef.current && rightWingRef.current) {
@@ -656,11 +658,11 @@ if (leftWingRef.current && rightWingRef.current) {
 }
 ```
 
-- [ ] **Step 5: Outline pets (`PetEntities` @852+)**
+- [x] **Step 5: Outline pets (`PetEntities` @852+)**
 
 Read the file region first; add `{charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}` inside each pet body/head mesh (mirror the mob pattern). Pets keep their existing materials (no toon) for M2b — outline only, to bound scope.
 
-- [ ] **Step 6: Add `spawnBossCloseup` hook in `src/App.jsx`**
+- [x] **Step 6: Add `spawnBossCloseup` hook in `src/App.jsx`**
 
 ```jsx
 // Boss-closeup fixture: spawn a deterministic, frozen boss in the obsidian mood.
@@ -681,7 +683,7 @@ registerTestHook('spawnBossCloseup', () => {
 
 > **Implementer:** `useBossSystem` (`AdvancedGameFeatures.jsx:102-119`) spawns the boss at `playerLevel>=5`. There is no public force-spawn setter today. Add a minimal dev-only `forceBossSpawn([x,y,z])` store action (sets `bossActive=true` + a fixed `bossPositionRef` + `bossPhase=0`) wired through `useBossSystem`, used ONLY by this hook. Keep it `import.meta.env.DEV`-guarded.
 
-- [ ] **Step 7: Add `boss-closeup` to the capture script + STATES**
+- [x] **Step 7: Add `boss-closeup` to the capture script + STATES**
 
 `capture.mjs` (after character-closeup):
 
@@ -694,7 +696,7 @@ console.log('captured boss-closeup');
 
 `diff.test.js:7`: `... 'character-closeup', 'boss-closeup'];`
 
-- [ ] **Step 8: Run the static gates + generate + HUMAN-REVIEW the boss baseline**
+- [x] **Step 8: Run the static gates + generate + HUMAN-REVIEW the boss baseline**
 
 ```bash
 cd frontend && npx vitest run tests/gates/character-render-gates.test.js   # all pass
@@ -705,7 +707,7 @@ npm run visual:capture -- --baseline
 npm run test:visual
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend/src/AdvancedGameFeatures.jsx frontend/src/App.jsx frontend/scripts/visual/capture.mjs frontend/tests/visual/diff.test.js frontend/tests/gates/character-render-gates.test.js frontend/tests/visual/baseline/boss-closeup.png
@@ -716,24 +718,24 @@ git commit -m "feat(boss,pets): emissive-preserving contour outlines + determini
 
 ## Task 7: Self-review, full suite, milestone wrap
 
-- [ ] **Step 1: Run the entire test suite**
+- [x] **Step 1: Run the entire test suite**
 
 ```bash
 cd frontend && npx vitest run && npm run build && npm run test:visual
 ```
 Expected: unit + gate tests green; clean build; all visual states (4 existing unchanged + new closeups) within 6%.
 
-- [ ] **Step 2: Gameplay smoke test (Kevin's eye)**
+- [x] **Step 2: Gameplay smoke test (Kevin's eye)**
 
 `npm run dev` — confirm in live play: mobs show the toon+rim+outline look and still flash white on hit (outline intact); the boss shows outlines + intact phase-emissive telegraph; chests/pets outlined; no perf cliff (check the PerformanceMonitor doesn't thrash tiers).
 
-- [ ] **Step 3: Update the 4-piece + memory**
+- [x] **Step 3: Update the 4-piece + memory**
 
 - `memory/ACTIVE_PLAN.md`: M2b → DONE; note S1-C next.
 - `memory/CHANGELOG.md`: M2b entry.
 - If a reusable lesson emerged (e.g. fresnel-rim-via-onBeforeCompile coexisting with material-mutation traversals), append to native memory `feedback_*` per the EEE loop.
 
-- [ ] **Step 4: Merge to `main`**
+- [x] **Step 4: Merge to `main`**
 
 Per project convention (subagent fix-ups use NEW commits, never `--amend`/`reset`; no Claude footer): finish the branch via `superpowers:finishing-a-development-branch` (squash/merge per Kevin's call), push.
 
