@@ -318,7 +318,7 @@ export const Inventory = ({ onClose }) => {
     const slotsUsed = Object.values(gameState.inventory.blocks).filter(v => v > 0).length;
 
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <div data-testid="inventory-modal" className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
             <Panel
                 variant="raise"
                 className="w-[884px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"

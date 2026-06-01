@@ -217,23 +217,3 @@ canvas {
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 0 0 1px rgba(255, 255, 255, 0.03);
 }
-
-.game-panel-item {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.game-panel-item:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.game-panel-item.selected {
-  border-color: rgba(255, 215, 0, 0.5);
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.15);
-}
