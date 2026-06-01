@@ -63,4 +63,16 @@ describe('static gates', () => {
     expect(m, 'Bloom luminanceThreshold prop not found').not.toBeNull();
     expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.85);
   });
+
+  // S1-C-M1: the new primitives must consume tokens (no raw hex chrome) — keeps the
+  // bold-flat system single-sourced. (Game/3D colors elsewhere are out of scope.)
+  it('S1-C-M1: src/ui/primitives contain zero hardcoded hex', () => {
+    const dir = join(SRC, 'ui', 'primitives');
+    const prim = FILES.filter((f) => f.startsWith(dir));
+    expect(prim.length, 'primitives dir should have files').toBeGreaterThan(5);
+    for (const f of prim) {
+      const hits = readFileSync(f, 'utf8').match(HEX) || [];
+      expect(hits, `${f.replace(SRC, 'src')} has raw hex ${hits}`).toHaveLength(0);
+    }
+  });
 });
