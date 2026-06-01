@@ -14,7 +14,7 @@ export const OUTLINE = {
   // SCREEN PIXELS (resolution-buffer px), NOT world units. ~3-5px reads as a crisp
   // ink line at any distance (gameplay-robust). (drei's 0.05 default is for the
   // screenspace=true world-unit mode, which we don't use.)
-  mob:  { thickness: 4 },
+  mob:  { thickness: 5 },
   boss: { thickness: 6 },
   prop: { thickness: 3 },
 };
