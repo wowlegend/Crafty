@@ -189,8 +189,14 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         }
       }
 
-      // 3. Render Chest Markers
-      const chests = treasureChests?.chests || [];
+      // 3. Render Chest Markers.
+      // Dev capture mode: skip chest markers entirely. Chests spawn at a RANDOM
+      // angle/distance and the spawn effect can fire on mount BEFORE the capture flag
+      // flips, so a stray chest leaks a run-varying "Chest (Nm)" label + marker x-pos
+      // into the compass. No chest markers in capture = deterministic frame. The
+      // character-closeup/boss-closeup fixtures hide the whole HUD, so this is purely
+      // the explore-* compass. No-op in normal gameplay.
+      const chests = isCaptureMode() ? [] : (treasureChests?.chests || []);
       const openedChestIds = treasureChests?.openedChestIds || new Set();
       chests.forEach(chest => {
         const isOpened = openedChestIds instanceof Set ? openedChestIds.has(chest.id) : openedChestIds.includes(chest.id);
