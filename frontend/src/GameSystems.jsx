@@ -2,6 +2,7 @@ import { useShallow } from 'zustand/react/shallow';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
+import { StatBar } from './ui/primitives/StatBar.jsx';
 
 
 const GameSystemsContext = createContext();
@@ -178,84 +179,19 @@ const SPELL_EFFECTS = {
 
 
 // Health Bar Component
-export const PlayerHealthBar = ({ health, maxHealth }) => {
-    const hearts = Math.ceil(maxHealth / 10);
-    const fullHearts = Math.floor(health / 10);
-    const partialHeart = (health % 10) / 10;
-
-    return (
-        <div className="flex items-center gap-0.5">
-            {Array(hearts).fill(null).map((_, i) => {
-                let opacity = 1;
-                if (i >= fullHearts) {
-                    opacity = i === fullHearts ? partialHeart : 0.2;
-                }
-                return (
-                    <div key={i} className="relative w-5 h-5">
-                        <span className="absolute inset-0 flex items-center justify-center text-gray-700 text-lg">❤</span>
-                        <span
-                            className="absolute inset-0 flex items-center justify-center text-red-500 text-lg transition-opacity"
-                            style={{ opacity }}
-                        >
-                            ❤
-                        </span>
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
+export const PlayerHealthBar = ({ health, maxHealth }) => (
+    <StatBar kind="health" icon="health" value={health} max={maxHealth} showValue className="w-44" />
+);
 
 // Mana Bar Component
-export const PlayerManaBar = ({ mana, maxMana }) => {
-    const percentage = (mana / maxMana) * 100;
+export const PlayerManaBar = ({ mana, maxMana }) => (
+    <StatBar kind="mana" icon="water" value={mana} max={maxMana} showValue className="w-44" />
+);
 
-    return (
-        <div className="w-48">
-            <div className="flex justify-between text-xs text-blue-300 mb-1">
-                <span>Mana</span>
-                <span>{Math.floor(mana)} / {maxMana}</span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                <motion.div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 0.3 }}
-                />
-            </div>
-        </div>
-    );
-};
-
-// Hunger Bar Component  
-export const PlayerHungerBar = ({ hunger }) => {
-    const drumsticks = 10;
-    const fullDrumsticks = Math.floor(hunger / 10);
-    const partialDrumstick = (hunger % 10) / 10;
-
-    return (
-        <div className="flex items-center gap-0.5">
-            {Array(drumsticks).fill(null).map((_, i) => {
-                let opacity = 1;
-                if (i >= fullDrumsticks) {
-                    opacity = i === fullDrumsticks ? partialDrumstick : 0.2;
-                }
-                return (
-                    <div key={i} className="relative w-5 h-5">
-                        <span className="absolute inset-0 flex items-center justify-center text-gray-700 text-lg">🍖</span>
-                        <span
-                            className="absolute inset-0 flex items-center justify-center text-orange-400 text-lg transition-opacity"
-                            style={{ opacity }}
-                        >
-                            🍖
-                        </span>
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
+// Hunger Bar Component
+export const PlayerHungerBar = ({ hunger }) => (
+    <StatBar kind="hunger" icon="meat" value={hunger} max={100} showValue className="w-44" />
+);
 
 // Damage Overlay Component
 export const DamageOverlay = () => {
