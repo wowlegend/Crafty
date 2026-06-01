@@ -594,8 +594,12 @@ const SpawnerSystem = () => {
       const playerX = camera.position.x;
       const playerZ = camera.position.z;
 
-      // Dynamic spawning based on loaded chunks
-      if (store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
+      // Dynamic spawning based on loaded chunks.
+      // Dev capture mode: suppress this per-frame spawner so capture frames are
+      // byte-stable (otherwise mobs pop in at random chunk positions during the
+      // capture settle window → run-to-run jitter). Companion to the setInterval
+      // spawner gate above. No-op in normal gameplay.
+      if (!isCaptureMode() && store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
         const activeMobs = mobsQuery.entities.filter(e => e.health > 0).length;
         const maxMobs = 16;
         if (activeMobs < maxMobs) {

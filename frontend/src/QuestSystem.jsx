@@ -523,6 +523,12 @@ export const useTreasureChests = () => {
 
     // Generate chest near player periodically
     useEffect(() => {
+        // Dev capture mode: suppress quest-chest spawning entirely. Chests spawn at a
+        // RANDOM angle/distance RELATIVE to the live player entity, and the player
+        // drifts during the capture settle window, so even a seeded position yields a
+        // run-varying Compass distance label + 3D chest screen-position. Zero chests =
+        // deterministic frame. No-op in normal gameplay.
+        if (isCaptureMode()) return;
         const interval = setInterval(() => {
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
@@ -530,7 +536,7 @@ export const useTreasureChests = () => {
             // Max 5 chests at a time
             if (chests.length - openedChestIds.size >= 5) return;
 
-            // Random position 20-60 blocks from player
+            // Random position 20-60 blocks from player.
             const angle = Math.random() * Math.PI * 2;
             const dist = 20 + Math.random() * 40;
             const x = playerPos.x + Math.cos(angle) * dist;
@@ -562,6 +568,10 @@ export const useTreasureChests = () => {
 
     // Spawn initial chest near player
     useEffect(() => {
+        // Dev capture mode: suppress the initial chest too (see periodic spawner above) —
+        // its screen position / Compass distance is non-deterministic against the drifting
+        // player. No-op in normal gameplay.
+        if (isCaptureMode()) return;
         const playerPos = useGameStore.getState().playerPosition;
         if (playerPos && chests.length === 0) {
             const angle = Math.random() * Math.PI * 2;
@@ -661,7 +671,6 @@ export const useTreasureChests = () => {
                 if (!chest.resolved) {
                     const h = getLevel(chest.position[0], chest.position[2]);
                     if (typeof h === 'number' && !isNaN(h) && h > 0) {
-                        console.log(`[DEBUG] Resolved underground chest ${chest.id} ground level to Y=${h+1}`);
                         return {
                             ...chest,
                             position: [chest.position[0], h + 1, chest.position[2]],

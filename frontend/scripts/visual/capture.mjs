@@ -24,6 +24,16 @@ const PORT = 4178;
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Await N rendered animation frames in-page so the GPU has actually presented the
+// settled scene (shadow map + mesh uploads) before a screenshot is taken. Deterministic
+// frame-count wait rather than a wall-clock guess.
+async function flushFrames(page, n = 8) {
+  await page.evaluate(async (count) => {
+    const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
+    for (let i = 0; i < count; i++) await raf();
+  }, n);
+}
+
 async function waitForServer(url, tries = 60) {
   for (let i = 0; i < tries; i++) {
     try { const r = await fetch(url); if (r.ok) return; } catch {}
@@ -35,7 +45,13 @@ async function waitForServer(url, tries = 60) {
 // Terrain chunks stream in asynchronously after `start`; capturing mid-stream yields a
 // different partial-terrain frame each run. Poll the generated-chunk count until it stops
 // growing (stable across consecutive polls) so the world is fully meshed before screenshot.
-async function waitForStableTerrain(page, { interval = 300, stableFor = 3, max = 40 } = {}) {
+//
+// NOTE: chunk COUNT stabilizing is necessary but NOT sufficient — the meshes for the last
+// chunks keep building/swapping in for a beat after the count freezes, so a ridge silhouette
+// against the sky can still differ run-to-run (~0.4% self-diff). We therefore require a
+// LONGER count-stable streak (stableFor=6) and a generous post-stable settle so every run
+// screenshots the identical fully-settled mesh.
+async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max = 60, settle = 2500 } = {}) {
   let last = -1;
   let stable = 0;
   for (let i = 0; i < max; i++) {
@@ -44,13 +60,16 @@ async function waitForStableTerrain(page, { interval = 300, stableFor = 3, max =
       return g ? g().size : -1;
     });
     if (size === last && size > 0) {
-      if (++stable >= stableFor) return;
+      if (++stable >= stableFor) break;
     } else {
       stable = 0;
       last = size;
     }
     await delay(interval);
   }
+  // Post-stable settle: let the final chunk meshes finish uploading/swapping so the
+  // silhouette is identical across runs before any screenshot is taken.
+  await delay(settle);
 }
 
 async function main() {
@@ -85,9 +104,14 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'explore-day.png') });
     console.log('captured explore-day');
 
-    // explore-night
+    // explore-night. Longer settle + an explicit multi-frame flush so the directional
+    // shadow map + per-chunk terrain meshes are fully rendered before the screenshot.
+    // (Chunk SET / camera / player are already deterministic; the residual flake is a
+    // low-frequency GPU shadow/mesh-upload settle race on the horizon silhouette under
+    // the software-GL renderer — extra settled frames eliminate it.)
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.0));
-    await delay(1500);
+    await delay(2500);
+    await flushFrames(page, 8);
     await page.screenshot({ path: resolve(OUT, 'explore-night.png') });
     console.log('captured explore-night');
 
