@@ -7,9 +7,10 @@ export function _cjkLoadedForTest() { return _loaded; }
 
 const FACES = [
   { family: 'Smiley Sans',          url: '/fonts/smiley-sans-v1.woff2',  desc: { weight: '400', style: 'oblique' } },
-  // NOTE: puhuiti-regular.woff2 is currently a Noto Sans SC subset standing in for
-  // Alibaba PuHuiTi 3.0 (M1 — no clean one-call PuHuiTi woff2). The family name is
-  // kept as the PuHuiTi token so swapping in the real woff2 later is file-only.
+  // puhuiti-regular.woff2 is the REAL Alibaba PuHuiTi 3.0 (55 Regular), subset to the
+  // common CJK block (U+4E00-9FFF) + Latin/digits/CJK punctuation/fullwidth forms so
+  // future zh strings still render. Source: AlibabaPuHuiTi-3-55-Regular.ttf (8.5MB,
+  // digitally signed; name[1]='Alibaba PuHuiTi 3.0') via jsDelivr npm mirror.
   { family: 'Alibaba PuHuiTi 3.0',  url: '/fonts/puhuiti-regular.woff2', desc: { weight: '400', style: 'normal' } },
 ];
 
