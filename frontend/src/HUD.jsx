@@ -15,7 +15,7 @@ import {
 import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
-import { Panel } from './ui/primitives/index.js';
+import { Panel, Toast } from './ui/primitives/index.js';
 
 // Map a game activeSpell id -> bold-flat token spell color (mirrors the old inline-hex
 // mapping: fireball=fire, iceball=ice, lightning=lightning, everything else=arcane).
@@ -367,30 +367,17 @@ export function HUD({
 
             {bossSystem.bossNotification && (
               <div className="absolute top-48 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <div className="px-6 py-3 rounded-xl text-white font-bold text-sm" style={{
-                  background: 'linear-gradient(135deg, rgba(75,0,130,0.9), rgba(139,0,139,0.9))',
-                  border: '2px solid #8B00FF',
-                  boxShadow: '0 0 25px rgba(139,0,255,0.4)',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                }}>{bossSystem.bossNotification}</div>
+                <Toast status="danger">{bossSystem.bossNotification}</Toast>
               </div>
             )}
             {petSystem.petNotification && (
               <div className="absolute top-56 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <div className="px-4 py-2 rounded-lg text-white text-sm font-bold" style={{
-                  background: 'rgba(255,105,180,0.9)',
-                  border: '1px solid #ff69b4',
-                  boxShadow: '0 0 15px rgba(255,105,180,0.4)',
-                }}>{petSystem.petNotification}</div>
+                <Toast status="success">{petSystem.petNotification}</Toast>
               </div>
             )}
             {spellUpgrades.upgradeNotification && (
               <div className="absolute top-64 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <div className="px-4 py-2 rounded-lg text-white text-sm font-bold" style={{
-                  background: 'rgba(147,51,234,0.9)',
-                  border: '1px solid #9333ea',
-                  boxShadow: '0 0 15px rgba(147,51,234,0.4)',
-                }}>{spellUpgrades.upgradeNotification}</div>
+                <Toast status="info">{spellUpgrades.upgradeNotification}</Toast>
               </div>
             )}
           </>
