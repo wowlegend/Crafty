@@ -29,7 +29,12 @@ const getItemSlot = (itemName) => {
     return null;
 };
 
-const getItemRarity = (itemName) => {
+// Exported for the M3 loot/rarity characterization tests + the upcoming centralized
+// item registry (M3-T2/T3) to prove behavior-preservation. Export is behavior-neutral.
+// NOTE: this implementation intentionally lacks the emoji-fallback branches present in
+// SimplifiedNPCSystem.getItemRarity — see loot-characterization.test.js for the captured
+// divergence on emoji-prefixed names.
+export const getItemRarity = (itemName) => {
     if (!itemName) return 'common';
     if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment') return 'legendary';
     if (itemName.includes('Iron') || itemName === 'Mana Potion') return 'epic';

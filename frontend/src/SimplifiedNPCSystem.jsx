@@ -1113,7 +1113,9 @@ const XPOrbRender = ({ entity }) => {
 };
 
 // --- Physical Loot Helpers ---
-const getItemRarity = (itemName) => {
+// Exported for the M3 loot/rarity characterization tests + the upcoming centralized
+// item registry (M3-T2/T3) to prove behavior-preservation. Export is behavior-neutral.
+export const getItemRarity = (itemName) => {
   if (!itemName) return 'common';
   if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment' || itemName.includes('💎')) return 'legendary';
   if (itemName.includes('Iron') || itemName === 'Mana Potion' || itemName.includes('🗡️') || itemName.includes('🛡️') || itemName.includes('💧')) return 'epic';
