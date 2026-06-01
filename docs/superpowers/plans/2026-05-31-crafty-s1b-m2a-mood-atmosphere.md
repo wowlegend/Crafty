@@ -1,5 +1,7 @@
 # Crafty S1-B — Render Recipe · Milestone 2a (Mood & Atmosphere) Implementation Plan
 
+> ✅ **STATUS: COMPLETE — DONE + merged to `main` 2026-05-31 (S1-B M2a mood/atmosphere + bright-Caribbean art).** `test:visual` 4/4.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** Make the world render the **explore → dusk → obsidian danger moods** via a single continuous `mood ∈ [0,2]` lerp driven by `(isDay, dangerLevel)`, unifying the scattered light/fog/sky hardcodes onto `tokens.PALETTE`, and add the `boss-obsidian` capture state so the visual-regression suite covers the danger tiers (spec §4, §9.6).
@@ -47,7 +49,7 @@
 
 **Files:** create `src/render/atmosphere.js`; modify `src/store/useGameStore.jsx`; create `tests/render/atmosphere.test.js`.
 
-- [ ] **Step 1: Write the failing test.** Create `tests/render/atmosphere.test.js`:
+- [x] **Step 1: Write the failing test.** Create `tests/render/atmosphere.test.js`:
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -101,9 +103,9 @@ describe('sampleMood', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify FAIL:** `npm run test:unit -- tests/render/atmosphere.test.js` → FAIL (module missing).
+- [x] **Step 2: Run it, verify FAIL:** `npm run test:unit -- tests/render/atmosphere.test.js` → FAIL (module missing).
 
-- [ ] **Step 3: Create `src/render/atmosphere.js`:**
+- [x] **Step 3: Create `src/render/atmosphere.js`:**
 
 ```js
 // Mood/danger atmosphere model (spec §4). A single continuous `mood ∈ [0,2]`
@@ -191,7 +193,7 @@ export function sampleMood(mood) {
 }
 ```
 
-- [ ] **Step 4: Add the store field.** In `src/store/useGameStore.jsx`, right after the `qualityTier`/`setQualityTier` lines added in M1, add:
+- [x] **Step 4: Add the store field.** In `src/store/useGameStore.jsx`, right after the `qualityTier`/`setQualityTier` lines added in M1, add:
 
 ```js
     // Danger mood input (spec §4): 0 = explore, 1 = dusk, 2 = obsidian. Gameplay
@@ -200,9 +202,9 @@ export function sampleMood(mood) {
     setDangerLevel: (n) => set({ dangerLevel: Number(n) || 0 }),
 ```
 
-- [ ] **Step 5: Run tests → PASS.** `npm run test:unit -- tests/render/atmosphere.test.js` (all green) then `npm run test:unit` (full suite green). **No rendered-output change** yet → do NOT re-baseline.
+- [x] **Step 5: Run tests → PASS.** `npm run test:unit -- tests/render/atmosphere.test.js` (all green) then `npm run test:unit` (full suite green). **No rendered-output change** yet → do NOT re-baseline.
 
-- [ ] **Step 6: Commit.**
+- [x] **Step 6: Commit.**
 ```bash
 cd /Users/kz/Code/Crafty/frontend && git add src/render/atmosphere.js src/store/useGameStore.jsx tests/render/atmosphere.test.js && git commit -m "feat(atmosphere): mood model (moodTarget/sampleMood/moodRef) + store dangerLevel"
 ```
@@ -213,7 +215,7 @@ cd /Users/kz/Code/Crafty/frontend && git add src/render/atmosphere.js src/store/
 
 **Files:** create `src/render/Atmosphere.jsx`; modify `src/GameScene.jsx`.
 
-- [ ] **Step 1: Create `src/render/Atmosphere.jsx`:**
+- [x] **Step 1: Create `src/render/Atmosphere.jsx`:**
 
 ```jsx
 // Mood-driven atmosphere: one component owns the gradient skydome, fog, ambient/sun/
@@ -341,7 +343,7 @@ export function Atmosphere({ shadowConfig }) {
 }
 ```
 
-- [ ] **Step 2: Wire into `GameScene.jsx`.** Add the import near the other `src/render` imports:
+- [x] **Step 2: Wire into `GameScene.jsx`.** Add the import near the other `src/render` imports:
 ```js
 import { Atmosphere } from './render/Atmosphere';
 ```
@@ -388,13 +390,13 @@ becomes (drop `<Sky>`, `<EnvironmentalFog />`, the three inline lights; keep Per
         <Atmosphere shadowConfig={shadowConfig} />
 ```
 
-- [ ] **Step 3: Remove the now-dead `EnvironmentalFog` definition** (the `const EnvironmentalFog = () => { ... };` block at ~553-577 in `GameScene.jsx`) and, if `Sky` is now unused, drop `Sky` from the drei import (`grep -n 'Sky' src/GameScene.jsx` to confirm zero other uses first). Keep `PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr`.
+- [x] **Step 3: Remove the now-dead `EnvironmentalFog` definition** (the `const EnvironmentalFog = () => { ... };` block at ~553-577 in `GameScene.jsx`) and, if `Sky` is now unused, drop `Sky` from the drei import (`grep -n 'Sky' src/GameScene.jsx` to confirm zero other uses first). Keep `PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr`.
 
-- [ ] **Step 4: Verify build + units.** `npm run test:unit` → green. `npm run build` → succeeds. `grep -n '<Sky\|EnvironmentalFog' src/GameScene.jsx` → zero.
+- [x] **Step 4: Verify build + units.** `npm run test:unit` → green. `npm run build` → succeeds. `grep -n '<Sky\|EnvironmentalFog' src/GameScene.jsx` → zero.
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW).** `npm run visual:baseline`. Intended change: `explore-day` shifts to the **explore token palette** (warm-heroic), `explore-night` shifts to the **dusk palette** (indigo sky + ember horizon, cooled). Confirm with the controller/Kevin this reads as the intended mood (watch the flat sky — if it reads cheap, that's the deferred gradient-sky tweak, note it). Then `npm run test:visual` → PASS.
+- [x] **Step 5: Re-baseline (HUMAN REVIEW).** `npm run visual:baseline`. Intended change: `explore-day` shifts to the **explore token palette** (warm-heroic), `explore-night` shifts to the **dusk palette** (indigo sky + ember horizon, cooled). Confirm with the controller/Kevin this reads as the intended mood (watch the flat sky — if it reads cheap, that's the deferred gradient-sky tweak, note it). Then `npm run test:visual` → PASS.
 
-- [ ] **Step 6: Commit** (code + baselines together, post-review):
+- [x] **Step 6: Commit** (code + baselines together, post-review):
 ```bash
 cd /Users/kz/Code/Crafty/frontend && git add src/render/Atmosphere.jsx src/GameScene.jsx tests/visual/baseline && git commit -m "feat(atmosphere): mood-driven <Atmosphere> replaces inline fog/lights/Sky; tokens-driven explore/dusk"
 ```
@@ -405,7 +407,7 @@ cd /Users/kz/Code/Crafty/frontend && git add src/render/Atmosphere.jsx src/GameS
 
 **Files:** modify `src/world/Terrain.jsx`.
 
-- [ ] **Step 1: Add the `mood` uniform.** In `compileShader` (where `shader.uniforms.timeOfDay = { value: 1.0 }` is set, ~line 39), add:
+- [x] **Step 1: Add the `mood` uniform.** In `compileShader` (where `shader.uniforms.timeOfDay = { value: 1.0 }` is set, ~line 39), add:
 ```js
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
 ```
@@ -414,7 +416,7 @@ And declare it in the injected fragment-shader header (where `uniform float time
         uniform float mood;
 ```
 
-- [ ] **Step 2: Cool + desaturate in the fragment shader.** In the `#include <color_fragment>` replacement, AFTER the sRGB-decoded `diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);` line, append:
+- [x] **Step 2: Cool + desaturate in the fragment shader.** In the `#include <color_fragment>` replacement, AFTER the sRGB-decoded `diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);` line, append:
 ```glsl
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk,
         // near-monochrome at obsidian. Driven by the shared mood uniform.
@@ -424,7 +426,7 @@ And declare it in the injected fragment-shader header (where `uniform float time
         diffuseColor.rgb *= mix(vec3(1.0), vec3(0.55, 0.55, 0.72), danger * 0.5);
 ```
 
-- [ ] **Step 3: Drive `mood` (and derive `timeOfDay`) from `moodRef`; remove the double-lerp.** Add the import at the top of `Terrain.jsx`:
+- [x] **Step 3: Drive `mood` (and derive `timeOfDay`) from `moodRef`; remove the double-lerp.** Add the import at the top of `Terrain.jsx`:
 ```js
 import { moodRef } from '../render/atmosphere';
 ```
@@ -450,11 +452,11 @@ Then REPLACE the body of the `MinecraftWorld` uniform `useFrame` (the block at ~
     });
 ```
 
-- [ ] **Step 4: Verify.** `npm run test:unit` → green. `npm run build` → succeeds.
+- [x] **Step 4: Verify.** `npm run test:unit` → green. `npm run build` → succeeds.
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW).** `npm run visual:baseline`. Intended: `explore-night` terrain now visibly **cools + desaturates** (dusk); `explore-day` unchanged (mood 0 → danger 0 → no-op). Confirm with controller/Kevin (tune the `0.42`/tint constants if too strong). `npm run test:visual` → PASS.
+- [x] **Step 5: Re-baseline (HUMAN REVIEW).** `npm run visual:baseline`. Intended: `explore-night` terrain now visibly **cools + desaturates** (dusk); `explore-day` unchanged (mood 0 → danger 0 → no-op). Confirm with controller/Kevin (tune the `0.42`/tint constants if too strong). `npm run test:visual` → PASS.
 
-- [ ] **Step 6: Commit.**
+- [x] **Step 6: Commit.**
 ```bash
 cd /Users/kz/Code/Crafty/frontend && git add src/world/Terrain.jsx tests/visual/baseline && git commit -m "feat(atmosphere): terrain mood uniform cools+desaturates toward dusk/obsidian; single moodRef driver"
 ```
@@ -465,12 +467,12 @@ cd /Users/kz/Code/Crafty/frontend && git add src/world/Terrain.jsx tests/visual/
 
 **Files:** modify `src/App.jsx`, `scripts/visual/capture.mjs`, `tests/visual/diff.test.js`.
 
-- [ ] **Step 1: Add the bridge hook.** In `src/App.jsx`, inside the DEV-gated test-bridge `useEffect`, next to the `setQualityTier` hook (~line 147), add:
+- [x] **Step 1: Add the bridge hook.** In `src/App.jsx`, inside the DEV-gated test-bridge `useEffect`, next to the `setQualityTier` hook (~line 147), add:
 ```js
     registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));
 ```
 
-- [ ] **Step 2: Add the `boss-obsidian` capture.** In `scripts/visual/capture.mjs`, after the `explore-night` screenshot block (~line 90), add:
+- [x] **Step 2: Add the `boss-obsidian` capture.** In `scripts/visual/capture.mjs`, after the `explore-night` screenshot block (~line 90), add:
 ```js
     // boss-obsidian: drive the obsidian danger mood (spec §4 Tier 2). In capture
     // mode <Atmosphere> snaps the mood, so the frame settles within the delay.
@@ -481,7 +483,7 @@ cd /Users/kz/Code/Crafty/frontend && git add src/world/Terrain.jsx tests/visual/
 ```
 Also update the header comment (lines 3-4) to reflect the realized state list: `menu, explore-day, explore-night (dusk), boss-obsidian` (dusk-danger ≡ explore-night per spec §4).
 
-- [ ] **Step 3: Add the state to the diff suite.** In `tests/visual/diff.test.js`, change:
+- [x] **Step 3: Add the state to the diff suite.** In `tests/visual/diff.test.js`, change:
 ```js
 const STATES = ['menu', 'explore-day', 'explore-night'];
 ```
@@ -490,9 +492,9 @@ to:
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian'];
 ```
 
-- [ ] **Step 4: Generate the new baseline (HUMAN REVIEW).** `npm run visual:baseline` (now writes 4 states incl. `boss-obsidian.png`). Surface the **new `boss-obsidian` frame** (ink-stone near-monochrome terrain, magic-red fill, deep vignette feel) for review. Confirm it reads as the intended boss mood. Then `npm run test:visual` → PASS (4/4).
+- [x] **Step 4: Generate the new baseline (HUMAN REVIEW).** `npm run visual:baseline` (now writes 4 states incl. `boss-obsidian.png`). Surface the **new `boss-obsidian` frame** (ink-stone near-monochrome terrain, magic-red fill, deep vignette feel) for review. Confirm it reads as the intended boss mood. Then `npm run test:visual` → PASS (4/4).
 
-- [ ] **Step 5: Commit.**
+- [x] **Step 5: Commit.**
 ```bash
 cd /Users/kz/Code/Crafty/frontend && git add src/App.jsx scripts/visual/capture.mjs tests/visual/diff.test.js tests/visual/baseline && git commit -m "feat(atmosphere): setDangerLevel bridge hook + boss-obsidian capture state (4-state suite)"
 ```
@@ -503,11 +505,11 @@ cd /Users/kz/Code/Crafty/frontend && git add src/App.jsx scripts/visual/capture.
 
 **Files:** none (verification only).
 
-- [ ] **Step 1:** `npm run test:unit` → green (atmosphere math tests + all prior).
-- [ ] **Step 2:** `npm run test:visual` → 4/4 (`menu`, `explore-day`, `explore-night`, `boss-obsidian`).
-- [ ] **Step 3:** `npm run build` → succeeds; `grep -c '__craftyTest' build/assets/*.js` → 0 (bridge tree-shaken).
-- [ ] **Step 4:** `grep -rn '<Sky\|EnvironmentalFog\|#4169E1\|#e0f7fa\|#0a0a23' src/GameScene.jsx` → zero (the scattered atmosphere hex is gone, now tokens-driven).
-- [ ] **Step 5:** Report M2a complete with the realized 4-state suite + a note that each visual step was human-reviewed.
+- [x] **Step 1:** `npm run test:unit` → green (atmosphere math tests + all prior).
+- [x] **Step 2:** `npm run test:visual` → 4/4 (`menu`, `explore-day`, `explore-night`, `boss-obsidian`).
+- [x] **Step 3:** `npm run build` → succeeds; `grep -c '__craftyTest' build/assets/*.js` → 0 (bridge tree-shaken).
+- [x] **Step 4:** `grep -rn '<Sky\|EnvironmentalFog\|#4169E1\|#e0f7fa\|#0a0a23' src/GameScene.jsx` → zero (the scattered atmosphere hex is gone, now tokens-driven).
+- [x] **Step 5:** Report M2a complete with the realized 4-state suite + a note that each visual step was human-reviewed.
 
 ---
 

@@ -1,7 +1,7 @@
 # Crafty — S1 Visual-Direction Design Spec
 
 **Date:** 2026-05-30 · **Stream:** S1 (Art Direction & Visual Identity) of the Crafty → SOTA initiative
-**Status:** DRAFT for Kevin's approval (brainstorming gate — no implementation until approved)
+**Status:** ✅ APPROVED — the S1 initiative is built on this (S1-A + S1-B M1/M2a/M2b DONE+merged; S1-C design LOCKED, M1 build next). Brainstorming gate cleared.
 **Process:** `superpowers:brainstorming` → this spec → review → `superpowers:writing-plans` → implement
 **Grounded by:** `memory/REALITY-AUDIT-2026-05-30.md` (S0) · `memory/MONETIZATION-VIRALITY-SCAN-2026-05-30.md` · live API/platform verification (2026-05-30)
 

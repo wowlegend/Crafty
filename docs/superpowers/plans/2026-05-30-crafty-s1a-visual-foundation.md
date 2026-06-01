@@ -1,5 +1,7 @@
 # Crafty S1-A: Visual Foundation & Can-Go-Red Harness — Implementation Plan
 
+> ✅ **STATUS: COMPLETE — DONE + merged to `main` (S1-A visual foundation: tokens/quality/devtest/visual-gate).** Checkboxes marked complete; ground truth = git `main`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the design-token source-of-truth, a device-aware quality-tier module, a dev test-bridge, and a visual-regression + static-gate test harness that can actually go **red** — the bedrock the render recipe (S1-B) and UI system (S1-C) are verified against.
@@ -45,7 +47,7 @@
 - Create: `vitest.config.js`
 - Modify: `package.json` (scripts + devDependencies)
 
-- [ ] **Step 1: Install Vitest**
+- [x] **Step 1: Install Vitest**
 
 Run (in `frontend/`):
 ```bash
@@ -53,7 +55,7 @@ npm install -D vitest@^3
 ```
 Expected: `vitest` added to `devDependencies`, no peer-dep errors (Vite 6 is compatible).
 
-- [ ] **Step 2: Create the Vitest config**
+- [x] **Step 2: Create the Vitest config**
 
 Create `vitest.config.js`:
 ```js
@@ -69,7 +71,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Add npm scripts**
+- [x] **Step 3: Add npm scripts**
 
 In `package.json`, add to `"scripts"`:
 ```json
@@ -78,7 +80,7 @@ In `package.json`, add to `"scripts"`:
 ```
 (Leave the existing `"test": "node test_swarm.js"` for now; it is superseded by `test:visual` in Task 5 and removed in S1-C cleanup.)
 
-- [ ] **Step 4: Write a sanity test**
+- [x] **Step 4: Write a sanity test**
 
 Create `tests/sanity.test.js`:
 ```js
@@ -91,12 +93,12 @@ describe('vitest harness', () => {
 });
 ```
 
-- [ ] **Step 5: Run it and verify it passes**
+- [x] **Step 5: Run it and verify it passes**
 
 Run: `npm run test:unit`
 Expected: `1 passed` (1 test file, 1 test).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add vitest.config.js package.json package-lock.json tests/sanity.test.js
@@ -111,7 +113,7 @@ git commit -m "test: add vitest unit harness"
 - Create: `src/theme/tokens.js`
 - Test: `tests/theme/tokens.test.js`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/theme/tokens.test.js`:
 ```js
@@ -144,12 +146,12 @@ describe('palette tokens', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npm run test:unit -- tests/theme/tokens.test.js`
 Expected: FAIL — `Failed to resolve import ... src/theme/tokens.js`.
 
-- [ ] **Step 3: Implement the token module**
+- [x] **Step 3: Implement the token module**
 
 Create `src/theme/tokens.js`:
 ```js
@@ -209,12 +211,12 @@ export const UI = {
 };
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm run test:unit -- tests/theme/tokens.test.js`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/theme/tokens.js tests/theme/tokens.test.js
@@ -229,7 +231,7 @@ git commit -m "feat(theme): add palette + magic + UI design tokens (single sourc
 - Create: `src/render/quality.js`
 - Test: `tests/render/quality.test.js`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/render/quality.test.js`:
 ```js
@@ -263,12 +265,12 @@ describe('TIERS config', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npm run test:unit -- tests/render/quality.test.js`
 Expected: FAIL — cannot resolve `src/render/quality.js`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/render/quality.js`:
 ```js
@@ -305,12 +307,12 @@ export function readDeviceSignals() {
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm run test:unit -- tests/render/quality.test.js`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/render/quality.js tests/render/quality.test.js
@@ -326,7 +328,7 @@ git commit -m "feat(render): add device-gated quality-tier config + selection"
 - Test: `tests/devtest/testBridge.test.js`
 - Modify: `src/App.jsx` (wire bridge in dev only)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/devtest/testBridge.test.js`:
 ```js
@@ -355,12 +357,12 @@ describe('test bridge registry', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `npm run test:unit -- tests/devtest/testBridge.test.js`
 Expected: FAIL — cannot resolve `src/devtest/testBridge.js`.
 
-- [ ] **Step 3: Implement the bridge**
+- [x] **Step 3: Implement the bridge**
 
 Create `src/devtest/testBridge.js`:
 ```js
@@ -388,12 +390,12 @@ export function installTestBridge() {
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `npm run test:unit -- tests/devtest/testBridge.test.js`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Wire the bridge into the app (dev only)**
+- [x] **Step 5: Wire the bridge into the app (dev only)**
 
 In `src/App.jsx`: add the import near the top with the other imports:
 ```jsx
@@ -421,12 +423,12 @@ useEffect(() => {
 
 > Implementation note for the worker: `setHasStarted` is illustrative — use the actual menu-dismiss setter found by reading `App.jsx` + `MenuSystem.jsx`. If time-of-day has no store setter yet, add a minimal `setTimeOfDay(t)` action to `useGameStore` that writes the same state the day/night cycle reads, and register it. Verify in Step 7 that the hook actually leaves the menu and changes the sky.
 
-- [ ] **Step 6: Verify the app still builds**
+- [x] **Step 6: Verify the app still builds**
 
 Run: `npm run build`
 Expected: build succeeds (no new errors), bundle emitted to `build/`.
 
-- [ ] **Step 7: Manually verify the bridge in dev**
+- [x] **Step 7: Manually verify the bridge in dev**
 
 Run: `npm run dev`, open `http://localhost:3000`, in the browser console:
 ```js
@@ -436,7 +438,7 @@ window.__craftyTest.call('setTimeOfDay', 0.0) // → night
 ```
 Expected: menu dismisses and the sky changes. If not, fix the bound setters before continuing.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/devtest/testBridge.js tests/devtest/testBridge.test.js src/App.jsx src/store/useGameStore.jsx
@@ -477,14 +479,14 @@ git commit -m "feat(devtest): dev-only test bridge to drive game states for the 
 - Create: `tests/visual/diff.test.js`
 - Create: `tests/visual/baseline/` (generated PNGs, committed)
 
-- [ ] **Step 1: Install diff deps**
+- [x] **Step 1: Install diff deps**
 
 Run (in `frontend/`):
 ```bash
 npm install -D pixelmatch@^6 pngjs@^7
 ```
 
-- [ ] **Step 2: Add the capture + visual scripts**
+- [x] **Step 2: Add the capture + visual scripts**
 
 In `package.json` `"scripts"`:
 ```json
@@ -493,7 +495,7 @@ In `package.json` `"scripts"`:
 "test:visual": "node scripts/visual/capture.mjs && vitest run tests/visual/diff.test.js"
 ```
 
-- [ ] **Step 3: Write the capture script**
+- [x] **Step 3: Write the capture script**
 
 Create `scripts/visual/capture.mjs`:
 ```js
@@ -554,12 +556,12 @@ main().catch((e) => { console.error(e); process.exit(1); });
 
 > Note: SwiftShader (`--use-angle=swiftshader`) makes screenshots deterministic across machines (no GPU-driver variance) — correct for regression diffing, even though it's useless for FPS (S0 lesson). FPS is measured separately on real devices (Task 6 protocol).
 
-- [ ] **Step 4: Generate the baselines**
+- [x] **Step 4: Generate the baselines**
 
 Run: `npm run visual:baseline`
 Expected: `tests/visual/baseline/menu.png`, `explore-day.png`, `explore-night.png` created and non-trivial (>20 KB each). **Eyeball each** — confirm `menu` shows the title screen, `explore-day` shows lit terrain, `explore-night` is visibly darker. If a state is blank, fix the bridge (Task 4) before baselining.
 
-- [ ] **Step 5: Write the diff test**
+- [x] **Step 5: Write the diff test**
 
 Create `tests/visual/diff.test.js`:
 ```js
@@ -592,18 +594,18 @@ describe('visual regression', () => {
 });
 ```
 
-- [ ] **Step 6: Run the full visual suite to verify it passes against its own baseline**
+- [x] **Step 6: Run the full visual suite to verify it passes against its own baseline**
 
 Run: `npm run test:visual`
 Expected: capture writes `tests/visual/current/*`, then 3 diff tests PASS (current == baseline, ~0% diff).
 
-- [ ] **Step 7: Prove it can go RED (the whole point)**
+- [x] **Step 7: Prove it can go RED (the whole point)**
 
 Temporarily edit the clear-color / a sky value so the render changes (e.g. tweak one palette value used on screen), then:
 Run: `npm run test:visual`
 Expected: at least one state FAILS with a non-trivial `differs X%`. **Revert the temporary edit**, re-run, confirm green again. This demonstrates the harness is not blind.
 
-- [ ] **Step 8: Gitignore `current/`, commit baselines + harness**
+- [x] **Step 8: Gitignore `current/`, commit baselines + harness**
 
 Append to `frontend/.gitignore` (create if absent):
 ```
@@ -623,7 +625,7 @@ git commit -m "test(visual): puppeteer+pixelmatch visual-regression suite with b
 - Create: `tests/gates/static-gates.test.js`
 - Create: `docs/PERF-PROTOCOL.md` (repo root, i.e. `../docs/` from `frontend/` — use `/Users/kz/Code/Crafty/docs/PERF-PROTOCOL.md`)
 
-- [ ] **Step 1: Write the static-gate tests**
+- [x] **Step 1: Write the static-gate tests**
 
 Create `tests/gates/static-gates.test.js`:
 ```js
@@ -679,12 +681,12 @@ describe('static gates', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify the reporters pass and the todos show**
+- [x] **Step 2: Run to verify the reporters pass and the todos show**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: 2 passed, 4 todo. The console prints the current emoji + hex counts (the burn-down starting point — expect non-zero, per S0).
 
-- [ ] **Step 3: Write the real-device perf protocol**
+- [x] **Step 3: Write the real-device perf protocol**
 
 Create `/Users/kz/Code/Crafty/docs/PERF-PROTOCOL.md`:
 ```markdown
@@ -712,7 +714,7 @@ The headless/SwiftShader FPS number is meaningless (S0). Frame-rate is acceptanc
 ```
 (The in-app perf marker / HUD that produces these numbers is built in S1-B with the render pipeline; this protocol defines how it is used.)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/gates/static-gates.test.js
@@ -724,17 +726,17 @@ git commit -m "test(gates): static reporters (emoji/hex burn-down) + deferred ha
 
 ## Final: run the whole harness
 
-- [ ] **Step 1: Run all unit tests**
+- [x] **Step 1: Run all unit tests**
 
 Run: `npm run test:unit`
 Expected: all PASS (sanity + tokens + quality + bridge + static-gate reporters) + the deferred todos listed.
 
-- [ ] **Step 2: Run the visual suite**
+- [x] **Step 2: Run the visual suite**
 
 Run: `npm run test:visual`
 Expected: 3 visual states PASS against baseline.
 
-- [ ] **Step 3: Confirm build is clean**
+- [x] **Step 3: Confirm build is clean**
 
 Run: `npm run build`
 Expected: succeeds, no new warnings introduced by this plan.

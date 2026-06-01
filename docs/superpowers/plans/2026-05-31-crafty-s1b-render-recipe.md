@@ -1,5 +1,7 @@
 # Crafty S1-B — Render Recipe · Milestone 1 (Render Correctness & Device Tiers) Implementation Plan
 
+> ✅ **STATUS: COMPLETE — DONE + merged to `main` 2026-05-31 (S1-B M1 render recipe: sRGB/N8AO/bloom/SMAA/tiers).** Whole-branch review APPROVED; `test:visual` 3/3.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fix the three render-correctness defects that block the Vanguard+Toon look (washed-out terrain, no ambient occlusion, over-eager bloom), add proper anti-aliasing + a baseline warm grade, and wire the orphaned device-quality tiers into the live pipeline — turning the two deferred §9 render gates green, all verified by the deterministic visual-regression harness.
@@ -46,7 +48,7 @@
 - Modify: `src/App.jsx` (the `useEffect` hook block, ~lines 113-143, and add one non-DEV `useEffect`)
 - Test: `tests/store/qualityTier.test.js` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/store/qualityTier.test.js`:
 
@@ -70,12 +72,12 @@ describe('store qualityTier', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test:unit -- tests/store/qualityTier.test.js`
 Expected: FAIL — `setQualityTier is not a function` / `qualityTier` undefined.
 
-- [ ] **Step 3: Add the store field + action**
+- [x] **Step 3: Add the store field + action**
 
 In `src/store/useGameStore.jsx`, immediately after the existing capture-mode lines:
 
@@ -93,7 +95,7 @@ add:
     setQualityTier: (tier) => set({ qualityTier: tier }),
 ```
 
-- [ ] **Step 4: Select the real tier at startup (prod) + force `high` in capture (dev)**
+- [x] **Step 4: Select the real tier at startup (prod) + force `high` in capture (dev)**
 
 In `src/App.jsx`, add the import near the other imports:
 
@@ -126,13 +128,13 @@ Then, inside the existing DEV-gated test-bridge `useEffect`, (a) force a known t
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `npm run test:unit -- tests/store/qualityTier.test.js`
 Expected: PASS (2/2).
 Run: `npm run test:unit` — full suite stays green (tokens/quality tests unaffected).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/store/useGameStore.jsx src/App.jsx tests/store/qualityTier.test.js
@@ -151,7 +153,7 @@ git commit -m "feat(render): wire device quality-tier into store + force high ti
 - Modify: `src/world/Terrain.jsx` (the `#include <color_fragment>` replacement, the `diffuseColor = ...` line)
 - Test: `tests/gates/static-gates.test.js` (add a new sRGB gate)
 
-- [ ] **Step 1: Write the failing gate**
+- [x] **Step 1: Write the failing gate**
 
 In `tests/gates/static-gates.test.js`, inside the `describe('static gates', ...)` block (just above the `it.todo` lines), add:
 
@@ -163,12 +165,12 @@ In `tests/gates/static-gates.test.js`, inside the `describe('static gates', ...)
   });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: FAIL — decode pattern not found in `Terrain.jsx`.
 
-- [ ] **Step 3: Inject the decode**
+- [x] **Step 3: Inject the decode**
 
 In `src/world/Terrain.jsx`, find the exact current line inside the `#include <color_fragment>` replacement:
 
@@ -187,20 +189,20 @@ Replace the assignment line with the sRGB-decoded form:
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);
 ```
 
-- [ ] **Step 4: Run the gate to verify it passes**
+- [x] **Step 4: Run the gate to verify it passes**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: PASS.
 Run: `npm run test:unit` — full suite green.
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
+- [x] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
 
 Run: `npm run visual:baseline` (regenerates `tests/visual/baseline/*.png` under forced `high` tier).
 Then **surface the 3 new baselines for human review.** Expected intended change: terrain/foliage reads with correct, richer saturation and is no longer washed-out/over-bright; sky/water unchanged in hue. Confirm with the controller/Kevin that this is the intended improvement (not a darkening regression). If confirmed:
 Run: `npm run test:visual`
 Expected: PASS (baselines == fresh capture).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/world/Terrain.jsx tests/gates/static-gates.test.js tests/visual/baseline
@@ -217,7 +219,7 @@ git commit -m "fix(render): sRGB-decode voxel texture sample to fix washout; add
 - Modify: `src/GameScene.jsx` (the `<Bloom>` element + add tier read)
 - Modify: `tests/gates/static-gates.test.js` (flip the `it.todo('S1-B: bloom...')` to a real gate)
 
-- [ ] **Step 1: Write the failing gate (flip the todo)**
+- [x] **Step 1: Write the failing gate (flip the todo)**
 
 In `tests/gates/static-gates.test.js`, delete the line `it.todo('S1-B: bloom luminanceThreshold >= 0.85');` and add in its place:
 
@@ -230,12 +232,12 @@ In `tests/gates/static-gates.test.js`, delete the line `it.todo('S1-B: bloom lum
   });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: FAIL — current threshold is `0.6` (< 0.85).
 
-- [ ] **Step 3: Add the tier read + raise the threshold + tier-gate mipmap**
+- [x] **Step 3: Add the tier read + raise the threshold + tier-gate mipmap**
 
 In `src/GameScene.jsx`, add the import (near the existing `import { ... } from '@react-three/postprocessing'` line, add a separate import for the tier config):
 
@@ -272,18 +274,18 @@ to:
   />
 ```
 
-- [ ] **Step 4: Run the gate to verify it passes**
+- [x] **Step 4: Run the gate to verify it passes**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: PASS.
 Run: `npm run test:unit` — full suite green.
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
+- [x] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
 
 Run: `npm run visual:baseline`. Intended change: only genuinely bright/emissive pixels glow; terrain no longer has a hazy bloom wash → crisper, more readable. Confirm with controller/Kevin, then:
 Run: `npm run test:visual` → PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/GameScene.jsx tests/gates/static-gates.test.js tests/visual/baseline
@@ -300,7 +302,7 @@ git commit -m "fix(render): bloom luminanceThreshold 0.6->0.9 + tier-gate mipmap
 - Modify: `src/GameScene.jsx` (imports line 8 + line 6 drei; the composer block)
 - Modify: `tests/gates/static-gates.test.js` (flip `it.todo('S1-B: AO...')`)
 
-- [ ] **Step 1: Write the failing gate (flip the todo)**
+- [x] **Step 1: Write the failing gate (flip the todo)**
 
 In `tests/gates/static-gates.test.js`, delete `it.todo('S1-B: AO pass present in the EffectComposer (render-probe)');` and add:
 
@@ -312,12 +314,12 @@ In `tests/gates/static-gates.test.js`, delete `it.todo('S1-B: AO pass present in
   });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: FAIL — `<N8AO` appears nowhere in JSX (only the import).
 
-- [ ] **Step 3: Clean dead imports + render N8AO tier-gated**
+- [x] **Step 3: Clean dead imports + render N8AO tier-gated**
 
 In `src/GameScene.jsx`, change the postprocessing import (line ~8) from:
 
@@ -383,18 +385,18 @@ becomes (N8AO first so AO multiplies into the lit scene; drop the `disableNormal
 </EffectComposer>
 ```
 
-- [ ] **Step 4: Run the gate to verify it passes**
+- [x] **Step 4: Run the gate to verify it passes**
 
 Run: `npm run test:unit -- tests/gates/static-gates.test.js`
 Expected: PASS (all three S1-B gates now green: sRGB, AO, bloom).
 Run: `npm run test:unit` — full suite green (no more dead-import references; confirm nothing else imported `SSAO`/`ContactShadows` — grep first: `grep -rn 'SSAO\|ContactShadows' src/` must return zero).
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
+- [x] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
 
 Run: `npm run visual:baseline` (captures under forced `high` tier → `q.ao` true → N8AO present). Intended change: crevices/contact areas between voxels gain soft grounding shadows → depth and "premium voxel" read. Confirm with controller/Kevin (watch for over-darkening — if too strong, dial `intensity` down toward 1.2 and re-baseline). Then:
 Run: `npm run test:visual` → PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/GameScene.jsx tests/gates/static-gates.test.js tests/visual/baseline
@@ -410,11 +412,11 @@ git commit -m "feat(render): instantiate N8AO ambient occlusion (tier-gated); dr
 **Files:**
 - Modify: `src/GameScene.jsx` (imports + composer block)
 
-- [ ] **Step 1: (No new gate — covered by the visual baseline.)** Confirm current state.
+- [x] **Step 1: (No new gate — covered by the visual baseline.)** Confirm current state.
 
 Run: `npm run test:unit` — green baseline before changes.
 
-- [ ] **Step 2: Add SMAA + grade imports**
+- [x] **Step 2: Add SMAA + grade imports**
 
 In `src/GameScene.jsx`, extend the postprocessing import to include `SMAA`, `HueSaturation`, `BrightnessContrast`:
 
@@ -422,7 +424,7 @@ In `src/GameScene.jsx`, extend the postprocessing import to include `SMAA`, `Hue
 import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast } from '@react-three/postprocessing';
 ```
 
-- [ ] **Step 3: Insert grade (before bloom) + SMAA (after bloom)**
+- [x] **Step 3: Insert grade (before bloom) + SMAA (after bloom)**
 
 Update the composer to the final M1 effect order — AO → grade → bloom → SMAA → Noise → Vignette:
 
@@ -454,17 +456,17 @@ Update the composer to the final M1 effect order — AO → grade → bloom → 
 </EffectComposer>
 ```
 
-- [ ] **Step 4: Verify build + unit tests**
+- [x] **Step 4: Verify build + unit tests**
 
 Run: `npm run test:unit` — green (the AO gate still matches `<N8AO`; bloom gate still ≥0.85).
 Run: `npm run build` — must succeed (confirms the new imports resolve in the production bundle).
 
-- [ ] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
+- [x] **Step 5: Re-baseline (HUMAN REVIEW REQUIRED)**
 
 Run: `npm run visual:baseline`. Intended change: edges are cleaner (no jaggies); the scene reads slightly warmer + a touch more saturated/contrasty — premium, not garish. Confirm with controller/Kevin (if the grade reads too strong, reduce `saturation`/`contrast` toward 0.04 and re-baseline). Then:
 Run: `npm run test:visual` → PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/GameScene.jsx tests/visual/baseline
@@ -480,11 +482,11 @@ git commit -m "feat(render): add SMAA anti-aliasing + baseline warm grade; lock 
 **Files:**
 - Modify: `src/GameScene.jsx` (shadowConfig, `<Canvas>` dpr, add perf components, drei import)
 
-- [ ] **Step 1: Confirm green baseline**
+- [x] **Step 1: Confirm green baseline**
 
 Run: `npm run test:unit` — green.
 
-- [ ] **Step 2: Add drei perf imports**
+- [x] **Step 2: Add drei perf imports**
 
 Extend the drei import:
 
@@ -492,7 +494,7 @@ Extend the drei import:
 import { PointerLockControls, Stats, Preload, Sky, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 ```
 
-- [ ] **Step 3: Tier-drive the shadow map size**
+- [x] **Step 3: Tier-drive the shadow map size**
 
 Change `shadowConfig` from a constant-deps memo to depend on the tier:
 
@@ -512,7 +514,7 @@ Change `shadowConfig` from a constant-deps memo to depend on the tier:
 
 > Note: under the forced `high` capture tier, `shadowMapSize` is 2048 (identical to the old hardcoded value), so **this task produces no capture-visible change** at `high` — baselines should be unaffected.
 
-- [ ] **Step 4: Tier-cap the DPR via the Canvas prop**
+- [x] **Step 4: Tier-cap the DPR via the Canvas prop**
 
 On `<Canvas>`, add the `dpr` prop and remove the manual `setPixelRatio`. Add the prop to the opening tag:
 
@@ -531,7 +533,7 @@ and delete this line from `onCreated`:
 
 (Leave the rest of `onCreated` — camera rotation, `window.__threeScene` etc. — untouched.)
 
-- [ ] **Step 5: Add runtime auto-gating (capture-safe)**
+- [x] **Step 5: Add runtime auto-gating (capture-safe)**
 
 Inside `<Canvas>`, alongside the scene contents (e.g. just before `<EnvironmentalFog />`), add — gated off in capture mode so it never perturbs baselines:
 
@@ -548,13 +550,13 @@ Inside `<Canvas>`, alongside the scene contents (e.g. just before `<Environmenta
         {!isCaptureMode && <AdaptiveDpr pixelated />}
 ```
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run: `npm run test:unit` — green.
 Run: `npm run build` — succeeds.
 Run: `npm run visual:baseline` then `npm run test:visual` — should pass **with no baseline change** at the forced `high` tier (DPR cap 2 + shadow 2048 == prior). If pixels shifted, investigate before committing (a change here is unexpected). Human-confirm "no visible change" before committing any baseline delta.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/GameScene.jsx tests/visual/baseline
@@ -567,27 +569,27 @@ git commit -m "feat(render): tier-drive shadow map + DPR cap; add capture-safe P
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Full unit suite**
+- [x] **Step 1: Full unit suite**
 
 Run: `npm run test:unit`
 Expected: PASS, including all three S1-B static gates (`sRGB decode`, `AO present`, `bloom >= 0.85`) and the existing tokens/quality/store tests. The two S1-C `it.todo`s remain (correctly deferred).
 
-- [ ] **Step 2: Full visual suite**
+- [x] **Step 2: Full visual suite**
 
 Run: `npm run test:visual`
 Expected: PASS for `menu`, `explore-day`, `explore-night`.
 
-- [ ] **Step 3: Production build**
+- [x] **Step 3: Production build**
 
 Run: `npm run build`
 Expected: succeeds; confirm the dev-only bridge is still tree-shaken — `grep -c '__craftyTest' dist/assets/*.js` returns 0 (as in S1-A).
 
-- [ ] **Step 4: Confirm dead-import cleanup**
+- [x] **Step 4: Confirm dead-import cleanup**
 
 Run: `grep -rn 'SSAO\|ContactShadows\|disableNormalPass' src/`
 Expected: zero matches.
 
-- [ ] **Step 5: Report M1 complete** with the before/after of the three §9 gates and a one-line note that baselines were human-reviewed at each visual step.
+- [x] **Step 5: Report M1 complete** with the before/after of the three §9 gates and a one-line note that baselines were human-reviewed at each visual step.
 
 ---
 
