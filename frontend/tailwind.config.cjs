@@ -1,11 +1,69 @@
 /** @type {import('tailwindcss').Config} */
+// Theme wired from src/theme/tokens.js via the --ui-* CSS vars that
+// src/theme/cssVars.js writes to :root at boot. Colors use rgb(var() / <alpha>)
+// so opacity modifiers work; scalars mirror TW_SCALES. SoT parity is enforced by
+// tests/theme/tailwind-wiring.test.js (config refs ⇔ CSS_VAR_MAP) — DO NOT add a
+// --ui-* name here without adding it to cssVars.js (the test will fail).
+const c = (v) => `rgb(var(${v}) / <alpha-value>)`;
+
 module.exports = {
-  content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./index.html"
-  ],
+  content: ['./src/**/*.{js,jsx,ts,tsx}', './index.html'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        ink: c('--ui-ink'),
+        panel: c('--ui-panel'),
+        'panel-raise': c('--ui-panel-raise'),
+        'panel-inset': c('--ui-panel-inset'),
+        slot: c('--ui-slot'),
+        text: c('--ui-text'),
+        'text-muted': c('--ui-text-muted'),
+        'text-inverse': c('--ui-text-inverse'),
+        accent: c('--ui-accent'),
+        'accent-raise': c('--ui-accent-raise'),
+        danger: c('--ui-danger'),
+        success: c('--ui-success'),
+        warn: c('--ui-warn'),
+        info: c('--ui-info'),
+        rarity: {
+          common: c('--ui-rarity-common'),
+          rare: c('--ui-rarity-rare'),
+          epic: c('--ui-rarity-epic'),
+          legendary: c('--ui-rarity-legendary'),
+        },
+        spell: {
+          fire: c('--ui-spell-fire'),
+          ice: c('--ui-spell-ice'),
+          lightning: c('--ui-spell-lightning'),
+          arcane: c('--ui-spell-arcane'),
+          nature: c('--ui-spell-nature'),
+        },
+      },
+      borderRadius: { sm: '6px', md: '10px', lg: '14px' },
+      borderWidth: { chrome: '4px' },
+      fontFamily: {
+        display: ['Lilita One', 'system-ui', 'sans-serif'],
+        body: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        'display-cjk': ['Smiley Sans', '得意黑', 'Lilita One', 'sans-serif'],
+        'body-cjk': ['Alibaba PuHuiTi 3.0', '阿里巴巴普惠体', 'Space Grotesk', 'sans-serif'],
+      },
+      fontSize: {
+        xs: ['12px', { lineHeight: '1.2' }],
+        sm: ['14px', { lineHeight: '1.2' }],
+        base: ['16px', { lineHeight: '1.2' }],
+        md: ['18px', { lineHeight: '1.2' }],
+        lg: ['22px', { lineHeight: '1.2' }],
+        xl: ['28px', { lineHeight: '1.05' }],
+        xxl: ['36px', { lineHeight: '1.05' }],
+        display: ['48px', { lineHeight: '1.05' }],
+      },
+      boxShadow: {
+        'elev-sm': '3px 3px 0 0 rgb(var(--ui-ink))',
+        'elev-md': '5px 5px 0 0 rgb(var(--ui-ink))',
+        'elev-lg': '8px 8px 0 0 rgb(var(--ui-ink))',
+      },
+      zIndex: { 'scene': '1', 'hud': '100', 'panel': '200', 'modal': '300', 'toast': '400', 'tooltip': '500', 'dev-overlay': '9000' },
+    },
   },
   plugins: [],
 };
