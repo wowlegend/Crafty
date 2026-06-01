@@ -23,3 +23,5 @@
 - _(appended as phases complete…)_
 
 - **S1-C-M2b modals (DONE):** `frontend/tests/visual/baseline/inventory-open.png` — the migrated Inventory modal (glass→bold-flat: Panel shell, paper-doll + gear Slots, rarity-FILLED item grid w/ 2-tone icons, Combat-Stats panel, gold Equip). All 5 modals migrated. (CraftingTable/Magic/Building/Settings not separately captured — verified via build + the shared pattern.) Note: `AchievementsPanel` (QuestSystem) still glass → migrating in M2c.
+
+- **S1-C-M2c neon→bold-flat (DONE):** `frontend/tests/visual/baseline/achievements-open.png` — migrated AchievementsPanel + QuestTracker; explore-day/night/boss-obsidian re-baselined (bold-flat quest panel/boss bar/notifications). The **single-UI-language hard gate is now GREEN**. Achievement/quest TEXT still has emoji (🔪/👣/⚔️…) — that's M3's data-decouple. **NEW: M2d** will retire the last 3 in-game glass usages (`SimplifiedNPCSystem.jsx` NPC trading modal + dialogue bubble).
