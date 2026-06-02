@@ -192,7 +192,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
           const pct = ((diff / (fov / 2)) * 50) + 50;
           markersHtml.push(`
             <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
-              <span class="text-[9px] font-bold text-rose-500 animate-pulse drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">🐉 BOSS (${dist}m)</span>
+              <span class="text-[9px] font-bold text-rose-500 animate-pulse drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">BOSS (${dist}m)</span>
               <div class="w-1.5 h-1.5 bg-rose-500 rounded-full mt-0.5 animate-ping"></div>
             </div>
           `);
@@ -226,7 +226,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
           const pct = ((diff / (fov / 2)) * 50) + 50;
           markersHtml.push(`
             <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
-              <span class="text-[8px] font-semibold text-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.3)]">📦 Chest (${dist}m)</span>
+              <span class="text-[8px] font-semibold text-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.3)]">Chest (${dist}m)</span>
               <div class="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>
             </div>
           `);
@@ -251,7 +251,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
           const pct = ((diff / (fov / 2)) * 50) + 50;
           markersHtml.push(`
             <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
-              <span class="text-[8px] font-semibold text-emerald-400 drop-shadow-[0_0_2px_rgba(52,211,153,0.3)]">🧙‍♂️ NPC (${dist}m)</span>
+              <span class="text-[8px] font-semibold text-emerald-400 drop-shadow-[0_0_2px_rgba(52,211,153,0.3)]">NPC (${dist}m)</span>
               <div class="w-1 h-1 bg-emerald-400 rounded-full mt-1"></div>
             </div>
           `);

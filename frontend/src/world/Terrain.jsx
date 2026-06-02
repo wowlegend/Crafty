@@ -363,11 +363,11 @@ export const MinecraftWorld = React.memo(() => {
     useFrame((state) => {
         // Dev capture-determinism: pin the shader clock to a fixed value so the water
         // waves + night bioluminescence shimmer hold a frozen frame across capture runs
-        // (wall-clock elapsedTime differs run-to-run → ground-plane jitter). Inert in
+        // (wall-clock elapsedTime differs run-to-run -> ground-plane jitter). Inert in
         // normal gameplay — falls through to the live clock so the surface animates as before.
         const time = isCaptureMode() ? 0 : state.clock.elapsedTime;
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
-        const timeOfDay = 1.0 - THREE.MathUtils.clamp(mood, 0.0, 1.0);   // night/obsidian → 0 (biolum on)
+        const timeOfDay = 1.0 - THREE.MathUtils.clamp(mood, 0.0, 1.0);   // night/obsidian -> 0 (biolum on)
 
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {

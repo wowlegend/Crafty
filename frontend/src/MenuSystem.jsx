@@ -7,6 +7,8 @@ import {
   BuildingTools,
   SettingsPanel
 } from './ui/GamePanels';
+import { Icon } from './ui/primitives/index.js';
+import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
 import { TradingInterface } from './SimplifiedNPCSystem';
 import { AuthModal } from './AuthComponents';
@@ -159,6 +161,10 @@ export function MenuSystem({
               gameState.setShowWorldManager(true);
               setIsPointerLocked(false);
             }}
+            onOpenCredits={() => {
+              gameState.setShowSettings(false);
+              gameState.setShowCredits(true);
+            }}
             showStats={showStats}
             setShowStats={setShowStats}
           />
@@ -168,6 +174,15 @@ export function MenuSystem({
             gameState={gameState}
             onWorldLoad={gameState.loadWorldData}
             onClose={() => gameState.setShowWorldManager(false)}
+          />
+        )}
+        {gameState.showCredits && (
+          <CreditsScreen
+            onClose={() => {
+              gameState.setShowCredits(false);
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+            }}
           />
         )}
       </AnimatePresence>
@@ -219,10 +234,10 @@ export function MenuSystem({
                   initial={{ y: -40, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ type: "spring", duration: 1 }}
-                  className="text-7xl mb-2"
+                  className="flex justify-center mb-2 text-purple-300"
                   style={{ animation: 'float 4s ease-in-out infinite' }}
                 >
-                  🧙‍♂️
+                  <Icon name="mascot" size={96} />
                 </motion.div>
 
                 <motion.h1
@@ -256,10 +271,10 @@ export function MenuSystem({
                       document.body.requestPointerLock().catch(e => console.warn(e));
                     }
                   }}
-                  className="glow-button bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-10 rounded-xl text-xl pixel-font"
+                  className="glow-button inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-10 rounded-xl text-xl pixel-font"
                   style={{ border: '1px solid rgba(255,255,255,0.15)' }}
                 >
-                  ⚔️ Start Adventure
+                  <Icon name="sword" size={22} className="flex-none" /> Start Adventure
                 </motion.button>
 
                 <motion.div

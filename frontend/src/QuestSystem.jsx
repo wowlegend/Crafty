@@ -8,79 +8,79 @@ import { useT } from './i18n/i18n.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 
-const LOOT_TABLES = {
+export const LOOT_TABLES = {
     pig: [
-        { item: '🥩 Raw Porkchop', chance: 0.8, xp: 5 },
-        { item: '🦴 Bone', chance: 0.3, xp: 2 },
+        { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
+        { item: 'Bone', chance: 0.3, xp: 2 },
     ],
     cow: [
-        { item: '🥩 Raw Beef', chance: 0.8, xp: 5 },
-        { item: '🧶 Leather', chance: 0.5, xp: 3 },
-        { item: '🦴 Bone', chance: 0.2, xp: 2 },
+        { item: 'Raw Beef', chance: 0.8, xp: 5 },
+        { item: 'Leather', chance: 0.5, xp: 3 },
+        { item: 'Bone', chance: 0.2, xp: 2 },
     ],
     zombie: [
-        { item: '🧟 Rotten Flesh', chance: 0.7, xp: 3 },
-        { item: '🗡️ Iron Nugget', chance: 0.3, xp: 8 },
-        { item: '💎 Emerald', chance: 0.05, xp: 25 },
+        { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
+        { item: 'Iron Nugget', chance: 0.3, xp: 8 },
+        { item: 'Emerald', chance: 0.05, xp: 25 },
     ],
     skeleton: [
-        { item: '🦴 Bone', chance: 0.9, xp: 3 },
-        { item: '🏹 Arrow', chance: 0.6, xp: 4 },
-        { item: '🗡️ Iron Nugget', chance: 0.2, xp: 8 },
+        { item: 'Bone', chance: 0.9, xp: 3 },
+        { item: 'Arrow', chance: 0.6, xp: 4 },
+        { item: 'Iron Nugget', chance: 0.2, xp: 8 },
     ],
     spider: [
-        { item: '🕸️ Spider Eye', chance: 0.6, xp: 5 },
-        { item: '🧵 String', chance: 0.8, xp: 3 },
-        { item: '💜 Ender Pearl', chance: 0.03, xp: 30 },
+        { item: 'Spider Eye', chance: 0.6, xp: 5 },
+        { item: 'String', chance: 0.8, xp: 3 },
+        { item: 'Ender Pearl', chance: 0.03, xp: 30 },
     ],
 };
 
-const CHEST_LOOT = [
-    { item: '❤️ Health Potion', chance: 0.6, effect: 'heal', value: 30 },
-    { item: '💙 Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-    { item: '⚔️ Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-    { item: '🛡️ Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
-    { item: '💎 Diamond', chance: 0.15, effect: 'xp', value: 50 },
-    { item: '👑 Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
-    { item: '🌟 Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
+export const CHEST_LOOT = [
+    { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
+    { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
+    { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
+    { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
+    { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
+    { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
+    { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
 ];
 
 const QUEST_LIST = [
     // Beginner quests
-    { id: 'first_blood', title: '🗡️ First Blood', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
-    { id: 'hunter', title: '🏹 Hunter', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1 },
-    { id: 'builder', title: '🧱 Builder', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1 },
-    { id: 'miner', title: '⛏️ Miner', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1 },
-    { id: 'spellcaster', title: '✨ Spellcaster', description: 'Cast 10 spells', type: 'spell_cast', target: 10, xpReward: 40, tier: 1 },
+    { id: 'first_blood', title: 'First Blood', icon: 'sword', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
+    { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1 },
+    { id: 'builder', title: 'Builder', icon: 'hammer', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1 },
+    { id: 'miner', title: 'Miner', icon: 'pickaxe', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1 },
+    { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Cast 10 spells', type: 'spell_cast', target: 10, xpReward: 40, tier: 1 },
 
     // Intermediate quests
-    { id: 'zombie_slayer', title: '🧟 Zombie Slayer', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
-    { id: 'spider_hunter', title: '🕷️ Spider Hunter', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
-    { id: 'explorer', title: '🧭 Explorer', description: 'Travel 500 blocks from spawn', type: 'distance', target: 500, xpReward: 100, tier: 2 },
-    { id: 'collector', title: '💰 Collector', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
-    { id: 'architect', title: '🏗️ Architect', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
+    { id: 'zombie_slayer', title: 'Zombie Slayer', icon: 'zombie', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
+    { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
+    { id: 'explorer', title: 'Explorer', icon: 'compass', description: 'Travel 500 blocks from spawn', type: 'distance', target: 500, xpReward: 100, tier: 2 },
+    { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
+    { id: 'architect', title: 'Architect', icon: 'building', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
 
     // Advanced quests
-    { id: 'champion', title: '🏆 Champion', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3 },
-    { id: 'archmage', title: '🧙 Archmage', description: 'Cast 100 spells', type: 'spell_cast', target: 100, xpReward: 250, tier: 3 },
-    { id: 'treasure_master', title: '👑 Treasure Master', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
-    { id: 'world_builder', title: '🌍 World Builder', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
-    { id: 'undead_destroyer', title: '💀 Undead Destroyer', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
+    { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3 },
+    { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Cast 100 spells', type: 'spell_cast', target: 100, xpReward: 250, tier: 3 },
+    { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
+    { id: 'world_builder', title: 'World Builder', icon: 'globe', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
+    { id: 'undead_destroyer', title: 'Undead Destroyer', icon: 'skull', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
 ];
 
 const ACHIEVEMENTS = [
-    { id: 'first_step', title: '👣 First Steps', description: 'Enter the world', icon: '👣', auto: true },
-    { id: 'first_kill', title: '⚔️ Warrior', description: 'Defeat your first mob', icon: '⚔️', stat: 'kills', target: 1 },
-    { id: 'serial_killer', title: '💀 Serial Slayer', description: 'Defeat 25 mobs', icon: '💀', stat: 'kills', target: 25 },
-    { id: 'centurion', title: '🏛️ Centurion', description: 'Defeat 100 mobs', icon: '🏛️', stat: 'kills', target: 100 },
-    { id: 'first_spell', title: '✨ Apprentice', description: 'Cast your first spell', icon: '✨', stat: 'spells', target: 1 },
-    { id: 'wizard', title: '🧙 Wizard', description: 'Cast 50 spells', icon: '🧙', stat: 'spells', target: 50 },
-    { id: 'first_chest', title: '📦 Treasure Hunter', description: 'Open your first chest', icon: '📦', stat: 'chests', target: 1 },
-    { id: 'level5', title: '⭐ Rising Star', description: 'Reach Level 5', icon: '⭐', stat: 'level', target: 5 },
-    { id: 'level10', title: '🌟 Shining Star', description: 'Reach Level 10', icon: '🌟', stat: 'level', target: 10 },
-    { id: 'survivor', title: '💪 Survivor', description: 'Die and respawn 3 times', icon: '💪', stat: 'deaths', target: 3 },
-    { id: 'miner_ach', title: '⛏️ Deep Digger', description: 'Break 100 blocks', icon: '⛏️', stat: 'blocks_broken', target: 100 },
-    { id: 'builder_ach', title: '🏠 Master Builder', description: 'Place 200 blocks', icon: '🏠', stat: 'blocks_placed', target: 200 },
+    { id: 'first_step', title: 'First Steps', description: 'Enter the world', icon: 'footprints', auto: true },
+    { id: 'first_kill', title: 'Warrior', description: 'Defeat your first mob', icon: 'sword', stat: 'kills', target: 1 },
+    { id: 'serial_killer', title: 'Serial Slayer', description: 'Defeat 25 mobs', icon: 'skull', stat: 'kills', target: 25 },
+    { id: 'centurion', title: 'Centurion', description: 'Defeat 100 mobs', icon: 'landmark', stat: 'kills', target: 100 },
+    { id: 'first_spell', title: 'Apprentice', description: 'Cast your first spell', icon: 'magic', stat: 'spells', target: 1 },
+    { id: 'wizard', title: 'Wizard', description: 'Cast 50 spells', icon: 'wizard', stat: 'spells', target: 50 },
+    { id: 'first_chest', title: 'Treasure Hunter', description: 'Open your first chest', icon: 'chest-closed', stat: 'chests', target: 1 },
+    { id: 'level5', title: 'Rising Star', description: 'Reach Level 5', icon: 'star', stat: 'level', target: 5 },
+    { id: 'level10', title: 'Shining Star', description: 'Reach Level 10', icon: 'star', stat: 'level', target: 10 },
+    { id: 'survivor', title: 'Survivor', description: 'Die and respawn 3 times', icon: 'strength', stat: 'deaths', target: 3 },
+    { id: 'miner_ach', title: 'Deep Digger', description: 'Break 100 blocks', icon: 'pickaxe', stat: 'blocks_broken', target: 100 },
+    { id: 'builder_ach', title: 'Master Builder', description: 'Place 200 blocks', icon: 'home', stat: 'blocks_placed', target: 200 },
 ];
 
 export const useQuestSystem = () => {
@@ -131,7 +131,7 @@ export const useQuestSystem = () => {
 
             if (statValue >= ach.target) {
                 setUnlockedAchievements(prev => new Set([...prev, ach.id]));
-                addNotification(`🏆 Achievement Unlocked: ${ach.title}!`, 'achievement');
+                addNotification(`Achievement Unlocked: ${ach.title}!`, 'achievement');
             }
         });
     }, [unlockedAchievements, addNotification]);
@@ -152,7 +152,7 @@ export const useQuestSystem = () => {
             const nowComplete = newProgress >= quest.target;
 
             if (nowComplete && !quest.completed) {
-                addNotification(`✅ Quest Complete: ${quest.title}! Click Q to claim reward.`, 'quest');
+                addNotification(`Quest Complete: ${quest.title}! Click Q to claim reward.`, 'quest');
             }
 
             return { ...quest, progress: newProgress, completed: nowComplete };
@@ -188,7 +188,7 @@ export const useQuestSystem = () => {
         // Grant XP reward
         if (reward > 0 && GameMethods.grantXP) {
             GameMethods.grantXP(reward, 'Quest Reward');
-            addNotification(`🎁 +${reward} XP from quest reward!`, 'reward');
+            addNotification(`+${reward} XP from quest reward!`, 'reward');
         }
     }, [completedQuestIds, addNotification]);
 
@@ -223,7 +223,7 @@ export const useQuestSystem = () => {
 
         if (drops.length > 0) {
             const dropNames = drops.map(d => d.item).join(', ');
-            addNotification(`💎 Mob dropped: ${dropNames}`, 'loot');
+            addNotification(`Mob dropped: ${dropNames}`, 'loot');
         }
     }, [updateQuestProgress, checkAchievements, addNotification]);
 
@@ -332,7 +332,10 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                                 <div key={quest.id} className="relative">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1 mr-2">
-                                            <div className="text-text text-xs font-bold">{quest.title}</div>
+                                            <div className="flex items-center gap-1.5 text-text text-xs font-bold">
+                                                {quest.icon && <Icon name={quest.icon} size={14} className="flex-none text-accent" />}
+                                                <span>{quest.title}</span>
+                                            </div>
                                             <div className="text-text-muted text-xs">{quest.description}</div>
                                         </div>
                                         {quest.completed && !quest.claimed && (
@@ -356,13 +359,18 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                                         />
                                     </div>
                                     <div className="text-text-muted text-xs mt-0.5 text-right tabular-nums">
-                                        {quest.progress}/{quest.target} {quest.completed && '✅'}
+                                        <span className="inline-flex items-center gap-1 justify-end">
+                                            {quest.progress}/{quest.target}
+                                            {quest.completed && <Icon name="check" size={12} className="text-success" />}
+                                        </span>
                                     </div>
                                 </div>
                             ))}
 
                             {quests.length === 0 && (
-                                <div className="text-text-muted text-xs text-center py-2">All quests completed! 🎉</div>
+                                <div className="flex items-center justify-center gap-1.5 text-text-muted text-xs text-center py-2">
+                                    All quests completed! <Icon name="party" size={14} className="text-accent" />
+                                </div>
                             )}
                         </motion.div>
                     )}
@@ -372,25 +380,39 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
     );
 });
 
-export const NotificationStack = React.memo(({ notifications }) => {
-    // Map the data-level notification type → a Toast status. quest/achievement =
-    // success, loot/reward = info, anything else = info; warnings/dangers map through
-    // if a future type uses them.
-    const statusMap = {
-        quest: 'success',
-        achievement: 'success',
-        reward: 'success',
-        loot: 'info',
-        info: 'info',
-        warn: 'warn',
-        danger: 'danger',
-    };
+// Data-level notification type -> Toast status (left-bar color).
+const NOTIF_STATUS = {
+    quest: 'success',
+    achievement: 'success',
+    reward: 'success',
+    loot: 'info',
+    info: 'info',
+    success: 'success',
+    warn: 'warn',
+    warning: 'warn',
+    danger: 'danger',
+};
+// Data-level notification type -> a lucide chrome Icon name. This centralizes the
+// status glyph so the message strings no longer need a leading emoji.
+const NOTIF_ICON = {
+    achievement: 'trophy',
+    quest: 'check',
+    reward: 'gift',
+    loot: 'gift',
+    warning: 'warning',
+    warn: 'warning',
+    danger: 'skull',
+    success: 'check',
+    info: 'sparkles',
+};
 
+export const NotificationStack = React.memo(({ notifications }) => {
     return (
         <div className="absolute top-20 right-4 z-30 pointer-events-none space-y-2" style={{ maxWidth: 320 }}>
             <AnimatePresence>
                 {notifications.map(notif => {
-                    const status = statusMap[notif.type] || 'info';
+                    const status = NOTIF_STATUS[notif.type] || 'info';
+                    const iconName = NOTIF_ICON[notif.type] || 'sparkles';
                     return (
                         <motion.div
                             key={notif.id}
@@ -400,7 +422,8 @@ export const NotificationStack = React.memo(({ notifications }) => {
                             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                         >
                             <Toast status={status} className="w-full text-sm font-bold">
-                                {notif.text}
+                                <Icon name={iconName} size={16} className="flex-none" />
+                                <span>{notif.text}</span>
                             </Toast>
                         </motion.div>
                     );
@@ -459,7 +482,11 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                                         variant="inset"
                                         className={`p-3 ${unlocked ? 'bg-slot' : 'bg-panel-inset opacity-50'}`}
                                     >
-                                        <div className="text-2xl mb-1">{unlocked ? ach.icon : '🔒'}</div>
+                                        <div className="mb-1 text-2xl">
+                                            {unlocked
+                                                ? <Icon name={ach.icon} size={28} className="text-accent" />
+                                                : <Icon name="lock" size={28} className="text-text-muted" />}
+                                        </div>
                                         <div className={`text-xs font-bold ${unlocked ? 'text-accent' : 'text-text-muted'}`}>
                                             {ach.title}
                                         </div>
@@ -618,7 +645,7 @@ export const useTreasureChests = () => {
 
         const dropNames = loot.map(l => l.item).join(', ');
         if (addNotification) {
-            addNotification(`🎁 Chest dropped: ${dropNames}`, 'loot');
+            addNotification(`Chest dropped: ${dropNames}`, 'loot');
         }
 
         // Notify quest system

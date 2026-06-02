@@ -6,6 +6,14 @@ import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
+import { getItemRarity, getItemIcon } from '../data/items.js';
+
+// Re-exported for the M3 loot/rarity characterization tests, which import
+// getItemRarity from this module. M3-T3 routed rarity through the single registry
+// in src/data/items.js (removing the local emoji-less word-match implementation),
+// so this re-export now resolves to the registry — resolving the prior cross-file
+// divergence with SimplifiedNPCSystem (both re-export the same registry function).
+export { getItemRarity };
 
 // Paper-doll avatar voxel-body colors (CHARACTER ART, not chrome — mirrors the
 // PrimitivesShowcase inventory comp / mockup .ava). Inline hex is intentional here:
@@ -29,15 +37,7 @@ const getItemSlot = (itemName) => {
     return null;
 };
 
-const getItemRarity = (itemName) => {
-    if (!itemName) return 'common';
-    if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment') return 'legendary';
-    if (itemName.includes('Iron') || itemName === 'Mana Potion') return 'epic';
-    if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef') return 'rare';
-    return 'common';
-};
-
-// Rarity tier (from getItemRarity) → bold-flat token text color (for the inspector
+// Rarity tier (from getItemRarity) -> bold-flat token text color (for the inspector
 // rarity label). The TILE rarity fill is handled by the <Slot rarity> primitive.
 const RARITY_TEXT = {
     common: 'text-rarity-common',
@@ -46,58 +46,10 @@ const RARITY_TEXT = {
     legendary: 'text-rarity-legendary',
 };
 
-// Item name → Icon primitive name (the locked bold-flat game-icon set). Returns null
-// when nothing maps, so the caller can fall back to a color swatch (never crash).
-const getItemIcon = (itemName) => {
-    if (!itemName) return null;
-    if (itemName === 'Golden Crown') return 'helmet';
-    if (itemName.includes('Helmet')) return 'helmet';
-    if (itemName.includes('Chestplate')) return 'chest';
-    if (itemName.includes('Boots')) return 'boots';
-    if (itemName.includes('Shield')) return 'shield';
-    if (itemName.includes('Sword')) return 'sword';
-    if (itemName === 'sword') return 'sword';
-    if (itemName === 'pickaxe') return 'pickaxe';
-    if (itemName === 'Health Potion' || itemName === 'Mana Potion' || itemName.includes('Potion')) return 'potion';
-    if (itemName.includes('Porkchop') || itemName.includes('Beef')) return 'meat';
-    if (itemName === 'Apple') return 'apple';
-    if (itemName === 'diamond') return 'gem';
-    if (itemName === 'Star Fragment') return 'gem';
-    if (itemName === 'gold') return 'coins';
-    if (itemName === 'Scroll' || itemName.includes('Scroll')) return 'scroll';
-    if (itemName === 'Bow' || itemName.includes('Bow')) return 'bow';
-    if (itemName === 'Dagger' || itemName.includes('Dagger')) return 'dagger';
-    if (itemName === 'Mace' || itemName.includes('Mace')) return 'mace';
-    return null;
-};
-
-const getItemEmoji = (itemName) => {
-    if (!itemName) return '';
-    if (itemName === 'Golden Crown') return '👑';
-    if (itemName.includes('Helmet')) return '🪖';
-    if (itemName.includes('Chestplate')) return '👕';
-    if (itemName.includes('Boots')) return '🥾';
-    if (itemName.includes('Shield')) return '🛡️';
-    if (itemName.includes('Sword')) return '🗡️';
-    if (itemName === 'sword') return '🗡️';
-    if (itemName === 'pickaxe') return '⛏️';
-    if (itemName === 'Health Potion') return '❤️';
-    if (itemName === 'Mana Potion') return '💧';
-    if (itemName.includes('Porkchop') || itemName.includes('Beef')) return '🍖';
-    if (itemName === 'Apple') return '🍎';
-    if (itemName === 'Rotten Flesh') return '🧟';
-    if (itemName === 'diamond') return '💎';
-    if (itemName === 'gold') return '🪙';
-    if (itemName === 'iron') return '⛓️';
-    if (itemName === 'wood') return '🪵';
-    if (itemName === 'cobblestone') return '🪨';
-    if (itemName === 'sand') return '⏳';
-    return '📦';
-};
-
-// Renders a 2-tone game Icon for an item; if no icon maps, falls back to a small
-// color swatch (block color when known, else neutral) carrying the emoji — never
-// crashes on an unmapped item. `size` is the Icon px size.
+// Renders a 2-tone game Icon for an item via the central registry (src/data/items.js).
+// If no icon maps (unknown / raw block), falls back to a small color swatch (block
+// color when known, else neutral) with NO glyph — never crashes on an unmapped item.
+// `size` is the Icon px size.
 const ItemIcon = ({ itemName, size = 42 }) => {
     const icon = getItemIcon(itemName);
     if (icon) return <Icon name={icon} size={size} />;
@@ -106,16 +58,14 @@ const ItemIcon = ({ itemName, size = 42 }) => {
     return (
         <div
             className="rounded-sm grid place-items-center border-chrome border-ink"
-            style={{ width: swatch, height: swatch, backgroundColor: blockColor || 'rgb(var(--ui-slot))', fontSize: Math.round(swatch * 0.55) }}
+            style={{ width: swatch, height: swatch, backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
             title={itemName}
-        >
-            {getItemEmoji(itemName)}
-        </div>
+        />
     );
 };
 
-// Paper-doll gear cell — bold-flat. Equipped → a gold `Slot gear` with the 2-tone
-// item Icon + a Remove hover overlay; empty → an empty `Slot` with the placeholder
+// Paper-doll gear cell — bold-flat. Equipped -> a gold `Slot gear` with the 2-tone
+// item Icon + a Remove hover overlay; empty -> an empty `Slot` with the placeholder
 // Icon + label. Preserves onUnequip (click) + onHover (hover-inspect).
 const PaperDollSlot = ({ slotName, label, placeholderIcon, equippedItem, onUnequip, onHover }) => {
     const t = useT();
@@ -183,8 +133,8 @@ const GearInspector = ({ itemName, equippedGear }) => {
         const diff = val - activeVal;
 
         if (diff === 0) return <span className="text-text-muted">({val})</span>;
-        if (diff > 0) return <span className="text-success font-bold">+{val} (+{diff} ▲)</span>;
-        return <span className="text-danger font-bold">+{val} ({diff} ▼)</span>;
+        if (diff > 0) return <span className="text-success font-bold">+{val} (+{diff} <Icon name="arrow-up" size={10} className="inline align-middle" />)</span>;
+        return <span className="text-danger font-bold">+{val} ({diff} <Icon name="arrow-down" size={10} className="inline align-middle" />)</span>;
     };
 
     return (
@@ -550,7 +500,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         },
         {
             name: 'Iron Sword (Nuggets)',
-            pattern: [[null, '🗡️ Iron Nugget', null], [null, '🗡️ Iron Nugget', null], [null, 'wood', null]],
+            pattern: [[null, 'Iron Nugget', null], [null, 'Iron Nugget', null], [null, 'wood', null]],
             output: { 'Iron Sword': 1 }
         },
         {
@@ -577,7 +527,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Helmets
         {
             name: 'Leather Helmet',
-            pattern: [['🧶 Leather', '🧶 Leather', '🧶 Leather'], ['🧶 Leather', null, '🧶 Leather']],
+            pattern: [['Leather', 'Leather', 'Leather'], ['Leather', null, 'Leather']],
             output: { 'Leather Helmet': 1 }
         },
         {
@@ -598,7 +548,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Chestplates
         {
             name: 'Leather Chestplate',
-            pattern: [['🧶 Leather', null, '🧶 Leather'], ['🧶 Leather', '🧶 Leather', '🧶 Leather'], ['🧶 Leather', '🧶 Leather', '🧶 Leather']],
+            pattern: [['Leather', null, 'Leather'], ['Leather', 'Leather', 'Leather'], ['Leather', 'Leather', 'Leather']],
             output: { 'Leather Chestplate': 1 }
         },
         {
@@ -614,7 +564,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Boots
         {
             name: 'Leather Boots',
-            pattern: [['🧶 Leather', null, '🧶 Leather'], ['🧶 Leather', null, '🧶 Leather']],
+            pattern: [['Leather', null, 'Leather'], ['Leather', null, 'Leather']],
             output: { 'Leather Boots': 1 }
         },
         {
@@ -635,8 +585,8 @@ export const CraftingTable = React.memo(({ onClose }) => {
         },
         {
             name: 'Bow',
-            pattern: [['wood', '🧵 String', null], ['wood', null, '🧵 String'], ['wood', '🧵 String', null]],
-            output: { '🏹 Arrow': 5 }
+            pattern: [['wood', 'String', null], ['wood', null, 'String'], ['wood', 'String', null]],
+            output: { 'Arrow': 5 }
         },
         {
             name: 'Torch',
@@ -741,11 +691,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
         if (GameMethods.grantXP) GameMethods.grantXP(10);
     };
 
-    // Strip private-use + emoji glyphs from a block/item key so the cell shows a
-    // clean text label alongside the color swatch (mirrors the old extraction).
-    const EMOJI_RE = /[-]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g;
-    const cleanName = (s) => (s || '').replace(EMOJI_RE, '').trim();
-
     return (
         <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
             <Panel
@@ -778,19 +723,17 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         key={i}
                                         onClick={() => handleGridClick(i)}
                                         className="cursor-pointer"
-                                        title={item ? cleanName(item) : undefined}
+                                        title={item ? item : undefined}
                                     >
                                         <Slot className="w-16 h-16">
                                             {item ? (
                                                 <div className="flex flex-col items-center justify-center gap-0.5">
                                                     <div
-                                                        className="w-8 h-8 rounded-sm grid place-items-center text-xl border-chrome border-ink"
+                                                        className="w-8 h-8 rounded-sm border-chrome border-ink"
                                                         style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                                    >
-                                                        {item.match(EMOJI_RE) || ''}
-                                                    </div>
+                                                    />
                                                     <span className="text-[9px] text-text-muted truncate w-14 text-center leading-tight">
-                                                        {cleanName(item)}
+                                                        {item}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -803,7 +746,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                         </Panel>
 
                         {/* Arrow */}
-                        <div className="font-display text-4xl text-accent">{'→'}</div>
+                        <div className="text-accent"><Icon name="arrow-right" size={36} strokeWidth={3} /></div>
 
                         {/* Result Slot */}
                         <div className="flex flex-col items-center gap-2">
@@ -841,16 +784,14 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         key={type}
                                         type="button"
                                         onClick={() => gameState.setSelectedBlock(type)}
-                                        title={cleanName(type)}
+                                        title={type}
                                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md border-chrome transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
                                     >
                                         <div
-                                            className="w-6 h-6 rounded-sm grid place-items-center text-sm border-chrome border-ink"
+                                            className="w-6 h-6 rounded-sm border-chrome border-ink"
                                             style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                        >
-                                            {type.match(EMOJI_RE) || ''}
-                                        </div>
-                                        <span className="text-xs text-text">{cleanName(type)}</span>
+                                        />
+                                        <span className="text-xs text-text">{type}</span>
                                         <span className="text-[10px] text-text-muted tabular-nums">{'×'}{count}</span>
                                     </button>
                                 );
@@ -1056,7 +997,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
     );
 });
 
-export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager }) => {
+export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager, onOpenCredits }) => {
     const gameState = useGameStore();
     const t = useT();
     return (
@@ -1130,6 +1071,16 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             className="w-full gap-2"
                         >
                             <MapIcon width={18} height={18} strokeWidth={2.5} aria-hidden /> Manage Worlds
+                        </Button>
+                    )}
+                    {onOpenCredits && (
+                        <Button
+                            variant="secondary"
+                            size="md"
+                            onClick={onOpenCredits}
+                            className="w-full gap-2"
+                        >
+                            <Icon name="heart" size={18} className="flex-none" /> {t('credits.button')}
                         </Button>
                     )}
                     <Button

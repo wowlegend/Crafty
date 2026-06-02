@@ -8,7 +8,7 @@ export const TIERS = {
 };
 
 /**
- * Pure device→tier selection. Touch/coarse-pointer devices START conservative
+ * Pure device->tier selection. Touch/coarse-pointer devices START conservative
  * (PerformanceMonitor, wired in S1-B, can later incline them up).
  * @param {{coarsePointer?:boolean, deviceMemory?:number, cores?:number}} signals
  * @returns {'low'|'med'|'high'}
