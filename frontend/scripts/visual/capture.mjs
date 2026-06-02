@@ -90,7 +90,13 @@ async function main() {
     await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
     await delay(1500);
 
-    // menu (title screen — pointer still unlocked, auto-lock suppressed by capture mode)
+    // menu (title screen — pointer still unlocked, auto-lock suppressed by capture mode).
+    // The title now hosts a live 3D Crafty Hero mini-canvas (lazy chunk + WebGL); wait for
+    // it to actually mount + present a settled (capture-frozen) frame so `menu.png` is
+    // deterministic and never screenshots the 2D Suspense fallback.
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 15000 });
+    await flushFrames(page, 10);
+    await delay(900);
     await page.screenshot({ path: resolve(OUT, 'menu.png') });
     console.log('captured menu');
 
@@ -202,21 +208,20 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
     console.log('captured achievements-open');
 
-    // mascot-a / mascot-b / mascot-c (S1-D): THREE throwaway mascot DIRECTION mockups,
-    // each rendered in the SAME standalone studio overlay (identical camera + lighting +
-    // scale) so Kevin can pick a direction. These are captured but INTENTIONALLY NOT in
-    // the permanent visual gate (diff.test.js STATES) — 2 of 3 get pruned after the pick.
-    // The studio is its own R3F Canvas mounted over the (mob-free, capture-mode) world, so
-    // each frame is deterministic; we dismiss the achievements panel first for a clean mount.
+    // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the
+    // standalone studio overlay (fixed camera + explore-day lighting + post-stack) with its
+    // idle animation FROZEN by capture mode, so the frame is deterministic. This is the
+    // human-eyeball + baseline gate for the mascot look (controller baselines it after
+    // Kevin's review) — until then it is INTENTIONALLY omitted from diff.test.js STATES, so
+    // it does not assert a regression baseline. The studio is its own R3F Canvas mounted over
+    // the (mob-free, capture-mode) world; we dismiss the achievements panel first for a clean mount.
     await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
-    for (const v of ['a', 'b', 'c']) {
-      await page.evaluate((variant) => window.__craftyTest.call('showMascot', variant), v);
-      await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 8000 });
-      await flushFrames(page, 10);
-      await delay(900);
-      await page.screenshot({ path: resolve(OUT, `mascot-${v}.png`) });
-      console.log(`captured mascot-${v}`);
-    }
+    await page.evaluate(() => window.__craftyTest.call('showMascot'));
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 8000 });
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'title-mascot.png') });
+    console.log('captured title-mascot');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

@@ -2,6 +2,7 @@
 // all three render with the EXACT same character look (toon body + fresnel rim + drei
 // inverted-hull outline at screen-px thickness, matching how mobs render in
 // SimplifiedNPCSystem). Keeping them here makes the three mascot files apples-to-apples.
+import { forwardRef } from 'react';
 import { Outlines } from '@react-three/drei';
 import { MobToonMaterial } from '../MobToonMaterial';
 import { OUTLINE, RIM } from '../characterStyle';
@@ -24,15 +25,19 @@ export function Cube({ position, rotation, size = 1, color, rim = RIM_S, outline
 
 // An emissive cube (eyes / runes / embers / crystal) — toneMapped=false + emissive so it
 // picks up the studio's emissive-only bloom for a glow read. No outline (it's a light source).
-export function Emissive({ position, rotation, size = 0.18, color = '#46E0FF', intensity = 2.6 }) {
+// forwardRef so callers can mutate the mesh/material (e.g. an idle glow pulse on a staff gem).
+export const Emissive = forwardRef(function Emissive(
+  { position, rotation, size = 0.18, color = '#46E0FF', intensity = 2.6 },
+  ref
+) {
   const s = Array.isArray(size) ? size : [size, size, size];
   return (
-    <mesh position={position} rotation={rotation}>
+    <mesh ref={ref} position={position} rotation={rotation}>
       <boxGeometry args={s} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={intensity} toneMapped={false} />
     </mesh>
   );
-}
+});
 
 // A flat dark "ink" cube for pupils — no rim/outline, pure silhouette accent.
 export function Ink({ position, size = 0.16 }) {

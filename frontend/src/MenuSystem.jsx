@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isCaptureMode, captureRandom } from './devtest/captureMode';
 import {
@@ -14,6 +14,14 @@ import { TradingInterface } from './SimplifiedNPCSystem';
 import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
 import { SpellUpgradePanel, ChestInventoryPanel } from './AdvancedGameFeatures';
+
+// The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the
+// three/R3F chunk never blocks the menu's first paint; the old 2D icon is the fallback until
+// the canvas mounts. The hero's idle freezes in capture mode, so the `menu` frame stays
+// deterministic for the visual gate.
+const TitleMascot = lazy(() =>
+  import('./render/mascots/TitleMascot').then((m) => ({ default: m.TitleMascot }))
+);
 
 export function MenuSystem({
   gameState,
@@ -235,9 +243,15 @@ export function MenuSystem({
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ type: "spring", duration: 1 }}
                   className="flex justify-center mb-2 text-purple-300"
-                  style={{ animation: 'float 4s ease-in-out infinite' }}
+                  // The 3D hero carries its own idle bob; the wrapper float is purely
+                  // decorative and is frozen in capture mode so the `menu` frame is stable.
+                  style={capture ? undefined : { animation: 'float 4s ease-in-out infinite' }}
                 >
-                  <Icon name="mascot" size={96} />
+                  {/* Live 3D Crafty Hero brand face (replaces the old 2D pointy-hat icon).
+                      Suspense fallback = the original icon so first paint is never empty. */}
+                  <Suspense fallback={<Icon name="mascot" size={96} />}>
+                    <TitleMascot size={176} />
+                  </Suspense>
                 </motion.div>
 
                 <motion.h1

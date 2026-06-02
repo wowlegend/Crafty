@@ -1,22 +1,18 @@
-// MascotStudio — a self-contained R3F studio overlay that renders ONE mascot direction
-// mockup against a clean gradient backdrop with a FIXED camera + lighting + scale, so all
-// three directions render identically (apples-to-apples for Kevin's pick). Mounted as a
-// full-screen overlay from App.jsx (mirrors the PrimitivesShowcase overlay pattern) and
-// gated on a local React flag driven by the `showMascot` DEV test hook.
+// MascotStudio — a self-contained R3F studio overlay that renders the chosen "Crafty Hero"
+// mascot against a clean gradient backdrop with a FIXED camera + lighting + scale, so the
+// brand-face frame is deterministic and review-stable. Mounted as a full-screen overlay
+// from App.jsx (mirrors the PrimitivesShowcase overlay pattern) and gated on a local React
+// flag driven by the `showMascot` DEV test hook (used to capture the `title-mascot` frame).
 //
 // DELIBERATELY standalone (its OWN Canvas + lights + post-stack that REPLICATE the game's
 // explore-day look — toon + emissive-only bloom + SMAA + Neutral tone-map) rather than
 // hooking the gameplay GameScene/Atmosphere: zero terrain/physics/streaming flake, fully
 // deterministic, and it keeps the implementation strictly inside the mascot files + App.jsx
-// (no gameplay-scene edits). Throwaway: 2 of 3 directions get pruned after the pick.
+// (no gameplay-scene edits). Direction B was picked; A/C mockups were pruned (S1-D-M4).
 import { Canvas } from '@react-three/fiber';
 import { SMAA, EffectComposer, Bloom, HueSaturation, BrightnessContrast, Vignette, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
-import { MascotSparkFamiliar } from './MascotSparkFamiliar';
 import { MascotCraftyHero } from './MascotCraftyHero';
-import { MascotCraftGolem } from './MascotCraftGolem';
-
-const MASCOTS = { a: MascotSparkFamiliar, b: MascotCraftyHero, c: MascotCraftGolem };
 
 // Explore-day palette (from src/theme/tokens.js -> mood.js) so the studio light/sky reads
 // like the in-game daytime look the mascots will live in.
@@ -67,8 +63,10 @@ function hexToVec3(hex) {
   return [lin(r), lin(g), lin(b)];
 }
 
-export function MascotStudio({ variant = 'a' }) {
-  const Mascot = MASCOTS[variant] || MascotSparkFamiliar;
+// `variant` is accepted for back-compat with the `showMascot` test hook but is now always
+// the chosen Crafty Hero (A/C pruned). Kept so the existing App.jsx + capture call sites
+// need no signature change.
+export function MascotStudio() {
   return (
     <div
       data-testid="mascot-studio"
@@ -78,11 +76,11 @@ export function MascotStudio({ variant = 'a' }) {
         shadows={false}
         dpr={[1, 2]}
         gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
-        // FIXED camera — identical for all three variants (apples-to-apples). A gentle
-        // 3/4 down-angle "diorama" look; mascots are centered at origin and sized to fill
-        // ~70% of the frame height.
-        camera={{ fov: 32, near: 0.1, far: 100, position: [3.4, 2.6, 6.4] }}
-        onCreated={({ camera }) => { camera.lookAt(0, 0.35, 0); }}
+        // FIXED diorama camera, framed to fit the WHOLE hero — boots to the leaning hat tip
+        // (~4 units tall) — with headroom so the iconic stepped-hat silhouette never crops.
+        // A gentle 3/4 down-angle; the hero is centered on its visual mass (~y=0.9).
+        camera={{ fov: 34, near: 0.1, far: 100, position: [3.6, 3.0, 7.6] }}
+        onCreated={({ camera }) => { camera.lookAt(0, 0.85, 0); }}
       >
         <StudioBackdrop />
 
@@ -94,7 +92,7 @@ export function MascotStudio({ variant = 'a' }) {
         <directionalLight color={SKY_HORIZON} position={[4, 1.5, 5]} intensity={0.45} />
 
         <group scale={1.05}>
-          <Mascot />
+          <MascotCraftyHero />
         </group>
 
         {/* Post stack replicates the game's composer (GameScene.jsx): saturation/contrast
