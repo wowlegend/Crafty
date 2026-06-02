@@ -1,5 +1,8 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **⏰ REMINDER (set 2026-06-02):** when ENTIRE S1 is done (S1-D complete), Kevin asked to be reminded to run a **`challenge-memory`** adversarial audit of the native memory dir (truth-audit ritual; memory dir is now git-backed). Surface at the S1-D→S2 boundary.
+> **🎭 S1-D MASCOT — Kevin's taste call:** the real signature mascot character is a high-taste design decision; I'll propose/mockup directions + batch them here for your visual direction (not autonomously finalized).
+
 > Accumulated while building out the master plan autonomously (per Kevin 2026-06-01: "keep building the entire plan, batch anything for me to review/decide for when you complete it, assume all approvals"). Each item = a rendered frame to eyeball or a decision to ratify. Nothing here blocks the build; I proceed on best judgment + log it here. **Review at the end (or any time).**
 
 ## 🖼️ Frames to eyeball (visual taste check)
