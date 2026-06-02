@@ -2,9 +2,22 @@ import React, { useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { isCaptureMode } from '../devtest/captureMode';
+import { isCaptureMode, makeSeededRandom } from '../devtest/captureMode';
 
 const MAX_SPARKS = 1200;
+
+// S1-D-M2: capture-determinism for the spark burst. In capture mode the ember clock is
+// pinned to uTime=0 (see the useFrame below). A burst fired during gameplay stamps
+// aStartTime = live elapsed time (e.g. ~5s); with uTime=0 that makes t = uTime - aStartTime
+// strongly NEGATIVE, so the vertex shader takes the dead-spark branch and displaces every
+// spark into the clip void -> a capture frame shows NO spray (the M1-flagged bug). The fix:
+// when isCaptureMode(), stamp aStartTime at a fixed NEGATIVE phase so that at uTime=0 each
+// spark sits at t = +CAPTURE_SPARK_PHASE seconds into its life -> alive, mid-flight, visible
+// in-frame (not at the origin, not clipped). Velocities are drawn from a per-burst SEEDED
+// stream (keyed by a stable burst counter) instead of Math.random, so two capture runs are
+// byte-identical. Lifetime is fixed in capture (no RNG) so the mid-life scale is stable too.
+const CAPTURE_SPARK_PHASE = 0.30;   // seconds into each spark's life shown at uTime=0
+const CAPTURE_SPARK_LIFETIME = 0.85; // fixed lifetime in capture (no RNG); phase/lifetime ~= 0.35 (well alive)
 
 const vertexShader = `
   uniform float uTime;
@@ -69,6 +82,7 @@ export const GPUSparkSystem = () => {
   const meshRef = useRef(null);
   const clockRef = useRef(new THREE.Clock());
   const particleIndex = useRef(0);
+  const captureBurstSeq = useRef(0); // stable per-burst key for the seeded capture RNG
 
   // Instanced attribute array holders
   const [positions, velocities, colors, startTimes, lifetimes] = useMemo(() => {
@@ -108,7 +122,14 @@ export const GPUSparkSystem = () => {
       const lifeAttr = geom.getAttribute('aLifetime');
 
       const tempColor = new THREE.Color(colorHex);
-      const uTime = clockRef.current.getElapsedTime();
+      const capture = isCaptureMode();
+
+      // Capture: pin the burst to a fixed negative phase so each spark is mid-life at
+      // uTime=0 (alive + visible, not clipped), and draw velocities from a per-burst
+      // SEEDED stream so two runs are byte-identical. Gameplay: live clock + Math.random.
+      const burstSeq = captureBurstSeq.current++;
+      const rnd = capture ? makeSeededRandom(`gpu-spark-burst-${burstSeq}-${type}`) : Math.random;
+      const uTime = capture ? -CAPTURE_SPARK_PHASE : clockRef.current.getElapsedTime();
 
       const baseCount = Math.min(count, 120);
 
@@ -121,33 +142,34 @@ export const GPUSparkSystem = () => {
         posAttr.array[idx * 3 + 1] = pos.y;
         posAttr.array[idx * 3 + 2] = pos.z;
 
-        // Custom velocity profiles by hit type
-        let vx = (Math.random() - 0.5) * 5.0;
-        let vy = Math.random() * 6.0 + 2.0; // upward bias
-        let vz = (Math.random() - 0.5) * 5.0;
+        // Custom velocity profiles by hit type (seeded `rnd` is order-stable per burst
+        // in capture; identical to the old behavior in gameplay where rnd === Math.random)
+        let vx = (rnd() - 0.5) * 5.0;
+        let vy = rnd() * 6.0 + 2.0; // upward bias
+        let vz = (rnd() - 0.5) * 5.0;
 
         if (type === 'fireball') {
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 2.5 + Math.random() * 4.5;
+          const angle = rnd() * Math.PI * 2;
+          const speed = 2.5 + rnd() * 4.5;
           vx = Math.cos(angle) * speed;
-          vy = Math.random() * 5.0 + 3.0;
+          vy = rnd() * 5.0 + 3.0;
           vz = Math.sin(angle) * speed;
         } else if (type === 'iceball') {
           vx *= 0.5;
-          vy = Math.random() * 2.5 + 0.5;
+          vy = rnd() * 2.5 + 0.5;
           vz *= 0.5;
         } else if (type === 'lightning') {
           vx *= 2.0;
-          vy = Math.random() * 9.0 + 3.0;
+          vy = rnd() * 9.0 + 3.0;
           vz *= 2.0;
         } else if (type === 'arcane') {
           vx *= 0.3;
-          vy = Math.random() * 3.5 + 2.5;
+          vy = rnd() * 3.5 + 2.5;
           vz *= 0.3;
         } else if (type === 'physical') {
-          vx = (Math.random() - 0.5) * 6.5;
-          vy = Math.random() * 7.5 + 1.5;
-          vz = (Math.random() - 0.5) * 6.5;
+          vx = (rnd() - 0.5) * 6.5;
+          vy = rnd() * 7.5 + 1.5;
+          vz = (rnd() - 0.5) * 6.5;
         }
 
         velAttr.array[idx * 3] = vx;
@@ -159,9 +181,10 @@ export const GPUSparkSystem = () => {
         colAttr.array[idx * 3 + 1] = tempColor.g;
         colAttr.array[idx * 3 + 2] = tempColor.b;
 
-        // Time and lifetime bounds
+        // Time and lifetime bounds. Capture uses a fixed lifetime (no RNG) so the
+        // mid-life scale is stable; at uTime=0 the spark sits CAPTURE_SPARK_PHASE into it.
         startAttr.array[idx] = uTime;
-        lifeAttr.array[idx] = 0.35 + Math.random() * 0.55; // 0.35 - 0.9s duration
+        lifeAttr.array[idx] = capture ? CAPTURE_SPARK_LIFETIME : 0.35 + rnd() * 0.55; // 0.35 - 0.9s duration
       }
 
       // Mark WebGL buffer segments for dynamic buffer uploads

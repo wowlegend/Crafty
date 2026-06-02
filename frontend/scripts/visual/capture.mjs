@@ -90,7 +90,13 @@ async function main() {
     await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
     await delay(1500);
 
-    // menu (title screen — pointer still unlocked, auto-lock suppressed by capture mode)
+    // menu (title screen — pointer still unlocked, auto-lock suppressed by capture mode).
+    // The title now hosts a live 3D Crafty Hero mini-canvas (lazy chunk + WebGL); wait for
+    // it to actually mount + present a settled (capture-frozen) frame so `menu.png` is
+    // deterministic and never screenshots the 2D Suspense fallback.
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 15000 });
+    await flushFrames(page, 10);
+    await delay(900);
     await page.screenshot({ path: resolve(OUT, 'menu.png') });
     console.log('captured menu');
 
@@ -136,6 +142,17 @@ async function main() {
     await delay(1800); // boss mounts + freezes + mood/lighting lerp completes
     await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
     console.log('captured boss-closeup');
+
+    // spell-cast (S1-D-M2): a deterministic FROZEN fireball cast in the sky studio that
+    // gates + reveals the spell VFX look — rune-circle telegraph + mid-flight projectile
+    // with its stretch-trail + a seeded GPU spark spray/shockwave at the impact point.
+    // The magic clock is frozen in capture so the cast holds its placed pose; the seeded
+    // spark burst + the GPUSparkSystem capture-phase fix make the spray render at uTime=0.
+    await page.evaluate(() => window.__craftyTest.call('spawnSpellCast'));
+    await flushFrames(page, 8);
+    await delay(1200); // cast injects + telegraph/projectile/sparks settle into the frozen pose
+    await page.screenshot({ path: resolve(OUT, 'spell-cast.png') });
+    console.log('captured spell-cast');
 
     // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay
     // driven via the test bridge. Wait for fonts to finish loading so the Lilita/
@@ -190,6 +207,21 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
     console.log('captured achievements-open');
+
+    // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the
+    // standalone studio overlay (fixed camera + explore-day lighting + post-stack) with its
+    // idle animation FROZEN by capture mode, so the frame is deterministic. This is the
+    // human-eyeball + baseline gate for the mascot look (controller baselines it after
+    // Kevin's review) — until then it is INTENTIONALLY omitted from diff.test.js STATES, so
+    // it does not assert a regression baseline. The studio is its own R3F Canvas mounted over
+    // the (mob-free, capture-mode) world; we dismiss the achievements panel first for a clean mount.
+    await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
+    await page.evaluate(() => window.__craftyTest.call('showMascot'));
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 8000 });
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'title-mascot.png') });
+    console.log('captured title-mascot');
   } finally {
     await browser.close();
     server.kill('SIGTERM');

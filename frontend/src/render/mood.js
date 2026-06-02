@@ -19,6 +19,35 @@ export const MOOD_SCALARS = {
   obsidian: { ambientIntensity: 0.38, sunIntensity: 0.35, fogDensity: 0.0200, fillIntensity: 0.85, sunPos: [-50, 30, -50] },
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// S1-D-M3: THE MAGIC-HOUR COLOUR SCRIPT (per-mood grade — Kevin taste-gate).
+//
+// This replaces the old GLOBAL static grade (HueSaturation 0.22 + BrightnessContrast
+// 0.04/0.08) with a per-mood grade lerped on the continuous `mood`. It is delivered
+// through the EXISTING composer effects (HueSaturation + BrightnessContrast), driven by
+// the sampled-mood `grade` block below via refs in GameScene's <MoodGradeDriver>.
+//
+// DESIGN INTENT (premium, NOT candy):
+//   explore  = MAGIC-HOUR — warm, gently LIFTED shadows (brightness +), tasteful (not
+//              blown) saturation, soft contrast. The signature premium-warm read.
+//   dusk     = cooler + slightly CRUSHED shadows (brightness −), a touch more contrast,
+//              saturation pulled back so the mood is moodier, not gaudy.
+//   obsidian = near-MONO desaturated, crushed shadows, dramatic contrast (boss dread).
+//
+// TUNING KNOBS (eyeball the re-captured explore frame, then nudge these):
+//   saturation  HueSaturation.saturation  — colour intensity. Higher = punchier; too
+//               high reads "candy". Explore 0.20 is the premium ceiling.
+//   brightness  BrightnessContrast.brightness — shadow LIFT (+) / crush (−). The
+//               magic-hour "lift" is explore's +0.05; obsidian crushes to −0.06.
+//   contrast    BrightnessContrast.contrast — tonal punch. Dusk/obsidian add drama.
+// The effect ranges are clamped/blended in MoodGradeDriver; all three are SAFE to retune
+// without touching the shader. Capture-safe: mood is snapped in capture so grade is stable.
+export const MOOD_GRADE = {
+  explore:  { saturation: 0.20, brightness: 0.05, contrast: 0.06 }, // magic-hour: warm, lifted, tasteful
+  dusk:     { saturation: 0.10, brightness: -0.02, contrast: 0.12 }, // cooler, slightly crushed, more punch
+  obsidian: { saturation: -0.45, brightness: -0.06, contrast: 0.18 }, // near-mono, crushed, dramatic
+};
+
 // Per-state colour roles (mapped from palette tokens).
 const ROLE = { ambient: 'skyMid', sun: 'sun', fog: 'fog' };
 // Fill light colour per state (explore: cool sky; dusk: hero-accent; obsidian: magic-red).
@@ -40,10 +69,13 @@ for (const s of STATES) {
 }
 
 // Reusable result scratch (mutated each call — do not retain references across frames).
+// `grade` carries the per-mood magic-hour colour script (saturation/brightness/contrast),
+// consumed by GameScene's <MoodGradeDriver> to drive HueSaturation + BrightnessContrast.
 const _out = {
   ambient: new THREE.Color(), sun: new THREE.Color(), fog: new THREE.Color(), fill: new THREE.Color(),
   skyTop: new THREE.Color(), skyMid: new THREE.Color(), skyHorizon: new THREE.Color(),
   ambientIntensity: 0, sunIntensity: 0, fogDensity: 0, fillIntensity: 0, sunPos: [0, 0, 0],
+  grade: { saturation: 0, brightness: 0, contrast: 0 },
 };
 
 const lerp = THREE.MathUtils.lerp;
@@ -75,5 +107,10 @@ export function sampleMood(mood) {
   _out.sunPos[0] = lerp(sa.sunPos[0], sb.sunPos[0], t);
   _out.sunPos[1] = lerp(sa.sunPos[1], sb.sunPos[1], t);
   _out.sunPos[2] = lerp(sa.sunPos[2], sb.sunPos[2], t);
+  // Magic-hour colour script (per-mood grade) — lerped on the same fraction t.
+  const ga = MOOD_GRADE[a], gb = MOOD_GRADE[b];
+  _out.grade.saturation = lerp(ga.saturation, gb.saturation, t);
+  _out.grade.brightness = lerp(ga.brightness, gb.brightness, t);
+  _out.grade.contrast = lerp(ga.contrast, gb.contrast, t);
   return _out;
 }

@@ -4,7 +4,12 @@ import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open'];
+// S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
+// cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
+// "Crafty Hero" brand-face studio frame — direction B; the A/C mockups were deleted; gem-glow
+// boosted per Kevin), and `menu` (now embeds a live mini-canvas of the Crafty Hero, so it
+// legitimately changed — re-baselined with the mascot). All asserted as regression baselines below.
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 
