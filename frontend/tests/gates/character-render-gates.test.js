@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { TIERS } from '../../src/render/quality.js';
 
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
@@ -43,5 +44,24 @@ describe('M2b static gates', () => {
     expect(guardIdx).toBeGreaterThan(-1);
     expect(moveIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(moveIdx); // capture guard precedes the movement write
+  });
+});
+
+describe('character ink outline is tier-independent (locked-look regression guard)', () => {
+  // BUG (Kevin caught 2026-06-02): mob/boss/pet/prop inverted-hull <Outlines> appeared at
+  // spawn then vanished mid-session. Root cause: every outline site gates on the quality
+  // tier's `charOutline`, and the in-game PerformanceMonitor.onDecline ratchets the tier
+  // ONE-WAY toward `low` under FPS pressure (more mobs => lower FPS). With low.charOutline
+  // false, the signature ink contour unmounted on every entity, permanently for the session.
+  //
+  // FIX + DECISION: the ink outline is the LOCKED character render language (S1-B-M2b) and is
+  // CHEAP (one backface mesh per object). The perf budget at `low` is recovered from the
+  // genuinely-expensive toggles (ao/godRays/shadowMapSize/dprCap/renderDistance/outlineWorldEdge),
+  // NOT from the character outline. So charOutline must be TRUE at every tier — never a
+  // perf-downgrade casualty. (charRim — the fresnel onBeforeCompile patch — stays high-only.)
+  it('charOutline is ON at every quality tier (never dropped by a perf downgrade)', () => {
+    for (const tier of ['low', 'med', 'high']) {
+      expect(TIERS[tier].charOutline, `${tier}.charOutline must be true (tier-independent signature ink outline)`).toBe(true);
+    }
   });
 });
