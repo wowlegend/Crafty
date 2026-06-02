@@ -187,6 +187,7 @@ function GameApp({ experienceSystem }) {
       const store = useGameStore.getState();
       store.setDangerLevel(0);
       store.setHudHidden(true); // clean character-studio card: suppress HUD + its toast
+      store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
       store.setTimeOfDay(0.5); // flattering midday
       const SX = 0, SZ = -8, SY = 140; // far above the ~y53 terrain so even the distant
       // terrain horizon falls >37.5° (half the 75° vFOV) below a level camera and
@@ -213,6 +214,7 @@ function GameApp({ experienceSystem }) {
     registerTestHook('spawnBossCloseup', () => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
+      store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5);
       // Clear the character-closeup chest so it can't leak into this frame. (The
@@ -238,6 +240,7 @@ function GameApp({ experienceSystem }) {
     registerTestHook('spawnSpellCast', () => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
+      store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5); // flattering midday so the additive VFX reads against sky
       useGameStore.setState({ treasureChestsList: [] });
@@ -294,10 +297,12 @@ function GameApp({ experienceSystem }) {
       exitCaptureMode();
       useGameStore.getState().setCaptureMode(false);
       useGameStore.getState().setHudHidden(false);
+      useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
     });
     // Open a modal (inventory/crafting) for the visual gate. DEV-only.
     registerTestHook('openModal', (which = 'inventory') => {
       const store = useGameStore.getState();
+      store.setCaptureStudio(false); // modal OVER the explore world is an in-world frame -> motes on
       if (which === 'inventory') store.setShowInventory(true);
       else if (which === 'crafting') store.setShowCrafting(true);
       else if (which === 'settings') store.setShowSettings(true);
@@ -307,7 +312,10 @@ function GameApp({ experienceSystem }) {
     // is useState inside useInputManager (not the store), so we drive the local
     // setter directly. useState setters are identity-stable, so capturing it in
     // this []-dep effect is safe.
-    registerTestHook('openAchievements', () => setShowAchievements?.(true));
+    registerTestHook('openAchievements', () => {
+      useGameStore.getState().setCaptureStudio(false); // panel OVER the explore world -> motes on
+      setShowAchievements?.(true);
+    });
     installTestBridge();
   }, []);
 
