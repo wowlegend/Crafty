@@ -1006,7 +1006,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
     );
 });
 
-export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager }) => {
+export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager, onOpenCredits }) => {
     const gameState = useGameStore();
     const t = useT();
     return (
@@ -1080,6 +1080,16 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             className="w-full gap-2"
                         >
                             <MapIcon width={18} height={18} strokeWidth={2.5} aria-hidden /> Manage Worlds
+                        </Button>
+                    )}
+                    {onOpenCredits && (
+                        <Button
+                            variant="secondary"
+                            size="md"
+                            onClick={onOpenCredits}
+                            className="w-full gap-2"
+                        >
+                            <Icon name="heart" size={18} className="flex-none" /> {t('credits.button')}
                         </Button>
                     )}
                     <Button

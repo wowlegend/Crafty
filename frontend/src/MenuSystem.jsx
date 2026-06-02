@@ -8,6 +8,7 @@ import {
   SettingsPanel
 } from './ui/GamePanels';
 import { Icon } from './ui/primitives/index.js';
+import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
 import { TradingInterface } from './SimplifiedNPCSystem';
 import { AuthModal } from './AuthComponents';
@@ -160,6 +161,10 @@ export function MenuSystem({
               gameState.setShowWorldManager(true);
               setIsPointerLocked(false);
             }}
+            onOpenCredits={() => {
+              gameState.setShowSettings(false);
+              gameState.setShowCredits(true);
+            }}
             showStats={showStats}
             setShowStats={setShowStats}
           />
@@ -169,6 +174,15 @@ export function MenuSystem({
             gameState={gameState}
             onWorldLoad={gameState.loadWorldData}
             onClose={() => gameState.setShowWorldManager(false)}
+          />
+        )}
+        {gameState.showCredits && (
+          <CreditsScreen
+            onClose={() => {
+              gameState.setShowCredits(false);
+              if (gameState.requestPointerLock) gameState.requestPointerLock();
+              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+            }}
           />
         )}
       </AnimatePresence>

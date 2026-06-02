@@ -236,6 +236,8 @@ function GameApp({ experienceSystem }) {
       const store = useGameStore.getState();
       if (which === 'inventory') store.setShowInventory(true);
       else if (which === 'crafting') store.setShowCrafting(true);
+      else if (which === 'settings') store.setShowSettings(true);
+      else if (which === 'credits') store.setShowCredits(true);
     });
     // Open the Achievements panel for the visual gate. DEV-only. `showAchievements`
     // is useState inside useInputManager (not the store), so we drive the local

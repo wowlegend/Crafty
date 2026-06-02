@@ -520,6 +520,9 @@ export const useGameStore = create((set, get) => ({
     showWorldManager: false,
     setShowWorldManager: (show) => set((state) => ({ showWorldManager: typeof show === 'function' ? show(state.showWorldManager) : show })),
 
+    showCredits: false,
+    setShowCredits: (show) => set((state) => ({ showCredits: typeof show === 'function' ? show(state.showCredits) : show })),
+
     isDay: true,
     setIsDay: (isDayArg) => set((state) => ({ isDay: typeof isDayArg === 'function' ? isDayArg(state.isDay) : isDayArg })),
 
