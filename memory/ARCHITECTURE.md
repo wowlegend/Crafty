@@ -2,6 +2,8 @@
 
 > ⚠️ **Doc-reality caveat (2026-05-31):** the blueprint below is the pre-initiative Gemini-3.5-Flash self-description; the S0 audit found several "SOTA / verified" claims over-stated and parts of the architecture framing wrong (e.g. the miniplex ECS is **load-bearing for mobs/loot/XP, NOT vestigial**). Until this file is rewritten against reality, ground truth = git `main` + `REALITY-AUDIT-2026-05-30.md` + `SOTA-INITIATIVE.md` + `docs/superpowers/specs/`. The full reality-rewrite is a deferred task.
 
+> **S2-A-M1 architectural addition (2026-06-02):** an **input-abstraction layer** now exists — `src/input/inputState.js` is the single intent source-of-truth (`getInput()`/`setIntent`/`setActive`) that all player combat verbs gate on, decoupling KB+mouse from a future touch layer (`active` replaces scattered `document.pointerLockElement`). New pure combat helpers live in `src/combat/` (`cone.js` `isPointInCone`, `ribbonIndices.js`). Melee now hits the boss (was spell-only); boss `bossActive` is a single-source store value. NOTE: `InputManager.jsx` is a 2nd input path not yet migrated onto `inputState` (S2-A-M2+ cleanup).
+
 ## Project Overview
 
 A 3D browser game built with React and Three.js, featuring Minecraft-style gameplay with block building, magic system, NPCs, and procedural terrain generation.
