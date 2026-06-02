@@ -1,4 +1,9 @@
-import { Settings, X, ChevronRight, Compass } from 'lucide-react';
+import {
+  Settings, X, ChevronRight, Compass,
+  Trophy, Gift, Lock, Check, AlertTriangle, Skull, Sun, Moon, CloudRain,
+  Snowflake, Home, Globe, Backpack, Footprints, Sparkles, PartyPopper,
+  ArrowRight, Building2, Dumbbell, Gem, Landmark, Hammer, Heart, Bug,
+} from 'lucide-react';
 import { GAME_ICONS } from './gameIcons.js';
 
 // Icon primitive (S1C-M1): flat-2-tone GAME-SEMANTIC icons + lucide app-chrome.
@@ -13,6 +18,30 @@ const CHROME = {
   close: X,
   chevron: ChevronRight,
   compass: Compass,
+  trophy: Trophy,
+  gift: Gift,
+  lock: Lock,
+  check: Check,
+  warning: AlertTriangle,
+  skull: Skull,
+  sun: Sun,
+  moon: Moon,
+  rain: CloudRain,
+  snow: Snowflake,
+  home: Home,
+  globe: Globe,
+  backpack: Backpack,
+  footprints: Footprints,
+  sparkles: Sparkles,
+  party: PartyPopper,
+  'arrow-right': ArrowRight,
+  building: Building2,
+  strength: Dumbbell,
+  'gem-chip': Gem,
+  landmark: Landmark,
+  hammer: Hammer,
+  heart: Heart,
+  bug: Bug,
 };
 
 // Friendly name -> baked game-icon key (keys exactly as in gameIcons.js).
@@ -60,6 +89,32 @@ const GAME_NAMES = {
   health: 'health-normal',
   water: 'water-drop',
   mana: 'water-drop',
+  // M3 additions (filled game-content glyphs).
+  crown: 'crown',
+  dragon: 'dragon-head',
+  spider: 'spider-face',
+  eye: 'eyeball',
+  pig: 'pig',
+  cow: 'cow',
+  emerald: 'emerald',
+  diamond: 'cut-diamond',
+  hide: 'animal-hide',
+  leather: 'animal-hide',
+  string: 'wool',
+  wool: 'wool',
+  ore: 'ore',
+  nugget: 'ore',
+  zombie: 'shambling-zombie',
+  trophy: 'trophy-cup',
+  'chest-closed': 'locked-chest',
+  treasure: 'locked-chest',
+  'chest-open': 'open-treasure-chest',
+  wizard: 'pointy-hat',
+  mascot: 'pointy-hat',
+  arrow: 'arrow-cluster',
+  bone: 'crossed-bones',
+  pearl: 'glowing-artifact',
+  artifact: 'glowing-artifact',
 };
 
 export function Icon({ name, size = 20, strokeWidth = 2.5, className, ...props }) {
