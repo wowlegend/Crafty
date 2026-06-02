@@ -54,7 +54,14 @@ The "make it a game" core. Every piece is grounded in a verified-real system and
 | A8 | **Input-abstraction layer** | A `getInputState()` intent layer every verb gates on (NOT `pointerLockElement`). Enables the future touch layer + every Aspect's verbs. | net-new (small, foundational) |
 | A9 | **Real-device perf number + gate** | A profiling pass + `AdaptiveDpr`/`frameloop='demand'`/per-tier branches; a machine-checkable FPS target on a mid iPad. The audit's #1 risk — unblocks tuning *everything* and is a hard prerequisite for ELEMANCER. | `quality.js` tiers |
 
-**S2-A exit criteria:** the loop is fun + cohesive + persistent on its own (a playtest passes §1's metric with NO Aspect yet), `test:unit` + `test:visual` green, a real FPS number exists, and the four (empty) Aspect trees are wired and saved.
+**Audit fold-in (from `memory/REALITY-AUDIT-S1-2026-06-02.md` — the S1→S2 reality audit sharpened S2-A with evidence):**
+- **A3 is now a COMPREHENSIVE save fix**, not just "the save bug": `saveGame`/`loadWorldData` currently serialize **none** of level/XP/totalXP, attributes, equipment, talents/spellLevels, **chest inventories**, or derived maxHealth/maxMana; position is hardcoded; and **there is no live save trigger**. A3 = a complete, local-first, live-triggered autosave covering all progression + world state, recomputing derived caps on load.
+- **A9 gains a hard prerequisite — wire the dead tier config:** `TIERS.renderDistance` and `TIERS.weather` are **dead** (low renders the same 81 chunks as high; WeatherSystem ignores the tier, allocates per-frame, and fires ~600 raycasts/frame in a storm). Low must actually shed these (+ hoist the alloc + early-out when clear) **before** an FPS number is meaningful.
+- **A5 gains a `dangerLevel` bridge:** the boss-obsidian mood **never fires in prod** (no gameplay writer of `dangerLevel`). The night-SIEGE / boss-active / HP-pressure must drive `setDangerLevel(1..2)` → the obsidian atmosphere — tying the signature mood to the core loop.
+- **"Widen the gates" (QA cadence §7 Layer-4) is a concrete S2-A deliverable:** add forced-med + forced-low visual baselines + a tier-transition invariant test (high→med→low, assert signatures survive) + "config-key is actually consumed" static gates (so dead keys can't pass a monotonicity test while unwired). Plus the medium leak/stale-ref fixes (BloomSpikeDriver tier-change ref; damage-number CanvasTexture dispose-on-unmount; HUD/NPC raw-Tailwind→token).
+- The **tier-calibration cluster** (selectTier recalibration + `onIncline` recovery) stays **S3** (needs real-device profiling). Several doc over-claims were corrected (incl. a stale "Chrome caps deviceMemory ≤8" claim — `high` IS reachable on modern desktop Chrome).
+
+**S2-A exit criteria:** the loop is fun + cohesive + persistent on its own (a playtest passes §1's metric with NO Aspect yet), `test:unit` + `test:visual` green, a real FPS number exists (with low actually shedding renderDistance/weather), the save round-trips all progression + chests, and the four (empty) Aspect trees are wired and saved.
 
 ---
 
