@@ -17,74 +17,67 @@ import { EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
 // the output verbatim. If any of these change, the refactor changed behavior.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// === GOLDEN REFERENCE: the two CURRENT getItemRarity implementations =========
-// Replicated here byte-for-byte as a second guardrail: if someone "fixes" the
-// real source to match the other file, these golden copies + the imported
-// functions will disagree and the divergence tests below will fail loudly,
-// forcing a conscious decision rather than a silent behavior change.
-
-// SimplifiedNPCSystem.jsx (~line 1116) — has EXTRA emoji-fallback branches.
-const goldenNpcRarity = (itemName) => {
-  if (!itemName) return 'common';
-  if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment' || itemName.includes('💎')) return 'legendary';
-  if (itemName.includes('Iron') || itemName === 'Mana Potion' || itemName.includes('🗡️') || itemName.includes('🛡️') || itemName.includes('💧')) return 'epic';
-  if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef' || itemName.includes('❤️') || itemName.includes('🍖')) return 'rare';
-  return 'common';
-};
-
-// ui/GamePanels.jsx (~line 32) — NO emoji-fallback branches (word-match only).
-const goldenPanelsRarity = (itemName) => {
-  if (!itemName) return 'common';
-  if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment') return 'legendary';
-  if (itemName.includes('Iron') || itemName === 'Mana Potion') return 'epic';
-  if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef') return 'rare';
-  return 'common';
-};
+// === REGISTRY SINGLE SOURCE (post M3-T3) =====================================
+// Pre-T3 this block held byte-for-byte golden replicas of the TWO duplicated
+// getItemRarity implementations (NPC had emoji-fallback branches; GamePanels did
+// not), plus golden-replica equality tests, to catch a silent convergence of the
+// duplicates. M3-T3 INTENTIONALLY converged them: both SimplifiedNPCSystem and
+// ui/GamePanels now re-export getItemRarity from the single registry
+// (src/data/items.js). There is no longer a second implementation to replicate,
+// so the golden replicas + their equality tests are removed — their job (force a
+// conscious decision before convergence) is done; this commit IS that decision.
 
 // === The CURRENT LOOT/CHEST data (snapshotted from QuestSystem.jsx ~line 10) ==
-// Replicated as the "to-be-decoupled" reference so T3's data change is diff-visible
-// in this test file (the registry refactor will change item identity strings here).
+// Snapshotted as the decoupled reference so T3's data change is diff-visible in
+// this test file. POST M3-T3: item identity is emoji-free (the leading emoji was
+// decoupled from item identity and now lives only in the icon registry), so these
+// snapshots carry CLEAN names — the diff vs the pre-T3 snapshot proves the
+// decouple happened (an emoji strip and nothing else).
 const LOOT_TABLES_SNAPSHOT = {
   pig: [
-    { item: '🥩 Raw Porkchop', chance: 0.8, xp: 5 },
-    { item: '🦴 Bone', chance: 0.3, xp: 2 },
+    { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
+    { item: 'Bone', chance: 0.3, xp: 2 },
   ],
   cow: [
-    { item: '🥩 Raw Beef', chance: 0.8, xp: 5 },
-    { item: '🧶 Leather', chance: 0.5, xp: 3 },
-    { item: '🦴 Bone', chance: 0.2, xp: 2 },
+    { item: 'Raw Beef', chance: 0.8, xp: 5 },
+    { item: 'Leather', chance: 0.5, xp: 3 },
+    { item: 'Bone', chance: 0.2, xp: 2 },
   ],
   zombie: [
-    { item: '🧟 Rotten Flesh', chance: 0.7, xp: 3 },
-    { item: '🗡️ Iron Nugget', chance: 0.3, xp: 8 },
-    { item: '💎 Emerald', chance: 0.05, xp: 25 },
+    { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
+    { item: 'Iron Nugget', chance: 0.3, xp: 8 },
+    { item: 'Emerald', chance: 0.05, xp: 25 },
   ],
   skeleton: [
-    { item: '🦴 Bone', chance: 0.9, xp: 3 },
-    { item: '🏹 Arrow', chance: 0.6, xp: 4 },
-    { item: '🗡️ Iron Nugget', chance: 0.2, xp: 8 },
+    { item: 'Bone', chance: 0.9, xp: 3 },
+    { item: 'Arrow', chance: 0.6, xp: 4 },
+    { item: 'Iron Nugget', chance: 0.2, xp: 8 },
   ],
   spider: [
-    { item: '🕸️ Spider Eye', chance: 0.6, xp: 5 },
-    { item: '🧵 String', chance: 0.8, xp: 3 },
-    { item: '💜 Ender Pearl', chance: 0.03, xp: 30 },
+    { item: 'Spider Eye', chance: 0.6, xp: 5 },
+    { item: 'String', chance: 0.8, xp: 3 },
+    { item: 'Ender Pearl', chance: 0.03, xp: 30 },
   ],
 };
 
 const CHEST_LOOT_SNAPSHOT = [
-  { item: '❤️ Health Potion', chance: 0.6, effect: 'heal', value: 30 },
-  { item: '💙 Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-  { item: '⚔️ Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-  { item: '🛡️ Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
-  { item: '💎 Diamond', chance: 0.15, effect: 'xp', value: 50 },
-  { item: '👑 Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
-  { item: '🌟 Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
+  { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
+  { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
+  { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
+  { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
+  { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
+  { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
+  { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. getItemRarity — CURRENT per-item tier behavior (the captured reality)
-//    Format: [itemName, npcTier, panelsTier]. When the two columns differ, the
-//    cross-file divergence is intentional capture (see §3).
+// 1. getItemRarity — per-item tier behavior.
+//    Format: [itemName, npcTier, panelsTier]. POST M3-T3 both columns are IDENTICAL
+//    for every case — NPC + GamePanels re-export the same registry function, so the
+//    cross-file divergence (formerly captured here) no longer exists. The plain-name,
+//    equipment, and lowercase-block rows are UNCHANGED (the registry preserves them);
+//    only the emoji-prefixed rows change, reflecting the registry's deliberate FIX
+//    (it normalizes the leading emoji away, then resolves the clean name's tier).
 // ─────────────────────────────────────────────────────────────────────────────
 const RARITY_CASES = [
   // --- legendary (word "Diamond" / exact Golden Crown / exact Star Fragment) ---
@@ -126,32 +119,34 @@ const RARITY_CASES = [
   ['sand',          'common', 'common'],
   ['cobblestone',   'common', 'common'],
 
-  // --- emoji-prefixed loot names — where the two implementations DIVERGE -------
-  // NPC has emoji-fallback branches; GamePanels matches only the trailing word.
-  ['💎 Emerald',       'legendary', 'common'],    // *** DIVERGES (💎 fallback)
-  ['🛡️ Shield Scroll', 'epic',      'common'],    // *** DIVERGES (🛡️ fallback)
-  ['💧 Mana Potion',   'epic',      'common'],    // *** DIVERGES (💧 fallback)
-  ['❤️ Health Potion', 'rare',      'common'],    // *** DIVERGES (❤️ fallback)
-  ['🍖 Cooked',        'rare',      'common'],    // *** DIVERGES (🍖 fallback)
+  // --- emoji-prefixed loot names — registry normalizes the emoji, then resolves
+  //     the CLEAN name's registry tier. Both columns now AGREE (single source);
+  //     each row cites the M3-T3 FIX relative to the pre-T3 captured reality.
+  ['💎 Emerald',       'epic',      'epic'],      // FIX: was npc legendary / panels common -> registry epic (clean 'Emerald')
+  ['🛡️ Shield Scroll', 'rare',      'rare'],      // FIX: was npc epic / panels common -> registry rare (clean 'Shield Scroll')
+  ['💧 Mana Potion',   'epic',      'epic'],      // FIX: was npc epic / panels common -> registry epic (clean 'Mana Potion')
+  ['❤️ Health Potion', 'rare',      'rare'],      // FIX: was npc rare / panels common -> registry rare (clean 'Health Potion')
+  ['🍖 Cooked',        'common',    'common'],    // FIX: was npc rare / panels common -> registry common (clean 'Cooked' has no exact/substring match)
 
-  // --- emoji-prefixed names that AGREE (word-match wins on both) -------------
-  ['💎 Diamond',      'legendary', 'legendary'], // word "Diamond" matched on both
-  ['🗡️ Iron Nugget',  'epic',      'epic'],      // word "Iron" matched on both
-  ['🧶 Leather',      'rare',      'rare'],       // word "Leather" matched on both
+  // --- emoji-prefixed names that already AGREED (word-match wins) — unchanged --
+  ['💎 Diamond',      'legendary', 'legendary'], // unchanged: clean 'Diamond' -> legendary (word-match)
+  ['🗡️ Iron Nugget',  'epic',      'epic'],      // unchanged: clean 'Iron Nugget' -> epic (registry id; word "Iron")
+  ['🧶 Leather',      'rare',      'rare'],       // unchanged: clean 'Leather' -> rare (registry id; word "Leather")
 
-  // --- emoji-prefixed names where the EMOJI prefix breaks an exact-match -----
-  ['👑 Golden Crown', 'common', 'common'],  // !== 'Golden Crown' (has emoji prefix)
-  ['🌟 Star Fragment','common', 'common'],  // !== 'Star Fragment' (has emoji prefix)
-  ['💙 Mana Potion',  'common', 'common'],  // !== 'Mana Potion' (💙 not in NPC fallback)
-  ['⚔️ Damage Scroll','common', 'common'],
-  ['🥩 Raw Porkchop', 'common', 'common'],  // !== 'Cooked Porkchop'
-  ['🥩 Raw Beef',     'common', 'common'],  // !== 'Cooked Beef'
-  ['🦴 Bone',         'common', 'common'],
-  ['🧟 Rotten Flesh', 'common', 'common'],
-  ['🏹 Arrow',        'common', 'common'],
-  ['🕸️ Spider Eye',   'common', 'common'],
-  ['🧵 String',       'common', 'common'],
-  ['💜 Ender Pearl',  'common', 'common'],
+  // --- emoji-prefixed names where the EMOJI prefix FORMERLY broke an exact-match;
+  //     the registry strips it first, so they now resolve to the clean tier ------
+  ['👑 Golden Crown', 'legendary', 'legendary'], // FIX: emoji prefix broke exact-match -> common; registry strips -> 'Golden Crown' legendary
+  ['🌟 Star Fragment','legendary', 'legendary'], // FIX: was common at runtime -> registry strips -> 'Star Fragment' legendary
+  ['💙 Mana Potion',  'epic',      'epic'],       // FIX: was common (💙 not in NPC fallback) -> registry strips -> 'Mana Potion' epic
+  ['⚔️ Damage Scroll','rare',      'rare'],       // FIX: was common -> registry 'Damage Scroll' rare (buff consumable)
+  ['🥩 Raw Porkchop', 'common', 'common'],  // unchanged: clean 'Raw Porkchop' -> common
+  ['🥩 Raw Beef',     'common', 'common'],  // unchanged: clean 'Raw Beef' -> common
+  ['🦴 Bone',         'common', 'common'],  // unchanged
+  ['🧟 Rotten Flesh', 'common', 'common'],  // unchanged
+  ['🏹 Arrow',        'common', 'common'],  // unchanged
+  ['🕸️ Spider Eye',   'common', 'common'],  // unchanged
+  ['🧵 String',       'common', 'common'],  // unchanged
+  ['💜 Ender Pearl',  'epic',   'epic'],    // FIX: was common at runtime -> registry strips -> 'Ender Pearl' epic
 
   // --- empty / nullish ---
   ['',        'common', 'common'],
@@ -163,54 +158,38 @@ describe('characterization: getItemRarity (SimplifiedNPCSystem)', () => {
   it.each(RARITY_CASES)('NPC.getItemRarity(%j) === %j', (name, npcTier) => {
     expect(npcGetItemRarity(name)).toBe(npcTier);
   });
-
-  it('imported NPC impl matches the golden replica for every case', () => {
-    for (const [name] of RARITY_CASES) {
-      expect(npcGetItemRarity(name)).toBe(goldenNpcRarity(name));
-    }
-  });
 });
 
 describe('characterization: getItemRarity (ui/GamePanels)', () => {
   it.each(RARITY_CASES)('Panels.getItemRarity(%j) === %j', (name, _npc, panelsTier) => {
     expect(panelsGetItemRarity(name)).toBe(panelsTier);
   });
-
-  it('imported Panels impl matches the golden replica for every case', () => {
-    for (const [name] of RARITY_CASES) {
-      expect(panelsGetItemRarity(name)).toBe(goldenPanelsRarity(name));
-    }
-  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Cross-file DUPLICATION contract — they agree on plain names, DIVERGE on emoji
-//    The M3 registry must preserve (or consciously resolve) BOTH behaviors. This
-//    test documents EXACTLY where they agree and where they don't.
+// 2. Cross-file rarity contract — POST M3-T3 there is ONE source.
+//    Pre-T3 this captured the EXACT set of emoji-prefixed names where the two
+//    duplicated implementations DIVERGED (NPC had emoji-fallback branches that
+//    GamePanels lacked). M3-T3 resolved the cross-file divergence: both files
+//    re-export the single registry's getItemRarity, so the divergence set is now
+//    EMPTY and the two functions agree on EVERY case (they are literally the same
+//    function reference).
 // ─────────────────────────────────────────────────────────────────────────────
 describe('characterization: NPC vs GamePanels rarity duplication contract', () => {
-  it('agrees on all non-emoji item names', () => {
+  it('agrees on EVERY case — single registry source (no cross-file divergence)', () => {
     for (const [name] of RARITY_CASES) {
-      if (typeof name === 'string' && /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2300}-\u{23FF}]/u.test(name)) continue;
       expect(npcGetItemRarity(name)).toBe(panelsGetItemRarity(name));
     }
   });
 
-  it('captures the EXACT set of item names where the two implementations DIVERGE', () => {
+  it('has an EMPTY divergence set (M3-T3 collapsed the two impls into one registry)', () => {
     const divergent = RARITY_CASES
       .filter(([name]) => npcGetItemRarity(name) !== panelsGetItemRarity(name))
       .map(([name]) => ({ name, npc: npcGetItemRarity(name), panels: panelsGetItemRarity(name) }));
 
-    // SimplifiedNPCSystem has emoji-fallback branches (💎/🗡️/🛡️/💧/❤️/🍖) that
-    // GamePanels lacks. These 5 emoji-prefixed names are the WHOLE divergence set
-    // as of 2026-06-01. The registry refactor MUST consciously decide which wins.
-    expect(divergent).toEqual([
-      { name: '💎 Emerald',       npc: 'legendary', panels: 'common' },
-      { name: '🛡️ Shield Scroll', npc: 'epic',      panels: 'common' },
-      { name: '💧 Mana Potion',   npc: 'epic',      panels: 'common' },
-      { name: '❤️ Health Potion', npc: 'rare',      panels: 'common' },
-      { name: '🍖 Cooked',        npc: 'rare',      panels: 'common' },
-    ]);
+    // M3-T3 resolved the cross-file divergence — both files re-export the
+    // registry's getItemRarity (src/data/items.js), so nothing diverges.
+    expect(divergent).toEqual([]);
   });
 });
 
@@ -225,80 +204,80 @@ describe('characterization: LOOT_TABLES structure', () => {
         "cow": [
           {
             "chance": 0.8,
-            "item": "🥩 Raw Beef",
+            "item": "Raw Beef",
             "xp": 5,
           },
           {
             "chance": 0.5,
-            "item": "🧶 Leather",
+            "item": "Leather",
             "xp": 3,
           },
           {
             "chance": 0.2,
-            "item": "🦴 Bone",
+            "item": "Bone",
             "xp": 2,
           },
         ],
         "pig": [
           {
             "chance": 0.8,
-            "item": "🥩 Raw Porkchop",
+            "item": "Raw Porkchop",
             "xp": 5,
           },
           {
             "chance": 0.3,
-            "item": "🦴 Bone",
+            "item": "Bone",
             "xp": 2,
           },
         ],
         "skeleton": [
           {
             "chance": 0.9,
-            "item": "🦴 Bone",
+            "item": "Bone",
             "xp": 3,
           },
           {
             "chance": 0.6,
-            "item": "🏹 Arrow",
+            "item": "Arrow",
             "xp": 4,
           },
           {
             "chance": 0.2,
-            "item": "🗡️ Iron Nugget",
+            "item": "Iron Nugget",
             "xp": 8,
           },
         ],
         "spider": [
           {
             "chance": 0.6,
-            "item": "🕸️ Spider Eye",
+            "item": "Spider Eye",
             "xp": 5,
           },
           {
             "chance": 0.8,
-            "item": "🧵 String",
+            "item": "String",
             "xp": 3,
           },
           {
             "chance": 0.03,
-            "item": "💜 Ender Pearl",
+            "item": "Ender Pearl",
             "xp": 30,
           },
         ],
         "zombie": [
           {
             "chance": 0.7,
-            "item": "🧟 Rotten Flesh",
+            "item": "Rotten Flesh",
             "xp": 3,
           },
           {
             "chance": 0.3,
-            "item": "🗡️ Iron Nugget",
+            "item": "Iron Nugget",
             "xp": 8,
           },
           {
             "chance": 0.05,
-            "item": "💎 Emerald",
+            "item": "Emerald",
             "xp": 25,
           },
         ],
@@ -314,45 +293,45 @@ describe('characterization: CHEST_LOOT structure', () => {
         {
           "chance": 0.6,
           "effect": "heal",
-          "item": "❤️ Health Potion",
+          "item": "Health Potion",
           "value": 30,
         },
         {
           "chance": 0.5,
           "effect": "mana",
-          "item": "💙 Mana Potion",
+          "item": "Mana Potion",
           "value": 40,
         },
         {
           "chance": 0.3,
           "duration": 30,
           "effect": "buff_damage",
-          "item": "⚔️ Damage Scroll",
+          "item": "Damage Scroll",
           "value": 1.5,
         },
         {
           "chance": 0.25,
           "duration": 30,
           "effect": "buff_defense",
-          "item": "🛡️ Shield Scroll",
+          "item": "Shield Scroll",
           "value": 0.5,
         },
         {
           "chance": 0.15,
           "effect": "xp",
-          "item": "💎 Diamond",
+          "item": "Diamond",
           "value": 50,
         },
         {
           "chance": 0.05,
           "effect": "xp",
-          "item": "👑 Golden Crown",
+          "item": "Golden Crown",
           "value": 200,
         },
         {
           "chance": 0.08,
           "effect": "xp",
-          "item": "🌟 Star Fragment",
+          "item": "Star Fragment",
           "value": 100,
         },
       ]
@@ -361,58 +340,58 @@ describe('characterization: CHEST_LOOT structure', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. The emoji→item-name set to be DECOUPLED — every loot item whose identity
-//    string today carries a baked-in leading emoji. M3-T2/T3 will replace these
-//    with stable ids + a centralized emoji/icon registry; this is the inventory
-//    of strings that change. The snapshot makes the migration surface explicit.
+// 4. Emoji-free loot identity (DECOUPLE DONE) — POST M3-T3, NO loot/chest item
+//    identity string carries an emoji. Pre-T3 this block asserted the OPPOSITE
+//    (every name began with a baked-in emoji) + snapshotted the 18 emoji-named
+//    strings as the migration surface. The decouple is now complete: item identity
+//    is the clean name; the emoji's role (the icon glyph) moved to the registry.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('characterization: emoji-named loot identity strings (to be decoupled)', () => {
+describe('characterization: loot identity strings are emoji-free (decouple done)', () => {
   const allLootItemNames = [
     ...Object.values(LOOT_TABLES_SNAPSHOT).flat().map((e) => e.item),
     ...CHEST_LOOT_SNAPSHOT.map((e) => e.item),
   ];
 
-  // Leading-emoji = identity string starts with an emoji/pictographic codepoint.
-  const leadingEmoji = /^(?:[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2190}-\u{21FF}])\u{FE0F}?/u;
-  const emojiNamed = [...new Set(allLootItemNames)].filter((n) => leadingEmoji.test(n));
+  // Any emoji/pictographic codepoint anywhere in the identity string.
+  const anyEmoji = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2190}-\u{21FF}\u{FE0F}]/u;
 
-  it('every loot/chest item name currently begins with a baked-in emoji', () => {
-    // Documents that emoji IS the leading token of item identity today — the exact
-    // coupling M3 removes. If a name loses its emoji prefix, this fails (expected
-    // during the refactor — update the snapshot then).
+  it('no loot/chest item name contains an emoji', () => {
+    // Inverts the pre-T3 assertion: identity is now decoupled from emoji entirely.
     for (const name of allLootItemNames) {
-      expect(name, `item "${name}" should start with an emoji today`).toMatch(leadingEmoji);
+      expect(name, `item "${name}" must be emoji-free`).not.toMatch(anyEmoji);
     }
   });
 
-  it('snapshots the full set of unique emoji-named loot identity strings', () => {
-    expect(emojiNamed.sort()).toMatchInlineSnapshot(`
+  it('snapshots the full set of unique (clean) loot identity strings', () => {
+    const unique = [...new Set(allLootItemNames)].sort();
+    expect(unique).toMatchInlineSnapshot(`
       [
-        "⚔️ Damage Scroll",
-        "❤️ Health Potion",
-        "🌟 Star Fragment",
-        "🏹 Arrow",
-        "👑 Golden Crown",
-        "💎 Diamond",
-        "💎 Emerald",
-        "💙 Mana Potion",
-        "💜 Ender Pearl",
-        "🕸️ Spider Eye",
-        "🗡️ Iron Nugget",
-        "🛡️ Shield Scroll",
-        "🥩 Raw Beef",
-        "🥩 Raw Porkchop",
-        "🦴 Bone",
-        "🧟 Rotten Flesh",
-        "🧵 String",
-        "🧶 Leather",
+        "Arrow",
+        "Bone",
+        "Damage Scroll",
+        "Diamond",
+        "Emerald",
+        "Ender Pearl",
+        "Golden Crown",
+        "Health Potion",
+        "Iron Nugget",
+        "Leather",
+        "Mana Potion",
+        "Raw Beef",
+        "Raw Porkchop",
+        "Rotten Flesh",
+        "Shield Scroll",
+        "Spider Eye",
+        "Star Fragment",
+        "String",
       ]
     `);
   });
 
-  it('counts the emoji-named loot items (the M3 decouple surface)', () => {
-    // 18 unique emoji-prefixed identity strings across LOOT_TABLES + CHEST_LOOT.
-    expect(emojiNamed.length).toBe(18);
+  it('counts the unique loot item identity strings', () => {
+    // 18 unique identity strings across LOOT_TABLES + CHEST_LOOT (count unchanged
+    // by the decouple — only the emoji prefix was stripped, no items added/removed).
+    expect([...new Set(allLootItemNames)].length).toBe(18);
   });
 });
 

@@ -10,39 +10,39 @@ import { useT } from './i18n/i18n.js';
 
 const LOOT_TABLES = {
     pig: [
-        { item: '🥩 Raw Porkchop', chance: 0.8, xp: 5 },
-        { item: '🦴 Bone', chance: 0.3, xp: 2 },
+        { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
+        { item: 'Bone', chance: 0.3, xp: 2 },
     ],
     cow: [
-        { item: '🥩 Raw Beef', chance: 0.8, xp: 5 },
-        { item: '🧶 Leather', chance: 0.5, xp: 3 },
-        { item: '🦴 Bone', chance: 0.2, xp: 2 },
+        { item: 'Raw Beef', chance: 0.8, xp: 5 },
+        { item: 'Leather', chance: 0.5, xp: 3 },
+        { item: 'Bone', chance: 0.2, xp: 2 },
     ],
     zombie: [
-        { item: '🧟 Rotten Flesh', chance: 0.7, xp: 3 },
-        { item: '🗡️ Iron Nugget', chance: 0.3, xp: 8 },
-        { item: '💎 Emerald', chance: 0.05, xp: 25 },
+        { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
+        { item: 'Iron Nugget', chance: 0.3, xp: 8 },
+        { item: 'Emerald', chance: 0.05, xp: 25 },
     ],
     skeleton: [
-        { item: '🦴 Bone', chance: 0.9, xp: 3 },
-        { item: '🏹 Arrow', chance: 0.6, xp: 4 },
-        { item: '🗡️ Iron Nugget', chance: 0.2, xp: 8 },
+        { item: 'Bone', chance: 0.9, xp: 3 },
+        { item: 'Arrow', chance: 0.6, xp: 4 },
+        { item: 'Iron Nugget', chance: 0.2, xp: 8 },
     ],
     spider: [
-        { item: '🕸️ Spider Eye', chance: 0.6, xp: 5 },
-        { item: '🧵 String', chance: 0.8, xp: 3 },
-        { item: '💜 Ender Pearl', chance: 0.03, xp: 30 },
+        { item: 'Spider Eye', chance: 0.6, xp: 5 },
+        { item: 'String', chance: 0.8, xp: 3 },
+        { item: 'Ender Pearl', chance: 0.03, xp: 30 },
     ],
 };
 
 const CHEST_LOOT = [
-    { item: '❤️ Health Potion', chance: 0.6, effect: 'heal', value: 30 },
-    { item: '💙 Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-    { item: '⚔️ Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-    { item: '🛡️ Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
-    { item: '💎 Diamond', chance: 0.15, effect: 'xp', value: 50 },
-    { item: '👑 Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
-    { item: '🌟 Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
+    { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
+    { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
+    { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
+    { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
+    { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
+    { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
+    { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
 ];
 
 const QUEST_LIST = [

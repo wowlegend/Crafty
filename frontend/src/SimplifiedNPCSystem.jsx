@@ -10,6 +10,7 @@ import { GameMethods } from './GameMethods';
 import { isCaptureMode } from './devtest/captureMode';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
+import { getItemRarity } from './data/items.js';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -1113,32 +1114,12 @@ const XPOrbRender = ({ entity }) => {
 };
 
 // --- Physical Loot Helpers ---
-// Exported for the M3 loot/rarity characterization tests + the upcoming centralized
-// item registry (M3-T2/T3) to prove behavior-preservation. Export is behavior-neutral.
-export const getItemRarity = (itemName) => {
-  if (!itemName) return 'common';
-  if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment' || itemName.includes('💎')) return 'legendary';
-  if (itemName.includes('Iron') || itemName === 'Mana Potion' || itemName.includes('🗡️') || itemName.includes('🛡️') || itemName.includes('💧')) return 'epic';
-  if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef' || itemName.includes('❤️') || itemName.includes('🍖')) return 'rare';
-  return 'common';
-};
-
-const getEmoji = (itemName) => {
-  if (!itemName) return '📦';
-  const match = itemName.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\p{Emoji})/u);
-  if (match) return match[1];
-
-  if (itemName === 'Golden Crown') return '👑';
-  if (itemName.includes('Helmet')) return '🪖';
-  if (itemName.includes('Chestplate')) return '👕';
-  if (itemName.includes('Boots')) return '🥾';
-  if (itemName.includes('Shield')) return '🛡️';
-  if (itemName.includes('Sword') || itemName === 'sword') return '🗡️';
-  if (itemName === 'pickaxe') return '⛏️';
-  if (itemName === 'Health Potion') return '❤️';
-  if (itemName === 'Mana Potion') return '💧';
-  return '📦';
-};
+// Re-exported for the M3 loot/rarity characterization tests, which import
+// getItemRarity from this module. M3-T3 routed rarity through the single registry
+// in src/data/items.js (removing the local duplicate with its emoji-fallback
+// branches), so this re-export now resolves to the registry — resolving the prior
+// cross-file divergence with GamePanels (both re-export the same registry function).
+export { getItemRarity };
 
 // --- Loot Physics & Pull System ---
 const LootSystem = () => {
@@ -1214,10 +1195,9 @@ const LootSystem = () => {
 const LootDropRender = ({ entity }) => {
   const meshRef = useRef();
   const beamRef = useRef();
-  const spriteRef = useRef();
-  
+
   const rarity = useMemo(() => getItemRarity(entity.item), [entity.item]);
-  
+
   const color = useMemo(() => {
     switch (rarity) {
       case 'legendary': return '#f97316';
@@ -1228,40 +1208,22 @@ const LootDropRender = ({ entity }) => {
     }
   }, [rarity]);
 
-  const emoji = useMemo(() => getEmoji(entity.item), [entity.item]);
-
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 128, 128);
-    ctx.font = '72px Outfit, Inter, Impact';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 8;
-    ctx.fillText(emoji, 64, 64);
-    
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [emoji]);
+  // M3-T3: the loot-drop glyph sprite painted a leading emoji from the (now
+  // emoji-free) item name into a CanvasTexture. With item identity decoupled
+  // from emoji, that display is gone; the rarity-colored gem + beam carry the
+  // drop. A game-icon billboard for the drop is a T4 emoji-disposition concern
+  // (SVG Icon glyphs can't render into a Three.js CanvasTexture without a new
+  // texture pipeline — out of T3 scope).
 
   useFrame((state) => {
     if (!meshRef.current) return;
     meshRef.current.position.copy(entity.position);
     meshRef.current.rotation.y += 0.03;
     meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 2) * 0.2;
-    
+
     if (beamRef.current) {
       beamRef.current.position.copy(entity.position);
       beamRef.current.position.y += 1.5;
-    }
-    
-    if (spriteRef.current) {
-      spriteRef.current.position.copy(entity.position);
-      spriteRef.current.position.y += 0.8 + Math.sin(state.clock.getElapsedTime() * 4) * 0.08;
     }
   });
 
@@ -1269,30 +1231,26 @@ const LootDropRender = ({ entity }) => {
     <group>
       <mesh ref={meshRef} castShadow>
         <octahedronGeometry args={[0.25, 0]} />
-        <meshStandardMaterial 
-          color={color} 
-          emissive={color} 
-          emissiveIntensity={0.6} 
-          roughness={0.2} 
-          metalness={0.8} 
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.6}
+          roughness={0.2}
+          metalness={0.8}
         />
       </mesh>
-      
+
       <mesh ref={beamRef}>
         <cylinderGeometry args={[0.08, 0.25, 3.0, 8, 1, true]} />
-        <meshBasicMaterial 
-          color={color} 
-          transparent 
-          opacity={0.15} 
-          depthWrite={false} 
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.15}
+          depthWrite={false}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-
-      <sprite ref={spriteRef} scale={[0.8, 0.8, 1]}>
-        <spriteMaterial map={texture} transparent depthWrite={false} />
-      </sprite>
     </group>
   );
 };

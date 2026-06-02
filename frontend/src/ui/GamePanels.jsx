@@ -6,6 +6,14 @@ import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
+import { getItemRarity, getItemIcon } from '../data/items.js';
+
+// Re-exported for the M3 loot/rarity characterization tests, which import
+// getItemRarity from this module. M3-T3 routed rarity through the single registry
+// in src/data/items.js (removing the local emoji-less word-match implementation),
+// so this re-export now resolves to the registry — resolving the prior cross-file
+// divergence with SimplifiedNPCSystem (both re-export the same registry function).
+export { getItemRarity };
 
 // Paper-doll avatar voxel-body colors (CHARACTER ART, not chrome — mirrors the
 // PrimitivesShowcase inventory comp / mockup .ava). Inline hex is intentional here:
@@ -29,20 +37,7 @@ const getItemSlot = (itemName) => {
     return null;
 };
 
-// Exported for the M3 loot/rarity characterization tests + the upcoming centralized
-// item registry (M3-T2/T3) to prove behavior-preservation. Export is behavior-neutral.
-// NOTE: this implementation intentionally lacks the emoji-fallback branches present in
-// SimplifiedNPCSystem.getItemRarity — see loot-characterization.test.js for the captured
-// divergence on emoji-prefixed names.
-export const getItemRarity = (itemName) => {
-    if (!itemName) return 'common';
-    if (itemName.includes('Diamond') || itemName === 'Golden Crown' || itemName === 'Star Fragment') return 'legendary';
-    if (itemName.includes('Iron') || itemName === 'Mana Potion') return 'epic';
-    if (itemName.includes('Stone') || itemName.includes('Leather') || itemName === 'Health Potion' || itemName === 'Cooked Porkchop' || itemName === 'Cooked Beef') return 'rare';
-    return 'common';
-};
-
-// Rarity tier (from getItemRarity) → bold-flat token text color (for the inspector
+// Rarity tier (from getItemRarity) -> bold-flat token text color (for the inspector
 // rarity label). The TILE rarity fill is handled by the <Slot rarity> primitive.
 const RARITY_TEXT = {
     common: 'text-rarity-common',
@@ -51,58 +46,10 @@ const RARITY_TEXT = {
     legendary: 'text-rarity-legendary',
 };
 
-// Item name → Icon primitive name (the locked bold-flat game-icon set). Returns null
-// when nothing maps, so the caller can fall back to a color swatch (never crash).
-const getItemIcon = (itemName) => {
-    if (!itemName) return null;
-    if (itemName === 'Golden Crown') return 'helmet';
-    if (itemName.includes('Helmet')) return 'helmet';
-    if (itemName.includes('Chestplate')) return 'chest';
-    if (itemName.includes('Boots')) return 'boots';
-    if (itemName.includes('Shield')) return 'shield';
-    if (itemName.includes('Sword')) return 'sword';
-    if (itemName === 'sword') return 'sword';
-    if (itemName === 'pickaxe') return 'pickaxe';
-    if (itemName === 'Health Potion' || itemName === 'Mana Potion' || itemName.includes('Potion')) return 'potion';
-    if (itemName.includes('Porkchop') || itemName.includes('Beef')) return 'meat';
-    if (itemName === 'Apple') return 'apple';
-    if (itemName === 'diamond') return 'gem';
-    if (itemName === 'Star Fragment') return 'gem';
-    if (itemName === 'gold') return 'coins';
-    if (itemName === 'Scroll' || itemName.includes('Scroll')) return 'scroll';
-    if (itemName === 'Bow' || itemName.includes('Bow')) return 'bow';
-    if (itemName === 'Dagger' || itemName.includes('Dagger')) return 'dagger';
-    if (itemName === 'Mace' || itemName.includes('Mace')) return 'mace';
-    return null;
-};
-
-const getItemEmoji = (itemName) => {
-    if (!itemName) return '';
-    if (itemName === 'Golden Crown') return '👑';
-    if (itemName.includes('Helmet')) return '🪖';
-    if (itemName.includes('Chestplate')) return '👕';
-    if (itemName.includes('Boots')) return '🥾';
-    if (itemName.includes('Shield')) return '🛡️';
-    if (itemName.includes('Sword')) return '🗡️';
-    if (itemName === 'sword') return '🗡️';
-    if (itemName === 'pickaxe') return '⛏️';
-    if (itemName === 'Health Potion') return '❤️';
-    if (itemName === 'Mana Potion') return '💧';
-    if (itemName.includes('Porkchop') || itemName.includes('Beef')) return '🍖';
-    if (itemName === 'Apple') return '🍎';
-    if (itemName === 'Rotten Flesh') return '🧟';
-    if (itemName === 'diamond') return '💎';
-    if (itemName === 'gold') return '🪙';
-    if (itemName === 'iron') return '⛓️';
-    if (itemName === 'wood') return '🪵';
-    if (itemName === 'cobblestone') return '🪨';
-    if (itemName === 'sand') return '⏳';
-    return '📦';
-};
-
-// Renders a 2-tone game Icon for an item; if no icon maps, falls back to a small
-// color swatch (block color when known, else neutral) carrying the emoji — never
-// crashes on an unmapped item. `size` is the Icon px size.
+// Renders a 2-tone game Icon for an item via the central registry (src/data/items.js).
+// If no icon maps (unknown / raw block), falls back to a small color swatch (block
+// color when known, else neutral) with NO glyph — never crashes on an unmapped item.
+// `size` is the Icon px size.
 const ItemIcon = ({ itemName, size = 42 }) => {
     const icon = getItemIcon(itemName);
     if (icon) return <Icon name={icon} size={size} />;
@@ -111,11 +58,9 @@ const ItemIcon = ({ itemName, size = 42 }) => {
     return (
         <div
             className="rounded-sm grid place-items-center border-chrome border-ink"
-            style={{ width: swatch, height: swatch, backgroundColor: blockColor || 'rgb(var(--ui-slot))', fontSize: Math.round(swatch * 0.55) }}
+            style={{ width: swatch, height: swatch, backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
             title={itemName}
-        >
-            {getItemEmoji(itemName)}
-        </div>
+        />
     );
 };
 
@@ -555,7 +500,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         },
         {
             name: 'Iron Sword (Nuggets)',
-            pattern: [[null, '🗡️ Iron Nugget', null], [null, '🗡️ Iron Nugget', null], [null, 'wood', null]],
+            pattern: [[null, 'Iron Nugget', null], [null, 'Iron Nugget', null], [null, 'wood', null]],
             output: { 'Iron Sword': 1 }
         },
         {
@@ -582,7 +527,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Helmets
         {
             name: 'Leather Helmet',
-            pattern: [['🧶 Leather', '🧶 Leather', '🧶 Leather'], ['🧶 Leather', null, '🧶 Leather']],
+            pattern: [['Leather', 'Leather', 'Leather'], ['Leather', null, 'Leather']],
             output: { 'Leather Helmet': 1 }
         },
         {
@@ -603,7 +548,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Chestplates
         {
             name: 'Leather Chestplate',
-            pattern: [['🧶 Leather', null, '🧶 Leather'], ['🧶 Leather', '🧶 Leather', '🧶 Leather'], ['🧶 Leather', '🧶 Leather', '🧶 Leather']],
+            pattern: [['Leather', null, 'Leather'], ['Leather', 'Leather', 'Leather'], ['Leather', 'Leather', 'Leather']],
             output: { 'Leather Chestplate': 1 }
         },
         {
@@ -619,7 +564,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         // Boots
         {
             name: 'Leather Boots',
-            pattern: [['🧶 Leather', null, '🧶 Leather'], ['🧶 Leather', null, '🧶 Leather']],
+            pattern: [['Leather', null, 'Leather'], ['Leather', null, 'Leather']],
             output: { 'Leather Boots': 1 }
         },
         {
@@ -640,8 +585,8 @@ export const CraftingTable = React.memo(({ onClose }) => {
         },
         {
             name: 'Bow',
-            pattern: [['wood', '🧵 String', null], ['wood', null, '🧵 String'], ['wood', '🧵 String', null]],
-            output: { '🏹 Arrow': 5 }
+            pattern: [['wood', 'String', null], ['wood', null, 'String'], ['wood', 'String', null]],
+            output: { 'Arrow': 5 }
         },
         {
             name: 'Torch',
