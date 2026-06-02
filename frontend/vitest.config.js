@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react({ include: '**/*.{js,jsx}' })],
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.{js,jsx}'],
+    include: ['tests/**/*.test.{js,jsx}', 'src/**/*.test.{js,jsx}'],
     exclude: [...configDefaults.exclude, 'tests/visual/**'],
     testTimeout: 20000,
   },

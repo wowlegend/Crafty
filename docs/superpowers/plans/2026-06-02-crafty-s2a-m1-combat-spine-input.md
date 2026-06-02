@@ -1,6 +1,8 @@
 # S2-A-M1 — Combat Spine + Input Abstraction — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` to implement this plan task-by-task (Crafty convention: Opus implementer + spec-compliance + code-quality review per task; sequential where files are shared; TDD red-first; `npm run build` + `npm run test:unit` green per task; no Claude footer; subagent fix-ups = NEW commits). Steps use `- [ ]` for tracking.
+> STATUS: ✅ COMPLETE + MERGED (2026-06-02). 360 unit · build clean · visual 12/12. Final review APPROVE_WITH_NITS.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` to implement this plan task-by-task (Crafty convention: Opus implementer + spec-compliance + code-quality review per task; sequential where files are shared; TDD red-first; `npm run build` + `npm run test:unit` green per task; no Claude footer; subagent fix-ups = NEW commits). Steps use `- [x]` for tracking.
 
 **Goal:** Establish the input-abstraction layer every future verb + the touch layer will gate on, let melee hit the boss (close the combat asymmetry), and fix two combat-feel bugs (dead boss music + torn weapon ribbon) — all on the existing, verified combat verbs (dodge-roll + swing-cone already exist; this is wire/fix, not rebuild).
 
@@ -35,7 +37,7 @@
 
 The module owns ONE imperative intent object + a transient getter (no React state, no reactive subscription — read in `useFrame` via the getter). Source-agnostic: KB+mouse writes it now; a future virtual-joystick/touch layer writes the same intents. `active` replaces scattered `document.pointerLockElement` checks (the writer sets it from pointer-lock today).
 
-- [ ] **Step 1 — Write the failing test** (`src/input/inputState.test.js`, `// @vitest-environment node`):
+- [x] **Step 1 — Write the failing test** (`src/input/inputState.test.js`, `// @vitest-environment node`):
 ```js
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getInput, setIntent, setActive, resetInput, INTENT_KEYS } from './inputState.js';
@@ -64,10 +66,10 @@ describe('input intent module', () => {
   });
 });
 ```
-- [ ] **Step 2 — Run, verify FAIL:** `npx vitest run src/input/inputState.test.js` → FAIL (module missing).
-- [ ] **Step 3 — Implement `src/input/inputState.js`:** a module-singleton `_state` object with keys `INTENT_KEYS = ['moveF','moveB','moveL','moveR','jump','dodge','attack','cast','interact']` + `active:false`. `getInput()` returns the same `_state` ref (transient, alloc-free). `setIntent(key,val)` validates `key ∈ INTENT_KEYS` (throw on unknown) and sets `_state[key]=!!val`. `setActive(v)`, `resetInput()`. Pure JS, no imports. Document: "READ via getInput() in useFrame (never via React state); WRITE from the input source (Components listeners now; touch later)."
-- [ ] **Step 4 — Run, verify PASS:** `npx vitest run src/input/inputState.test.js` → PASS.
-- [ ] **Step 5 — Commit:** `git add src/input/inputState.js src/input/inputState.test.js && git commit -m "feat(s2a-m1): input-intent module (the abstraction layer)"`
+- [x] **Step 2 — Run, verify FAIL:** `npx vitest run src/input/inputState.test.js` → FAIL (module missing).
+- [x] **Step 3 — Implement `src/input/inputState.js`:** a module-singleton `_state` object with keys `INTENT_KEYS = ['moveF','moveB','moveL','moveR','jump','dodge','attack','cast','interact']` + `active:false`. `getInput()` returns the same `_state` ref (transient, alloc-free). `setIntent(key,val)` validates `key ∈ INTENT_KEYS` (throw on unknown) and sets `_state[key]=!!val`. `setActive(v)`, `resetInput()`. Pure JS, no imports. Document: "READ via getInput() in useFrame (never via React state); WRITE from the input source (Components listeners now; touch later)."
+- [x] **Step 4 — Run, verify PASS:** `npx vitest run src/input/inputState.test.js` → PASS.
+- [x] **Step 5 — Commit:** `git add src/input/inputState.js src/input/inputState.test.js && git commit -m "feat(s2a-m1): input-intent module (the abstraction layer)"`
 
 ## Task 2 — Route the existing verbs through intents (writer + reads)
 
@@ -75,11 +77,11 @@ describe('input intent module', () => {
 
 Behavior must stay identical (pure refactor + the boundary). Keydown/up + mousedown listeners become the WRITER (`setIntent('dodge',true)` etc.; `setActive(!!document.pointerLockElement)` on the pointerlockchange event — the ONE place pointer-lock is read). The verb code reads `const input = getInput()` in the loop and branches on `input.active`/`input.dodge`/`input.attack`/`input.cast` instead of raw keys + `document.pointerLockElement`.
 
-- [ ] **Step 1 — Write the failing static gate** (`tests/gates/input-abstraction-gates.test.js`): assert (a) `Components.jsx` imports from `./input/inputState`; (b) `document.pointerLockElement` appears ONLY in the writer (≤1 occurrence — the `setActive` line) — i.e. it is no longer scattered across movement/mouse/dodge; (c) the verb reads use `getInput()`. Use `readFileSync` + regex counts (Crafty static-gate style; see `tests/gates/atmosphere-isolation-gates.test.js`).
-- [ ] **Step 2 — Run, verify FAIL** (`document.pointerLockElement` currently appears multiple times): `npx vitest run tests/gates/input-abstraction-gates.test.js` → FAIL.
-- [ ] **Step 3 — Implement the refactor in `Components.jsx`:** wire listeners→`setIntent`/`setActive`; replace `isLocked`/`document.pointerLockElement` verb-gates with `getInput().active`; replace `dodgeRequested.current` + raw key checks with `getInput().dodge`; mouse handler reads nothing new (it already dispatches melee/cast — keep, but gate on `getInput().active` not `document.pointerLockElement`). Preserve game-loop isolation: read `getInput()` transiently in `useFrame`, never via React state. Preserve all timings/behavior.
-- [ ] **Step 4 — Run gate + full unit + build:** `npx vitest run && npm run build` → PASS (gate green; 332+ tests; build clean).
-- [ ] **Step 5 — Manual-parity note + commit:** add a one-line comment in `inputState.js` that touch will add a 2nd writer. `git add -A && git commit -m "refactor(s2a-m1): route movement/dodge/attack/cast through input intents (touch-ready)"`
+- [x] **Step 1 — Write the failing static gate** (`tests/gates/input-abstraction-gates.test.js`): assert (a) `Components.jsx` imports from `./input/inputState`; (b) `document.pointerLockElement` appears ONLY in the writer (≤1 occurrence — the `setActive` line) — i.e. it is no longer scattered across movement/mouse/dodge; (c) the verb reads use `getInput()`. Use `readFileSync` + regex counts (Crafty static-gate style; see `tests/gates/atmosphere-isolation-gates.test.js`).
+- [x] **Step 2 — Run, verify FAIL** (`document.pointerLockElement` currently appears multiple times): `npx vitest run tests/gates/input-abstraction-gates.test.js` → FAIL.
+- [x] **Step 3 — Implement the refactor in `Components.jsx`:** wire listeners→`setIntent`/`setActive`; replace `isLocked`/`document.pointerLockElement` verb-gates with `getInput().active`; replace `dodgeRequested.current` + raw key checks with `getInput().dodge`; mouse handler reads nothing new (it already dispatches melee/cast — keep, but gate on `getInput().active` not `document.pointerLockElement`). Preserve game-loop isolation: read `getInput()` transiently in `useFrame`, never via React state. Preserve all timings/behavior.
+- [x] **Step 4 — Run gate + full unit + build:** `npx vitest run && npm run build` → PASS (gate green; 332+ tests; build clean).
+- [x] **Step 5 — Manual-parity note + commit:** add a one-line comment in `inputState.js` that touch will add a 2nd writer. `git add -A && git commit -m "refactor(s2a-m1): route movement/dodge/attack/cast through input intents (touch-ready)"`
 
 ## Task 3 — Extract a pure cone test + let melee hit the boss (A2 gap)
 
@@ -87,11 +89,11 @@ Behavior must stay identical (pure refactor + the boundary). Keydown/up + moused
 
 The cone math currently lives inline in `checkMobsInMeleeCone`. Extract a pure `isPointInCone(originVec, dirVec, pointVec, range, angleRad)` → boolean (2D angle dot-product + vertical cutoff, matching the current test), unit-test it, have `checkMobsInMeleeCone` call it (behavior identical), then reuse it in the melee path to test the boss position.
 
-- [ ] **Step 1 — Write the failing test** (`src/combat/cone.test.js`, node env): `isPointInCone` — point dead-ahead in range → true; behind → false; in-range but outside the 90° arc → false; beyond range → false; directly at edge angle → boundary case. (Use plain `{x,y,z}`-like vectors or THREE.Vector3; keep the helper THREE-free if cheap.)
-- [ ] **Step 2 — Run, verify FAIL.**
-- [ ] **Step 3 — Implement `src/combat/cone.js`** with the exact math currently at `SimplifiedNPCSystem.jsx:959-976` (preserve the 2D xz dot-product + vertical cutoff + range). Refactor `checkMobsInMeleeCone` to call it (no behavior change). Then in `Components.jsx triggerMeleeAttack` (after the existing mob-cone hit loop): read `store.isBossActive?.()` + `store.getBossPosition?.()`; if active + boss position is `isPointInCone(playerPos, lookDir, bossVec, range, angleRad)`, call `store.damageBoss(damage)` (mirror the spell boss path `EnhancedMagicSystem.jsx:495-513`) + the same crit shake/SFX the mob-hit path uses.
-- [ ] **Step 4 — Run unit + build:** `npx vitest run && npm run build` → PASS. (Behavioral check is covered by the cone unit test + the static reuse; in-engine boss-melee is verified manually by Kevin or a later capture.)
-- [ ] **Step 5 — Commit:** `git add -A && git commit -m "feat(s2a-m1): melee can hit the boss (pure cone helper + boss-cone branch)"`
+- [x] **Step 1 — Write the failing test** (`src/combat/cone.test.js`, node env): `isPointInCone` — point dead-ahead in range → true; behind → false; in-range but outside the 90° arc → false; beyond range → false; directly at edge angle → boundary case. (Use plain `{x,y,z}`-like vectors or THREE.Vector3; keep the helper THREE-free if cheap.)
+- [x] **Step 2 — Run, verify FAIL.**
+- [x] **Step 3 — Implement `src/combat/cone.js`** with the exact math currently at `SimplifiedNPCSystem.jsx:959-976` (preserve the 2D xz dot-product + vertical cutoff + range). Refactor `checkMobsInMeleeCone` to call it (no behavior change). Then in `Components.jsx triggerMeleeAttack` (after the existing mob-cone hit loop): read `store.isBossActive?.()` + `store.getBossPosition?.()`; if active + boss position is `isPointInCone(playerPos, lookDir, bossVec, range, angleRad)`, call `store.damageBoss(damage)` (mirror the spell boss path `EnhancedMagicSystem.jsx:495-513`) + the same crit shake/SFX the mob-hit path uses.
+- [x] **Step 4 — Run unit + build:** `npx vitest run && npm run build` → PASS. (Behavioral check is covered by the cone unit test + the static reuse; in-engine boss-melee is verified manually by Kevin or a later capture.)
+- [x] **Step 5 — Commit:** `git add -A && git commit -m "feat(s2a-m1): melee can hit the boss (pure cone helper + boss-cone branch)"`
 
 ## Task 4 — Combat-feel fix: boss-music key sync (A1)
 
@@ -99,11 +101,11 @@ The cone math currently lives inline in `checkMobsInMeleeCone`. Extract a pure `
 
 `SoundManager.jsx:40` reads `useGameStore(s => s.bossActive)` (a value) but it's never written (only the local `useState` + the `isBossActive()` fn exist). Add/confirm a store `bossActive` boolean + `setBossActive(v)`; write `true` on boss spawn and `false` on despawn in `AdvancedGameFeatures` (alongside the existing local state).
 
-- [ ] **Step 1 — Write the failing test** (`tests/store/bossActive.test.js`): `useGameStore.getState().bossActive` defaults false; `setBossActive(true)` → `bossActive===true`; assert `isBossActive()` and `bossActive` agree after the setter (single source of truth). Verify FAIL if the value/setter is missing.
-- [ ] **Step 2 — Run, verify FAIL.**
-- [ ] **Step 3 — Implement:** add `bossActive:false` + `setBossActive:(v)=>set({bossActive:!!v})` to the store (if absent); make `isBossActive()` read the same `bossActive` value (single source). In `AdvancedGameFeatures.jsx`, call `useGameStore.getState().setBossActive(true)` when the boss spawns (`AdvancedGameFeatures.jsx:100` level≥5 trigger / line ~167 `isBossActive` publish) and `false` on death/despawn.
-- [ ] **Step 4 — Run unit + build → PASS.**
-- [ ] **Step 5 — Commit:** `git add -A && git commit -m "fix(s2a-m1): sync boss-active to the store key SoundManager reads (boss music now plays)"`
+- [x] **Step 1 — Write the failing test** (`tests/store/bossActive.test.js`): `useGameStore.getState().bossActive` defaults false; `setBossActive(true)` → `bossActive===true`; assert `isBossActive()` and `bossActive` agree after the setter (single source of truth). Verify FAIL if the value/setter is missing.
+- [x] **Step 2 — Run, verify FAIL.**
+- [x] **Step 3 — Implement:** add `bossActive:false` + `setBossActive:(v)=>set({bossActive:!!v})` to the store (if absent); make `isBossActive()` read the same `bossActive` value (single source). In `AdvancedGameFeatures.jsx`, call `useGameStore.getState().setBossActive(true)` when the boss spawns (`AdvancedGameFeatures.jsx:100` level≥5 trigger / line ~167 `isBossActive` publish) and `false` on death/despawn.
+- [x] **Step 4 — Run unit + build → PASS.**
+- [x] **Step 5 — Commit:** `git add -A && git commit -m "fix(s2a-m1): sync boss-active to the store key SoundManager reads (boss music now plays)"`
 
 ## Task 5 — Combat-feel fix: ribbon weapon-trail index (A1)
 
@@ -111,17 +113,17 @@ The cone math currently lives inline in `checkMobsInMeleeCone`. Extract a pure `
 
 The loop at `Components.jsx:988-995` writes `indices[i*6+2]` twice and leaves `indices[i*6+5]` as 0. Extract the index builder to a pure fn, test it, fix the bug there, and call it from Components.
 
-- [ ] **Step 1 — Write the failing test** (`src/combat/ribbonIndices.test.js`): `buildRibbonIndices(N)` returns `6*(N-1)` indices; for each quad `i`, the two triangles are `[2i, 2i+1, 2i+2]` and `[2i+1, 2i+3, 2i+2]`; assert **no `indices[i*6+5] === 0` for i>0** (the bug) and assert the exact expected array for `N=3`.
-- [ ] **Step 2 — Run, verify FAIL** (current code yields `[i*6+5]=0`).
-- [ ] **Step 3 — Implement `src/combat/ribbonIndices.js`** with the corrected loop (`indices[i*6+5] = 2*i+3`), call it from `Components.jsx` replacing the inline loop.
-- [ ] **Step 4 — Run unit + build → PASS.**
-- [ ] **Step 5 — Commit:** `git add -A && git commit -m "fix(s2a-m1): ribbon weapon-trail index (i*6+5) — no more torn 2nd triangle"`
+- [x] **Step 1 — Write the failing test** (`src/combat/ribbonIndices.test.js`): `buildRibbonIndices(N)` returns `6*(N-1)` indices; for each quad `i`, the two triangles are `[2i, 2i+1, 2i+2]` and `[2i+1, 2i+3, 2i+2]`; assert **no `indices[i*6+5] === 0` for i>0** (the bug) and assert the exact expected array for `N=3`.
+- [x] **Step 2 — Run, verify FAIL** (current code yields `[i*6+5]=0`).
+- [x] **Step 3 — Implement `src/combat/ribbonIndices.js`** with the corrected loop (`indices[i*6+5] = 2*i+3`), call it from `Components.jsx` replacing the inline loop.
+- [x] **Step 4 — Run unit + build → PASS.**
+- [x] **Step 5 — Commit:** `git add -A && git commit -m "fix(s2a-m1): ribbon weapon-trail index (i*6+5) — no more torn 2nd triangle"`
 
 ## Task 6 — Milestone wrap
 
-- [ ] Flip plan checkboxes; whole-branch review (spec-compliance + code-quality, Crafty convention).
-- [ ] `npm run test:unit` (all green, count up by the new tests) + `npm run build` clean + `npm run test:visual` (12/12 — combat verbs aren't in capture states, so no re-baseline expected; confirm).
-- [ ] Update the 4-piece docs (ACTIVE_PLAN resume → S2-A-M2; CHANGELOG entry; ARCHITECTURE input-layer note; ROADMAP). Merge to `main` (no Claude footer). pre-compact-flush.
+- [x] Flip plan checkboxes; whole-branch review (spec-compliance + code-quality, Crafty convention).
+- [x] `npm run test:unit` (all green, count up by the new tests) + `npm run build` clean + `npm run test:visual` (12/12 — combat verbs aren't in capture states, so no re-baseline expected; confirm).
+- [x] Update the 4-piece docs (ACTIVE_PLAN resume → S2-A-M2; CHANGELOG entry; ARCHITECTURE input-layer note; ROADMAP). Merge to `main` (no Claude footer). pre-compact-flush.
 
 ---
 

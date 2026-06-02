@@ -4,6 +4,10 @@
 
 *(Updated via Session Archivist - May 23, 2026)*
 
+> **STATUS (2026-06-02):** **S1 COMPLETE** (art direction + render + UI + signatures, all merged). **S2 game-design SPEC'd + approved** (`docs/superpowers/specs/2026-06-02-crafty-s2-game-design-design.md` — foundation-first S2-A, then the four **Aspects**: Wildheart/Voidhand/Soulbind/Elemancer). **S1→S2 reality audit DONE** (`REALITY-AUDIT-S1-2026-06-02.md`). **S2-A-M1 (combat spine + input abstraction) DONE + merged** (input-intent module · melee-hits-boss · boss-music + ribbon fixes; 360 unit · visual 12/12). **NEXT: S2-A-M2** (comprehensive save + Aspect-tree progression + build axis) → M3 (core loop + stakes) → M4 (perf + gate hardening) → S2-B Aspects. QA cadence (spec §7): per-stream reality audits + widen-the-gates.
+
+
+
 ### Phase 19: WebGL2 Texture2DArray Voxel Texturing & Wind Foliage [COMPLETED]
 *Upgrading flat voxel coloring to high-resolution material batched arrays and dynamic wind-swayed foliage fields.*
 - [x] **WebGL2 Texture2DArray Atlas**: Replace basic vertex colors with a single `Texture2DArray` sampler with dynamic coordinates pre-baked into compact vertex attributes.

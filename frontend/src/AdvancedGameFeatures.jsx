@@ -164,7 +164,13 @@ export const useBossSystem = (playerLevel) => {
     useEffect(() => {
         useGameStore.setState({ damageBoss: damageBoss });
         useGameStore.setState({ getBossPosition: () => bossPositionRef.current });
-        useGameStore.setState({ isBossActive: () => bossActive });
+        // Publish boss-active lifecycle to the STORE value (single source of truth).
+        // This is the key SoundManager reads (`state.bossActive`) to start/stop the
+        // boss battle music, and the store's `isBossActive()` function now returns it
+        // too — so both paths stay in lockstep with the real boss lifecycle. Driven
+        // here because every transition (level>=5 spawn, death, dev force-spawn) routes
+        // through the local `bossActive` useState this effect is keyed on.
+        useGameStore.getState().setBossActive(bossActive);
         // Dev-only force-spawn for the boss-closeup visual fixture: drops the dragon at a
         // fixed sky-studio position with no level/HP gate. Tree-shaken from prod builds.
         if (import.meta.env.DEV) {
