@@ -39,8 +39,8 @@ export function MascotCraftyHero() {
     if (root.current) root.current.position.y = -0.1 + Math.sin(t * 1.6) * 0.045;
     if (hatTip.current) hatTip.current.rotation.z = Math.sin(t * 1.2) * 0.05;
     const pulse = 0.82 + Math.sin(t * 2.4) * 0.18;
-    if (gem.current) gem.current.material.emissiveIntensity = 5.5 * pulse;
-    if (gemCore.current) gemCore.current.material.emissiveIntensity = 6.5 * pulse;
+    if (gem.current) gem.current.material.emissiveIntensity = 8.5 * pulse;
+    if (gemCore.current) gemCore.current.material.emissiveIntensity = 11 * pulse;
   });
 
   // Centered at origin; ~2.7 tall incl. hat tip. Short/bulky: wide squat robe, stubby
@@ -120,8 +120,10 @@ export function MascotCraftyHero() {
       <Cube position={[1.02, 0.34, 0.34]} size={[0.19, 0.14, 0.19]} color={STAFF_HI} outline={0} />{/* upper wrap */}
       {/* Gem cradle (4 little prongs) + the glowing gem + a hot inner core */}
       <Cube position={[1.02, 1.5, 0.34]} size={[0.3, 0.16, 0.3]} color={STAFF_HI} />
-      <Emissive ref={gem} position={[1.02, 1.66, 0.34]} size={[0.36, 0.4, 0.36]} color={ARCANE} intensity={5.5} />
-      <Emissive ref={gemCore} position={[1.02, 1.66, 0.34]} size={[0.16, 0.18, 0.16]} color={ARCANE_HOT} intensity={6.5} />
+      <Emissive ref={gem} position={[1.02, 1.66, 0.34]} size={[0.4, 0.44, 0.4]} color={ARCANE} intensity={8.5} />
+      <Emissive ref={gemCore} position={[1.02, 1.66, 0.34]} size={[0.18, 0.2, 0.18]} color={ARCANE_HOT} intensity={11} />
+      {/* Localized arcane glow spill — stronger gem glow without lowering the shared studio bloom threshold (keeps eyes/body un-bloomed). Static -> capture-deterministic. */}
+      <pointLight position={[1.02, 1.66, 0.34]} color={ARCANE} intensity={2.8} distance={2.6} decay={2} />
     </group>
   );
 }

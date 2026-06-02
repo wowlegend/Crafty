@@ -4,21 +4,12 @@ import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
-// NOTE: `spell-cast` (S1-D-M2) is captured + verified deterministic, but its baseline is
-// INTENTIONALLY not committed by the implementer — it is the human eyeball + baseline gate
-// for the spell VFX look (the whole point of the state). Until the controller baselines
-// tests/visual/baseline/spell-cast.png, this one state reports missing-baseline (red); the
-// EXISTING 10 stay green. Once baselined it diffs like the rest.
-//
-// NOTE: `title-mascot` (S1-D-M4) is the chosen "Crafty Hero" brand-face studio frame that
-// the capture script ALSO produces (tests/visual/current/title-mascot.png). Direction B was
-// picked; the A/C mockups (MascotSparkFamiliar, MascotCraftGolem) were DELETED. Like
-// `spell-cast`, `title-mascot` is DELIBERATELY OMITTED from STATES below so it is NOT
-// asserted as a regression baseline yet — the controller eyeballs it + shows Kevin, then
-// baselines tests/visual/baseline/title-mascot.png once the mascot look is signed off.
-// NOTE: `menu` now embeds a live mini-canvas of the Crafty Hero (MenuSystem.jsx), so the
-// menu frame legitimately CHANGES with the mascot — re-baseline it on the same sign-off.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast'];
+// S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
+// cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
+// "Crafty Hero" brand-face studio frame — direction B; the A/C mockups were deleted; gem-glow
+// boosted per Kevin), and `menu` (now embeds a live mini-canvas of the Crafty Hero, so it
+// legitimately changed — re-baselined with the mascot). All asserted as regression baselines below.
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 
