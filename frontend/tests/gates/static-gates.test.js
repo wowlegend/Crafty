@@ -3,15 +3,17 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
 
 const SRC = resolve(process.cwd(), 'src');
-function walk(dir, acc = []) {
+function walk(dir, exts = ['.js', '.jsx'], acc = []) {
   for (const e of readdirSync(dir)) {
     const p = join(dir, e);
-    if (statSync(p).isDirectory()) walk(p, acc);
-    else if (['.js', '.jsx'].includes(extname(p))) acc.push(p);
+    if (statSync(p).isDirectory()) walk(p, exts, acc);
+    else if (exts.includes(extname(p))) acc.push(p);
   }
   return acc;
 }
 const FILES = walk(SRC);
+// Same walk, widened to include CSS — the zero-emoji gate must cover stylesheets too.
+const CSS_AND_JS_FILES = walk(SRC, ['.js', '.jsx', '.css']);
 // Emoji ranges (pictographic). Brand/HUD emoji are an AI-slop tell (S0 visual-quality#4).
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2B00}-\u{2BFF}]/u;
 const HEX = /#[0-9A-Fa-f]{6}\b/g;
@@ -47,9 +49,28 @@ describe('static gates', () => {
       .toMatch(/pow\(\s*texColor\.rgb\s*,\s*vec3\(\s*2\.2\s*\)\s*\)/);
   });
 
-  // DEFERRED HARD GATES (enabled by later plans). Documented so they are not
-  // silently forgotten; .todo keeps them visible in test output.
-  it.todo('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)');
+  // S1-C-M3 HARD GATE: zero emoji in src/. Emoji as brand/mascot/HUD/item markers
+  // are an AI-slop tell (S0 visual-quality#4); the bold-flat language uses the baked
+  // 2-tone game-icons + lucide outline set instead. M3 removed ALL emoji from src/;
+  // this gate keeps it that way — any future emoji in src/ fails CI.
+  //
+  // Walks src/**/*.{js,jsx,css} (NOT tests/) and counts matches of a COMPREHENSIVE
+  // pictographic/symbol regex. NO allowlist, no carve-outs: src/ must be genuinely
+  // clean. The regex is written with \u{...} escapes ONLY so this test file does not
+  // match itself. Ranges: emoji+symbols (1F000-1FAFF), misc-symbols/dingbats
+  // (2600-27BF), misc-symbols-and-arrows (2B00-2BFF), regional indicators
+  // (1F1E6-1F1FF), arrows-as-icons (2190-21FF), misc-technical incl. hourglass
+  // (2300-23FF), plus the emoji variation selector (FE0F) + ZWJ (200D).
+  const EMOJI_HARD =
+    /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{FE0F}\u{200D}]/gu;
+  it('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)', () => {
+    const offenders = [];
+    for (const f of CSS_AND_JS_FILES) {
+      const n = (readFileSync(f, 'utf8').match(EMOJI_HARD) || []).length;
+      if (n > 0) offenders.push(`${f.replace(SRC + '/', '')}:${n}`);
+    }
+    expect(offenders, `emoji found in src/ (file:count) — replace with the baked icon set:\n${offenders.join('\n')}`).toEqual([]);
+  });
 
   // S1-C-M2c HARD GATE: the in-game UI is a single bold-flat design language.
   // The two LEGACY CLASS-BASED languages M2 set out to eliminate —
