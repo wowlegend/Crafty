@@ -385,7 +385,14 @@ export const useGameStore = create((set, get) => ({
     setDamageBoss: (fn) => set({ damageBoss: fn }),
     getBossPosition: null,
     setGetBossPosition: (fn) => set({ getBossPosition: fn }),
-    isBossActive: null,
+    // Single source of truth for boss-active state. The VALUE `bossActive` is what
+    // SoundManager gates the boss battle music on (`state.bossActive`); the FUNCTION
+    // `isBossActive()` returns that SAME value, so callers reading either path can
+    // never diverge. `useBossSystem` drives both via `setBossActive`.
+    bossActive: false,
+    setBossActive: (v) => set({ bossActive: !!v }),
+    isBossActive: () => get().bossActive,
+    // Retained for backward compatibility (no longer the driver; prefer setBossActive).
     setIsBossActive: (fn) => set({ isBossActive: fn }),
     // Dev-only: visual-fixture force-spawn for the boss-closeup state (set by useBossSystem).
     forceBossSpawn: null,
