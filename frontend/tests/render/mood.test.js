@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { moodTarget, sampleMood, moodRef } from '../../src/render/mood.js';
+import { moodTarget, sampleMood, moodRef, MOOD_GRADE } from '../../src/render/mood.js';
 import { PALETTE } from '../../src/theme/tokens.js';
 
 describe('moodTarget', () => {
@@ -46,4 +46,35 @@ describe('sampleMood', () => {
     }
   });
   it('moodRef starts at 0', () => expect(moodRef.current).toBe(0));
+});
+
+// S1-D-M3: the per-mood magic-hour colour script.
+describe('sampleMood.grade (magic-hour colour script)', () => {
+  it('mood 0 grade = explore grade exactly', () => {
+    const g = sampleMood(0).grade;
+    expect(g.saturation).toBeCloseTo(MOOD_GRADE.explore.saturation, 6);
+    expect(g.brightness).toBeCloseTo(MOOD_GRADE.explore.brightness, 6);
+    expect(g.contrast).toBeCloseTo(MOOD_GRADE.explore.contrast, 6);
+  });
+  it('mood 2 grade = obsidian grade exactly', () => {
+    const g = sampleMood(2).grade;
+    expect(g.saturation).toBeCloseTo(MOOD_GRADE.obsidian.saturation, 6);
+    expect(g.brightness).toBeCloseTo(MOOD_GRADE.obsidian.brightness, 6);
+    expect(g.contrast).toBeCloseTo(MOOD_GRADE.obsidian.contrast, 6);
+  });
+  it('blends grade between states (mood 0.5 saturation is the explore↔dusk midpoint)', () => {
+    const g = sampleMood(0.5).grade;
+    const mid = (MOOD_GRADE.explore.saturation + MOOD_GRADE.dusk.saturation) / 2;
+    expect(g.saturation).toBeCloseTo(mid, 6);
+  });
+  it('explore is the most saturated + brightest (magic-hour premium-warm)', () => {
+    expect(MOOD_GRADE.explore.saturation).toBeGreaterThan(MOOD_GRADE.dusk.saturation);
+    expect(MOOD_GRADE.dusk.saturation).toBeGreaterThan(MOOD_GRADE.obsidian.saturation);
+    expect(MOOD_GRADE.explore.brightness).toBeGreaterThan(MOOD_GRADE.obsidian.brightness);
+  });
+  it('obsidian desaturates toward mono + crushes + adds contrast (boss dread)', () => {
+    expect(MOOD_GRADE.obsidian.saturation).toBeLessThan(0);   // desaturated
+    expect(MOOD_GRADE.obsidian.brightness).toBeLessThan(0);   // crushed shadows
+    expect(MOOD_GRADE.obsidian.contrast).toBeGreaterThan(MOOD_GRADE.explore.contrast);
+  });
 });

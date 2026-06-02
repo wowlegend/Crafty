@@ -6,9 +6,10 @@ import { useGameStore } from './store/useGameStore';
 import { PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, EffectComposerContext, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
-import { ToneMappingMode, BloomEffect } from 'postprocessing';
+import { ToneMappingMode, BloomEffect, HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
+import { LightMotes } from './render/LightMotes.jsx';
 import { moodRef, sampleMood } from './render/mood';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
@@ -86,6 +87,39 @@ const BloomSpikeDriver = () => {
       fx.intensity = THREE.MathUtils.lerp(fx.intensity, BLOOM_BASE, 0.25);
       if (Math.abs(fx.intensity - BLOOM_BASE) < 0.01) fx.intensity = BLOOM_BASE;
     }
+  });
+  return null;
+};
+
+// S1-D-M3: THE MAGIC-HOUR COLOUR SCRIPT driver. Replaces the old STATIC global grade
+// (HueSaturation 0.22 + BrightnessContrast 0.04/0.08) with a per-mood grade lerped on the
+// continuous `mood` (saturation/brightness/contrast live in mood.js MOOD_GRADE — the
+// tuning knobs). It reaches the live HueSaturationEffect + BrightnessContrastEffect through
+// the composer context (same one-time lookup as BloomSpikeDriver; ref-on-effect crashes in
+// this pkg version), then writes their uniforms each frame from sampleMood(moodRef).
+// Capture-safe: mood is SNAPPED in capture, so the grade is byte-stable. Cheap ref read —
+// no React state. NOTE: <HueSaturation>/<BrightnessContrast> below keep their explore-grade
+// initial props so the very first frame (before this driver resolves) already reads warm.
+const MoodGradeDriver = () => {
+  const ctx = useContext(EffectComposerContext);
+  const hueRef = useRef(null);
+  const bcRef = useRef(null);
+  useFrame(() => {
+    if ((!hueRef.current || !bcRef.current) && ctx && ctx.composer) {
+      for (const pass of ctx.composer.passes || []) {
+        const effects = pass && pass.effects;
+        if (!Array.isArray(effects)) continue;
+        for (const e of effects) {
+          if (!hueRef.current && e instanceof HueSaturationEffect) hueRef.current = e;
+          if (!bcRef.current && e instanceof BrightnessContrastEffect) bcRef.current = e;
+        }
+      }
+    }
+    const hue = hueRef.current, bc = bcRef.current;
+    if (!hue && !bc) return;
+    const g = sampleMood(moodRef.current).grade;
+    if (hue) hue.saturation = g.saturation;
+    if (bc) { bc.brightness = g.brightness; bc.contrast = g.contrast; }
   });
   return null;
 };
@@ -728,6 +762,10 @@ export function GameScene({
 
         <Atmosphere shadowConfig={shadowConfig} />
 
+        {/* S1-D-M3: always-on warm light motes (spec §5① "drifting light motes").
+            Tier-gated count; capture-frozen drift; mood-tinted. */}
+        <LightMotes count={q.moteCount} />
+
         <WeatherSystem />
 
         <PointerLockControls 
@@ -776,13 +814,17 @@ export function GameScene({
               />
             )}
             {q.godRays && sunMesh && (
-              <GodRays sun={sunMesh} samples={100} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
+              // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
+              // high 100 / med 60) to stay in med's perf envelope.
+              <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
             )}
-            {/* Subtle baseline tone grade (saturation + contrast pop). The warm
-                "magic-hour" tint is delivered by M2's palette-driven Atmosphere
-                (ambient/fog/sun in warm tokens), not a whole-image hue shift here. */}
-            <HueSaturation saturation={0.22} />
-            <BrightnessContrast brightness={0.04} contrast={0.08} />
+            {/* S1-D-M3 MAGIC-HOUR COLOUR SCRIPT: these two effects are now driven PER-MOOD
+                by <MoodGradeDriver> (saturation/brightness/contrast lerped on mood — knobs
+                in mood.js MOOD_GRADE). The props here are the EXPLORE-grade initial values
+                so the first frame already reads warm before the driver resolves the live
+                effect instances. Capture-safe (mood snapped in capture). */}
+            <HueSaturation saturation={0.20} />
+            <BrightnessContrast brightness={0.05} contrast={0.06} />
             <Bloom
               intensity={0.8}
               luminanceThreshold={1.0}
@@ -796,6 +838,7 @@ export function GameScene({
             {!isCaptureMode && <Noise opacity={0.01} />}
             <Vignette eskil={false} offset={0.45} darkness={0.35} />
             <BloomSpikeDriver />
+            <MoodGradeDriver />
           </EffectComposer>
           <Preload all />
         </Suspense>
