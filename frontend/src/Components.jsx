@@ -621,8 +621,19 @@ export const Player = ({ isWorldBuilt }) => {
     const nextVelX = desiredVelX + knockbackVelocity.current.x;
     const nextVelZ = desiredVelZ + knockbackVelocity.current.z;
 
+    // S1-D-M1: Non-blocking hitstop. While `hitstopUntil` is in the future, clamp the
+    // player's per-frame motion toward zero — a brief micro-freeze that reads as impact
+    // weight. Replaces the old main-thread busy-wait (which froze the whole tab). Cheap
+    // store read; 0 = inactive. Capture mode never reaches here (early return above).
+    const hitstopUntil = useGameStore.getState().hitstopUntil || 0;
+    const hitstopScale = performance.now() < hitstopUntil ? 0 : 1;
+
     // Calculate displacement vector
-    const displacement = new THREE.Vector3(nextVelX * delta, velocityY.current * delta, nextVelZ * delta);
+    const displacement = new THREE.Vector3(
+      nextVelX * delta * hitstopScale,
+      velocityY.current * delta * hitstopScale,
+      nextVelZ * delta * hitstopScale
+    );
 
     // Call Rapier WASM Kinematic collision sweeps
     const collider = rigidBodyRef.current.collider(0);

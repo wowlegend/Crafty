@@ -5,17 +5,16 @@ import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
+import { isCaptureMode } from './devtest/captureMode';
 import * as THREE from 'three';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
-  const [spellTrails, setSpellTrails] = useState([]);
   const [spellImpacts, setSpellImpacts] = useState([]);
   const [debuffs, setDebuffs] = useState([]);
   const projectileId = useRef(0);
-  const trailId = useRef(0);
   const impactId = useRef(0);
   const debuffId = useRef(0);
 
@@ -191,49 +190,58 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     }
   }, []);
 
-  const createSpellTrail = useCallback((startPos, direction, spell) => {
-    const trailPoints = [];
-    for (let i = 0; i < spell.trailLength; i++) {
-      const point = startPos.clone().add(
-        direction.clone().multiplyScalar(i * 0.2)
+  // S1-D-M1: Spell impacts now route through the SOTA shared GPU spark pool
+  // (`store.triggerGPUSparks`, the same 1200-spark instanced additive system melee uses)
+  // instead of mounting 25-40 per-instance React spheres. Each impact also: spikes Bloom,
+  // shakes the camera (harder on a mob KILL), and spawns ONE pooled shockwave-ring + one
+  // transient point-light (the lightweight `spellImpacts` entry below — no per-particle
+  // meshes). `wasKill` is passed by mob-hit callers so the kill gets a beefier shake.
+  const SPARK_PROFILE = useMemo(() => ({
+    // [sparkColor, count] per element — mirrors the melee wiring's per-type spray.
+    fireball:  ['#ff5500', 34],
+    iceball:   ['#00d2ff', 26],
+    lightning: ['#ffff66', 30],
+    arcane:    ['#d900ff', 28],
+  }), []);
+
+  const createSpellImpact = useCallback((position, spellType, wasKill = false) => {
+    const spell = SPELL_TYPES[spellType];
+    const store = useGameStore.getState();
+
+    // (1) GPU sparks — reuse the existing pool. The pool branches on the spell-type
+    // string for its velocity profile (fire = explosive ring, ice = tight shards,
+    // lightning = fast spray, arcane = swirl). uTime=0 in capture keeps it deterministic.
+    if (store.triggerGPUSparks) {
+      const [sparkColor, count] = SPARK_PROFILE[spellType] || ['#ffffff', 25];
+      store.triggerGPUSparks(
+        new THREE.Vector3(position.x, position.y, position.z),
+        sparkColor,
+        wasKill ? Math.round(count * 1.8) : count,
+        spellType
       );
-      trailPoints.push(point);
     }
 
-    const newTrail = {
-      id: trailId.current++,
-      type: spell.effect,
-      points: trailPoints,
-      color: spell.trailColor,
-      age: 0,
-      maxAge: 1000
-    };
+    // (2) Transient bloom-spike (~80ms) — the flash that sells the hit.
+    if (store.triggerBloomSpike) store.triggerBloomSpike(80);
 
-    setSpellTrails(prev => {
-      const maxTrails = 20;
-      const next = [...prev, newTrail];
-      return next.length > maxTrails ? next.slice(next.length - maxTrails) : next;
-    });
-  }, []);
+    // (3) Camera-shake — spells previously never shook. Harder on a kill. The shake loop
+    // is itself inert in capture mode (the player loop early-returns before reading it).
+    if (store.triggerCameraShake) store.triggerCameraShake(wasKill ? 0.8 : 0.4);
 
-  const createSpellImpact = useCallback((position, spellType) => {
-    const spell = SPELL_TYPES[spellType];
-
+    // (4) ONE pooled shockwave-ring + point-light pop. Lightweight transient: a single
+    // ring mesh that scales up + fades, and a brief point light. NO per-particle spheres.
     const newImpact = {
       id: impactId.current++,
       position: position.clone(),
       type: spellType,
-      effect: spell.effect,
       color: spell.color,
-      particleColor: spell.particleColor,
-      particleCount: spell.particleCount,
+      glowColor: spell.glowColor,
       age: 0,
-      maxAge: 2000
+      maxAge: 360
     };
+    setSpellImpacts(prev => (prev.length > 24 ? [...prev.slice(prev.length - 24), newImpact] : [...prev, newImpact]));
 
-    setSpellImpacts(prev => [...prev, newImpact]);
-
-    // Phase 11: Spatial Impact Sound
+    // Phase 11: Spatial Impact Sound (unchanged — gameplay/audio preserved).
     if (playSpatialSound) {
       playSpatialSound('magicHit', position, 1.0, 30);
       if (spellType === 'fireball') playSpatialSound('magicExplosion', position, 0.8, 50);
@@ -241,7 +249,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       playMagicHit();
       if (spellType === 'fireball') playMagicExplosion();
     }
-  }, [playSpatialSound, playMagicHit, playMagicExplosion]);
+  }, [SPELL_TYPES, SPARK_PROFILE, playSpatialSound, playMagicHit, playMagicExplosion]);
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
@@ -287,8 +295,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       projectilesRef.current.push(newProjectile);
       projectilesDirty.current = true;
 
-      createSpellTrail(startPos, direction, spell);
-
       if (window.playSpellCastSound) {
         window.playSpellCastSound(spellType);
       }
@@ -297,7 +303,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         GameMethods.grantXP(3);
       }
     }});
-  }, [SPELL_TYPES, createSpellTrail]);
+  }, [SPELL_TYPES]);
 
   useFrame((state, delta) => {
     const deltaMs = delta * 1000;
@@ -350,8 +356,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
           if (hitMob) {
             const spellConfig = SPELL_TYPES[projectile.type];
 
+            // damageMob returns the entity; health<=0 means this hit killed it, so the
+            // impact gets a beefier camera-shake + spark spray (S1-D-M1).
+            let wasKill = false;
             if (GameMethods.damageMob) {
-              GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type);
+              const hitEntity = GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type);
+              if (hitEntity && hitEntity.health <= 0) wasKill = true;
             }
 
             let willPierce = false;
@@ -387,7 +397,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
             }
 
             if (!willPierce) {
-              createSpellImpact(projectile.position, projectile.type);
+              createSpellImpact(projectile.position, projectile.type, wasKill);
               keep = false;
             }
 
@@ -431,21 +441,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       projectilesDirty.current = false;
     }
 
-    let trailsChanged = false;
+    // S1-D-M1: impacts are now lightweight transient ring+light pops (≤24 pooled), not
+    // 25-40 spheres each. Age them and prune the expired ones.
     let impactsChanged = false;
-
-    for (const trail of spellTrails) {
-      trail.age += deltaMs;
-      if (trail.age >= trail.maxAge) trailsChanged = true;
-    }
-
     for (const impact of spellImpacts) {
       impact.age += deltaMs;
       if (impact.age >= impact.maxAge) impactsChanged = true;
-    }
-
-    if (trailsChanged) {
-      setSpellTrails(prev => prev.filter(t => t.age < t.maxAge));
     }
     if (impactsChanged) {
       setSpellImpacts(prev => prev.filter(i => i.age < i.maxAge));
@@ -458,60 +459,73 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         <EnhancedSpellProjectile key={projectile.id} projectile={projectile} />
       ))}
 
-      {spellTrails.map(trail => (
-        <SpellTrail key={trail.id} trail={trail} />
-      ))}
-
       {spellImpacts.map(impact => (
-        <SpellImpact key={impact.id} impact={impact} />
+        <SpellImpactPop key={impact.id} impact={impact} />
       ))}
     </group>
   );
 });
 
+// Shared scratch objects for the stretch-billboard math (avoid per-frame allocs).
+const _trailDir = new THREE.Vector3();
+const _trailMid = new THREE.Vector3();
+const _trailQuat = new THREE.Quaternion();
+const _trailUp = new THREE.Vector3(0, 1, 0);
+
 const EnhancedSpellProjectile = React.memo(({ projectile }) => {
   const meshRef = useRef();
-  const particlesRef = useRef();
+  const trailRef = useRef();
 
   useFrame((state) => {
+    // Capture-determinism: in capture mode the projectile holds a frozen pose (no
+    // clock-driven pulse, no Math.random flicker, no velocity-derived trail stretch).
+    const capture = isCaptureMode();
+
     if (meshRef.current) {
       meshRef.current.position.copy(projectile.position);
 
-      switch (projectile.type) {
-        case 'fireball':
-          meshRef.current.rotation.x += 0.15;
-          meshRef.current.rotation.z += 0.1;
-          const firePulse = 1 + Math.sin(state.clock.elapsedTime * 8) * 0.3;
-          meshRef.current.scale.setScalar(firePulse);
-          break;
-        case 'iceball':
-          meshRef.current.rotation.y += 0.1;
-          const icePulse = 1 + Math.sin(state.clock.elapsedTime * 6) * 0.2;
-          meshRef.current.scale.setScalar(icePulse);
-          break;
-        case 'lightning':
-          meshRef.current.rotation.x += 0.1;
-          meshRef.current.rotation.z += 0.2;
-          const lightningFlicker = 0.8 + Math.random() * 0.4;
-          meshRef.current.scale.setScalar(lightningFlicker);
-          break;
-        case 'arcane':
-          meshRef.current.rotation.x += 0.2;
-          meshRef.current.rotation.y += 0.15;
-          const arcanePulse = 1 + Math.sin(state.clock.elapsedTime * 10) * 0.25;
-          meshRef.current.scale.setScalar(arcanePulse);
-          break;
+      if (!capture) {
+        switch (projectile.type) {
+          case 'fireball':
+            meshRef.current.rotation.x += 0.15;
+            meshRef.current.rotation.z += 0.1;
+            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 8) * 0.3);
+            break;
+          case 'iceball':
+            meshRef.current.rotation.y += 0.1;
+            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 6) * 0.2);
+            break;
+          case 'lightning':
+            meshRef.current.rotation.x += 0.1;
+            meshRef.current.rotation.z += 0.2;
+            meshRef.current.scale.setScalar(0.8 + Math.random() * 0.4);
+            break;
+          case 'arcane':
+            meshRef.current.rotation.x += 0.2;
+            meshRef.current.rotation.y += 0.15;
+            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 10) * 0.25);
+            break;
+        }
       }
     }
 
-    if (particlesRef.current) {
-      particlesRef.current.children.forEach((particle, index) => {
-        const trailPos = projectile.trailPositions[Math.max(0, projectile.trailPositions.length - 1 - index)];
-        if (trailPos) {
-          particle.position.copy(trailPos);
-          particle.scale.setScalar(Math.max(0.1, 1 - (index / projectile.trailPositions.length)));
-        }
-      });
+    // S1-D-M1: single velocity-STRETCH-BILLBOARD trail (one cylinder) instead of the old
+    // per-instance trail-sphere group (12-20 spheres/projectile). Oriented along the
+    // velocity vector, length scales with speed, trailing BEHIND the projectile head.
+    if (trailRef.current) {
+      const v = projectile.velocity;
+      const speed = Math.hypot(v.x, v.y, v.z);
+      if (speed > 0.001) {
+        _trailDir.set(v.x, v.y, v.z).multiplyScalar(1 / speed);
+        const len = Math.min(4.5, 0.5 + speed * 0.06);
+        // midpoint half a length behind the projectile head
+        _trailMid.copy(projectile.position).addScaledVector(_trailDir, -len * 0.5);
+        trailRef.current.position.copy(_trailMid);
+        // cylinder default axis is +Y; rotate it onto the (reversed) travel direction
+        _trailQuat.setFromUnitVectors(_trailUp, _trailDir);
+        trailRef.current.quaternion.copy(_trailQuat);
+        trailRef.current.scale.set(1, len, 1);
+      }
     }
   });
 
@@ -600,20 +614,19 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
         {renderMaterial()}
       </mesh>
 
-      <group ref={particlesRef}>
-        {projectile.trailPositions.slice(-projectile.particleCount).map((_, index) => (
-          <mesh key={index}>
-            <sphereGeometry args={[projectile.size * 0.25, 6, 6]} />
-            <meshStandardMaterial
-              color={projectile.particleColor}
-              emissive={projectile.particleColor}
-              emissiveIntensity={1.5}
-              transparent
-              opacity={0.6}
-            />
-          </mesh>
-        ))}
-      </group>
+      {/* S1-D-M1: single velocity-stretch-billboard trail (one additive cylinder,
+          oriented + scaled in useFrame) — replaces the old 12-20 trail-sphere group. */}
+      <mesh ref={trailRef}>
+        <cylinderGeometry args={[projectile.size * 0.22, projectile.size * 0.04, 1, 6, 1, true]} />
+        <meshBasicMaterial
+          color={projectile.trailColor}
+          transparent
+          opacity={0.45}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
       {projectile.type === 'fireball' && (
         <FireballAura projectile={projectile} />
@@ -675,193 +688,58 @@ const LightningEffect = React.memo(({ projectile }) => {
   );
 });
 
-const SpellTrail = React.memo(({ trail }) => {
-  const trailRef = useRef();
+// S1-D-M1: SpellImpactPop — the ONE pooled impact mesh that replaced the old
+// SpellImpact/ImpactParticle/Fire|Ice|Lightning|ArcaneImpactEffect slop (each cast used
+// to mount a sphere + `particleCount` ImpactParticle spheres + a per-element sub-effect
+// group = 25-40 meshes). The spark spray + flash now come from the GPU pool + bloom-spike;
+// this is just a fast-expanding additive shockwave RING that fades, plus a transient
+// point-light pop. Two objects total, lifetime ~360ms.
+//
+// Capture-safe: the GPU spark burst pushes to the clip void when uTime=0, the bloom-spike
+// driver no-ops in capture, and camera-shake is inert (player loop early-returns). This
+// ring ages off `impact.age` (advanced by the parent's useFrame deltaMs); in capture the
+// clock is frozen so age stays put — a stable frozen frame. No Math.random / clock reads.
+const SpellImpactPop = React.memo(({ impact }) => {
+  const ringRef = useRef();
+  const lightRef = useRef();
 
   useFrame(() => {
-    if (trailRef.current) {
-      const opacity = Math.max(0, 1 - (trail.age / trail.maxAge));
-      trailRef.current.material.opacity = opacity * 0.6;
+    const progress = Math.min(1, impact.age / impact.maxAge);
+    const eased = 1 - (1 - progress) * (1 - progress); // ease-out
+    if (ringRef.current) {
+      const scale = 0.4 + eased * 3.2;
+      ringRef.current.scale.set(scale, scale, scale);
+      ringRef.current.material.opacity = 0.85 * (1 - progress);
     }
-  });
-
-  return (
-    <group>
-      {trail.points.map((point, index) => (
-        <mesh key={index} position={point} ref={index === 0 ? trailRef : null}>
-          <sphereGeometry args={[0.05 * (1 - index / trail.points.length), 4, 4]} />
-          <meshBasicMaterial
-            color={trail.color}
-            transparent
-            opacity={0.6}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-});
-
-const SpellImpact = React.memo(({ impact }) => {
-  const impactRef = useRef();
-
-  useFrame((state) => {
-    if (impactRef.current) {
-      const progress = impact.age / impact.maxAge;
-      const scale = 1 + progress * 2;
-      const opacity = Math.max(0, 1 - progress);
-
-      impactRef.current.scale.setScalar(scale);
-      impactRef.current.material.opacity = opacity;
-
-      impactRef.current.rotation.y += 0.1;
+    if (lightRef.current) {
+      // Quick light pop: bright at t=0, gone by ~40% of lifetime.
+      lightRef.current.intensity = Math.max(0, 1 - progress / 0.4) * 14;
     }
   });
 
   return (
     <group position={impact.position}>
-      <mesh ref={impactRef}>
-        <sphereGeometry args={[0.5, 8, 8]} />
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        {/* flat additive ring on the ground plane (XZ), expands + fades */}
+        <ringGeometry args={[0.35, 0.55, 32]} />
         <meshBasicMaterial
-          color={impact.color}
+          color={impact.glowColor || impact.color}
           transparent
-          opacity={0.8}
+          opacity={0.85}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+          toneMapped={false}
         />
       </mesh>
-
-      {[...Array(impact.particleCount)].map((_, i) => (
-        <ImpactParticle
-          key={i}
-          impact={impact}
-          index={i}
-          total={impact.particleCount}
-        />
-      ))}
-
-      {impact.type === 'fireball' && <FireImpactEffect impact={impact} />}
-      {impact.type === 'iceball' && <IceImpactEffect impact={impact} />}
-      {impact.type === 'lightning' && <LightningImpactEffect impact={impact} />}
-      {impact.type === 'arcane' && <ArcaneImpactEffect impact={impact} />}
+      <pointLight
+        ref={lightRef}
+        color={impact.glowColor || impact.color}
+        intensity={14}
+        distance={9}
+        decay={2}
+      />
     </group>
-  );
-});
-
-const ImpactParticle = React.memo(({ impact, index, total }) => {
-  const particleRef = useRef();
-  const angle = (index / total) * Math.PI * 2;
-  const distance = 1 + Math.random();
-
-  useFrame(() => {
-    if (particleRef.current) {
-      const progress = impact.age / impact.maxAge;
-      const x = Math.cos(angle) * distance * progress;
-      const z = Math.sin(angle) * distance * progress;
-      const y = Math.sin(progress * Math.PI) * 0.5;
-
-      particleRef.current.position.set(x, y, z);
-      particleRef.current.scale.setScalar(Math.max(0, 1 - progress));
-    }
-  });
-
-  return (
-    <mesh ref={particleRef}>
-      <sphereGeometry args={[0.1, 4, 4]} />
-      <meshBasicMaterial
-        color={impact.particleColor}
-        transparent
-        opacity={0.7}
-      />
-    </mesh>
-  );
-});
-
-const FireImpactEffect = React.memo(({ impact }) => {
-  const fireRef = useRef();
-
-  useFrame((state) => {
-    if (fireRef.current) {
-      const flicker = 0.8 + Math.sin(state.clock.elapsedTime * 15) * 0.2;
-      fireRef.current.scale.setScalar(flicker);
-    }
-  });
-
-  return (
-    <mesh ref={fireRef} position={[0, 0.3, 0]}>
-      <cylinderGeometry args={[0.3, 0.1, 0.6, 6]} />
-      <meshBasicMaterial
-        color="#FF4500"
-        transparent
-        opacity={0.6}
-      />
-    </mesh>
-  );
-});
-
-const IceImpactEffect = React.memo(({ impact }) => {
-  return (
-    <group>
-      {[...Array(6)].map((_, i) => (
-        <mesh
-          key={i}
-          position={[
-            Math.cos((i / 6) * Math.PI * 2) * 0.5,
-            0,
-            Math.sin((i / 6) * Math.PI * 2) * 0.5
-          ]}
-          rotation={[0, (i / 6) * Math.PI * 2, 0]}
-        >
-          <coneGeometry args={[0.1, 0.4, 4]} />
-          <meshBasicMaterial
-            color="#87CEEB"
-            transparent
-            opacity={0.8}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-});
-
-const LightningImpactEffect = React.memo(({ impact }) => {
-  const lightningRef = useRef();
-
-  useFrame(() => {
-    if (lightningRef.current) {
-      lightningRef.current.visible = Math.random() > 0.5;
-    }
-  });
-
-  return (
-    <mesh ref={lightningRef} position={[0, 0.5, 0]}>
-      <cylinderGeometry args={[0.05, 0.05, 1, 4]} />
-      <meshBasicMaterial
-        color="#FFFF00"
-        transparent
-        opacity={0.9}
-      />
-    </mesh>
-  );
-});
-
-const ArcaneImpactEffect = React.memo(({ impact }) => {
-  const arcaneRef = useRef();
-
-  useFrame((state) => {
-    if (arcaneRef.current) {
-      arcaneRef.current.rotation.y += 0.15;
-      const pulse = 1 + Math.sin(state.clock.elapsedTime * 8) * 0.3;
-      arcaneRef.current.scale.setScalar(pulse);
-    }
-  });
-
-  return (
-    <mesh ref={arcaneRef}>
-      <torusGeometry args={[0.4, 0.1, 6, 8]} />
-      <meshBasicMaterial
-        color="#9932CC"
-        transparent
-        opacity={0.7}
-      />
-    </mesh>
   );
 });
 

@@ -829,10 +829,16 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
 
-      // Phase 9: Visceral Hitstop (micro-freeze for game feel)
-      const hitstopEnd = performance.now() + 35;
-      while (performance.now() < hitstopEnd) { /* hitstop busy wait */ }
-      
+      // Phase 9 / S1-D-M1: Visceral Hitstop (micro-freeze for game feel).
+      // Was a MAIN-THREAD BUSY-WAIT (a spin loop on the wall clock) that froze
+      // the entire tab — rendering, audio, AND input — for 35ms. Replaced with a
+      // non-blocking store flag: a `performance.now()` timestamp the player movement
+      // loop reads to clamp its motion toward zero for the window. Same felt micro-
+      // freeze, zero main-thread stall, and it benefits every damageMob caller
+      // (melee AND spells). Shorter window (28ms) since it's now a true motion dip,
+      // not a wall-clock stall stacked on top of frame time.
+      useGameStore.setState({ hitstopUntil: performance.now() + 28 });
+
       const store = useGameStore.getState();
       const isCrit = damage >= 40;
       if (store.triggerCameraShake) {

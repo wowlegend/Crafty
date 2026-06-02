@@ -310,6 +310,18 @@ export const useGameStore = create((set, get) => ({
     cameraShakeIntensity: 0,
     triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),
 
+    // S1-D-M1: Non-blocking hitstop. `damageMob` sets this to `performance.now() + ms`;
+    // the player movement loop clamps its motion toward zero while now < hitstopUntil.
+    // Replaces the old main-thread busy-wait. 0 = inactive (always in the past).
+    hitstopUntil: 0,
+
+    // S1-D-M1: Transient bloom-spike. Spell impacts set this to `performance.now() + ms`;
+    // a useFrame consumer in the EffectComposer drives the Bloom effect's intensity up
+    // for the window, then eases back to the baseline. 0 = inactive. `triggerBloomSpike`
+    // is the public hook (mirrors triggerCameraShake / triggerGPUSparks).
+    bloomSpikeUntil: 0,
+    triggerBloomSpike: (ms = 80) => set({ bloomSpikeUntil: performance.now() + ms }),
+
     checkCollision: null,
     setCheckCollision: (fn) => set({ checkCollision: fn }),
 
