@@ -177,3 +177,67 @@ describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
     expect(src, 'XP grant on cast must remain').toMatch(/grantXP/);
   });
 });
+
+// S1-D POLISH: the projectile + telegraph + impact read as PREMIUM ENERGY, not a flat
+// pastel ball. Static gates (source-text, GPU-free) for the structural outcome; the pixel
+// read is the controller's eyeball of current/spell-cast.png + the puppeteer visual gate.
+describe('S1-D-polish premium-energy spell read', () => {
+  // (P1) The projectile is now a LAYERED emissive energy body — a hot near-white inner
+  //      core plus a saturated element-colored outer glow shell — not a single sphere.
+  //      Both emissive layers must be toneMapped={false} so the bloom pass catches them
+  //      (the spec §3 bloom threshold 0.85 only blooms emissive/magic, not diffuse).
+  it('projectile renders a layered energy core (inner core + outer glow), bloom-catchable', () => {
+    const src = magic();
+    expect(src, 'a SpellProjectileCore (layered energy body) component must exist')
+      .toMatch(/const\s+SpellProjectileCore\b/);
+    // toneMapped={false} on the emissive layers so the additive bloom catches the energy.
+    expect(src, 'energy layers must opt out of tone-mapping so bloom catches them')
+      .toMatch(/toneMapped=\{false\}/);
+  });
+
+  // The per-element ENERGY identity is encoded as a config the core reads (hot inner +
+  // saturated outer + intensities), keeping fire/ice/lightning/arcane readable + distinct.
+  it('per-element energy profiles exist (hot inner core + saturated outer glow)', () => {
+    const src = magic();
+    expect(src, 'a per-element energy/core profile table must exist')
+      .toMatch(/ENERGY_PROFILE|CORE_PROFILE|coreColor/);
+    // Spec §4 magic palette anchors (saturated, emissive bloom sources).
+    expect(src, 'fire energy hue present').toMatch(/#FF7A3C|#FFB347|#FFE08A|#FF6A1A/i);
+    expect(src, 'ice energy hue present').toMatch(/#6FC8FF|#BFefff|#9FE4FF/i);
+    expect(src, 'lightning energy hue present').toMatch(/#FFE066|#FFF6C0|#CFE6FF/i);
+    expect(src, 'arcane energy hue present').toMatch(/#B36BFF|#E0B0FF|#D98AFF/i);
+  });
+
+  // (P2) The core's scale-flicker / turbulence is gated on capture: animated in gameplay,
+  //      FROZEN at a flattering static phase in capture so the regression frame is stable
+  //      AND looks good. No raw clock/Math.random read may escape the capture gate.
+  it('projectile energy turbulence is capture-gated (frozen flattering phase in capture)', () => {
+    const src = magic();
+    // The core component must consult isCaptureMode for its animated turbulence.
+    expect(src, 'energy core turbulence/flicker must gate on isCaptureMode')
+      .toMatch(/isCaptureMode\s*\(/);
+  });
+
+  // (P3) Impact "wow": the GPU spark spray count is richer at impact, and the impact stays
+  //      on the GPU pool + ONE pooled ring (no per-instance React-sphere spawns — the M1
+  //      anti-pattern). Assert the pooled SpellImpactPop is the only impact mesh path.
+  it('impact stays on the GPU pool + pooled ring (no per-instance sphere spawns)', () => {
+    const src = magic();
+    expect(src, 'impact must still drive the GPU spark pool').toMatch(/triggerGPUSparks\s*\(/);
+    expect(src, 'the single pooled impact mesh must remain').toMatch(/const\s+SpellImpactPop\b/);
+    // The deleted slop must stay deleted (re-assert, polish must not reintroduce it).
+    for (const name of ['ImpactParticle', 'FireImpactEffect', 'ArcaneImpactEffect']) {
+      expect(src, `${name} sphere slop must stay deleted`).not.toMatch(new RegExp(`const\\s+${name}\\b`));
+    }
+  });
+
+  // The richer spark spray must still pass per-element type strings (the pool branches on
+  // them for the velocity profile) and a per-element spark count.
+  it('impact spark spray is per-element + richer count', () => {
+    const src = magic();
+    expect(src, 'a per-element spark profile table must exist').toMatch(/SPARK_PROFILE/);
+    for (const t of ['fireball', 'iceball', 'lightning', 'arcane']) {
+      expect(src, `spark profile for ${t}`).toMatch(new RegExp(`['"\`]${t}['"\`]`));
+    }
+  });
+});

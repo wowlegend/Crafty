@@ -198,12 +198,18 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   // shakes the camera (harder on a mob KILL), and spawns ONE pooled shockwave-ring + one
   // transient point-light (the lightweight `spellImpacts` entry below — no per-particle
   // meshes). `wasKill` is passed by mob-hit callers so the kill gets a beefier shake.
+  // S1-D POLISH: richer impact spray. Brighter, hotter spark hues (matched to the
+  // projectile energy palette) + higher counts so the impact reads as a punchy burst of
+  // light, not a thin sprinkle. Still routed through the SAME 1200-spark GPU pool (no new
+  // per-instance React spheres) and capped at the pool's 120-per-burst ceiling. The pool
+  // branches on the type string for its velocity profile (fire ring / ice shards / fast
+  // lightning / arcane swirl); the count is multiplied 1.8x on a kill upstream.
   const SPARK_PROFILE = useMemo(() => ({
-    // [sparkColor, count] per element — mirrors the melee wiring's per-type spray.
-    fireball:  ['#ff5500', 34],
-    iceball:   ['#00d2ff', 26],
-    lightning: ['#ffff66', 30],
-    arcane:    ['#d900ff', 28],
+    // [sparkColor, count] per element.
+    fireball:  ['#FF7A1A', 52],
+    iceball:   ['#7FD8FF', 42],
+    lightning: ['#FFF0A0', 48],
+    arcane:    ['#C77DFF', 46],
   }), []);
 
   // S1-D-M2: cast TELEGRAPH — a flat additive rune-circle that flashes at the caster's
@@ -219,6 +225,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     const tele = {
       id: telegraphId.current++,
       position: position.clone(),
+      type: spellType, // S1-D POLISH: carry the element so the telegraph reads the energy palette
       // orient the rune-disc to face the cast direction (the projectile's travel normal)
       normal: normal ? normal.clone() : new THREE.Vector3(0, 0, -1),
       color: spell.color,
@@ -565,46 +572,97 @@ const _trailMid = new THREE.Vector3();
 const _trailQuat = new THREE.Quaternion();
 const _trailUp = new THREE.Vector3(0, 1, 0);
 
+// S1-D POLISH: per-element ENERGY identity. The old projectile was ONE flat emissive
+// sphere reading as a pastel ball. The premium-energy read is a LAYERED body: a hot,
+// near-white INNER CORE (the bright heart bloom blows out) wrapped in a saturated,
+// element-COLORED OUTER GLOW shell — both emissive + `toneMapped={false}` so the §3
+// bloom pass (threshold 0.85, emissive-only) catches them and they read as light, not
+// plastic. Hues are anchored to the spec §4 magic palette (fire #FF7A3C / ice #6FC8FF /
+// lightning #FFE066 / arcane #B36BFF), pushed hot at the core for a glowing heart.
+//
+// `capturePhase` is the frozen turbulence phase shown in capture mode: a hand-picked,
+// flattering value (not 0) so the byte-stable regression frame holds the projectile at a
+// pleasing, slightly-expanded "alive" pose rather than a dead-on rest scale.
+// Tuned (POLISH) so the WHITE-HOT inner core DOMINATES the center (blooms past the §3
+// composer's luminanceThreshold=1.0 into a glowing heart) while a tight, saturated outer
+// shell gives the element color at the edge — so it reads as a HOT energy ball, not a soft
+// pink/pastel sphere. `coreColor` is pushed toward white (the heart should bloom white-hot);
+// `glowColor` carries the element identity at the rim. Core is intentionally a touch LARGER
+// than the colored shape so the bright heart shows through.
+const ENERGY_PROFILE = {
+  fireball: {
+    coreColor: '#FFF4D6',   // white-hot heart (blooms white, edges go orange)
+    glowColor: '#FF7A1A',   // saturated fiery orange shell (spec §4 #FF7A3C, pushed hot)
+    coreIntensity: 6.0,
+    glowIntensity: 4.0,
+    coreScale: 0.62,        // larger hot heart so it dominates + blooms
+    glowScale: 0.92,        // tighter halo (less pink wash)
+    glowOpacity: 0.22,      // restrained outer wash so the hot core wins
+    flicker: 0.18,          // strong fiery turbulence (gameplay only)
+    flickerSpeed: 14,
+    capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
+    shape: 'sphere',
+  },
+  iceball: {
+    coreColor: '#F2FCFF',   // crystalline white heart
+    glowColor: '#3FB7FF',   // cool saturated cyan shell (spec §4 #6FC8FF, pushed saturated)
+    coreIntensity: 5.5,
+    glowIntensity: 3.6,
+    coreScale: 0.58,
+    glowScale: 0.86,
+    glowOpacity: 0.20,
+    flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
+    flickerSpeed: 7,
+    capturePhase: 0.30,
+    shape: 'crystal',
+  },
+  lightning: {
+    coreColor: '#FFFFFF',   // pure electric white heart
+    glowColor: '#86B8FF',   // white-blue electric shell (over the §4 #FFE066 bolt)
+    coreIntensity: 8.0,
+    glowIntensity: 4.0,
+    coreScale: 0.50,
+    glowScale: 0.74,        // thin, jagged — lightning is a hot line, not a ball
+    glowOpacity: 0.18,
+    flicker: 0.34,          // jagged, high-frequency electric jitter (gameplay only)
+    flickerSpeed: 26,
+    capturePhase: 1.10,     // frozen at a jagged-but-flattering peak
+    shape: 'bolt',
+  },
+  arcane: {
+    coreColor: '#FBEEFF',   // luminous near-white violet heart
+    glowColor: '#B84DFF',   // saturated purple-magenta shell (spec §4 #B36BFF, pushed)
+    coreIntensity: 6.0,
+    glowIntensity: 3.8,
+    coreScale: 0.60,
+    glowScale: 0.90,
+    glowOpacity: 0.22,
+    flicker: 0.14,          // gentle swirling pulse
+    flickerSpeed: 10,
+    capturePhase: 0.50,
+    shape: 'swirl',
+  },
+};
+
+const _defaultEnergy = {
+  coreColor: '#FFFFFF', glowColor: '#46E0FF', coreIntensity: 5.0, glowIntensity: 3.4,
+  coreScale: 0.58, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
+  capturePhase: 0.5, shape: 'sphere',
+};
+
 const EnhancedSpellProjectile = React.memo(({ projectile }) => {
-  const meshRef = useRef();
+  const groupRef = useRef();
   const trailRef = useRef();
 
-  useFrame((state) => {
-    // Capture-determinism: in capture mode the projectile holds a frozen pose (no
-    // clock-driven pulse, no Math.random flicker, no velocity-derived trail stretch).
-    const capture = isCaptureMode();
-
-    if (meshRef.current) {
-      meshRef.current.position.copy(projectile.position);
-
-      if (!capture) {
-        switch (projectile.type) {
-          case 'fireball':
-            meshRef.current.rotation.x += 0.15;
-            meshRef.current.rotation.z += 0.1;
-            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 8) * 0.3);
-            break;
-          case 'iceball':
-            meshRef.current.rotation.y += 0.1;
-            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 6) * 0.2);
-            break;
-          case 'lightning':
-            meshRef.current.rotation.x += 0.1;
-            meshRef.current.rotation.z += 0.2;
-            meshRef.current.scale.setScalar(0.8 + Math.random() * 0.4);
-            break;
-          case 'arcane':
-            meshRef.current.rotation.x += 0.2;
-            meshRef.current.rotation.y += 0.15;
-            meshRef.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 10) * 0.25);
-            break;
-        }
-      }
-    }
+  useFrame(() => {
+    // The whole projectile group tracks the head position; the layered energy core
+    // (SpellProjectileCore) owns the turbulence/rotation (capture-gated internally).
+    if (groupRef.current) groupRef.current.position.copy(projectile.position);
 
     // S1-D-M1: single velocity-STRETCH-BILLBOARD trail (one cylinder) instead of the old
     // per-instance trail-sphere group (12-20 spheres/projectile). Oriented along the
     // velocity vector, length scales with speed, trailing BEHIND the projectile head.
+    // (The trail lives OUTSIDE groupRef in world space since it orients to velocity.)
     if (trailRef.current) {
       const v = projectile.velocity;
       const speed = Math.hypot(v.x, v.y, v.z);
@@ -622,90 +680,13 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
     }
   });
 
-  const renderGeometry = () => {
-    switch (projectile.type) {
-      case 'fireball':
-        return <sphereGeometry args={[projectile.size * 0.8, 16, 16]} />;
-      case 'iceball':
-        return <dodecahedronGeometry args={[projectile.size * 0.8, 0]} />;
-      case 'lightning':
-        return <cylinderGeometry args={[projectile.size * 0.15, projectile.size * 0.15, projectile.size * 2.2, 6]} />;
-      case 'arcane':
-        return <torusGeometry args={[projectile.size * 0.65, projectile.size * 0.22, 8, 24]} />;
-      default:
-        return <sphereGeometry args={[projectile.size * 0.8, 8, 8]} />;
-    }
-  };
-
-  const renderMaterial = () => {
-    switch (projectile.type) {
-      case 'fireball':
-        return (
-          <meshStandardMaterial
-            color="#FF4500"
-            emissive="#FF4500"
-            emissiveIntensity={2.5}
-            roughness={0.1}
-            metalness={0.8}
-            transparent
-            opacity={0.95}
-          />
-        );
-      case 'iceball':
-        return (
-          <meshStandardMaterial
-            color="#00BFFF"
-            emissive="#00FFFF"
-            emissiveIntensity={2.0}
-            roughness={0.2}
-            metalness={0.9}
-            transparent
-            opacity={0.9}
-          />
-        );
-      case 'lightning':
-        return (
-          <meshStandardMaterial
-            color="#FFD700"
-            emissive="#FFFF00"
-            emissiveIntensity={3.0}
-            roughness={0.1}
-            metalness={0.5}
-            transparent
-            opacity={0.95}
-          />
-        );
-      case 'arcane':
-        return (
-          <meshStandardMaterial
-            color="#9932CC"
-            emissive="#FF00FF"
-            emissiveIntensity={2.8}
-            roughness={0.1}
-            metalness={0.7}
-            transparent
-            opacity={0.9}
-          />
-        );
-      default:
-        return (
-          <meshStandardMaterial
-            color={projectile.color}
-            emissive={projectile.color}
-            emissiveIntensity={2.0}
-            transparent
-            opacity={0.9}
-          />
-        );
-    }
-  };
-
   return (
     <group>
-      <mesh ref={meshRef}>
-        {renderGeometry()}
-        {renderMaterial()}
-      </mesh>
+      {/* S1-D POLISH: the LAYERED energy body (hot inner core + saturated outer glow),
+          replacing the single flat emissive sphere. Tracks the head via groupRef. */}
+      <group ref={groupRef}>
+        <SpellProjectileCore projectile={projectile} />
+      </group>
 
       {/* S1-D-M1: single velocity-stretch-billboard trail (one additive cylinder,
           oriented + scaled in useFrame) — replaces the old 12-20 trail-sphere group. */}
@@ -718,67 +699,139 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           side={THREE.DoubleSide}
+          toneMapped={false}
         />
       </mesh>
-
-      {projectile.type === 'fireball' && (
-        <FireballAura projectile={projectile} />
-      )}
-
-      {projectile.type === 'lightning' && (
-        <LightningEffect projectile={projectile} />
-      )}
     </group>
   );
 });
 
-const FireballAura = React.memo(({ projectile }) => {
-  const auraRef = useRef();
+// S1-D POLISH: SpellProjectileCore — the premium-ENERGY projectile body that replaced the
+// single flat coral/pastel sphere. Three concentric, ADDITIVE, `toneMapped={false}` layers:
+//   (1) a per-element silhouette MESH (the recognizable shape: fiery sphere / ice crystal /
+//       electric bolt / arcane swirl) emissive in the saturated element color,
+//   (2) a tight HOT INNER CORE sphere (near-white) that bloom blows out into a glowing
+//       heart — this is what makes it read as light, not plastic,
+//   (3) a soft OUTER GLOW shell (the saturated element halo) that gives volume + bloom.
+// Per-element personality comes from ENERGY_PROFILE (hues, intensities, scales, turbulence).
+//
+// Capture-determinism: the scale-flicker / turbulence is driven by the clock + (for the
+// jagged lightning) a tiny deterministic hash; in capture mode (`isCaptureMode()`) it is
+// FROZEN at a hand-picked flattering phase (`profile.capturePhase`) so the byte-stable
+// regression frame holds the projectile at a pleasing, slightly-alive pose — never a flat
+// rest scale, never a clock/Math.random read.
+const SpellProjectileCore = React.memo(({ projectile }) => {
+  const innerRef = useRef();
+  const outerRef = useRef();
+  const meshRef = useRef();
+  const profile = ENERGY_PROFILE[projectile.type] || _defaultEnergy;
+  const size = projectile.size || 1;
 
   useFrame((state) => {
-    if (auraRef.current) {
-      auraRef.current.position.copy(projectile.position);
-      // Capture-determinism: hold a fixed mid-pulse scale at uTime=0 (no clock read).
-      const intensity = isCaptureMode() ? 0.5 : 0.5 + Math.sin(state.clock.elapsedTime * 12) * 0.3;
-      auraRef.current.scale.setScalar(intensity);
+    const capture = isCaptureMode();
+    // The turbulence phase: frozen at the flattering capturePhase in capture, else live.
+    const phase = capture ? profile.capturePhase : state.clock.elapsedTime * profile.flickerSpeed;
+    const pulse = 1 + Math.sin(phase) * profile.flicker;
+    // A secondary high-freq jitter for the electric/jagged personalities (lightning), made
+    // DETERMINISTIC via a sine of a second phase rather than Math.random so capture stays
+    // byte-stable; frozen with everything else in capture.
+    const jitter = 1 + Math.sin(phase * 2.7 + 1.3) * profile.flicker * 0.4;
+
+    if (meshRef.current) {
+      meshRef.current.scale.setScalar(pulse);
+      if (!capture) {
+        // Gentle rotation in gameplay for life; frozen in capture for a stable frame.
+        meshRef.current.rotation.x += 0.06;
+        meshRef.current.rotation.y += 0.05;
+        meshRef.current.rotation.z += 0.04;
+      }
     }
+    if (innerRef.current) innerRef.current.scale.setScalar(pulse * jitter);
+    if (outerRef.current) outerRef.current.scale.setScalar(pulse);
   });
 
-  return (
-    <mesh ref={auraRef}>
-      <sphereGeometry args={[projectile.size * 1.5, 8, 8]} />
-      <meshBasicMaterial
-        color="#FF4500"
-        transparent
-        opacity={0.3}
-      />
-    </mesh>
-  );
-});
-
-const LightningEffect = React.memo(({ projectile }) => {
-  const lightningRef = useRef();
-
-  useFrame((state) => {
-    if (lightningRef.current) {
-      lightningRef.current.position.copy(projectile.position);
-      // Capture-determinism: hold visible (no Math.random flicker) for a stable frame.
-      lightningRef.current.visible = isCaptureMode() ? true : Math.random() > 0.3;
+  // Per-element silhouette geometry for the colored shape layer (keeps the recognizable
+  // form: round fireball, crystalline ice, thin bolt, arcane ring).
+  const renderShape = () => {
+    switch (profile.shape) {
+      case 'crystal':
+        return <dodecahedronGeometry args={[size * 0.5, 0]} />;
+      case 'bolt':
+        return <cylinderGeometry args={[size * 0.12, size * 0.12, size * 1.8, 6]} />;
+      case 'swirl':
+        return <torusGeometry args={[size * 0.42, size * 0.16, 8, 24]} />;
+      case 'sphere':
+      default:
+        return <icosahedronGeometry args={[size * 0.5, 1]} />;
     }
-  });
+  };
 
   return (
-    <group ref={lightningRef}>
-      {[...Array(3)].map((_, i) => (
-        <mesh key={i} rotation={[0, (i * Math.PI * 2) / 3, 0]}>
-          <cylinderGeometry args={[0.02, 0.02, 1, 4]} />
+    <group>
+      {/* (1) per-element silhouette shape — saturated element color, emissive + bloomable.
+          renderOrder 0 + depthWrite off so the additive core/glow always paint OVER it
+          (otherwise the opaque colored shape occludes the hot white heart -> pink wash). */}
+      <mesh ref={meshRef} renderOrder={0}>
+        {renderShape()}
+        <meshStandardMaterial
+          color={profile.glowColor}
+          emissive={profile.glowColor}
+          emissiveIntensity={profile.glowIntensity}
+          roughness={0.25}
+          metalness={0.0}
+          toneMapped={false}
+          transparent
+          opacity={0.9}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* (2) hot inner core — near-white heart that bloom blows out into glowing light.
+          renderOrder 2/3 (paints last, over the colored shape) so the white heart
+          dominates. A tight white-hot HOTSPOT nested in the tinted core guarantees the
+          center clips past the bloom threshold (1.0) and blooms as a glowing point of
+          light — the same recipe that makes the impact flash read premium. */}
+      <mesh ref={innerRef} renderOrder={2}>
+        <sphereGeometry args={[size * profile.coreScale, 16, 16]} />
+        <meshBasicMaterial
+          color={profile.coreColor}
+          toneMapped={false}
+          transparent
+          opacity={0.98}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          depthTest={false}
+        />
+        <mesh renderOrder={3}>
+          <sphereGeometry args={[size * profile.coreScale * 0.55, 12, 12]} />
           <meshBasicMaterial
-            color="#FFFF00"
+            color="#FFFFFF"
+            toneMapped={false}
             transparent
-            opacity={0.8}
+            opacity={1.0}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            depthTest={false}
           />
         </mesh>
-      ))}
+      </mesh>
+
+      {/* (3) soft outer glow shell — saturated element halo giving volume + bloom */}
+      <mesh ref={outerRef} renderOrder={1}>
+        <sphereGeometry args={[size * profile.glowScale, 16, 16]} />
+        <meshBasicMaterial
+          color={profile.glowColor}
+          toneMapped={false}
+          transparent
+          opacity={profile.glowOpacity}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* point-light pop so the energy actually casts onto nearby voxels (gameplay) */}
+      <pointLight color={profile.glowColor} intensity={5} distance={7} decay={2} />
     </group>
   );
 });
@@ -796,42 +849,67 @@ const LightningEffect = React.memo(({ projectile }) => {
 // clock is frozen so age stays put — a stable frozen frame. No Math.random / clock reads.
 const SpellImpactPop = React.memo(({ impact }) => {
   const ringRef = useRef();
+  const flashRef = useRef();
   const lightRef = useRef();
+  // S1-D POLISH: derive the impact's energy hues from the projectile energy palette so the
+  // hit flash matches the projectile's saturated glow + hot-white heart (consistent grammar).
+  const energy = ENERGY_PROFILE[impact.type] || _defaultEnergy;
 
   useFrame(() => {
     const progress = Math.min(1, impact.age / impact.maxAge);
     const eased = 1 - (1 - progress) * (1 - progress); // ease-out
     if (ringRef.current) {
-      const scale = 0.4 + eased * 3.2;
+      const scale = 0.4 + eased * 3.4;
       ringRef.current.scale.set(scale, scale, scale);
-      ringRef.current.material.opacity = 0.85 * (1 - progress);
+      ringRef.current.material.opacity = 0.95 * (1 - progress);
+    }
+    if (flashRef.current) {
+      // Hot-white core flash: a quick bright billboard that peaks at t=0 and is gone by
+      // ~22% of lifetime (within the 40-90ms flash-peak readability budget given the
+      // ~360ms lifetime). Sells the "wow" punch without exceeding the ~15% viewport.
+      const fp = Math.max(0, 1 - progress / 0.22);
+      const s = 0.5 + (1 - fp) * 1.1; // expands slightly as it fades
+      flashRef.current.scale.set(s, s, s);
+      flashRef.current.material.opacity = fp;
     }
     if (lightRef.current) {
       // Quick light pop: bright at t=0, gone by ~40% of lifetime.
-      lightRef.current.intensity = Math.max(0, 1 - progress / 0.4) * 14;
+      lightRef.current.intensity = Math.max(0, 1 - progress / 0.4) * 18;
     }
   });
 
   return (
     <group position={impact.position}>
+      {/* expanding shockwave ring (element-glow hue) on the ground plane (XZ) */}
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
-        {/* flat additive ring on the ground plane (XZ), expands + fades */}
-        <ringGeometry args={[0.35, 0.55, 32]} />
+        <ringGeometry args={[0.35, 0.55, 40]} />
         <meshBasicMaterial
-          color={impact.glowColor || impact.color}
+          color={energy.glowColor}
           transparent
-          opacity={0.85}
+          opacity={0.95}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           side={THREE.DoubleSide}
           toneMapped={false}
         />
       </mesh>
+      {/* hot-white core flash — the bright punch at the moment of impact (bloom-catchable) */}
+      <mesh ref={flashRef}>
+        <sphereGeometry args={[0.55, 16, 16]} />
+        <meshBasicMaterial
+          color={energy.coreColor}
+          transparent
+          opacity={1.0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
       <pointLight
         ref={lightRef}
-        color={impact.glowColor || impact.color}
-        intensity={14}
-        distance={9}
+        color={energy.glowColor}
+        intensity={18}
+        distance={10}
         decay={2}
       />
     </group>
@@ -854,8 +932,12 @@ const SpellImpactPop = React.memo(({ impact }) => {
 const CastTelegraph = React.memo(({ telegraph }) => {
   const groupRef = useRef();
   const outerRef = useRef();
+  const ringRef = useRef();
   const innerRef = useRef();
   const spokesRef = useRef();
+  // S1-D POLISH: telegraph hues from the energy palette so the cast sigil's saturated rune
+  // color + hot-white heart match the projectile that follows (one consistent VFX grammar).
+  const energy = ENERGY_PROFILE[telegraph.type] || _defaultEnergy;
 
   useFrame((state) => {
     // Billboard the rune-disc to face the camera so it always reads as a full circle (a
@@ -872,7 +954,12 @@ const CastTelegraph = React.memo(({ telegraph }) => {
     if (outerRef.current) {
       const s = 0.85 + eased * 0.7; // rune-circle expands outward as it fades
       outerRef.current.scale.set(s, s, s);
-      outerRef.current.material.opacity = 0.95 * opacity;
+      outerRef.current.material.opacity = 1.0 * opacity;
+    }
+    if (ringRef.current) {
+      const s = 0.72 + eased * 0.55; // second concentric rune band (crisper sigil read)
+      ringRef.current.scale.set(s, s, s);
+      ringRef.current.material.opacity = 0.85 * opacity;
     }
     if (innerRef.current) {
       const s = 0.55 + eased * 0.30;
@@ -882,19 +969,32 @@ const CastTelegraph = React.memo(({ telegraph }) => {
     if (spokesRef.current) {
       const s = 0.85 + eased * 0.7;
       spokesRef.current.scale.set(s, s, s);
-      spokesRef.current.material.opacity = 0.8 * opacity;
+      spokesRef.current.material.opacity = 0.85 * opacity;
     }
   });
 
   return (
     <group ref={groupRef} position={telegraph.position}>
-      {/* outer rune-circle */}
+      {/* outer rune-circle — thin crisp saturated band */}
       <mesh ref={outerRef}>
-        <ringGeometry args={[0.78, 0.98, 48]} />
+        <ringGeometry args={[0.84, 0.97, 64]} />
         <meshBasicMaterial
-          color={telegraph.color}
+          color={energy.glowColor}
           transparent
-          opacity={0.95}
+          opacity={1.0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* second concentric rune band — gives the sigil a layered, crafted read */}
+      <mesh ref={ringRef}>
+        <ringGeometry args={[0.70, 0.76, 64]} />
+        <meshBasicMaterial
+          color={energy.glowColor}
+          transparent
+          opacity={0.85}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           side={THREE.DoubleSide}
@@ -903,22 +1003,22 @@ const CastTelegraph = React.memo(({ telegraph }) => {
       </mesh>
       {/* mid spoke-ring: 8 short radial ticks (a glyph hint) on a thin ring band */}
       <mesh ref={spokesRef}>
-        <ringGeometry args={[0.58, 0.66, 8, 1]} />
+        <ringGeometry args={[0.54, 0.64, 8, 1]} />
         <meshBasicMaterial
-          color={telegraph.color}
+          color={energy.glowColor}
           transparent
-          opacity={0.8}
+          opacity={0.85}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
           side={THREE.DoubleSide}
           toneMapped={false}
         />
       </mesh>
-      {/* inner core disc (the per-element glow) */}
+      {/* inner core disc — hot near-white heart that bloom catches (per-element core hue) */}
       <mesh ref={innerRef}>
-        <circleGeometry args={[0.34, 32]} />
+        <circleGeometry args={[0.30, 32]} />
         <meshBasicMaterial
-          color={telegraph.glowColor || telegraph.color}
+          color={energy.coreColor}
           transparent
           opacity={1.0}
           depthWrite={false}
