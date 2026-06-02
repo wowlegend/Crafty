@@ -137,6 +137,17 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
     console.log('captured boss-closeup');
 
+    // spell-cast (S1-D-M2): a deterministic FROZEN fireball cast in the sky studio that
+    // gates + reveals the spell VFX look — rune-circle telegraph + mid-flight projectile
+    // with its stretch-trail + a seeded GPU spark spray/shockwave at the impact point.
+    // The magic clock is frozen in capture so the cast holds its placed pose; the seeded
+    // spark burst + the GPUSparkSystem capture-phase fix make the spray render at uTime=0.
+    await page.evaluate(() => window.__craftyTest.call('spawnSpellCast'));
+    await flushFrames(page, 8);
+    await delay(1200); // cast injects + telegraph/projectile/sparks settle into the frozen pose
+    await page.screenshot({ path: resolve(OUT, 'spell-cast.png') });
+    console.log('captured spell-cast');
+
     // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay
     // driven via the test bridge. Wait for fonts to finish loading so the Lilita/
     // Space-Grotesk swap is painted (these states are about typography + chrome).

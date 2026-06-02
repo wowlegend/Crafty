@@ -4,7 +4,12 @@ import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open'];
+// NOTE: `spell-cast` (S1-D-M2) is captured + verified deterministic, but its baseline is
+// INTENTIONALLY not committed by the implementer — it is the human eyeball + baseline gate
+// for the spell VFX look (the whole point of the state). Until the controller baselines
+// tests/visual/baseline/spell-cast.png, this one state reports missing-baseline (red); the
+// EXISTING 10 stay green. Once baselined it diffs like the rest.
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 

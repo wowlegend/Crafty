@@ -18,6 +18,9 @@ const SRC = resolve(process.cwd(), 'src');
 const magic = () => readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8');
 const npc = () => readFileSync(resolve(SRC, 'SimplifiedNPCSystem.jsx'), 'utf8');
 const gameScene = () => readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
+const sparks = () => readFileSync(resolve(SRC, 'world', 'GPUSparkSystem.jsx'), 'utf8');
+const app = () => readFileSync(resolve(SRC, 'App.jsx'), 'utf8');
+const capture = () => readFileSync(resolve(SRC, 'devtest', 'captureMode.js'), 'utf8');
 
 describe('S1-D-M1 spell-VFX spine', () => {
   // (a) The spell-impact path routes through the SOTA GPU spark pool (reuse, not fork).
@@ -99,5 +102,78 @@ describe('S1-D-M1 spell-VFX spine', () => {
     expect(src, 'damage application must remain').toMatch(/damageMob/);
     expect(src, 'mob targeting must remain').toMatch(/checkMobCollision/);
     expect(src, 'damage solver must remain').toMatch(/solveSpellDamage/);
+  });
+});
+
+// S1-D-M2: Layered cast ARC (telegraph rune -> release trail -> tuned impact) +
+// the deterministic `spell-cast` capture state that makes the spell LOOK
+// gate-verifiable and eyeball-able for the first time.
+//
+// Static gates (source-text, GPU-free). The pixel content of the cast frame is
+// covered by the puppeteer visual gate + a human eyeball of current/spell-cast.png.
+describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
+  // (A1) The GPU spark burst is capture-DETERMINISTIC + VISIBLE. In capture the M1
+  //      burst pushed sparks to the clip void (aStartTime = live wall-clock while
+  //      uTime=0 => t<0 => dead-spark branch) AND used raw Math.random velocities.
+  //      M2 must, under isCaptureMode(): (a) seed the burst RNG by a stable key, and
+  //      (b) start sparks at a fixed NON-NEGATIVE phase at uTime=0 so they render
+  //      in-frame mid-life rather than clipping out.
+  it('spark burst is capture-deterministic (seeds RNG under capture)', () => {
+    const src = sparks();
+    expect(src, 'GPUSparkSystem must branch on isCaptureMode for determinism').toMatch(/isCaptureMode\s*\(/);
+    expect(src, 'capture burst must use a seeded RNG (makeSeededRandom/captureRandom), not raw Math.random')
+      .toMatch(/makeSeededRandom|captureRandom/);
+  });
+
+  it('spark burst renders visibly at uTime=0 in capture (fixed non-negative phase, not clip-void)', () => {
+    const src = sparks();
+    // The fix anchors aStartTime to a fixed negative phase under capture so that with
+    // uTime=0, t = uTime - aStartTime > 0 (alive, mid-life), not the dead-spark branch.
+    expect(src, 'a fixed capture spark phase constant must exist').toMatch(/CAPTURE_SPARK_PHASE/);
+  });
+
+  // (A2) The deterministic cast driver is wired as a test hook + into the capture
+  //      script + the visual diff STATES list, so `spell-cast` is a first-class state.
+  it('spawnSpellCast test hook is registered (deterministic cast driver)', () => {
+    expect(app(), 'App must register a spawnSpellCast test hook').toMatch(/registerTestHook\(\s*['"`]spawnSpellCast['"`]/);
+  });
+
+  it('spell-cast is a wired visual-regression state (capture script + diff STATES)', () => {
+    const cap = readFileSync(resolve(SRC, '..', 'scripts', 'visual', 'capture.mjs'), 'utf8');
+    expect(cap, 'capture.mjs must drive spawnSpellCast').toMatch(/spawnSpellCast/);
+    expect(cap, "capture.mjs must screenshot spell-cast.png").toMatch(/spell-cast\.png/);
+    const diff = readFileSync(resolve(SRC, '..', 'tests', 'visual', 'diff.test.js'), 'utf8');
+    expect(diff, "spell-cast must be in the visual diff STATES list").toMatch(/['"`]spell-cast['"`]/);
+  });
+
+  // (B) The TELEGRAPH rune-circle (the spec's shared shape vocabulary) exists, is
+  //     additive geometry (no texture atlas), and is capture-gated so the cast frame
+  //     is deterministic.
+  it('cast telegraph rune-circle component exists (additive geometry, zero-texture)', () => {
+    const src = magic();
+    expect(src, 'a CastTelegraph rune component must exist').toMatch(/const\s+CastTelegraph\b/);
+    expect(src, 'telegraph must use additive blending (animated-shapes doctrine, no texture atlas)')
+      .toMatch(/AdditiveBlending/);
+    // The shared shape vocabulary: a ring/rune-circle quad at the muzzle.
+    expect(src, 'telegraph must render a ring/rune-circle geometry').toMatch(/ringGeometry|circleGeometry/);
+  });
+
+  it('cast telegraph is capture-deterministic (gated on isCaptureMode)', () => {
+    expect(magic(), 'telegraph animation/RNG must gate on isCaptureMode for a stable capture frame')
+      .toMatch(/isCaptureMode\s*\(/);
+  });
+
+  // The release trail (M1 stretch-billboard) is preserved by M2 (not regressed away).
+  it('release stretch-billboard trail preserved', () => {
+    expect(magic(), 'velocity stretch-billboard trail math must remain').toMatch(/_trailDir|stretch-billboard/i);
+  });
+
+  // GAMEPLAY PRESERVATION re-asserted after the arc edits: the cast still costs mana,
+  // grants XP, and the projectile lifecycle (damage/targeting) is untouched.
+  it('cast-arc preserves spell gameplay (mana cost + XP grant + cast entry)', () => {
+    const src = magic();
+    expect(src, 'castSpell must remain the public cast entry').toMatch(/castSpell\s*:/);
+    expect(src, 'mana cost gate must remain on cast').toMatch(/useMana/);
+    expect(src, 'XP grant on cast must remain').toMatch(/grantXP/);
   });
 });

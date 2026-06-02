@@ -13,9 +13,11 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
   const [spellImpacts, setSpellImpacts] = useState([]);
+  const [telegraphs, setTelegraphs] = useState([]); // S1-D-M2: cast-start rune-circle pops
   const [debuffs, setDebuffs] = useState([]);
   const projectileId = useRef(0);
   const impactId = useRef(0);
+  const telegraphId = useRef(0);
   const debuffId = useRef(0);
 
   const projectilesRef = useRef([]);
@@ -204,6 +206,29 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     arcane:    ['#d900ff', 28],
   }), []);
 
+  // S1-D-M2: cast TELEGRAPH — a flat additive rune-circle that flashes at the caster's
+  // muzzle on cast-start (~150ms), the spec §5 "shared shape vocabulary" (rune circles),
+  // per-element hue. Tasteful DEFAULT shape (clean concentric rune-circle); the exact glyph
+  // vocabulary is a Kevin taste-gate (batched, not finalized here). Built under the
+  // Brawl-Stars animated-shapes / zero-texture doctrine: additive ring geometry animated by
+  // scale + opacity, NO texture atlas. Capture-safe: ages off the parent useFrame deltaMs,
+  // which is frozen at 0 in capture -> the telegraph holds a stable frozen pose.
+  const spawnTelegraph = useCallback((position, normal, spellType) => {
+    const spell = SPELL_TYPES[spellType];
+    if (!spell) return;
+    const tele = {
+      id: telegraphId.current++,
+      position: position.clone(),
+      // orient the rune-disc to face the cast direction (the projectile's travel normal)
+      normal: normal ? normal.clone() : new THREE.Vector3(0, 0, -1),
+      color: spell.color,
+      glowColor: spell.glowColor,
+      age: 0,
+      maxAge: 180 // ~150-180ms telegraph onset, within the 120-220ms readability budget
+    };
+    setTelegraphs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), tele] : [...prev, tele]));
+  }, [SPELL_TYPES]);
+
   const createSpellImpact = useCallback((position, spellType, wasKill = false) => {
     const spell = SPELL_TYPES[spellType];
     const store = useGameStore.getState();
@@ -275,6 +300,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       const startPos = camera.position.clone().add(direction.clone().multiplyScalar(2));
 
+      // S1-D-M2: telegraph the cast at the muzzle (cast-start rune-circle), oriented to
+      // face the cast direction. Per-element hue. Gameplay-inert (purely cosmetic).
+      spawnTelegraph(startPos, direction, spellType);
+
       // Apply pure RPG spell damage solving scaling with intellect & agility
       const effectiveStats = useGameStore.getState().getEffectiveAttributes();
       const { damage: finalDamage } = solveSpellDamage(effectiveStats, spell.damage, spellType);
@@ -303,11 +332,60 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         GameMethods.grantXP(3);
       }
     }});
-  }, [SPELL_TYPES]);
 
-  useFrame((state, delta) => {
-    const deltaMs = delta * 1000;
-    const time = state.clock.elapsedTime;
+    // S1-D-M2: deterministic cast injector for the `spell-cast` visual-regression state.
+    // DEV/capture-only path (driven by the spawnSpellCast test hook). It bypasses the
+    // camera/mana/cooldown gates of the gameplay castSpell so the cast can be placed at
+    // FIXED world coordinates and held: it (1) telegraphs a rune-circle at a fixed muzzle,
+    // (2) injects a projectile frozen at a fixed mid-flight point (the capture clock-freeze
+    // in useFrame keeps it there), and (3) fires a seeded GPU spark burst at the impact
+    // point so the frame shows the real spray (the GPUSparkSystem capture-phase fix makes
+    // it visible at uTime=0). Fully deterministic: fixed inputs + seeded RNG + frozen clock.
+    useGameStore.setState({ spawnDeterministicCast: (opts = {}) => {
+      const spellType = opts.spellType || 'fireball';
+      const spell = SPELL_TYPES[spellType];
+      if (!spell) return;
+      const muzzle = new THREE.Vector3(...(opts.muzzle || [0, 141.4, -4.2]));
+      const projPos = new THREE.Vector3(...(opts.projectile || [0, 141.0, -8.5]));
+      const impactPos = new THREE.Vector3(...(opts.impact || [0, 140.6, -12.5]));
+      const dir = new THREE.Vector3(...(opts.direction || [0, -0.12, -1])).normalize();
+
+      // (1) cast-start telegraph rune-circle at the muzzle
+      spawnTelegraph(muzzle, dir, spellType);
+
+      // (2) projectile frozen at a fixed mid-flight point (velocity drives the trail
+      //     stretch-billboard orientation; the clock-freeze keeps the head in place)
+      projectilesRef.current.push({
+        id: projectileId.current++,
+        type: spellType,
+        position: projPos.clone(),
+        velocity: dir.clone().multiplyScalar(spell.speed),
+        ...spell,
+        damage: spell.damage,
+        age: 0,
+        maxAge: 3000,
+        trailPositions: [projPos.clone()],
+        lastTrailUpdate: 0
+      });
+      projectilesDirty.current = true;
+      setProjectiles([...projectilesRef.current]);
+
+      // (3) impact spray at the strike point — seeded GPU sparks + shockwave ring + light
+      //     pop (camera-shake + bloom-spike are inert in capture by design).
+      createSpellImpact(impactPos, spellType, true);
+    }});
+  }, [SPELL_TYPES, spawnTelegraph, createSpellImpact]);
+
+  useFrame((state, frameDelta) => {
+    // S1-D-M2: in capture mode FREEZE the spell clock (delta=0, time=0) so a driven cast
+    // holds a deterministic frozen pose: the projectile stays at its placed mid-flight
+    // point, the trail/impacts/telegraphs don't age, and no wall-clock-dependent collision
+    // fires. This is what makes the `spell-cast` capture state byte-stable across runs.
+    // No-op in gameplay (live delta + clock). Mirrors the Player/WeatherSystem capture pins.
+    const capture = isCaptureMode();
+    const delta = capture ? 0 : frameDelta;
+    const deltaMs = capture ? 0 : frameDelta * 1000;
+    const time = capture ? 0 : state.clock.elapsedTime;
 
     let survivingProjectiles = [];
 
@@ -451,6 +529,17 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     if (impactsChanged) {
       setSpellImpacts(prev => prev.filter(i => i.age < i.maxAge));
     }
+
+    // S1-D-M2: age + prune the cast-start telegraphs (same lightweight transient model).
+    // In capture deltaMs is 0, so a held telegraph stays put -> stable frozen frame.
+    let telegraphsChanged = false;
+    for (const tele of telegraphs) {
+      tele.age += deltaMs;
+      if (tele.age >= tele.maxAge) telegraphsChanged = true;
+    }
+    if (telegraphsChanged) {
+      setTelegraphs(prev => prev.filter(t => t.age < t.maxAge));
+    }
   });
 
   return (
@@ -461,6 +550,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       {spellImpacts.map(impact => (
         <SpellImpactPop key={impact.id} impact={impact} />
+      ))}
+
+      {telegraphs.map(tele => (
+        <CastTelegraph key={tele.id} telegraph={tele} />
       ))}
     </group>
   );
@@ -645,7 +738,8 @@ const FireballAura = React.memo(({ projectile }) => {
   useFrame((state) => {
     if (auraRef.current) {
       auraRef.current.position.copy(projectile.position);
-      const intensity = 0.5 + Math.sin(state.clock.elapsedTime * 12) * 0.3;
+      // Capture-determinism: hold a fixed mid-pulse scale at uTime=0 (no clock read).
+      const intensity = isCaptureMode() ? 0.5 : 0.5 + Math.sin(state.clock.elapsedTime * 12) * 0.3;
       auraRef.current.scale.setScalar(intensity);
     }
   });
@@ -668,7 +762,8 @@ const LightningEffect = React.memo(({ projectile }) => {
   useFrame((state) => {
     if (lightningRef.current) {
       lightningRef.current.position.copy(projectile.position);
-      lightningRef.current.visible = Math.random() > 0.3;
+      // Capture-determinism: hold visible (no Math.random flicker) for a stable frame.
+      lightningRef.current.visible = isCaptureMode() ? true : Math.random() > 0.3;
     }
   });
 
@@ -739,6 +834,99 @@ const SpellImpactPop = React.memo(({ impact }) => {
         distance={9}
         decay={2}
       />
+    </group>
+  );
+});
+
+// S1-D-M2: CastTelegraph — the cast-start RUNE-CIRCLE (spec §5 shared shape vocabulary).
+// Two concentric additive rings (an outer rune-circle + a tighter inner core ring) that
+// snap in bright, expand slightly, and fade over ~150-180ms — the "telegraph" beat of the
+// telegraph -> release -> impact arc. Per-element hue. Built under the animated-shapes /
+// zero-texture doctrine: pure additive ring geometry animated by scale + opacity, no atlas,
+// ink-outline-consistent (it reads as a flat glyph, preserving silhouette).
+//
+// TASTEFUL DEFAULT: a clean concentric rune-circle. The richer glyph vocabulary (hex
+// glyphs, per-element personality, an energy column on charge) is a Kevin taste-gate —
+// batched in KEVIN-REVIEW-BATCH, not finalized autonomously here.
+//
+// Capture-safe: ages off `telegraph.age` (advanced by the parent useFrame deltaMs, frozen
+// at 0 in capture) -> a held telegraph renders a stable frozen pose. No clock/Math.random.
+const CastTelegraph = React.memo(({ telegraph }) => {
+  const groupRef = useRef();
+  const outerRef = useRef();
+  const innerRef = useRef();
+  const spokesRef = useRef();
+
+  useFrame((state) => {
+    // Billboard the rune-disc to face the camera so it always reads as a full circle (a
+    // "cast sigil" at the muzzle) rather than collapsing edge-on when the cast direction
+    // points across the view. Capture-safe: the camera is pinned, so this is deterministic.
+    if (groupRef.current) {
+      groupRef.current.quaternion.copy(state.camera.quaternion);
+    }
+
+    const progress = Math.min(1, telegraph.age / telegraph.maxAge);
+    // Snap-in then settle: bright + slightly contracted at onset, expands as it fades.
+    const eased = 1 - (1 - progress) * (1 - progress); // ease-out
+    const opacity = (1 - progress); // fade across the ~150ms window
+    if (outerRef.current) {
+      const s = 0.85 + eased * 0.7; // rune-circle expands outward as it fades
+      outerRef.current.scale.set(s, s, s);
+      outerRef.current.material.opacity = 0.95 * opacity;
+    }
+    if (innerRef.current) {
+      const s = 0.55 + eased * 0.30;
+      innerRef.current.scale.set(s, s, s);
+      innerRef.current.material.opacity = 1.0 * opacity;
+    }
+    if (spokesRef.current) {
+      const s = 0.85 + eased * 0.7;
+      spokesRef.current.scale.set(s, s, s);
+      spokesRef.current.material.opacity = 0.8 * opacity;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={telegraph.position}>
+      {/* outer rune-circle */}
+      <mesh ref={outerRef}>
+        <ringGeometry args={[0.78, 0.98, 48]} />
+        <meshBasicMaterial
+          color={telegraph.color}
+          transparent
+          opacity={0.95}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* mid spoke-ring: 8 short radial ticks (a glyph hint) on a thin ring band */}
+      <mesh ref={spokesRef}>
+        <ringGeometry args={[0.58, 0.66, 8, 1]} />
+        <meshBasicMaterial
+          color={telegraph.color}
+          transparent
+          opacity={0.8}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* inner core disc (the per-element glow) */}
+      <mesh ref={innerRef}>
+        <circleGeometry args={[0.34, 32]} />
+        <meshBasicMaterial
+          color={telegraph.glowColor || telegraph.color}
+          transparent
+          opacity={1.0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
     </group>
   );
 });

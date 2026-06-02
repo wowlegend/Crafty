@@ -217,6 +217,46 @@ function GameApp({ experienceSystem }) {
       // camera is pulled back ~6.5 units so the wing tips clear the frame edges.
       enterCaptureMode({ camera: { position: [BX + 1.8, BY + 1.2, BZ + 6.5], lookAt: [BX, BY + 0.7, BZ] } });
     });
+    // Spell-cast fixture (S1-D-M2): a deterministic, FROZEN fireball cast framed against
+    // the sky studio so the spell VFX LOOK is gate-verifiable + eyeball-able for the first
+    // time. Capture pauses physics + freezes the magic clock, so the cast holds its placed
+    // pose: a rune-circle telegraph at the muzzle, a fireball frozen mid-flight with its
+    // velocity-stretch trail, and a SEEDED GPU spark spray + shockwave ring at the impact
+    // point (the GPUSparkSystem capture-phase fix renders the spray visibly at uTime=0).
+    // Coordinates sit at y~140 (the same sky-studio band as the character/boss close-ups)
+    // so the terrain horizon falls out of frame -> a clean backdrop for the VFX read.
+    registerTestHook('spawnSpellCast', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5); // flattering midday so the additive VFX reads against sky
+      useGameStore.setState({ treasureChestsList: [] });
+      // The character-closeup zombie lives at (0,140,-8) in the ECS and CANNOT be cleared
+      // from a hook (same constraint boss-closeup documents). So we stage the cast far
+      // away on +X (the boss-closeup band) where that stray zombie falls fully off-frame,
+      // giving a clean sky backdrop for the VFX read. Origin X used below: 60.
+      // Enter capture FIRST (freezes the magic clock + pins the cam) so the injected cast
+      // is placed into an already-frozen world and holds a stable pose across runs. Camera:
+      // a 3/4 side angle pulled back so the full arc (muzzle -> mid-flight head -> impact
+      // spray) fits with the impact spray under ~15% viewport.
+      // Sky studio centered far on +X (x=120): clear of BOTH the stray character-closeup
+      // zombie (x=0) and the force-spawned boss-closeup dragon (x=40) by >=80 units, so
+      // neither leaks into frame. The cast ARC is laid out left->right along the world +X
+      // axis (telegraph muzzle on the left, projectile mid-flight at center, impact spray
+      // on the right), viewed front-on from +Z and aimed slightly UP so the terrain horizon
+      // falls out of frame -> clean sky backdrop. Subjects at y~146 (well above ~y53 terrain).
+      const OX = 120, OY = 146, OZ = -8;
+      enterCaptureMode({ camera: { position: [OX, OY + 0.6, OZ + 12.5], lookAt: [OX, OY + 1.4, OZ] } });
+      if (store.spawnDeterministicCast) {
+        store.spawnDeterministicCast({
+          spellType: 'fireball',
+          muzzle: [OX - 4.0, OY + 0.6, OZ],     // cast-start rune-circle, left
+          projectile: [OX - 0.6, OY + 1.0, OZ], // fireball frozen mid-flight, center
+          impact: [OX + 3.8, OY + 1.2, OZ],     // spark spray + shockwave, right
+          direction: [1, 0.1, 0],               // travelling left->right (+X), slight rise
+        });
+      }
+    });
     // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,
     // and (for zh-CN) loads CJK fonts. The capture script waits for document.fonts.ready
     // before screenshotting so the font swap is fully painted.
