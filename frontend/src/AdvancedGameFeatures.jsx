@@ -19,12 +19,12 @@ export const useSurvivalMode = (isDay) => {
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
             setNightCount(prev => prev + 1);
-            setSurvivalWarning('☠️ Night has fallen... Hostile mobs are stronger!');
+            setSurvivalWarning('Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
 
         if (!prevIsDay.current && isDay) {
-            setSurvivalWarning('☀️ Dawn breaks! You survived the night!');
+            setSurvivalWarning('Dawn breaks! You survived the night!');
             setTimeout(() => setSurvivalWarning(null), 3000);
         }
 
@@ -49,7 +49,7 @@ export const SurvivalWarning = React.memo(({ message }) => {
     if (!message) return null;
 
     // Nightfall warnings read as danger; the dawn "you survived" message reads as a warn.
-    const isNight = message.includes('Night') || message.includes('☠️');
+    const isNight = message.includes('Night');
 
     return (
         <motion.div
@@ -67,7 +67,7 @@ export const SurvivalWarning = React.memo(({ message }) => {
 
 const BOSS_CONFIG = {
     name: 'Shadow Dragon',
-    emoji: '🐉',
+    icon: 'dragon',
     color: '#4B0082',
     secondaryColor: '#8B00FF',
     health: 700, // Increased health for a more epic multi-phase encounter
@@ -98,7 +98,7 @@ export const useBossSystem = (playerLevel) => {
     useEffect(() => {
         if (playerLevel >= 5 && !bossSpawned.current && !bossDefeated) {
             bossSpawned.current = true;
-            setBossNotification('🐉 Warning: A Shadow Dragon is descending from the skies! [Level 5 Boss Event]');
+            setBossNotification('Warning: A Shadow Dragon is descending from the skies! [Level 5 Boss Event]');
             setTimeout(() => setBossNotification(null), 6000);
 
             const playerPos = useGameStore.getState().playerPosition;
@@ -122,9 +122,9 @@ export const useBossSystem = (playerLevel) => {
                     setBossPhase(i);
                     let alertMsg = '';
                     if (i === 1) {
-                        alertMsg = '🐉 PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
+                        alertMsg = 'PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
                     } else if (i === 2) {
-                        alertMsg = '🔥 PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
+                        alertMsg = 'PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
                     }
                     if (alertMsg) {
                         setBossNotification(alertMsg);
@@ -144,7 +144,7 @@ export const useBossSystem = (playerLevel) => {
             if (newHealth <= 0) {
                 setBossActive(false);
                 setBossDefeated(true);
-                setBossNotification('🏆 BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
+                setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
                 setTimeout(() => setBossNotification(null), 6000);
                 if (GameMethods.grantXP) {
                     GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!');
@@ -187,16 +187,16 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
 
     const hpPercent = (bossHealth / bossMaxHealth) * 100;
 
-    let subText = 'Phase 1: Aerial Barrage ✈️';
-    if (bossPhase === 1) subText = 'Phase 2: Grounded Carnage 🦖 [Knockback Roars]';
-    if (bossPhase === 2) subText = 'Phase 3: Enraged Inferno 💀 [Lava Circles & Summons]';
+    let subText = 'Phase 1: Aerial Barrage';
+    if (bossPhase === 1) subText = 'Phase 2: Grounded Carnage [Knockback Roars]';
+    if (bossPhase === 2) subText = 'Phase 3: Enraged Inferno [Lava Circles & Summons]';
 
     return (
         <div className="absolute top-36 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 450 }}>
             <Panel variant="raise" className="px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-danger text-base leading-none">
-                        🐉 {BOSS_CONFIG.name}
+                        <Icon name="dragon" size={18} className="flex-none" /> {BOSS_CONFIG.name}
                     </span>
                     <span className="text-text-muted font-bold text-xs text-right">
                         {subText}
@@ -451,7 +451,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 spawnFireball(headPos, fireballDir);
                 
                 if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('🔥 The Shadow Dragon drops a FIREBALL from above!', 'warning');
+                    useGameStore.getState().addNotification('The Shadow Dragon drops a FIREBALL from above!', 'warning');
                 }
             }
         }
@@ -481,7 +481,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 }
 
                 if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('🔊 Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!', 'danger');
+                    useGameStore.getState().addNotification('Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!', 'danger');
                 }
 
                 // Trigger dynamic boss voxel destruction in Phase 2
@@ -504,7 +504,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 spawnLavaZone(new THREE.Vector3(playerX, playerGroundY + 0.05, playerZ));
                 
                 if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('🔥 The ground is melting! Step out of the LAVA ZONES!', 'danger');
+                    useGameStore.getState().addNotification('The ground is melting! Step out of the LAVA ZONES!', 'danger');
                 }
 
                 // Trigger dynamic boss voxel destruction in Phase 3
@@ -523,7 +523,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     spawnMob(bx + Math.cos(angle2) * 7, bz + Math.sin(angle2) * 7, 'skeleton');
                     
                     if (useGameStore.getState().addNotification) {
-                        useGameStore.getState().addNotification('💀 The Shadow Dragon calls upon Skeleton Cohorts!', 'warning');
+                        useGameStore.getState().addNotification('The Shadow Dragon calls upon Skeleton Cohorts!', 'warning');
                     }
                 }
             }
@@ -735,13 +735,13 @@ export const usePetSystem = () => {
 
     const tameMob = useCallback((mobId, mobType, mobPosition) => {
         if (pets.length >= maxPets) {
-            setPetNotification('❌ You already have 3 pets! Release one first.');
+            setPetNotification('You already have 3 pets! Release one first.');
             setTimeout(() => setPetNotification(null), 3000);
             return false;
         }
 
         if (mobType !== 'pig' && mobType !== 'cow') {
-            setPetNotification('❌ Only pigs and cows can be tamed with wheat/apples!');
+            setPetNotification('Only pigs and cows can be tamed with wheat/apples!');
             setTimeout(() => setPetNotification(null), 3000);
             return false;
         }
@@ -760,7 +760,7 @@ export const usePetSystem = () => {
         };
 
         setPets(prev => [...prev, newPet]);
-        setPetNotification(`❤️ Tamed! Say hello to your new pet ${name}!`);
+        setPetNotification(`Tamed! Say hello to your new pet ${name}!`);
         setTimeout(() => setPetNotification(null), 4000);
 
         return true;
@@ -780,15 +780,15 @@ export const usePetSystem = () => {
                         
                         let msg = '';
                         if (next === 'follow') {
-                            msg = '🐾 Pets ordered to: FOLLOW player';
+                            msg = 'Pets ordered to: FOLLOW player';
                         } else if (next === 'stay') {
-                            msg = '🐾 Pets ordered to: STAY at current location';
+                            msg = 'Pets ordered to: STAY at current location';
                             const pPos = useGameStore.getState().playerPosition;
                             if (pPos) {
                                 stayCoordinates.current = [pPos.x, pPos.y, pPos.z];
                             }
                         } else if (next === 'attack') {
-                            msg = '⚔️ Pets ordered to: ATTACK nearest hostile!';
+                            msg = 'Pets ordered to: ATTACK nearest hostile!';
                         }
                         
                         setPetNotification(msg);
@@ -818,7 +818,7 @@ export const PetIndicator = React.memo(({ pets }) => {
     const petOrder = useGameStore(state => state.petOrder || 'follow');
     if (pets.length === 0) return null;
 
-    // Order badge → flat status fill (follow=success/green, stay=warn/amber, attack=danger/red).
+    // Order badge -> flat status fill (follow=success/green, stay=warn/amber, attack=danger/red).
     let orderFill = 'bg-success';
     if (petOrder === 'stay') orderFill = 'bg-warn';
     if (petOrder === 'attack') orderFill = 'bg-danger';
@@ -827,7 +827,7 @@ export const PetIndicator = React.memo(({ pets }) => {
         <div className="absolute bottom-40 left-4 z-20 pointer-events-none">
             <Panel variant="raise" className="px-4 py-3 space-y-2 max-w-[200px]">
                 <div className="flex items-center justify-between border-b-chrome border-ink pb-1">
-                    <span className="font-display text-[10px] uppercase tracking-wider text-accent">🐾 Pets ({pets.length}/3)</span>
+                    <span className="font-display text-[10px] uppercase tracking-wider text-accent">Pets ({pets.length}/3)</span>
                 </div>
 
                 {/* Active Command Overlay Badge — flat status fill */}
@@ -839,7 +839,7 @@ export const PetIndicator = React.memo(({ pets }) => {
                     {pets.map(pet => (
                         <div key={pet.id} className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[14px]">{pet.type === 'pig' ? '🐷' : '🐮'}</span>
+                                <Icon name={pet.type === 'pig' ? 'pig' : 'cow'} size={14} className="flex-none text-accent" />
                                 <span className="text-text font-bold truncate max-w-[80px]">{pet.name}</span>
                             </div>
                             <span className="text-success font-bold text-[10px] tabular-nums">HP {pet.health}</span>
@@ -995,7 +995,7 @@ export const PetEntities = React.memo(({ pets }) => {
 const SPELL_UPGRADES = {
     fireball: {
         name: 'Fireball',
-        icon: '🔥',
+        icon: 'fire',
         levels: [
             { level: 1, damage: 50, manaCost: 15, name: 'Fireball I', xpCost: 0 },
             { level: 2, damage: 80, manaCost: 18, name: 'Fireball II', xpCost: 100 },
@@ -1004,7 +1004,7 @@ const SPELL_UPGRADES = {
     },
     iceball: {
         name: 'Iceball',
-        icon: '❄️',
+        icon: 'ice',
         levels: [
             { level: 1, damage: 40, manaCost: 12, name: 'Iceball I', xpCost: 0 },
             { level: 2, damage: 65, manaCost: 15, name: 'Iceball II', xpCost: 100 },
@@ -1013,7 +1013,7 @@ const SPELL_UPGRADES = {
     },
     lightning: {
         name: 'Lightning',
-        icon: '⚡',
+        icon: 'lightning',
         levels: [
             { level: 1, damage: 75, manaCost: 25, name: 'Lightning I', xpCost: 0 },
             { level: 2, damage: 110, manaCost: 30, name: 'Lightning II', xpCost: 150 },
@@ -1022,7 +1022,7 @@ const SPELL_UPGRADES = {
     },
     arcane: {
         name: 'Arcane',
-        icon: '💜',
+        icon: 'arcane',
         levels: [
             { level: 1, damage: 60, manaCost: 18, name: 'Arcane I', xpCost: 0 },
             { level: 2, damage: 90, manaCost: 22, name: 'Arcane II', xpCost: 120 },
@@ -1050,7 +1050,7 @@ export const useSpellUpgrades = () => {
 
         const currentLevel = spellLevels[spellType] || 1;
         if (currentLevel >= 3) {
-            setUpgradeNotification('⚠️ Spell is already at maximum level!');
+            setUpgradeNotification('Spell is already at maximum level!');
             setTimeout(() => setUpgradeNotification(null), 2000);
             return false;
         }
@@ -1062,13 +1062,13 @@ export const useSpellUpgrades = () => {
         const playerLevel = useGameStore.getState().getPlayerLevel() || 1;
 
         if (playerLevel < requiredLevel) {
-            setUpgradeNotification(`⚠️ Need Level ${requiredLevel} to upgrade ${upgrade.name}!`);
+            setUpgradeNotification(`Need Level ${requiredLevel} to upgrade ${upgrade.name}!`);
             setTimeout(() => setUpgradeNotification(null), 3000);
             return false;
         }
 
         setSpellLevels(prev => ({ ...prev, [spellType]: currentLevel + 1 }));
-        setUpgradeNotification(`✨ ${nextLevel.name} unlocked! Damage: ${nextLevel.damage}, Cost: ${nextLevel.manaCost} MP`);
+        setUpgradeNotification(`${nextLevel.name} unlocked! Damage: ${nextLevel.damage}, Cost: ${nextLevel.manaCost} MP`);
         setTimeout(() => setUpgradeNotification(null), 4000);
 
         return true;
@@ -1096,7 +1096,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     // color + the filled rank pip; `dot` is the filled-pip token class.
     const branches = [
         {
-            title: '🔥 Pyromancy & Storm',
+            title: 'Pyromancy & Storm',
+            icon: 'fire',
             accent: 'text-spell-fire',
             dot: 'bg-spell-fire',
             nodes: [
@@ -1108,7 +1109,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             ]
         },
         {
-            title: '❄️ Cryomancy & Abjuration',
+            title: 'Cryomancy & Abjuration',
+            icon: 'ice',
             accent: 'text-spell-ice',
             dot: 'bg-spell-ice',
             nodes: [
@@ -1118,7 +1120,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             ]
         },
         {
-            title: '🔮 Arcane & Chronomancy',
+            title: 'Arcane & Chronomancy',
+            icon: 'arcane',
             accent: 'text-spell-arcane',
             dot: 'bg-spell-arcane',
             nodes: [
@@ -1146,8 +1149,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
                         <div>
-                            <h2 className="font-display text-3xl uppercase tracking-wide text-accent">
-                                ✨ Class Skill Talent Tree
+                            <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide text-accent">
+                                <Icon name="sparkles" size={28} className="flex-none" /> Class Skill Talent Tree
                             </h2>
                             <p className="text-text-muted text-xs mt-1">Spend Talent Points earned by leveling up to unlock powerful elemental abilities</p>
                         </div>
@@ -1170,7 +1173,10 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {branches.map((branch, index) => (
                             <Panel key={index} variant="inset" className="p-4 bg-panel flex flex-col gap-4">
-                                <h3 className={`font-display text-lg text-center border-b-chrome border-ink pb-2 ${branch.accent}`}>{branch.title}</h3>
+                                <h3 className={`flex items-center justify-center gap-2 font-display text-lg text-center border-b-chrome border-ink pb-2 ${branch.accent}`}>
+                                    {branch.icon && <Icon name={branch.icon} size={18} className="flex-none" />}
+                                    <span>{branch.title}</span>
+                                </h3>
                                 <div className="flex flex-col gap-3.5">
                                     {branch.nodes.map((node) => {
                                         const currentLvl = unlockedTalents[node.id] || 0;
@@ -1193,7 +1199,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                 {/* Prerequisite lock overlay */}
                                                 {!isPrereqMet && (
                                                     <div className="absolute top-2 right-2 text-xs text-danger flex items-center gap-1 font-bold">
-                                                        🔒 Locked
+                                                        <Icon name="lock" size={12} className="flex-none" /> Locked
                                                     </div>
                                                 )}
 
@@ -1224,7 +1230,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                         Rank {currentLvl}/{node.limit}
                                                     </span>
                                                     {isMaxed ? (
-                                                        <span className="text-[10px] text-accent font-display uppercase tracking-wider">Max Rank ⭐</span>
+                                                        <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">Max Rank <Icon name="star" size={12} className="flex-none" /></span>
                                                     ) : isPrereqMet ? (
                                                         <Button
                                                             variant="primary"
@@ -1282,7 +1288,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                     <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
                         <div>
                             <h2 className="font-display text-2xl uppercase tracking-wide text-accent flex items-center gap-2">
-                                📦 Storage Container Chest
+                                <Icon name="chest-open" size={24} className="flex-none" /> Storage Container Chest
                             </h2>
                             <p className="text-text-muted text-xs mt-1">Coordinate Grid Position: {coords}</p>
                         </div>
@@ -1295,7 +1301,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Player inventory panel */}
                         <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
-                            <h3 className="font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2">🎒 Player Backpack Inventory</h3>
+                            <h3 className="flex items-center gap-2 font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="backpack" size={16} className="flex-none" /> Player Backpack Inventory</h3>
                             {availableItems.length === 0 ? (
                                 <div className="py-8 text-center text-xs text-text-muted">Your backpack is completely empty.</div>
                             ) : (
@@ -1312,12 +1318,12 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-text-muted text-center mt-2">💡 Click on items to transfer them to the chest.</p>
+                            <p className="text-[10px] text-text-muted text-center mt-2">Click on items to transfer them to the chest.</p>
                         </Panel>
 
                         {/* Chest inventory panel */}
                         <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
-                            <h3 className="font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2">📦 Storage Vault Inventory</h3>
+                            <h3 className="flex items-center gap-2 font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="chest-open" size={16} className="flex-none" /> Storage Vault Inventory</h3>
                             {chestItems.length === 0 ? (
                                 <div className="py-8 text-center text-xs text-text-muted">This chest container is currently empty.</div>
                             ) : (
@@ -1334,7 +1340,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-text-muted text-center mt-2">💡 Click on items to retrieve them to your backpack.</p>
+                            <p className="text-[10px] text-text-muted text-center mt-2">Click on items to retrieve them to your backpack.</p>
                         </Panel>
                     </div>
                 </Panel>

@@ -64,8 +64,8 @@ const ItemIcon = ({ itemName, size = 42 }) => {
     );
 };
 
-// Paper-doll gear cell — bold-flat. Equipped → a gold `Slot gear` with the 2-tone
-// item Icon + a Remove hover overlay; empty → an empty `Slot` with the placeholder
+// Paper-doll gear cell — bold-flat. Equipped -> a gold `Slot gear` with the 2-tone
+// item Icon + a Remove hover overlay; empty -> an empty `Slot` with the placeholder
 // Icon + label. Preserves onUnequip (click) + onHover (hover-inspect).
 const PaperDollSlot = ({ slotName, label, placeholderIcon, equippedItem, onUnequip, onHover }) => {
     const t = useT();
@@ -753,7 +753,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                         </Panel>
 
                         {/* Arrow */}
-                        <div className="font-display text-4xl text-accent">{'→'}</div>
+                        <div className="text-accent"><Icon name="arrow-right" size={36} strokeWidth={3} /></div>
 
                         {/* Result Slot */}
                         <div className="flex flex-col items-center gap-2">

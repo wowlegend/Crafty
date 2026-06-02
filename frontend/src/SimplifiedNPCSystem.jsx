@@ -352,7 +352,7 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    const text = isXP ? `+${damage} XP` : (isCrit ? `💥 ${damage}!` : `${damage}`);
+    const text = isXP ? `+${damage} XP` : (isCrit ? `${damage}!` : `${damage}`);
     
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 30, 0, 98);
@@ -594,7 +594,7 @@ const SpawnerSystem = () => {
       // Dynamic spawning based on loaded chunks.
       // Dev capture mode: suppress this per-frame spawner so capture frames are
       // byte-stable (otherwise mobs pop in at random chunk positions during the
-      // capture settle window → run-to-run jitter). Companion to the setInterval
+      // capture settle window -> run-to-run jitter). Companion to the setInterval
       // spawner gate above. No-op in normal gameplay.
       if (!isCaptureMode() && store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
         const activeMobs = mobsQuery.entities.filter(e => e.health > 0).length;
@@ -1179,7 +1179,7 @@ const LootSystem = () => {
             GameMethods.spawnXPText(entity.xp, entity.position);
           }
           if (store.addNotification) {
-            store.addNotification(`🎒 Looted: ${entity.item}`, 'loot');
+            store.addNotification(`Looted: ${entity.item}`, 'loot');
           }
           playPickup();
           ecs.remove(entity);

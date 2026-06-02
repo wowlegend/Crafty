@@ -378,11 +378,11 @@ const WeatherSystem = () => {
       const store = useGameStore.getState();
       if (store.addNotification) {
         if (nextWeather === 'rain') {
-          store.addNotification('🌧️ Atmospheric shift... Dynamic rain storm has started!', 'info');
+          store.addNotification('Atmospheric shift... Dynamic rain storm has started!', 'info');
         } else if (nextWeather === 'snow') {
-          store.addNotification('❄️ Cold front moving in... White volumetric snow begins to drift!', 'info');
+          store.addNotification('Cold front moving in... White volumetric snow begins to drift!', 'info');
         } else {
-          store.addNotification('☀️ The storm passes. Clear skies and warm rays return!', 'success');
+          store.addNotification('The storm passes. Clear skies and warm rays return!', 'success');
         }
       }
     }, 90000); // 90 seconds per cycle
@@ -588,7 +588,7 @@ export function GameScene({
 }) {
   const controlsRef = useRef();
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
-  // Always false in normal gameplay → Physics runs exactly as before.
+  // Always false in normal gameplay -> Physics runs exactly as before.
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
   const qualityTier = useGameStore((s) => s.qualityTier);
   const q = TIERS[qualityTier] || TIERS.low;

@@ -10,7 +10,7 @@ export const TOON = { shadow: 0.55, lit: 1.0 }; // 2 bands, hard step at dotNL=0
 export const RIM = { color: '#bfe2ff', power: 2.5, strength: 0.35 }; // high tier only
 export const OUTLINE = {
   color: '#0b0e14',
-  // drei <Outlines> default mode (screenspace=false) → `thickness` is ≈ constant
+  // drei <Outlines> default mode (screenspace=false) -> `thickness` is ≈ constant
   // SCREEN PIXELS (resolution-buffer px), NOT world units. ~3-5px reads as a crisp
   // ink line at any distance (gameplay-robust). (drei's 0.05 default is for the
   // screenspace=true world-unit mode, which we don't use.)
@@ -26,7 +26,7 @@ export function getToonGradient() {
   if (_gradient) return _gradient;
   const s = Math.round(TOON.shadow * 255);
   const l = Math.round(TOON.lit * 255);
-  // width=2,height=1 RGBA, NearestFilter → crisp 2-band toon ramp sampled by .r
+  // width=2,height=1 RGBA, NearestFilter -> crisp 2-band toon ramp sampled by .r
   const data = new Uint8Array([s, s, s, 255, l, l, l, 255]);
   const tex = new THREE.DataTexture(data, 2, 1, THREE.RGBAFormat);
   tex.magFilter = THREE.NearestFilter;

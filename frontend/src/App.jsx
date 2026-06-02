@@ -89,7 +89,7 @@ function GameApp({ experienceSystem }) {
       setTimeout(() => {
         const state = useGameStore.getState();
         // Dev capture mode: keep the menu overlay visible by NOT auto-locking the pointer;
-        // the harness drives the menu→explore transition explicitly via the `start` hook.
+        // the harness drives the menu->explore transition explicitly via the `start` hook.
         if (state.isCaptureMode) return;
         if (state.requestPointerLock) {
           state.requestPointerLock();
@@ -170,7 +170,7 @@ function GameApp({ experienceSystem }) {
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
     registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));
     // Character-render fixture: a deterministic close-up of ONE zombie, framed
-    // against the sky horizon. Capture pauses physics → getMobGroundLevel (raycast)
+    // against the sky horizon. Capture pauses physics -> getMobGroundLevel (raycast)
     // is null, so we place the subject at a FIXED elevated Y and frame the camera so
     // the terrain sits below the frame (clean sky backdrop showcases toon/rim/outline).
     registerTestHook('spawnCharacterCloseup', () => {
@@ -180,7 +180,7 @@ function GameApp({ experienceSystem }) {
       store.setTimeOfDay(0.5); // flattering midday
       const SX = 0, SZ = -8, SY = 140; // far above the ~y53 terrain so even the distant
       // terrain horizon falls >37.5° (half the 75° vFOV) below a level camera and
-      // drops out of frame entirely → clean, uninterrupted sky backdrop.
+      // drops out of frame entirely -> clean, uninterrupted sky backdrop.
       if (store.spawnMob) store.spawnMob(SX, SZ, 'zombie', SY);
       // ONE chest beside the zombie (lower-right, near the zombie's depth so it reads
       // as a smaller secondary prop, not a foreground giant) so the prop inverted-hull
@@ -188,7 +188,7 @@ function GameApp({ experienceSystem }) {
       useGameStore.setState({
         treasureChestsList: [{ id: 'closeup-chest', position: [SX + 2.2, SY + 0.3, SZ - 0.3] }],
       });
-      // The mob group sits at world y=SY+0.5; the body spans ~y(SY+0.2 feet)→(SY+2.3
+      // The mob group sits at world y=SY+0.5; the body spans ~y(SY+0.2 feet)->(SY+2.3
       // head-top). Camera: a +X 3/4 angle, pulled back and only mildly downward (lookAt
       // near the body center) so BOTH the hero zombie (dominant, left-of-center) and the
       // secondary chest (lower-right) fit while the distant terrain horizon still falls

@@ -48,7 +48,7 @@ const _out = {
 
 const lerp = THREE.MathUtils.lerp;
 
-/** Map (isDay, dangerLevel) → target mood in [0,2]. Night = dusk(1); danger overrides up. */
+/** Map (isDay, dangerLevel) -> target mood in [0,2]. Night = dusk(1); danger overrides up. */
 export function moodTarget({ isDay = true, dangerLevel = 0 } = {}) {
   const night = isDay ? 0 : 1;
   return THREE.MathUtils.clamp(Math.max(night, Number(dangerLevel) || 0), 0, 2);

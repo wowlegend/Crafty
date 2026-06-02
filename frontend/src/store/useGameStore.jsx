@@ -67,7 +67,7 @@ export const useGameStore = create((set, get) => ({
     setCaptureMode: (on) => set({ isCaptureMode: !!on }),
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
-    // (e.g. the character-closeup visual fixture). Default false → HUD always shows
+    // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
     // in gameplay and in the other capture states.
     hudHidden: false,
     setHudHidden: (on) => set({ hudHidden: !!on }),
@@ -574,7 +574,7 @@ export const useGameStore = create((set, get) => ({
 
         // Ignore damage if player is currently in invincible dodge roll i-frames
         if (state.isPlayerInvincible && state.isPlayerInvincible()) {
-            console.log(`🛡️ Damage ignored due to i-frames (source: ${source})`);
+            console.log(`[i-frames] Damage ignored (source: ${source})`);
             return;
         }
 
@@ -589,7 +589,7 @@ export const useGameStore = create((set, get) => ({
         const dr = armor / (armor + 100);
         const finalDamage = mitigateDamage(effective, amount);
 
-        console.log(`💥 Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
+        console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
 
         set({
             lastDamageTime: now,
@@ -689,7 +689,7 @@ export const useGameStore = create((set, get) => ({
                 throw new Error('Failed to save game');
             }
         } catch (error) {
-            console.error('❌ Save error:', error);
+            console.error('[save error]', error);
             if (error.response && error.response.status === 401) {
                 alert('Please log in to save your game');
             } else {
@@ -768,7 +768,7 @@ export const useGameStore = create((set, get) => ({
 
             alert(`Game loaded successfully: ${saveData.save_name}`);
         } catch (error) {
-            console.error('❌ Load error:', error);
+            console.error('[load error]', error);
             if (error.response && error.response.status === 401) {
                 alert('Please log in to load your game');
             } else {

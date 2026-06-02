@@ -88,7 +88,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   const grassParticles = useMemo(() => {
     const particles = [];
     for (let i = 0; i < 8; i++) {
-      // Per-instance seeded RNG in capture mode (chunk+index keyed → order-independent
+      // Per-instance seeded RNG in capture mode (chunk+index keyed -> order-independent
       // across terrain-stream runs); native Math.random in gameplay. Mirrors the
       // weather-particle seeding pattern in GameScene.jsx.
       const r = captureRandom(`grass-particle-${chunkX}-${chunkZ}-${i}`);
@@ -120,7 +120,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   useFrame((state) => {
     // Dev capture-determinism: pin the wind-sway clock to a fixed value so the
     // grass holds a frozen pose across capture runs (wall-clock elapsedTime differs
-    // run-to-run → frame jitter, dominant ~3-4% self-diff on explore-night). Inert in
+    // run-to-run -> frame jitter, dominant ~3-4% self-diff on explore-night). Inert in
     // normal gameplay — falls through to the live clock so wind animates as before.
     const capture = isCaptureMode();
     const time = capture ? 0 : state.clock.elapsedTime;
@@ -162,7 +162,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
       grassParticles.forEach((p, i) => {
         // In capture mode hold the seeded base pose: skip the per-frame drift
         // accumulation (otherwise p.x creeps each frame and run-to-run frame counts
-        // differ → jitter) and skip the unseeded Math.random reset branch entirely.
+        // differ -> jitter) and skip the unseeded Math.random reset branch entirely.
         if (!capture) {
           p.y = 15 + Math.sin(time * 0.4 + p.offset) * 1.8;
           p.x += Math.sin(time * 0.3 + p.offset) * 0.01;
