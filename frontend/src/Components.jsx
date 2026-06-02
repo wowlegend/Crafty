@@ -28,6 +28,7 @@ import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
+import { getInput, setIntent, setActive } from './input/inputState';
 
 // Bold-flat UI primitives (S1C-M2a chrome migration)
 import { Panel, Slot, Button, Icon } from './ui/primitives/index.js';
@@ -289,15 +290,27 @@ export const Player = ({ isWorldBuilt }) => {
   }, [activeSpell]);
 
   useEffect(() => {
+    // WRITER: the keyboard/mouse listeners are the INPUT SOURCE. They write the same physical
+    // keys into keysRef (the raw substrate continuous-reads like held-F casting still use) AND
+    // mirror movement keys into the input-intent module so the verb loop reads intents, not raw
+    // keys. Bindings are UNCHANGED — this is a pure abstraction-boundary refactor.
     const handleKeyDown = (e) => {
       keysRef.current[e.code] = true;
 
+      // WASD -> continuous movement intents (W=forward, S=back, A=left, D=right).
+      if (e.code === 'KeyW') setIntent('moveF', true);
+      else if (e.code === 'KeyS') setIntent('moveB', true);
+      else if (e.code === 'KeyA') setIntent('moveL', true);
+      else if (e.code === 'KeyD') setIntent('moveR', true);
+
       if (e.code === 'Space') {
         jumpRequested.current = true;
+        setIntent('jump', true);
       }
 
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         dodgeRequested.current = true;
+        setIntent('dodge', true);
       }
 
       if (e.code === 'KeyF') {
@@ -306,12 +319,19 @@ export const Player = ({ isWorldBuilt }) => {
     };
     const handleKeyUp = (e) => {
       keysRef.current[e.code] = false;
+
+      if (e.code === 'KeyW') setIntent('moveF', false);
+      else if (e.code === 'KeyS') setIntent('moveB', false);
+      else if (e.code === 'KeyA') setIntent('moveL', false);
+      else if (e.code === 'KeyD') setIntent('moveR', false);
+
       if (e.code === 'Space') {
         jumpRequested.current = false;
+        setIntent('jump', false);
       }
     };
     const handleMouseDown = (e) => {
-      if (document.pointerLockElement) {
+      if (getInput().active) {
         if (e.button === 0) {
           triggerMeleeAttack();
         } else if (e.button === 2) {
@@ -319,13 +339,22 @@ export const Player = ({ isWorldBuilt }) => {
         }
       }
     };
+    // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
+    // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
+    // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
+    const handlePointerLockChange = () => {
+      setActive(!!document.pointerLockElement);
+    };
+    handlePointerLockChange(); // sync initial active state on mount (single read above)
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
@@ -431,22 +460,28 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Read from keysRef instead of stale keys state
     const keys = keysRef.current;
-    // Only process movement if pointer is locked
-    const isLocked = !!document.pointerLockElement;
+    // READER: read the live intent object ONCE per frame (transient, alloc-free — Game-Loop
+    // Isolation). `input.active` is the centralized gate that replaces the old scattered
+    // raw pointer-lock reads; movement/dodge read input.moveF/.moveB/.moveL/.moveR.
+    const input = getInput();
+    const isLocked = input.active;
 
     // Handle dodge roll state machine
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
 
-    if (isLocked && dodgeRequested.current) {
+    if (isLocked && input.dodge) {
+      // Edge-trigger: consume the dodge intent so one press = one dodge (matches the old
+      // dodgeRequested.current = false reset). dodgeRequested ref kept in sync for symmetry.
       dodgeRequested.current = false;
-      
+      setIntent('dodge', false);
+
       // Check cooldown
       if (!dodge.isActive && nowTime - dodge.lastDodgeTime >= dodge.cooldown) {
-        const moveW = (isLocked && keys.KeyW) ? 1 : 0;
-        const moveS = (isLocked && keys.KeyS) ? 1 : 0;
-        const moveA = (isLocked && keys.KeyA) ? 1 : 0;
-        const moveD = (isLocked && keys.KeyD) ? 1 : 0;
+        const moveW = (isLocked && input.moveF) ? 1 : 0;
+        const moveS = (isLocked && input.moveB) ? 1 : 0;
+        const moveA = (isLocked && input.moveL) ? 1 : 0;
+        const moveD = (isLocked && input.moveR) ? 1 : 0;
 
         const cameraDir = new THREE.Vector3();
         camera.getWorldDirection(cameraDir);
@@ -500,7 +535,7 @@ export const Player = ({ isWorldBuilt }) => {
     const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
 
     // Phase 23: Ledge Parkour Climb/Vault System
-    if (!isGrounded && isLocked && keys.KeyW && velocityY.current <= 2.0 && controllerRef.current) {
+    if (!isGrounded && isLocked && input.moveF && velocityY.current <= 2.0 && controllerRef.current) {
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       const lookDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z).normalize();
@@ -553,9 +588,13 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Handle jumping & gravity
     if (isGrounded) {
-      if (isLocked && jumpRequested.current && !dodge.isActive) {
+      if (isLocked && input.jump && !dodge.isActive) {
         velocityY.current = 12.0;
+        // Consume the jump intent on a grounded jump, mirroring the old jumpRequested reset.
+        // OS key-repeat re-sets the intent via repeated keydown (same as before), so held-Space
+        // bunny-hopping is preserved byte-identically.
         jumpRequested.current = false;
+        setIntent('jump', false);
       } else {
         // Small downward force to stay glued to slopes and stairs
         velocityY.current = -0.5;
@@ -601,10 +640,10 @@ export const Player = ({ isWorldBuilt }) => {
       forwardDir.normalize();
       const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x);
 
-      const moveW = keys.KeyW ? 1 : 0;
-      const moveS = keys.KeyS ? 1 : 0;
-      const moveA = keys.KeyA ? 1 : 0;
-      const moveD = keys.KeyD ? 1 : 0;
+      const moveW = input.moveF ? 1 : 0;
+      const moveS = input.moveB ? 1 : 0;
+      const moveA = input.moveL ? 1 : 0;
+      const moveD = input.moveR ? 1 : 0;
 
       const direction = new THREE.Vector3()
         .addScaledVector(forwardDir, moveW - moveS)
