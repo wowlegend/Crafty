@@ -2,7 +2,7 @@
 
 > **Status:** DESIGN — awaiting Kevin's spec review (the master-plan HARD GATE: no S2 implementation before an approved design). Authored 2026-06-02 via `superpowers:brainstorming` after a grounded multi-agent analysis (real-code core-loop teardown + audit distill + live 2026 comp research + 3 + 7 ideated signature directions, each adversarially critiqued).
 >
-> **Decisions locked with Kevin (2026-06-02):** (1) **Foundation-first** — build a signature-agnostic core loop (S2-A) before any signature. (2) The signature is a **suite of four Aspects** (Kinetic / Primal / Warden / Elemental = VOIDHAND / WILDHEART / SOULBIND / ELEMANCER), built **sequentially, each deep before the next**. (3) **Lead = WILDHEART** (lowest-risk, highest-WOW validation), then VOIDHAND → SOULBIND → ELEMANCER.
+> **Decisions locked with Kevin (2026-06-02):** (1) **Foundation-first** — build a signature-agnostic core loop (S2-A) before any signature. (2) The signature is a **suite of four Aspects** — VOIDHAND / WILDHEART / SOULBIND / ELEMANCER — built **sequentially, each deep before the next**. (3) **Lead = WILDHEART** (lowest-risk, highest-WOW validation), then VOIDHAND → SOULBIND → ELEMANCER.
 >
 > Companion analysis (do not re-derive): `memory/REALITY-AUDIT-2026-05-30.md`, `memory/MONETIZATION-VIRALITY-SCAN-2026-05-30.md`, the signature mockups in `.superpowers/s2-signature-mockups/` (gitignored: `board-1..7-*.png` + `matrix.png`).
 
@@ -62,27 +62,27 @@ The "make it a game" core. Every piece is grounded in a verified-real system and
 
 One unifying frame: the player specializes into **Aspects**, each a distinct fantasy layered on the S2-A combat, each a node-tree in the A4 progression. You can dabble across Aspects or main one (capped specialization forces identity — the teen/young-adult retention layer). All four manufacture clip-worthy moments and open a cosmetic-VFX surface ("pay to be seen", amplified by S4 co-op). **Built sequentially; each is its own spec → plan → build → verify; each must be deep + shipped + fun before the next.**
 
-**The four Aspects (system-label · epithet):** 🜂 **Kinetic** · *the Unseen Hand* (VOIDHAND) — gravity/telekinesis · 🐾 **Primal** · *the Beast* (WILDHEART) — beast-transform · 🔗 **Warden** · *the Pack* (SOULBIND) — capture/command creatures · 🜔 **Elemental** · *the Storm* (ELEMANCER) — reactive terrain. (Epithets are flavor, swappable.)
+**The four Aspects** (one name each — these are descriptors, not extra names; no epithets): 🜂 **Voidhand** — gravity / kinetic (grab & hurl the world) · 🐾 **Wildheart** — transform into element-beasts · 🔗 **Soulbind** — capture & fuse living creatures · 🜔 **Elemancer** — reactive elemental terrain.
 
-### S2-B1 · WILDHEART — the **Primal** Aspect · "the Beast" (LEAD)
-Hold a roar → **become an element-beast** (the loaded element picks the form: fire→comet, ice→boulder-bull, lightning→hawk, arcane→golem). Your two attack intents *re-skin* per beast, so skill transfers with zero new menu. A timed Primal meter banks in the day, unleashes in the siege.
+### S2-B1 · WILDHEART — beast-transform (LEAD)
+Hold a roar → **become an element-beast** (the loaded element picks the form: fire→comet, ice→boulder-bull, lightning→hawk, arcane→golem). Your two attack intents *re-skin* per beast, so skill transfers with zero new menu. A timed Ferocity meter banks in the day, unleashes in the siege.
 - **Why lead:** lowest build-risk (**zero voxel edits → never re-meshes**; MED), highest immediate WOW + Marcus-joy, clip-gold → validates "an Aspect on S2-A = fun" cheaply + impressively, and builds the Aspect-meta scaffold the others reuse.
 - **Grounds on:** Rapier collider hot-swap, dodge i-frames, the 4 elements, GPU sparks.
 - **Hardest part / de-risk:** the collider hot-swap must be **transactional** (a hard restore-invariant on form-exit/death/save — no "permanent-beast" bug) + a real-device FPS check on the high-restitution bull *before* the other three beasts. Prototype the swap behind the visual gate first.
 
-### S2-B2 · VOIDHAND — the **Kinetic** Aspect · "the Unseen Hand"
+### S2-B2 · VOIDHAND — kinetic / gravity-hand
 Grab a chunk of the world, orbit it as a **shield**, **hurl** it to spike a monster into your own siege wall (base-as-anvil). One held block, three verbs (HURL/SLAM/SURF), element-chargeable.
 - **Why 2nd:** the combat-anchor + the **strongest cohesion-with-the-foundation** (your day-built wall becomes the weapon's backstop — building *matters* in combat). Re-mesh-avoiding.
 - **Grounds on:** the verified 200-cap `InstancedRigidBodies` debris pool, the manual `entity.knockback` path, GPU sparks, the elements.
 - **Hardest part / de-risk:** the no-re-mesh promise = bank blocks in the calm + a **phantom-chunk** fallback. Make it a **hard invariant + a static gate**: a combat-state grab NEVER calls the worker's block-edit message. The grab→orbit→hurl state machine spans 3 god-files — extract along export seams.
 
-### S2-B3 · SOULBIND — the **Warden** Aspect · "the Pack"
+### S2-B3 · SOULBIND — capture + fuse creatures
 Snare a low-HP mob with a ribbon, **soulbind** its living AI body into your squad, **voxel-fuse** two creatures into a hybrid you command in the siege.
 - **Why 3rd:** the strongest **retention + commercial** layer (living ownable creatures = the comps' biggest unmonetized vein) — but it needs the combat to exist (to capture mobs), so it follows the combat Aspects.
 - **Grounds on:** the A* AI worker, the pet ECS path, the death hook, sparks. **Zero voxel edits.**
 - **Hardest part / de-risk:** an allegiance/faction concept in `ai.worker.js` (allies vs hostiles) + fusion-mesh generation. **v1 ships a CURATED prebuilt hybrid roster (lookup, not procedural splicing)** so the fun lands without betting on procedural meshing in the fragile mesher/winding zone.
 
-### S2-B4 · ELEMANCER — the **Elemental** Aspect · "the Storm" (LAST)
+### S2-B4 · ELEMANCER — reactive elemental terrain (LAST)
 Cast at the **blocks**: each voxel carries an element-state; fire burns wood (spreads), ice freezes water (bridge), lightning conducts a wet floor. Chemistry = combat + building payoff + hazard + the AI navmesh, all at once.
 - **Why last:** the **boldest fantasy but the one true re-mesh kill-risk.** Gated behind the **S2-A perf number** + an **overlay-first build** (render BURNING as a non-re-meshing decal + damage-flag first; use readable elemental OBJECTS like oil-wood/ice-crystal, not hidden per-voxel bytes; profile on a real iPad *before* adding propagation/re-mesh). **Self-hazard OFF on the youngest tier** so a kid's own fire never punishes them.
 - **Grounds on:** `terrain.worker` chunk arrays, element-typed sparks, magic secondaries, A* on the live grid — but re-mesh perf is the gate.
@@ -96,10 +96,10 @@ Cast at the **blocks**: each voxel carries an element-state; fire burns wood (sp
 ```
 S2-A  Foundation ............ fun + cohesive + persistent core; real FPS number; Aspect trees wired
   └─ exit: §1 metric passes with NO Aspect; unit+visual green; FPS target met
-S2-B1 WILDHEART (Primal) ...... lowest-risk, proves the Aspect pattern; collider-swap restore-invariant gate
-S2-B2 VOIDHAND (Kinetic) .... combat-anchor + base-as-anvil; "combat-grab never re-meshes" static gate
-S2-B3 SOULBIND (Warden) ....... creature/retention layer; curated fusion roster v1; faction-AI
-S2-B4 ELEMANCER (Elemental) . gated behind the S2-A FPS number + overlay-first; the riskiest, last
+S2-B1 WILDHEART (beast) ...... lowest-risk, proves the Aspect pattern; collider-swap restore-invariant gate
+S2-B2 VOIDHAND (kinetic) .... combat-anchor + base-as-anvil; "combat-grab never re-meshes" static gate
+S2-B3 SOULBIND (creatures) ....... creature/retention layer; curated fusion roster v1; faction-AI
+S2-B4 ELEMANCER (terrain) . gated behind the S2-A FPS number + overlay-first; the riskiest, last
 ```
 
 Each phase: `superpowers:writing-plans` → subagent-driven-development (Opus per task; TDD red-first; the deterministic visual gate + static gates; human-eyeball baselines) → update the 4-piece docs + pre-compact-flush. An Aspect is "done" only when it is deep, shipped, fun-verified, and green — before the next starts.
