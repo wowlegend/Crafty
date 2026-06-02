@@ -9,6 +9,13 @@ import pixelmatch from 'pixelmatch';
 // for the spell VFX look (the whole point of the state). Until the controller baselines
 // tests/visual/baseline/spell-cast.png, this one state reports missing-baseline (red); the
 // EXISTING 10 stay green. Once baselined it diffs like the rest.
+//
+// NOTE: `mascot-a` / `mascot-b` / `mascot-c` (S1-D) are THROWAWAY direction mockups that
+// the capture script ALSO produces (tests/visual/current/mascot-{a,b,c}.png), but they are
+// DELIBERATELY OMITTED from STATES below so they are NOT asserted as regression baselines —
+// 2 of the 3 get deleted once Kevin picks a direction. To prune later: delete the two
+// unchosen mascot files in src/render/mascots/, drop their entries from the `showMascot`
+// switch + the capture.mjs loop, and (if no longer needed) the studio + hook.
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged

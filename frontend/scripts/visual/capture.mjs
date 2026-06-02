@@ -201,6 +201,22 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
     console.log('captured achievements-open');
+
+    // mascot-a / mascot-b / mascot-c (S1-D): THREE throwaway mascot DIRECTION mockups,
+    // each rendered in the SAME standalone studio overlay (identical camera + lighting +
+    // scale) so Kevin can pick a direction. These are captured but INTENTIONALLY NOT in
+    // the permanent visual gate (diff.test.js STATES) — 2 of 3 get pruned after the pick.
+    // The studio is its own R3F Canvas mounted over the (mob-free, capture-mode) world, so
+    // each frame is deterministic; we dismiss the achievements panel first for a clean mount.
+    await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
+    for (const v of ['a', 'b', 'c']) {
+      await page.evaluate((variant) => window.__craftyTest.call('showMascot', variant), v);
+      await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 8000 });
+      await flushFrames(page, 10);
+      await delay(900);
+      await page.screenshot({ path: resolve(OUT, `mascot-${v}.png`) });
+      console.log(`captured mascot-${v}`);
+    }
   } finally {
     await browser.close();
     server.kill('SIGTERM');

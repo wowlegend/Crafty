@@ -26,6 +26,13 @@ const PrimitivesShowcase = import.meta.env.DEV
   ? lazy(() => import('./ui/PrimitivesShowcase').then((m) => ({ default: m.PrimitivesShowcase })))
   : () => null;
 
+// DEV-only mascot DIRECTION-mockup studio overlay (S1-D). Throwaway direction picks —
+// rendered via the `showMascot` test hook for the visual harness, then 2 of 3 pruned once
+// Kevin chooses. Lazy + DEV-gated so the whole subtree tree-shakes out of prod builds.
+const MascotStudio = import.meta.env.DEV
+  ? lazy(() => import('./render/mascots/MascotStudio').then((m) => ({ default: m.MascotStudio })))
+  : () => null;
+
 function App() {
   return (
     <AuthProvider>
@@ -82,6 +89,9 @@ function GameApp({ experienceSystem }) {
   
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
+  // DEV-only mascot studio overlay: null = hidden, 'a'|'b'|'c' = the active direction
+  // mockup. Driven by the `showMascot` test hook (visual harness). No-op in prod.
+  const [mascotVariant, setMascotVariant] = useState(null);
 
   useEffect(() => {
     if (gameState.isSpawnChunkLoaded && !isWorldBuilt) {
@@ -265,6 +275,19 @@ function GameApp({ experienceSystem }) {
       store.setHudHidden(true);
       store.setLocale(locale);          // zh-CN triggers the lazy CJK load (async)
       store.setShowcaseView(true);
+    });
+    // Mascot-studio fixture (S1-D): mount the standalone mascot studio overlay for ONE
+    // direction mockup ('a'|'b'|'c'). Enters capture mode so the mascot's seeded layout +
+    // suppressed animation render byte-stable, and hides the HUD so the overlay is clean.
+    // The studio has its OWN Canvas/camera/lighting, so it renders identically regardless
+    // of the gameplay scene state behind it. DEV-only (tree-shaken from prod).
+    registerTestHook('showMascot', (variant = 'a') => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      enterCaptureMode();
+      store.setCaptureMode(true);
+      store.setQualityTier('high');
+      setMascotVariant(variant === 'b' || variant === 'c' ? variant : 'a');
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
@@ -485,6 +508,10 @@ function GameApp({ experienceSystem }) {
       {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
 
       {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
+
+      {import.meta.env.DEV && mascotVariant && (
+        <Suspense fallback={null}><MascotStudio variant={mascotVariant} /></Suspense>
+      )}
     </div>
   );
 }
