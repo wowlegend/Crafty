@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
+import { isPointInCone } from './combat/cone.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
@@ -957,22 +958,12 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
     };
 
     const checkMobsInMeleeCone = (playerPos, lookDir, range = 4.5, angleRad = Math.PI / 2) => {
-      const forward2D = new THREE.Vector2(lookDir.x, lookDir.z).normalize();
-      const minDot = Math.cos(angleRad / 2);
-      
-      return mobsQuery.entities.filter(e => {
-        const dx = e.position.x - playerPos.x;
-        const dy = e.position.y - playerPos.y;
-        const dz = e.position.z - playerPos.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        
-        if (dist > range) return false;
-        if (Math.abs(dy) > 2.2) return false; // horizontal plane vertical cutoff
-        
-        const toMob2D = new THREE.Vector2(dx, dz).normalize();
-        const dot = forward2D.dot(toMob2D);
-        return dot >= minDot;
-      });
+      // Cone geometry extracted to the pure, unit-tested helper `isPointInCone`
+      // (src/combat/cone.js) so the SAME front-arc test is reused for the boss
+      // (Components.jsx triggerMeleeAttack). Behaviour here is IDENTICAL.
+      return mobsQuery.entities.filter(e =>
+        isPointInCone(playerPos, lookDir, e.position, range, angleRad)
+      );
     };
 
     useGameStore.setState({ checkMobCollision: checkMobCollision, checkMobsInMeleeCone: checkMobsInMeleeCone });

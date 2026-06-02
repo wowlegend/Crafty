@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
+import { isPointInCone } from './combat/cone.js';
 import {
   PickaxeIcon,
   Package,
@@ -255,12 +256,38 @@ export const Player = ({ isWorldBuilt }) => {
       const angleRad = Math.PI / 2; // 90-degree front arc sweep
 
       const hitMobs = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, range, angleRad);
-      
+
+      let hitSomething = false;
+
       if (hitMobs && hitMobs.length > 0) {
         hitMobs.forEach(mob => {
           GameMethods.damageMob(mob.id, damage, 'physical');
         });
-        
+        hitSomething = true;
+      }
+
+      // Boss-cone branch: the boss is a SEPARATE entity (not in the ECS), so the
+      // mob loop above can never hit it. Reuse the SAME pure cone test against the
+      // boss position (mirrors the spell boss path in EnhancedMagicSystem.jsx).
+      // A single swing can hit BOTH mobs (above) AND the boss (here).
+      if (store.isBossActive?.() && store.getBossPosition) {
+        const bp = store.getBossPosition();
+        if (bp) {
+          const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
+          if (isPointInCone(playerPos, lookDir, bossPoint, range, angleRad) && store.damageBoss) {
+            store.damageBoss(damage);
+            // Mirror the melee mob-hit feedback at the player layer: a spatial 'hit'
+            // sound at the boss (damageBoss plays no SFX of its own, unlike the spell
+            // path) plus the same visceral crit camera-shake the mob path triggers.
+            if (store.playSpatialSound) {
+              store.playSpatialSound('hit', bp, 1.1, 30);
+            }
+            hitSomething = true;
+          }
+        }
+      }
+
+      if (hitSomething) {
         if (isCrit && store.triggerCameraShake) {
           store.triggerCameraShake(1.6); // Visceral Crit camera shake
         }
