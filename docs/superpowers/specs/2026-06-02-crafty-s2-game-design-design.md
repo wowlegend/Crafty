@@ -114,7 +114,29 @@ Each phase: `superpowers:writing-plans` → subagent-driven-development (Opus pe
 - **Touch/iOS dead-on-arrival.** *Mitigation:* the A8 input-abstraction layer + a day-1 rule that every verb gates on intent, not Pointer-Lock.
 - **Monetization back-loaded behind S4 co-op.** Acknowledged: S2 does not depend on cosmetic revenue; it only ensures each Aspect opens a clean, no-P2W cosmetic-VFX surface. The S4 monetization plan goes to KEVIN-REVIEW-BATCH before any store/pricing.
 
-## 7. Out of scope (later streams)
+## 7. QA & Hardening Cadence (defense-in-depth, not a deferred mega-audit)
+
+**Principle:** catch errors at introduction, never defer to "one big sweep at S5" — deferral re-creates the Gemini slop-trail (compounding debt + decayed context + forensic-cost explosion), and our automated gates have **structural blind spots** (the mob-outline regression escaped because the visual gate forces `high` tier and nothing checked post-perf-downgrade or save-reload states — Kevin caught it by *playing*, not a gate). So we run layered nets, mostly continuous, with a deeper sweep at each **stream boundary** (end of S2, S3, S4 — not just S5):
+
+| Layer | Cadence | Catches |
+|---|---|---|
+| **1. Per-task TDD + spec/quality review** | every task | most bugs at introduction (cheapest) — already standard |
+| **2. Phase-exit adversarial QA sweep** | end of each milestone (S2-A, each Aspect) | the **gate blind-spot classes** (see below) |
+| **3. Stream-boundary reality audit** | end of S2 / S3 / S4 (like S0 was) | compounding tech-debt, real-vs-doc-claimed, perf truth → a living debt ledger |
+| **4. Widen the gates (systemic fix)** | once, early in S2-A | close the blind spots: **multi-tier visual capture** (not only forced-`high`) + a **runtime-state matrix** (after a PerformanceMonitor downgrade, after save→reload, after sustained combat for VRAM) |
+| **5. Human play-test (Kevin)** | ongoing | what gates structurally can't — the top-signal detector (caught the outline bug + the M1 fidelity divergence) |
+
+**The gate blind-spot checklist (what Layer-2 sweeps target — the classes that escape forced-`high`, capture-only gates):**
+1. **Tier/device-gated behavior** — every `quality.js` `q.*` branch: does low/med degrade gracefully + look right, and does a `PerformanceMonitor` downgrade break anything? *(the outline-bug class)*
+2. **Runtime-only / post-transition states** the capture suite never enters — after-downgrade, after save→reload, after sustained combat (VRAM growth — CanvasTexture/loot-dispose).
+3. **Save/load round-trips** — does state actually survive a reload? *(the progression-save bug)*
+4. **Perf under load on a real device** — the audit's #1 risk; unmeasured.
+5. **Hallucination / over-claim** — re-verify doc "done/SOTA" claims against code + assert the gates test what they claim.
+6. **Cross-system regressions** — a change in one god-file silently breaking another (the monolith risk).
+
+This cadence is a **standing practice** for every stream, not an S2-only clause.
+
+## 8. Out of scope (later streams)
 
 - **S3 (engine):** the touch *UI* layer, de-monolithing the god-files, ECS hardening, WebGPU/TSL. (S2 leaves input-abstraction + a perf number as the on-ramp.)
 - **S4 (multiplayer + monetization):** co-op (the cosmetic "pay-to-be-seen" amplifier + the social/virality engine TRAPSMITH would need), accounts, persistence backend, the cosmetics + transparent-pass store. Surface the concrete monetization plan to `KEVIN-REVIEW-BATCH.md` before any pricing/store wiring.
@@ -122,6 +144,6 @@ Each phase: `superpowers:writing-plans` → subagent-driven-development (Opus pe
 
 ---
 
-## 8. Next step
+## 9. Next step
 
 On Kevin's approval of this spec → `superpowers:writing-plans` for **S2-A** (the foundation) → subagent-driven build. S2-B1 (WILDHEART) is planned only after S2-A merges (it edits the systems S2-A establishes).
