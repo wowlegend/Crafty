@@ -72,6 +72,15 @@ export const useGameStore = create((set, get) => ({
     hudHidden: false,
     setHudHidden: (on) => set({ hudHidden: !!on }),
 
+    // Capture-only: marks a SKY-STUDIO subject card (character/boss/spell-cast close-ups)
+    // vs an in-world frame. The explore-scene atmosphere (<LightMotes>) is suppressed when
+    // true so the warm mote cloud doesn't drift across the framed hero. Declarative identity
+    // (the studio-card hook SETS this) — GameScene does NOT infer it from camera position,
+    // and it is decoupled from `hudHidden` (HUD visibility != scene atmosphere). Default
+    // false -> motes always render in gameplay and in the in-world capture frames.
+    captureStudio: false,
+    setCaptureStudio: (on) => set({ captureStudio: !!on }),
+
     // Device-gated render quality tier (spec §8). Default 'low' = conservative;
     // App.jsx selects up at startup via selectTier(readDeviceSignals()).
     qualityTier: 'low',

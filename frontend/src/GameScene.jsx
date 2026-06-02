@@ -673,6 +673,10 @@ export function GameScene({
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
   // Always false in normal gameplay -> Physics runs exactly as before.
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
+  // Studio-card captures (character/boss/spell-cast close-ups) suppress the explore-scene
+  // motes so the warm cloud doesn't drift across the framed hero. Always false in gameplay
+  // (a mount toggle that flips only during capture setup, never in the hot loop).
+  const captureStudio = useGameStore((s) => s.captureStudio);
   const qualityTier = useGameStore((s) => s.qualityTier);
   const q = TIERS[qualityTier] || TIERS.low;
   const [sunMesh, setSunMesh] = useState(null);
@@ -763,8 +767,10 @@ export function GameScene({
         <Atmosphere shadowConfig={shadowConfig} />
 
         {/* S1-D-M3: always-on warm light motes (spec §5① "drifting light motes").
-            Tier-gated count; capture-frozen drift; mood-tinted. */}
-        <LightMotes count={q.moteCount} />
+            Tier-gated count; capture-frozen drift; mood-tinted. Suppressed in the
+            sky-studio subject cards (captureStudio) so the cloud doesn't bleed across
+            the framed hero — it stays on in gameplay + all in-world capture frames. */}
+        {!captureStudio && <LightMotes count={q.moteCount} />}
 
         <WeatherSystem />
 
