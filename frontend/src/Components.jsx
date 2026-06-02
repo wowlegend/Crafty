@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { isPointInCone } from './combat/cone.js';
+import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
   PickaxeIcon,
   Package,
@@ -1027,7 +1028,6 @@ export const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) 
     if (N >= 2) {
       const positions = new Float32Array(N * 2 * 3);
       const uvs = new Float32Array(N * 2 * 2);
-      const indices = new Uint16Array((N - 1) * 6);
 
       for (let i = 0; i < N; i++) {
         const p = trailPoints.current[i];
@@ -1051,15 +1051,7 @@ export const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) 
         uvs[i * 4 + 3] = 1;
       }
 
-      for (let i = 0; i < N - 1; i++) {
-        indices[i * 6 + 0] = 2 * i;
-        indices[i * 6 + 1] = 2 * i + 1;
-        indices[i * 6 + 2] = 2 * i + 2;
-
-        indices[i * 6 + 3] = 2 * i + 1;
-        indices[i * 6 + 4] = 2 * i + 3;
-        indices[i * 6 + 2] = 2 * i + 2;
-      }
+      const indices = buildRibbonIndices(N);
 
       geomRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geomRef.current.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
