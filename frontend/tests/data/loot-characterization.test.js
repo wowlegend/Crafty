@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { getItemRarity as npcGetItemRarity } from '../../src/SimplifiedNPCSystem.jsx';
 import { getItemRarity as panelsGetItemRarity } from '../../src/ui/GamePanels.jsx';
 import { EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
+// Import the REAL shipped loot tables (not hand-copied replicas) so the structure
+// + emoji-free assertions below characterize the ACTUAL data — any future drift
+// (changed chance/xp, renamed item, reintroduced emoji) FAILS these tests.
+import { LOOT_TABLES, CHEST_LOOT } from '../../src/QuestSystem.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHARACTERIZATION TESTS — refactor safety net (S1C / M3 emoji-decouple)
@@ -27,48 +31,13 @@ import { EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
 // so the golden replicas + their equality tests are removed — their job (force a
 // conscious decision before convergence) is done; this commit IS that decision.
 
-// === The CURRENT LOOT/CHEST data (snapshotted from QuestSystem.jsx ~line 10) ==
-// Snapshotted as the decoupled reference so T3's data change is diff-visible in
-// this test file. POST M3-T3: item identity is emoji-free (the leading emoji was
-// decoupled from item identity and now lives only in the icon registry), so these
-// snapshots carry CLEAN names — the diff vs the pre-T3 snapshot proves the
-// decouple happened (an emoji strip and nothing else).
-const LOOT_TABLES_SNAPSHOT = {
-  pig: [
-    { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
-    { item: 'Bone', chance: 0.3, xp: 2 },
-  ],
-  cow: [
-    { item: 'Raw Beef', chance: 0.8, xp: 5 },
-    { item: 'Leather', chance: 0.5, xp: 3 },
-    { item: 'Bone', chance: 0.2, xp: 2 },
-  ],
-  zombie: [
-    { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
-    { item: 'Iron Nugget', chance: 0.3, xp: 8 },
-    { item: 'Emerald', chance: 0.05, xp: 25 },
-  ],
-  skeleton: [
-    { item: 'Bone', chance: 0.9, xp: 3 },
-    { item: 'Arrow', chance: 0.6, xp: 4 },
-    { item: 'Iron Nugget', chance: 0.2, xp: 8 },
-  ],
-  spider: [
-    { item: 'Spider Eye', chance: 0.6, xp: 5 },
-    { item: 'String', chance: 0.8, xp: 3 },
-    { item: 'Ender Pearl', chance: 0.03, xp: 30 },
-  ],
-};
-
-const CHEST_LOOT_SNAPSHOT = [
-  { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
-  { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-  { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-  { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
-  { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
-  { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
-  { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
-];
+// === The CURRENT LOOT/CHEST data (imported LIVE from QuestSystem.jsx) =========
+// The structure + emoji-free assertions below run against the REAL exported
+// LOOT_TABLES / CHEST_LOOT (no hand-copied replicas). POST M3-T3: item identity
+// is emoji-free (the leading emoji was decoupled from item identity and now lives
+// only in the icon registry). The inline snapshots below were regenerated from the
+// shipped data, so any future drift (changed chance/xp, renamed item, reintroduced
+// emoji) FAILS these tests — the SHIPPED data is the source of truth.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. getItemRarity — per-item tier behavior.
@@ -199,7 +168,7 @@ describe('characterization: NPC vs GamePanels rarity duplication contract', () =
 // ─────────────────────────────────────────────────────────────────────────────
 describe('characterization: LOOT_TABLES structure', () => {
   it('matches the current loot-table snapshot (item names + chances + xp)', () => {
-    expect(LOOT_TABLES_SNAPSHOT).toMatchInlineSnapshot(`
+    expect(LOOT_TABLES).toMatchInlineSnapshot(`
       {
         "cow": [
           {
@@ -288,7 +257,7 @@ describe('characterization: LOOT_TABLES structure', () => {
 
 describe('characterization: CHEST_LOOT structure', () => {
   it('matches the current chest-loot snapshot (item names + chances + effects)', () => {
-    expect(CHEST_LOOT_SNAPSHOT).toMatchInlineSnapshot(`
+    expect(CHEST_LOOT).toMatchInlineSnapshot(`
       [
         {
           "chance": 0.6,
@@ -348,8 +317,8 @@ describe('characterization: CHEST_LOOT structure', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('characterization: loot identity strings are emoji-free (decouple done)', () => {
   const allLootItemNames = [
-    ...Object.values(LOOT_TABLES_SNAPSHOT).flat().map((e) => e.item),
-    ...CHEST_LOOT_SNAPSHOT.map((e) => e.item),
+    ...Object.values(LOOT_TABLES).flat().map((e) => e.item),
+    ...CHEST_LOOT.map((e) => e.item),
   ];
 
   // Any emoji/pictographic codepoint anywhere in the identity string.

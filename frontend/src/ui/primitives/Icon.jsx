@@ -1,8 +1,8 @@
 import {
   Settings, X, ChevronRight, Compass,
-  Trophy, Gift, Lock, Check, AlertTriangle, Skull, Sun, Moon, CloudRain,
+  Gift, Lock, Check, AlertTriangle, Skull, Sun, CloudRain,
   Snowflake, Home, Globe, Backpack, Footprints, Sparkles, PartyPopper,
-  ArrowRight, Building2, Dumbbell, Gem, Landmark, Hammer, Heart, Bug,
+  ArrowRight, ArrowUp, ArrowDown, Building2, Dumbbell, Landmark, Hammer, Heart,
 } from 'lucide-react';
 import { GAME_ICONS } from './gameIcons.js';
 
@@ -18,14 +18,12 @@ const CHROME = {
   close: X,
   chevron: ChevronRight,
   compass: Compass,
-  trophy: Trophy,
   gift: Gift,
   lock: Lock,
   check: Check,
   warning: AlertTriangle,
   skull: Skull,
   sun: Sun,
-  moon: Moon,
   rain: CloudRain,
   snow: Snowflake,
   home: Home,
@@ -35,13 +33,13 @@ const CHROME = {
   sparkles: Sparkles,
   party: PartyPopper,
   'arrow-right': ArrowRight,
+  'arrow-up': ArrowUp,
+  'arrow-down': ArrowDown,
   building: Building2,
   strength: Dumbbell,
-  'gem-chip': Gem,
   landmark: Landmark,
   hammer: Hammer,
   heart: Heart,
-  bug: Bug,
 };
 
 // Friendly name -> baked game-icon key (keys exactly as in gameIcons.js).

@@ -61,8 +61,11 @@ describe('static gates', () => {
   // (2600-27BF), misc-symbols-and-arrows (2B00-2BFF), regional indicators
   // (1F1E6-1F1FF), arrows-as-icons (2190-21FF), misc-technical incl. hourglass
   // (2300-23FF), plus the emoji variation selector (FE0F) + ZWJ (200D).
+  // Geometric Shapes (25A0-25FF) ADDED: catches symbol-as-icon glyphs ▲▼◆●■
+  // going forward (true parity with the gate's stated intent). Box-drawing
+  // (U+2500-257F) is OUTSIDE this range, so comment separators stay uncaught.
   const EMOJI_HARD =
-    /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{FE0F}\u{200D}]/gu;
+    /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{FE0F}\u{200D}]/gu;
   it('S1-C: zero emoji as brand/mascot/HUD markers (hard fail)', () => {
     const offenders = [];
     for (const f of CSS_AND_JS_FILES) {

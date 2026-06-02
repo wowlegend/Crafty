@@ -133,8 +133,8 @@ const GearInspector = ({ itemName, equippedGear }) => {
         const diff = val - activeVal;
 
         if (diff === 0) return <span className="text-text-muted">({val})</span>;
-        if (diff > 0) return <span className="text-success font-bold">+{val} (+{diff} ▲)</span>;
-        return <span className="text-danger font-bold">+{val} ({diff} ▼)</span>;
+        if (diff > 0) return <span className="text-success font-bold">+{val} (+{diff} <Icon name="arrow-up" size={10} className="inline align-middle" />)</span>;
+        return <span className="text-danger font-bold">+{val} ({diff} <Icon name="arrow-down" size={10} className="inline align-middle" />)</span>;
     };
 
     return (
@@ -691,11 +691,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
         if (GameMethods.grantXP) GameMethods.grantXP(10);
     };
 
-    // Strip private-use + emoji glyphs from a block/item key so the cell shows a
-    // clean text label alongside the color swatch (mirrors the old extraction).
-    const EMOJI_RE = /[-]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]/g;
-    const cleanName = (s) => (s || '').replace(EMOJI_RE, '').trim();
-
     return (
         <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
             <Panel
@@ -728,19 +723,17 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         key={i}
                                         onClick={() => handleGridClick(i)}
                                         className="cursor-pointer"
-                                        title={item ? cleanName(item) : undefined}
+                                        title={item ? item : undefined}
                                     >
                                         <Slot className="w-16 h-16">
                                             {item ? (
                                                 <div className="flex flex-col items-center justify-center gap-0.5">
                                                     <div
-                                                        className="w-8 h-8 rounded-sm grid place-items-center text-xl border-chrome border-ink"
+                                                        className="w-8 h-8 rounded-sm border-chrome border-ink"
                                                         style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                                    >
-                                                        {item.match(EMOJI_RE) || ''}
-                                                    </div>
+                                                    />
                                                     <span className="text-[9px] text-text-muted truncate w-14 text-center leading-tight">
-                                                        {cleanName(item)}
+                                                        {item}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -791,16 +784,14 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         key={type}
                                         type="button"
                                         onClick={() => gameState.setSelectedBlock(type)}
-                                        title={cleanName(type)}
+                                        title={type}
                                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md border-chrome transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
                                     >
                                         <div
-                                            className="w-6 h-6 rounded-sm grid place-items-center text-sm border-chrome border-ink"
+                                            className="w-6 h-6 rounded-sm border-chrome border-ink"
                                             style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                        >
-                                            {type.match(EMOJI_RE) || ''}
-                                        </div>
-                                        <span className="text-xs text-text">{cleanName(type)}</span>
+                                        />
+                                        <span className="text-xs text-text">{type}</span>
                                         <span className="text-[10px] text-text-muted tabular-nums">{'×'}{count}</span>
                                     </button>
                                 );

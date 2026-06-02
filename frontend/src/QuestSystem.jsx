@@ -8,7 +8,7 @@ import { useT } from './i18n/i18n.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 
-const LOOT_TABLES = {
+export const LOOT_TABLES = {
     pig: [
         { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
         { item: 'Bone', chance: 0.3, xp: 2 },
@@ -35,7 +35,7 @@ const LOOT_TABLES = {
     ],
 };
 
-const CHEST_LOOT = [
+export const CHEST_LOOT = [
     { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
     { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
     { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
