@@ -13,6 +13,7 @@ import { siegeParams } from './game/dayNight.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
+import { rarityBeam } from './game/lootJuice.js';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -1201,15 +1202,13 @@ const LootDropRender = ({ entity }) => {
 
   const rarity = useMemo(() => getItemRarity(entity.item), [entity.item]);
 
-  const color = useMemo(() => {
-    switch (rarity) {
-      case 'legendary': return '#f97316';
-      case 'epic': return '#a855f7';
-      case 'rare': return '#3b82f6';
-      case 'common':
-      default: return '#9ca3af';
-    }
-  }, [rarity]);
+  // M3c-T1: the drop look is derived from the pure rarityBeam helper, keyed off
+  // the LOCKED RARITY_FILL palette -> { color, height, intensity } tiered by
+  // rarity (common = short/dim, legendary = tall/bright). The gem + beam share
+  // the color; the beam's height + additive opacity scale by tier so a legendary
+  // drop reads across the map.
+  const beam = useMemo(() => rarityBeam(rarity), [rarity]);
+  const color = beam.color;
 
   // M3-T3: the loot-drop glyph sprite painted a leading emoji from the (now
   // emoji-free) item name into a CanvasTexture. With item identity decoupled
@@ -1225,8 +1224,9 @@ const LootDropRender = ({ entity }) => {
     meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 2) * 0.2;
 
     if (beamRef.current) {
+      // Anchor the beam base at the drop, rising by its tiered height.
       beamRef.current.position.copy(entity.position);
-      beamRef.current.position.y += 1.5;
+      beamRef.current.position.y += beam.height / 2;
     }
   });
 
@@ -1244,11 +1244,11 @@ const LootDropRender = ({ entity }) => {
       </mesh>
 
       <mesh ref={beamRef}>
-        <cylinderGeometry args={[0.08, 0.25, 3.0, 8, 1, true]} />
+        <cylinderGeometry args={[0.08, 0.25, beam.height, 8, 1, true]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.15}
+          opacity={beam.intensity}
           depthWrite={false}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
