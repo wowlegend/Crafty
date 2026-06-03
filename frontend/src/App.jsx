@@ -11,6 +11,8 @@ import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades } from '
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
+import { setActive, getInput } from './input/inputState';
+import { useActiveInput } from './input/useActiveInput';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
@@ -125,11 +127,15 @@ function GameApp({ experienceSystem }) {
   const spellUpgrades = useSpellUpgrades();
 
   const {
-    isPointerLocked, setIsPointerLocked,
     showStats, setShowStats,
     showAchievements, setShowAchievements,
     showSpellUpgrades, setShowSpellUpgrades
   } = useInputManager(gameState, gameSystems, questSystem);
+
+  // Reactive projection of inputState.active (the single pointer-lock/active SoT).
+  // active changes only on a rare pointer-lock enter/exit gesture (NOT per-frame),
+  // so this useSyncExternalStore subscription is SAFE under Game-Loop Isolation.
+  const isPointerLocked = useActiveInput();
 
   // Select the device quality tier once at startup (runs in prod + dev).
   useEffect(() => {
@@ -181,9 +187,10 @@ function GameApp({ experienceSystem }) {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     // `start` mirrors the "Start Adventure" button (MenuSystem): flip the menu
-    // gate via the real setIsPointerLocked setter, then best-effort pointer lock.
+    // gate via the optimistic setActive writer (the active SoT), then best-effort
+    // pointer lock (Components.jsx's listener is the authoritative active writer).
     registerTestHook('start', () => {
-      setIsPointerLocked(true);
+      setActive(true);
       const state = useGameStore.getState();
       if (state.requestPointerLock) {
         state.requestPointerLock();
@@ -390,7 +397,7 @@ function GameApp({ experienceSystem }) {
 
   useEffect(() => {
     const handleContextMenu = (e) => {
-      if (document.pointerLockElement) {
+      if (getInput().active) {
         e.preventDefault();
       }
     };
@@ -515,6 +522,10 @@ function GameApp({ experienceSystem }) {
         </div>
       )}
 
+      {/* setIsPointerLocked prop on HUD + MenuSystem is wired to setActive — the
+          OPTIMISTIC active writer (the prop NAME is kept to avoid churn in those
+          components). Components.jsx's pointerlock listener is the AUTHORITATIVE
+          active writer (the single source of truth). */}
       {!hudHidden && (
         <HUD
           isPointerLocked={isPointerLocked}
@@ -530,7 +541,7 @@ function GameApp({ experienceSystem }) {
           spellUpgrades={spellUpgrades}
           showStats={showStats}
           setShowStats={setShowStats}
-          setIsPointerLocked={setIsPointerLocked}
+          setIsPointerLocked={setActive}
         />
       )}
 
@@ -541,7 +552,7 @@ function GameApp({ experienceSystem }) {
         showSpellUpgrades={showSpellUpgrades}
         setShowSpellUpgrades={setShowSpellUpgrades}
         isPointerLocked={isPointerLocked}
-        setIsPointerLocked={setIsPointerLocked}
+        setIsPointerLocked={setActive}
         showStats={showStats}
         setShowStats={setShowStats}
         questSystem={questSystem}

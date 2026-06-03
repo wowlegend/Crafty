@@ -21,6 +21,7 @@ import { resolve } from 'node:path';
 
 const SRC = resolve(process.cwd(), 'src');
 const components = () => readFileSync(resolve(SRC, 'Components.jsx'), 'utf8');
+const inputManager = () => readFileSync(resolve(SRC, 'InputManager.jsx'), 'utf8');
 
 describe('S2-A-M1 input-intent abstraction boundary', () => {
   it('Components.jsx imports from the input-intent module', () => {
@@ -47,5 +48,33 @@ describe('S2-A-M1 input-intent abstraction boundary', () => {
   it('the single pointer-lock site routes through setActive (centralized active gate)', () => {
     expect(components(), 'pointer-lock change must call setActive(...)')
       .toMatch(/setActive\(/);
+  });
+});
+
+// S2-A-M2d: SINGLE pointer-lock authority. M2d collapses the DUAL pointer-lock
+// authority — InputManager.jsx used to own a SECOND `pointerlockchange` listener +
+// its own `isPointerLocked` useState (a parallel representation of the same fact as
+// inputState.active). M2d deletes that listener + all of InputManager's raw
+// `document.pointerLockElement` reads; InputManager now reads the gate via
+// getInput().active and writes optimistically via setActive. Components.jsx remains
+// the SOLE authoritative pointerlockchange listener (the single allowed read above).
+describe('S2-A-M2d single pointer-lock authority (InputManager off the dup listener)', () => {
+  it('InputManager.jsx has ZERO document.pointerLockElement reads', () => {
+    const matches = inputManager().match(/document\.pointerLockElement/g) || [];
+    expect(matches.length, `InputManager must not read document.pointerLockElement, found ${matches.length}`)
+      .toBe(0);
+  });
+
+  it('InputManager.jsx has NO pointerlockchange listener (Components.jsx is the sole authority)', () => {
+    expect(inputManager(), 'InputManager must not register a pointerlockchange listener')
+      .not.toMatch(/pointerlockchange/);
+  });
+
+  it('InputManager.jsx imports getInput and setActive from ./input/inputState', () => {
+    const src = inputManager();
+    expect(src, 'InputManager must import from ./input/inputState')
+      .toMatch(/from\s+['"]\.\/input\/inputState['"]/);
+    expect(src, 'InputManager must import getInput').toMatch(/\bgetInput\b/);
+    expect(src, 'InputManager must import setActive').toMatch(/\bsetActive\b/);
   });
 });
