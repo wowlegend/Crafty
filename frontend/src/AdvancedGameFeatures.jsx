@@ -20,6 +20,9 @@ export const useSurvivalMode = (isDay) => {
     const nightCount = useGameStore((s) => s.nightCount);
     const [survivalWarning, setSurvivalWarning] = useState(null);
     const prevIsDay = useRef(true);
+    // Guards the survive-to-dawn reward against a double-grant: holds the night number
+    // already rewarded, so a re-fired dawn transition for the same night is a no-op.
+    const rewardedNight = useRef(0);
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
@@ -30,7 +33,16 @@ export const useSurvivalMode = (isDay) => {
         }
 
         if (!prevIsDay.current && isDay) {
-            setSurvivalWarning('Dawn breaks! You survived the night!');
+            // Dawn: reward surviving the night just passed. nightCount was bumped at
+            // nightfall, so it equals the night survived. Grant ONCE per night.
+            const survived = useGameStore.getState().nightCount;
+            if (survived > 0 && rewardedNight.current < survived) {
+                rewardedNight.current = survived;
+                const r = useGameStore.getState().grantDawnReward(survived);
+                setSurvivalWarning(`Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`);
+            } else {
+                setSurvivalWarning('Dawn breaks! You survived the night!');
+            }
             setTimeout(() => setSurvivalWarning(null), 3000);
         }
 

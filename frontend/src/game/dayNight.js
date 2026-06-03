@@ -100,3 +100,58 @@ export function siegeParams(nightCount) {
   const hostileChance = Math.min(DAY_HOSTILE_CHANCE + n * SIEGE_HOSTILE_PER_NIGHT, SIEGE_HOSTILE_CAP);
   return { hostileChance, maxMobs };
 }
+
+// --- M3b SURVIVE-TO-DAWN reward --------------------------------------------
+//
+// Survive a night -> a reward that scales with the night survived: bonus XP, coins,
+// AND one guaranteed loot drop whose rarity climbs by night tier. Pure so the
+// reward-math contract is exhaustively unit-testable; the store action
+// grantDawnReward wires it to grantXP + addCoins + addToInventory. Magnitudes +
+// tier thresholds are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH).
+
+/** Bonus XP per night survived (reward = this * nightNumber). */
+export const DAWN_XP_PER_NIGHT = 50;
+
+/** Coins per night survived (reward = this * nightNumber). */
+export const DAWN_COINS_PER_NIGHT = 10;
+
+// The guaranteed loot item per rarity tier. Picked as a fixed, registry-consistent
+// representative of each tier (verified by tests/data/loot-characterization.test.js:
+// Health Potion=rare, Emerald=epic, Diamond=legendary) so the drop is deterministic.
+const DAWN_LOOT_BY_RARITY = {
+  rare: 'Health Potion',
+  epic: 'Emerald',
+  legendary: 'Diamond',
+};
+
+/**
+ * The rarity tier of the guaranteed dawn loot drop, climbing by night:
+ * nights 1-2 -> rare, 3-4 -> epic, 5+ -> legendary (plateau at the top tier).
+ * @param {number} nightNumber (>= 1)
+ * @returns {'rare'|'epic'|'legendary'}
+ */
+function dawnLootRarity(nightNumber) {
+  if (nightNumber >= 5) return 'legendary';
+  if (nightNumber >= 3) return 'epic';
+  return 'rare';
+}
+
+/**
+ * Survive-to-dawn reward as a PURE function of the night survived. XP + coins scale
+ * linearly; one guaranteed loot item is chosen from a rarity tier that climbs by
+ * night. A nullish / <= 0 / NaN night clamps to night 1 (never a zero/negative
+ * reward). Returns a descriptor the caller renders into a toast.
+ * @param {number} nightNumber
+ * @returns {{ xp: number, coins: number, lootRarity: string, lootItem: string, night: number }}
+ */
+export function dawnReward(nightNumber) {
+  const n = Math.max(1, Math.floor(Number(nightNumber) || 0) || 1);
+  const lootRarity = dawnLootRarity(n);
+  return {
+    night: n,
+    xp: DAWN_XP_PER_NIGHT * n,
+    coins: DAWN_COINS_PER_NIGHT * n,
+    lootRarity,
+    lootItem: DAWN_LOOT_BY_RARITY[lootRarity],
+  };
+}

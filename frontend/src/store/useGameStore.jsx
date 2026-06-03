@@ -4,7 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progressio
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
-import { crossedHalfCycle, isDayAtUnit } from '../game/dayNight.js';
+import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -525,6 +525,20 @@ export const useGameStore = create((set, get) => ({
     // never subscribes, so Game-Loop-Isolation holds.
     nightCount: 0,
     incrementNight: () => set((state) => ({ nightCount: state.nightCount + 1 })),
+
+    // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus
+    // XP + currency + one guaranteed scaling-rarity loot drop -- via the existing
+    // grantXP / addCoins / addToInventory paths. Pure magnitudes from dawnReward();
+    // the ONCE-per-dawn guard lives in useSurvivalMode (this action just grants).
+    // Returns the reward descriptor so the caller can render a toast.
+    grantDawnReward: (nightNumber) => {
+        const reward = dawnReward(nightNumber);
+        const state = get();
+        state.grantXP(reward.xp, 'Survived the night');
+        state.addCoins(reward.coins);
+        state.addToInventory(reward.lootItem, 1);
+        return reward;
+    },
 
     gameTime: 0,
     setGameTime: (timeArg) => set((state) => {
