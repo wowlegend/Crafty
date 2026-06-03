@@ -26,6 +26,8 @@ export function isPointInCone(origin, dir, point, range = 4.5, angleRad = Math.P
   // forward2D = normalize(Vector2(dir.x, dir.z))
   const fLen = Math.hypot(dir.x, dir.z);
   // Degenerate forward (looking straight up/down) — no horizontal facing, no hit.
+  // (This short-circuit assumes a forward arc angleRad < PI; it would only diverge from the
+  //  original inline math for a >=180deg arc, which the melee/boss callers never use.)
   if (fLen === 0) return false;
   const fx = dir.x / fLen;
   const fz = dir.z / fLen;

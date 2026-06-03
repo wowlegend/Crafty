@@ -169,10 +169,8 @@ export const Player = ({ isWorldBuilt }) => {
 
   const lastCastTime = useRef(0);
   const CAST_COOLDOWN = 333;
-  const jumpRequested = useRef(false);
   const cameraInitialized = useRef(false);
-  
-  const dodgeRequested = useRef(false);
+
   const dodgeStateRef = useRef({
     isActive: false,
     duration: 0.4,       // total dodge duration (seconds)
@@ -332,12 +330,10 @@ export const Player = ({ isWorldBuilt }) => {
       else if (e.code === 'KeyD') setIntent('moveR', true);
 
       if (e.code === 'Space') {
-        jumpRequested.current = true;
         setIntent('jump', true);
       }
 
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        dodgeRequested.current = true;
         setIntent('dodge', true);
       }
 
@@ -354,7 +350,6 @@ export const Player = ({ isWorldBuilt }) => {
       else if (e.code === 'KeyD') setIntent('moveR', false);
 
       if (e.code === 'Space') {
-        jumpRequested.current = false;
         setIntent('jump', false);
       }
     };
@@ -499,9 +494,7 @@ export const Player = ({ isWorldBuilt }) => {
     const nowTime = state.clock.getElapsedTime();
 
     if (isLocked && input.dodge) {
-      // Edge-trigger: consume the dodge intent so one press = one dodge (matches the old
-      // dodgeRequested.current = false reset). dodgeRequested ref kept in sync for symmetry.
-      dodgeRequested.current = false;
+      // Edge-trigger: consume the dodge intent so one press = one dodge.
       setIntent('dodge', false);
 
       // Check cooldown
@@ -618,10 +611,8 @@ export const Player = ({ isWorldBuilt }) => {
     if (isGrounded) {
       if (isLocked && input.jump && !dodge.isActive) {
         velocityY.current = 12.0;
-        // Consume the jump intent on a grounded jump, mirroring the old jumpRequested reset.
-        // OS key-repeat re-sets the intent via repeated keydown (same as before), so held-Space
-        // bunny-hopping is preserved byte-identically.
-        jumpRequested.current = false;
+        // Consume the jump intent on a grounded jump. OS key-repeat re-sets the intent via
+        // repeated keydown, so held-Space bunny-hopping is preserved byte-identically.
         setIntent('jump', false);
       } else {
         // Small downward force to stay glued to slopes and stairs
