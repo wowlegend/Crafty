@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { buildSaveData } from '../../src/game/saveSchema.js';
 
 // Bug-fix gate: `setGameTime` must flip `isDay` on a half-cycle BOUNDARY CROSSING,
 // not only on an exact `gameTime % 600 === 0` landing. A save resumed at a
@@ -8,8 +9,10 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 // test is RED against that logic and GREEN once the crossing-fix lands.
 describe('useGameStore.setGameTime — half-cycle crossing flip (non-aligned start)', () => {
   beforeEach(() => {
-    useGameStore.getState().setGameTime(0);
-    useGameStore.getState().setIsDay(true);
+    // Reset DIRECTLY (bypass setGameTime's crossing side-effect, which would flip isDay
+    // when a prior test left gameTime in an odd half-cycle bucket) so the reset is
+    // order-independent and cannot leak state between tests.
+    useGameStore.setState({ gameTime: 0, isDay: true });
   });
 
   it('flips isDay exactly when a +4 step first crosses 600 from a non-aligned start (437), not before', () => {
@@ -56,5 +59,29 @@ describe('useGameStore.setGameTime — half-cycle crossing flip (non-aligned sta
     expect(useGameStore.getState().isDay).toBe(true);
     setGameTime(600);
     expect(useGameStore.getState().isDay).toBe(false);
+  });
+});
+
+// On load, isDay is DERIVED from the restored gameTime (isDayAtUnit) so a resumed save
+// is always phase-consistent — the clock is authoritative; a stale saved isDay (e.g.
+// left by a manual Settings toggle) is reconciled rather than restored inconsistently.
+describe('useGameStore.loadWorldData — isDay reconciled to the restored gameTime', () => {
+  beforeEach(() => {
+    useGameStore.setState({ gameTime: 0, isDay: true });
+  });
+
+  it('derives isDay=night when the restored gameTime is in a night half (700), overriding a stale isDay=true', () => {
+    const save = buildSaveData(useGameStore.getState(), { position: [0, 0, 0] });
+    save.game_state = { ...save.game_state, gameTime: 700, isDay: true };
+    useGameStore.getState().loadWorldData(save);
+    expect(useGameStore.getState().gameTime).toBe(700);
+    expect(useGameStore.getState().isDay).toBe(false); // isDayAtUnit(700) = night
+  });
+
+  it('derives isDay=day when the restored gameTime is in a day half (300), overriding a stale isDay=false', () => {
+    const save = buildSaveData(useGameStore.getState(), { position: [0, 0, 0] });
+    save.game_state = { ...save.game_state, gameTime: 300, isDay: false };
+    useGameStore.getState().loadWorldData(save);
+    expect(useGameStore.getState().isDay).toBe(true); // isDayAtUnit(300) = day
   });
 });

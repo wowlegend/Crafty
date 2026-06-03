@@ -5,6 +5,7 @@ import {
   GAME_UNITS_PER_SECOND,
   crossedHalfCycle,
   isDayAtUnit,
+  shouldAdvanceClock,
 } from './dayNight.js';
 
 describe('dayNight pure module', () => {
@@ -78,6 +79,39 @@ describe('dayNight pure module', () => {
       expect(isDayAtUnit(1200)).toBe(true);
       expect(isDayAtUnit(1500)).toBe(true);
       expect(isDayAtUnit(1799)).toBe(true);
+    });
+  });
+
+  describe('shouldAdvanceClock(guards)', () => {
+    const ALL_PASS = { isWorldBuilt: true, active: true, isAlive: true, captureMode: false };
+
+    it('advances only when ALL guards pass', () => {
+      expect(shouldAdvanceClock(ALL_PASS)).toBe(true);
+    });
+
+    it('pauses when the world is not built', () => {
+      expect(shouldAdvanceClock({ ...ALL_PASS, isWorldBuilt: false })).toBe(false);
+    });
+
+    it('pauses when input is not active (menu open / click-to-play)', () => {
+      expect(shouldAdvanceClock({ ...ALL_PASS, active: false })).toBe(false);
+    });
+
+    it('pauses when the player is dead', () => {
+      expect(shouldAdvanceClock({ ...ALL_PASS, isAlive: false })).toBe(false);
+    });
+
+    it('pauses in visual-capture mode (determinism guard)', () => {
+      expect(shouldAdvanceClock({ ...ALL_PASS, captureMode: true })).toBe(false);
+    });
+
+    it('treats undefined isAlive as alive (advances)', () => {
+      expect(shouldAdvanceClock({ isWorldBuilt: true, active: true, isAlive: undefined, captureMode: false })).toBe(true);
+    });
+
+    it('a missing/empty guard object does NOT advance', () => {
+      expect(shouldAdvanceClock()).toBe(false);
+      expect(shouldAdvanceClock({})).toBe(false);
     });
   });
 });

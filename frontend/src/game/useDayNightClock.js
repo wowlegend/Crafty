@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { getInput } from '../input/inputState';
 import { isCaptureMode } from '../devtest/captureMode';
-import { GAME_UNITS_PER_SECOND } from './dayNight';
+import { GAME_UNITS_PER_SECOND, shouldAdvanceClock } from './dayNight';
 
 // useDayNightClock -- the React wiring that makes `gameTime` advance over real time
 // so the day/night cycle actually runs. GAME-LOOP ISOLATION (CRITICAL): this is a
@@ -21,11 +21,10 @@ import { GAME_UNITS_PER_SECOND } from './dayNight';
 export function useDayNightClock({ isWorldBuilt, isAlive } = {}) {
   useEffect(() => {
     const id = setInterval(() => {
-      // Re-read every guard each tick (cheap) so pause/resume tracks live state.
-      if (!isWorldBuilt) return;
-      if (!getInput().active) return;
-      if (isAlive === false) return;
-      if (isCaptureMode()) return;
+      // getInput().active + isCaptureMode() are read LIVE each tick; isWorldBuilt + isAlive
+      // are captured per-effect and refresh via the dep array (both rare-change -> correct).
+      // The pause-gate decision is the pure shouldAdvanceClock (exhaustively unit-tested).
+      if (!shouldAdvanceClock({ isWorldBuilt, active: getInput().active, isAlive, captureMode: isCaptureMode() })) return;
       useGameStore.getState().setGameTime((t) => t + GAME_UNITS_PER_SECOND);
     }, 1000);
     return () => clearInterval(id);

@@ -3,8 +3,11 @@
 // The store consumes `crossedHalfCycle` to flip `isDay` on a half-cycle BOUNDARY
 // CROSSING (robust to any tick step + any resumed `gameTime`), replacing the old
 // brittle exact-landing `gameTime % 600 === 0` check. `isDayAtUnit` derives the
-// day/night phase straight from a `gameTime` value (used in tests + as a
-// resync-correctness helper; it is NOT used to override the manual `setIsDay` toggle).
+// day/night phase straight from a `gameTime` value -- `loadWorldData` uses it to
+// reconcile a restored save's `isDay` against its `gameTime` (so a resumed save is
+// always phase-consistent). `shouldAdvanceClock` is the pure pause-gate decision the
+// real-time ticker (useDayNightClock) evaluates each tick -- pure so it is exhaustively
+// unit-testable, keeping the load-bearing determinism contract off a static-text gate.
 
 /** Units of `gameTime` per half-cycle (one day half OR one night half). */
 export const HALF_CYCLE_UNITS = 600;
@@ -44,4 +47,17 @@ export function crossedHalfCycle(prevTime, nextTime) {
  */
 export function isDayAtUnit(t) {
   return Math.floor(t / HALF_CYCLE_UNITS) % 2 === 0;
+}
+
+/**
+ * Pure pause-gate decision for the real-time day/night ticker: should `gameTime`
+ * advance this tick? The clock advances ONLY when the world is built, input is live,
+ * the player is not dead, and we are not in visual-capture mode. Extracted pure so the
+ * load-bearing determinism + Game-Loop-Isolation contract is exhaustively unit-testable
+ * (a guard inversion is caught by a behavioral test, not just a static source gate).
+ * @param {{ isWorldBuilt?: boolean, active?: boolean, isAlive?: boolean, captureMode?: boolean }} g
+ * @returns {boolean}
+ */
+export function shouldAdvanceClock({ isWorldBuilt, active, isAlive, captureMode } = {}) {
+  return !!isWorldBuilt && !!active && isAlive !== false && !captureMode;
 }
