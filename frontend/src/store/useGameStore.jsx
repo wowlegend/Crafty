@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { mitigateDamage } from '../utils/combat';
 import { normalizeItemName } from '../data/items.js';
+import { computeEffective, deriveMaxStats } from '../game/progression.js';
 
 // M3-T3 save normalizer: legacy saves keyed inventory items by an emoji-prefixed
 // name (a leading icon glyph + space, e.g. a meat glyph before "Raw Porkchop").
@@ -144,20 +145,7 @@ export const useGameStore = create((set, get) => ({
 
     getEffectiveAttributes: () => {
         const state = get();
-        const base = state.attributes || { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 };
-        const equip = state.equipment || { head: null, chest: null, boots: null, weapon: null, offhand: null };
-        const effective = { ...base };
-        
-        Object.values(equip).forEach(itemName => {
-            if (itemName && EQUIPMENT_STATS[itemName]) {
-                const bonuses = EQUIPMENT_STATS[itemName];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        return effective;
+        return computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS);
     },
 
     equipItem: (slot, itemName) => set((state) => {
@@ -194,22 +182,10 @@ export const useGameStore = create((set, get) => ({
             }
         }
         
-        const base = state.attributes;
-        const effective = { ...base };
-        Object.entries(newEquipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
+        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
         const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             equipment: newEquipment,
             inventory: {
@@ -244,22 +220,10 @@ export const useGameStore = create((set, get) => ({
             updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
         }
         
-        const base = state.attributes;
-        const effective = { ...base };
-        Object.entries(newEquipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
+        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
         const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             equipment: newEquipment,
             inventory: {
@@ -284,21 +248,10 @@ export const useGameStore = create((set, get) => ({
             attributePoints: state.attributes.attributePoints - 1
         };
         
-        const effective = { ...newAttributes };
-        Object.entries(state.equipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
+        const effective = computeEffective(newAttributes, state.equipment, EQUIPMENT_STATS);
         const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             attributes: newAttributes,
             maxHealth: newMaxHealth,
