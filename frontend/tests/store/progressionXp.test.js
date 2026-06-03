@@ -43,3 +43,27 @@ describe('store grantXP / level-up', () => {
     expect(xp.level).toBe(2); expect(xp.current).toBe(20); expect(xp.total).toBe(120);
   });
 });
+
+describe('frost_shield derived (not baked) armor', () => {
+  beforeEach(() => useGameStore.setState({
+    attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 },
+    equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null },
+    talentPoints: 3, unlockedTalents: {},
+  }));
+  it('does not mutate base armor when spending frost_shield', () => {
+    useGameStore.getState().spendTalentPoint('frost_shield');
+    expect(useGameStore.getState().attributes.armor).toBe(0); // base stays clean
+  });
+  it('derives +5 armor per frost_shield rank in getEffectiveAttributes', () => {
+    useGameStore.getState().spendTalentPoint('frost_shield');
+    useGameStore.getState().spendTalentPoint('frost_shield');
+    expect(useGameStore.getState().getEffectiveAttributes().armor).toBe(10); // 2 ranks * 5
+  });
+  it('frost_shield armor survives a re-derive without doubling (idempotent on read)', () => {
+    useGameStore.getState().spendTalentPoint('frost_shield');
+    const a = useGameStore.getState().getEffectiveAttributes().armor;
+    const b = useGameStore.getState().getEffectiveAttributes().armor;
+    expect(a).toBe(5);
+    expect(b).toBe(5); // reading twice doesn't accumulate
+  });
+});

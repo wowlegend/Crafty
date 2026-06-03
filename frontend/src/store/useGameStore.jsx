@@ -121,7 +121,11 @@ export const useGameStore = create((set, get) => ({
 
     getEffectiveAttributes: () => {
         const state = get();
-        return computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS);
+        const eff = computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS);
+        // M2b: replace this single hardcoded node with the data-driven ASPECT_TREES effect table.
+        const frostRank = (state.unlockedTalents && state.unlockedTalents.frost_shield) || 0;
+        if (frostRank) eff.armor = (eff.armor || 0) + frostRank * 5;
+        return eff;
     },
 
     equipItem: (slot, itemName) => set((state) => {
@@ -377,16 +381,10 @@ export const useGameStore = create((set, get) => ({
         if (currentVal >= limit) return {};
         
         const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
-        
-        let newAttributes = { ...state.attributes };
-        if (talentId === 'frost_shield') {
-            newAttributes.armor = (newAttributes.armor || 0) + 5;
-        }
-        
+
         return {
             talentPoints: state.talentPoints - 1,
             unlockedTalents: newUnlocked,
-            attributes: newAttributes
         };
     }),
     setChestInventory: (coords, inventory) => set((state) => {
