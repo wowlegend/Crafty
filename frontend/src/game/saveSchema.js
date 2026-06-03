@@ -21,6 +21,9 @@ export function buildSaveData(state, { position } = {}) {
       inventory: state.inventory,
       stats: state.playerStats,
     },
+    // S2a: quest progress + achievements mirror (the gameplay hook keeps Sets in
+    // working state and mirrors them to arrays here, so this is already JSON-safe).
+    questState: state.questState || null,
     progression: {
       level: state.level,
       currentXP: state.currentXP,

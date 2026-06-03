@@ -84,7 +84,11 @@ const ACHIEVEMENTS = [
 ];
 
 export const useQuestSystem = () => {
+    // S2a: seed the persistable working state from the store's questState mirror
+    // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
+        const saved = useGameStore.getState().questState;
+        if (saved && saved.quests) return saved.quests;
         // Initialize active quests (first 3 from tier 1)
         return QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
             ...q,
@@ -94,17 +98,47 @@ export const useQuestSystem = () => {
         }));
     });
 
-    const [completedQuestIds, setCompletedQuestIds] = useState(new Set());
-    const [stats, setStats] = useState({
+    const [completedQuestIds, setCompletedQuestIds] = useState(() => new Set(useGameStore.getState().questState?.completedQuestIds || []));
+    const [stats, setStats] = useState(() => useGameStore.getState().questState?.stats || {
         kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
         blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
     });
     const [lootDrops, setLootDrops] = useState([]);
     const [achievements, setAchievements] = useState([]);
-    const [unlockedAchievements, setUnlockedAchievements] = useState(new Set(['first_step']));
+    const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(useGameStore.getState().questState?.unlockedAchievements || ['first_step']));
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
     const lootId = useRef(0);
+
+    // S2a — MIRROR (hook -> store, one-way): keep a JSON-safe snapshot of the
+    // persistable state in the store so buildSaveData can serialize it. Sets are
+    // flattened to arrays here. This effect ONLY writes questState; it does not
+    // read questLoadedAt, so it cannot fight the re-seed below (no feedback loop).
+    useEffect(() => {
+        useGameStore.getState().setQuestState({
+            quests,
+            completedQuestIds: [...completedQuestIds],
+            stats,
+            unlockedAchievements: [...unlockedAchievements],
+        });
+    }, [quests, completedQuestIds, stats, unlockedAchievements]);
+
+    // S2a — RE-SEED ON LOAD (store -> hook): when loadWorldData bumps the resync
+    // tick, re-seed the local working state from the loaded snapshot. Gated by a
+    // mount guard so the initial render (already seeded via the useState initializers)
+    // doesn't clobber state. This effect watches ONLY questLoadedAt; the mirror
+    // watches the state values -> the two never feed each other.
+    const questLoadedAt = useGameStore((s) => s.questLoadedAt);
+    const didMountQuest = useRef(false);
+    useEffect(() => {
+        if (!didMountQuest.current) { didMountQuest.current = true; return; }
+        const qs = useGameStore.getState().questState;
+        if (!qs) return;
+        if (qs.quests) setQuests(qs.quests);
+        setCompletedQuestIds(new Set(qs.completedQuestIds || []));
+        if (qs.stats) setStats(qs.stats);
+        setUnlockedAchievements(new Set(qs.unlockedAchievements || ['first_step']));
+    }, [questLoadedAt]);
 
     // Add notification popup
     const addNotification = useCallback((text, type = 'info') => {

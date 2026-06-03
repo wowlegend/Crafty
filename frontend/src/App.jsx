@@ -158,7 +158,8 @@ function GameApp({ experienceSystem }) {
         s.talentPoints !== prevS.talentPoints ||
         s.gameMode !== prevS.gameMode ||
         s.worldBlocks !== prevS.worldBlocks ||
-        s.inventory !== prevS.inventory
+        s.inventory !== prevS.inventory ||
+        s.questState !== prevS.questState
       ) {
         autosave.schedule();
       }

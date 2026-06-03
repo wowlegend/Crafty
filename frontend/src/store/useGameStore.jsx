@@ -363,6 +363,13 @@ export const useGameStore = create((set, get) => ({
     // Phase 23: Skill Talent Tree & Placeable Container Chests
     talentPoints: 0,
     unlockedTalents: {},
+    // S2a: serializable mirror of useQuestSystem's persistable state (quest
+    // progress + achievement counters). The gameplay hook owns the working
+    // state; this is a JSON-safe snapshot for buildSaveData. `questLoadedAt`
+    // is a monotonic resync tick bumped on load so the hook re-seeds.
+    questState: null,
+    questLoadedAt: 0,
+    setQuestState: (qs) => set({ questState: qs }),
     chests: new Map(),
     activeChestCoords: null,
     showChestInterface: false,
@@ -712,7 +719,12 @@ export const useGameStore = create((set, get) => ({
                 maxMana,
                 playerHealth: maxHealth,
                 mana: maxMana,
-                playerPosition: position || state.playerPosition
+                playerPosition: position || state.playerPosition,
+                // S2a: restore the quest/achievement mirror (tolerate pre-questState
+                // saves by falling back) and bump the resync tick so useQuestSystem
+                // re-seeds its local working state from the loaded snapshot.
+                questState: saveData.questState ?? state.questState,
+                questLoadedAt: (state.questLoadedAt || 0) + 1,
             };
         });
 
