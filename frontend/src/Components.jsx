@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
+import { getWeaponBaseDamage } from './game/equipment.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -232,12 +233,7 @@ export const Player = ({ isWorldBuilt }) => {
     
     // Solve weapon base damage based on equipped weapon
     const equippedWeapon = store.equipment?.weapon;
-    let baseWeaponDmg = 5;
-    if (equippedWeapon === 'Stone Sword') baseWeaponDmg = 12;
-    else if (equippedWeapon === 'Iron Sword') baseWeaponDmg = 20;
-    else if (equippedWeapon === 'Diamond Sword') baseWeaponDmg = 35;
-    else if (equippedWeapon === 'pickaxe') baseWeaponDmg = 8;
-    else if (equippedWeapon === 'sword') baseWeaponDmg = 10;
+    const baseWeaponDmg = getWeaponBaseDamage(equippedWeapon);
     
     const { damage, isCrit } = solveMeleeDamage(effectiveStats, baseWeaponDmg);
 

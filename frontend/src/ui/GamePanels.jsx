@@ -7,6 +7,7 @@ import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity, getItemIcon } from '../data/items.js';
+import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
 
 // Re-exported for the M3 loot/rarity characterization tests, which import
 // getItemRarity from this module. M3-T3 routed rarity through the single registry
@@ -25,16 +26,6 @@ const AVA = {
     leg: '#2F4F7E',   // trousers
     arm: '#5A3C26',
     eye: '#1B2740',
-};
-
-const getItemSlot = (itemName) => {
-    if (!itemName) return null;
-    if (['sword', 'pickaxe', 'Stone Sword', 'Iron Sword', 'Diamond Sword'].includes(itemName)) return 'weapon';
-    if (['Wooden Shield', 'Iron Shield', 'Diamond Shield'].includes(itemName)) return 'offhand';
-    if (['Golden Crown', 'Leather Helmet', 'Iron Helmet', 'Diamond Helmet'].includes(itemName)) return 'head';
-    if (['Leather Chestplate', 'Iron Chestplate', 'Diamond Chestplate'].includes(itemName)) return 'chest';
-    if (['Leather Boots', 'Iron Boots', 'Diamond Boots'].includes(itemName)) return 'boots';
-    return null;
 };
 
 // Rarity tier (from getItemRarity) -> bold-flat token text color (for the inspector
@@ -251,12 +242,7 @@ export const Inventory = ({ onClose }) => {
     
     // Weapon base damage
     const equippedWeapon = gameState.equipment?.weapon;
-    let baseWeaponDmg = 5;
-    if (equippedWeapon === 'Stone Sword') baseWeaponDmg = 12;
-    else if (equippedWeapon === 'Iron Sword') baseWeaponDmg = 20;
-    else if (equippedWeapon === 'Diamond Sword') baseWeaponDmg = 35;
-    else if (equippedWeapon === 'pickaxe') baseWeaponDmg = 8;
-    else if (equippedWeapon === 'sword') baseWeaponDmg = 10;
+    const baseWeaponDmg = getWeaponBaseDamage(equippedWeapon);
 
     const meleeDmg = Math.round(baseWeaponDmg + effective.strength * 1.5);
     const critChance = Math.min(75, Math.round((0.05 + effective.agility * 0.005) * 100));
