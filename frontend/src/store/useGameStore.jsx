@@ -1,32 +1,8 @@
 import { create } from 'zustand';
-import axios from 'axios';
 import { mitigateDamage } from '../utils/combat';
-import { normalizeItemName } from '../data/items.js';
-
-// M3-T3 save normalizer: legacy saves keyed inventory items by an emoji-prefixed
-// name (a leading icon glyph + space, e.g. a meat glyph before "Raw Porkchop").
-// The registry decoupled identity from emoji, so on load we strip a leading emoji
-// from every inventory key, merging quantities when
-// two legacy keys normalize to the same clean name (clean wins; keys preserved when
-// they have no leading emoji). Safe + minimal: returns the input as-is when it isn't
-// a plain object of count maps.
-const normalizeInventoryKeys = (inventory) => {
-    if (!inventory || typeof inventory !== 'object') return inventory;
-    const out = {};
-    for (const [section, items] of Object.entries(inventory)) {
-        if (!items || typeof items !== 'object') {
-            out[section] = items;
-            continue;
-        }
-        const normalized = {};
-        for (const [key, qty] of Object.entries(items)) {
-            const cleanKey = normalizeItemName(key);
-            normalized[cleanKey] = (normalized[cleanKey] || 0) + qty;
-        }
-        out[section] = normalized;
-    }
-    return out;
-};
+import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
+import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
+import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -126,6 +102,7 @@ export const useGameStore = create((set, get) => ({
     setPlayerPosition: (pos) => set({ playerPosition: pos }),
 
     // RPG Stats & Equipment Systems (Decoupled & Optimized)
+    level: 1, currentXP: 0, totalXP: 0,
     attributes: {
         strength: 10,
         agility: 10,
@@ -144,20 +121,11 @@ export const useGameStore = create((set, get) => ({
 
     getEffectiveAttributes: () => {
         const state = get();
-        const base = state.attributes || { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 };
-        const equip = state.equipment || { head: null, chest: null, boots: null, weapon: null, offhand: null };
-        const effective = { ...base };
-        
-        Object.values(equip).forEach(itemName => {
-            if (itemName && EQUIPMENT_STATS[itemName]) {
-                const bonuses = EQUIPMENT_STATS[itemName];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        return effective;
+        const eff = computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS);
+        // M2b: replace this single hardcoded node with the data-driven ASPECT_TREES effect table.
+        const frostRank = (state.unlockedTalents && state.unlockedTalents.frost_shield) || 0;
+        if (frostRank) eff.armor = (eff.armor || 0) + frostRank * 5;
+        return eff;
     },
 
     equipItem: (slot, itemName) => set((state) => {
@@ -194,22 +162,10 @@ export const useGameStore = create((set, get) => ({
             }
         }
         
-        const base = state.attributes;
-        const effective = { ...base };
-        Object.entries(newEquipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
+        const level = state.level;
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             equipment: newEquipment,
             inventory: {
@@ -244,22 +200,10 @@ export const useGameStore = create((set, get) => ({
             updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
         }
         
-        const base = state.attributes;
-        const effective = { ...base };
-        Object.entries(newEquipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
+        const level = state.level;
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             equipment: newEquipment,
             inventory: {
@@ -284,21 +228,10 @@ export const useGameStore = create((set, get) => ({
             attributePoints: state.attributes.attributePoints - 1
         };
         
-        const effective = { ...newAttributes };
-        Object.entries(state.equipment).forEach(([s, name]) => {
-            if (name && EQUIPMENT_STATS[name]) {
-                const bonuses = EQUIPMENT_STATS[name];
-                if (bonuses.strength) effective.strength += bonuses.strength;
-                if (bonuses.agility) effective.agility += bonuses.agility;
-                if (bonuses.intellect) effective.intellect += bonuses.intellect;
-                if (bonuses.armor) effective.armor += bonuses.armor;
-            }
-        });
-        
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
-        const newMaxHealth = 100 + (level - 1) * 10 + (effective.strength * 5);
-        const newMaxMana = 100 + (level - 1) * 5 + (effective.intellect * 2);
-        
+        const effective = computeEffective(newAttributes, state.equipment, EQUIPMENT_STATS);
+        const level = state.level;
+        const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
+
         return {
             attributes: newAttributes,
             maxHealth: newMaxHealth,
@@ -339,12 +272,30 @@ export const useGameStore = create((set, get) => ({
 
     // Transient Events & System Hooks
     _spawnTime: Date.now(),
-    grantXP: null,
-    setGrantXP: (fn) => set({ grantXP: fn }),
-    getPlayerLevel: () => 1,
-    setGetPlayerLevel: (fn) => set({ getPlayerLevel: fn }),
-    getPlayerXP: () => ({ current: 0, total: 100, level: 1 }),
-    setGetPlayerXP: (fn) => set({ getPlayerXP: fn }),
+    getPlayerLevel: () => get().level,
+    getPlayerXP: () => ({ current: get().currentXP, total: get().totalXP, level: get().level, required: xpForLevel(get().level) }),
+    grantXP: (amount, reason = 'Action') => set((state) => {
+        let level = state.level;
+        let currentXP = state.currentXP + (amount || 0);
+        const totalXP = state.totalXP + (amount || 0);
+        let attributePoints = state.attributes.attributePoints;
+        let talentPoints = state.talentPoints;
+        let leveledUp = false;
+        while (currentXP >= xpForLevel(level)) {
+            currentXP -= xpForLevel(level);
+            level += 1;
+            attributePoints += 5;
+            talentPoints += 1;
+            leveledUp = true;
+        }
+        const attributes = { ...state.attributes, attributePoints };
+        const effective = computeEffective(attributes, state.equipment, EQUIPMENT_STATS);
+        const { maxHealth, maxMana } = deriveMaxStats(level, effective);
+        return {
+            level, currentXP, totalXP, talentPoints, attributes, maxHealth, maxMana,
+            ...(leveledUp ? { playerHealth: maxHealth, mana: maxMana } : {}),
+        };
+    }),
 
     onMobKill: null,
     setOnMobKill: (fn) => set({ onMobKill: fn }),
@@ -430,16 +381,10 @@ export const useGameStore = create((set, get) => ({
         if (currentVal >= limit) return {};
         
         const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
-        
-        let newAttributes = { ...state.attributes };
-        if (talentId === 'frost_shield') {
-            newAttributes.armor = (newAttributes.armor || 0) + 5;
-        }
-        
+
         return {
             talentPoints: state.talentPoints - 1,
             unlockedTalents: newUnlocked,
-            attributes: newAttributes
         };
     }),
     setChestInventory: (coords, inventory) => set((state) => {
@@ -691,50 +636,12 @@ export const useGameStore = create((set, get) => ({
         playerStats: typeof statsArg === 'function' ? statsArg(state.playerStats) : statsArg
     })),
 
-    saveGame: async () => {
-        try {
-            const state = get();
-            const saveData = {
-                save_name: `Save_${new Date().toLocaleString()}`,
-                world_data: { blocks: Array.from(state.worldBlocks.entries()) },
-                player_data: {
-                    position: { x: 0, y: 18, z: 0 },
-                    inventory: state.inventory,
-                    stats: state.playerStats
-                },
-                game_state: {
-                    gameMode: state.gameMode,
-                    selectedBlock: state.selectedBlock,
-                    activeSpell: state.activeSpell,
-                    isDay: state.isDay,
-                    gameTime: state.gameTime,
-                    achievements: state.achievements
-                }
-            };
-
-            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/world/save`, saveData);
-
-            if (response.status === 200 || response.status === 201) {
-                alert(`Game saved successfully: ${response.data.save_name}`);
-            } else {
-                throw new Error('Failed to save game');
-            }
-        } catch (error) {
-            console.error('[save error]', error);
-            if (error.response && error.response.status === 401) {
-                alert('Please log in to save your game');
-            } else {
-                alert('Failed to save game. Please try again.');
-            }
-        }
-    },
-
-    loadWorldData: (saveData) => {
+    loadWorldData: (rawSaveData) => {
+        const saveData = migrateSaveData(rawSaveData);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
-            const inventory = saveData.player_data?.inventory
-                ? normalizeInventoryKeys(saveData.player_data.inventory)
-                : state.inventory;
+            // migrateSaveData already normalized inventory keys — use directly.
+            const inventory = saveData.player_data?.inventory || state.inventory;
             const playerStats = saveData.player_data?.stats || state.playerStats;
             const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
@@ -742,6 +649,26 @@ export const useGameStore = create((set, get) => ({
             const isDay = saveData.game_state?.isDay !== undefined ? saveData.game_state.isDay : state.isDay;
             const gameTime = saveData.game_state?.gameTime || state.gameTime;
             const achievements = saveData.game_state?.achievements || state.achievements;
+
+            // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
+            const prog = saveData.progression;
+            const level = prog?.level ?? state.level;
+            const currentXP = prog?.currentXP ?? state.currentXP;
+            const totalXP = prog?.totalXP ?? state.totalXP;
+            const attributes = prog?.attributes ?? state.attributes;
+            const equipment = prog?.equipment ?? state.equipment;
+            const talentPoints = prog?.talentPoints ?? state.talentPoints;
+            const unlockedTalents = prog?.unlockedTalents ?? state.unlockedTalents;
+            const spellLevels = prog?.spellLevels ?? state.spellLevels;
+
+            const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
+
+            // Recompute derived caps from BASE attributes + level (never bake); a loaded
+            // character arrives at full HP/mana — matches respawn behavior.
+            const eff = computeEffective(attributes, equipment, EQUIPMENT_STATS);
+            const { maxHealth, maxMana } = deriveMaxStats(level, eff);
+
+            const position = saveData.player_data?.position;
 
             if (state.terrainWorker) {
                 const modifications = [];
@@ -771,40 +698,39 @@ export const useGameStore = create((set, get) => ({
                 activeSpell,
                 isDay,
                 gameTime,
-                achievements
+                achievements,
+                level,
+                currentXP,
+                totalXP,
+                attributes,
+                equipment,
+                talentPoints,
+                unlockedTalents,
+                spellLevels,
+                chests,
+                maxHealth,
+                maxMana,
+                playerHealth: maxHealth,
+                mana: maxMana,
+                playerPosition: position || state.playerPosition
             };
         });
+
+        // Teleport the live Rapier body (imperative; outside the reactive set) if present.
+        const pos = saveData.player_data?.position;
+        const rb = get().playerRigidBodyRef;
+        if (pos && rb && rb.current && typeof rb.current.setTranslation === 'function') {
+            rb.current.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
+        }
     },
 
-    loadGame: async () => {
-        try {
-            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/saves`);
-
-            if (response.status !== 200) throw new Error('Failed to fetch saves');
-
-            const { saves } = response.data;
-            if (!saves || saves.length === 0) {
-                alert('No saved games found');
-                return;
-            }
-
-            const mostRecentSave = saves[0];
-            const loadResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`);
-
-            if (loadResponse.status !== 200) throw new Error('Failed to load game');
-
-            const saveData = loadResponse.data;
-
-            get().loadWorldData(saveData);
-
-            alert(`Game loaded successfully: ${saveData.save_name}`);
-        } catch (error) {
-            console.error('[load error]', error);
-            if (error.response && error.response.status === 401) {
-                alert('Please log in to load your game');
-            } else {
-                alert('Failed to load game. Please try again.');
-            }
-        }
+    // Local-first autosave: serialize the live state to the active world slot. No-op
+    // under the visual-capture harness so capture frames never touch localStorage.
+    saveActiveWorld: (position) => {
+        if (get().isCaptureMode) return;
+        const data = buildSaveData(get(), { position });
+        let id = getActiveWorldId();
+        if (!id) { id = 'local_' + Date.now(); setActiveWorldId(id); }
+        writeWorld(id, { name: data.save_name, created_at: new Date().toISOString(), is_owner: true }, data);
     }
 }));

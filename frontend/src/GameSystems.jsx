@@ -31,7 +31,7 @@ export const useGameSystems = () => {
     return context;
 };
 
-export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
+export const GameSystemsProvider = ({ children }) => {
     const gameState = useGameStore(useShallow(state => ({
         playerHealth: state.playerHealth,
         maxHealth: state.maxHealth,
@@ -66,35 +66,19 @@ export const GameSystemsProvider = ({ children, playerLevel = 1 }) => {
     const hungerTimer = useRef(null);
 
     const getMaxHealthBonus = useCallback(() => {
-        return (playerLevel - 1) * 10; // +10 health per level
-    }, [playerLevel]);
+        const level = useGameStore.getState().level;
+        return (level - 1) * 10; // +10 health per level
+    }, []);
 
     const getSpellDamageMultiplier = useCallback(() => {
-        return 1 + (playerLevel - 1) * 0.1; // +10% damage per level
-    }, [playerLevel]);
-
-    const getManaBonus = useCallback(() => {
-        return (playerLevel - 1) * 5; // +5 mana per level
-    }, [playerLevel]);
+        const level = useGameStore.getState().level;
+        return 1 + (level - 1) * 0.1; // +10% damage per level
+    }, []);
 
     // Initialize spawn time to prevent instant fall damage when chunks generate
     useEffect(() => {
         useGameStore.setState({ _spawnTime: Date.now() });
     }, []);
-
-    // Update max stats based on level & attributes
-    useEffect(() => {
-        const effective = gameState.getEffectiveAttributes ? gameState.getEffectiveAttributes() : { strength: 10, intellect: 10 };
-        const newMaxHealth = 100 + getMaxHealthBonus() + (effective.strength * 5);
-        const newMaxMana = 100 + getManaBonus() + (effective.intellect * 2);
-        
-        setMaxHealth(newMaxHealth);
-        setMaxMana(newMaxMana);
-        
-        // Heal to new max on level up
-        setPlayerHealth(prev => Math.min(prev + 20, newMaxHealth));
-        setMana(prev => Math.min(prev + 10, newMaxMana));
-    }, [playerLevel, getMaxHealthBonus, getManaBonus, setMaxHealth, setMaxMana, setPlayerHealth, setMana, gameState.attributes, gameState.equipment, gameState.getEffectiveAttributes]);
 
     // Mana regeneration - FAST REGEN for action combat
     useEffect(() => {

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { useGameStore, EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
 import { normalizeItemName } from '../../src/data/items.js';
+import { buildSaveData } from '../../src/game/saveSchema.js';
+import { deriveMaxStats, computeEffective } from '../../src/game/progression.js';
 
 // M3-T3 save-normalizer guard: loadWorldData must strip the legacy leading emoji
 // from every inventory key so old saves don't carry emoji-prefixed identities into
@@ -64,5 +66,50 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
     expect(normalizeItemName(`${MEAT} Raw Beef`)).toBe('Raw Beef');
     expect(normalizeItemName(`${HEART} Health Potion`)).toBe('Health Potion');
     expect(normalizeItemName('Iron Sword')).toBe('Iron Sword'); // no-op when clean
+  });
+});
+
+describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () => {
+  beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null }));
+
+  it('restores level/XP/attributes/equipment/talents/spellLevels/chests/position', () => {
+    const snapshot = {
+      worldBlocks: new Map([['0_10_0', 'dirt']]),
+      chests: new Map([['5_0_5', { inventory: { 'Gold Coin': 9 } }]]),
+      inventory: { blocks: { grass: 1 }, tools: {}, magic: {} },
+      playerStats: { blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0 },
+      attributes: { strength: 14, agility: 11, intellect: 13, armor: 0, attributePoints: 3 },
+      equipment: { head: null, chest: null, boots: null, weapon: 'Iron Sword', offhand: null },
+      talentPoints: 2, unlockedTalents: { frost_shield: 1 }, spellLevels: { fireball: 2 },
+      level: 6, currentXP: 40, totalXP: 900,
+      gameMode: 'survival', selectedBlock: 'stone', activeSpell: 'iceball', isDay: false, gameTime: 4, achievements: [],
+    };
+    const save = JSON.parse(JSON.stringify(buildSaveData(snapshot, { position: { x: 7, y: 20, z: 8 } })));
+
+    useGameStore.getState().loadWorldData(save);
+    const s = useGameStore.getState();
+
+    expect(s.level).toBe(6);
+    expect(s.currentXP).toBe(40);
+    expect(s.totalXP).toBe(900);
+    expect(s.attributes).toEqual(snapshot.attributes);
+    expect(s.equipment.weapon).toBe('Iron Sword');
+    expect(s.talentPoints).toBe(2);
+    expect(s.unlockedTalents).toEqual({ frost_shield: 1 });
+    expect(s.spellLevels).toEqual({ fireball: 2 });
+    expect(s.chests instanceof Map).toBe(true);
+    expect(s.chests.get('5_0_5')).toEqual({ inventory: { 'Gold Coin': 9 } });
+    expect(s.playerPosition).toEqual({ x: 7, y: 20, z: 8 });
+
+    const eff = computeEffective(snapshot.attributes, snapshot.equipment, EQUIPMENT_STATS);
+    expect(s.maxHealth).toBe(deriveMaxStats(6, eff).maxHealth);
+  });
+
+  it('a pre-A3 save (no progression slice) loads without crashing and keeps current progression', () => {
+    useGameStore.setState({ level: 3, currentXP: 10, totalXP: 200 });
+    expect(() => useGameStore.getState().loadWorldData({
+      world_data: { blocks: [] }, player_data: { inventory: { blocks: {} }, stats: {} }, game_state: { gameMode: 'creative' },
+    })).not.toThrow();
+    expect(useGameStore.getState().level).toBe(3); // fell back, not wiped
   });
 });

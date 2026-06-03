@@ -1,96 +1,61 @@
 import { useGameStore } from './store/useGameStore';
+import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
+import { xpForLevel } from './game/progression.js';
 import { Panel } from './ui/primitives/index.js';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
-  const [playerLevel, setPlayerLevel] = useState(1);
-  const [currentXP, setCurrentXP] = useState(0);
-  const [totalXP, setTotalXP] = useState(0);
+  const { level, currentXP, totalXP } = useGameStore(useShallow((s) => ({
+    level: s.level, currentXP: s.currentXP, totalXP: s.totalXP,
+  })));
   const [xpGains, setXpGains] = useState([]);
   const [levelUpEffects, setLevelUpEffects] = useState([]);
   const xpGainId = useRef(0);
+  const prevTotal = useRef(totalXP);
+  const prevLevel = useRef(level);
 
-  // Calculate XP required for next level
-  const getXPRequired = (level) => {
-    return Math.floor(100 * Math.pow(1.5, level - 1));
-  };
-
-  const getCurrentLevelXP = () => getXPRequired(playerLevel);
-  const getXPProgress = () => (currentXP / getCurrentLevelXP()) * 100;
-
-  // Add experience
-  const addExperience = (amount, reason = 'Action') => {
-    const newXP = currentXP + amount;
-    const requiredXP = getCurrentLevelXP();
-
-    // Add visual XP gain
-    const xpGain = {
-      id: xpGainId.current++,
-      amount,
-      reason,
-      timestamp: Date.now()
-    };
-
-    setXpGains(prev => [...prev, xpGain]);
-    setCurrentXP(newXP);
-    setTotalXP(prev => prev + amount);
-
-    // Check for level up
-    if (newXP >= requiredXP) {
-      const newLevel = playerLevel + 1;
-      setPlayerLevel(newLevel);
-      setCurrentXP(newXP - requiredXP);
-
-      // Award 5 Attribute Points
-      const store = useGameStore.getState();
-      if (store.addAttributePoints) {
-        store.addAttributePoints(5);
-      }
-      if (store.addTalentPoint) {
-        store.addTalentPoint(1);
-      }
-
-      // Trigger level up effect
-      const levelUpEffect = {
-        id: Date.now(),
-        level: newLevel,
-        timestamp: Date.now()
-      };
-
-      setLevelUpEffects(prev => [...prev, levelUpEffect]);
-
-      // Play level up sound
-      if (window.playLevelUpSound) {
-        window.playLevelUpSound();
-      }
-    }
-
-    // Auto-remove XP gain after 3 seconds
-    setTimeout(() => {
-      setXpGains(prev => prev.filter(gain => gain.id !== xpGain.id));
-    }, 3000);
-  };
-
+  // XP-gain floating VFX: fire on any totalXP increase (the store does the math).
   useEffect(() => {
-    useGameStore.setState({ grantXP: addExperience });
-    GameMethods.grantXP = addExperience;
-    useGameStore.setState({ getPlayerLevel: () => playerLevel });
-    useGameStore.setState({ getPlayerXP: () => ({ current: currentXP, total: totalXP, level: playerLevel }) });
-  }, [playerLevel, currentXP, totalXP]);
+    const delta = totalXP - prevTotal.current;
+    prevTotal.current = totalXP;
+    if (delta > 0) {
+      const gain = { id: xpGainId.current++, amount: delta, reason: 'XP', timestamp: Date.now() };
+      setXpGains((prev) => [...prev, gain]);
+      setTimeout(() => setXpGains((prev) => prev.filter((g) => g.id !== gain.id)), 3000);
+    }
+  }, [totalXP]);
+
+  // Level-up VFX + sound.
+  useEffect(() => {
+    if (level > prevLevel.current) {
+      prevLevel.current = level;
+      setLevelUpEffects((prev) => [...prev, { id: Date.now(), level, timestamp: Date.now() }]);
+      if (window.playLevelUpSound) window.playLevelUpSound();
+    } else {
+      prevLevel.current = level;
+    }
+  }, [level]);
+
+  // Legacy bridge: consumers that call GameMethods.grantXP route to the store action.
+  useEffect(() => {
+    GameMethods.grantXP = (amount, reason) => useGameStore.getState().grantXP(amount, reason);
+  }, []);
+
+  const addExperience = (amount, reason = 'Action') => useGameStore.getState().grantXP(amount, reason);
 
   return {
-    playerLevel,
+    playerLevel: level,
     currentXP,
     totalXP,
-    xpRequired: getCurrentLevelXP(),
-    xpProgress: getXPProgress(),
+    xpRequired: xpForLevel(level),
+    xpProgress: (currentXP / xpForLevel(level)) * 100,
     xpGains,
     levelUpEffects,
     addExperience,
-    setLevelUpEffects
+    setLevelUpEffects,
   };
 };
 
