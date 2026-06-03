@@ -37,7 +37,10 @@ Crafty is **not** a "simple kid game" (that was a stale memory). It's a **Phase-
 | **S3** | **Engine architecture + perf envelope** | de-monolith god-files, resolve partial-ECS, render/update pipeline, **web/iPad/mobile + touch** budget & input | with S2 |
 | **S4** | **Multiplayer + backend + monetization** | netcode (Phase 25), accounts, persistence, payments, business model | **last** (needs solid single-player core) |
 
-Audio is already strong → folds into S1 polish.
+**Content-diversity passes (scheduled 2026-06-03 — Kevin asked "when?"; these were SEAMS in the discipline-based decomposition, now named milestones). All three are surfaced + measured by the pre-S2-B content-variety sub-audit (QA blind-spot class #7):**
+- **Music / audio variety** — beyond today's 3 procedural day/night/boss chord loops: a per-context **motif pass folded into each S2-B Aspect** (+ siege/biome motifs). *(Supersedes the older "audio folds into S1 polish" note — S1 shipped without deepening music.)*
+- **Mob / bestiary designs** — beyond the 6 box-template swaps (color + box-proportions + stats): a dedicated **distinct-creature design + behavior pass AFTER S2-B3 (Soulbind)**, so creature designs serve the capture/transform mechanics rather than being decorative.
+- **Landscape / biome designs** — beyond the basic height-grid biome gen: a **"world design" pass late-S2** (distinct biomes / landmarks / feel), with gen-system perf hardening in **S3**.
 
 ## 5. The process to run (in this fresh session)
 1. **Set effort**: `/effort ultracode` (deep reasoning + auto multi-agent workflows). Drop to `/effort high` for routine edits. (Ultracode subagents are **script-coordinated, not peer-messaging** — deterministic fan-out + cross-check; great for audits/reviews.)
