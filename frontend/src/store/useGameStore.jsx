@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
+import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 
@@ -121,11 +122,10 @@ export const useGameStore = create((set, get) => ({
 
     getEffectiveAttributes: () => {
         const state = get();
-        const eff = computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS);
-        // M2b: replace this single hardcoded node with the data-driven ASPECT_TREES effect table.
-        const frostRank = (state.unlockedTalents && state.unlockedTalents.frost_shield) || 0;
-        if (frostRank) eff.armor = (eff.armor || 0) + frostRank * 5;
-        return eff;
+        return foldTalentEffects(
+            computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS),
+            state.unlockedTalents
+        );
     },
 
     equipItem: (slot, itemName) => set((state) => {
@@ -379,13 +379,8 @@ export const useGameStore = create((set, get) => ({
     spendTalentPoint: (talentId) => set((state) => {
         if (state.talentPoints <= 0) return {};
         const currentVal = state.unlockedTalents[talentId] || 0;
-        const limits = {
-            'ember_core': 3, 'fire_blast': 3, 'conflagration': 1, 'storm_caller': 3, 'chain_overload': 2,
-            'frost_shield': 3, 'permafrost': 2, 'glacial_chill': 1,
-            'mana_flow': 3, 'time_warp': 2, 'astral_focus': 2
-        };
-        const limit = limits[talentId] || 3;
-        if (currentVal >= limit) return {};
+        const limit = TALENT_LIMITS[talentId] || 0;
+        if (!limit || currentVal >= limit) return {};
         
         const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
 
@@ -666,6 +661,8 @@ export const useGameStore = create((set, get) => ({
             const equipment = prog?.equipment ?? state.equipment;
             const talentPoints = prog?.talentPoints ?? state.talentPoints;
             const unlockedTalents = prog?.unlockedTalents ?? state.unlockedTalents;
+            // Migrate pre-A4 saves: drop talent ids no longer in the trees + refund their ranks into points.
+            const _talentRefund = refundUnknownTalents(unlockedTalents, talentPoints);
             const spellLevels = prog?.spellLevels ?? state.spellLevels;
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
@@ -711,8 +708,8 @@ export const useGameStore = create((set, get) => ({
                 totalXP,
                 attributes,
                 equipment,
-                talentPoints,
-                unlockedTalents,
+                talentPoints: _talentRefund.talentPoints,
+                unlockedTalents: _talentRefund.unlockedTalents,
                 spellLevels,
                 chests,
                 maxHealth,

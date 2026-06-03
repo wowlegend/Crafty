@@ -80,7 +80,7 @@ describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () =
       playerStats: { blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0 },
       attributes: { strength: 14, agility: 11, intellect: 13, armor: 0, attributePoints: 3 },
       equipment: { head: null, chest: null, boots: null, weapon: 'Iron Sword', offhand: null },
-      talentPoints: 2, unlockedTalents: { frost_shield: 1 }, spellLevels: { fireball: 2 },
+      talentPoints: 2, unlockedTalents: { voidhand_force: 1 }, spellLevels: { fireball: 2 },
       level: 6, currentXP: 40, totalXP: 900,
       gameMode: 'survival', selectedBlock: 'stone', activeSpell: 'iceball', isDay: false, gameTime: 4, achievements: [],
     };
@@ -95,7 +95,7 @@ describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () =
     expect(s.attributes).toEqual(snapshot.attributes);
     expect(s.equipment.weapon).toBe('Iron Sword');
     expect(s.talentPoints).toBe(2);
-    expect(s.unlockedTalents).toEqual({ frost_shield: 1 });
+    expect(s.unlockedTalents).toEqual({ voidhand_force: 1 });
     expect(s.spellLevels).toEqual({ fireball: 2 });
     expect(s.chests instanceof Map).toBe(true);
     expect(s.chests.get('5_0_5')).toEqual({ inventory: { 'Gold Coin': 9 } });

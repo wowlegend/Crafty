@@ -44,26 +44,42 @@ describe('store grantXP / level-up', () => {
   });
 });
 
-describe('frost_shield derived (not baked) armor', () => {
+describe('talent effects derived (not baked) via ASPECT_TREES', () => {
   beforeEach(() => useGameStore.setState({
     attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 },
     equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null },
-    talentPoints: 3, unlockedTalents: {},
+    talentPoints: 5, unlockedTalents: {},
   }));
-  it('does not mutate base armor when spending frost_shield', () => {
-    useGameStore.getState().spendTalentPoint('frost_shield');
+  it('does not mutate base attributes when spending a talent', () => {
+    useGameStore.getState().spendTalentPoint('voidhand_ward'); // +6 armor/rank
     expect(useGameStore.getState().attributes.armor).toBe(0); // base stays clean
   });
-  it('derives +5 armor per frost_shield rank in getEffectiveAttributes', () => {
-    useGameStore.getState().spendTalentPoint('frost_shield');
-    useGameStore.getState().spendTalentPoint('frost_shield');
-    expect(useGameStore.getState().getEffectiveAttributes().armor).toBe(10); // 2 ranks * 5
+  it('derives the talent stat bonus in getEffectiveAttributes', () => {
+    useGameStore.getState().spendTalentPoint('voidhand_ward');
+    useGameStore.getState().spendTalentPoint('voidhand_ward');
+    expect(useGameStore.getState().getEffectiveAttributes().armor).toBe(12); // 2 ranks * 6
   });
-  it('frost_shield armor survives a re-derive without doubling (idempotent on read)', () => {
-    useGameStore.getState().spendTalentPoint('frost_shield');
-    const a = useGameStore.getState().getEffectiveAttributes().armor;
-    const b = useGameStore.getState().getEffectiveAttributes().armor;
-    expect(a).toBe(5);
-    expect(b).toBe(5); // reading twice doesn't accumulate
+  it('enforces the per-node limit from ASPECT_TREES (voidhand_crush limit 2)', () => {
+    for (let i = 0; i < 9; i++) useGameStore.getState().spendTalentPoint('voidhand_crush');
+    expect(useGameStore.getState().unlockedTalents.voidhand_crush).toBe(2);
+  });
+  it('an unknown/stale talent id cannot be spent (limit 0)', () => {
+    useGameStore.getState().spendTalentPoint('frost_shield'); // old id, no longer in trees
+    expect(useGameStore.getState().unlockedTalents.frost_shield).toBeUndefined();
+    expect(useGameStore.getState().talentPoints).toBe(5); // not consumed
+  });
+});
+
+describe('loadWorldData refunds stale talent ids (pre-A4 saves)', () => {
+  beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null }));
+  it('drops non-tree ids on load and refunds their ranks into talentPoints', () => {
+    useGameStore.getState().loadWorldData({
+      progression: { talentPoints: 1, unlockedTalents: { frost_shield: 2, voidhand_force: 1 } },
+      world_data: { blocks: [] }, player_data: { inventory: { blocks: {} }, stats: {} }, game_state: {},
+    });
+    const s = useGameStore.getState();
+    expect(s.unlockedTalents.frost_shield).toBeUndefined(); // stale dropped
+    expect(s.unlockedTalents.voidhand_force).toBe(1);        // valid kept
+    expect(s.talentPoints).toBe(3);                           // 1 + 2 refunded
   });
 });
