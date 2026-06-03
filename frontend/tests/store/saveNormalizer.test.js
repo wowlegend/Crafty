@@ -3,6 +3,7 @@ import { useGameStore, EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx'
 import { normalizeItemName } from '../../src/data/items.js';
 import { buildSaveData } from '../../src/game/saveSchema.js';
 import { deriveMaxStats, computeEffective } from '../../src/game/progression.js';
+import { foldTalentEffects } from '../../src/game/talentTree.js';
 
 // M3-T3 save-normalizer guard: loadWorldData must strip the legacy leading emoji
 // from every inventory key so old saves don't carry emoji-prefixed identities into
@@ -101,7 +102,11 @@ describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () =
     expect(s.chests.get('5_0_5')).toEqual({ inventory: { 'Gold Coin': 9 } });
     expect(s.playerPosition).toEqual({ x: 7, y: 20, z: 8 });
 
-    const eff = computeEffective(snapshot.attributes, snapshot.equipment, EQUIPMENT_STATS);
+    // maxHealth must reflect the FULL effective attrs incl. the kept talent (voidhand_force +3 STR)
+    const eff = foldTalentEffects(
+      computeEffective(snapshot.attributes, snapshot.equipment, EQUIPMENT_STATS),
+      snapshot.unlockedTalents
+    );
     expect(s.maxHealth).toBe(deriveMaxStats(6, eff).maxHealth);
   });
 

@@ -31,6 +31,12 @@ export const EQUIPMENT_STATS = {
     'Diamond Boots': { armor: 12, agility: 6, strength: 3 }
 };
 
+// Effective attrs INCLUDING talent folds — the single source for any maxStats derivation.
+// (getEffectiveAttributes is the get()-based equivalent; this takes explicit pending args
+// for the in-reducer recomputes where state isn't committed yet.)
+const effectiveWith = (base, equipment, unlockedTalents) =>
+  foldTalentEffects(computeEffective(base, equipment, EQUIPMENT_STATS), unlockedTalents);
+
 export const useGameStore = create((set, get) => ({
     // Transient World State (No need to persist)
     isSpawnChunkLoaded: false,
@@ -122,10 +128,7 @@ export const useGameStore = create((set, get) => ({
 
     getEffectiveAttributes: () => {
         const state = get();
-        return foldTalentEffects(
-            computeEffective(state.attributes, state.equipment, EQUIPMENT_STATS),
-            state.unlockedTalents
-        );
+        return effectiveWith(state.attributes, state.equipment, state.unlockedTalents);
     },
 
     equipItem: (slot, itemName) => set((state) => {
@@ -149,7 +152,7 @@ export const useGameStore = create((set, get) => ({
         }
         
         if (!found) return {};
-        
+
         if (currentEquipped) {
             if (currentEquipped in updatedBlocks) {
                 updatedBlocks[currentEquipped]++;
@@ -161,8 +164,8 @@ export const useGameStore = create((set, get) => ({
                 updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
             }
         }
-        
-        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
+
+        const effective = effectiveWith(state.attributes, newEquipment, state.unlockedTalents);
         const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
@@ -199,8 +202,8 @@ export const useGameStore = create((set, get) => ({
         } else {
             updatedBlocks[currentEquipped] = (updatedBlocks[currentEquipped] || 0) + 1;
         }
-        
-        const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
+
+        const effective = effectiveWith(state.attributes, newEquipment, state.unlockedTalents);
         const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
@@ -228,7 +231,7 @@ export const useGameStore = create((set, get) => ({
             attributePoints: state.attributes.attributePoints - 1
         };
         
-        const effective = computeEffective(newAttributes, state.equipment, EQUIPMENT_STATS);
+        const effective = effectiveWith(newAttributes, state.equipment, state.unlockedTalents);
         const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
@@ -289,7 +292,7 @@ export const useGameStore = create((set, get) => ({
             leveledUp = true;
         }
         const attributes = { ...state.attributes, attributePoints };
-        const effective = computeEffective(attributes, state.equipment, EQUIPMENT_STATS);
+        const effective = effectiveWith(attributes, state.equipment, state.unlockedTalents);
         const { maxHealth, maxMana } = deriveMaxStats(level, effective);
         return {
             level, currentXP, totalXP, talentPoints, attributes, maxHealth, maxMana,
@@ -384,9 +387,16 @@ export const useGameStore = create((set, get) => ({
         
         const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
 
+        // STR/INT talents feed deriveMaxStats, so a spend can change the HP/mana caps.
+        // Raise the cap + clamp current down if it somehow exceeds — NEVER heal on spend.
+        const effective = effectiveWith(state.attributes, state.equipment, newUnlocked);
+        const { maxHealth, maxMana } = deriveMaxStats(state.level, effective);
         return {
             talentPoints: state.talentPoints - 1,
             unlockedTalents: newUnlocked,
+            maxHealth, maxMana,
+            playerHealth: Math.min(state.playerHealth, maxHealth),
+            mana: Math.min(state.mana, maxMana),
         };
     }),
     setChestInventory: (coords, inventory) => set((state) => {
@@ -667,9 +677,11 @@ export const useGameStore = create((set, get) => ({
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
-            // Recompute derived caps from BASE attributes + level (never bake); a loaded
-            // character arrives at full HP/mana — matches respawn behavior.
-            const eff = computeEffective(attributes, equipment, EQUIPMENT_STATS);
+            // Recompute derived caps from BASE attributes + equipment + kept talents + level
+            // (never bake); a loaded character arrives at full HP/mana — matches respawn behavior.
+            // Use the REFUNDED talents (the same value the set() below commits) so caps reflect
+            // exactly the talents the character keeps.
+            const eff = effectiveWith(attributes, equipment, _talentRefund.unlockedTalents);
             const { maxHealth, maxMana } = deriveMaxStats(level, eff);
 
             const position = saveData.player_data?.position;

@@ -83,3 +83,32 @@ describe('loadWorldData refunds stale talent ids (pre-A4 saves)', () => {
     expect(s.talentPoints).toBe(3);                           // 1 + 2 refunded
   });
 });
+
+describe('talent STR/INT feed maxHealth/maxMana (review-gap fix)', () => {
+  beforeEach(() => useGameStore.setState({
+    level: 1, attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 },
+    equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null },
+    talentPoints: 5, unlockedTalents: {}, playerHealth: 100, maxHealth: 150, mana: 100, maxMana: 120,
+  }));
+  it('spending Beast Vigor (+3 STR/rank) raises maxHealth (+15/rank)', () => {
+    const before = useGameStore.getState().maxHealth; // L1 STR10 -> 150
+    useGameStore.getState().spendTalentPoint('wildheart_vigor');
+    expect(useGameStore.getState().maxHealth).toBe(before + 15); // STR 13 -> 100 + 65 = 165
+  });
+  it('spending Elemental Focus (+4 INT/rank) raises maxMana (+8/rank)', () => {
+    const before = useGameStore.getState().maxMana; // L1 INT10 -> 120
+    useGameStore.getState().spendTalentPoint('elemancer_focus');
+    expect(useGameStore.getState().maxMana).toBe(before + 8); // INT 14 -> 100 + 28 = 128
+  });
+  it('talent-spend does NOT heal current health (only raises the cap)', () => {
+    useGameStore.setState({ playerHealth: 100 });
+    useGameStore.getState().spendTalentPoint('wildheart_vigor');
+    expect(useGameStore.getState().playerHealth).toBe(100); // unchanged
+  });
+  it('getEffectiveAttributes + maxHealth agree (talent STR reaches both damage and HP)', () => {
+    useGameStore.getState().spendTalentPoint('wildheart_vigor'); // +3 STR
+    const eff = useGameStore.getState().getEffectiveAttributes();
+    expect(eff.strength).toBe(13);
+    expect(useGameStore.getState().maxHealth).toBe(100 + 13 * 5); // 165
+  });
+});
