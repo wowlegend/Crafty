@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
-import { migrateSaveData } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
+import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -723,5 +724,15 @@ export const useGameStore = create((set, get) => ({
         if (pos && rb && rb.current && typeof rb.current.setTranslation === 'function') {
             rb.current.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
         }
+    },
+
+    // Local-first autosave: serialize the live state to the active world slot. No-op
+    // under the visual-capture harness so capture frames never touch localStorage.
+    saveActiveWorld: (position) => {
+        if (get().isCaptureMode) return;
+        const data = buildSaveData(get(), { position });
+        let id = getActiveWorldId();
+        if (!id) { id = 'local_' + Date.now(); setActiveWorldId(id); }
+        writeWorld(id, { name: data.save_name, created_at: new Date().toISOString(), is_owner: true }, data);
     }
 }));
