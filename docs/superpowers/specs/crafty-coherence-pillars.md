@@ -1,0 +1,66 @@
+# Crafty — Vision Coherence Pillars + Less-Is-More Audit Dimension
+
+> **Status:** v1, awaiting Kevin's ratification of the pillars (P0–P5). Designed 2026-06-03 via a research+design+adversarial workflow (8 agents, SOTA-grounded — design-pillars/subtractive-design/cohesion/AI-accretion research + 2 adversarial critiques + goal-frame discipline). The **canonical coherence anchor** for the QA cadence (S2 spec §7). Anchored to `SOTA-INITIATIVE.md` §0/§1/§8 + the S2 design spec §1/§3/§4/§7.
+
+## Why this exists (the AI-specific argument)
+An autonomous AI builder has a **structural additive bias** — it adds features/code, rarely cuts (Adams et al., *People systematically overlook subtractive changes*, Nature 2021; GitClear 2025: AI refactoring collapsed 25%→<10%; SlopCodeBench arXiv 2603.24755: quality erosion in ~80% of agent trajectories, **widening each iteration while tests stay green**). Crafty already carries the scar (dead axios save, baked frost_shield, 4× duplicated maxStats, dual `getItemEmoji`, never-fired `dangerLevel`, 215 emoji — all caught + cut this initiative). The antidote to an additive generator is a **subtractive, coherence-anchored gate with standing CUT authority** — this dimension. It is the instrument that enforces the "four Aspects, each deep-before-next" coherence bet against feature-creep.
+
+## The reconciliation (less-is-more vs "SOTA-in-every-aspect / beyond-SOTA welcome")
+Not in tension — they govern **different axes**. **Less-is-more governs the COUNT** of distinct things the game tries to be (one cohesive loop + four sequenced Aspects). **SOTA-in-every-aspect governs the DEPTH/quality** of each thing that survives the gate. **You cut to make ROOM for depth, not to shrink ambition.** Every feature resolves to one disposition:
+- **CUT** — incoherent slop (orphan / redundant verb / patch-a-rule-with-a-rule / dead non-scheduled path / doc-only over-claim). Cutting it *is* shipping a feature (faster builds, less surface to break).
+- **KEEP** — coherent + at ship quality *with harness evidence*. Don't gold-plate.
+- **DEEPEN** — supports a pillar but shallow/half-built. **The protected home of every beyond-SOTA / never-before-seen mechanic + the sampler-trap fix.** This is the reconciling bucket.
+- **PARK-AND-WATCH** — a novel seed not yet matching a current Aspect (P0). Never CUT; logged to a candidate-pillar seed list.
+- **SCAFFOLD-KEEP** — an inert/empty surface that is **on the written build schedule** (empty Aspect trees → wired S2-A..B4; `dangerLevel` → A5 bridge; Voidhand banked-edit). Keep with a "wires-in by ⟨slot⟩" note.
+
+**An ambitious feature is CUT only if INCOHERENT — never merely because it is ambitious or adds a feature.** CUT and DEEPEN both "look unfinished"; the only discriminator is *does it serve a pillar (or a scheduled slot)* — which must be falsifiable + biased toward DEEPEN.
+
+## The pillars (v1 — Kevin ratifies/tunes; each an "even over" trade-off that passes the reversibility test)
+
+| | Pillar (X **even over** Y) | Gate test |
+|---|---|---|
+| **P0** *(meta — novelty guard)* | **Preserve novel "beyond-SOTA" seeds until proven INCOHERENT, even over forcing every mechanic to match a current Aspect** | Flagged novel/never-before-seen → **PARK-AND-WATCH**, never autonomous CUT |
+| **P1** | **Four Aspects, each DEEP-before-next** (Voidhand→Wildheart→Soulbind→Elemancer), **even over** feature breadth | Name the Aspect **or** the scheduled foundation/scaffold slot it serves. Deepen-in-flight / complete-foundation / logged-scaffold = PASS |
+| **P2** | **Cohesive loop — every system feeds fight→loot→build→fight-harder, even over** standalone "cool" toys | Trace to a concrete edge in the loop graph (consumes-from OR feeds a node). Parallel-redundant verb = merge-or-cut |
+| **P3** | **One LOCKED visual+UI language + readable feedback grammar, even over** raw effect count / asset volume | Renders through the locked token/icon/material chain **and** feedback magnitude matches action magnitude |
+| **P4** | **Runs great in the web/iPad/mobile + touch envelope, even over** GPU-maximal fidelity | No frequent mid-combat re-mesh; input via intent-abstraction not `pointerLockElement`; perf vs measured frame budget on a mid iPad |
+| **P5** | **Kid-safe, <60s-legible, joyful, zh-CN-ready, never-sells-power, even over** depth/monetization that compromises the Marcus floor | <60s near-text-free; zh-CN string path; no permadeath/self-frustration; monetization touches cosmetics/VFX only |
+
+**Conflict resolution (deterministic):** **VETOES = {P5 floor, P4-hard-invariants (no mid-combat re-mesh; intent-abstraction not pointer-lock)}** → then ranked supports **P1 = P2 (core) > P3 > P4-soft (perf budget)**. P0 routes to PARK, never participates in CUT. (A coherent-but-unshippable feature cannot be greenlit through a perf wall.)
+
+## The audit mechanism
+
+**Required gate field (every feature, at proposal/plan time): a one-line pillar-trace map** `{P0..P5 → supports | neutral | contradicts}` + one line of evidence per non-neutral verdict. Empty / all-neutral = blocked from the plan (the Read-Before-Architect-header analogue).
+
+**Per-feature checks** (bold = the genuinely-new spine; the rest cross-reference existing §7 blind-spots — do NOT restate as a parallel artifact):
+1. **Pillar-trace + disposition** → CUT / KEEP / DEEPEN / PARK / SCAFFOLD-KEEP.
+2. **One-sentence + second-fantasy scan** — reinforces "survive escalating night sieges by building, looting, specializing into an Aspect," or introduces a second genre? Second fantasy → CUT-or-PARK; cluster → ESCALATE-TO-RESCOPE (logged, never silent).
+3. **Orthogonality / elegance** — composes with ≥1 existing system, or redundant/single-purpose-high-cost? → merge-or-cut / flag.
+4. **Accretion ratchet (deterministic, separate-context)** — see Cadence.
+5. Claim-vs-reality → §7 blind-spot **#5**. DONE only with harness evidence.
+6. Polish-grammar + instance-distinctness → §7 blind-spot **#7**.
+7. Envelope gate → §7 blind-spot **#4** + Layer-4 widen-gates.
+
+**Objectivity guards (the bound versions — these convert it from "well-argued" to SAFE):**
+- **CUT requires a 3-anchor citation** or it is inadmissible: (a) the specific pillar it fails OR the named orphan/redundancy/patch-rule/over-claim class; (b) a concrete complexity/maintenance cost (LOC, god-file bloat, dead branch, duplicated solver); (c) a player-value verdict (no loop-edge / no perceptible distinctness / no harness evidence). Fewer than 3 anchors = discard the CUT.
+- **Default-KEEP under uncertainty; burden of proof on the cutter; tie → DEEPEN.** *(Exception: if a **P5** sub-test — legibility/kid-safety/never-sells-power — is uncertain, default flips to DEEPEN/PARK, not KEEP. Ambition P0–P4 keeps default-KEEP.)*
+- **ORPHAN = a provable empty-set claim** — CUT-eligible only if the cutter enumerates **every pillar AND every scheduled build-slot (S2-A..S2-B4)** and shows each is a miss. Any plausible map → DEEPEN/PARK.
+- **Dead-path test is TEMPORAL, not static** — a "feeds-nothing/inert/never-fired" path is CUT-eligible only if **NOT on the written build schedule**; scheduled scaffold = SCAFFOLD-KEEP. (The inert talent tree + never-fired dangerLevel were SCAFFOLD-KEEP, not CUT — both since wired.)
+- **Aesthetic verdicts quarantined from autonomous CUT** — P3-taste + P5-joy sub-tests ("tasteful," "joyful," "magnitude matches stakes," metaphor-break) → **FLAG-FOR-HUMAN / DEEPEN, never an autonomous CUT** (taste is Kevin's Layer-5 reserve). AI hard-CUT authority on P3/P5 is restricted to **greppable** sub-tests (token/icon-chain rendering, no-raw-hex, zero-emoji-in-src, zh-CN string path, no-permadeath/no-sell-power).
+- **De-correlate judges + break generator=judge identity** — the agent that wrote a feature is **ineligible to vote** on its disposition; prefer cross-family judges (headless-validator path); a **mandatory adversarial third role** refutes the verdict (steelman KEEP-vs-CUT and CUT-vs-KEEP). Track inter-rater agreement both directions (falling = vague pillars; suspiciously-high CUT-agreement = correlated blindness → human-sample).
+- **Pillars RIGID within a phase, RE-RATIFIED at each stream/Aspect boundary.** ESCALATE-TO-RESCOPE trigger = **two independent novel seeds in the same off-pillar direction** (escalate early, cut late).
+
+## The 3 BLOCKING bounds (without these it re-opens the 99.2%-false-positive validator failure)
+1. **GATE DEPLOYMENT ON A CALIBRATION RUN** (the L3 omission that caused the 99.2% validator). Before the audit governs any real CUT, run it **blind against a labeled corpus**: the 4 known-good CUTs (dead axios, baked frost_shield, 4× maxStats, dual getItemEmoji) **must all return CUT**; the scheduled scaffolds + ≥2 shipped-coherent keepers + ≥2 ambitious-half-built cases **must NOT return CUT.** Admissible only at **100% on the must-NOT-cut negatives.**
+2. **EVERY CUT IS REVERSIBLE + BUDGETED** (cost asymmetry is the whole game — wrongly cutting a latent-SOTA DEEPEN costs far more than wrongly keeping a small orphan). Stage cuts as **quarantine/git-branch with a one-cycle cooling-off**, never irreversible delete. **Per-session CUT-rate circuit-breaker:** if CUTs exceed a preset fraction of reviewed items → HALT to human review. Tune the metric to fail toward KEEP.
+3. **RESOLVE SELF-CONTRADICTIONS + BREAK GENERATOR=JUDGE BEFORE SHIPPING** — the temporal dead-path test (above), the P4-hard-invariant VETOES (above), and the generator-cannot-vote + adversarial-reviewer rule (above).
+
+## Cadence / §7 integration (integrate, do NOT duplicate — ~60% of checks already exist as §7 blind-spots)
+- **(A) Plan/spec-time (shift-left — the cheapest cut is a feature never built):** the pillar-trace map is a **required per-task field in `superpowers:writing-plans`** + each Aspect's spec authoring. No map → doesn't enter the plan. Operationalizes P1 deep-before-next (in-Aspect vs parallel-half-Aspect decided before code).
+- **(B) Continuous per-task (Layer 1):** the one-line pillar-map travels into the per-task review. NOT the full machinery.
+- **(C) Phase-exit (Layer 2) + stream-boundary (Layer 3):** the FULL audit — two-reviewer + adversarial CUT/KEEP/DEEPEN sweep across the phase surface + pillar re-ratification + the deterministic accretion ratchet.
+- **New §7 blind-spot class #8 — "coherence / accretion drift"** (off-pillar orphans, second-fantasy clusters, rising LOC mass with flat pillar-coverage). Cross-references #4/#5/#7.
+- **Accretion ratchet = a DETERMINISTIC SCRIPT (not an LLM vibe), separate-context, with an owner:** at each phase-exit over the phase commit range, compute net-LOC add/delete ratio, duplicate-block count (jscpd), dead-export/single-caller count (Knip/ts-prune), cyclomatic delta on the god-files; **flag the TREND** (rising mass + flat pillar-coverage = accretion). Advisory FLAGS that open a human/adversary consolidation review — **never auto-delete.** Wire to `cleanup-kz` / `ruthless-cleaner-kz` (standing delete authority). This is the one check a same-context self-review provably cannot do.
+
+## Key citations (T2–T4)
+Pillars-as-razor: Charlie Cleveland (Subnautica) *Game Pillars*; Patrick Lipo *Pillars and Razors*; Jay Wilson *Diablo III* GDC postmortem (prioritized + scored pillars). Subtractive: Miyamoto "if it isn't fun it goes"; Raph Koster (a rule to patch a rule = redesign); Ueda/Sirlin *Subtractive Design*; Supercell "Will we be proud?" kill-bar; Bart Stewart *Content Coherence* (one-sentence test). Coherence rubrics: Schell *Lenses of Unification/Resonance/Elegance*; Tynan Sylvester "every mechanic has a price tag"; Swink *Game Feel* ("polish on a weak base makes the weakness more visible"). AI accretion: GitClear 2025; SlopCodeBench arXiv 2603.24755; Adams Nature 2021; Fowler *Yagni*; arXiv 2603.25773 (executable specs break review circularity).
