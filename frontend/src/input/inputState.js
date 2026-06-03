@@ -26,6 +26,12 @@
 /**
  * The canonical set of intent keys. The keyboard/mouse listeners and any future
  * touch layer write ONLY these; `setIntent` rejects anything else (typo guard).
+ *
+ * Producer status today: `moveF/B/L/R`, `jump`, `dodge` are written per-frame and read by
+ * the player-controller loop. `attack`/`cast` fire IMPERATIVELY (the listeners call the
+ * melee/spell triggers directly, gated on `active`), so they are RESERVED here for a future
+ * unified consumer + the touch layer. `interact` is a RESERVED forward-placeholder for the
+ * upcoming interact verb (no producer/consumer yet — kept so the touch layer has the key).
  * @type {readonly string[]}
  */
 export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact'];
