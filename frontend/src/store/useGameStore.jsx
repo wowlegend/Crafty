@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { mitigateDamage } from '../utils/combat';
-import { normalizeInventoryKeys } from '../game/invNormalize.js';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
+import { migrateSaveData } from '../game/saveSchema.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -637,12 +637,12 @@ export const useGameStore = create((set, get) => ({
         playerStats: typeof statsArg === 'function' ? statsArg(state.playerStats) : statsArg
     })),
 
-    loadWorldData: (saveData) => {
+    loadWorldData: (rawSaveData) => {
+        const saveData = migrateSaveData(rawSaveData);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
-            const inventory = saveData.player_data?.inventory
-                ? normalizeInventoryKeys(saveData.player_data.inventory)
-                : state.inventory;
+            // migrateSaveData already normalized inventory keys — use directly.
+            const inventory = saveData.player_data?.inventory || state.inventory;
             const playerStats = saveData.player_data?.stats || state.playerStats;
             const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
@@ -650,6 +650,26 @@ export const useGameStore = create((set, get) => ({
             const isDay = saveData.game_state?.isDay !== undefined ? saveData.game_state.isDay : state.isDay;
             const gameTime = saveData.game_state?.gameTime || state.gameTime;
             const achievements = saveData.game_state?.achievements || state.achievements;
+
+            // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
+            const prog = saveData.progression;
+            const level = prog?.level ?? state.level;
+            const currentXP = prog?.currentXP ?? state.currentXP;
+            const totalXP = prog?.totalXP ?? state.totalXP;
+            const attributes = prog?.attributes ?? state.attributes;
+            const equipment = prog?.equipment ?? state.equipment;
+            const talentPoints = prog?.talentPoints ?? state.talentPoints;
+            const unlockedTalents = prog?.unlockedTalents ?? state.unlockedTalents;
+            const spellLevels = prog?.spellLevels ?? state.spellLevels;
+
+            const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
+
+            // Recompute derived caps from BASE attributes + level (never bake); a loaded
+            // character arrives at full HP/mana — matches respawn behavior.
+            const eff = computeEffective(attributes, equipment, EQUIPMENT_STATS);
+            const { maxHealth, maxMana } = deriveMaxStats(level, eff);
+
+            const position = saveData.player_data?.position;
 
             if (state.terrainWorker) {
                 const modifications = [];
@@ -679,8 +699,29 @@ export const useGameStore = create((set, get) => ({
                 activeSpell,
                 isDay,
                 gameTime,
-                achievements
+                achievements,
+                level,
+                currentXP,
+                totalXP,
+                attributes,
+                equipment,
+                talentPoints,
+                unlockedTalents,
+                spellLevels,
+                chests,
+                maxHealth,
+                maxMana,
+                playerHealth: maxHealth,
+                mana: maxMana,
+                playerPosition: position || state.playerPosition
             };
         });
+
+        // Teleport the live Rapier body (imperative; outside the reactive set) if present.
+        const pos = saveData.player_data?.position;
+        const rb = get().playerRigidBodyRef;
+        if (pos && rb && rb.current && typeof rb.current.setTranslation === 'function') {
+            rb.current.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
+        }
     }
 }));
