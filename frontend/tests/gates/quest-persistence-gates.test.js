@@ -18,4 +18,7 @@ describe('quest persistence wiring gates', () => {
   it('buildSaveData serializes questState', () => {
     expect(/questState/.test(read('src/game/saveSchema.js'))).toBe(true);
   });
+  it('App autosave also triggers on questState (quest/achievement progress persists on tab-close)', () => {
+    expect(/questState\s*!==\s*prevS\.questState/.test(read('src/App.jsx'))).toBe(true);
+  });
 });
