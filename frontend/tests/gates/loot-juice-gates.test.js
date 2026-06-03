@@ -35,7 +35,9 @@ describe('loot pickup feedback (sound + pop) wiring', () => {
   const collectStart = src.indexOf('store.addToInventory(entity.item, 1)');
   const collectBranch = src.slice(collectStart, src.indexOf('ecs.remove(entity);', collectStart));
 
-  it('the loot collection branch plays the pickup sound (was previously uncalled here)', () => {
+  it('the loot collection branch plays the pickup sound (LOCKED so it cannot regress to silence)', () => {
+    // NOTE: playPickup() was already wired on main (commit 679f2cd "physical ground
+    // loot"); this gate locks it in place. M3c's net-new pickup feel is the pop below.
     expect(collectStart).toBeGreaterThan(-1);
     expect(/playPickup\(\)/.test(collectBranch)).toBe(true);
   });

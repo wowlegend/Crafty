@@ -8,11 +8,19 @@ import { RARITY_FILL } from '../theme/tokens.js';
 // from common (short/dim) to legendary (tall/bright/saturated).
 
 describe('rarityBeam', () => {
-  it('maps each of the 4 tiers to its RARITY_FILL ring color', () => {
-    expect(rarityBeam('common').color).toBe(RARITY_FILL.common.ring);
+  it('maps the hex tiers to their RARITY_FILL ring color unchanged', () => {
     expect(rarityBeam('rare').color).toBe(RARITY_FILL.rare.ring);
     expect(rarityBeam('epic').color).toBe(RARITY_FILL.epic.ring);
     expect(rarityBeam('legendary').color).toBe(RARITY_FILL.legendary.ring);
+  });
+
+  it('returns a THREE.Color-safe color for every tier (alpha stripped — no rgba())', () => {
+    // RARITY_FILL.common.ring is an rgba() string (authored for CSS box-shadows);
+    // THREE.Color cannot use alpha + warns, so rarityBeam strips it to rgb().
+    for (const tier of RARITY_TIERS) {
+      expect(rarityBeam(tier).color).not.toMatch(/rgba\(/);
+    }
+    expect(rarityBeam('common').color).toMatch(/^rgb\(/); // common was rgba -> now rgb
   });
 
   it('returns numeric height + intensity for every tier', () => {
