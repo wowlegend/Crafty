@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { mitigateDamage } from '../utils/combat';
 import { normalizeItemName } from '../data/items.js';
-import { computeEffective, deriveMaxStats } from '../game/progression.js';
+import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
 
 // M3-T3 save normalizer: legacy saves keyed inventory items by an emoji-prefixed
 // name (a leading icon glyph + space, e.g. a meat glyph before "Raw Porkchop").
@@ -127,6 +127,7 @@ export const useGameStore = create((set, get) => ({
     setPlayerPosition: (pos) => set({ playerPosition: pos }),
 
     // RPG Stats & Equipment Systems (Decoupled & Optimized)
+    level: 1, currentXP: 0, totalXP: 0,
     attributes: {
         strength: 10,
         agility: 10,
@@ -183,7 +184,7 @@ export const useGameStore = create((set, get) => ({
         }
         
         const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
         return {
@@ -221,7 +222,7 @@ export const useGameStore = create((set, get) => ({
         }
         
         const effective = computeEffective(state.attributes, newEquipment, EQUIPMENT_STATS);
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
         return {
@@ -249,7 +250,7 @@ export const useGameStore = create((set, get) => ({
         };
         
         const effective = computeEffective(newAttributes, state.equipment, EQUIPMENT_STATS);
-        const level = state.getPlayerLevel ? state.getPlayerLevel() : 1;
+        const level = state.level;
         const { maxHealth: newMaxHealth, maxMana: newMaxMana } = deriveMaxStats(level, effective);
 
         return {
@@ -292,12 +293,30 @@ export const useGameStore = create((set, get) => ({
 
     // Transient Events & System Hooks
     _spawnTime: Date.now(),
-    grantXP: null,
-    setGrantXP: (fn) => set({ grantXP: fn }),
-    getPlayerLevel: () => 1,
-    setGetPlayerLevel: (fn) => set({ getPlayerLevel: fn }),
-    getPlayerXP: () => ({ current: 0, total: 100, level: 1 }),
-    setGetPlayerXP: (fn) => set({ getPlayerXP: fn }),
+    getPlayerLevel: () => get().level,
+    getPlayerXP: () => ({ current: get().currentXP, total: get().totalXP, level: get().level, required: xpForLevel(get().level) }),
+    grantXP: (amount, reason = 'Action') => set((state) => {
+        let level = state.level;
+        let currentXP = state.currentXP + (amount || 0);
+        const totalXP = state.totalXP + (amount || 0);
+        let attributePoints = state.attributes.attributePoints;
+        let talentPoints = state.talentPoints;
+        let leveledUp = false;
+        while (currentXP >= xpForLevel(level)) {
+            currentXP -= xpForLevel(level);
+            level += 1;
+            attributePoints += 5;
+            talentPoints += 1;
+            leveledUp = true;
+        }
+        const attributes = { ...state.attributes, attributePoints };
+        const effective = computeEffective(attributes, state.equipment, EQUIPMENT_STATS);
+        const { maxHealth, maxMana } = deriveMaxStats(level, effective);
+        return {
+            level, currentXP, totalXP, talentPoints, attributes, maxHealth, maxMana,
+            ...(leveledUp ? { playerHealth: maxHealth, mana: maxMana } : {}),
+        };
+    }),
 
     onMobKill: null,
     setOnMobKill: (fn) => set({ onMobKill: fn }),

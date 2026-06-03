@@ -46,7 +46,7 @@ function App() {
 function GameAppWrapper() {
   const experienceSystem = useSimpleExperience();
   return (
-    <GameSystemsProvider playerLevel={experienceSystem.playerLevel}>
+    <GameSystemsProvider>
       <GameApp experienceSystem={experienceSystem} />
     </GameSystemsProvider>
   );
@@ -326,10 +326,6 @@ function GameApp({ experienceSystem }) {
     showAuthModal || gameState.showChestInterface;
 
   const showClickToPlay = isWorldBuilt && !isPointerLocked && !anyPanelOpen && (gameSystems?.isAlive !== false);
-
-  useEffect(() => {
-    useGameStore.getState().setGetPlayerLevel(() => experienceSystem.playerLevel);
-  }, [experienceSystem.playerLevel]);
 
   useEffect(() => {
     const handleResizeError = (e) => {
