@@ -183,6 +183,16 @@ export const useBossSystem = (playerLevel) => {
         }
     }, [damageBoss, bossPositionRef, bossActive]);
 
+    // A5 dangerLevel bridge: an ACTIVE Shadow Dragon drives the obsidian danger mood
+    // (dangerLevel=2 -> moodTarget=2 -> the obsidian atmosphere/grade), cleared to 0 on
+    // defeat/despawn. Without this, nothing in prod ever writes dangerLevel, so the
+    // boss-obsidian signature mood never fired in real play (S1-audit A5 gap). Capture
+    // fixtures drive mood via dev hooks, so skip there to keep the visual gate stable.
+    useEffect(() => {
+        if (useGameStore.getState().isCaptureMode) return;
+        useGameStore.getState().setDangerLevel(bossActive ? 2 : 0);
+    }, [bossActive]);
+
     return {
         bossActive, bossHealth, bossMaxHealth, bossPositionRef,
         bossDefeated, bossPhase, bossNotification, damageBoss,
