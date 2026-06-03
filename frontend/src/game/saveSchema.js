@@ -33,6 +33,7 @@ export function buildSaveData(state, { position } = {}) {
       talentPoints: state.talentPoints,
       unlockedTalents: state.unlockedTalents,
       spellLevels: state.spellLevels,
+      coins: state.coins,
     },
     game_state: {
       gameMode: state.gameMode,

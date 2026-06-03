@@ -111,6 +111,11 @@ export const useGameStore = create((set, get) => ({
 
     // RPG Stats & Equipment Systems (Decoupled & Optimized)
     level: 1, currentXP: 0, totalXP: 0,
+    // M3b currency wallet (distinct from the `gold:8` block mining-XP value).
+    // addCoins clamps at >= 0 so a reward never drives a negative balance and a
+    // future spend can't underflow; a nullish/NaN amount is a safe no-op.
+    coins: 0,
+    addCoins: (n) => set((state) => ({ coins: Math.max(0, state.coins + (Number(n) || 0)) })),
     attributes: {
         strength: 10,
         agility: 10,
@@ -682,6 +687,7 @@ export const useGameStore = create((set, get) => ({
             // Migrate pre-A4 saves: drop talent ids no longer in the trees + refund their ranks into points.
             const _talentRefund = refundUnknownTalents(unlockedTalents, talentPoints);
             const spellLevels = prog?.spellLevels ?? state.spellLevels;
+            const coins = prog?.coins ?? state.coins;
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -731,6 +737,7 @@ export const useGameStore = create((set, get) => ({
                 talentPoints: _talentRefund.talentPoints,
                 unlockedTalents: _talentRefund.unlockedTalents,
                 spellLevels,
+                coins,
                 chests,
                 maxHealth,
                 maxMana,
