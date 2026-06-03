@@ -1,33 +1,7 @@
 import { create } from 'zustand';
-import axios from 'axios';
 import { mitigateDamage } from '../utils/combat';
-import { normalizeItemName } from '../data/items.js';
+import { normalizeInventoryKeys } from '../game/invNormalize.js';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
-
-// M3-T3 save normalizer: legacy saves keyed inventory items by an emoji-prefixed
-// name (a leading icon glyph + space, e.g. a meat glyph before "Raw Porkchop").
-// The registry decoupled identity from emoji, so on load we strip a leading emoji
-// from every inventory key, merging quantities when
-// two legacy keys normalize to the same clean name (clean wins; keys preserved when
-// they have no leading emoji). Safe + minimal: returns the input as-is when it isn't
-// a plain object of count maps.
-const normalizeInventoryKeys = (inventory) => {
-    if (!inventory || typeof inventory !== 'object') return inventory;
-    const out = {};
-    for (const [section, items] of Object.entries(inventory)) {
-        if (!items || typeof items !== 'object') {
-            out[section] = items;
-            continue;
-        }
-        const normalized = {};
-        for (const [key, qty] of Object.entries(items)) {
-            const cleanKey = normalizeItemName(key);
-            normalized[cleanKey] = (normalized[cleanKey] || 0) + qty;
-        }
-        out[section] = normalized;
-    }
-    return out;
-};
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -663,44 +637,6 @@ export const useGameStore = create((set, get) => ({
         playerStats: typeof statsArg === 'function' ? statsArg(state.playerStats) : statsArg
     })),
 
-    saveGame: async () => {
-        try {
-            const state = get();
-            const saveData = {
-                save_name: `Save_${new Date().toLocaleString()}`,
-                world_data: { blocks: Array.from(state.worldBlocks.entries()) },
-                player_data: {
-                    position: { x: 0, y: 18, z: 0 },
-                    inventory: state.inventory,
-                    stats: state.playerStats
-                },
-                game_state: {
-                    gameMode: state.gameMode,
-                    selectedBlock: state.selectedBlock,
-                    activeSpell: state.activeSpell,
-                    isDay: state.isDay,
-                    gameTime: state.gameTime,
-                    achievements: state.achievements
-                }
-            };
-
-            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/world/save`, saveData);
-
-            if (response.status === 200 || response.status === 201) {
-                alert(`Game saved successfully: ${response.data.save_name}`);
-            } else {
-                throw new Error('Failed to save game');
-            }
-        } catch (error) {
-            console.error('[save error]', error);
-            if (error.response && error.response.status === 401) {
-                alert('Please log in to save your game');
-            } else {
-                alert('Failed to save game. Please try again.');
-            }
-        }
-    },
-
     loadWorldData: (saveData) => {
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
@@ -746,37 +682,5 @@ export const useGameStore = create((set, get) => ({
                 achievements
             };
         });
-    },
-
-    loadGame: async () => {
-        try {
-            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/saves`);
-
-            if (response.status !== 200) throw new Error('Failed to fetch saves');
-
-            const { saves } = response.data;
-            if (!saves || saves.length === 0) {
-                alert('No saved games found');
-                return;
-            }
-
-            const mostRecentSave = saves[0];
-            const loadResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/world/load/${mostRecentSave.save_id}`);
-
-            if (loadResponse.status !== 200) throw new Error('Failed to load game');
-
-            const saveData = loadResponse.data;
-
-            get().loadWorldData(saveData);
-
-            alert(`Game loaded successfully: ${saveData.save_name}`);
-        } catch (error) {
-            console.error('[load error]', error);
-            if (error.response && error.response.status === 401) {
-                alert('Please log in to load your game');
-            } else {
-                alert('Failed to load game. Please try again.');
-            }
-        }
     }
 }));
