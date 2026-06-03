@@ -44,6 +44,21 @@ const _state = { active: false };
 for (const k of INTENT_KEYS) _state[k] = false;
 
 /**
+ * Subscribers for `active`-gate changes. `active` is transition-state (changes
+ * only on a rare pointer-lock enter/exit gesture, NOT per-frame), so a reactive
+ * subscription on it is SAFE under Game-Loop Isolation — the per-frame moveF/B/L/R
+ * intents stay transient getInput() reads and are NEVER subscribed. This bridge
+ * lets React project `active` via useSyncExternalStore (see useActiveInput.js).
+ * @type {Set<() => void>}
+ */
+const _subs = new Set();
+
+/** Notify all `active` subscribers. */
+function _notifyActive() {
+  for (const cb of _subs) cb();
+}
+
+/**
  * Transient read of the live intent object. Returns the SAME reference every
  * call — safe to call once per frame in useFrame with zero allocation.
  * @returns {typeof _state}
@@ -64,17 +79,45 @@ export function setIntent(key, val) {
 
 /**
  * Set the `active` gate (replaces scattered document.pointerLockElement checks).
+ * ONLY notifies subscribers when the value actually CHANGES — the changed-check
+ * prevents redundant React renders on optimistic-then-authoritative same-value
+ * writes (e.g. an optimistic setActive(true) followed by the authoritative
+ * pointerlockchange setActive(true)).
  * @param {*} v  coerced to boolean
  */
 export function setActive(v) {
-  _state.active = !!v;
+  const next = !!v;
+  if (_state.active === next) return;
+  _state.active = next;
+  _notifyActive();
+}
+
+/**
+ * Subscribe to `active`-gate changes. Returns an unsubscribe fn.
+ * @param {() => void} cb  invoked (no args) whenever `active` changes.
+ * @returns {() => void}   unsubscribe
+ */
+export function subscribeActive(cb) {
+  _subs.add(cb);
+  return () => _subs.delete(cb);
+}
+
+/**
+ * Current `active` value. Primitive bool - stable for useSyncExternalStore's
+ * Object.is snapshot equality check (no per-call alloc).
+ * @returns {boolean}
+ */
+export function getActiveSnapshot() {
+  return _state.active;
 }
 
 /**
  * Restore defaults: all intents false, inactive. Mutates the same singleton
  * (does NOT replace the reference, so existing getInput() holders stay valid).
+ * Routes the active reset through setActive so subscribers are notified on a
+ * true-to-false transition (test/teardown consumers stay consistent).
  */
 export function resetInput() {
   for (const k of INTENT_KEYS) _state[k] = false;
-  _state.active = false;
+  setActive(false);
 }

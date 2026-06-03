@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getInput, setIntent, setActive, resetInput, INTENT_KEYS } from './inputState.js';
+import { getInput, setIntent, setActive, resetInput, INTENT_KEYS, subscribeActive, getActiveSnapshot } from './inputState.js';
 
 describe('input intent module', () => {
   beforeEach(() => resetInput());
@@ -29,5 +29,60 @@ describe('input intent module', () => {
     resetInput();
     expect(getInput().jump).toBe(false);
     expect(getInput().active).toBe(false);
+  });
+});
+
+describe('active subscribe/notify (reactive projection bridge)', () => {
+  beforeEach(() => resetInput());
+
+  it('subscribeActive fires the callback when setActive flips the value', () => {
+    let calls = 0;
+    const unsub = subscribeActive(() => { calls++; });
+    setActive(true);
+    expect(calls).toBe(1);
+    setActive(false);
+    expect(calls).toBe(2);
+    unsub();
+  });
+
+  it('does NOT fire on a no-op same-value setActive', () => {
+    setActive(false); // already false (post-reset) — no-op
+    let calls = 0;
+    const unsub = subscribeActive(() => { calls++; });
+    setActive(false); // still false — must NOT notify
+    expect(calls).toBe(0);
+    setActive(true);  // changed — notifies
+    expect(calls).toBe(1);
+    setActive(true);  // same value — must NOT notify
+    expect(calls).toBe(1);
+    unsub();
+  });
+
+  it('unsubscribe stops further callbacks', () => {
+    let calls = 0;
+    const unsub = subscribeActive(() => { calls++; });
+    setActive(true);
+    expect(calls).toBe(1);
+    unsub();
+    setActive(false);
+    expect(calls).toBe(1); // no further notification after unsubscribe
+  });
+
+  it('getActiveSnapshot reflects the current value', () => {
+    expect(getActiveSnapshot()).toBe(false);
+    setActive(true);
+    expect(getActiveSnapshot()).toBe(true);
+    setActive(false);
+    expect(getActiveSnapshot()).toBe(false);
+  });
+
+  it('resetInput notifies subscribers and clears active', () => {
+    setActive(true);
+    let calls = 0;
+    const unsub = subscribeActive(() => { calls++; });
+    resetInput();
+    expect(getActiveSnapshot()).toBe(false);
+    expect(calls).toBe(1); // active changed true -> false -> notified
+    unsub();
   });
 });
