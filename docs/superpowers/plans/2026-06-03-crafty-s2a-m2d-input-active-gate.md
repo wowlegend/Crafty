@@ -34,9 +34,10 @@ This completes the M1 input-abstraction (M1 routed movement/verbs through `input
 - `InputManager.jsx:249` — fail-locked catch (see "behavior parity" below)
 
 **Raw `document.pointerLockElement` reads (to abstract / leave):**
-- `Components.jsx:365` — the authoritative listener. **KEEP — this is the single allowed read** (existing gate asserts ≤1 in Components.jsx).
+- `Components.jsx:365` — the authoritative listener. **KEEP — this is the single allowed read in the React/UI/verb-gate layer** (existing gate asserts ≤1 in Components.jsx).
+- `world/Terrain.jsx:253` (block-highlight `useFrame` gate) + `:556` (block-place/break click gate) — **OUT OF SCOPE for M2d, deferred to S3.** These are canvas-layer reads of the browser fact; pre-exist `main`, untouched here. See "Scope clarification" below.
 - `InputManager.jsx` lines 87, 111, 160, 231 — guards before `document.exitPointerLock()`; line 246 — in the deleted listener; line 257 — death-exit guard. **All removed in M2d.**
-- `App.jsx:393` — contextmenu `if (document.pointerLockElement) e.preventDefault()`. Route through `getInput().active` (de-slop the last scattered raw read in the React layer).
+- `App.jsx:393` — contextmenu `if (document.pointerLockElement) e.preventDefault()`. Route through `getInput().active` (de-slop the last raw read in the **React/App** layer; the world/canvas Terrain reads remain — see Scope clarification).
 
 ## Locked architecture — `inputState.active` as SoT + `useSyncExternalStore` projection
 
@@ -119,8 +120,16 @@ export function useActiveInput() {
 
 ## Definition of done
 
-- `inputState.active` is the only pointer-lock/active representation; InputManager holds no input state + no listener.
+- `inputState.active` is the single pointer-lock/active representation **for the React UI/menu/verb-gate + InputManager layer**; InputManager holds no input state + no listener. (World-layer `Terrain.jsx` block-interaction reads are deferred to S3 — see Scope clarification.)
 - `npm run test:unit` green (443 + new) · `npm run build` clean · `npm run test:visual` **12/12**.
 - Existing 5 Components gates + new InputManager gates green.
 - Adversarial review (spec/quality/architecture) → no BLOCKING findings unaddressed.
 - 4-piece updated (ACTIVE_PLAN resume → M3); merged to `main`.
+
+## Scope clarification (post-review, 2026-06-03)
+
+The 4 adversarial reviewers (spec APPROVE · quality APPROVE · architecture MINOR · parity APPROVE) flagged that this plan's original "exhaustive consumer graph" / "single SoT" / "last scattered raw read" framing was **over-claimed**. Corrected, accurate scope:
+
+- **`inputState.active` is the single SoT for the React UI/menu/verb-gate + InputManager layer.** ONE authoritative `pointerlockchange` listener (Components.jsx) and ONE allowed `document.pointerLockElement` read (Components.jsx:365). InputManager: 0 reads, no listener. Verified by exhaustive `grep` across `src/`.
+- **NOT covered (deferred to S3 touch):** `world/Terrain.jsx:253` (block-highlight `useFrame` visibility gate) + `:556` (block place/break click gate) still read `document.pointerLockElement` directly. They **pre-exist `main`** (M2d's diff does not touch Terrain) → **not a regression, not a divergence** introduced here. But they mean block-interaction is gated on the raw browser fact, not `active` — so they will NOT honor a future touch-layer `active` state. Migrating them to `getInput().active` is **S3 (touch) work**, NOT a parity-preserving M2d refactor, because the block-place CLICK gate interacts with the optimistic-`setActive(true)`-before-browser-lock window (needs its own analysis + test). Logged to ROADMAP S3.
+- **Prop-name nit (deferred):** the optimistic-writer prop is named `setIsPointerLocked` but wired to `setActive` (name kept to avoid churn in HUD/MenuSystem; documented inline). Rename the whole chain to `setInputActive` coherently in the S3 touch pass (when Terrain migrates), not piecemeal now.
