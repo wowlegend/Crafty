@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import { useGameStore } from './store/useGameStore';
+import { buildSaveData } from './game/saveSchema.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const { user } = useAuth();
@@ -27,20 +30,6 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
-  const getLocalWorlds = () => {
-    try {
-      const data = localStorage.getItem('crafty_world_saves');
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error(e);
-      return [];
-    }
-  };
-
-  const saveLocalWorlds = (list) => {
-    localStorage.setItem('crafty_world_saves', JSON.stringify(list));
-  };
-
   useEffect(() => {
     loadWorlds();
   }, []);
@@ -53,97 +42,40 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
         const response = await axios.get(`${BACKEND_URL}/api/worlds`);
         setWorlds(response.data);
       } else {
-        const localList = getLocalWorlds();
-        setWorlds(localList);
+        setWorlds(listWorlds());
       }
     } catch (error) {
       console.warn('Backend load failed, falling back to LocalStorage:', error);
-      const localList = getLocalWorlds();
-      setWorlds(localList);
+      setWorlds(listWorlds());
     } finally {
       setLoading(false);
     }
   };
 
   const saveCurrentWorld = async () => {
+    const name = `${user?.username || 'Guest'}'s World - ${new Date().toLocaleDateString()}`;
+    // ONE serializer (buildSaveData) for both the cloud body and the local blob.
+    const saveData = buildSaveData(useGameStore.getState(), { position: useGameStore.getState().playerPosition });
+    const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
+    const persistLocal = () => {
+      const id = `local_${Date.now()}`;
+      writeWorld(id, meta, saveData);
+      setWorlds(listWorlds());
+    };
     try {
       setError('');
-      const name = `${user?.username || 'Guest'}'s World - ${new Date().toLocaleDateString()}`;
-      const worldData = {
-        name,
-        world_data: { blocks: Array.from(gameState.worldBlocks.entries()) },
-        player_data: {
-          position: { x: 0, y: 18, z: 0 },
-          inventory: gameState.inventory,
-          stats: gameState.playerStats
-        },
-        game_state: {
-          gameMode: gameState.gameMode,
-          selectedBlock: gameState.selectedBlock,
-          activeSpell: gameState.activeSpell,
-          isDay: gameState.isDay,
-          gameTime: gameState.gameTime,
-          achievements: gameState.achievements
-        },
-        is_public: false
-      };
-
       if (user) {
-        await axios.post(`${BACKEND_URL}/api/worlds`, worldData);
+        // S4: cloud sync — backend not yet implemented; local-first (localStorage) is the live path
+        await axios.post(`${BACKEND_URL}/api/worlds`, { ...meta, ...saveData });
         loadWorlds();
         setError('World saved to cloud successfully!');
       } else {
-        const localList = getLocalWorlds();
-        const id = `local_${Date.now()}`;
-        const newMetadata = {
-          id,
-          name,
-          created_at: new Date().toISOString(),
-          is_public: false,
-          is_owner: true
-        };
-        localList.unshift(newMetadata);
-        saveLocalWorlds(localList);
-        localStorage.setItem(`crafty_world_save_${id}`, JSON.stringify({ ...newMetadata, ...worldData }));
-        
-        setWorlds(localList);
+        persistLocal();
         setError('World saved to LocalStorage successfully!');
       }
     } catch (error) {
       console.warn('Backend save failed, saving to LocalStorage instead:', error);
-      const name = `${user?.username || 'Guest'}'s World - ${new Date().toLocaleDateString()}`;
-      const worldData = {
-        name,
-        world_data: { blocks: Array.from(gameState.worldBlocks.entries()) },
-        player_data: {
-          position: { x: 0, y: 18, z: 0 },
-          inventory: gameState.inventory,
-          stats: gameState.playerStats
-        },
-        game_state: {
-          gameMode: gameState.gameMode,
-          selectedBlock: gameState.selectedBlock,
-          activeSpell: gameState.activeSpell,
-          isDay: gameState.isDay,
-          gameTime: gameState.gameTime,
-          achievements: gameState.achievements
-        },
-        is_public: false
-      };
-      const localList = getLocalWorlds();
-      const id = `local_${Date.now()}`;
-      const newMetadata = {
-        id,
-        name,
-        created_at: new Date().toISOString(),
-        is_public: false,
-        is_owner: true
-      };
-      localList.unshift(newMetadata);
-      saveLocalWorlds(localList);
-      localStorage.setItem(`crafty_world_save_${id}`, JSON.stringify({ ...newMetadata, ...worldData }));
-      
-      setWorlds(localList);
+      persistLocal();
       setError('World saved to LocalStorage successfully (offline fallback)!');
     }
   };
@@ -154,88 +86,49 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
       return;
     }
 
+    // A fresh world is INTENTIONALLY minimal (empty blocks) — not a snapshot of live state,
+    // so it does NOT route through buildSaveData. Persistence still goes through writeWorld.
+    const freshBlob = {
+      world_data: { blocks: [] },
+      player_data: {
+        position: { x: 0, y: 18, z: 0 },
+        inventory: gameState.inventory,
+        stats: { blocksPlaced: 0, blocksDestroyed: 0 }
+      },
+      game_state: {
+        gameMode: 'creative',
+        selectedBlock: 'grass',
+        activeSpell: 'fireball',
+        isDay: true,
+        gameTime: 0,
+        achievements: []
+      }
+    };
+    const meta = { name: newWorldName, created_at: new Date().toISOString(), is_public: newWorldPublic, is_owner: true };
+    const persistLocal = () => {
+      const id = `local_${Date.now()}`;
+      writeWorld(id, meta, freshBlob);
+      setNewWorldName('');
+      setNewWorldPublic(false);
+      setShowCreateModal(false);
+      setWorlds(listWorlds());
+    };
     try {
       setError('');
-      const worldData = {
-        name: newWorldName,
-        world_data: { blocks: [] },
-        player_data: {
-          position: { x: 0, y: 18, z: 0 },
-          inventory: gameState.inventory,
-          stats: { blocksPlaced: 0, blocksDestroyed: 0 }
-        },
-        game_state: {
-          gameMode: 'creative',
-          selectedBlock: 'grass',
-          activeSpell: 'fireball',
-          isDay: true,
-          gameTime: 0,
-          achievements: []
-        },
-        is_public: newWorldPublic
-      };
-
       if (user) {
-        await axios.post(`${BACKEND_URL}/api/worlds`, worldData);
+        // S4: cloud sync — backend not yet implemented; local-first (localStorage) is the live path
+        await axios.post(`${BACKEND_URL}/api/worlds`, { ...meta, ...freshBlob });
         setNewWorldName('');
         setNewWorldPublic(false);
         setShowCreateModal(false);
         loadWorlds();
       } else {
-        const localList = getLocalWorlds();
-        const id = `local_${Date.now()}`;
-        const newMetadata = {
-          id,
-          name: newWorldName,
-          created_at: new Date().toISOString(),
-          is_public: newWorldPublic,
-          is_owner: true
-        };
-        localList.unshift(newMetadata);
-        saveLocalWorlds(localList);
-        localStorage.setItem(`crafty_world_save_${id}`, JSON.stringify({ ...newMetadata, ...worldData }));
-        
-        setNewWorldName('');
-        setNewWorldPublic(false);
-        setShowCreateModal(false);
-        setWorlds(localList);
+        persistLocal();
         setError('New world created locally!');
       }
     } catch (error) {
       console.warn('Backend create failed, creating locally instead:', error);
-      const localList = getLocalWorlds();
-      const id = `local_${Date.now()}`;
-      const newMetadata = {
-        id,
-        name: newWorldName,
-        created_at: new Date().toISOString(),
-        is_public: newWorldPublic,
-        is_owner: true
-      };
-      localList.unshift(newMetadata);
-      saveLocalWorlds(localList);
-      localStorage.setItem(`crafty_world_save_${id}`, JSON.stringify({
-        ...newMetadata,
-        world_data: { blocks: [] },
-        player_data: {
-          position: { x: 0, y: 18, z: 0 },
-          inventory: gameState.inventory,
-          stats: { blocksPlaced: 0, blocksDestroyed: 0 }
-        },
-        game_state: {
-          gameMode: 'creative',
-          selectedBlock: 'grass',
-          activeSpell: 'fireball',
-          isDay: true,
-          gameTime: 0,
-          achievements: []
-        }
-      }));
-      
-      setNewWorldName('');
-      setNewWorldPublic(false);
-      setShowCreateModal(false);
-      setWorlds(localList);
+      persistLocal();
       setError('New world created locally (offline fallback)!');
     }
   };
@@ -246,9 +139,8 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
       let worldData;
       
       if (typeof worldId === 'string' && worldId.startsWith('local_')) {
-        const stored = localStorage.getItem(`crafty_world_save_${worldId}`);
-        if (!stored) throw new Error('Local save not found');
-        worldData = JSON.parse(stored);
+        worldData = readWorld(worldId);
+        if (!worldData) throw new Error('Local save not found');
       } else {
         const response = await axios.get(`${BACKEND_URL}/api/worlds/${worldId}`);
         worldData = response.data;
@@ -273,10 +165,8 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     try {
       setError('');
       if (typeof worldId === 'string' && worldId.startsWith('local_')) {
-        const localList = getLocalWorlds().filter(w => w.id !== worldId);
-        saveLocalWorlds(localList);
-        localStorage.removeItem(`crafty_world_save_${worldId}`);
-        setWorlds(localList);
+        deleteWorldSave(worldId);
+        setWorlds(listWorlds());
         setError('World deleted locally.');
       } else {
         await axios.delete(`${BACKEND_URL}/api/worlds/${worldId}`);

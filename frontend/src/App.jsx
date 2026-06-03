@@ -18,6 +18,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { ecs, mobsQuery } from './ecs/world';
 import { selectTier, readDeviceSignals } from './render/quality';
+import { createAutosave } from './game/autosave';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -133,6 +134,43 @@ function GameApp({ experienceSystem }) {
   // Select the device quality tier once at startup (runs in prod + dev).
   useEffect(() => {
     useGameStore.getState().setQualityTier(selectTier(readDeviceSignals()));
+  }, []);
+
+  // Local-first autosave: debounce on progression/world TRANSITIONS, flush on tab-hide/close.
+  useEffect(() => {
+    const autosave = createAutosave({
+      save: () => {
+        const st = useGameStore.getState();
+        if (st.isCaptureMode) return;
+        const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
+        const t = rb && rb.translation ? rb.translation() : null;
+        st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);
+      },
+      delayMs: 5000,
+    });
+    // zustand v5 vanilla subscribe gives (state, prevState). Schedule only when a TRANSITION
+    // key changes — NOT on the per-frame playerPosition writes (which also pass through here).
+    const unsub = useGameStore.subscribe((s, prevS) => {
+      if (
+        s.level !== prevS.level ||
+        s.equipment !== prevS.equipment ||
+        s.chests !== prevS.chests ||
+        s.talentPoints !== prevS.talentPoints ||
+        s.gameMode !== prevS.gameMode
+      ) {
+        autosave.schedule();
+      }
+    });
+    const onVisibility = () => { if (document.visibilityState === 'hidden') autosave.flush(); };
+    const onUnload = () => autosave.flush();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('beforeunload', onUnload);
+    return () => {
+      unsub();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', onUnload);
+      autosave.cancel();
+    };
   }, []);
 
   // Dev-only test bridge: lets the visual-regression harness drive the running
