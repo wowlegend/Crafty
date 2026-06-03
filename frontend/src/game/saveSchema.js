@@ -33,6 +33,13 @@ export function buildSaveData(state, { position } = {}) {
       talentPoints: state.talentPoints,
       unlockedTalents: state.unlockedTalents,
       spellLevels: state.spellLevels,
+      coins: state.coins,
+      // Siege progression: nightCount drives siege intensity AND dawn-reward scaling;
+      // lastRewardedNight is the once-per-night reward guard. Both must persist so the
+      // "harder every night" loop + its reward guard survive a reload (the coins it
+      // grants already persist above — these keep the producer durable too).
+      nightCount: state.nightCount,
+      lastRewardedNight: state.lastRewardedNight,
     },
     game_state: {
       gameMode: state.gameMode,

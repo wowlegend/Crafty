@@ -15,7 +15,25 @@ import {
 import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
-import { Panel, Toast } from './ui/primitives/index.js';
+import { Panel, Toast, Icon } from './ui/primitives/index.js';
+
+// M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
+// (HUD is a plain declarative component, not a per-frame useFrame system, so a
+// store subscription here is fine + Game-Loop-Isolation-safe). Gated on coins > 0
+// so the default-zero wallet renders NOTHING -- the capture harness never grants
+// coins, so the explore-day/night baselines stay byte-identical (no drift).
+const CoinReadout = React.memo(() => {
+  const coins = useGameStore((s) => s.coins);
+  if (!coins || coins <= 0) return null;
+  return (
+    <div className="absolute top-3 right-4 z-20 pointer-events-none">
+      <Panel variant="base" className="px-3 py-1.5 flex items-center gap-1.5">
+        <Icon name="coins" size={18} className="flex-none text-warn" />
+        <span className="font-bold tabular-nums text-text">{coins}</span>
+      </Panel>
+    </div>
+  );
+});
 
 // Map a game activeSpell id -> bold-flat token spell color (mirrors the old inline-hex
 // mapping: fireball=fire, iceball=ice, lightning=lightning, everything else=arcane).
@@ -306,6 +324,8 @@ export function HUD({
             <CombatInstructions />
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
+
+            <CoinReadout />
 
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
               <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />

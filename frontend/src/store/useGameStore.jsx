@@ -4,7 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progressio
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
-import { crossedHalfCycle, isDayAtUnit } from '../game/dayNight.js';
+import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -111,6 +111,11 @@ export const useGameStore = create((set, get) => ({
 
     // RPG Stats & Equipment Systems (Decoupled & Optimized)
     level: 1, currentXP: 0, totalXP: 0,
+    // M3b currency wallet (distinct from the `gold:8` block mining-XP value).
+    // addCoins clamps at >= 0 so a reward never drives a negative balance and a
+    // future spend can't underflow; a nullish/NaN amount is a safe no-op.
+    coins: 0,
+    addCoins: (n) => set((state) => ({ coins: Math.max(0, state.coins + (Number(n) || 0)) })),
     attributes: {
         strength: 10,
         agility: 10,
@@ -512,6 +517,37 @@ export const useGameStore = create((set, get) => ({
     isDay: true,
     setIsDay: (isDayArg) => set((state) => ({ isDay: typeof isDayArg === 'function' ? isDayArg(state.isDay) : isDayArg })),
 
+    // M3b night siege: nightCount (nights entered/survived) is the ONE source of
+    // truth for siege intensity. Lifted out of useSurvivalMode's local useState so
+    // BOTH the survival hook AND the spawn system (SimplifiedNPCSystem, via
+    // siegeParams(store.nightCount)) read one value -- mirrors the M3a/M2c
+    // single-SoT discipline. The spawn loop READS this transiently (getState),
+    // never subscribes, so Game-Loop-Isolation holds.
+    nightCount: 0,
+    incrementNight: () => set((state) => ({ nightCount: state.nightCount + 1 })),
+    // Highest night already rewarded at dawn — the once-per-night guard (persisted in
+    // the save slice so a reload mid-run cannot re-grant a night's reward).
+    lastRewardedNight: 0,
+
+    // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus
+    // XP + currency + one guaranteed scaling-rarity loot drop -- via the existing
+    // grantXP / addCoins / addToInventory paths. Pure magnitudes from dawnReward();
+    // the ONCE-per-dawn guard lives in useSurvivalMode (this action just grants).
+    // Returns the reward descriptor so the caller can render a toast.
+    grantDawnReward: (nightNumber) => {
+        const state = get();
+        // Once per night, robust across hook remount + reload (lastRewardedNight is
+        // persisted). A re-fired dawn for an already-rewarded (or lower) night is a
+        // no-op returning null; the caller renders a plain "you survived" toast then.
+        if (nightNumber <= state.lastRewardedNight) return null;
+        const reward = dawnReward(nightNumber);
+        state.grantXP(reward.xp, 'Survived the night');
+        state.addCoins(reward.coins);
+        state.addToInventory(reward.lootItem, 1);
+        set({ lastRewardedNight: nightNumber });
+        return reward;
+    },
+
     gameTime: 0,
     setGameTime: (timeArg) => set((state) => {
         const newTime = typeof timeArg === 'function' ? timeArg(state.gameTime) : timeArg;
@@ -682,6 +718,10 @@ export const useGameStore = create((set, get) => ({
             // Migrate pre-A4 saves: drop talent ids no longer in the trees + refund their ranks into points.
             const _talentRefund = refundUnknownTalents(unlockedTalents, talentPoints);
             const spellLevels = prog?.spellLevels ?? state.spellLevels;
+            const coins = prog?.coins ?? state.coins;
+            // Siege progression (durable across reload): siege intensity + reward scaling.
+            const nightCount = prog?.nightCount ?? state.nightCount;
+            const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -731,6 +771,9 @@ export const useGameStore = create((set, get) => ({
                 talentPoints: _talentRefund.talentPoints,
                 unlockedTalents: _talentRefund.unlockedTalents,
                 spellLevels,
+                coins,
+                nightCount,
+                lastRewardedNight,
                 chests,
                 maxHealth,
                 maxMana,

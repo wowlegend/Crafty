@@ -9,6 +9,7 @@ import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
 import { isCaptureMode } from './devtest/captureMode';
+import { siegeParams } from './game/dayNight.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
@@ -523,7 +524,10 @@ const SpawnerSystem = () => {
     const mobTypeKeys = Object.keys(MOB_TYPES);
     let type = forceType;
     if (!type) {
-      if (!store.isDay && Math.random() < 0.7) {
+      // M3b: at night the hostile-spawn bias ramps with nightCount (siegeParams);
+      // day stays the calm baseline (this branch only fires when !store.isDay).
+      const nightHostileChance = siegeParams(store.nightCount).hostileChance;
+      if (!store.isDay && Math.random() < nightHostileChance) {
         const hostileTypes = mobTypeKeys.filter(k => !MOB_TYPES[k].passive);
         type = hostileTypes[Math.floor(Math.random() * hostileTypes.length)];
       } else {
@@ -599,7 +603,9 @@ const SpawnerSystem = () => {
       // spawner gate above. No-op in normal gameplay.
       if (!isCaptureMode() && store.getGeneratedChunks && store.getGeneratedChunks().size > 0) {
         const activeMobs = mobsQuery.entities.filter(e => e.health > 0).length;
-        const maxMobs = 16;
+        // M3b: the night siege raises the max-mob cap with nightCount (siegeParams);
+        // day holds the calm baseline (siegeParams(0).maxMobs === DAY_MAX_MOBS).
+        const maxMobs = store.isDay ? siegeParams(0).maxMobs : siegeParams(store.nightCount).maxMobs;
         if (activeMobs < maxMobs) {
           const mobsNeeded = maxMobs - activeMobs;
           const spawnCount = Math.min(mobsNeeded, 3); // Spawn up to 3 per tick to prevent spikes

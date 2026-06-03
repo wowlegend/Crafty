@@ -13,35 +13,45 @@ import { useT } from './i18n/i18n.js';
 import { ASPECT_TREES } from './game/talentTree.js';
 
 export const useSurvivalMode = (isDay) => {
-    const [nightCount, setNightCount] = useState(0);
+    // nightCount is the STORE's single source of truth (lifted out of local useState
+    // in M3b) so the spawn system (SimplifiedNPCSystem -> siegeParams) reads the same
+    // value. Subscribe here for the warning/reward HUD; the spawn loop reads it
+    // transiently via getState (Game-Loop-Isolation).
+    const nightCount = useGameStore((s) => s.nightCount);
     const [survivalWarning, setSurvivalWarning] = useState(null);
     const prevIsDay = useRef(true);
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
-            setNightCount(prev => prev + 1);
+            // Night falls: bump the shared nightCount (drives the escalating siege).
+            useGameStore.getState().incrementNight();
             setSurvivalWarning('Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
 
         if (!prevIsDay.current && isDay) {
-            setSurvivalWarning('Dawn breaks! You survived the night!');
+            // Dawn: reward surviving the night just passed. nightCount was bumped at
+            // nightfall, so it equals the night survived. grantDawnReward guards
+            // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a
+            // re-fired transition, a hook remount, or a reload mid-run cannot double-grant.
+            const survived = useGameStore.getState().nightCount;
+            const r = survived > 0 ? useGameStore.getState().grantDawnReward(survived) : null;
+            setSurvivalWarning(r
+                ? `Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`
+                : 'Dawn breaks! You survived the night!');
             setTimeout(() => setSurvivalWarning(null), 3000);
         }
 
         prevIsDay.current = isDay;
-    }, [isDay, nightCount]);
-
-    useEffect(() => {
-        if (!isDay) {
-            const nightHunger = setInterval(() => {
-                if (useGameStore.getState().damagePlayer && useGameStore.getState().isAlive && useGameStore.getState().isAlive) {
-                    // Extra hunger drain represented as very small starvation pressure
-                }
-            }, 3000);
-            return () => clearInterval(nightHunger);
-        }
     }, [isDay]);
+
+    // NOTE: night does NOT write dangerLevel. moodTarget() already floors night at
+    // mood 1 (dusk) via its `night` term, so a night->dangerLevel(1) write was a no-op
+    // for mood AND could stomp an active boss's dangerLevel=2 at a dusk/dawn transition
+    // (the boss bridge below is the SOLE dangerLevel writer). Night danger is delivered
+    // by the escalating siege spawn-ramp (siegeParams) + the existing dusk mood; the
+    // obsidian mood (level 2) stays the BOSS signature. Deep-night-obsidian is a
+    // deliberate mood-design decision batched to Kevin (KEVIN-REVIEW-BATCH).
 
     return { nightCount, survivalWarning };
 };
