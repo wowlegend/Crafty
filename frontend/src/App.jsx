@@ -156,7 +156,9 @@ function GameApp({ experienceSystem }) {
         s.equipment !== prevS.equipment ||
         s.chests !== prevS.chests ||
         s.talentPoints !== prevS.talentPoints ||
-        s.gameMode !== prevS.gameMode
+        s.gameMode !== prevS.gameMode ||
+        s.worldBlocks !== prevS.worldBlocks ||
+        s.inventory !== prevS.inventory
       ) {
         autosave.schedule();
       }

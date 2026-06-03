@@ -26,3 +26,15 @@ describe('save consolidation gates', () => {
     expect(/beforeunload/.test(src)).toBe(true);
   });
 });
+
+describe('autosave robustness gates', () => {
+  it('App autosave subscribe also triggers on worldBlocks + inventory (build/mine sessions persist)', () => {
+    const src = read('src/App.jsx');
+    expect(/worldBlocks\s*!==\s*prevS\.worldBlocks/.test(src)).toBe(true);
+    expect(/inventory\s*!==\s*prevS\.inventory/.test(src)).toBe(true);
+  });
+  it('WorldManager sets the active-world-id on load (so autosave targets the loaded slot)', () => {
+    const src = read('src/WorldManager.jsx');
+    expect(/setActiveWorldId/.test(src)).toBe(true);
+  });
+});

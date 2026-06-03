@@ -16,7 +16,7 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { useGameStore } from './store/useGameStore';
 import { buildSaveData } from './game/saveSchema.js';
-import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave } from './game/worldSaves.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, getActiveWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const { user } = useAuth();
@@ -58,7 +58,11 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     const saveData = buildSaveData(useGameStore.getState(), { position: useGameStore.getState().playerPosition });
     const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
     const persistLocal = () => {
-      const id = `local_${Date.now()}`;
+      // Reuse the active slot so a manual save + the autosave converge on ONE world
+      // (matches store.saveActiveWorld's getActiveWorldId() || mint pattern).
+      let id = getActiveWorldId();
+      if (!id) { id = `local_${Date.now()}`; }
+      setActiveWorldId(id);
       writeWorld(id, meta, saveData);
       setWorlds(listWorlds());
     };
@@ -108,6 +112,8 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     const persistLocal = () => {
       const id = `local_${Date.now()}`;
       writeWorld(id, meta, freshBlob);
+      // Freshly-created world becomes the autosave target.
+      setActiveWorldId(id);
       setNewWorldName('');
       setNewWorldPublic(false);
       setShowCreateModal(false);
@@ -141,6 +147,8 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
       if (typeof worldId === 'string' && worldId.startsWith('local_')) {
         worldData = readWorld(worldId);
         if (!worldData) throw new Error('Local save not found');
+        // Point subsequent autosaves at the slot we just loaded (else they orphan to a fresh slot).
+        setActiveWorldId(worldId);
       } else {
         const response = await axios.get(`${BACKEND_URL}/api/worlds/${worldId}`);
         worldData = response.data;
