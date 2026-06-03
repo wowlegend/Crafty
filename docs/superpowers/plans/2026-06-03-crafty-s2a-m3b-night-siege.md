@@ -54,3 +54,14 @@ Two baseline frames are night/danger-sensitive: **`explore-night`** (dusk mood, 
 - **Siege ramp** — default: night `maxMobs = 16 + min(nightCount*4, 24)` (cap 40), `hostileChance = min(0.7 + nightCount*0.05, 0.95)`. Tune to taste.
 - **Dawn reward magnitude** — default `XP = 50 * nightNumber`, `coins = 10 * nightNumber`, +1 guaranteed loot drop (rarity tiering up by night). Tune.
 - Currency name/icon (default "coins") — cosmetic.
+- **Deep-night obsidian mood?** (post-review decision) — see below.
+
+## Post-review (2026-06-03)
+
+3 lenses (spec/quality/determinism) all flagged the SAME two issues — fixed in a follow-up commit before merge:
+
+1. **MAJOR — `dangerLevel` double-writer (fixed by REMOVAL).** The night→`dangerLevel(1)` bridge was both (a) a **no-op for mood** — `moodTarget` already floors night at mood 1 via its `night` term, so writing danger=1 at night = `max(1,1)` = no change — and (b) **harmful**: it could stomp an active boss's `dangerLevel=2` to 0/1 at a dusk/dawn transition (the boss bridge wouldn't re-fire), blanking the obsidian mood mid-fight. **Fix:** removed the night→danger write entirely → the **boss bridge is the SOLE `dangerLevel` writer** (single-authority, mirroring the M2d pointer-lock lesson). Night danger is delivered by the **siege spawn-ramp** + the existing **dusk mood**; **obsidian (mood 2) stays the boss signature.** → **Batched to Kevin:** want deep/late nights to visually escalate toward obsidian (a deliberate mood feature: write danger=2 on a deep-siege tier, capture-guarded)? Default = NO (keep obsidian boss-only — cleaner signature).
+2. **MAJOR — `nightCount` not persisted (fixed).** `nightCount` is the sole source of siege intensity AND dawn-reward scaling, but only `coins` was persisted → a reload reset the "harder every night" loop to night 0 while the coins it granted persisted (inconsistent). **Fix:** persist `nightCount` + `lastRewardedNight` in the saveSchema progression slice + `loadWorldData`; round-trip tested.
+3. **MINOR — reward double-grant guard (fixed).** The once-per-dawn guard was a `useRef` that resets on remount (and wouldn't survive reload). **Fix:** moved it INTO the store — `grantDawnReward` guards on the persisted `lastRewardedNight` (returns null if already rewarded), robust across remount + reload.
+
+`test:unit` **507** · build clean · `test:visual` **12/12 no re-baseline** (removing the capture-inert night bridge changed nothing in the gate — confirming it was inert).
