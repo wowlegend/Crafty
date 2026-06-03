@@ -13,13 +13,18 @@ import { useT } from './i18n/i18n.js';
 import { ASPECT_TREES } from './game/talentTree.js';
 
 export const useSurvivalMode = (isDay) => {
-    const [nightCount, setNightCount] = useState(0);
+    // nightCount is the STORE's single source of truth (lifted out of local useState
+    // in M3b) so the spawn system (SimplifiedNPCSystem -> siegeParams) reads the same
+    // value. Subscribe here for the warning/reward HUD; the spawn loop reads it
+    // transiently via getState (Game-Loop-Isolation).
+    const nightCount = useGameStore((s) => s.nightCount);
     const [survivalWarning, setSurvivalWarning] = useState(null);
     const prevIsDay = useRef(true);
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
-            setNightCount(prev => prev + 1);
+            // Night falls: bump the shared nightCount + raise the danger mood.
+            useGameStore.getState().incrementNight();
             setSurvivalWarning('Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
@@ -30,17 +35,16 @@ export const useSurvivalMode = (isDay) => {
         }
 
         prevIsDay.current = isDay;
-    }, [isDay, nightCount]);
+    }, [isDay]);
 
+    // M3b night -> dangerLevel bridge: night raises the obsidian-tinted danger mood
+    // (dangerLevel=1; the boss bridge escalates to 2), cleared to 0 at dawn -- so
+    // night actually FEELS dangerous in real play. CAPTURE-GUARDED (mirrors the boss
+    // bridge): under the visual-capture harness this early-returns, so explore-night
+    // stays the dusk mood (dangerLevel=0) and the 12 baselines stay byte-stable.
     useEffect(() => {
-        if (!isDay) {
-            const nightHunger = setInterval(() => {
-                if (useGameStore.getState().damagePlayer && useGameStore.getState().isAlive && useGameStore.getState().isAlive) {
-                    // Extra hunger drain represented as very small starvation pressure
-                }
-            }, 3000);
-            return () => clearInterval(nightHunger);
-        }
+        if (isCaptureMode()) return;
+        useGameStore.getState().setDangerLevel(isDay ? 0 : 1);
     }, [isDay]);
 
     return { nightCount, survivalWarning };

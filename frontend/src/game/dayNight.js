@@ -61,3 +61,42 @@ export function isDayAtUnit(t) {
 export function shouldAdvanceClock({ isWorldBuilt, active, isAlive, captureMode } = {}) {
   return !!isWorldBuilt && !!active && isAlive !== false && !captureMode;
 }
+
+// --- M3b NIGHT SIEGE intensity ---------------------------------------------
+//
+// The calm day baseline: spawning holds up to DAY_MAX_MOBS with DAY_HOSTILE_CHANCE
+// hostile bias at night (the pre-M3b literals 16 + 0.7). At night the siege ramps
+// with nightCount (nights SURVIVED) -- more mobs, more hostile -- then plateaus at a
+// cap so a long run stays bounded. Pure so the escalation contract is exhaustively
+// unit-testable (off any static-text gate); the consumer (SimplifiedNPCSystem) reads
+// store.nightCount and applies these ONLY at night, inside its capture guards.
+
+/** Calm day baseline: max concurrent mobs (the pre-M3b literal). */
+export const DAY_MAX_MOBS = 16;
+
+/** Calm baseline: hostile-spawn bias at night-0 (the pre-M3b literal). */
+export const DAY_HOSTILE_CHANCE = 0.7;
+
+/** Per-night maxMobs ramp + its additive cap (so maxMobs caps at 16 + 24 = 40). */
+export const SIEGE_MOBS_PER_NIGHT = 4;
+export const SIEGE_MOBS_RAMP_CAP = 24;
+
+/** Per-night hostileChance ramp + its absolute ceiling. */
+export const SIEGE_HOSTILE_PER_NIGHT = 0.05;
+export const SIEGE_HOSTILE_CAP = 0.95;
+
+/**
+ * Night-siege intensity as a PURE function of nightCount (nights survived). Ramps
+ * monotonically and plateaus at a cap. nightCount 0 (and any nullish / negative /
+ * NaN value) returns the calm day baseline, so a caller that hasn't survived a night
+ * yet -- or reads a not-yet-initialized store field -- gets the gentle defaults.
+ * Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH).
+ * @param {number} nightCount
+ * @returns {{ hostileChance: number, maxMobs: number }}
+ */
+export function siegeParams(nightCount) {
+  const n = Math.max(0, Math.floor(Number(nightCount) || 0));
+  const maxMobs = DAY_MAX_MOBS + Math.min(n * SIEGE_MOBS_PER_NIGHT, SIEGE_MOBS_RAMP_CAP);
+  const hostileChance = Math.min(DAY_HOSTILE_CHANCE + n * SIEGE_HOSTILE_PER_NIGHT, SIEGE_HOSTILE_CAP);
+  return { hostileChance, maxMobs };
+}

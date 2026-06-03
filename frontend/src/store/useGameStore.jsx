@@ -517,6 +517,15 @@ export const useGameStore = create((set, get) => ({
     isDay: true,
     setIsDay: (isDayArg) => set((state) => ({ isDay: typeof isDayArg === 'function' ? isDayArg(state.isDay) : isDayArg })),
 
+    // M3b night siege: nightCount (nights entered/survived) is the ONE source of
+    // truth for siege intensity. Lifted out of useSurvivalMode's local useState so
+    // BOTH the survival hook AND the spawn system (SimplifiedNPCSystem, via
+    // siegeParams(store.nightCount)) read one value -- mirrors the M3a/M2c
+    // single-SoT discipline. The spawn loop READS this transiently (getState),
+    // never subscribes, so Game-Loop-Isolation holds.
+    nightCount: 0,
+    incrementNight: () => set((state) => ({ nightCount: state.nightCount + 1 })),
+
     gameTime: 0,
     setGameTime: (timeArg) => set((state) => {
         const newTime = typeof timeArg === 'function' ? timeArg(state.gameTime) : timeArg;
