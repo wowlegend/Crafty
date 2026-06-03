@@ -1,6 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { useState, useEffect, useRef } from 'react';
 import { HOTBAR_BLOCKS } from './world/Blocks';
+import { getInput, setActive } from './input/inputState';
 
 const requestPointerLockSafely = (state) => {
   if (state.requestPointerLock) {
@@ -16,7 +17,6 @@ const requestPointerLockSafely = (state) => {
 };
 
 export function useInputManager(gameState, gameSystems, questSystem) {
-  const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showSpellUpgrades, setShowSpellUpgrades] = useState(false);
@@ -24,13 +24,14 @@ export function useInputManager(gameState, gameSystems, questSystem) {
   useEffect(() => {
     const handleWheel = (event) => {
       const state = useGameStore.getState();
-      const { isPointerLocked, showAchievements, showSpellUpgrades } = localRefs.current;
+      const active = getInput().active;
+      const { showAchievements, showSpellUpgrades } = localRefs.current;
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
         state.showSettings || showAchievements || showSpellUpgrades ||
         state.showTradingInterface || state.showChestInterface;
 
-      if (isPointerLocked && !anyPanelOpen) {
+      if (active && !anyPanelOpen) {
         const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
         if (currentIndex === -1) return;
 
@@ -50,15 +51,16 @@ export function useInputManager(gameState, gameSystems, questSystem) {
   // Declared clean state-bound pointer lock requester
 
   // Keep latest values in refs to avoid rebinding event listener
-  const localRefs = useRef({ isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem });
+  const localRefs = useRef({ showStats, showAchievements, showSpellUpgrades, questSystem });
   useEffect(() => {
-    localRefs.current = { isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem };
+    localRefs.current = { showStats, showAchievements, showSpellUpgrades, questSystem };
   });
 
   useEffect(() => {
     const handleKeyDown = (event) => {
       const state = useGameStore.getState();
-      const { isPointerLocked, showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
+      const active = getInput().active;
+      const { showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
 
       const anyPanelOpen = state.showInventory || state.showCrafting ||
         state.showMagic || state.showBuildingTools ||
@@ -82,19 +84,17 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           setShowAchievements(false);
           setShowSpellUpgrades(false);
           requestPointerLockSafely(state);
-        } else if (isPointerLocked) {
+        } else if (active) {
           state.setShowSettings(true);
-          if (document.pointerLockElement) {
-            document.exitPointerLock();
-          }
+          document.exitPointerLock();
         } else {
-          setIsPointerLocked(true);
+          setActive(true);
           requestPointerLockSafely(state);
         }
         return;
       }
 
-      if (isPointerLocked || anyPanelOpen) {
+      if (active || anyPanelOpen) {
         const toggleUI = (setter, currentValue) => {
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -108,7 +108,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           const newValue = !currentValue;
           setter(newValue);
 
-          if (newValue && document.pointerLockElement) {
+          if (newValue) {
             document.exitPointerLock();
           }
 
@@ -122,14 +122,14 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
       }
 
-      if (isPointerLocked && !anyPanelOpen) {
+      if (active && !anyPanelOpen) {
         if (event.code === 'Digit1') state.setActiveSpell('fireball');
         if (event.code === 'Digit2') state.setActiveSpell('iceball');
         if (event.code === 'Digit3') state.setActiveSpell('lightning');
         if (event.code === 'Digit4') state.setActiveSpell('arcane');
       }
 
-      if (event.code === 'KeyQ' && isPointerLocked && !anyPanelOpen) {
+      if (event.code === 'KeyQ' && active && !anyPanelOpen) {
         event.preventDefault();
         if (questSystem && questSystem.quests) {
           questSystem.quests.forEach(quest => {
@@ -147,7 +147,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
-      if (event.code === 'Tab' && (isPointerLocked || anyPanelOpen)) {
+      if (event.code === 'Tab' && (active || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         state.setShowInventory(false);
@@ -157,14 +157,14 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         state.setShowSettings(false);
         const newVal = !showAchievements;
         setShowAchievements(newVal);
-        if (newVal && document.pointerLockElement) document.exitPointerLock();
+        if (newVal) document.exitPointerLock();
         if (!newVal) {
           requestPointerLockSafely(state);
         }
         return;
       }
 
-      if (event.code === 'KeyG' && isPointerLocked && !anyPanelOpen) {
+      if (event.code === 'KeyG' && active && !anyPanelOpen) {
         event.preventDefault();
         let nearestVillager = null;
         if (state.mobEntities && state.gameCamera) {
@@ -196,7 +196,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
-      if (event.code === 'KeyT' && isPointerLocked && !anyPanelOpen) {
+      if (event.code === 'KeyT' && active && !anyPanelOpen) {
         event.preventDefault();
         // Offloaded nearest Euclidean distance calculation slightly by referencing state
         if (state.mobEntities && state.gameCamera) {
@@ -217,7 +217,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
-      if (event.code === 'KeyU' && (isPointerLocked || anyPanelOpen)) {
+      if (event.code === 'KeyU' && (active || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         state.setShowInventory(false);
@@ -228,7 +228,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         setShowAchievements(false);
         const newVal = !showSpellUpgrades;
         setShowSpellUpgrades(newVal);
-        if (newVal && document.pointerLockElement) document.exitPointerLock();
+        if (newVal) document.exitPointerLock();
         if (!newVal) {
           requestPointerLockSafely(state);
         }
@@ -241,26 +241,10 @@ export function useInputManager(gameState, gameSystems, questSystem) {
   }, []);
 
   useEffect(() => {
-    const handlePointerLockChange = () => {
-      try {
-        const isLocked = document.pointerLockElement !== null;
-        setIsPointerLocked(isLocked);
-      } catch (error) {
-        setIsPointerLocked(true);
-      }
-    };
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    return () => document.removeEventListener('pointerlockchange', handlePointerLockChange);
-  }, []);
-
-  useEffect(() => {
-    if (gameSystems && !gameSystems.isAlive && document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    if (gameSystems && !gameSystems.isAlive) document.exitPointerLock();
   }, [gameSystems?.isAlive]);
 
   return {
-    isPointerLocked, setIsPointerLocked,
     showStats, setShowStats,
     showAchievements, setShowAchievements,
     showSpellUpgrades, setShowSpellUpgrades
