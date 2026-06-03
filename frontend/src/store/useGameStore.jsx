@@ -4,6 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progressio
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
+import { crossedHalfCycle, isDayAtUnit } from '../game/dayNight.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -514,8 +515,11 @@ export const useGameStore = create((set, get) => ({
     gameTime: 0,
     setGameTime: (timeArg) => set((state) => {
         const newTime = typeof timeArg === 'function' ? timeArg(state.gameTime) : timeArg;
-        // Automatic day/night toggle every 600 ticks
-        if (newTime > 0 && newTime % 600 === 0) {
+        // Flip isDay on a half-cycle BOUNDARY CROSSING (not an exact `% 600 === 0`
+        // landing). Robust to any tick step + any resumed gameTime: a multi-step
+        // jump that skips the exact multiple still flips, and a save resumed at a
+        // non-aligned gameTime (e.g. 437) still flips when a step first lands >= 600.
+        if (crossedHalfCycle(state.gameTime, newTime)) {
             return { gameTime: newTime, isDay: !state.isDay };
         }
         return { gameTime: newTime };
@@ -658,8 +662,12 @@ export const useGameStore = create((set, get) => ({
             const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
-            const isDay = saveData.game_state?.isDay !== undefined ? saveData.game_state.isDay : state.isDay;
             const gameTime = saveData.game_state?.gameTime || state.gameTime;
+            // Derive isDay from the restored gameTime so a resumed save is always
+            // phase-consistent (the clock is authoritative; the manual setIsDay toggle is
+            // transient by design). Fixes the edge where a save's stored isDay disagreed
+            // with its gameTime and would not self-correct until the next half-cycle crossing.
+            const isDay = isDayAtUnit(gameTime);
             const achievements = saveData.game_state?.achievements || state.achievements;
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.

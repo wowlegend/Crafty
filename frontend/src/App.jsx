@@ -21,6 +21,7 @@ import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { ecs, mobsQuery } from './ecs/world';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
+import { useDayNightClock } from './game/useDayNightClock';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -119,6 +120,10 @@ function GameApp({ experienceSystem }) {
   }, [gameState.isSpawnChunkLoaded, isWorldBuilt]);
 
   const gameSystems = useGameSystems();
+  // Day/night CLOCK ticker (M3a): advances gameTime over real time so the cycle
+  // runs. Coarse 1s setInterval (Game-Loop Isolation -- NOT useFrame); pauses in
+  // menus / at click-to-play / on death / during visual capture.
+  useDayNightClock({ isWorldBuilt, isAlive: gameSystems?.isAlive });
   const questSystem = useQuestSystem();
   const treasureChests = useTreasureChests();
   const survivalMode = useSurvivalMode(gameState.isDay);
