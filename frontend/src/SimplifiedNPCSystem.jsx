@@ -13,6 +13,7 @@ import { siegeParams } from './game/dayNight.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
+import { rarityBeam } from './game/lootJuice.js';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -1185,6 +1186,11 @@ const LootSystem = () => {
             store.addNotification(`Looted: ${entity.item}`, 'loot');
           }
           playPickup();
+          // M3c-T2: rarity-tinted pickup pop at the collect point (same color as
+          // the drop's beam). Fires only here -> never in capture (no pickups occur).
+          if (GameMethods.spawnLootPop) {
+            GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
+          }
           ecs.remove(entity);
         }
       }
@@ -1201,15 +1207,13 @@ const LootDropRender = ({ entity }) => {
 
   const rarity = useMemo(() => getItemRarity(entity.item), [entity.item]);
 
-  const color = useMemo(() => {
-    switch (rarity) {
-      case 'legendary': return '#f97316';
-      case 'epic': return '#a855f7';
-      case 'rare': return '#3b82f6';
-      case 'common':
-      default: return '#9ca3af';
-    }
-  }, [rarity]);
+  // M3c-T1: the drop look is derived from the pure rarityBeam helper, keyed off
+  // the LOCKED RARITY_FILL palette -> { color, height, intensity } tiered by
+  // rarity (common = short/dim, legendary = tall/bright). The gem + beam share
+  // the color; the beam's height + additive opacity scale by tier so a legendary
+  // drop reads across the map.
+  const beam = useMemo(() => rarityBeam(rarity), [rarity]);
+  const color = beam.color;
 
   // M3-T3: the loot-drop glyph sprite painted a leading emoji from the (now
   // emoji-free) item name into a CanvasTexture. With item identity decoupled
@@ -1225,8 +1229,9 @@ const LootDropRender = ({ entity }) => {
     meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 2) * 0.2;
 
     if (beamRef.current) {
+      // Anchor the beam base at the drop, rising by its tiered height.
       beamRef.current.position.copy(entity.position);
-      beamRef.current.position.y += 1.5;
+      beamRef.current.position.y += beam.height / 2;
     }
   });
 
@@ -1244,11 +1249,11 @@ const LootDropRender = ({ entity }) => {
       </mesh>
 
       <mesh ref={beamRef}>
-        <cylinderGeometry args={[0.08, 0.25, 3.0, 8, 1, true]} />
+        <cylinderGeometry args={[0.08, 0.25, beam.height, 8, 1, true]} />
         <meshBasicMaterial
           color={color}
           transparent
-          opacity={0.15}
+          opacity={beam.intensity}
           depthWrite={false}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
@@ -1258,9 +1263,42 @@ const LootDropRender = ({ entity }) => {
   );
 };
 
+// --- Pickup Pop VFX ---
+// M3c-T2: a short rarity-tinted scale-pop ring that fires ONCE at the pickup
+// point (driven from the LootSystem collection branch, dist<1.2). Same self-
+// removing scale+fade mechanics as ImpactShockwave (one mesh, ~300ms, then it
+// unmounts via onComplete) so there is no per-frame React slop. Color is the
+// rarityBeam color, matching the drop's beam for a consistent rarity read.
+const LootPopRender = ({ position, color, id, onComplete }) => {
+  const meshRef = useRef();
+  const startTime = useRef(null);
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    if (startTime.current === null) startTime.current = performance.now();
+    const elapsed = performance.now() - startTime.current;
+    const duration = 280;
+    const t = Math.min(1, elapsed / duration);
+
+    const scale = 0.15 + (1.4 - 0.15) * t;
+    meshRef.current.scale.set(scale, scale, 1);
+    meshRef.current.material.opacity = 0.85 * (1 - t);
+
+    if (t >= 1) onComplete(id);
+  });
+
+  return (
+    <mesh ref={meshRef} position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.7, 1.0, 24]} />
+      <meshBasicMaterial color={color} transparent opacity={0.85} depthWrite={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+    </mesh>
+  );
+};
+
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const [shockwaves, setShockwaves] = useState([]);
+  const [lootPops, setLootPops] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery);
   const xpOrbs = useEntities(xpOrbsQuery);
@@ -1277,6 +1315,14 @@ export const NPCSystem = React.memo(() => {
         isXP: true,
         damage: amount,
         position: [position.x, position.y, position.z]
+      }]);
+    };
+    // M3c-T2: rarity-tinted pickup pop, fired from the LootSystem collect branch.
+    GameMethods.spawnLootPop = (position, color) => {
+      setLootPops(prev => [...prev, {
+        id: damageId.current++,
+        position: [position.x, position.y + 0.1, position.z],
+        color
       }]);
     };
   }, []);
@@ -1322,6 +1368,16 @@ export const NPCSystem = React.memo(() => {
           position={wave.position}
           type={wave.type}
           onComplete={(id) => setShockwaves(prev => prev.filter(w => w.id !== id))}
+        />
+      ))}
+
+      {lootPops.map(pop => (
+        <LootPopRender
+          key={pop.id}
+          id={pop.id}
+          position={pop.position}
+          color={pop.color}
+          onComplete={(id) => setLootPops(prev => prev.filter(p => p.id !== id))}
         />
       ))}
     </group>
