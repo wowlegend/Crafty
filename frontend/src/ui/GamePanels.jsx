@@ -7,6 +7,7 @@ import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity, getItemIcon } from '../data/items.js';
+import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
 
 // Re-exported for the M3 loot/rarity characterization tests, which import
 // getItemRarity from this module. M3-T3 routed rarity through the single registry
@@ -25,16 +26,6 @@ const AVA = {
     leg: '#2F4F7E',   // trousers
     arm: '#5A3C26',
     eye: '#1B2740',
-};
-
-const getItemSlot = (itemName) => {
-    if (!itemName) return null;
-    if (['sword', 'pickaxe', 'Stone Sword', 'Iron Sword', 'Diamond Sword'].includes(itemName)) return 'weapon';
-    if (['Wooden Shield', 'Iron Shield', 'Diamond Shield'].includes(itemName)) return 'offhand';
-    if (['Golden Crown', 'Leather Helmet', 'Iron Helmet', 'Diamond Helmet'].includes(itemName)) return 'head';
-    if (['Leather Chestplate', 'Iron Chestplate', 'Diamond Chestplate'].includes(itemName)) return 'chest';
-    if (['Leather Boots', 'Iron Boots', 'Diamond Boots'].includes(itemName)) return 'boots';
-    return null;
 };
 
 // Rarity tier (from getItemRarity) -> bold-flat token text color (for the inspector
@@ -194,6 +185,7 @@ export const Inventory = ({ onClose }) => {
         equipItem: state.equipItem,
         unequipItem: state.unequipItem,
         attributes: state.attributes,
+        allocateAttribute: state.allocateAttribute,
         getEffectiveAttributes: state.getEffectiveAttributes,
         getPlayerLevel: state.getPlayerLevel
     })));
@@ -247,16 +239,12 @@ export const Inventory = ({ onClose }) => {
 
     // Calculate dynamic stats sheets
     const effective = gameState.getEffectiveAttributes ? gameState.getEffectiveAttributes() : { strength: 10, agility: 10, intellect: 10, armor: 0 };
+    const attributePoints = gameState.attributes?.attributePoints || 0;
     const playerLevel = gameState.getPlayerLevel ? gameState.getPlayerLevel() : 1;
     
     // Weapon base damage
     const equippedWeapon = gameState.equipment?.weapon;
-    let baseWeaponDmg = 5;
-    if (equippedWeapon === 'Stone Sword') baseWeaponDmg = 12;
-    else if (equippedWeapon === 'Iron Sword') baseWeaponDmg = 20;
-    else if (equippedWeapon === 'Diamond Sword') baseWeaponDmg = 35;
-    else if (equippedWeapon === 'pickaxe') baseWeaponDmg = 8;
-    else if (equippedWeapon === 'sword') baseWeaponDmg = 10;
+    const baseWeaponDmg = getWeaponBaseDamage(equippedWeapon);
 
     const meleeDmg = Math.round(baseWeaponDmg + effective.strength * 1.5);
     const critChance = Math.min(75, Math.round((0.05 + effective.agility * 0.005) * 100));
@@ -362,10 +350,13 @@ export const Inventory = ({ onClose }) => {
                         {/* Core attributes */}
                         <Panel variant="base" className="bg-slot px-3 py-2 mt-auto">
                             <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">Core Attributes</h4>
+                            {attributePoints > 0 && (
+                                <div className="text-[10px] font-bold text-accent mb-1.5 flex items-center gap-1"><Icon name="upgrade" size={12} className="flex-none" />{attributePoints} point{attributePoints !== 1 ? 's' : ''} to spend</div>
+                            )}
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span></div>
-                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span></div>
-                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span></div>
+                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Strength" onClick={() => gameState.allocateAttribute('strength')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Agility" onClick={() => gameState.allocateAttribute('agility')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Intellect" onClick={() => gameState.allocateAttribute('intellect')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
                                 <div className="flex items-center gap-1.5"><Icon name="shield" size={14} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">Def</span><span className="font-bold tabular-nums">{effective.armor}</span></div>
                             </div>
                         </Panel>
