@@ -196,11 +196,16 @@ describe('equip build axis (DRY effective + maxStats)', () => {
     expect(useGameStore.getState().maxHealth).toBe(225);
   });
 
-  it('equip then unequip returns maxHealth to baseline (no ratchet)', () => {
-    const before = useGameStore.getState().maxHealth; // 150 at L1 STR10
-    useGameStore.getState().equipItem('weapon', 'Diamond Sword');
-    useGameStore.getState().unequipItem('weapon');
-    expect(useGameStore.getState().maxHealth).toBe(before);
+  it('equip/unequip is idempotent — no maxHealth ratchet across cycles', () => {
+    const s = useGameStore.getState();
+    s.equipItem('weapon', 'Diamond Sword');
+    expect(useGameStore.getState().maxHealth).toBe(225); // L1, STR 25 -> 100 + 125
+    s.unequipItem('weapon');
+    const afterFirst = useGameStore.getState().maxHealth; // L1, STR 10 -> 100 + 50 = 150
+    expect(afterFirst).toBe(150);
+    s.equipItem('weapon', 'Diamond Sword');
+    s.unequipItem('weapon');
+    expect(useGameStore.getState().maxHealth).toBe(afterFirst); // identical — no accumulation
   });
 
   it('allocateAttribute spends a point and recomputes caps', () => {
@@ -554,6 +559,8 @@ export function migrateSaveData(saveData) {
 - Modify (test): `tests/store/saveNormalizer.test.js` (extend with the round-trip)
 
 `loadWorldData` restores the progression slice + chests (array→Map) + position. It runs `migrateSaveData` first, falls back to current state for any missing field (old saves load cleanly), and recomputes derived caps from the restored level+effective attributes so a loaded character has correct maxHealth/maxMana. Position restore: set the store `playerPosition` AND, if a `playerRigidBodyRef` exists, teleport the Rapier body (a load happens at a menu/transition, never mid-frame).
+
+> **VFX-ref follow-up (from T3 review):** after restoring `totalXP`/`level` to (possibly large) saved values, `SimpleExperienceSystem`'s diff-refs (`prevTotal`/`prevLevel`) are stale → the next render would fire a spurious "+N XP" float / level-up burst. In practice the load happens behind the WorldManager modal (gameplay HUD hidden) and the float auto-removes in 3 s, so this is a MINOR cosmetic at most. If it surfaces in play-test, resync by bumping a store `loadedAt` tick in `loadWorldData` that the hook watches to reset its refs (set `prevTotal.current = totalXP; prevLevel.current = level` on `loadedAt` change). Not required for M2a green.
 
 - [ ] **Step 1: Write the failing test** — append to `tests/store/saveNormalizer.test.js`
 
