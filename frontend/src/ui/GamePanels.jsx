@@ -185,6 +185,7 @@ export const Inventory = ({ onClose }) => {
         equipItem: state.equipItem,
         unequipItem: state.unequipItem,
         attributes: state.attributes,
+        allocateAttribute: state.allocateAttribute,
         getEffectiveAttributes: state.getEffectiveAttributes,
         getPlayerLevel: state.getPlayerLevel
     })));
@@ -238,6 +239,7 @@ export const Inventory = ({ onClose }) => {
 
     // Calculate dynamic stats sheets
     const effective = gameState.getEffectiveAttributes ? gameState.getEffectiveAttributes() : { strength: 10, agility: 10, intellect: 10, armor: 0 };
+    const attributePoints = gameState.attributes?.attributePoints || 0;
     const playerLevel = gameState.getPlayerLevel ? gameState.getPlayerLevel() : 1;
     
     // Weapon base damage
@@ -348,10 +350,13 @@ export const Inventory = ({ onClose }) => {
                         {/* Core attributes */}
                         <Panel variant="base" className="bg-slot px-3 py-2 mt-auto">
                             <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">Core Attributes</h4>
+                            {attributePoints > 0 && (
+                                <div className="text-[10px] font-bold text-accent mb-1.5 flex items-center gap-1"><Icon name="upgrade" size={12} className="flex-none" />{attributePoints} point{attributePoints !== 1 ? 's' : ''} to spend</div>
+                            )}
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span></div>
-                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span></div>
-                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span></div>
+                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Strength" onClick={() => gameState.allocateAttribute('strength')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Agility" onClick={() => gameState.allocateAttribute('agility')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Intellect" onClick={() => gameState.allocateAttribute('intellect')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
                                 <div className="flex items-center gap-1.5"><Icon name="shield" size={14} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">Def</span><span className="font-bold tabular-nums">{effective.armor}</span></div>
                             </div>
                         </Panel>
