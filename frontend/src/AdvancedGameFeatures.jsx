@@ -10,6 +10,7 @@ import { OUTLINE } from './render/characterStyle';
 import { TIERS } from './render/quality';
 import { Panel, Button, Slot, StatBar, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
+import { ASPECT_TREES } from './game/talentTree.js';
 
 export const useSurvivalMode = (isDay) => {
     const [nightCount, setNightCount] = useState(0);
@@ -1108,47 +1109,6 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
 
-    // Branch accents map to the spell token family (fire / ice / lightning -> shown as
-    // arcane purple to match the original indigo column). `accent` drives the header text
-    // color + the filled rank pip; `dot` is the filled-pip token class.
-    const branches = [
-        {
-            title: 'Pyromancy & Storm',
-            icon: 'fire',
-            accent: 'text-spell-fire',
-            dot: 'bg-spell-fire',
-            nodes: [
-                { id: 'ember_core', name: 'Ember Core', desc: 'Unlocks Fireball. Increases Fireball damage +15% per point.', limit: 3, prereq: null },
-                { id: 'fire_blast', name: 'Fire Blast', desc: 'Adds +20% critical strike chance to Fireball.', limit: 3, prereq: 'ember_core' },
-                { id: 'conflagration', name: 'Conflagration', desc: 'Adds dynamic explosion splash to Fireball impacts.', limit: 1, prereq: 'fire_blast' },
-                { id: 'storm_caller', name: 'Storm Caller', desc: 'Unlocks Lightning. Increases Lightning damage +20% per point.', limit: 3, prereq: null },
-                { id: 'chain_overload', name: 'Chain Overload', desc: 'Lightning strikes have 30% chance to chain to mobs.', limit: 2, prereq: 'storm_caller' }
-            ]
-        },
-        {
-            title: 'Cryomancy & Abjuration',
-            icon: 'ice',
-            accent: 'text-spell-ice',
-            dot: 'bg-spell-ice',
-            nodes: [
-                { id: 'frost_shield', name: 'Frost Shield', desc: 'Unlocks Iceball. Grants +5 physical armor per point.', limit: 3, prereq: null },
-                { id: 'permafrost', name: 'Permafrost', desc: 'Iceball slows mob movement speed by 40% for 3 seconds.', limit: 2, prereq: 'frost_shield' },
-                { id: 'glacial_chill', name: 'Glacial Chill', desc: 'Iceball freezes mobs completely for 1.5s on critical hits.', limit: 1, prereq: 'permafrost' }
-            ]
-        },
-        {
-            title: 'Arcane & Chronomancy',
-            icon: 'arcane',
-            accent: 'text-spell-arcane',
-            dot: 'bg-spell-arcane',
-            nodes: [
-                { id: 'mana_flow', name: 'Mana Flow', desc: 'Unlocks Arcane. Increases maximum mana limit by +30 per point.', limit: 3, prereq: null },
-                { id: 'time_warp', name: 'Time Warp', desc: 'Reduces dodge roll cooldown by 20% per point.', limit: 2, prereq: 'mana_flow' },
-                { id: 'astral_focus', name: 'Astral Focus', desc: 'Regenerates +5 Mana per second passively.', limit: 2, prereq: 'mana_flow' }
-            ]
-        }
-    ];
-
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -1187,8 +1147,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     </div>
 
                     {/* Branches Columns Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {branches.map((branch, index) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {ASPECT_TREES.map((branch, index) => (
                             <Panel key={index} variant="inset" className="p-4 bg-panel flex flex-col gap-4">
                                 <h3 className={`flex items-center justify-center gap-2 font-display text-lg text-center border-b-chrome border-ink pb-2 ${branch.accent}`}>
                                     {branch.icon && <Icon name={branch.icon} size={18} className="flex-none" />}
