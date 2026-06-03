@@ -4,24 +4,18 @@ import { resolve } from 'node:path';
 
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
-// M3b-T2: the night -> dangerLevel bridge (night raises the obsidian danger mood)
-// MUST be capture-guarded so the explore-night visual baseline stays dusk-mood
-// (dangerLevel=0). These static gates lock that wiring + its capture-guard, and
-// that the spawn system reads siege intensity from store.nightCount (single SoT),
-// so a future edit can't silently re-break "explore-night stays calm in the gate".
+// M3b-T2: night siege wiring. The night-danger mood is delivered by the existing dusk
+// floor in moodTarget (night term) + the escalating siege spawn-ramp; the BOSS bridge
+// is the SOLE writer of dangerLevel (obsidian = boss signature). A review caught that a
+// separate night->setDangerLevel(1) write was a no-op for mood AND could stomp an active
+// boss's dangerLevel=2 at a transition, so it was REMOVED. These static gates lock that
+// removal (single dangerLevel authority) + the nightCount single-SoT wiring.
 
-describe('night -> dangerLevel bridge (useSurvivalMode)', () => {
+describe('night siege state (single dangerLevel authority)', () => {
   const src = read('src/AdvancedGameFeatures.jsx');
 
-  it('useSurvivalMode bridges isDay to setDangerLevel (0 day / 1 night)', () => {
-    expect(/setDangerLevel\(\s*isDay\s*\?\s*0\s*:\s*1\s*\)/.test(src)).toBe(true);
-  });
-
-  it('the night-danger bridge is capture-guarded (keeps explore-night baseline stable)', () => {
-    const idx = src.indexOf('setDangerLevel(isDay');
-    expect(idx).toBeGreaterThan(-1);
-    const before = src.slice(Math.max(0, idx - 220), idx);
-    expect(/isCaptureMode\(\)\s*\)?\s*return/.test(before)).toBe(true);
+  it('useSurvivalMode does NOT write dangerLevel from isDay (no night-vs-boss double-writer)', () => {
+    expect(/setDangerLevel\(\s*isDay\b/.test(src)).toBe(false);
   });
 
   it('nightCount comes from the store (single source of truth, not local useState)', () => {

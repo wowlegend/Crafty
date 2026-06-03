@@ -20,13 +20,10 @@ export const useSurvivalMode = (isDay) => {
     const nightCount = useGameStore((s) => s.nightCount);
     const [survivalWarning, setSurvivalWarning] = useState(null);
     const prevIsDay = useRef(true);
-    // Guards the survive-to-dawn reward against a double-grant: holds the night number
-    // already rewarded, so a re-fired dawn transition for the same night is a no-op.
-    const rewardedNight = useRef(0);
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
-            // Night falls: bump the shared nightCount + raise the danger mood.
+            // Night falls: bump the shared nightCount (drives the escalating siege).
             useGameStore.getState().incrementNight();
             setSurvivalWarning('Night has fallen... Hostile mobs are stronger!');
             setTimeout(() => setSurvivalWarning(null), 4000);
@@ -34,30 +31,27 @@ export const useSurvivalMode = (isDay) => {
 
         if (!prevIsDay.current && isDay) {
             // Dawn: reward surviving the night just passed. nightCount was bumped at
-            // nightfall, so it equals the night survived. Grant ONCE per night.
+            // nightfall, so it equals the night survived. grantDawnReward guards
+            // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a
+            // re-fired transition, a hook remount, or a reload mid-run cannot double-grant.
             const survived = useGameStore.getState().nightCount;
-            if (survived > 0 && rewardedNight.current < survived) {
-                rewardedNight.current = survived;
-                const r = useGameStore.getState().grantDawnReward(survived);
-                setSurvivalWarning(`Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`);
-            } else {
-                setSurvivalWarning('Dawn breaks! You survived the night!');
-            }
+            const r = survived > 0 ? useGameStore.getState().grantDawnReward(survived) : null;
+            setSurvivalWarning(r
+                ? `Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`
+                : 'Dawn breaks! You survived the night!');
             setTimeout(() => setSurvivalWarning(null), 3000);
         }
 
         prevIsDay.current = isDay;
     }, [isDay]);
 
-    // M3b night -> dangerLevel bridge: night raises the obsidian-tinted danger mood
-    // (dangerLevel=1; the boss bridge escalates to 2), cleared to 0 at dawn -- so
-    // night actually FEELS dangerous in real play. CAPTURE-GUARDED (mirrors the boss
-    // bridge): under the visual-capture harness this early-returns, so explore-night
-    // stays the dusk mood (dangerLevel=0) and the 12 baselines stay byte-stable.
-    useEffect(() => {
-        if (isCaptureMode()) return;
-        useGameStore.getState().setDangerLevel(isDay ? 0 : 1);
-    }, [isDay]);
+    // NOTE: night does NOT write dangerLevel. moodTarget() already floors night at
+    // mood 1 (dusk) via its `night` term, so a night->dangerLevel(1) write was a no-op
+    // for mood AND could stomp an active boss's dangerLevel=2 at a dusk/dawn transition
+    // (the boss bridge below is the SOLE dangerLevel writer). Night danger is delivered
+    // by the escalating siege spawn-ramp (siegeParams) + the existing dusk mood; the
+    // obsidian mood (level 2) stays the BOSS signature. Deep-night-obsidian is a
+    // deliberate mood-design decision batched to Kevin (KEVIN-REVIEW-BATCH).
 
     return { nightCount, survivalWarning };
 };

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { dawnReward, DAWN_XP_PER_NIGHT, DAWN_COINS_PER_NIGHT } from '../../src/game/dayNight.js';
 import { getItemRarity } from '../../src/data/items.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { buildSaveData } from '../../src/game/saveSchema.js';
 
 // M3b-T3: survive-to-dawn reward. dawnReward(nightNumber) is the PURE reward-math
 // helper: XP + coins scale linearly with the night survived, and a single guaranteed
@@ -47,7 +48,7 @@ describe('store.grantDawnReward — grants XP + coins + one loot drop', () => {
     attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 },
     equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null },
     talentPoints: 0, unlockedTalents: {}, spellLevels: {},
-    coins: 0,
+    coins: 0, nightCount: 0, lastRewardedNight: 0,
     inventory: { blocks: {}, tools: {}, magic: {} },
   }));
 
@@ -68,13 +69,40 @@ describe('store.grantDawnReward — grants XP + coins + one loot drop', () => {
     expect(r.lootItem).toBe(dawnReward(2).lootItem);
   });
 
-  it('a second grant for the same night stacks the loot qty (caller guards double-grant)', () => {
-    // grantDawnReward itself is idempotent-free (a pure action); the ONCE-per-dawn
-    // guard lives in useSurvivalMode. Two calls => two drops (proves no internal dedupe
-    // that would mask a caller bug).
+  it('is once-per-night: a second grant for the same (or lower) night is a no-op returning null', () => {
+    // The once-per-night guard now lives IN the store (lastRewardedNight, persisted) so
+    // it survives a hook remount / reload. First grant succeeds; a repeat for the same
+    // night returns null and does NOT stack loot or re-grant coins/XP.
     const item = dawnReward(1).lootItem;
+    const first = useGameStore.getState().grantDawnReward(1);
+    expect(first).not.toBeNull();
+    expect(useGameStore.getState().inventory.blocks[item]).toBe(1);
+    expect(useGameStore.getState().coins).toBe(dawnReward(1).coins);
+
+    const second = useGameStore.getState().grantDawnReward(1);
+    expect(second).toBeNull();
+    expect(useGameStore.getState().inventory.blocks[item]).toBe(1); // no stack
+    expect(useGameStore.getState().coins).toBe(dawnReward(1).coins); // no double coins
+  });
+
+  it('grants a HIGHER night after a lower one (monotonic progression) + tracks lastRewardedNight', () => {
     useGameStore.getState().grantDawnReward(1);
-    useGameStore.getState().grantDawnReward(1);
-    expect(useGameStore.getState().inventory.blocks[item]).toBe(2);
+    const r2 = useGameStore.getState().grantDawnReward(2);
+    expect(r2).not.toBeNull();
+    expect(r2.xp).toBe(dawnReward(2).xp);
+    expect(useGameStore.getState().lastRewardedNight).toBe(2);
+  });
+});
+
+describe('siege progression persists across save/reload', () => {
+  it('nightCount + lastRewardedNight survive a buildSaveData -> loadWorldData round-trip', () => {
+    // The escalating-siege difficulty (siegeParams(nightCount)) + the reward guard must
+    // be durable, else a reload silently resets the "harder every night" loop to night 0.
+    useGameStore.setState({ nightCount: 7, lastRewardedNight: 5 });
+    const save = buildSaveData(useGameStore.getState(), { position: [0, 0, 0] });
+    useGameStore.setState({ nightCount: 0, lastRewardedNight: 0 }); // simulate a fresh boot
+    useGameStore.getState().loadWorldData(save);
+    expect(useGameStore.getState().nightCount).toBe(7);
+    expect(useGameStore.getState().lastRewardedNight).toBe(5);
   });
 });

@@ -525,6 +525,9 @@ export const useGameStore = create((set, get) => ({
     // never subscribes, so Game-Loop-Isolation holds.
     nightCount: 0,
     incrementNight: () => set((state) => ({ nightCount: state.nightCount + 1 })),
+    // Highest night already rewarded at dawn — the once-per-night guard (persisted in
+    // the save slice so a reload mid-run cannot re-grant a night's reward).
+    lastRewardedNight: 0,
 
     // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus
     // XP + currency + one guaranteed scaling-rarity loot drop -- via the existing
@@ -532,11 +535,16 @@ export const useGameStore = create((set, get) => ({
     // the ONCE-per-dawn guard lives in useSurvivalMode (this action just grants).
     // Returns the reward descriptor so the caller can render a toast.
     grantDawnReward: (nightNumber) => {
-        const reward = dawnReward(nightNumber);
         const state = get();
+        // Once per night, robust across hook remount + reload (lastRewardedNight is
+        // persisted). A re-fired dawn for an already-rewarded (or lower) night is a
+        // no-op returning null; the caller renders a plain "you survived" toast then.
+        if (nightNumber <= state.lastRewardedNight) return null;
+        const reward = dawnReward(nightNumber);
         state.grantXP(reward.xp, 'Survived the night');
         state.addCoins(reward.coins);
         state.addToInventory(reward.lootItem, 1);
+        set({ lastRewardedNight: nightNumber });
         return reward;
     },
 
@@ -711,6 +719,9 @@ export const useGameStore = create((set, get) => ({
             const _talentRefund = refundUnknownTalents(unlockedTalents, talentPoints);
             const spellLevels = prog?.spellLevels ?? state.spellLevels;
             const coins = prog?.coins ?? state.coins;
+            // Siege progression (durable across reload): siege intensity + reward scaling.
+            const nightCount = prog?.nightCount ?? state.nightCount;
+            const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -761,6 +772,8 @@ export const useGameStore = create((set, get) => ({
                 unlockedTalents: _talentRefund.unlockedTalents,
                 spellLevels,
                 coins,
+                nightCount,
+                lastRewardedNight,
                 chests,
                 maxHealth,
                 maxMana,
