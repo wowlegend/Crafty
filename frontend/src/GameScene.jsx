@@ -473,7 +473,18 @@ const WeatherSystem = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const rainCount = 400;
+  // S2-A-M4a: scale the instanced-particle COUNT by the active quality tier's weather
+  // multiplier (TIERS.low 0.25 / med 0.6 / high 1.0). Read transiently from the store
+  // (getState, NOT a reactive subscription -> Game-Loop-Isolation; the count is fixed at
+  // mount, the particle buffers are not re-bound per frame). high == 1.0 -> full base
+  // density -> the forced-high capture frames are byte-identical (capture forces high).
+  const weatherDensity = useMemo(() => {
+    const tier = useGameStore.getState().qualityTier;
+    return (TIERS[tier] || TIERS.low).weather;
+  }, []);
+
+  const rainCountBase = 400;
+  const rainCount = Math.round(rainCountBase * weatherDensity);
   const rainData = useMemo(() => {
     const data = [];
     for (let i = 0; i < rainCount; i++) {
@@ -489,7 +500,8 @@ const WeatherSystem = () => {
     return data;
   }, []);
 
-  const snowCount = 200;
+  const snowCountBase = 200;
+  const snowCount = Math.round(snowCountBase * weatherDensity);
   const snowData = useMemo(() => {
     const data = [];
     for (let i = 0; i < snowCount; i++) {
@@ -507,7 +519,8 @@ const WeatherSystem = () => {
     return data;
   }, []);
 
-  const fireflyCount = 30;
+  const fireflyCountBase = 30;
+  const fireflyCount = Math.round(fireflyCountBase * weatherDensity);
   const fireflyData = useMemo(() => {
     const data = [];
     for (let i = 0; i < fireflyCount; i++) {

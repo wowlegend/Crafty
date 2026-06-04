@@ -40,3 +40,34 @@ describe('S2-A-M4a T1: renderDistance tier lever is WIRED', () => {
     expect(src).not.toMatch(/RENDER_DISTANCE\s*=\s*4/);
   });
 });
+
+describe('S2-A-M4a T2: weather density tier lever is WIRED', () => {
+  // Capture-safety contract: capture forces `high` with weather == 1.0, so the effective
+  // particle count == the full base count -> the weather frames (and all forced-high
+  // baselines) are byte-identical. low (0.25) / med (0.6) thin the particle clouds.
+  it('TIERS.high.weather is 1.0 (full density -> high unchanged)', () => {
+    expect(TIERS.high.weather).toBe(1.0);
+  });
+
+  it('low/med weather multipliers are the smaller perf-saving values (low < med < high)', () => {
+    expect(TIERS.low.weather).toBeLessThan(TIERS.med.weather);
+    expect(TIERS.med.weather).toBeLessThan(TIERS.high.weather);
+  });
+
+  it('WeatherSystem scales its instanced particle COUNT by TIERS[...].weather (transient read)', () => {
+    const src = read('src/GameScene.jsx');
+    // The effective rendered count must derive from the tier weather multiplier applied
+    // to a base count (e.g. Math.round(rainCount * weather)). Lock the multiplier read +
+    // its application to the particle base counts.
+    expect(src).toMatch(/\.weather/);
+    // Transient tier read (Game-Loop-Isolation: getState, not a per-frame subscription
+    // bound to the particle buffers).
+    expect(src).toMatch(/useGameStore\.getState\(\)\.qualityTier|getState\(\)\.qualityTier/);
+    // The effective counts must be scaled by the multiplier (rounding the base count by
+    // weatherDensity) for at least rain+snow. Code: `Math.round(rainCountBase * weatherDensity)`.
+    expect(src).toMatch(/Math\.round\(\s*rainCountBase\s*\*\s*weatherDensity\s*\)/);
+    expect(src).toMatch(/Math\.round\(\s*snowCountBase\s*\*\s*weatherDensity\s*\)/);
+    // The multiplier itself must derive from the tier's .weather lever.
+    expect(src).toMatch(/\)\.weather/);
+  });
+});
