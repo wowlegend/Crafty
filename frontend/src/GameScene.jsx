@@ -769,14 +769,22 @@ export function GameScene({
         {!isCaptureMode && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
-          // low->med->high on sustained FPS headroom. Oscillation is prevented by drei's
-          // built-in hysteresis -> the `bounds` dead-zone margin (neither incline nor decline
-          // fires while avg FPS sits between [lower, upper]) plus `flipflops` (after N
-          // incline/decline reversals the monitor calls onFallback and stops, treating the
-          // device as unstable). `factor` starts mid (0.5 -> can move either direction).
-          // These are CONSERVATIVE defaults; real-device threshold tuning is an S3 item.
-          // The whole monitor stays inside !isCaptureMode so the deterministic forced-high
-          // capture path is never perturbed by recovery logic.
+          // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
+          // by drei's `bounds` dead-zone (neither incline nor decline fires while avg FPS sits
+          // between [lower, upper]); `factor` starts mid (0.5 -> can move either direction).
+          // KNOWN RECOVERY RESIDUES -> S3 (real-device tuning; not validatable in CI):
+          //  (1) `flipflops={3}` counts TOTAL incline+decline transitions (NOT reversals); once
+          //      exceeded drei sets fallback and STOPS sampling, freezing the tier. A normal
+          //      warm-up climb (low->med->high = 2 inclines) + one dip already hits 3, so
+          //      adaptation can freeze early. S3 must re-tune flipflops/bounds on real devices.
+          //  (2) No onFallback handler -> a flipflop-exhausted device strands at its last tier
+          //      (the one-way ratchet can RE-EMERGE post-fallback). S3: add onFallback pinning
+          //      a safe-middle tier.
+          //  (3) The weather lever is MOUNT-TIME only (GameScene WeatherSystem reads tier in a
+          //      useMemo([])); it does NOT re-thin/restore on a runtime tier change. S3.
+          // So onIncline ADDS recovery (the ratchet is no longer strictly one-way at the happy
+          // path) but is not yet bulletproof. The whole monitor stays inside !isCaptureMode so
+          // the deterministic forced-high capture path is never perturbed by recovery logic.
           <PerformanceMonitor
             bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
             flipflops={3}
