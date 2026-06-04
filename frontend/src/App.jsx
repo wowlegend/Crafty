@@ -19,6 +19,7 @@ import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { ecs, mobsQuery } from './ecs/world';
+import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
 import { useDayNightClock } from './game/useDayNightClock';
@@ -321,6 +322,50 @@ function GameApp({ experienceSystem }) {
           impact: [OX + 3.8, OY + 1.2, OZ],     // spark spray + shockwave, right
           direction: [1, 0.1, 0],               // travelling left->right (+X), slight rise
         });
+      }
+    });
+    // Loot-showcase fixture (S2-A-M4b / M3c eyeball gap): a deterministic sky-studio card
+    // showing FOUR loot drops -- one per rarity (common/rare/epic/legendary) -- laid out
+    // left->right so all four rarity BEAMS stand side by side, ascending in height + bright-
+    // ness (common short/dim -> legendary tall/bright, per lootJuice.rarityBeam). Capture mode
+    // freezes the loot bob/spin + the LootSystem physics/magnet/collection loop (see
+    // SimplifiedNPCSystem), so each drop holds its exact spawn pose -> the frame is byte-stable.
+    // Positions are fixed (no RNG). Coordinates sit at y~146 (the same sky-studio band as the
+    // character/boss/spell-cast close-ups) so the terrain horizon falls out of frame -> a clean
+    // sky backdrop that showcases the additive beams. DEV-only (tree-shaken from prod).
+    registerTestHook('lootShowcase', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);     // clean studio card: suppress HUD + toasts
+      store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);      // flattering midday so the additive beams read against sky
+      useGameStore.setState({ treasureChestsList: [] }); // clear any close-up chest leak
+      // Sky studio centered far on +X (x=80): clear of the stray character-closeup zombie (x=0),
+      // the boss-closeup dragon (x=40) and the spell-cast (x=120) by >=40 units, so none leak in.
+      // spawnLootDrop adds +0.3 to the given Y; the four drops sit on a level line at world
+      // y~OY+0.3, spaced 2.4 units apart along +X so the beams (tallest = legendary 4.2 tall)
+      // stand clearly separated. Order low->high left->right so beam heights ascend across frame.
+      const OX = 80, OY = 146, OZ = -8, GAP = 2.4;
+      // Enter capture FIRST (pins the camera + freezes clocks) so the drops are injected into an
+      // already-frozen world. Camera: front-on from +Z, pulled back ~13 units and aimed slightly
+      // UP (lookAt above the drop line) so the full beam stack fits and the terrain horizon stays
+      // out of frame. Centered on the middle of the four-drop row (between epic + the rare/epic mid).
+      const CX = OX + GAP * 1.5; // row center (between the 2nd and 3rd drop)
+      enterCaptureMode({ camera: { position: [CX, OY + 2.2, OZ + 13.0], lookAt: [CX, OY + 2.4, OZ] } });
+      // spawnLootDrop lives on the shared GameMethods singleton (assigned at NPCSystem import
+      // time, available immediately -- the same imperative-method registry the loot/XP loops use).
+      if (GameMethods.spawnLootDrop) {
+        // One drop per rarity, representative items from src/data/items.js whose getItemRarity
+        // matches: bone=common, health_potion=rare, emerald=epic, diamond_gem=legendary.
+        const drops = [
+          ['bone', OX + GAP * 0],          // common    (beam 1.6)
+          ['health_potion', OX + GAP * 1], // rare      (beam 2.4)
+          ['emerald', OX + GAP * 2],       // epic      (beam 3.2)
+          ['diamond_gem', OX + GAP * 3],   // legendary (beam 4.2)
+        ];
+        for (const [item, x] of drops) {
+          GameMethods.spawnLootDrop(item, 0, [x, OY, OZ]);
+        }
       }
     });
     // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,

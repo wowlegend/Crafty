@@ -24,14 +24,18 @@ const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
 const lootDropsQuery = ecs.with('isLootDrop', 'position', 'item', 'xp');
 
 const spawnLootDrop = (item, xp, pos) => {
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 1.0 + Math.random() * 2.0;
+  // Capture-determinism: in capture mode the LootSystem physics loop is frozen, so the
+  // drop never moves -> a zero velocity keeps the drop pinned exactly at its spawn pos
+  // (no reliance on Math.random in the capture path). Gameplay keeps the random pop arc.
+  const capture = isCaptureMode();
+  const angle = capture ? 0 : Math.random() * Math.PI * 2;
+  const speed = capture ? 0 : 1.0 + Math.random() * 2.0;
   const vx = Math.cos(angle) * speed;
-  const vy = 3 + Math.random() * 3; // vertical pop
+  const vy = capture ? 0 : 3 + Math.random() * 3; // vertical pop
   const vz = Math.sin(angle) * speed;
-  
-  const spawnPos = pos 
-    ? new THREE.Vector3(pos[0], pos[1] + 0.3, pos[2]) 
+
+  const spawnPos = pos
+    ? new THREE.Vector3(pos[0], pos[1] + 0.3, pos[2])
     : new THREE.Vector3(0, 15, 0);
 
   ecs.add({
@@ -1132,6 +1136,11 @@ const LootSystem = () => {
 
   useFrame((state, delta) => {
     if (!camera) return;
+    // Capture-determinism: FREEZE the loot physics/magnet/collection loop so spawned
+    // fixture drops hold their exact spawn position (no gravity arc, no camera-magnet
+    // pull, no auto-collect) -> the loot-showcase frame is byte-stable. Mirrors the mob
+    // AI freeze (NPCSystem useFrame early-returns in capture). No-op in gameplay.
+    if (isCaptureMode()) return;
     const store = useGameStore.getState();
     const playerPos = camera.position;
 
@@ -1225,8 +1234,17 @@ const LootDropRender = ({ entity }) => {
   useFrame((state) => {
     if (!meshRef.current) return;
     meshRef.current.position.copy(entity.position);
-    meshRef.current.rotation.y += 0.03;
-    meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 2) * 0.2;
+    // Capture-determinism (mirrors MobModel): in capture mode the bob/spin must hold
+    // a FIXED pose so the loot-showcase frame is byte-stable. rotation.y accumulates
+    // per-frame (frame-count differs run-to-run) and rotation.x reads the live clock;
+    // both are pinned to a deterministic value (elapsed=0 -> sin(0)=0) under capture.
+    const elapsed = isCaptureMode() ? 0 : state.clock.getElapsedTime();
+    if (isCaptureMode()) {
+      meshRef.current.rotation.y = 0;
+    } else {
+      meshRef.current.rotation.y += 0.03;
+    }
+    meshRef.current.rotation.x = Math.sin(elapsed * 2) * 0.2;
 
     if (beamRef.current) {
       // Anchor the beam base at the drop, rising by its tiered height.
@@ -1275,6 +1293,18 @@ const LootPopRender = ({ position, color, id, onComplete }) => {
 
   useFrame(() => {
     if (!meshRef.current) return;
+    // Capture-determinism: the pop normally drives off wall-clock performance.now()
+    // (differs run-to-run). In capture mode it holds a FIXED mid-pop pose (t pinned)
+    // and never self-completes, so a deterministically-triggered pop renders byte-stable.
+    // In gameplay the pop fires only on pickup, which cannot occur in capture (LootSystem
+    // collection is frozen), so this branch is exercised only by an explicit fixture pop.
+    if (isCaptureMode()) {
+      const t = 0.45; // a settled, clearly-visible mid-pop ring
+      const scale = 0.15 + (1.4 - 0.15) * t;
+      meshRef.current.scale.set(scale, scale, 1);
+      meshRef.current.material.opacity = 0.85 * (1 - t);
+      return;
+    }
     if (startTime.current === null) startTime.current = performance.now();
     const elapsed = performance.now() - startTime.current;
     const duration = 280;
