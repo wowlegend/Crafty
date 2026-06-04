@@ -411,7 +411,11 @@ export const MinecraftWorld = React.memo(() => {
     }, []);
 
     const CHUNK_SIZE = 16;
-    const RENDER_DISTANCE = 4; // Max visible chunks radially
+    // S2-A-M4a: the chunk load/cull radius now DERIVES from the quality tier's
+    // renderDistance lever (TIERS.low 2 / med 3 / high 4) instead of a hardcoded 4.
+    // Read transiently per chunk-load tick (the processChunks setTimeout loop, NOT a
+    // useFrame subscription -> Game-Loop-Isolation safe). high == 4 == the legacy
+    // constant, and capture forces high, so the forced-high baselines are unchanged.
 
     // Worker message listener
     useEffect(() => {
@@ -499,6 +503,12 @@ export const MinecraftWorld = React.memo(() => {
         const processChunks = () => {
             if (!isProcessing || !camera) return;
 
+            // Transient tier read (no reactive subscription): the active quality tier's
+            // renderDistance gates how many chunks load/cull around the player. Falls back
+            // to `low` if the tier key is somehow unknown.
+            const tier = useGameStore.getState().qualityTier;
+            const renderDistance = (TIERS[tier] || TIERS.low).renderDistance;
+
             const playerCx = Math.floor(camera.position.x / CHUNK_SIZE);
             const playerCz = Math.floor(camera.position.z / CHUNK_SIZE);
 
@@ -508,8 +518,8 @@ export const MinecraftWorld = React.memo(() => {
                 let changed = false;
 
                 // Box generation around player
-                for (let nx = -RENDER_DISTANCE; nx <= RENDER_DISTANCE; nx++) {
-                    for (let nz = -RENDER_DISTANCE; nz <= RENDER_DISTANCE; nz++) {
+                for (let nx = -renderDistance; nx <= renderDistance; nx++) {
+                    for (let nz = -renderDistance; nz <= renderDistance; nz++) {
                         const cx = playerCx + nx;
                         const cz = playerCz + nz;
                         const key = `${cx}_${cz}`;
@@ -525,7 +535,7 @@ export const MinecraftWorld = React.memo(() => {
                 }
 
                 // Cull chunks far outside render distance
-                const cullDist = RENDER_DISTANCE + 2;
+                const cullDist = renderDistance + 2;
                 Object.keys(newChunks).forEach(key => {
                     const c = newChunks[key];
                     if (Math.abs(c.cx - playerCx) > cullDist || Math.abs(c.cz - playerCz) > cullDist) {
