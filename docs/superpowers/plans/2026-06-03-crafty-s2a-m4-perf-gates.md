@@ -41,3 +41,15 @@
 - `renderDistance` + `weather` tier levers WIRED (low-end actually renders less); `onIncline` recovery added (ratchet no longer one-way).
 - unit green · build clean · `test:visual` 12/12 NO re-baseline.
 - Review (spec/quality) no BLOCKING unaddressed; merged to `main`. M4b + the S3 perf-number noted in the resume + review-batch.
+
+## Post-review (2026-06-03)
+
+M4a built (3 commits): T1 `renderDistance` (the chunk radius was a hardcoded `RENDER_DISTANCE=4` in `Terrain.jsx`, now derives from `TIERS[tier].renderDistance`; high==4==legacy so the forced-high capture is byte-identical; low(2)/med(3) now render fewer chunks), T2 `weather` density scales by `TIERS[tier].weather`, T3 `onIncline` recovery added. `test:unit` **529** (+10 perf-config gates) · build clean · `test:visual` **12/12 NO re-baseline**. Capture parity proven structurally (high-tier no-ops + the monitor inside `!isCaptureMode`).
+
+**2-lens review = MINOR ×3, ALL inside `!isCaptureMode` (cannot touch the gate) + ALL genuinely S3 (real-device — not CI-validatable). Fixed the honesty issue; deferred the device-tuning honestly (no overclaim):**
+- **(fixed) misleading comment** — my `flipflops` comment wrongly said "reversals"; drei counts TOTAL incline+decline transitions, and there's no `onFallback`, so a normal warm-up climb + a dip can hit fallback and freeze adaptation. Corrected the comment to be accurate + flag all 3 residues.
+- **(→ S3) `flipflops=3` too low** — a 2-step warm-up burns most of the budget; re-tune on real devices.
+- **(→ S3) no `onFallback`** — a flipflop-exhausted device strands at its last tier (one-way ratchet can re-emerge post-fallback); S3 add an `onFallback` pinning a safe-middle tier.
+- **(→ S3) weather is mount-time only** — `WeatherSystem` reads tier in a `useMemo([])`, so it doesn't re-thin/restore on runtime tier change (T1 chunk-radius DOES, per-tick). Asymmetric; S3 (touches capture-sensitive weather/firefly seeding — defer to where it can be device-validated).
+
+**Honest scope:** `onIncline` ADDS recovery (the ratchet is no longer strictly one-way on the happy path) but is **not yet bulletproof** — the fallback-freeze + weather-mount-time residues are real and deferred to S3 real-device tuning (where the perf NUMBER also lives). M4a's durable win = the two dead perf levers are now wired (effective at load/mount, the dominant case). **M4b (forced-med/low baselines) still pending — human-review.**
