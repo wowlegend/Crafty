@@ -110,6 +110,51 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'explore-day.png') });
     console.log('captured explore-day');
 
+    // === S2-A-M4b: forced MED / LOW tier baselines (Kevin ratifies before gate-blessing) ===
+    // The same explore-day world (already fully streamed at the forced `high` tier above), now
+    // RE-RENDERED at the med + low quality tiers so the M4a tier levers are eyeball-able. Forcing
+    // the tier DOWN reactively re-renders the cheap-to-expensive toggles (godRays on->off at low,
+    // godRaySamples 100->60 at med, shadowMapSize 2048->1024->512, AO, bloomMipmap, moteCount) AND
+    // shrinks the streamed world: Terrain's 150ms chunk loop reads renderDistance transiently and
+    // CULLS chunks beyond `renderDistance+2`, so the rendered terrain visibly contracts at the
+    // lower tiers (high cullDist 6 -> med 5 -> low 4). Capture mode freezes RNG/clocks/physics, so
+    // each forced-tier frame is byte-stable. These are NEW gate states; the existing high-tier
+    // explore-day frame above is untouched. We RESTORE `high` + re-settle before explore-night so
+    // the existing high-tier world states downstream are byte-identical to their baselines.
+    //
+    // explore-day-med: renderDistance 3 (cullDist 5), godRays @60 samples, shadowMap 1024.
+    await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'med'));
+    await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
+    await flushFrames(page, 8);
+    await delay(800);
+    await page.screenshot({ path: resolve(OUT, 'explore-day-med.png') });
+    console.log('captured explore-day-med');
+
+    // explore-day-low: renderDistance 2 (cullDist 4), godRays OFF, shadowMap 512, sparse motes.
+    await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'low'));
+    await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
+    await flushFrames(page, 8);
+    await delay(800);
+    await page.screenshot({ path: resolve(OUT, 'explore-day-low.png') });
+    console.log('captured explore-day-low');
+
+    // explore-night-low: the low tier under the dusk/night lighting -- proves the tier levers
+    // at the genuinely-new danger-adjacent mood (godRays off + sparse motes read very differently
+    // at night). Still low; we drop to night, capture, then return to day + restore high.
+    await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.0));
+    await delay(2500);
+    await flushFrames(page, 8);
+    await page.screenshot({ path: resolve(OUT, 'explore-night-low.png') });
+    console.log('captured explore-night-low');
+
+    // RESTORE the forced `high` tier + midday + re-settle the full (re-streamed) chunk set so the
+    // downstream high-tier world states (explore-night, boss-obsidian, the studio cards) render
+    // byte-identical to their EXISTING baselines. The chunk loop re-requests the culled chunks.
+    await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
+    await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'high'));
+    await waitForStableTerrain(page, { stableFor: 6, settle: 3000 });
+    await delay(800);
+
     // explore-night. Longer settle + an explicit multi-frame flush so the directional
     // shadow map + per-chunk terrain meshes are fully rendered before the screenshot.
     // (Chunk SET / camera / player are already deterministic; the residual flake is a
@@ -153,6 +198,20 @@ async function main() {
     await delay(1200); // cast injects + telegraph/projectile/sparks settle into the frozen pose
     await page.screenshot({ path: resolve(OUT, 'spell-cast.png') });
     console.log('captured spell-cast');
+
+    // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
+    // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
+    // (common short/dim -> legendary tall/bright, per lootJuice.rarityBeam) are eyeball-able +
+    // gate-verifiable for the first time. The loot bob/spin + the LootSystem physics/magnet/
+    // collection loop are frozen in capture (SimplifiedNPCSystem isCaptureMode guards), so each
+    // drop holds its exact spawn pose and the frame is byte-stable across runs. Staged far on +X
+    // (x=80, y~146) -- clear of the stray character-closeup zombie (x=0), the boss-closeup dragon
+    // (x=40) and the spell-cast (x=120) -- so none of those leak into the clean sky backdrop.
+    await page.evaluate(() => window.__craftyTest.call('lootShowcase'));
+    await flushFrames(page, 8);
+    await delay(1200); // drops inject into the frozen world + settle into their pinned pose
+    await page.screenshot({ path: resolve(OUT, 'loot-showcase.png') });
+    console.log('captured loot-showcase');
 
     // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay
     // driven via the test bridge. Wait for fonts to finish loading so the Lilita/

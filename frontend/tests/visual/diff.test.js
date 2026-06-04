@@ -9,7 +9,16 @@ import pixelmatch from 'pixelmatch';
 // "Crafty Hero" brand-face studio frame — direction B; the A/C mockups were deleted; gem-glow
 // boosted per Kevin), and `menu` (now embeds a live mini-canvas of the Crafty Hero, so it
 // legitimately changed — re-baselined with the mascot). All asserted as regression baselines below.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot'];
+// `loot-showcase` (S2-A-M4b / closes the M3c eyeball gap) is a NEW deterministic gate state:
+// four rarity drop-beams side by side in a sky studio, frozen byte-stable in capture. It asserts
+// a regression baseline below.
+//
+// The M4b forced-tier frames -- `explore-day-med`, `explore-day-low`, `explore-night-low` -- are
+// captured + baselined (deterministic), but are INTENTIONALLY omitted from STATES (the same
+// pattern title-mascot used) so they do NOT yet assert a regression baseline: Kevin ratifies the
+// med/low look before they are gate-blessed (promoted into STATES). They are self-consistent on
+// re-capture; their committed PNGs are the review artifacts.
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 
