@@ -473,7 +473,18 @@ const WeatherSystem = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const rainCount = 400;
+  // S2-A-M4a: scale the instanced-particle COUNT by the active quality tier's weather
+  // multiplier (TIERS.low 0.25 / med 0.6 / high 1.0). Read transiently from the store
+  // (getState, NOT a reactive subscription -> Game-Loop-Isolation; the count is fixed at
+  // mount, the particle buffers are not re-bound per frame). high == 1.0 -> full base
+  // density -> the forced-high capture frames are byte-identical (capture forces high).
+  const weatherDensity = useMemo(() => {
+    const tier = useGameStore.getState().qualityTier;
+    return (TIERS[tier] || TIERS.low).weather;
+  }, []);
+
+  const rainCountBase = 400;
+  const rainCount = Math.round(rainCountBase * weatherDensity);
   const rainData = useMemo(() => {
     const data = [];
     for (let i = 0; i < rainCount; i++) {
@@ -489,7 +500,8 @@ const WeatherSystem = () => {
     return data;
   }, []);
 
-  const snowCount = 200;
+  const snowCountBase = 200;
+  const snowCount = Math.round(snowCountBase * weatherDensity);
   const snowData = useMemo(() => {
     const data = [];
     for (let i = 0; i < snowCount; i++) {
@@ -507,7 +519,8 @@ const WeatherSystem = () => {
     return data;
   }, []);
 
-  const fireflyCount = 30;
+  const fireflyCountBase = 30;
+  const fireflyCount = Math.round(fireflyCountBase * weatherDensity);
   const fireflyData = useMemo(() => {
     const data = [];
     for (let i = 0; i < fireflyCount; i++) {
@@ -754,10 +767,36 @@ export function GameScene({
         }}
       >
         {!isCaptureMode && (
+          // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
+          // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
+          // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
+          // by drei's `bounds` dead-zone (neither incline nor decline fires while avg FPS sits
+          // between [lower, upper]); `factor` starts mid (0.5 -> can move either direction).
+          // KNOWN RECOVERY RESIDUES -> S3 (real-device tuning; not validatable in CI):
+          //  (1) `flipflops={3}` counts TOTAL incline+decline transitions (NOT reversals); once
+          //      exceeded drei sets fallback and STOPS sampling, freezing the tier. A normal
+          //      warm-up climb (low->med->high = 2 inclines) + one dip already hits 3, so
+          //      adaptation can freeze early. S3 must re-tune flipflops/bounds on real devices.
+          //  (2) No onFallback handler -> a flipflop-exhausted device strands at its last tier
+          //      (the one-way ratchet can RE-EMERGE post-fallback). S3: add onFallback pinning
+          //      a safe-middle tier.
+          //  (3) The weather lever is MOUNT-TIME only (GameScene WeatherSystem reads tier in a
+          //      useMemo([])); it does NOT re-thin/restore on a runtime tier change. S3.
+          // So onIncline ADDS recovery (the ratchet is no longer strictly one-way at the happy
+          // path) but is not yet bulletproof. The whole monitor stays inside !isCaptureMode so
+          // the deterministic forced-high capture path is never perturbed by recovery logic.
           <PerformanceMonitor
+            bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
+            flipflops={3}
+            factor={0.5}
             onDecline={() => {
               const cur = useGameStore.getState().qualityTier;
               const next = cur === 'high' ? 'med' : 'low';
+              if (next !== cur) useGameStore.getState().setQualityTier(next);
+            }}
+            onIncline={() => {
+              const cur = useGameStore.getState().qualityTier;
+              const next = cur === 'low' ? 'med' : 'high';
               if (next !== cur) useGameStore.getState().setQualityTier(next);
             }}
           />
