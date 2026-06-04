@@ -767,10 +767,28 @@ export function GameScene({
         }}
       >
         {!isCaptureMode && (
+          // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
+          // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
+          // low->med->high on sustained FPS headroom. Oscillation is prevented by drei's
+          // built-in hysteresis -> the `bounds` dead-zone margin (neither incline nor decline
+          // fires while avg FPS sits between [lower, upper]) plus `flipflops` (after N
+          // incline/decline reversals the monitor calls onFallback and stops, treating the
+          // device as unstable). `factor` starts mid (0.5 -> can move either direction).
+          // These are CONSERVATIVE defaults; real-device threshold tuning is an S3 item.
+          // The whole monitor stays inside !isCaptureMode so the deterministic forced-high
+          // capture path is never perturbed by recovery logic.
           <PerformanceMonitor
+            bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
+            flipflops={3}
+            factor={0.5}
             onDecline={() => {
               const cur = useGameStore.getState().qualityTier;
               const next = cur === 'high' ? 'med' : 'low';
+              if (next !== cur) useGameStore.getState().setQualityTier(next);
+            }}
+            onIncline={() => {
+              const cur = useGameStore.getState().qualityTier;
+              const next = cur === 'low' ? 'med' : 'high';
               if (next !== cur) useGameStore.getState().setQualityTier(next);
             }}
           />

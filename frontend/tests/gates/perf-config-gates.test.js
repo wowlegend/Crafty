@@ -71,3 +71,52 @@ describe('S2-A-M4a T2: weather density tier lever is WIRED', () => {
     expect(src).toMatch(/\)\.weather/);
   });
 });
+
+describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () => {
+  const src = read('src/GameScene.jsx');
+
+  it('PerformanceMonitor has BOTH onIncline and onDecline (recovery is no longer one-way)', () => {
+    expect(src).toMatch(/onIncline\s*=\s*\{/);
+    expect(src).toMatch(/onDecline\s*=\s*\{/);
+  });
+
+  it('onIncline steps low->med->high (symmetric to onDecline high->med->low)', () => {
+    // Isolate the onIncline arrow-callback body and assert the upward step ladder:
+    //   cur === 'low'  -> 'med'   (else)
+    //   cur === 'med'  -> 'high'
+    //   cur === 'high' -> stays 'high' (the `next !== cur` guard no-ops)
+    // Anchor on the JSX prop `onIncline={` (the actual callback) -- not a prose mention
+    // of "onIncline" in a comment -- so the window holds the callback body.
+    const inclineIdx = src.indexOf('onIncline={');
+    expect(inclineIdx).toBeGreaterThan(-1);
+    // Grab a window after the prop up to the next prop / close (bounded, non-greedy).
+    const window = src.slice(inclineIdx, inclineIdx + 300);
+    // Upward ladder anchors: 'low' maps up to 'med', and 'med' maps up to 'high'.
+    expect(window).toMatch(/cur\s*===\s*'low'\s*\?\s*'med'\s*:\s*'high'/);
+    // It must guard against a no-op write (only setQualityTier when next differs).
+    expect(window).toMatch(/next\s*!==\s*cur/);
+    expect(window).toMatch(/setQualityTier\(next\)/);
+  });
+
+  it('PerformanceMonitor uses built-in hysteresis (bounds + flipflops) to prevent oscillation', () => {
+    // The dead-zone `bounds` margin + `flipflops` instability cap stop incline/decline
+    // ping-ponging. Conservative defaults; real-device threshold tuning is S3.
+    expect(src).toMatch(/bounds\s*=\s*\{/);
+    expect(src).toMatch(/flipflops\s*=\s*\{/);
+  });
+
+  it('the PerformanceMonitor stays inside the !isCaptureMode guard (capture forced-high untouched)', () => {
+    // The monitor must remain capture-guarded so the deterministic forced-high capture is
+    // never perturbed by recovery logic. The FIRST `{!isCaptureMode && (` block must open
+    // before the monitor, and no intervening `)}` close may occur between them (i.e. the
+    // monitor is genuinely INSIDE that guard, not after a sibling guard that already closed).
+    const guardIdx = src.indexOf('{!isCaptureMode && (');
+    const monitorIdx = src.indexOf('<PerformanceMonitor');
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(monitorIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(monitorIdx);
+    // No guard-close `)}` between the opening guard and the monitor tag.
+    const between = src.slice(guardIdx + '{!isCaptureMode && ('.length, monitorIdx);
+    expect(between).not.toMatch(/\)\}/);
+  });
+});
