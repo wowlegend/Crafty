@@ -9,6 +9,7 @@ import { getWeaponBaseDamage } from './game/equipment.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
+import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -158,6 +159,9 @@ export const Player = ({ isWorldBuilt }) => {
   // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
+  // S2-B1-M7a: the third-person transform-cam window. { active, t (sec elapsed), fwd (facing captured
+  // at roar-start so the behind-shot is stable) }. Started on the SM 'startCharge', applied in useFrame.
+  const transformCamRef = useRef({ active: false, t: 0, fwd: [0, 0, -1] });
 
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
@@ -480,10 +484,22 @@ export const Player = ({ isWorldBuilt }) => {
         formDurationSec: formDurationFor(st.unlockedTalents?.['wildheart_endurance'] || 0),
       });
       beastSMRef.current = sm;
-      if (action === 'enter') {
+      if (action === 'startCharge') {
+        // M7a: begin the third-person transform-cam reveal — capture the facing NOW (horizontal) so the
+        // behind-shot is a STABLE orbit, not mouse-jittered during the cinematic.
+        const d = new THREE.Vector3();
+        camera.getWorldDirection(d);
+        d.y = 0;
+        if (d.lengthSq() > 1e-6) d.normalize(); else d.set(0, 0, -1);
+        transformCamRef.current = { active: true, t: 0, fwd: [d.x, 0, d.z] };
+      } else if (action === 'enter') {
         // M4: UNLEASH — spend the banked Ferocity ONLY on a real transform (enterBeastForm returns
         // false if it rejects: already-in-form / dead). Avoids draining the bank on a no-op enter.
         if (st.enterBeastForm(elementForSpell(st.activeSpell))) st.accrueFerocity(-FEROCITY_THRESHOLD);
+      } else if (action === 'cancel') {
+        // M7a: roar released early -> ease the transform-cam back to FPV (jump it to the return phase).
+        const tc = transformCamRef.current;
+        if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
       } else if (action === 'exitTimer' || action === 'exitManual') {
         st.exitBeastForm();
       }
@@ -874,14 +890,36 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Sync camera to rigid body — smoothly lerp to eliminate 120Hz/ProMotion physics sync stutter
     const translation = rigidBodyRef.current.translation();
-    const targetX = translation.x + shakeX;
-    const targetY = translation.y + 1.2 + bobOffset + shakeY;
-    const targetZ = translation.z + shakeZ;
 
-    // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
+    // S2-B1-M7a: while the third-person TRANSFORM-CAM window is active (roar reveal), OVERRIDE the FPV
+    // follow with the behind+above reveal pose (easing FPV->TPV->FPV via the envelope). Transient ref
+    // (Game-Loop-Isolation). The pose's f=0 endpoints ARE the FPV pose, so the move blends seamlessly.
+    // (Capture mode never reaches here — the capture early-return precedes this; spawnBeastTransform
+    // sets its own pose at M7d.) FPV combat aim/hit-reg is untouched — camera-only, ~1.2s.
+    const tc = transformCamRef.current;
+    if (tc.active) {
+      tc.t += delta;
+      if (tc.t >= TRANSFORM_CAM_SEC) {
+        tc.active = false; // window done -> FPV resumes (next branch, this same frame)
+      } else {
+        const pose = transformCamPose([translation.x, translation.y, translation.z], tc.fwd, tc.t / TRANSFORM_CAM_SEC);
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, pose.position[0], 0.85);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, pose.position[1], 0.85);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, pose.position[2], 0.85);
+        camera.lookAt(pose.lookAt[0], pose.lookAt[1], pose.lookAt[2]);
+      }
+    }
+
+    if (!tc.active) {
+      const targetX = translation.x + shakeX;
+      const targetY = translation.y + 1.2 + bobOffset + shakeY;
+      const targetZ = translation.z + shakeZ;
+
+      // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
+    }
 
     // Defensive camera pitch clamp to prevent gimbal lock or out-of-bounds rotation
     camera.rotation.order = 'YXZ';
