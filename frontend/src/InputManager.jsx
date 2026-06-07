@@ -2,6 +2,7 @@ import { useGameStore } from './store/useGameStore';
 import { useState, useEffect, useRef } from 'react';
 import { HOTBAR_BLOCKS } from './world/Blocks';
 import { getInput, setActive } from './input/inputState';
+import { isAnyPanelOpen } from './ui/panelState.js';
 
 const requestPointerLockSafely = (state) => {
   if (state.requestPointerLock) {
@@ -25,11 +26,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
     const handleWheel = (event) => {
       const state = useGameStore.getState();
       const active = getInput().active;
-      const { showAchievements, showSpellUpgrades } = localRefs.current;
-      const anyPanelOpen = state.showInventory || state.showCrafting ||
-        state.showMagic || state.showBuildingTools ||
-        state.showSettings || showAchievements || showSpellUpgrades ||
-        state.showTradingInterface || state.showChestInterface;
+      const { showAchievements, showSpellUpgrades, showStats } = localRefs.current;
+      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades, showStats });
 
       if (active && !anyPanelOpen) {
         const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
@@ -62,10 +60,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       const active = getInput().active;
       const { showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
 
-      const anyPanelOpen = state.showInventory || state.showCrafting ||
-        state.showMagic || state.showBuildingTools ||
-        state.showSettings || showAchievements || showSpellUpgrades ||
-        state.showTradingInterface || state.showChestInterface;
+      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades, showStats });
 
       if (event.code === 'Escape') {
         event.preventDefault();

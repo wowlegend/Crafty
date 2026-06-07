@@ -23,6 +23,7 @@ import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
 import { useDayNightClock } from './game/useDayNightClock';
+import { isAnyPanelOpen } from './ui/panelState.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -441,11 +442,9 @@ function GameApp({ experienceSystem }) {
     installTestBridge();
   }, []);
 
-  const anyPanelOpen = gameState.showInventory || gameState.showCrafting ||
-    gameState.showMagic || gameState.showBuildingTools ||
-    gameState.showSettings || gameState.showTradingInterface ||
-    gameState.showWorldManager || showAchievements || showSpellUpgrades ||
-    showAuthModal || gameState.showChestInterface;
+  // SINGLE canonical panel set (panelState.js) — was a 4th hand-kept list (missing showCredits/showStats);
+  // the click-to-play overlay gates on it just like the title menu + the key handlers.
+  const anyPanelOpen = isAnyPanelOpen({ ...gameState, showAchievements, showSpellUpgrades, showStats, showAuthModal });
 
   const showClickToPlay = isWorldBuilt && !isPointerLocked && !anyPanelOpen && (gameSystems?.isAlive !== false);
 

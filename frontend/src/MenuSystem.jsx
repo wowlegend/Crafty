@@ -14,6 +14,7 @@ import { TradingInterface } from './SimplifiedNPCSystem';
 import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
 import { SpellUpgradePanel, ChestInventoryPanel } from './AdvancedGameFeatures';
+import { isAnyPanelOpen } from './ui/panelState.js';
 
 // The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the
 // three/R3F chunk never blocks the menu's first paint; the old 2D icon is the fallback until
@@ -81,6 +82,11 @@ export function MenuSystem({
       return { key: `particle-${i}`, style };
     });
   }, [capture]);
+
+  // The title/pause menu shows on pointer-unlock — but opening ANY panel exits pointer-lock, so the menu
+  // must be suppressed whenever a panel is open. Read the SINGLE canonical panel set (panelState.js) so the
+  // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
+  const anyPanelOpen = isAnyPanelOpen({ ...gameState, showSpellUpgrades, showAchievements, showStats, showAuthModal });
 
   return (
     <>
@@ -212,8 +218,7 @@ export function MenuSystem({
       />
 
       <AnimatePresence>
-        {!isPointerLocked && !gameState.showInventory && !gameState.showCrafting &&
-          !gameState.showMagic && !gameState.showBuildingTools && !gameState.showSettings && (
+        {!isPointerLocked && !anyPanelOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
