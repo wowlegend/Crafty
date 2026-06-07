@@ -13,9 +13,13 @@ describe('ferocityForKill', () => {
     expect(ferocityForKill('boss')).toBeGreaterThan(ferocityForKill('zombie'));
     expect(ferocityForKill('ShadowDragon')).toBeGreaterThan(ferocityForKill('zombie')); // /dragon/i
   });
-  it('an unknown type still banks the default (robust to any mob type)', () => {
-    expect(ferocityForKill('weird_new_mob')).toBe(ferocityForKill('zombie'));
+  it('an unknown type still banks a positive default (robust to any mob type)', () => {
+    expect(ferocityForKill('weird_new_mob')).toBeGreaterThan(0);
     expect(ferocityForKill(undefined)).toBeGreaterThan(0);
+  });
+  it('per-tier gradient: hostile banks more than passive (fight harder = unleash sooner)', () => {
+    expect(ferocityForKill('zombie')).toBeGreaterThan(ferocityForKill('pig'));
+    expect(ferocityForKill('skeleton')).toBeGreaterThan(ferocityForKill('villager'));
   });
 });
 

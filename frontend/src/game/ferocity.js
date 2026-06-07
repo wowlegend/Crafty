@@ -10,8 +10,14 @@
 export const FEROCITY_MAX = 100;        // bar capacity
 export const FEROCITY_THRESHOLD = 100;  // a FULL bank = one transform (== MAX so the full bar means "ready")
 
-const PER_KILL_DEFAULT = 14;            // ~7 day-kills to fill
-const PER_KILL = { boss: 60 };          // tougher kills bank far more
+const PER_KILL_DEFAULT = 12;
+// Per-tier gradient (the actual live mob types — passive < hostile < boss). Tougher kills bank more,
+// so the reward reads "fight harder = unleash sooner". All Kevin-tunable (§8 #2).
+const PER_KILL = {
+  pig: 8, cow: 8, villager: 8,           // passive
+  zombie: 16, skeleton: 16, spider: 16,  // hostile
+  boss: 60,                              // boss-like (reached via the regex below; boss-kill wiring is a follow-up)
+};
 
 /** ferocityForKill(mobType) -> how much a kill of that type banks. Boss-like types bank a burst. */
 export function ferocityForKill(mobType) {
