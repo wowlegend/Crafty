@@ -441,6 +441,36 @@ export const Player = ({ isWorldBuilt }) => {
     // Wake up physics body
     rigidBodyRef.current.wakeUp();
 
+    // S2-B1-M3: tick the beast-transform state machine (the ROAR verb) HERE — below the capture
+    // early-return (so it NEVER ticks under the visual gate) but ABOVE the dead-window early-return
+    // below, so an in-flight roar charge CANCELS at the death edge via the SM's own `!alive` guard
+    // instead of tunnelling through the dead window and auto-firing on respawn (review B1). Reads the
+    // abstract `roar` intent transiently (never a raw key) + drives the M1 enter/exitBeastForm store
+    // authority; the store's beastFormActive is the single active-truth, the SM owns only the charge +
+    // duration/cooldown timers. `active` (input-live) is the deliberate modal proxy — every modal-open
+    // path exits pointer-lock -> active=false -> no transform mid-menu. (No setIntent('roar',false) on
+    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is true now; M4 adds
+    // the ferocity threshold, M6 the wildheart_roar talent-unlock. set() fires only on transitions.
+    {
+      const rin = getInput();
+      const roar = rin.roar;
+      const roarEdge = roar && !prevRoarRef.current;
+      prevRoarRef.current = roar;
+      const st = useGameStore.getState();
+      const { sm, action } = decideTransform(beastSMRef.current, {
+        isBeast: st.beastFormActive,
+        roar,
+        roarEdge,
+        active: rin.active,
+        alive: st.isAlive,
+        now: state.clock.getElapsedTime(),
+        canEnter: true,
+      });
+      beastSMRef.current = sm;
+      if (action === 'enter') st.enterBeastForm(elementForSpell(st.activeSpell));
+      else if (action === 'exitTimer' || action === 'exitManual') st.exitBeastForm();
+    }
+
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
     const isPlayerAlive = useGameStore.getState().isAlive;
     if (!isPlayerAlive) {
@@ -532,30 +562,6 @@ export const Player = ({ isWorldBuilt }) => {
     // Handle dodge roll state machine
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
-
-    // S2-B1-M3: beast-form transform state machine (the ROAR verb). Reads the abstract `roar` intent
-    // transiently (never a raw key) + drives the M1 enter/exitBeastForm store authority. The store's
-    // beastFormActive is the single source of active-ness; the SM only owns the charge + duration/
-    // cooldown timers. `canEnter` is true now; M4 layers the ferocity threshold, M6 the wildheart_roar
-    // talent-unlock. set() fires only on transitions (game-loop isolation); getState() is transient.
-    {
-      const roar = input.roar;
-      const roarEdge = roar && !prevRoarRef.current;
-      prevRoarRef.current = roar;
-      const st = useGameStore.getState();
-      const { sm, action } = decideTransform(beastSMRef.current, {
-        isBeast: st.beastFormActive,
-        roar,
-        roarEdge,
-        active: isLocked,
-        alive: st.isAlive,
-        now: nowTime,
-        canEnter: true,
-      });
-      beastSMRef.current = sm;
-      if (action === 'enter') st.enterBeastForm(elementForSpell(st.activeSpell));
-      else if (action === 'exitTimer' || action === 'exitManual') st.exitBeastForm();
-    }
 
     if (isLocked && input.dodge) {
       // Edge-trigger: consume the dodge intent so one press = one dodge.

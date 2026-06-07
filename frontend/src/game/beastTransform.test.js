@@ -84,6 +84,23 @@ describe('decideTransform — active (beast) -> exit', () => {
   });
 });
 
+describe('B1 regression — a charge interrupted by DEATH must not auto-fire on respawn', () => {
+  // The Components fix ticks the SM ABOVE the dead-window early-return, so it runs while dead and
+  // cancels the in-flight charge via its own !alive guard (instead of the charge tunnelling through
+  // the dead window and firing on respawn with R still held). This locks that frame sequence.
+  it('cancels at the death frame, then stays HUMAN on respawn with roar still held (no fresh edge)', () => {
+    let sm = makeTransformState();
+    ({ sm } = decideTransform(sm, base({ roar: true, roarEdge: true, now: 100 })));        // start charge (alive)
+    expect(sm.charging).toBe(true);
+    let r = decideTransform(sm, base({ roar: true, roarEdge: false, alive: false, now: 100.2 })); // die mid-charge, SM ticked while dead
+    sm = r.sm;
+    expect(r.action).toBe('cancel');
+    expect(sm.charging).toBe(false);
+    r = decideTransform(sm, base({ roar: true, roarEdge: false, alive: true, now: 110 }));  // respawn seconds later, R still held
+    expect(r.action).toBe('none');                                                          // must NOT auto-enter
+  });
+});
+
 describe('constants are sane', () => {
   it('positive + ordered', () => {
     expect(ANTICIPATION_SEC).toBeGreaterThan(0);
