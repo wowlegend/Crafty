@@ -5,6 +5,7 @@ import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
+import { getBeastForm } from '../game/beasts.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -354,6 +355,23 @@ export const useGameStore = create((set, get) => ({
     isBossActive: () => get().bossActive,
     // Retained for backward compatibility (no longer the driver; prefer setBossActive).
     setIsBossActive: (fn) => set({ isBossActive: fn }),
+    // S2-B1 WILDHEART -- single-writer beast-form authority (mirrors bossActive above). TRANSIENT:
+    // never serialized (absent from saveSchema), so load/respawn ALWAYS returns to human -- this IS
+    // the no-permanent-beast invariant. Components.jsx subscribes to `activeBeastForm` (a rare
+    // transition, game-loop-isolation-safe) and does the imperative Rapier collider setShape; the
+    // store NEVER touches Rapier (keeps the invariant unit-testable). All exits route through exitBeastForm.
+    beastFormActive: false,
+    activeBeastForm: null,
+    setBeastFormActive: (active, form = null) => set({ beastFormActive: !!active, activeBeastForm: active ? (form ?? null) : null }),
+    isBeastFormActive: () => get().beastFormActive,
+    enterBeastForm: (element) => {
+        if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return;
+        get().setBeastFormActive(true, element);
+    },
+    exitBeastForm: () => {
+        if (!get().beastFormActive && get().activeBeastForm == null) return;
+        get().setBeastFormActive(false, null);
+    },
     // Dev-only: visual-fixture force-spawn for the boss-closeup state (set by useBossSystem).
     forceBossSpawn: null,
 
@@ -634,6 +652,7 @@ export const useGameStore = create((set, get) => ({
         
         if (newHealth <= 0) {
             set({ isAlive: false });
+            get().exitBeastForm(); // death-edge: drop beast form NOW (before the soft-death screen) -- no-permanent-beast + Marcus-floor
             if (useGameStore.getState().playDefeatSound) useGameStore.getState().playDefeatSound();
         }
 
@@ -794,6 +813,10 @@ export const useGameStore = create((set, get) => ({
         if (pos && rb && rb.current && typeof rb.current.setTranslation === 'function') {
             rb.current.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
         }
+        // No-permanent-beast: a same-session load while transformed returns to human (the beast-form
+        // state is transient/never serialized; this also drives Components.jsx to restore the base
+        // collider via the activeBeastForm subscription).
+        get().exitBeastForm();
     },
 
     // Local-first autosave: serialize the live state to the active world slot. No-op

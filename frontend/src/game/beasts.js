@@ -8,10 +8,10 @@
  * in Components.jsx (Rapier arg order is [halfHeight, radius]).
  *
  * The 4 forms are deliberately distinct MASS-SHAPES (content-variety, not recolors — S2 spec §7.7):
- *   comet (fire)      — small, thin, short          → glass-cannon dash
- *   bull  (ice)       — fattest + short             → heavy shove-charge (the FPS-de-risk target, M2)
- *   hawk  (lightning) — tall + thin                 → agile aerial skirmisher
- *   golem (arcane)    — tall + wide (massive)       → slow stun-monolith
+ *   comet (fire)      — small, thin, short          -> glass-cannon dash
+ *   bull  (ice)       — fattest + short             -> heavy shove-charge (the FPS-de-risk target, M2)
+ *   hawk  (lightning) — tall + thin                 -> agile aerial skirmisher
+ *   golem (arcane)    — tall + wide (massive)       -> slow stun-monolith
  * Per-form locomotion/damage re-skin is M5; these are the COLLIDER dims only. Numbers are
  * Kevin-tunable (KEVIN-REVIEW-BATCH §5 #5) — change them freely, the swap is data-driven.
  */

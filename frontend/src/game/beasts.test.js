@@ -19,7 +19,7 @@ describe('BEAST_FORMS', () => {
     expect(Object.keys(BEAST_FORMS).sort()).toEqual([...ELEMENTS].sort());
   });
 
-  it('maps each element to its beast id (fire→comet, ice→bull, lightning→hawk, arcane→golem)', () => {
+  it('maps each element to its beast id (fire->comet, ice->bull, lightning->hawk, arcane->golem)', () => {
     expect(BEAST_FORMS.fire.id).toBe('comet');
     expect(BEAST_FORMS.ice.id).toBe('bull');
     expect(BEAST_FORMS.lightning.id).toBe('hawk');
