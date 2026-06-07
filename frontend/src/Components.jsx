@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { BEAST_FORMS, BASE_CAPSULE } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider } from './game/beasts.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -221,7 +221,20 @@ export const Player = ({ isWorldBuilt }) => {
   const didFormMount = useRef(false);
   useEffect(() => {
     if (!didFormMount.current) { didFormMount.current = true; return; }
-    pendingFormSwapRef.current = activeBeastForm ? (BEAST_FORMS[activeBeastForm] || BASE_CAPSULE) : BASE_CAPSULE;
+    if (activeBeastForm) {
+      // ENTER: queue the (possibly enlarging) swap -> consumed in useFrame so it is ATOMIC with the
+      // Rapier sweep and the grow-depenetration folds into the same setNextKinematicTranslation.
+      pendingFormSwapRef.current = BEAST_FORMS[activeBeastForm] || BASE_CAPSULE;
+    } else {
+      // EXIT/restore: shrink back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
+      // behind the dead-window early-return (a queued restore would not drain until manual respawn,
+      // leaving the live collider a beast shape for the whole death screen). This is the
+      // no-permanent-beast restore AT the death/load edge. Always a shrink -> no depenetration ->
+      // safe off-frame. Cancels any not-yet-consumed enter-swap + resyncs the half-height tracker.
+      pendingFormSwapRef.current = null;
+      restoreBaseCollider(rigidBodyRef.current?.collider(0), rapier, controllerRef.current);
+      currentFormHHRef.current = BASE_CAPSULE.halfHeight;
+    }
   }, [activeBeastForm]);
 
   // Safe-respawn coordinator: when player isAlive transitions from false to true, teleport player back to safe spawn coordinates
@@ -707,23 +720,24 @@ export const Player = ({ isWorldBuilt }) => {
       nextVelZ * delta * hitstopScale
     );
 
-    // S2-B1-M1: consume the one-shot beast-form collider swap HERE -- after every early-return
-    // (capture/respawn/void-guard above), immediately before the collider(0) read -- so the swap is
-    // ATOMIC with this frame's sweep (a frame that skips the sweep also skips the swap) and NEVER
-    // runs under the visual-capture harness (capture early-returns at the top of useFrame). The
-    // in-place setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits.
+    // S2-B1-M1: consume the one-shot beast-form ENTER swap HERE -- after every early-return
+    // (capture/respawn/void-guard above), immediately before the collider(0) read -- so the in-place
+    // setShape is ATOMIC with this frame's sweep (a frame that skips the sweep also skips the swap)
+    // and NEVER runs under the visual-capture harness (capture early-returns at the top of useFrame).
+    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The grow-
+    // depenetration delta folds into the single setNextKinematicTranslation below. (EXIT/restore is
+    // done imperatively in the activeBeastForm effect -- it must drain even while the dead-window
+    // early-return is active.) Guarded on controllerRef so the swap + its depenetration stay paired.
     let growDeltaY = 0;
-    if (pendingFormSwapRef.current && rapier) {
+    if (pendingFormSwapRef.current && rapier && controllerRef.current) {
       const target = pendingFormSwapRef.current;
       pendingFormSwapRef.current = null;
       const c0 = rigidBodyRef.current.collider(0);
-      if (c0) {
+      if (c0 && setColliderToForm(c0, rapier, target)) {
         growDeltaY = Math.max(0, target.halfHeight - currentFormHHRef.current);
-        c0.setShape(new rapier.Capsule(target.halfHeight, target.radius));
         currentFormHHRef.current = target.halfHeight;
-        // restoreBaseController scaffold: keep impulse-shoving OFF for human/plain forms (the bull
-        // turns it on in M5; this is the defensive base reset that runs on EVERY swap, incl. exit).
-        if (controllerRef.current && controllerRef.current.setApplyImpulsesToDynamicBodies) {
+        // defensive base reset (M1 forms never shove dynamics; the bull enables this in M5).
+        if (controllerRef.current.setApplyImpulsesToDynamicBodies) {
           controllerRef.current.setApplyImpulsesToDynamicBodies(false);
         }
       }

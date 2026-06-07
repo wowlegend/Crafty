@@ -31,3 +31,29 @@ export const BEAST_FORMS = {
 export function getBeastForm(element) {
   return BEAST_FORMS[element] || null;
 }
+
+/**
+ * setColliderToForm(collider, rapier, form) -> did-swap. In-place mutate of the collider's capsule
+ * shape (handle/index/groups preserved). `rapier` is the @react-three/rapier `rapier` module (from
+ * useRapier()); `form` is a {halfHeight, radius}. Returns false (no-op) if any arg is missing.
+ * Extracted so the swap LOGIC is unit-testable without a live Rapier world.
+ */
+export function setColliderToForm(collider, rapier, form) {
+  if (!collider || !rapier || !form) return false;
+  collider.setShape(new rapier.Capsule(form.halfHeight, form.radius));
+  return true;
+}
+
+/**
+ * restoreBaseCollider(collider, rapier, controller) -> did-restore. The transactional restore: shape
+ * back to BASE_CAPSULE + the KCC config reset to base (impulse-shoving OFF — the bull turns it on in
+ * M5, so the base reset must run on EVERY restore). This is the no-permanent-beast operation; it is
+ * always a SHRINK (no grow-depenetration needed), so it is safe to call imperatively off a frame.
+ */
+export function restoreBaseCollider(collider, rapier, controller) {
+  const ok = setColliderToForm(collider, rapier, BASE_CAPSULE);
+  if (ok && controller && typeof controller.setApplyImpulsesToDynamicBodies === 'function') {
+    controller.setApplyImpulsesToDynamicBodies(false);
+  }
+  return ok;
+}

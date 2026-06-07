@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { BASE_CAPSULE, BEAST_FORMS, getBeastForm } from './beasts.js';
+import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider } from './beasts.js';
+
+// Mocks for the Rapier surface the helpers touch (no live Rapier world needed).
+function mockRapier() {
+  return { Capsule: class { constructor(halfHeight, radius) { this.halfHeight = halfHeight; this.radius = radius; } } };
+}
+function mockCollider() {
+  const shapes = [];
+  return { shapes, setShape: (s) => shapes.push(s) };
+}
+function mockController() {
+  const impulses = [];
+  return { impulses, setApplyImpulsesToDynamicBodies: (v) => impulses.push(v) };
+}
 
 // S2-B1-M1 T1: the BEAST_FORMS table is pure data — the per-element collider profile the
 // transactional hot-swap reads. The 4 forms must be genuinely distinct mass-shapes (not one
@@ -61,5 +74,41 @@ describe('getBeastForm', () => {
     expect(getBeastForm(undefined)).toBeNull();
     expect(getBeastForm(null)).toBeNull();
     expect(getBeastForm('')).toBeNull();
+  });
+});
+
+describe('setColliderToForm (the swap logic)', () => {
+  it('setShapes a Capsule with the form dims (in-place)', () => {
+    const c = mockCollider();
+    const ok = setColliderToForm(c, mockRapier(), BEAST_FORMS.ice);
+    expect(ok).toBe(true);
+    expect(c.shapes).toHaveLength(1);
+    expect(c.shapes[0].halfHeight).toBe(BEAST_FORMS.ice.halfHeight);
+    expect(c.shapes[0].radius).toBe(BEAST_FORMS.ice.radius);
+  });
+  it('is a no-op (false) when any arg is missing — never throws', () => {
+    expect(setColliderToForm(null, mockRapier(), BEAST_FORMS.fire)).toBe(false);
+    expect(setColliderToForm(mockCollider(), null, BEAST_FORMS.fire)).toBe(false);
+    expect(setColliderToForm(mockCollider(), mockRapier(), null)).toBe(false);
+  });
+});
+
+describe('restoreBaseCollider (the no-permanent-beast restore op)', () => {
+  it('setShapes back to BASE_CAPSULE + resets impulse-shoving OFF', () => {
+    const c = mockCollider();
+    const ctrl = mockController();
+    const ok = restoreBaseCollider(c, mockRapier(), ctrl);
+    expect(ok).toBe(true);
+    expect(c.shapes[0].halfHeight).toBe(BASE_CAPSULE.halfHeight);
+    expect(c.shapes[0].radius).toBe(BASE_CAPSULE.radius);
+    expect(ctrl.impulses).toEqual([false]); // base controller config (M5 bull turns it on)
+  });
+  it('tolerates a missing controller (restores shape, no throw)', () => {
+    const c = mockCollider();
+    expect(() => restoreBaseCollider(c, mockRapier(), null)).not.toThrow();
+    expect(c.shapes[0].halfHeight).toBe(BASE_CAPSULE.halfHeight);
+  });
+  it('is a no-op when the collider is absent', () => {
+    expect(restoreBaseCollider(null, mockRapier(), mockController())).toBe(false);
   });
 });
