@@ -215,13 +215,20 @@ async function main() {
     // S2-B1-M7d glow-LADDER: the LEAD dragon at 3 ③·5 glow/aura intensities so Kevin dial-picks the
     // final look. The multiplier scales ONLY the element glow (rim/core/halo/point-light) — the dark-ink
     // silhouette is FIXED at every level (crispness = silhouette, not brightness — the blob lesson).
-    for (const [name, mul] of [['subtle', 0.55], ['current', 1.0], ['punchy', 1.6]]) {
+    // Forced to the DARK OBSIDIAN mood (dangerLevel=2 -> mood.js obsidian: dark sky + crushed shadows) so
+    // the WARM glow has real CONTRAST — a warm glow on the stylized warm explore/dusk sky is low-contrast,
+    // and only obsidian goes genuinely dark (dusk's sky palette is still warm). The obsidian grade is
+    // desaturated, but the white-hot bloom-core + additive halo are saturation-independent and pop on dark.
+    // Reset to explore (0) after, so the downstream studio captures stay byte-deterministic.
+    for (const [name, mul] of [['subtle', 0.5], ['current', 1.0], ['punchy', 1.7]]) {
       await page.evaluate(([element, g]) => window.__craftyTest.call('spawnBeastTransform', element, g), ['fire', mul]);
+      await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 2)); // dark obsidian backdrop (snapped in capture)
       await flushFrames(page, 8);
-      await delay(1000); // beast re-mounts at the new glow + the camera settles into the frozen pose
+      await delay(1000); // beast re-mounts at the new glow + the mood snaps + the camera settles
       await page.screenshot({ path: resolve(OUT, `beast-fire-glow-${name}.png`) });
       console.log(`captured beast-fire-glow-${name}`);
     }
+    await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 0)); // restore explore mood for downstream gate determinism
 
     // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
     // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
