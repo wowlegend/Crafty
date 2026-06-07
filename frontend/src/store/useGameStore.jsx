@@ -364,10 +364,6 @@ export const useGameStore = create((set, get) => ({
     activeBeastForm: null,
     setBeastFormActive: (active, form = null) => set({ beastFormActive: !!active, activeBeastForm: active ? (form ?? null) : null }),
     isBeastFormActive: () => get().beastFormActive,
-    // M7d (dev/showcase only — NOT persisted): override the fire beast SHAPE for the shape-pick capture.
-    // null = the default FORM_PARTS shape. Removed once Kevin picks a variant.
-    beastShapeVariant: null,
-    setBeastShapeVariant: (v) => set({ beastShapeVariant: v || null }),
     // M7c: the hold-roar ANTICIPATION flag (transient — NOT persisted). Set by the Components SM on
     // startCharge, cleared on cancel/commit. Drives the anticipation charge-glow (beat 1 of the morph).
     beastCharging: false,

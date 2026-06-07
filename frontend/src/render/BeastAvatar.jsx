@@ -35,7 +35,6 @@ export function BeastAvatar() {
   const charging = useGameStore((s) => s.beastCharging);
   const element = useGameStore((s) => s.activeBeastForm);
   const activeSpell = useGameStore((s) => s.activeSpell);
-  const shapeVariant = useGameStore((s) => s.beastShapeVariant); // M7d showcase only (default null)
   const groupRef = useRef();
   const coreRef = useRef();
   const burstRef = useRef();
@@ -44,7 +43,7 @@ export function BeastAvatar() {
   const chargeStartRef = useRef(-1); // clock time the anticipation charge began
   const { camera } = useThree();
 
-  const parts = active ? beastAvatarParts(element, shapeVariant) : null;
+  const parts = active ? beastAvatarParts(element) : null;
   const chargeEl = charging && !active ? elementForSpell(activeSpell) : null;
   const chargeColor = chargeEl ? beastAvatarParts(chargeEl)?.glowColor : null;
 

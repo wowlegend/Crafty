@@ -103,78 +103,12 @@ const FORM_PARTS = {
   },
 };
 
-// --- M7d SHAPE-VARIANT SHOWCASE: 4 distinct silhouette PHILOSOPHIES for the LEAD (fire/comet) beast,
-// for Kevin to pick (mirrors the M0 mockup approach). Each is a full box-construction + core. The
-// chosen one gets baked into FORM_PARTS.fire; the rest + this map are then removed. Same dark-ink body
-// + element rim + bloom-core recipe applies to all (the look is locked; this is the SHAPE choice).
-export const FIRE_SHAPE_VARIANTS = {
-  // A — FERAL QUADRUPED: a low, horizontal, 4-legged panther/wolf lunging forward. Reads as an animal.
-  A: {
-    label: 'feral quadruped',
-    boxes: [
-      { pos: [0, 0.55, 0], size: [0.42, 0.42, 0.95], rot: [0.1, 0, 0] },
-      { pos: [0, 0.6, 0.62], size: [0.34, 0.32, 0.4], rot: [-0.15, 0, 0] },
-      { pos: [0, 0.62, 0.84], size: [0.18, 0.16, 0.22], rot: [0, 0, 0] },
-      { pos: [-0.16, 0.25, 0.42], size: [0.12, 0.5, 0.12], rot: [0.2, 0, 0] },
-      { pos: [0.16, 0.25, 0.42], size: [0.12, 0.5, 0.12], rot: [0.2, 0, 0] },
-      { pos: [-0.16, 0.27, -0.36], size: [0.12, 0.54, 0.12], rot: [-0.15, 0, 0] },
-      { pos: [0.16, 0.27, -0.36], size: [0.12, 0.54, 0.12], rot: [-0.15, 0, 0] },
-      { pos: [0, 0.78, -0.52], size: [0.1, 0.1, 0.5], rot: [-0.7, 0, 0] },
-    ],
-    core: { pos: [0, 0.6, 0.28], radius: 0.16 },
-  },
-  // B — BIPEDAL WEREBEAST: a hunched feral humanoid with clawed arms (the "transform into a beast-warrior").
-  B: {
-    label: 'bipedal werebeast',
-    boxes: [
-      { pos: [0, 1.0, 0], size: [0.5, 0.7, 0.42], rot: [0.3, 0, 0] },
-      { pos: [0, 1.42, 0.22], size: [0.34, 0.34, 0.38], rot: [0.1, 0, 0] },
-      { pos: [-0.36, 0.95, 0.18], size: [0.16, 0.6, 0.16], rot: [0.35, 0, 0.2] },
-      { pos: [0.36, 0.95, 0.18], size: [0.16, 0.6, 0.16], rot: [0.35, 0, -0.2] },
-      { pos: [-0.16, 0.4, -0.02], size: [0.18, 0.7, 0.2], rot: [-0.2, 0, 0] },
-      { pos: [0.16, 0.4, -0.02], size: [0.18, 0.7, 0.2], rot: [-0.2, 0, 0] },
-    ],
-    core: { pos: [0, 1.05, 0.18], radius: 0.18 },
-  },
-  // C — ELEMENTAL ENERGY-FORM: a sleek upward-tapering flame-being + floating shards (abstract Genshin).
-  C: {
-    label: 'elemental energy-form',
-    boxes: [
-      { pos: [0, 0.5, 0], size: [0.5, 0.5, 0.4], rot: [0, 0, 0] },
-      { pos: [0, 0.95, 0.02], size: [0.34, 0.5, 0.3], rot: [0.05, 0, 0] },
-      { pos: [0, 1.32, 0.04], size: [0.2, 0.42, 0.2], rot: [0.1, 0, 0] },
-      { pos: [-0.3, 0.72, -0.05], size: [0.1, 0.34, 0.1], rot: [0.2, 0, 0.5] },
-      { pos: [0.3, 0.72, -0.05], size: [0.1, 0.34, 0.1], rot: [0.2, 0, -0.5] },
-    ],
-    core: { pos: [0, 0.78, 0.12], radius: 0.2 },
-  },
-  // D — WINGED RAPTOR / COMET: a sharp diving bird-of-prey with big swept wings (the literal speed read).
-  D: {
-    label: 'winged raptor / comet',
-    boxes: [
-      { pos: [0, 0.8, 0.1], size: [0.3, 0.4, 0.8], rot: [0.4, 0, 0] },
-      { pos: [0, 1.0, 0.44], size: [0.22, 0.22, 0.36], rot: [0.4, 0, 0] },
-      { pos: [-0.52, 0.95, -0.1], size: [0.72, 0.06, 0.5], rot: [0.1, 0.4, 0.5] },
-      { pos: [0.52, 0.95, -0.1], size: [0.72, 0.06, 0.5], rot: [0.1, -0.4, -0.5] },
-      { pos: [0, 0.55, -0.5], size: [0.08, 0.3, 0.5], rot: [0.5, 0, 0] },
-    ],
-    core: { pos: [0, 0.82, 0.18], radius: 0.16 },
-  },
-};
-
-/** beastAvatarParts(element, shapeVariant?) -> { bodyColor, glowColor, coreColor, height, boxes, core, aura } | null.
- *  shapeVariant (showcase only) overrides the fire box-construction with a FIRE_SHAPE_VARIANTS entry. */
-export function beastAvatarParts(element, shapeVariant) {
+/** beastAvatarParts(element) -> { bodyColor, glowColor, coreColor, rimBoost, height, boxes, core, aura } | null. */
+export function beastAvatarParts(element) {
   const parts = FORM_PARTS[element];
   const col = ELEMENT_COLOR[element];
   if (!parts || !col) return null;
-  let boxes = parts.boxes;
-  let core = parts.core;
-  if (element === 'fire' && shapeVariant && FIRE_SHAPE_VARIANTS[shapeVariant]) {
-    boxes = FIRE_SHAPE_VARIANTS[shapeVariant].boxes;
-    core = FIRE_SHAPE_VARIANTS[shapeVariant].core;
-  }
-  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, rimBoost: col.rim ?? 1, height: parts.height, boxes, core, aura: parts.aura };
+  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, rimBoost: col.rim ?? 1, height: parts.height, boxes: parts.boxes, core: parts.core, aura: parts.aura };
 }
 
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);

@@ -276,7 +276,6 @@ function GameApp({ experienceSystem }) {
       store.setCaptureStudio(false);          // IN-WORLD — keep the real scene (not a sky-studio card)
       store.setDangerLevel(0);
       store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the glow; the beast's true ctx
-      store.setBeastShapeVariant(null);       // the shape pick is done -> use the default FORM_PARTS shapes
       store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
       const rb = store.playerRigidBodyRef?.current;
       const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
