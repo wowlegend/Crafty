@@ -280,9 +280,9 @@ function GameApp({ experienceSystem }) {
       store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
       const rb = store.playerRigidBodyRef?.current;
       const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
-      // third-person reveal: a 3/4-SIDE, slightly-up hero angle pulled back enough to frame the winged
-      // beast-warrior's full height + spread wings, looking at chest height.
-      enterCaptureMode({ camera: { position: [t.x + 3.0, t.y + 1.1, t.z + 2.9], lookAt: [t.x, t.y + 0.1, t.z] } });
+      // third-person reveal: a 3/4-SIDE hero angle pulled back to frame the tallest beast (the reared
+      // dragon) + the widest wings, looking at mid-body.
+      enterCaptureMode({ camera: { position: [t.x + 3.6, t.y + 1.4, t.z + 3.5], lookAt: [t.x, t.y + 0.35, t.z] } });
     });
 
     registerTestHook('spawnBossCloseup', () => {

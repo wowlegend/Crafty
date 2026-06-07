@@ -40,8 +40,7 @@ describe('beastAvatarParts', () => {
     expect(new Set(sigs).size).toBe(BEAST_AVATAR_ELEMENTS.length);
     // and the design intent: bull widest, golem/hawk tallest, comet shortest+thin
     const h = Object.fromEntries(BEAST_AVATAR_ELEMENTS.map((el) => [el, beastAvatarParts(el).height]));
-    expect(h.ice).toBeLessThan(h.fire);          // bull (short/wide) is the shortest mass
-    expect(h.ice).toBeLessThan(h.lightning);     // ...shorter than the tall hawk
-    expect(h.arcane).toBe(Math.max(...Object.values(h))); // golem is the tallest monolith
+    expect(h.ice).toBe(Math.min(...Object.values(h))); // the bull brute is the LOWEST, heaviest-grounded mass
+    expect(h.fire).toBe(Math.max(...Object.values(h))); // the reared DRAGON towers tallest
   });
 });
