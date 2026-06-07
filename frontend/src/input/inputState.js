@@ -32,9 +32,12 @@
  * melee/spell triggers directly, gated on `active`), so they are RESERVED here for a future
  * unified consumer + the touch layer. `interact` is a RESERVED forward-placeholder for the
  * upcoming interact verb (no producer/consumer yet — kept so the touch layer has the key).
+ * `roar` (S2-B1-M3) is a REAL consumed intent: the keyboard listener writes it (KeyR) and the
+ * beast-transform state machine reads `getInput().roar` transiently inside the player loop —
+ * a deeper abstraction than the reserved attack/cast (which fire imperatively), and touch-ready.
  * @type {readonly string[]}
  */
-export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact'];
+export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar'];
 
 /**
  * Module singleton — the one live intent object. Built from INTENT_KEYS (all

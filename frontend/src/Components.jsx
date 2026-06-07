@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell } from './game/beasts.js';
+import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -153,6 +154,9 @@ export const Player = ({ isWorldBuilt }) => {
   // when a larger form spawns near ground. Both are refs -> zero re-renders (Game-Loop Isolation).
   const pendingFormSwapRef = useRef(null);
   const currentFormHHRef = useRef(BASE_CAPSULE.halfHeight);
+  // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
+  const beastSMRef = useRef(makeTransformState());
+  const prevRoarRef = useRef(false);
 
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
@@ -364,6 +368,11 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('dodge', true);
       }
 
+      // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
+      if (e.code === 'KeyR') {
+        setIntent('roar', true);
+      }
+
       if (e.code === 'KeyF') {
         triggerMeleeAttack();
       }
@@ -378,6 +387,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'Space') {
         setIntent('jump', false);
+      }
+
+      if (e.code === 'KeyR') {
+        setIntent('roar', false);
       }
     };
     const handleMouseDown = (e) => {
@@ -427,6 +440,36 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Wake up physics body
     rigidBodyRef.current.wakeUp();
+
+    // S2-B1-M3: tick the beast-transform state machine (the ROAR verb) HERE — below the capture
+    // early-return (so it NEVER ticks under the visual gate) but ABOVE the dead-window early-return
+    // below, so an in-flight roar charge CANCELS at the death edge via the SM's own `!alive` guard
+    // instead of tunnelling through the dead window and auto-firing on respawn (review B1). Reads the
+    // abstract `roar` intent transiently (never a raw key) + drives the M1 enter/exitBeastForm store
+    // authority; the store's beastFormActive is the single active-truth, the SM owns only the charge +
+    // duration/cooldown timers. `active` (input-live) is the deliberate modal proxy — every modal-open
+    // path exits pointer-lock -> active=false -> no transform mid-menu. (No setIntent('roar',false) on
+    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is true now; M4 adds
+    // the ferocity threshold, M6 the wildheart_roar talent-unlock. set() fires only on transitions.
+    {
+      const rin = getInput();
+      const roar = rin.roar;
+      const roarEdge = roar && !prevRoarRef.current;
+      prevRoarRef.current = roar;
+      const st = useGameStore.getState();
+      const { sm, action } = decideTransform(beastSMRef.current, {
+        isBeast: st.beastFormActive,
+        roar,
+        roarEdge,
+        active: rin.active,
+        alive: st.isAlive,
+        now: state.clock.getElapsedTime(),
+        canEnter: true,
+      });
+      beastSMRef.current = sm;
+      if (action === 'enter') st.enterBeastForm(elementForSpell(st.activeSpell));
+      else if (action === 'exitTimer' || action === 'exitManual') st.exitBeastForm();
+    }
 
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
     const isPlayerAlive = useGameStore.getState().isAlive;

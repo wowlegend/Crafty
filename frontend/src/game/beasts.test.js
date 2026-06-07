@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider } from './beasts.js';
+import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider, elementForSpell } from './beasts.js';
 
 // Mocks for the Rapier surface the helpers touch (no live Rapier world needed).
 function mockRapier() {
@@ -74,6 +74,24 @@ describe('getBeastForm', () => {
     expect(getBeastForm(undefined)).toBeNull();
     expect(getBeastForm(null)).toBeNull();
     expect(getBeastForm('')).toBeNull();
+  });
+});
+
+describe('elementForSpell (the loaded spell picks the form)', () => {
+  it('maps the 4 spells to their elements -> the 4 beasts', () => {
+    expect(elementForSpell('fireball')).toBe('fire');     // -> comet
+    expect(elementForSpell('iceball')).toBe('ice');       // -> bull
+    expect(elementForSpell('lightning')).toBe('lightning'); // -> hawk
+    expect(elementForSpell('arcane')).toBe('arcane');     // -> golem
+  });
+  it('every mapped element is a real BEAST_FORMS key', () => {
+    for (const el of Object.values({ fireball: 'fire', iceball: 'ice', lightning: 'lightning', arcane: 'arcane' })) {
+      expect(BEAST_FORMS[el]).toBeTruthy();
+    }
+  });
+  it('falls back to fire for an unknown/missing spell', () => {
+    expect(elementForSpell('mysteryball')).toBe('fire');
+    expect(elementForSpell(undefined)).toBe('fire');
   });
 });
 
