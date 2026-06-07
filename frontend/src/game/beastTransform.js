@@ -56,7 +56,7 @@ export function decideTransform(sm, ctx) {
       out.charging = false;
       // M6: the effective duration is passed in (Primal Endurance rank, computed at the Components site);
       // absent (existing callers / tests) -> the base FORM_DURATION_SEC, so this is backward-compatible.
-      if (ctx.canEnter) { out.activeUntil = ctx.now + (ctx.formDurationSec || FORM_DURATION_SEC); return { sm: out, action: 'enter' }; }
+      if (ctx.canEnter) { out.activeUntil = ctx.now + (ctx.formDurationSec ?? FORM_DURATION_SEC); return { sm: out, action: 'enter' }; }
       return { sm: out, action: 'cancel' };
     }
     return { sm: out, action: 'none' };
