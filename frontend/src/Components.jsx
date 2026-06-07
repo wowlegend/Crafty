@@ -10,6 +10,7 @@ import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elem
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
+import { BeastAvatar } from './render/BeastAvatar';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -973,6 +974,9 @@ export const Player = ({ isWorldBuilt }) => {
         enabledRotations={[false, false, false]}
       >
         <CapsuleCollider args={[0.5, 0.4]} />
+        {/* S2-B1-M7b: the visible beast (self-gates on beastFormActive -> nothing as human). At the
+            player (RigidBody child); revealed by the M7a transform-cam. */}
+        <BeastAvatar />
       </RigidBody>
       <primitive object={camera}>
         {!inCapture && (
