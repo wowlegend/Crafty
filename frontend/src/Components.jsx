@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, formDamageMult, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { isPointInCone } from './combat/cone.js';
@@ -258,13 +258,16 @@ export const Player = ({ isWorldBuilt }) => {
 
   const triggerMeleeAttack = useCallback(() => {
     const now = performance.now();
-    if (now - lastAttackTime.current < MELEE_COOLDOWN) return;
+    const store = useGameStore.getState();
+    // M5: in a beast form the melee re-skins — per-form cooldown, scaled damage, element spark. Read
+    // the form once (transient getState); human (null element) = the identity (cooldown/damage x1).
+    const beastEl = store.beastFormActive ? store.activeBeastForm : null;
+    if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
     lastAttackTime.current = now;
 
     setAttackType('melee');
     setTimeout(() => setAttackType(null), 200);
 
-    const store = useGameStore.getState();
     const effectiveStats = store.getEffectiveAttributes ? store.getEffectiveAttributes() : { strength: 10, agility: 10 };
     
     // Solve weapon base damage based on equipped weapon
@@ -272,6 +275,10 @@ export const Player = ({ isWorldBuilt }) => {
     const baseWeaponDmg = getWeaponBaseDamage(equippedWeapon);
     
     const { damage, isCrit } = solveMeleeDamage(effectiveStats, baseWeaponDmg);
+    // M5: the form damage multiplier rides on TOP of getEffectiveAttributes() (derive-never-bake; x1
+    // for human). The spark = the spell that elected the form (a valid damageMob spark-color case).
+    const dealt = Math.round(damage * formDamageMult(beastEl));
+    const sparkType = beastEl ? store.activeSpell : 'physical';
 
     if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
       const lookDir = new THREE.Vector3();
@@ -292,7 +299,7 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (hitMobs && hitMobs.length > 0) {
         hitMobs.forEach(mob => {
-          GameMethods.damageMob(mob.id, damage, 'physical');
+          GameMethods.damageMob(mob.id, dealt, sparkType);
         });
         hitSomething = true;
       }
@@ -306,7 +313,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (bp) {
           const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
           if (isPointInCone(playerPos, lookDir, bossPoint, range, angleRad) && store.damageBoss) {
-            store.damageBoss(damage);
+            store.damageBoss(dealt);
             // Mirror the melee mob-hit feedback at the player layer: a spatial 'hit'
             // sound at the boss (damageBoss plays no SFX of its own, unlike the spell
             // path) plus the same visceral crit camera-shake the mob path triggers.
@@ -488,7 +495,12 @@ export const Player = ({ isWorldBuilt }) => {
       return;
     }
 
-    const speed = 10;
+    // M5: per-form locomotion re-skin. Read the form transiently (Game-Loop-Isolation — never a
+    // subscription in useFrame); human (null) = the identity (all mults 1). `loco` is reused at the
+    // jump + gravity sites below.
+    const locoState = useGameStore.getState();
+    const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
+    const speed = 10 * loco.moveMult;
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
@@ -686,7 +698,7 @@ export const Player = ({ isWorldBuilt }) => {
     // Handle jumping & gravity
     if (isGrounded) {
       if (isLocked && input.jump && !dodge.isActive) {
-        velocityY.current = 12.0;
+        velocityY.current = 12.0 * loco.jumpMult; // M5: hawk hops higher (low-gravity), bull/golem lower
         // Consume the jump intent on a grounded jump. OS key-repeat re-sets the intent via
         // repeated keydown, so held-Space bunny-hopping is preserved byte-identically.
         setIntent('jump', false);
@@ -696,7 +708,7 @@ export const Player = ({ isWorldBuilt }) => {
       }
     } else {
       // Apply gravity over time
-      velocityY.current += -32.0 * delta;
+      velocityY.current += -32.0 * loco.gravityMult * delta; // M5: hawk floats (low gravity), golem/bull heavier
       // Cap at terminal velocity
       if (velocityY.current < -50.0) velocityY.current = -50.0;
     }
