@@ -26,6 +26,9 @@ import { isCaptureMode } from '../devtest/captureMode';
  */
 const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop the feet to the base
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
+// S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
+// (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
+const GLOW = 1.7;
 
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
@@ -33,7 +36,6 @@ export function BeastAvatar() {
   const element = useGameStore((s) => s.activeBeastForm);
   const activeSpell = useGameStore((s) => s.activeSpell);
   const shapeVariant = useGameStore((s) => s.beastShapeVariant); // M7d showcase only (default null)
-  const glowMul = useGameStore((s) => s.beastGlowMul); // M7d glow-ladder DIAL — scales the element glow only (default 1)
   const groupRef = useRef();
   const coreRef = useRef();
   const burstRef = useRef();
@@ -106,14 +108,14 @@ export function BeastAvatar() {
           {parts.boxes.map((b, i) => (
             <mesh key={i} position={b.pos} rotation={b.rot} castShadow>
               <boxGeometry args={b.size} />
-              <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * glowMul} />
+              <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW} />
             </mesh>
           ))}
 
           {/* (2) HOT-CORE — near-white additive heart + nested pure-white hotspot (clips past bloom) */}
           <mesh ref={coreRef} position={parts.core.pos} renderOrder={2}>
             <sphereGeometry args={[parts.core.radius * 0.6, 14, 14]} />
-            <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={Math.min(1, 0.95 * glowMul)}
+            <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={Math.min(1, 0.95 * GLOW)}
               blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
             <mesh renderOrder={3}>
               <sphereGeometry args={[parts.core.radius * 0.32, 10, 10]} />
@@ -124,8 +126,8 @@ export function BeastAvatar() {
 
           {/* (3) a single faint back-halo (BackSide) — a touch of aura behind the silhouette */}
           <mesh position={parts.core.pos} renderOrder={1}>
-            <sphereGeometry args={[parts.core.radius * 1.7 * parts.aura * (0.9 + 0.1 * glowMul), 16, 16]} />
-            <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * glowMul)}
+            <sphereGeometry args={[parts.core.radius * 1.7 * parts.aura * (0.9 + 0.1 * GLOW), 16, 16]} />
+            <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * GLOW)}
               blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
           </mesh>
 
@@ -136,7 +138,7 @@ export function BeastAvatar() {
               blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           </mesh>
 
-          <pointLight color={parts.glowColor} intensity={3 * glowMul} distance={6} decay={2} position={parts.core.pos} />
+          <pointLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} />
         </group>
       )}
     </group>

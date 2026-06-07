@@ -368,11 +368,6 @@ export const useGameStore = create((set, get) => ({
     // null = the default FORM_PARTS shape. Removed once Kevin picks a variant.
     beastShapeVariant: null,
     setBeastShapeVariant: (v) => set({ beastShapeVariant: v || null }),
-    // M7d (dev/showcase only — NOT persisted): the ③·5 glow/aura DIAL multiplier for the glow-ladder
-    // pick capture (subtle/current/punchy). 1 = the current look. Scales ONLY the element glow (rim/core/
-    // halo/light) — never the dark-ink body (silhouette stays crisp). Baked to a constant once Kevin picks.
-    beastGlowMul: 1,
-    setBeastGlowMul: (m) => set({ beastGlowMul: Number.isFinite(m) ? m : 1 }),
     // M7c: the hold-roar ANTICIPATION flag (transient — NOT persisted). Set by the Components SM on
     // startCharge, cleared on cancel/commit. Drives the anticipation charge-glow (beat 1 of the morph).
     beastCharging: false,
