@@ -108,7 +108,7 @@ export function BeastAvatar() {
           {parts.boxes.map((b, i) => (
             <mesh key={i} position={b.pos} rotation={b.rot} castShadow>
               <boxGeometry args={b.size} />
-              <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW} />
+              <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW * parts.rimBoost} />
             </mesh>
           ))}
 

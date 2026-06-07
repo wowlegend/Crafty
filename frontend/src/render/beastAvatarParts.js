@@ -16,11 +16,17 @@
 // element -> { DARK ink body (the crisp silhouette — never blooms), bright element glow+rim, near-white
 // core tint }. The Hades+Genshin fusion: the body is DARK (ink), the ELEMENT color lives in the rim /
 // core / aura (the radiance) — NOT the body fill (a bright body + heavy aura = the blob anti-pattern).
+// `rim` = per-element rim-strength MULTIPLIER (S2-B1-M7d polish). The COOL elements (ice cyan, lightning
+// yellow) get a STRONGER element rim so their identity survives the warm DAYTIME sun: the body + the
+// MobToonMaterial rim are toneMapped/lit, so warm light + the warm magic-hour grade wash them toward
+// orange; a brighter element rim re-asserts the cool hue (the grade only saturates, it doesn't hue-shift,
+// so a brighter cyan edge stays cyan). fire/arcane already read true (warm-on-warm / purple-on-orange),
+// so they stay at 1.0. The grade-resistant additive core/halo are unchanged.
 const ELEMENT_COLOR = {
-  fire:      { body: '#3A1206', glow: '#FF6A2C', core: '#FFE3C0' },
-  ice:       { body: '#0E2233', glow: '#6FC8FF', core: '#DCF3FF' },
-  lightning: { body: '#2A2408', glow: '#FFE066', core: '#FFFBDC' },
-  arcane:    { body: '#1C0E2E', glow: '#B36BFF', core: '#EAD9FF' },
+  fire:      { body: '#3A1206', glow: '#FF6A2C', core: '#FFE3C0', rim: 1.0 },
+  ice:       { body: '#0E2233', glow: '#6FC8FF', core: '#DCF3FF', rim: 1.7 },
+  lightning: { body: '#2A2408', glow: '#FFE066', core: '#FFFBDC', rim: 1.5 },
+  arcane:    { body: '#1C0E2E', glow: '#B36BFF', core: '#EAD9FF', rim: 1.0 },
 };
 
 // Per-form box construction + glow placement. boxes: [{ pos:[x,y,z], size:[w,h,d], rot:[x,y,z] }].
@@ -168,7 +174,7 @@ export function beastAvatarParts(element, shapeVariant) {
     boxes = FIRE_SHAPE_VARIANTS[shapeVariant].boxes;
     core = FIRE_SHAPE_VARIANTS[shapeVariant].core;
   }
-  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, height: parts.height, boxes, core, aura: parts.aura };
+  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, rimBoost: col.rim ?? 1, height: parts.height, boxes, core, aura: parts.aura };
 }
 
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
