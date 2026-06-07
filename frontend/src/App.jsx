@@ -280,9 +280,9 @@ function GameApp({ experienceSystem }) {
       store.setBeastFormActive(true, 'fire'); // force the LEAD beast
       const rb = store.playerRigidBodyRef?.current;
       const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
-      // third-person reveal: a CLOSE 3/4-SIDE, slightly-up hero angle (shows the forward-lean profile
-      // + fins; big enough to judge the silhouette), looking at mid-body.
-      enterCaptureMode({ camera: { position: [t.x + 2.5, t.y + 0.7, t.z + 2.2], lookAt: [t.x, t.y - 0.2, t.z] } });
+      // third-person reveal: a 3/4-SIDE, slightly-up hero angle pulled back enough to frame the winged
+      // beast-warrior's full height + spread wings, looking at chest height.
+      enterCaptureMode({ camera: { position: [t.x + 3.0, t.y + 1.1, t.z + 2.9], lookAt: [t.x, t.y + 0.1, t.z] } });
     });
 
     registerTestHook('spawnBossCloseup', () => {

@@ -26,16 +26,24 @@ const ELEMENT_COLOR = {
 // Per-form box construction + glow placement. boxes: [{ pos:[x,y,z], size:[w,h,d], rot:[x,y,z] }].
 // core: the hot-core sphere center+radius. aura: the glow-shell radius (relative to a ~unit body).
 const FORM_PARTS = {
-  // comet (fire) — small, triangular, FORWARD-LEANING dart + swept tail fins (speed/danger silhouette).
+  // comet (fire) — KEVIN'S PICK (B+D): a WINGED BIPEDAL BEAST-WARRIOR. A hunched feral humanoid
+  // (head/clawed-arms/legs + a glowing chest-core) with big swept wings spread from the shoulders —
+  // the "transform into a beast" fantasy + the comet/flight read.
   fire: {
-    height: 1.3,
+    height: 1.6,
     boxes: [
-      { pos: [0, 0.68, 0.05], size: [0.34, 0.72, 0.50], rot: [0.34, 0, 0] },   // body, leaning forward
-      { pos: [0, 1.04, 0.34], size: [0.26, 0.26, 0.30], rot: [0.34, 0, 0] },   // head, thrust forward
-      { pos: [-0.22, 0.52, -0.26], size: [0.07, 0.42, 0.5], rot: [0.18, 0.55, 0] },  // left swept fin
-      { pos: [0.22, 0.52, -0.26], size: [0.07, 0.42, 0.5], rot: [0.18, -0.55, 0] },  // right swept fin
+      // bipedal werebeast core (variant B)
+      { pos: [0, 1.0, 0], size: [0.5, 0.72, 0.42], rot: [0.28, 0, 0] },           // hunched torso
+      { pos: [0, 1.44, 0.2], size: [0.34, 0.34, 0.38], rot: [0.1, 0, 0] },        // beast head
+      { pos: [-0.4, 0.92, 0.24], size: [0.16, 0.64, 0.16], rot: [0.55, 0, 0.32] },  // left clawed arm (forward/out)
+      { pos: [0.4, 0.92, 0.24], size: [0.16, 0.64, 0.16], rot: [0.55, 0, -0.32] },  // right clawed arm
+      { pos: [-0.17, 0.4, -0.02], size: [0.18, 0.72, 0.2], rot: [-0.22, 0, 0] },   // left leg (bent)
+      { pos: [0.17, 0.4, -0.02], size: [0.18, 0.72, 0.2], rot: [-0.22, 0, 0] },    // right leg
+      // big, dramatic swept wings (variant D) from the shoulders, spread up + back
+      { pos: [-0.7, 1.32, -0.24], size: [1.1, 0.08, 0.74], rot: [0.02, 0.52, 0.72] },  // left wing
+      { pos: [0.7, 1.32, -0.24], size: [1.1, 0.08, 0.74], rot: [0.02, -0.52, -0.72] }, // right wing
     ],
-    core: { pos: [0, 0.82, 0.16], radius: 0.17 },
+    core: { pos: [0, 1.05, 0.16], radius: 0.18 },
     aura: 0.95,
   },
   // boulder-bull (ice) — heavy, square, LOW + WIDE + horns (stability/power silhouette).

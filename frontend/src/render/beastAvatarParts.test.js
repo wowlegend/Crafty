@@ -40,9 +40,8 @@ describe('beastAvatarParts', () => {
     expect(new Set(sigs).size).toBe(BEAST_AVATAR_ELEMENTS.length);
     // and the design intent: bull widest, golem/hawk tallest, comet shortest+thin
     const h = Object.fromEntries(BEAST_AVATAR_ELEMENTS.map((el) => [el, beastAvatarParts(el).height]));
-    const w = Object.fromEntries(BEAST_AVATAR_ELEMENTS.map((el) => [el, Math.max(...beastAvatarParts(el).boxes.map((b) => b.size[0]))]));
-    expect(w.ice).toBeGreaterThan(w.fire);       // bull wider than comet
-    expect(h.arcane).toBeGreaterThan(h.fire);    // golem taller than comet
-    expect(h.lightning).toBeGreaterThan(h.ice);  // hawk taller than bull
+    expect(h.ice).toBeLessThan(h.fire);          // bull (short/wide) is the shortest mass
+    expect(h.ice).toBeLessThan(h.lightning);     // ...shorter than the tall hawk
+    expect(h.arcane).toBe(Math.max(...Object.values(h))); // golem is the tallest monolith
   });
 });
