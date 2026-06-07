@@ -40,6 +40,7 @@ export function buildSaveData(state, { position } = {}) {
       // grants already persist above — these keep the producer durable too).
       nightCount: state.nightCount,
       lastRewardedNight: state.lastRewardedNight,
+      ferocityBanked: state.ferocityBanked, // S2-B1-M4 (clamped+rounded on load)
     },
     game_state: {
       gameMode: state.gameMode,

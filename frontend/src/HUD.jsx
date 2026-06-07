@@ -15,7 +15,8 @@ import {
 import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
-import { Panel, Toast, Icon } from './ui/primitives/index.js';
+import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
+import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -32,6 +33,19 @@ const CoinReadout = React.memo(() => {
         <span className="font-bold tabular-nums text-text">{coins}</span>
       </Panel>
     </div>
+  );
+});
+
+// S2-B1-M4 Ferocity bar: bank-in-day / spend-in-siege fury. Gated on ferocityBanked > 0 (like
+// CoinReadout) so the default-zero capture states stay byte-identical (no baseline drift). When the
+// bank is full (>= threshold) it reads "ROAR!" -- the player can transform into an element-beast.
+const FerocityBar = React.memo(() => {
+  const ferocity = useGameStore((s) => s.ferocityBanked);
+  if (!ferocity || ferocity <= 0) return null;
+  const ready = ferocity >= FEROCITY_THRESHOLD;
+  return (
+    <StatBar kind="ferocity" value={ferocity} max={FEROCITY_MAX} icon="run"
+      label={ready ? 'ROAR!' : null} showValue className="w-44" />
   );
 });
 
@@ -331,6 +345,7 @@ export function HUD({
               <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <PlayerHungerBar hunger={gameSystems.hunger} />
+              <FerocityBar />
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">

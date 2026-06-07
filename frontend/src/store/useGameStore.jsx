@@ -6,6 +6,7 @@ import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
+import { clampFerocity } from '../game/ferocity.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -307,8 +308,7 @@ export const useGameStore = create((set, get) => ({
         };
     }),
 
-    onMobKill: null,
-    setOnMobKill: (fn) => set({ onMobKill: fn }),
+    // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ferocity both subscribe.)
     onSpellCast: null,
     setOnSpellCast: (fn) => set({ onSpellCast: fn }),
     onBlockPlace: null,
@@ -365,8 +365,9 @@ export const useGameStore = create((set, get) => ({
     setBeastFormActive: (active, form = null) => set({ beastFormActive: !!active, activeBeastForm: active ? (form ?? null) : null }),
     isBeastFormActive: () => get().beastFormActive,
     enterBeastForm: (element) => {
-        if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return;
+        if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);
+        return true; // M4: the caller spends Ferocity ONLY on a real transform (not a rejected enter)
     },
     exitBeastForm: () => {
         if (!get().beastFormActive && get().activeBeastForm == null) return;
@@ -546,6 +547,14 @@ export const useGameStore = create((set, get) => ({
     // Highest night already rewarded at dawn — the once-per-night guard (persisted in
     // the save slice so a reload mid-run cannot re-grant a night's reward).
     lastRewardedNight: 0,
+
+    // S2-B1-M4: Ferocity — banked by DAY kills (via the mobKill bus), SPENT by transforming in the
+    // siege, bled to zero at dawn (no carry across nights). A full bank gates + powers one roar.
+    // Persisted (clamped+rounded on load). Day-gated accrual lives in useFerocityAccrual (App); the
+    // dawn bleed in useSurvivalMode. accrueFerocity takes signed delta (negative = spend on enter).
+    ferocityBanked: 0,
+    setFerocityBanked: (v) => set({ ferocityBanked: clampFerocity(v) }),
+    accrueFerocity: (delta) => set((s) => ({ ferocityBanked: clampFerocity(s.ferocityBanked + delta) })),
 
     // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus
     // XP + currency + one guaranteed scaling-rarity loot drop -- via the existing
@@ -741,6 +750,7 @@ export const useGameStore = create((set, get) => ({
             // Siege progression (durable across reload): siege intensity + reward scaling.
             const nightCount = prog?.nightCount ?? state.nightCount;
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
+            const ferocityBanked = clampFerocity(prog?.ferocityBanked ?? state.ferocityBanked); // M4: clamp+round on load
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -793,6 +803,7 @@ export const useGameStore = create((set, get) => ({
                 coins,
                 nightCount,
                 lastRewardedNight,
+                ferocityBanked,
                 chests,
                 maxHealth,
                 maxMana,

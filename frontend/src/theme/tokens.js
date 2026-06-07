@@ -69,6 +69,7 @@ export const UI = {
     success: '#7FE0A0',
     warn:    '#F2B33D',
     info:    '#5AA9FF',
+    ferocity:'#FF3B1F',   // S2-B1-M4 WILDHEART Ferocity bar — feral vermilion (Kevin-tunable taste, §8 #7; distinct from danger/warn/accent/fire)
     // rarity (border / inner-ring / text color)
     rarity: {
       common:    '#8A93A6',

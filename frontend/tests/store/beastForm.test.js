@@ -59,6 +59,16 @@ describe('beast-form authority (single writer)', () => {
   });
 });
 
+describe('enterBeastForm return contract (M4: spend Ferocity only on a real transform)', () => {
+  it('returns true on a real transform, false on a rejected one (already-in-form / dead)', () => {
+    expect(useGameStore.getState().enterBeastForm('fire')).toBe(true);
+    expect(useGameStore.getState().enterBeastForm('ice')).toBe(false); // already a beast
+    useGameStore.getState().exitBeastForm();
+    useGameStore.setState({ isAlive: false });
+    expect(useGameStore.getState().enterBeastForm('fire')).toBe(false); // dead
+  });
+});
+
 describe('no-permanent-beast invariant', () => {
   it('DEATH drops the form at the death edge (before respawn) — Marcus-floor + no-permanent-beast', () => {
     useGameStore.getState().enterBeastForm('fire');

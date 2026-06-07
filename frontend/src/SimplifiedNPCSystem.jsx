@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Panel, Button, Icon, Toast } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
 import { rarityBeam } from './game/lootJuice.js';
+import { emitMobKill } from './game/mobKillBus.js';
 import { MobToonMaterial } from './render/MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './render/characterStyle';
 import { TIERS } from './render/quality';
@@ -948,7 +949,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
           });
         }
 
-        if (store.onMobKill) store.onMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]);
+        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]); // M3.5: fan-out (quests + ferocity + future Aspects)
         ecs.remove(entity);
       }
       return entity;
