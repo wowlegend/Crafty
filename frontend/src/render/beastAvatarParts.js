@@ -1,0 +1,114 @@
+/**
+ * beastAvatarParts.js — S2-B1-M7b: the per-form VOXEL BEAST avatar layout (pure data).
+ *
+ * The transform-cam (M7a) reveals a visible beast; this is its procedural box-construction (mirrors the
+ * mob render idiom — `SimplifiedNPCSystem` MobMesh: a group of box meshes + the toon material). Each
+ * form is a distinct MASS-SILHOUETTE (the content-variety / grayscale-silhouette test — shape first,
+ * element color LAST). `BeastAvatar.jsx` renders these boxes with `MobToonMaterial` (the crisp toneMapped
+ * "Hades ink" silhouette that NEVER blooms) + the proven SpellProjectileCore glow layers (the
+ * toneMapped=false hot-core + aura = the "Genshin radiance") = the locked ③·5 look.
+ *
+ * Local space: feet at y=0, +Z is forward (the group is yawed to face the look direction by the
+ * component). All numbers are Kevin-tunable — the exact shape + the aura dial are judged IN-WORLD at M7d.
+ * The LEAD form (comet/fire) is shaped with the most care; the other 3 are first-pass, refined at M8.
+ */
+
+// element -> { DARK ink body (the crisp silhouette — never blooms), bright element glow+rim, near-white
+// core tint }. The Hades+Genshin fusion: the body is DARK (ink), the ELEMENT color lives in the rim /
+// core / aura (the radiance) — NOT the body fill (a bright body + heavy aura = the blob anti-pattern).
+// `rim` = per-element rim-strength MULTIPLIER (S2-B1-M7d polish). The COOL elements (ice cyan, lightning
+// yellow) get a STRONGER element rim so their identity survives the warm DAYTIME sun: the body + the
+// MobToonMaterial rim are toneMapped/lit, so warm light + the warm magic-hour grade wash them toward
+// orange; a brighter element rim re-asserts the cool hue (the grade only saturates, it doesn't hue-shift,
+// so a brighter cyan edge stays cyan). fire/arcane already read true (warm-on-warm / purple-on-orange),
+// so they stay at 1.0. The grade-resistant additive core/halo are unchanged.
+const ELEMENT_COLOR = {
+  fire:      { body: '#3A1206', glow: '#FF6A2C', core: '#FFE3C0', rim: 1.0 },
+  ice:       { body: '#0E2233', glow: '#6FC8FF', core: '#DCF3FF', rim: 1.7 },
+  lightning: { body: '#2A2408', glow: '#FFE066', core: '#FFFBDC', rim: 1.5 },
+  arcane:    { body: '#1C0E2E', glow: '#B36BFF', core: '#EAD9FF', rim: 1.0 },
+};
+
+// Per-form box construction + glow placement. boxes: [{ pos:[x,y,z], size:[w,h,d], rot:[x,y,z] }].
+// core: the hot-core sphere center+radius. aura: the glow-shell radius (relative to a ~unit body).
+const FORM_PARTS = {
+  // comet (fire) — KEVIN: a BIG DRAGON form. A rearing Western dragon: reared body, a long neck + horned
+  // head reaching up-forward, HUGE bat-wings spread wide, front claws, planted back legs, a long tail.
+  fire: {
+    height: 2.45,
+    boxes: [
+      { pos: [0, 0.98, -0.12], size: [0.58, 0.82, 1.05], rot: [0.55, 0, 0] },     // reared body (big)
+      { pos: [0, 1.78, 0.42], size: [0.34, 0.8, 0.4], rot: [0.75, 0, 0] },        // long neck (rising fwd+up)
+      { pos: [0, 2.28, 0.86], size: [0.38, 0.34, 0.66], rot: [0.3, 0, 0] },       // horned dragon head/snout
+      { pos: [-0.15, 2.5, 0.66], size: [0.08, 0.28, 0.1], rot: [-0.4, 0, 0.25] },  // left horn
+      { pos: [0.15, 2.5, 0.66], size: [0.08, 0.28, 0.1], rot: [-0.4, 0, -0.25] },  // right horn
+      { pos: [-1.02, 1.55, -0.42], size: [1.75, 0.08, 1.18], rot: [0.04, 0.55, 0.5] },  // left bat-wing (HUGE)
+      { pos: [1.02, 1.55, -0.42], size: [1.75, 0.08, 1.18], rot: [0.04, -0.55, -0.5] }, // right bat-wing
+      { pos: [-0.3, 0.9, 0.56], size: [0.17, 0.66, 0.19], rot: [1.0, 0, 0.12] },  // left front claw (reaching)
+      { pos: [0.3, 0.9, 0.56], size: [0.17, 0.66, 0.19], rot: [1.0, 0, -0.12] },  // right front claw
+      { pos: [-0.28, 0.38, -0.46], size: [0.23, 0.74, 0.27], rot: [-0.15, 0, 0] }, // left back leg (planted)
+      { pos: [0.28, 0.38, -0.46], size: [0.23, 0.74, 0.27], rot: [-0.15, 0, 0] },  // right back leg
+      { pos: [0, 0.62, -0.95], size: [0.21, 0.21, 0.8], rot: [-0.35, 0, 0] },     // tail base (long)
+      { pos: [0, 0.34, -1.48], size: [0.13, 0.13, 0.72], rot: [-0.6, 0, 0] },     // tail tip
+    ],
+    core: { pos: [0, 1.12, 0.16], radius: 0.22 },
+    aura: 1.05,
+  },
+  // boulder-bull (ice) — KEVIN: BIGGER. A MASSIVE, heavy, LOW + WIDE horned QUADRUPED brute on 4 thick
+  // legs (the hulking charge/power silhouette — biggest body mass of the roster).
+  ice: {
+    height: 1.5,
+    boxes: [
+      { pos: [0, 0.88, 0], size: [1.0, 0.82, 1.4], rot: [0, 0, 0] },            // HUGE wide low body
+      { pos: [0, 0.84, 0.88], size: [0.68, 0.64, 0.56], rot: [-0.1, 0, 0] },    // big blocky head, forward
+      { pos: [-0.35, 1.24, 0.95], size: [0.13, 0.13, 0.44], rot: [0, 0, 0.5] }, // left horn (big)
+      { pos: [0.35, 1.24, 0.95], size: [0.13, 0.13, 0.44], rot: [0, 0, -0.5] }, // right horn
+      { pos: [-0.38, 0.3, 0.52], size: [0.26, 0.62, 0.26], rot: [0, 0, 0] },    // front-left leg (thick)
+      { pos: [0.38, 0.3, 0.52], size: [0.26, 0.62, 0.26], rot: [0, 0, 0] },     // front-right leg
+      { pos: [-0.38, 0.3, -0.52], size: [0.26, 0.62, 0.26], rot: [0, 0, 0] },   // back-left leg
+      { pos: [0.38, 0.3, -0.52], size: [0.26, 0.62, 0.26], rot: [0, 0, 0] },    // back-right leg
+    ],
+    core: { pos: [0, 0.9, 0.42], radius: 0.26 },
+    aura: 1.25,
+  },
+  // hawk (lightning) — tall, sleek AVIAN RAPTOR: upright body + a beak + big SHARP wings + talons.
+  lightning: {
+    height: 1.6,
+    boxes: [
+      { pos: [0, 0.95, 0], size: [0.28, 0.86, 0.34], rot: [0.15, 0, 0] },      // upright sleek body
+      { pos: [0, 1.46, 0.16], size: [0.24, 0.26, 0.4], rot: [0.2, 0, 0] },     // head
+      { pos: [0, 1.46, 0.44], size: [0.1, 0.1, 0.24], rot: [0.2, 0, 0] },      // beak
+      { pos: [-0.64, 1.2, -0.1], size: [1.18, 0.06, 0.62], rot: [0, 0.62, 0.5] },  // left wing (big, sharp)
+      { pos: [0.64, 1.2, -0.1], size: [1.18, 0.06, 0.62], rot: [0, -0.62, -0.5] }, // right wing
+      { pos: [-0.1, 0.42, 0], size: [0.1, 0.5, 0.12], rot: [0, 0, 0] },        // left talon-leg
+      { pos: [0.1, 0.42, 0], size: [0.1, 0.5, 0.12], rot: [0, 0, 0] },         // right talon-leg
+      { pos: [0, 0.6, -0.42], size: [0.1, 0.1, 0.5], rot: [-0.4, 0, 0] },      // tail feathers
+    ],
+    core: { pos: [0, 1.02, 0.12], radius: 0.15 },
+    aura: 0.9,
+  },
+  // golem (arcane) — TALL, MASSIVE blocky monolith CONSTRUCT (no wings): huge torso + heavy arms/legs.
+  arcane: {
+    height: 1.8,
+    boxes: [
+      { pos: [0, 0.9, 0], size: [0.82, 1.2, 0.62], rot: [0, 0, 0] },           // massive blocky torso
+      { pos: [0, 1.66, 0.04], size: [0.52, 0.5, 0.5], rot: [0, 0, 0] },        // big blocky head
+      { pos: [-0.58, 1.0, 0], size: [0.3, 0.88, 0.3], rot: [0, 0, 0.05] },     // heavy left arm
+      { pos: [0.58, 1.0, 0], size: [0.3, 0.88, 0.3], rot: [0, 0, -0.05] },     // heavy right arm
+      { pos: [-0.22, 0.28, 0], size: [0.28, 0.56, 0.32], rot: [0, 0, 0] },     // thick left leg
+      { pos: [0.22, 0.28, 0], size: [0.28, 0.56, 0.32], rot: [0, 0, 0] },      // thick right leg
+    ],
+    core: { pos: [0, 1.05, 0.14], radius: 0.24 },
+    aura: 1.15,
+  },
+};
+
+/** beastAvatarParts(element) -> { bodyColor, glowColor, coreColor, rimBoost, height, boxes, core, aura } | null. */
+export function beastAvatarParts(element) {
+  const parts = FORM_PARTS[element];
+  const col = ELEMENT_COLOR[element];
+  if (!parts || !col) return null;
+  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, rimBoost: col.rim ?? 1, height: parts.height, boxes: parts.boxes, core: parts.core, aura: parts.aura };
+}
+
+export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);

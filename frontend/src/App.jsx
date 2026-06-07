@@ -267,6 +267,28 @@ function GameApp({ experienceSystem }) {
     // against a bright sky studio, so the dark obsidian body + emissive telegraph +
     // inverted-hull contour read clearly (a character card, not an in-context danger
     // scene). force-spawn bypasses the level/HP gate; BossEntity freezes in capture.
+    // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal — the LEAD (comet/fire) beast IN-WORLD (real
+    // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
+    // ③·5 silhouette + glow is judged in its TRUE context (the VFX discipline). Deterministic/frozen.
+    registerTestHook('spawnBeastTransform', (element) => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(false);          // IN-WORLD — keep the real scene (not a sky-studio card)
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the glow; the beast's true ctx
+      store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
+      const rb = store.playerRigidBodyRef?.current;
+      const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
+      // per-beast 3/4-side reveal framing (the big DRAGON gets a CLOSER, looming angle).
+      const CAMS = {
+        fire:      { position: [t.x + 1.7, t.y + 1.45, t.z + 2.8], lookAt: [t.x, t.y + 0.55, t.z] }, // DRAGON — close + looming
+        ice:       { position: [t.x + 2.1, t.y + 0.8, t.z + 3.0], lookAt: [t.x, t.y - 0.15, t.z] },  // low wide bull
+        lightning: { position: [t.x + 2.1, t.y + 1.1, t.z + 3.2], lookAt: [t.x, t.y + 0.2, t.z] },   // tall raptor
+        arcane:    { position: [t.x + 2.1, t.y + 1.2, t.z + 3.2], lookAt: [t.x, t.y + 0.3, t.z] },    // tall golem
+      };
+      enterCaptureMode({ camera: CAMS[element] || CAMS.fire });
+    });
+
     registerTestHook('spawnBossCloseup', () => {
       const store = useGameStore.getState();
       store.setHudHidden(true);

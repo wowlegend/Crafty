@@ -364,6 +364,10 @@ export const useGameStore = create((set, get) => ({
     activeBeastForm: null,
     setBeastFormActive: (active, form = null) => set({ beastFormActive: !!active, activeBeastForm: active ? (form ?? null) : null }),
     isBeastFormActive: () => get().beastFormActive,
+    // M7c: the hold-roar ANTICIPATION flag (transient — NOT persisted). Set by the Components SM on
+    // startCharge, cleared on cancel/commit. Drives the anticipation charge-glow (beat 1 of the morph).
+    beastCharging: false,
+    setBeastCharging: (v) => set({ beastCharging: !!v }),
     enterBeastForm: (element) => {
         if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);
@@ -660,7 +664,10 @@ export const useGameStore = create((set, get) => ({
         set({ playerHealth: newHealth });
         
         if (newHealth <= 0) {
-            set({ isAlive: false });
+            // death-edge: cancel any in-flight roar CHARGE atomically with the death flag (M7c) -- without
+            // this, beastCharging leaks true for 1 frame until the SM's own !alive->cancel catches up,
+            // flashing the anticipation charge-glow over the soft-death screen (I3 transient-safety).
+            set({ isAlive: false, beastCharging: false });
             get().exitBeastForm(); // death-edge: drop beast form NOW (before the soft-death screen) -- no-permanent-beast + Marcus-floor
             if (useGameStore.getState().playDefeatSound) useGameStore.getState().playDefeatSound();
         }

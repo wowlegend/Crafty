@@ -9,7 +9,7 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
 
 beforeEach(() => {
   // Reset the guards damagePlayer checks so the death-edge test can land deterministically.
-  useGameStore.setState({ isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0 });
+  useGameStore.setState({ isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0, beastCharging: false });
   useGameStore.getState().exitBeastForm();
 });
 
@@ -78,6 +78,20 @@ describe('no-permanent-beast invariant', () => {
     expect(after.isAlive).toBe(false);              // died...
     expect(after.isBeastFormActive()).toBe(false);  // ...and reverted to human AT the death edge
     expect(after.activeBeastForm).toBeNull();
+  });
+
+  it('DEATH mid-CHARGE cancels the anticipation charge (no charge-glow leak onto the death screen)', () => {
+    // The roar SM sets beastCharging BEFORE the commit, so the player can die still-CHARGING — not yet a
+    // beast (beastFormActive false, so exitBeastForm is a no-op here). damagePlayer's death-edge runs
+    // synchronously, one frame ahead of the SM's own !alive->cancel; if it leaves beastCharging true,
+    // BeastAvatar renders the charge-glow for a frame over the death screen (violates I3 transient-safety).
+    // The death edge must cancel the in-flight charge atomically.
+    useGameStore.getState().setBeastCharging(true);
+    expect(useGameStore.getState().beastCharging).toBe(true);
+    useGameStore.getState().damagePlayer(9999, 'test');
+    const after = useGameStore.getState();
+    expect(after.isAlive).toBe(false);          // died mid-charge...
+    expect(after.beastCharging).toBe(false);    // ...and the in-flight charge is cancelled AT the death edge
   });
 
   it('a same-session LOAD while transformed returns to human', () => {
