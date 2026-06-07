@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider } from './game/beasts.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -146,6 +147,12 @@ export const Player = ({ isWorldBuilt }) => {
   const velocityY = useRef(0);
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
+  // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
+  // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep).
+  // currentFormHHRef tracks the live half-height so we can nudge up by the grow-delta (depenetration)
+  // when a larger form spawns near ground. Both are refs -> zero re-renders (Game-Loop Isolation).
+  const pendingFormSwapRef = useRef(null);
+  const currentFormHHRef = useRef(BASE_CAPSULE.halfHeight);
 
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
@@ -205,6 +212,30 @@ export const Player = ({ isWorldBuilt }) => {
       useGameStore.setState({ playerRigidBodyRef: null });
     };
   }, []);
+
+  // S2-B1-M1: enqueue a one-shot collider swap when the (single-writer) activeBeastForm transitions.
+  // Rare transition -> game-loop-isolation-safe to subscribe reactively. The mount run is skipped
+  // (collider already at base); null -> restore BASE_CAPSULE, a form -> that form's capsule. The swap
+  // is consumed inside useFrame so it is atomic with the Rapier sweep and never runs under capture.
+  const activeBeastForm = useGameStore((s) => s.activeBeastForm);
+  const didFormMount = useRef(false);
+  useEffect(() => {
+    if (!didFormMount.current) { didFormMount.current = true; return; }
+    if (activeBeastForm) {
+      // ENTER: queue the (possibly enlarging) swap -> consumed in useFrame so it is ATOMIC with the
+      // Rapier sweep and the grow-depenetration folds into the same setNextKinematicTranslation.
+      pendingFormSwapRef.current = BEAST_FORMS[activeBeastForm] || BASE_CAPSULE;
+    } else {
+      // EXIT/restore: shrink back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
+      // behind the dead-window early-return (a queued restore would not drain until manual respawn,
+      // leaving the live collider a beast shape for the whole death screen). This is the
+      // no-permanent-beast restore AT the death/load edge. Always a shrink -> no depenetration ->
+      // safe off-frame. Cancels any not-yet-consumed enter-swap + resyncs the half-height tracker.
+      pendingFormSwapRef.current = null;
+      restoreBaseCollider(rigidBodyRef.current?.collider(0), rapier, controllerRef.current);
+      currentFormHHRef.current = BASE_CAPSULE.halfHeight;
+    }
+  }, [activeBeastForm]);
 
   // Safe-respawn coordinator: when player isAlive transitions from false to true, teleport player back to safe spawn coordinates
   const isAlive = useGameStore(state => state.isAlive);
@@ -689,6 +720,29 @@ export const Player = ({ isWorldBuilt }) => {
       nextVelZ * delta * hitstopScale
     );
 
+    // S2-B1-M1: consume the one-shot beast-form ENTER swap HERE -- after every early-return
+    // (capture/respawn/void-guard above), immediately before the collider(0) read -- so the in-place
+    // setShape is ATOMIC with this frame's sweep (a frame that skips the sweep also skips the swap)
+    // and NEVER runs under the visual-capture harness (capture early-returns at the top of useFrame).
+    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The grow-
+    // depenetration delta folds into the single setNextKinematicTranslation below. (EXIT/restore is
+    // done imperatively in the activeBeastForm effect -- it must drain even while the dead-window
+    // early-return is active.) Guarded on controllerRef so the swap + its depenetration stay paired.
+    let growDeltaY = 0;
+    if (pendingFormSwapRef.current && rapier && controllerRef.current) {
+      const target = pendingFormSwapRef.current;
+      pendingFormSwapRef.current = null;
+      const c0 = rigidBodyRef.current.collider(0);
+      if (c0 && setColliderToForm(c0, rapier, target)) {
+        growDeltaY = Math.max(0, target.halfHeight - currentFormHHRef.current);
+        currentFormHHRef.current = target.halfHeight;
+        // defensive base reset (M1 forms never shove dynamics; the bull enables this in M5).
+        if (controllerRef.current.setApplyImpulsesToDynamicBodies) {
+          controllerRef.current.setApplyImpulsesToDynamicBodies(false);
+        }
+      }
+    }
+
     // Call Rapier WASM Kinematic collision sweeps
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
@@ -703,11 +757,13 @@ export const Player = ({ isWorldBuilt }) => {
       // Get corrected movements
       const corrected = controllerRef.current.computedMovement();
 
-      // Set next kinematic translation coordinates
+      // Set next kinematic translation coordinates. growDeltaY (from a just-applied enlarging
+      // form-swap) is folded into THIS frame's single write -- never a competing setNextKinematic
+      // from a subscribe callback -- so a larger capsule never spawns intersecting the ground.
       const currentPos = rigidBodyRef.current.translation();
       rigidBodyRef.current.setNextKinematicTranslation({
         x: currentPos.x + corrected.x,
-        y: currentPos.y + corrected.y,
+        y: currentPos.y + corrected.y + growDeltaY,
         z: currentPos.z + corrected.z
       });
     }
