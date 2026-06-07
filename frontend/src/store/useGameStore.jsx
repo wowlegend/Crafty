@@ -668,7 +668,10 @@ export const useGameStore = create((set, get) => ({
         set({ playerHealth: newHealth });
         
         if (newHealth <= 0) {
-            set({ isAlive: false });
+            // death-edge: cancel any in-flight roar CHARGE atomically with the death flag (M7c) -- without
+            // this, beastCharging leaks true for 1 frame until the SM's own !alive->cancel catches up,
+            // flashing the anticipation charge-glow over the soft-death screen (I3 transient-safety).
+            set({ isAlive: false, beastCharging: false });
             get().exitBeastForm(); // death-edge: drop beast form NOW (before the soft-death screen) -- no-permanent-beast + Marcus-floor
             if (useGameStore.getState().playDefeatSound) useGameStore.getState().playDefeatSound();
         }
