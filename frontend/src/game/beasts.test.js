@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider, elementForSpell, SPELL_TO_ELEMENT, formDamageMult, formMeleeCooldownMult, formLocomotion } from './beasts.js';
+import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider, elementForSpell, SPELL_TO_ELEMENT, formDamageMult, formMeleeCooldownMult, formLocomotion, spellForElement, resolveFormMelee } from './beasts.js';
 
 // Mocks for the Rapier surface the helpers touch (no live Rapier world needed).
 function mockRapier() {
@@ -184,5 +184,38 @@ describe('M5 per-form combat + locomotion multipliers (derive-never-bake)', () =
       expect(elementForSpell(spell)).toBe(el);
       expect(SPARK_CASES).toContain(spell);
     }
+  });
+});
+
+describe('M5 melee re-skin WIRING (resolveFormMelee + spellForElement — the review [A]/[E] fixes)', () => {
+  it('spellForElement inverts SPELL_TO_ELEMENT; null/unknown -> null; round-trips with elementForSpell', () => {
+    expect(spellForElement('fire')).toBe('fireball');
+    expect(spellForElement('ice')).toBe('iceball');
+    expect(spellForElement('lightning')).toBe('lightning');
+    expect(spellForElement('arcane')).toBe('arcane');
+    expect(spellForElement(null)).toBeNull();
+    expect(spellForElement('mythic')).toBeNull();
+    for (const el of ['fire', 'ice', 'lightning', 'arcane']) {
+      expect(elementForSpell(spellForElement(el))).toBe(el); // no drift between the two maps
+    }
+  });
+
+  it('resolveFormMelee: human (null) = the identity — dealt unchanged, spark physical (byte-identical to pre-M5)', () => {
+    expect(resolveFormMelee(37, null)).toEqual({ dealt: 37, sparkType: 'physical' });
+    expect(resolveFormMelee(0, null)).toEqual({ dealt: 0, sparkType: 'physical' });
+  });
+
+  it('resolveFormMelee applies the form damage mult AND sparks the form element (the load-bearing wiring)', () => {
+    expect(resolveFormMelee(100, 'ice')).toEqual({ dealt: Math.round(100 * BEAST_FORMS.ice.damageMult), sparkType: 'iceball' });
+    expect(resolveFormMelee(100, 'fire')).toEqual({ dealt: Math.round(100 * BEAST_FORMS.fire.damageMult), sparkType: 'fireball' });
+    expect(resolveFormMelee(100, 'lightning').sparkType).toBe('lightning');
+    expect(resolveFormMelee(100, 'arcane').sparkType).toBe('arcane');
+  });
+
+  it('REGRESSION [A]: the spark tracks the LOCKED FORM, never a live spell (desync structurally impossible)', () => {
+    // The lightning-hawk-taps-Digit1-throws-fire-sparks bug is impossible: the spark derives ONLY from
+    // the form element; resolveFormMelee has NO activeSpell parameter, so spell-switching can't desync it.
+    expect(resolveFormMelee(50, 'lightning').sparkType).toBe('lightning');
+    expect(resolveFormMelee.length).toBe(2); // (rawDamage, element) — guards against re-adding a spell arg
   });
 });

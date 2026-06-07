@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, formDamageMult, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { isPointInCone } from './combat/cone.js';
@@ -275,10 +275,11 @@ export const Player = ({ isWorldBuilt }) => {
     const baseWeaponDmg = getWeaponBaseDamage(equippedWeapon);
     
     const { damage, isCrit } = solveMeleeDamage(effectiveStats, baseWeaponDmg);
-    // M5: the form damage multiplier rides on TOP of getEffectiveAttributes() (derive-never-bake; x1
-    // for human). The spark = the spell that elected the form (a valid damageMob spark-color case).
-    const dealt = Math.round(damage * formDamageMult(beastEl));
-    const sparkType = beastEl ? store.activeSpell : 'physical';
+    // M5: resolveFormMelee applies the form damage mult on TOP of getEffectiveAttributes() (derive-
+    // never-bake; x1 for human) AND derives the spark from the LOCKED form element (beastEl ==
+    // activeBeastForm) — NOT the live activeSpell, so spell-switching mid-form can't desync the spark
+    // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract).
+    const { dealt, sparkType } = resolveFormMelee(damage, beastEl);
 
     if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
       const lookDir = new THREE.Vector3();
@@ -679,7 +680,10 @@ export const Player = ({ isWorldBuilt }) => {
         );
 
         if (!headHit) {
-          // Ledge detected! Perform vault boost
+          // Ledge detected! Perform vault boost.
+          // M5 review [C]: the ledge-vault is DELIBERATELY form-INVARIANT (not x loco.jumpMult) — a
+          // traversal-reliability / Marcus-floor choice (every form mantles a ledge identically). Per-
+          // form mobility lives in the primary jump (x jumpMult); revisit if Kevin wants form-vault feel.
           velocityY.current = 8.5;
           
           // Apply a gentle forward push to land on top
@@ -730,7 +734,11 @@ export const Player = ({ isWorldBuilt }) => {
         dodge.isActive = false;
         useGameStore.setState({ isPlayerInvincible: null });
       } else {
-        // Juicy dodge speed curve
+        // Juicy dodge speed curve.
+        // M5 review [D]: the dodge i-frame burst is DELIBERATELY form-INVARIANT (not x loco.moveMult) —
+        // an i-frame-fairness choice (a reliable defensive escape in every form, like the turnRate
+        // omission). Per-form pace lives in the walk speed (x moveMult). Flag for Kevin if he wants a
+        // form-paced dodge (comet far / golem short).
         const progress = dodge.timeElapsed / dodge.duration;
         const dodgeSpeed = THREE.MathUtils.lerp(28, 10, progress);
         desiredVelX = dodge.direction.x * dodgeSpeed;

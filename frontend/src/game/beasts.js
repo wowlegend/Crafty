@@ -95,3 +95,27 @@ export const SPELL_TO_ELEMENT = { fireball: 'fire', iceball: 'ice', lightning: '
 export function elementForSpell(activeSpell) {
   return SPELL_TO_ELEMENT[activeSpell] || 'fire';
 }
+
+// Inverse of SPELL_TO_ELEMENT: a beast-form element -> the spell whose name IS the damageMob spark
+// case, so a beast's melee sparks its OWN element. Inverted from SPELL_TO_ELEMENT so the two can't drift.
+const ELEMENT_TO_SPELL = Object.fromEntries(Object.entries(SPELL_TO_ELEMENT).map(([spell, el]) => [el, spell]));
+
+/** spellForElement(element) -> the spark-type string for that beast element, or null for human/unknown. */
+export function spellForElement(element) {
+  return ELEMENT_TO_SPELL[element] || null;
+}
+
+/**
+ * resolveFormMelee(rawDamage, element) -> { dealt, sparkType }. The M5 melee re-skin COMBINATION,
+ * extracted so the load-bearing wiring (form damage multiply + element spark) is unit-locked — a future
+ * edit can't silently un-wire it (the M4 silently-dead-param lesson, one layer up). The spark derives
+ * from the LOCKED form element, NOT the live activeSpell: spell-switching mid-form (Digit1-4 is not
+ * gated in-form) must not desync the spark from the body. Human (null element) -> the identity:
+ * dealt = rawDamage (already an int from solveMeleeDamage), sparkType 'physical'.
+ */
+export function resolveFormMelee(rawDamage, element) {
+  return {
+    dealt: Math.round(rawDamage * formDamageMult(element)),
+    sparkType: spellForElement(element) || 'physical',
+  };
+}

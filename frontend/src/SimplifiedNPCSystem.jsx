@@ -853,6 +853,11 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       useGameStore.setState({ hitstopUntil: performance.now() + 28 });
 
       const store = useGameStore.getState();
+      // NOTE (M5 review [B]): this is a MAGNITUDE proxy ("big hit -> bigger spray"), NOT the crit
+      // source-of-truth (that's the real isCrit at Components.jsx triggerMeleeAttack). Since M5 the
+      // incoming `damage` is form-multiplied, so heavy beast forms (ice/golem) cross 40 more often and
+      // light forms (comet/hawk) less — intended feel. Thread the real isCrit here only if Kevin wants
+      // the spray to track the crit ROLL rather than the damage magnitude (combat-differentiation depth).
       const isCrit = damage >= 40;
       if (store.triggerCameraShake) {
         store.triggerCameraShake(isCrit ? 1.6 : 1.0);
