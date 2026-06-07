@@ -162,6 +162,8 @@ The content-variety lens (S2 spec §7.7): N instances must be **genuinely distin
 
 ## 5. SIGNATURE LOOK = REFERENCE-LOCK DECISION (the VFX-discipline section)
 
+> **🔒 LOCKED (Kevin 2026-06-07): the look of record = "Hades silhouette + Genshin radiance, fused" at glow-level ③·5** (a notch hotter than the b8 mockup). Crisp ink silhouette (body fill NEVER blooms — carries identity) + a wide soft back-aura + a brighter tight aura + a glowing core/accents (only these clear the bloom threshold). This is the already-shipped `SpellProjectileCore` recipe (`src/EnhancedMagicSystem.jsx:708-830`), so it's proven on our renderer. Reference mockups (gitignored): `.superpowers/s2b1-wildheart-refs/mockup-b9.png` (LOCKED) + `mockup-b7.png` (the glow dial: ①core-only→③·5 locked→④ blob). **M0 = DONE.** The exact aura opacity (~0.85 tight + ~0.55 wide in the mock) is the one dial nudged against a real in-game frame at M7, judged in-world.
+
 **This look is NOT to be blind-built.** Per the VFX discipline locked with Kevin 2026-06-07: the game's strong global Bloom (`luminanceThreshold ~1.0`, intensity 0.8→2.4 spike, Neutral/Khronos tone-mapping — `GameScene.jsx:850-887`) turns ANY bright additive emissive into a **soft fuzzy blob**; fighting it with brightness/HDR numbers just resizes the blob. **Crispness comes from silhouette/shape/contrast, not brightness.** The beast morph LOOK is a **reference-lock + Kevin-collaboration decision, judged in-world** (real bright-Caribbean context, NOT a sky-studio frame).
 
 ### 5a. Prior-miss forensic (the corrected, honest diagnosis — do this BEFORE M0)
