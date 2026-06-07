@@ -202,12 +202,15 @@ async function main() {
     // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal -- the LEAD (comet/fire) beast IN-WORLD (real
     // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
     // ③·5 silhouette + glow is judged in its TRUE context. Player is settled on terrain by now.
-    // M7d: the LEAD fire beast (Kevin's B+D winged-werebeast pick) -- IN-WORLD third-person reveal.
-    await page.evaluate(() => window.__craftyTest.call('spawnBeastTransform'));
-    await flushFrames(page, 8);
-    await delay(1200); // beast mounts + the camera settles into the frozen reveal pose
-    await page.screenshot({ path: resolve(OUT, 'beast-transform.png') });
-    console.log('captured beast-transform');
+    // M7d/M8: the 4-beast ROSTER (distinct silhouettes: fire=winged warrior, ice=horned quadruped brute,
+    // lightning=avian raptor, arcane=blocky construct) -- IN-WORLD third-person reveals for review.
+    for (const el of ['fire', 'ice', 'lightning', 'arcane']) {
+      await page.evaluate((element) => window.__craftyTest.call('spawnBeastTransform', element), el);
+      await flushFrames(page, 8);
+      await delay(1000); // beast re-mounts + the camera settles into the frozen reveal pose
+      await page.screenshot({ path: resolve(OUT, `beast-${el}.png`) });
+      console.log(`captured beast-${el}`);
+    }
 
     // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
     // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
