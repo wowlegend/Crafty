@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell } from './game/beasts.js';
+import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -153,6 +154,9 @@ export const Player = ({ isWorldBuilt }) => {
   // when a larger form spawns near ground. Both are refs -> zero re-renders (Game-Loop Isolation).
   const pendingFormSwapRef = useRef(null);
   const currentFormHHRef = useRef(BASE_CAPSULE.halfHeight);
+  // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
+  const beastSMRef = useRef(makeTransformState());
+  const prevRoarRef = useRef(false);
 
   // Initialize Rapier Kinematic Character Controller
   useEffect(() => {
@@ -364,6 +368,11 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('dodge', true);
       }
 
+      // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
+      if (e.code === 'KeyR') {
+        setIntent('roar', true);
+      }
+
       if (e.code === 'KeyF') {
         triggerMeleeAttack();
       }
@@ -378,6 +387,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'Space') {
         setIntent('jump', false);
+      }
+
+      if (e.code === 'KeyR') {
+        setIntent('roar', false);
       }
     };
     const handleMouseDown = (e) => {
@@ -519,6 +532,30 @@ export const Player = ({ isWorldBuilt }) => {
     // Handle dodge roll state machine
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
+
+    // S2-B1-M3: beast-form transform state machine (the ROAR verb). Reads the abstract `roar` intent
+    // transiently (never a raw key) + drives the M1 enter/exitBeastForm store authority. The store's
+    // beastFormActive is the single source of active-ness; the SM only owns the charge + duration/
+    // cooldown timers. `canEnter` is true now; M4 layers the ferocity threshold, M6 the wildheart_roar
+    // talent-unlock. set() fires only on transitions (game-loop isolation); getState() is transient.
+    {
+      const roar = input.roar;
+      const roarEdge = roar && !prevRoarRef.current;
+      prevRoarRef.current = roar;
+      const st = useGameStore.getState();
+      const { sm, action } = decideTransform(beastSMRef.current, {
+        isBeast: st.beastFormActive,
+        roar,
+        roarEdge,
+        active: isLocked,
+        alive: st.isAlive,
+        now: nowTime,
+        canEnter: true,
+      });
+      beastSMRef.current = sm;
+      if (action === 'enter') st.enterBeastForm(elementForSpell(st.activeSpell));
+      else if (action === 'exitTimer' || action === 'exitManual') st.exitBeastForm();
+    }
 
     if (isLocked && input.dodge) {
       // Edge-trigger: consume the dodge intent so one press = one dodge.

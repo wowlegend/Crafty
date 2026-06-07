@@ -57,3 +57,12 @@ export function restoreBaseCollider(collider, rapier, controller) {
   }
   return ok;
 }
+
+// The loaded spell picks the beast form (S2 spec §4): the 4 spells map to the 4 elements that key
+// BEAST_FORMS. fireball->comet, iceball->bull, lightning->hawk, arcane->golem.
+export const SPELL_TO_ELEMENT = { fireball: 'fire', iceball: 'ice', lightning: 'lightning', arcane: 'arcane' };
+
+/** elementForSpell(activeSpell) -> the beast-form element key; falls back to 'fire' (the default spell). */
+export function elementForSpell(activeSpell) {
+  return SPELL_TO_ELEMENT[activeSpell] || 'fire';
+}
