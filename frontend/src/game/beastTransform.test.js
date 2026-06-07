@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   makeTransformState, decideTransform,
-  ANTICIPATION_SEC, FORM_DURATION_SEC, COOLDOWN_SEC,
+  ANTICIPATION_SEC, FORM_DURATION_SEC, COOLDOWN_SEC, ENDURANCE_SEC_PER_RANK, formDurationFor,
 } from './beastTransform.js';
 
 // S2-B1-M3: the beast-transform state machine is a PURE reducer (no React/store/Rapier) so the
@@ -106,5 +106,30 @@ describe('constants are sane', () => {
     expect(ANTICIPATION_SEC).toBeGreaterThan(0);
     expect(FORM_DURATION_SEC).toBeGreaterThan(ANTICIPATION_SEC);
     expect(COOLDOWN_SEC).toBeGreaterThan(0);
+  });
+});
+
+describe('M6 Primal Endurance — form-duration lever (rank read at the duration site, not the stat-fold)', () => {
+  it('formDurationFor(0) = base; each rank adds ENDURANCE_SEC_PER_RANK; negatives clamp', () => {
+    expect(formDurationFor(0)).toBe(FORM_DURATION_SEC);
+    expect(formDurationFor(undefined)).toBe(FORM_DURATION_SEC);
+    expect(formDurationFor(3)).toBe(FORM_DURATION_SEC + 3 * ENDURANCE_SEC_PER_RANK);
+    expect(formDurationFor(-2)).toBe(FORM_DURATION_SEC);
+  });
+
+  it('decideTransform enter honors ctx.formDurationSec (longer activeUntil)', () => {
+    const charging = { charging: true, chargeStart: 100, activeUntil: 0, cooldownUntil: 0 };
+    const ctx = base({ roar: true, now: 100 + ANTICIPATION_SEC, formDurationSec: formDurationFor(2) });
+    const { sm, action } = decideTransform(charging, ctx);
+    expect(action).toBe('enter');
+    expect(sm.activeUntil).toBe(ctx.now + formDurationFor(2));
+  });
+
+  it('decideTransform enter WITHOUT ctx.formDurationSec falls back to the base duration (backward-compatible)', () => {
+    const charging = { charging: true, chargeStart: 100, activeUntil: 0, cooldownUntil: 0 };
+    const ctx = base({ roar: true, now: 100 + ANTICIPATION_SEC });
+    const { sm, action } = decideTransform(charging, ctx);
+    expect(action).toBe('enter');
+    expect(sm.activeUntil).toBe(ctx.now + FORM_DURATION_SEC);
   });
 });

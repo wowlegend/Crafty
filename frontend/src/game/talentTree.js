@@ -21,6 +21,9 @@ export const ASPECT_TREES = [
       { id: 'wildheart_vigor', name: 'Beast Vigor', desc: '+3 Strength per rank — primal might and a bigger health pool.', limit: 3, prereq: null, effect: { stat: 'strength', perRank: 3 } },
       { id: 'wildheart_swift', name: 'Feral Swiftness', desc: '+4 Agility per rank — faster, deadlier strikes (more crit).', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 4 } },
       { id: 'wildheart_frenzy', name: 'Blood Frenzy', desc: '+3 Agility per rank — the kill-rush sharpens your edge.', limit: 2, prereq: 'wildheart_swift', effect: { stat: 'agility', perRank: 3 } },
+      // S2-B1-M6 SIGNATURE nodes (effect-less — skipped by the stat-fold; rank read at THEIR OWN site):
+      { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation — hold R with a full Ferocity bank in the night siege to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: 'wildheart_vigor' },
+      { id: 'wildheart_endurance', name: 'Primal Endurance', desc: '+3s beast-form duration per rank — stay feral longer (read at the duration timer, not the stat-fold).', limit: 3, prereq: 'wildheart_roar' },
     ],
   },
   {
@@ -54,7 +57,11 @@ export function foldTalentEffects(eff, unlockedTalents) {
   for (const id in (unlockedTalents || {})) {
     const node = NODE_BY_ID[id];
     const rank = unlockedTalents[id] || 0;
-    if (!node || rank <= 0) continue;
+    // Effect-less nodes (signature UNLOCKS + ability-tuning LEVERS, e.g. wildheart_roar/wildheart_
+    // endurance) carry no `.effect` — they are SKIPPED by the stat-fold (which would otherwise throw
+    // on the unconditional destructure) and read their rank at THEIR OWN math site (the roar gate / the
+    // duration timer), never here. (S2-B1-M6 node-shape contract.)
+    if (!node || rank <= 0 || !node.effect) continue;
     const { stat, perRank } = node.effect;
     out[stat] = (out[stat] || 0) + perRank * rank;
   }
