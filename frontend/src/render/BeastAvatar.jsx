@@ -27,10 +27,11 @@ const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop th
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
   const element = useGameStore((s) => s.activeBeastForm);
+  const shapeVariant = useGameStore((s) => s.beastShapeVariant); // M7d showcase only (default null)
   const groupRef = useRef();
   const coreRef = useRef();
   const { camera } = useThree();
-  const parts = active ? beastAvatarParts(element) : null;
+  const parts = active ? beastAvatarParts(element, shapeVariant) : null;
 
   useFrame((state) => {
     if (!groupRef.current || !parts) return;

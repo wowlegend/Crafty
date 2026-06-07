@@ -202,11 +202,14 @@ async function main() {
     // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal -- the LEAD (comet/fire) beast IN-WORLD (real
     // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
     // ③·5 silhouette + glow is judged in its TRUE context. Player is settled on terrain by now.
-    await page.evaluate(() => window.__craftyTest.call('spawnBeastTransform'));
-    await flushFrames(page, 8);
-    await delay(1200); // beast mounts + the camera settles into the frozen reveal pose
-    await page.screenshot({ path: resolve(OUT, 'beast-transform.png') });
-    console.log('captured beast-transform');
+    // M7d shape-pick: 4 distinct silhouette VARIANTS of the LEAD fire beast for Kevin to pick.
+    for (const v of ['A', 'B', 'C', 'D']) {
+      await page.evaluate((variant) => window.__craftyTest.call('spawnBeastTransform', variant), v);
+      await flushFrames(page, 8);
+      await delay(1000); // beast re-mounts with the variant shape + the camera settles
+      await page.screenshot({ path: resolve(OUT, `beast-variant-${v}.png`) });
+      console.log(`captured beast-variant-${v}`);
+    }
 
     // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
     // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
