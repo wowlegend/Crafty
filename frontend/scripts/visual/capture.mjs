@@ -212,6 +212,17 @@ async function main() {
       console.log(`captured beast-${el}`);
     }
 
+    // S2-B1-M7d glow-LADDER: the LEAD dragon at 3 ③·5 glow/aura intensities so Kevin dial-picks the
+    // final look. The multiplier scales ONLY the element glow (rim/core/halo/point-light) — the dark-ink
+    // silhouette is FIXED at every level (crispness = silhouette, not brightness — the blob lesson).
+    for (const [name, mul] of [['subtle', 0.55], ['current', 1.0], ['punchy', 1.6]]) {
+      await page.evaluate(([element, g]) => window.__craftyTest.call('spawnBeastTransform', element, g), ['fire', mul]);
+      await flushFrames(page, 8);
+      await delay(1000); // beast re-mounts at the new glow + the camera settles into the frozen pose
+      await page.screenshot({ path: resolve(OUT, `beast-fire-glow-${name}.png`) });
+      console.log(`captured beast-fire-glow-${name}`);
+    }
+
     // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
     // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
     // (common short/dim -> legendary tall/bright, per lootJuice.rarityBeam) are eyeball-able +

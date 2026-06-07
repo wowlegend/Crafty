@@ -270,13 +270,14 @@ function GameApp({ experienceSystem }) {
     // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal — the LEAD (comet/fire) beast IN-WORLD (real
     // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
     // ③·5 silhouette + glow is judged in its TRUE context (the VFX discipline). Deterministic/frozen.
-    registerTestHook('spawnBeastTransform', (element) => {
+    registerTestHook('spawnBeastTransform', (element, glowMul) => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
       store.setCaptureStudio(false);          // IN-WORLD — keep the real scene (not a sky-studio card)
       store.setDangerLevel(0);
       store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the glow; the beast's true ctx
       store.setBeastShapeVariant(null);       // the shape pick is done -> use the default FORM_PARTS shapes
+      store.setBeastGlowMul(glowMul ?? 1);    // M7d glow-ladder pick — 1 = the current look
       store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
       const rb = store.playerRigidBodyRef?.current;
       const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
