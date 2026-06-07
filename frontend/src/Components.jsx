@@ -493,14 +493,17 @@ export const Player = ({ isWorldBuilt }) => {
         d.y = 0;
         if (d.lengthSq() > 1e-6) d.normalize(); else d.set(0, 0, -1);
         transformCamRef.current = { active: true, t: 0, fwd: [d.x, 0, d.z] };
+        st.setBeastCharging(true); // M7c: beat-1 anticipation begins
       } else if (action === 'enter') {
         // M4: UNLEASH — spend the banked Ferocity ONLY on a real transform (enterBeastForm returns
         // false if it rejects: already-in-form / dead). Avoids draining the bank on a no-op enter.
         if (st.enterBeastForm(elementForSpell(st.activeSpell))) st.accrueFerocity(-FEROCITY_THRESHOLD);
+        st.setBeastCharging(false); // M7c: anticipation -> BURST + the avatar entrance take over
       } else if (action === 'cancel') {
         // M7a: roar released early -> ease the transform-cam back to FPV (jump it to the return phase).
         const tc = transformCamRef.current;
         if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
+        st.setBeastCharging(false); // M7c: charge cancelled
       } else if (action === 'exitTimer' || action === 'exitManual') {
         st.exitBeastForm();
       }
