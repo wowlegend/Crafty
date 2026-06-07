@@ -13,12 +13,14 @@
  * The LEAD form (comet/fire) is shaped with the most care; the other 3 are first-pass, refined at M8.
  */
 
-// element -> { silhouette color, near-white core tint }. Colors mirror the bold-flat spell tokens.
+// element -> { DARK ink body (the crisp silhouette — never blooms), bright element glow+rim, near-white
+// core tint }. The Hades+Genshin fusion: the body is DARK (ink), the ELEMENT color lives in the rim /
+// core / aura (the radiance) — NOT the body fill (a bright body + heavy aura = the blob anti-pattern).
 const ELEMENT_COLOR = {
-  fire:      { body: '#FF6A2C', core: '#FFE3C0' },
-  ice:       { body: '#6FC8FF', core: '#DCF3FF' },
-  lightning: { body: '#FFE066', core: '#FFFBDC' },
-  arcane:    { body: '#B36BFF', core: '#EAD9FF' },
+  fire:      { body: '#3A1206', glow: '#FF6A2C', core: '#FFE3C0' },
+  ice:       { body: '#0E2233', glow: '#6FC8FF', core: '#DCF3FF' },
+  lightning: { body: '#2A2408', glow: '#FFE066', core: '#FFFBDC' },
+  arcane:    { body: '#1C0E2E', glow: '#B36BFF', core: '#EAD9FF' },
 };
 
 // Per-form box construction + glow placement. boxes: [{ pos:[x,y,z], size:[w,h,d], rot:[x,y,z] }].
@@ -74,12 +76,12 @@ const FORM_PARTS = {
   },
 };
 
-/** beastAvatarParts(element) -> { color, coreColor, height, boxes, core, aura } or null for unknown. */
+/** beastAvatarParts(element) -> { bodyColor, glowColor, coreColor, height, boxes, core, aura } | null. */
 export function beastAvatarParts(element) {
   const parts = FORM_PARTS[element];
   const col = ELEMENT_COLOR[element];
   if (!parts || !col) return null;
-  return { color: col.body, coreColor: col.core, height: parts.height, boxes: parts.boxes, core: parts.core, aura: parts.aura };
+  return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, height: parts.height, boxes: parts.boxes, core: parts.core, aura: parts.aura };
 }
 
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);

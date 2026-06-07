@@ -46,40 +46,37 @@ export function BeastAvatar() {
 
   return (
     <group ref={groupRef} position={[0, FEET_OFFSET, 0]}>
-      {/* (1) SILHOUETTE — crisp toneMapped toon body (never blooms; carries identity) */}
+      {/* (1) SILHOUETTE — DARK ink toon body + a bright ELEMENT-colored fresnel rim (both toneMapped,
+          sub-bloom -> CRISP). The body carries identity (Hades ink); the rim is the glowing edge. */}
       {parts.boxes.map((b, i) => (
         <mesh key={i} position={b.pos} rotation={b.rot} castShadow>
           <boxGeometry args={b.size} />
-          <MobToonMaterial color={parts.color} />
+          <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15} />
         </mesh>
       ))}
 
-      {/* (2) HOT-CORE — near-white additive heart + nested pure-white hotspot (clips past bloom) */}
+      {/* (2) HOT-CORE — a TINY near-white additive heart + nested pure-white hotspot that the global
+          Bloom blows out into a glowing point (the Genshin radiance; the ONLY thing that blooms). */}
       <mesh ref={coreRef} position={parts.core.pos} renderOrder={2}>
-        <sphereGeometry args={[parts.core.radius, 16, 16]} />
-        <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={0.98}
+        <sphereGeometry args={[parts.core.radius * 0.6, 14, 14]} />
+        <meshBasicMaterial color={parts.coreColor} toneMapped={false} transparent opacity={0.95}
           blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         <mesh renderOrder={3}>
-          <sphereGeometry args={[parts.core.radius * 0.55, 12, 12]} />
+          <sphereGeometry args={[parts.core.radius * 0.32, 10, 10]} />
           <meshBasicMaterial color="#FFFFFF" toneMapped={false} transparent opacity={1.0}
             blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       </mesh>
 
-      {/* (3) AURA — element-color additive BackSide shells: a brighter TIGHT aura + a soft WIDE
-          back-aura. BackSide haloes BEHIND the silhouette so the crisp front never washes (③·5). */}
+      {/* (3) a SINGLE faint back-halo (BackSide, low opacity) -- a touch of aura BEHIND the silhouette,
+          NOT engulfing it. The big bright engulfing shells were the BLOB; the silhouette must dominate. */}
       <mesh position={parts.core.pos} renderOrder={1}>
-        <sphereGeometry args={[parts.core.radius * 2.0 * parts.aura, 16, 16]} />
-        <meshBasicMaterial color={parts.color} toneMapped={false} transparent opacity={0.85}
-          blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
-      </mesh>
-      <mesh position={parts.core.pos} renderOrder={0}>
-        <sphereGeometry args={[parts.core.radius * 3.4 * parts.aura, 16, 16]} />
-        <meshBasicMaterial color={parts.color} toneMapped={false} transparent opacity={0.55}
+        <sphereGeometry args={[parts.core.radius * 1.7 * parts.aura, 16, 16]} />
+        <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={0.3}
           blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
       </mesh>
 
-      <pointLight color={parts.color} intensity={4} distance={7} decay={2} position={parts.core.pos} />
+      <pointLight color={parts.glowColor} intensity={3} distance={6} decay={2} position={parts.core.pos} />
     </group>
   );
 }

@@ -16,12 +16,19 @@ class MobToonMaterialImpl extends MeshToonMaterial {
 }
 extend({ MobToonMaterialImpl });
 
-export function MobToonMaterial({ color, rimStrength = RIM.strength, ...props }) {
+export function MobToonMaterial({ color, rimStrength = RIM.strength, rimColor, ...props }) {
   return (
     <mobToonMaterialImpl
       attach="material"
       color={color}
-      onUpdate={(self) => { if (self.userData.rim) self.userData.rim.uRimStrength.value = rimStrength; }}
+      onUpdate={(self) => {
+        if (self.userData.rim) {
+          self.userData.rim.uRimStrength.value = rimStrength;
+          // S2-B1-M7b: optional per-instance rim color (the beast wants an ELEMENT-colored edge glow on a
+          // DARK ink body; mobs omit it and keep the default blue-white rim). uRimColor is per-instance.
+          if (rimColor) self.userData.rim.uRimColor.value.set(rimColor);
+        }
+      }}
       {...props}
     />
   );

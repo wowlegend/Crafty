@@ -14,7 +14,8 @@ describe('beastAvatarParts', () => {
   it('every form has a color, a near-white core tint, >=1 box, a core, and a positive aura', () => {
     for (const el of BEAST_AVATAR_ELEMENTS) {
       const p = beastAvatarParts(el);
-      expect(p.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(p.bodyColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(p.glowColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
       expect(p.coreColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
       expect(p.boxes.length).toBeGreaterThanOrEqual(1);
       expect(p.aura).toBeGreaterThan(0);

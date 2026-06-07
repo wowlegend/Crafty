@@ -267,6 +267,23 @@ function GameApp({ experienceSystem }) {
     // against a bright sky studio, so the dark obsidian body + emissive telegraph +
     // inverted-hull contour read clearly (a character card, not an in-context danger
     // scene). force-spawn bypasses the level/HP gate; BossEntity freezes in capture.
+    // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal — the LEAD (comet/fire) beast IN-WORLD (real
+    // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
+    // ③·5 silhouette + glow is judged in its TRUE context (the VFX discipline). Deterministic/frozen.
+    registerTestHook('spawnBeastTransform', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(false);          // IN-WORLD — keep the real scene (not a sky-studio card)
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the warm fire glow; the beast's true ctx
+      store.setBeastFormActive(true, 'fire'); // force the LEAD beast
+      const rb = store.playerRigidBodyRef?.current;
+      const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
+      // third-person reveal: a CLOSE 3/4-SIDE, slightly-up hero angle (shows the forward-lean profile
+      // + fins; big enough to judge the silhouette), looking at mid-body.
+      enterCaptureMode({ camera: { position: [t.x + 2.5, t.y + 0.7, t.z + 2.2], lookAt: [t.x, t.y - 0.2, t.z] } });
+    });
+
     registerTestHook('spawnBossCloseup', () => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
