@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider, elementForSpell } from './beasts.js';
+import { BASE_CAPSULE, BEAST_FORMS, getBeastForm, setColliderToForm, restoreBaseCollider, elementForSpell, SPELL_TO_ELEMENT, formDamageMult, formMeleeCooldownMult, formLocomotion, spellForElement, resolveFormMelee } from './beasts.js';
 
 // Mocks for the Rapier surface the helpers touch (no live Rapier world needed).
 function mockRapier() {
@@ -128,5 +128,94 @@ describe('restoreBaseCollider (the no-permanent-beast restore op)', () => {
   });
   it('is a no-op when the collider is absent', () => {
     expect(restoreBaseCollider(null, mockRapier(), mockController())).toBe(false);
+  });
+});
+
+describe('M5 per-form combat + locomotion multipliers (derive-never-bake)', () => {
+  const ELEMENTS = ['fire', 'ice', 'lightning', 'arcane'];
+
+  it('human/unknown element = the IDENTITY (no-op): mults are 1 (human read path stays byte-identical)', () => {
+    expect(formDamageMult(null)).toBe(1);
+    expect(formMeleeCooldownMult(null)).toBe(1);
+    expect(formLocomotion(null)).toEqual({ moveMult: 1, gravityMult: 1, jumpMult: 1 });
+    expect(formDamageMult('mythic')).toBe(1);
+    expect(formLocomotion('mythic')).toEqual({ moveMult: 1, gravityMult: 1, jumpMult: 1 });
+  });
+
+  it('every beast form has positive finite combat + locomotion mults', () => {
+    for (const el of ELEMENTS) {
+      expect(formDamageMult(el)).toBeGreaterThan(0);
+      expect(formMeleeCooldownMult(el)).toBeGreaterThan(0);
+      const loco = formLocomotion(el);
+      for (const k of ['moveMult', 'gravityMult', 'jumpMult']) {
+        expect(loco[k]).toBeGreaterThan(0);
+        expect(Number.isFinite(loco[k])).toBe(true);
+      }
+    }
+  });
+
+  it('the 4 forms are PAIRWISE-DISTINCT on locomotion (the sampler-trap defense — not 4 identical capsules)', () => {
+    for (const k of ['moveMult', 'gravityMult', 'jumpMult']) {
+      const vals = ELEMENTS.map((el) => formLocomotion(el)[k]);
+      expect(new Set(vals).size).toBe(ELEMENTS.length); // no two forms share this axis
+    }
+  });
+
+  it('the 4 forms are PAIRWISE-DISTINCT on combat (damageMult+cooldownMult tuple)', () => {
+    const sigs = ELEMENTS.map((el) => `${formDamageMult(el)}|${formMeleeCooldownMult(el)}`);
+    expect(new Set(sigs).size).toBe(ELEMENTS.length);
+  });
+
+  it('the feel matches the design: comet fastest+snappiest, bull/golem hardest, hawk the low-gravity hopper', () => {
+    expect(formLocomotion('fire').moveMult).toBe(Math.max(...ELEMENTS.map((e) => formLocomotion(e).moveMult)));
+    expect(formMeleeCooldownMult('fire')).toBe(Math.min(...ELEMENTS.map((e) => formMeleeCooldownMult(e))));
+    expect(formDamageMult('ice')).toBeGreaterThan(formDamageMult('fire'));
+    expect(formDamageMult('arcane')).toBeGreaterThan(formDamageMult('lightning'));
+    expect(formLocomotion('lightning').gravityMult).toBe(Math.min(...ELEMENTS.map((e) => formLocomotion(e).gravityMult)));
+    expect(formLocomotion('lightning').jumpMult).toBe(Math.max(...ELEMENTS.map((e) => formLocomotion(e).jumpMult)));
+  });
+
+  it('the melee spark type = the form-electing spell, and that spell is a valid spark case (re-skin wiring)', () => {
+    // In beast form, Components passes `activeSpell` as the damageMob `type` so the spark colors per
+    // element; activeSpell == the spell that elected the form (SPELL_TO_ELEMENT round-trips), and the
+    // damageMob sparkColor switch has a case for each of those spells.
+    const SPARK_CASES = ['fireball', 'iceball', 'lightning', 'arcane'];
+    for (const [spell, el] of Object.entries(SPELL_TO_ELEMENT)) {
+      expect(elementForSpell(spell)).toBe(el);
+      expect(SPARK_CASES).toContain(spell);
+    }
+  });
+});
+
+describe('M5 melee re-skin WIRING (resolveFormMelee + spellForElement — the review [A]/[E] fixes)', () => {
+  it('spellForElement inverts SPELL_TO_ELEMENT; null/unknown -> null; round-trips with elementForSpell', () => {
+    expect(spellForElement('fire')).toBe('fireball');
+    expect(spellForElement('ice')).toBe('iceball');
+    expect(spellForElement('lightning')).toBe('lightning');
+    expect(spellForElement('arcane')).toBe('arcane');
+    expect(spellForElement(null)).toBeNull();
+    expect(spellForElement('mythic')).toBeNull();
+    for (const el of ['fire', 'ice', 'lightning', 'arcane']) {
+      expect(elementForSpell(spellForElement(el))).toBe(el); // no drift between the two maps
+    }
+  });
+
+  it('resolveFormMelee: human (null) = the identity — dealt unchanged, spark physical (byte-identical to pre-M5)', () => {
+    expect(resolveFormMelee(37, null)).toEqual({ dealt: 37, sparkType: 'physical' });
+    expect(resolveFormMelee(0, null)).toEqual({ dealt: 0, sparkType: 'physical' });
+  });
+
+  it('resolveFormMelee applies the form damage mult AND sparks the form element (the load-bearing wiring)', () => {
+    expect(resolveFormMelee(100, 'ice')).toEqual({ dealt: Math.round(100 * BEAST_FORMS.ice.damageMult), sparkType: 'iceball' });
+    expect(resolveFormMelee(100, 'fire')).toEqual({ dealt: Math.round(100 * BEAST_FORMS.fire.damageMult), sparkType: 'fireball' });
+    expect(resolveFormMelee(100, 'lightning').sparkType).toBe('lightning');
+    expect(resolveFormMelee(100, 'arcane').sparkType).toBe('arcane');
+  });
+
+  it('REGRESSION [A]: the spark tracks the LOCKED FORM, never a live spell (desync structurally impossible)', () => {
+    // The lightning-hawk-taps-Digit1-throws-fire-sparks bug is impossible: the spark derives ONLY from
+    // the form element; resolveFormMelee has NO activeSpell parameter, so spell-switching can't desync it.
+    expect(resolveFormMelee(50, 'lightning').sparkType).toBe('lightning');
+    expect(resolveFormMelee.length).toBe(2); // (rawDamage, element) — guards against re-adding a spell arg
   });
 });
