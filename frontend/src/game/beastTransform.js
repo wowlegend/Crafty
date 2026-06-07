@@ -13,6 +13,16 @@
 export const ANTICIPATION_SEC = 0.45; // hold-roar charge window before the transform commits
 export const FORM_DURATION_SEC = 14;  // how long a beast form lasts before auto-exit
 export const COOLDOWN_SEC = 1.5;      // after exit, before roar can charge again
+export const ENDURANCE_SEC_PER_RANK = 3; // S2-B1-M6: each Primal Endurance rank extends the form (Kevin-tunable, Decision #4)
+
+/**
+ * formDurationFor(enduranceRank) -> the effective beast-form duration in seconds. The Primal Endurance
+ * talent is an ability-LEVER: its rank is read HERE (the duration site), NOT the stat-fold (the node is
+ * effect-less). rank<=0 (no talent) -> the base FORM_DURATION_SEC. Pure + unit-tested.
+ */
+export function formDurationFor(enduranceRank) {
+  return FORM_DURATION_SEC + Math.max(0, enduranceRank || 0) * ENDURANCE_SEC_PER_RANK;
+}
 
 /** The SM's own state (charge + timers). The active/human truth lives in the store, not here. */
 export function makeTransformState() {
@@ -44,7 +54,9 @@ export function decideTransform(sm, ctx) {
     if (!ctx.alive || !ctx.active || !ctx.roar) { out.charging = false; return { sm: out, action: 'cancel' }; }
     if (ctx.now - sm.chargeStart >= ANTICIPATION_SEC) {
       out.charging = false;
-      if (ctx.canEnter) { out.activeUntil = ctx.now + FORM_DURATION_SEC; return { sm: out, action: 'enter' }; }
+      // M6: the effective duration is passed in (Primal Endurance rank, computed at the Components site);
+      // absent (existing callers / tests) -> the base FORM_DURATION_SEC, so this is backward-compatible.
+      if (ctx.canEnter) { out.activeUntil = ctx.now + (ctx.formDurationSec ?? FORM_DURATION_SEC); return { sm: out, action: 'enter' }; }
       return { sm: out, action: 'cancel' };
     }
     return { sm: out, action: 'none' };

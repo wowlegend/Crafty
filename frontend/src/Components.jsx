@@ -7,7 +7,7 @@ import { SPELL_COLORS } from './GameSystems';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
-import { makeTransformState, decideTransform } from './game/beastTransform.js';
+import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
@@ -473,7 +473,11 @@ export const Player = ({ isWorldBuilt }) => {
         active: rin.active,
         alive: st.isAlive,
         now: state.clock.getElapsedTime(),
-        canEnter: canTransform(st.ferocityBanked), // M4: need a full Ferocity bank to roar
+        // M4: a full Ferocity bank AND M6: the Primal Roar talent must be unlocked (the roar is a
+        // signature ability, not free). canEnter gates BOTH startCharge and commit.
+        canEnter: canTransform(st.ferocityBanked) && (st.unlockedTalents?.['wildheart_roar'] > 0),
+        // M6: Primal Endurance extends the form duration — read the rank at THIS site (not the fold).
+        formDurationSec: formDurationFor(st.unlockedTalents?.['wildheart_endurance'] || 0),
       });
       beastSMRef.current = sm;
       if (action === 'enter') {
