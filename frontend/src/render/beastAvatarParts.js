@@ -26,27 +26,27 @@ const ELEMENT_COLOR = {
 // Per-form box construction + glow placement. boxes: [{ pos:[x,y,z], size:[w,h,d], rot:[x,y,z] }].
 // core: the hot-core sphere center+radius. aura: the glow-shell radius (relative to a ~unit body).
 const FORM_PARTS = {
-  // comet (fire) — KEVIN: a DRAGON form. A rearing Western dragon: reared body, a long neck + horned
-  // head reaching up-forward, BIG bat-wings spread wide, front claws, planted back legs, a long tail.
+  // comet (fire) — KEVIN: a BIG DRAGON form. A rearing Western dragon: reared body, a long neck + horned
+  // head reaching up-forward, HUGE bat-wings spread wide, front claws, planted back legs, a long tail.
   fire: {
-    height: 1.95,
+    height: 2.45,
     boxes: [
-      { pos: [0, 0.8, -0.1], size: [0.44, 0.62, 0.8], rot: [0.55, 0, 0] },        // reared body
-      { pos: [0, 1.4, 0.32], size: [0.26, 0.6, 0.3], rot: [0.75, 0, 0] },         // neck (rising fwd+up)
-      { pos: [0, 1.8, 0.66], size: [0.28, 0.26, 0.5], rot: [0.3, 0, 0] },         // horned dragon head/snout
-      { pos: [-0.11, 1.96, 0.5], size: [0.06, 0.2, 0.08], rot: [-0.4, 0, 0.25] },  // left horn
-      { pos: [0.11, 1.96, 0.5], size: [0.06, 0.2, 0.08], rot: [-0.4, 0, -0.25] },  // right horn
-      { pos: [-0.78, 1.2, -0.32], size: [1.35, 0.07, 0.9], rot: [0.04, 0.55, 0.48] },  // left bat-wing (big)
-      { pos: [0.78, 1.2, -0.32], size: [1.35, 0.07, 0.9], rot: [0.04, -0.55, -0.48] }, // right bat-wing
-      { pos: [-0.22, 0.72, 0.42], size: [0.13, 0.5, 0.14], rot: [1.0, 0, 0.12] },  // left front claw (reaching)
-      { pos: [0.22, 0.72, 0.42], size: [0.13, 0.5, 0.14], rot: [1.0, 0, -0.12] },  // right front claw
-      { pos: [-0.2, 0.3, -0.34], size: [0.17, 0.56, 0.2], rot: [-0.15, 0, 0] },   // left back leg (planted)
-      { pos: [0.2, 0.3, -0.34], size: [0.17, 0.56, 0.2], rot: [-0.15, 0, 0] },    // right back leg
-      { pos: [0, 0.5, -0.72], size: [0.16, 0.16, 0.6], rot: [-0.35, 0, 0] },      // tail base
-      { pos: [0, 0.3, -1.12], size: [0.1, 0.1, 0.55], rot: [-0.6, 0, 0] },        // tail tip
+      { pos: [0, 0.98, -0.12], size: [0.58, 0.82, 1.05], rot: [0.55, 0, 0] },     // reared body (big)
+      { pos: [0, 1.78, 0.42], size: [0.34, 0.8, 0.4], rot: [0.75, 0, 0] },        // long neck (rising fwd+up)
+      { pos: [0, 2.28, 0.86], size: [0.38, 0.34, 0.66], rot: [0.3, 0, 0] },       // horned dragon head/snout
+      { pos: [-0.15, 2.5, 0.66], size: [0.08, 0.28, 0.1], rot: [-0.4, 0, 0.25] },  // left horn
+      { pos: [0.15, 2.5, 0.66], size: [0.08, 0.28, 0.1], rot: [-0.4, 0, -0.25] },  // right horn
+      { pos: [-1.02, 1.55, -0.42], size: [1.75, 0.08, 1.18], rot: [0.04, 0.55, 0.5] },  // left bat-wing (HUGE)
+      { pos: [1.02, 1.55, -0.42], size: [1.75, 0.08, 1.18], rot: [0.04, -0.55, -0.5] }, // right bat-wing
+      { pos: [-0.3, 0.9, 0.56], size: [0.17, 0.66, 0.19], rot: [1.0, 0, 0.12] },  // left front claw (reaching)
+      { pos: [0.3, 0.9, 0.56], size: [0.17, 0.66, 0.19], rot: [1.0, 0, -0.12] },  // right front claw
+      { pos: [-0.28, 0.38, -0.46], size: [0.23, 0.74, 0.27], rot: [-0.15, 0, 0] }, // left back leg (planted)
+      { pos: [0.28, 0.38, -0.46], size: [0.23, 0.74, 0.27], rot: [-0.15, 0, 0] },  // right back leg
+      { pos: [0, 0.62, -0.95], size: [0.21, 0.21, 0.8], rot: [-0.35, 0, 0] },     // tail base (long)
+      { pos: [0, 0.34, -1.48], size: [0.13, 0.13, 0.72], rot: [-0.6, 0, 0] },     // tail tip
     ],
-    core: { pos: [0, 0.92, 0.12], radius: 0.18 },
-    aura: 1.0,
+    core: { pos: [0, 1.12, 0.16], radius: 0.22 },
+    aura: 1.05,
   },
   // boulder-bull (ice) — KEVIN: BIGGER. A MASSIVE, heavy, LOW + WIDE horned QUADRUPED brute on 4 thick
   // legs (the hulking charge/power silhouette — biggest body mass of the roster).

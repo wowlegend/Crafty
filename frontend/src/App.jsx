@@ -280,9 +280,14 @@ function GameApp({ experienceSystem }) {
       store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
       const rb = store.playerRigidBodyRef?.current;
       const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
-      // third-person reveal: a 3/4-SIDE hero angle pulled back to frame the tallest beast (the reared
-      // dragon) + the widest wings, looking at mid-body.
-      enterCaptureMode({ camera: { position: [t.x + 3.6, t.y + 1.4, t.z + 3.5], lookAt: [t.x, t.y + 0.35, t.z] } });
+      // per-beast 3/4-side reveal framing (the big DRAGON gets a CLOSER, looming angle).
+      const CAMS = {
+        fire:      { position: [t.x + 1.7, t.y + 1.45, t.z + 2.8], lookAt: [t.x, t.y + 0.55, t.z] }, // DRAGON — close + looming
+        ice:       { position: [t.x + 2.1, t.y + 0.8, t.z + 3.0], lookAt: [t.x, t.y - 0.15, t.z] },  // low wide bull
+        lightning: { position: [t.x + 2.1, t.y + 1.1, t.z + 3.2], lookAt: [t.x, t.y + 0.2, t.z] },   // tall raptor
+        arcane:    { position: [t.x + 2.1, t.y + 1.2, t.z + 3.2], lookAt: [t.x, t.y + 0.3, t.z] },    // tall golem
+      };
+      enterCaptureMode({ camera: CAMS[element] || CAMS.fire });
     });
 
     registerTestHook('spawnBossCloseup', () => {
