@@ -34,14 +34,14 @@ const FORM_PARTS = {
     boxes: [
       // bipedal werebeast core (variant B)
       { pos: [0, 1.0, 0], size: [0.5, 0.72, 0.42], rot: [0.28, 0, 0] },           // hunched torso
-      { pos: [0, 1.44, 0.2], size: [0.34, 0.34, 0.38], rot: [0.1, 0, 0] },        // beast head
+      { pos: [0, 1.58, 0.18], size: [0.34, 0.4, 0.38], rot: [0.1, 0, 0] },         // beast head — raised CLEARLY above the wing-line (the silhouette peak)
       { pos: [-0.4, 0.92, 0.24], size: [0.16, 0.64, 0.16], rot: [0.55, 0, 0.32] },  // left clawed arm (forward/out)
       { pos: [0.4, 0.92, 0.24], size: [0.16, 0.64, 0.16], rot: [0.55, 0, -0.32] },  // right clawed arm
       { pos: [-0.17, 0.4, -0.02], size: [0.18, 0.72, 0.2], rot: [-0.22, 0, 0] },   // left leg (bent)
       { pos: [0.17, 0.4, -0.02], size: [0.18, 0.72, 0.2], rot: [-0.22, 0, 0] },    // right leg
-      // big, dramatic swept wings (variant D) from the shoulders, spread up + back
-      { pos: [-0.7, 1.32, -0.24], size: [1.1, 0.08, 0.74], rot: [0.02, 0.52, 0.72] },  // left wing
-      { pos: [0.7, 1.32, -0.24], size: [1.1, 0.08, 0.74], rot: [0.02, -0.52, -0.72] }, // right wing
+      // big swept wings (variant D) at SHOULDER height, spread OUT + slightly up/back (BELOW the head)
+      { pos: [-0.66, 1.08, -0.22], size: [1.1, 0.08, 0.74], rot: [0.02, 0.5, 0.34] },  // left wing
+      { pos: [0.66, 1.08, -0.22], size: [1.1, 0.08, 0.74], rot: [0.02, -0.5, -0.34] }, // right wing
     ],
     core: { pos: [0, 1.05, 0.16], radius: 0.18 },
     aura: 0.95,
