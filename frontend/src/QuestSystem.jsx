@@ -1,4 +1,5 @@
 import { useGameStore } from './store/useGameStore';
+import { subscribeMobKill } from './game/mobKillBus.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -321,14 +322,17 @@ export const useQuestSystem = () => {
 
     // Expose globally for other systems to call
     useEffect(() => {
-        useGameStore.setState({ onMobKill: onMobKill });
         useGameStore.setState({ onSpellCast: onSpellCast });
         useGameStore.setState({ onBlockPlace: onBlockPlace });
         useGameStore.setState({ onBlockBreak: onBlockBreak });
         useGameStore.setState({ onChestOpen: onChestOpen });
         useGameStore.setState({ onPlayerDeath: onDeath });
         useGameStore.setState({ addNotification: addNotification });
-    }, [onMobKill, onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, addNotification]);
+    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, addNotification]);
+
+    // S2-B1-M3.5: mob kills now flow through the fan-out bus (was a single store.onMobKill slot a 2nd
+    // consumer like ferocity would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.
+    useEffect(() => subscribeMobKill(onMobKill), [onMobKill]);
 
     return {
         quests, stats, lootDrops, achievements: ACHIEVEMENTS,

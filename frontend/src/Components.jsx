@@ -8,6 +8,7 @@ import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell } from './game/beasts.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
+import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -464,11 +465,16 @@ export const Player = ({ isWorldBuilt }) => {
         active: rin.active,
         alive: st.isAlive,
         now: state.clock.getElapsedTime(),
-        canEnter: true,
+        canEnter: canTransform(st.ferocityBanked), // M4: need a full Ferocity bank to roar
       });
       beastSMRef.current = sm;
-      if (action === 'enter') st.enterBeastForm(elementForSpell(st.activeSpell));
-      else if (action === 'exitTimer' || action === 'exitManual') st.exitBeastForm();
+      if (action === 'enter') {
+        // M4: UNLEASH — spend the banked Ferocity ONLY on a real transform (enterBeastForm returns
+        // false if it rejects: already-in-form / dead). Avoids draining the bank on a no-op enter.
+        if (st.enterBeastForm(elementForSpell(st.activeSpell))) st.accrueFerocity(-FEROCITY_THRESHOLD);
+      } else if (action === 'exitTimer' || action === 'exitManual') {
+        st.exitBeastForm();
+      }
     }
 
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter

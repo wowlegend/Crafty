@@ -40,6 +40,7 @@ module.exports = {
         success: c('--ui-success'),
         warn: c('--ui-warn'),
         info: c('--ui-info'),
+        ferocity: c('--ui-ferocity'),
         rarity: {
           common: c('--ui-rarity-common'),
           rare: c('--ui-rarity-rare'),

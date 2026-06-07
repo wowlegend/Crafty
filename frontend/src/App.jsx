@@ -7,7 +7,7 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
-import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades } from './AdvancedGameFeatures';
+import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades, useFerocityAccrual } from './AdvancedGameFeatures';
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
@@ -128,6 +128,7 @@ function GameApp({ experienceSystem }) {
   const questSystem = useQuestSystem();
   const treasureChests = useTreasureChests();
   const survivalMode = useSurvivalMode(gameState.isDay);
+  useFerocityAccrual(); // S2-B1-M4: subscribe the kill-bus -> bank Ferocity on day kills
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
   const petSystem = usePetSystem();
   const spellUpgrades = useSpellUpgrades();
@@ -171,7 +172,8 @@ function GameApp({ experienceSystem }) {
         s.gameMode !== prevS.gameMode ||
         s.worldBlocks !== prevS.worldBlocks ||
         s.inventory !== prevS.inventory ||
-        s.questState !== prevS.questState
+        s.questState !== prevS.questState ||
+        s.ferocityBanked !== prevS.ferocityBanked // S2-B1-M4: a day-banked roar survives a tab-close
       ) {
         autosave.schedule();
       }

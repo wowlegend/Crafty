@@ -11,6 +11,18 @@ import { TIERS } from './render/quality';
 import { Panel, Button, Slot, StatBar, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { ASPECT_TREES } from './game/talentTree.js';
+import { subscribeMobKill } from './game/mobKillBus.js';
+import { ferocityForKill } from './game/ferocity.js';
+
+// S2-B1-M4: bank Ferocity on a DAY mob-kill (via the M3.5 fan-out bus). Day-only so the "bank in the
+// day, unleash in the siege" loop holds; capture-guarded so the visual gate is unaffected. Mount once
+// (App). The store clamps to [0,MAX]; this just feeds the signed per-kill delta.
+export const useFerocityAccrual = () => {
+    useEffect(() => subscribeMobKill((mobType) => {
+        const s = useGameStore.getState();
+        if (s.isDay && !isCaptureMode()) s.accrueFerocity(ferocityForKill(mobType));
+    }), []);
+};
 
 export const useSurvivalMode = (isDay) => {
     // nightCount is the STORE's single source of truth (lifted out of local useState
@@ -30,6 +42,9 @@ export const useSurvivalMode = (isDay) => {
         }
 
         if (!prevIsDay.current && isDay) {
+            // S2-B1-M4: Ferocity bleeds to zero at dawn — banked combat-fury doesn't carry across
+            // nights (prevents a second-night power spike + a stale bank auto-arming the next roar).
+            useGameStore.getState().setFerocityBanked(0);
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a
