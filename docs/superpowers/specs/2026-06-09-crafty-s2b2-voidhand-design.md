@@ -118,8 +118,10 @@ so spell-switching mid-hold can't desync).
 
 ### 3d. Input intent + the 2-intent re-skin (zero new menu)
 
-Add ONE intent `'grab'` to `INTENT_KEYS` (inputState.js:40), written by the keyboard listener (a
-KeyG default, Kevin Decision #6) and consumed transiently — IDENTICAL contract to `roar`. While
+Add ONE intent `'grab'` to `INTENT_KEYS` (inputState.js:40), written by the keyboard listener (**`KeyV`** —
+Decision #6 RESOLVED 2026-06-09: `KeyG` was already taken = open-chest / trade-villager `InputManager.jsx:162`;
+full keymap audit found A/B/C/D/E/F/G/Q/R/S/T/U/W all bound, so grab = the free ergonomic **`KeyV`**) and
+consumed transiently — IDENTICAL contract to `roar`. While
 VOIDHAND is HELD, the existing `attack` and `cast` intents re-skin to HURL/SLAM (no new keys, no new
 menu) — the same "re-skin the 2 attack intents per-form" move WILDHEART uses. IDLE → the intents do
 their normal melee/spell jobs.
@@ -257,8 +259,7 @@ code-review), TDD red-first, human-reviewed, then merged. 4-piece + pre-compact-
    are actually present). Rec: `!isDay` for v1 simplicity (resolves the dangerLevel contradiction in §0).
 5. **M2 FPS target**: the pinned number on a mid-iPad (absolute 60/45 fps OR a delta from the S2-A
    baseline)? Rec: match the WILDHEART M2 methodology (delta-from-baseline).
-6. **Grab keybind**: KB default (G? hold-Q? a hotbar modifier?) — and does grab share or split from
-   the build/break mouse buttons (must NOT collide with place/break, which own the mouse).
+6. **Grab keybind**: ✅ RESOLVED 2026-06-09 → **`KeyV`** (Kevin flagged `KeyG` = open-chest/trade `InputManager.jsx:162`; keymap audit: A/B/C/D/E/F/G/Q/R/S/T/U/W all bound; free = V/X/Z/H/N; grab = `KeyV`, mnemonic "Void"). Grab is keyboard-only, does NOT touch the mouse place/break (which own building); the orbit verbs reuse the existing attack/cast inputs.
 7. **SURF in or out of v1?** Rec: OUT (v2). Confirm.
 8. **CALM real-edit grab in or out of v1?** Rec: OUT (combat-phantom-only ships the fantasy); add the
    calm real-edit half as a fast follow. Confirm.
