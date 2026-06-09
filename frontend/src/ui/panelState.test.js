@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PANEL_FLAGS, isAnyPanelOpen } from './panelState.js';
+import { PANEL_FLAGS, isAnyPanelOpen, shouldShowTitleMenu } from './panelState.js';
 
 // Locks the menu-overlay / key-gate single-source-of-truth (the 2026-06-07 U-key bug: two hand-kept
 // lists drifted, so the main menu popped OVER the Aspect tree + 7 other panels). A regression here means
@@ -34,5 +34,20 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
       'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits',
       'showSpellUpgrades', 'showAchievements', 'showStats', 'showAuthModal',
     ]);
+  });
+});
+
+describe('shouldShowTitleMenu — the exact menu-overlay gate (not just the list)', () => {
+  it('shows ONLY when the pointer is unlocked AND no panel is open', () => {
+    expect(shouldShowTitleMenu({ isPointerLocked: false })).toBe(true);  // title / click-to-play
+    expect(shouldShowTitleMenu({ isPointerLocked: true })).toBe(false);  // actively playing
+    expect(shouldShowTitleMenu(null)).toBe(false);
+  });
+
+  it('is SUPPRESSED whenever ANY panel is open even with the pointer unlocked (THE bug)', () => {
+    for (const flag of PANEL_FLAGS) {
+      // opening a panel exits pointer-lock (isPointerLocked:false) — the menu must NOT appear over it
+      expect(shouldShowTitleMenu({ isPointerLocked: false, [flag]: true })).toBe(false);
+    }
   });
 });

@@ -29,3 +29,14 @@ export function isAnyPanelOpen(flags) {
   }
   return false;
 }
+
+/**
+ * shouldShowTitleMenu(state) -> whether the title/pause menu overlay should render.
+ * It shows ONLY when the pointer is unlocked AND no panel is open. Opening a panel exits pointer-lock,
+ * so WITHOUT the panel check the menu wrongly renders OVER the panel (the 2026-06-07 U-key bug). Pure +
+ * unit-tested so the exact gate — not just the panel list — is locked. `state` = { isPointerLocked, ...panelFlags }.
+ */
+export function shouldShowTitleMenu(state) {
+  if (!state) return false;
+  return !state.isPointerLocked && !isAnyPanelOpen(state);
+}
