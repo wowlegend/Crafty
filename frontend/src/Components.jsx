@@ -11,6 +11,8 @@ import { makeTransformState, decideTransform, formDurationFor } from './game/bea
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
+import { makeVoidhandState, decideVoidhand } from './game/voidhand.js';
+import { PhantomBlockSystem } from './world/PhantomBlockSystem';
 import { isPointInCone } from './combat/cone.js';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
@@ -160,6 +162,8 @@ export const Player = ({ isWorldBuilt }) => {
   // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
+  const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
+  const prevGrabRef = useRef(false);
   // S2-B1-M7a: the third-person transform-cam window. { active, t (sec elapsed), fwd (facing captured
   // at roar-start so the behind-shot is stable) }. Started on the SM 'startCharge', applied in useFrame.
   const transformCamRef = useRef({ active: false, t: 0, fwd: [0, 0, -1] });
@@ -387,6 +391,11 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('roar', true);
       }
 
+      // S2-B2-M1: grab -> the abstract 'grab' intent (VOIDHAND SM in useFrame). KeyV (KeyG = chest/trade).
+      if (e.code === 'KeyV') {
+        setIntent('grab', true);
+      }
+
       if (e.code === 'KeyF') {
         triggerMeleeAttack();
       }
@@ -405,6 +414,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'KeyR') {
         setIntent('roar', false);
+      }
+
+      if (e.code === 'KeyV') {
+        setIntent('grab', false);
       }
     };
     const handleMouseDown = (e) => {
@@ -506,6 +519,37 @@ export const Player = ({ isWorldBuilt }) => {
         st.setBeastCharging(false); // M7c: charge cancelled
       } else if (action === 'exitTimer' || action === 'exitManual') {
         st.exitBeastForm();
+      }
+    }
+
+    // S2-B2-M1: the VOIDHAND grab SM — tap V to grab a phantom block (orbits as a shield), re-press V to
+    // release. Transient intent reads; the store holds the single held-truth; set() only on transitions
+    // (Game-Loop-Isolation). M1 grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is OPEN
+    // in M1; M4 ANDs the kinetic bank + the voidhand_grasp talent. HURL/SLAM (attack/cast re-skin) + impact
+    // are M3, so attack/cast are not fed here yet -> release is via re-press or the max-hold timer.
+    {
+      const vin = getInput();
+      const grab = vin.grab;
+      const grabEdge = grab && !prevGrabRef.current;
+      prevGrabRef.current = grab;
+      const stv = useGameStore.getState();
+      const { sm: vsm, action: vaction } = decideVoidhand(voidhandSMRef.current, {
+        held: stv.voidhandHeld,
+        grabEdge,
+        attack: false,
+        cast: false,
+        active: vin.active,
+        alive: stv.isAlive,
+        now: state.clock.getElapsedTime(),
+        canGrab: true,
+      });
+      voidhandSMRef.current = vsm;
+      if (vaction === 'grab') {
+        stv.setVoidhandHeld(true);
+        stv.setHeldPhantom({ color: '#A9966E' }); // M3: color from the looked-at block; M7: the final look
+      } else if (vaction === 'hurl' || vaction === 'slam' || vaction === 'drop' || vaction === 'cancel') {
+        stv.setVoidhandHeld(false);
+        stv.setHeldPhantom(null);
       }
     }
 
@@ -980,6 +1024,7 @@ export const Player = ({ isWorldBuilt }) => {
         {/* S2-B1-M7b: the visible beast (self-gates on beastFormActive -> nothing as human). At the
             player (RigidBody child); revealed by the M7a transform-cam. */}
         <BeastAvatar />
+        <PhantomBlockSystem />
       </RigidBody>
       <primitive object={camera}>
         {!inCapture && (

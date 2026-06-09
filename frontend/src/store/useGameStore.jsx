@@ -368,6 +368,13 @@ export const useGameStore = create((set, get) => ({
     // startCharge, cleared on cancel/commit. Drives the anticipation charge-glow (beat 1 of the morph).
     beastCharging: false,
     setBeastCharging: (v) => set({ beastCharging: !!v }),
+    // S2-B2-M1: VOIDHAND grab — TRANSIENT (NOT serialized, like beastFormActive). `voidhandHeld` is the
+    // single active-truth (the pure SM in voidhand.js owns the timers); `heldPhantom` = { color } of the
+    // orbiting phantom block (a pooled visual proxy — NEVER a voxel edit, so a combat grab never re-meshes).
+    voidhandHeld: false,
+    setVoidhandHeld: (v) => set({ voidhandHeld: !!v }),
+    heldPhantom: null,
+    setHeldPhantom: (p) => set({ heldPhantom: p || null }),
     enterBeastForm: (element) => {
         if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);

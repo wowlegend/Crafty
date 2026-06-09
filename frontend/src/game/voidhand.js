@@ -40,6 +40,7 @@ export function decideVoidhand(sm, ctx) {
     if (!ctx.alive) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
     if (ctx.attack) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'hurl' }; }
     if (ctx.cast)   { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'slam' }; }
+    if (ctx.grabEdge) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; } // re-press grab = release the held block
     if (ctx.now >= sm.heldUntil) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
     return { sm: out, action: 'none' };
   }

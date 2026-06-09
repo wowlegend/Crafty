@@ -56,6 +56,9 @@ describe('HELD -> hurl / slam / drop', () => {
     expect(decideVoidhand(held, { ...base, held: true, now: 100 }).action).toBe('drop'); // now>=heldUntil
     expect(decideVoidhand(held, { ...base, held: true, now: 5, alive: false }).action).toBe('drop');
   });
+  it('a re-press of grab RELEASES the held block (drop)', () => {
+    expect(decideVoidhand(held, { ...base, held: true, grabEdge: true, now: 5 }).action).toBe('drop');
+  });
   it('holds (NONE) while idle within the window', () => {
     expect(decideVoidhand(held, { ...base, held: true, now: 5 }).action).toBe('none');
   });
