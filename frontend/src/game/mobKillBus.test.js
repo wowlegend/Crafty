@@ -61,3 +61,14 @@ describe('S2-B3-M1: kill attribution', () => {
     expect(seen).toEqual(['player']);
   });
 });
+
+describe('S2-B4-M1: the hazard source (zone kills bank nothing by construction)', () => {
+  it("a 'player'-filtered subscriber (the economy shape) banks NOTHING from a 'hazard' emit", () => {
+    let banked = 0;
+    subscribeMobKill((type, pos, source) => { if (source === 'player') banked += 1; });
+    emitMobKill('zombie', [0, 0, 0], 'hazard');
+    expect(banked).toBe(0);
+    emitMobKill('zombie', [0, 0, 0]); // the default stays player
+    expect(banked).toBe(1);
+  });
+});

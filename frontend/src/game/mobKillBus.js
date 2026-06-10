@@ -12,7 +12,8 @@
 const subscribers = new Set();
 
 /** subscribeMobKill(cb) -> unsubscribe. cb receives (mobType, position[], source).
- *  source ∈ 'player' | 'ally' (S2-B3-M1 attribution — ally kills must BANK NOTHING downstream). */
+ *  source: 'player' | 'ally' (S2-B3-M1) | 'hazard' (S2-B4-M1 — element-zone kills; banks nothing
+ *  downstream by the exact-match 'player' filters). */
 export function subscribeMobKill(cb) {
   subscribers.add(cb);
   return () => subscribers.delete(cb);
