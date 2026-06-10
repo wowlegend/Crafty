@@ -50,13 +50,21 @@
 >    edit) — the router work found + fixed it, so block-editing genuinely works again; if building feels
 >    "suddenly different", that's why. *Decision-of-record (loop): target-priority routing, no lanes/modes;
 >    a hotbar hand-slot lane model is the recorded reversal path (revisit w/ #71 hotbar honesty).*
-> 4. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
-> 5. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
+> 4. **🔗 SOULBIND (B3) design batch (2026-06-10 — the loop proceeds on the recs, reversals recorded):**
+>    the design-of-record is `docs/superpowers/specs/2026-06-10-crafty-s2b3-soulbind-design.md`. Your four
+>    calls (§8): (1) v1 = "player stays the tank" (enemies never target allies until the v2 worker-faction
+>    milestone — rec YES; the alternative was the schedule risk every design lens flagged); (2) pets vs
+>    squad — two companion systems would coexist; rec: keep pets cosmetic, fold tame into SOULBIND at v2;
+>    (3) the 3-hybrid roster taste (Dreadweaver/Bonehide Bulwark/Marrowspinner) + spectral jade #3DFFB0;
+>    (4) squad cap 2+1-talent, costs 35/50. Also locked en route: kill-bus killer-attribution ships FIRST
+>    (closes an ally-AFK-farm exploit that exists the moment any ally can kill).
+> 5. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
+> 6. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
 >    fully rewritten as a LIVING plan (v1 preserved at `git show ddfdf96:SOTA-INITIATIVE.md`). One NEW
 >    loop-PROPOSED policy inside it needs your eventual yes/no: **S3 early-entry relaxation** — recorded
 >    decision stays "S3 after ALL 4 Aspects"; proposed escape hatch = enter at ≥3 Aspects IF a forcing event
 >    lands (touch becomes load-bearing externally, or a hard perf wall). Reversal = delete the clause.
-> 6. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
+> 7. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
 >    exposure — confirm transfer to loop, or dismiss) · the forced-med/low tier baselines from S2-A-M4b
 >    (ratify into the gate, or hand the call to the loop).
 >
