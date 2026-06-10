@@ -45,8 +45,9 @@
 >    **SOULBIND SNARE (2026-06-10, M4): the third Aspect's verb plays** — unlock Soul Snare in the talent
 >    tree, bank Soul on day kills, weaken a hostile to <=30% (its health bar turns JADE = bindable), hold X
 >    aimed at it ~1.1s (a jade tether tightens) -> the bind chime + the creature joins you re-tinted jade.
->    HONEST NOTE: it stands guard where bound until M5 (squad AI next); the tether's look gets the full
->    in-world judge at M6 alongside ally tints + hybrids. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    UPDATE (M5 shipped): your bound creature now FOLLOWS at heel (3-5m ring), engages hostiles near
+>    you (it draws their attention — hits aggro the siege toward the fight), and leashes back if left
+>    behind. The tether's look gets the full in-world judge at M6 alongside ally tints + hybrids. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/

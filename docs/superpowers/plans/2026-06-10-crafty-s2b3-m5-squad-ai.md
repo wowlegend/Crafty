@@ -1,5 +1,7 @@
 # SOULBIND M5 — Squad AI + Ally Render Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iter 48):** T1 (the pure brain, 8/8) + T2 (the bridge + ally render + gate). 774 unit (90 files) · build · visual 13/13. The vanish-on-bind gap is closed — bound creatures follow at heel and fight.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b3-soulbind-design.md` §2/§3 M5.
 > **HONESTY NOTE (found at plan time):** a bound ally currently has NO renderer (conversion exits
@@ -18,7 +20,7 @@
 
 **Files:** Create `frontend/src/game/squadAI.js` + `frontend/src/game/squadAI.test.js`
 
-- [ ] **Step 1: failing tests:**
+- [x] **Step 1: failing tests:**
 ```js
 import { describe, it, expect } from 'vitest';
 import { stepSquad, FOLLOW_RING, ENGAGE_RADIUS, ATTACK_RANGE, ATTACK_COOLDOWN_SEC, LEASH_DIST, ALLY_DPS_HIT } from './squadAI';
@@ -85,7 +87,7 @@ describe('S2-B3-M5: the squad brain (pure)', () => {
   });
 });
 ```
-- [ ] **Step 2: red** → **Step 3: implement:**
+- [x] **Step 2: red** → **Step 3: implement:**
 ```js
 /**
  * squadAI.js — S2-B3-M5: the pure squad brain (the voidhand/soulbind purity discipline).
@@ -152,13 +154,13 @@ export function stepSquad(allies, hostiles, playerPos, now, playerAlive) {
 }
 ```
   NOTE the test "moves toward the ring, never inside it" computes a single STEP move — with STEP=0.28 from 10m the after-distance is ~9.7m (≥ min ✓, < before ✓). Keep STEP small enough that one step from just-outside-max can't jump past min (max-min=2 >> 0.28 ✓).
-- [ ] **Step 4: green** → **commit** `feat(soulbind-m5): the pure squad brain — follow ring, player-anchored engage, leash, cooldowns`
+- [x] **Step 4: green** → **commit** `feat(soulbind-m5): the pure squad brain — follow ring, player-anchored engage, leash, cooldowns`
 
 ### Task 2: the SquadAISystem bridge + ally render
 
 **Files:** Create `frontend/src/world/SquadAISystem.jsx`; Modify `frontend/src/SimplifiedNPCSystem.jsx` (export MobModel at :90 — `export const MobModel = ...` — and mount the two new pieces inside NPCSystem's return OR mount SquadAISystem beside HurlSystem in Components and render allies from a small AllySquadRender INSIDE SimplifiedNPCSystem where MobModel is in scope [CHEAPEST — zero export-graph churn: an `{allies.map(...)}` block next to the existing `{entities.map(...)}`, jade Outlines rim, using useEntities(alliesQuery)]); extend `frontend/tests/gates/voidhand-noremesh-gates.test.js` GATED list with SquadAISystem.jsx
 
-- [ ] **Step 1:** SquadAISystem (mounted beside `<HurlSystem />` in Components):
+- [x] **Step 1:** SquadAISystem (mounted beside `<HurlSystem />` in Components):
 ```jsx
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -211,12 +213,12 @@ export function SquadAISystem() {
   return null;
 }
 ```
-- [ ] **Step 2:** ally RENDER — inside SimplifiedNPCSystem's NPCSystem return, next to the mobs map: `const allies = useEntities(alliesQuery);` + `{allies.entities ? allies.entities.map(...) : allies.map(...)}` (match the existing useEntities usage shape EXACTLY — read :84-88 first) rendering `<MobModel key={'ally-' + entity.id} entity={entity} />` PLUS a jade rim: cheapest correct = reuse MobModel as-is (the entity.color jade lerp from M4 already differentiates) and add the rim at M6's look pass if the judge wants more. Import alliesQuery beside mobsQuery (:8).
-- [ ] **Step 3:** noremesh GATED list += `'world/SquadAISystem.jsx'`; mount `<SquadAISystem />` beside `<SnareTetherSystem />`.
-- [ ] **Step 4: full battery + commit** `feat(soulbind-m5): allies walk + fight — the 15Hz bridge applies brain orders; bound creatures RENDER again`
+- [x] **Step 2:** ally RENDER — inside SimplifiedNPCSystem's NPCSystem return, next to the mobs map: `const allies = useEntities(alliesQuery);` + `{allies.entities ? allies.entities.map(...) : allies.map(...)}` (match the existing useEntities usage shape EXACTLY — read :84-88 first) rendering `<MobModel key={'ally-' + entity.id} entity={entity} />` PLUS a jade rim: cheapest correct = reuse MobModel as-is (the entity.color jade lerp from M4 already differentiates) and add the rim at M6's look pass if the judge wants more. Import alliesQuery beside mobsQuery (:8).
+- [x] **Step 3:** noremesh GATED list += `'world/SquadAISystem.jsx'`; mount `<SquadAISystem />` beside `<SnareTetherSystem />`.
+- [x] **Step 4: full battery + commit** `feat(soulbind-m5): allies walk + fight — the 15Hz bridge applies brain orders; bound creatures RENDER again`
 
 ### Task 3: close-out
-- [ ] Spec §3 M5 row ✅ · this plan ✅ SHIPPED · **fix the M4 KRB cue** ("stands guard" → "follows you at heel and fights hostiles near you") · ACTIVE_PLAN → M6 (FUSE + the hybrid roster + HUD soul bar + THE LOOK JUDGE incl. the parked tether frame).
+- [x] Spec §3 M5 row ✅ · this plan ✅ SHIPPED · **fix the M4 KRB cue** ("stands guard" → "follows you at heel and fights hostiles near you") · ACTIVE_PLAN → M6 (FUSE + the hybrid roster + HUD soul bar + THE LOOK JUDGE incl. the parked tether frame).
 
 ## Self-review
 - Spec coverage: M5 row = "pure brain + 15Hz bridge + AllyModel render + capture-self-null" — T1, T2.1, T2.2, the isCaptureMode return ✓. The §4 player-death edge is a brain test ✓. Ally-hits-set-isAggro (design §2) ✓ T2.1.
