@@ -74,7 +74,7 @@ mob-vs-mob) is the NAMED v2 seam, deliberately deferred: it was every lens's sch
 | M3 ✅ | **The allegiance seam**: `isAlly` archetype conversion + the FIVE-surface exclusion (serializer + apply loop SAME commit, cull→leash, spawn cap, minimap, melee cone + verb-router ctx) + a static gate (an isAlly entity never appears in worker messages) | the gate + conversion unit tests |
 | M4 ✅* | SNARE end-to-end: intent + channel + tell + ribbon (reuse `buildRibbonIndices`) + bind conversion + SFX | real-mob smoke (snare a live low-HP mob → it converts, no XP/kill emitted) |
 | M5 | Squad AI: `game/squadAI.js` pure brain + the 15Hz bridge + AllyModel render (re-tint + jade rim) + capture-self-null | pure-brain TDD (the §5 edge table) + visual 13/13 |
-| M6 | FUSE + the hybrid roster + HUD (soul bar unlock-gated, jade) + the in-world look judge | roster data tests + judge frames |
+| M6 ✅* | FUSE + the hybrid roster + HUD (soul bar unlock-gated, jade) + the in-world look judge | roster data tests + judge frames (*the creature look-judge: function verified by mesh census; the aesthetic eyeball = Kevin's playtest + the M7 showcase fixture — 4 instruments tried + refuted, writeup in the refs dir) |
 | M7 | Balance vs siegeParams + the playtest/KRB close + Aspect close-out | the budget table + doc-currency |
 
 ## 4. Edge contracts (each becomes a test)

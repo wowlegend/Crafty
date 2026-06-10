@@ -1,5 +1,7 @@
 # SOULBIND M6 — FUSE + Hybrid Roster + Soul HUD + The Look Judge Implementation Plan
 
+> **✅* SHIPPED (2026-06-10, loop iters 50-54):** T1-T4 fully live (roster + the pig-fallback catch · decideFuse · the X-key arbiter + fusion + the Soul bar). 781 unit (92 files) · build · visual 13/13. ***T5 the look judge:** function PROVEN by mesh census (allies +25 meshes live; fusion births the dreadweaver live); the aesthetic frame defeated 4 instruments (C-probe phantom/orbit · plain-game FPV controller re-asserts heading + spawn faces a cliff · the studio suppresses live entities by design) — full forensic writeup in `.superpowers/s2b3-soulbind-m4-refs/HOW.md`; the RIGHT tool (a ?showcase=soulbind dev route) is an M7 task; Kevin's KRB playtest cue carries the eyeball.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b3-soulbind-design.md` §2/§3 M6.
 > M6 also carries the CONSOLIDATED LOOK DEBT: the parked M4 tether judge (writeup + ranked hypotheses in
@@ -18,7 +20,7 @@
 
 **Files:** Create `frontend/src/game/hybrids.js` + `frontend/src/game/hybrids.test.js`
 
-- [ ] **Step 1: failing tests:**
+- [x] **Step 1: failing tests:**
 ```js
 import { describe, it, expect, afterEach } from 'vitest';
 import { HYBRIDS, fuseKey, lookupHybrid, applyFusion, FUSE_RADIUS } from './hybrids';
@@ -70,7 +72,7 @@ describe('S2-B3-M6: the curated hybrid roster', () => {
   });
 });
 ```
-- [ ] **Step 2: red** → **Step 3: implement:**
+- [x] **Step 2: red** → **Step 3: implement:**
 ```js
 /**
  * hybrids.js — S2-B3-M6: the CURATED fusion roster (the spec-locked v1 stance: lookup, never
@@ -132,13 +134,13 @@ export function applyFusion(world, a, b) {
 }
 ```
   NOTE at build: check whether MobModel reads bodySize/headSize from MOB_TYPES[entity.type] or from the ENTITY — if from MOB_TYPES (likely: `mobConfig` lookup), the hybrid render needs MobModel to prefer `entity.bodySize ?? mobConfig.bodySize` (a 2-line fallback edit in MobModel, capture-safe since hybrids never exist in baselines; verify with the suite). Record whichever was true in the commit body.
-- [ ] **Step 4: green** → **commit** `feat(soulbind-m6): the curated hybrid roster — 3 role-spread hybrids, order-free lookup, midpoint fusion`
+- [x] **Step 4: green** → **commit** `feat(soulbind-m6): the curated hybrid roster — 3 role-spread hybrids, order-free lookup, midpoint fusion`
 
 ### Task 2: the FUSE channel reducer (same-file twin in soulbind.js, TDD)
 
 **Files:** Modify `frontend/src/game/soulbind.js` + extend `frontend/src/game/soulbind.test.js`
 
-- [ ] **Step 1: failing tests** (append):
+- [x] **Step 1: failing tests** (append):
 ```js
 import { makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './soulbind';
 
@@ -161,27 +163,27 @@ describe('S2-B3-M6: the FUSE channel (the snare reducer\'s twin)', () => {
   });
 });
 ```
-- [ ] **Step 2: red** → **Step 3:** implement `FUSE_CHANNEL_SEC = 1.4`, `makeFuseState`, `decideFuse` — the decideSoulbind shape with {channeling, channelStart, cooldownUntil}; validity = ctx.pairNear; the same 1e-9 boundary epsilon; cooldown SNARE_COOLDOWN_SEC reused.
-- [ ] **Step 4: green** → **commit** `feat(soulbind-m6): the FUSE channel reducer — arms only when fusion can complete`
+- [x] **Step 2: red** → **Step 3:** implement `FUSE_CHANNEL_SEC = 1.4`, `makeFuseState`, `decideFuse` — the decideSoulbind shape with {channeling, channelStart, cooldownUntil}; validity = ctx.pairNear; the same 1e-9 boundary epsilon; cooldown SNARE_COOLDOWN_SEC reused.
+- [x] **Step 4: green** → **commit** `feat(soulbind-m6): the FUSE channel reducer — arms only when fusion can complete`
 
 ### Task 3: the apply-site arbiter + execution + the fuse cue
 
 **Files:** Modify `frontend/src/Components.jsx` (extend the soulbind block)
 
-- [ ] **Step 1:** in the soulbind block: compute `fusePair` = the two nearest allies within FUSE_RADIUS of the player (read alliesQuery); `canStartFuse = !snareTargetId && fusePair && sCanFuse(stv.soulBanked) && !!lookupHybrid(fusePair[0].baseType, fusePair[1].baseType)`; step `decideFuse` with {fuseEdge: snareEdge (the SAME key — the arbiter: a snare target WINS, fuse arms otherwise), pairNear: !!fusePair, canStart: canStartFuse, ...}; on 'fuse': `accrueSoul(-FUSE_COST)` + `applyFusion(ecs, fusePair[0], fusePair[1])` + `playSpatialSound('bind', [mid...], 0.7, 25)` (the down-pitched chime = the v1 swell, recorded) — import ecs, lookupHybrid/applyFusion/FUSE_RADIUS, canFuse as sCanFuse + FUSE_COST.
-- [ ] **Step 2:** wire the fuse channel into the tether visual: while fuse-channeling, writeSnareState between the TWO allies (the same transient; jade arc reads as the binding thread) — progress from the fuse SM.
-- [ ] **Step 3: full battery** → **commit** `feat(soulbind-m6): FUSE plays — hold X by two bound creatures, one hybrid rises (arbiter: snare wins)`
+- [x] **Step 1:** in the soulbind block: compute `fusePair` = the two nearest allies within FUSE_RADIUS of the player (read alliesQuery); `canStartFuse = !snareTargetId && fusePair && sCanFuse(stv.soulBanked) && !!lookupHybrid(fusePair[0].baseType, fusePair[1].baseType)`; step `decideFuse` with {fuseEdge: snareEdge (the SAME key — the arbiter: a snare target WINS, fuse arms otherwise), pairNear: !!fusePair, canStart: canStartFuse, ...}; on 'fuse': `accrueSoul(-FUSE_COST)` + `applyFusion(ecs, fusePair[0], fusePair[1])` + `playSpatialSound('bind', [mid...], 0.7, 25)` (the down-pitched chime = the v1 swell, recorded) — import ecs, lookupHybrid/applyFusion/FUSE_RADIUS, canFuse as sCanFuse + FUSE_COST.
+- [x] **Step 2:** wire the fuse channel into the tether visual: while fuse-channeling, writeSnareState between the TWO allies (the same transient; jade arc reads as the binding thread) — progress from the fuse SM.
+- [x] **Step 3: full battery** → **commit** `feat(soulbind-m6): FUSE plays — hold X by two bound creatures, one hybrid rises (arbiter: snare wins)`
 
 ### Task 4: the Soul HUD bar + the token chain
 
 **Files:** Modify `frontend/src/theme/tokens.js` (+`soul:'#3DFFB0'`), `frontend/src/theme/cssVars.js` (`--ui-soul`), `frontend/tailwind.config.cjs` (the kinetic line's twin), `frontend/src/ui/primitives/StatBar.jsx` (FILL/ICON_COLOR += soul), `frontend/src/HUD.jsx` (SoulBar = the KineticBar twin: gate `soulbind_snare`, label `ready ? 'SNARE!' : null`, icon pick an existing gameIcon — check the icon registry for a soul/spirit-ish glyph at build; fallback 'magic')
 
-- [ ] **Step 1:** the 4-surface chain + SoulBar + mount beside KineticBar. **Step 2:** extend the HUD/StatBar tests if twins exist (grep `kinetic` in tests/ and twin every hit). **Step 3: full battery** (visual 13/13 — the bar self-nulls at zero + unlock-gated, the KineticBar capture-safety precedent) → **commit** `feat(soulbind-m6): the Soul bar — jade, unlock-gated, the KineticBar twin`
+- [x] **Step 1:** the 4-surface chain + SoulBar + mount beside KineticBar. **Step 2:** extend the HUD/StatBar tests if twins exist (grep `kinetic` in tests/ and twin every hit). **Step 3: full battery** (visual 13/13 — the bar self-nulls at zero + unlock-gated, the KineticBar capture-safety precedent) → **commit** `feat(soulbind-m6): the Soul bar — jade, unlock-gated, the KineticBar twin`
 
 ### Task 5: THE LOOK JUDGE (the consolidated debt) + close-out
 
-- [ ] **Step 1:** the parked tether hypotheses IN ORDER (HOW.md): (a) NDC-project the tether midpoint via __threeCamera — if |ndc|>1 the camera-relative math is wrong, fix; if inside, (b) inspect the C camera near/far/layers; (c) the plain-dev-game start path (read scripts/visual/capture.mjs's start sequence FIRST). Frame: tether + an ally (capture one via the real channel or inject an isAlly entity — injection is SAFE now: allies aren't worker-touched) + a hybrid (applyFusion two injected allies). Judge against the pillars: does the jade family read as ONE Aspect (tether/tint/bar)? Do the 3 hybrid silhouettes read distinct at siege distance?
-- [ ] **Step 2:** iterate ONCE per weak read (the M7-T2 precedent); KRB before/afters; spec §3 M6 row ✅ + this plan ✅ SHIPPED + ACTIVE_PLAN → M7 (balance + the Aspect close).
+- [x] **Step 1:** the parked tether hypotheses IN ORDER (HOW.md): (a) NDC-project the tether midpoint via __threeCamera — if |ndc|>1 the camera-relative math is wrong, fix; if inside, (b) inspect the C camera near/far/layers; (c) the plain-dev-game start path (read scripts/visual/capture.mjs's start sequence FIRST). Frame: tether + an ally (capture one via the real channel or inject an isAlly entity — injection is SAFE now: allies aren't worker-touched) + a hybrid (applyFusion two injected allies). Judge against the pillars: does the jade family read as ONE Aspect (tether/tint/bar)? Do the 3 hybrid silhouettes read distinct at siege distance?
+- [x] **Step 2:** iterate ONCE per weak read (the M7-T2 precedent); KRB before/afters; spec §3 M6 row ✅ + this plan ✅ SHIPPED + ACTIVE_PLAN → M7 (balance + the Aspect close).
 
 ## Self-review
 - Spec coverage: M6 row = "FUSE + the hybrid roster + HUD (soul bar unlock-gated, jade) + the in-world look judge" — T1+T2+T3 (fuse), T4 (HUD), T5 (judge) ✓. The §2 refuse-toast became the start-gate (recorded design simplification — strictly better UX: no consumed-nothing fail state).

@@ -45,9 +45,14 @@
 >    **SOULBIND SNARE (2026-06-10, M4): the third Aspect's verb plays** — unlock Soul Snare in the talent
 >    tree, bank Soul on day kills, weaken a hostile to <=30% (its health bar turns JADE = bindable), hold X
 >    aimed at it ~1.1s (a jade tether tightens) -> the bind chime + the creature joins you re-tinted jade.
->    UPDATE (M5 shipped): your bound creature now FOLLOWS at heel (3-5m ring), engages hostiles near
->    you (it draws their attention — hits aggro the siege toward the fight), and leashes back if left
->    behind. The tether's look gets the full in-world judge at M6 alongside ally tints + hybrids. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
+>    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
+>    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
+>    is unlocked. **EYEBALL ASK (2 min):** the loop's headless judges verified FUNCTION (mesh census:
+>    allies render; fusion births hybrids live) but a clean AESTHETIC frame defeated 4 instruments — in
+>    YOUR playtest please eyeball: the jade family (tether/tint/bar) reads as ONE Aspect? the 3 hybrid
+>    silhouettes read distinct? (A deterministic ?showcase=soulbind dev route is queued in M7 as the
+>    proper fixture.) Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
