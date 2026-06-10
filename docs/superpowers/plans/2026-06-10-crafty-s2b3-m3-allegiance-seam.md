@@ -1,5 +1,7 @@
 # SOULBIND M3 — The Allegiance Seam Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iter 42):** T1 (alliesQuery + convertMobToAlly, 4 invariant tests vs the real ecs) + T2 (GameMethods.captureMob + the only-door gate). 759 unit (85 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b3-soulbind-design.md` §3 M3.
 > **Spec-vs-reality (recorded at plan time, fresh read of :750-785):** the milestone is SMALLER than the
@@ -23,7 +25,7 @@
 
 **Files:** Modify `frontend/src/ecs/world.js` (one export); Create `frontend/src/game/allegiance.js` + `frontend/src/game/allegiance.test.js`
 
-- [ ] **Step 1: failing tests** (`allegiance.test.js` — uses the real ecs; clean up entities in afterEach):
+- [x] **Step 1: failing tests** (`allegiance.test.js` — uses the real ecs; clean up entities in afterEach):
 ```js
 import { describe, it, expect, afterEach } from 'vitest';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
@@ -70,8 +72,8 @@ describe('S2-B3-M3: the allegiance seam (query-exit conversion)', () => {
   });
 });
 ```
-- [ ] **Step 2:** add to `ecs/world.js` beside mobsQuery: `export const alliesQuery = ecs.with('isAlly', 'position', 'type');`
-- [ ] **Step 3: red** → **Step 4: implement** `allegiance.js`:
+- [x] **Step 2:** add to `ecs/world.js` beside mobsQuery: `export const alliesQuery = ecs.with('isAlly', 'position', 'type');`
+- [x] **Step 3: red** → **Step 4: implement** `allegiance.js`:
 ```js
 /**
  * allegiance.js — S2-B3-M3: the allegiance seam. Converting a mob into an ally is a miniplex
@@ -95,13 +97,13 @@ export function convertMobToAlly(world, entity) {
   return entity;
 }
 ```
-- [ ] **Step 5: green** → **commit** `feat(soulbind-m3): the allegiance seam — query-exit conversion (five surfaces excluded by construction)`
+- [x] **Step 5: green** → **commit** `feat(soulbind-m3): the allegiance seam — query-exit conversion (five surfaces excluded by construction)`
 
 ### Task 2: `GameMethods.captureMob(id)` + the registration gate
 
 **Files:** Modify `frontend/src/SimplifiedNPCSystem.jsx` (beside the damageMob registration ~:1018-1020); extend `frontend/tests/gates/kill-attribution-gates.test.js`? NO — new shape: extend `frontend/src/game/allegiance.test.js` can't reach the closure. Add to `frontend/tests/gates/` a soulbind wiring gate file when M4 wires the verb; for M3 the registration is pinned by a minimal grep in the EXISTING kill-attribution gate file? NO — keep concerns separate: create `frontend/tests/gates/allegiance-gates.test.js`.
 
-- [ ] **Step 1:** in SimplifiedNPCSystem, import `convertMobToAlly` from `./game/allegiance` (match the sibling import style) and register beside damageMob:
+- [x] **Step 1:** in SimplifiedNPCSystem, import `convertMobToAlly` from `./game/allegiance` (match the sibling import style) and register beside damageMob:
 ```js
     // S2-B3-M3: capture a mob into the squad — the SNARE bind's apply-path (M4 calls this).
     const captureMob = (id) => {
@@ -111,7 +113,7 @@ export function convertMobToAlly(world, entity) {
     };
 ```
   and add `captureMob` to the same registration object/lines where damageMob is exposed (read the exact registration block first; mirror it, including any teardown).
-- [ ] **Step 2:** `tests/gates/allegiance-gates.test.js` (the read-file shape used by the sibling gates):
+- [x] **Step 2:** `tests/gates/allegiance-gates.test.js` (the read-file shape used by the sibling gates):
 ```js
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -137,10 +139,10 @@ describe('allegiance gates (S2-B3-M3)', () => {
   });
 });
 ```
-- [ ] **Step 3: full battery** (suite grows; build; visual 13/13 — no render changes) → **commit** `feat(soulbind-m3): GameMethods.captureMob — the registered capture path (gate-locked to the seam)`
+- [x] **Step 3: full battery** (suite grows; build; visual 13/13 — no render changes) → **commit** `feat(soulbind-m3): GameMethods.captureMob — the registered capture path (gate-locked to the seam)`
 
 ### Task 3: close-out
-- [ ] Spec §3 M3 row ✅ (with the spec-vs-reality note: the two-ended trap dissolved by construction — the fresh-entityMap finding) · this plan ✅ SHIPPED · ACTIVE_PLAN → M4 (SNARE end-to-end: the 'snare' intent + KeyX + the Components SM block + per-frame target validity via the cone + the channel ribbon + bind = SNARE_COST debit + captureMob + SFX).
+- [x] Spec §3 M3 row ✅ (with the spec-vs-reality note: the two-ended trap dissolved by construction — the fresh-entityMap finding) · this plan ✅ SHIPPED · ACTIVE_PLAN → M4 (SNARE end-to-end: the 'snare' intent + KeyX + the Components SM block + per-frame target validity via the cone + the channel ribbon + bind = SNARE_COST debit + captureMob + SFX).
 
 ## Self-review
 - Spec coverage: M3 row = "isAlly conversion + the FIVE-surface exclusion + a static gate (worker messages) + captureMob": conversion ✓T1, five surfaces ✓by-construction + pinned by T1's query-exit + stale-map tests, the worker-message gate ✓T1 test 4 (stronger: runtime simulation of the apply map, not a grep), captureMob ✓T2. The spec's "static gate" became a RUNTIME invariant test — stronger, recorded.
