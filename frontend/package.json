@@ -31,6 +31,7 @@
     "test:unit:watch": "vitest",
     "visual:capture": "node scripts/visual/capture.mjs",
     "visual:baseline": "node scripts/visual/capture.mjs --baseline",
+    "perf:m2": "node scripts/perf/run-scenarios.mjs",
     "test:visual": "node scripts/visual/capture.mjs && vitest run --config vitest.visual.config.js"
   },
   "devDependencies": {
