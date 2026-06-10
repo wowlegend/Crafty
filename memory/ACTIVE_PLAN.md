@@ -4,7 +4,9 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: **VOIDHAND M4 IN-FLIGHT — Tasks 1-2 ✅ (719 unit/76 files; grab is now a GATED ECONOMY); resume = M4 Task 3 (anvil 3×: pure resolveAnvil TDD + GameMethods.castWorldRay in Terrain + HurlSystem wiring)** — `challenge-memory` POSTPONED to S2-completion
+## Current Task: **VOIDHAND M4 IN-FLIGHT — Tasks 1-3 ✅ (723 unit/76 files; ANVIL LIVE: wall-hit = 3×); resume = M4 Task 4 (unlock-gated Kinetic HUD bar — visual 13/13 MUST hold, STOP if any frame diffs) → then T5 close-out** — `challenge-memory` POSTPONED to S2-completion
+
+> **🔁 LOOP ITER 22 (2026-06-10): M4 Task 3 SHIPPED (TDD)** — `resolveAnvil` pure decision (4 stub-ray tests: next-to-wall 3× / open-air 1× / beyond-range 1× / tuning) + `GameMethods.castWorldRay(origin,dir,maxToi)` registered in Terrain (player-filtered, `timeOfImpact`) + HurlSystem hurl-impact = `HURL_DAMAGE × anvil`. Day-building is now a combat weapon (spec §3e closure). Unit 719→**723**. Pushed. **NEXT UNIT = M4 Task 4** (HUD.jsx: kinetic StatBar under ferocity's, gated on `voidhand_grasp` unlocked [loop decision: capture saves lack it → baselines hold]; check StatBar kind→color map for a 'kinetic' entry, voidhand violet #B36BFF family; battery incl. visual 13/13 + accrual smoke).
 
 > **🔁 LOOP ITER 21 (2026-06-10): M4 Task 2 SHIPPED** — `voidhand_grasp` effect-less unlock node (fold-tolerance locked by mirrored regression tests) · SM ctx `canGrab` = bank ≥ GRAB_COST && talent rank > 0 (the M1-OPEN gate is closed) · the 'grab' apply debits GRAB_COST. Unit 717→**719**. Pushed. **NEXT UNIT = M4 Task 3** (plan steps: failing resolveAnvil tests in hurl.test.js → ANVIL_RANGE/ANVIL_MULT + resolveAnvil in hurl.js → castWorldRay registered in Terrain's #72 executor effect [timeOfImpact!] → HurlSystem hurl-impact uses HURL_DAMAGE×anvil).
 
