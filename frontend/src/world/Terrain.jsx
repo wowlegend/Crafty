@@ -8,6 +8,7 @@ import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
+import { GameMethods } from '../GameMethods';
 import { moodRef } from '../render/mood';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
@@ -286,7 +287,9 @@ const TargetOutline = () => {
         };
         const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
         if (hit) {
-            const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
+            // #72 sweep fix: `timeOfImpact`, not the legacy `toi` (undefined -> NaN target ->
+            // the block-target outline never resolved a real voxel).
+            const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.timeOfImpact));
             // Step slightly IN to the block to ensure we target the hit block's voxel grid
             const targetPos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
             
@@ -566,59 +569,66 @@ export const MinecraftWorld = React.memo(() => {
         return () => { isProcessing = false; };
     }, [camera]);
 
-    // Raycast interaction
+    // #72 VERB ROUTER: Terrain no longer listens to the mouse (the double-fire defect — design:
+    // docs/superpowers/specs/2026-06-10-crafty-72-verb-router-design.md). It OWNS the single 8m
+    // build ray + the mine/place/open executors (worker + Rapier stay HERE, off the gated
+    // Components path) and registers them on the GameMethods registry; the ONE Components
+    // listener routes each click to exactly one verb and passes the SAME ray hit back in.
     useEffect(() => {
-        const handleClick = (e) => {
-            if (!document.pointerLockElement) return;
+        // Map string ID to worker numeric ID
+        const blockIdMap = {
+            'grass': 1,
+            'dirt': 2,
+            'stone': 3,
+            'wood': 6,
+            'birch_wood': 6,
+            'leaves': 7,
+            'glass': 3,
+            'water': 4,
+            'lava': 3,
+            'diamond': 3,
+            'gold': 3,
+            'iron': 3,
+            'coal': 3,
+            'sand': 4,
+            'cobblestone': 3,
+            'flower_red': 7,
+            'flower_yellow': 7,
+            'chest': 6
+        };
 
+        // The single per-click build ray. null on no-hit; else everything the router needs
+        // (toi, chestTargeted) plus everything the executors need (hitPoint/normal/coords).
+        // NOTE (preserved quirk): multiplyScalar MUTATES `direction` to dir*toi, and the
+        // original deletePos/place-fallback offsets used that scaled vector — kept verbatim.
+        const castBuildRay = () => {
             const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
             const playerHandle = playerRigidBody?.handle;
 
             const direction = new THREE.Vector3();
             camera.getWorldDirection(direction);
             const rayStart = camera.position.clone();
-            
+
             const ray = new rapier.Ray(
                 { x: rayStart.x, y: rayStart.y, z: rayStart.z },
                 { x: direction.x, y: direction.y, z: direction.z }
             );
-            
+
             const filterPredicate = (collider) => {
                 if (playerHandle === undefined) return true;
                 const parent = collider.parent();
                 return !parent || parent.handle !== playerHandle;
             };
-            
+
             const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
-            if (!hit) return;
-            
-            const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.toi));
-            
-            let tx, ty, tz;
-            const type = useGameStore.getState().selectedBlock || 'grass';
-            
-            // Map string ID to worker numeric ID
-            const blockIdMap = {
-                'grass': 1,
-                'dirt': 2,
-                'stone': 3,
-                'wood': 6,
-                'birch_wood': 6,
-                'leaves': 7,
-                'glass': 3,
-                'water': 4,
-                'lava': 3,
-                'diamond': 3,
-                'gold': 3,
-                'iron': 3,
-                'coal': 3,
-                'sand': 4,
-                'cobblestone': 3,
-                'flower_red': 7,
-                'flower_yellow': 7,
-                'chest': 6
-            };
-            const numericType = blockIdMap[type] || 1;
+            if (!hit) return null;
+
+            // #72 smoke-found fix: this rapier build exposes `timeOfImpact` — the legacy `hit.toi`
+            // is undefined at runtime (typings agree), so the OLD listener computed NaN coordinates:
+            // instant mine/place at HEAD was silently broken (junk "NaN_NaN_NaN" worldBlocks keys,
+            // break/place SFX with no real edit). Verified via the executor smoke + ray.d.ts.
+            const toi = hit.timeOfImpact;
+            const hitPoint = rayStart.clone().add(direction.multiplyScalar(toi));
 
             const deletePos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
             const targetedX = Math.floor(deletePos.x);
@@ -627,75 +637,97 @@ export const MinecraftWorld = React.memo(() => {
             const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
             const store = useGameStore.getState();
 
-            if (e.button === 2) {
-                // Intercept Right Click if targeting an existing placed chest
-                if (store.chests && store.chests.has(targetCoords)) {
-                    store.setActiveChestCoords(targetCoords);
-                    store.setShowChestInterface(true);
-                    if (document.exitPointerLock) {
-                        document.exitPointerLock();
-                    }
-                    return;
-                }
-            }
+            return {
+                toi,
+                normal: hit.normal ? { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z } : null,
+                direction,
+                hitPoint,
+                targetedX,
+                targetedY,
+                targetedZ,
+                targetCoords,
+                chestTargeted: !!(store.chests && store.chests.has(targetCoords)),
+            };
+        };
 
-            if (e.button === 0) {
-                // DELETE
-                tx = targetedX;
-                ty = targetedY;
-                tz = targetedZ;
-                
-                const cx = Math.floor(tx / CHUNK_SIZE);
-                const cz = Math.floor(tz / CHUNK_SIZE);
-                const lx = tx - cx * CHUNK_SIZE;
-                const lz = tz - cz * CHUNK_SIZE;
-                
-                worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
-                playBlockBreak(hitPoint);
+        const mine = (h) => {
+            if (!h) return;
+            const store = useGameStore.getState();
+            // DELETE
+            const tx = h.targetedX;
+            const ty = h.targetedY;
+            const tz = h.targetedZ;
 
-                // Update worldBlocks in Zustand Map
-                const newBlocks = new Map(store.worldBlocks);
-                newBlocks.set(`${tx}_${ty}_${tz}`, 0);
-                store.setWorldBlocks(newBlocks);
+            const cx = Math.floor(tx / CHUNK_SIZE);
+            const cz = Math.floor(tz / CHUNK_SIZE);
+            const lx = tx - cx * CHUNK_SIZE;
+            const lz = tz - cz * CHUNK_SIZE;
 
-                // Clean up chest in Zustand Map
-                if (store.chests && store.chests.has(targetCoords)) {
-                    const newChests = new Map(store.chests);
-                    newChests.delete(targetCoords);
-                    useGameStore.setState({ chests: newChests });
-                }
+            worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
+            playBlockBreak(h.hitPoint);
 
-            } else if (e.button === 2) {
-                // PLACE
-                const placeDirection = hit.normal ? new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z) : direction.clone().multiplyScalar(-1);
-                const placePos = hitPoint.clone().add(placeDirection.multiplyScalar(0.01));
-                tx = Math.floor(placePos.x);
-                ty = Math.floor(placePos.y);
-                tz = Math.floor(placePos.z);
-                
-                const cx = Math.floor(tx / CHUNK_SIZE);
-                const cz = Math.floor(tz / CHUNK_SIZE);
-                const lx = tx - cx * CHUNK_SIZE;
-                const lz = tz - cz * CHUNK_SIZE;
-                
-                worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: numericType } });
-                playBlockPlace(placePos, useGameStore.getState().selectedBlock);
+            // Update worldBlocks in Zustand Map
+            const newBlocks = new Map(store.worldBlocks);
+            newBlocks.set(`${tx}_${ty}_${tz}`, 0);
+            store.setWorldBlocks(newBlocks);
 
-                // Update worldBlocks in Zustand Map
-                const newBlocks = new Map(store.worldBlocks);
-                newBlocks.set(`${tx}_${ty}_${tz}`, numericType);
-                store.setWorldBlocks(newBlocks);
-
-                // Initialize chest in Zustand Map
-                if (type === 'chest') {
-                    const newChests = new Map(store.chests);
-                    newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
-                    useGameStore.setState({ chests: newChests });
-                }
+            // Clean up chest in Zustand Map
+            if (store.chests && store.chests.has(h.targetCoords)) {
+                const newChests = new Map(store.chests);
+                newChests.delete(h.targetCoords);
+                useGameStore.setState({ chests: newChests });
             }
         };
-        window.addEventListener('mousedown', handleClick);
-        return () => window.removeEventListener('mousedown', handleClick);
+
+        const place = (h) => {
+            if (!h) return;
+            const store = useGameStore.getState();
+            const type = store.selectedBlock || 'grass';
+            const numericType = blockIdMap[type] || 1;
+            // PLACE
+            const placeDirection = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().multiplyScalar(-1);
+            const placePos = h.hitPoint.clone().add(placeDirection.multiplyScalar(0.01));
+            const tx = Math.floor(placePos.x);
+            const ty = Math.floor(placePos.y);
+            const tz = Math.floor(placePos.z);
+
+            const cx = Math.floor(tx / CHUNK_SIZE);
+            const cz = Math.floor(tz / CHUNK_SIZE);
+            const lx = tx - cx * CHUNK_SIZE;
+            const lz = tz - cz * CHUNK_SIZE;
+
+            worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: numericType } });
+            playBlockPlace(placePos, useGameStore.getState().selectedBlock);
+
+            // Update worldBlocks in Zustand Map
+            const newBlocks = new Map(store.worldBlocks);
+            newBlocks.set(`${tx}_${ty}_${tz}`, numericType);
+            store.setWorldBlocks(newBlocks);
+
+            // Initialize chest in Zustand Map
+            if (type === 'chest') {
+                const newChests = new Map(store.chests);
+                newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
+                useGameStore.setState({ chests: newChests });
+            }
+        };
+
+        const open = (h) => {
+            if (!h || !h.chestTargeted) return;
+            const store = useGameStore.getState();
+            store.setActiveChestCoords(h.targetCoords);
+            store.setShowChestInterface(true);
+            if (document.exitPointerLock) {
+                document.exitPointerLock();
+            }
+        };
+
+        GameMethods.castBuildRay = castBuildRay;
+        GameMethods.terrainVerbs = { mine, place, open };
+        return () => {
+            delete GameMethods.castBuildRay;
+            delete GameMethods.terrainVerbs;
+        };
     }, [camera, rapier, world]);
 
     // Worker `chunk_mesh` messages arrive in non-deterministic order, so the chunk

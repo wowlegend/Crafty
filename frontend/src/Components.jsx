@@ -14,6 +14,7 @@ import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand } from './game/voidhand.js';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
 import { isPointInCone } from './combat/cone.js';
+import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
 import {
   PickaxeIcon,
@@ -421,14 +422,65 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('grab', false);
       }
     };
+    // #72 VERB ROUTER: ONE listener, one click -> exactly ONE verb (design-of-record:
+    // docs/superpowers/specs/2026-06-10-crafty-72-verb-router-design.md). ctx is built from
+    // the LIVE seams: the same melee cone damage uses (router-attack ≡ swing-lands), a narrow
+    // aim cone over the collider-less mobs (the through-mob guard), and Terrain's single 8m
+    // build ray via the GameMethods registry (this file stays worker-token-free — gated).
     const handleMouseDown = (e) => {
-      if (getInput().active) {
-        if (e.button === 0) {
-          triggerMeleeAttack();
-        } else if (e.button === 2) {
-          triggerSpellCast();
+      if (!getInput().active) return;
+      if (e.button !== 0 && e.button !== 2) return;
+      const store = useGameStore.getState();
+
+      const lookDir = new THREE.Vector3();
+      camera.getWorldDirection(lookDir);
+      const aimDir = lookDir.clone();              // true aim (vertical kept) for the aim cone
+      lookDir.y = 0; lookDir.normalize();          // the flattened melee-arc dir (damage parity)
+      const playerPos = camera.position.clone();
+      playerPos.y -= 0.8;
+
+      // meleeHit — the EXACT live-damage test (mobs + boss)
+      let meleeHit = false;
+      if (GameMethods.checkMobsInMeleeCone) {
+        meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, Math.PI / 2).length > 0;
+      }
+      if (!meleeHit && store.isBossActive?.() && store.getBossPosition) {
+        const bp = store.getBossPosition();
+        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, Math.PI / 2);
+      }
+
+      // aimedMobDist — nearest mob/boss in the narrow aim cone (pure math; mobs have no colliders)
+      let aimedMobDist = Infinity;
+      if (GameMethods.checkMobsInMeleeCone) {
+        for (const m of GameMethods.checkMobsInMeleeCone(playerPos, aimDir, AIM_CONE_RANGE, AIM_CONE_ARC)) {
+          const dx = m.position.x - playerPos.x, dy = m.position.y - playerPos.y, dz = m.position.z - playerPos.z;
+          const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (d < aimedMobDist) aimedMobDist = d;
         }
       }
+      if (store.isBossActive?.() && store.getBossPosition) {
+        const bp = store.getBossPosition();
+        if (bp && isPointInCone(playerPos, aimDir, { x: bp[0], y: bp[1], z: bp[2] }, AIM_CONE_RANGE, AIM_CONE_ARC)) {
+          const dx = bp[0] - playerPos.x, dy = bp[1] - playerPos.y, dz = bp[2] - playerPos.z;
+          aimedMobDist = Math.min(aimedMobDist, Math.sqrt(dx * dx + dy * dy + dz * dz));
+        }
+      }
+
+      const hit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
+
+      const verb = routeMouseVerb(e.button, {
+        held: store.voidhandHeld,
+        meleeHit,
+        aimedMobDist,
+        terrainDist: hit ? hit.toi : Infinity,
+        chestTargeted: !!(hit && hit.chestTargeted),
+      });
+
+      if (verb === 'attack') triggerMeleeAttack();
+      else if (verb === 'cast') triggerSpellCast();
+      else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
+      else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
+      else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
     };
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the

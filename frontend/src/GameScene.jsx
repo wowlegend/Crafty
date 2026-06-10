@@ -178,7 +178,9 @@ const SpatialAudioController = () => {
 
       if (hit) {
         intersections++;
-        currentDist += hit.toi + 0.15;
+        // #72 sweep fix: this rapier build exposes `timeOfImpact`; `hit.toi` is undefined ->
+        // NaN poisoned the march and ended it after one hit (occlusion under-counted).
+        currentDist += hit.timeOfImpact + 0.15;
       } else {
         break;
       }
