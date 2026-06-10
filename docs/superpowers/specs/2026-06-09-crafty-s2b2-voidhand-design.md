@@ -6,9 +6,18 @@
 > `kinetic.js` meter (TDD) · `world/PhantomBlockSystem.jsx` (orbiting phantom, self-nulls when !held, capture-frozen)
 > · the `grab` intent + transient store fields · the Components SM wiring · the **NO-RE-MESH static gate GREEN**
 > (`tests/gates/voidhand-noremesh-gates.test.js`) · a death-edge fix (proactive, from the WILDHEART review). Adversarial
-> review CLEAN (0 blockers); 657 unit · build · visual 13/13. **NEXT = M2 (the iPad FPS gate, BEFORE the verbs).**
+> review CLEAN (0 blockers); 657 unit · build · visual 13/13.
 > NOTE on process: M1 was built directly from the §12 milestone breakdown (a small foundational milestone — this spec
 > served as its plan); M2+ each get their own `superpowers:writing-plans` plan doc in `../plans/`.
+>
+> **Status update (2026-06-10): ✅ M2 DONE — desktop FPS gate PASS.** Plan `../plans/2026-06-10-crafty-s2b2-m2-fps-gate.md`
+> (scope amended by STATE-REVIEW-2026-06-10 §4: M1's phantom is render-only, so M2 measured render+light cost + a
+> dev-probe dynamic hurl stand-in; the spec's "hurl→impact-burst" wording was pre-M3). Probe `?perf=A..E` (live siege,
+> pinned dpr/tier) + `npm run perf:m2`. **C−B = 0.00ms median / +0.10ms p95 vs the pinned 1.5/3.0ms budget (Decision #5
+> resolved: delta-from-baseline, per the rec)**; the grab-edge light hitch was engineered out (light-pool) and
+> D-scenario-verified. Verdict + device protocol: `memory/S2B2-M2-PERF.md`; iPad confirmation parked to Kevin (does NOT
+> block M3); **M3 re-gate item: re-run E−B/C−B after the real HURL/SLAM.** 681 unit · build · visual 13/13.
+> **NEXT = #72 (mouse verb-mode seam, the pre-M3 blocker) → M3.**
 >
 > Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
 > mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)

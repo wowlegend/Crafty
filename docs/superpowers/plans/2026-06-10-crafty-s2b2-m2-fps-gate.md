@@ -1,5 +1,12 @@
 # VOIDHAND M2 — FPS Gate Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iters 1-7).** All 7 tasks executed; desktop gate **PASS** (C−B 0.00ms median /
+> +0.10ms p95 vs the 1.5/3.0 budget, ANGLE Metal M3 Max). Verdict + device protocol: `memory/S2B2-M2-PERF.md`;
+> evidence: `memory/perf/`. Deviations from plan-as-written: the runner is headless-new + Metal (headed Chrome
+> occlusion-suspends from agent contexts — STUCK-rule layer switch, renderer stamped in reports); a probe-smoke
+> defect forced a dev-only `isPerfProbe()` SM-skip in Components + the strengthened perf-config-gates guard
+> literal (justified in `eafb811`). iPad confirmation parked to Kevin (KRB LIVE #2, bundles #63), non-blocking.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note (2026-06-10):** authored + executed by the autonomous build loop (inline execution, one task ≈ one iteration). Design-of-record: `docs/superpowers/specs/2026-06-09-crafty-s2b2-voidhand-design.md` §12 M2 row, as **amended by `memory/STATE-REVIEW-2026-06-10.md` §4** (the adversarially-verified input brief — it supersedes the spec's M2 row where they conflict).
 

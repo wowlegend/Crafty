@@ -61,9 +61,11 @@ layered on a day-build / night-siege survival loop. Wildheart (beast-transform) 
 
 **S0 ✅ · S1-A/B/C/D ✅ (foundation, render recipe, bold-flat UI system, signatures) · S2 design ✅ ·
 S2-A foundation ✅ · S2-B1 WILDHEART ✅ (merged `458bbb5`) · #68 perf remediation ✅ (`868e4e7`) ·
-S2-B2 VOIDHAND IN-FLIGHT (M1 of 8 ✅; next = M2 iPad FPS gate, plan-doc-first) · S2-B3/B4 + S3 + S4 not
-started.** Live scale (measured 2026-06-10): ~21.5k LOC src / 114 files / 667 unit tests (70 files) /
-19 static-gate files (~11 invariant families) / 13-state visual gate. Full risk map:
+S2-B2 VOIDHAND IN-FLIGHT (M1 ✅ · **M2 FPS gate ✅ desktop-PASS** [C−B 0.00/+0.10ms vs 1.5/3.0 budget,
+`memory/S2B2-M2-PERF.md`; iPad confirm parked to Kevin, non-blocking]; next = #72 verb-mode seam → M3
+HURL/SLAM) · S2-B3/B4 + S3 + S4 not started.** Live scale (measured 2026-06-10 post-M2): ~21.9k LOC src /
+121 files / 681 unit tests (72 files) / 19 static-gate files (~11 invariant families) / 13-state visual gate
+/ perf-probe harness (`?perf=A..E` + `npm run perf:m2`). Full risk map:
 `memory/STATE-REVIEW-2026-06-10.md`. Open tasks: #69–#74 (+ earlier #32 vitest · #63 B1 tuning ·
 #64 beast-capture · #66 panel flags) — **the task registry is the source of truth, not this line.**
 Known managed drift: WILDHEART shipped audio-silent (the motif pass — §5 AUDIO now owns it).

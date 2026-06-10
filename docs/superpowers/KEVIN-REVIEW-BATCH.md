@@ -10,8 +10,17 @@
 > **LIVE — needs Kevin (when convenient; none block the loop):**
 > 1. **🎬 Beast-frame eyeball (#64):** the 4 punchy roster frames (`frontend/tests/visual/current/beast-*.png`)
 >    still await your ratify/drop call; the capture-reliability fix comes first (the frames flake — tracked).
-> 2. **📱 M2 iPad FPS run:** when the M2 harness lands (next milestone), the on-device run needs your iPad
->    + ~15 min. The loop preps everything (probe states, protocol, budget table) and parks at "ready".
+> 2. **📱 M2 iPad FPS run — READY (2026-06-10, one-tap, ~5 min, bundles #63):** the harness SHIPPED and the
+>    desktop gate PASSED (C−B 0.00ms median / +0.10ms p95 vs the 1.5/3.0ms budget, ANGLE Metal M3 Max —
+>    full verdict + numbers in `memory/S2B2-M2-PERF.md`). Your part: Mac `cd /Users/kz/Code/Crafty/frontend
+>    && npx vite --host` → iPad Safari `http://<mac-LAN-ip>:5173/?perf=B` (wait for the on-screen DONE
+>    numbers) → then `?perf=C` → compare medians vs the budget (no Safari inspector needed). **Same session:
+>    the #63 WILDHEART golem check** per `memory/S2B1-M2-PERF.md` §4. Does NOT block M3 — the loop proceeds.
+>    *M2 decisions-of-record (loop, charter §5; reversal = plan-doc/PhantomBlockSystem edits):* budget pinned
+>    at the STATE-REVIEW rec (1.5ms median / 3ms p95, C−B) · phantom pointLight moved to a fixed light pool
+>    (always-mounted, intensity-gated — D-scenario-verified no edge hitch) · probe SM-skip in Components
+>    (dev-only) · desktop runner = headless-new + Metal (headed Chrome is occlusion-suspended from agent
+>    contexts; renderer string stamped in every report).
 > 3. **🕹️ Playtest eyeballs queued:** cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change.
 > 4. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
