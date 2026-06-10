@@ -69,7 +69,7 @@ mob-vs-mob) is the NAMED v2 seam, deliberately deferred: it was every lens's sch
 
 | M | What | The gate |
 |---|---|---|
-| M1 | **Kill-bus attribution** (`emitMobKill(type, pos, source='player')`; subscribers filter; ally deaths never emit) + `damageMob` source param (skip hitstop/shake/XP for 'ally') | exploit tests: ally kill banks NOTHING; the bus change is additive (all existing subscribers green) |
+| M1 ✅ | **Kill-bus attribution** (`emitMobKill(type, pos, source='player')`; subscribers filter; ally deaths never emit) + `damageMob` source param (skip hitstop/shake/XP for 'ally') | exploit tests: ally kill banks NOTHING; the bus change is additive (all existing subscribers green) |
 | M2 | `game/soulbind.js` SM + `game/soul.js` meter + persistence + the talent nodes (TDD twins) | unit suites mirror voidhand/kinetic |
 | M3 | **The allegiance seam**: `isAlly` archetype conversion + the FIVE-surface exclusion (serializer + apply loop SAME commit, cull→leash, spawn cap, minimap, melee cone + verb-router ctx) + a static gate (an isAlly entity never appears in worker messages) | the gate + conversion unit tests |
 | M4 | SNARE end-to-end: intent + channel + tell + ribbon (reuse `buildRibbonIndices`) + bind conversion + SFX | real-mob smoke (snare a live low-HP mob → it converts, no XP/kill emitted) |
