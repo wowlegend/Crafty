@@ -7,6 +7,7 @@ import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSav
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
+import { clampKinetic } from '../game/kinetic.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -375,6 +376,11 @@ export const useGameStore = create((set, get) => ({
     setVoidhandHeld: (v) => set({ voidhandHeld: !!v }),
     heldPhantom: null,
     setHeldPhantom: (p) => set({ heldPhantom: p || null }),
+    // M4: the KINETIC bank (twin of ferocityBanked) — day-kill accrual, spent per combat grab,
+    // dawn-bled, PERSISTED in the progression slice (unlike the transient held flags above).
+    kineticBanked: 0,
+    setKineticBanked: (v) => set({ kineticBanked: clampKinetic(v) }),
+    accrueKinetic: (delta) => set((s) => ({ kineticBanked: clampKinetic(s.kineticBanked + delta) })),
     enterBeastForm: (element) => {
         if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);
@@ -766,6 +772,7 @@ export const useGameStore = create((set, get) => ({
             const nightCount = prog?.nightCount ?? state.nightCount;
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
             const ferocityBanked = clampFerocity(prog?.ferocityBanked ?? state.ferocityBanked); // M4: clamp+round on load
+            const kineticBanked = clampKinetic(prog?.kineticBanked ?? state.kineticBanked); // S2-B2-M4: twin
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -819,6 +826,7 @@ export const useGameStore = create((set, get) => ({
                 nightCount,
                 lastRewardedNight,
                 ferocityBanked,
+                kineticBanked,
                 chests,
                 maxHealth,
                 maxMana,
