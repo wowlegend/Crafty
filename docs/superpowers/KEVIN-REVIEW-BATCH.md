@@ -41,7 +41,12 @@
 >    Aspects** — the roar finally roars (low feral sweep), grab chirps a whole-tone shimmer (the voidhand
 >    motif), hurl whooshes, slam thumps with the camera kick, anvil hits ping gold. All synthesized in-engine
 >    (#74 loop decision: ALL-SYNTH — external gen rejected v1, reversal = S4 side-by-side). EAR CHECK: do the
->    five read as one coherent family with the existing pad/arp? Tunables = the generate*Sound builders. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    five read as one coherent family with the existing pad/arp? Tunables = the generate*Sound builders.
+>    **SOULBIND SNARE (2026-06-10, M4): the third Aspect's verb plays** — unlock Soul Snare in the talent
+>    tree, bank Soul on day kills, weaken a hostile to <=30% (its health bar turns JADE = bindable), hold X
+>    aimed at it ~1.1s (a jade tether tightens) -> the bind chime + the creature joins you re-tinted jade.
+>    HONEST NOTE: it stands guard where bound until M5 (squad AI next); the tether's look gets the full
+>    in-world judge at M6 alongside ally tints + hybrids. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
