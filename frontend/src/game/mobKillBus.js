@@ -11,17 +11,20 @@
  */
 const subscribers = new Set();
 
-/** subscribeMobKill(cb) -> unsubscribe. cb receives (mobType, position[]). */
+/** subscribeMobKill(cb) -> unsubscribe. cb receives (mobType, position[], source).
+ *  source ∈ 'player' | 'ally' (S2-B3-M1 attribution — ally kills must BANK NOTHING downstream). */
 export function subscribeMobKill(cb) {
   subscribers.add(cb);
   return () => subscribers.delete(cb);
 }
 
-/** emitMobKill(mobType, position) — fan out a mob death to every subscriber (isolated per-cb). */
-export function emitMobKill(mobType, position) {
+/** emitMobKill(mobType, position, source) — fan out a mob death (isolated per-cb). The source
+ *  default keeps every pre-B3 caller green; ally deaths DO emit (so squad UI can react) but
+ *  attribution-filtered subscribers bank nothing from them. */
+export function emitMobKill(mobType, position, source = 'player') {
   for (const cb of [...subscribers]) {
     try {
-      cb(mobType, position);
+      cb(mobType, position, source);
     } catch {
       // one bad subscriber (e.g. a quest handler throwing) must not block the others.
     }

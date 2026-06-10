@@ -46,3 +46,18 @@ describe('mobKillBus', () => {
     expect(reached).toBe(true); // the second subscriber still ran
   });
 });
+
+describe('S2-B3-M1: kill attribution', () => {
+  it('passes source through to subscribers', () => {
+    const seen = [];
+    subscribeMobKill((type, pos, source) => seen.push(source));
+    emitMobKill('zombie', [0, 0, 0], 'ally');
+    expect(seen).toEqual(['ally']);
+  });
+  it("defaults source to 'player' (back-compat for every existing emit)", () => {
+    const seen = [];
+    subscribeMobKill((type, pos, source) => seen.push(source));
+    emitMobKill('zombie', [0, 0, 0]);
+    expect(seen).toEqual(['player']);
+  });
+});
