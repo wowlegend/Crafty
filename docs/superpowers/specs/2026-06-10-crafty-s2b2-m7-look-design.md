@@ -1,6 +1,13 @@
 # VOIDHAND M7 — THE LOOK: reference lock + build scope (design of record)
 
-> **Status (2026-06-10): REFERENCE LOCKED (loop self-gate per charter §4 — judged IN-WORLD).**
+> **Status (2026-06-10): ✅ BUILT (loop iters 26-30; all §4 tasks shipped + judged in-world).**
+> T1 emissive face-lift (night identity restored — `after-t1-locked-1.png` vs `held-1.png`) · T2 impact
+> core-flash (one tune pass 0.12s/1.6→0.18s/3.0; judged via the NUMERIC ENVELOPE — CDP screenshot latency
+> exceeds sub-200ms VFX, recorded as the method for fast effects — op .82→.04, r 1.7→2.6m, bloom-confirmed)
+> · T3 gold WALL HIT! label (the isXP-pattern `isAnvil` variant + `GameMethods.spawnAnvilText`). Zero
+> re-baselines, exactly as §3 predicted (visual 13/13 throughout). 726 unit · build clean.
+>
+> *(Original lock below, for the record.)* **REFERENCE LOCKED (loop self-gate per charter §4 — judged IN-WORLD).**
 > Evidence frames: `.superpowers/s2b2-voidhand-m7-refs/held-*.png` (the current phantom held under
 > night siege + day, captured live via `?perf=C`; `before-night.png`/`burst-*` = the day/SM context).
 > Owning spec: `2026-06-09-crafty-s2b2-voidhand-design.md` §5 (rec: rim-glow +

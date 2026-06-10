@@ -47,8 +47,16 @@
 > drops — voidhand SM; single-flight — HurlSystem ignores a second request mid-flight). "Cap-full blocks +
 > soft sfx + pool readout" only exist WITH a pool — deferred to if/when multi-phantom ships (an M8/v2
 > content decision, recorded). 726 unit (77 files) · build · visual 13/13.
-> **NEXT = M7 THE LOOK** (reference-lock per §5 + the VFX discipline: phantom rim/glow final treatment,
-> impact + WALL-HIT gold flash, re-baseline the provisional frames, KRB before/after) **→ M8 content.**
+> **Status update (2026-06-10): ✅ M7 THE LOOK DONE** (design `2026-06-10-crafty-s2b2-m7-look-design.md`,
+> ✅ BUILT): the in-world judge KEPT the M1 ink+violet-rim architecture (it already was the ③·5 discipline);
+> shipped the emissive face-lift (night block-identity), the white-hot impact core (slam ~3m, anvil bigger),
+> and the gold WALL HIT! label. Zero re-baselines (the §12 row's "re-baseline provisional frames" was
+> drift — no voidhand frames were ever gate-tracked). BEFORE/AFTER frames:
+> `.superpowers/s2b2-voidhand-m7-refs/`. **NEXT = M8 content enumeration (the LAST milestone): 8+ block
+> types distinct-tinted + HURL/SLAM feel-distinct — note the spec-vs-reality question: PHANTOM_BLOCK_COLORS
+> covers the worker's 6-entry COLLAPSED type space (blockIdMap maps ~18 names → 7 numerics), so "8+ types"
+> needs either the type-space widened (worker seam — out of v1 scope) or the row reduced honestly to the
+> numeric space. Decide at the M8 pass.**
 >
 > Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
 > mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)

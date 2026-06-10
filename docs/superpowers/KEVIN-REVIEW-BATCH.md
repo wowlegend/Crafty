@@ -33,8 +33,11 @@
 >    violet #B36BFF (one identity color per Aspect).* **M7 LOOK lock (2026-06-10, judged in-world):**
 >    BEFORE frames at `.superpowers/s2b2-voidhand-m7-refs/held-*.png` — the night phantom already reads as
 >    ink-silhouette + crisp violet rim (kept); building: faint emissive face-lift (night identity), impact
->    core-flash, gold WALL HIT! label. Element held-tint = NO (spec rec confirmed). AFTER frames will land
->    beside the BEFOREs for your eyeball. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    core-flash, gold WALL HIT! label. Element held-tint = NO (spec rec confirmed). **M7 SHIPPED (iters
+>    26-30): AFTER frames are in beside the BEFOREs** (`after-t1-locked-1.png` = the night grass-block
+>    identity restored; `flash-slam-v2-*` = the impact glint+bloom; the full flash envelope is numeric —
+>    see the design doc). In-playtest: hurl a mob into your wall and watch for the gold WALL HIT! + the
+>    bigger flash — that's the 3x landing. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
