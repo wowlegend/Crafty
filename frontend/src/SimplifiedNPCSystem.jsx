@@ -893,7 +893,7 @@ const MinimapSyncSystem = () => {
 const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
   const { playHit } = useGameSounds();
   useEffect(() => {
-    const damageMob = (id, damage = 25, type = 'physical') => {
+    const damageMob = (id, damage = 25, type = 'physical', source = 'player') => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
 
@@ -905,7 +905,8 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // freeze, zero main-thread stall, and it benefits every damageMob caller
       // (melee AND spells). Shorter window (28ms) since it's now a true motion dip,
       // not a wall-clock stall stacked on top of frame time.
-      useGameStore.setState({ hitstopUntil: performance.now() + 28 });
+      // S2-B3-M1: hitstop is PLAYER feel — an ally's hit must not clamp the player's motion.
+      if (source === 'player') useGameStore.setState({ hitstopUntil: performance.now() + 28 });
 
       const store = useGameStore.getState();
       // NOTE (M5 review [B]): this is a MAGNITUDE proxy ("big hit -> bigger spray"), NOT the crit
@@ -914,7 +915,8 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // light forms (comet/hawk) less — intended feel. Thread the real isCrit here only if Kevin wants
       // the spray to track the crit ROLL rather than the damage magnitude (combat-differentiation depth).
       const isCrit = damage >= 40;
-      if (store.triggerCameraShake) {
+      // S2-B3-M1: camera shake is PLAYER feel — 3 allies on attack cooldowns would judder it continuously.
+      if (source === 'player' && store.triggerCameraShake) {
         store.triggerCameraShake(isCrit ? 1.6 : 1.0);
       }
       
@@ -991,7 +993,8 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         // Spawn glowing physical green XP orbs scattered explosively
         const orbValue = 5;
         const totalXP = entity.xp || 10;
-        const count = Math.max(1, Math.floor(totalXP / orbValue));
+        // S2-B3-M1: XP drops only on YOUR kills (ally kills would farm pickups).
+        const count = source === 'player' ? Math.max(1, Math.floor(totalXP / orbValue)) : 0;
         for (let i = 0; i < count; i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 1.5 + Math.random() * 2.5;
@@ -1009,7 +1012,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
           });
         }
 
-        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z]); // M3.5: fan-out (quests + ferocity + future Aspects)
+        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], source); // M3.5 fan-out + B3-M1 attribution
         ecs.remove(entity);
       }
       return entity;

@@ -19,17 +19,19 @@ import { kineticForKill } from './game/kinetic.js';
 // day, unleash in the siege" loop holds; capture-guarded so the visual gate is unaffected. Mount once
 // (App). The store clamps to [0,MAX]; this just feeds the signed per-kill delta.
 export const useFerocityAccrual = () => {
-    useEffect(() => subscribeMobKill((mobType) => {
+    useEffect(() => subscribeMobKill((mobType, _pos, source) => {
         const s = useGameStore.getState();
-        if (s.isDay && !isCaptureMode()) s.accrueFerocity(ferocityForKill(mobType));
+        // S2-B3-M1: only YOUR kills bank Ferocity (ally kills would AFK-farm the meter)
+        if (source === 'player' && s.isDay && !isCaptureMode()) s.accrueFerocity(ferocityForKill(mobType));
     }), []);
 };
 
 // S2-B2-M4: the Kinetic twin — day kills bank grab charge (spent per combat grab, dawn-bled).
 export const useKineticAccrual = () => {
-    useEffect(() => subscribeMobKill((mobType) => {
+    useEffect(() => subscribeMobKill((mobType, _pos, source) => {
         const s = useGameStore.getState();
-        if (s.isDay && !isCaptureMode()) s.accrueKinetic(kineticForKill(mobType));
+        // S2-B3-M1: only YOUR kills bank Kinetic (the same attribution contract as Ferocity)
+        if (source === 'player' && s.isDay && !isCaptureMode()) s.accrueKinetic(kineticForKill(mobType));
     }), []);
 };
 

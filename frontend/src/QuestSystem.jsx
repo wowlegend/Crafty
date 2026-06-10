@@ -228,7 +228,9 @@ export const useQuestSystem = () => {
     }, [completedQuestIds, addNotification]);
 
     // Record mob kill and generate loot
-    const onMobKill = useCallback((mobType, position) => {
+    const onMobKill = useCallback((mobType, position, source) => {
+        // S2-B3-M1: quest/achievement kill credit = YOUR kills only (ally kills bank nothing)
+        if (source !== 'player') return;
         // Update stats
         setStats(prev => {
             const newStats = {
