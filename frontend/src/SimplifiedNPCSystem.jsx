@@ -5,7 +5,7 @@ import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
 import { World } from 'miniplex';
-import { ecs, mobsQuery } from './ecs/world';
+import { ecs, mobsQuery, alliesQuery } from './ecs/world';
 import { convertMobToAlly } from './game/allegiance';
 import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
@@ -1412,6 +1412,7 @@ export const NPCSystem = React.memo(() => {
   const [lootPops, setLootPops] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery);
+  const allies = useEntities(alliesQuery); // S2-B3-M5: bound creatures RENDER again (they left mobsQuery at bind)
   const xpOrbs = useEntities(xpOrbsQuery);
   const lootDrops = useEntities(lootDropsQuery);
 
@@ -1459,6 +1460,12 @@ export const NPCSystem = React.memo(() => {
 
       {entities.filter(entity => entity && entity.health > 0).map(entity => (
         <MobModel key={entity.id} entity={entity} />
+      ))}
+
+      {/* S2-B3-M5: the squad — the same parametric MobModel (the jade color lerp from the bind
+          already differentiates; a rim treatment is M6-look-judge material). */}
+      {allies.map(entity => (
+        <MobModel key={'ally-' + entity.id} entity={entity} />
       ))}
 
       {xpOrbs.map(orb => (

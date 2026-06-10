@@ -22,6 +22,7 @@ import { phantomWorldPos } from './world/PhantomBlockSystem';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
 import { HurlSystem } from './world/HurlSystem';
 import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
+import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
@@ -1191,6 +1192,7 @@ export const Player = ({ isWorldBuilt }) => {
         <PhantomBlockSystem />
         <HurlSystem />
       <SnareTetherSystem />
+      <SquadAISystem />
       </RigidBody>
       <primitive object={camera}>
         {!inCapture && (
