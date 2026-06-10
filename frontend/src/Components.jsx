@@ -12,6 +12,7 @@ import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
+import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
 import { phantomWorldPos } from './world/PhantomBlockSystem';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
@@ -608,10 +609,12 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        canGrab: true,
+        // M4: the gate M1 left OPEN — bank + talent compose here (the roar-gate pattern below)
+        canGrab: kCanGrab(stv.kineticBanked) && (stv.unlockedTalents?.['voidhand_grasp'] > 0),
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
+        stv.accrueKinetic(-GRAB_COST); // M4: a combat grab SPENDS banked Kinetic (canGrab vetted it)
         // M3: tint from the looked-at block when it's a KNOWN voxel (worldBlocks); else placeholder.
         const gHit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
         const known = gHit ? stv.worldBlocks?.get(gHit.targetCoords) : undefined;

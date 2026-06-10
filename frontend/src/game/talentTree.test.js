@@ -106,3 +106,24 @@ describe('M6 signature nodes + effect-less fold-tolerance', () => {
     expect(talentPoints).toBe(3);
   });
 });
+
+describe('S2-B2-M4: voidhand_grasp (the grab unlock)', () => {
+  const voidhand = ASPECT_TREES.find((t) => t.aspect === 'voidhand');
+  const grasp = voidhand.nodes.find((n) => n.id === 'voidhand_grasp');
+
+  it('is a pure unlock (effect-less, limit 1, prereq Kinetic Force) — the wildheart_roar pattern', () => {
+    expect(grasp).toBeDefined();
+    expect(grasp.effect).toBeUndefined();
+    expect(grasp.limit).toBe(1);
+    expect(grasp.prereq).toBe('voidhand_force');
+  });
+
+  it('folds to NOTHING when unlocked (fold-tolerance — the crash-fix regression class)', () => {
+    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
+    expect(() => foldTalentEffects(base, { voidhand_grasp: 1 })).not.toThrow();
+    expect(foldTalentEffects(base, { voidhand_grasp: 1 })).toEqual(base);
+    // a co-unlocked stat node still folds normally
+    const out = foldTalentEffects(base, { voidhand_grasp: 1, voidhand_force: 2 });
+    expect(out.strength).toBe(10 + 3 * 2); // Kinetic Force +3 STR/rank
+  });
+});

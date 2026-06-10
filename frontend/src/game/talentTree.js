@@ -13,6 +13,9 @@ export const ASPECT_TREES = [
       { id: 'voidhand_force', name: 'Kinetic Force', desc: '+3 Strength per rank — kinetic strikes and hurled mass hit harder.', limit: 3, prereq: null, effect: { stat: 'strength', perRank: 3 } },
       { id: 'voidhand_ward', name: 'Gravity Ward', desc: '+6 Armor per rank — orbiting mass shields you (base-as-anvil).', limit: 3, prereq: null, effect: { stat: 'armor', perRank: 6 } },
       { id: 'voidhand_crush', name: 'Crushing Pull', desc: '+2 Strength per rank — heavier gravitic slams.', limit: 2, prereq: 'voidhand_force', effect: { stat: 'strength', perRank: 2 } },
+      // S2-B2-M4: the grab UNLOCK — effect-LESS like wildheart_roar (the stat-fold skips it;
+      // rank is read at the SM entry gate in Components). Gates the whole VOIDHAND verb kit.
+      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: 'Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs 25 banked Kinetic); hurl it (attack) or slam it down (cast).', limit: 1, prereq: 'voidhand_force' },
     ],
   },
   {
