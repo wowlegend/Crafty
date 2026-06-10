@@ -27,8 +27,21 @@
 > on the phantom's ORBIT POINT (loop decision: timing-the-orbit = the aim skill). Verified vs a REAL
 > spawned mob (hurl @30.3m arc-compensated → 60→30 HP; slam ×1.3). **M2 re-gate executed with REAL hurls:
 > E−B = 0.00/0.00ms PASS** (`memory/S2B2-M2-PERF.md` §3b). The hit event carries pos+dir = the M4 anvil
-> seam, ready. 714 unit · build · visual 13/13. **FPV-feel = Kevin's human gate, parked (KRB), non-blocking.
-> NEXT = M4 (anvil 3× + kinetic meter + talent gate + autosave + HUD), then M5/M6 per spec seq.**
+> seam, ready. 714 unit · build · visual 13/13. **FPV-feel = Kevin's human gate, parked (KRB), non-blocking.**
+>
+> **Status update (2026-06-10): ✅ M4 DONE — the economy + the anvil are live** (plan
+> `../plans/2026-06-10-crafty-s2b2-m4-anvil-kinetic.md`). Kinetic store twin (persistence/autosave-diff/
+> day-kill accrual/dawn bleed — the Ferocity mirror per Decision #2) · `voidhand_grasp` effect-less unlock
+> node gates `canGrab` (bank ≥ GRAB_COST && rank>0; the M1-OPEN gate closed; GRAB_COST spends at commit) ·
+> **base-as-anvil 3×** (pure `resolveAnvil` + `castWorldRay`; walls PRISTINE per Decision #3 rec; gold
+> "WALL HIT!" label + wall flash → M7 look) · unlock-gated Kinetic HUD bar (voidhand violet `#B36BFF`,
+> self-null-at-zero; **13/13 held, no re-baseline**). §5b's one-shot bounce guard is structurally
+> unnecessary (single flight ends at first hit). 723 unit · build · visual 13/13.
+> **NEXT per §12 seq = parallel(M5 element-charge transparency · M6 pool-eviction safety) — NOTE: M5 is
+> largely done-by-construction (element read AT IMPACT since M3); VERIFY against the §12 M5 row (all 4
+> elements re-skin + no mid-hold desync) with tests rather than rebuild. M6's cap-4 pool does not exist
+> yet (M1 shipped single-phantom) — M6 reduces to held-phantom protection invariants unless the pool
+> lands first (a spec-vs-reality check for the M5/M6 planning pass). Then M7 THE LOOK → M8 content.**
 >
 > Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
 > mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)

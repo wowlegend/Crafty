@@ -25,7 +25,12 @@
 >    near a block → the phantom orbits → LEFT-click HURLS it at a mob (ballistic arc, element spark at
 >    impact) → or RIGHT-click SLAMS a 3m AoE at the phantom's current orbit position (time the orbit = the
 >    aim skill — a loop taste-decision, flag if it reads as random instead of skillful). Question to answer:
->    "does the aim feel learnable?" Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    "does the aim feel learnable?" **M4 additions to the same playtest:** unlock Kinetic Grasp in the
+>    Voidhand tree → day-kills fill the violet bar → V costs 25 → **hurl a mob INTO YOUR WALL = 3× (the
+>    anvil — does the bonus READ?)**. *M4 decisions-of-record (reversal = one-liners): HUD bar renders only
+>    when the talent is unlocked (no meter for a locked ability; keeps baselines); gold "WALL HIT!" label +
+>    wall flash deferred to M7; walls PRISTINE on anvil hits (Decision #3 rec); kinetic = the phantom-rim
+>    violet #B36BFF (one identity color per Aspect).* Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/

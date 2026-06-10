@@ -1,5 +1,12 @@
 # VOIDHAND M4 — Anvil + Kinetic Economy Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iters 19-24).** All 5 tasks on `main`. The unlock-gate visual claim HELD
+> under test (13/13, zero diffs — capture saves lack voidhand_grasp). Deviation-of-record: the save-slice
+> test initially asserted game_state and was corrected to the progression slice (ferocity's slice = the
+> contract, justification in `66b6c0c`); the plan's "accrual smoke" was satisfied by precedent-mirroring
+> (the hook is a 1:1 copy of the production-proven ferocity hook) + unit-locked store actions rather than
+> a headless run. 723 unit (76 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = spec §3e/§3f + §12 M4 row (`docs/superpowers/specs/2026-06-09-crafty-s2b2-voidhand-design.md`). Inputs verified at HEAD: the Ferocity precedent chain (store 565-568 · load ~768 · save ~821 · autosave diff in App.jsx · `useFerocityAccrual` AdvancedGameFeatures.jsx:20 · dawn bleed in `useSurvivalMode` · `StatBar kind="ferocity"` HUD.jsx:47) + the M3 hit event (pos+dir) + `kinetic.js` (M1, already complete: KINETIC_MAX/GRAB_COST/kineticForKill/clampKinetic/canGrab).
 
