@@ -21,7 +21,11 @@
 >    (always-mounted, intensity-gated — D-scenario-verified no edge hitch) · probe SM-skip in Components
 >    (dev-only) · desktop runner = headless-new + Metal (headed Chrome is occlusion-suspended from agent
 >    contexts; renderer string stamped in every report).
-> 3. **🕹️ Playtest eyeballs queued:** cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+> 3. **🕹️ Playtest eyeballs queued:** **VOIDHAND FPV-FEEL (2026-06-10, the spec's M3 human gate):** press V
+>    near a block → the phantom orbits → LEFT-click HURLS it at a mob (ballistic arc, element spark at
+>    impact) → or RIGHT-click SLAMS a 3m AoE at the phantom's current orbit position (time the orbit = the
+>    aim skill — a loop taste-decision, flag if it reads as random instead of skillful). Question to answer:
+>    "does the aim feel learnable?" Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/

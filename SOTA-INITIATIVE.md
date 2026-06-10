@@ -61,13 +61,13 @@ layered on a day-build / night-siege survival loop. Wildheart (beast-transform) 
 
 **S0 ✅ · S1-A/B/C/D ✅ (foundation, render recipe, bold-flat UI system, signatures) · S2 design ✅ ·
 S2-A foundation ✅ · S2-B1 WILDHEART ✅ (merged `458bbb5`) · #68 perf remediation ✅ (`868e4e7`) ·
-S2-B2 VOIDHAND IN-FLIGHT (M1 ✅ · **M2 FPS gate ✅ desktop-PASS** [C−B 0.00/+0.10ms vs 1.5/3.0 budget,
-`memory/S2B2-M2-PERF.md`; iPad confirm parked to Kevin, non-blocking] · **#72 verb-router ✅** [one click =
-one verb; combat can no longer erode walls; ALSO fixed silently-NaN-broken mine/place — the rapier
-`timeOfImpact` rename had killed `hit.toi`]; next = **M3 HURL/SLAM**, plan-doc-first) · S2-B3/B4 + S3 + S4
-not started.** Live scale (measured 2026-06-10 post-#72): ~22.0k LOC src / 123 files / 699 unit tests
-(74 files) / 20 static-gate files (~12 invariant families) / 13-state visual gate / perf-probe harness
-(`?perf=A..E` + `npm run perf:m2`). Full risk map:
+S2-B2 VOIDHAND IN-FLIGHT (M1 ✅ · **M2 FPS gate ✅ desktop-PASS** [re-gated post-M3 w/ REAL hurls:
+E−B 0.00/0.00ms; iPad confirm parked to Kevin, non-blocking] · **#72 verb-router ✅** [one click = one
+verb; also fixed silently-NaN-broken mine/place — the rapier `timeOfImpact` rename] · **M3 HURL/SLAM ✅
+LIVE** [substepped ballistic core; element-at-impact; verified vs a real mob; FPV-feel = Kevin async];
+next = **M4 anvil+kinetic+talent+HUD**, plan-doc-first) · S2-B3/B4 + S3 + S4 not started.** Live scale
+(measured 2026-06-10 post-M3): ~22.4k LOC src / 128 files / 714 unit tests (76 files) / 20 static-gate
+files (~12 invariant families) / 13-state visual gate / perf-probe harness (`?perf=A..E` + `npm run perf:m2`). Full risk map:
 `memory/STATE-REVIEW-2026-06-10.md`. Open tasks: #69–#74 (+ earlier #32 vitest · #63 B1 tuning ·
 #64 beast-capture · #66 panel flags) — **the task registry is the source of truth, not this line.**
 Known managed drift: WILDHEART shipped audio-silent (the motif pass — §5 AUDIO now owns it).

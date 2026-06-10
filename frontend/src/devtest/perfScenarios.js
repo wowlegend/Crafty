@@ -17,7 +17,7 @@ export const SCENARIOS = {
   B: { label: 'night-siege control (held=false)', timeOfDay: NIGHT_T, nights: SIEGE_NIGHTS, held: false, edge: false, hurl: false },
   C: { label: 'siege + grab-orbit steady-state', timeOfDay: NIGHT_T, nights: SIEGE_NIGHTS, held: true, edge: false, hurl: false },
   D: { label: 'grab/drop EDGE (light-count hitch)', timeOfDay: NIGHT_T, nights: SIEGE_NIGHTS, held: false, edge: true, hurl: false },
-  E: { label: 'siege + dynamic hurl stand-in', timeOfDay: NIGHT_T, nights: SIEGE_NIGHTS, held: true, edge: false, hurl: true },
+  E: { label: 'siege + REAL hurl every 3s (M3 re-gate)', timeOfDay: NIGHT_T, nights: SIEGE_NIGHTS, held: true, edge: false, hurl: true },
 };
 
 /**

@@ -1,0 +1,59 @@
+{
+  "host": "KZ-M3-Max-MacBook.local",
+  "platform": "Darwin arm64",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "when": "2026-06-10T17:14:37.558Z",
+  "budget": {
+    "medianDeltaMs": 1.5,
+    "p95DeltaMs": 3
+  },
+  "results": {
+    "B": {
+      "scenario": "B",
+      "label": "night-siege control (held=false)",
+      "frames": 3515,
+      "seconds": 60.0309,
+      "fps": 58.55317844643342,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.799999999999272,
+      "maxMs": 216.6999999999971,
+      "longFrames": 16
+    },
+    "C": {
+      "scenario": "C",
+      "label": "siege + grab-orbit steady-state",
+      "frames": 3582,
+      "seconds": 59.997600000000006,
+      "fps": 59.702388095523816,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.70000000001164,
+      "maxMs": 150.09999999999854,
+      "longFrames": 4
+    },
+    "E": {
+      "scenario": "E",
+      "label": "siege + REAL hurl every 3s (M3 re-gate)",
+      "frames": 3527,
+      "seconds": 60.0143,
+      "fps": 58.769326643816555,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.799999999995634,
+      "maxMs": 100.09999999999854,
+      "longFrames": 25
+    }
+  },
+  "deltas": {
+    "C-B": {
+      "medianDeltaMs": 0,
+      "p95DeltaMs": -0.09999999998763087,
+      "fpsDelta": 1.1492096490903947,
+      "longFrameDelta": -12
+    },
+    "E-B": {
+      "medianDeltaMs": 0,
+      "p95DeltaMs": -3.637978807091713e-12,
+      "fpsDelta": 0.2161481973831343,
+      "longFrameDelta": 9
+    }
+  }
+}

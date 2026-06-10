@@ -69,6 +69,20 @@ report) · evidence `memory/perf/m2-KZ-M3-Max-MacBook-1781105278853.json`.
 - Context for the device session: the 4.27MB main chunk (~49% inlined Rapier WASM) inflates
   load + main-thread parse on iPad — an S3 bundle-split item, not an M2 frame-cost item.
 
+## 3b. M3 RE-GATE (2026-06-10, post-HURL/SLAM — the recorded re-gate item, executed)
+
+Scenario E now drives **REAL hurls** through the gameplay channel (PerfProbeSystem = a thin
+probe-to-gameplay adapter; the 3-body Rapier stand-in is gone). Run `m2-KZ-M3-Max-MacBook-1781111677559.json`:
+
+| Delta | median | p95 | verdict |
+|---|---|---|---|
+| C−B (held orbit) | 0.00 ms | −0.10 ms | PASS (re-confirmed) |
+| **E−B (real hurl every 3s)** | **0.00 ms** | **0.00 ms** | **PASS** — the substepped pure-math flight is cost-invisible at desktop scale |
+
+Long-frame counts (B=16, C=4, E=25) moved WITH the control between runs — siege-noise dominated,
+deltas inside run-to-run variance. The M3 re-gate is CLOSED; the iPad session (§4) remains the
+device-scale confirmation and now exercises the real verbs via `?perf=E`.
+
 ## 4. On-device protocol (Kevin — one-tap, ~5 min, bundles #63)
 
 1. Mac: `cd /Users/kz/Code/Crafty/frontend && npx vite --host`

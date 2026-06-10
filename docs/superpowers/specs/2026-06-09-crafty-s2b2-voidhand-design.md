@@ -16,8 +16,19 @@
 > pinned dpr/tier) + `npm run perf:m2`. **C−B = 0.00ms median / +0.10ms p95 vs the pinned 1.5/3.0ms budget (Decision #5
 > resolved: delta-from-baseline, per the rec)**; the grab-edge light hitch was engineered out (light-pool) and
 > D-scenario-verified. Verdict + device protocol: `memory/S2B2-M2-PERF.md`; iPad confirmation parked to Kevin (does NOT
-> block M3); **M3 re-gate item: re-run E−B/C−B after the real HURL/SLAM.** 681 unit · build · visual 13/13.
-> **NEXT = #72 (mouse verb-mode seam, the pre-M3 blocker) → M3.**
+> block M3); ~~M3 re-gate item~~ (executed at M3 close-out, see below). 681 unit · build · visual 13/13.
+>
+> **Status update (2026-06-10): ✅ M3 DONE — HURL + SLAM are live** (plan
+> `../plans/2026-06-10-crafty-s2b2-m3-hurl-slam.md`, after #72 shipped the verb-router pre-M3 blocker).
+> Pure ballistic core (`game/hurl.js`, SUBSTEPPED — a smoke-found frame-spike tunneling bug was fixed TDD)
+> + transient channel + `HurlSystem` (impact = damageMob + knockback, **element read AT IMPACT** per §3c)
+> + the §3d SM re-skin (held clicks → SM 'hurl'/'slam'; melee/spell suppressed while held) + the
+> looked-at-block grab tint (worldBlocks-known voxels; pristine-terrain color = M7 decision). SLAM centers
+> on the phantom's ORBIT POINT (loop decision: timing-the-orbit = the aim skill). Verified vs a REAL
+> spawned mob (hurl @30.3m arc-compensated → 60→30 HP; slam ×1.3). **M2 re-gate executed with REAL hurls:
+> E−B = 0.00/0.00ms PASS** (`memory/S2B2-M2-PERF.md` §3b). The hit event carries pos+dir = the M4 anvil
+> seam, ready. 714 unit · build · visual 13/13. **FPV-feel = Kevin's human gate, parked (KRB), non-blocking.
+> NEXT = M4 (anvil 3× + kinetic meter + talent gate + autosave + HUD), then M5/M6 per spec seq.**
 >
 > Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
 > mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)

@@ -1,5 +1,13 @@
 # VOIDHAND M3 — HURL + SLAM Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iters 13-18).** All 5 tasks on `main`. Deviations-of-record: the SM
+> edge-contract test was already covered by M1's voidhand tests (no duplicate added); the headless smoke
+> found a REAL frame-spike tunneling bug → `stepHurlChunked` substepped integrator (TDD, +3 tests) — NOT
+> in the original plan; smoke-harness lesson: hand-injected ECS mobs get positions stomped by the AI
+> bridge, so smokes must target REAL spawned mobs (verified: arc-compensated hurl at a live spider @30.3m
+> → 60→30 HP). M2 re-gate executed with REAL hurls: E−B = 0.00/0.00ms = PASS. 714 unit · build · visual
+> 13/13. FPV-feel sign-off parked to Kevin (KRB), non-blocking.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = spec §3c/§3d/§3e/§4 (`docs/superpowers/specs/2026-06-09-crafty-s2b2-voidhand-design.md`) + the #72 router HELD contract. Executed inline by the loop, ~one task per iteration.
 
