@@ -4,7 +4,9 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: **VOIDHAND M4 IN-FLIGHT — plan ✅ + Task 1 ✅ (717 unit/76 files; kinetic store twin live); resume = M4 Task 2 (voidhand_grasp talent node + canGrab composition in the SM ctx + GRAB_COST spend at 'grab')** — `challenge-memory` POSTPONED to S2-completion
+## Current Task: **VOIDHAND M4 IN-FLIGHT — Tasks 1-2 ✅ (719 unit/76 files; grab is now a GATED ECONOMY); resume = M4 Task 3 (anvil 3×: pure resolveAnvil TDD + GameMethods.castWorldRay in Terrain + HurlSystem wiring)** — `challenge-memory` POSTPONED to S2-completion
+
+> **🔁 LOOP ITER 21 (2026-06-10): M4 Task 2 SHIPPED** — `voidhand_grasp` effect-less unlock node (fold-tolerance locked by mirrored regression tests) · SM ctx `canGrab` = bank ≥ GRAB_COST && talent rank > 0 (the M1-OPEN gate is closed) · the 'grab' apply debits GRAB_COST. Unit 717→**719**. Pushed. **NEXT UNIT = M4 Task 3** (plan steps: failing resolveAnvil tests in hurl.test.js → ANVIL_RANGE/ANVIL_MULT + resolveAnvil in hurl.js → castWorldRay registered in Terrain's #72 executor effect [timeOfImpact!] → HurlSystem hurl-impact uses HURL_DAMAGE×anvil).
 
 > **🔁 LOOP ITER 20 (2026-06-10): M4 Task 1 SHIPPED (TDD)** — kineticBanked store twin (set/accrue clamped) + save `progression` slice (saveSchema) + load clamp + load-set inclusion + App autosave diff + `useKineticAccrual` (kill-bus, day-only, capture-gated, mounted) + dawn bleed next to ferocity's. Unit 714→**717**. Test-fix recorded honestly: the save assertion initially targeted game_state, corrected to the progression slice (ferocity's slice = the contract). Pushed. **NEXT UNIT = M4 Task 2** (talentTree.js voidhand_grasp effect-less node after voidhand_crush · Components SM ctx `canGrab: kCanGrab(stv.kineticBanked) && (stv.unlockedTalents?.['voidhand_grasp'] > 0)` · `stv.accrueKinetic(-GRAB_COST)` first line of the 'grab' apply branch · fold-tolerance check).
 
