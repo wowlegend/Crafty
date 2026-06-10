@@ -44,3 +44,37 @@ export function decideSoulbind(sm, ctx) {
 
   return { sm: out, action: 'none' };
 }
+
+// ===== S2-B3-M6: the FUSE channel (the snare reducer's twin) =====
+export const FUSE_CHANNEL_SEC = 1.4; // heavier than snare — two souls braid (Kevin-tunable)
+
+export function makeFuseState() {
+  return { channeling: false, channelStart: 0, cooldownUntil: 0 };
+}
+
+/** decideFuse(sm, ctx) -> { sm, action }; action: 'none'|'startFuse'|'fuseBreak'|'fuse'|'cancel'.
+ *  ctx: { fuseEdge, active, alive, now, canStart, pairNear }. canStart is PRE-VETTED at the
+ *  apply-site (bank + a roster entry + pair proximity) — the channel only STARTS when fusion
+ *  CAN complete, so no consumed-nothing refuse state exists (design simplification, M6 plan). */
+export function decideFuse(sm, ctx) {
+  const out = { ...sm };
+
+  if (sm.channeling) {
+    if (!ctx.alive || !ctx.active) { out.channeling = false; return { sm: out, action: 'cancel' }; }
+    if (!ctx.pairNear) { out.channeling = false; return { sm: out, action: 'fuseBreak' }; } // free
+    if (ctx.now - sm.channelStart >= FUSE_CHANNEL_SEC - 1e-9) { // boundary-inclusive (the snare epsilon)
+      out.channeling = false;
+      out.cooldownUntil = ctx.now + SNARE_COOLDOWN_SEC;
+      return { sm: out, action: 'fuse' };
+    }
+    return { sm: out, action: 'none' };
+  }
+
+  if (ctx.fuseEdge && ctx.now >= sm.cooldownUntil && ctx.alive && ctx.active && ctx.canStart && ctx.pairNear) {
+    out.channeling = true;
+    out.channelStart = ctx.now;
+    return { sm: out, action: 'startFuse' };
+  }
+
+  return { sm: out, action: 'none' };
+}

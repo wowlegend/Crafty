@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, SNARE_COOLDOWN_SEC } from './soulbind';
+import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, SNARE_COOLDOWN_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './soulbind';
 
 const base = { snareEdge: false, active: true, alive: true, now: 10, canSnare: true, targetId: null };
 
@@ -49,5 +49,27 @@ describe('S2-B3-M4: the bind action preserves targetId for the apply-site', () =
     const done = decideSoulbind(s, { ...base, now: 10 + SNARE_CHANNEL_SEC, targetId: 7 });
     expect(done.action).toBe('bind');
     expect(done.sm.targetId).toBe(7); // Components reads ssm.targetId to captureMob the RIGHT entity
+  });
+});
+
+describe('S2-B3-M6: the FUSE channel (the snare reducer twin)', () => {
+  const fbase = { fuseEdge: false, active: true, alive: true, now: 10, canStart: false, pairNear: false };
+  it('arms ONLY when canStart && pairNear (bank + roster entry + proximity all pre-vetted)', () => {
+    expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true }).action).toBe('none');
+    expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).action).toBe('startFuse');
+  });
+  it('pair scatters mid-channel -> break (free); held to completion -> fuse + cooldown', () => {
+    let s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
+    const broke = decideFuse(s, { ...fbase, now: 10.5, pairNear: false });
+    expect(broke.action).toBe('fuseBreak');
+    expect(broke.sm.cooldownUntil).toBe(0); // breaks are free
+    s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
+    const done = decideFuse(s, { ...fbase, now: 10 + FUSE_CHANNEL_SEC, pairNear: true });
+    expect(done.action).toBe('fuse');
+    expect(done.sm.cooldownUntil).toBeCloseTo(10 + FUSE_CHANNEL_SEC + SNARE_COOLDOWN_SEC);
+  });
+  it('death/menu cancels', () => {
+    const s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
+    expect(decideFuse(s, { ...fbase, now: 10.5, pairNear: true, alive: false }).action).toBe('cancel');
   });
 });
