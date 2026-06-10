@@ -4,7 +4,9 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: **VOIDHAND M3 IN-FLIGHT — plan ✅ + Tasks 1-2 ✅ (710 unit/76 files; hurl core + channel gated); resume = M3 Task 3 (HurlSystem.jsx + phantomWorldPos export + mount + gate entry; full battery incl. visual)** — `challenge-memory` POSTPONED to S2-completion
+## Current Task: **VOIDHAND M3 IN-FLIGHT — Tasks 1-3 ✅ (711 unit/76 files · build · visual 13/13); resume = M3 Task 4 (SM wiring: held verb edges → SM 'hurl'/'slam', melee/spell suppression while held, grab tint, SM edge-contract test, headless smoke)** — `challenge-memory` POSTPONED to S2-completion
+
+> **🔁 LOOP ITER 16 (2026-06-10): M3 Task 3 SHIPPED** — `world/HurlSystem.jsx` (single-flight channel consumer; impact = damageMob + entity.knockback, element AT impact; transient mesh, setState only on membership transitions; capture-inert) + PhantomBlockSystem exports transient `phantomWorldPos` (slam aim) + mounted next to PhantomBlockSystem + gate entry red→green. 711 unit · build · visual 13/13. Pushed. **NEXT UNIT = M3 Task 4** (plan step-by-step in the doc: PHANTOM_BLOCK_COLORS in voidhand.js → voidhandVerbRef + dispatch held-branch → SM ctx feed vAtk/vCast → apply-site 'grab' tint/'hurl' launch/'slam' at phantomWorldPos → SM edge test → full battery → headless smoke).
 
 > **🔁 LOOP ITER 15 (2026-06-10): M3 Task 2 SHIPPED** — `game/hurlChannel.js` (single-slot transient request channel, perfProbe pattern) + the no-re-mesh GATED list grew to hurl.js + hurlChannel.js (red-first per-file; HurlSystem.jsx joins the gate IN Task 3 when its file is created — keeps main green every iteration). Unit 706→**710** (76 files). Pushed.
 
