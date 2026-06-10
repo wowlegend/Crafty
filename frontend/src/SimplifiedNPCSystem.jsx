@@ -96,8 +96,10 @@ const MobModel = React.memo(({ entity }) => {
   const modelRef = useRef();
   
   const mobConfig = MOB_TYPES[entity.type] || MOB_TYPES.pig;
-  const [bodyW, bodyH, bodyD] = mobConfig.bodySize;
-  const [headW, headH, headD] = mobConfig.headSize;
+  // S2-B3-M6: HYBRIDS carry their own parametric dims/legMode on the ENTITY (no MOB_TYPES entry);
+  // every pre-M6 entity lacks these fields, so the fallback chain changes nothing for baselines.
+  const [bodyW, bodyH, bodyD] = entity.bodySize || mobConfig.bodySize;
+  const [headW, headH, headD] = entity.headSize || mobConfig.headSize;
 
   const qualityTier = useGameStore(state => state.qualityTier) || 'low';
   const q = TIERS[qualityTier] || TIERS.low;
@@ -220,7 +222,7 @@ const MobModel = React.memo(({ entity }) => {
     const speed = velocity * 15;
     const swing = speed > 0.05 ? Math.sin(time) * 0.6 : 0;
     
-    if (entity.type !== 'spider') {
+    if ((entity.legMode ? entity.legMode !== 'spider' : entity.type !== 'spider')) {
       if (legRefs.current[0]) legRefs.current[0].rotation.x = swing;
       if (legRefs.current[1]) legRefs.current[1].rotation.x = -swing;
       if (legRefs.current[2]) legRefs.current[2].rotation.x = -swing;
@@ -303,7 +305,7 @@ const MobModel = React.memo(({ entity }) => {
           </>
         )}
         {/* Legs */}
-        {entity.type !== 'spider' ? (
+        {(entity.legMode ? entity.legMode !== 'spider' : entity.type !== 'spider') ? (
           <>
             <mesh castShadow receiveShadow ref={(el) => legRefs.current[0] = el} position={[-bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
             <mesh castShadow receiveShadow ref={(el) => legRefs.current[1] = el} position={[bodyW / 3, -0.3, bodyD / 4]}><boxGeometry args={[0.25, 0.6, 0.25]} /><MobToonMaterial color={entity.color} rimStrength={rimStrength} />{q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}</mesh>
