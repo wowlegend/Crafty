@@ -26,7 +26,8 @@ describe('voidhand no-re-mesh gate', () => {
     'game/hurl.js',                 // M3 pure flight/impact core
     'game/hurlChannel.js',          // M3 transient verb channel
     'world/HurlSystem.jsx',         // M3 flight mesh + impact application
-  ];
+  'world/SnareTetherSystem.jsx', // S2-B3-M4: the snare tether (transient-driven; voxel-free)
+];
 
   for (const rel of GATED) {
     it(`src/${rel} references no voxel-edit / chunk-worker seam`, () => {

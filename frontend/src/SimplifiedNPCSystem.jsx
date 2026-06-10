@@ -361,7 +361,11 @@ const HealthBar = ({ entity }) => {
     const healthPercent = entity.health / entity.maxHealth;
     fillRef.current.position.x = (healthPercent - 1) * 0.6;
     fillRef.current.scale.x = Math.max(0.001, healthPercent);
-    fillRef.current.material.color.set(healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000');
+    // S2-B3-M4: the SNAREABLE TELL — a weakened hostile (<=30%) shows soulbind jade: an honest
+    // "bindable" read that doubles as the danger ladder's last rung. (Capture-safe: the bar is
+    // capture-suppressed at the mount site.)
+    const snareable = !entity.passive && healthPercent <= 0.3;
+    fillRef.current.material.color.set(snareable ? '#3DFFB0' : healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000');
   });
 
   return (
