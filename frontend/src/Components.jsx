@@ -12,6 +12,10 @@ import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
+import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC } from './game/soulbind.js';
+import { canSnare as sCanSnare, SNARE_COST } from './game/soul.js';
+import { alliesQuery } from './ecs/world';
+import { writeSnareState, clearSnareState } from './game/snareChannel.js';
 import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
 import { phantomWorldPos } from './world/PhantomBlockSystem';
@@ -169,6 +173,8 @@ export const Player = ({ isWorldBuilt }) => {
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
   const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
+  const soulbindSMRef = useRef(makeSoulbindState()); // S2-B3-M4: the SOULBIND snare SM state
+  const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
   const prevGrabRef = useRef(false);
   // S2-B1-M7a: the third-person transform-cam window. { active, t (sec elapsed), fwd (facing captured
@@ -654,6 +660,59 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (vaction === 'drop' || vaction === 'cancel') {
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
+      }
+
+      // S2-B3-M4: the SOULBIND snare SM — the voidhand block's sibling. Target validity is computed
+      // PER FRAME (the mob keeps moving; holding aim IS the skill — design §2).
+      const SNARE_RANGE = 12;
+      const SOULBIND_JADE = '#3DFFB0';
+      const snareIn = vin.snare;
+      const snareEdge = snareIn && !prevSnareRef.current;
+      prevSnareRef.current = snareIn;
+      let snareTargetId = null;
+      let snareTarget = null;
+      if (GameMethods.checkMobsInMeleeCone) {
+        const sDir = new THREE.Vector3();
+        camera.getWorldDirection(sDir); // unflattened — aim where you LOOK (the aimedMobDist precedent)
+        const candidates = GameMethods.checkMobsInMeleeCone(camera.position, sDir, SNARE_RANGE, Math.PI / 8) || [];
+        // nearest snareable: weakened (<=30% HP), hostile (not passive; villager converter-blocked too)
+        let best = null, bestD = Infinity;
+        for (const e of candidates) {
+          if (!e || e.passive || e.health > 0.3 * e.maxHealth || e.health <= 0) continue;
+          const dx = e.position.x - camera.position.x, dz = e.position.z - camera.position.z;
+          const d = dx * dx + dz * dz;
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (best) { snareTargetId = best.id; snareTarget = best; }
+      }
+      const squadCap = 2 + ((stv.unlockedTalents?.['soulbind_pack'] > 0) ? 1 : 0);
+      const { sm: ssm, action: saction } = decideSoulbind(soulbindSMRef.current, {
+        snareEdge,
+        active: vin.active,
+        alive: stv.isAlive,
+        now: state.clock.getElapsedTime(),
+        canSnare: sCanSnare(stv.soulBanked) && (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
+        targetId: snareTargetId,
+      });
+      soulbindSMRef.current = ssm;
+      if (saction === 'bind') {
+        stv.accrueSoul(-SNARE_COST); // canSnare vetted the bank
+        const ally = GameMethods.captureMob ? GameMethods.captureMob(ssm.targetId ?? snareTargetId) : null;
+        if (ally) {
+          // the jade re-tint: lerp the body color 45% toward the SOULBIND identity (design §2)
+          ally.color = new THREE.Color(ally.color).lerp(new THREE.Color(SOULBIND_JADE), 0.45).getStyle();
+          if (stv.playSpatialSound) stv.playSpatialSound('bind', [ally.position.x, ally.position.y, ally.position.z], 1, 25);
+        }
+        clearSnareState();
+      } else if (ssm.channeling && snareTarget) {
+        writeSnareState({
+          channeling: true, targetId: snareTargetId,
+          progress: Math.min((state.clock.getElapsedTime() - ssm.channelStart) / SNARE_CHANNEL_SEC, 1),
+          from: { x: camera.position.x, y: camera.position.y - 0.25, z: camera.position.z },
+          to: { x: snareTarget.position.x, y: snareTarget.position.y + 0.4, z: snareTarget.position.z },
+        });
+      } else {
+        clearSnareState();
       }
     }
 

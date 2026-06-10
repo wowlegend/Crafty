@@ -429,6 +429,7 @@ export const SoundProvider = ({ children }) => {
     sounds.current.hurl = generateHurlSound();
     sounds.current.slam = generateSlamSound();
     sounds.current.anvilHit = generateAnvilSound();
+    sounds.current.bind = generateBindSound(); // SOULBIND (S2-B3-M4)
   };
 
   const generateTone = (frequency, duration, type = 'sine') => {
@@ -582,6 +583,25 @@ export const SoundProvider = ({ children }) => {
       const shimmer = Math.sin(2 * Math.PI * 2360 * t + mod * 0.5) * 0.3;
       const env = Math.min(t * 60, 1) * Math.exp(-t * 14);
       d[i] = (carrier + shimmer) * env * 0.4;
+    }
+    return buffer;
+  };
+
+  // SOULBIND bind — the grab-chirp's resolved sibling: two whole-tone steps that LAND (binding completes).
+  const generateBindSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.45;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const f = t < 0.18 ? 392 : 523.25; // G4 -> C5: the rise RESOLVES (binding lands)
+      const tri = 2 * Math.abs(2 * (t * f - Math.floor(t * f + 0.5))) - 1;
+      const shimmer = Math.sin(2 * Math.PI * f * 2 * t) * 0.2;
+      const env = Math.min(t * 25, 1) * Math.exp(-t * 4.5);
+      d[i] = (tri * 0.55 + shimmer) * env * 0.4;
     }
     return buffer;
   };
@@ -922,6 +942,7 @@ export const useGameSounds = () => {
     playHurl: (pos) => { if (spatialTrigger && pos) spatialTrigger('hurl', pos, 1, 25); else playSound('hurl'); },
     playSlam: (pos) => { if (spatialTrigger && pos) spatialTrigger('slam', pos, 1, 30); else playSound('slam'); },
     playAnvilHit: (pos) => { if (spatialTrigger && pos) spatialTrigger('anvilHit', pos, 1, 35); else playSound('anvilHit'); },
+    playBind: (pos) => { if (spatialTrigger && pos) spatialTrigger('bind', pos, 1, 25); else playSound('bind'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
     playMagicCharge: () => playSound('magicCharge'),
     playLevelUpSound: () => playSound('levelUp')

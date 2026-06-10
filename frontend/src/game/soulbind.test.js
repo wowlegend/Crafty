@@ -42,3 +42,12 @@ describe('S2-B3-M2: the snare-channel SM (voidhand twin, CHANNEL-shaped)', () =>
     expect(decideSoulbind(s, { ...base, now: 19, snareEdge: true, targetId: 7 }).action).toBe('none');
   });
 });
+
+describe('S2-B3-M4: the bind action preserves targetId for the apply-site', () => {
+  it('bind returns sm.targetId intact (only break/cancel null it)', () => {
+    const s = decideSoulbind(makeSoulbindState(), { ...base, snareEdge: true, targetId: 7 }).sm;
+    const done = decideSoulbind(s, { ...base, now: 10 + SNARE_CHANNEL_SEC, targetId: 7 });
+    expect(done.action).toBe('bind');
+    expect(done.sm.targetId).toBe(7); // Components reads ssm.targetId to captureMob the RIGHT entity
+  });
+});
