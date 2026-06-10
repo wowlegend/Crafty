@@ -1,5 +1,7 @@
 # ELEMANCER M3 — The Zone Registry Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iter 68):** T1 (the registry, 9/9 chemistry contracts) + T2 (the channel + the gate). 814 unit (99 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b4-elemancer-design.md` §2/§3 M3.
 > **THE GATE JOINS HERE — before any render exists.** The FORBIDDEN regex matches the literal string
@@ -18,7 +20,7 @@
 
 **Files:** Create `frontend/src/game/elementZones.js` + `frontend/src/game/elementZones.test.js`
 
-- [ ] **Step 1: failing tests:**
+- [x] **Step 1: failing tests:**
 ```js
 import { describe, it, expect } from 'vitest';
 import {
@@ -98,7 +100,7 @@ describe('S2-B4-M3: the zone registry (the chemistry core)', () => {
   });
 });
 ```
-- [ ] **Step 2: red** → **Step 3: implement:**
+- [x] **Step 2: red** → **Step 3: implement:**
 ```js
 /**
  * elementZones.js — S2-B4-M3: the ELEMANCER chemistry core (pure). A caller-owned registry
@@ -187,15 +189,15 @@ export function clearZones(reg) {
   reg.zones = [];
 }
 ```
-- [ ] **Step 4: green → commit** `feat(elemancer-m3): the zone registry — annihilation, amplification, dedupe, the 8-cap`
+- [x] **Step 4: green → commit** `feat(elemancer-m3): the zone registry — annihilation, amplification, dedupe, the 8-cap`
 
 ### Task 2: `game/elemancerChannel.js` + the gate
 
 **Files:** Create `frontend/src/game/elemancerChannel.js` + colocated test; Create `frontend/tests/gates/elemancer-noremesh-gates.test.js`
 
-- [ ] **Step 1:** the channel (the hurlChannel twin): `requestZone({kind, pos})` / `consumeZoneRequest()` single-slot + a 2-test roundtrip suite (the snareChannel test shape).
-- [ ] **Step 2:** the gate — clone the voidhand gate file shape: FORBIDDEN = the same regex; GATED = ['game/elemancer.js', 'game/resonance.js', 'game/elementZones.js', 'game/elemancerChannel.js'] (extend at M4/M6 as world/ files appear). NOTE: write every comment in these files without the literal forbidden words.
-- [ ] **Step 3: full battery → commit** `feat(elemancer-m3): the zone request channel + the elemancer no-re-mesh gate (gated from birth)`
+- [x] **Step 1:** the channel (the hurlChannel twin): `requestZone({kind, pos})` / `consumeZoneRequest()` single-slot + a 2-test roundtrip suite (the snareChannel test shape).
+- [x] **Step 2:** the gate — clone the voidhand gate file shape: FORBIDDEN = the same regex; GATED = ['game/elemancer.js', 'game/resonance.js', 'game/elementZones.js', 'game/elemancerChannel.js'] (extend at M4/M6 as world/ files appear). NOTE: write every comment in these files without the literal forbidden words.
+- [x] **Step 3: full battery → commit** `feat(elemancer-m3): the zone request channel + the elemancer no-re-mesh gate (gated from birth)`
 
 ### Task 3: close-out — spec §3 M3 row ✅ · this plan SHIPPED · ACTIVE_PLAN → M4 (the zone bridge: the 15Hz accumulator applying DoT/slow/chain/lure + zoneSlowMult replacing the dead mobSlowEffects + the AI heightGrid bias).
 
