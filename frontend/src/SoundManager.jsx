@@ -422,6 +422,13 @@ export const SoundProvider = ({ children }) => {
     sounds.current.magicExplosion = generateMagicExplosionSound();
     sounds.current.magicCharge = generateMagicChargeSound();
     sounds.current.levelUp = generateLevelUpSound();
+
+    // Aspect verb SFX (the 2026-06-10 audio design doc): the OWED WILDHEART roar + VOIDHAND verbs
+    sounds.current.roar = generateRoarSound();
+    sounds.current.grab = generateGrabSound();
+    sounds.current.hurl = generateHurlSound();
+    sounds.current.slam = generateSlamSound();
+    sounds.current.anvilHit = generateAnvilSound();
   };
 
   const generateTone = (frequency, duration, type = 'sine') => {
@@ -476,6 +483,109 @@ export const SoundProvider = ({ children }) => {
   };
 
   // NEW: Attack sound generation functions
+  // ===== Aspect verb SFX (the 2026-06-10 audio design doc; ALL-SYNTH policy #74) =====
+  // WILDHEART roar — OWED since B1 shipped audio-silent: low saw sweep + beating growl + noise + sub.
+  const generateRoarSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.7;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const k = t / duration;
+      const freq = 80 - 35 * k; // feral low sweep 80 -> 45Hz
+      const saw = 2 * (t * freq - Math.floor(t * freq + 0.5));
+      const growl = Math.sin(2 * Math.PI * freq * 2.02 * t) * 0.5; // slow-beating layer
+      const noise = (Math.random() * 2 - 1) * Math.exp(-t * 6) * 0.35;
+      const sub = Math.sin(2 * Math.PI * 38 * t) * Math.exp(-t * 3) * 0.5;
+      const env = Math.min(t * 18, 1) * Math.exp(-t * 2.2);
+      d[i] = (saw * 0.5 + growl + noise + sub) * env * 0.4;
+    }
+    return buffer;
+  };
+
+  // VOIDHAND grab — rising triangle chirp + the WHOLE-TONE shimmer partials (the Aspect motif stinger).
+  const generateGrabSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.3;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    const WT = Math.pow(2, 2 / 12); // a whole tone
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const k = t / duration;
+      const f = 220 + 300 * k; // weightless rise
+      const tri = 2 * Math.abs(2 * (t * f - Math.floor(t * f + 0.5))) - 1;
+      const sh1 = Math.sin(2 * Math.PI * f * WT * WT * t) * 0.3;  // +2 whole tones
+      const sh2 = Math.sin(2 * Math.PI * f * WT * WT * WT * WT * t) * 0.18; // +4 whole tones
+      const env = Math.min(t * 30, 1) * Math.exp(-t * 7);
+      d[i] = (tri * 0.5 + sh1 + sh2) * env * 0.35;
+    }
+    return buffer;
+  };
+
+  // HURL launch — a filtered-noise whoosh sweeping down (mass leaving the hand).
+  const generateHurlSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.3;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    let lp = 0;
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const k = t / duration;
+      const cutoff = 0.45 - 0.38 * k; // crude one-pole sweep down
+      lp = lp + cutoff * ((Math.random() * 2 - 1) - lp);
+      const body = Math.sin(2 * Math.PI * (600 - 450 * k) * t) * 0.25;
+      const env = Math.min(t * 25, 1) * Math.exp(-t * 6);
+      d[i] = (lp * 0.8 + body) * env * 0.5;
+    }
+    return buffer;
+  };
+
+  // SLAM — the heavy verb: click transient + 90Hz thump + sub drop (pairs with the camera kick).
+  const generateSlamSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.28;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const click = (Math.random() * 2 - 1) * Math.exp(-t * 120) * 0.6;
+      const thump = Math.sin(2 * Math.PI * (90 - 40 * t / duration) * t) * Math.exp(-t * 10);
+      const sub = Math.sin(2 * Math.PI * 45 * t) * Math.exp(-t * 7) * 0.6;
+      d[i] = (click + thump + sub) * 0.55;
+    }
+    return buffer;
+  };
+
+  // ANVIL HIT — the gold 3x moment: a bright metallic FM ping over the impact.
+  const generateAnvilSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.22;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const mod = Math.sin(2 * Math.PI * 320 * t) * 7 * Math.exp(-t * 9); // FM index decays
+      const carrier = Math.sin(2 * Math.PI * 1180 * t + mod);
+      const shimmer = Math.sin(2 * Math.PI * 2360 * t + mod * 0.5) * 0.3;
+      const env = Math.min(t * 60, 1) * Math.exp(-t * 14);
+      d[i] = (carrier + shimmer) * env * 0.4;
+    }
+    return buffer;
+  };
+
   const generateAttackSound = () => {
     if (!audioContext.current) return null;
 
@@ -805,6 +915,13 @@ export const useGameSounds = () => {
     // Enhanced magic sounds
     playMagicCast: () => playSound('magicCast', 0.9 + Math.random() * 0.2),
     playMagicHit: () => playSound('magicHit', 0.8 + Math.random() * 0.4),
+    // Aspect verb SFX (spatial when a position is known; frame-loop call sites use the
+    // store-registered playSpatialSound directly with these registry names)
+    playRoar: (pos) => { if (spatialTrigger && pos) spatialTrigger('roar', pos, 1, 30); else playSound('roar'); },
+    playGrab: (pos) => { if (spatialTrigger && pos) spatialTrigger('grab', pos, 1, 20); else playSound('grab'); },
+    playHurl: (pos) => { if (spatialTrigger && pos) spatialTrigger('hurl', pos, 1, 25); else playSound('hurl'); },
+    playSlam: (pos) => { if (spatialTrigger && pos) spatialTrigger('slam', pos, 1, 30); else playSound('slam'); },
+    playAnvilHit: (pos) => { if (spatialTrigger && pos) spatialTrigger('anvilHit', pos, 1, 35); else playSound('anvilHit'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
     playMagicCharge: () => playSound('magicCharge'),
     playLevelUpSound: () => playSound('levelUp')

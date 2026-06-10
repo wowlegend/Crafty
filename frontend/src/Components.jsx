@@ -572,7 +572,12 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (action === 'enter') {
         // M4: UNLEASH — spend the banked Ferocity ONLY on a real transform (enterBeastForm returns
         // false if it rejects: already-in-form / dead). Avoids draining the bank on a no-op enter.
-        if (st.enterBeastForm(elementForSpell(st.activeSpell))) st.accrueFerocity(-FEROCITY_THRESHOLD);
+        if (st.enterBeastForm(elementForSpell(st.activeSpell))) {
+          st.accrueFerocity(-FEROCITY_THRESHOLD);
+          // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
+          const rp = st.playerPosition;
+          if (st.playSpatialSound && rp) st.playSpatialSound('roar', [rp.x, rp.y, rp.z], 1, 30);
+        }
         st.setBeastCharging(false); // M7c: anticipation -> BURST + the avatar entrance take over
       } else if (action === 'cancel') {
         // M7a: roar released early -> ease the transform-cam back to FPV (jump it to the return phase).
@@ -620,16 +625,20 @@ export const Player = ({ isWorldBuilt }) => {
         const known = gHit ? stv.worldBlocks?.get(gHit.targetCoords) : undefined;
         stv.setVoidhandHeld(true);
         stv.setHeldPhantom({ color: PHANTOM_BLOCK_COLORS[known] || '#A9966E' });
+        const gp = stv.playerPosition; // AUDIO: the grab chirp carries the whole-tone Aspect motif
+        if (stv.playSpatialSound && gp) stv.playSpatialSound('grab', [gp.x, gp.y, gp.z], 1, 20);
       } else if (vaction === 'hurl') {
         // launch along camera-forward from just ahead of the head (the phantom visually snaps to it)
         const hd = new THREE.Vector3();
         camera.getWorldDirection(hd);
         const ho = camera.position.clone().add(hd.clone().multiplyScalar(1.2));
         requestHurl({ x: ho.x, y: ho.y, z: ho.z }, { x: hd.x, y: hd.y, z: hd.z }, stv.heldPhantom && stv.heldPhantom.color);
+        if (stv.playSpatialSound) stv.playSpatialSound('hurl', [ho.x, ho.y, ho.z], 1, 25); // AUDIO: launch whoosh
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       } else if (vaction === 'slam') {
         requestSlam({ x: phantomWorldPos.x, y: phantomWorldPos.y, z: phantomWorldPos.z }, stv.heldPhantom && stv.heldPhantom.color);
+        if (stv.playSpatialSound) stv.playSpatialSound('slam', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 30); // AUDIO: the heavy thump
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       } else if (vaction === 'drop' || vaction === 'cancel') {
