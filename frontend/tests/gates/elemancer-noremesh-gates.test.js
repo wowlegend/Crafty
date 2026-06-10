@@ -41,4 +41,10 @@ describe('elemancer zone-slow wiring locks', () => {
     expect(read('EnhancedMagicSystem.jsx')).not.toMatch(/mobSlowEffects|mobStunEffects/);
     expect(read('store/useGameStore.jsx')).not.toMatch(/mobSlowEffects|mobStunEffects/);
   });
+  // S2-B4-M5: the verb wiring stays wired (the latch decides in Components; the cast-arm handoff exists).
+  it('the imbue latch is wired in Components (decideImbue + armImbueCast)', () => {
+    const c = read('Components.jsx');
+    expect(c).toMatch(/decideImbue\(/);
+    expect(c).toMatch(/armImbueCast\(/);
+  });
 });

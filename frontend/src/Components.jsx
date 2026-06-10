@@ -13,6 +13,9 @@ import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
+import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
+import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
+import { armImbueCast } from './game/elemancerChannel.js';
 import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
 import { ecs, alliesQuery } from './ecs/world';
 import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
@@ -178,6 +181,9 @@ export const Player = ({ isWorldBuilt }) => {
   const prevRoarRef = useRef(false);
   const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
   const soulbindSMRef = useRef(makeSoulbindState()); // S2-B3-M4: the SOULBIND snare SM state
+  const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
+  const prevImbueRef = useRef(false);
+  const castFiredRef = useRef(false); // stamped by the #72 cast branch; consumed by the latch
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
@@ -420,6 +426,12 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('snare', true);
       }
 
+      // S2-B4-M5: imbue -> the abstract 'imbue' intent (the ELEMANCER latch in useFrame).
+      // The Aspect-verb row completes: R=roar, V=grab, X=snare, Z=imbue.
+      if (e.code === 'KeyZ') {
+        setIntent('imbue', true);
+      }
+
       if (e.code === 'KeyF') {
         triggerMeleeAttack();
       }
@@ -446,6 +458,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'KeyX') {
         setIntent('snare', false);
+      }
+
+      if (e.code === 'KeyZ') {
+        setIntent('imbue', false);
       }
     };
     // #72 VERB ROUTER: ONE listener, one click -> exactly ONE verb (design-of-record:
@@ -507,7 +523,7 @@ export const Player = ({ isWorldBuilt }) => {
         else triggerMeleeAttack();
       } else if (verb === 'cast') {
         if (store.voidhandHeld) voidhandVerbRef.current.cast = true;   // M3: HELD re-skin -> SM 'slam'
-        else triggerSpellCast();
+        else { triggerSpellCast(); castFiredRef.current = true; } // S2-B4-M5: the latch consumes this
       } else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
       else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
@@ -762,6 +778,30 @@ export const Player = ({ isWorldBuilt }) => {
           from: { x: fusePair[0].position.x, y: fusePair[0].position.y + 0.4, z: fusePair[0].position.z },
           to: { x: fusePair[1].position.x, y: fusePair[1].position.y + 0.4, z: fusePair[1].position.z },
         });
+      }
+
+      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (bank- and talent-gated);
+      // the #72 cast branch stamps castFiredRef when a real spell cast routes. On 'consume'
+      // the cast is already in flight: spend the bank + hand the element kind to the
+      // projectile spawn via the cast-arm slot.
+      const imbueIn = vin.imbue;
+      const imbueEdge = imbueIn && !prevImbueRef.current;
+      prevImbueRef.current = imbueIn;
+      const { sm: ism, action: iaction } = decideImbue(imbueSMRef.current, {
+        imbueEdge,
+        castFired: castFiredRef.current,
+        active: vin.active,
+        alive: stv.isAlive,
+        canIgnite: rCanIgnite(stv.resonanceBanked) && (stv.unlockedTalents?.['elemancer_imbue'] > 0),
+      });
+      imbueSMRef.current = ism;
+      castFiredRef.current = false;
+      if (iaction === 'arm') stv.setImbueArmed(true);
+      else if (iaction === 'disarm') stv.setImbueArmed(false);
+      else if (iaction === 'consume') {
+        stv.setImbueArmed(false);
+        stv.accrueResonance(-ZONE_COST); // canIgnite vetted the bank at arm-time; spend at cast
+        armImbueCast(KIND_BY_SPELL[stv.activeSpell] || 'burning');
       }
     }
 

@@ -383,6 +383,9 @@ export const useGameStore = create((set, get) => ({
     soulBanked: 0,
     setSoulBanked: (v) => set({ soulBanked: clampSoul(v) }),
     accrueSoul: (delta) => set((s) => ({ soulBanked: clampSoul(s.soulBanked + delta) })),
+    // S2-B4-M5: the armed-reticle tell (edge-written only — arm/disarm events, GLI-clean).
+    imbueArmed: false,
+    setImbueArmed: (v) => set({ imbueArmed: v }),
     // S2-B4-M2: the Resonance bank (ELEMANCER) — the build-verb meter's triplet.
     resonanceBanked: 0,
     setResonanceBanked: (v) => set({ resonanceBanked: clampResonance(v) }),
