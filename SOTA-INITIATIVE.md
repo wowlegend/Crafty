@@ -63,12 +63,14 @@ layered on a day-build / night-siege survival loop. Wildheart (beast-transform) 
 S2-A foundation ✅ · S2-B1 WILDHEART ✅ (merged `458bbb5`) · #68 perf remediation ✅ (`868e4e7`) ·
 S2-B2 VOIDHAND IN-FLIGHT (M1 ✅ · **M2 FPS gate ✅** [desktop-PASS, re-gated w/ REAL hurls; iPad confirm
 parked to Kevin] · **#72 verb-router ✅** [+ fixed silently-NaN-broken mine/place] · **M3 HURL/SLAM ✅** ·
-**M4 ANVIL+KINETIC ✅** [wall-hit = 3×; kinetic economy; voidhand_grasp gate; violet HUD bar] · **M5 ✅
-VERIFIED + M6 ✅ REDUCED** [element-at-impact locked by gates; no pool ⇒ no eviction] · **M7 THE LOOK ✅**
-[in-world judge KEPT ink+violet-rim; + emissive night-identity, white-hot impact core, gold WALL HIT!
-label; zero re-baselines]; next = **M8 content enumeration — the LAST VOIDHAND milestone**) · S2-B3/B4 +
-S3 + S4 not started.** Live scale (measured 2026-06-10 post-M7): ~22.6k LOC src / 128 files / 726 unit
-tests (77 files) / 21 static-gate files / 13-state visual gate / perf-probe harness (`?perf=A..E`). Full risk map:
+**M4 ANVIL+KINETIC ✅ · M5 ✅ · M6 ✅ · M7 THE LOOK ✅ · M8 CONTENT ✅) — 🏆 S2-B2 VOIDHAND ASPECT
+COMPLETE 2026-06-10** (grab→orbit→HURL/SLAM→anvil-3×-gold-WALL-HIT; kinetic economy; 9-type tints;
+ink+violet-rim look judged in-world; zero re-baselines across the whole Aspect; FPV-feel + iPad runs
+parked to Kevin non-blocking) · next on the spine = **the owed AUDIO interleave unit** (charter §2.5:
+6 milestones since the last experience unit; #74 motif policy is loop-owned + WILDHEART roar SFX owed +
+voidhand verb SFX) **→ then S2-B3 SOULBIND design workflow** · S2-B4 + S3 + S4 not started.** Live scale
+(measured 2026-06-10 post-Aspect): ~22.6k LOC src / 128 files / 727 unit tests (77 files) /
+21 static-gate files / 13-state visual gate / perf-probe harness (`?perf=A..E`). Full risk map:
 `memory/STATE-REVIEW-2026-06-10.md`. Open tasks: #69–#74 (+ earlier #32 vitest · #63 B1 tuning ·
 #64 beast-capture · #66 panel flags) — **the task registry is the source of truth, not this line.**
 Known managed drift: WILDHEART shipped audio-silent (the motif pass — §5 AUDIO now owns it).

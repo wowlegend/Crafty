@@ -1,5 +1,17 @@
 # Crafty S2-B2 — VOIDHAND (kinetic / gravity-hand Aspect) — design of record
 
+> **🏆 ASPECT COMPLETE (2026-06-10, autonomous loop iters 1-32): M1-M8 + #72 ALL SHIPPED.** The full kit
+> is live: grab (V, 25 Kinetic, talent-gated) → ink+violet-rim phantom orbits as shield/aim → HURL
+> (ballistic, substepped, element-at-impact) / SLAM (3m AoE at the orbit point, camera kick) → **base-as-
+> anvil 3× with the gold WALL HIT!** — day-building IS a combat weapon. Day-kill Kinetic economy
+> (dawn-bled, persisted), 9-type phantom tints, impact core flashes, unlock-gated HUD bar. En route the
+> loop also shipped the #72 verb-router (one click = one verb) + fixed the silently-NaN-broken mine/place.
+> Perf: desktop gate PASS incl. real-verb re-gate (E−B 0.00/0.00ms). **727 unit (77 files) · 21 gates ·
+> visual 13/13, zero re-baselines.** Parked to Kevin (non-blocking): FPV-feel sign-off, the one-tap iPad
+> run (+#63), the M5/M8-deferred pristine-voxel tint query (M-future). Milestone-by-milestone statuses
+> below; per-milestone plans in `../plans/`. NEXT on the spine: the owed AUDIO interleave unit, then
+> SOULBIND (B3).
+
 > **Status (2026-06-09): ✅ APPROVED + M1 BUILT (on `main`).** Kevin signed the §13 8-decision batch (recs as-is)
 > + flagged the keybind conflict → grab = **`KeyV`** (`KeyG` was taken = chest/trade; keymap-audited). **M1 = the
 > load-bearing no-re-mesh foundation is DONE** (commits `4d01cb5`→`254606b`→`3d08f6c`): pure `voidhand.js` SM +
