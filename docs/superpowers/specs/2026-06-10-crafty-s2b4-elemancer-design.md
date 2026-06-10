@@ -81,7 +81,7 @@ never pristine trees; that honesty is recorded, not hidden.
 
 | M | What | The gate |
 |---|---|---|
-| M1 | The `'hazard'` kill-bus source end-to-end (zone kills bank NOTHING anywhere; no hitstop/shake/XP) + fix the comma-key bug | subscriber tests + the gate file extended |
+| M1 ✅ | The `'hazard'` kill-bus source end-to-end (zone kills bank NOTHING anywhere; no hitstop/shake/XP) + fix the comma-key bug | subscriber tests + the gate file extended |
 | M2 | `game/elemancer.js` imbue SM + `game/resonance.js` (build-verb accrual) + the talent node + persistence | TDD twins |
 | M3 | `game/elementZones.js` pure registry (spawn/TTL/cap/evict/overlap rules: fire+ice annihilate; arcane amplifies) + `elemancerChannel` + the noremesh gate JOINS HERE (before any render) | registry TDD + the gate |
 | M4 | The zone bridge (15Hz accumulator: DoT/slow/chain/lure; zoneSlowMult replaces the dead mobSlowEffects; hazard cells bias the AI heightGrid — sieges path around fire) | wiring tests + the mobsData consumer lock |
