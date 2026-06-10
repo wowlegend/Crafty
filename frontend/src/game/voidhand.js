@@ -18,7 +18,7 @@ export const MAX_HOLD_SEC = 8;       // auto-drop the held block after this (no 
 export const GRAB_COOLDOWN_SEC = 0.6; // after a release, before grab can charge again
 
 /** M3/M8: worker-numeric block type -> phantom tint. M8 covers the FULL worker type space
- *  (1-9, enumerated from terrain.worker.js generation: grass/dirt/stone/sand/snow/wood/leaves/
+ *  (1-9, enumerated from the terrain worker's generation: grass/dirt/stone/sand/snow/wood/leaves/
  *  trunk/water) so every type reads distinct ("8+ types" — spec §12 M8). HONEST REACH NOTE:
  *  the v1 grab tint resolves only worldBlocks-KNOWN (player-edited) voxels, whose placeable
  *  space is {1,2,3,4,6,7}; 5/8/9 tints are data-ready for the deferred pristine-voxel query.
