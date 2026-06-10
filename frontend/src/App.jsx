@@ -417,13 +417,18 @@ function GameApp({ experienceSystem }) {
       // cause of the empty iter-56 cards) then GameMethods.captureMob (the M3 seam) + the jade
       // tint — exactly what live SNARE does. Hybrids = applyFusion of two such captures (the
       // live FUSE path; its Vector3 fix landed with this fixture).
+      // clear the live mob population FIRST (the spawnCharacterCloseup :237 precedent) — the
+      // spawner refuses past the siege cap, which silently dropped subjects from the iter-57 card.
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
       const slotX = (i) => OX + (i - 2) * GAP;
+      window.__showcaseDebug = [];
       const grab = (type, x) => {
         if (!store.spawnMob || !GameMethods.captureMob) return null;
-        store.spawnMob(x, OZ, type, OY - 0.5); // spawnMob adds +0.5
+        const ok = store.spawnMob(x, OZ, type, OY - 0.5); // spawnMob adds +0.5
         const mob = [...mobsQuery.entities].reverse().find((e) => e.type === type && Math.abs(e.position.x - x) < 0.1);
-        if (!mob) return null;
+        if (!mob) { window.__showcaseDebug.push(['spawn-miss', type, x, ok]); return null; }
         const ally = GameMethods.captureMob(mob.id);
+        if (!ally) window.__showcaseDebug.push(['capture-miss', type, x]);
         return ally || null;
       };
       const tint = (e, c) => { if (e) e.color = c; };
@@ -435,7 +440,8 @@ function GameApp({ experienceSystem }) {
         const x = slotX(2 + j);
         const a = grab(pr[0], x - 0.6);
         const b = grab(pr[1], x + 0.6);
-        if (a && b) applyFusion(ecs, a, b);
+        const hy = (a && b) ? applyFusion(ecs, a, b) : null;
+        if (!hy) window.__showcaseDebug.push(['fuse-miss', pr.join('+'), !!a, !!b]);
       });
       // camera: front-on from +Z (the lootShowcase framing), centered on the 5-subject row,
       // pulled back ~14u so the Bulwark (the widest) fits with air on both sides.
