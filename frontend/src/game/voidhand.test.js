@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeVoidhandState, decideVoidhand, GRAB_CHARGE_SEC, MAX_HOLD_SEC, GRAB_COOLDOWN_SEC } from './voidhand.js';
+import { makeVoidhandState, decideVoidhand, GRAB_CHARGE_SEC, MAX_HOLD_SEC, GRAB_COOLDOWN_SEC, PHANTOM_BLOCK_COLORS } from './voidhand.js';
 
 // S2-B2-M1: the VOIDHAND grab SM (pure reducer). Twin of beastTransform.js. The store owns `held`
 // (ctx.held); this SM owns charge + hold/cooldown timers. IDLE -> CHARGING -> HELD -> hurl/slam/drop.
@@ -61,5 +61,15 @@ describe('HELD -> hurl / slam / drop', () => {
   });
   it('holds (NONE) while idle within the window', () => {
     expect(decideVoidhand(held, { ...base, held: true, now: 5 }).action).toBe('none');
+  });
+});
+
+describe('S2-B2-M8: phantom tint content enumeration', () => {
+  it('covers the FULL worker block-type space (1-9) with distinct, readable tints', () => {
+    const keys = Object.keys(PHANTOM_BLOCK_COLORS).map(Number).sort((a, b) => a - b);
+    expect(keys).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]); // 9 types >= the spec's "8+"
+    const values = Object.values(PHANTOM_BLOCK_COLORS);
+    expect(new Set(values).size).toBe(values.length); // every tint distinct
+    for (const v of values) expect(v).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 });

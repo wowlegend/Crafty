@@ -17,16 +17,22 @@ export const GRAB_CHARGE_SEC = 0.35; // anticipation before the grab commits (Ke
 export const MAX_HOLD_SEC = 8;       // auto-drop the held block after this (no infinite carry)
 export const GRAB_COOLDOWN_SEC = 0.6; // after a release, before grab can charge again
 
-/** M3: worker-numeric block type -> phantom tint (M1-deferred "looked-at block" color; only
- *  KNOWN (player-edited) voxels resolve — pristine terrain types live in the worker; M7 decides
- *  whether an async worker query is worth it for the final look). Pure data, gate-safe. */
+/** M3/M8: worker-numeric block type -> phantom tint. M8 covers the FULL worker type space
+ *  (1-9, enumerated from terrain.worker.js generation: grass/dirt/stone/sand/snow/wood/leaves/
+ *  trunk/water) so every type reads distinct ("8+ types" — spec §12 M8). HONEST REACH NOTE:
+ *  the v1 grab tint resolves only worldBlocks-KNOWN (player-edited) voxels, whose placeable
+ *  space is {1,2,3,4,6,7}; 5/8/9 tints are data-ready for the deferred pristine-voxel query.
+ *  Pure data, gate-safe. */
 export const PHANTOM_BLOCK_COLORS = {
   1: '#6FA34D', // grass
   2: '#8B6A42', // dirt
   3: '#8A8E94', // stone-family
-  4: '#D8C98E', // sand/water-family
+  4: '#D8C98E', // sand
+  5: '#E8F0F5', // snow
   6: '#9A7B4F', // wood/chest
   7: '#5F8F4E', // leaves/flowers
+  8: '#7A5A38', // tree trunk
+  9: '#4A9BD8', // water (unreachable by grab today; data-complete)
 };
 
 /** The SM's own state (charge + timers). The held/active truth lives in the store, not here. */

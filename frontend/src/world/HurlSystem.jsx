@@ -57,6 +57,9 @@ export function HurlSystem() {
     if (slam) {
       const element = store.activeSpell; // read at impact
       fireFlash(slam.center, 3.0); // the AoE verb flashes wide (~the 3m slam radius as it expands)
+      // M8 feel-distinctness: SLAM is the HEAVY verb — a camera kick the ranged hurl doesn't get
+      // (hurl impacts already carry hitstop via damageMob; this is the slam's own signature).
+      if (store.triggerCameraShake) store.triggerCameraShake(1.4);
       for (const ev of resolveSlam(slam.center, mobsQuery.entities)) {
         if (GameMethods.damageMob) GameMethods.damageMob(ev.id, Math.round(HURL_DAMAGE * SLAM_DAMAGE_MULT), element);
         const entity = mobsQuery.entities.find((e) => e.id === ev.id);
