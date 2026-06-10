@@ -30,3 +30,11 @@ export function decideImbue(sm, ctx) {
 
   return { sm: out, action: 'none' };
 }
+
+/** The cast's element decides the chemistry (design §2): spell -> zone kind. */
+export const KIND_BY_SPELL = {
+  fireball: 'burning',
+  iceball: 'frozen',
+  lightning: 'conductive',
+  arcane: 'resonant',
+};

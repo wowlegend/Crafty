@@ -13,3 +13,12 @@ describe('S2-B4-M3: the zone request channel (single-slot)', () => {
     expect(consumeZoneRequest().kind).toBe('frozen');
   });
 });
+
+describe('S2-B4-M5: the cast-arm slot (consume -> spawn handoff)', () => {
+  it('armImbueCast -> consumeImbueCast returns the kind once, then null', async () => {
+    const { armImbueCast, consumeImbueCast } = await import('./elemancerChannel');
+    armImbueCast('burning');
+    expect(consumeImbueCast()).toBe('burning');
+    expect(consumeImbueCast()).toBe(null);
+  });
+});

@@ -18,3 +18,9 @@ export function consumeZoneRequest() {
   _request = null;
   return r;
 }
+
+// S2-B4-M5: the CAST-ARM slot — the latch's 'consume' (Components) hands the armed element
+// kind to the projectile spawn (EnhancedMagicSystem) through this second single-slot.
+let _castArm = null;
+export function armImbueCast(kind) { _castArm = kind; }
+export function consumeImbueCast() { const k = _castArm; _castArm = null; return k; }

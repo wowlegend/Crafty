@@ -30,3 +30,10 @@ describe('S2-B4-M2: the imbue LATCH (simpler than every prior SM — armed until
     expect(decideImbue(armed, { ...base, active: false }).action).toBe('disarm');
   });
 });
+
+describe('S2-B4-M5: KIND_BY_SPELL (the element->zone mapping)', () => {
+  it('maps all four spells to their zone kinds', async () => {
+    const { KIND_BY_SPELL } = await import('./elemancer');
+    expect(KIND_BY_SPELL).toEqual({ fireball: 'burning', iceball: 'frozen', lightning: 'conductive', arcane: 'resonant' });
+  });
+});
