@@ -1,5 +1,13 @@
 # #72 Verb Router Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iters 10-12).** Tasks 1-3 on `main` (`ffec759`, `99e0c35`); Tasks 2+3 landed
+> in one iteration (committing the deliberately-red gate alone would have broken main — charter rule wins
+> over per-task commits). Deviation-of-record: the "verbatim move" surfaced that `hit.toi` is DEAD on this
+> rapier build (`timeOfImpact` is the field) — the old mine/place path was silently NaN-broken; fixed +
+> holistic sweep (GameScene:181, Terrain:290; :478 was already defensive). The plan's headless click-smoke
+> was replaced by a stronger executor smoke (in-page ESM import of GameMethods → castBuildRay → mine →
+> real voxel mined). 699 unit (74 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-72-verb-router-design.md` (the committed self-gate). §5 of the spec is the test list; §6 is the seam surgery this plan executes. Pre-M3 BLOCKER.
 

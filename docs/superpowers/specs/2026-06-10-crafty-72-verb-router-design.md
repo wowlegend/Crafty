@@ -1,9 +1,17 @@
 # #72 — Mouse VERB ROUTER (build vs combat vs voidhand on shared buttons) — design of record
 
-> **Status (2026-06-10): DESIGN COMMITTED (loop self-gate per charter §5).** Produced by a 3-lens design
-> workflow (genre-comparables · code-reality · adversarial-edges) + orchestrator synthesis with the lens
-> contradiction resolved by direct code verification. Pre-M3 BLOCKER (STATE-REVIEW-2026-06-10 finding #6 /
-> task #72). NEXT: `writing-plans` plan doc → TDD build.
+> **Status (2026-06-10): ✅ BUILT (commits `ffec759` router → `99e0c35` seam; plan
+> `../plans/2026-06-10-crafty-72-verb-router.md`).** All §5 rows are unit tests (15) + 3 seam gates; the §6
+> surgery landed as specced. **Build-discovered bonus (recorded honestly): the OLD Terrain listener was
+> computing NaN coordinates — this rapier build exposes `timeOfImpact`, the legacy `hit.toi` is undefined —
+> so instant mine/place at HEAD was silently broken (SFX, junk `NaN_NaN_NaN` save keys, no real edit).
+> The router work fixed it + swept 2 more dead-field sites (GameScene occlusion march, block-target
+> outline). Mining/placing actually work again.** 699 unit (74 files) · build · visual 13/13 · executor
+> smoke mines a real voxel. M3 UNBLOCKED.
+>
+> Originally produced by a 3-lens design workflow (genre-comparables · code-reality · adversarial-edges)
+> + orchestrator synthesis with the lens contradiction resolved by direct code verification
+> (pre-M3 BLOCKER, STATE-REVIEW-2026-06-10 finding #6 / task #72).
 
 ## 0. The defect (verified)
 

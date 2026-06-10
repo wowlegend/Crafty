@@ -22,7 +22,14 @@
 >    (dev-only) · desktop runner = headless-new + Metal (headed Chrome is occlusion-suspended from agent
 >    contexts; renderer string stamped in every report).
 > 3. **🕹️ Playtest eyeballs queued:** cool-rim ice/lightning in live play · punchy glow in-world · the FPV
->    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change.
+>    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
+>    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
+>    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
+>    melee/cast all FEEL unchanged in normal play. **Heads-up: mining/placing had been SILENTLY BROKEN at
+>    HEAD** (a rapier field rename made the old listener compute NaN coordinates — sounds played, no real
+>    edit) — the router work found + fixed it, so block-editing genuinely works again; if building feels
+>    "suddenly different", that's why. *Decision-of-record (loop): target-priority routing, no lanes/modes;
+>    a hotbar hand-slot lane model is the recorded reversal path (revisit w/ #71 hotbar honesty).*
 > 4. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
 > 5. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
 >    fully rewritten as a LIVING plan (v1 preserved at `git show ddfdf96:SOTA-INITIATIVE.md`). One NEW
