@@ -107,16 +107,19 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
 
   it('the PerformanceMonitor stays inside the !isCaptureMode guard (capture forced-high untouched)', () => {
     // The monitor must remain capture-guarded so the deterministic forced-high capture is
-    // never perturbed by recovery logic. The FIRST `{!isCaptureMode && (` block must open
-    // before the monitor, and no intervening `)}` close may occur between them (i.e. the
-    // monitor is genuinely INSIDE that guard, not after a sibling guard that already closed).
-    const guardIdx = src.indexOf('{!isCaptureMode && (');
+    // never perturbed by recovery logic. S2-B2-M2 STRENGTHENED the guard to also exclude
+    // perf-probe mode (`{!isCaptureMode && !isPerfProbe() && (` — the probe must measure a
+    // FIXED render config, so the adaptive machinery is off under ?perf= too). The gate now
+    // pins the strengthened literal: the capture condition is still required verbatim inside
+    // it, the monitor must sit INSIDE the guard, and no intervening `)}` close may occur.
+    const GUARD = '{!isCaptureMode && !isPerfProbe() && (';
+    const guardIdx = src.indexOf(GUARD);
     const monitorIdx = src.indexOf('<PerformanceMonitor');
     expect(guardIdx).toBeGreaterThan(-1);
     expect(monitorIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(monitorIdx);
     // No guard-close `)}` between the opening guard and the monitor tag.
-    const between = src.slice(guardIdx + '{!isCaptureMode && ('.length, monitorIdx);
+    const between = src.slice(guardIdx + GUARD.length, monitorIdx);
     expect(between).not.toMatch(/\)\}/);
   });
 });

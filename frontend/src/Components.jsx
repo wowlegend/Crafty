@@ -38,6 +38,7 @@ import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
+import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive } from './input/inputState';
 
 // Bold-flat UI primitives (S1C-M2a chrome migration)
@@ -527,7 +528,10 @@ export const Player = ({ isWorldBuilt }) => {
     // (Game-Loop-Isolation). M1 grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is OPEN
     // in M1; M4 ANDs the kinetic bank + the voidhand_grasp talent. HURL/SLAM (attack/cast re-skin) + impact
     // are M3, so attack/cast are not fed here yet -> release is via re-press or the max-hold timer.
-    {
+    // S2-B2-M2: under perf-probe mode the runner writes `voidhandHeld` directly (no real grab happened,
+    // so the SM's heldUntil=0 would max-hold-auto-drop it on the first frame) — the probe's store-driven
+    // held state is authoritative, so the SM tick is skipped. isPerfProbe() is constant-false in prod.
+    if (!isPerfProbe()) {
       const vin = getInput();
       const grab = vin.grab;
       const grabEdge = grab && !prevGrabRef.current;

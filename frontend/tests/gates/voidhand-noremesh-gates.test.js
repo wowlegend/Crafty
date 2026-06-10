@@ -20,6 +20,9 @@ describe('voidhand no-re-mesh gate', () => {
     'world/PhantomBlockSystem.jsx', // the held-phantom render proxy
     'Components.jsx',             // the SM WIRING surface — where M3 HURL/SLAM lands; was un-gated
                                   // (STATE-REVIEW-2026-06-10 #9; full repo-wide inversion = #69)
+    'devtest/perfProbe.js',         // M2 probe mode/channel — drives the combat path, voxel-clean
+    'devtest/PerfProbeRunner.jsx',  // M2 scenario driver
+    'devtest/PerfProbeSystem.jsx',  // M2 dynamic hurl stand-in
   ];
 
   for (const rel of GATED) {

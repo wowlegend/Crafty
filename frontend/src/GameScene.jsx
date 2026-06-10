@@ -18,6 +18,9 @@ import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { captureRandom, isCaptureMode } from './devtest/captureMode';
+import { isPerfProbe } from './devtest/perfProbe';
+import { PROBE_DPR } from './devtest/perfScenarios';
+import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { shouldProbeGround } from './game/particleProbe.js';
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -727,7 +730,7 @@ export function GameScene({
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
       <Canvas
         shadows
-        dpr={[1, q.dprCap]}
+        dpr={isPerfProbe() ? PROBE_DPR : [1, q.dprCap]}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
@@ -770,7 +773,7 @@ export function GameScene({
           canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
         }}
       >
-        {!isCaptureMode && (
+        {!isCaptureMode && !isPerfProbe() && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
           // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
@@ -805,7 +808,7 @@ export function GameScene({
             }}
           />
         )}
-        {!isCaptureMode && <AdaptiveDpr pixelated />}
+        {!isCaptureMode && !isPerfProbe() && <AdaptiveDpr pixelated />}
 
         <Atmosphere shadowConfig={shadowConfig} />
 
@@ -830,6 +833,7 @@ export function GameScene({
         <Suspense fallback={null}>
           <GPUSparkSystem />
           <Physics gravity={[0, -30, 0]} paused={isCaptureMode}>
+            {import.meta.env.DEV && <PerfProbeSystem />}
             <SpatialAudioController />
             <MinecraftWorld />
 

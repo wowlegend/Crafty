@@ -18,6 +18,7 @@ import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
+import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
@@ -510,6 +511,9 @@ function GameApp({ experienceSystem }) {
         showSpellUpgrades={showSpellUpgrades}
         showAuthModal={showAuthModal}
       />
+
+      {/* S2-B2-M2 perf probe (dev-only, self-nulls unless ?perf=A..E) — DOM layer, outside the Canvas */}
+      {import.meta.env.DEV && <PerfProbeRunner />}
 
       {!isWorldBuilt && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">
