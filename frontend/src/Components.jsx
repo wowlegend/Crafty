@@ -11,7 +11,9 @@ import { makeTransformState, decideTransform, formDurationFor } from './game/bea
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
-import { makeVoidhandState, decideVoidhand } from './game/voidhand.js';
+import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
+import { requestHurl, requestSlam } from './game/hurlChannel';
+import { phantomWorldPos } from './world/PhantomBlockSystem';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
 import { HurlSystem } from './world/HurlSystem';
 import { isPointInCone } from './combat/cone.js';
@@ -166,6 +168,7 @@ export const Player = ({ isWorldBuilt }) => {
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
   const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
+  const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
   const prevGrabRef = useRef(false);
   // S2-B1-M7a: the third-person transform-cam window. { active, t (sec elapsed), fwd (facing captured
   // at roar-start so the behind-shot is stable) }. Started on the SM 'startCharge', applied in useFrame.
@@ -477,9 +480,13 @@ export const Player = ({ isWorldBuilt }) => {
         chestTargeted: !!(hit && hit.chestTargeted),
       });
 
-      if (verb === 'attack') triggerMeleeAttack();
-      else if (verb === 'cast') triggerSpellCast();
-      else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
+      if (verb === 'attack') {
+        if (store.voidhandHeld) voidhandVerbRef.current.attack = true; // M3: HELD re-skin -> SM 'hurl'
+        else triggerMeleeAttack();
+      } else if (verb === 'cast') {
+        if (store.voidhandHeld) voidhandVerbRef.current.cast = true;   // M3: HELD re-skin -> SM 'slam'
+        else triggerSpellCast();
+      } else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
       else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
     };
@@ -589,12 +596,15 @@ export const Player = ({ isWorldBuilt }) => {
       const grab = vin.grab;
       const grabEdge = grab && !prevGrabRef.current;
       prevGrabRef.current = grab;
+      // M3: single-frame held-click edges from the #72 dispatcher (consumed + cleared here)
+      const vAtk = voidhandVerbRef.current.attack; voidhandVerbRef.current.attack = false;
+      const vCast = voidhandVerbRef.current.cast; voidhandVerbRef.current.cast = false;
       const stv = useGameStore.getState();
       const { sm: vsm, action: vaction } = decideVoidhand(voidhandSMRef.current, {
         held: stv.voidhandHeld,
         grabEdge,
-        attack: false,
-        cast: false,
+        attack: vAtk,
+        cast: vCast,
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
@@ -602,9 +612,24 @@ export const Player = ({ isWorldBuilt }) => {
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
+        // M3: tint from the looked-at block when it's a KNOWN voxel (worldBlocks); else placeholder.
+        const gHit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
+        const known = gHit ? stv.worldBlocks?.get(gHit.targetCoords) : undefined;
         stv.setVoidhandHeld(true);
-        stv.setHeldPhantom({ color: '#A9966E' }); // M3: color from the looked-at block; M7: the final look
-      } else if (vaction === 'hurl' || vaction === 'slam' || vaction === 'drop' || vaction === 'cancel') {
+        stv.setHeldPhantom({ color: PHANTOM_BLOCK_COLORS[known] || '#A9966E' });
+      } else if (vaction === 'hurl') {
+        // launch along camera-forward from just ahead of the head (the phantom visually snaps to it)
+        const hd = new THREE.Vector3();
+        camera.getWorldDirection(hd);
+        const ho = camera.position.clone().add(hd.clone().multiplyScalar(1.2));
+        requestHurl({ x: ho.x, y: ho.y, z: ho.z }, { x: hd.x, y: hd.y, z: hd.z }, stv.heldPhantom && stv.heldPhantom.color);
+        stv.setVoidhandHeld(false);
+        stv.setHeldPhantom(null);
+      } else if (vaction === 'slam') {
+        requestSlam({ x: phantomWorldPos.x, y: phantomWorldPos.y, z: phantomWorldPos.z }, stv.heldPhantom && stv.heldPhantom.color);
+        stv.setVoidhandHeld(false);
+        stv.setHeldPhantom(null);
+      } else if (vaction === 'drop' || vaction === 'cancel') {
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       }

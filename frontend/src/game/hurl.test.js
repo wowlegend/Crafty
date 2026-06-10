@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  makeHurl, stepHurl, resolveSlam,
+  makeHurl, stepHurl, stepHurlChunked, resolveSlam,
   HURL_SPEED, HURL_TTL_SEC, HURL_HIT_RADIUS, HURL_KNOCK, SLAM_RADIUS, SLAM_DAMAGE_MULT, HURL_DAMAGE,
 } from './hurl';
 
@@ -66,5 +66,29 @@ describe('hurl core (S2-B2-M3)', () => {
     expect(SLAM_RADIUS).toBe(3);
     expect(SLAM_DAMAGE_MULT).toBeCloseTo(1.3, 5);
     expect(HURL_DAMAGE).toBe(30);
+  });
+});
+
+describe('hurl substepping (frame-spike tunneling guard)', () => {
+  it('a single 0.5s frame spike must NOT tunnel through a mob on the flight path', () => {
+    // dt=0.5 at 22 m/s = an 11m jump; the mob sits at 5m, radius 1.4 — naive stepping tunnels.
+    const h = makeHurl({ x: 0, y: 10, z: 0 }, { x: 1, y: 0, z: 0 });
+    const m = { id: 'spike', position: { x: 5, y: 10.2, z: 0 } };
+    const r = stepHurlChunked(h, 0.5, [m]);
+    expect(r.done).toBe(true);
+    expect(r.hit && r.hit.id).toBe('spike');
+  });
+  it('chunked stepping matches plain stepping for small dt', () => {
+    const a = makeHurl({ x: 0, y: 10, z: 0 }, { x: 1, y: 0, z: 0 });
+    const b = makeHurl({ x: 0, y: 10, z: 0 }, { x: 1, y: 0, z: 0 });
+    stepHurl(a, 0.016, []);
+    stepHurlChunked(b, 0.016, []);
+    expect(b.position.x).toBeCloseTo(a.position.x, 6);
+    expect(b.velocity.y).toBeCloseTo(a.velocity.y, 6);
+  });
+  it('caps a pathological frame (age never jumps past the cap in one call)', () => {
+    const h = makeHurl({ x: 0, y: 10, z: 0 }, { x: 1, y: 0, z: 0 });
+    stepHurlChunked(h, 5, []); // absurd 5s frame
+    expect(h.age).toBeLessThanOrEqual(0.25 + 1e-9);
   });
 });

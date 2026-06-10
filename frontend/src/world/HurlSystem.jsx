@@ -5,7 +5,7 @@ import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
-import { makeHurl, stepHurl, resolveSlam, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
+import { makeHurl, stepHurlChunked, resolveSlam, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
 
 /**
  * HurlSystem — S2-B2-M3: consumes hurlChannel requests and runs the PURE flight/impact core.
@@ -44,7 +44,11 @@ export function HurlSystem() {
 
     const f = flightRef.current;
     if (!f) return;
-    const r = stepHurl(f.h, delta, mobsQuery.entities);
+    const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
+    if (import.meta.env.DEV) {
+      // observability transient (the __threeScene precedent): exact flight truth for smokes/devtools
+      window.__hurlDebug = { age: f.h.age, x: f.h.position.x, y: f.h.position.y, z: f.h.position.z, done: r.done, hit: r.hit ? r.hit.id : null, delta };
+    }
     if (meshRef.current) {
       meshRef.current.position.set(f.h.position.x, f.h.position.y, f.h.position.z);
       meshRef.current.rotation.x += delta * 6;

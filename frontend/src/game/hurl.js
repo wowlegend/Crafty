@@ -52,6 +52,26 @@ export function stepHurl(h, dt, mobs) {
   return { done: h.age >= HURL_TTL_SEC, hit: null };
 }
 
+export const HURL_MAX_STEP_SEC = 0.05;  // 1.1m/substep at HURL_SPEED < HIT_RADIUS -> no tunneling
+export const HURL_FRAME_CAP_SEC = 0.25; // a pathological frame advances the flight at most this much
+
+/**
+ * Frame-spike-safe stepping: integrates in substeps of ≤ HURL_MAX_STEP_SEC so a long frame
+ * (chunk re-mesh hitch, headless stall — observed dt=0.50s tunneled 11m through a 1.4m radius)
+ * can never skip past a mob. The frame's dt is capped at HURL_FRAME_CAP_SEC (the flight slows
+ * under a multi-second stall instead of teleporting). Returns the first terminal result.
+ */
+export function stepHurlChunked(h, dt, mobs) {
+  let remaining = Math.min(dt, HURL_FRAME_CAP_SEC);
+  let r = { done: false, hit: null };
+  while (remaining > 1e-9 && !r.done) {
+    const step = Math.min(remaining, HURL_MAX_STEP_SEC);
+    r = stepHurl(h, step, mobs);
+    remaining -= step;
+  }
+  return r;
+}
+
 /** SLAM: radial horizontal knock events for mobs within radius of the orbit point. */
 export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
   const events = [];

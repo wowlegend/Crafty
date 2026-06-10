@@ -17,6 +17,18 @@ export const GRAB_CHARGE_SEC = 0.35; // anticipation before the grab commits (Ke
 export const MAX_HOLD_SEC = 8;       // auto-drop the held block after this (no infinite carry)
 export const GRAB_COOLDOWN_SEC = 0.6; // after a release, before grab can charge again
 
+/** M3: worker-numeric block type -> phantom tint (M1-deferred "looked-at block" color; only
+ *  KNOWN (player-edited) voxels resolve — pristine terrain types live in the worker; M7 decides
+ *  whether an async worker query is worth it for the final look). Pure data, gate-safe. */
+export const PHANTOM_BLOCK_COLORS = {
+  1: '#6FA34D', // grass
+  2: '#8B6A42', // dirt
+  3: '#8A8E94', // stone-family
+  4: '#D8C98E', // sand/water-family
+  6: '#9A7B4F', // wood/chest
+  7: '#5F8F4E', // leaves/flowers
+};
+
 /** The SM's own state (charge + timers). The held/active truth lives in the store, not here. */
 export function makeVoidhandState() {
   return { charging: false, chargeStart: 0, heldUntil: 0, cooldownUntil: 0 };
