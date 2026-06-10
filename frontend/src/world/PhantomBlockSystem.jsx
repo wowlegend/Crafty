@@ -25,6 +25,12 @@ const ORBIT_SEC = 3;       // one revolution per 3s
 const CAPTURE_PHASE = 0.7; // a flattering frozen side-on angle for the deterministic capture frame
 const LIGHT_INTENSITY = 1.4;
 
+/** M3: transient world-position of the orbiting phantom (the SLAM aim point — the Components
+ *  apply-site reads it on a 'slam' SM action). Module-level mutable (GLI; never React state).
+ *  Stale when !held — consumers only read it on slam, which can only fire while HELD. */
+export const phantomWorldPos = { x: 0, y: 0, z: 0 };
+const _wp = new THREE.Vector3();
+
 export function PhantomBlockSystem() {
   const held = useGameStore((s) => s.voidhandHeld);
   const phantom = useGameStore((s) => s.heldPhantom);
@@ -37,6 +43,8 @@ export function PhantomBlockSystem() {
     const theta = capture ? CAPTURE_PHASE : (state.clock.elapsedTime / ORBIT_SEC) * Math.PI * 2;
     groupRef.current.position.set(Math.cos(theta) * ORBIT_R, ORBIT_Y, Math.sin(theta) * ORBIT_R);
     if (spinRef.current) spinRef.current.rotation.set(theta * 0.6, theta, 0); // the block tumbles as it orbits
+    groupRef.current.getWorldPosition(_wp);
+    phantomWorldPos.x = _wp.x; phantomWorldPos.y = _wp.y; phantomWorldPos.z = _wp.z;
   });
 
   const active = held && phantom;

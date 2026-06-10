@@ -13,6 +13,7 @@ import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand } from './game/voidhand.js';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
+import { HurlSystem } from './world/HurlSystem';
 import { isPointInCone } from './combat/cone.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { buildRibbonIndices } from './combat/ribbonIndices.js';
@@ -1081,6 +1082,7 @@ export const Player = ({ isWorldBuilt }) => {
             player (RigidBody child); revealed by the M7a transform-cam. */}
         <BeastAvatar />
         <PhantomBlockSystem />
+        <HurlSystem />
       </RigidBody>
       <primitive object={camera}>
         {!inCapture && (
