@@ -89,6 +89,7 @@ export function HurlSystem() {
       // PRISTINE (Decision #3 rec). The gold "WALL HIT!" label is M7-T3.
       const anvil = GameMethods.castWorldRay ? resolveAnvil(GameMethods.castWorldRay, r.hit) : 1;
       fireFlash(r.hit.pos, anvil > 1 ? 2.2 : 1.6); // M7: the impact core (anvil hits flash bigger)
+      if (anvil > 1 && GameMethods.spawnAnvilText) GameMethods.spawnAnvilText(r.hit.pos); // M7-T3: gold WALL HIT!
       if (GameMethods.damageMob) GameMethods.damageMob(r.hit.id, HURL_DAMAGE * anvil, element);
       const entity = mobsQuery.entities.find((e) => e.id === r.hit.id);
       if (entity) entity.knockback = [r.hit.dir.x * HURL_KNOCK, 2, r.hit.dir.z * HURL_KNOCK];

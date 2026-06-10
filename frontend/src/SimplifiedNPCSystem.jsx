@@ -378,7 +378,7 @@ const HealthBar = ({ entity }) => {
 };
 
 // Floating Damage/XP Notification Component
-const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
+const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, type }) => {
   const meshRef = useRef();
   const startTime = useRef(null);
 
@@ -391,17 +391,21 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
     // Clear background
     ctx.clearRect(0, 0, 256, 128);
     
-    const isCrit = !isXP && damage >= 40;
-    const fontSize = isCrit ? 'bold 64px Outfit, Inter, Impact' : 'bold 50px Outfit, Inter, Impact';
+    const isCrit = !isXP && !isAnvil && damage >= 40;
+    const fontSize = isAnvil ? 'bold 46px Outfit, Inter, Impact' : (isCrit ? 'bold 64px Outfit, Inter, Impact' : 'bold 50px Outfit, Inter, Impact');
     ctx.font = fontSize;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    const text = isXP ? `+${damage} XP` : (isCrit ? `${damage}!` : `${damage}`);
+    const text = isAnvil ? 'WALL HIT!' : (isXP ? `+${damage} XP` : (isCrit ? `${damage}!` : `${damage}`));
     
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 30, 0, 98);
-    if (isXP) {
+    if (isAnvil) {
+      // M7-T3: the base-as-anvil 3x moment — GOLD (the design-closure must READ)
+      gradient.addColorStop(0, '#ffe9a3');
+      gradient.addColorStop(1, '#ffb300');
+    } else if (isXP) {
       gradient.addColorStop(0, '#a3ffb4');
       gradient.addColorStop(1, '#00ff88');
     } else {
@@ -447,7 +451,7 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
     return tex;
-  }, [damage, isXP, type]);
+  }, [damage, isXP, isAnvil, type]);
 
   // Premium physically simulated arc bounce trajectory
   const velocity = useMemo(() => {
@@ -466,7 +470,7 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
       const elapsed = (Date.now() - startTime.current) / 1000;
       
       const t = elapsed;
-      const isCrit = !isXP && damage >= 40;
+      const isCrit = !isXP && !isAnvil && damage >= 40;
 
       // Arc formula: y pop and deceleration under gravity, x/z horizontal drift
       let currentY = position[1] + 1.8 + (velocity.y * t - 0.5 * 12.0 * t * t);
@@ -494,7 +498,7 @@ const DamageNumber = ({ damage, position, id, onComplete, isXP, type }) => {
     }
   });
 
-  const scale = isXP ? [1.8, 0.9, 1] : (damage >= 40 ? [2.8, 1.4, 1] : [2.2, 1.1, 1]); // larger scale for crits!
+  const scale = isAnvil ? [3.0, 1.5, 1] : (isXP ? [1.8, 0.9, 1] : (damage >= 40 ? [2.8, 1.4, 1] : [2.2, 1.1, 1])); // larger scale for crits + the gold WALL HIT!
 
   return (
     <sprite ref={meshRef} position={[position[0], position[1] + 1.8, position[2]]} scale={scale}>
@@ -1408,6 +1412,15 @@ export const NPCSystem = React.memo(() => {
         position: [position.x, position.y, position.z]
       }]);
     };
+    // M7-T3: the gold WALL HIT! label — fired by HurlSystem when the anvil 3x lands.
+    GameMethods.spawnAnvilText = (position) => {
+      setDamageNumbers(prev => [...prev, {
+        id: damageId.current++,
+        isAnvil: true,
+        damage: 0,
+        position: [position.x, position.y + 0.6, position.z]
+      }]);
+    };
     // M3c-T2: rarity-tinted pickup pop, fired from the LootSystem collect branch.
     GameMethods.spawnLootPop = (position, color) => {
       setLootPops(prev => [...prev, {
@@ -1446,6 +1459,7 @@ export const NPCSystem = React.memo(() => {
           id={dmg.id}
           damage={dmg.damage}
           isXP={dmg.isXP}
+          isAnvil={dmg.isAnvil}
           type={dmg.type}
           position={dmg.position}
           onComplete={removeDamageNumber}
