@@ -47,3 +47,16 @@ describe('S2-B3-M6: the curated hybrid roster', () => {
     expect(alliesQuery.entities.length).toBeGreaterThanOrEqual(2); // untouched
   });
 });
+
+describe('S2-B3-M7: the hybrid position contract (the iter-57 invisible-hybrid root cause)', () => {
+  it('applyFusion preserves the position CLASS of the consumed ally (Vector3 in -> Vector3 out)', () => {
+    const fakeVec = { x: 0, y: 10, z: 0, clone() { return { ...this, clone: this.clone }; } };
+    const a = ecs.add({ isAlly: true, id: 201, position: fakeVec, type: 'spider', baseType: 'spider', health: 60, maxHealth: 60 });
+    const b = ecs.add({ isAlly: true, id: 202, position: { x: 4, y: 10, z: 0 }, type: 'zombie', baseType: 'zombie', health: 60, maxHealth: 60 });
+    added.push(a, b);
+    const hy = applyFusion(ecs, a, b);
+    expect(hy.position.clone).toBeDefined(); // the spawnMob Vector3 contract survives fusion
+    expect(hy.position.x).toBeCloseTo(2);
+    added.push(hy);
+  });
+});

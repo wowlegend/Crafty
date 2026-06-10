@@ -45,7 +45,14 @@ export function applyFusion(world, a, b) {
   if (!a || !b || !a.isAlly || !b.isAlly) return null;
   const def = lookupHybrid(a.baseType || a.type, b.baseType || b.type);
   if (!def) return null;
-  const mid = { x: (a.position.x + b.position.x) / 2, y: Math.max(a.position.y, b.position.y), z: (a.position.z + b.position.z) / 2 };
+  // the hybrid's position MUST be a THREE.Vector3 (the spawnMob contract): MobModel drives its
+  // mesh with Vector3 ops, and a plain {x,y,z} leaves the mesh stranded at the origin — the
+  // iter-57 root cause of invisible fused hybrids. Clone the live ally vector (same class,
+  // zero new imports in this pure module).
+  const mid = a.position.clone ? a.position.clone() : { ...a.position };
+  mid.x = (a.position.x + b.position.x) / 2;
+  mid.y = Math.max(a.position.y, b.position.y);
+  mid.z = (a.position.z + b.position.z) / 2;
   const id = a.id;
   world.remove(a);
   world.remove(b);

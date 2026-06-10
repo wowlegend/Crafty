@@ -20,7 +20,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
-import { HYBRIDS } from './game/hybrids';
+import { applyFusion } from './game/hybrids';
 import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
@@ -412,17 +412,30 @@ function GameApp({ experienceSystem }) {
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5);
       const OX = 160, OY = 146, OZ = -8, GAP = 3.2;
-      // SUBJECTS FIRST, camera LAST: raw ecs.add carries no store write, so nothing would
-      // invalidate a demand-mode frame — enterCaptureMode's state write (the last call) re-renders
-      // with the subjects already mounted. (The spawnMob-based fixtures don't need this: the store
-      // method itself notifies.)
-      const mk = (i, type, color, extra = {}) => ecs.add({
-        isAlly: true, id: 940001 + i, position: { x: OX + (i - 2) * GAP, y: OY, z: OZ },
-        type, baseType: type, health: 60, maxHealth: 60, color, lastAllyAttack: 0, ...extra });
-      mk(0, 'spider', '#2F8F5F');
-      mk(1, 'zombie', '#3DAF70');
-      [HYBRIDS.dreadweaver, HYBRIDS.bonehide_bulwark, HYBRIDS.marrowspinner].forEach((h, j) => {
-        mk(2 + j, h.id, h.color, { hybridId: h.id, bodySize: h.bodySize, headSize: h.headSize, legMode: h.legMode, health: h.health, maxHealth: h.health });
+      // THE REAL PIPELINE (iter-57): subjects come from store.spawnMob (THE position contract —
+      // a THREE.Vector3; plain {x,y,z} leaves MobModel's mesh stranded at the origin, the root
+      // cause of the empty iter-56 cards) then GameMethods.captureMob (the M3 seam) + the jade
+      // tint — exactly what live SNARE does. Hybrids = applyFusion of two such captures (the
+      // live FUSE path; its Vector3 fix landed with this fixture).
+      const slotX = (i) => OX + (i - 2) * GAP;
+      const grab = (type, x) => {
+        if (!store.spawnMob || !GameMethods.captureMob) return null;
+        store.spawnMob(x, OZ, type, OY - 0.5); // spawnMob adds +0.5
+        const mob = [...mobsQuery.entities].reverse().find((e) => e.type === type && Math.abs(e.position.x - x) < 0.1);
+        if (!mob) return null;
+        const ally = GameMethods.captureMob(mob.id);
+        return ally || null;
+      };
+      const tint = (e, c) => { if (e) e.color = c; };
+      tint(grab('spider', slotX(0)), '#2F8F5F');
+      tint(grab('zombie', slotX(1)), '#3DAF70');
+      // the 3 hybrids: spawn+capture each base pair AT the hybrid's slot, then fuse in place
+      const pairs = [['spider', 'zombie'], ['cow', 'skeleton'], ['skeleton', 'spider']];
+      pairs.forEach((pr, j) => {
+        const x = slotX(2 + j);
+        const a = grab(pr[0], x - 0.6);
+        const b = grab(pr[1], x + 0.6);
+        if (a && b) applyFusion(ecs, a, b);
       });
       // camera: front-on from +Z (the lootShowcase framing), centered on the 5-subject row,
       // pulled back ~14u so the Bulwark (the widest) fits with air on both sides.
