@@ -48,7 +48,7 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. **EYEBALL ASK (2 min):** the loop's headless judges verified FUNCTION (mesh census:
+>    is unlocked. **EYEBALL ASK (2 min, now with the showcase shortcut — `window.__craftyTest.call('soulbindShowcase')` in the dev console renders the 5-creature judge card):** the loop's headless judges verified FUNCTION (mesh census:
 >    allies render; fusion births hybrids live) but a clean AESTHETIC frame defeated 4 instruments — in
 >    YOUR playtest please eyeball: the jade family (tether/tint/bar) reads as ONE Aspect? the 3 hybrid
 >    silhouettes read distinct? (A deterministic ?showcase=soulbind dev route is queued in M7 as the

@@ -1,10 +1,21 @@
 # Crafty S2-B3 — SOULBIND (capture + squad + fuse) — design of record
 
-> **Status (2026-06-10): DESIGN COMMITTED (loop self-gate per charter §5).** Produced by a 4-lens design
+> **🏆 ASPECT COMPLETE (2026-06-10, autonomous loop iters 35-60): M1-M7 ALL SHIPPED.** The full kit is
+> live: bank Soul on day kills → weaken a hostile to ≤30% (its bar turns JADE) → hold X ~1.1s (the
+> tether tightens) → the creature BINDS (healed, jade-tinted, the resolved chime) → it follows at heel
+> + fights hostiles near you (attribution-gated, the siege still hunts YOU) → stand two bound creatures
+> together, hold X → they FUSE into one curated hybrid (Dreadweaver / Bonehide Bulwark / Marrowspinner).
+> En route the loop closed THREE real bugs (the kill-bus AFK-farm exploit pre-emptively; the
+> invisible-hybrid pair: Vector3 position + the MobModel entity contract) and built the soulbindShowcase
+> fixture (the permanent creature-judge instrument — its 5/5 card passed the silhouette judge).
+> **783 unit (92 files) · 22 gate files · visual 13/13 — zero re-baselines across the Aspect.** Parked
+> (non-blocking): Kevin's playtest eyeball (KRB protocol), the worker-faction v2 seam, the pets-merge
+> decision, the marrowspinner head-tint taste note. Original design header below, for the record.
+>
+> *(Original status:)* DESIGN COMMITTED (loop self-gate per charter §5). Produced by a 4-lens design
 > workflow vs LIVE code (ai-faction · capture-snare · squad-fusion · adversarial-scope; 424k tokens,
 > 108 file reads — full lens reports in the loop transcript) + orchestrator synthesis. Parent: the S2
-> master spec §4 B3. NEXT: Kevin decision batch (§8, async via KRB) → per-milestone plan docs → build,
-> hardest-first.
+> master spec §4 B3.
 
 ## 0. The fantasy (one sentence) + the v1 stance
 
@@ -75,7 +86,7 @@ mob-vs-mob) is the NAMED v2 seam, deliberately deferred: it was every lens's sch
 | M4 ✅* | SNARE end-to-end: intent + channel + tell + ribbon (reuse `buildRibbonIndices`) + bind conversion + SFX | real-mob smoke (snare a live low-HP mob → it converts, no XP/kill emitted) |
 | M5 | Squad AI: `game/squadAI.js` pure brain + the 15Hz bridge + AllyModel render (re-tint + jade rim) + capture-self-null | pure-brain TDD (the §5 edge table) + visual 13/13 |
 | M6 ✅* | FUSE + the hybrid roster + HUD (soul bar unlock-gated, jade) + the in-world look judge | roster data tests + judge frames (*the creature look-judge: function verified by mesh census; the aesthetic eyeball = Kevin's playtest + the M7 showcase fixture — 4 instruments tried + refuted, writeup in the refs dir) |
-| M7 | Balance vs siegeParams + the playtest/KRB close + Aspect close-out | the budget table + doc-currency |
+| M7 ✅ | Balance vs siegeParams + the playtest/KRB close + Aspect close-out | **THE BUDGET TABLE (verdict: SHIP AS-SPECCED, no tune):** squad sustained DPS = ALLY_DPS_HIT 12 / 1.5s = 8/ally × cap 2 (base) → 16, ×3 (pack talent) → 24 — at REALISTIC melee uptime ~50-70% (approach latency) ≈ 10-17 effective. Siege side: night-1 = maxMobs 20 @ hostileChance 0.75 (night-n ramps +4 mobs/+0.05 to the 40/0.95 caps), hostile HP 60-100. The squad clears ~⅓-½ of an early-night wave over its duration — meaningful assist, NOT a trivializer, because FOUR dampers hold: (1) the 18m player-anchor leash (no off-screen farming); (2) kill-attribution OFF for every economy (M1 — ally kills bank nothing); (3) ZERO tanking (the v1 stance: enemies focus the player — incoming pressure undiminished); (4) the Soul economy (35/bind ≈ 2-3 binds per full bank, dawn-bled) re-prices the squad daily. All consts Kevin-tunable. |
 
 ## 4. Edge contracts (each becomes a test)
 
