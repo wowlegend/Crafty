@@ -37,11 +37,18 @@
 > "WALL HIT!" label + wall flash → M7 look) · unlock-gated Kinetic HUD bar (voidhand violet `#B36BFF`,
 > self-null-at-zero; **13/13 held, no re-baseline**). §5b's one-shot bounce guard is structurally
 > unnecessary (single flight ends at first hit). 723 unit · build · visual 13/13.
-> **NEXT per §12 seq = parallel(M5 element-charge transparency · M6 pool-eviction safety) — NOTE: M5 is
-> largely done-by-construction (element read AT IMPACT since M3); VERIFY against the §12 M5 row (all 4
-> elements re-skin + no mid-hold desync) with tests rather than rebuild. M6's cap-4 pool does not exist
-> yet (M1 shipped single-phantom) — M6 reduces to held-phantom protection invariants unless the pool
-> lands first (a spec-vs-reality check for the M5/M6 planning pass). Then M7 THE LOOK → M8 content.**
+> **Status update (2026-06-10): ✅ M5 VERIFIED · ✅ M6 SATISFIED-AS-REDUCED (the spec-vs-reality pass).**
+> **M5** was done-by-construction since M3 (element read from `activeSpell` AT IMPACT; the channel carries
+> no element — THAT is the no-desync mechanism) — now LOCKED by `tests/gates/element-impact-gates.test.js`
+> (channel shape has no element key · HurlSystem reads activeSpell at both impact sites · all 4
+> SPELL_TO_ELEMENT keys have distinct impact cases in the mob damage layer). **M6**: the cap-4 pool never
+> shipped (M1 deliberately went single-phantom), so eviction is IMPOSSIBLE by construction; the invariants
+> the M6 row actually protects are already test-covered (death drops held — voidhandStore; re-press
+> drops — voidhand SM; single-flight — HurlSystem ignores a second request mid-flight). "Cap-full blocks +
+> soft sfx + pool readout" only exist WITH a pool — deferred to if/when multi-phantom ships (an M8/v2
+> content decision, recorded). 726 unit (77 files) · build · visual 13/13.
+> **NEXT = M7 THE LOOK** (reference-lock per §5 + the VFX discipline: phantom rim/glow final treatment,
+> impact + WALL-HIT gold flash, re-baseline the provisional frames, KRB before/after) **→ M8 content.**
 >
 > Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
 > mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)
