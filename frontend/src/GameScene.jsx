@@ -18,6 +18,7 @@ import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { captureRandom, isCaptureMode } from './devtest/captureMode';
+import { shouldProbeGround } from './game/particleProbe.js';
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
 // fixed mood-driven direction (reads as infinitely far) and tints with the mood sun colour.
@@ -446,6 +447,7 @@ const fireflyMaterial = new THREE.MeshBasicMaterial({
 const WeatherSystem = () => {
   const rainMeshRef = useRef();
   const snowMeshRef = useRef();
+  const weatherFrameRef = useRef(0);
   const firefliesMeshRef = useRef();
   
   const weatherRef = useRef('clear');
@@ -555,6 +557,8 @@ const WeatherSystem = () => {
     const isSnowing = activeWeather === 'snow';
 
     const getMobGroundLevel = useGameStore.getState().getMobGroundLevel;
+    // S2-B2-pre-M2 perf: stride counter for the rain/snow ground probes (see game/particleProbe.js)
+    const probeFrame = weatherFrameRef.current++;
 
     // 1. Instanced Rain Particle displacement
     if (rainMeshRef.current) {
@@ -565,7 +569,7 @@ const WeatherSystem = () => {
           const worldY = py + r.y;
           
           let groundLevel = null;
-          if (getMobGroundLevel) {
+          if (getMobGroundLevel && shouldProbeGround(r.y, i, probeFrame)) {
             groundLevel = getMobGroundLevel(px + r.x, pz + r.z);
           }
 
@@ -598,7 +602,7 @@ const WeatherSystem = () => {
 
           const worldY = py + s.y;
           let groundLevel = null;
-          if (getMobGroundLevel) {
+          if (getMobGroundLevel && shouldProbeGround(s.y, i, probeFrame)) {
             groundLevel = getMobGroundLevel(px + s.x + wobbleX, pz + s.z + wobbleZ);
           }
 
