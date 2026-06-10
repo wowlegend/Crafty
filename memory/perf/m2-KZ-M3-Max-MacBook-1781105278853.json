@@ -1,0 +1,87 @@
+{
+  "host": "KZ-M3-Max-MacBook.local",
+  "platform": "Darwin arm64",
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+  "when": "2026-06-10T15:27:58.852Z",
+  "budget": {
+    "medianDeltaMs": 1.5,
+    "p95DeltaMs": 3
+  },
+  "results": {
+    "A": {
+      "scenario": "A",
+      "label": "explore-idle day baseline",
+      "frames": 3598,
+      "seconds": 59.997499999999995,
+      "fps": 59.96916538189092,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.79999999998945,
+      "maxMs": 33.39999999999782,
+      "longFrames": 0
+    },
+    "B": {
+      "scenario": "B",
+      "label": "night-siege control (held=false)",
+      "frames": 3596,
+      "seconds": 59.9975,
+      "fps": 59.935830659610815,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.70000000001164,
+      "maxMs": 50,
+      "longFrames": 2
+    },
+    "C": {
+      "scenario": "C",
+      "label": "siege + grab-orbit steady-state",
+      "frames": 3580,
+      "seconds": 59.9975,
+      "fps": 59.66915288137005,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.799999999995634,
+      "maxMs": 83.19999999999709,
+      "longFrames": 8
+    },
+    "D": {
+      "scenario": "D",
+      "label": "grab/drop EDGE (light-count hitch)",
+      "frames": 3596,
+      "seconds": 59.997600000000006,
+      "fps": 59.93573076256383,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.70000000001164,
+      "maxMs": 50.10000000000218,
+      "longFrames": 1
+    },
+    "E": {
+      "scenario": "E",
+      "label": "siege + dynamic hurl stand-in",
+      "frames": 3596,
+      "seconds": 59.9976,
+      "fps": 59.935730762563836,
+      "medianMs": 16.69999999999709,
+      "p95Ms": 16.79999999998836,
+      "maxMs": 50,
+      "longFrames": 1
+    }
+  },
+  "deltas": {
+    "C-B": {
+      "medianDeltaMs": 0,
+      "p95DeltaMs": 0.0999999999839929,
+      "fpsDelta": -0.2666777782407621,
+      "longFrameDelta": 6
+    },
+    "D-B": {
+      "medianDeltaMs": 0,
+      "p95DeltaMs": 0,
+      "fpsDelta": -0.00009989704698654123,
+      "longFrameDelta": -1
+    },
+    "E-B": {
+      "medianDeltaMs": 0,
+      "p95DeltaMs": 0.09999999997671694,
+      "fpsDelta": -0.0000998970469794358,
+      "longFrameDelta": -1
+    }
+  }
+}
