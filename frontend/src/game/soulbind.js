@@ -25,7 +25,9 @@ export function decideSoulbind(sm, ctx) {
       out.channeling = false; out.targetId = null;
       return { sm: out, action: 'channelBreak' }; // free — no cooldown (design §2)
     }
-    if (ctx.now - sm.channelStart >= SNARE_CHANNEL_SEC) {
+    // 1e-9 epsilon: the channel window is boundary-INCLUSIVE — (10 + 1.1) - 10 is 1.0999999999999996
+    // in floats, and a frame landing exactly on the boundary must bind, not slip to the next frame.
+    if (ctx.now - sm.channelStart >= SNARE_CHANNEL_SEC - 1e-9) {
       out.channeling = false;
       out.cooldownUntil = ctx.now + SNARE_COOLDOWN_SEC;
       return { sm: out, action: 'bind' }; // apply-site spends SNARE_COST + converts the entity (M3/M4)
