@@ -35,6 +35,9 @@ export const ASPECT_TREES = [
       { id: 'soulbind_bond', name: 'Soul Bond', desc: '+3 Intellect per rank — deepen the bond that binds living creatures.', limit: 3, prereq: null, effect: { stat: 'intellect', perRank: 3 } },
       { id: 'soulbind_aegis', name: "Warden's Aegis", desc: '+5 Armor per rank — the warden shields the bound squad and self.', limit: 3, prereq: null, effect: { stat: 'armor', perRank: 5 } },
       { id: 'soulbind_link', name: 'Spirit Link', desc: '+2 Intellect per rank — stronger spirit channels.', limit: 2, prereq: 'soulbind_bond', effect: { stat: 'intellect', perRank: 2 } },
+      // S2-B3-M2: effect-less unlocks (the voidhand_grasp pattern) — the kit gates on talents, not stats.
+      { id: 'soulbind_snare', name: 'Soul Snare', desc: 'Unlock the SNARE verb — bind a weakened creature to your squad (X).', limit: 1, prereq: 'soulbind_bond' },
+      { id: 'soulbind_pack', name: 'Pack Warden', desc: '+1 squad slot — a third creature may walk beside you.', limit: 1, prereq: 'soulbind_snare' },
     ],
   },
   {

@@ -127,3 +127,27 @@ describe('S2-B2-M4: voidhand_grasp (the grab unlock)', () => {
     expect(out.strength).toBe(10 + 3 * 2); // Kinetic Force +3 STR/rank
   });
 });
+
+describe('S2-B3-M2: soulbind_snare + soulbind_pack (the snare unlock + the +1-cap node)', () => {
+  const soulbind = ASPECT_TREES.find((t) => t.aspect === 'soulbind');
+  const snare = soulbind.nodes.find((n) => n.id === 'soulbind_snare');
+  const pack = soulbind.nodes.find((n) => n.id === 'soulbind_pack');
+
+  it('snare is a pure unlock (effect-less, limit 1, prereq Soul Bond) — the voidhand_grasp pattern', () => {
+    expect(snare).toBeDefined();
+    expect(snare.effect).toBeUndefined();
+    expect(snare.limit).toBe(1);
+    expect(snare.prereq).toBe('soulbind_bond');
+  });
+  it('pack is a pure capacity unlock (effect-less, limit 1, prereq snare)', () => {
+    expect(pack).toBeDefined();
+    expect(pack.effect).toBeUndefined();
+    expect(pack.limit).toBe(1);
+    expect(pack.prereq).toBe('soulbind_snare');
+  });
+  it('both fold to NOTHING when unlocked (fold-tolerance — the crash-fix regression class)', () => {
+    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
+    expect(() => foldTalentEffects(base, { soulbind_snare: 1, soulbind_pack: 1 })).not.toThrow();
+    expect(foldTalentEffects(base, { soulbind_snare: 1, soulbind_pack: 1 })).toEqual(base);
+  });
+});
