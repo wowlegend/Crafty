@@ -1,5 +1,7 @@
 # Crafty S1-C-M2c — Neon Surfaces → bold-flat + Flip the Single-Language Gate — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **STATUS: ✅ COMPLETE + MERGED (2026-06-01)** — neon surfaces (QuestSystem + AdvancedGameFeatures UI + HUD banners) → bold-flat; last `.game-panel` glass removed; **single-UI-language hard gate FLIPPED GREEN** (honest: bans minecraft-*/game-panel everywhere + backdrop-blur on shipped surfaces; splash/dev excluded + documented). `achievements-open` capture state. 3D entities untouched. `test:unit` 91+1todo · `test:visual` 10/10. **DISCOVERY:** 3 residual in-game glass usages in `SimplifiedNPCSystem.jsx` (NPC trading modal + dialogue bubble) the class-migration missed → **M2d** added (burn-down reporter tracks them).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. `- [x]` checkboxes. **Opus 4.8. Sequential where files are shared. NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`).**

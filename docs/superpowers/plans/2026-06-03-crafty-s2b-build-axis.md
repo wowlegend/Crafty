@@ -1,5 +1,7 @@
 # S2-A-M2b — Build Axis (A7) Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Fresh Opus implementer per task + spec + quality review. SEQUENTIAL (both tasks touch `src/ui/GamePanels.jsx`). NO Claude commit footer. AST-safe edits only. Fix-ups = NEW commits.
 
 **Goal:** Complete the fight→loot→equip→**allocate**→fight-harder build axis. The paper-doll UI, equipment fold (`getEffectiveAttributes`), and combat solvers already exist + are wired (M2a). A7 closes the two real gaps: (1) **`attributePoints` are unspendable** — every level-up awards +5 (M2a `grantXP`) but no UI calls the existing `allocateAttribute` store action, so the build axis dead-ends; (2) the **weapon base-damage ladder is duplicated** (`Components.jsx` melee ↔ `GamePanels.jsx` preview) and `getItemSlot` is a module-local hardcode.

@@ -1,5 +1,8 @@
 # S2-B1-M1 — Transactional collider hot-swap + the no-permanent-beast restore-invariant
 
+> ✅ SHIPPED — part of WILDHEART, COMPLETE + MERGED to `main` (`458bbb5`, 2026-06-07). Historical plan-of-record (the milestone shipped); see CHANGELOG for the build record.
+
+
 > Plan for the LEAD-Aspect's riskiest, de-risk-FIRST milestone. Spec: `docs/superpowers/specs/2026-06-07-crafty-s2b1-wildheart-design.md` §3a/§3b/§3f/§6-M1. Branch `s2b1-m1-collider-swap` off `main` @ `6e25a08`. Plain capsule (NO beast art — that's M7); dev/test-triggered (the roar verb is M3). Behind the visual gate.
 
 ## Testable architecture (the key decision)

@@ -1,5 +1,8 @@
 # S2-B1-M5 — Combat + Locomotion Re-skin (the MOTION/FEEL half of beast distinctness)
 
+> ✅ SHIPPED — part of WILDHEART, COMPLETE + MERGED to `main` (`458bbb5`, 2026-06-07). Historical plan-of-record (the milestone shipped); see CHANGELOG for the build record.
+
+
 > Plan-of-record for WILDHEART milestone M5. Spec: `docs/superpowers/specs/2026-06-07-crafty-s2b1-wildheart-design.md` §3d + §5 + the M5 gate row. Branch `s2b1-m5-reskin` off `main@9c6a847`.
 
 ## Goal

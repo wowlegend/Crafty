@@ -1,9 +1,17 @@
 # Crafty S2-B2 — VOIDHAND (kinetic / gravity-hand Aspect) — design of record
 
-> Status: DRAFT for Kevin's HARD-GATE approval (Task #65). Synthesized from 4 exploration lenses
-> (seam-map, kit-design, no-re-mesh, adversarial) reconciled against the LIVE code. Mirrors the
-> WILDHEART spec format (2026-06-07-crafty-s2b1-wildheart-design.md) and REUSES its Aspect-meta
-> scaffold. Nothing here is built; M0 is a reference-lock gate.
+> **Status (2026-06-09): ✅ APPROVED + M1 BUILT (on `main`).** Kevin signed the §13 8-decision batch (recs as-is)
+> + flagged the keybind conflict → grab = **`KeyV`** (`KeyG` was taken = chest/trade; keymap-audited). **M1 = the
+> load-bearing no-re-mesh foundation is DONE** (commits `4d01cb5`→`254606b`→`3d08f6c`): pure `voidhand.js` SM +
+> `kinetic.js` meter (TDD) · `world/PhantomBlockSystem.jsx` (orbiting phantom, self-nulls when !held, capture-frozen)
+> · the `grab` intent + transient store fields · the Components SM wiring · the **NO-RE-MESH static gate GREEN**
+> (`tests/gates/voidhand-noremesh-gates.test.js`) · a death-edge fix (proactive, from the WILDHEART review). Adversarial
+> review CLEAN (0 blockers); 657 unit · build · visual 13/13. **NEXT = M2 (the iPad FPS gate, BEFORE the verbs).**
+> NOTE on process: M1 was built directly from the §12 milestone breakdown (a small foundational milestone — this spec
+> served as its plan); M2+ each get their own `superpowers:writing-plans` plan doc in `../plans/`.
+>
+> Synthesized from 4 exploration lenses (seam-map, kit-design, no-re-mesh, adversarial) reconciled vs LIVE code;
+> mirrors the WILDHEART spec format + REUSES its Aspect-meta scaffold. (§ M0 reference-lock = PASSED.)
 
 ## 0. Review reconciliation (provenance, honest)
 

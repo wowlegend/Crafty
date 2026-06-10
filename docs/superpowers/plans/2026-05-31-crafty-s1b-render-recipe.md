@@ -1,5 +1,7 @@
 # Crafty S1-B — Render Recipe · Milestone 1 (Render Correctness & Device Tiers) Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > ✅ **STATUS: COMPLETE — DONE + merged to `main` 2026-05-31 (S1-B M1 render recipe: sRGB/N8AO/bloom/SMAA/tiers).** Whole-branch review APPROVED; `test:visual` 3/3.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

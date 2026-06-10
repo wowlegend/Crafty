@@ -1,5 +1,7 @@
 # Crafty S1-B M2b — Character Render Language Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > ✅ **STATUS: COMPLETE — merged to `main` 2026-05-31** (`s1b-m2b-character-render` ff-merged). Executed via subagent-driven-development (Opus per task; spec + quality reviews all APPROVED). `test:visual` 6/6 · 40+2todo unit/gate · build clean. Execution DEVIATED from the original Task 4/5 step text and the deviations are documented inline (the `character-closeup` became a HUD-suppressed sky-studio shot because capture pauses physics → `getMobGroundLevel` raycast is null; `spawnMob` gained an explicit-Y overload; the chest moved into Task 5; the outline was later extended to ALL mob/pet parts + bolder thickness after Kevin flagged inconsistency). Checkboxes below marked complete at the task level. Follow-up polish (outline-consistency) is a separate commit on `main`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,5 +1,7 @@
 # S2-A-M1 — Combat Spine + Input Abstraction — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > STATUS: ✅ COMPLETE + MERGED (2026-06-02). 360 unit · build clean · visual 12/12. Final review APPROVE_WITH_NITS.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` to implement this plan task-by-task (Crafty convention: Opus implementer + spec-compliance + code-quality review per task; sequential where files are shared; TDD red-first; `npm run build` + `npm run test:unit` green per task; no Claude footer; subagent fix-ups = NEW commits). Steps use `- [x]` for tracking.

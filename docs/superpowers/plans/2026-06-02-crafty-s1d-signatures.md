@@ -1,5 +1,7 @@
 # Crafty S1-D — Signatures (Spell-VFX lead · Atmosphere elevation · Mascot) — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. **Opus 4.8. NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`). Capture-determinism is LOAD-BEARING — every new VFX/atmosphere effect MUST gate animated/random/clock-driven behavior on `isCaptureMode()` (snap mood / `uTime=0` / seeded RNG / fixed cam) or it breaks the visual-regression gate.** Rigorous TDD (static gates + the puppeteer visual gate).
 
 **Goal:** Deliver Crafty's distinctive "wow" signature look (the LEAD viral surface per the visual-direction spec) by elevating the three signatures — serving the LOCKED Vanguard+Toon direction, not redefining it.

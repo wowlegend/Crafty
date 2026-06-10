@@ -1,5 +1,7 @@
 # S2-A-M2d — InputManager `active`-gate migration (single input authority)
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **Status:** PLAN (2026-06-03). Branch `s2a-m2d-input-active-gate` off `main` (`bf6eb30`).
 > **Method:** subagent-driven (Opus 4.8 implementer + spec-review + quality-review + adversarial); TDD red-first; NO Claude footer; fix-ups = NEW commits. Verify test state MYSELF at every boundary (subagent green AND red claims unreliable). Visual 12/12 must hold (this is an input-internals refactor — zero intended visual change).
 

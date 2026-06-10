@@ -1,5 +1,7 @@
 # Crafty S1-C-M2a — HUD Consolidation (Minecraft-bevel → bold-flat primitives) — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **STATUS: ✅ COMPLETE + MERGED (2026-06-01)** — HUD migrated to bold-flat (StatBars/Slot-hotbar/spell-chip/minimap/XP); fake `MinecraftHealthHunger` + ❤/🍖 emoji + `.minecraft-*` bevel CSS (App.css 440→238) removed; handlers preserved; `test:unit` 89+2todo · `test:visual` 8/8 (explore-day/night/boss-obsidian re-baselined). Glass(M2b)+neon(M2c) remain; single-language gate flips in M2c.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use `- [x]` checkboxes. **All subagents: Opus 4.8. Sequential only (shared HUD files). NEVER add a Claude footer / Co-Authored-By. Fix-ups = NEW commits. AST-safe edits for `.js/.jsx` (no `sed` on code).**

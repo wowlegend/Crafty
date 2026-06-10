@@ -1,5 +1,7 @@
 # S2-A-M2a — Progression-Persistence Core + Save Consolidation Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Fresh Opus implementer per task + spec-compliance review + code-quality review. Tasks are SEQUENTIAL (they share `src/store/useGameStore.jsx`). NO "Generated with"/"Co-Authored-By: Claude" commit footer. Subagent fix-ups = NEW commits, never `--amend`/`reset`. AST-safe edits only on `.js/.jsx` (Edit/Write, never `sed`).
 
 **Goal:** Make all RPG progression (level/XP/attributes/equipment/talents/spellLevels/chests) survive a reload via a single canonical serializable slice + a local-first autosave — and in doing so, tear out the save-system slop (two divergent save paths, a 4× duplicated payload literal, a 4× duplicated max-stat formula, a dual-source level/XP, a baked talent mutation).

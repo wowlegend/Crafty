@@ -1,5 +1,7 @@
 # S2-A-M4 — Perf + widen-the-gates
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **Status:** PLAN (2026-06-03). Branch `s2a-m4a-perf-config` off `main` for M4a.
 > **Method:** subagent-driven (Opus, TDD where logic exists; spec/quality review); NO Claude footer; verify MYSELF; **visual 12/12 must hold (M4a touches only low/med tiers + capture-guarded recovery → the forced-HIGH baselines are unchanged).**
 

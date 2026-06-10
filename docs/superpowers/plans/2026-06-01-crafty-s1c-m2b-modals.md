@@ -1,5 +1,7 @@
 # Crafty S1-C-M2b — Modals Consolidation (glassmorphic → bold-flat primitives) — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **STATUS: ✅ COMPLETE + MERGED (2026-06-01)** — all 5 glass modals (Inventory/CraftingTable/MagicSystem/BuildingTools/SettingsPanel) → bold-flat primitives; `.game-panel-item` glass removed (`.game-panel` base kept — still used by QuestSystem AchievementsPanel → M2c); `inventory-open` capture state added; handlers preserved. `test:unit` 89+2todo · `test:visual` 9/9. Glass language dead; neon (M2c) next.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. `- [x]` checkboxes. **Opus 4.8 subagents. Sequential (shared `GamePanels.jsx`). NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`).**

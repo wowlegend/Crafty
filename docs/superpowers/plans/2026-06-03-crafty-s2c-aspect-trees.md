@@ -1,5 +1,7 @@
 # S2-A-M2c — Talent → 4-Aspect-Trees (A4) Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Fresh Opus implementer per task + spec + quality review. SEQUENTIAL (T2/T3 share `useGameStore.jsx` / `AdvancedGameFeatures.jsx`). NO Claude commit footer. AST-safe edits only. Fix-ups = NEW commits. After each implementer reports, the controller runs `test:unit`+`test:visual` itself before review (subagent result claims are unreliable — a prior subagent fabricated failures).
 
 **Goal:** Turn the inert talent tree (10 of 11 nodes do nothing — S1-audit confirmed) into a **live, meaningful, persisted** progression surface structured as the **four Aspect trees** (Voidhand / Wildheart / Soulbind / Elemancer) — the S2-B scaffold. Every node grants a REAL effect; the structure + a data-driven effect table replace the hardcoded inline array + the dual-limits map.

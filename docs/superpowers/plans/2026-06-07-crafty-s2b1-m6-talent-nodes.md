@@ -1,5 +1,8 @@
 # S2-B1-M6 — Signature talent nodes + the roar unlock-gate
 
+> ✅ SHIPPED — part of WILDHEART, COMPLETE + MERGED to `main` (`458bbb5`, 2026-06-07). Historical plan-of-record (the milestone shipped); see CHANGELOG for the build record.
+
+
 > Plan-of-record for WILDHEART milestone M6. Spec §3b (the guard) + §3e (the nodes) + the M6 gate row (~line 224). Branch `s2b1-m6-talents` off `main@dffd859`.
 
 ## Goal

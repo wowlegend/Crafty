@@ -1,5 +1,7 @@
 # S2-A-M3c — Loot juice (rarity drop-beams + pickup feedback)
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **Status:** PLAN (2026-06-03). Branch `s2a-m3c-loot-juice` off `main`.
 > **Method:** subagent-driven (Opus implementer, TDD red-first where logic exists; spec/quality/determinism review); NO Claude footer; fix-ups = NEW commits; verify test state MYSELF; **visual 12/12 must hold, NO re-baseline.**
 

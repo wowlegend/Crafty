@@ -1,5 +1,7 @@
 # S2-A-M3b — Night SIEGE + survive-to-dawn + reward (the stakes loop core)
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **Status:** PLAN (2026-06-03). Branch `s2a-m3b-night-siege` off `main`.
 > **Method:** subagent-driven (Opus implementer, TDD red-first, sequential — shared god-files; + spec/quality/gameplay-determinism review); NO Claude footer; fix-ups = NEW commits; verify test state MYSELF; **visual 12/12 must hold.**
 > **Kevin's decisions (2026-06-03 AskUserQuestion):** death = **SOFT** (respawn, keep all) · dawn reward = **ALL** (bonus XP + guaranteed scaling loot + currency) · **proceed now**.

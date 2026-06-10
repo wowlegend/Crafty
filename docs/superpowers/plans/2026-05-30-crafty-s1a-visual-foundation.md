@@ -1,5 +1,7 @@
 # Crafty S1-A: Visual Foundation & Can-Go-Red Harness — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > ✅ **STATUS: COMPLETE — DONE + merged to `main` (S1-A visual foundation: tokens/quality/devtest/visual-gate).** Checkboxes marked complete; ground truth = git `main`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

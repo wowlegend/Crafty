@@ -1,6 +1,8 @@
 # Crafty S2 — Game Design / Core Loop (design of record)
 
-> **Status:** DESIGN — awaiting Kevin's spec review (the master-plan HARD GATE: no S2 implementation before an approved design). Authored 2026-06-02 via `superpowers:brainstorming` after a grounded multi-agent analysis (real-code core-loop teardown + audit distill + live 2026 comp research + 3 + 7 ideated signature directions, each adversarially critiqued).
+> **✅ APPROVED + IN PROGRESS (the active S2 reference). Progress (2026-06-09):** S2-A foundation ✅ merged · S2-B1 WILDHEART ✅ COMPLETE + merged (`458bbb5`) · **S2-B2 VOIDHAND — design approved + M1 done** (on `main`) · S2-B3 SOULBIND + S2-B4 ELEMANCER not started. Aspect sequence: Wildheart✅ → **Voidhand (M1✅)** → Soulbind → Elemancer. This is the LIVE master spec for S2; the status line below is the original authoring state.
+>
+> **Status (at authoring):** DESIGN — awaiting Kevin's spec review (the master-plan HARD GATE: no S2 implementation before an approved design). Authored 2026-06-02 via `superpowers:brainstorming` after a grounded multi-agent analysis (real-code core-loop teardown + audit distill + live 2026 comp research + 3 + 7 ideated signature directions, each adversarially critiqued).
 >
 > **Decisions locked with Kevin (2026-06-02):** (1) **Foundation-first** — build a signature-agnostic core loop (S2-A) before any signature. (2) The signature is a **suite of four Aspects** — VOIDHAND / WILDHEART / SOULBIND / ELEMANCER — built **sequentially, each deep before the next**. (3) **Lead = WILDHEART** (lowest-risk, highest-WOW validation), then VOIDHAND → SOULBIND → ELEMANCER.
 >

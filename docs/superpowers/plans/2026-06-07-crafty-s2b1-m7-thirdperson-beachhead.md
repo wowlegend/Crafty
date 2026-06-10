@@ -1,5 +1,8 @@
 # S2-B1-M7 — THE LOOK, via the THIRD-PERSON BEACHHEAD (hybrid transform-cam)
 
+> ✅ SHIPPED — part of WILDHEART, COMPLETE + MERGED to `main` (`458bbb5`, 2026-06-07). Historical plan-of-record (the milestone shipped); see CHANGELOG for the build record.
+
+
 > **DIRECTIONAL DECISION (Kevin, 2026-06-07):** Crafty is heading toward **third-person**. Rationale: the entire S2 Aspect thesis (4 visible power-fantasies — beast / squad / orbiting-mass / elemental form) is structurally third-person; the S3 mobile/touch target forces a control rework where third-person + virtual-stick is native; it's an RPG (gear visibility); and every locked look-reference (Bayonetta/Hades/Genshin/LoL/Brawl Stars) is third-person. **The full pivot is deferred** to a deliberate milestone (likely fused with the S3 mobile-control rework) — decided AFTER Kevin sees the beachhead in-world. **M7 is the no-regret first step:** the hybrid transform-cam builds — once — a third-person follow-camera + a voxel beast avatar + the reveal spectacle, all reused whether or not the full pivot proceeds. Supersedes the spec §5 FPV-ambiguous framing of M7 (the look itself — ③·5 — is unchanged).
 
 > Branch `s2b1-m7-thirdperson-beachhead` off `main@a1ae413`. Spec: the WILDHEART design-of-record §5 (the locked ③·5 look + the proven `SpellProjectileCore` recipe at `src/EnhancedMagicSystem.jsx:708-830`) + §3b (capture-determinism).

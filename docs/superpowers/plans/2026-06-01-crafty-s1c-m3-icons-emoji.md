@@ -1,5 +1,7 @@
 # Crafty S1-C-M3 — Icon System + Emoji-DATA Decouple + Zero-Emoji Gate — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **STATUS: ✅ COMPLETE + MERGED (2026-06-02).** All tasks done. `src/` emoji 215→0; 19 new filled glyphs baked; `src/data/items.js` registry (single source for name/icon/rarity, dup mappers killed); loot/recipe identity decoupled to emoji-free names + save normalizer; deliberate rarity FIX (Golden Crown/Star Fragment→legendary etc.); decorative sweep; Credits screen (CC BY 3.0); **zero-emoji hard gate flipped GREEN** (both S1-C gates assert, 0 todos). 5-lens adversarial review → no BLOCKING; 1 HIGH (trophy shadow) + 4 minor all fixed. `test:unit` **296/0todo** · `test:visual` **10/10** (6 frames re-baselined). Detailed contract: `docs/superpowers/specs/2026-06-01-crafty-s1c-m3-icon-registry-contract.md`. **→ S1-C UI DESIGN SYSTEM COMPLETE. Next: S1-D.**
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. `- [ ]` checkboxes. **Opus 4.8. Sequential where files are shared. NO Claude footer. NEW commits. AST-safe edits (no `sed` on `.js/.jsx`). RIGOROUS TDD — this touches LOAD-BEARING gameplay data (loot identity, rarity match); write characterization tests FIRST.**

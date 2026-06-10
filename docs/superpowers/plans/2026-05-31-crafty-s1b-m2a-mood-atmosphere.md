@@ -1,5 +1,7 @@
 # Crafty S1-B — Render Recipe · Milestone 2a (Mood & Atmosphere) Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > ✅ **STATUS: COMPLETE — DONE + merged to `main` 2026-05-31 (S1-B M2a mood/atmosphere + bright-Caribbean art).** `test:visual` 4/4.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.

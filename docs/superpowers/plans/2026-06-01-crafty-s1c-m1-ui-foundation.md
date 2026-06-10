@@ -1,5 +1,7 @@
 # Crafty S1-C-M1 — UI Token Foundation, Design Language & Component Primitives — Implementation Plan
 
+> ✅ SHIPPED — this milestone is merged to `main`; historical plan-of-record (see CHANGELOG/ROADMAP for the build record).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **All subagents: Opus 4.8. Sequential only (never parallel — many tasks edit `tokens.js`/`tailwind.config.cjs`/`index.jsx`). NEVER add a Claude footer / Co-Authored-By to commits. Fix-ups = NEW commits (never `git commit --amend`/`reset`). AST-safe edits for source `.js/.jsx` (no `sed` on code).**
 
 > **STATUS: ✅ COMPLETE + MERGED to `main` (2026-06-01)** — all tasks done; `test:unit` 81+2todo · `test:visual` 8/8 · `build` clean. Final whole-branch review APPROVED_WITH_NITS → 2 SoT nits fixed render-neutral. See CHANGELOG 2026-06-01. Tech-debt: PuHuiTi/Noto zh-body swap · explore-night capture flake · Toast danger `role`.
