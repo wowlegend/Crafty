@@ -12,8 +12,14 @@
 
 - **Vision** = `SOTA-INITIATIVE.md` §1–§2 + §9 guardrails: SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
-  envelope** (clever > brute-force GPU); Marcus (8, Chinese-speaking) stays a first-class user (joy, age-8 UX,
-  zh-CN); commercial-grade ambition (S4 multiplayer/monetization later).
+  envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
+- **AUDIENCE IS BROAD (Kevin decision 2026-06-04, recorded in coherence-pillars P5 + project memory —
+  SUPERSEDES the master plan §1's older "Marcus-first" phrasing):** kids → young adults → adults, "blur the
+  lines", to maximise appeal + later monetisation. Marcus (8) is A user, NOT a depth-lowering floor —
+  intensity / real-stakes / hard modes are allowed; age-8 legibility stays a design virtue, never a ceiling.
+- **Chinese (zh-CN) = a locale TOGGLE with ENGLISH as the default** (the shipped i18n design: en default +
+  lazy-loaded zh-CN). Full game-content translation is owed (#73) but the game is EN-first; design copy in
+  English, then route through t() so the toggle stays complete.
 - **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` →
   `memory/STATE-REVIEW-*.md` → this charter → `SOTA-INITIATIVE.md` (vision-canonical, status-historical).
 - The loop has **no terminal state** — SOTA is a direction. It runs until Kevin stops it.
@@ -43,6 +49,13 @@
    `.state/` untouched) + **push `main`** + update `memory/ACTIVE_PLAN.md` (what shipped + the NEXT unit) and
    `memory/CHANGELOG.md` (milestone-grade entries). Batch Kevin-facing decisions/eyeballs into
    `docs/superpowers/KEVIN-REVIEW-BATCH.md` instead of blocking on them.
+   **+ DOC-CURRENCY (explicit, not "I'll remember"):** the moment a milestone/Aspect completes — banner its
+   plan doc `✅ SHIPPED`, update the owning spec's status header, refresh the `SOTA-INITIATIVE.md` status
+   banner. When a spec claim is falsified by reality (a seam map, a count), correct the spec in the same
+   iteration. Every ~5 iterations (or at every Aspect boundary), sweep `docs/superpowers/` + the master plan
+   for stale "awaiting/draft/Status: PLAN" headers + a stale KEVIN-REVIEW-BATCH. Empirical basis: doc-drift
+   was caught TWICE by Kevin in the week of 2026-06-09 (24 stale plan headers; the master plan missed by a
+   de-stale pass) — this step exists so it never needs catching again.
 7. **REPORT** one short paragraph to the chat: shipped-what, evidence (test/frame counts), next-unit.
 8. **CONTINUE:** schedule the next firing ~60–120s out while workable units remain; ~30min if EVERYTHING is
    blocked on Kevin/external (say so in the report). Never end the loop yourself; never idle-spin tokens.
@@ -115,7 +128,8 @@ tuning · per-verb camera kicks · landing/footstep feedback · damage direction
 projectile GEOMETRRY variety · siege/dawn skybox moments · biome landmarks + silhouette landmarks · mob
 bestiary distinctness (post-B3 per plan, pull earlier if cheap) · loot-VFX premium pass (parked branch
 `s2a-loot-vfx-premium` exists) · FPV beast-form interim treatment (#71). UX: controls-panel truth + onboarding
-toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full zh-CN content pass (#73). Each of
+toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full zh-CN content pass (#73 — locale
+TOGGLE, English default, natural Simplified Chinese for a broad kids-to-adults audience). Each of
 these follows §4 (reference/spec first for look-bearing ones).
 
 ## 7. Compaction + crash resilience (why this survives anything)
