@@ -67,6 +67,9 @@ const useEntities = (query) => {
   return entities;
 };
 
+// S2-B2-pre-M2 perf: the AI worker bridge ticks at this rate, not render rate (see AIWorkerSystem).
+const AI_TICK_SEC = 1 / 15;
+
 // MOB TYPES with different stats and colors
 const MOB_TYPES = {
   pig: { color: '#ffc0cb', health: 50, speed: 1.5, damage: 0, xp: 10, passive: true, bodySize: [1.0, 0.8, 1.4], headSize: [0.7, 0.7, 0.7] },
@@ -82,6 +85,7 @@ const MobModel = ({ entity }) => {
   const groupRef = useRef();
   const legRefs = useRef([]);
   const prevPos = useRef(null);
+  const syncedOnce = useRef(false);
   const modelRef = useRef();
   
   const mobConfig = MOB_TYPES[entity.type] || MOB_TYPES.pig;
@@ -133,10 +137,22 @@ const MobModel = ({ entity }) => {
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
-    
-    // 1. Sync position and rotation from ECS entity directly (No React State!)
-    groupRef.current.position.copy(entity.position);
-    groupRef.current.rotation.y = entity.rotation;
+
+    // 1. Sync position/rotation from the ECS entity (No React State!). The AI worker ticks at
+    // 15Hz now (see AIWorkerSystem) — this exponential damp is what turns 15Hz authority updates
+    // into smooth render-rate motion. Capture mode + first frame pin an EXACT copy (determinism:
+    // a capture frame must not depend on how many settle frames the damp has seen).
+    if (isCaptureMode() || !syncedOnce.current) {
+      groupRef.current.position.copy(entity.position);
+      groupRef.current.rotation.y = entity.rotation;
+      syncedOnce.current = true;
+    } else {
+      const t = Math.min(1, delta * 10);
+      groupRef.current.position.lerp(entity.position, t);
+      const cur = groupRef.current.rotation.y;
+      const dr = Math.atan2(Math.sin(entity.rotation - cur), Math.cos(entity.rotation - cur));
+      groupRef.current.rotation.y = cur + dr * t;
+    }
 
     // 2. Squash & Tilt Flinch Animation
     if (modelRef.current) {
@@ -171,12 +187,16 @@ const MobModel = ({ entity }) => {
       }
     });
 
-    // 4. Procedural Mob Animations & IK
-    if (!prevPos.current) prevPos.current = { x: entity.position.x, z: entity.position.z };
-    const dx = entity.position.x - prevPos.current.x;
-    const dz = entity.position.z - prevPos.current.z;
+    // 4. Procedural Mob Animations & IK — gait speed reads the DAMPED group motion (moves every
+    // frame), not the raw entity position (15Hz authority steps: zero delta on 3 of 4 frames
+    // would stall the leg-swing/IK `speed > 0` checks between AI ticks).
+    const gp = groupRef.current.position;
+    if (!prevPos.current) prevPos.current = { x: gp.x, z: gp.z };
+    const dx = gp.x - prevPos.current.x;
+    const dz = gp.z - prevPos.current.z;
     const velocity = Math.sqrt(dx*dx + dz*dz);
-    prevPos.current = { x: entity.position.x, z: entity.position.z };
+    prevPos.current.x = gp.x;
+    prevPos.current.z = gp.z;
 
     // Dev capture-determinism: pin the gait clock so any mob present in a capture
     // frame holds a fixed leg pose (wall-clock performance.now() differs run-to-run).
@@ -668,6 +688,7 @@ const SpawnerSystem = () => {
 };
 
 const AIWorkerSystem = () => {
+  const tickAccumRef = useRef(0);
   const { camera } = useThree();
   const workerRef = useRef();
 
@@ -764,6 +785,18 @@ const AIWorkerSystem = () => {
       }
     }
 
+    // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
+    // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the
+    // 81-cell aggro heightGrids and the reply ground-snap raycasts all drop from 60-120Hz to 15Hz
+    // (4-8× cut; 120Hz ProMotion iPads no longer pay double). MobModel's render-side damp keeps
+    // 15Hz authority updates reading as smooth motion. The worker receives the ACCUMULATED
+    // seconds since the last tick (movement-speed parity), clamped vs tab-stall spikes.
+    // (Knockback above stays render-rate — instant hit feel.)
+    tickAccumRef.current += delta;
+    if (tickAccumRef.current < AI_TICK_SEC) return;
+    const tickDelta = Math.min(tickAccumRef.current, 0.25);
+    tickAccumRef.current = 0;
+
     const store = useGameStore.getState();
     const getMobGroundLevel = store.getMobGroundLevel;
     const mobsData = mobsQuery.entities.filter(e => e && e.health > 0).map(e => {
@@ -809,7 +842,7 @@ const AIWorkerSystem = () => {
       type: 'TICK',
       playerPos: [camera.position.x, camera.position.y, camera.position.z],
       now,
-      delta,
+      delta: tickDelta,
       mobs: mobsData
     });
   });
