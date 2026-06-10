@@ -61,5 +61,10 @@ export function applyFusion(world, a, b) {
     color: def.color, bodySize: def.bodySize, headSize: def.headSize, legMode: def.legMode,
     health: def.health, maxHealth: def.health, speed: def.speed, damage: def.damage,
     lastAllyAttack: 0,
+    // the MobModel ENTITY CONTRACT (iter-59): the renderer reads these every frame —
+    // rotation.y = undefined poisons the Euler -> NaN matrix -> an INVISIBLE mesh (the
+    // second half of the invisible-hybrid bug; the Vector3 position was the first).
+    rotation: (a.rotation ?? 0),
+    isAggro: false, isMoving: false, knockback: null, lastHit: 0, snapSync: true,
   });
 }

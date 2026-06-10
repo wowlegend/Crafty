@@ -60,3 +60,17 @@ describe('S2-B3-M7: the hybrid position contract (the iter-57 invisible-hybrid r
     added.push(hy);
   });
 });
+
+describe('S2-B3-M7: the MobModel entity contract (the iter-59 NaN-rotation root cause)', () => {
+  it('the hybrid carries every renderer-read field (rotation foremost — undefined poisons the Euler)', () => {
+    const a = ecs.add({ isAlly: true, id: 301, position: { x: 0, y: 10, z: 0 }, rotation: 1.2, type: 'spider', baseType: 'spider', health: 60, maxHealth: 60 });
+    const b = ecs.add({ isAlly: true, id: 302, position: { x: 4, y: 10, z: 0 }, type: 'zombie', baseType: 'zombie', health: 60, maxHealth: 60 });
+    added.push(a, b);
+    const hy = applyFusion(ecs, a, b);
+    expect(hy.rotation).toBe(1.2);      // inherited, never undefined
+    expect(hy.isAggro).toBe(false);
+    expect(hy.knockback).toBe(null);
+    expect(hy.snapSync).toBe(true);     // the first frame pins the exact pose
+    added.push(hy);
+  });
+});
