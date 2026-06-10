@@ -7,3 +7,9 @@ const _snare = { channeling: false, targetId: null, progress: 0, from: { x: 0, y
 export function writeSnareState(s) { Object.assign(_snare, s); }
 export function readSnareState() { return _snare; }
 export function clearSnareState() { _snare.channeling = false; _snare.targetId = null; _snare.progress = 0; }
+
+// S2-B3 feel pass: the BIND CEREMONY one-shot (the hurl/slam consume pattern) — fired on
+// bind AND on fusion; SnareTetherSystem consumes it into the expanding jade ring.
+let _ceremony = null;
+export function fireBindCeremony(pos) { _ceremony = { x: pos.x, y: pos.y, z: pos.z }; }
+export function consumeBindCeremony() { const c = _ceremony; _ceremony = null; return c; }

@@ -160,6 +160,19 @@ const MobModel = React.memo(({ entity }) => {
       syncedOnce.current = true;
       entity.snapSync = false;
     } else {
+      // S2-B3 feel pass: the ALLY SWING PULSE — allies deal damage on a 1.5s cooldown but had
+      // ZERO visible motion (a legibility gap). For 0.2s after the bridge stamps lastAllyAttack,
+      // a squash-stretch pulse reads as the swing. Transient scale only; capture takes the
+      // exact-pose branch above, so baselines never see it.
+      if (entity.isAlly && entity.lastAllyAttack) {
+        const since = state.clock.getElapsedTime() - entity.lastAllyAttack;
+        if (since >= 0 && since < 0.2) {
+          const p = 1 + 0.18 * Math.sin(Math.PI * (since / 0.2));
+          groupRef.current.scale.set(p, 2 - p, p); // squash-stretch (volume-ish preserving)
+        } else if (groupRef.current.scale.x !== 1) {
+          groupRef.current.scale.set(1, 1, 1);
+        }
+      }
       const t = Math.min(1, delta * 10);
       groupRef.current.position.lerp(entity.position, t);
       const cur = groupRef.current.rotation.y;

@@ -21,3 +21,12 @@ describe('S2-B3-M4: the snare channel transient', () => {
     expect(s.progress).toBe(0);
   });
 });
+
+describe('the bind-ceremony one-shot (feel pass)', () => {
+  it('fire -> consume returns once, then null (single-shot)', async () => {
+    const { fireBindCeremony, consumeBindCeremony } = await import('./snareChannel');
+    fireBindCeremony({ x: 1, y: 2, z: 3 });
+    expect(consumeBindCeremony()).toEqual({ x: 1, y: 2, z: 3 });
+    expect(consumeBindCeremony()).toBe(null);
+  });
+});

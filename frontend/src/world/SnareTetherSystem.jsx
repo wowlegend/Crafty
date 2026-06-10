@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { readSnareState } from '../game/snareChannel';
+import { readSnareState, consumeBindCeremony } from '../game/snareChannel';
 import { isCaptureMode } from '../devtest/captureMode';
 
 /**
@@ -19,10 +19,36 @@ const _dir = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _quat = new THREE.Quaternion();
 
+const CEREMONY_SEC = 0.35; // the bind ring's life (the impact-flash envelope recipe)
+
 export function SnareTetherSystem() {
   const meshRef = useRef();
+  const ringRef = useRef();
+  const ceremonyRef = useRef({ t: 0 });
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    // the BIND CEREMONY ring — a one-shot expanding jade halo where a creature joins you
+    // (fired on bind + fusion; the Aspect's emotional beat made visible). Transient-only.
+    const ring = ringRef.current;
+    if (ring) {
+      const c = consumeBindCeremony();
+      if (c && !isCaptureMode()) {
+        ceremonyRef.current.t = CEREMONY_SEC;
+        ring.position.set(c.x, c.y + 0.1, c.z);
+      }
+      const ct = ceremonyRef.current;
+      if (ct.t > 0) {
+        ct.t -= delta;
+        const k = Math.max(ct.t, 0) / CEREMONY_SEC; // 1 -> 0
+        ring.visible = ct.t > 0;
+        const sc = 0.5 + 1.7 * (1 - k); // expands 0.5 -> 2.2
+        ring.scale.set(sc, sc, sc);
+        ring.material.opacity = 0.8 * k;
+      } else if (ring.visible) {
+        ring.visible = false;
+      }
+    }
+
     const m = meshRef.current;
     if (!m) return;
     const s = readSnareState();
@@ -47,11 +73,19 @@ export function SnareTetherSystem() {
   });
 
   return (
-    <mesh ref={meshRef} visible={false}>
-      {/* unit-height cylinder: scale.y = the live tether length */}
-      <cylinderGeometry args={[0.045, 0.045, 1, 6, 1, true]} />
-      <meshBasicMaterial color="#3DFFB0" toneMapped={false} transparent opacity={0}
-        blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
-    </mesh>
+    <group>
+      <mesh ref={meshRef} visible={false}>
+        {/* unit-height cylinder: scale.y = the live tether length */}
+        <cylinderGeometry args={[0.045, 0.045, 1, 6, 1, true]} />
+        <meshBasicMaterial color="#3DFFB0" toneMapped={false} transparent opacity={0}
+          blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      {/* the bind-ceremony halo (flat ring, lies on the ground plane) */}
+      <mesh ref={ringRef} visible={false} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[0.55, 0.8, 24]} />
+        <meshBasicMaterial color="#3DFFB0" toneMapped={false} transparent opacity={0}
+          blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   );
 }

@@ -15,7 +15,7 @@ import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
 import { ecs, alliesQuery } from './ecs/world';
-import { writeSnareState, clearSnareState } from './game/snareChannel.js';
+import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
 import { lookupHybrid, applyFusion, FUSE_RADIUS } from './game/hybrids.js';
 import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
@@ -706,6 +706,7 @@ export const Player = ({ isWorldBuilt }) => {
           // the jade re-tint: lerp the body color 45% toward the SOULBIND identity (design §2)
           ally.color = new THREE.Color(ally.color).lerp(new THREE.Color(SOULBIND_JADE), 0.45).getStyle();
           if (stv.playSpatialSound) stv.playSpatialSound('bind', [ally.position.x, ally.position.y, ally.position.z], 1, 25);
+          fireBindCeremony(ally.position); // the jade halo — a creature JOINS you (feel pass)
         }
         clearSnareState();
       } else if (ssm.channeling && snareTarget) {
@@ -751,6 +752,7 @@ export const Player = ({ isWorldBuilt }) => {
           // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
           stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
         }
+        if (hy) fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
       } else if (fsm.channeling && fusePair) {
         // the tether doubles as the fusion thread — drawn BETWEEN the two creatures
         writeSnareState({
