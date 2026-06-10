@@ -23,6 +23,8 @@ describe('voidhand no-re-mesh gate', () => {
     'devtest/perfProbe.js',         // M2 probe mode/channel — drives the combat path, voxel-clean
     'devtest/PerfProbeRunner.jsx',  // M2 scenario driver
     'devtest/PerfProbeSystem.jsx',  // M2 dynamic hurl stand-in
+    'game/hurl.js',                 // M3 pure flight/impact core
+    'game/hurlChannel.js',          // M3 transient verb channel
   ];
 
   for (const rel of GATED) {
