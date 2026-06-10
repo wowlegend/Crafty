@@ -452,21 +452,27 @@ export const MinecraftWorld = React.memo(() => {
     useEffect(() => {
         useGameStore.getState().setGetGeneratedChunks(() => chunksRef.current);
         
+        // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #2): ONE reusable Ray + ONE persistent filter
+        // closure. This is the hottest physics call in the game — AI height grids, leg IK, weather
+        // particles, XP orbs and loot drops all route here; the previous per-call `new rapier.Ray`
+        // + closure allocation was the dominant steady-state GC source (~2k calls/frame worst-case
+        // siege-rainstorm). Probe semantics unchanged (same origin height, dir, toi, jitter).
+        let probePlayerHandle;
+        const probeFilter = (collider) => {
+            if (probePlayerHandle === undefined) return true;
+            const parent = collider.parent();
+            return !parent || parent.handle !== probePlayerHandle;
+        };
+        const probeRay = new rapier.Ray({ x: 0, y: 255, z: 0 }, { x: 0, y: -1, z: 0 });
+
         useGameStore.getState().setGetMobGroundLevel((x, z) => {
             const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
-            const playerHandle = playerRigidBody?.handle;
-            const filterPredicate = (collider) => {
-                if (playerHandle === undefined) return true;
-                const parent = collider.parent();
-                return !parent || parent.handle !== playerHandle;
-            };
-
+            probePlayerHandle = playerRigidBody?.handle;
             // Jitter the coordinates slightly by +0.1 to avoid falling directly between voxel seams
-            const jitterX = x + 0.1;
-            const jitterZ = z + 0.1;
-
-            const ray = new rapier.Ray({ x: jitterX, y: 255, z: jitterZ }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 300, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
+            probeRay.origin.x = x + 0.1;
+            probeRay.origin.y = 255;
+            probeRay.origin.z = z + 0.1;
+            const hit = world.castRay(probeRay, 300, true, undefined, undefined, undefined, playerRigidBody, probeFilter);
             if (hit) {
                 return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
             }
