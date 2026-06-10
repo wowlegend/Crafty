@@ -4,7 +4,9 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: **VOIDHAND M3 IN-FLIGHT — plan ✅ + Task 1 ✅ (hurl core 7/7; 706 unit/75 files); resume = M3 Task 2 (hurlChannel TDD + gate extension red-first) → T3 HurlSystem + phantomWorldPos → T4 SM wiring → T5 close-out/re-gate** — `challenge-memory` POSTPONED to S2-completion
+## Current Task: **VOIDHAND M3 IN-FLIGHT — plan ✅ + Tasks 1-2 ✅ (710 unit/76 files; hurl core + channel gated); resume = M3 Task 3 (HurlSystem.jsx + phantomWorldPos export + mount + gate entry; full battery incl. visual)** — `challenge-memory` POSTPONED to S2-completion
+
+> **🔁 LOOP ITER 15 (2026-06-10): M3 Task 2 SHIPPED** — `game/hurlChannel.js` (single-slot transient request channel, perfProbe pattern) + the no-re-mesh GATED list grew to hurl.js + hurlChannel.js (red-first per-file; HurlSystem.jsx joins the gate IN Task 3 when its file is created — keeps main green every iteration). Unit 706→**710** (76 files). Pushed.
 
 > **🔁 LOOP ITER 14 (2026-06-10): M3 Task 1 SHIPPED (TDD red→green)** — `src/game/hurl.js`: makeHurl (22 m/s + lift arc), stepHurl (in-place ballistic step, nearest-mob proximity hit ≤1.4m, hit event = {id, pos, dir-normalized} = the M4 anvil seam, TTL 1.5s), resolveSlam (3m radial horizontal knocks, under-center fallback), tuning table exported. Unit 699→**706** (75 files). Pushed.
 
