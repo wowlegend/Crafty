@@ -20,6 +20,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
+import { HYBRIDS } from './game/hybrids';
 import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
@@ -397,6 +398,35 @@ function GameApp({ experienceSystem }) {
           GameMethods.spawnLootDrop(item, 0, [x, OY, OZ]);
         }
       }
+    });
+    // SOULBIND-showcase fixture (S2-B3-M7): the deterministic creature-judge card the M4-M6
+    // look-debt forensics proved missing. Sky-studio lane x=160 (clear of character 0 / boss 40 /
+    // loot 80 / spell 120 by >=40u). Five subjects left->right: jade-tinted spider ally, zombie
+    // ally, then the 3 hybrids (dreadweaver / bonehide_bulwark / marrowspinner) — silhouette
+    // distinctness reads across the row. (The snare tether intentionally absent: it hides under
+    // capture by design; its judge rides Kevin's live playtest.) DEV-only (tree-shaken from prod).
+    registerTestHook('soulbindShowcase', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);
+      const OX = 160, OY = 146, OZ = -8, GAP = 3.2;
+      // SUBJECTS FIRST, camera LAST: raw ecs.add carries no store write, so nothing would
+      // invalidate a demand-mode frame — enterCaptureMode's state write (the last call) re-renders
+      // with the subjects already mounted. (The spawnMob-based fixtures don't need this: the store
+      // method itself notifies.)
+      const mk = (i, type, color, extra = {}) => ecs.add({
+        isAlly: true, id: 940001 + i, position: { x: OX + (i - 2) * GAP, y: OY, z: OZ },
+        type, baseType: type, health: 60, maxHealth: 60, color, lastAllyAttack: 0, ...extra });
+      mk(0, 'spider', '#2F8F5F');
+      mk(1, 'zombie', '#3DAF70');
+      [HYBRIDS.dreadweaver, HYBRIDS.bonehide_bulwark, HYBRIDS.marrowspinner].forEach((h, j) => {
+        mk(2 + j, h.id, h.color, { hybridId: h.id, bodySize: h.bodySize, headSize: h.headSize, legMode: h.legMode, health: h.health, maxHealth: h.health });
+      });
+      // camera: front-on from +Z (the lootShowcase framing), centered on the 5-subject row,
+      // pulled back ~14u so the Bulwark (the widest) fits with air on both sides.
+      enterCaptureMode({ camera: { position: [OX, OY + 1.6, OZ + 14.0], lookAt: [OX, OY + 1.0, OZ] } });
     });
     // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,
     // and (for zh-CN) loads CJK fonts. The capture script waits for document.fonts.ready
