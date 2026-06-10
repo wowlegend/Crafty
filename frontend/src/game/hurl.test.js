@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  makeHurl, stepHurl, stepHurlChunked, resolveSlam,
+  makeHurl, stepHurl, stepHurlChunked, resolveSlam, resolveAnvil, ANVIL_RANGE, ANVIL_MULT,
   HURL_SPEED, HURL_TTL_SEC, HURL_HIT_RADIUS, HURL_KNOCK, SLAM_RADIUS, SLAM_DAMAGE_MULT, HURL_DAMAGE,
 } from './hurl';
 
@@ -90,5 +90,24 @@ describe('hurl substepping (frame-spike tunneling guard)', () => {
     const h = makeHurl({ x: 0, y: 10, z: 0 }, { x: 1, y: 0, z: 0 });
     stepHurlChunked(h, 5, []); // absurd 5s frame
     expect(h.age).toBeLessThanOrEqual(0.25 + 1e-9);
+  });
+});
+
+describe('base-as-anvil (M4)', () => {
+  const hit = { id: 'm', pos: { x: 0, y: 10, z: 0 }, dir: { x: 1, y: 0, z: 0 } };
+  it('mob next to a wall along the hurl line -> ANVIL_MULT', () => {
+    const castRay = (o, d, max) => ({ toi: 1.2 }); // a wall 1.2m past the impact
+    expect(resolveAnvil(castRay, hit)).toBe(ANVIL_MULT);
+  });
+  it('open air -> 1x', () => {
+    expect(resolveAnvil(() => null, hit)).toBe(1);
+  });
+  it('wall beyond ANVIL_RANGE -> 1x (the ray is range-capped by the caller contract)', () => {
+    const castRay = (o, d, max) => (max >= 99 ? { toi: 50 } : null);
+    expect(resolveAnvil(castRay, hit)).toBe(1);
+  });
+  it('exports the tuning', () => {
+    expect(ANVIL_RANGE).toBe(3);
+    expect(ANVIL_MULT).toBe(3);
   });
 });

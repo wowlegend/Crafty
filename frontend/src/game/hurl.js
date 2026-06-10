@@ -72,6 +72,16 @@ export function stepHurlChunked(h, dt, mobs) {
   return r;
 }
 
+export const ANVIL_RANGE = 3; // wall within this along the hurl line past the impact
+export const ANVIL_MULT = 3;  // total damage multiplier (spec §3e — "rewards day-building directly")
+
+/** Base-as-anvil: castRay(origin, dir, maxToi) -> {toi}|null (the caller binds the real Rapier
+ *  ray, range-capped at ANVIL_RANGE). Pure decision; the gold label + wall flash are M7 look. */
+export function resolveAnvil(castRay, hit) {
+  const r = castRay(hit.pos, hit.dir, ANVIL_RANGE);
+  return r && r.toi <= ANVIL_RANGE ? ANVIL_MULT : 1;
+}
+
 /** SLAM: radial horizontal knock events for mobs within radius of the orbit point. */
 export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
   const events = [];

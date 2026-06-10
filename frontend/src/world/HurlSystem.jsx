@@ -5,7 +5,7 @@ import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
-import { makeHurl, stepHurlChunked, resolveSlam, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
+import { makeHurl, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
 
 /**
  * HurlSystem — S2-B2-M3: consumes hurlChannel requests and runs the PURE flight/impact core.
@@ -56,10 +56,13 @@ export function HurlSystem() {
     }
     if (r.hit) {
       const element = store.activeSpell; // read at impact
-      if (GameMethods.damageMob) GameMethods.damageMob(r.hit.id, HURL_DAMAGE, element);
+      // M4 BASE-AS-ANVIL: a wall within ANVIL_RANGE along the hurl line past the impact -> 3x
+      // total ("building MATTERS in combat" — the design-closure loop, spec §3e). Walls stay
+      // PRISTINE (Decision #3 rec). The gold "WALL HIT!" label + wall flash are M7 look.
+      const anvil = GameMethods.castWorldRay ? resolveAnvil(GameMethods.castWorldRay, r.hit) : 1;
+      if (GameMethods.damageMob) GameMethods.damageMob(r.hit.id, HURL_DAMAGE * anvil, element);
       const entity = mobsQuery.entities.find((e) => e.id === r.hit.id);
       if (entity) entity.knockback = [r.hit.dir.x * HURL_KNOCK, 2, r.hit.dir.z * HURL_KNOCK];
-      // M4 anvil seam: r.hit.pos + r.hit.dir are where the wall ray + 3x bonus land.
     }
     if (r.done) {
       flightRef.current = null;

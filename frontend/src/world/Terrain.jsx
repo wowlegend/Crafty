@@ -722,10 +722,26 @@ export const MinecraftWorld = React.memo(() => {
             }
         };
 
+        // M4: parametrized world ray (the anvil wall check) — same player-filtered cast, any origin/dir.
+        const castWorldRay = (origin, dir, maxToi) => {
+            const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
+            const playerHandle = playerRigidBody?.handle;
+            const ray = new rapier.Ray(origin, dir);
+            const filterPredicate = (collider) => {
+                if (playerHandle === undefined) return true;
+                const parent = collider.parent();
+                return !parent || parent.handle !== playerHandle;
+            };
+            const h = world.castRay(ray, maxToi, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
+            return h ? { toi: h.timeOfImpact } : null;
+        };
+
         GameMethods.castBuildRay = castBuildRay;
+        GameMethods.castWorldRay = castWorldRay;
         GameMethods.terrainVerbs = { mine, place, open };
         return () => {
             delete GameMethods.castBuildRay;
+            delete GameMethods.castWorldRay;
             delete GameMethods.terrainVerbs;
         };
     }, [camera, rapier, world]);
