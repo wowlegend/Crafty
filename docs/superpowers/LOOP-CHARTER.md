@@ -10,18 +10,19 @@
 
 ## 0. Mission + hard frame (never overridden by taste)
 
-- **Vision** = `SOTA-INITIATIVE.md` §1–§2 + §9 guardrails: SOTA in every aspect; visual/aesthetic taste is the
+- **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
   envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
-- **AUDIENCE IS BROAD (Kevin decision 2026-06-04, recorded in coherence-pillars P5 + project memory —
-  SUPERSEDES the master plan §1's older "Marcus-first" phrasing):** kids → young adults → adults, "blur the
+- **AUDIENCE IS BROAD (Kevin decision 2026-06-04, recorded in coherence-pillars P5 + project memory; the
+  master plan v2 (2026-06-10) now states this natively — this clause guards against v1-era docs):** kids → young adults → adults, "blur the
   lines", to maximise appeal + later monetisation. Marcus (8) is A user, NOT a depth-lowering floor —
   intensity / real-stakes / hard modes are allowed; age-8 legibility stays a design virtue, never a ceiling.
 - **Chinese (zh-CN) = a locale TOGGLE with ENGLISH as the default** (the shipped i18n design: en default +
   lazy-loaded zh-CN). Full game-content translation is owed (#73) but the game is EN-first; design copy in
   English, then route through t() so the toggle stays complete.
 - **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` →
-  `memory/STATE-REVIEW-*.md` → this charter → `SOTA-INITIATIVE.md` (vision-canonical, status-historical).
+  `memory/STATE-REVIEW-*.md` → this charter → `SOTA-INITIATIVE.md` v2 (direction-canonical; its §3 status
+  line is LIVING — loop-maintained at every milestone per §1.6 below).
 - The loop has **no terminal state** — SOTA is a direction. It runs until Kevin stops it.
 
 ## 1. Per-iteration procedure (the only loop shape)
@@ -125,7 +126,7 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
 Audio: per-Aspect motifs + roar/transform/grab/hurl SFX · hit/kill audio split (player vs enemy) · pad LFO
 movement + arpeggiator stingers · ambient day/night/biome beds · UI sounds. Game-feel: hitstop/screenshake
 tuning · per-verb camera kicks · landing/footstep feedback · damage direction cues. Visual: per-element
-projectile GEOMETRRY variety · siege/dawn skybox moments · biome landmarks + silhouette landmarks · mob
+projectile GEOMETRY variety · siege/dawn skybox moments · biome landmarks + silhouette landmarks · mob
 bestiary distinctness (post-B3 per plan, pull earlier if cheap) · loot-VFX premium pass (parked branch
 `s2a-loot-vfx-premium` exists) · FPV beast-form interim treatment (#71). UX: controls-panel truth + onboarding
 toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full zh-CN content pass (#73 — locale

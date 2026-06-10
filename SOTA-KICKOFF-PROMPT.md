@@ -1,5 +1,8 @@
 # Crafty SOTA — fresh-session kickoff prompt
 
+> ⛔ **HISTORICAL (2026-05-30 kickoff — the process it describes is COMPLETE; its audience/i18n framing is SUPERSEDED by the 2026-06-04 broad-audience decision + zh-toggle/EN-default). Do NOT use. Live entry points = `SOTA-INITIATIVE.md` v2 + `docs/superpowers/LOOP-CHARTER.md`.**
+
+
 > Start a NEW Claude Code session with cwd `~/Code/Crafty` (or `~/Code/Crafty/frontend`). First run `/effort ultracode`. Then paste the prompt below.
 
 ---

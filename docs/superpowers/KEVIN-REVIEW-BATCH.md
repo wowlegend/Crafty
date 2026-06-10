@@ -1,5 +1,38 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🔄 REFRESHED 2026-06-10 (pre-loop clean line). LIVE items below; EVERYTHING under "HISTORICAL" further
+> down is pre-2026-06-10 — its statuses are superseded (WILDHEART shipped+merged; the look reference was
+> locked + built; VOIDHAND designed + M1 shipped; the loot-showcase capture state shipped; music policy is
+> now LOOP-OWNED per the charter). Under the autonomous loop this file is the ASYNC review surface: the
+> loop appends decisions-of-record + before/after eyeballs here and keeps building; nothing here blocks it
+> except the physically-Kevin items.**
+>
+> **LIVE — needs Kevin (when convenient; none block the loop):**
+> 1. **🎬 Beast-frame eyeball (#64):** the 4 punchy roster frames (`frontend/tests/visual/current/beast-*.png`)
+>    still await your ratify/drop call; the capture-reliability fix comes first (the frames flake — tracked).
+> 2. **📱 M2 iPad FPS run:** when the M2 harness lands (next milestone), the on-device run needs your iPad
+>    + ~15 min. The loop preps everything (probe states, protocol, budget table) and parks at "ready".
+> 3. **🕹️ Playtest eyeballs queued:** cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change.
+> 4. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
+> 5. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
+>    fully rewritten as a LIVING plan (v1 preserved at `git show ddfdf96:SOTA-INITIATIVE.md`). One NEW
+>    loop-PROPOSED policy inside it needs your eventual yes/no: **S3 early-entry relaxation** — recorded
+>    decision stays "S3 after ALL 4 Aspects"; proposed escape hatch = enter at ≥3 Aspects IF a forcing event
+>    lands (touch becomes load-bearing externally, or a hard perf wall). Reversal = delete the clause.
+> 6. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
+>    exposure — confirm transfer to loop, or dismiss) · the forced-med/low tier baselines from S2-A-M4b
+>    (ratify into the gate, or hand the call to the loop).
+>
+> **Decisions TRANSFERRED to the loop (charter §5, Kevin 2026-06-10):** music tooling + per-Aspect motif
+> policy (#74) · loot-beam punchiness · hotbar honesty approach · coin sinks · named regions · deep-night
+> obsidian · taste-tunables previously listed as "pending Kevin" — the loop decides on evidence, logs the
+> decision + reversal path HERE, and proceeds.
+>
+> ---
+>
+> ## HISTORICAL (pre-2026-06-10 — statuses superseded EXCEPT where re-listed in LIVE above; kept for the record)
+
 > **🐾 PLAYABLE — S2-B1 WILDHEART M0-M5 built (7/8 milestones, 2026-06-07).** Bank Ferocity by day-kills → roar in the night siege → become an element-beast that now FIGHTS + MOVES distinctly (M5 combat + locomotion re-skin). Each milestone TDD-gated + adversarial-reviewed (the M5 review caught a real spark/form-desync — a lightning-hawk could throw fire sparks after a spell-switch — fixed pre-merge by deriving the spark from the LOCKED form). **M5 taste-tunables (all reversible — proceeding on my defaults unless you redirect; full table + in-app motion check in `memory/S2B1-M5-MOTION.md`):** the per-form damage/cooldown/move/gravity/jump numbers; **`turnRate` OMITTED** (camera-relative pointer-lock = no turn-rate seam; a tank-turn would be an S3 controller change, not a table field); the **dodge-roll + ledge-vault are deliberately form-INVARIANT** (i-frame fairness + traversal reliability — flag if you want a comet-far / golem-short dodge); the mob-layer hit-spray threshold now tracks form-multiplied damage (heavy forms spray more — intended). **NEXT = M6** (signature talent nodes incl. the `wildheart_roar` unlock) → M7-M8 (the LOOK — still gated on the ONE blocking look-reference decision below).
 
 > **🐾 HARD GATE — S2-B1 WILDHEART design spec ready for your review (2026-06-07).** The LEAD Aspect (beast-transform). DESIGN-OF-RECORD at `docs/superpowers/specs/2026-06-07-crafty-s2b1-wildheart-design.md`, produced by an 11-agent design-workflow (5 code-seam mappers + 2 live-research lanes → synth → 3 adversarial reviewers) then reconciled by me. **The review earned its keep — it caught 4 BLOCKING defects I'd otherwise have built:** death-restore wired to the wrong transition (would strand a kid in beast-form through the death screen), ferocity accrual stomping the already-owned `onMobKill` slot (would silently break quests), an unlock-node crash in `foldTalentEffects`, and a fake input-abstraction. All corrected in v2. **CONCEPT (locked in the S2 spec):** hold-roar → become an element-beast (the loaded spell-element picks the form); your 2 attack intents re-skin per beast (zero new menu); a Ferocity meter banks in the day, unleashes in the night siege. **TWO-LAYER:** the mechanics are blind-buildable + TDD-gated; **the LOOK (the morph VFX + the 4 beast forms) is a reference-LOCK + in-world decision (the VFX discipline) — I will NOT blind-build it.**

@@ -14,7 +14,7 @@ directory`; a wrong ".superpowers is gone"; and a wrong `memory/SOTA-INITIATIVE.
 ```
 REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-plan + mockups live HERE
   ├─ .git/   CLAUDE.md (symlink -> .agent/AGENTS.md)
-  ├─ SOTA-INITIATIVE.md                          ← the MASTER PLAN (S1-C -> S1-D -> S2 -> S3 -> S4)
+  ├─ SOTA-INITIATIVE.md                          ← the MASTER PLAN v2 (LIVING; S2-B Aspect spine -> S3 -> S4)
   ├─ SOTA-KICKOFF-PROMPT.md
   ├─ .agent/  AGENTS.md (this file) + workflows/ (debug-physics, fix-movement)
   ├─ docs/superpowers/                           ← plans/, specs/, KEVIN-REVIEW-BATCH.md
