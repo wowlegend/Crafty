@@ -6,6 +6,7 @@ import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery } from './ecs/world';
+import { convertMobToAlly } from './game/allegiance';
 import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
 import { isCaptureMode } from './devtest/captureMode';
@@ -1018,9 +1019,17 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       return entity;
     };
 
+    // S2-B3-M3: capture a mob into the squad — the SNARE bind's apply-path (M4 calls this).
+    const captureMob = (id) => {
+      const entity = mobsQuery.entities.find(e => e.id === id);
+      if (!entity || entity.health <= 0) return null;
+      return convertMobToAlly(ecs, entity);
+    };
+
     useGameStore.setState({ attackEntity: damageMob });
     useGameStore.setState({ damageMob: damageMob });
     GameMethods.damageMob = damageMob;
+    GameMethods.captureMob = captureMob;
 
     const checkMobCollision = (pos, range = 3) => {
       return mobsQuery.entities.find(e => {
