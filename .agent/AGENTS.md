@@ -80,3 +80,17 @@ Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance r
 ## Resume after compaction
 Read `memory/ACTIVE_PLAN.md` (the resume pointer) FIRST → then the active `docs/superpowers/plans/*.md`.
 Ground truth = git `main` + `docs/superpowers/`.
+
+## Compaction instructions (the compactor reads this section — keep it)
+When compacting this session, ALWAYS preserve verbatim: (1) the current milestone + its plan-doc path;
+(2) the latest test/build/visual gate counts and whether they were green; (3) the exact resume pointer
+(next unit of work); (4) any uncommitted-work state (which files, which task); (5) Kevin's standing
+directives in force (autonomous-build authority, TDD, gates, no-AI-footer); (6) if an autonomous loop is
+running: the fact that `docs/superpowers/LOOP-CHARTER.md` is the loop's constitution and must be re-read
+at the next orientation. Prefer dropping verbose tool output and exploratory dead-ends over ANY of the above.
+
+## Autonomous build loop
+If running under `/loop`: `docs/superpowers/LOOP-CHARTER.md` is the loop's constitution — read it EVERY
+iteration at orient-time (it encodes Kevin's 2026-06-10 authority grant: enhance/delete/fix anything in the
+master plan as judged best, esp. visuals/graphics/gameplay/audio to a SOTA-June-2026 bar, self-gated by the
+charter's design discipline; Kevin reviews async via KEVIN-REVIEW-BATCH).
