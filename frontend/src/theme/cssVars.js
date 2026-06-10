@@ -37,6 +37,7 @@ const COLOR_VARS = {
   '--ui-warn': C.warn,
   '--ui-info': C.info,
   '--ui-ferocity': C.ferocity,
+  '--ui-kinetic': C.kinetic,
   '--ui-rarity-common': C.rarity.common,
   '--ui-rarity-rare': C.rarity.rare,
   '--ui-rarity-epic': C.rarity.epic,

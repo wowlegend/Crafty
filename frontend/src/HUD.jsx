@@ -17,6 +17,7 @@ import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeatures';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
+import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -46,6 +47,21 @@ const FerocityBar = React.memo(() => {
   return (
     <StatBar kind="ferocity" value={ferocity} max={FEROCITY_MAX} icon="run"
       label={ready ? 'ROAR!' : null} showValue className="w-44" />
+  );
+});
+
+// S2-B2-M4: the Kinetic bank (VOIDHAND grab charge). Same self-null-at-zero capture-safety as
+// FerocityBar, PLUS the unlock gate — no meter is shown for a locked ability (and capture saves
+// lack the talent, so the 13 baselines hold without a re-baseline). "GRAB!" reads when one
+// grab is affordable. Violet = the shipped phantom-rim identity (one color per Aspect).
+const KineticBar = React.memo(() => {
+  const kinetic = useGameStore((s) => s.kineticBanked);
+  const hasGrasp = useGameStore((s) => (s.unlockedTalents?.['voidhand_grasp'] ?? 0) > 0);
+  if (!hasGrasp || !kinetic || kinetic <= 0) return null;
+  const ready = kinetic >= GRAB_COST;
+  return (
+    <StatBar kind="kinetic" value={kinetic} max={KINETIC_MAX} icon="force"
+      label={ready ? 'GRAB!' : null} showValue className="w-44" />
   );
 });
 
@@ -346,6 +362,7 @@ export function HUD({
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <PlayerHungerBar hunger={gameSystems.hunger} />
               <FerocityBar />
+              <KineticBar />
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">

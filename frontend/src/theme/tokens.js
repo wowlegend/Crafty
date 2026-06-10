@@ -70,6 +70,7 @@ export const UI = {
     warn:    '#F2B33D',
     info:    '#5AA9FF',
     ferocity:'#FF3B1F',   // S2-B1-M4 WILDHEART Ferocity bar — feral vermilion (Kevin-tunable taste, §8 #7; distinct from danger/warn/accent/fire)
+    kinetic:'#B36BFF',    // S2-B2-M4 VOIDHAND Kinetic bar — the shipped phantom-rim violet (one identity color per Aspect)
     // rarity (border / inner-ring / text color)
     rarity: {
       common:    '#8A93A6',

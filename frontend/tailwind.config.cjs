@@ -41,6 +41,7 @@ module.exports = {
         warn: c('--ui-warn'),
         info: c('--ui-info'),
         ferocity: c('--ui-ferocity'),
+        kinetic: c('--ui-kinetic'),
         rarity: {
           common: c('--ui-rarity-common'),
           rare: c('--ui-rarity-rare'),
