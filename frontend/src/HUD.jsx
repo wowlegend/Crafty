@@ -18,6 +18,7 @@ import { PetIndicator, SurvivalWarning, BossHealthBar } from './AdvancedGameFeat
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
+import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -54,6 +55,20 @@ const FerocityBar = React.memo(() => {
 // FerocityBar, PLUS the unlock gate — no meter is shown for a locked ability (and capture saves
 // lack the talent, so the 13 baselines hold without a re-baseline). "GRAB!" reads when one
 // grab is affordable. Violet = the shipped phantom-rim identity (one color per Aspect).
+// S2-B3-M6: the Soul bank (SOULBIND) — the KineticBar twin: self-null at zero + the unlock
+// gate keep all 13 capture baselines untouched. "SNARE!" reads when one bind is affordable.
+// Jade = the tether/tint identity (one color per Aspect).
+const SoulBar = React.memo(() => {
+  const soul = useGameStore((s) => s.soulBanked);
+  const hasSnare = useGameStore((s) => (s.unlockedTalents?.['soulbind_snare'] ?? 0) > 0);
+  if (!hasSnare || !soul || soul <= 0) return null;
+  const ready = soul >= SNARE_COST;
+  return (
+    <StatBar kind="soul" value={soul} max={SOUL_MAX} icon="magic"
+      label={ready ? 'SNARE!' : null} showValue className="w-44" />
+  );
+});
+
 const KineticBar = React.memo(() => {
   const kinetic = useGameStore((s) => s.kineticBanked);
   const hasGrasp = useGameStore((s) => (s.unlockedTalents?.['voidhand_grasp'] ?? 0) > 0);
@@ -363,6 +378,7 @@ export function HUD({
               <PlayerHungerBar hunger={gameSystems.hunger} />
               <FerocityBar />
               <KineticBar />
+              <SoulBar />
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">

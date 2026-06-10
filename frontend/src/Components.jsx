@@ -12,10 +12,11 @@ import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
-import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC } from './game/soulbind.js';
-import { canSnare as sCanSnare, SNARE_COST } from './game/soul.js';
-import { alliesQuery } from './ecs/world';
+import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
+import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
+import { ecs, alliesQuery } from './ecs/world';
 import { writeSnareState, clearSnareState } from './game/snareChannel.js';
+import { lookupHybrid, applyFusion, FUSE_RADIUS } from './game/hybrids.js';
 import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
 import { phantomWorldPos } from './world/PhantomBlockSystem';
@@ -176,6 +177,7 @@ export const Player = ({ isWorldBuilt }) => {
   const prevRoarRef = useRef(false);
   const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
   const soulbindSMRef = useRef(makeSoulbindState()); // S2-B3-M4: the SOULBIND snare SM state
+  const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
   const prevGrabRef = useRef(false);
@@ -715,6 +717,48 @@ export const Player = ({ isWorldBuilt }) => {
         });
       } else {
         clearSnareState();
+      }
+
+      // S2-B3-M6: FUSE — the X key's second life via a deterministic arbiter: a valid SNARE
+      // target WINS; with none, holding X by two bound creatures braids them into a hybrid.
+      // The channel only STARTS when fusion CAN complete (bank + roster entry + proximity).
+      let fusePair = null;
+      if (!snareTargetId && alliesQuery.entities.length >= 2) {
+        const pp = stv.playerPosition;
+        if (pp) {
+          const near = alliesQuery.entities
+            .map((e) => ({ e, d: (e.position.x - pp.x) ** 2 + (e.position.z - pp.z) ** 2 }))
+            .filter((o) => o.d <= FUSE_RADIUS * FUSE_RADIUS)
+            .sort((a, b) => a.d - b.d);
+          if (near.length >= 2) fusePair = [near[0].e, near[1].e];
+        }
+      }
+      const canStartFuse = !!fusePair && sCanFuse(stv.soulBanked)
+        && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type);
+      const { sm: fsm, action: faction } = decideFuse(fuseSMRef.current, {
+        fuseEdge: snareEdge, // the same key edge; the arbiter above kept it exclusive
+        active: vin.active,
+        alive: stv.isAlive,
+        now: state.clock.getElapsedTime(),
+        canStart: canStartFuse,
+        pairNear: !!fusePair,
+      });
+      fuseSMRef.current = fsm;
+      if (faction === 'fuse' && fusePair) {
+        stv.accrueSoul(-FUSE_COST); // canStart vetted the bank
+        const hy = applyFusion(ecs, fusePair[0], fusePair[1]);
+        if (hy && stv.playSpatialSound) {
+          // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
+          stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
+        }
+      } else if (fsm.channeling && fusePair) {
+        // the tether doubles as the fusion thread — drawn BETWEEN the two creatures
+        writeSnareState({
+          channeling: true, targetId: fusePair[0].id,
+          progress: Math.min((state.clock.getElapsedTime() - fsm.channelStart) / FUSE_CHANNEL_SEC, 1),
+          from: { x: fusePair[0].position.x, y: fusePair[0].position.y + 0.4, z: fusePair[0].position.z },
+          to: { x: fusePair[1].position.x, y: fusePair[1].position.y + 0.4, z: fusePair[1].position.z },
+        });
       }
     }
 

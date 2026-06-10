@@ -71,6 +71,7 @@ export const UI = {
     info:    '#5AA9FF',
     ferocity:'#FF3B1F',   // S2-B1-M4 WILDHEART Ferocity bar — feral vermilion (Kevin-tunable taste, §8 #7; distinct from danger/warn/accent/fire)
     kinetic:'#B36BFF',    // S2-B2-M4 VOIDHAND Kinetic bar — the shipped phantom-rim violet (one identity color per Aspect)
+    soul:'#3DFFB0',       // S2-B3-M6 SOULBIND Soul bar — spectral jade (the tether/tint/bar family)
     // rarity (border / inner-ring / text color)
     rarity: {
       common:    '#8A93A6',
