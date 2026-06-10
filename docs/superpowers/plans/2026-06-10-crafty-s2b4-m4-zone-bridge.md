@@ -1,5 +1,7 @@
 # ELEMANCER M4 — The Zone Bridge Implementation Plan
 
+> **✅ SHIPPED (2026-06-10, loop iter 70):** all 3 tasks one iteration. The heightGrid hazard-bias stays deferred to M7-if-needed (recorded below). 822 unit (99 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b4-elemancer-design.md` §2/§3 M4.
 > **A design simplification found at plan time:** `applyChainLightning` is a useCallback closure inside
@@ -19,7 +21,7 @@
 
 **Files:** Create `frontend/src/world/ElementZoneSystem.jsx`; extend `frontend/tests/gates/elemancer-noremesh-gates.test.js` GATED += the new file
 
-- [ ] **Step 1:** the system (the SquadAISystem shape; constants at top, all Kevin-tunable):
+- [x] **Step 1:** the system (the SquadAISystem shape; constants at top, all Kevin-tunable):
 ```jsx
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -99,20 +101,20 @@ export function ElementZoneSystem() {
 }
 ```
   NOTE the frozen reset semantics: a mob leaving ALL frozen zones resets to 1 — the per-zone loop above resets only vs THIS zone; with multiple frozen zones a mob inside zone B but outside zone A must NOT be reset by A's pass. FIX in implementation: compute frozen membership in a FIRST pass (a Set of slowed ids), then assign mults in a second pass. Write the test for exactly this (two frozen zones, a mob in one).
-- [ ] **Step 2:** the gate list += 'world/ElementZoneSystem.jsx'. A pure-logic test for the two-pass frozen semantics? The bridge is a component — test the EXTRACTED helper: pull the per-tick effect application into an exported pure `applyZoneEffects(zones, mobs, damageFn)` (returns nothing; mutates mobs' zoneSlowMult + calls damageFn) so the two-frozen-zones case is unit-testable. The component body shrinks to plumbing.
-- [ ] **Step 3: red-first on the helper's tests** (burning ticks via damageFn with 'hazard'; frozen two-zone membership; conductive pulses; resonant aggro; out-of-zone untouched) → implement → **battery → commit** `feat(elemancer-m4): the zone bridge — chemistry acts on combat (DoT/slow/pulse/lure, hazard-attributed, cadence-damped)`
+- [x] **Step 2:** the gate list += 'world/ElementZoneSystem.jsx'. A pure-logic test for the two-pass frozen semantics? The bridge is a component — test the EXTRACTED helper: pull the per-tick effect application into an exported pure `applyZoneEffects(zones, mobs, damageFn)` (returns nothing; mutates mobs' zoneSlowMult + calls damageFn) so the two-frozen-zones case is unit-testable. The component body shrinks to plumbing.
+- [x] **Step 3: red-first on the helper's tests** (burning ticks via damageFn with 'hazard'; frozen two-zone membership; conductive pulses; resonant aggro; out-of-zone untouched) → implement → **battery → commit** `feat(elemancer-m4): the zone bridge — chemistry acts on combat (DoT/slow/pulse/lure, hazard-attributed, cadence-damped)`
 
 ### Task 2: the zoneSlowMult consumer + the dead-plumbing deletion
 
 **Files:** Modify `frontend/src/SimplifiedNPCSystem.jsx` (:874), `frontend/src/EnhancedMagicSystem.jsx` (the dead writes), `frontend/src/store/useGameStore.jsx` (:341-342); extend the elemancer gate file with the consumer lock
 
-- [ ] **Step 1:** the consumer: `speed: e.speed,` → `speed: e.speed * (e.zoneSlowMult || 1), // S2-B4-M4: frozen zones slow (the ONE consumer — gate-locked)`.
-- [ ] **Step 2:** DELETE the `mobSlowEffects`/`mobStunEffects` writes in EnhancedMagicSystem (:121-146 — the iceball secondary keeps its damage, loses the dead state writes) + the store fields (:341-343). **The written justification (for the commit body):** these writes shipped DEAD — zero readers anywhere in src (the B4 design workflow verified by grep; the proven unwiring failure mode) — and `zoneSlowMult` is the working, consumer-locked replacement.
-- [ ] **Step 3:** the consumer lock in the elemancer gate file: `expect(read('SimplifiedNPCSystem.jsx')).toMatch(/e\.speed \* \(e\.zoneSlowMult \|\| 1\)/)` + `expect(read('EnhancedMagicSystem.jsx')).not.toMatch(/mobSlowEffects/)` (the dead plumbing stays dead).
-- [ ] **Step 4: battery → commit** `feat(elemancer-m4): zoneSlowMult consumed at the mobsData speed line; the dead mobSlowEffects plumbing deleted (justified)`
+- [x] **Step 1:** the consumer: `speed: e.speed,` → `speed: e.speed * (e.zoneSlowMult || 1), // S2-B4-M4: frozen zones slow (the ONE consumer — gate-locked)`.
+- [x] **Step 2:** DELETE the `mobSlowEffects`/`mobStunEffects` writes in EnhancedMagicSystem (:121-146 — the iceball secondary keeps its damage, loses the dead state writes) + the store fields (:341-343). **The written justification (for the commit body):** these writes shipped DEAD — zero readers anywhere in src (the B4 design workflow verified by grep; the proven unwiring failure mode) — and `zoneSlowMult` is the working, consumer-locked replacement.
+- [x] **Step 3:** the consumer lock in the elemancer gate file: `expect(read('SimplifiedNPCSystem.jsx')).toMatch(/e\.speed \* \(e\.zoneSlowMult \|\| 1\)/)` + `expect(read('EnhancedMagicSystem.jsx')).not.toMatch(/mobSlowEffects/)` (the dead plumbing stays dead).
+- [x] **Step 4: battery → commit** `feat(elemancer-m4): zoneSlowMult consumed at the mobsData speed line; the dead mobSlowEffects plumbing deleted (justified)`
 
 ### Task 3: mount + close-out
-- [ ] Mount `<ElementZoneSystem />` beside `<SquadAISystem />` in Components. Battery. Spec §3 M4 row ✅ · this plan SHIPPED · ACTIVE_PLAN → M5 (IMBUE end-to-end: the KeyZ intent + the armed reticle + the surfaceHint + the zone spawn at impact — the verb becomes playable).
+- [x] Mount `<ElementZoneSystem />` beside `<SquadAISystem />` in Components. Battery. Spec §3 M4 row ✅ · this plan SHIPPED · ACTIVE_PLAN → M5 (IMBUE end-to-end: the KeyZ intent + the armed reticle + the surfaceHint + the zone spawn at impact — the verb becomes playable).
 
 ## Self-review
 - Spec coverage: the M4 row's four clauses (the bridge ✓T1, zoneSlowMult-replaces-dead ✓T2, the heightGrid hazard-bias — DEFERRED honestly: the design listed it for M4 but it touches the worker-input build; fold into M7's balance pass IF playtest shows mobs ignoring fire looks wrong; recorded as a deliberate reduction) + cadence-damping ✓T1.
