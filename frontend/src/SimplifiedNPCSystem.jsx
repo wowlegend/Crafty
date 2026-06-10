@@ -81,7 +81,12 @@ const MOB_TYPES = {
 };
 
 // Mob Model Component with variety - PURE ECS RENDERER
-const MobModel = ({ entity }) => {
+// React.memo on the per-entity renderers (STATE-REVIEW-2026-06-10 #4 mitigation): the useEntities
+// bridge re-renders NPCSystem on every entity add/remove; memo + stable miniplex entity refs
+// confine that to the changed children — a kill burst (mob remove + N orb adds/removes) now
+// reconciles only the changed keys instead of every mounted mob/orb/loot subtree. The full
+// DEEPEN (transient query reads in useFrame, no bridge) stays tracked in the PRE-S2B audit.
+const MobModel = React.memo(({ entity }) => {
   const groupRef = useRef();
   const legRefs = useRef([]);
   const prevPos = useRef(null);
@@ -333,7 +338,7 @@ const MobModel = ({ entity }) => {
       )}
     </group>
   );
-};
+});
 
 // Health Bar Component updated for ECS
 const HealthBar = ({ entity }) => {
@@ -1147,7 +1152,7 @@ const XPOrbSystem = () => {
 };
 
 // --- XP Orb Render Component ---
-const XPOrbRender = ({ entity }) => {
+const XPOrbRender = React.memo(({ entity }) => {
   const meshRef = useRef();
 
   useFrame(() => {
@@ -1163,7 +1168,7 @@ const XPOrbRender = ({ entity }) => {
       <meshStandardMaterial color="#00ff44" emissive="#00ff44" emissiveIntensity={0.8} roughness={0.1} metalness={0.9} />
     </mesh>
   );
-};
+});
 
 // --- Physical Loot Helpers ---
 // Re-exported for the M3 loot/rarity characterization tests, which import
@@ -1254,7 +1259,7 @@ const LootSystem = () => {
 };
 
 // --- Loot Render Component ---
-const LootDropRender = ({ entity }) => {
+const LootDropRender = React.memo(({ entity }) => {
   const meshRef = useRef();
   const beamRef = useRef();
 
@@ -1323,7 +1328,7 @@ const LootDropRender = ({ entity }) => {
       </mesh>
     </group>
   );
-};
+});
 
 // --- Pickup Pop VFX ---
 // M3c-T2: a short rarity-tinted scale-pop ring that fires ONCE at the pickup
