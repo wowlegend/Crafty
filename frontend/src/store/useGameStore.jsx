@@ -338,10 +338,6 @@ export const useGameStore = create((set, get) => ({
     checkMobCollision: null,
     setCheckMobCollision: (fn) => set({ checkMobCollision: fn }),
     
-    mobSlowEffects: {},
-    setMobSlowEffects: (effects) => set((state) => ({ mobSlowEffects: typeof effects === 'function' ? effects(state.mobSlowEffects) : effects })),
-    mobStunEffects: {},
-    setMobStunEffects: (effects) => set((state) => ({ mobStunEffects: typeof effects === 'function' ? effects(state.mobStunEffects) : effects })),
     castSpell: null,
     setCastSpell: (fn) => set({ castSpell: fn }),
     

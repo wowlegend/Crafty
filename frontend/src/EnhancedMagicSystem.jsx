@@ -118,33 +118,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     }, 1000);
   }, []);
 
-  const applyFreezeEffect = useCallback((mobId, duration, slowPercent, freezeChance) => {
-    useGameStore.setState(state => {
-      const slowEffects = { ...(state.mobSlowEffects || {}) };
-      slowEffects[mobId] = {
-        slowMultiplier: 1 - (slowPercent / 100),
-        endTime: Date.now() + (duration * 1000)
-      };
-      return { mobSlowEffects: slowEffects };
-    });
-
-    if (Math.random() < freezeChance) {
-      useGameStore.setState(state => {
-        const stunEffects = { ...(state.mobStunEffects || {}) };
-        stunEffects[mobId] = Date.now() + 2000;
-        return { mobStunEffects: stunEffects };
-      });
-    }
-
-    setTimeout(() => {
-      useGameStore.setState(state => {
-        const slowEffects = { ...(state.mobSlowEffects || {}) };
-        delete slowEffects[mobId];
-        return { mobSlowEffects: slowEffects };
-      });
-    }, duration * 1000);
-  }, []);
-
   const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
     const allMobs = useGameStore.getState().mobEntities;
     if (!allMobs) return;
@@ -458,7 +431,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
                   applyBurnEffect(hitMob.id, sec.duration, sec.damagePerSecond);
                   break;
                 case 'freeze':
-                  applyFreezeEffect(hitMob.id, sec.duration, sec.slowPercent, sec.freezeChance);
                   break;
                 case 'chain':
                   applyChainLightning(

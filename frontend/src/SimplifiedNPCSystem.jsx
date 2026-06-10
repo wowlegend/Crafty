@@ -871,7 +871,7 @@ const AIWorkerSystem = () => {
         damage: e.damage,
         type: e.type,
         moveTimer: e.moveTimer,
-        speed: e.speed,
+        speed: e.speed * (e.zoneSlowMult || 1), // S2-B4-M4: frozen zones slow (the ONE consumer — gate-locked)
         rotation: e.rotation,
         health: e.health,
         maxHealth: e.maxHealth,
