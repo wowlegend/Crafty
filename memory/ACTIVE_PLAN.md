@@ -4,7 +4,9 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## Current Task: **VOIDHAND M2 IN-FLIGHT — plan doc ✅ + Tasks 1-2 ✅ (678 unit/72 files); resume = M2 Task 3 (PhantomBlockSystem light-POOL restructure)** — `challenge-memory` POSTPONED to S2-completion
+## Current Task: **VOIDHAND M2 IN-FLIGHT — plan doc ✅ + Tasks 1-3 ✅ (678 unit · build · visual 13/13); resume = M2 Task 4 (probe runtime: gate-first, perfProbe.js + Runner + System + GameScene/App wiring)** — `challenge-memory` POSTPONED to S2-completion
+
+> **🔁 LOOP ITER 3 (2026-06-10): M2 Task 3 SHIPPED** — PhantomBlockSystem light-POOL: pointLight ALWAYS mounted, `intensity={active ? 1.4 : 0}` (grab/drop never changes light COUNT → no shader program re-link at the grab edge; the #68 carry-forward). Mesh stays held-conditional (capture-absent). Evidence: 678 unit · build clean · **visual 13/13 no re-baseline**. Pushed. **NEXT UNIT = plan Task 4** (extend voidhand-noremesh GATED list FIRST → red ENOENT → create perfProbe.js / PerfProbeRunner.jsx / PerfProbeSystem.jsx → wire GameScene dpr/monitors + App mount → smoke `?perf=C` + `?perf=E`).
 
 > **🔁 LOOP ITER 2 (2026-06-10): M2 Tasks 1+2 SHIPPED (TDD red→green)** — `src/devtest/frameStats.js` (quantile/frameStats/compareScenarios/withinBudget + `M2_BUDGET` {1.5ms median, 3ms p95}) + `src/devtest/perfScenarios.js` (the A-E table + scenarioEvents schedule). Commits `adacdba` + `9e0cf63`, pushed. Unit 667→**678** (72 files). **NEXT UNIT = plan Task 3** (light-POOL: PhantomBlockSystem pointLight always-mounted intensity-gated; verify visual 13/13 no re-baseline) → T4 probe runtime → T5 runner → T6 RUN+record → T7 close-out. **Hygiene queue:** GitHub Dependabot 1 CRITICAL on main (`security/dependabot/29`) — investigate in a hygiene iteration soon.
 
