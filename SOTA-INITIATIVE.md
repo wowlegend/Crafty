@@ -1,5 +1,9 @@
 # Crafty → SOTA Initiative — Master Brief (read this FIRST in a fresh session)
 
+> **✅ STATUS (2026-06-10) — the brainstorm this doc kicks off is LONG DONE; do NOT follow §5's process steps.** Progress: **S0 ✅ · S1-A/B/C/D ✅ · S2 design APPROVED · S2-A ✅ · S2-B1 WILDHEART ✅ (merged `458bbb5`) · S2-B2 VOIDHAND IN-FLIGHT (M1 of 8 on `main`; resume = M2 iPad FPS gate, plan-doc-first) · S2-B3/B4, S3, S4 not started.** The Aspect sequence (Wildheart→Voidhand→Soulbind→Elemancer) + S3-after-S2-B re-sequencing live in the S2 spec (`docs/superpowers/specs/2026-06-02-crafty-s2-game-design-design.md`), which supersedes §4's "S3 with S2" column. §0/§3 stats (~14.4k LOC/31 files) are HISTORICAL as-of-2026-05-30 — live src is ~21.3k LOC/110 files; the A8 input-abstraction layer now exists (touch UI itself still unbuilt, S3). **LIVE ground truth = `memory/ACTIVE_PLAN.md` (resume pointer) → `memory/STATE-REVIEW-2026-06-10.md` (full reconciliation + risk map) → git `main`.** The vision/goal sections (§1-§2) + guardrails (§9) remain canonical. Known drift being managed: the §4 music-motif-per-Aspect pass was skipped in B1 (task #74).
+>
+> *(Original 2026-05-30 kickoff framing below — HISTORICAL.)*
+>
 > **You (a fresh Crafty session) are continuing a brainstorming exercise** started in a sister thread on 2026-05-30. Do **not** jump to code. This is a `superpowers:brainstorming` flow: explore → lock the vision (esp. visual direction) → present a design → get Kevin's approval → only THEN plan/implement. Read this whole file + the pointers in §8 before acting.
 
 ---
