@@ -20,4 +20,12 @@ describe('allegiance gates (S2-B3-M3)', () => {
     expect(npc).not.toMatch(/removeComponent\([^)]*'isMob'/);
     expect(read('Components.jsx')).not.toMatch(/removeComponent\([^)]*'isMob'/);
   });
+
+  // ELEMANCER-M1: worldBlocks keys are UNDERSCORE-shaped (`x_y_z`) — a comma-template reader
+  // shipped as a silent always-miss (Components.jsx:808, found by the B4 design workflow).
+  it('no worldBlocks reader uses a comma-template key (the always-miss shape)', () => {
+    for (const f of ['Components.jsx', 'SimplifiedNPCSystem.jsx', 'world/Terrain.jsx', 'AdvancedGameFeatures.jsx']) {
+      expect(read(f), `${f} has a comma-keyed worldBlocks lookup`).not.toMatch(/worldBlocks\.(has|get)\(`[^`]*,\$\{/);
+    }
+  });
 });

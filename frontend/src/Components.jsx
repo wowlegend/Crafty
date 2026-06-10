@@ -805,7 +805,9 @@ export const Player = ({ isWorldBuilt }) => {
       // 1. Try to use placed blocks (if loading from a save)
       if (store.worldBlocks && store.worldBlocks.size > 0) {
         for (let y = 150; y > 0; y--) {
-          if (store.worldBlocks.has(`0,${y},0`)) {
+          // ELEMANCER-M1 fix: the writers key worldBlocks with UNDERSCORES (`x_y_z`) — this
+          // reader used commas (an always-miss; the raycast fallback silently covered it).
+          if (store.worldBlocks.has(`0_${y}_0`)) {
             groundY = y;
             break;
           }
