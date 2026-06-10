@@ -75,3 +75,46 @@ describe('S2-B4-M3: the zone registry (the chemistry core)', () => {
     expect(r.zones).toHaveLength(0);
   });
 });
+
+describe('S2-B4-M4: applyZoneEffects (chemistry acts on combat)', () => {
+  const mob = (id, x, z, extra = {}) => ({ id, position: { x, y: 50, z }, health: 100, ...extra });
+  const zone = (kind, x, z, radius) => ({ kind, pos: { x, y: 50, z }, radius });
+
+  it("burning ticks damageFn with 'hazard' on in-zone mobs only", async () => {
+    const { applyZoneEffects, BURN_TICK } = await import('./elementZones');
+    const hits = [];
+    const mobs = [mob(1, 0, 0), mob(2, 50, 0)];
+    applyZoneEffects([zone('burning', 0, 0, 2.5)], mobs, (...a) => hits.push(a));
+    expect(hits).toEqual([[1, BURN_TICK, 'fireball', 'hazard']]);
+  });
+  it('frozen: TWO zones — a mob inside only zone B stays slowed (the two-pass membership fix)', async () => {
+    const { applyZoneEffects, SLOW_MULT } = await import('./elementZones');
+    const inB = mob(1, 100, 0);
+    applyZoneEffects([zone('frozen', 0, 0, 3), zone('frozen', 100, 0, 3)], [inB], () => {});
+    expect(inB.zoneSlowMult).toBe(SLOW_MULT);
+  });
+  it('frozen: a mob that LEFT every frozen zone resets to 1', async () => {
+    const { applyZoneEffects } = await import('./elementZones');
+    const left = mob(1, 50, 0, { zoneSlowMult: 0.4 });
+    applyZoneEffects([zone('frozen', 0, 0, 3)], [left], () => {});
+    expect(left.zoneSlowMult).toBe(1);
+  });
+  it('conductive pulses every in-zone mob (the zone IS the chain)', async () => {
+    const { applyZoneEffects, SHOCK_TICK } = await import('./elementZones');
+    const hits = [];
+    applyZoneEffects([zone('conductive', 0, 0, 3)], [mob(1, 1, 0), mob(2, -1, 1)], (...a) => hits.push(a));
+    expect(hits).toHaveLength(2);
+    expect(hits[0][1]).toBe(SHOCK_TICK);
+    expect(hits[0][3]).toBe('hazard');
+  });
+  it('resonant sets isAggro in-radius (the mote-lure); dead + out-of-zone mobs untouched', async () => {
+    const { applyZoneEffects } = await import('./elementZones');
+    const lured = mob(1, 1, 0, { isAggro: false });
+    const far = mob(2, 50, 0, { isAggro: false });
+    const dead = mob(3, 0, 0, { isAggro: false, health: 0 });
+    applyZoneEffects([zone('resonant', 0, 0, 2)], [lured, far, dead], () => {});
+    expect(lured.isAggro).toBe(true);
+    expect(far.isAggro).toBe(false);
+    expect(dead.isAggro).toBe(false);
+  });
+});

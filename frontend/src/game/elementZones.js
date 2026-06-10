@@ -84,3 +84,45 @@ export function stepZones(reg, now) {
 export function clearZones(reg) {
   reg.zones = [];
 }
+
+// ---- S2-B4-M4: the zone EFFECTS (pure; the bridge calls this at the FX cadence) ----
+export const BURN_TICK = 4;   // burning DoT per FX tick (~13 dps in-zone at ~3.3Hz)
+export const SHOCK_TICK = 6;  // conductive pulse per FX tick
+export const SLOW_MULT = 0.4; // frozen: mobs crawl at 40% (the mobsData speed line consumes)
+
+/**
+ * applyZoneEffects(zones, mobs, damageFn) — one FX tick of chemistry-on-combat.
+ * TWO-PASS frozen semantics: membership first (a Set), then mults — so a mob inside
+ * zone B but outside zone A is NOT reset by A's pass (the multi-zone trap, plan M4).
+ * damageFn(id, dmg, type, source) is always called with source 'hazard' (banks nothing).
+ * The resonant lure sets isAggro (persists through the AI worker — the squad precedent).
+ */
+export function applyZoneEffects(zones, mobs, damageFn) {
+  const frozenIds = new Set();
+  for (const z of zones) {
+    if (z.kind !== 'frozen') continue;
+    const r2 = z.radius * z.radius;
+    for (const e of mobs) {
+      if (!e || e.health <= 0) continue;
+      const dx = e.position.x - z.pos.x, dz = e.position.z - z.pos.z;
+      if (dx * dx + dz * dz <= r2) frozenIds.add(e.id);
+    }
+  }
+  for (const e of mobs) {
+    if (!e || e.health <= 0) continue;
+    if (frozenIds.has(e.id)) e.zoneSlowMult = SLOW_MULT;
+    else if (e.zoneSlowMult !== undefined && e.zoneSlowMult !== 1) e.zoneSlowMult = 1;
+  }
+  for (const z of zones) {
+    if (z.kind === 'frozen') continue;
+    const r2 = z.radius * z.radius;
+    for (const e of mobs) {
+      if (!e || e.health <= 0) continue;
+      const dx = e.position.x - z.pos.x, dz = e.position.z - z.pos.z;
+      if (dx * dx + dz * dz > r2) continue;
+      if (z.kind === 'burning') damageFn(e.id, BURN_TICK, 'fireball', 'hazard');
+      else if (z.kind === 'conductive') damageFn(e.id, SHOCK_TICK, 'lightning', 'hazard');
+      else if (z.kind === 'resonant') e.isAggro = true;
+    }
+  }
+}

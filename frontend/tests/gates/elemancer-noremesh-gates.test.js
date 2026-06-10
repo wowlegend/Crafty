@@ -17,7 +17,8 @@ describe('elemancer no-re-mesh gate', () => {
     'game/resonance.js',        // the build-verb economy
     'game/elementZones.js',     // the chemistry core (registry + overlap rules)
     'game/elemancerChannel.js', // the zone request transient
-    // M4 adds world/ElementZoneSystem.jsx; M6 adds the overlay render — extend IN PLACE.
+    'world/ElementZoneSystem.jsx', // the M4 bridge (chemistry -> combat)
+    // M6 adds the overlay render — extend IN PLACE.
   ];
 
   for (const rel of GATED) {
@@ -27,4 +28,17 @@ describe('elemancer no-re-mesh gate', () => {
       expect(m, `forbidden voxel seam "${m && m[0]}" in ${rel}`).toBe(null);
     });
   }
+});
+
+// S2-B4-M4: the wiring locks — the frozen-slow consumer exists at the ONE mobsData speed
+// line, and the dead mobSlowEffects plumbing (shipped with zero readers; deleted M4) STAYS dead.
+describe('elemancer zone-slow wiring locks', () => {
+  const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
+  it('the mobsData speed line consumes zoneSlowMult (the ONE consumer)', () => {
+    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/e\.speed \* \(e\.zoneSlowMult \|\| 1\)/);
+  });
+  it('the dead mobSlowEffects plumbing stays dead (no resurrection)', () => {
+    expect(read('EnhancedMagicSystem.jsx')).not.toMatch(/mobSlowEffects|mobStunEffects/);
+    expect(read('store/useGameStore.jsx')).not.toMatch(/mobSlowEffects|mobStunEffects/);
+  });
 });
