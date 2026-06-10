@@ -91,6 +91,7 @@ const MobModel = React.memo(({ entity }) => {
   const legRefs = useRef([]);
   const prevPos = useRef(null);
   const syncedOnce = useRef(false);
+  const coverAuraRef = useRef();
   const modelRef = useRef();
   
   const mobConfig = MOB_TYPES[entity.type] || MOB_TYPES.pig;
@@ -147,10 +148,14 @@ const MobModel = React.memo(({ entity }) => {
     // 15Hz now (see AIWorkerSystem) — this exponential damp is what turns 15Hz authority updates
     // into smooth render-rate motion. Capture mode + first frame pin an EXACT copy (determinism:
     // a capture frame must not depend on how many settle frames the damp has seen).
-    if (isCaptureMode() || !syncedOnce.current) {
+    if (isCaptureMode() || !syncedOnce.current || entity.snapSync) {
+      // exact copy: capture (determinism) / first frame / a knockback impulse this frame
+      // (snapSync — review-fix: the damp must not low-pass the hit shove; flash+flinch+shove
+      // together are the instant hit channel).
       groupRef.current.position.copy(entity.position);
       groupRef.current.rotation.y = entity.rotation;
       syncedOnce.current = true;
+      entity.snapSync = false;
     } else {
       const t = Math.min(1, delta * 10);
       groupRef.current.position.lerp(entity.position, t);
@@ -158,6 +163,9 @@ const MobModel = React.memo(({ entity }) => {
       const dr = Math.atan2(Math.sin(entity.rotation - cur), Math.cos(entity.rotation - cur));
       groupRef.current.rotation.y = cur + dr * t;
     }
+
+    // Cover-seeking shield aura: transient visibility from the worker-mutated field (memo-proof).
+    if (coverAuraRef.current) coverAuraRef.current.visible = !!entity.isCoverSeeking;
 
     // 2. Squash & Tilt Flinch Animation
     if (modelRef.current) {
@@ -217,9 +225,10 @@ const MobModel = React.memo(({ entity }) => {
       if (legRefs.current[2]) legRefs.current[2].rotation.x = -swing;
       if (legRefs.current[3]) legRefs.current[3].rotation.x = swing;
 
-      // IK height snapping
+      // IK height snapping (epsilon-gated like the swing: the damp's asymptote keeps speed>0 for
+      // seconds after a stop, which kept these 4 raycasts/mob firing — review-fix 2026-06-10)
       const store = useGameStore.getState();
-      if (store.getMobGroundLevel && speed > 0) {
+      if (store.getMobGroundLevel && speed > 0.05) {
         const checkIK = (mesh, offsetX, offsetZ) => {
           if (!mesh) return;
           const cosR = Math.cos(entity.rotation);
@@ -311,13 +320,15 @@ const MobModel = React.memo(({ entity }) => {
             </mesh>
           ))
         )}
-        {/* Dynamic cover-seeking shield aura */}
-        {entity.isCoverSeeking && (
-          <mesh position={[0, bodyH / 2, 0]}>
-            <boxGeometry args={[bodyW * 1.5, bodyH * 1.5, bodyD * 1.5]} />
-            <meshBasicMaterial color="#06b6d4" transparent opacity={0.35} wireframe />
-          </mesh>
-        )}
+        {/* Dynamic cover-seeking shield aura — ALWAYS mounted, toggled transiently in useFrame.
+            Review-fix (4-lens convergent, 2026-06-10): isCoverSeeking is a worker-MUTATED entity
+            field; reading it in render JSX only worked pre-memo because every combat hit happened
+            to re-render the parent. Under React.memo the JSX read froze at mount value — the
+            transient .visible toggle is the GLI-correct, memo-proof path. */}
+        <mesh ref={coverAuraRef} visible={false} position={[0, bodyH / 2, 0]}>
+          <boxGeometry args={[bodyW * 1.5, bodyH * 1.5, bodyD * 1.5]} />
+          <meshBasicMaterial color="#06b6d4" transparent opacity={0.35} wireframe />
+        </mesh>
       </group>
       {/* Suppress the floating health bar in capture mode so character-studio
           fixtures (e.g. character-closeup) render a clean silhouette. No-op in gameplay. */}
@@ -787,6 +798,7 @@ const AIWorkerSystem = () => {
         entity.position.x += entity.knockback[0] * delta * 4;
         entity.position.z += entity.knockback[2] * delta * 4;
         entity.knockback = null;
+        entity.snapSync = true; // MobModel exact-copies this frame so the shove reads instant (not damped)
       }
     }
 

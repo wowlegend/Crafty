@@ -2,8 +2,9 @@
 // transient wrapper. The old component called setState EVERY frame (fresh array even when empty),
 // re-rendering at render rate forever + cloning velocity per projectile per frame
 // (STATE-REVIEW-2026-06-10 BLOCKING #1 — Game-Loop-Isolation breach).
-// Mutates position/age IN PLACE (hot path, zero allocation). Membership changed iff
-// survivors.length !== list.length — that's the caller's only setState transition.
+// Mutates position/age IN PLACE (no per-projectile allocation — addScaledVector replaced the old
+// velocity.clone(); the per-call survivors[] + result object remain, negligible at these counts).
+// Membership changed iff survivors.length !== list.length — the caller's only setState transition.
 export const ENEMY_PROJECTILE_SPEED_SCALE = 60; // legacy tuning: velocity is per-frame-at-60fps units
 export const ENEMY_PROJECTILE_HIT_RADIUS = 1.5;
 export const ENEMY_PROJECTILE_TTL_SEC = 3;

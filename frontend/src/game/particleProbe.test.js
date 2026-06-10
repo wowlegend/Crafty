@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { shouldProbeGround, PROBE_NEAR_Y, PROBE_STRIDE } from './particleProbe.js';
+import { shouldProbeGround, PROBE_NEAR_Y, PROBE_STRIDE, PROBE_ABOVE_BAND_MULT } from './particleProbe.js';
 
 describe('shouldProbeGround (pure)', () => {
-  it('never probes above the near-ground band', () => {
-    expect(shouldProbeGround(PROBE_NEAR_Y, 0, 0)).toBe(false);
-    expect(shouldProbeGround(25, 3, 12)).toBe(false);
+  it('above the near-ground band, probes at the SLOW stride (bounded clip vs high terrain — never zero)', () => {
+    // review-fix 2026-06-10: a pure band cutoff let rain clip terrain >12u above the player for
+    // UNBOUNDED frames. Above-band now probes every stride*mult frames: bounded <=16-frame clip.
+    const slow = PROBE_STRIDE * PROBE_ABOVE_BAND_MULT; // 16
+    const probed = Array.from({ length: slow * 2 }, (_, f) => f).filter(f => shouldProbeGround(25, 0, f));
+    expect(probed).toEqual([0, slow]);                            // exactly once per slow window
+    expect(shouldProbeGround(PROBE_NEAR_Y, 1, 0)).toBe(false);    // boundary value uses the slow stride
   });
 
   it('inside the band, probes exactly 1-in-stride particles per frame, rotating by frame', () => {
@@ -22,5 +26,9 @@ describe('shouldProbeGround (pure)', () => {
     }
   });
 
-  it('constants pinned', () => { expect(PROBE_NEAR_Y).toBe(12); expect(PROBE_STRIDE).toBe(4); });
+  it('constants pinned', () => {
+    expect(PROBE_NEAR_Y).toBe(12);
+    expect(PROBE_STRIDE).toBe(4);
+    expect(PROBE_ABOVE_BAND_MULT).toBe(4);
+  });
 });
