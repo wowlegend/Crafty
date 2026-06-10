@@ -54,9 +54,12 @@ export function PhantomBlockSystem() {
     <group ref={groupRef}>
       {active && (
         <mesh ref={spinRef} castShadow>
-          {/* the grabbed block (M1 placeholder color; M3 reads the looked-at block, M7 polishes the look) */}
+          {/* the grabbed block (tint = the looked-at block when known). M7: a faint EMISSIVE lift
+              from the block's own tint so the "WHAT am I holding" identity survives night siege
+              lighting — far below bloom threshold (the rim stays the only glow; design lock §2). */}
           <boxGeometry args={[0.85, 0.85, 0.85]} />
-          <meshStandardMaterial color={color} roughness={0.7} metalness={0.05} />
+          <meshStandardMaterial color={color} roughness={0.7} metalness={0.05}
+            emissive={color} emissiveIntensity={0.22} />
           {/* the kinetic rim — a faint violet additive shell (the grade-resistant element/identity layer) */}
           <mesh scale={1.12}>
             <boxGeometry args={[0.85, 0.85, 0.85]} />
