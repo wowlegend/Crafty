@@ -37,7 +37,11 @@
 >    26-30): AFTER frames are in beside the BEFOREs** (`after-t1-locked-1.png` = the night grass-block
 >    identity restored; `flash-slam-v2-*` = the impact glint+bloom; the full flash envelope is numeric —
 >    see the design doc). In-playtest: hurl a mob into your wall and watch for the gold WALL HIT! + the
->    bigger flash — that's the 3x landing. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    bigger flash — that's the 3x landing. **AUDIO (2026-06-10, the interleave unit): the game now SOUNDS its
+>    Aspects** — the roar finally roars (low feral sweep), grab chirps a whole-tone shimmer (the voidhand
+>    motif), hurl whooshes, slam thumps with the camera kick, anvil hits ping gold. All synthesized in-engine
+>    (#74 loop decision: ALL-SYNTH — external gen rejected v1, reversal = S4 side-by-side). EAR CHECK: do the
+>    five read as one coherent family with the existing pad/arp? Tunables = the generate*Sound builders. Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
