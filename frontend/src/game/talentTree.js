@@ -46,6 +46,8 @@ export const ASPECT_TREES = [
       { id: 'elemancer_focus', name: 'Elemental Focus', desc: '+4 Intellect per rank — greater spell power and a deeper mana pool.', limit: 3, prereq: null, effect: { stat: 'intellect', perRank: 4 } },
       { id: 'elemancer_volatile', name: 'Volatile Edge', desc: '+3 Agility per rank — volatile elements crit more often.', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 3 } },
       { id: 'elemancer_cataclysm', name: 'Cataclysm', desc: '+3 Intellect per rank — channel cataclysmic elemental force.', limit: 2, prereq: 'elemancer_focus', effect: { stat: 'intellect', perRank: 3 } },
+      // S2-B4-M2: the effect-less unlock (the 4x pattern) — the kit gates on talents, not stats.
+      { id: 'elemancer_imbue', name: 'Elemental Imbue', desc: 'Unlock IMBUE — charge your next cast to paint an element zone into the world (Z).', limit: 1, prereq: 'elemancer_focus' },
     ],
   },
 ];

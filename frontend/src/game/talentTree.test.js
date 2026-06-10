@@ -151,3 +151,20 @@ describe('S2-B3-M2: soulbind_snare + soulbind_pack (the snare unlock + the +1-ca
     expect(foldTalentEffects(base, { soulbind_snare: 1, soulbind_pack: 1 })).toEqual(base);
   });
 });
+
+describe('S2-B4-M2: elemancer_imbue (the imbue unlock)', () => {
+  const elemancer = ASPECT_TREES.find((t) => t.aspect === 'elemancer');
+  const imbue = elemancer.nodes.find((n) => n.id === 'elemancer_imbue');
+
+  it('is a pure unlock (effect-less, limit 1, prereq Elemental Focus) — the 4x pattern', () => {
+    expect(imbue).toBeDefined();
+    expect(imbue.effect).toBeUndefined();
+    expect(imbue.limit).toBe(1);
+    expect(imbue.prereq).toBe('elemancer_focus');
+  });
+  it('folds to NOTHING when unlocked (fold-tolerance)', () => {
+    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
+    expect(() => foldTalentEffects(base, { elemancer_imbue: 1 })).not.toThrow();
+    expect(foldTalentEffects(base, { elemancer_imbue: 1 })).toEqual(base);
+  });
+});
