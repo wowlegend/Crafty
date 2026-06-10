@@ -86,3 +86,15 @@ describe('active subscribe/notify (reactive projection bridge)', () => {
     unsub();
   });
 });
+
+describe('S2-B3-M4: the snare intent', () => {
+  it("INTENT_KEYS carries 'snare' (the Aspect-verb row: roar, grab, snare)", () => {
+    expect(INTENT_KEYS).toContain('snare');
+  });
+  it('snare sets, reads back, and resets like every intent', () => {
+    setIntent('snare', true);
+    expect(getInput().snare).toBe(true);
+    resetInput();
+    expect(getInput().snare).toBe(false);
+  });
+});

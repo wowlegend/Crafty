@@ -403,6 +403,12 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('grab', true);
       }
 
+      // S2-B3-M4: snare -> the abstract 'snare' intent (SOULBIND SM in useFrame).
+      // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is double-bound legacy tame — avoided.)
+      if (e.code === 'KeyX') {
+        setIntent('snare', true);
+      }
+
       if (e.code === 'KeyF') {
         triggerMeleeAttack();
       }
@@ -425,6 +431,10 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'KeyV') {
         setIntent('grab', false);
+      }
+
+      if (e.code === 'KeyX') {
+        setIntent('snare', false);
       }
     };
     // #72 VERB ROUTER: ONE listener, one click -> exactly ONE verb (design-of-record:

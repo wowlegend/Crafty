@@ -37,7 +37,7 @@
  * a deeper abstraction than the reserved attack/cast (which fire imperatively), and touch-ready.
  * @type {readonly string[]}
  */
-export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar', 'grab'];
+export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar', 'grab', 'snare'];
 
 /**
  * Module singleton — the one live intent object. Built from INTENT_KEYS (all
