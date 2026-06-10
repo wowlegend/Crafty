@@ -70,13 +70,20 @@
 >    (3) the 3-hybrid roster taste (Dreadweaver/Bonehide Bulwark/Marrowspinner) + spectral jade #3DFFB0;
 >    (4) squad cap 2+1-talent, costs 35/50. Also locked en route: kill-bus killer-attribution ships FIRST
 >    (closes an ally-AFK-farm exploit that exists the moment any ally can kill).
-> 5. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
-> 6. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
+> 5. **🜔 ELEMANCER (B4) design batch (2026-06-10 — the loop proceeds on the recs):** the design-of-record
+>    is `docs/superpowers/specs/2026-06-10-crafty-s2b4-elemancer-design.md`. The headline: v1 is an
+>    OVERLAY-ONLY chemistry Aspect (zero voxel edits — your iPad perf gate stays respected; real terrain
+>    mutation is a designed v2 seam). Your calls (§8): (1) the fantasy honesty — pristine trees DON'T burn
+>    in v1; fire spreads along YOUR built wood + reagent blocks (rec YES: building becomes the fuel);
+>    (2) the Resonance meter banks from BUILD verbs, not kills (rec YES — the novel economy);
+>    (3) white-gold #F5D76E identity + the four zone looks (judged at M6's showcase card); (4) the tunables.
+> 6. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
+> 7. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
 >    fully rewritten as a LIVING plan (v1 preserved at `git show ddfdf96:SOTA-INITIATIVE.md`). One NEW
 >    loop-PROPOSED policy inside it needs your eventual yes/no: **S3 early-entry relaxation** — recorded
 >    decision stays "S3 after ALL 4 Aspects"; proposed escape hatch = enter at ≥3 Aspects IF a forcing event
 >    lands (touch becomes load-bearing externally, or a hard perf wall). Reversal = delete the clause.
-> 7. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
+> 8. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
 >    exposure — confirm transfer to loop, or dismiss) · the forced-med/low tier baselines from S2-A-M4b
 >    (ratify into the gate, or hand the call to the loop).
 >
