@@ -18,6 +18,8 @@ describe('voidhand no-re-mesh gate', () => {
     'game/voidhand.js',           // the pure grab SM
     'game/kinetic.js',            // the kinetic economy
     'world/PhantomBlockSystem.jsx', // the held-phantom render proxy
+    'Components.jsx',             // the SM WIRING surface — where M3 HURL/SLAM lands; was un-gated
+                                  // (STATE-REVIEW-2026-06-10 #9; full repo-wide inversion = #69)
   ];
 
   for (const rel of GATED) {
