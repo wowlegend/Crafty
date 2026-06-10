@@ -180,7 +180,8 @@ function GameApp({ experienceSystem }) {
         s.questState !== prevS.questState ||
         s.ferocityBanked !== prevS.ferocityBanked || // S2-B1-M4: a day-banked roar survives a tab-close
         s.kineticBanked !== prevS.kineticBanked || // S2-B2-M4: a day-banked kinetic charge survives a tab-close
-        s.soulBanked !== prevS.soulBanked // S2-B3-M2: twin
+        s.soulBanked !== prevS.soulBanked || // S2-B3-M2: twin
+        s.resonanceBanked !== prevS.resonanceBanked // S2-B4-M2: twin
       ) {
         autosave.schedule();
       }

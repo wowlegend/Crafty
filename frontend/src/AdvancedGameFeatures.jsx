@@ -69,6 +69,8 @@ export const useSurvivalMode = (isDay) => {
             useGameStore.getState().setKineticBanked(0);
             // S2-B3-M2: Soul joins the dawn bleed (the same no-carry contract).
             useGameStore.getState().setSoulBanked(0);
+            // S2-B4-M2: Resonance joins too — yesterday's building charge doesn't carry.
+            useGameStore.getState().setResonanceBanked(0);
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a

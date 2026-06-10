@@ -43,6 +43,7 @@ export function buildSaveData(state, { position } = {}) {
       ferocityBanked: state.ferocityBanked, // S2-B1-M4 (clamped+rounded on load)
       kineticBanked: state.kineticBanked, // S2-B2-M4 (twin; clamped+rounded on load)
       soulBanked: state.soulBanked, // S2-B3-M2 (twin)
+      resonanceBanked: state.resonanceBanked, // S2-B4-M2 (twin)
     },
     game_state: {
       gameMode: state.gameMode,
