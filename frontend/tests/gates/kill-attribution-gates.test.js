@@ -28,9 +28,14 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     expect(npc).toMatch(/emitMobKill\(entity\.type, \[entity\.position\.x, entity\.position\.y, entity\.position\.z\], source\)/);
   });
 
-  it('the meter accruals and quest credit filter on player kills', () => {
+  it('EVERY meter accrual subscriber filters on player kills (self-extending invariant)', () => {
     const agf = read('AdvancedGameFeatures.jsx');
-    expect((agf.match(/source === 'player' && s\.isDay && !isCaptureMode\(\)/g) || []).length).toBe(2); // ferocity + kinetic
+    // The invariant is per-subscriber, not a fixed meter count: each kill-bus accrual hook in AGF
+    // must carry the attribution filter (ferocity + kinetic + soul today; future meters auto-gated).
+    const subscribers = (agf.match(/subscribeMobKill\(/g) || []).length;
+    const filtered = (agf.match(/source === 'player' && s\.isDay && !isCaptureMode\(\)/g) || []).length;
+    expect(subscribers).toBeGreaterThanOrEqual(3);
+    expect(filtered).toBe(subscribers);
     expect(read('QuestSystem.jsx')).toMatch(/if \(source !== 'player'\) return;/);
   });
 });

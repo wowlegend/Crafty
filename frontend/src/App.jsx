@@ -7,7 +7,7 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
-import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades, useFerocityAccrual, useKineticAccrual } from './AdvancedGameFeatures';
+import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades, useFerocityAccrual, useKineticAccrual, useSoulAccrual } from './AdvancedGameFeatures';
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
@@ -132,6 +132,7 @@ function GameApp({ experienceSystem }) {
   const survivalMode = useSurvivalMode(gameState.isDay);
   useFerocityAccrual(); // S2-B1-M4: subscribe the kill-bus -> bank Ferocity on day kills
   useKineticAccrual(); // S2-B2-M4: twin — bank Kinetic on day kills (spent per combat grab)
+  useSoulAccrual(); // S2-B3-M2: twin — bank Soul on day kills (spent per bind/fuse)
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
   const petSystem = usePetSystem();
   const spellUpgrades = useSpellUpgrades();
@@ -177,7 +178,8 @@ function GameApp({ experienceSystem }) {
         s.inventory !== prevS.inventory ||
         s.questState !== prevS.questState ||
         s.ferocityBanked !== prevS.ferocityBanked || // S2-B1-M4: a day-banked roar survives a tab-close
-        s.kineticBanked !== prevS.kineticBanked // S2-B2-M4: a day-banked kinetic charge survives a tab-close
+        s.kineticBanked !== prevS.kineticBanked || // S2-B2-M4: a day-banked kinetic charge survives a tab-close
+        s.soulBanked !== prevS.soulBanked // S2-B3-M2: twin
       ) {
         autosave.schedule();
       }

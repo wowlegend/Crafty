@@ -8,6 +8,7 @@ import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
+import { clampSoul } from '../game/soul.js';
 
 export const EQUIPMENT_STATS = {
     // Weapons
@@ -381,6 +382,10 @@ export const useGameStore = create((set, get) => ({
     kineticBanked: 0,
     setKineticBanked: (v) => set({ kineticBanked: clampKinetic(v) }),
     accrueKinetic: (delta) => set((s) => ({ kineticBanked: clampKinetic(s.kineticBanked + delta) })),
+    // S2-B3-M2: the Soul bank (SOULBIND) — the kinetic triplet's twin.
+    soulBanked: 0,
+    setSoulBanked: (v) => set({ soulBanked: clampSoul(v) }),
+    accrueSoul: (delta) => set((s) => ({ soulBanked: clampSoul(s.soulBanked + delta) })),
     enterBeastForm: (element) => {
         if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);
@@ -773,6 +778,7 @@ export const useGameStore = create((set, get) => ({
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
             const ferocityBanked = clampFerocity(prog?.ferocityBanked ?? state.ferocityBanked); // M4: clamp+round on load
             const kineticBanked = clampKinetic(prog?.kineticBanked ?? state.kineticBanked); // S2-B2-M4: twin
+            const soulBanked = clampSoul(prog?.soulBanked ?? state.soulBanked); // S2-B3-M2: twin
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -827,6 +833,7 @@ export const useGameStore = create((set, get) => ({
                 lastRewardedNight,
                 ferocityBanked,
                 kineticBanked,
+                soulBanked,
                 chests,
                 maxHealth,
                 maxMana,

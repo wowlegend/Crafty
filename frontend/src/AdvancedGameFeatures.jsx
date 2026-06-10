@@ -14,6 +14,7 @@ import { ASPECT_TREES } from './game/talentTree.js';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { ferocityForKill } from './game/ferocity.js';
 import { kineticForKill } from './game/kinetic.js';
+import { soulForKill } from './game/soul.js';
 
 // S2-B1-M4: bank Ferocity on a DAY mob-kill (via the M3.5 fan-out bus). Day-only so the "bank in the
 // day, unleash in the siege" loop holds; capture-guarded so the visual gate is unaffected. Mount once
@@ -27,6 +28,14 @@ export const useFerocityAccrual = () => {
 };
 
 // S2-B2-M4: the Kinetic twin — day kills bank grab charge (spent per combat grab, dawn-bled).
+export const useSoulAccrual = () => {
+    useEffect(() => subscribeMobKill((mobType, _pos, source) => {
+        const s = useGameStore.getState();
+        // S2-B3: only YOUR kills bank Soul (the M1 attribution contract)
+        if (source === 'player' && s.isDay && !isCaptureMode()) s.accrueSoul(soulForKill(mobType));
+    }), []);
+};
+
 export const useKineticAccrual = () => {
     useEffect(() => subscribeMobKill((mobType, _pos, source) => {
         const s = useGameStore.getState();
@@ -58,6 +67,8 @@ export const useSurvivalMode = (isDay) => {
             useGameStore.getState().setFerocityBanked(0);
             // S2-B2-M4: Kinetic mirrors Ferocity at dawn (Kevin Decision #2) — no carry across nights.
             useGameStore.getState().setKineticBanked(0);
+            // S2-B3-M2: Soul joins the dawn bleed (the same no-carry contract).
+            useGameStore.getState().setSoulBanked(0);
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a
