@@ -1435,7 +1435,7 @@ const StableMagicHands = ({ selectedBlock, attackType, attackStartTime }) => {
               <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
-            <pointLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} castShadow />
+            <pointLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} />
             <SpellLeftHandEffects spellType={activeSpell} />
           </group>
         )}
