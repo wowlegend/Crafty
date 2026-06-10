@@ -51,8 +51,9 @@
 >    is unlocked. **EYEBALL ASK (2 min, now with the showcase shortcut — `window.__craftyTest.call('soulbindShowcase')` in the dev console renders the 5-creature judge card):** the loop's headless judges verified FUNCTION (mesh census:
 >    allies render; fusion births hybrids live) but a clean AESTHETIC frame defeated 4 instruments — in
 >    YOUR playtest please eyeball: the jade family (tether/tint/bar) reads as ONE Aspect? the 3 hybrid
->    silhouettes read distinct? (A deterministic ?showcase=soulbind dev route is queued in M7 as the
->    proper fixture.) Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
+>    silhouettes read distinct? (The showcase fixture shipped — the console shortcut above.) **FEEL PASS (post-Aspect): allies now
+>    visibly SWING (a squash-stretch pulse on each attack) and binding/fusion lands a jade halo ceremony —
+>    watch for both in the siege.)** Also: cool-rim ice/lightning in live play · punchy glow in-world · the FPV
 >    beast-form interim treatment once #71 ships · mob knockback/feel after the #68 15Hz-AI change ·
 >    **#72 click-feel (2026-06-10):** every click now routes to exactly ONE verb (swinging at mobs can't
 >    erode your walls; casts can't place blocks; chest-open is occlusion-correct) — verify mine/place/
