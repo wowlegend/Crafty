@@ -223,7 +223,7 @@ export const DeathScreen = ({ onRespawn }) => {
                 <motion.button
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 1 }}
+                    transition={{ delay: 0.15 }} // KEVIN-FIX C4: impatient dead-clicks must hit the BUTTON
                     onClick={onRespawn}
                     className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg text-xl transition-all"
                 >

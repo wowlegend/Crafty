@@ -173,7 +173,6 @@ export function MenuSystem({
             onOpenWorldManager={() => {
               gameState.setShowSettings(false);
               gameState.setShowWorldManager(true);
-              setIsPointerLocked(false);
             }}
             onOpenCredits={() => {
               gameState.setShowSettings(false);
@@ -187,7 +186,11 @@ export function MenuSystem({
           <WorldManager
             gameState={gameState}
             onWorldLoad={gameState.loadWorldData}
-            onClose={() => gameState.setShowWorldManager(false)}
+            onClose={() => {
+              gameState.setShowWorldManager(false);
+              // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
+              if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+            }}
           />
         )}
         {gameState.showCredits && (
@@ -208,13 +211,19 @@ export function MenuSystem({
           onClose={() => {
             gameState.setShowTradingInterface(false);
             gameState.setSelectedVillager(null);
+            // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
+            if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
           }}
         />
       )}
 
       <AuthModal
         isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        onClose={() => {
+          setShowAuthModal(false);
+          // KEVIN-FIX C4: relock only mid-game (the title-menu auth path must NOT lock)
+          if (gameState.gameStarted && gameState.isAlive && gameState.requestPointerLock) gameState.requestPointerLock();
+        }}
       />
 
       <AnimatePresence>
@@ -283,7 +292,7 @@ export function MenuSystem({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.5 }}
                   onClick={() => {
-                    setIsPointerLocked(true);
+                    // KEVIN-FIX C3: the lock state follows reality (pointerlockchange), not hope.
                     if (gameState.requestPointerLock) {
                       gameState.requestPointerLock();
                     } else if (document.body.requestPointerLock) {

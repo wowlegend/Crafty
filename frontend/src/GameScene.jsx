@@ -823,10 +823,16 @@ export function GameScene({
 
         <WeatherSystem />
 
+        {/* KEVIN-FIX C4: selector="#lock-target-none" (a never-matching id) — drei attaches its
+            document-wide click->lock() handler UNGATED by `enabled`; without a selector EVERY
+            click (settings, inventory, the death screen) re-locked the pointer. Every legitimate
+            lock entry has an explicit requestPointerLock site. `enabled` is also gone: an
+            always-connected PLC keeps its own pointerlockchange listener attached, so its
+            internal lock state can't go stale across the death/respawn boundary. */}
         <PointerLockControls 
           ref={controlsRef}
           makeDefault 
-          enabled={gameState.isAlive} 
+          selector="#lock-target-none"
           minPolarAngle={0.05} 
           maxPolarAngle={Math.PI - 0.05} 
         />
