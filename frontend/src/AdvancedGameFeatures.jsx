@@ -11,6 +11,7 @@ import { TIERS } from './render/quality';
 import { Panel, Button, Slot, StatBar, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { ASPECT_TREES } from './game/talentTree.js';
+import { ASPECT_GUIDE } from './game/aspectGuide.js';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { ferocityForKill } from './game/ferocity.js';
 import { kineticForKill } from './game/kinetic.js';
@@ -1178,9 +1179,9 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
                         <div>
                             <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide text-accent">
-                                <Icon name="sparkles" size={28} className="flex-none" /> Class Skill Talent Tree
+                                <Icon name="sparkles" size={28} className="flex-none" /> Aspects — Talent Trees
                             </h2>
-                            <p className="text-text-muted text-xs mt-1">Spend Talent Points earned by leveling up to unlock powerful elemental abilities</p>
+                            <p className="text-text-muted text-xs mt-1">Four powers, four keys. Each Aspect banks its own meter and spends it on a signature verb — the HOW IT PLAYS card in each column shows the loop.</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <Panel variant="inset" className="px-4 py-2 bg-slot text-center">
@@ -1205,6 +1206,24 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                     {branch.icon && <Icon name={branch.icon} size={18} className="flex-none" />}
                                     <span>{branch.title}</span>
                                 </h3>
+                                {/* the Aspect-UX clarity pass: HOW IT PLAYS (game/aspectGuide.js) */}
+                                {ASPECT_GUIDE[branch.aspect] && (
+                                    <Panel variant="inset" className="p-3 bg-panel-inset">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">How it plays</span>
+                                            <span className={`font-display text-sm px-2 py-0.5 rounded border-chrome border-ink bg-slot ${branch.accent}`}>{ASPECT_GUIDE[branch.aspect].key}</span>
+                                        </div>
+                                        <div className={`text-[10px] font-bold mb-1.5 ${branch.accent}`}>{ASPECT_GUIDE[branch.aspect].meter}</div>
+                                        <ol className="flex flex-col gap-1">
+                                            {ASPECT_GUIDE[branch.aspect].steps.map((step, si) => (
+                                                <li key={si} className="text-text-muted text-[11px] leading-snug flex gap-1.5">
+                                                    <span className={`font-display flex-none ${branch.accent}`}>{si + 1}.</span>
+                                                    <span>{step}</span>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </Panel>
+                                )}
                                 <div className="flex flex-col gap-3.5">
                                     {branch.nodes.map((node) => {
                                         const currentLvl = unlockedTalents[node.id] || 0;
