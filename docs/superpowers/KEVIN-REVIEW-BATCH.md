@@ -48,7 +48,14 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. ****🜔 ELEMANCER M6 (the look) eyeball cue:** zones now RENDER — element-colored breathing rings on
+>    is unlocked. ****🏆 THE SPINE IS COMPLETE — the ELEMANCER playtest protocol (~4 min):** unlock Elemental Focus →
+>    Elemental Imbue in the talent panel (the HOW IT PLAYS card is right above). Build by day — watch
+>    the white-gold bar fill from mining/placing. Press Z (the ring haloes the crosshair), cast at the
+>    ground: the zone paints + its voice plays. Try: 1 (fire — the burn zone chars the ground when it
+>    dies), 2 onto a fire zone (ice — STEAM, both vanish), 4 then 1 onto the rune (arcane — the next
+>    zone comes out BIGGER), 3 near water (lightning pulses). Mobs crossing burn; frozen mobs crawl.
+>
+> **🜔 ELEMANCER M6 (the look) eyeball cue:** zones now RENDER — element-colored breathing rings on
 >    ink skirts (fire orange/ice blue/lightning yellow/arcane violet), char scorch where fires burned
 >    out, the four synth voices at spawn, the white-gold Resonance bar. The judge card verified
 >    color/geometry; the EMISSIVE pop is night-context — eyeball one night siege with zones down:

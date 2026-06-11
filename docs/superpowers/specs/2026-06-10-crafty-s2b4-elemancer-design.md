@@ -1,12 +1,20 @@
 # Crafty S2-B4 — ELEMANCER (terrain chemistry) — design of record
 
-> **Status (2026-06-10): DESIGN COMMITTED (loop self-gate per charter §5).** Produced by a 4-lens design
-> workflow vs LIVE code (voxel-remesh · element-combat · experience-content · adversarial-scope; 450k
-> tokens, 130 file reads) + orchestrator synthesis. Parent: the S2 master spec §4 B4. **THE CENTRAL
-> DELIVERABLE IS THE v1/v2 SPLIT:** v1 ships with ZERO voxel edits / ZERO worker messages / ZERO re-mesh
-> (inside the desktop-proven envelope, no iPad number needed); v2 (real terrain mutation) is a DESIGNED
-> SEAM behind the parked real-iPad perf gate. NEXT: Kevin §8 batch (async) → per-milestone plans → build,
-> exploit-closers first.
+> **🏆 ASPECT COMPLETE (2026-06-11, autonomous loop iters 62-82): M1-M7 ALL SHIPPED — AND WITH IT THE
+> FOUR-ASPECT SPINE.** The full kit is live: build by day to bank RESONANCE (the only build-verb
+> economy) → press Z to IMBUE (the white-gold ring haloes the crosshair) → the cast's impact paints an
+> ELEMENT ZONE — burning DoT that scorches char into your land, frozen slow-fields, conductive pulses,
+> the arcane rune that lures and AMPLIFIES — with combinatorial chemistry (fire+ice annihilate to
+> steam; the rune is consumed by what touches it), four synth voices, ink-skirted element-colored
+> rings, and the v1 promise held: ZERO voxel edits / ZERO worker traffic, gate-enforced from birth.
+> The review-before-build pattern caught 4 would-have-shipped render bugs pre-build (the mount-site
+> trap, the r172 instanceColor crash, the rotated-parent swizzle, the dawn char race) — zero shipped
+> render-bug families this Aspect. **783→831+ unit · 23 gate files · visual 13/13 — zero re-baselines.**
+> Parked: reagent blocks + frost plates (v1.5) · the v2 voxel-mutation seam (behind the iPad number) ·
+> the heightGrid hazard-bias-if-needed · the night-siege emissive eyeball (KRB). Original header below.
+>
+> *(Original status:)* DESIGN COMMITTED (loop self-gate per charter §5). 4-lens workflow vs LIVE code +
+> orchestrator synthesis. Parent: the S2 master spec §4 B4. The central deliverable: the v1/v2 split.
 
 ## 0. The fantasy + the v1 stance
 
@@ -87,7 +95,7 @@ never pristine trees; that honesty is recorded, not hidden.
 | M4 ✅ | The zone bridge (15Hz accumulator: DoT/slow/chain/lure; zoneSlowMult replaces the dead mobSlowEffects; hazard cells bias the AI heightGrid — sieges path around fire) | wiring tests + the mobsData consumer lock |
 | M5 ✅ | IMBUE end-to-end (KeyZ intent + the armed reticle + the surfaceHint thread through the #72 cast branch + zone spawn at impact) | the verb plays |
 | M6 ✅ | THE LOOK: the instanced decal pool + char decals + frost plates + the rune + SFX + the elemancerShowcase card (the sky-studio family) | the judge card + visual 13/13 |
-| M7 | Reagent blocks (oil-wood/ice-crystal hotbar) + balance vs siegeParams + 🏆 the Aspect close | the budget table + doc-currency |
+| M7 ✅ | Balance vs siegeParams + 🏆 the Aspect close. **REAGENTS → v1.5** (the pre-agreed cut: a new block TYPE needs atlas+worker work — the risk-class this Aspect avoids; player-placed wood is already the honest reagent for the v1.5 fire-spread seam). **THE BUDGET TABLE (verdict: SHIP AS-SPECCED):** burning ≈ 13 dps per in-zone mob (BURN_TICK 4 × ~3.3Hz) · conductive ≈ 20 dps (the strongest, bounded by ttl 8 + the 30 price) · frozen = 0.4× speed (the tactical star — CC not DPS) · vs hostile HP 60-100 with blind-pathing crossing dwell ~1-2s ≈ 15-25 damage/crossing. The economy bound: 30/zone on a 100 bank fed by build verbs ≈ 3-9 zones/day — priced area-denial + CC, not a turret (player sustained ≈ 30-60 dps focused — zones never out-DPS the player). The four dampers: dwell-bounded DoT · the 8-cap · the dawn-bled bank · 'hazard' banks nothing. All Kevin-tunable. |
 
 **The pre-agreed first cut:** the reagent blocks (M7) → v1.5 if anything slips; the zones stand alone.
 
