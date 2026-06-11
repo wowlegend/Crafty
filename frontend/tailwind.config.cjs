@@ -43,6 +43,7 @@ module.exports = {
         ferocity: c('--ui-ferocity'),
         kinetic: c('--ui-kinetic'),
         soul: c('--ui-soul'),
+        resonance: c('--ui-resonance'),
         rarity: {
           common: c('--ui-rarity-common'),
           rare: c('--ui-rarity-rare'),

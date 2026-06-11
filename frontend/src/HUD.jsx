@@ -328,7 +328,19 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
     return () => cancelAnimationFrame(animFrame);
   }, [treasureChests, bossSystem]);
 
+  const imbueArmed = useGameStore((s) => s.imbueArmed); // S2-B4-M5: the armed-reticle tell (edge-written)
+
   return (
+    <>
+    {/* S2-B4-M5: the IMBUE tell — a white-gold ring at screen center while the latch is armed
+        (it haloes the pointer-locked plus crosshair below). imbueArmed is edge-written only and
+        never set in capture, so the 13 baselines are untouched. */}
+    {imbueArmed && (
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
+        <div className="w-5 h-5 rounded-full border-2 border-resonance shadow-elev-sm"></div>
+        <span className="mt-1 text-[10px] font-bold tracking-widest text-resonance">IMBUE</span>
+      </div>
+    )}
     <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
       <div className="w-[320px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
         {/* Alignment reticle line */}
@@ -337,6 +349,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
       </div>
     </div>
+    </>
   );
 });
 

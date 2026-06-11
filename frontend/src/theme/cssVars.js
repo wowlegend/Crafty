@@ -39,6 +39,7 @@ const COLOR_VARS = {
   '--ui-ferocity': C.ferocity,
   '--ui-kinetic': C.kinetic,
   '--ui-soul': C.soul,
+  '--ui-resonance': C.resonance,
   '--ui-rarity-common': C.rarity.common,
   '--ui-rarity-rare': C.rarity.rare,
   '--ui-rarity-epic': C.rarity.epic,

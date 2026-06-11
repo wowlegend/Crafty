@@ -77,13 +77,19 @@
 >    in v1; fire spreads along YOUR built wood + reagent blocks (rec YES: building becomes the fuel);
 >    (2) the Resonance meter banks from BUILD verbs, not kills (rec YES — the novel economy);
 >    (3) white-gold #F5D76E identity + the four zone looks (judged at M6's showcase card); (4) the tunables.
-> 6. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
-> 7. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
+> 6. **🜔 ELEMANCER M5 playtest cue (2026-06-10):** the verb PLAYS — mine/place by day to bank
+>    Resonance (watch it on the save), unlock Elemental Imbue (after Elemental Focus), press Z (the
+>    white-gold IMBUE ring appears at screen center), cast at the ground: the element's zone paints
+>    in. Fire onto a frozen zone = both vanish (steam); cast onto an arcane rune = the zone comes
+>    out bigger. (Zones are logic-only until M6 paints them — judge by mob behavior: burn ticks,
+>    frozen crawl, the rune draws aggro.)
+> 7. **💰 Standing S4 decisions (unchanged, parked by design):** monetization model · multiplayer scope.
+> 8. **📜 Master-plan v2 rewrite (2026-06-10, under your authority grant) — async ratify:** SOTA-INITIATIVE.md
 >    fully rewritten as a LIVING plan (v1 preserved at `git show ddfdf96:SOTA-INITIATIVE.md`). One NEW
 >    loop-PROPOSED policy inside it needs your eventual yes/no: **S3 early-entry relaxation** — recorded
 >    decision stays "S3 after ALL 4 Aspects"; proposed escape hatch = enter at ≥3 Aspects IF a forcing event
 >    lands (touch becomes load-bearing externally, or a hard perf wall). Reversal = delete the clause.
-> 8. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
+> 9. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
 >    exposure — confirm transfer to loop, or dismiss) · the forced-med/low tier baselines from S2-A-M4b
 >    (ratify into the gate, or hand the call to the loop).
 >
