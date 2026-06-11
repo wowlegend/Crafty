@@ -1,20 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { VOICES } from './audio/synthVoices';
+import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
 
 // Ambient chord progressions for mood adjustments
-const DAY_CHORDS = [
-  [220.00, 329.63, 493.88, 739.99],
-  [261.63, 392.00, 587.33, 880.00]
-];
-const NIGHT_CHORDS = [
-  [146.83, 220.00, 329.63, 349.23],
-  [164.81, 246.94, 369.99, 392.00]
-];
-const BOSS_CHORDS = [
-  [130.81, 164.81, 207.65, 261.63],
-  [146.83, 185.00, 233.08, 293.66]
-];
 
 const SoundContext = createContext();
 
@@ -212,13 +201,8 @@ export const SoundProvider = ({ children }) => {
   }, [volume]);
 
   const getArpeggiatorBpm = () => {
-    const boss = useGameStore.getState().bossActive;
-    const hostiles = useGameStore.getState().activeHostilesCount || 0;
-    if (boss) return 150;
-    if (hostiles >= 6) return 150;
-    if (hostiles >= 3) return 130;
-    if (hostiles >= 1) return 110;
-    return 110;
+    const s = useGameStore.getState();
+    return arpeggiatorBpm(s.bossActive, s.activeHostilesCount || 0);
   };
 
   const stopArpeggiator = () => {
