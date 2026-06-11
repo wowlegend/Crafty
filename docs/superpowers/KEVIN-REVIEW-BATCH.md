@@ -48,7 +48,13 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. ****🛠️ YOUR 2026-06-10 PLAYTEST FIXES — ALL SIX SHIPPED (re-verify protocol, ~3 min):**
+>    is unlocked. ****🜂 YOUR ASPECT-UX ASK — SHIPPED:** the talent panel (the Aspects panel) now opens every column
+>    with a HOW IT PLAYS card: the key (R/V/X/Z), what banks the meter, and the loop in 3-4 steps
+>    (e.g. SOULBIND: weaken to a third [jade bar] → hold X → it fights for you → two together + X =
+>    FUSE). Header retitled — the four-powers/four-keys model is stated in one line. EYEBALL: open the
+>    talent panel; is the loop clear enough that Marcus could run each Aspect from the card alone?
+>
+> **🛠️ YOUR 2026-06-10 PLAYTEST FIXES — ALL SIX SHIPPED (re-verify protocol, ~3 min):**
 >    (1) RESPAWN: die FAR from spawn (>100 blocks out — the bug only triggered there), respawn → you
 >    should land and MOVE immediately; (2) ESC in-game → the PAUSE/settings menu (not the title screen);
 >    close it → you're back in control; (3) open/close EVERY panel (inventory/crafting/magic/build/
