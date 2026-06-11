@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { getLiveZones } from './ElementZoneSystem';
 
-const ZONE_POOL = 24; // the design's decal cap
+const ZONE_POOL = 24; // the design's decal cap (rings + their ink skirts share it)
 const CHAR_POOL = 16; // scorch ring-buffer (oldest-overwritten)
 
 // the world-side element palette (theme/tokens MAGIC family — zones speak ELEMENT colors;
@@ -40,6 +40,7 @@ const _c = new THREE.Color();
  */
 export function ElementZoneRenderSystem() {
   const ringRef = useRef();
+  const skirtRef = useRef();
   const charRef = useRef();
   const prevZonesRef = useRef(new Map()); // id -> {x,y,z,kind} drawn last frame
   const charsRef = useRef([]);            // the scorch ring-buffer
@@ -58,6 +59,11 @@ export function ElementZoneRenderSystem() {
     g.rotateX(-Math.PI / 2);
     return g;
   }, []);
+  const skirtGeo = useMemo(() => {
+    const g = new THREE.CircleGeometry(1.05, 32);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
 
   // r172 creates instanceColor LAZILY on first setColorAt — with zones empty (game start
   // AND every baseline capture) an unguarded instanceColor.needsUpdate would throw every
@@ -72,8 +78,9 @@ export function ElementZoneRenderSystem() {
 
   useFrame((state) => {
     const ring = ringRef.current;
+    const skirt = skirtRef.current;
     const char = charRef.current;
-    if (!ring || !char) return;
+    if (!ring || !char || !skirt) return;
 
     const store = useGameStore.getState(); // transient read (Game-Loop-Isolation)
     const zones = getLiveZones().zones;
@@ -119,9 +126,17 @@ export function ElementZoneRenderSystem() {
       _m.compose(_p, _q, _s);
       ring.setMatrixAt(i, _m);
       ring.setColorAt(i, _c.set(PALETTE[z.kind] || '#ffffff'));
+      // the INK SKIRT: a dark disc under the ring — the toon answer to additive wash-out
+      // (additive color over a bright backdrop reads pastel; over ink it POPS).
+      _p.set(z.pos.x, z.pos.y + 0.05, z.pos.z);
+      _s.set(z.radius, 1, z.radius);
+      _m.compose(_p, _q, _s);
+      skirt.setMatrixAt(i, _m);
     }
     ring.count = n;
+    skirt.count = n;
     ring.instanceMatrix.needsUpdate = true;
+    skirt.instanceMatrix.needsUpdate = true;
     if (ring.instanceColor) ring.instanceColor.needsUpdate = true;
 
     // the scorch
@@ -143,6 +158,9 @@ export function ElementZoneRenderSystem() {
       {/* char FIRST (normal blend under), rings after (additive on top) */}
       <instancedMesh ref={charRef} args={[charGeo, undefined, CHAR_POOL]} count={0} frustumCulled={false}>
         <meshBasicMaterial color={CHAR_INK} transparent opacity={0.5} depthWrite={false} />
+      </instancedMesh>
+      <instancedMesh ref={skirtRef} args={[skirtGeo, undefined, ZONE_POOL]} count={0} frustumCulled={false}>
+        <meshBasicMaterial color="#10131a" transparent opacity={0.42} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={ringRef} args={[ringGeo, undefined, ZONE_POOL]} count={0} frustumCulled={false}>
         <meshBasicMaterial toneMapped={false} transparent opacity={0.55}

@@ -21,6 +21,8 @@ import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
 import { applyFusion } from './game/hybrids';
+import { getLiveZones } from './world/ElementZoneSystem';
+import { spawnZone, clearZones } from './game/elementZones';
 import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
@@ -419,6 +421,29 @@ function GameApp({ experienceSystem }) {
           GameMethods.spawnLootDrop(item, 0, [x, OY, OZ]);
         }
       }
+    });
+    // ELEMANCER-showcase fixture (S2-B4-M6): the four element ZONES judged in a row.
+    // Sky-studio lane x=200 (the next 40u slot). The bridge is capture-gated so the live
+    // registry stays empty in every NORMAL capture; THIS hook injects zones directly via
+    // spawnZone -- the UN-gated renderer (the M6 capture stance: gate the LOGIC, not the
+    // RENDER) draws them with the breathing pulse frozen at now=0. Order puts RESONANT
+    // LAST so the rune can't amplify a neighbor (GAP 7 > every interaction radius).
+    // Ground rings need declination: the camera looks down ~28 degrees. DEV-only.
+    registerTestHook('elemancerShowcase', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);
+      const OX = 200, OY = 146, OZ = -8, GAP = 7;
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
+      enterCaptureMode({ camera: { position: [OX, OY + 7, OZ + 13], lookAt: [OX, OY, OZ] } });
+      const reg = getLiveZones();
+      clearZones(reg);
+      const kinds = ['burning', 'frozen', 'conductive', 'resonant'];
+      kinds.forEach((kind, i) => {
+        spawnZone(reg, { kind, pos: { x: OX + (i - 1.5) * GAP, y: OY, z: OZ } }, 0);
+      });
     });
     // SOULBIND-showcase fixture (S2-B3-M7): the deterministic creature-judge card the M4-M6
     // look-debt forensics proved missing. Sky-studio lane x=160 (clear of character 0 / boss 40 /
