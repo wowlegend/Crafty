@@ -7,6 +7,8 @@ import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
+import { SPELL_TYPES } from './game/spells';
+import { SPARK_PROFILE, ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
 import * as THREE from 'three';
 
@@ -26,83 +28,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const frameCounter = useRef(0);
   const projectilesDirty = useRef(false);
 
-  const SPELL_TYPES = useMemo(() => ({
-    fireball: {
-      color: '#FF4500',
-      trailColor: '#FF6347',
-      particleColor: '#FFD700',
-      glowColor: '#FF6600',
-      speed: 25,
-      size: 1.2,
-      damage: 50,
-      trailLength: 25,
-      particleCount: 15,
-      effect: 'fire',
-      secondary: {
-        type: 'burn',
-        duration: 4,
-        damagePerSecond: 8,
-        color: '#FF4500'
-      }
-    },
-    iceball: {
-      color: '#00BFFF',
-      trailColor: '#87CEEB',
-      particleColor: '#E0FFFF',
-      glowColor: '#00FFFF',
-      speed: 20,
-      size: 1.0,
-      damage: 40,
-      trailLength: 20,
-      particleCount: 12,
-      effect: 'ice',
-      secondary: {
-        type: 'freeze',
-        duration: 5,
-        slowPercent: 70,
-        freezeChance: 0.2,
-        color: '#87CEEB'
-      }
-    },
-    lightning: {
-      color: '#FFD700',
-      trailColor: '#FFFF00',
-      particleColor: '#FFFFE0',
-      glowColor: '#FFFF00',
-      speed: 60,
-      size: 0.8,
-      damage: 75,
-      trailLength: 30,
-      particleCount: 20,
-      effect: 'lightning',
-      secondary: {
-        type: 'chain',
-        maxChains: 3,
-        chainRange: 8,
-        chainDamageReduction: 0.3,
-        stunDuration: 1,
-        color: '#FFFF00'
-      }
-    },
-    arcane: {
-      color: '#9932CC',
-      trailColor: '#DA70D6',
-      particleColor: '#DDA0DD',
-      glowColor: '#FF00FF',
-      speed: 30,
-      size: 1.1,
-      damage: 60,
-      trailLength: 22,
-      particleCount: 14,
-      effect: 'arcane',
-      secondary: {
-        type: 'pierce',
-        pierceCount: 3,
-        lifestealPercent: 15,
-        color: '#DA70D6'
-      }
-    }
-  }), []);
 
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
     let ticksRemaining = Math.floor(duration);
@@ -179,13 +104,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   // per-instance React spheres) and capped at the pool's 120-per-burst ceiling. The pool
   // branches on the type string for its velocity profile (fire ring / ice shards / fast
   // lightning / arcane swirl); the count is multiplied 1.8x on a kill upstream.
-  const SPARK_PROFILE = useMemo(() => ({
-    // [sparkColor, count] per element.
-    fireball:  ['#FF7A1A', 52],
-    iceball:   ['#7FD8FF', 42],
-    lightning: ['#FFF0A0', 48],
-    arcane:    ['#C77DFF', 46],
-  }), []);
 
   // S1-D-M2: cast TELEGRAPH — a flat additive rune-circle that flashes at the caster's
   // muzzle on cast-start (~150ms), the spec §5 "shared shape vocabulary" (rune circles),
@@ -209,7 +127,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       maxAge: 180 // ~150-180ms telegraph onset, within the 120-220ms readability budget
     };
     setTelegraphs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), tele] : [...prev, tele]));
-  }, [SPELL_TYPES]);
+  }, []);
 
   const createSpellImpact = useCallback((position, spellType, wasKill = false) => {
     const spell = SPELL_TYPES[spellType];
@@ -256,7 +174,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       playMagicHit();
       if (spellType === 'fireball') playMagicExplosion();
     }
-  }, [SPELL_TYPES, SPARK_PROFILE, playSpatialSound, playMagicHit, playMagicExplosion]);
+  }, [playSpatialSound, playMagicHit, playMagicExplosion]);
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
@@ -359,7 +277,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       //     pop (camera-shake + bloom-spike are inert in capture by design).
       createSpellImpact(impactPos, spellType, true);
     }});
-  }, [SPELL_TYPES, spawnTelegraph, createSpellImpact]);
+  }, [spawnTelegraph, createSpellImpact]);
 
   useFrame((state, frameDelta) => {
     // S1-D-M2: in capture mode FREEZE the spell clock (delta=0, time=0) so a driven cast
@@ -582,66 +500,7 @@ const _trailUp = new THREE.Vector3(0, 1, 0);
 // pink/pastel sphere. `coreColor` is pushed toward white (the heart should bloom white-hot);
 // `glowColor` carries the element identity at the rim. Core is intentionally a touch LARGER
 // than the colored shape so the bright heart shows through.
-const ENERGY_PROFILE = {
-  fireball: {
-    coreColor: '#FFF4D6',   // white-hot heart (blooms white, edges go orange)
-    glowColor: '#FF7A1A',   // saturated fiery orange shell (spec §4 #FF7A3C, pushed hot)
-    coreIntensity: 6.0,
-    glowIntensity: 4.0,
-    coreScale: 0.62,        // larger hot heart so it dominates + blooms
-    glowScale: 0.92,        // tighter halo (less pink wash)
-    glowOpacity: 0.22,      // restrained outer wash so the hot core wins
-    flicker: 0.18,          // strong fiery turbulence (gameplay only)
-    flickerSpeed: 14,
-    capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
-    shape: 'sphere',
-  },
-  iceball: {
-    coreColor: '#F2FCFF',   // crystalline white heart
-    glowColor: '#3FB7FF',   // cool saturated cyan shell (spec §4 #6FC8FF, pushed saturated)
-    coreIntensity: 5.5,
-    glowIntensity: 3.6,
-    coreScale: 0.58,
-    glowScale: 0.86,
-    glowOpacity: 0.20,
-    flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
-    flickerSpeed: 7,
-    capturePhase: 0.30,
-    shape: 'crystal',
-  },
-  lightning: {
-    coreColor: '#FFFFFF',   // pure electric white heart
-    glowColor: '#86B8FF',   // white-blue electric shell (over the §4 #FFE066 bolt)
-    coreIntensity: 8.0,
-    glowIntensity: 4.0,
-    coreScale: 0.50,
-    glowScale: 0.74,        // thin, jagged — lightning is a hot line, not a ball
-    glowOpacity: 0.18,
-    flicker: 0.34,          // jagged, high-frequency electric jitter (gameplay only)
-    flickerSpeed: 26,
-    capturePhase: 1.10,     // frozen at a jagged-but-flattering peak
-    shape: 'bolt',
-  },
-  arcane: {
-    coreColor: '#FBEEFF',   // luminous near-white violet heart
-    glowColor: '#B84DFF',   // saturated purple-magenta shell (spec §4 #B36BFF, pushed)
-    coreIntensity: 6.0,
-    glowIntensity: 3.8,
-    coreScale: 0.60,
-    glowScale: 0.90,
-    glowOpacity: 0.22,
-    flicker: 0.14,          // gentle swirling pulse
-    flickerSpeed: 10,
-    capturePhase: 0.50,
-    shape: 'swirl',
-  },
-};
 
-const _defaultEnergy = {
-  coreColor: '#FFFFFF', glowColor: '#46E0FF', coreIntensity: 5.0, glowIntensity: 3.4,
-  coreScale: 0.58, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
-  capturePhase: 0.5, shape: 'sphere',
-};
 
 const EnhancedSpellProjectile = React.memo(({ projectile }) => {
   const groupRef = useRef();
@@ -1028,32 +887,6 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
   const wandRef = useRef();
   const gemRef = useRef();
 
-  const WAND_CONFIGS = {
-    fireball: {
-      handleColor: '#8B4513',
-      tipColor: '#FF4500',
-      gemColor: '#FF6347',
-      auraColor: '#FFD700'
-    },
-    iceball: {
-      handleColor: '#4169E1',
-      tipColor: '#00BFFF',
-      gemColor: '#87CEEB',
-      auraColor: '#E0FFFF'
-    },
-    lightning: {
-      handleColor: '#FFD700',
-      tipColor: '#FFFF00',
-      gemColor: '#FFFFE0',
-      auraColor: '#FFFACD'
-    },
-    arcane: {
-      handleColor: '#9932CC',
-      tipColor: '#DA70D6',
-      gemColor: '#DDA0DD',
-      auraColor: '#E6E6FA'
-    }
-  };
 
   const config = WAND_CONFIGS[wandType] || WAND_CONFIGS.fireball;
 
