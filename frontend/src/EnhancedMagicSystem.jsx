@@ -1,4 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { consumeImbueCast } from './game/elemancerChannel';
+import { requestZone } from './game/elemancerChannel';
 import { useFrame } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
@@ -298,7 +300,9 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         age: 0,
         maxAge: 3000,
         trailPositions: [startPos.clone()],
-        lastTrailUpdate: 0
+        lastTrailUpdate: 0,
+        // S2-B4-M5: a latch-armed cast carries its element kind to the impact (null = normal)
+        imbueKind: consumeImbueCast(),
       };
 
       projectilesRef.current.push(newProjectile);
@@ -402,10 +406,20 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
           const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
           if (groundLevel !== null && !isNaN(groundLevel) && projectile.position.y <= groundLevel + 0.5) {
             createSpellImpact(projectile.position, projectile.type);
+            // S2-B4-M5: the imbued impact paints the element zone (the age-out above is a
+            // FIZZLE by design — no zone, no refund; recorded in the M5 plan).
+            if (projectile.imbueKind) {
+              requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+              projectile.imbueKind = null;
+            }
             keep = false;
           }
         } else if (projectile.position.y <= 12.5) {
           createSpellImpact(projectile.position, projectile.type);
+          if (projectile.imbueKind) {
+            requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+            projectile.imbueKind = null;
+          }
           keep = false;
         }
 
@@ -420,6 +434,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
             if (GameMethods.damageMob) {
               const hitEntity = GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type);
               if (hitEntity && hitEntity.health <= 0) wasKill = true;
+            }
+            // S2-B4-M5: a mob hit grounds the zone at the impact point (zone effects are
+            // 2D x/z); null-out so a piercing projectile spawns at most ONE zone.
+            if (projectile.imbueKind) {
+              requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+              projectile.imbueKind = null;
             }
 
             let willPierce = false;
