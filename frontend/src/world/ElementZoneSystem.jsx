@@ -26,13 +26,14 @@ export function ElementZoneSystem() {
   const accumRef = useRef(0);
   const fxAccumRef = useRef(0);
   const prevIsDayRef = useRef(true);
+  const dayMotifPlayedRef = useRef(false); // music-motif v2: the stinger plays on the DAY'S FIRST zone only
 
   useFrame((state, delta) => {
     if (isCaptureMode()) return;
     const store = useGameStore.getState();
 
     // the dawn contract: zones never survive the night->day flip
-    if (store.isDay && !prevIsDayRef.current) clearZones(liveZones);
+    if (store.isDay && !prevIsDayRef.current) { clearZones(liveZones); dayMotifPlayedRef.current = false; }
     prevIsDayRef.current = store.isDay;
 
     accumRef.current += delta;
@@ -48,6 +49,11 @@ export function ElementZoneSystem() {
       // arrives late via a GameScene effect.
       if (z && store.playSpatialSound) {
         store.playSpatialSound(SFX_BY_KIND[z.kind], [z.pos.x, z.pos.y, z.pos.z], 1, 30);
+        // music-motif v2: the ELEMANCER stinger on the day's FIRST zone — chemistry's signature
+        if (!dayMotifPlayedRef.current) {
+          dayMotifPlayedRef.current = true;
+          store.playSpatialSound('motifElemancer', [z.pos.x, z.pos.y, z.pos.z], 1, 40);
+        }
       }
     }
     stepZones(liveZones, now); // (M6 consumes .expired for char decals)

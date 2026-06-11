@@ -481,8 +481,11 @@ export const makeLevelUpSound = (ctx) => {
 };
 
 
+import { MOTIFS } from './aspectMotifs';
+
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
 export const VOICES = {
+  ...MOTIFS, // music-motif v2: the per-Aspect stingers (audio/aspectMotifs.js)
   blockPlace: (ctx) => makeTone(ctx, 200, 0.1, 'square'),
   blockBreak: (ctx) => makeTone(ctx, 150, 0.15, 'sawtooth'),
   footstep: (ctx) => makeNoise(ctx, 0.05),

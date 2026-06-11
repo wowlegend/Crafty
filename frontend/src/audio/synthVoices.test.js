@@ -20,10 +20,11 @@ const ALL_NAMES = [
   'magicCast', 'magicHit', 'magicExplosion', 'magicCharge', 'levelUp',
   'roar', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
   'ignite', 'freeze', 'zap', 'rune',
+  'motifWildheart', 'motifVoidhand', 'motifSoulbind', 'motifElemancer', // music-motif v2
 ];
 
 describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the 26 registered names', () => {
+  it('VOICES holds EXACTLY the 30 registered names', () => {
     expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
   });
   it('every factory returns a sane, audible, unclipped buffer', () => {

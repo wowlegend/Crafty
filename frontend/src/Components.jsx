@@ -16,6 +16,11 @@ import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, de
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
 import { armImbueCast } from './game/elemancerChannel.js';
+
+// music-motif v2: the stinger rarity guards (a stinger repeats no sooner than this)
+const MOTIF_COOLDOWN_SEC = 10;
+let _lastWildheartMotif = -Infinity;
+let _lastVoidhandMotif = -Infinity;
 import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
 import { ecs, alliesQuery } from './ecs/world';
 import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
@@ -635,6 +640,14 @@ export const Player = ({ isWorldBuilt }) => {
           // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
           const rp = st.playerPosition;
           if (st.playSpatialSound && rp) st.playSpatialSound('roar', [rp.x, rp.y, rp.z], 1, 30);
+          // music-motif v2: the WILDHEART stinger under the roar (the transform IS the signature)
+          if (st.playSpatialSound && rp) {
+            const nowS = performance.now() / 1000;
+            if (nowS - _lastWildheartMotif > MOTIF_COOLDOWN_SEC) {
+              _lastWildheartMotif = nowS;
+              st.playSpatialSound('motifWildheart', [rp.x, rp.y, rp.z], 1, 40);
+            }
+          }
         }
         st.setBeastCharging(false); // M7c: anticipation -> BURST + the avatar entrance take over
       } else if (action === 'cancel') {
@@ -697,6 +710,14 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (vaction === 'slam') {
         requestSlam({ x: phantomWorldPos.x, y: phantomWorldPos.y, z: phantomWorldPos.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('slam', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 30); // AUDIO: the heavy thump
+        // music-motif v2: the VOIDHAND stinger on the slam (gravity's signature), 10s-guarded
+        if (stv.playSpatialSound) {
+          const nowS = performance.now() / 1000;
+          if (nowS - _lastVoidhandMotif > MOTIF_COOLDOWN_SEC) {
+            _lastVoidhandMotif = nowS;
+            stv.playSpatialSound('motifVoidhand', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 40);
+          }
+        }
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       } else if (vaction === 'drop' || vaction === 'cancel') {
@@ -789,6 +810,8 @@ export const Player = ({ isWorldBuilt }) => {
         if (hy && stv.playSpatialSound) {
           // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
           stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
+          // music-motif v2: a soul JOINS — the fuse is SOULBIND's signature (rare by its 50-Soul price)
+          stv.playSpatialSound('motifSoulbind', [hy.position.x, hy.position.y, hy.position.z], 1, 40);
         }
         if (hy) fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
       } else if (fsm.channeling && fusePair) {
