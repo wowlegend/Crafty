@@ -48,7 +48,13 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. ****🏆 THE SPINE IS COMPLETE — the ELEMANCER playtest protocol (~4 min):** unlock Elemental Focus →
+>    is unlocked. ****🦴 NEW MOBS (the content interleave):** three new night-siege types — the SKITTERLING (tiny
+>    violet spider-legged swarm), the DUSKHOUND (dark-plum fast quad), the MOSS BRUTE (huge slow tank,
+>    spawns rare via the new weighted table). Duskhound+skeleton FUSE into the GRIMHOUND. Card:
+>    .superpowers/mob-variety-refs/mobs-card-1.png — eyeball IN-GAME at night: do the three read
+>    distinct mid-siege? Is the brute scary enough?
+>
+> **🏆 THE SPINE IS COMPLETE — the ELEMANCER playtest protocol (~4 min):** unlock Elemental Focus →
 >    Elemental Imbue in the talent panel (the HOW IT PLAYS card is right above). Build by day — watch
 >    the white-gold bar fill from mining/placing. Press Z (the ring haloes the crosshair), cast at the
 >    ground: the zone paints + its voice plays. Try: 1 (fire — the burn zone chars the ground when it
