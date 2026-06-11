@@ -484,7 +484,8 @@ export function HUD({
               document.body.requestPointerLock();
             }
           }
-          setIsPointerLocked(true);
+          // KEVIN-FIX C3: no optimistic setIsPointerLocked(true) — pointerlockchange is
+          // the one authoritative writer; a failed lock falls back to click-to-play.
         }} />
       )}
       

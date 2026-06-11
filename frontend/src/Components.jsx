@@ -544,16 +544,24 @@ export const Player = ({ isWorldBuilt }) => {
     const handlePointerLockChange = () => {
       setActive(!!document.pointerLockElement);
     };
+    // KEVIN-FIX C3: the missing FAILURE channel — a rejected requestPointerLock (Chrome's
+    // ~1-2.5s post-ESC cooldown, no-user-activation) could strand active=true with no lock:
+    // crosshair shown, clicks firing, mouse-look dead, no recovery surface.
+    const handlePointerLockError = () => {
+      setActive(false);
+    };
     handlePointerLockChange(); // sync initial active state on mount (single read above)
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
+    document.addEventListener('pointerlockerror', handlePointerLockError);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.removeEventListener('pointerlockerror', handlePointerLockError);
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 

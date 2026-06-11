@@ -83,7 +83,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowSettings(true);
           document.exitPointerLock();
         } else {
-          setActive(true);
+          // KEVIN-FIX C3: request only — the lock-change listener (Components, the one
+          // authority) sets active when the browser GRANTS the lock.
           requestPointerLockSafely(state);
         }
         return;
