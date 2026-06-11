@@ -16,6 +16,9 @@ import { resolve } from 'node:path';
 
 const SRC = resolve(process.cwd(), 'src');
 const magic = () => readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8');
+// S3-M2: the per-element profile DATA lives in game/spellVisualProfiles.js (the de-monolith
+// data pull) — content checks on the profiles read THERE; live-call pins stay on EMS.
+const profiles = () => readFileSync(resolve(SRC, 'game', 'spellVisualProfiles.js'), 'utf8');
 const npc = () => readFileSync(resolve(SRC, 'SimplifiedNPCSystem.jsx'), 'utf8');
 const gameScene = () => readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
 const sparks = () => readFileSync(resolve(SRC, 'world', 'GPUSparkSystem.jsx'), 'utf8');
@@ -32,11 +35,12 @@ describe('S1-D-M1 spell-VFX spine', () => {
   // Per-element spark type profiles must be passed (fire warm / ice shards / lightning
   // fast / arcane swirl) — the GPU pool branches on these type strings.
   it('spell impacts pass per-element spark type profiles', () => {
-    const src = magic();
+    const src = profiles(); // S3-M2: the profile table moved; EMS still applies it (pinned below)
     for (const t of ['fireball', 'iceball', 'lightning', 'arcane']) {
-      expect(src, `spark profile for ${t} expected on the spell-impact path`)
-        .toMatch(new RegExp(`['"\`]${t}['"\`]`));
+      expect(src, `spark profile for ${t} expected in the profiles module`)
+        .toMatch(new RegExp(`${t}:`));
     }
+    expect(magic(), 'EMS must read SPARK_PROFILE on the impact path').toMatch(/SPARK_PROFILE/);
   });
 
   // (b) Camera-shake on spell impact — spells previously never shook.
@@ -198,7 +202,7 @@ describe('S1-D-polish premium-energy spell read', () => {
   // The per-element ENERGY identity is encoded as a config the core reads (hot inner +
   // saturated outer + intensities), keeping fire/ice/lightning/arcane readable + distinct.
   it('per-element energy profiles exist (hot inner core + saturated outer glow)', () => {
-    const src = magic();
+    const src = magic() + profiles(); // S3-M2: the table moved; the union preserves the intent
     expect(src, 'a per-element energy/core profile table must exist')
       .toMatch(/ENERGY_PROFILE|CORE_PROFILE|coreColor/);
     // Spec §4 magic palette anchors (saturated, emissive bloom sources).
@@ -234,10 +238,10 @@ describe('S1-D-polish premium-energy spell read', () => {
   // The richer spark spray must still pass per-element type strings (the pool branches on
   // them for the velocity profile) and a per-element spark count.
   it('impact spark spray is per-element + richer count', () => {
-    const src = magic();
+    const src = magic() + profiles(); // S3-M2: the table moved; the union preserves the intent
     expect(src, 'a per-element spark profile table must exist').toMatch(/SPARK_PROFILE/);
     for (const t of ['fireball', 'iceball', 'lightning', 'arcane']) {
-      expect(src, `spark profile for ${t}`).toMatch(new RegExp(`['"\`]${t}['"\`]`));
+      expect(src, `spark profile for ${t}`).toMatch(new RegExp(`['"\`]?${t}['"\`]?:`));
     }
   });
 });
