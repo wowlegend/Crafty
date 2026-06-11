@@ -430,6 +430,10 @@ export const SoundProvider = ({ children }) => {
     sounds.current.slam = generateSlamSound();
     sounds.current.anvilHit = generateAnvilSound();
     sounds.current.bind = generateBindSound(); // SOULBIND (S2-B3-M4)
+    sounds.current.ignite = generateIgniteSound(); // ELEMANCER (S2-B4-M6)
+    sounds.current.freeze = generateFreezeSound();
+    sounds.current.zap = generateZapSound();
+    sounds.current.rune = generateRuneSound();
   };
 
   const generateTone = (frequency, duration, type = 'sine') => {
@@ -588,6 +592,89 @@ export const SoundProvider = ({ children }) => {
   };
 
   // SOULBIND bind — the grab-chirp's resolved sibling: two whole-tone steps that LAND (binding completes).
+
+  // ELEMANCER (S2-B4-M6): the four element voices — each zone kind speaks at its spawn
+  // moment. All-synth (#74); the bridge plays them spatially at the zone position.
+  const generateIgniteSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.45;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    let lp = 0;
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      // a noise WHOOSH sweeping down (800->300Hz one-pole) + three crackle ticks
+      const cutoff = 800 - 500 * (t / duration);
+      const alpha = Math.min((2 * Math.PI * cutoff) / sampleRate, 1);
+      lp += alpha * ((Math.random() * 2 - 1) - lp);
+      const crackle = (t > 0.12 && t < 0.14) || (t > 0.22 && t < 0.235) || (t > 0.33 && t < 0.345)
+        ? (Math.random() * 2 - 1) * 0.6 : 0;
+      const env = Math.min(t * 30, 1) * Math.exp(-t * 5);
+      d[i] = (lp * 0.85 + crackle) * env * 0.5;
+    }
+    return buffer;
+  };
+
+  const generateFreezeSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.5;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      // a descending crystalline shimmer: 1400->700Hz with a detuned twin
+      const f = 1400 - 700 * (t / duration);
+      const a = Math.sin(2 * Math.PI * f * t);
+      const b = Math.sin(2 * Math.PI * f * 1.007 * t) * 0.7;
+      const sparkle = Math.sin(2 * Math.PI * f * 3 * t) * 0.15 * Math.exp(-t * 8);
+      const env = Math.min(t * 20, 1) * Math.exp(-t * 4);
+      d[i] = (a * 0.4 + b * 0.3 + sparkle) * env * 0.42;
+    }
+    return buffer;
+  };
+
+  const generateZapSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.18;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      // a bright sawtooth snap + a noise transient, fast decay
+      const f = 220;
+      const saw = 2 * (t * f - Math.floor(t * f + 0.5));
+      const snap = t < 0.02 ? (Math.random() * 2 - 1) * 0.8 : 0;
+      const env = Math.exp(-t * 22);
+      d[i] = (saw * 0.5 + snap) * env * 0.5;
+    }
+    return buffer;
+  };
+
+  const generateRuneSound = () => {
+    if (!audioContext.current) return null;
+    const sampleRate = audioContext.current.sampleRate;
+    const duration = 0.7;
+    const frameCount = sampleRate * duration;
+    const buffer = audioContext.current.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      // two soft sines a fifth apart, a slow swell — the catalyst HUM (arcane bends, never bites)
+      const a = Math.sin(2 * Math.PI * 330 * t);
+      const b = Math.sin(2 * Math.PI * 495 * t) * 0.6;
+      const breath = 1 + 0.12 * Math.sin(2 * Math.PI * 6 * t);
+      const env = Math.min(t * 6, 1) * Math.exp(-Math.max(t - 0.35, 0) * 6);
+      d[i] = (a * 0.4 + b * 0.3) * breath * env * 0.38;
+    }
+    return buffer;
+  };
+
   const generateBindSound = () => {
     if (!audioContext.current) return null;
     const sampleRate = audioContext.current.sampleRate;

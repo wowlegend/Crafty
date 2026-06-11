@@ -8,6 +8,7 @@ import { makeZoneRegistry, spawnZone, stepZones, clearZones, applyZoneEffects } 
 import { consumeZoneRequest } from '../game/elemancerChannel';
 
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
+const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
 const FX_TICK_SEC = 0.3;    // zone effects at ~3.3Hz — the React-thrash damper (<=4Hz, load-bearing)
 
 // the LIVE registry — owned here (M6's render reads it transiently; tests own their own instances)
@@ -40,7 +41,15 @@ export function ElementZoneSystem() {
 
     const now = state.clock.getElapsedTime();
     const req = consumeZoneRequest();
-    if (req) spawnZone(liveZones, req, now);
+    if (req) {
+      const z = spawnZone(liveZones, req, now);
+      // M6: the element speaks at its spawn moment (a dedupe-refresh replays — the player
+      // DID cast; an annihilation stays silent steam in v1). Guarded: the sound registry
+      // arrives late via a GameScene effect.
+      if (z && store.playSpatialSound) {
+        store.playSpatialSound(SFX_BY_KIND[z.kind], [z.pos.x, z.pos.y, z.pos.z], 1, 30);
+      }
+    }
     stepZones(liveZones, now); // (M6 consumes .expired for char decals)
 
     if (liveZones.zones.length === 0) return;
