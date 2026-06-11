@@ -86,7 +86,7 @@ never pristine trees; that honesty is recorded, not hidden.
 | M3 ✅ | `game/elementZones.js` pure registry (spawn/TTL/cap/evict/overlap rules: fire+ice annihilate; arcane amplifies) + `elemancerChannel` + the noremesh gate JOINS HERE (before any render) | registry TDD + the gate |
 | M4 ✅ | The zone bridge (15Hz accumulator: DoT/slow/chain/lure; zoneSlowMult replaces the dead mobSlowEffects; hazard cells bias the AI heightGrid — sieges path around fire) | wiring tests + the mobsData consumer lock |
 | M5 ✅ | IMBUE end-to-end (KeyZ intent + the armed reticle + the surfaceHint thread through the #72 cast branch + zone spawn at impact) | the verb plays |
-| M6 | THE LOOK: the instanced decal pool + char decals + frost plates + the rune + SFX + the elemancerShowcase card (the sky-studio family) | the judge card + visual 13/13 |
+| M6 ✅ | THE LOOK: the instanced decal pool + char decals + frost plates + the rune + SFX + the elemancerShowcase card (the sky-studio family) | the judge card + visual 13/13 |
 | M7 | Reagent blocks (oil-wood/ice-crystal hotbar) + balance vs siegeParams + 🏆 the Aspect close | the budget table + doc-currency |
 
 **The pre-agreed first cut:** the reagent blocks (M7) → v1.5 if anything slips; the zones stand alone.

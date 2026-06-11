@@ -48,7 +48,13 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. ****🜂 YOUR ASPECT-UX ASK — SHIPPED:** the talent panel (the Aspects panel) now opens every column
+>    is unlocked. ****🜔 ELEMANCER M6 (the look) eyeball cue:** zones now RENDER — element-colored breathing rings on
+>    ink skirts (fire orange/ice blue/lightning yellow/arcane violet), char scorch where fires burned
+>    out, the four synth voices at spawn, the white-gold Resonance bar. The judge card verified
+>    color/geometry; the EMISSIVE pop is night-context — eyeball one night siege with zones down:
+>    do the rings read premium against dark terrain? (.superpowers/s2b4-elemancer-refs/zones-card-1.png)
+>
+> **🜂 YOUR ASPECT-UX ASK — SHIPPED:** the talent panel (the Aspects panel) now opens every column
 >    with a HOW IT PLAYS card: the key (R/V/X/Z), what banks the meter, and the loop in 3-4 steps
 >    (e.g. SOULBIND: weaken to a third [jade bar] → hold X → it fights for you → two together + X =
 >    FUSE). Header retitled — the four-powers/four-keys model is stated in one line. EYEBALL: open the
