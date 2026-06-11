@@ -264,6 +264,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       const camera = useGameStore.getState().gameCamera;
 
       if (!camera || !spell) return;
+      if (!useGameStore.getState().isAlive) return; // KEVIN-FIX C2: defense in depth
 
       const manaCost = SPELL_MANA_COSTS[spellType] || 15;
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
