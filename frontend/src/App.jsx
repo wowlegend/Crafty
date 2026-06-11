@@ -422,6 +422,22 @@ function GameApp({ experienceSystem }) {
         }
       }
     });
+    // MOB-VARIETY showcase (2026-06-11): the three new types judged in a row at lane x=240.
+    // Raw hostile spawns via store.spawnMob with explicitY (faces +Z toward the camera —
+    // the proven creature-card path); no capture/ally conversion needed. DEV-only.
+    registerTestHook('mobShowcase', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);
+      const OX = 240, OY = 146, OZ = -8, GAP = 5;
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
+      enterCaptureMode({ camera: { position: [OX, OY + 1.8, OZ + 14], lookAt: [OX, OY + 1, OZ] } });
+      ['skitterling', 'duskhound', 'moss_brute'].forEach((type, i) => {
+        if (store.spawnMob) store.spawnMob(OX + (i - 1) * GAP, OZ, type, OY - 0.5);
+      });
+    });
     // ELEMANCER-showcase fixture (S2-B4-M6): the four element ZONES judged in a row.
     // Sky-studio lane x=200 (the next 40u slot). The bridge is capture-gated so the live
     // registry stays empty in every NORMAL capture; THIS hook injects zones directly via
