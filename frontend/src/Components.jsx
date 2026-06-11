@@ -55,7 +55,7 @@ import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
-import { getInput, setIntent, setActive } from './input/inputState';
+import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 
 // Bold-flat UI primitives (S1C-M2a chrome migration)
 import { Panel, Slot, Button, Icon } from './ui/primitives/index.js';
@@ -280,6 +280,9 @@ export const Player = ({ isWorldBuilt }) => {
   const isAlive = useGameStore(state => state.isAlive);
   const lastAliveRef = useRef(true);
   useEffect(() => {
+    // KEVIN-FIX C6: held intents (a W still down at death, a mid-channel verb) must not
+    // persist through the death screen into the respawned run.
+    if (!isAlive && lastAliveRef.current) resetInput();
     if (isAlive && !lastAliveRef.current) {
       spawnPosSet.current = false;
       spawnProbeFailsRef.current = 0;
