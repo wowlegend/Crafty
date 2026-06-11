@@ -1,5 +1,20 @@
 # ELEMANCER M6 — The Look Implementation Plan
 
+> **REVIEW DELTAS (2-lens adversarial workflow wf_ddeb669c-4b9, applied before T1):** (1) MOUNT at the
+> GameScene SCENE ROOT beside GPUSparkSystem — NOT Components (ElementZoneSystem sits inside the player's
+> RigidBody; a transformed parent carries world-positioned rings) and NOT App (DOM layer). (2) PRIME
+> instanceColor at mount (r172 lazy-creates it on first setColorAt — unguarded needsUpdate throws every
+> frame in the empty state = every baseline). (3) The flat orientation is BAKED INTO THE GEOMETRY
+> (geometry.rotateX) — the rotated-parent option swizzles world positions; STRUCK. (4) The dawn char-diff
+> gets a 2-FRAME GRACE after the isDay edge (the renderer mounts before the bridge in tree order — it
+> would consume the flip while zones are still alive, then scorch-stamp every burning zone next frame).
+> ACCEPTED + recorded: annihilation/evict also leave char (fire was there); SFX replays on dedupe-refresh
+> (the player did cast). Resolved: StatBar delta = FILL += resonance:'bg-resonance', ICON_COLOR +=
+> resonance:'text-resonance' (StatBar.jsx:9-10). depthWrite:false on BOTH pools; char mounts BEFORE
+> rings (normal under additive); char y+0.04 vs ring y+0.06. The central capture claim VERIFIED SOUND
+> (the registry provably empty in all 13 states; the deterministic cast carries no imbueKind and never
+> moves; now-substitution matches the GPUSparkSystem/EnhancedMagicSystem precedent exactly).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-10-crafty-s2b4-elemancer-design.md` §2/§3 M6.
 > **REFERENCE-LOCK (charter §look):** the committed visual language is the design §2 + the LIVE element

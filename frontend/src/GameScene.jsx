@@ -17,6 +17,7 @@ import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity, PetEntities } from './AdvancedGameFeatures';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
+import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { captureRandom, isCaptureMode } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
@@ -834,6 +835,7 @@ export function GameScene({
 
         <Suspense fallback={null}>
           <GPUSparkSystem />
+          <ElementZoneRenderSystem />
           <Physics gravity={[0, -30, 0]} paused={isCaptureMode}>
             {import.meta.env.DEV && <PerfProbeSystem />}
             <SpatialAudioController />

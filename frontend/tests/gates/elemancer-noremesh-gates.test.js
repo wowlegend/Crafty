@@ -18,7 +18,7 @@ describe('elemancer no-re-mesh gate', () => {
     'game/elementZones.js',     // the chemistry core (registry + overlap rules)
     'game/elemancerChannel.js', // the zone request transient
     'world/ElementZoneSystem.jsx', // the M4 bridge (chemistry -> combat)
-    // M6 adds the overlay render — extend IN PLACE.
+    'world/ElementZoneRenderSystem.jsx', // the M6 look (rings + char)
   ];
 
   for (const rel of GATED) {
