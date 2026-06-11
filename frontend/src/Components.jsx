@@ -183,6 +183,7 @@ export const Player = ({ isWorldBuilt }) => {
   const soulbindSMRef = useRef(makeSoulbindState()); // S2-B3-M4: the SOULBIND snare SM state
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
+  const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
   const castFiredRef = useRef(false); // stamped by the #72 cast branch; consumed by the latch
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
@@ -281,10 +282,15 @@ export const Player = ({ isWorldBuilt }) => {
   useEffect(() => {
     if (isAlive && !lastAliveRef.current) {
       spawnPosSet.current = false;
+      spawnProbeFailsRef.current = 0;
       if (rigidBodyRef.current) {
         rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
         rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       }
+      // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA — moving
+      // only the body left origin chunks unloaded after a far-from-spawn death, so the
+      // ground probe nulled forever and the frame loop starved before movement code.
+      camera.position.set(0, 121.2, 0);
     }
     lastAliveRef.current = isAlive;
   }, [isAlive]);
@@ -433,7 +439,8 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       if (e.code === 'KeyF') {
-        triggerMeleeAttack();
+        // KEVIN-FIX C2: was fully ungated — fired even dead/in menus.
+        if (getInput().active && useGameStore.getState().isAlive) triggerMeleeAttack();
       }
     };
     const handleKeyUp = (e) => {
@@ -473,6 +480,9 @@ export const Player = ({ isWorldBuilt }) => {
       if (!getInput().active) return;
       if (e.button !== 0 && e.button !== 2) return;
       const store = useGameStore.getState();
+      // KEVIN-FIX C2: fire shares movement's gates — dead players don't shoot (the old
+      // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed).
+      if (!store.isAlive) return;
 
       const lookDir = new THREE.Vector3();
       camera.getWorldDirection(lookDir);
@@ -856,13 +866,19 @@ export const Player = ({ isWorldBuilt }) => {
       } 
       // 2. Otherwise use the physics raycast to find the generated terrain mesh height
       if (groundY === null && store.getMobGroundLevel) {
+        // KEVIN-FIX C1: the wait is BOUNDED (~120 frames, then the y=60 fallback below) and
+        // the old `physicsY > 90` rejection is gone — it froze mountain spawns forever.
         let physicsY = store.getMobGroundLevel(0, 0);
-        if (physicsY === null || isNaN(physicsY) || physicsY <= 15 || physicsY > 90) {
+        if (physicsY === null || isNaN(physicsY) || physicsY <= 15) {
+          spawnProbeFailsRef.current += 1;
+          if (spawnProbeFailsRef.current < 120) {
             rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
             rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-            return; // Wait for next frame
+            return; // Wait for next frame (the streamer is loading origin chunks)
+          }
+        } else {
+          groundY = physicsY;
         }
-        groundY = physicsY;
       }
 
       if (groundY === null) {
