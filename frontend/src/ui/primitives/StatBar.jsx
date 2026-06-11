@@ -6,8 +6,8 @@ import { Icon } from './Icon.jsx';
 // inset track (deep groove + 4px ink frame + hard offset) with a flat saturated fill
 // and a tabular-nums value. Fill color tracks the kind (health=danger/red,
 // mana=info/blue, hunger=warn/amber, xp=accent/gold). Fill width is clamped 0..100%.
-const FILL = { health: 'bg-danger', mana: 'bg-info', hunger: 'bg-warn', xp: 'bg-accent', ferocity: 'bg-ferocity', kinetic: 'bg-kinetic', soul: 'bg-soul' };
-const ICON_COLOR = { health: 'text-danger', mana: 'text-info', hunger: 'text-warn', xp: 'text-accent', ferocity: 'text-ferocity', kinetic: 'text-kinetic', soul: 'text-soul' };
+const FILL = { health: 'bg-danger', mana: 'bg-info', hunger: 'bg-warn', xp: 'bg-accent', ferocity: 'bg-ferocity', kinetic: 'bg-kinetic', soul: 'bg-soul', resonance: 'bg-resonance' };
+const ICON_COLOR = { health: 'text-danger', mana: 'text-info', hunger: 'text-warn', xp: 'text-accent', ferocity: 'text-ferocity', kinetic: 'text-kinetic', soul: 'text-soul', resonance: 'text-resonance' };
 
 export const StatBar = forwardRef(function StatBar(
   { kind = 'health', value = 0, max = 100, showValue = false, label, icon, className, ...props }, ref) {

@@ -19,6 +19,7 @@ import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
+import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -58,6 +59,20 @@ const FerocityBar = React.memo(() => {
 // S2-B3-M6: the Soul bank (SOULBIND) — the KineticBar twin: self-null at zero + the unlock
 // gate keep all 13 capture baselines untouched. "SNARE!" reads when one bind is affordable.
 // Jade = the tether/tint identity (one color per Aspect).
+// S2-B4-M6: the Resonance bank (ELEMANCER) — the SoulBar twin: self-null at zero + the
+// unlock gate keep all 13 capture baselines untouched. "IMBUE!" reads when a zone is
+// affordable. White-gold = the player-side catalyst identity (one color per Aspect).
+const ResonanceBar = React.memo(() => {
+  const resonance = useGameStore((s) => s.resonanceBanked);
+  const hasImbue = useGameStore((s) => (s.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0);
+  if (!hasImbue || !resonance || resonance <= 0) return null;
+  const ready = resonance >= ZONE_COST;
+  return (
+    <StatBar kind="resonance" value={resonance} max={RESONANCE_MAX} icon="magic"
+      label={ready ? 'IMBUE!' : null} showValue className="w-44" />
+  );
+});
+
 const SoulBar = React.memo(() => {
   const soul = useGameStore((s) => s.soulBanked);
   const hasSnare = useGameStore((s) => (s.unlockedTalents?.['soulbind_snare'] ?? 0) > 0);
@@ -392,6 +407,7 @@ export function HUD({
               <FerocityBar />
               <KineticBar />
               <SoulBar />
+          <ResonanceBar />
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
