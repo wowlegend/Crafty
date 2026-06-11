@@ -74,3 +74,16 @@ describe('S2-B3-M7: the MobModel entity contract (the iter-59 NaN-rotation root 
     added.push(hy);
   });
 });
+
+describe('the mob-variety pass: grimhound (duskhound+skeleton)', () => {
+  it('resolves in both orders and carries the full parametric contract', async () => {
+    const { lookupHybrid } = await import('./hybrids');
+    const g1 = lookupHybrid('duskhound', 'skeleton');
+    const g2 = lookupHybrid('skeleton', 'duskhound');
+    expect(g1).toBeDefined();
+    expect(g1).toBe(g2);
+    expect(g1.id).toBe('grimhound');
+    expect(g1.legMode).toBe('quad');
+    expect(g1.health).toBe(130);
+  });
+});

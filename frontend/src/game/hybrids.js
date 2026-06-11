@@ -18,6 +18,11 @@ export const HYBRIDS = {
     bodySize: [1.5, 1.3, 1.9], headSize: [0.8, 0.8, 0.9], legMode: 'quad',
     health: 240, speed: 1.2, damage: 10, role: 'bruiser',
   },
+  grimhound: {
+    id: 'grimhound', name: 'Grimhound', color: '#D8D4C4',
+    bodySize: [0.9, 0.75, 1.6], headSize: [0.6, 0.55, 0.75], legMode: 'quad',
+    health: 130, speed: 3.4, damage: 16, role: 'runner',
+  },
   marrowspinner: {
     id: 'marrowspinner', name: 'Marrowspinner', color: '#9FE8C8',
     bodySize: [0.8, 0.6, 1.3], headSize: [0.55, 0.5, 0.55], legMode: 'spider',
@@ -29,6 +34,7 @@ const PAIRS = {
   'spider+zombie': 'dreadweaver',
   'cow+skeleton': 'bonehide_bulwark',
   'skeleton+spider': 'marrowspinner',
+  'duskhound+skeleton': 'grimhound', // the mob-variety pass: new types join the FUSE economy day one
 };
 
 export function fuseKey(a, b) {
