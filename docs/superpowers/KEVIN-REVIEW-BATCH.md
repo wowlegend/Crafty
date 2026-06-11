@@ -48,7 +48,17 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. **EYEBALL ASK (2 min, now with the showcase shortcut — `window.__craftyTest.call('soulbindShowcase')` in the dev console renders the 5-creature judge card):** the loop's headless judges verified FUNCTION (mesh census:
+>    is unlocked. ****🛠️ YOUR 2026-06-10 PLAYTEST FIXES — ALL SIX SHIPPED (re-verify protocol, ~3 min):**
+>    (1) RESPAWN: die FAR from spawn (>100 blocks out — the bug only triggered there), respawn → you
+>    should land and MOVE immediately; (2) ESC in-game → the PAUSE/settings menu (not the title screen);
+>    close it → you're back in control; (3) open/close EVERY panel (inventory/crafting/magic/build/
+>    trading/achievements/talents) → the cursor never vanishes mid-menu, the lock restores on close;
+>    (4) die → the DEATH SCREEN is unoccluded (no title menu over it), Respawn is clickable immediately;
+>    (5) you can NOT fire while dead. Root causes + the 6-commit trail in
+>    docs/superpowers/plans/2026-06-11-crafty-kevin-respawn-pointerlock-cleanup.md. FOLLOW-UPS FLAGGED:
+>    real world-pause while menus are open (mobs currently keep moving); the 4 panel flags → store.
+>
+> EYEBALL ASK (2 min, now with the showcase shortcut — `window.__craftyTest.call('soulbindShowcase')` in the dev console renders the 5-creature judge card):** the loop's headless judges verified FUNCTION (mesh census:
 >    allies render; fusion births hybrids live) but a clean AESTHETIC frame defeated 4 instruments — in
 >    YOUR playtest please eyeball: the jade family (tether/tint/bar) reads as ONE Aspect? the 3 hybrid
 >    silhouettes read distinct? (The showcase fixture shipped — the console shortcut above.) **FEEL PASS (post-Aspect): allies now
