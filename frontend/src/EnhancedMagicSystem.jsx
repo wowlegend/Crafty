@@ -8,6 +8,7 @@ import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
 import { SPELL_TYPES } from './game/spells';
+import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE, ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
 import * as THREE from 'three';
@@ -46,49 +47,14 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   }, []);
 
   const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
+    // S3-M2 T3: the targeting is pure (game/chainLightning.js); this wrapper keeps the
+    // live halves — the store snapshot read + the damage application.
     const allMobs = useGameStore.getState().mobEntities;
     if (!allMobs) return;
-
-    let currentDamage = baseDamage * damageReduction;
-    let lastPos = startPos.clone ? startPos.clone() : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
-    const hitMobs = new Set([excludeId]);
-
-    const maxPossibleRangeSq = (range * maxChains) ** 2;
-    const nearbyMobs = allMobs.filter(mob => {
-      const dx = mob.position[0] - lastPos.x;
-      const dy = mob.position[1] - lastPos.y;
-      const dz = mob.position[2] - lastPos.z;
-      return (dx*dx + dy*dy + dz*dz) <= maxPossibleRangeSq;
-    });
-
-    for (let i = 0; i < maxChains; i++) {
-      let nearestMob = null;
-      let nearestDistSq = range * range;
-
-      for (const mob of nearbyMobs) {
-        if (hitMobs.has(mob.id)) continue;
-
-        const dx = mob.position[0] - lastPos.x;
-        const dy = mob.position[1] - lastPos.y;
-        const dz = mob.position[2] - lastPos.z;
-        const distSq = dx*dx + dy*dy + dz*dz;
-
-        if (distSq < nearestDistSq) {
-          nearestDistSq = distSq;
-          nearestMob = mob;
-        }
-      }
-
-      if (nearestMob) {
-        hitMobs.add(nearestMob.id);
-        if (GameMethods.damageMob) {
-          GameMethods.damageMob(nearestMob.id, Math.floor(currentDamage), 'lightning');
-        }
-        lastPos = new THREE.Vector3(nearestMob.position[0], nearestMob.position[1], nearestMob.position[2]);
-        currentDamage *= (1 - damageReduction);
-      } else {
-        break;
-      }
+    const pos = startPos.clone ? startPos : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
+    const hits = solveChainTargets(allMobs, pos, { excludeId, baseDamage, maxChains, range, damageReduction });
+    for (const h of hits) {
+      if (GameMethods.damageMob) GameMethods.damageMob(h.id, h.damage, 'lightning');
     }
   }, []);
 
