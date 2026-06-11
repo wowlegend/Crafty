@@ -15,14 +15,17 @@ const NAMES = ['roar', 'grab', 'hurl', 'slam', 'anvilHit', 'bind'];
 
 describe('Aspect SFX wiring gates', () => {
   const sound = read('SoundManager.jsx');
+  const voices = read('audio/synthVoices.js'); // S3-M1: the voice bank extracted; the gate follows
 
-  it('every Aspect SFX is generated + registered in SoundManager', () => {
+  it('every Aspect SFX is built + registered in the voice bank (S3-M1 repoint)', () => {
     for (const n of NAMES) {
-      expect(sound, `missing registry line for '${n}'`).toMatch(new RegExp(`sounds\\.current\\.${n}\\s*=`));
+      expect(voices, `missing VOICES entry for '${n}'`).toMatch(new RegExp(`${n}: make`));
     }
-    for (const g of ['generateRoarSound', 'generateGrabSound', 'generateHurlSound', 'generateSlamSound', 'generateAnvilSound', 'generateBindSound']) {
-      expect(sound, `missing builder ${g}`).toMatch(new RegExp(`const ${g} = `));
+    for (const g of ['makeRoarSound', 'makeGrabSound', 'makeHurlSound', 'makeSlamSound', 'makeAnvilSound', 'makeBindSound']) {
+      expect(voices, `missing builder ${g}`).toMatch(new RegExp(`const ${g} = `));
     }
+    // and SoundManager still LOOPS the one registry (the buffers actually load)
+    expect(sound).toMatch(/Object\.entries\(VOICES\)/);
   });
 
   it('the roar SOUNDS at the beast-enter site (the owed B1 backfill)', () => {
