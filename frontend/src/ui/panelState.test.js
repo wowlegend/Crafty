@@ -38,6 +38,11 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
 });
 
 describe('shouldShowTitleMenu — the exact menu-overlay gate (not just the list)', () => {
+  it('NEVER shows while dead — the DeathScreen owns that moment (KEVIN-FIX C5)', () => {
+    expect(shouldShowTitleMenu({ isPointerLocked: false, isAlive: false })).toBe(false);
+    expect(shouldShowTitleMenu({ isPointerLocked: false, isAlive: true })).toBe(true);
+    expect(shouldShowTitleMenu({ isPointerLocked: false })).toBe(true); // pre-game: isAlive undefined
+  });
   it('shows ONLY when the pointer is unlocked AND no panel is open', () => {
     expect(shouldShowTitleMenu({ isPointerLocked: false })).toBe(true);  // title / click-to-play
     expect(shouldShowTitleMenu({ isPointerLocked: true })).toBe(false);  // actively playing

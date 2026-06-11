@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
@@ -148,6 +148,26 @@ function GameApp({ experienceSystem }) {
   // active changes only on a rare pointer-lock enter/exit gesture (NOT per-frame),
   // so this useSyncExternalStore subscription is SAFE under Game-Loop Isolation.
   const isPointerLocked = useActiveInput();
+
+  // KEVIN-FIX C5: ESC = PAUSE. While locked the browser CONSUMES the Escape keydown (only
+  // the lock-change event arrives), so the old keydown-driven settings branch was
+  // unreachable in the very state it targeted — ESC dumped players on the title menu
+  // instead. The pause menu now opens on the active true->false TRANSITION, here in App
+  // where ALL panel flags (store + the 4 React-local) are visible: a panel-open unlock is
+  // suppressed (the flag is set before the lock exits), death is suppressed (the
+  // DeathScreen owns it), pre-game is suppressed (gameStarted).
+  const prevLockedRef = useRef(false);
+  useEffect(() => {
+    const was = prevLockedRef.current;
+    prevLockedRef.current = isPointerLocked;
+    if (was && !isPointerLocked) {
+      const s = useGameStore.getState();
+      if (s.isAlive && s.gameStarted &&
+          !isAnyPanelOpen({ ...s, showSpellUpgrades, showAchievements, showStats, showAuthModal })) {
+        s.setShowSettings(true);
+      }
+    }
+  }, [isPointerLocked, showSpellUpgrades, showAchievements, showStats, showAuthModal]);
 
   // Select the device quality tier once at startup (runs in prod + dev).
   useEffect(() => {

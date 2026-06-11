@@ -79,10 +79,11 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           setShowAchievements(false);
           setShowSpellUpgrades(false);
           requestPointerLockSafely(state);
-        } else if (active) {
-          state.setShowSettings(true);
-          document.exitPointerLock();
         } else {
+          // KEVIN-FIX C5: the old `else if (active) -> settings` branch was UNREACHABLE —
+          // while locked the browser consumes the Escape keydown entirely; the pause menu
+          // now opens from the unlock TRANSITION (App). Here ESC only means: title-menu
+          // context, re-enter the game.
           // KEVIN-FIX C3: request only — the lock-change listener (Components, the one
           // authority) sets active when the browser GRANTS the lock.
           requestPointerLockSafely(state);

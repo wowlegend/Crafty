@@ -38,5 +38,8 @@ export function isAnyPanelOpen(flags) {
  */
 export function shouldShowTitleMenu(state) {
   if (!state) return false;
+  // KEVIN-FIX C5: dying exits pointer lock, and without this gate the z-9999 title menu
+  // mounted OVER the DeathScreen (z-50) — the respawn UI was occluded (2026-06-10 playtest).
+  if (state.isAlive === false) return false;
   return !state.isPointerLocked && !isAnyPanelOpen(state);
 }
