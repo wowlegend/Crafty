@@ -2,7 +2,17 @@
 
 > ⚠️ **Superseded framing (2026-05-31):** the "Phase 19–25" roadmap below is the pre-initiative Gemini plan. The ACTIVE roadmap is now the **Crafty → SOTA initiative**, decomposed into streams: **S0** reality audit (DONE) · **S1** art direction (locked; **S1-A foundation DONE** · **S1-B render recipe DONE** — M1 render correctness + device tiers, M2a mood/atmosphere + bright-Caribbean art, M2b character render language [2-band toon + fresnel rim + inverted-hull outlines; boss emissive telegraph preserved]; all merged to `main`, `test:visual` 6/6) · **S1-C UI design system IN PROGRESS** — **M1 token-foundation + bold-flat primitives + i18n DONE** (2026-06-01, merged; tokens→CSS-vars→Tailwind SoT chain, 7 primitives, en/zh i18n with lazy-CJK, `test:visual` 8/8); **M2 consolidate-3-languages + UI-hex-migration NEXT**, then M3 icon-system + emoji-data-decouple; then S1-D signatures (Spell-VFX, Mascot) · **S2** game design · **S3** engine (touch input, de-monolith, ECS hardening, WebGPU/TSL migration) · **S4** multiplayer + monetization. See `SOTA-INITIATIVE.md` + `docs/superpowers/` (specs + per-milestone plans). Items below are retained as historical/backlog reference.
 
-*(Updated via Session Archivist - May 23, 2026)*
+*(Updated via the autonomous loop — June 11, 2026)*
+
+> **STATUS (2026-06-11) — 🏆 THE FOUR-ASPECT SPINE IS COMPLETE:** WILDHEART ✅ · VOIDHAND ✅ · SOULBIND ✅
+> · ELEMANCER ✅ (all designed-workflow'd, spec'd, milestone-planned, built, judged, bannered; 837 unit /
+> 23 gates / visual 13/13; zero re-baselines across B3+B4). ALSO SHIPPED 2026-06-10/11: Kevin's
+> live-playtest arc (the respawn camera-streamer deadlock + the pointer-lock/menu state machine, 6
+> commits), the Aspect-UX guide cards, the audio + feel + content interleaves (3 new mob types + the
+> Grimhound). **THE ACTIVE ROADMAP NOW = the post-spine spine: S3 de-monolith/engine-hardening
+> (charter §2.4 as amended; characterization-first over the 5 god-files) → B4-v1.5 (reagents / frost
+> plates / fire-spread) → the v2 voxel-mutation seam (real-iPad-gated) → S4 (Kevin-gated:
+> multiplayer/monetization).** The STATUS blocks below are HISTORY (newest first).
 
 > **STATUS (2026-06-09):** **S2-B2 VOIDHAND (kinetic/gravity-hand, the 2nd Aspect) — design approved + M1 done** (on `main`, pushed). Design-of-record: `docs/superpowers/specs/2026-06-09-crafty-s2b2-voidhand-design.md`. **M1 = the load-bearing no-re-mesh foundation** (grab→phantom-orbit; pure SM `voidhand.js` + meter `kinetic.js`; `PhantomBlockSystem.jsx`; the `grab` intent = **`KeyV`**; the static gate `voidhand-noremesh-gates` GREEN; death-edge fix; adversarial review clean; 657 unit · visual 13/13). **NEXT = M2 real-iPad FPS gate BEFORE the verbs** → M3 HURL/SLAM impact + FPV playtest → M4 base-as-anvil 3× + kinetic-meter + voidhand_grasp talent gate + autosave + HUD → M5 elements → M6 pool-safety → M7 LOOK → M8 content. Aspect sequence: Wildheart✅ → **Voidhand (M1✅)** → Soulbind → Elemancer.
 

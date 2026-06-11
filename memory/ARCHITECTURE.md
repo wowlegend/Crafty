@@ -6,6 +6,23 @@
 
 > **S2-B1 WILDHEART addition (2026-06-07) — the beast-transform Aspect (mechanics + look, merged `458bbb5`):** a **pure transform state-machine** (`src/game/beastTransform.js` `decideTransform` — charge→commit→duration→exit/cooldown; the store's `beastFormActive` is the single active-truth, the SM owns only charge+timers) drives the **single-writer form authority** in the store (`enterBeastForm`/`exitBeastForm`; NO-PERMANENT-BEAST invariant — form is transient, never serialized, every exit path returns to human; death-edge drops form AND cancels any in-flight charge atomically). **Derive-never-bake:** per-form combat/locomotion/shape multipliers live in static tables (`BEAST_FORMS`, `beastAvatarParts.js` FORM_PARTS) applied at the read site; base attrs + capsule never mutated; human = identity. **The LOOK** = a third-person reveal: `src/game/transformCam.js` (pure cam envelope, Components override, byte-identical on non-roar frames) + `src/render/BeastAvatar.jsx` (a RigidBody-child voxel avatar that self-gates to null unless beastFormActive/beastCharging → absent from all capture baselines; the ③·5 layered-emissive recipe) + `src/game/beastMorph.js` (pure 3-beat morph timing, capture-frozen to settled). `MobToonMaterial` gained a per-instance `rimColor`/`rimStrength` (mobs unaffected). **Capture caveat:** the in-world beast capture (`spawnBeastTransform` test hook + capture.mjs roster loop) is non-deterministic under paused physics (RigidBody/render desync at an unsettled player) → the 4 beast frames are NOT gate-baselined; reliability is a tracked follow-up.
 
+> **THE ASPECT-ERA ADDENDUM (2026-06-11 — B2/B3/B4 all shipped; the per-Aspect specs in
+> docs/superpowers/specs/ are the detailed records):** the game now runs on a 4×-proven ASPECT-META
+> SCAFFOLD — per Aspect: a PURE state-machine module (`game/voidhand|soulbind|elemancer.js`) + a pure
+> dawn-bled METER (`game/kinetic|soul|resonance.js`; ferocity was the prototype) + an effect-less talent
+> UNLOCK + an intent key (the verb row R/V/X/Z via `input/inputState.js`) + single-slot TRANSIENT
+> CHANNELS (`game/*Channel.js` — Game-Loop-Isolation seams between DOM listeners / useFrame SMs /
+> render systems) + 15Hz ACCUMULATOR BRIDGES (`world/SquadAISystem|ElementZoneSystem.jsx`) + always-
+> mounted transient renderers (`world/SnareTetherSystem|ElementZoneRenderSystem.jsx`, instanced pools,
+> capture-frozen via now=0) + literal-token STATIC GATES (`tests/gates/*-noremesh-gates` ×4 + wiring
+> locks) + the sky-studio judge-fixture family (App.jsx test hooks, lanes x=0..240). Other load-bearing
+> systems added post-blueprint: the kill bus w/ source attribution (`game/mobKillBus.js` — player/ally/
+> hazard), the allegiance seam (`game/allegiance.js` — the ONLY isMob→isAlly door), curated fusion
+> (`game/hybrids.js`), weighted spawning (`game/spawnWeights.js`), the element-zone chemistry registry
+> (`game/elementZones.js`), the panel/lock state machine (one pointerlockchange authority + error
+> channel; `ui/panelState.js`). The blueprint BELOW remains the pre-initiative self-description —
+> still awaiting the full reality-rewrite (deferred, tracked).
+
 ## Project Overview
 
 A 3D browser game built with React and Three.js, featuring Minecraft-style gameplay with block building, magic system, NPCs, and procedural terrain generation.

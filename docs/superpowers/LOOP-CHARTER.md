@@ -67,8 +67,11 @@
 2. **The current in-flight milestone** per ACTIVE_PLAN (finish > start).
 3. **Pre-requisites the plan-of-record marks blocking** (e.g. #72 verb-mode seam before VOIDHAND M3;
    #69 gate inversion before M3).
-4. **The Aspect spine** — VOIDHAND M2→M8, then SOULBIND (B3), then ELEMANCER (B4): each Aspect = design
-   workflow → spec → per-milestone plans → build. The spec self-gate replaces Kevin's HARD GATE (§5).
+4. **The post-spine spine (amended 2026-06-11 — the four-Aspect spine COMPLETED that day: WILDHEART ·
+   VOIDHAND · SOULBIND · ELEMANCER all live):** **S3 de-monolith + engine hardening** is the new
+   structural spine — the 5 god-files tax every future milestone; characterization-first, the same
+   design-workflow → spec → per-milestone-plans discipline. B4-v1.5 (reagents/frost-plates/fire-spread)
+   and the v2 voxel-mutation seam (iPad-gated) queue behind it; S4 stays Kevin-gated.
 5. **SOTA experience enhancements** (the explicit Kevin mandate — interleave at least one every 2–3
    milestones, don't ghetto them to "later"): §6 backlog — audio/music, game-feel/juice, visual/render
    polish, content variety, UX legibility, i18n.
