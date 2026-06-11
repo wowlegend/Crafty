@@ -48,7 +48,11 @@
 >    UPDATE (M6 shipped): FUSE is live — bind two creatures (spider+zombie / cow+skeleton /
 >    skeleton+spider), stand by them, hold X: a jade thread braids them into ONE hybrid (Dreadweaver /
 >    Bonehide Bulwark / Marrowspinner). The Soul bar (jade) reads under the Kinetic bar once Soul Snare
->    is unlocked. ****🦴 NEW MOBS (the content interleave):** three new night-siege types — the SKITTERLING (tiny
+>    is unlocked. ****🎼 ASPECT STINGERS (music-motif v2):** each Aspect now SINGS at its signature moment — transform
+>    (a primal saw rise), slam (a falling gravity phrase), FUSE (a warm major arp), the day's first
+>    zone (a lydian shimmer). All rare by design. EAR CHECK: do they feel premium or intrusive?
+>
+> **🦴 NEW MOBS (the content interleave):** three new night-siege types — the SKITTERLING (tiny
 >    violet spider-legged swarm), the DUSKHOUND (dark-plum fast quad), the MOSS BRUTE (huge slow tank,
 >    spawns rare via the new weighted table). Duskhound+skeleton FUSE into the GRIMHOUND. Card:
 >    .superpowers/mob-variety-refs/mobs-card-1.png — eyeball IN-GAME at night: do the three read
