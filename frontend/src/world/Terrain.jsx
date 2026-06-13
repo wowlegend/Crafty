@@ -229,7 +229,7 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
                 <mesh geometry={opaqueGeometry} material={opaqueMaterial} castShadow receiveShadow />
             )}
             {waterGeometry && (
-                <mesh geometry={waterGeometry} material={waterMaterial} castShadow receiveShadow />
+                <mesh geometry={waterGeometry} material={waterMaterial} receiveShadow />
             )}
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
