@@ -7,9 +7,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(here, '../../', p), 'utf8');
 
 describe('touch wiring gates (M1)', () => {
-  it('TouchControls early-returns null under isCaptureMode AND !isTouchDevice (trap-1/2)', () => {
+  it('TouchControls is capture-safe + desktop-inert (M2 3-way guard) (trap-1/2)', () => {
     const c = read('src/ui/TouchControls.jsx');
-    expect(/if\s*\(\s*isCaptureMode\(\)\s*\|\|\s*!isTouchDevice\(\)\s*\)\s*return null/.test(c)).toBe(true);
+    // capture branch renders null UNLESS the mobile fixture opted in via showTouch (trap-1 [BLOCKING])
+    expect(/isCaptureMode\(\)[\s\S]*getCaptureOpts\(\)\.showTouch[\s\S]*null/.test(c)).toBe(true);
+    // desktop-inert: a non-touch device returns null (trap-2 [HIGH])
+    expect(/if\s*\(\s*!isTouchDevice\(\)\s*\)\s*return null/.test(c)).toBe(true);
   });
 
   it('TouchControls writes through setIntent/setActive/performVerb -- NEVER reads document.pointerLockElement (trap-2)', () => {

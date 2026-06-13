@@ -1,23 +1,29 @@
 import { useEffect, useRef } from 'react';
-import { isCaptureMode } from '../devtest/captureMode';
+import { isCaptureMode, getCaptureOpts } from '../devtest/captureMode';
 import { isTouchDevice } from '../input/touchDevice';
 import { useGameStore } from '../store/useGameStore';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive } from '../input/inputState';
 import { makeTouchRouter } from '../input/touchMath';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
+import TouchControlsSurface from './TouchControlsSurface';
 
 /**
- * TouchControls (M1 producer-wiring) -- the touch overlay. Desktop-inert + capture-safe BY
- * CONSTRUCTION: the first line returns null under isCaptureMode() (covers all 17 visual baselines
- * at once -- spec section 3 trap-1 [BLOCKING]) and on non-touch devices (trap-2 [HIGH], no desktop
- * regression). It writes ONLY through setIntent / setActive / store.performVerb -- NEVER reads the
- * browser pointer-lock element (the single-active-authority invariant) and NEVER setState per move
- * (Game-Loop-Isolation -- trap-6). M1 zones are transparent + the action button invisible; M2 adds
- * the visible S1-C joystick nub / button cluster / crosshair + the look-zone-excludes-buttons refine.
+ * TouchControls (M1 wiring + M2 visible surface) -- the touch overlay. Capture-safe + desktop-inert
+ * BY CONSTRUCTION (3-way guard below): under capture it renders the static surface ONLY if the
+ * mobile.png fixture opted in (getCaptureOpts().showTouch) -- so the 17 other baselines stay null
+ * (spec section 3 trap-1 [BLOCKING]); in normal mode it renders the live overlay only on touch
+ * devices (trap-2 [HIGH], no desktop regression). It writes ONLY through setIntent / setActive /
+ * store.performVerb -- NEVER reads the browser pointer-lock element (single-active-authority) and
+ * NEVER setState per move (Game-Loop-Isolation, trap-6). The visible glyphs live in
+ * <TouchControlsSurface> (pointerEvents:none); the transparent data-touch-btn hit-areas, aligned to
+ * those glyphs, are the real targets.
  */
 export default function TouchControls({ isWorldBuilt }) {
-  if (isCaptureMode() || !isTouchDevice()) return null;
+  if (isCaptureMode()) {
+    return getCaptureOpts().showTouch ? <TouchControlsSurface /> : null;
+  }
+  if (!isTouchDevice()) return null;
   return <TouchControlsLive isWorldBuilt={isWorldBuilt} />;
 }
 
@@ -68,40 +74,42 @@ function TouchControlsLive({ isWorldBuilt }) {
     };
   }, []);
 
-  // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not yet live.
+  const dispatch = (b) => useGameStore.getState().performVerb?.(b);
+  // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
   const showTapToPlay = isWorldBuilt && isAlive && !active;
+  // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
+  const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0 };
   return (
     <div
       ref={rootRef}
       style={{ position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
                WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
     >
+      {active && <TouchControlsSurface />}
+
       {showTapToPlay && (
-        <button
-          data-touch-btn
-          onPointerUp={() => setActive(true)}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                   background: 'transparent', border: 'none', color: 'transparent' }}
-          aria-label="Tap to play"
-        />
+        <button data-touch-btn onPointerUp={() => setActive(true)} aria-label="Tap to play"
+          style={{ ...hit, inset: 0, width: '100%', height: '100%' }} />
+      )}
+
+      {active && (
+        <button data-touch-btn onPointerUp={() => setActive(false)} aria-label="Pause"
+          style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 8px)', right: 8, width: 44, height: 44 }} />
       )}
       {active && (
-        <button
-          data-touch-btn
-          onPointerUp={() => setActive(false)}
-          style={{ position: 'absolute', top: 'env(safe-area-inset-top, 8px)', right: 8,
-                   width: 44, height: 44, opacity: 0.01 }}
-          aria-label="Pause"
-        />
+        <button data-touch-btn onPointerUp={() => dispatch(0)} aria-label="Action"
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}
       {active && (
-        <button
-          data-touch-btn
-          onPointerUp={() => useGameStore.getState().performVerb?.(0)}
-          style={{ position: 'absolute', bottom: 'env(safe-area-inset-bottom, 24px)', right: 24,
-                   width: 72, height: 72, opacity: 0.01 }}
-          aria-label="Action"
-        />
+        <button data-touch-btn onPointerUp={() => dispatch(2)} aria-label="Cast"
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 124px)', bottom: '9%', width: 64, height: 64 }} />
+      )}
+      {active && (
+        <button data-touch-btn aria-label="Jump"
+          onPointerDown={() => setIntent('jump', true)}
+          onPointerUp={() => setIntent('jump', false)}
+          onPointerLeave={() => setIntent('jump', false)}
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 40px)', bottom: 'calc(11% + 96px)', width: 60, height: 60 }} />
       )}
     </div>
   );
