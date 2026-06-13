@@ -1,5 +1,16 @@
 # Touch Input M2 — Visible surface + `mobile.png` fixture Implementation Plan
 
+> **✅ M2a SHIPPED (loop iter 137, 2026-06-13).** The visible S1-C touch surface + the `mobile.png`
+> baseline (18/18). Built per this plan with deviations recorded honestly: the 2-tone game-icons don't
+> tint (`color` ignored) → switched to **lucide** chrome icons (gold via currentColor); the icons/buttons
+> needed a **near-black fill** to pop off the navy HUD; and the real blocker was a HUD-LAYOUT collision
+> (minimap/XP-bar/cheatsheet/tool-column) → **hidden on touch via `isTouchUIMode`** (not repositioned —
+> that's M2b/M3). `showTouch` capture-opt-in works (the bridge forwards it). Commits
+> `63709e5`/`5aa7107`/`d9ee9f9`/`a176eba`/`0e65f66`. **M2b queued** (focus-model `resumeControl()` +
+> Settings sensitivity + visible pause overlay + gate `<PointerLockControls>` on `!isTouchDevice()` +
+> joystick-ring crispness); **M3** = the panel-access tray + analog channel + touch-repositioning the
+> M2a-hidden HUD. The Tasks below were the M2a contract.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the M1 touch overlay a VISIBLE, S1-C-styled surface — a resting joystick base (left), a context-routed primary + cast button cluster + jump (bottom-right thumb arc), a center crosshair, and a Pause affordance — and capture it as a NEW deterministic visual baseline (`mobile.png`), the first frame that renders the overlay. Desktop + the 17 existing baselines stay byte-identical.
