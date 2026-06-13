@@ -39,11 +39,15 @@ export function getCaptureOpts() {
 export function enterCaptureMode(opts = {}) {
   _captureMode = true;
   if (opts.camera) _opts = { ..._opts, camera: { ..._opts.camera, ...opts.camera } };
+  // showTouch (M2): the mobile.png fixture opts IN to render the touch overlay; default-off keeps
+  // the 17 other baselines null (the overlay's capture guard reads getCaptureOpts().showTouch).
+  if ('showTouch' in opts) _opts = { ..._opts, showTouch: !!opts.showTouch };
   return _opts;
 }
 
 export function exitCaptureMode() {
   _captureMode = false;
+  _opts = { ..._opts, showTouch: false }; // never leak a showTouch fixture into later frames
 }
 
 // xmur3 string hash -> 32-bit seed. Deterministic, well-distributed across keys.
