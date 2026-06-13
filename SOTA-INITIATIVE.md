@@ -65,7 +65,7 @@ S2-B2 VOIDHAND ✅ · S2-B3 SOULBIND ✅ · S2-B4 ELEMANCER ✅** — grab/orbit
 kinetic+soul+resonance economies, capture/squad/fuse, and the combinatorial element-zone chemistry all
 live; zero re-baselines across the entire spine · **Kevin's live-playtest fix arc ✅** (the respawn
 deadlock + the ONE coherent pointer-lock/menu state machine) · **the Aspect-UX guide-card pass ✅** ·
-**experience interleaves shipped** (audio @34, feel @61, content @83, motifs @93). **S3 de-monolith +
+**experience interleaves shipped** (audio @34, feel @61, content @83, motifs @93, UX-legibility @98). **S3 de-monolith +
 engine hardening IN-FLIGHT** — the recorded entry gate ("AFTER S2-B complete, all 4 Aspects") is now MET,
 so S3 is legitimately active (no relaxation invoked): **S3-M1 ✅** (SoundManager → audio/synthVoices +
 musicTheory; the DSP's first characterization) · **S3-M2 ✅** (EnhancedMagicSystem data pulls →

@@ -1,6 +1,6 @@
 # Crafty — UX-Legibility Interleave (Honest-Controls pass) — design of record
 
-> **Status (2026-06-13): DESIGN COMMITTED (loop self-gate per charter §4/§5, iter 96, ultracode).**
+> **Status (2026-06-13): ✅ SHIPPED (loop iters 96-98, ultracode). Designed iter 96; built T1-T5 iters 97-98; adversarially reviewed (1 HIGH re-baseline-scope FIXED, 1 LOW deferred). 8 HUD-bearing states re-baselined; 874 unit · build · visual 13/13.**
 > Produced by a 3-candidate grounded design-gate workflow (`wf_48863356-432`: each candidate seam-mapped
 > vs LIVE code, then adversarially ranked + grounded; 4 agents / 385k tokens). This is the experience
 > interleave due at the S3-M3/M4 boundary (ledger: audio@34 · feel@61 · content@83 · motifs@93 — **UX is
