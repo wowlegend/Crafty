@@ -1,3 +1,5 @@
+> **✅ SHIPPED (loop iter 122, 2026-06-13).** `audio/biomeAmbience.js` (pure biome→{cutoff,gain} map, 4 unit tests) + a looping wind-bed voice in SoundManager (started with the synthPad, ramped per the player biome in the existing 8s step-interval via `playerPosition`→`climate.surfaceBlockAt`→`biomeAmbience`, faded+stopped+disconnected in `stopSynthPad`). 933 unit (+7) · build · visual **17/17 no change** (audio-only). Ear-verified by Kevin (KRB). NEXT = PICK (deferred new-blocks batch M4b+M5b · M4c topography · S3-M5 de-monolith).
+
 # Interleave — Biome-Ambient Audio Bed Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Checkbox steps.
