@@ -71,6 +71,10 @@ const useEntities = (query) => {
 // S2-B2-pre-M2 perf: the AI worker bridge ticks at this rate, not render rate (see AIWorkerSystem).
 const AI_TICK_SEC = 1 / 15;
 
+// Enemy-presence audio: a single global cooldown so a whole siege turning aggro snarls ONCE, not 20x.
+const AGGRO_GROWL_COOLDOWN_SEC = 2.5;
+let _lastAggroGrowl = -Infinity;
+
 // Mob Model Component with variety - PURE ECS RENDERER
 // React.memo on the per-entity renderers (STATE-REVIEW-2026-06-10 #4 mitigation): the useEntities
 // bridge re-renders NPCSystem on every entity add/remove; memo + stable miniplex entity refs
@@ -293,8 +297,17 @@ const AIWorkerSystem = () => {
             entity.position.x = update.x;
             entity.position.z = update.z;
             entity.rotation = update.rotation;
+            // AUDIO (enemy-presence split): the false->true aggro edge SNARLS spatially — you HEAR a
+            // hostile notice you before it reaches you (global cooldown so a siege turn isn't a wall of growls).
+            if (!entity.passive && !entity.isAggro && update.isAggro && store.playSpatialSound) {
+              const nowS = performance.now() / 1000;
+              if (nowS - _lastAggroGrowl > AGGRO_GROWL_COOLDOWN_SEC) {
+                _lastAggroGrowl = nowS;
+                store.playSpatialSound('aggroGrowl', [entity.position.x, entity.position.y, entity.position.z], 0.9, 22);
+              }
+            }
             entity.isAggro = update.isAggro;
-            
+
             // Sync back worker state
             entity.isMoving = update.isMoving;
             entity.targetX = update.targetX;

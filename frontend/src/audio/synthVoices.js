@@ -80,6 +80,29 @@ export const makeRoarSound = (ctx) => {
     return buffer;
 };
 
+// The ENEMY snarl (player-vs-enemy audio split): a SHORT, gnarly bark fired when a mob goes aggro —
+// deliberately higher + shorter + nastier than the heroic WILDHEART roar so a threat reads as a threat,
+// not the hero. A lunging pitch (snaps up then sags) + a dissonant fifth overtone = menace.
+export const makeAggroGrowl = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.34;                       // a short bark vs the roar's 0.7 bellow
+    const frameCount = sampleRate * duration;
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const k = t / duration;
+      const freq = 130 + 60 * Math.exp(-k * 6) - 40 * k; // a lunge: ~190 snaps down to ~90Hz
+      const saw = 2 * (t * freq - Math.floor(t * freq + 0.5));
+      const rasp = Math.sin(2 * Math.PI * freq * 1.5 * t) * 0.4; // a dissonant fifth = menace
+      const noise = (Math.random() * 2 - 1) * Math.exp(-t * 10) * 0.4; // a teeth/bite transient
+      const env = Math.min(t * 60, 1) * Math.exp(-t * 5.5);          // snap-attack, quick decay
+      d[i] = (saw * 0.55 + rasp + noise) * env * 0.42;               // peak ~0.5 (headroom safe)
+    }
+    return buffer;
+};
+
 export const makeGrabSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
@@ -503,6 +526,7 @@ export const VOICES = {
   magicCharge: makeMagicChargeSound,
   levelUp: makeLevelUpSound,
   roar: makeRoarSound,
+  aggroGrowl: makeAggroGrowl,
   grab: makeGrabSound,
   hurl: makeHurlSound,
   slam: makeSlamSound,

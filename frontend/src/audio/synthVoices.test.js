@@ -18,13 +18,13 @@ const ALL_NAMES = [
   'blockPlace', 'blockBreak', 'footstep', 'jump', 'pickup', 'craft', 'magic',
   'attack', 'hit', 'defeat', 'swing',
   'magicCast', 'magicHit', 'magicExplosion', 'magicCharge', 'levelUp',
-  'roar', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
+  'roar', 'aggroGrowl', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
   'ignite', 'freeze', 'zap', 'rune',
   'motifWildheart', 'motifVoidhand', 'motifSoulbind', 'motifElemancer', // music-motif v2
 ];
 
 describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the 30 registered names', () => {
+  it('VOICES holds EXACTLY the 31 registered names', () => {
     expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
   });
   it('every factory returns a sane, audible, unclipped buffer', () => {
@@ -67,5 +67,14 @@ describe('the synth voice bank (S3-M1 — the registry contract)', () => {
       return peak;
     };
     expect(near(0.15)).toBeLessThan(near(0.01) * 0.3);
+  });
+  it('waveform pin: aggroGrowl is a shorter, higher snarl than the heroic roar', () => {
+    const growl = VOICES.aggroGrowl(fakeCtx());
+    const roar = VOICES.roar(fakeCtx());
+    expect(growl.length).toBeLessThan(roar.length);              // a bark, not a bellow
+    const crossings = (buf, sec) => { const d = buf.getChannelData(0); const w = Math.floor(0.08 * 44100);
+      const i0 = Math.floor(sec * 44100); let c = 0;
+      for (let i = i0 + 1; i < i0 + w && i < d.length; i++) if ((d[i - 1] < 0) !== (d[i] < 0)) c++; return c; };
+    expect(crossings(growl, 0.02)).toBeGreaterThan(crossings(roar, 0.02)); // higher pitch = more crossings
   });
 });
