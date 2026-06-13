@@ -10,7 +10,7 @@ import {
 import { Icon } from './ui/primitives/index.js';
 import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
-import { TradingInterface } from './SimplifiedNPCSystem';
+import { TradingInterface } from './ui/TradingInterface';
 import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
 import { SpellUpgradePanel, ChestInventoryPanel } from './AdvancedGameFeatures';

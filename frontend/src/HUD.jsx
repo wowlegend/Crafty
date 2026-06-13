@@ -3,7 +3,7 @@ import { isCaptureMode } from './devtest/captureMode';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './Components';
-import { CombatInstructions } from './SimplifiedNPCSystem';
+import { CombatInstructions } from './ui/CombatInstructions';
 import {
   PlayerHealthBar,
   PlayerManaBar,
