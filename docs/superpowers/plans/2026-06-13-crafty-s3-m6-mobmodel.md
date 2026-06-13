@@ -1,5 +1,7 @@
 # S3-M6 — MobModel render extraction (de-god-file the NPC system) Implementation Plan
 
+> **✅ SHIPPED (loop iter 144, 2026-06-13).** Byte-exact 309-line slice of `MobModel`+`HealthBar` (`HEAD:85-393`) → `render/MobModel.jsx` — **byte-equality PROVEN** (diff of moved slice vs HEAD == identical). `OUTLINE_RIM_STRENGTH` (sole user) moved into the new header; 5 now-dead NPC imports pruned; NPCSystem imports MobModel back. **NPC 1115→802 LOC — UNDER the 900 god-file threshold → the last god-file is dissolved.** Behavior-lock: build clean · 1022 unit · character-render trap-3 gate 5/5 (worker-tick anchor intact) · visual **18/18 byte-identical**. Commit `6369a19`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Steps use `- [ ]`.
 
 **Goal:** Extract the `MobModel` (`:85-363`) + `HealthBar` (`:366-393`) render components (~310 LOC) from `SimplifiedNPCSystem.jsx` into `render/MobModel.jsx` — byte-exact (the proven S3 anchored-slice method). This is the high-impact NPC cut: it takes the last god-file **1115 → ~810 LOC, UNDER the 900-LOC god-file threshold** (the de-monolith's stated goal — NPC stops being a god-file).
