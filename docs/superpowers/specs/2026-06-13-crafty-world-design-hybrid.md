@@ -107,9 +107,11 @@ deeps), readable beaches, sparse islands carrying landmarks.
   `oceanSurfaceY`) imported by the worker at the 4 sites; 7 behavioral + 4 static gate tests. **No re-baseline needed** — the
   deep seabed is SUB-SURFACE (water surface stays y28) and the water-shadow removal stayed sub-6% in all 14 fixtures; the
   visible seabed/depth-tint + its fixture are M5. (CA-slope-nibble under deep water noted for M5.)
-- **M3 — BIOME TABLE refactor (look-NEUTRAL) [NO GATE].** Extract :396-409 → `pickBiome()` returning ONLY {surfaceBlock,
-  secondaryBlock} + `world/biomeTable.js`. Characterization test: byte-identical block arrays (fixed seed, ~4 chunks across
-  the 3 climate zones) pre/post. Height literal :385 untouched. No baseline change.
+- **M3 — BIOME TABLE refactor (look-NEUTRAL) [NO GATE] ✅ SHIPPED (iter 112).** Extracted the inline 3-branch (:396-404)
+  → `pickBiome(temperature, moisture, continent)` returning ONLY {surfaceBlock, secondaryBlock} + `world/biomeTable.js`
+  (`BIOMES` map). Byte-identical proven by an oracle-grid characterization (pickBiome ≡ the old branch over a fine (t,m)
+  grid) AND the visual gate holding 14/14 with zero diff. Height literal untouched; the beach override stays after the pick
+  (`let` binding). continent accepted for M4, ignored here. heightScale/seabedBlock/treeType become M4 columns.
 - **M4 — BIOME DISTINCTNESS [GATE].** Biome-aware height curve + new palette layers (numLayers++ AND authored 32×32 each) +
   biome-branched foliage. Block-registry-coverage gate (every BLOCK_COLORS key < numLayers has a layer). Cross-chunk-seam test
   (global-coord noise → no chunk-local RNG seams). Re-baseline.

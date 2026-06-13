@@ -1,5 +1,7 @@
 # World M3 — Biome Table Refactor (look-neutral) Implementation Plan
 
+> **✅ SHIPPED (loop iter 112, 2026-06-13).** `world/biomeTable.js` (`BIOMES` map + `pickBiome`) replaced the inline 3-branch (terrain.worker.js:396-404) with a `let {surfaceBlock,secondaryBlock} = pickBiome(...)`; beach override untouched after it. **Byte-identical confirmed two ways:** the oracle-grid characterization (pickBiome ≡ the old branch) AND the visual gate held **14/14 with zero diff** (the render-level proof — the chunk arrays are unchanged). Commits `<T1>`/`<T2>`. 901 unit (+7) · build · visual 14/14, no re-baseline. NEXT = M4 (biome distinctness — the first GATED, look-CHANGING world milestone).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** Extract the inline 3-branch biome if/else into a data-driven `pickBiome(temperature, moisture, continent)` + `world/biomeTable.js`, returning ONLY `{surfaceBlock, secondaryBlock}` — **byte-identical / look-neutral** (the prep seam for M4's biome distinctness; M3 changes nothing the player sees).

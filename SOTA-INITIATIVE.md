@@ -76,10 +76,10 @@ mount-crash [orphaned SPELL_UPGRADES] that had silently vacuous-ed the visual ga
 5 god-files now de-monolithed** (SoundManager, EnhancedMagicSystem [data], AdvancedGameFeatures[gone]); the
 NPC + Components god-files remain. **The WORLD-DESIGN pass is now ACTIVE** (Kevin-ratified 2026-06-13, HYBRID
 "Anchored Infinite"; spec + 6-milestone ladder committed): **M1 (HOME ANCHOR / "Hearth") ✅ + M2 (ocean depth +
-coastline consts — divable 18-22 basins, SEA_LEVEL/BEACH_BAND_TOP/DEEP_FLOOR named) ✅ SHIPPED (iters 108/110)**;
-next on the ladder = **M3 biome-table refactor (byte-identical)** → M4 biome-distinctness → M5 ocean-seabed+depth-tint
-→ M6 landmarks. Then S3-M5 (Components) / the night-siege interleave. Live scale (2026-06-13 post-world-M2):
-~25k LOC src / ~188 files / 897 unit tests (109 files) / 28 static-gate files / 14-state visual gate (now
+coastline consts — divable 18-22 basins) ✅ + M3 (biome-table refactor, byte-identical) ✅ SHIPPED (iters 108/110/112)**;
+next on the ladder = **M4 biome-distinctness (first GATED, look-changing)** → M5 ocean-seabed+depth-tint → M6 landmarks.
+Then S3-M5 (Components) / the night-siege interleave. Live scale (2026-06-13 post-world-M3):
+~25k LOC src / ~190 files / 901 unit tests (110 files) / 29 static-gate files / 14-state visual gate (now
 LIVE-verified, +the `hearth` fixture) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
