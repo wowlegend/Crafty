@@ -119,6 +119,15 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'hearth.png') });
     console.log('captured hearth');
+
+    // biome-snow: the World-M4a snow PINES. A solid snowfield sits ~40 blocks toward -z from origin
+    // (probed: [0,-40], ~95% snow, avgY 54) but it's off the diorama frame, so the feature needs its
+    // own pose — a high 3/4 over the snowfield. Camera-override for this shot, restored below.
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [20, 82, -20], lookAt: [0, 54, -40] } }));
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'biome-snow.png') });
+    console.log('captured biome-snow');
     // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
     await flushFrames(page, 6);
