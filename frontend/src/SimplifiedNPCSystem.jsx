@@ -15,6 +15,7 @@ import { weightedPick } from './game/spawnWeights';
 import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
+import { stepXPOrb } from './game/xpOrbStepper';
 import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { Panel, Icon } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
@@ -967,53 +968,17 @@ const XPOrbSystem = () => {
     const playerPos = camera.position;
 
     for (const entity of [...xpOrbsQuery.entities]) {
-      entity.age += delta;
-
-      // 0.8s physical upward explosion phase with gravity
-      if (entity.age < 0.8) {
-        entity.velocity.y -= 12 * delta; // Gravity
-        entity.position.addScaledVector(entity.velocity, delta);
-
-        // Simple ground collision
-        if (store.getMobGroundLevel) {
-          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (groundY !== null && !isNaN(groundY) && entity.position.y < groundY + 0.1) {
-            entity.position.y = groundY + 0.1;
-            entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
-            entity.velocity.x *= 0.7; // Friction
-            entity.velocity.z *= 0.7;
-          }
-        }
-      } else {
-        // Magnetic pull phase when within 12 units of player
-        const dx = playerPos.x - entity.position.x;
-        const dy = (playerPos.y - 0.5) - entity.position.y; // Pull towards player core
-        const dz = playerPos.z - entity.position.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (dist < 12) {
-          const dir = new THREE.Vector3(dx, dy, dz).normalize();
-          // Quadratic magnetic pull: speed increases rapidly as distance decreases
-          const pullSpeed = Math.max(4, 80 / (dist + 0.2));
-          entity.position.addScaledVector(dir, pullSpeed * delta);
-        } else if (store.getMobGroundLevel) {
-          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (groundY !== null && !isNaN(groundY)) {
-            entity.position.y = groundY + 0.1;
-          }
-        }
-
-        // Collection distance check
-        if (dist < 1.2) {
-          if (GameMethods.grantXP) {
-            GameMethods.grantXP(entity.amount);
-          }
-          if (GameMethods.spawnXPText) {
-            GameMethods.spawnXPText(entity.amount, entity.position);
-          }
-          playPickup();
-          ecs.remove(entity);
-        }
+      // physics extracted to the pure game/xpOrbStepper.js (S3-M6 NPC de-monolith, byte-equivalent);
+      // the component keeps the ECS iteration + the collect side-effects.
+      const collected = stepXPOrb(entity, delta, {
+        playerPos,
+        groundYAt: store.getMobGroundLevel,
+      }).collected;
+      if (collected) {
+        if (GameMethods.grantXP) GameMethods.grantXP(entity.amount);
+        if (GameMethods.spawnXPText) GameMethods.spawnXPText(entity.amount, entity.position);
+        playPickup();
+        ecs.remove(entity);
       }
     }
   });
