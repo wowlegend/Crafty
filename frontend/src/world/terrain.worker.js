@@ -1,6 +1,7 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
+import { pickBiome } from './biomeTable.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -393,15 +394,9 @@ function generateChunkData(cx, cz) {
         surfaceY = Math.floor(baseHeight);
       }
 
-      let surfaceBlock = 1; // Grass
-      let secondaryBlock = 2; // Dirt
-      if (temperature > 0.7 && moisture < 0.3) {
-          surfaceBlock = 4; // Desert (Sand)
-          secondaryBlock = 4;
-      } else if (temperature < 0.3) {
-          surfaceBlock = 5; // Snow
-          secondaryBlock = 3; // Stone
-      }
+      // M3: biome selection is data-driven (world/biomeTable.js) — byte-identical to the old
+      // inline 3-branch. `let` so the beach override below can still reassign to sand.
+      let { surfaceBlock, secondaryBlock } = pickBiome(temperature, moisture, continent);
 
       if (surfaceY < BEACH_BAND_TOP) {
           surfaceBlock = 4; // Sand beach
