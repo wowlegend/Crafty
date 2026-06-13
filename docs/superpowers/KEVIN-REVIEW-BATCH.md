@@ -131,6 +131,13 @@
 > 9. **🧰 Two small items the HISTORICAL sweep would otherwise bury:** #32 vitest 3→4 security bump (dev-only
 >    exposure — confirm transfer to loop, or dismiss) · the forced-med/low tier baselines from S2-A-M4b
 >    (ratify into the gate, or hand the call to the loop).
+>    **UPDATE 2026-06-13 (dependabot #29, now concrete):** `npm audit` = 6 vulns (1 critical + 5 high), ALL in
+>    the build/test toolchain (esbuild 0.17–0.28 → vite → vitest/plugin-react/vite-node; GHSA-gv7w-rqvm-qjhr —
+>    esbuild Deno-module integrity RCE via `NPM_CONFIG_REGISTRY`). **Dev/build-time ONLY — esbuild/vite are not
+>    in the shipped game bundle, so no end-user exposure.** The clean fix is `vite@8` = a 2-major breaking jump
+>    from the current Vite 6 (touches build + the vitest config + the visual-capture pipeline) → the loop will
+>    schedule it as its OWN migration milestone (folds with the #32 vitest bump above), not a casual fix. No
+>    action needed from you; flag if you want it prioritized ahead of the S3 stream.
 >
 > **Decisions TRANSFERRED to the loop (charter §5, Kevin 2026-06-10):** music tooling + per-Aspect motif
 > policy (#74) · loot-beam punchiness · hotbar honesty approach · coin sinks · named regions · deep-night
