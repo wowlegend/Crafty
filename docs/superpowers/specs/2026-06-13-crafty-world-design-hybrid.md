@@ -112,9 +112,18 @@ deeps), readable beaches, sparse islands carrying landmarks.
   (`BIOMES` map). Byte-identical proven by an oracle-grid characterization (pickBiome ≡ the old branch over a fine (t,m)
   grid) AND the visual gate holding 14/14 with zero diff. Height literal untouched; the beach override stays after the pick
   (`let` binding). continent accepted for M4, ignored here. heightScale/seabedBlock/treeType become M4 columns.
-- **M4 — BIOME DISTINCTNESS [GATE].** Biome-aware height curve + new palette layers (numLayers++ AND authored 32×32 each) +
-  biome-branched foliage. Block-registry-coverage gate (every BLOCK_COLORS key < numLayers has a layer). Cross-chunk-seam test
-  (global-coord noise → no chunk-local RNG seams). Re-baseline.
+- **M4 — BIOME DISTINCTNESS [GATE] — SPLIT into a sub-ladder (iter 113, charter "too big → split"; lowest-risk-first):**
+  - **M4a — biome FOLIAGE distinctness [GATE].** Branch the foliage pass (terrain.worker.js:460-487) per biome: snow gets
+    PINES (taller thin trunk + a conical/tapered leaf shape — snow is currently BARREN), desert keeps/varies cacti, plains
+    keeps round trees (+ optional accent variety). Reuse existing blocks 6/7/8 — NO new block ids, NO topography change →
+    NO biome-border cliffs, NO DataArrayTexture risk. Deterministic (new `vegRandom` salts). Highest distinctness-per-risk.
+    Likely needs a biome capture fixture (the diorama camera frames origin≈plains; snow/desert may be off-frame — the M1 lesson).
+  - **M4b — biome PALETTE [GATE].** New block ids for richer biome ground (numLayers++ AND an authored 32×32 layer each +
+    BLOCK_COLORS). Block-registry-coverage gate (every BLOCK_COLORS key < numLayers has a layer). Higher creative variance
+    (palette design) → reference-lock the colors first. New tints must survive the obsidian-mood desat (Terrain.jsx:123-127).
+  - **M4c — biome TOPOGRAPHY [GATE].** Biome-aware height — but a DISCRETE per-biome heightScale creates ugly CLIFFS at
+    biome borders (the real design risk); needs a CONTINUOUS ruggedness field or blended heightScale (design-gate this one).
+    Cross-chunk-seam test (global-coord noise → no chunk-local RNG seams).
 - **M5 — OCEAN SEABED + WATER DEPTH-TINT [GATE].** Depth-keyed seabed (M4 mechanism) + the `vWorldY`/SEA_LEVEL depth-tint on
   waterMaterial. Capture-freeze test (shader on `time`); obsidian-mood survival. Re-baseline.
 - **M6 — SIGNATURE LANDMARKS (SEAM-A R3F) + island placement [GATE].** `<LandmarkRender/>` deterministic-hash placed,
