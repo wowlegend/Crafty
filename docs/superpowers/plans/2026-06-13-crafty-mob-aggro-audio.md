@@ -1,6 +1,6 @@
 # Mob aggro-snarl audio (enemy-presence split) Implementation Plan
 
-> **✅ SHIPPED (loop iter 145, 2026-06-13).** `makeAggroGrowl` voice added to `synthVoices.js` (registered in `VOICES`, contract 30→31) + the false→true `isAggro` edge wired in `SimplifiedNPCSystem.jsx`'s worker-update loop (cooldown-guarded, spatial) + a `mob-aggro-audio-gate` wiring gate. Mobs now SNARL when they notice you (a threat cue before contact), distinct from the heroic WILDHEART roar. Battery: 1022→1024 unit · build clean · visual **18/18 byte-identical** (audio-only + capture-suppressed mobs → no re-baseline). Commit `<feat>`.
+> **✅ SHIPPED (loop iter 145, 2026-06-13).** `makeAggroGrowl` voice added to `synthVoices.js` (registered in `VOICES`, contract 30→31) + the false→true `isAggro` edge wired in `SimplifiedNPCSystem.jsx`'s worker-update loop (cooldown-guarded, spatial) + a `mob-aggro-audio-gate` wiring gate. Mobs now SNARL when they notice you (a threat cue before contact), distinct from the heroic WILDHEART roar. Battery: 1022→1024 unit · build clean · visual **18/18 byte-identical** (audio-only + capture-suppressed mobs → no re-baseline). Commit `c725e73`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
