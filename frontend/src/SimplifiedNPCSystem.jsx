@@ -16,6 +16,7 @@ import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
 import { stepXPOrb, stepLootDrop } from './game/xpOrbStepper';
+import { sparkFor, hitKnockback } from './game/mobHitFx';
 import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { Panel, Icon } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
@@ -773,27 +774,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
 
       // SOTA High-performance fully GPU-driven particle burst triggering
       if (store.triggerGPUSparks) {
-        let sparkColor = '#ffffff';
-        const count = isCrit ? 60 : 25; // Massive spray on crits!
-        
-        switch (type) {
-          case 'fireball':
-            sparkColor = '#ff5500';
-            break;
-          case 'iceball':
-            sparkColor = '#00d2ff';
-            break;
-          case 'lightning':
-            sparkColor = '#ffff00';
-            break;
-          case 'arcane':
-            sparkColor = '#d900ff';
-            break;
-          case 'physical':
-          default:
-            sparkColor = isCrit ? '#ffcc00' : '#ff2200'; // Glowing gold for crits, crimson red for normals
-            break;
-        }
+        const { color: sparkColor, count } = sparkFor(type, isCrit); // pure pull -> game/mobHitFx.js (S3-M6)
 
         store.triggerGPUSparks(
           new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), 
@@ -806,17 +787,11 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       entity.health -= damage;
       entity.lastHit = performance.now();
 
-      // Store hit direction for flinch tilt
+      // Store hit direction for flinch tilt + knockback (pure pulls -> game/mobHitFx.js, S3-M6)
       const camera = useGameStore.getState().gameCamera;
-      if (camera) {
-        const kx = entity.position.x - camera.position.x;
-        const kz = entity.position.z - camera.position.z;
-        const kd = Math.sqrt(kx * kx + kz * kz) || 1;
-        entity.knockback = [kx / kd * 2, 0, kz / kd * 2];
-        entity.hitDirection = new THREE.Vector3(kx / kd, 0, kz / kd);
-      } else {
-        entity.hitDirection = new THREE.Vector3(0, 0, -1);
-      }
+      const { knockback, hitDir } = hitKnockback(entity.position, camera ? camera.position : null);
+      if (knockback) entity.knockback = knockback;
+      entity.hitDirection = new THREE.Vector3(hitDir[0], hitDir[1], hitDir[2]);
 
       setDamageNumbers(nums => [...nums, {
         id: damageId.current++,

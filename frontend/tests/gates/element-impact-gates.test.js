@@ -30,9 +30,11 @@ describe('M5 element-at-impact gates', () => {
   });
 
   it('every spell element has a distinct impact case in the mob damage layer (all 4 re-skin)', () => {
-    const npc = read('SimplifiedNPCSystem.jsx');
+    // S3-M6: the damageMob spark table was extracted to the pure game/mobHitFx.js (sparkFor) —
+    // gate repointed there (same invariant: each element keeps a distinct impact case).
+    const fx = read('game/mobHitFx.js');
     for (const spell of Object.keys(SPELL_TO_ELEMENT)) {
-      expect(npc, `missing impact case for '${spell}'`).toMatch(new RegExp(`case '${spell}':`));
+      expect(fx, `missing impact case for '${spell}'`).toMatch(new RegExp(`case '${spell}':`));
     }
   });
 });
