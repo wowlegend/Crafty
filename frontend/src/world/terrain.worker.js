@@ -1,5 +1,6 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -386,10 +387,8 @@ function generateChunkData(cx, cz) {
       const baseHeight = 30 + n * 40;
       
       let surfaceY;
-      if (continent < -0.15) {
-        const oceanT = Math.min(1, Math.max(0, (-0.15 - continent) / 0.15));
-        const targetOceanHeight = 12 + n * 12;
-        surfaceY = Math.floor(baseHeight * (1 - oceanT) + targetOceanHeight * oceanT);
+      if (continent < OCEAN_CONTINENT_THRESHOLD) {
+        surfaceY = oceanSurfaceY(baseHeight, n, continent);
       } else {
         surfaceY = Math.floor(baseHeight);
       }
@@ -404,7 +403,7 @@ function generateChunkData(cx, cz) {
           secondaryBlock = 3; // Stone
       }
 
-      if (surfaceY < 30) {
+      if (surfaceY < BEACH_BAND_TOP) {
           surfaceBlock = 4; // Sand beach
           secondaryBlock = 4;
       }
@@ -413,7 +412,7 @@ function generateChunkData(cx, cz) {
         const index = getIndex(x, y, z);
         
         if (y > surfaceY) {
-          if (y <= 28) {
+          if (y <= SEA_LEVEL) {
             blocks[index] = 9; // Water
           } else {
             blocks[index] = 0; // Air
@@ -463,7 +462,7 @@ function generateChunkData(cx, cz) {
         }
       }
 
-      if (surfaceY > 28 && vegRandom(worldX, worldZ, 1) < 0.02) {
+      if (surfaceY > SEA_LEVEL && vegRandom(worldX, worldZ, 1) < 0.02) {
         const surfaceBlock = blocks[x + z * CHUNK_SIZE + surfaceY * 256];
         if (surfaceBlock === 1) { // Forest Trees
           const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
