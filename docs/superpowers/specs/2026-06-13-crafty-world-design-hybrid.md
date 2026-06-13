@@ -101,9 +101,12 @@ deeps), readable beaches, sparse islands carrying landmarks.
   Highest signal (spawn lands on a crafted place), lowest risk (2 proven seams, deterministic, NO-RE-MESH). Gate: foundation
   top = a flat raised pad at HEARTH_Y=56 over the ≈y50 origin grade (NOT >28 — see the build correction in §2); no
   Math.random; voxelKit-not-PBR (static gate); brazier capture-null. Re-baseline explore-day.
-- **M2 — OCEAN DEPTH + COASTLINE consts + divable basins [GATE].** Const promotion (SEA_LEVEL=28 / BEACH_BAND_TOP=30 — TWO
-  consts) + lower DEEP_FLOOR (column 18-22). Water castShadow OFF. NO new look/blocks. Worker unit test: depth + the
-  shoreline invariant (BEACH_BAND_TOP>SEA_LEVEL≥1; no foliage at surfaceY≤SEA_LEVEL). Re-baseline explore-day/night.
+- **M2 — OCEAN DEPTH + COASTLINE consts + divable basins ✅ SHIPPED (iter 110).** Const promotion (SEA_LEVEL=28 /
+  BEACH_BAND_TOP=30 — TWO consts) + DEEP_FLOOR=6 → divable depth STRICTLY 18-22 (n clamped; a probe of the real noise field
+  caught the n-overshoot that would reach 23). Water castShadow OFF. NO new look/blocks. `world/oceanProfile.js` (consts +
+  `oceanSurfaceY`) imported by the worker at the 4 sites; 7 behavioral + 4 static gate tests. **No re-baseline needed** — the
+  deep seabed is SUB-SURFACE (water surface stays y28) and the water-shadow removal stayed sub-6% in all 14 fixtures; the
+  visible seabed/depth-tint + its fixture are M5. (CA-slope-nibble under deep water noted for M5.)
 - **M3 — BIOME TABLE refactor (look-NEUTRAL) [NO GATE].** Extract :396-409 → `pickBiome()` returning ONLY {surfaceBlock,
   secondaryBlock} + `world/biomeTable.js`. Characterization test: byte-identical block arrays (fixed seed, ~4 chunks across
   the 3 climate zones) pre/post. Height literal :385 untouched. No baseline change.

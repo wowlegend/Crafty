@@ -1,5 +1,7 @@
 # World M2 — Ocean Depth + Coastline Consts Implementation Plan
 
+> **✅ SHIPPED (loop iter 110, 2026-06-13).** `world/oceanProfile.js` (SEA_LEVEL=28 / BEACH_BAND_TOP=30 / DEEP_FLOOR=6 + `oceanSurfaceY`) wired into the worker at all 4 sites; water `castShadow` off. A node probe of the real noise field caught an n-overshoot (depth hit 23) → clamped to strictly 18-22. Commits `c1eeb2e`(T1)/`380d9c5`(T2)/`d970d6a`(clamp). 897 unit (+11) · build · visual **14/14, no re-baseline** (the deep seabed is sub-surface; the water-shadow removal stayed sub-6%). Probe confirmed oceans = 37% of the world, depth p50=20. NEXT = M3 (biome-table refactor, byte-identical).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make oceans a *divable place* — promote the worldgen shoreline literals to named consts (`SEA_LEVEL` / `BEACH_BAND_TOP` — two distinct values; the 28→30 gap IS the shoreline) and lower the seabed so deep basins are 18–22 voxels deep (was 4–16), plus turn off the water mesh's shadow casting.
