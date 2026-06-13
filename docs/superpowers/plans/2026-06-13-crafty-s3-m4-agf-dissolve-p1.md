@@ -1,5 +1,7 @@
 # S3-M4 — AdvancedGameFeatures Dissolve, Part 1 (the safe strips) — Implementation Plan
 
+> **✅ SHIPPED (2026-06-13, loop iter 100):** T1 the 2 panels (SpellUpgradePanel + ChestInventoryPanel) → `ui/` (a9ceed8; 5 dead imports pruned, the aspect-trees-gates trap-1 repoint) · T2 the 3 accrual hooks → `world/accrualHooks.js` (def1e37; 4 dead imports pruned, the kill-attribution-gates trap-1 repoint). Both byte-exact (anchored slice) + capture-clean (no re-baseline). **AGF 1397 → 1120 LOC** (−18.4k chars). The boss indexOf gate (trap 3) verified untouched. 874 unit/105 files · build · visual 13/13. **Part 2 (the stateful cores: boss/pet/survival + the indexOf gate) is the next S3-M4 unit.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-11-crafty-s3-demonolith-design.md` (the S3-M4 row + the 5-trap catalog). AGF is the 3rd-biggest god-file (1397 LOC, 4+ domains, 6 gates incl. the boss capture indexOf anchor). The de-monolith pattern is now 3×-proven (M1 SoundManager, M2 EnhancedMagicSystem, M3 NPC strips). **Prime directive: extraction-only — NO behavior change.** Behavior locks: the 13-frame visual gate, 874 unit tests, 26 static-gate files.
 
