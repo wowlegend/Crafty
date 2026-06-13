@@ -7,7 +7,8 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
-import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades, useFerocityAccrual, useKineticAccrual, useSoulAccrual } from './AdvancedGameFeatures';
+import { useSurvivalMode, useBossSystem, usePetSystem, useSpellUpgrades } from './AdvancedGameFeatures';
+import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from './world/accrualHooks';
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
