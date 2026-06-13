@@ -138,6 +138,16 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'ocean-depth.png') });
     console.log('captured ocean-depth');
+
+    // landmark: the World-M6 signature silhouettes. Probed nearest LAND landmark = a Sky-arch at
+    // [40,-88] (baseY 41 -> top 92). A 3/4 pose ~66 units back frames the full arch clearing the
+    // terrain against the sky. Off the diorama frame -> needs its own pose. Camera-override, restored below.
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [85, 62, -40], lookAt: [40, 70, -88] } }));
+    await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'landmark.png') });
+    console.log('captured landmark');
     // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
     await flushFrames(page, 6);
