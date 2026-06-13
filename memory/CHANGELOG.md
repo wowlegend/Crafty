@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (S3-M4 part 3 — the pet domain; loop iter 102)
+- **The last non-boss AGF surface peels off:** `usePetSystem` → `src/world/petSystem.js`, `PetIndicator` → `src/ui/PetIndicator.jsx`, `PetEntities` → `src/render/PetEntities.jsx` (the R3F pet render). **AGF 994 → 689 LOC — now boss-only** (a 51% cut from the original 1397 across parts 1-3).
+- **Byte-exact (anchored slice) + capture-clean** (no pet fixture in any baseline → zero shift). No dead imports (the boss reuses every R3F/render/Panel/useCallback import). No gate repoint — allegiance-gates' AGF reference is its worldBlocks-comma-key check (pets touch no worldBlocks); its removeComponent-isMob check targets NPC/Components only. The boss capture indexOf anchor (trap 3) untouched.
+- **874 unit (105 files) · 26 static-gate files · build · visual 13/13.** **Part 4 = the boss domain** (BOSS_CONFIG/useBossSystem/BossHealthBar/BossEntity) — the trap-3 indexOf capture-anchor + the gated boss-obsidian/boss-closeup baselines → the dedicated, adversarially-reviewed finale.
+
 ### June 13, 2026 (S3-M4 part 2 — AGF dissolve continues: survival + the upgrades hook; loop iter 101)
 - **The next-safest AGF cores peel off:** the survival domain — `useSurvivalMode` → `src/world/survivalSystem.js` (the day/night hook, deliberately not a dangerLevel writer) + `SurvivalWarning` → `src/ui/SurvivalWarning.jsx` (the night-transition toast) — and the lone `useSpellUpgrades` progression hook → `src/world/spellUpgrades.js`. **AGF 1120 → 994 LOC** (now just the boss + pet domains).
 - **Byte-exact (anchored slice) + capture-clean** (no survival/upgrades capture fixture exists → zero baseline shift). The now-dead `Toast` import pruned from AGF (grep-verified). 1 trap-1 gate repoint: siege-gates' useSurvivalMode assertions (no-dangerLevel-write + nightCount-from-store) follow it to `world/survivalSystem.js`; no gate pins useSpellUpgrades. The boss capture indexOf anchor (trap 3) verified untouched.

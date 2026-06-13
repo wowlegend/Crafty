@@ -1,5 +1,7 @@
 # S3-M4 — AdvancedGameFeatures Dissolve, Part 3 (the pet domain) — Implementation Plan
 
+> **✅ SHIPPED (2026-06-13, loop iter 102, 306f4e2):** usePetSystem → `world/petSystem.js`, PetIndicator → `ui/PetIndicator.jsx`, PetEntities → `render/PetEntities.jsx`. Byte-exact + capture-clean; no dead imports (boss reuses all); no gate repoint (allegiance unaffected). **AGF 994 → 689 LOC (boss-only).** 874 unit/105 · build · visual 13/13. **Part 4 = boss (the trap-3 indexOf + gated boss baselines, reviewed) is the finale.**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-11-crafty-s3-demonolith-design.md` (S3-M4, multi-part). Parts 1+2 cleared the panels/accrual/survival/upgrades (AGF 1397→994). Part 3 takes the **pet domain** — the last non-boss surface, capture-clean (no pet fixture in any baseline). Boss = Part 4 (the trap-3 indexOf + the gated boss baselines, reviewed). Extraction-only.
 
