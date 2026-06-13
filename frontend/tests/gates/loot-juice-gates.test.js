@@ -13,9 +13,13 @@ describe('loot drop-beam (rarity-legible) wiring', () => {
   const src = read('src/SimplifiedNPCSystem.jsx');
 
   it('LootDropRender derives its look from the pure rarityBeam helper (rarity color source)', () => {
-    expect(/import\s*\{\s*rarityBeam\s*\}\s*from\s*'\.\/game\/lootJuice\.js'/.test(src)).toBe(true);
+    // S3-M3 (trap 1): LootDropRender moved to render/pickupVfx.jsx — the look-source assertion
+    // follows the component (one level up -> the '../game/lootJuice.js' import). The LootSystem
+    // collection branch still imports rarityBeam in the NPC file, locked by the pop asserts below.
+    const render = read('src/render/pickupVfx.jsx');
+    expect(/import\s*\{\s*rarityBeam\s*\}\s*from\s*'\.\.\/game\/lootJuice\.js'/.test(render)).toBe(true);
     // The drop look is keyed off rarityBeam(rarity), not a hardcoded color switch.
-    expect(/rarityBeam\(\s*rarity\s*\)/.test(src)).toBe(true);
+    expect(/rarityBeam\(\s*rarity\s*\)/.test(render)).toBe(true);
   });
 
   it('rarityBeam is keyed off the locked RARITY_FILL palette (single rarity color SoT)', () => {
