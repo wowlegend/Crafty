@@ -1,5 +1,7 @@
 # World M4a — Biome Foliage Distinctness Implementation Plan
 
+> **✅ SHIPPED (loop iter 114, 2026-06-13).** `world/foliage.js` `pineShape` (conical evergreen, unit-tested) + a `surfaceBlock===5` snow-pine branch in the worker foliage pass — snow is no longer barren. Reuses blocks 6/7 (no new ids), deterministic (`vegRandom` salt 4). A `biome-snow` capture fixture (probed snowfield at [0,−40], camera-override) gives the off-frame feature gate coverage. 911 unit (+10) · build · visual 14→**15/15** (the 14 held byte-identical; biome-snow new, HD-eyeballed: evergreens on a snowy highland). NEXT = M4b (biome palette — the DataArrayTexture/numLayers++ work).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Checkbox steps.
 
 **Goal:** Give every biome signature flora so they read as distinct places. Today plains=round trees, desert=cacti, **snow=barren** — M4a closes that gap with **snow PINES** (a tall thin trunk + a tapered conical canopy, a clearly different silhouette from the round plains tree), reusing existing blocks. No new block ids, no topography change.

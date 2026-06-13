@@ -113,11 +113,11 @@ deeps), readable beaches, sparse islands carrying landmarks.
   grid) AND the visual gate holding 14/14 with zero diff. Height literal untouched; the beach override stays after the pick
   (`let` binding). continent accepted for M4, ignored here. heightScale/seabedBlock/treeType become M4 columns.
 - **M4 — BIOME DISTINCTNESS [GATE] — SPLIT into a sub-ladder (iter 113, charter "too big → split"; lowest-risk-first):**
-  - **M4a — biome FOLIAGE distinctness [GATE].** Branch the foliage pass (terrain.worker.js:460-487) per biome: snow gets
-    PINES (taller thin trunk + a conical/tapered leaf shape — snow is currently BARREN), desert keeps/varies cacti, plains
-    keeps round trees (+ optional accent variety). Reuse existing blocks 6/7/8 — NO new block ids, NO topography change →
-    NO biome-border cliffs, NO DataArrayTexture risk. Deterministic (new `vegRandom` salts). Highest distinctness-per-risk.
-    Likely needs a biome capture fixture (the diorama camera frames origin≈plains; snow/desert may be off-frame — the M1 lesson).
+  - **M4a — biome FOLIAGE distinctness [GATE] ✅ SHIPPED (iter 114).** Snow PINES (`world/foliage.js` `pineShape` — a
+    tapered conical evergreen; a `surfaceBlock===5` branch in the foliage pass) — snow is no longer barren. Reuses blocks 6/7
+    (NO new ids), NO topography (no biome-border cliffs), deterministic (`vegRandom` salt 4). A `biome-snow` capture fixture
+    (probed snowfield [0,−40], camera-override → the off-frame feature gets gate coverage — the M1 lesson). visual 15/15.
+    Desert cacti + plains trees left as-is (already characteristic). pineShape is unit-tested (cone taper + spire).
   - **M4b — biome PALETTE [GATE].** New block ids for richer biome ground (numLayers++ AND an authored 32×32 layer each +
     BLOCK_COLORS). Block-registry-coverage gate (every BLOCK_COLORS key < numLayers has a layer). Higher creative variance
     (palette design) → reference-lock the colors first. New tints must survive the obsidian-mood desat (Terrain.jsx:123-127).
