@@ -1,3 +1,5 @@
+> **✅ SHIPPED (loop iter 118, 2026-06-13).** A `vWorldY` varying in the shared `compileShader` + a water-gated fragment mix toward deep-navy by `clamp((SEA_LEVEL−vWorldY)/22,0,1)*0.82` (SEA_LEVEL compile-time-injected from oceanProfile). Static → capture-stable. Verified: the tint is invisible top-down (surface = depth 0) so it had zero coverage → added an `ocean-depth` underwater fixture (probed deep basin [−40,0]) showing the navy-deepening column (HD-eyeballed); explore-day deliberately re-baselined (6.07% — water side-faces darken at the diorama angle). 923 unit (+3) · build · visual 15→**16/16**. M5b layered seabed (new blocks) deferred → folds with M4b. Commits T1 (shader) · T2 (fixture+re-baseline). NEXT = M6 landmarks.
+
 # World M5a — Ocean Water Depth-Tint Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Checkbox steps.

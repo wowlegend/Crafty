@@ -77,11 +77,12 @@ mount-crash [orphaned SPELL_UPGRADES] that had silently vacuous-ed the visual ga
 NPC + Components god-files remain. **The WORLD-DESIGN pass is now ACTIVE** (Kevin-ratified 2026-06-13, HYBRID
 "Anchored Infinite"; spec + 6-milestone ladder committed): **M1 (Hearth) ✅ + M2 (divable oceans) ✅ + M3 (biome-table refactor) ✅ + M4a (biome FOLIAGE
 distinctness — snow pines) ✅ SHIPPED (iters 108/110/112/114)**; M4 was split (M4a foliage ✅ → M4b palette → M4c
-topography). Then the locomotion-audio interleave ✅ SHIPPED (iter 116 — surface-keyed footsteps, riding M4a; audio ledger
-now feel@61/audio@93/audio@116). Next: world-M5 (ocean seabed + water depth-tint — the M2 divable-ocean payoff)
-→ M6 landmarks (M4b/M4c biome palette/topography deferred as incremental). Then S3-M5 (Components).
-Live scale (2026-06-13 post-locomotion-audio): ~25k LOC src / ~195 files / 916 unit tests (114 files) / 31 static-gate
-files / 15-state visual gate (LIVE-verified, +`hearth`+`biome-snow` fixtures) / perf-probe harness
+topography). Then the locomotion-audio interleave ✅ (iter 116 — surface-keyed footsteps; audio ledger feel@61/audio@93/audio@116)
++ **world-M5a (ocean water depth-tint — the M2 divable-basin payoff) ✅ SHIPPED (iter 118)**. Next: world-M6
+(signature silhouette landmarks — the FINAL spec-ladder milestone, wayfinding). Then the deferred new-block/topography
+batch (M4b palette + M5b layered seabed TOGETHER via numLayers++; M4c blended topography) + S3-M5 (Components).
+Live scale (2026-06-13 post-M5a): ~25k LOC src / ~196 files / 923 unit tests (116 files) / 32 static-gate
+files / 16-state visual gate (LIVE-verified, +`hearth`+`biome-snow`+`ocean-depth` fixtures) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
 `vite@8` breaking migration, dev-only — not in the shipped bundle) logged in KEVIN-REVIEW-BATCH #9.

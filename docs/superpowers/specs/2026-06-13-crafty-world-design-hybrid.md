@@ -124,8 +124,11 @@ deeps), readable beaches, sparse islands carrying landmarks.
   - **M4c — biome TOPOGRAPHY [GATE].** Biome-aware height — but a DISCRETE per-biome heightScale creates ugly CLIFFS at
     biome borders (the real design risk); needs a CONTINUOUS ruggedness field or blended heightScale (design-gate this one).
     Cross-chunk-seam test (global-coord noise → no chunk-local RNG seams).
-- **M5 — OCEAN SEABED + WATER DEPTH-TINT [GATE].** Depth-keyed seabed (M4 mechanism) + the `vWorldY`/SEA_LEVEL depth-tint on
-  waterMaterial. Capture-freeze test (shader on `time`); obsidian-mood survival. Re-baseline.
+- **M5 — OCEAN SEABED + WATER DEPTH-TINT [GATE] — SPLIT:** **M5a depth-tint ✅ SHIPPED (iter 118)** — a `vWorldY` varying
+  in the shared compileShader + a water-gated deep-navy mix by `(SEA_LEVEL−vWorldY)` (SEA_LEVEL compile-time const from
+  oceanProfile — simpler than the planned uniform; static → capture-stable; survives the obsidian-mood desat). Invisible
+  top-down (surface=depth 0) so it got an `ocean-depth` underwater fixture for coverage; explore-day re-baselined. **M5b
+  layered seabed (sand→gravel→stone) — PENDING, needs NEW blocks → folds with M4b (the DataArrayTexture mechanism).**
 - **M6 — SIGNATURE LANDMARKS (SEAM-A R3F) + island placement [GATE].** `<LandmarkRender/>` deterministic-hash placed,
   in-range-culled + per-tier count cap; sized >Y90; Emissive beam capture-null; castShadow off (artifact + perf). Highest
   creative variance → last. Re-baseline.
