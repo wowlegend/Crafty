@@ -3,10 +3,15 @@
 // (Components.jsx:892-930) raycasts ground at (0,0) and drops the player groundY+1.2, so this
 // flat top simply BECOMES the spawn floor — no spawn code changes. Pure coordinate math (NO RNG):
 // the same seed regenerates the identical Hearth every load, zero save data (like the dungeon).
+//
+// HEARTH_Y is the natural origin grade (≈50 for the locked seed 12345 — computed across the
+// footprint: min 41 / max 58 / avg 49.5) raised a few voxels, so the plinth is a gently-raised
+// crafted PAD flush-to-slightly-above the local terrain — NOT a sunken pit (the early "~Y30"
+// design assumption was wrong by ~20 voxels; corrected against the real worldgen height formula).
 const CHUNK_SIZE = 16;
 const CHUNK_HEIGHT = 256;
 
-export const HEARTH_Y = 32;       // plinth cap; > the water fill (y<=28) with a 4-voxel margin
+export const HEARTH_Y = 56;       // a raised pad over the ≈y50 origin grade; >> the water fill (y<=28)
 export const HEARTH_RADIUS = 7;   // world [-7,7] in x/z -> a 15x15 standable platform
 const STONE = 3;                  // existing block id (no new blocks in M1 — palette is M4)
 

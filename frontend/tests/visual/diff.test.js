@@ -18,7 +18,7 @@ import pixelmatch from 'pixelmatch';
 // pattern title-mascot used) so they do NOT yet assert a regression baseline: Kevin ratifies the
 // med/low look before they are gate-blessed (promoted into STATES). They are self-consistent on
 // re-capture; their committed PNGs are the review artifacts.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase'];
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase', 'hearth'];
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 

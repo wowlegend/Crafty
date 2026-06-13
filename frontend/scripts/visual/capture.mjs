@@ -110,6 +110,19 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'explore-day.png') });
     console.log('captured explore-day');
 
+    // hearth: the World-M1 Home Anchor (the crafted origin plinth + lodge + brazier). The
+    // default diorama camera frames the DISTANT vista, so the Hearth at origin (y56 pad) needs
+    // its OWN pose — a high 3/4 looking down at the pad. Override the capture camera for this
+    // shot only, then RESTORE the default pose so every downstream frame stays byte-identical.
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [13, 86, 13], lookAt: [0, 56, 0] } }));
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'hearth.png') });
+    console.log('captured hearth');
+    // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
+    await flushFrames(page, 6);
+
     // === S2-A-M4b: forced MED / LOW tier baselines (Kevin ratifies before gate-blessing) ===
     // The same explore-day world (already fully streamed at the forced `high` tier above), now
     // RE-RENDERED at the med + low quality tiers so the M4a tier levers are eyeball-able. Forcing

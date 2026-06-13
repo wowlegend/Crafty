@@ -365,7 +365,7 @@ const TreasureChestsRender = () => {
 // look) — NOT PBR. Sibling of TreasureChestsRender. Static (one fixed place at origin, no store
 // read). The brazier glow + its light self-null under isCaptureMode (the chest-beacon pattern) so
 // the studio cards stay clean; the toon cubes freeze naturally (no animation).
-const HEARTH_TOP = 32; // mirrors HEARTH_Y in world/homeAnchor.js (the plinth cap)
+const HEARTH_TOP = 56; // mirrors HEARTH_Y in world/homeAnchor.js (the plinth cap; ≈y50 origin grade + raise)
 const HomeAnchorRender = () => {
     const WOOD = '#6B4A2F', STONE = '#8A8A8A', ROOF = '#7A3B2E', LEAF = '#3E7D32';
     return (
