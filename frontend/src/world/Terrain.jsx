@@ -15,6 +15,7 @@ import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
+import { SEA_LEVEL } from './oceanProfile.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -52,6 +53,7 @@ const compileShader = (shader) => {
         uniform float time;
         uniform float timeOfDay;
         flat varying float vBlockType;
+        varying float vWorldY;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -71,6 +73,7 @@ const compileShader = (shader) => {
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
+        vWorldY = (modelMatrix * vec4(position, 1.0)).y; // M5a: world height for the water depth-tint
         // Check if vertex is water by its blockType index in color.r attribute (9.0)
         bool isWater = (abs(color.r - 9.0) < 0.1);
         if (isWater) {
@@ -91,6 +94,7 @@ const compileShader = (shader) => {
         uniform float timeOfDay;
         uniform float mood;
         flat varying float vBlockType;
+        varying float vWorldY;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -117,6 +121,13 @@ const compileShader = (shader) => {
         // custom sampler2DArray (so material.colorSpace is a no-op). Decode to linear
         // here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);
+
+        // M5a depth-tint: water darkens + shifts to deep-navy with depth below SEA_LEVEL (the M2
+        // divable basins now READ deep). Static (vWorldY geometry) -> capture-stable. Water-gated.
+        if (isWaterPixel) {
+            float wdepth = clamp((${SEA_LEVEL}.0 - vWorldY) / 22.0, 0.0, 1.0);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.015, 0.09, 0.20), wdepth * 0.82);
+        }
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
         // at obsidian. LUMINANCE-PRESERVING (no darkening) so dusk stays readable — the per-mood
