@@ -1,5 +1,7 @@
 # Camera-Kick Juice (per-verb impact weight) Implementation Plan
 
+> **✅ SHIPPED (loop iters 138-139, 2026-06-13).** T1 the pure `game/cameraKick.js` (`makeKick`/`addKick`/`stepKick`/`localToWorldKick` + `KICK_PROFILES` + `KICK_DECAY=14`, 9 unit tests) + T2 wired into the Player follow-cam (folds the decaying kick into the `shakeX/Y/Z` offset, below the `isCaptureMode` early-return) + the **melee** (recoil back+down) and **cast** (push up+forward) verb triggers. Capture-safe (kick invisible in baselines). **1006 unit · build clean · visual 18/18** (no re-capture). Commits `7cc330e`/`9311c68`. **Feel is play/Kevin-verified** (KICK_PROFILES/KICK_DECAY are the tunables — KRB note added). **Optional follow-ups (deferred, not blocking):** the `slam` (voidhand) + `land` (fall-landing edge) kicks — the module already has the profiles; just wire at the slam dispatch + the `prevGroundedRef` landing edge (gate on downward velocity).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Steps use `- [ ]`.
 
 **Goal:** Add per-verb camera "kick" — a brief directional camera lurch on melee / cast / slam / hard-landing — so every action has tactile WEIGHT (the §6 "per-verb camera kicks" backlog item). Distinct from the existing random damage-jitter (`cameraShakeIntensity`): a kick is an intentional, directional, quickly-recovering impulse.
