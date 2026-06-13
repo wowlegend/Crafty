@@ -2,7 +2,7 @@ import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { GameUI } from './Components';
+import { GameUI } from './ui/GameHud';
 import { CombatInstructions } from './ui/CombatInstructions';
 import {
   PlayerHealthBar,
