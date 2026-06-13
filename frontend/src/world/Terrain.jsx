@@ -14,6 +14,7 @@ import { moodRef } from '../render/mood';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
+import { Cube, Emissive } from '../render/mascots/voxelKit';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -354,6 +355,43 @@ const TreasureChestsRender = () => {
                     )}
                 </group>
             ))}
+        </group>
+    );
+};
+
+// --- THE HEARTH: the crafted home-anchor decoration (World-Design M1) ---
+// The voxel PLINTH is baked at gen (world/homeAnchor.js, top at HEARTH_Y=32); THIS group is the
+// building read on top of it. Built from voxelKit Cube/Emissive (the shared toon+rim+ink character
+// look) — NOT PBR. Sibling of TreasureChestsRender. Static (one fixed place at origin, no store
+// read). The brazier glow + its light self-null under isCaptureMode (the chest-beacon pattern) so
+// the studio cards stay clean; the toon cubes freeze naturally (no animation).
+const HEARTH_TOP = 32; // mirrors HEARTH_Y in world/homeAnchor.js (the plinth cap)
+const HomeAnchorRender = () => {
+    const WOOD = '#6B4A2F', STONE = '#8A8A8A', ROOF = '#7A3B2E', LEAF = '#3E7D32';
+    return (
+        <group position={[0, HEARTH_TOP + 0.5, 0]}>
+            {/* the lodge — set back so it frames the spawn vista without blocking it */}
+            <group position={[-2.5, 0, -2.5]}>
+                <Cube position={[0, 0.15, 0]} size={[3.4, 0.6, 3.4]} color={STONE} castShadow={false} />
+                <Cube position={[0, 1.0, 0]} size={[3.0, 2.4, 3.0]} color={WOOD} castShadow={false} />
+                <Cube position={[0, 2.55, 0]} size={[3.6, 0.5, 3.6]} color={ROOF} castShadow={false} />
+                <Cube position={[0, 3.05, 0]} size={[2.4, 0.5, 2.4]} color={ROOF} castShadow={false} />
+                <Cube position={[0, 0.9, 1.55]} size={[0.9, 1.6, 0.12]} color="#2A1C12" outline={0} castShadow={false} />
+            </group>
+            {/* the brazier — a stone bowl on a post + a glowing ember (capture-null) */}
+            <group position={[2.4, 0, 2.4]}>
+                <Cube position={[0, 0.5, 0]} size={[0.4, 1.0, 0.4]} color={STONE} castShadow={false} />
+                <Cube position={[0, 1.1, 0]} size={[0.7, 0.3, 0.7]} color="#5A5A5A" castShadow={false} />
+                {!isCaptureMode() && (
+                    <>
+                        <Emissive position={[0, 1.35, 0]} size={0.34} color="#FF7A1A" intensity={2.8} />
+                        <pointLight position={[0, 1.6, 0]} intensity={1.6} distance={9} color="#FF8A2A" />
+                    </>
+                )}
+            </group>
+            {/* two leaf planters flanking the lodge */}
+            <Cube position={[-2.5, 0.3, 1.4]} size={[0.6, 0.6, 0.6]} color={LEAF} castShadow={false} />
+            <Cube position={[2.7, 0.3, -1.4]} size={[0.6, 0.6, 0.6]} color={LEAF} castShadow={false} />
         </group>
     );
 };
@@ -777,6 +815,7 @@ export const MinecraftWorld = React.memo(() => {
             <TargetOutline />
             <BlockParticleSystem worker={worker} />
             <TreasureChestsRender />
+            <HomeAnchorRender />
         </group>
     );
 });
