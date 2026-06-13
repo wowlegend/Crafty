@@ -12,6 +12,7 @@ import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
+import { footstepTypeAt } from './world/climate.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -174,6 +175,8 @@ export const Player = ({ isWorldBuilt }) => {
   const { rapier, world } = useRapier();
 
   const velocityY = useRef(0);
+  const lastStepRef = useRef(0);        // locomotion-audio: stride throttle (footstep cadence)
+  const prevGroundedRef = useRef(true); // locomotion-audio: landing-edge detection
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
   // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
@@ -1081,6 +1084,7 @@ export const Player = ({ isWorldBuilt }) => {
     if (isGrounded) {
       if (isLocked && input.jump && !dodge.isActive) {
         velocityY.current = 12.0 * loco.jumpMult; // M5: hawk hops higher (low-gravity), bull/golem lower
+        useGameStore.getState().playSpatialSound?.('jump', [camera.position.x, camera.position.y, camera.position.z], 1, 6); // locomotion-audio: jump cue
         // Consume the jump intent on a grounded jump. OS key-repeat re-sets the intent via
         // repeated keydown, so held-Space bunny-hopping is preserved byte-identically.
         setIntent('jump', false);
@@ -1229,6 +1233,28 @@ export const Player = ({ isWorldBuilt }) => {
     let bobOffset = 0;
     if (isGrounded && horizontalSpeed > 1) {
       bobOffset = Math.sin(time * 15) * 0.06;
+    }
+
+    // Locomotion audio (interleave): surface-keyed footsteps in stride + a landing thud. Game-Loop
+    // safe — transient getState() + stride/grounded refs, no React state. Audio-only (zero visual).
+    {
+      const sStore = useGameStore.getState();
+      const px = camera.position.x, pz = camera.position.z;
+      if (isGrounded && horizontalSpeed > 1.2) {
+        const stride = Math.max(0.28, 0.42 - horizontalSpeed * 0.01); // faster -> quicker steps
+        if (time - lastStepRef.current > stride) {
+          lastStepRef.current = time;
+          const t = footstepTypeAt(px, pz);
+          const rate = t === 'stone' ? 0.8 : t === 'snow' ? 1.25 : t === 'sand' ? 0.95 : 1.05;
+          sStore.playSpatialSound?.('footstep', [px, camera.position.y, pz], rate, 5);
+        }
+      }
+      if (isGrounded && !prevGroundedRef.current) { // landing edge -> a firmer footstep
+        const t = footstepTypeAt(px, pz);
+        sStore.playSpatialSound?.('footstep', [px, camera.position.y, pz], (t === 'stone' ? 0.7 : 0.85), 8);
+        lastStepRef.current = time;
+      }
+      prevGroundedRef.current = isGrounded;
     }
 
     // Phase 9: Camera Shake
