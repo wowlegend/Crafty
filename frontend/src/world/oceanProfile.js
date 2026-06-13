@@ -23,6 +23,9 @@ export function oceanBlend(continent) {
 // At the threshold (blend 0) it returns floor(baseHeight), continuous with the land branch.
 export function oceanSurfaceY(baseHeight, n, continent) {
   const t = oceanBlend(continent);
-  const seabed = DEEP_FLOOR + n * 4;
+  // Clamp n to [0,1] for the seabed: the worldgen `n` overshoots to ~[-0.1,1.1] (the +noise*0.1
+  // octave), which would otherwise push the deepest seabed to y5 (depth 23). Clamping keeps the
+  // divable depth STRICTLY 18-22 (seabed ∈ [6,10]) — a predictable, bounded basin.
+  const seabed = DEEP_FLOOR + Math.min(1, Math.max(0, n)) * 4;
   return Math.floor(baseHeight * (1 - t) + seabed * t);
 }

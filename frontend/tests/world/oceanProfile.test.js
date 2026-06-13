@@ -10,8 +10,9 @@ describe('Ocean + coastline profile (World-M2)', () => {
     expect(SEA_LEVEL).toBeGreaterThanOrEqual(1);
   });
 
-  it('deep ocean is divable 18-22 voxels (SEA_LEVEL - seabed) across the noise range', () => {
-    for (const n of [0, 0.25, 0.5, 0.75, 1]) {
+  it('deep ocean is divable 18-22 voxels across the REAL noise range incl. the ±0.1 overshoot (n clamped)', () => {
+    // worldgen `n` overshoots to ~[-0.1,1.1]; the seabed clamp must keep depth strictly 18-22.
+    for (const n of [-0.1, 0, 0.25, 0.5, 0.75, 1, 1.1]) {
       const seabed = oceanSurfaceY(30 + n * 40, n, -0.30); // continent <= -0.30 => full ocean
       const depth = SEA_LEVEL - seabed;
       expect(depth, `depth at n=${n}`).toBeGreaterThanOrEqual(18);
