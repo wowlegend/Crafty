@@ -15,11 +15,25 @@ export const KICK_DECAY = 14;
  * melee = a down+back thunk (recoil); cast = a slight up+forward push; slam = hard down; land = down bob.
  */
 export const KICK_PROFILES = {
-  melee: [0, -0.07, 0.09],
-  cast: [0, 0.03, -0.10],
-  slam: [0, -0.16, 0.06],
-  land: [0, -0.12, 0],
+  melee: [0, -0.07, -0.09], // down + BACK (recoil away from look-dir)
+  cast: [0, 0.03, 0.10],    // up + forward push
+  slam: [0, -0.16, 0.06],   // hard down + slight forward
+  land: [0, -0.12, 0],      // straight down
 };
+
+/**
+ * Convert a camera-LOCAL kick profile [right, up, forward] to a WORLD impulse [x,y,z], given the
+ * camera's (un-normalized) flat forward (fwdX,fwdZ). up maps to world-up directly; forward maps onto
+ * the normalized flat look-dir; right onto (look x up). Pure (no Three) so it's node-testable.
+ * Degenerate (zero) forward -> vertical-only (no horizontal impulse).
+ */
+export function localToWorldKick(fwdX, fwdZ, [lx, ly, lz]) {
+  const len = Math.hypot(fwdX, fwdZ);
+  if (len < 1e-6) return [0, ly, 0];
+  const fx = fwdX / len, fz = fwdZ / len;
+  const rx = fz, rz = -fx; // right = flatForward x worldUp
+  return [rx * lx + fx * lz, ly, rz * lx + fz * lz];
+}
 
 export function makeKick() { return { x: 0, y: 0, z: 0 }; }
 

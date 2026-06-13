@@ -15,6 +15,7 @@ import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
+import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -101,6 +102,7 @@ export const Player = ({ isWorldBuilt }) => {
   const velocityY = useRef(0);
   const lastStepRef = useRef(0);        // locomotion-audio: stride throttle (footstep cadence)
   const prevGroundedRef = useRef(true); // locomotion-audio: landing-edge detection
+  const kickRef = useRef(makeKick());   // game-feel: per-verb camera-kick impulse (decays in the follow-cam)
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
   // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
@@ -238,6 +240,7 @@ export const Player = ({ isWorldBuilt }) => {
     // the form once (transient getState); human (null element) = the identity (cooldown/damage x1).
     const beastEl = store.beastFormActive ? store.activeBeastForm : null;
     if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
+    { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
 
     setAttackType('melee');
@@ -318,6 +321,7 @@ export const Player = ({ isWorldBuilt }) => {
     const now = performance.now();
     if (now - lastCastTime.current < CAST_COOLDOWN) return;
     lastCastTime.current = now;
+    { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.cast)); } // game-feel: cast push
 
     const store = useGameStore.getState();
     if (store.castSpell) {
@@ -1183,6 +1187,9 @@ export const Player = ({ isWorldBuilt }) => {
     } else if (store.cameraShakeIntensity > 0) {
       store.triggerCameraShake(0);
     }
+    // game-feel: per-verb camera kick (decaying impulse from the verb triggers), folded into the
+    // camera-target offset alongside the shake. Below the isCaptureMode early-return -> never in a baseline.
+    const kick = stepKick(kickRef.current, delta);
 
     // Sync camera to rigid body — smoothly lerp to eliminate 120Hz/ProMotion physics sync stutter
     const translation = rigidBodyRef.current.translation();
@@ -1207,9 +1214,9 @@ export const Player = ({ isWorldBuilt }) => {
     }
 
     if (!tc.active) {
-      const targetX = translation.x + shakeX;
-      const targetY = translation.y + 1.2 + bobOffset + shakeY;
-      const targetZ = translation.z + shakeZ;
+      const targetX = translation.x + shakeX + kick.x;
+      const targetY = translation.y + 1.2 + bobOffset + shakeY + kick.y;
+      const targetZ = translation.z + shakeZ + kick.z;
 
       // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
