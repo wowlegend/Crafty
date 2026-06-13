@@ -2,6 +2,7 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
+import { pineShape } from './foliage.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -482,6 +483,20 @@ function generateChunkData(cx, cz) {
           const cactusHeight = 2 + Math.floor(vegRandom(worldX, worldZ, 3) * 2);
           for (let ty = 1; ty <= cactusHeight; ty++) {
             if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
+          }
+        } else if (surfaceBlock === 5) { // Snow Pines (M4a — the snow biome's signature flora)
+          const pineH = 5 + Math.floor(vegRandom(worldX, worldZ, 4) * 4); // 5-8, deterministic
+          const { trunk, leaves } = pineShape(pineH);
+          for (const [, dy] of trunk) {
+            const ny = surfaceY + dy;
+            if (ny < CHUNK_HEIGHT) blocks[getIndex(x, ny, z)] = 6; // trunk (in this column)
+          }
+          for (const [dx, dy, dz] of leaves) {
+            const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
+            if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+              const leafIdx = getIndex(nx, ny, nz);
+              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7; // needles, air-only (like the tree)
+            }
           }
         }
       }
