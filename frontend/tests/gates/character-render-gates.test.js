@@ -22,7 +22,7 @@ describe('M2b static gates', () => {
   });
 
   it('boss emissive telegraph is PRESERVED (not stripped by the outline pass)', () => {
-    const src = read('src/AdvancedGameFeatures.jsx');
+    const src = read('src/render/BossEntity.jsx'); // S3-M4 p4: BossEntity moved to render/ (the 3 boss gates follow it)
     // The boss's attack language is its emissive glow — the M2b outline must be purely
     // additive. Both the torso emissive binding and its intensity binding must remain.
     expect(src).toMatch(/emissive=\{bodyEmissive\}/);
@@ -30,13 +30,13 @@ describe('M2b static gates', () => {
   });
 
   it('boss is NOT converted to a toon material', () => {
-    const src = read('src/AdvancedGameFeatures.jsx');
+    const src = read('src/render/BossEntity.jsx'); // S3-M4 p4: BossEntity moved to render/ (the 3 boss gates follow it)
     // The boss keeps meshStandardMaterial; it must never reference the toon material.
     expect(src).not.toMatch(/MobToonMaterial|meshToonMaterial/);
   });
 
   it('boss useFrame is capture-gated BEFORE it moves the boss (deterministic closeup)', () => {
-    const src = read('src/AdvancedGameFeatures.jsx');
+    const src = read('src/render/BossEntity.jsx'); // S3-M4 p4: BossEntity moved to render/ (the 3 boss gates follow it)
     // In capture the boss freezes; the `if (isCaptureMode())` guard must precede the
     // movement write `bossPositionRef.current = [next...` so the dragon never moves.
     const guardIdx = src.indexOf('if (isCaptureMode()) {');
