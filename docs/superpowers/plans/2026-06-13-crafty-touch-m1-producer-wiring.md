@@ -1,5 +1,19 @@
 # Touch Input M1 — Producer wiring (the touch overlay) Implementation Plan
 
+> **✅ SHIPPED + adversarially reviewed (loop iters 130-133, 2026-06-13).** T1 `input/touchDevice.js` ·
+> T2 `input/touchHandlers.js` · T3 `performVerb` extracted from Components + registered to store
+> (byte-exact desktop) · T4 `ui/TouchControls.jsx` (capture-null + desktop-inert) + App mount · T5
+> `Terrain` highlight gate flip + App pause `!isTouch` guard + wiring static gates. A 3-lens
+> adversarial-review Workflow (`wf_74357759-ced`) found NO blocking/high; 3 MEDIUMs fixed same-iteration
+> (the Terrain gate-flip lost capture-safety → re-added `|| isCaptureMode()`; `active` could stick on
+> unmount → cleanup now `setActive(false)`; unconditional `preventDefault` could suppress iOS button
+> taps → made conditional on a real move/look touch) + 4 gate-hardening assertions. The "6 failing tests"
+> the reviewer reported was NOT reproduced (env artifact; my runs are 990/990 green). **990 unit (947→990
+> across M0+M1) · build clean · visual 17/17 byte-identical (desktop-inert/capture-null proof).** 2 LOWs
+> deferred to M2 (the touch-pause UX has no visible overlay yet; `<PointerLockControls>` is mounted-but-inert
+> on touch — gate on `!isTouchDevice()` in M2). Commits `24dab0d`/`6a58f92`/`db09dab`/`39490ea`/`67a1e4e`.
+> **NEXT = M2** (the visible S1-C thumb-cluster surface + the `mobile.png` visual fixture).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wire the M0 `touchMath.js` pure lib into the live game as a touch-overlay producer that drives the EXISTING `setIntent` / `setActive` / verb seams — making the game actually playable by touch — while staying **desktop-inert** (renders nothing on desktop) and **capture-safe** (renders nothing under `isCaptureMode()`), so all 17 visual baselines stay byte-identical.
