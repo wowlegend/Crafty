@@ -128,6 +128,16 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'biome-snow.png') });
     console.log('captured biome-snow');
+
+    // ocean-depth: the World-M5a water depth-tint. The tint shades water by world-Y, so it's
+    // INVISIBLE on the flat top surface (all at SEA_LEVEL) — it reads underwater + at shore faces.
+    // Probed deep basin [-40,0] (seabed y7, depth 21); an underwater 3/4 pose looking down the
+    // water column at the sandy seabed shows the navy-deepening gradient. Camera-override, restored below.
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-40, 25, 16], lookAt: [-40, 8, -8] } }));
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'ocean-depth.png') });
+    console.log('captured ocean-depth');
     // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
     await flushFrames(page, 6);
