@@ -33,4 +33,23 @@ describe('touch wiring gates (M1)', () => {
     const c = read('src/ui/TouchControls.jsx');
     expect(/addEventListener\('touchmove'.*\{\s*passive:\s*false/.test(c)).toBe(true);
   });
+
+  it('touchHandlers.js (the real per-move seam) writes no React/zustand state (trap-6, deeper than the onMove slice)', () => {
+    const h = read('src/input/touchHandlers.js');
+    expect(/useState|\.setState\(/.test(h)).toBe(false);
+  });
+
+  it('TouchControls cleanup relinquishes the active gate -- no stuck-active on unmount', () => {
+    expect(/setActive\(false\)/.test(read('src/ui/TouchControls.jsx'))).toBe(true);
+  });
+
+  it('the Terrain build-highlight gate is capture-safe (isCaptureMode guard, independent of active)', () => {
+    expect(/getInput\(\)\.active\s*\|\|\s*isCaptureMode\(\)/.test(read('src/world/Terrain.jsx'))).toBe(true);
+  });
+
+  it('no other file leaks a document.pointerLockElement read (single-active-authority stays in Components)', () => {
+    for (const p of ['src/App.jsx', 'src/HUD.jsx', 'src/MenuSystem.jsx', 'src/ui/TouchControls.jsx']) {
+      expect(read(p).includes('document.pointerLockElement'), `${p} must not read document.pointerLockElement`).toBe(false);
+    }
+  });
 });

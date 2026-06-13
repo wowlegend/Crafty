@@ -43,8 +43,9 @@ function TouchControlsLive({ isWorldBuilt }) {
 
     const onStart = (e) => {
       const w = window.innerWidth;
-      for (const t of e.changedTouches) if (!isButton(t)) router.onStart(t, w);
-      e.preventDefault();
+      let routed = false;
+      for (const t of e.changedTouches) if (!isButton(t)) { router.onStart(t, w); routed = true; }
+      if (routed) e.preventDefault(); // skip for pure button taps so iOS does not suppress onPointerUp
     };
     const onMove = (e) => {
       handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: 1 });
@@ -63,6 +64,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       el.removeEventListener('touchend', onEnd);
       el.removeEventListener('touchcancel', onEnd);
       for (const k of MOVE_KEYS) setIntent(k, false); // clear on unmount
+      setActive(false); // relinquish the active gate so it never stays stuck with no touch surface
     };
   }, []);
 

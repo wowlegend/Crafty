@@ -267,7 +267,7 @@ const TargetOutline = () => {
     const direction = React.useMemo(() => new THREE.Vector3(), []);
 
     useFrame((state) => {
-        if (!meshRef.current || !world || !getInput().active) {
+        if (!meshRef.current || !world || !getInput().active || isCaptureMode()) {
             if (meshRef.current) meshRef.current.visible = false;
             return;
         }

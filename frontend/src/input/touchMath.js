@@ -3,7 +3,7 @@
  *
  * Consumed by the M1 touch overlay, which feeds these results into the EXISTING seams:
  *   joystickToMove -> setIntent('moveF'|'moveB'|'moveL'|'moveR', bool)  (the boolean intent SoT)
- *   applyLook      -> camera.quaternion (the same YXZ-euler path drei <PointerLockControls> uses)
+ *   applyLook      -> camera.rotation.y/x (Euler, order YXZ; same yaw/pitch math drei <PointerLockControls> applies)
  *   makeTouchRouter-> partitions simultaneous fingers so a look-drag never moves the player
  *
  * Same purity contract as input/inputState.js — framework-free so the whole thing unit-tests in
