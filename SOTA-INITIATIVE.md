@@ -77,10 +77,11 @@ mount-crash [orphaned SPELL_UPGRADES] that had silently vacuous-ed the visual ga
 NPC + Components god-files remain. **The WORLD-DESIGN pass is now ACTIVE** (Kevin-ratified 2026-06-13, HYBRID
 "Anchored Infinite"; spec + 6-milestone ladder committed): **M1 (Hearth) ✅ + M2 (divable oceans) ✅ + M3 (biome-table refactor) ✅ + M4a (biome FOLIAGE
 distinctness — snow pines) ✅ SHIPPED (iters 108/110/112/114)**; M4 was split (M4a foliage ✅ → M4b palette → M4c
-topography). Next: the experience interleave is DUE (biome-ambient audio recommended), then world-M5 (ocean
-seabed+depth-tint) → M6 landmarks (M4b/M4c biome palette/topography deferred as incremental). Then S3-M5 (Components).
-Live scale (2026-06-13 post-world-M4a): ~25k LOC src / ~193 files / 911 unit tests (113 files) / 30 static-gate files /
-15-state visual gate (LIVE-verified, +`hearth`+`biome-snow` fixtures) / perf-probe harness
+topography). Then the locomotion-audio interleave ✅ SHIPPED (iter 116 — surface-keyed footsteps, riding M4a; audio ledger
+now feel@61/audio@93/audio@116). Next: world-M5 (ocean seabed + water depth-tint — the M2 divable-ocean payoff)
+→ M6 landmarks (M4b/M4c biome palette/topography deferred as incremental). Then S3-M5 (Components).
+Live scale (2026-06-13 post-locomotion-audio): ~25k LOC src / ~195 files / 916 unit tests (114 files) / 31 static-gate
+files / 15-state visual gate (LIVE-verified, +`hearth`+`biome-snow` fixtures) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
 `vite@8` breaking migration, dev-only — not in the shipped bundle) logged in KEVIN-REVIEW-BATCH #9.

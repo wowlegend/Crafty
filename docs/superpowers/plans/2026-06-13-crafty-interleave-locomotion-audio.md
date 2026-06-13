@@ -1,5 +1,7 @@
 # Interleave — Locomotion Audio (surface-keyed footsteps + landing + jump) Implementation Plan
 
+> **✅ SHIPPED (loop iter 116, 2026-06-13).** Walking is no longer silent. `world/climate.js` (main-thread biome/surface sampler, reuses pickBiome+oceanProfile, 5 characterization tests) + Game-Loop-safe wiring in the Components useFrame: surface-keyed footsteps (stride-throttled, grass/sand/snow/stone — riding M4a), a landing thud (prev-grounded edge), a jump cue — all via the store's `playSpatialSound`. 916 unit (+9) · build · visual **15/15 no diff** (audio-only). Audio is ear-verified by Kevin (KRB). `world/climate.js` also unlocks biome-ambient music later. NEXT = world-M5 (ocean seabed + depth-tint).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Checkbox steps.
 
 **Goal:** Un-silence movement. Walking is currently SILENT (the `playFootstep` SFX exists but is never called); jumps/landings too. Add **surface-keyed footsteps** (grass/sand/snow/stone — so each biome SOUNDS distinct, riding the M4a biome work), plus a landing thud and a jump cue.
