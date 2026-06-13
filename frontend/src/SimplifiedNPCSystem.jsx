@@ -15,7 +15,7 @@ import { weightedPick } from './game/spawnWeights';
 import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
-import { stepXPOrb } from './game/xpOrbStepper';
+import { stepXPOrb, stepLootDrop } from './game/xpOrbStepper';
 import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { Panel, Icon } from './ui/primitives/index.js';
 import { getItemRarity } from './data/items.js';
@@ -1011,63 +1011,21 @@ const LootSystem = () => {
     const playerPos = camera.position;
 
     for (const entity of [...lootDropsQuery.entities]) {
-      entity.age += delta;
-
-      // 0.8s physical upward explosion phase with gravity
-      if (entity.age < 0.8) {
-        entity.velocity.y -= 12 * delta; // Gravity
-        entity.position.addScaledVector(entity.velocity, delta);
-
-        // Ground collision
-        if (store.getMobGroundLevel) {
-          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (groundY !== null && !isNaN(groundY) && entity.position.y < groundY + 0.1) {
-            entity.position.y = groundY + 0.1;
-            entity.velocity.y = -entity.velocity.y * 0.4; // Bounce damping
-            entity.velocity.x *= 0.7; // Friction
-            entity.velocity.z *= 0.7;
-          }
-        }
-      } else {
-        // Magnetic pull phase when within 7 units of player
-        const dx = playerPos.x - entity.position.x;
-        const dy = (playerPos.y - 0.5) - entity.position.y; // Pull towards player core
-        const dz = playerPos.z - entity.position.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (dist < 7) {
-          const dir = new THREE.Vector3(dx, dy, dz).normalize();
-          const pullSpeed = Math.max(3, 40 / (dist + 0.2));
-          entity.position.addScaledVector(dir, pullSpeed * delta);
-        } else if (store.getMobGroundLevel) {
-          const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-          if (groundY !== null && !isNaN(groundY)) {
-            entity.position.y = groundY + 0.1;
-          }
-        }
-
-        // Collection distance check
-        if (dist < 1.2) {
-          if (store.addToInventory) {
-            store.addToInventory(entity.item, 1);
-          }
-          if (entity.xp > 0 && GameMethods.grantXP) {
-            GameMethods.grantXP(entity.xp, entity.item);
-          }
-          if (entity.xp > 0 && GameMethods.spawnXPText) {
-            GameMethods.spawnXPText(entity.xp, entity.position);
-          }
-          if (store.addNotification) {
-            store.addNotification(`Looted: ${entity.item}`, 'loot');
-          }
-          playPickup();
-          // M3c-T2: rarity-tinted pickup pop at the collect point (same color as
-          // the drop's beam). Fires only here -> never in capture (no pickups occur).
-          if (GameMethods.spawnLootPop) {
-            GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
-          }
-          ecs.remove(entity);
-        }
+      // physics extracted to the pure game/xpOrbStepper.js stepLootDrop (S3-M6, byte-equivalent;
+      // magnet range 7 / base 40 / floor 3); the component keeps the loot collect side-effects.
+      const collected = stepLootDrop(entity, delta, {
+        playerPos,
+        groundYAt: store.getMobGroundLevel,
+      }).collected;
+      if (collected) {
+        if (store.addToInventory) store.addToInventory(entity.item, 1);
+        if (entity.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(entity.xp, entity.item);
+        if (entity.xp > 0 && GameMethods.spawnXPText) GameMethods.spawnXPText(entity.xp, entity.position);
+        if (store.addNotification) store.addNotification(`Looted: ${entity.item}`, 'loot');
+        playPickup();
+        // M3c-T2: rarity-tinted pickup pop at the collect point (same color as the drop's beam).
+        if (GameMethods.spawnLootPop) GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
+        ecs.remove(entity);
       }
     }
   });
