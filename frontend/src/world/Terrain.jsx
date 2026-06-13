@@ -16,6 +16,8 @@ import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { SEA_LEVEL } from './oceanProfile.js';
+import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
+import { surfaceBlockAt } from './climate.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -405,6 +407,48 @@ const HomeAnchorRender = () => {
             <Cube position={[2.7, 0.3, -1.4]} size={[0.6, 0.6, 0.6]} color={LEAF} castShadow={false} />
         </group>
     );
+};
+
+// --- SIGNATURE LANDMARKS (World-M6): tall wayfinding silhouettes, placed by deterministic hash,
+// only on loaded LAND chunks (in-range-culled + tier-capped by the streamer). Two voxelKit types.
+const LANDMARK_PAL = { stone: '#8A8A8A', dark: '#5A5A5A', accent: '#6B4A2F' };
+function Landmark({ type, baseY }) {
+    const top = Math.max(baseY + 46, 92); // clears the fog (Y56) + reads through valley mist
+    const h = top - baseY;
+    if (type === 0) { // Spire: a tapered tower + a glowing crystal top (capture-null)
+        const tiers = 5;
+        return (
+            <group>
+                {Array.from({ length: tiers }).map((_, i) => {
+                    const w = 6 - i * 0.9, y = baseY + (h * (i + 0.5)) / tiers;
+                    return <Cube key={i} position={[0, y, 0]} size={[w, h / tiers + 0.5, w]} color={i % 2 ? LANDMARK_PAL.dark : LANDMARK_PAL.stone} castShadow={false} />;
+                })}
+                {!isCaptureMode() && <Emissive position={[0, top + 1, 0]} size={1.4} color="#46E0FF" intensity={3.2} />}
+            </group>
+        );
+    }
+    // Sky-arch: two legs + a span across the top
+    const legX = 5;
+    return (
+        <group>
+            <Cube position={[-legX, baseY + h / 2, 0]} size={[2.2, h, 2.2]} color={LANDMARK_PAL.stone} castShadow={false} />
+            <Cube position={[legX, baseY + h / 2, 0]} size={[2.2, h, 2.2]} color={LANDMARK_PAL.stone} castShadow={false} />
+            <Cube position={[0, top, 0]} size={[legX * 2 + 2.2, 2.4, 2.2]} color={LANDMARK_PAL.dark} castShadow={false} />
+            {!isCaptureMode() && <Emissive position={[0, top, 0]} size={1.0} color="#F5D76E" intensity={2.6} />}
+        </group>
+    );
+}
+const LandmarksRender = ({ chunks }) => {
+    const marks = [];
+    for (const key in chunks) {
+        const { cx, cz } = chunks[key];
+        if (!isLandmarkChunk(cx, cz)) continue;
+        const wx = cx * 16 + 8, wz = cz * 16 + 8;
+        const { surfaceY, isWater } = surfaceBlockAt(wx, wz);
+        if (isWater || surfaceY < 32) continue; // land only (no rising-from-the-seabed)
+        marks.push(<group key={key} position={[wx, 0, wz]}><Landmark type={landmarkTypeAt(cx, cz)} baseY={surfaceY} /></group>);
+    }
+    return <group>{marks}</group>;
 };
 
 export const MinecraftWorld = React.memo(() => {
@@ -827,6 +871,7 @@ export const MinecraftWorld = React.memo(() => {
             <BlockParticleSystem worker={worker} />
             <TreasureChestsRender />
             <HomeAnchorRender />
+            <LandmarksRender chunks={chunks} />
         </group>
     );
 });
