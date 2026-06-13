@@ -69,11 +69,15 @@ deadlock + the ONE coherent pointer-lock/menu state machine) · **the Aspect-UX 
 engine hardening IN-FLIGHT** — the recorded entry gate ("AFTER S2-B complete, all 4 Aspects") is now MET,
 so S3 is legitimately active (no relaxation invoked): **S3-M1 ✅** (SoundManager → audio/synthVoices +
 musicTheory; the DSP's first characterization) · **S3-M2 ✅** (EnhancedMagicSystem data pulls →
-game/spells + spellVisualProfiles + chainLightning) · **S3-M3 ✅** (the NPC safe-shell strips → ui/ panels
-+ game/mobTypes + render/ leaf VFX; byte-exact, adversarially reviewed CLEAN). Next = **an EXPERIENCE
-INTERLEAVE** (ledger: content @83, audio @93 — due at this M3/M4 boundary) **→ then S3-M4** (the
-AdvancedGameFeatures dissolve). Live scale (measured 2026-06-13 post-S3-M3): ~25.3k LOC src / 173 files /
-866 unit tests (103 files) / 26 static-gate files / 13-state visual gate / perf-probe harness
+game/spells + spellVisualProfiles + chainLightning) · **S3-M3 ✅** (the NPC safe-shell strips) · **S3-M4 ✅✅
+COMPLETE** (the AdvancedGameFeatures dissolve, 4 parts → game/world/ui/render across 11 files; **the 1397-LOC
+god-file ELIMINATED** — file deleted; the boss-finale adversarial review caught + fixed a BLOCKING latent
+mount-crash [orphaned SPELL_UPGRADES] that had silently vacuous-ed the visual gate since iter 101). **3 of the
+5 god-files now de-monolithed** (SoundManager, EnhancedMagicSystem [data], AdvancedGameFeatures[gone]); the
+NPC + Components god-files remain. Next = **the WORLD-DESIGN pass** (Kevin-ratified 2026-06-13, HYBRID — the
+scheduled next unit), then S3-M5 (Components) / the night-siege interleave. Live scale (2026-06-13 post-S3-M4):
+~25k LOC src / ~185 files / 874 unit tests (105 files) / 26 static-gate files / 13-state visual gate (now
+LIVE-verified) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
 `vite@8` breaking migration, dev-only — not in the shipped bundle) logged in KEVIN-REVIEW-BATCH #9.
