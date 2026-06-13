@@ -423,12 +423,14 @@ export function HUD({
               </Panel>
             </div>
 
-            <SimpleExperienceBar
+            {/* the bottom-center XP bar (bottom-32, min-w-80) overlaps the touch joystick zone
+                (left-7%/bottom-13%) -> desktop-only for now; M2b gives touch a top-placed XP readout */}
+            {!isTouchUIMode() && <SimpleExperienceBar
               level={experienceSystem.playerLevel}
               currentXP={experienceSystem.currentXP}
               xpRequired={experienceSystem.xpRequired}
               xpProgress={experienceSystem.xpProgress}
-            />
+            />}
 
             <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
 
@@ -441,7 +443,7 @@ export function HUD({
               }}
             />
 
-            <Minimap />
+            {!isTouchUIMode() && <Minimap />}{/* bottom-right minimap collides with the touch action cluster — desktop-only for now (M2b gives touch its own placement) */}
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
