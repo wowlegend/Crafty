@@ -138,6 +138,16 @@
 >    from the current Vite 6 (touches build + the vitest config + the visual-capture pipeline) → the loop will
 >    schedule it as its OWN migration milestone (folds with the #32 vitest bump above), not a casual fix. No
 >    action needed from you; flag if you want it prioritized ahead of the S3 stream.
+> 10. **👁️ UX-legibility controls panel — DELIBERATE re-baseline eyeball (2026-06-13, loop iter 98):** the
+>    always-on top-right CONTROLS panel was redesigned (renders from the new `game/keyMap.js` SoT; grouped
+>    MOVE/COMBAT/ASPECTS/PANELS with keycap-badge chips) so it now TEACHES the four signature Aspect verbs
+>    R/V/X/Z (the game identity, previously taught nowhere) + the honest M key. This shifted 2 gated baselines
+>    (`explore-day` +8.98%, `explore-night` +8.63%) + the 3 forced-tier explore variants — a DELIBERATE
+>    re-baseline (HD self-eyeballed at 2× crop, day + dusk both legible/premium; the other 11 states verified
+>    UNAFFECTED via the gate). Before/after: `git show HEAD~?:…/baseline/explore-day.png` vs current. Taste call
+>    I made (per the spec): always-visible + tight (curated the 4 secondary keys — Wheel/G/T/Tab — out of the
+>    resting panel via a `panelHide` flag; they stay in the SoT; the full reference lives behind U). If you'd
+>    prefer collapse-by-default or a different density, it's a one-line change — flag it.
 >
 > **Decisions TRANSFERRED to the loop (charter §5, Kevin 2026-06-10):** music tooling + per-Aspect motif
 > policy (#74) · loot-beam punchiness · hotbar honesty approach · coin sinks · named regions · deep-night
