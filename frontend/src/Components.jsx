@@ -417,9 +417,11 @@ export const Player = ({ isWorldBuilt }) => {
     // the LIVE seams: the same melee cone damage uses (router-attack ≡ swing-lands), a narrow
     // aim cone over the collider-less mobs (the through-mob guard), and Terrain's single 8m
     // build ray via the GameMethods registry (this file stays worker-token-free — gated).
-    const handleMouseDown = (e) => {
+    // #72 VERB ROUTER (unchanged logic): extracted to performVerb(button) so the touch overlay
+    // (M1) reuses the identical ctx-build + routeMouseVerb dispatch (spec section 2 seam table).
+    const performVerb = (button) => {
       if (!getInput().active) return;
-      if (e.button !== 0 && e.button !== 2) return;
+      if (button !== 0 && button !== 2) return;
       const store = useGameStore.getState();
       // KEVIN-FIX C2: fire shares movement's gates — dead players don't shoot (the old
       // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed).
@@ -461,7 +463,7 @@ export const Player = ({ isWorldBuilt }) => {
 
       const hit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
 
-      const verb = routeMouseVerb(e.button, {
+      const verb = routeMouseVerb(button, {
         held: store.voidhandHeld,
         meleeHit,
         aimedMobDist,
@@ -479,6 +481,8 @@ export const Player = ({ isWorldBuilt }) => {
       else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
     };
+    const handleMouseDown = (e) => performVerb(e.button);
+    useGameStore.setState({ performVerb }); // touch overlay (M1) dispatches via store.performVerb
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
     // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
