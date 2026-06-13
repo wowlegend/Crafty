@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (S3-M4 part 2 — AGF dissolve continues: survival + the upgrades hook; loop iter 101)
+- **The next-safest AGF cores peel off:** the survival domain — `useSurvivalMode` → `src/world/survivalSystem.js` (the day/night hook, deliberately not a dangerLevel writer) + `SurvivalWarning` → `src/ui/SurvivalWarning.jsx` (the night-transition toast) — and the lone `useSpellUpgrades` progression hook → `src/world/spellUpgrades.js`. **AGF 1120 → 994 LOC** (now just the boss + pet domains).
+- **Byte-exact (anchored slice) + capture-clean** (no survival/upgrades capture fixture exists → zero baseline shift). The now-dead `Toast` import pruned from AGF (grep-verified). 1 trap-1 gate repoint: siege-gates' useSurvivalMode assertions (no-dangerLevel-write + nightCount-from-store) follow it to `world/survivalSystem.js`; no gate pins useSpellUpgrades. The boss capture indexOf anchor (trap 3) verified untouched.
+- **874 unit (105 files) · 26 static-gate files · build · visual 13/13** — count held. **Part 3 = pets · Part 4 = boss** (the trap-3 indexOf + the gated boss baselines → adversarially reviewed finale).
+
 ### June 13, 2026 (S3-M4 part 1 — the AGF dissolve begins, the safe strips; loop iters 99-100)
 - **The 3rd-biggest god-file starts splitting (extraction-only, lowest-risk-first):** AdvancedGameFeatures (1397 LOC, 4 domains) sheds its two safest surfaces — the 2 standalone UI panels (SpellUpgradePanel + ChestInventoryPanel) → `src/ui/` (mirroring the S3-M3 ui/ strips) and the 3 Aspect-economy kill-bus accrual hooks (useFerocityAccrual/useSoulAccrual/useKineticAccrual) → `src/world/accrualHooks.js`. **AGF 1397 → 1120 LOC** (−18.4k chars).
 - **Both byte-exact (anchored slice — the file as single source of truth) + capture-clean** (panels are opened by user action so they never appear in baselines; the accrual hooks self-null in capture) → zero re-baseline. 9 now-dead AGF imports pruned across the two cuts, each grep-verified zero-use in the remaining body before removal.

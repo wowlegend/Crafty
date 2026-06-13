@@ -1,5 +1,7 @@
 # S3-M4 — AdvancedGameFeatures Dissolve, Part 2 (survival + the upgrades hook) — Implementation Plan
 
+> **✅ SHIPPED (2026-06-13, loop iter 101):** T1 the survival domain → `world/survivalSystem.js` (useSurvivalMode) + `ui/SurvivalWarning.jsx` (f2bdc10; Toast pruned from AGF, the siege-gates trap-1 repoint) · T2 the spell-upgrades hook → `world/spellUpgrades.js` (1e43bf2; no gate pins it). Both byte-exact + capture-clean (no re-baseline). **AGF 1120 → 994 LOC.** The boss indexOf gate (trap 3) untouched. 874 unit/105 files · build · visual 13/13. **Part 3 = pets · Part 4 = boss (the trap-3 + the gated boss baselines, reviewed).**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-11-crafty-s3-demonolith-design.md` (S3-M4). Part 1 shipped the 2 panels (→ui/) + the 3 accrual hooks (→world/); AGF is now 1120 LOC. Part 2 takes the next-safest cores — the **survival domain + the lone spell-upgrades hook** (both capture-clean: no survival fixture in any baseline, verified). **Boss (the trap-3 indexOf + the gated boss-obsidian/boss-closeup baselines) = Part 3 [reviewed]; pets = a separate part.** Extraction-only — NO behavior change.
 
