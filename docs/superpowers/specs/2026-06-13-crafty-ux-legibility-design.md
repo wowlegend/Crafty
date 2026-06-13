@@ -60,8 +60,7 @@ teaching) → legibility debt is at its structural peak. Lowest perf risk, ~110-
   in the U talent panel's ASPECT_GUIDE (the panel teaches identity+core and points to U).
 - **(D) Denied-action feedback.** A pure `deniedReason(kind)` helper → toast text for `{no-mana, aspect-locked,
   aspect-underbanked}`. Wire `addNotification(text, 'warn')` BEHIND `if (!isCaptureMode())` + a shared ~1s debounce ref at
-  `EnhancedMagicSystem.jsx:154` (no-mana) and the four verb gates in `Components.jsx` (distinguish locked vs under-banked by
-  which half of the `&&` failed). The toast pipe (`addNotification` → `HUD.jsx` NotificationStack → `Toast` role=alert) is
+  `EnhancedMagicSystem.jsx:154` (no-mana) and the four Aspect-verb keydowns in `Components.jsx`. **SHIPPED (iter 98): `no-mana` + `aspect-locked` wired — the keydown checks the TALENT half (the load-bearing new-player wound). `aspect-underbanked` (unlocked-but-undercharged) is DEFERRED to the SM layer where the resource gate lives — the always-visible banked-resource meter already gives that player ambient feedback; a fast-follow, not a discoverability wound.** The toast pipe (`addNotification` → `HUD.jsx` NotificationStack → `Toast` role=alert) is
   already built + already self-nulls under capture.
 
 ## 4. The taste decision (mine, per the charter's delegated authority)
@@ -74,7 +73,9 @@ and the panel is already always-visible today, so staying visible is the consist
 charter-sanctioned (§4: "visual re-baselines are allowed and expected — the look is MEANT to improve") with the discipline:
 render → **HD self-eyeball** (the gate is NOT the safety net for a self-set baseline) → commit baselines + rationale + a
 KEVIN-REVIEW-BATCH before/after entry. Scope: `explore-day` + `explore-night` (gated) + the 3 forced-tier variants
-(`explore-day-low/-med`, `explore-night-low` — baselined but omitted from STATES; regenerate for consistency).
+(`explore-day-low/-med`, `explore-night-low`). **CORRECTION (iter 98, review-caught): the redesign ALSO shifts
+`boss-obsidian` / `inventory-open` / `achievements-open` — CombatInstructions renders in the live HUD UNCONDITIONALLY
+(HUD.jsx:397), not explore-only — so 8 states total were re-baselined (HD-eyeballed in-context).**
 
 ## 5. Reference-lock
 
@@ -88,7 +89,10 @@ keycap-badge system (not two competing legends). Honest, complete, broad-audienc
 - **Perf:** zero per-frame cost. CombatInstructions is a `React.memo` panel (no useFrame); KEY_MAP is module-const data;
   KeyM is one keydown branch; denied toasts fire only on keypress, debounced ~1s.
 - **Capture-determinism:** denied toasts copy the existing `if (isCaptureMode()) return` guard → byte-identical capture
-  frames. The CombatInstructions redesign is the ONLY baseline-affecting change → the deliberate re-baseline above.
+  frames. **CORRECTION (iter 98): the panel redesign affects EVERY HUD-bearing capture (explore ×5 + boss-obsidian +
+  inventory-open + achievements-open = 8 states), NOT explore-only — the review measured the 3 HUD states at 5.2–5.9%
+  (under the 6% gate but stale); all 8 re-baselined. The non-HUD states (closeups / showcases / menu) measured 0.000% —
+  correctly unaffected.**
 - **Coherence (P0-P3):** pure-additive copy in the LOCKED bold-flat Panel/Toast primitives; reuse the existing keycap-badge
   vocabulary so controls + talent surfaces read as one system. No new art direction.
 
