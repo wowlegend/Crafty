@@ -12,7 +12,8 @@ const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 // removal (single dangerLevel authority) + the nightCount single-SoT wiring.
 
 describe('night siege state (single dangerLevel authority)', () => {
-  const src = read('src/AdvancedGameFeatures.jsx');
+  // S3-M4 p2 (trap 1): useSurvivalMode moved to world/survivalSystem.js — its assertions follow it.
+  const src = read('src/world/survivalSystem.js');
 
   it('useSurvivalMode does NOT write dangerLevel from isDay (no night-vs-boss double-writer)', () => {
     expect(/setDangerLevel\(\s*isDay\b/.test(src)).toBe(false);
