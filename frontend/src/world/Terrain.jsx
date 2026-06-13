@@ -10,6 +10,7 @@ import { BlockParticleSystem } from './BlockParticleSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
+import { getInput } from '../input/inputState';
 import { moodRef } from '../render/mood';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
@@ -266,7 +267,7 @@ const TargetOutline = () => {
     const direction = React.useMemo(() => new THREE.Vector3(), []);
 
     useFrame((state) => {
-        if (!meshRef.current || !world || !document.pointerLockElement) {
+        if (!meshRef.current || !world || !getInput().active) {
             if (meshRef.current) meshRef.current.visible = false;
             return;
         }

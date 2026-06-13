@@ -17,6 +17,8 @@ import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
 import { setActive, getInput } from './input/inputState';
 import { useActiveInput } from './input/useActiveInput';
+import TouchControls from './ui/TouchControls';
+import { isTouchDevice } from './input/touchDevice';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
@@ -168,7 +170,7 @@ function GameApp({ experienceSystem }) {
     prevLockedRef.current = isPointerLocked;
     if (was && !isPointerLocked) {
       const s = useGameStore.getState();
-      if (s.isAlive && s.gameStarted &&
+      if (!isTouchDevice() && s.isAlive && s.gameStarted &&
           !isAnyPanelOpen({ ...s, showSpellUpgrades, showAchievements, showStats, showAuthModal })) {
         s.setShowSettings(true);
       }
@@ -740,6 +742,8 @@ function GameApp({ experienceSystem }) {
           setIsPointerLocked={setActive}
         />
       )}
+
+      <TouchControls isWorldBuilt={isWorldBuilt} />
 
       <MenuSystem
         gameState={gameState}
