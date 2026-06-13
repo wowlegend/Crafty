@@ -41,10 +41,16 @@ lodge + a lit brazier + planters + a short pier toward water. ONE readable retur
   `<HomeAnchorRender/>` group, sibling of `<TreasureChestsRender/>` (Terrain.jsx:779), built from **voxelKit Cube/Emissive/Ink
   (flat-toon), NOT the chest's PBR meshStandardMaterial** (critique LOW — copy the chest's MOUNT + capture-null + tier-outline
   STRUCTURE only). Brazier Emissive **self-nulls under `isCaptureMode()`** (chest-beacon pattern :346).
-- **Correction (critique HIGH #2): the Hearth does NOT "fix the y=60 spawn fallback"** — origin is naturally land (~Y30,
-  continent≈0), the probe returns >15 in a few frames today. Its real value = **a deterministic, flat, ABOVE-WATER standable
-  plinth** every load. Gate: foundation top **surfaceY > 28** (above the water fill :415) **with margin** + the flatten is
-  actually flat (probe variance ≈0 across the footprint). Drop the spawn-fix claim.
+- **Correction (critique HIGH #2): the Hearth does NOT "fix the y=60 spawn fallback"** — origin is naturally land
+  (continent≈0.000), the probe returns >15 in a few frames today. Its real value = **a deterministic, flat, ABOVE-WATER
+  standable plinth** every load. Gate: foundation top **flat + above-water with margin** + the flatten is actually flat
+  (probe variance ≈0 across the footprint). Drop the spawn-fix claim.
+- **BUILD CORRECTION (M1, loop iter 108 — verify-before-assert):** the design draft assumed origin natural height "~Y30".
+  WRONG by ~20 voxels — computed against the real worldgen formula (`30+n*40`, `createNoise2D(lcg(12345))`), the origin
+  surface is **≈Y50** (footprint [-7,7]²: min 41 / max 58 / avg 49.5; surrounding ring 37–61). So `HEARTH_Y=32` would have
+  carved an ~18-voxel sunken PIT. Corrected → **`HEARTH_Y=56`** = a gently-raised crafted PAD over the ≈Y50 grade (near the
+  footprint max 58, below the ring max 61) — and high enough to land in the diorama capture frame (camera [0,70,24]→[0,64,−66])
+  for real visual-gate coverage. Caught by reading the capture-mode camera comment ("spawn terrain surface ≈ y53").
 - Perf: one-time CPU on ≤4 origin chunks at gen (off-thread, NO re-mesh); decoration = a few shared-`mobToonRim`-program
   draws, decorative castShadow off.
 
@@ -91,9 +97,10 @@ deeps), readable beaches, sparse islands carrying landmarks.
 
 ## 3. The milestone ladder (lowest-risk-first; each its own plan doc per the CLAUDE.md rule; [GATE]=re-baseline + Kevin HD review)
 
-- **M1 — HOME ANCHOR (foundation + decoration) [GATE] [recommended first].** `stampHomeAnchor` + `<HomeAnchorRender/>`.
+- **M1 — HOME ANCHOR (foundation + decoration) [GATE] ✅ SHIPPED (iter 108).** `stampHomeAnchor` + `<HomeAnchorRender/>`.
   Highest signal (spawn lands on a crafted place), lowest risk (2 proven seams, deterministic, NO-RE-MESH). Gate: foundation
-  top >28 w/ margin + flat; no Math.random; voxelKit-not-PBR (static gate); brazier capture-null. Re-baseline explore-day.
+  top = a flat raised pad at HEARTH_Y=56 over the ≈y50 origin grade (NOT >28 — see the build correction in §2); no
+  Math.random; voxelKit-not-PBR (static gate); brazier capture-null. Re-baseline explore-day.
 - **M2 — OCEAN DEPTH + COASTLINE consts + divable basins [GATE].** Const promotion (SEA_LEVEL=28 / BEACH_BAND_TOP=30 — TWO
   consts) + lower DEEP_FLOOR (column 18-22). Water castShadow OFF. NO new look/blocks. Worker unit test: depth + the
   shoreline invariant (BEACH_BAND_TOP>SEA_LEVEL≥1; no foliage at surfaceY≤SEA_LEVEL). Re-baseline explore-day/night.

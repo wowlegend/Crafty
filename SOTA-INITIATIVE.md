@@ -74,10 +74,13 @@ COMPLETE** (the AdvancedGameFeatures dissolve, 4 parts → game/world/ui/render 
 god-file ELIMINATED** — file deleted; the boss-finale adversarial review caught + fixed a BLOCKING latent
 mount-crash [orphaned SPELL_UPGRADES] that had silently vacuous-ed the visual gate since iter 101). **3 of the
 5 god-files now de-monolithed** (SoundManager, EnhancedMagicSystem [data], AdvancedGameFeatures[gone]); the
-NPC + Components god-files remain. Next = **the WORLD-DESIGN pass** (Kevin-ratified 2026-06-13, HYBRID — the
-scheduled next unit), then S3-M5 (Components) / the night-siege interleave. Live scale (2026-06-13 post-S3-M4):
-~25k LOC src / ~185 files / 874 unit tests (105 files) / 26 static-gate files / 13-state visual gate (now
-LIVE-verified) / perf-probe harness
+NPC + Components god-files remain. **The WORLD-DESIGN pass is now ACTIVE** (Kevin-ratified 2026-06-13, HYBRID
+"Anchored Infinite"; spec + 6-milestone ladder committed): **world-M1 (the HOME ANCHOR / "Hearth") ✅ SHIPPED
+(iter 108)** — the player spawns on a crafted origin plinth + lodge + brazier; next on the ladder = **M2 ocean
+depth+coastline consts** → M3 biome-table → M4 biome-distinctness → M5 ocean-seabed+depth-tint → M6 landmarks.
+Then S3-M5 (Components) / the night-siege interleave. Live scale (2026-06-13 post-world-M1):
+~25k LOC src / ~186 files / 886 unit tests (107 files) / 27 static-gate files / 14-state visual gate (now
+LIVE-verified, +the `hearth` fixture) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
 `vite@8` breaking migration, dev-only — not in the shipped bundle) logged in KEVIN-REVIEW-BATCH #9.
