@@ -13,7 +13,8 @@ import { WorldManager } from './WorldManager';
 import { TradingInterface } from './ui/TradingInterface';
 import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
-import { SpellUpgradePanel, ChestInventoryPanel } from './AdvancedGameFeatures';
+import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
+import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu } from './ui/panelState.js';
 
 // The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the

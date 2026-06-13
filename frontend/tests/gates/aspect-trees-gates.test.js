@@ -5,8 +5,9 @@ import { ASPECT_TREES } from '../../src/game/talentTree.js';
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
 describe('aspect-trees panel gates', () => {
-  const src = read('src/AdvancedGameFeatures.jsx');
   it('SpellUpgradePanel imports ASPECT_TREES (no inline branches array)', () => {
+    // S3-M4 (trap 1): SpellUpgradePanel moved to ui/ — the ASPECT_TREES wiring (no inline branches) follows it.
+    const src = read('src/ui/SpellUpgradePanel.jsx');
     expect(/ASPECT_TREES/.test(src)).toBe(true);
     expect(/const\s+branches\s*=\s*\[/.test(src)).toBe(false);
   });
