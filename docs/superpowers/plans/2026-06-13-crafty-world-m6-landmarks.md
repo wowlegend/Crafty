@@ -1,3 +1,5 @@
+> **✅ SHIPPED (loop iter 120, 2026-06-13) — COMPLETES the M1–M6 world-design ladder.** `world/landmarks.js` (deterministic imul-hash placement, ~1.4%, 2 types) + `<LandmarksRender chunks={chunks}/>` (two tall voxelKit types — Spire glowing-tower + Sky-arch; in-range-culled + tier-capped via the streamer's `chunks` set; LAND-only via `climate.surfaceBlockAt`; `top=max(baseY+46,92)` clears the fog; castShadow-off on tall parts; Emissive top capture-null). Added a `landmark` fixture (probed Sky-arch at [40,−88]) — HD-eyeballed: a distinctive monument silhouette clearing the forest. 929 unit (+6) · build · visual 16→**17/17** (16 prior held byte-identical). Commits T1 (placement) · T2 (render+gate) · T3 (fixture). NEXT = PICK (deferred new-blocks batch M4b+M5b · M4c topography · S3-M5 Components · or interleave).
+
 # World M6 — Signature Silhouette Landmarks Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Checkbox steps.

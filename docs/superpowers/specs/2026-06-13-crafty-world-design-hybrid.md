@@ -129,9 +129,14 @@ deeps), readable beaches, sparse islands carrying landmarks.
   oceanProfile — simpler than the planned uniform; static → capture-stable; survives the obsidian-mood desat). Invisible
   top-down (surface=depth 0) so it got an `ocean-depth` underwater fixture for coverage; explore-day re-baselined. **M5b
   layered seabed (sand→gravel→stone) — PENDING, needs NEW blocks → folds with M4b (the DataArrayTexture mechanism).**
-- **M6 — SIGNATURE LANDMARKS (SEAM-A R3F) + island placement [GATE].** `<LandmarkRender/>` deterministic-hash placed,
-  in-range-culled + per-tier count cap; sized >Y90; Emissive beam capture-null; castShadow off (artifact + perf). Highest
-  creative variance → last. Re-baseline.
+- **M6 — SIGNATURE LANDMARKS (SEAM-A R3F) [GATE] ✅ SHIPPED (iter 120).** `world/landmarks.js` (deterministic imul-hash,
+  ~1.4%, NEVER Math.random) + `<LandmarksRender chunks={chunks}/>` — two voxelKit types (Spire glowing-tower + Sky-arch);
+  in-range-culled + per-tier-capped FREE via the streamer's loaded-`chunks` set; LAND-only via `climate.surfaceBlockAt`;
+  sized `top=max(baseY+46,92)` to clear fog Y56; castShadow-off on tall parts (shadow-cam clip); Emissive top capture-null.
+  `landmark` capture fixture (Sky-arch silhouette). Island-on-the-continent-field placement deferred (not needed — landmarks
+  read on the existing land). **🏆 The M1–M6 "Anchored Infinite" ladder is COMPLETE** (Hearth · oceans · biome-table ·
+  biome-foliage · ocean-depth · landmarks). Deferred refinements: M4b palette + M5b layered seabed (a new-blocks batch via
+  numLayers++) · M4c blended topography · M7 climbable-blueprint landmarks (SEAM-B).
 - **M7 (optional fast-follow)** — climbable/mineable landmark via SEAM-B blueprint stamp; deferred unless Kevin wants interactable monuments.
 
 ## 4. Open questions — loop defaults chosen (charter §4 self-gate; all within the ratified HYBRID; reversible, batched to Kevin)
