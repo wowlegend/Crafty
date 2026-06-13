@@ -39,8 +39,11 @@ describe('M2b static gates', () => {
     const src = read('src/render/BossEntity.jsx'); // S3-M4 p4: BossEntity moved to render/ (the 3 boss gates follow it)
     // In capture the boss freezes; the `if (isCaptureMode())` guard must precede the
     // movement write `bossPositionRef.current = [next...` so the dragon never moves.
-    const guardIdx = src.indexOf('if (isCaptureMode()) {');
-    const moveIdx = src.indexOf('bossPositionRef.current = [next');
+    // Anchor on CODE, not comments — strip line comments first so a docstring that mentions
+    // the guard literal can't shadow the indexOf (the S3-M4-p4 vacuous-gate regression the review caught).
+    const code = src.replace(/^\s*\/\/.*$/gm, '');
+    const guardIdx = code.indexOf('if (isCaptureMode()) {');
+    const moveIdx = code.indexOf('bossPositionRef.current = [next');
     expect(guardIdx).toBeGreaterThan(-1);
     expect(moveIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(moveIdx); // capture guard precedes the movement write
