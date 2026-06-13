@@ -14,6 +14,7 @@ import { StableMagicHands } from './render/playerRender';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { moveSpeed, jumpVelocity, applyGravity, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -797,7 +798,7 @@ export const Player = ({ isWorldBuilt }) => {
     // jump + gravity sites below.
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
-    const speed = 10 * loco.moveMult;
+    const speed = moveSpeed(loco);
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
@@ -974,7 +975,7 @@ export const Player = ({ isWorldBuilt }) => {
           // M5 review [C]: the ledge-vault is DELIBERATELY form-INVARIANT (not x loco.jumpMult) — a
           // traversal-reliability / Marcus-floor choice (every form mantles a ledge identically). Per-
           // form mobility lives in the primary jump (x jumpMult); revisit if Kevin wants form-vault feel.
-          velocityY.current = 8.5;
+          velocityY.current = VAULT_VELOCITY;
           
           // Apply a gentle forward push to land on top
           knockbackVelocity.current.x = lookDir.x * 3.5;
@@ -992,20 +993,18 @@ export const Player = ({ isWorldBuilt }) => {
     // Handle jumping & gravity
     if (isGrounded) {
       if (isLocked && input.jump && !dodge.isActive) {
-        velocityY.current = 12.0 * loco.jumpMult; // M5: hawk hops higher (low-gravity), bull/golem lower
+        velocityY.current = jumpVelocity(loco); // M5: hawk hops higher (low-gravity), bull/golem lower
         useGameStore.getState().playSpatialSound?.('jump', [camera.position.x, camera.position.y, camera.position.z], 1, 6); // locomotion-audio: jump cue
         // Consume the jump intent on a grounded jump. OS key-repeat re-sets the intent via
         // repeated keydown, so held-Space bunny-hopping is preserved byte-identically.
         setIntent('jump', false);
       } else {
         // Small downward force to stay glued to slopes and stairs
-        velocityY.current = -0.5;
+        velocityY.current = GLUE_VELOCITY;
       }
     } else {
-      // Apply gravity over time
-      velocityY.current += -32.0 * loco.gravityMult * delta; // M5: hawk floats (low gravity), golem/bull heavier
-      // Cap at terminal velocity
-      if (velocityY.current < -50.0) velocityY.current = -50.0;
+      // Apply gravity over time (clamped at terminal velocity) — game/locomotion.js
+      velocityY.current = applyGravity(velocityY.current, loco.gravityMult, delta);
     }
 
     // Decay knockback velocity using exponential spring dampening
