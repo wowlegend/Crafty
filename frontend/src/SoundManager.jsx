@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { VOICES } from './audio/synthVoices';
+import { VOICES, makeNoise } from './audio/synthVoices';
 import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
+import { surfaceBlockAt } from './world/climate.js';
+import { biomeAmbience } from './audio/biomeAmbience.js';
 
 // Ambient chord progressions for mood adjustments
 
@@ -49,6 +51,10 @@ export const SoundProvider = ({ children }) => {
     timer: null
   });
 
+  // Biome-ambient wind bed: a looping noise voice whose filter/gain track the player's biome
+  // (climate.surfaceBlockAt(playerPosition) -> biomeAmbience). Lives + dies with the synthPad.
+  const windBedRef = useRef({ source: null, filter: null, gain: null, active: false });
+
   const stopSynthPad = () => {
     const pad = synthPadRef.current;
     if (!pad.active || !audioContext.current) return;
@@ -59,6 +65,14 @@ export const SoundProvider = ({ children }) => {
         pad.masterGain.gain.cancelScheduledValues(now);
         pad.masterGain.gain.setValueAtTime(pad.masterGain.gain.value, now);
         pad.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+      }
+
+      // Fade the biome-ambient wind bed out with the pad (disconnected in the setTimeout below).
+      const wb = windBedRef.current;
+      if (wb.active && wb.gain) {
+        wb.gain.gain.cancelScheduledValues(now);
+        wb.gain.gain.setValueAtTime(wb.gain.gain.value, now);
+        wb.gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
       }
 
       if (pad.timer) {
@@ -78,6 +92,9 @@ export const SoundProvider = ({ children }) => {
         try { pad.lfoGain.disconnect(); } catch(e) {}
         try { pad.filter.disconnect(); } catch(e) {}
         try { masterToDisconnect.disconnect(); } catch(e) {}
+        try { if (wb.source) { wb.source.stop(); wb.source.disconnect(); } } catch(e) {}
+        try { wb.filter && wb.filter.disconnect(); } catch(e) {}
+        try { wb.gain && wb.gain.disconnect(); } catch(e) {}
       }, 1600);
     } catch (e) {
       console.warn('Error stopping synth pad:', e);
@@ -90,6 +107,7 @@ export const SoundProvider = ({ children }) => {
     pad.lfoGain = null;
     pad.masterGain = null;
     pad.active = false;
+    windBedRef.current = { source: null, filter: null, gain: null, active: false };
   };
 
   const startSynthPad = () => {
@@ -155,6 +173,18 @@ export const SoundProvider = ({ children }) => {
       pad.oscillators.forEach(osc => osc.start(now));
       pad.active = true;
 
+      // Biome-ambient wind bed: a looping noise voice; its filter/gain track the player's biome
+      // (ramped in the step loop below). A subtle under-layer beneath the music.
+      const wb = windBedRef.current;
+      const noiseBuf = makeNoise(audioContext.current, 2.0);
+      wb.source = audioContext.current.createBufferSource();
+      wb.source.buffer = noiseBuf; wb.source.loop = true;
+      wb.filter = audioContext.current.createBiquadFilter();
+      wb.filter.type = 'bandpass'; wb.filter.frequency.setValueAtTime(900, now); wb.filter.Q.setValueAtTime(0.7, now);
+      wb.gain = audioContext.current.createGain(); wb.gain.gain.setValueAtTime(0, now);
+      wb.source.connect(wb.filter); wb.filter.connect(wb.gain); wb.gain.connect(audioContext.current.destination);
+      wb.source.start(now); wb.active = true;
+
       // 4. Step-Scheduler loop
       let step = 0;
       pad.timer = setInterval(() => {
@@ -175,6 +205,16 @@ export const SoundProvider = ({ children }) => {
             pad.oscillators[idx].frequency.exponentialRampToValueAtTime(freq, changeTime + 3.5);
           }
         });
+
+        // Biome-ambient: ramp the wind bed toward the player's current-biome character.
+        const wb2 = windBedRef.current;
+        if (wb2.active && wb2.filter) {
+          const pp = freshState.playerPosition || { x: 0, z: 0 };
+          const { surfaceBlock, isWater } = surfaceBlockAt(pp.x, pp.z);
+          const amb = biomeAmbience(surfaceBlock, isWater);
+          wb2.filter.frequency.linearRampToValueAtTime(amb.cutoff, changeTime + 2.0);
+          wb2.gain.gain.linearRampToValueAtTime(amb.gain * volume, changeTime + 2.0);
+        }
       }, 8000);
 
     } catch (e) {
