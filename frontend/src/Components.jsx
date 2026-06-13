@@ -61,6 +61,7 @@ import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
+import { notifyDenied } from './ui/denyToast';
 
 // Bold-flat UI primitives (S1C-M2a chrome migration)
 import { Panel, Slot, Button, Icon } from './ui/primitives/index.js';
@@ -425,25 +426,30 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
+      // UX-legibility: a not-yet-unlocked Aspect verb used to fail SILENTLY — teach the unlock path.
       if (e.code === 'KeyR') {
         setIntent('roar', true);
+        if (!(useGameStore.getState().unlockedTalents?.['wildheart_roar'] > 0)) notifyDenied('aspect-locked', 'WILDHEART');
       }
 
       // S2-B2-M1: grab -> the abstract 'grab' intent (VOIDHAND SM in useFrame). KeyV (KeyG = chest/trade).
       if (e.code === 'KeyV') {
         setIntent('grab', true);
+        if (!(useGameStore.getState().unlockedTalents?.['voidhand_grasp'] > 0)) notifyDenied('aspect-locked', 'VOIDHAND');
       }
 
       // S2-B3-M4: snare -> the abstract 'snare' intent (SOULBIND SM in useFrame).
       // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is double-bound legacy tame — avoided.)
       if (e.code === 'KeyX') {
         setIntent('snare', true);
+        if (!(useGameStore.getState().unlockedTalents?.['soulbind_snare'] > 0)) notifyDenied('aspect-locked', 'SOULBIND');
       }
 
       // S2-B4-M5: imbue -> the abstract 'imbue' intent (the ELEMANCER latch in useFrame).
       // The Aspect-verb row completes: R=roar, V=grab, X=snare, Z=imbue.
       if (e.code === 'KeyZ') {
         setIntent('imbue', true);
+        if (!(useGameStore.getState().unlockedTalents?.['elemancer_imbue'] > 0)) notifyDenied('aspect-locked', 'ELEMANCER');
       }
 
       if (e.code === 'KeyF') {

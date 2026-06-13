@@ -11,6 +11,7 @@ import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE, ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
+import { notifyDenied } from './ui/denyToast';
 import * as THREE from 'three';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
@@ -152,6 +153,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       const manaCost = SPELL_MANA_COSTS[spellType] || 15;
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
+        notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;
       }
 
