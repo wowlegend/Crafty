@@ -94,7 +94,7 @@ async function main() {
     // The title now hosts a live 3D Crafty Hero mini-canvas (lazy chunk + WebGL); wait for
     // it to actually mount + present a settled (capture-frozen) frame so `menu.png` is
     // deterministic and never screenshots the 2D Suspense fallback.
-    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 15000 });
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 45000 }); // 15s flaked under load (the mascot WebGL canvas inits slowly) — hardened to 45s
     await flushFrames(page, 10);
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'menu.png') });

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Panel, Slot, Button, Icon } from './primitives/index.js';
 import { Package, Hammer, Wand2, Grid } from 'lucide-react';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
+import { isTouchUIMode } from '../input/touchDevice';
 
 const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
@@ -63,6 +64,9 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
         </div>
       </div>
       <MinecraftHotbar gameState={gameState} />
+      {/* left action rail — desktop only; on touch these panel-openers move to the M2b/M3 tray
+          (kept off the thumb/look zone so the touch baseline stays clean). */}
+      {!isTouchUIMode() && (
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
         <Panel variant="base" className="flex flex-col gap-2 p-2">
           <Button variant="ghost" size="sm" aria-label="Inventory" className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowInventory(true)}><Package size={20} /></Button>
@@ -71,6 +75,7 @@ export const GameUI = ({ gameState, showStats, setShowStats }) => {
           <Button variant="ghost" size="sm" aria-label="Building tools" className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowBuildingTools(true)}><Grid size={20} /></Button>
         </Panel>
       </div>
+      )}
     </motion.div>
   );
 };
