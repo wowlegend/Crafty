@@ -1,12 +1,15 @@
 # S3-M6 (NPC de-monolith) — the safe pure-stepper cuts Implementation Plan
 
-> **✅ XP-ORB CUT SHIPPED (loop iter 140, 2026-06-13).** T1 the pure `game/xpOrbStepper.js`
-> (`stepXPOrb`, byte-equivalent to the inline physics — gravity/bounce, magnetic pull, collect;
-> 5 characterization tests, the orb physics's first-ever coverage) + T2 wired `XPOrbSystem` to it
-> (the component keeps the ECS loop + collect side-effects). Gate-free + capture-safe. **1011 unit ·
-> build clean · visual 18/18 · NPC 1217 → 1182 LOC.** Commits `85bedbd`/`344b2a8`. **Next S3-M6 cuts
-> (queued):** the near-duplicate LOOT stepper → `game/` (characterize, then maybe unify with this);
-> then MobModel+HealthBar → `render/` (gate-repoints + the trap-3 anchor); the worker seam LAST.
+> **✅ XP-ORB + LOOT STEPPER CUTS SHIPPED (loop iters 140-141, 2026-06-13).** The pure
+> `game/xpOrbStepper.js` now holds BOTH magnet-pickup steppers unified behind `_stepMagnet`:
+> `stepXPOrb` (range 12 / base 80 / floor 4) + `stepLootDrop` (range 7 / base 40 / floor 3) —
+> byte-equivalent to the inline XPOrbSystem + LootSystem physics, 9 characterization tests (the
+> pickups' first-ever coverage incl. the magnet-range diff). Both components keep their ECS loop +
+> (different) collect side-effects. Gate-free + capture-safe (LootSystem's `isCaptureMode` early-return
+> still guards the loot-showcase baseline). **1015 unit · build clean · visual 18/18 · NPC 1217 → 1140
+> LOC (−77).** Commits `85bedbd`/`344b2a8`/`7d0bb64`. **Next S3-M6 cuts (queued):** MobModel+HealthBar →
+> `render/MobModel.jsx` (the gate-repoints + the trap-3 stale-anchor — needs design-gating); SpawnerSystem
+> pure pulls; AIWorkerSystem (the Vite worker-URL seam) + damageMob's pure pulls — the worker seam LAST.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Steps use `- [ ]`.
 
