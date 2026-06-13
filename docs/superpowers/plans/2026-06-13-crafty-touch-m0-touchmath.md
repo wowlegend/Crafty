@@ -1,5 +1,11 @@
 # Touch Input M0 — Pure touch→intent math (`touchMath.js`) Implementation Plan
 
+> **✅ SHIPPED (loop iter 128, 2026-06-13).** `src/input/touchMath.js` + 21 unit tests + a purity static
+> gate (`tests/gates/touch-purity-gates.test.js`). Built TDD red-first (RED confirmed before impl). The
+> zero-emoji hard gate caught U+2192 (`→`) arrows in the doc-comments — ASCII-cleaned. Verify: 970 unit
+> (947→970, +23) · build clean · visual 17/17 unchanged (M0 renders nothing). Commits: `2304fd1` (module)
+> · `bb183cb` (gate + ASCII fix). NEXT = M1 (producer wiring — the touch overlay).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the pure, node-testable touch→intent math library that the touch overlay (M1) will consume — joystick→movement booleans, look-delta→clamped yaw/pitch, and multi-touch identifier→zone routing — with ZERO React / DOM / Three imports.
