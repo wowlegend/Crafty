@@ -15,36 +15,36 @@ const noOpposingPair = (m) => {
 };
 
 describe('joystickToMove', () => {
-  it('inside the deadzone → all false', () => {
+  it('inside the deadzone -> all false', () => {
     const m = joystickToMove(2, -1, DEFAULT_DEADZONE); // mag ~2.2 < default deadzone
     expect(m).toEqual({ moveF: false, moveB: false, moveL: false, moveR: false });
   });
 
-  it('straight up (−y) → moveF only', () => {
+  it('straight up (−y) -> moveF only', () => {
     const m = joystickToMove(0, -50);
     expect(m).toEqual({ moveF: true, moveB: false, moveL: false, moveR: false });
     noOpposingPair(m);
   });
 
-  it('straight down (+y) → moveB only', () => {
+  it('straight down (+y) -> moveB only', () => {
     const m = joystickToMove(0, 50);
     expect(m).toMatchObject({ moveF: false, moveB: true, moveL: false, moveR: false });
   });
 
-  it('straight right (+x) → moveR only', () => {
+  it('straight right (+x) -> moveR only', () => {
     expect(joystickToMove(50, 0)).toMatchObject({ moveR: true, moveL: false, moveF: false, moveB: false });
   });
 
-  it('straight left (−x) → moveL only', () => {
+  it('straight left (−x) -> moveL only', () => {
     expect(joystickToMove(-50, 0)).toMatchObject({ moveL: true, moveR: false });
   });
 
-  it('up-right diagonal → moveF + moveR', () => {
+  it('up-right diagonal -> moveF + moveR', () => {
     const m = joystickToMove(40, -40);
     expect(m).toMatchObject({ moveF: true, moveR: true, moveB: false, moveL: false });
   });
 
-  it('down-left diagonal → moveB + moveL', () => {
+  it('down-left diagonal -> moveB + moveL', () => {
     const m = joystickToMove(-40, 40);
     expect(m).toMatchObject({ moveB: true, moveL: true, moveF: false, moveR: false });
   });
@@ -99,13 +99,13 @@ describe('applyLook', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 3 — makeTouchRouter (multi-touch identifier → zone)
-// synthetic Touch-like objects; viewport width 1000 → split at x=500.
+// Task 3 — makeTouchRouter (multi-touch identifier -> zone)
+// synthetic Touch-like objects; viewport width 1000 -> split at x=500.
 // ---------------------------------------------------------------------------
 const T = (identifier, clientX, clientY) => ({ identifier, clientX, clientY });
 
 describe('makeTouchRouter', () => {
-  it('left-half touchstart → move zone; right-half → look zone', () => {
+  it('left-half touchstart -> move zone; right-half -> look zone', () => {
     const r = makeTouchRouter();
     expect(r.onStart(T(1, 100, 400), 1000).zone).toBe('move');
     expect(r.onStart(T(2, 900, 400), 1000).zone).toBe('look');
@@ -149,6 +149,6 @@ describe('makeTouchRouter', () => {
     r.onStart(T(2, 900, 400), 1000);
     expect(r.onEnd(T(2)).zone).toBe('look');
     expect(r.activeCount).toBe(0);
-    expect(r.onMove(T(2, 910, 410))).toBeNull(); // released → untracked
+    expect(r.onMove(T(2, 910, 410))).toBeNull(); // released -> untracked
   });
 });

@@ -1,10 +1,10 @@
 /**
- * touchMath.js — PURE touch→intent math (NO React / DOM / Three imports; node-testable).
+ * touchMath.js — PURE touch->intent math (NO React / DOM / Three imports; node-testable).
  *
  * Consumed by the M1 touch overlay, which feeds these results into the EXISTING seams:
- *   joystickToMove → setIntent('moveF'|'moveB'|'moveL'|'moveR', bool)  (the boolean intent SoT)
- *   applyLook      → camera.quaternion (the same YXZ-euler path drei <PointerLockControls> uses)
- *   makeTouchRouter→ partitions simultaneous fingers so a look-drag never moves the player
+ *   joystickToMove -> setIntent('moveF'|'moveB'|'moveL'|'moveR', bool)  (the boolean intent SoT)
+ *   applyLook      -> camera.quaternion (the same YXZ-euler path drei <PointerLockControls> uses)
+ *   makeTouchRouter-> partitions simultaneous fingers so a look-drag never moves the player
  *
  * Same purity contract as input/inputState.js — framework-free so the whole thing unit-tests in
  * node with zero GPU. Spec: docs/superpowers/specs/2026-06-13-crafty-touch-input-design.md
