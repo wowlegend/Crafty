@@ -7,7 +7,7 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
-import { useBossSystem } from './AdvancedGameFeatures';
+import { useBossSystem } from './world/bossSystem';
 import { usePetSystem } from './world/petSystem';
 import { useSpellUpgrades } from './world/spellUpgrades';
 import { useSurvivalMode } from './world/survivalSystem';

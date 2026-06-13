@@ -9,7 +9,8 @@ const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 // danger mood. These static gates lock that wiring + its capture-guard so a future edit
 // can't silently re-break "obsidian during boss fights".
 describe('boss → obsidian dangerLevel bridge', () => {
-  const src = read('src/AdvancedGameFeatures.jsx');
+  // S3-M4 p4 (trap 1): useBossSystem + its dangerLevel bridge moved to world/bossSystem.js.
+  const src = read('src/world/bossSystem.js');
 
   it('useBossSystem bridges bossActive to setDangerLevel (2 active / 0 cleared)', () => {
     expect(/setDangerLevel\(\s*bossActive\s*\?\s*2\s*:\s*0\s*\)/.test(src)).toBe(true);
