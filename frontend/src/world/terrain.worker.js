@@ -1,4 +1,5 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
+import { stampHomeAnchor } from './homeAnchor.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -492,6 +493,11 @@ function generateChunkData(cx, cz) {
       }
     }
   }
+
+  // 5b. Stamp the crafted HOME ANCHOR plinth (origin chunks only). AFTER foliage so it clears any
+  //     tree in its footprint; BEFORE the player-mod replay so player edits still win. NO-RE-MESH
+  //     (baked into the chunk array here, meshed once like all gen output).
+  stampHomeAnchor(blocks, cx, cz);
 
   // 6. Apply late player in-game block modifications over the chunk data
   const modKey = `${cx}_${cz}`;
