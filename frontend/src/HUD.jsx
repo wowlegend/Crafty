@@ -14,7 +14,7 @@ import {
 } from './GameSystems';
 import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
-import { BossHealthBar } from './AdvancedGameFeatures';
+import { BossHealthBar } from './ui/BossHealthBar';
 import { PetIndicator } from './ui/PetIndicator';
 import { SurvivalWarning } from './ui/SurvivalWarning';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
