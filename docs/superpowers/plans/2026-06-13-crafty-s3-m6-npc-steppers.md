@@ -7,9 +7,13 @@
 > pickups' first-ever coverage incl. the magnet-range diff). Both components keep their ECS loop +
 > (different) collect side-effects. Gate-free + capture-safe (LootSystem's `isCaptureMode` early-return
 > still guards the loot-showcase baseline). **1015 unit · build clean · visual 18/18 · NPC 1217 → 1140
-> LOC (−77).** Commits `85bedbd`/`344b2a8`/`7d0bb64`. **Next S3-M6 cuts (queued):** MobModel+HealthBar →
-> `render/MobModel.jsx` (the gate-repoints + the trap-3 stale-anchor — needs design-gating); SpawnerSystem
-> pure pulls; AIWorkerSystem (the Vite worker-URL seam) + damageMob's pure pulls — the worker seam LAST.
+> LOC (−77).** Commits `85bedbd`/`344b2a8`/`7d0bb64`.
+> **✅ damageMob PURE-FX CUT SHIPPED (iter 142):** `game/mobHitFx.js` — `sparkFor(type,isCrit)→{color,count}`
+> (the element→spark table) + `hitKnockback(entityPos,cameraPos)→{knockback,hitDir}` (7 tests, damageMob's
+> first coverage); damageMob wired byte-exact; the `element-impact-gates` trap-1 gate repointed to mobHitFx.
+> **NPC 1140→1115 (−102 total · 1022 unit · visual 18/18).** Commit `e786bf6`. **Next S3-M6 cuts (queued):**
+> MobModel+HealthBar → `render/MobModel.jsx` (the gate-repoints + the trap-3 stale-anchor — needs
+> DESIGN-GATING — the high-impact ~270-LOC cut); then SpawnerSystem pulls; the AIWorkerSystem worker-URL seam LAST.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. Steps use `- [ ]`.
 
