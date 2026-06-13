@@ -57,23 +57,26 @@ layered on a day-build / night-siege survival loop. Wildheart (beast-transform) 
 8. **No AI footers in commits; no `git add -A`; absolute paths (TWO-LEVEL repo).** Own repo + own
    initiative — **separate from moneymaker** (its rules/ledgers/AUP frame do not apply here).
 
-## 3. Status (LIVING — refresh at every milestone; last: 2026-06-10)
+## 3. Status (LIVING — refresh at every milestone; last: 2026-06-13)
 
 **S0 ✅ · S1-A/B/C/D ✅ (foundation, render recipe, bold-flat UI system, signatures) · S2 design ✅ ·
-S2-A foundation ✅ · S2-B1 WILDHEART ✅ (merged `458bbb5`) · #68 perf remediation ✅ (`868e4e7`) ·
-S2-B2 VOIDHAND IN-FLIGHT (M1 ✅ · **M2 FPS gate ✅** [desktop-PASS, re-gated w/ REAL hurls; iPad confirm
-parked to Kevin] · **#72 verb-router ✅** [+ fixed silently-NaN-broken mine/place] · **M3 HURL/SLAM ✅** ·
-**M4 ANVIL+KINETIC ✅ · M5 ✅ · M6 ✅ · M7 THE LOOK ✅ · M8 CONTENT ✅) — 🏆 S2-B2 VOIDHAND ASPECT
-COMPLETE 2026-06-10** (grab→orbit→HURL/SLAM→anvil-3×-gold-WALL-HIT; kinetic economy; 9-type tints;
-ink+violet-rim look judged in-world; zero re-baselines across the whole Aspect; FPV-feel + iPad runs
-parked to Kevin non-blocking) · next on the spine = **the owed AUDIO interleave unit** (charter §2.5:
-6 milestones since the last experience unit; #74 motif policy is loop-owned + WILDHEART roar SFX owed +
-voidhand verb SFX) **→ then S2-B3 SOULBIND design workflow** · S2-B4 + S3 + S4 not started.** Live scale
-(measured 2026-06-10 post-Aspect): ~22.6k LOC src / 128 files / 727 unit tests (77 files) /
-21 static-gate files / 13-state visual gate / perf-probe harness (`?perf=A..E`). Full risk map:
-`memory/STATE-REVIEW-2026-06-10.md`. Open tasks: #69–#74 (+ earlier #32 vitest · #63 B1 tuning ·
-#64 beast-capture · #66 panel flags) — **the task registry is the source of truth, not this line.**
-Known managed drift: WILDHEART shipped audio-silent (the motif pass — §5 AUDIO now owns it).
+S2-A foundation ✅ · 🏆 THE FOUR-ASPECT SPINE COMPLETE (2026-06-10/11): S2-B1 WILDHEART ✅ ·
+S2-B2 VOIDHAND ✅ · S2-B3 SOULBIND ✅ · S2-B4 ELEMANCER ✅** — grab/orbit/hurl/slam/anvil, the
+kinetic+soul+resonance economies, capture/squad/fuse, and the combinatorial element-zone chemistry all
+live; zero re-baselines across the entire spine · **Kevin's live-playtest fix arc ✅** (the respawn
+deadlock + the ONE coherent pointer-lock/menu state machine) · **the Aspect-UX guide-card pass ✅** ·
+**experience interleaves shipped** (audio @34, feel @61, content @83, motifs @93). **S3 de-monolith +
+engine hardening IN-FLIGHT** — the recorded entry gate ("AFTER S2-B complete, all 4 Aspects") is now MET,
+so S3 is legitimately active (no relaxation invoked): **S3-M1 ✅** (SoundManager → audio/synthVoices +
+musicTheory; the DSP's first characterization) · **S3-M2 ✅** (EnhancedMagicSystem data pulls →
+game/spells + spellVisualProfiles + chainLightning) · **S3-M3 ✅** (the NPC safe-shell strips → ui/ panels
++ game/mobTypes + render/ leaf VFX; byte-exact, adversarially reviewed CLEAN). Next = **an EXPERIENCE
+INTERLEAVE** (ledger: content @83, audio @93 — due at this M3/M4 boundary) **→ then S3-M4** (the
+AdvancedGameFeatures dissolve). Live scale (measured 2026-06-13 post-S3-M3): ~25.3k LOC src / 173 files /
+866 unit tests (103 files) / 26 static-gate files / 13-state visual gate / perf-probe harness
+(`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
+truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
+`vite@8` breaking migration, dev-only — not in the shipped bundle) logged in KEVIN-REVIEW-BATCH #9.
 
 ## 4. Workstreams + sequencing
 
@@ -81,7 +84,7 @@ Known managed drift: WILDHEART shipped audio-silent (the motif pass — §5 AUDI
 |---|---|---|
 | **S2-B Aspect spine** | The signature: 4 Aspects, sequential, deep-before-next — **B1 Wildheart ✅ → B2 Voidhand (M2→M8) → B3 Soulbind (capture-creatures; mobKillBus seam pre-built) → B4 Elemancer (reactive terrain — the ONLY re-mesh-risk Aspect, perf-gated, deliberately last)** | LIVE. Each Aspect: grounded design workflow → committed spec (self-gate per charter §5) → per-milestone plan docs → build → adversarial review. |
 | **§5 SOTA-experience axes** | Audio · game-feel · visual polish · content variety · UX legibility · i18n | LIVE — interleaved (≥1 unit every 2–3 milestones, charter §2.5). |
-| **S3 engine + platform** | De-monolith god-files (characterization-first) · partial-ECS resolution · **touch/mobile input + UI** (the third-person control pivot likely fuses here — Kevin 2026-06-07) · real perf numbers + adaptive-quality hardening · gen-system perf | **AFTER S2-B complete (all 4 Aspects) — the recorded decision.** A LOOP-PROPOSED relaxation (logged in KEVIN-REVIEW-BATCH for async ratification, NOT yet policy): enter at ≥3 Aspects if a forcing event lands (an external commitment making touch load-bearing, or a hard perf wall). Backlog accruing in ROADMAP §S3-deferred. |
+| **S3 engine + platform** | De-monolith god-files (characterization-first) · partial-ECS resolution · **touch/mobile input + UI** (the third-person control pivot likely fuses here — Kevin 2026-06-07) · real perf numbers + adaptive-quality hardening · gen-system perf | **LIVE — the entry gate is MET (all 4 Aspects ✅, 2026-06-11), so the recorded "AFTER S2-B complete" condition is satisfied (the ≥3-Aspect relaxation was never needed).** De-monolith M1-M3 shipped (SoundManager / EnhancedMagicSystem / NPC safe-strips); touch/mobile input + UI, perf-number hardening, and partial-ECS resolution still queued within S3. Backlog in ROADMAP §S3-deferred. |
 | **S4 multiplayer + business** | Netcode, accounts, persistence-at-scale, payments, monetization model (Kevin decision), distribution (web-first → app stores later, Kevin 2026-06-04) | LAST. Entry: single-player core SOTA + S3 platform base. The dead client auth/cloud stubs are **deletable any time as dead code** (charter §4 — they fire a failing XHR every load today); whatever S4 needs gets rebuilt properly here. |
 
 **Named content passes (re-anchored from v1):** per-Aspect **music motif** → owned by §5 AUDIO (backfill

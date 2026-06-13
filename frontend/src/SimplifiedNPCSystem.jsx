@@ -390,8 +390,6 @@ const HealthBar = ({ entity }) => {
   );
 };
 
-
-
 // --- ECS SYSTEMS ---
 const SpawnerSystem = () => {
   const { camera } = useThree();
@@ -1111,8 +1109,6 @@ const LootSystem = () => {
 
   return null;
 };
-
-
 
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);

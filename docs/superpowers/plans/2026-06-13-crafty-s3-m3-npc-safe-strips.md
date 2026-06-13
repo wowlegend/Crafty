@@ -1,5 +1,7 @@
 # S3-M3 — The NPC Safe Shell Strips Implementation Plan
 
+> **✅ SHIPPED (2026-06-13, loop iters 94-95):** T1 the ui/ panels (TradingInterface + CombatInstructions; 2 consumer repoints; dead framer-motion/Button/Toast imports dropped) · T2 MOB_TYPES → game/mobTypes.js (mobVariety textual→live) · T3 the 5 leaf VFX renderers → render/combatVfx + render/pickupVfx (byte-exact anchored slice; the trap-1 loot-juice repoint + a new capture-freeze gate). SimplifiedNPCSystem −10,984 chars. A 4-lens adversarial-review workflow verified the delta CLEAN (byte-equality / imports / gate-integrity / runtime-wiring — zero blocking/high/medium). 866 unit (103 files) · build · visual 13/13.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** design-of-record = `docs/superpowers/specs/2026-06-11-crafty-s3-demonolith-design.md` (the S3-M3 row + the 5-trap catalog). This is the NPC lens's M1-M3 — the **lowest-blast-radius cuts on the most-pinned file** (SimplifiedNPCSystem 1736 LOC, 8 gates + 1 live import + the mobVariety textual characterization). It proves multi-gate repointing before M4 (AGF) and M6 (the NPC deep cuts). **Prime directive: extraction-only — NO behavior change.** The behavior locks: the 13-frame visual gate, 861 unit tests, 23 static-gate files.
 
