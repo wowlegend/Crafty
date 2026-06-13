@@ -80,12 +80,11 @@ distinctness — snow pines) ✅ SHIPPED (iters 108/110/112/114)**; M4 was split
 topography). Then locomotion-audio ✅ (iter 116) + M5a ocean depth-tint ✅ (118) + **🏆 M6 landmarks ✅ (120) → the M1-M6 "Anchored
 Infinite" ladder COMPLETE** (Hearth · divable oceans · biome-table · biome-foliage · ocean-depth · landmarks) + **biome-ambient
 audio ✅ SHIPPED (iter 122)** — each biome now SOUNDS distinct (the world pass lands on sight+feel+sound; audio ledger
-feel@61/audio@93/116/122). Then resumed the charter-#4 STRUCTURAL spine: **S3-M5 (Components de-monolith) part 1 ✅
-SHIPPED (iter 124)** — the render/UI leaves out (HUD chrome → `ui/GameHud.jsx`, FPV renders → `render/playerRender.jsx`),
-**Components 1812 → 1300 LOC**, zero gate churn. **4 of 5 god-files dissolved-or-shrinking** (SoundManager/EMS/AGF done;
-Components −512 in progress; NPC remains). Next: S3-M5 part 2 (pure kernels spawnPlacement/locomotion, characterization-first),
-then verb-ctx/SM-wiring (Player loop last) → S3-M6 NPC; deferred world polish M4b+M5b/M4c. Live scale (2026-06-13 post-S3-M5p1):
-~25k LOC src / ~203 files / 936 unit tests (120 files) / 35 static-gate files / 17-state visual gate (LIVE-verified,
+feel@61/audio@93/116/122). Then resumed the charter-#4 STRUCTURAL spine: **S3-M5 (Components de-monolith) parts 1-2 ✅
+SHIPPED (iters 124/126)** — render/UI leaves → `ui/GameHud.jsx`+`render/playerRender.jsx`, then pure kernels → `game/spawnPlacement.js`+`game/locomotion.js` (characterization-first, the loop's first spawn/locomotion tests). **Components 1812 → 1286 LOC.** **4 of 5 god-files dissolved-or-shrinking** (SoundManager/EMS/AGF done;
+Components −512 in progress; NPC remains). Next: a PICK — an experience interleave (~due) · the risky S3-M5 part 3 (Player-loop SM-wiring) · the deferred world
+new-blocks (M4b+M5b) · or S3-M6 NPC. Live scale (2026-06-13 post-S3-M5p2):
+~25k LOC src / ~205 files / 947 unit tests (122 files) / 35 static-gate files / 17-state visual gate (LIVE-verified,
 +`hearth`+`biome-snow`+`ocean-depth`+`landmark` fixtures) / perf-probe harness
 (`?perf=A..E`). Full risk map: `memory/STATE-REVIEW-2026-06-10.md`. **The task registry is the source of
 truth, not this line.** Known managed item: the dependabot build-toolchain vuln (esbuild→vite chain; the
