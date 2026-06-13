@@ -13,3 +13,15 @@ export function isTouchDevice() {
   }
   return (window.matchMedia?.('(any-pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 }
+
+/**
+ * "Touch-UI mode" -- whether the touch UI (overlay + HUD adaptations like hiding the keyboard
+ * cheatsheet) should be active. True on a real touch device, AND under the mobile.png capture
+ * fixture (isCaptureMode + showTouch) so the baseline shows the touch UI. Lets the overlay AND the
+ * HUD key off ONE consistent predicate. Imported lazily-safe (captureMode is dev-inert in prod).
+ */
+import { isCaptureMode, getCaptureOpts } from '../devtest/captureMode';
+export function isTouchUIMode() {
+  if (isCaptureMode()) return !!getCaptureOpts().showTouch;
+  return isTouchDevice();
+}

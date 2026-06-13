@@ -16,7 +16,7 @@ const BTN = (extra) => ({
  */
 export default function TouchControlsSurface({ nub = null }) {
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 42, pointerEvents: 'none' }}>
       {/* center crosshair */}
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: 22, height: 22,
                     transform: 'translate(-50%,-50%)', borderRadius: '50%',

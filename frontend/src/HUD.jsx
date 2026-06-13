@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
 import { CombatInstructions } from './ui/CombatInstructions';
+import { isTouchUIMode } from './input/touchDevice';
 import {
   PlayerHealthBar,
   PlayerManaBar,
@@ -396,7 +397,7 @@ export function HUD({
               showStats={showStats}
               setShowStats={setShowStats}
             />
-            <CombatInstructions />
+            {!isTouchUIMode() && <CombatInstructions />}{/* keyboard cheatsheet is desktop-only (touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
 

@@ -152,6 +152,20 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
     await flushFrames(page, 6);
 
+    // === mobile (touch overlay) — the FIRST baseline that renders the touch UI (M2) ===
+    // showTouch opts the overlay IN under capture (default-off keeps the 17 other frames null); a
+    // phone-portrait viewport frames the S1-C thumb cluster over the diorama world. Restore the
+    // 1280x800 viewport + showTouch:false afterward so the downstream tier/night/studio frames match.
+    await page.setViewport({ width: 402, height: 874, deviceScaleFactor: 2 });
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: true }));
+    await flushFrames(page, 8);
+    await delay(400);
+    await page.screenshot({ path: resolve(OUT, 'mobile.png') });
+    console.log('captured mobile');
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: false, camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
+    await flushFrames(page, 6);
+
     // === S2-A-M4b: forced MED / LOW tier baselines (Kevin ratifies before gate-blessing) ===
     // The same explore-day world (already fully streamed at the forced `high` tier above), now
     // RE-RENDERED at the med + low quality tiers so the M4a tier levers are eyeball-able. Forcing

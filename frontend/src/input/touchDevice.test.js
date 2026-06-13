@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { isTouchDevice } from './touchDevice.js';
+import { isTouchDevice, isTouchUIMode } from './touchDevice.js';
+import { enterCaptureMode, exitCaptureMode } from '../devtest/captureMode.js';
 
 const setEnv = ({ maxTouchPoints, anyCoarse, ontouchstart }) => {
   vi.stubGlobal('navigator', { maxTouchPoints: maxTouchPoints ?? 0 });
@@ -38,5 +39,25 @@ describe('isTouchDevice', () => {
     vi.stubGlobal('window', undefined);
     vi.stubGlobal('navigator', undefined);
     expect(isTouchDevice()).toBe(false);
+  });
+});
+
+describe('isTouchUIMode', () => {
+  afterEach(() => { exitCaptureMode(); vi.unstubAllGlobals(); });
+
+  it('under capture: true only when showTouch is set (the mobile fixture)', () => {
+    enterCaptureMode({ showTouch: true });
+    expect(isTouchUIMode()).toBe(true);
+  });
+
+  it('under capture without showTouch: false (the 17 desktop baselines stay desktop-HUD)', () => {
+    enterCaptureMode({});
+    expect(isTouchUIMode()).toBe(false);
+  });
+
+  it('outside capture: falls back to isTouchDevice (touch hardware -> true)', () => {
+    vi.stubGlobal('navigator', { maxTouchPoints: 5 });
+    vi.stubGlobal('window', { PointerEvent: function () {}, matchMedia: () => ({ matches: false }) });
+    expect(isTouchUIMode()).toBe(true);
   });
 });
