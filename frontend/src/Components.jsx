@@ -13,6 +13,7 @@ import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { footstepTypeAt } from './world/climate.js';
+import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -800,10 +801,10 @@ export const Player = ({ isWorldBuilt }) => {
     const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
-    // Void Skyfall Guard: if player clips/falls through floor into the void (< 10), reset
-    if (spawnPosSet.current && currentTrans.y < 10) {
+    // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
+    if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
       console.warn("[DEBUG] Player fell into void! Teleporting to safety.");
-      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+      rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       spawnPosSet.current = false;
       return;
@@ -811,49 +812,35 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Freeze player in sky until world is built to prevent falling through floor
     if (!isWorldBuiltRef.current) {
-      rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
+      rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
     } else if (!spawnPosSet.current) {
       const store = useGameStore.getState();
-      let groundY = null;
-
-      // 1. Try to use placed blocks (if loading from a save)
+      // 1. placed-block ground (save load): highest block at the origin column
+      let blockGroundY = null;
       if (store.worldBlocks && store.worldBlocks.size > 0) {
         for (let y = 150; y > 0; y--) {
-          // ELEMANCER-M1 fix: the writers key worldBlocks with UNDERSCORES (`x_y_z`) — this
-          // reader used commas (an always-miss; the raycast fallback silently covered it).
-          if (store.worldBlocks.has(`0_${y}_0`)) {
-            groundY = y;
-            break;
-          }
-        }
-      } 
-      // 2. Otherwise use the physics raycast to find the generated terrain mesh height
-      if (groundY === null && store.getMobGroundLevel) {
-        // KEVIN-FIX C1: the wait is BOUNDED (~120 frames, then the y=60 fallback below) and
-        // the old `physicsY > 90` rejection is gone — it froze mountain spawns forever.
-        let physicsY = store.getMobGroundLevel(0, 0);
-        if (physicsY === null || isNaN(physicsY) || physicsY <= 15) {
-          spawnProbeFailsRef.current += 1;
-          if (spawnProbeFailsRef.current < 120) {
-            rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
-            rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-            return; // Wait for next frame (the streamer is loading origin chunks)
-          }
-        } else {
-          groundY = physicsY;
+          // ELEMANCER-M1 fix: writers key worldBlocks with UNDERSCORES (`x_y_z`).
+          if (store.worldBlocks.has(`0_${y}_0`)) { blockGroundY = y; break; }
         }
       }
-
-      if (groundY === null) {
-        groundY = 60; // Fallback
+      // 2. else the physics raycast — the spawn-ground DECISION (bounded probe wait + y=60 fallback +
+      //    the physicsY<=15 reject) lives in game/spawnPlacement.js (resolveSpawnGround). KEVIN-FIX C1.
+      const probeAvailable = !!store.getMobGroundLevel;
+      const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
+      const spawn = resolveSpawnGround(blockGroundY, physicsY, spawnProbeFailsRef.current, probeAvailable);
+      if (spawn.incFails) spawnProbeFailsRef.current += 1;
+      if (spawn.retry) {
+        rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
+        rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        return; // Wait for next frame (the streamer is loading origin chunks)
       }
 
-      const safeY = groundY + 1.2; // Spawns the player center exactly 1.2 units above ground level (instantly lands)
+      const safeY = spawnTargetY(spawn.groundY); // player center 1.2 above ground (instant land)
       rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      
+
       // Cancel skyfall lerp transition: set camera position instantly
       camera.position.set(0, safeY + 1.2, 0);
 
