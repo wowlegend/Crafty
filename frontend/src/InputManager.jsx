@@ -117,6 +117,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         if (event.code === 'KeyE') toggleUI(state.setShowInventory, state.showInventory);
         if (event.code === 'KeyC') toggleUI(state.setShowCrafting, state.showCrafting);
         if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
+        if (event.code === 'KeyM') toggleUI(state.setShowMagic, state.showMagic); // UX-legibility: the advertised M key now opens Magic (was an unhandled HUD lie)
       }
 
       if (active && !anyPanelOpen) {
