@@ -11,25 +11,7 @@ import { TIERS } from './render/quality';
 import { Panel, StatBar, Icon } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 
-const BOSS_CONFIG = {
-    name: 'Shadow Dragon',
-    icon: 'dragon',
-    color: '#4B0082',
-    secondaryColor: '#8B00FF',
-    health: 700, // Increased health for a more epic multi-phase encounter
-    damage: 20,
-    speed: 3.5,
-    size: 3.2,
-    aggroRange: 30,
-    attackRange: 5,
-    attackCooldown: 2000,
-    xpReward: 600,
-    phases: [
-        { hpPercent: 1.0, speed: 4.0, damage: 20, color: '#4B0082' }, // Phase 1: Aerial Strike
-        { hpPercent: 0.6, speed: 5.5, damage: 25, color: '#8B0000' }, // Phase 2: Grounded Rage
-        { hpPercent: 0.3, speed: 7.0, damage: 35, color: '#ff3300' }, // Phase 3: Enraged Inferno
-    ],
-};
+import { BOSS_CONFIG } from './game/bossConfig.js';
 
 export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
