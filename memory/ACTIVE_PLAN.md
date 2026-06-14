@@ -4,8 +4,8 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## ⏸️ LOOP PAUSED (Kevin, 2026-06-14) — awaiting his decision on restart + a "minimal-code" plugin.
-**Do NOT auto-resume the /loop. Kevin will restart the session, install a minimal-code (ponytail) plugin, then pick a sequencing option.** When he does, the 4 options on the table are: **(A) playtest→fix loop [my recommendation]** — Kevin plays the redeployed build, reports bugs/rough-feel, I fix that class + harden live-input gates; **(B)** build ONE depth milestone (recurring boss spine / build-identity talents / enemy attack telegraphs / cinematic beats) for him to playtest-tune; **(C)** harden input/feel E2E gates first; **(D)** keep the low-value autonomous polish queue. **Write MINIMAL code going forward (Kevin directive).**
+## 🎮 MODE: PLAYTEST→FIX (Kevin chose option A, 2026-06-14). MINIMAL CODE.
+**Not an autonomous timer-loop. Kevin plays the redeployed build → reports bugs/rough-feel → I fix that class (+ add live-input gates). His reports are the trigger; do NOT auto-grind low-value polish. Write MINIMAL code (Kevin directive).** Immediate ball-in-Kevin's-court: redeploy crafty-sand.vercel.app (camera fix is in `main`, not yet live) → play → report.
 
 **🔴 P0 FIXED THIS SESSION — DESKTOP MOUSE-LOOK WAS DEAD (Kevin caught it live: camera stuck).** Root: drei `<PointerLockControls>` (element-match-fragile + drei/three version-drift + UNTESTABLE in the capture harness → a dead camera shipped with zero gate). Replaced with our own `src/input/pointerLook.js` (lenient pointer-lock gate, reuses the tested `applyLook`). **PROVEN** via a new real-browser gate `npm run test:look` (yawΔ0.92 rad on real mouse move). Commit `85ff7b5`. **⚠️ KEVIN: REDEPLOY crafty-sand.vercel.app to get the fix** (it's in `main`, not yet on the deploy). Also live-verify JUMP (code intact, but the headless probe was too flaky to confirm; movement + spell-select confirmed working).
 
