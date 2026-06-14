@@ -1,5 +1,6 @@
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
+import { bearingToMarker } from './game/compass';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
@@ -282,6 +283,23 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
             <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
               <span class="text-[9px] font-bold text-rose-500 animate-pulse drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">BOSS (${dist}m)</span>
               <div class="w-1.5 h-1.5 bg-rose-500 rounded-full mt-0.5 animate-ping"></div>
+            </div>
+          `);
+        }
+      }
+
+      // 2b. Render HOME (Hearth) marker — always point back to the home anchor at world origin
+      // (world/homeAnchor.js stamps the plinth at 0,0) so a built base is findable: get home before night.
+      // Capture-suppressed (like the boss/chest markers) -> the explore frames stay byte-identical.
+      if (!isCaptureMode()) {
+        const home = bearingToMarker(0, 0, playerPos.x, playerPos.z, heading, fov);
+        const homeDist = Math.round(home.dist);
+        if (home.inView && homeDist > 6) { // hide while standing on the Hearth
+          const pct = home.pct;
+          markersHtml.push(`
+            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
+              <span class="text-[9px] font-bold text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.5)]">HOME (${homeDist}m)</span>
+              <div class="w-1.5 h-1.5 bg-amber-400 rotate-45 mt-0.5"></div>
             </div>
           `);
         }
