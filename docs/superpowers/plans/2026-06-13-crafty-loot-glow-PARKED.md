@@ -1,4 +1,14 @@
-# Loot-drop ground-glow halo (visual polish) — PARKED Implementation Plan
+# Loot-drop ground-glow halo (visual polish) — ✅ SUPERSEDED (iter 163 shipped a better design)
+
+> **✅ SUPERSEDED 2026-06-14 (loop iter 163):** shipped the rarity glow as a **camera-facing-equivalent
+> sphere glow-SHELL around the gem** (commit `9e18242`), NOT the ground-disc below. Why the redesign: the
+> only fixture that renders loot (`loot-showcase`) has a near-horizontal camera, so a flat ground decal is
+> seen edge-on (a thin ellipse — poorly judged AND barely changes the baseline); a sphere shell is visible
+> from ANY angle in-game (suits floating loot) + judged cleanly front-on. It uses the established spellVfx
+> outer-glow-shell + Bloom technique (coherent, texture-free). See `src/render/pickupVfx.jsx` LootDropRender
+> + `src/game/lootJuice.js` rarityBeam (auraRadius/auraOpacity). The original ground-disc plan below is
+> retained for history only. **(Known follow-up: a deterministic grey-cube fixture-leak at the loot-showcase
+> bottom-edge — not aura-related — blocks a clean loot-showcase re-baseline; the aura passes at <6% meanwhile.)**
 
 > **⏸ PARKED (loop iter 158) — design complete + unit-green, but REVERTED because the visual needs a
 > `loot-showcase` re-baseline and the capture harness was flaking its 45s settle-wait on EVERY run under
