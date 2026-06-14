@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
+import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
@@ -418,6 +419,8 @@ export const useGameStore = create((set, get) => ({
     // Phase 23: Skill Talent Tree & Placeable Container Chests
     talentPoints: 0,
     unlockedTalents: {},
+    aspectHint: null, // just-in-time teaching toast on a fresh Aspect-verb unlock (auto-cleared by AspectHintToast)
+    setAspectHint: (v) => set({ aspectHint: v }),
     // S2a: serializable mirror of useQuestSystem's persistable state (quest
     // progress + achievement counters). The gameplay hook owns the working
     // state; this is a JSON-safe snapshot for buildSaveData. `questLoadedAt`
@@ -443,12 +446,15 @@ export const useGameStore = create((set, get) => ({
         // Raise the cap + clamp current down if it somehow exceeds — NEVER heal on spend.
         const effective = effectiveWith(state.attributes, state.equipment, newUnlocked);
         const { maxHealth, maxMana } = deriveMaxStats(state.level, effective);
+        // just-in-time teaching: on the FIRST unlock of an Aspect verb-talent, surface a hint toast.
+        const hint = currentVal === 0 ? aspectUnlockHint(talentId) : null;
         return {
             talentPoints: state.talentPoints - 1,
             unlockedTalents: newUnlocked,
             maxHealth, maxMana,
             playerHealth: Math.min(state.playerHealth, maxHealth),
             mana: Math.min(state.mana, maxMana),
+            aspectHint: hint || state.aspectHint,
         };
     }),
     setChestInventory: (coords, inventory) => set((state) => {
