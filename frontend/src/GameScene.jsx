@@ -140,7 +140,6 @@ const SpatialAudioController = () => {
   const wetGainRef = useRef();
   const activeSpatialSoundsRef = useRef([]);
   const playerRigidBodyRef = useGameStore(state => state.playerRigidBodyRef);
-  const lookSensitivity = useGameStore(state => state.lookSensitivity); // settings: mouse pointerSpeed (rare change)
 
   const countVoxelIntersections = (start, dir, maxDist) => {
     if (!world || !rapier) return 0;
@@ -695,6 +694,7 @@ export function GameScene({
   showAuthModal
 }) {
   const controlsRef = useRef();
+  const lookSensitivity = useGameStore(state => state.lookSensitivity); // settings: mouse PLC pointerSpeed (rare change)
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
   // Always false in normal gameplay -> Physics runs exactly as before.
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
