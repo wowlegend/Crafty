@@ -2,6 +2,7 @@
 
 > **Status (2026-06-10): ADOPTED + IN-USE as the coherence anchor; the destructive-CUT GATE is PARKED pending calibration.** Kevin engaged + revised the pillars (P5 audience/accessibility/no-pay-to-win revisions, `6a305bb`; monetization dropped from P5 → an S4 decision, `bf6eb30`), and they are the active QA-cadence + content-audit anchor (the 2026-06-03 pre-S2-B content audit ran against them, `793b9fd`) — so the pillars themselves are **effectively ratified / in active use**. What remains PARKED: the **coherence GATE governing destructive CUTS** is inadmissible until a blind calibration run scores **100% on the must-NOT-cut negatives** (the pillars' own bound #1, the anti-99.2%-false-positive guard) — that calibration has NOT run, so the cut-gate MUST NOT govern any cut yet. (Original authoring status below.)
 >
+> **Status:** ✅ ACTIVE — the canonical coherence anchor the loop self-gate (charter §4) judges every addition against; ratified-in-practice. *(Historical "at authoring" note follows.)*
 > **Status (at authoring):** v1, awaiting Kevin's ratification of the pillars (P0–P5). Designed 2026-06-03 via a research+design+adversarial workflow (8 agents, SOTA-grounded — design-pillars/subtractive-design/cohesion/AI-accretion research + 2 adversarial critiques + goal-frame discipline). The **canonical coherence anchor** for the QA cadence (S2 spec §7). Anchored to `SOTA-INITIATIVE.md` §0/§1/§8 + the S2 design spec §1/§3/§4/§7.
 
 ## Why this exists (the AI-specific argument)

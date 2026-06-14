@@ -1,5 +1,7 @@
 # S3-M6 (NPC de-monolith) — the safe pure-stepper cuts Implementation Plan
 
+> **✅ SHIPPED (loop iters 140-142).** XP-orb + loot steppers (`game/xpOrbStepper.js`) + damageMob hit-FX (`game/mobHitFx.js`) extracted from the NPC system byte-exact (NPC 1217→1115). The full NPC de-god-file completed @144 (MobModel). See CHANGELOG.
+
 > **✅ XP-ORB + LOOT STEPPER CUTS SHIPPED (loop iters 140-141, 2026-06-13).** The pure
 > `game/xpOrbStepper.js` now holds BOTH magnet-pickup steppers unified behind `_stepMagnet`:
 > `stepXPOrb` (range 12 / base 80 / floor 4) + `stepLootDrop` (range 7 / base 40 / floor 3) —

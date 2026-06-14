@@ -1,5 +1,7 @@
 # Kevin Live-Playtest Fixes — Respawn Lock-Up + The Pointer-Lock/Menu State Machine
 
+> **✅ SHIPPED.** Kevin live-playtest fixes — respawn lock-up + the pointer-lock/menu state machine. Completed early-loop. See CHANGELOG.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Loop note:** source = Kevin's 2026-06-10 live feedback + the 2-lens diagnostic workflow wf_1a0b03d0-b93
 > (both lenses HIGH-confidence, code-traced; the full state map + 11 root causes in the workflow output).

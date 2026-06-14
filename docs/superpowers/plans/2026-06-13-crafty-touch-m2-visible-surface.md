@@ -1,5 +1,7 @@
 # Touch Input M2 — Visible surface + `mobile.png` fixture Implementation Plan
 
+> **✅ SHIPPED (loop iters 134-137).** The visible touch surface (M2a) — `TouchControlsSurface` lucide thumb-cluster + joystick ring + crosshair; `mobile.png` baseline. M3a (panel tray) followed @146-147. See CHANGELOG.
+
 > **✅ M2a SHIPPED (loop iter 137, 2026-06-13).** The visible S1-C touch surface + the `mobile.png`
 > baseline (18/18). Built per this plan with deviations recorded honestly: the 2-tone game-icons don't
 > tint (`color` ignored) → switched to **lucide** chrome icons (gold via currentColor); the icons/buttons

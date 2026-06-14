@@ -1,5 +1,7 @@
 # S2-B2-pre-M2 — Perf Remediation Bundle (task #68) Implementation Plan
 
+> **✅ SHIPPED.** S2-B2-pre-M2 perf remediation (#68) — the desktop perf gate passed (see `memory/S2B2-M2-PERF.md` + KEVIN-REVIEW #2). See CHANGELOG.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove the confirmed pre-existing main-thread frame costs (STATE-REVIEW-2026-06-10 §3 findings 1–5) so the VOIDHAND M2 iPad FPS gate measures signal, not NPC-layer noise — restoring the Game-Loop-Isolation invariant (1 BLOCKING breach) and cutting the raycast/clone/shadow storms, with strict behavior parity and the visual gate held at 13/13.

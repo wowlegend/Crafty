@@ -1,5 +1,7 @@
 # SOULBIND M6 — FUSE + Hybrid Roster + Soul HUD + The Look Judge Implementation Plan
 
+> **✅ SHIPPED.** SOULBIND M6 (fuse + hybrid roster + Soul HUD) — part of the four-Aspect spine completed 2026-06-11. See CHANGELOG.
+
 > **✅* SHIPPED (2026-06-10, loop iters 50-54):** T1-T4 fully live (roster + the pig-fallback catch · decideFuse · the X-key arbiter + fusion + the Soul bar). 781 unit (92 files) · build · visual 13/13. ***T5 the look judge:** function PROVEN by mesh census (allies +25 meshes live; fusion births the dreadweaver live); the aesthetic frame defeated 4 instruments (C-probe phantom/orbit · plain-game FPV controller re-asserts heading + spawn faces a cliff · the studio suppresses live entities by design) — full forensic writeup in `.superpowers/s2b3-soulbind-m4-refs/HOW.md`; the RIGHT tool (a ?showcase=soulbind dev route) is an M7 task; Kevin's KRB playtest cue carries the eyeball.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

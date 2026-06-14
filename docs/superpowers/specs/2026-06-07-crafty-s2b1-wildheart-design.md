@@ -2,6 +2,7 @@
 
 > **✅ SHIPPED — WILDHEART COMPLETE + MERGED to `main` (`458bbb5`, 2026-06-07).** Mechanics (M0-M6+M3.5) + the LOOK (M7 third-person transform-cam beachhead + M7c choreography + M8 4-beast roster + punchy glow + cool-rim hold); 630→657 unit · visual 13/13. This doc is the historical design-of-record (the status line below reflects the moment of authoring, pre-build). See CHANGELOG (2026-06-07) for the build record.
 >
+> **Status:** ✅ SHIPPED — WILDHEART was built + merged (the LEAD Aspect) under the loop SELF-GATE (charter §5 replaced the Kevin HARD GATE). *(Historical "at authoring" note follows.)*
 > **Status (at authoring):** DESIGN **v2 (reconciled)** — awaiting Kevin's spec review (the master-plan HARD GATE: no WILDHEART implementation before this is approved). The LEAD Aspect, locked with Kevin in `docs/superpowers/specs/2026-06-02-crafty-s2-game-design-design.md` §4 (S2-B1). This spec folds five code-seam maps (Player/collider, attack-intents/elements, VFX/bloom/capture, day-night/siege/HUD, save/talent/store) + live 2026 research (Rapier collider hot-swap; bloom-surviving stylized morph VFX) + a 3-lens adversarial review pass into the buildable design of record.
 >
 > **Prerequisite:** S2-A is merged (the signature-agnostic foundation — dodge i-frames, melee cone, persistence, wired talent trees, the day/night siege loop, the input-abstraction layer, a real FPS number). WILDHEART edits the systems S2-A establishes; it does not stand alone.
