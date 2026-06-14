@@ -17,6 +17,7 @@ import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
+import LowHealthVignette from './ui/LowHealthVignette';
 import UISounds from './ui/UISounds';
 import AspectHintToast from './ui/AspectHintToast';
 import { PetIndicator } from './ui/PetIndicator';
@@ -490,6 +491,7 @@ export function HUD({
       </AnimatePresence>
 
       <DamageOverlay active={gameSystems.damageFlash} intensity={gameSystems.screenShake} />
+      <LowHealthVignette />
       <DamageDirection />
       <UISounds />
       <AspectHintToast />
