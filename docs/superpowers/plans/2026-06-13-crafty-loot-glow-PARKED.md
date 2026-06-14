@@ -7,8 +7,9 @@
 > from ANY angle in-game (suits floating loot) + judged cleanly front-on. It uses the established spellVfx
 > outer-glow-shell + Bloom technique (coherent, texture-free). See `src/render/pickupVfx.jsx` LootDropRender
 > + `src/game/lootJuice.js` rarityBeam (auraRadius/auraOpacity). The original ground-disc plan below is
-> retained for history only. **(Known follow-up: a deterministic grey-cube fixture-leak at the loot-showcase
-> bottom-edge — not aura-related — blocks a clean loot-showcase re-baseline; the aura passes at <6% meanwhile.)**
+> retained for history only. **(Follow-up RESOLVED iter 164: the grey-cube was the boss-closeup dragon persisting
+> into loot-showcase; fixed by reordering capture.mjs to run loot-showcase before the boss/spell/beast
+> fixtures. loot-showcase is now re-baselined CLEAN with the aura — `978a5a2`.)**
 
 > **⏸ PARKED (loop iter 158) — design complete + unit-green, but REVERTED because the visual needs a
 > `loot-showcase` re-baseline and the capture harness was flaking its 45s settle-wait on EVERY run under
