@@ -275,7 +275,7 @@ const AIWorkerSystem = () => {
                 entity.knockback = [dir[0]/mag * 15, dir[1], dir[2]/mag * 15]; // Reuse knockback for leap
             }
           } else if (store.damagePlayer) {
-            store.damagePlayer(attack.damage, attack.type);
+            store.damagePlayer(attack.damage, attack.type, attack.position); // sourcePos -> directional hit cue
             
             // Phase 11: Spatial Attack Sound
             if (store.playSpatialSound) {

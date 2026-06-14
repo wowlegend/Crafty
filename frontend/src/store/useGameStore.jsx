@@ -8,6 +8,7 @@ import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
+import { hitDirection } from '../game/damageDirection.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
@@ -636,7 +637,8 @@ export const useGameStore = create((set, get) => ({
     isAlive: true,
     damageFlash: false,
     screenShake: 0,
-    
+    lastHitDir: null, // {angle,t} of the most recent directional hit (combat-legibility cue); null until a sourced hit
+
     setPlayerHealth: (healthArg) => set((state) => ({ playerHealth: typeof healthArg === 'function' ? healthArg(state.playerHealth) : healthArg })),
     setMaxHealth: (max) => set({ maxHealth: max }),
     setMana: (manaArg) => set((state) => ({ mana: typeof manaArg === 'function' ? manaArg(state.mana) : manaArg })),
@@ -649,7 +651,7 @@ export const useGameStore = create((set, get) => ({
     lastDamageTime: 0,
     setLastDamageTime: (time) => set({ lastDamageTime: time }),
 
-    damagePlayer: (amount, source = 'unknown') => {
+    damagePlayer: (amount, source = 'unknown', sourcePos = null) => {
         const state = get();
         if (!state.isAlive) return;
 
@@ -672,10 +674,14 @@ export const useGameStore = create((set, get) => ({
 
         console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
 
+        // Combat-legibility: when the caller supplies the attacker position, record the screen-relative
+        // hit direction (read the live camera yaw + player pos) so the HUD can point you at the threat.
+        const dir = sourcePos ? hitDirection(state.playerPosition, sourcePos, state.gameCamera?.rotation?.y) : null;
         set({
             lastDamageTime: now,
             damageFlash: true,
-            screenShake: finalDamage / 10
+            screenShake: finalDamage / 10,
+            lastHitDir: dir != null ? { angle: dir, t: now } : state.lastHitDir
         });
 
         setTimeout(() => {
