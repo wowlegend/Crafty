@@ -112,6 +112,21 @@ function GameApp({ experienceSystem }) {
   useEffect(() => {
     if (gameState.isSpawnChunkLoaded && !isWorldBuilt) {
       setIsWorldBuilt(true);
+      // First-session onboarding (broad-audience legibility): the title screen teaches the KEYS; this
+      // teaches the GOAL LOOP in-world, ONCE (localStorage flag) — a brand-new player otherwise spawns
+      // with no sense of the day-build / night-survive objective. Capture-SUPPRESSED (no toast in the
+      // gated frames) + null-safe (addNotification is bridged by QuestSystem once it mounts).
+      if (!useGameStore.getState().isCaptureMode) {
+        try {
+          if (!localStorage.getItem('crafty_onboarded')) {
+            localStorage.setItem('crafty_onboarded', '1');
+            setTimeout(() => {
+              const add = useGameStore.getState().addNotification;
+              if (add) add('Build by day, survive the night siege — defeat foes to unlock powerful Aspect abilities.', 'info');
+            }, 1600);
+          }
+        } catch (e) { /* localStorage blocked -> skip onboarding (non-fatal) */ }
+      }
       setTimeout(() => {
         const state = useGameStore.getState();
         // Dev capture mode: keep the menu overlay visible by NOT auto-locking the pointer;
