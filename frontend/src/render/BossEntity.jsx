@@ -75,6 +75,25 @@ const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
     store.setWorldBlocks(newBlocks);
 };
 
+// Dragon SILHOUETTE features (iter-172, the mob-distinctness treatment for the apex creature): static
+// bold-flat boxes in the dragon body-local frame (dragon faces +Z, head/eyes forward). Swept-back horns,
+// a tapering down-back tail, and a back-ridge of spine spikes — the cues that push the blocky winged
+// torso to read unmistakably as a DRAGON. Rendered with the torso material (flash/phase together) + the
+// boss outline. Static (no anim) -> capture-frozen with the boss group, byte-deterministic.
+const DRAGON_FEATURES = [
+  // swept-back horns off the head top (head box at [0,1.4,1.8]; tilt back = negative rot.x)
+  { box: [0.22, 1.0, 0.22], pos: [-0.5, 2.3, 1.4], rot: [-0.5, 0, 0.18] },
+  { box: [0.22, 1.0, 0.22], pos: [0.5, 2.3, 1.4], rot: [-0.5, 0, -0.18] },
+  // tapering tail behind the torso (-Z), drooping down
+  { box: [0.8, 0.8, 1.8], pos: [0, 0.05, -2.7], rot: [0.28, 0, 0] },
+  { box: [0.45, 0.45, 1.7], pos: [0, -0.55, -4.05], rot: [0.5, 0, 0] },
+  // back-ridge spine spikes along the torso top (y top ~1.0)
+  { box: [0.16, 0.5, 0.34], pos: [0, 1.2, 1.2], rot: [0.35, 0, 0] },
+  { box: [0.18, 0.62, 0.34], pos: [0, 1.28, 0.4], rot: [0.18, 0, 0] },
+  { box: [0.18, 0.62, 0.34], pos: [0, 1.28, -0.4], rot: [0, 0, 0] },
+  { box: [0.16, 0.5, 0.34], pos: [0, 1.2, -1.2], rot: [-0.2, 0, 0] },
+];
+
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth }) => {
     const meshRef = useRef();
     const { camera } = useThree();
@@ -494,6 +513,21 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     <meshBasicMaterial color={eyeColor} toneMapped={false} />
                 </mesh>
                 <pointLight color={phase.color} intensity={2.5} distance={15} />
+                {/* iter-172 dragon silhouette features (horns / tail / back-ridge) — torso material so
+                    they flash + phase-color with the body; the boss outline carries the silhouette. */}
+                {DRAGON_FEATURES.map((f, i) => (
+                    <mesh key={`dragf-${i}`} castShadow receiveShadow position={f.pos} rotation={f.rot}>
+                        <boxGeometry args={f.box} />
+                        <meshStandardMaterial
+                            roughness={0.15}
+                            metalness={0.9}
+                            color={bodyColor}
+                            emissive={bodyEmissive}
+                            emissiveIntensity={emissiveIntensityVal}
+                        />
+                        {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
+                    </mesh>
+                ))}
             </group>
 
             {/* --- High Performance Instanced/Mesh Effects Rendering Sheets --- */}

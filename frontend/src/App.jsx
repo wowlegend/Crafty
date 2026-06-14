@@ -331,16 +331,18 @@ function GameApp({ experienceSystem }) {
       store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5);
-      // Clear the character-closeup chest so it can't leak into this frame. (The
-      // character-closeup zombie lives at (0,140,-8) in the ECS and can't be cleared
-      // from a hook, so we spawn the boss far away on +X and frame there — the zombie
-      // falls off-frame.)
+      // Clear leaks: the chest + ALL mobs (the character-closeup zombie at x=0 would otherwise creep
+      // into the wider 3/4 frame). ecs.remove IS hook-clearable (the mobShowcase/mobBestiary pattern;
+      // the old "the zombie can't be cleared from a hook" note was stale). The boss is a bossSystem
+      // entity, not an ECS mob, so this clears the leak without touching the boss.
       useGameStore.setState({ treasureChestsList: [] });
-      const BX = 40, BY = 140, BZ = -8; // sky-studio, far from the closeup zombie at x=0
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
+      const BX = 40, BY = 140, BZ = -8; // sky-studio lane
       if (store.forceBossSpawn) store.forceBossSpawn([BX, BY, BZ]);
-      // The dragon is ~7.4 wide (wingspan) × ~3 tall; frame the full body+head+wings
-      // from the +Z front (the frozen boss faces +Z) with margin (~65-70% fill). The
-      // camera is pulled back ~6.5 units so the wing tips clear the frame edges.
+      // Front-on (+Z) sky-studio card framing the full body+head+wings + (iter-172) the HORNS (the
+      // gate-visible silhouette cue). A 3/4 reveal would also show the tail/back-ridge but its down-tilt
+      // catches the distant terrain (clutters the clean sky card), so this stays front-on + level; the
+      // tail/ridge read in-world from gameplay angles (validated during the iter-172 3/4 eyeball).
       enterCaptureMode({ camera: { position: [BX + 1.8, BY + 1.2, BZ + 6.5], lookAt: [BX, BY + 0.7, BZ] } });
     });
     // Spell-cast fixture (S1-D-M2): a deterministic, FROZEN fireball cast framed against
