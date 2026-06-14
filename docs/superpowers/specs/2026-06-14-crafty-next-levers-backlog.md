@@ -15,7 +15,7 @@ before building.** Corrected so far: **#1** break-debris already exists (only pl
 **#4** incoming-hit flash+screenshake already fire from `damagePlayer` (only *hitstop* on incoming is absent);
 **#7** ✅ SHIPPED iter 183 (and uncovered a real BUG — the level-up sound was dead via an unassigned
 `window.playLevelUpSound`; fixed). Net: of the top-7 quick-wins, 1/3/4 were already-done/redundant, 1b/7
-shipped. Remaining plausibly-real: #2 day-dial, #8 night-count, #10 recallable onboarding, #17 hearth-on-compass (#5 coin sink ✅ shipped iter 184) —
+shipped. Remaining plausibly-real: #2 day-dial, #8 night-count, #10 recallable onboarding (#5 coin sink, #17 hearth-on-compass ✅ shipped iters 184-185) —
 verify each first.
 
 ## Verified-this-iteration corrections to the raw findings
@@ -37,7 +37,7 @@ verify each first.
 8. **Night-siege intensity ladder:** push a "Night N — the swarm grows" notification on the nightfall edge (reuse the `DayNightAudio`/`addNotification` seam) + optional siege-pip row. Surfaces a survival bragging number.
 9. **Endless quest/loot tiers:** quests + dawn-loot terminate at night 7 / night 5. `claimQuest` already cycles; add repeatable/endless-tier quests + a stacking/"mythic" `dawnLootRarity` tier. Data-only.
 10. **Recallable onboarding:** the first-session tip is a single 4s auto-dismiss toast that can't be recalled — add a Help/controls recall (the controls panel exists).
-11. **Hearth on the compass:** the home anchor is unfindable (not on compass/minimap). Add a hearth marker to the existing `Compass`.
+11. ~~Hearth on the compass~~ ✅ SHIPPED iter 185 (gold HOME marker via the pure `game/compass.js` bearingToMarker; capture-suppressed).
 
 ## Bigger levers (MILESTONE-scale — each warrants its own plan doc)
 - **A recurring apex threat fused to the night-siege (the post-L5 challenge spine):** the only boss is a one-shot

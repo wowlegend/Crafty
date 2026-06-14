@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (🧭 NAVIGATION — HOME marker on the compass; loop iter 185)
+- **You can find your way home now.** The Hearth (the crafted home anchor at world origin) was unfindable — the Compass marked boss + chest but never home, so wandering out to mine/build left no way back (a real survival frustration: get home before the night siege). Added a gold "HOME (Nm)" compass marker that always points to the Hearth (hidden when you're standing on it). Extracted a pure `game/compass.js` `bearingToMarker()` helper (shared dx/dz→atan2→heading-relative percent math, node-tested) to drive it. Capture-suppressed like the boss/chest markers → explore frames unchanged.
+- Fresh axis (navigation) off the recent siege-feedback run; verified real from the next-levers backlog (#17).
+- **Verify:** unit 1136→1142 (+6) · build clean · visual 19/19 (HOME marker capture-suppressed → frames byte-identical). Commit `0b4a223`.
+
 ### June 14, 2026 (🪙 ECONOMY — coin sink (buy potions); loop iter 184)
 - **Coins are no longer a dead currency.** They were earned (survive-to-dawn reward), shown in the HUD, and persisted, but nothing consumed them — the dawn loop trained the player to value coins, then gave them nothing to spend. Added a `spendCoins(n)` store action (deduct-iff-affordable, returns success, clamps negatives) + two coin→potion trades at the Villager Merchant (12 coins → Health Potion, 10 → Mana Potion via a new `executeCoinTrade` → `addToInventory`, which routes to the flat `inventory.blocks` bucket GamePanels consumes potions from, so the bought potion is genuinely usable). The merchant now shows the Coins balance. Closes the earn→spend loop.
 - Verified real from the next-levers backlog (#5) — no spend path existed (the merchant's barter never touched coins), unlike the 4 prior over-optimistic items.
