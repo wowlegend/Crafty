@@ -43,9 +43,16 @@
    capture-determinism. Big/risky deltas: adversarially review via a multi-agent Workflow (explicitly
    authorized) — confirmed findings get fixed before the unit is "done".
 5. **VERIFY before declaring (evidence, not belief):** from `frontend/` — `npx vitest run` (count must HOLD
-   OR GROW — see §3 ratchet) · `npm run build` clean · `npx vitest run --config vitest.visual.config.js`
-   (13/13, or a DELIBERATE re-baseline per §4 with rationale + self-eyeball). A unit that can't reach green
-   this iteration gets reverted or parked behind a red-tests note in ACTIVE_PLAN — never left silently broken.
+   OR GROW — see §3 ratchet) · `npm run build` clean · the visual gate (18/18, or a DELIBERATE re-baseline per
+   §4 with rationale + self-eyeball). **⚠️ VISUAL-GATE HAZARD (the iter-159 lesson — a crash hid on main for 5
+   iters):** `npx vitest run --config vitest.visual.config.js` ALONE only DIFFS the pre-existing `current/`
+   PNGs against `baseline/` — it does NOT re-render. So it reports "18/18" on STALE frames + silently MISSES
+   any render-affecting change (the iter-154 GameScene crash passed this "gate" @154-158 on iter-150 frames).
+   **For ANY change that can affect a rendered scene/HUD/component, you MUST re-CAPTURE first: `npm run
+   visual:capture` (or `npm run test:visual` = capture+diff), THEN read the changed frame.** The diff-alone is
+   valid ONLY for changes that provably cannot render (pure logic / capture-null overlays / non-rendering props
+   — and say WHY in the report). A unit that can't reach green this iteration gets reverted or parked behind a
+   note in ACTIVE_PLAN — never left silently broken.
 6. **PERSIST (the filesystem is the only memory that survives):** commit (no AI footers; no `git add -A`;
    `.state/` untouched) + **push `main`** + update `memory/ACTIVE_PLAN.md` (what shipped + the NEXT unit) and
    `memory/CHANGELOG.md` (milestone-grade entries). Batch Kevin-facing decisions/eyeballs into
