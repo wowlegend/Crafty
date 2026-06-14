@@ -669,6 +669,23 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         </Button>
                     </Panel>
 
+                    {/* Look Sensitivity (mouse pointerSpeed + touch drag-look) */}
+                    <Panel variant="inset" className="bg-slot p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Look Sensitivity</span>
+                            <span className="font-display font-bold text-accent tabular-nums text-lg">{(gameState.lookSensitivity ?? 1).toFixed(1)}</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="0.3"
+                            max="2.5"
+                            step="0.1"
+                            value={gameState.lookSensitivity ?? 1}
+                            onChange={(e) => gameState.setLookSensitivity(parseFloat(e.target.value))}
+                            className="w-full accent-[rgb(var(--ui-accent))]"
+                        />
+                    </Panel>
+
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Game Mode</span>

@@ -63,7 +63,7 @@ function TouchControlsLive({ isWorldBuilt }) {
     };
     const onMove = (e) => {
       if (!getInput().active) return; // focus gate: let panel scroll / native touch through when not active
-      handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: 1 });
+      handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: useGameStore.getState().lookSensitivity ?? 1 });
       e.preventDefault();
     };
     const onEnd = (e) => { handleTouchEnd(router, e.changedTouches, { setIntent }); e.preventDefault(); };

@@ -486,6 +486,10 @@ export const useGameStore = create((set, get) => ({
     setBuildingMode: (mode) => set({ buildingMode: mode }),
     buildSize: 1,
     setBuildSize: (size) => set({ buildSize: size }),
+
+    // Look sensitivity (mouse pointerSpeed + touch drag-look); 1 = default, clamped 0.3..2.5.
+    lookSensitivity: 1,
+    setLookSensitivity: (v) => set({ lookSensitivity: Math.max(0.3, Math.min(2.5, Number(v) || 1)) }),
     selectedBuildBlock: null,
     setSelectedBuildBlock: (block) => set({ selectedBuildBlock: block }),
 

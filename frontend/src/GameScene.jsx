@@ -140,6 +140,7 @@ const SpatialAudioController = () => {
   const wetGainRef = useRef();
   const activeSpatialSoundsRef = useRef([]);
   const playerRigidBodyRef = useGameStore(state => state.playerRigidBodyRef);
+  const lookSensitivity = useGameStore(state => state.lookSensitivity); // settings: mouse pointerSpeed (rare change)
 
   const countVoxelIntersections = (start, dir, maxDist) => {
     if (!world || !rapier) return 0;
@@ -830,9 +831,10 @@ export function GameScene({
             lock entry has an explicit requestPointerLock site. `enabled` is also gone: an
             always-connected PLC keeps its own pointerlockchange listener attached, so its
             internal lock state can't go stale across the death/respawn boundary. */}
-        <PointerLockControls 
+        <PointerLockControls
           ref={controlsRef}
-          makeDefault 
+          makeDefault
+          pointerSpeed={lookSensitivity}
           selector="#lock-target-none"
           minPolarAngle={0.05} 
           maxPolarAngle={Math.PI - 0.05} 
