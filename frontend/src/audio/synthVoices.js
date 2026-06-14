@@ -559,12 +559,73 @@ export const makeHeartbeat = (ctx) => {
     return buffer;
 };
 
+// Day/night TRANSITION one-shots (pair with the SurvivalWarning banner + the gradual DAY/NIGHT music shift).
+// The SIEGE HORN: an ominous war-horn CALL fired when night falls -- a low brassy note that lifts a fifth
+// ("to arms"), with a detuned twin for unease + an octave-below body + a slow horn vibrato. Slow swell-in =
+// a distant horn. Marks the night-siege onset (the beat the onboarding nudge promises).
+export const makeSiegeHorn = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.9;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const f = t < 0.38 ? 92.5 : 138.6;             // F#2 -> C#3 (up a fifth): the "to arms" lift
+      const saw = 2 * (t * f - Math.floor(t * f + 0.5));
+      const twin = 2 * (t * f * 1.008 - Math.floor(t * f * 1.008 + 0.5)) * 0.5; // a detuned twin = unease
+      const sub = Math.sin(2 * Math.PI * f * 0.5 * t) * 0.4;     // an octave-below body
+      const vib = 1 + 0.04 * Math.sin(2 * Math.PI * 5.5 * t);    // a slow horn vibrato
+      const env = Math.min(t * 3.2, 1) * Math.exp(-Math.max(t - 0.5, 0) * 2.2); // swell -> sustain -> fade
+      d[i] = (saw * 0.5 + twin + sub) * vib * env * 0.34;
+    }
+    // headroom guard (deterministic unclipped contract; same pattern as makeSlamSound)
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    return buffer;
+};
+
+// The DAWN CHIME: a bright, hopeful ascending MAJOR arpeggio of bell strikes (C5-E5-G5) fired at daybreak
+// -- the sun rises, you survived the night. Each bell = a fundamental + an octave partial + a shimmer with
+// a struck-bell decay, staggered up in time so the line climbs.
+export const makeDawnChime = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 1.0;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    const bells = [{ f: 523.25, t0: 0.0 }, { f: 659.25, t0: 0.16 }, { f: 783.99, t0: 0.32 }];
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      let s = 0;
+      for (const b of bells) {
+        const tb = t - b.t0;
+        if (tb < 0) continue;
+        const body = Math.sin(2 * Math.PI * b.f * tb);
+        const harm = Math.sin(2 * Math.PI * b.f * 2 * tb) * 0.3;     // a bell's octave partial
+        const shimmer = Math.sin(2 * Math.PI * b.f * 3 * tb) * 0.12;
+        s += (body + harm + shimmer) * Math.exp(-tb * 4.5);          // a struck-bell decay
+      }
+      d[i] = s * 0.3;
+    }
+    // headroom guard (deterministic unclipped contract; the staggered bells can briefly sum loud)
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    return buffer;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
 export const VOICES = {
   ...MOTIFS, // music-motif v2: the per-Aspect stingers (audio/aspectMotifs.js)
   heartbeat: makeHeartbeat,
+  siegeHorn: makeSiegeHorn,   // day->night transition sting
+  dawnChime: makeDawnChime,   // night->day transition sting
   blockPlace: (ctx) => makeTone(ctx, 200, 0.1, 'square'),
   blockBreak: (ctx) => makeTone(ctx, 150, 0.15, 'sawtooth'),
   footstep: (ctx) => makeNoise(ctx, 0.05),

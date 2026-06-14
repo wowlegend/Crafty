@@ -560,6 +560,8 @@ export const useGameSounds = () => {
     playCraft: () => playSound('craft'),
     playMagic: () => playSound('magic'),
     playHeartbeat: () => playSound('heartbeat'), // low-health danger pulse (HeartbeatAudio)
+    playSiegeHorn: () => playSound('siegeHorn'), // day->night transition sting (DayNightAudio)
+    playDawnChime: () => playSound('dawnChime'), // night->day transition sting (DayNightAudio)
     // Combat sounds
     playAttack: () => playSound('attack', 0.9 + Math.random() * 0.2),
     playSwing: () => playSound('swing', 0.8 + Math.random() * 0.4),
