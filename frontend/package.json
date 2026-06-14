@@ -33,7 +33,8 @@
     "visual:capture": "node scripts/visual/capture.mjs",
     "visual:baseline": "node scripts/visual/capture.mjs --baseline",
     "perf:m2": "node scripts/perf/run-scenarios.mjs",
-    "test:visual": "node scripts/visual/capture.mjs && vitest run --config vitest.visual.config.js"
+    "test:visual": "node scripts/visual/capture.mjs && vitest run --config vitest.visual.config.js",
+    "test:look": "node scripts/visual/look-e2e.mjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

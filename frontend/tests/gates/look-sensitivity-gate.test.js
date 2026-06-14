@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
 // "Signature-fires" insurance: the one lookSensitivity setting reaches BOTH look consumers
-// (desktop PLC pointerSpeed + touch applyLook) AND is editable in SettingsPanel.
+// (desktop own-pointer-lock handler + touch applyLook) AND is editable in SettingsPanel.
 const __dir = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(__dir, '../../src', p), 'utf8');
 const scene = read('GameScene.jsx');
@@ -17,8 +17,18 @@ describe('look-sensitivity wires mouse + touch + settings', () => {
     expect(store).toMatch(/lookSensitivity:\s*1/);
     expect(store).toMatch(/setLookSensitivity:/);
   });
-  it('desktop PLC uses pointerSpeed={lookSensitivity}', () => {
-    expect(scene).toMatch(/pointerSpeed=\{lookSensitivity\}/);
+  it('desktop mouse-look (own pointer-lock handler) reads lookSensitivity', () => {
+    // drei <PointerLockControls> was REPLACED by src/input/pointerLook.js (it was element-match-fragile +
+    // untestable headless -> a dead camera slipped with no gate). GameScene mounts <PointerLook/> which
+    // attaches the handler with getSensitivity pulling the live store value while pointer-locked.
+    expect(scene).toMatch(/<PointerLook\s*\/>/);
+    expect(scene).toMatch(/attachPointerLook\(\{[\s\S]*lookSensitivity/);
+    const look = read('input/pointerLook.js');
+    expect(look).toMatch(/getSensitivity/);
+    expect(look).toMatch(/pointerLockElement/); // only rotates while locked
+  });
+  it('drei PointerLockControls is fully removed (the replaced black box)', () => {
+    expect(scene).not.toMatch(/PointerLockControls/);
   });
   it('touch onMove feeds lookSensitivity into applyLook', () => {
     expect(touch).toMatch(/sensitivity:\s*useGameStore\.getState\(\)\.lookSensitivity/);

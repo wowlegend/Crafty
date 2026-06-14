@@ -3,7 +3,8 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
-import { PointerLockControls, Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { attachPointerLook } from './input/pointerLook';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, EffectComposerContext, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode, BloomEffect, HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
@@ -683,6 +684,18 @@ const WeatherSystem = () => {
   );
 };
 
+// Desktop mouse-look: attach our own pointer-lock look handler to the live R3F camera (replaces drei's
+// pointer-lock controls). Suppressed in capture mode (the harness pins the camera). Renders nothing.
+function PointerLook() {
+  const camera = useThree((s) => s.camera);
+  const isCaptureMode = useGameStore((s) => s.isCaptureMode);
+  useEffect(() => {
+    if (isCaptureMode || !camera) return undefined;
+    return attachPointerLook({ camera, getSensitivity: () => useGameStore.getState().lookSensitivity });
+  }, [camera, isCaptureMode]);
+  return null;
+}
+
 export function GameScene({
   gameState,
   isWorldBuilt,
@@ -693,8 +706,7 @@ export function GameScene({
   showSpellUpgrades,
   showAuthModal
 }) {
-  const controlsRef = useRef();
-  const lookSensitivity = useGameStore(state => state.lookSensitivity); // settings: mouse PLC pointerSpeed (rare change)
+  const canvasRef = useRef(null); // the WebGL canvas (set in onCreated) — the element we pointer-lock
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.
   // Always false in normal gameplay -> Physics runs exactly as before.
   const isCaptureMode = useGameStore(state => state.isCaptureMode);
@@ -707,11 +719,11 @@ export function GameScene({
   const [sunMesh, setSunMesh] = useState(null);
 
   useEffect(() => {
+    // Lock the CANVAS directly (a transient-activation-gated browser call; every caller is inside a real
+    // click/key gesture). Our own attachPointerLook (lenient gate) then drives the camera while locked.
     useGameStore.setState({
       requestPointerLock: () => {
-        if (controlsRef.current) {
-          controlsRef.current.lock();
-        }
+        try { canvasRef.current?.requestPointerLock?.(); } catch (e) { console.warn('pointer lock denied', e); }
       }
     });
     return () => {
@@ -764,6 +776,7 @@ export function GameScene({
           }
 
           const canvasEl = gl.domElement;
+          canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
           const handleContextLost = (e) => {
             e.preventDefault();
             console.error('WebGL context lost detected in GameScene!');
@@ -825,20 +838,14 @@ export function GameScene({
 
         <WeatherSystem />
 
-        {/* KEVIN-FIX C4: selector="#lock-target-none" (a never-matching id) — drei attaches its
-            document-wide click->lock() handler UNGATED by `enabled`; without a selector EVERY
-            click (settings, inventory, the death screen) re-locked the pointer. Every legitimate
-            lock entry has an explicit requestPointerLock site. `enabled` is also gone: an
-            always-connected PLC keeps its own pointerlockchange listener attached, so its
-            internal lock state can't go stale across the death/respawn boundary. */}
-        <PointerLockControls
-          ref={controlsRef}
-          makeDefault
-          pointerSpeed={lookSensitivity}
-          selector="#lock-target-none"
-          minPolarAngle={0.05} 
-          maxPolarAngle={Math.PI - 0.05} 
-        />
+        {/* Desktop mouse-look — our own pointer-lock handler (src/input/pointerLook.js), replacing drei's
+            pointer-lock controls. drei's PLC only rotated while its EXACT canvas was pointerLockElement
+            (element-match-fragile + drei/three version-drift prone) AND was untestable in the headless
+            harness, so a dead camera slipped with no gate. Ours is lenient (rotates while ANY lock is held)
+            + reuses the tested applyLook math + has a unit test. Lock requests target the canvas
+            (requestPointerLock above); lock-state tracking (active/menu) stays in Components' pointerlock
+            listeners; the prior drei auto-lock-on-click problem (KEVIN-FIX C4) is gone with drei removed. */}
+        <PointerLook />
 
         <PositionTracker />
 
