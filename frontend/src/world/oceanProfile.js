@@ -29,3 +29,25 @@ export function oceanSurfaceY(baseHeight, n, continent) {
   const seabed = DEEP_FLOOR + Math.min(1, Math.max(0, n)) * 4;
   return Math.floor(baseHeight * (1 - t) + seabed * t);
 }
+
+// --- Shore-foam kernel (ocean S2) ---
+// A voxel water TOP face (water below, air above) reads as SHORE when a horizontal neighbor at the same
+// level is land (a solid, non-water block). The greedy mesher merges all water-top faces into ONE quad
+// at SEA_LEVEL, so per-column foam can't ride a merged quad's vertex color -- the mesher will stop merging
+// water-top faces and bake this factor into a spare vertex-color channel (color.g). Pure (block-type ints
+// only) -> unit-testable without GL. Block ids per BLOCK_COLORS: 0=air, 9=water, >0 and not 9 = solid land.
+export const WATER_BLOCK = 9;
+const isSolidLand = (b) => b > 0 && b !== WATER_BLOCK;
+
+// A water surface (top) cell = water with air directly above (so it carries the visible top face).
+export function isWaterTop(self, above) {
+  return self === WATER_BLOCK && above === 0;
+}
+
+// neighbors = the 4 horizontal block ids at the water-surface level. Returns 1 if this water-top cell
+// touches land (-> foam), else 0. Binary for S2; a graded seaward falloff can layer on later.
+export function shoreFoamFactor(self, above, neighbors) {
+  if (!isWaterTop(self, above)) return 0;
+  for (const nb of neighbors) if (isSolidLand(nb)) return 1;
+  return 0;
+}

@@ -37,11 +37,11 @@ Consistent signature across Roystan toon-water, gameidea, 80.lv "Nimue", enginee
 - [ ] Capture-determinism: the glint must be deterministic in capture (use the frozen sun dir / static view; no time-driven sparkle unless `!isCaptureMode`-gated).
 - [ ] Verify: `npm run build`; `node scripts/visual/ocean-probe.mjs` → eyeball surface-skim + topdown (livelier, not flat); `npm run visual:capture` + `npx vitest run --config vitest.visual.config.js` → re-baseline `ocean-depth` (+ any water-bearing frame) deliberately, `git diff HEAD` to confirm which frames changed + HD-eyeball each.
 
-### Slice 2 — Shore foam (the signature): mesher per-vertex shore-proximity + shader foam band
-**Files:** `frontend/src/world/terrain.worker.js` (bake a per-vertex `shoreT` attribute on water top-surface verts — 1.0 adjacent to a land/beach column, fading over ~1–2 blocks), `frontend/src/world/Terrain.jsx` (read the attribute; in the fragment, `mix` toward a near-white foam color where `shoreT` high, modulated by a cheap animated noise for an organic edge).
-- [ ] Pure unit: a `shoreProximity(col, neighbors)` helper (testable without GL) → red-first test.
-- [ ] Mesher: attach the attribute on water surface quads only (don't perturb existing geometry/byte-determinism elsewhere).
-- [ ] Shader: foam band + subtle crest noise; foam brightest at the edge, fades seaward.
+### Slice 2 — Shore foam (the signature)
+**DESIGN FINDING (2026-06-14, verified in `generateMesh`):** the mesher is GREEDY — all water-top faces share `val = 9|(1<<8)` and merge into ONE quad at SEA_LEVEL, and a merged quad's 4 corners all get the same vertex color. So the original "per-vertex `shoreT` attribute on a merged quad" can't vary per-column (it'd be uniform). **CHOSEN APPROACH = Hyp A — unmerge water-top faces + bake per-block data into the spare color channels** (`color.r` already = blockType; `color.g`/`color.b` are 0/unused). This ALSO enables Slice 3's per-column depth-grade with the same one-time mesher change. (Alternatives rejected: Hyp B sparse foam-geometry stream = perf-safe but a whole new mesh pipeline for foam-only; Hyp E wet-sand block = changes terrain gen/block-types.)
+- [x] **S2a (DONE):** pure `shoreFoamFactor(self, above, neighbors)` + `isWaterTop` in `world/oceanProfile.js` (foam=1 iff water-top cell with a solid-land neighbor) + red-first `tests/gates/ocean-foam-kernel.test.js` (4 tests). The kernel the mesher will call.
+- [ ] **S2b (NEXT):** in `terrain.worker.js` `generateMesh`, special-case the water-top face (`blockType===9 && dirFlag===1 && d===1`): force `w=1,h=1` (no merge) and write `color.g = shoreFoamFactor(...)` per block (neighbors via `getBlock`). Keep all other faces greedy (perf). Water-top vertex count rises only for ocean chunks (bounded; acceptable).
+- [ ] **S2c:** in `Terrain.jsx` add `varying float vFoam` (= `color.g`); in the water fragment `mix` toward a near-white foam where `vFoam` high, modulated by a cheap noise for an organic edge (capture-deterministic).
 - [ ] Verify: build; ocean-probe (a clear foam line at every shore); capture + re-baseline water frames + `git diff HEAD` + eyeball; full vitest holds-or-grows.
 
 ### Slice 3 — Depth-graded TOP surface: mesher per-vertex seabed depth + shader gradient
