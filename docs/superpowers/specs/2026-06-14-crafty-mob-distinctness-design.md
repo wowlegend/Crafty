@@ -1,5 +1,12 @@
 # Crafty — Mob Bestiary Distinctness (silhouette features) — design of record
 
+> **Status (2026-06-14): ✅ SHIPPED (loop iters 169-171, ultracode self-gate per charter §4/§5).** T1 pure
+> specs (`game/mobFeatures.js`, iter 169) → T2 `mob-bestiary` capture fixture (iter 170, gate 18→19) → T3
+> render-wiring + in-world eyeball + per-type taste-tune (iter 171). All 5 featured types now read by
+> silhouette (skeleton ribs / hound ears+tail / brute shoulders+crown / skitterling antennae / cow horns).
+> T4 (color accents / zombie head-tilt) deferred as optional — the silhouette read landed without it.
+> *(Historical design-gate text below.)*
+>
 > **Status (2026-06-14): DESIGN-GATE (loop iter 169, ultracode self-gate per charter §4/§5).** Authored
 > directly (the roster + renderer are small + held in context — no Workflow needed). Build is the
 > ranked-T1..Tn ladder below; each T re-validates taste IN-WORLD before the next. This is the §6 "mob
