@@ -7,6 +7,17 @@
 > reviewer's claim is T3 — VERIFY each seam live before building** (iter-181 already caught that #1's premise was
 > false: block-BREAK debris already exists via the worker→`BlockParticleSystem` channel).
 
+## ⚠️ Reliability note (iter 183): this backlog's PREMISES are systematically over-optimistic
+The reviewers read code but repeatedly missed already-wired systems. **VERIFY each "gap" is genuinely missing
+before building.** Corrected so far: **#1** break-debris already exists (only place lacked it ✅ shipped iter 182);
+**#3** spell-upgrades are REDUNDANT (spell damage already scales via the intellect attribute through
+`solveSpellDamage` — `SPELL_UPGRADES` is an unused parallel system; delete-or-repurpose, NOT a feature gap);
+**#4** incoming-hit flash+screenshake already fire from `damagePlayer` (only *hitstop* on incoming is absent);
+**#7** ✅ SHIPPED iter 183 (and uncovered a real BUG — the level-up sound was dead via an unassigned
+`window.playLevelUpSound`; fixed). Net: of the top-7 quick-wins, 1/3/4 were already-done/redundant, 1b/7
+shipped. Remaining plausibly-real: #2 day-dial, #5 coin sink, #8 night-count, #10 recallable onboarding —
+verify each first.
+
 ## Verified-this-iteration corrections to the raw findings
 - **#1 (mining juice) is largely SHIPPED:** block **breaking** already spawns 8 color-matched physics debris
   cubes (`terrain.worker.js` emits `block_broken` → `BlockParticleSystem.jsx`) + auto-collects to inventory.
