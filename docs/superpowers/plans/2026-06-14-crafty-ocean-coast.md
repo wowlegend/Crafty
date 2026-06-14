@@ -45,9 +45,8 @@ Consistent signature across Roystan toon-water, gameidea, 80.lv "Nimue", enginee
 - [x] **Verified:** build clean; ocean-probe shows a crisp white foam line at every shore (topdown + surface-skim); full vitest 1181 (+ `ocean-foam-wiring.test.js` locks the pipeline). Visual 19/19, NO re-baseline — the foam isn't in any of the 19 capture cameras' views (ocean-depth is underwater; others shift <6%). COVERAGE GAP for S4: add a coast capture state so the foam is pixel-gated.
 
 ### Slice 3 — Depth-graded TOP surface: mesher per-vertex seabed depth + shader gradient
-**Files:** `terrain.worker.js` (bake `seabedDepthT` per water top vertex = (SEA_LEVEL − seabedY)/maxDepth), `Terrain.jsx` (grade the top-surface color shallow-teal → deep-navy by it, HSV-ish lerp; complements the existing side-face depth-tint so surface + walls agree).
-- [ ] Pure unit for the depth→T mapping (red-first).
-- [ ] Verify: build; ocean-probe (shallows read bright, deeps read dark from above); capture re-baseline + `git diff HEAD` + eyeball; vitest holds.
+- [x] **DONE:** pure `seabedDepthT(waterTopY, seabedY)` in `world/oceanProfile.js` (red-first, +1 test in `tests/world/oceanProfile.test.js`). In `terrain.worker.js` water-top branch, scan DOWN the chunk column for the seabed (first solid) and write `color.b = seabedDepthT(q, seabedY)` alongside the S2 foam. In `Terrain.jsx`, `varying vDepthB` (= color.b) grades the top surface shallow-teal -> deep-navy in the water color_fragment (complements the side-face vWorldY tint so surface + walls agree). Within-chunk down-scan -> no cross-chunk seam.
+- [x] **Verified:** build clean; ocean-probe shows the surface grading bright-teal shallows -> darker offshore (topdown + surface-skim), foam intact. vitest 1182.
 
 ### Slice 4 — Polish: wave variety + daytime biolum check + horizon blend
 **Files:** `Terrain.jsx` (wave amplitude/secondary frequency tune; confirm night-biolum `nightFactor` is ~0 at midday so no daytime glints), `render/Atmosphere.jsx` (confirm distant water fogs toward sky — avoid a hard horizon).

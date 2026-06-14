@@ -59,6 +59,7 @@ const compileShader = (shader) => {
         flat varying float vBlockType;
         varying float vWorldY;
         varying float vFoam;
+        varying float vDepthB;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -71,6 +72,7 @@ const compileShader = (shader) => {
         void main() {
             vBlockType = color.r;
             vFoam = color.g; // ocean S2: shore-foam factor baked per water-top vertex by the mesher
+            vDepthB = color.b; // ocean S3: per-column seabed-depth factor (top-surface grade)
             vUv = uv;
 `
     );
@@ -102,6 +104,7 @@ const compileShader = (shader) => {
         flat varying float vBlockType;
         varying float vWorldY;
         varying float vFoam;
+        varying float vDepthB;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -138,6 +141,9 @@ const compileShader = (shader) => {
             // is ~SEA_LEVEL on the top face -> wdepth~0), so the surface read flat. Lift the shallow/surface
             // water toward a brighter tropical teal (deep water keeps the navy). Static -> capture-stable.
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.04, 0.37, 0.50), (1.0 - wdepth) * 0.55);
+            // Ocean S3 top-surface depth grade: the flat top face (wdepth~0) grades shallow-teal -> deep-navy
+            // by the per-column seabed depth baked in color.b (the vWorldY tint only reaches the side faces).
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.012, 0.07, 0.18), clamp(vDepthB, 0.0, 1.0) * 0.7);
         }
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome

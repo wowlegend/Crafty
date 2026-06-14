@@ -51,3 +51,13 @@ export function shoreFoamFactor(self, above, neighbors) {
   for (const nb of neighbors) if (isSolidLand(nb)) return 1;
   return 0;
 }
+
+// --- Per-column seabed-depth factor for the TOP-surface depth grade (ocean S3) ---
+// The side/underwater faces already darken by world-Y in the shader, but the flat top face is at SEA_LEVEL
+// everywhere, so it needs the seabed depth baked PER COLUMN (the S2 water-top-unmerge makes each surface
+// cell its own quad that can carry it in color.b). t in [0,1]: 0 = shallow (seabed near the surface),
+// 1 = deepest. maxDepth = SEA_LEVEL - DEEP_FLOOR (= 22), the bounded divable basin depth.
+export function seabedDepthT(waterTopY, seabedY) {
+  const maxDepth = SEA_LEVEL - DEEP_FLOOR;
+  return Math.min(1, Math.max(0, (waterTopY - seabedY) / maxDepth));
+}

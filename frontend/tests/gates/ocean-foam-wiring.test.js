@@ -17,7 +17,7 @@ describe('ocean shore-foam wiring', () => {
     expect(w).toMatch(/isWaterTopFace\s*=\s*\(d === 1 && dirFlag === 1 && blockType === 9\)/);
     expect(w).toMatch(/while \(!isWaterTopFace &&/); // both the w and h merge loops are guarded
     expect(w).toMatch(/foamG\s*=\s*shoreFoamFactor\(/);
-    expect(w).toMatch(/blockType, foamG, 0/); // foam written to color.g in the vertex-color push
+    expect(w).toMatch(/blockType, foamG, depthB/); // foam->color.g (S2) + seabed-depth->color.b (S3)
   });
 
   it('the water shader reads color.g as vFoam and renders a foam band', () => {

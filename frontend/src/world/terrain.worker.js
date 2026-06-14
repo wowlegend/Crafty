@@ -1,6 +1,6 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
-import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, shoreFoamFactor } from './oceanProfile.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, shoreFoamFactor, seabedDepthT } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
 
@@ -643,11 +643,21 @@ function generateMesh(cx, cz, blocks) {
           // getBlock returns 0 across chunk edges (so a cross-chunk shoreline seam may miss foam -- minor).
           const isWaterTopFace = (d === 1 && dirFlag === 1 && blockType === 9);
           let foamG = 0;
+          let depthB = 0;
           if (isWaterTopFace) {
             foamG = shoreFoamFactor(getBlock(cv, q, cu), getBlock(cv, q + 1, cu), [
               getBlock(cv - 1, q, cu), getBlock(cv + 1, q, cu),
               getBlock(cv, q, cu - 1), getBlock(cv, q, cu + 1),
             ]);
+            // S3: scan DOWN this chunk column for the seabed (first solid below the water) -> per-column
+            // depth in color.b, so the flat TOP surface grades shallow-teal -> deep-navy (the vWorldY tint
+            // only reaches the side faces). Within-chunk column read -> no cross-chunk seam.
+            let seabedY = 0;
+            for (let sy = q - 1; sy >= 0; sy--) {
+              const b = getBlock(cv, sy, cu);
+              if (b !== 0 && b !== 9) { seabedY = sy; break; }
+            }
+            depthB = seabedDepthT(q, seabedY);
           }
 
           // Find maximum horizontal width w along axis u (water-top faces stay 1x1 -> no merge)
@@ -749,13 +759,13 @@ function generateMesh(cx, cz, blocks) {
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-          // Pack blockType in color.r for standard material vertexColor reading; color.g = shore-foam
-          // factor on water-top faces (0 elsewhere) for the ocean S2 foam band (read in Terrain.jsx).
+          // color.r = blockType (vertexColor); color.g = shore-foam factor (S2); color.b = per-column
+          // seabed-depth factor (S3) -- both 0 off water-top faces. Read in Terrain.jsx as vFoam / vDepthB.
           colors.push(
-            blockType, foamG, 0,
-            blockType, foamG, 0,
-            blockType, foamG, 0,
-            blockType, foamG, 0
+            blockType, foamG, depthB,
+            blockType, foamG, depthB,
+            blockType, foamG, depthB,
+            blockType, foamG, depthB
           );
 
           // Tiled repeats UV coordinates mapping matching CCW corners
