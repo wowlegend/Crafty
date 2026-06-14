@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { moveSpeed, jumpVelocity, applyGravity, BASE_MOVE_SPEED, JUMP_VELOCITY, GRAVITY, TERMINAL_VELOCITY } from '../../src/game/locomotion.js';
+import { moveSpeed, jumpVelocity, applyGravity, moveVector, BASE_MOVE_SPEED, JUMP_VELOCITY, GRAVITY, TERMINAL_VELOCITY } from '../../src/game/locomotion.js';
 
 describe('locomotion (S3-M5 p2) — movement math (pinned to the old inline literals)', () => {
   it('move speed = 10 * moveMult', () => {
@@ -20,5 +20,40 @@ describe('locomotion (S3-M5 p2) — movement math (pinned to the old inline lite
   it('clamps at terminal velocity (-50)', () => {
     expect(applyGravity(-49, 5, 0.5)).toBe(TERMINAL_VELOCITY); // would overshoot -> clamped
     expect(TERMINAL_VELOCITY).toBe(-50.0);
+  });
+});
+
+describe('moveVector (iter 168) — camera-relative WASD velocity (byte-equiv to the old Player inline math)', () => {
+  const speed = 10;
+  it('no input -> not moving, zero velocity', () => {
+    const m = moveVector(0, -1, {}, speed);
+    expect(m.moving).toBe(false);
+    expect(m.x).toBe(0); expect(m.z).toBe(0);
+  });
+  it('moveF (looking -Z) -> full speed -Z', () => {
+    const m = moveVector(0, -1, { moveF: true }, speed);
+    expect(m.moving).toBe(true);
+    expect(m.x).toBeCloseTo(0); expect(m.z).toBeCloseTo(-10);
+  });
+  it('moveR (looking -Z) -> full speed +X (right)', () => {
+    const m = moveVector(0, -1, { moveR: true }, speed);
+    expect(m.x).toBeCloseTo(10); expect(m.z).toBeCloseTo(0);
+  });
+  it('diagonal (moveF+moveR) is normalized to `speed` magnitude (no diagonal speed boost)', () => {
+    const m = moveVector(0, -1, { moveF: true, moveR: true }, speed);
+    expect(Math.hypot(m.x, m.z)).toBeCloseTo(10);
+    expect(m.x).toBeCloseTo(10 * Math.SQRT1_2); expect(m.z).toBeCloseTo(-10 * Math.SQRT1_2);
+  });
+  it('opposing inputs (W+S) cancel -> not moving', () => {
+    const m = moveVector(0, -1, { moveF: true, moveB: true }, speed);
+    expect(m.moving).toBe(false);
+  });
+  it('scales by the passed speed (form move-mult lives in `speed`)', () => {
+    const m = moveVector(0, -1, { moveF: true }, 13);
+    expect(m.z).toBeCloseTo(-13);
+  });
+  it('degenerate camera (straight up) falls back to forward (0,0,-1)', () => {
+    const m = moveVector(0, 0, { moveF: true }, speed);
+    expect(m.x).toBeCloseTo(0); expect(m.z).toBeCloseTo(-10);
   });
 });

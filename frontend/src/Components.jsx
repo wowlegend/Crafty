@@ -14,7 +14,7 @@ import { StableMagicHands } from './render/playerRender';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
-import { moveSpeed, jumpVelocity, applyGravity, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
+import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
@@ -1033,29 +1033,13 @@ export const Player = ({ isWorldBuilt }) => {
         desiredVelZ = dodge.direction.z * spd;
       }
     } else if (isLocked) {
-      // Normal WASD movement input direction
+      // Normal WASD movement — camera-relative planar velocity (pure, game/locomotion.moveVector).
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
-      let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z);
-      if (forwardDir.lengthSq() < 0.001) {
-        forwardDir.set(0, 0, -1);
-      }
-      forwardDir.normalize();
-      const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x);
-
-      const moveW = input.moveF ? 1 : 0;
-      const moveS = input.moveB ? 1 : 0;
-      const moveA = input.moveL ? 1 : 0;
-      const moveD = input.moveR ? 1 : 0;
-
-      const direction = new THREE.Vector3()
-        .addScaledVector(forwardDir, moveW - moveS)
-        .addScaledVector(sideDir, moveD - moveA);
-
-      if (direction.lengthSq() > 0) {
-        direction.normalize().multiplyScalar(speed);
-        desiredVelX = direction.x;
-        desiredVelZ = direction.z;
+      const mv = moveVector(cameraDir.x, cameraDir.z, input, speed);
+      if (mv.moving) {
+        desiredVelX = mv.x;
+        desiredVelZ = mv.z;
       }
     }
 
