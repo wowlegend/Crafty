@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (📱 TOUCH POLISH — spell label no longer wraps on a phone)
+- **The active-spell readout broke onto two lines on a phone** ("Spell: FIREBALL (15" / "MP)"). Root cause: it's anchored `left-1/2` with auto width, so the panel can only grow ~50% of the viewport (to the right edge) before wrapping — fine at 1280px, too tight at ~390px. Added `whitespace-nowrap` so it stays one line; `-translate-x-1/2` then centers the full width. Universal fix (helps any narrow viewport), not touch-gated; desktop (1280px) never wrapped so it's a no-op there.
+- Self-validated via the touch-probe screenshot (now one clean line) + the re-captured mobile.png.
+- **Verify:** unit 1172 (unchanged, CSS-only) · build clean · touch-probe 6/6 · visual 19/19 — `mobile.png` re-baselined to show the one-line label (the change was under the 6% gate so not forced; re-baselined for fixture truthfulness; the other 18 frames byte-identical). (This commit.)
+
 ### June 14, 2026 (🧪 TEST INFRA — harden the touch probe to deterministic)
 - **The touch probe (my standing touch validator) was flaky** and gave a false "cold-start dead" alarm. Two races: (1) entry tapped "Start Adventure" by a stale coordinate that raced framer-motion's entrance animation, so the tap occasionally missed; (2) it drove the joystick before the player's physics body had initialized, so Rapier `setTranslation` threw and the player didn't move (Δpos=0). Fixed: tap via the live element `handle.tap()` (re-resolves center at tap time) + retry the entry; wait for `isSpawnChunkLoaded` + a 3.5s spawn-settle and retry the move. Now deterministic — 4/4 fully-green runs with 0 `setTranslation` errors.
 - **Finding (not a bug):** the `setTranslation` error was purely a probe-driven startup race (driving movement in the first frames after spawn). A real player can't move before the world/physics loads, so no code change — documented so a future reader doesn't chase a phantom. A flaky validator is worse than none (false alarms + false confidence), so stabilizing it took priority over new polish.

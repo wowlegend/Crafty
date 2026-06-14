@@ -440,7 +440,10 @@ export function HUD({
             </div>
 
             <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-              <Panel variant="base" className="px-4 py-2 text-sm text-center">
+              {/* whitespace-nowrap: anchored at left-1/2 the auto-width panel can only grow to the right
+                  edge (~50% of the viewport) before wrapping, so on a phone "Spell: FIREBALL (15 MP)"
+                  broke onto two lines. nowrap keeps it one line; -translate-x-1/2 centers the full width. */}
+              <Panel variant="base" className="px-4 py-2 text-sm text-center whitespace-nowrap">
                 <span className="text-text-muted">Spell: </span>
                 <span className={`font-bold ${SPELL_COLOR_CLASS[gameState.activeSpell] || 'text-spell-arcane'}`}>
                   {gameState.activeSpell.toUpperCase()}
