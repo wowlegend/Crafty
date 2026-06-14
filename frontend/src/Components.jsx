@@ -15,6 +15,7 @@ import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
+import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
@@ -888,38 +889,26 @@ export const Player = ({ isWorldBuilt }) => {
 
       // Check cooldown
       if (!dodge.isActive && nowTime - dodge.lastDodgeTime >= dodge.cooldown) {
-        const moveW = (isLocked && input.moveF) ? 1 : 0;
-        const moveS = (isLocked && input.moveB) ? 1 : 0;
-        const moveA = (isLocked && input.moveL) ? 1 : 0;
-        const moveD = (isLocked && input.moveR) ? 1 : 0;
-
+        // Dodge direction (pure — game/dodge.js): planar basis from the camera + the move intents,
+        // forward when no directional input. Byte-equivalent to the prior inline THREE math.
         const cameraDir = new THREE.Vector3();
         camera.getWorldDirection(cameraDir);
-        let forwardDir = new THREE.Vector3(cameraDir.x, 0, cameraDir.z).normalize();
-        if (forwardDir.lengthSq() < 0.001) forwardDir.set(0, 0, -1);
-        const sideDir = new THREE.Vector3(-forwardDir.z, 0, forwardDir.x);
-
-        let dodgeDir = new THREE.Vector3()
-          .addScaledVector(forwardDir, moveW - moveS)
-          .addScaledVector(sideDir, moveD - moveA);
-
-        if (dodgeDir.lengthSq() < 0.001) {
-          dodgeDir.copy(forwardDir);
-        } else {
-          dodgeDir.normalize();
-        }
+        const dodgeDir = dodgeDirection(cameraDir.x, cameraDir.z, {
+          moveF: isLocked && input.moveF,
+          moveB: isLocked && input.moveB,
+          moveL: isLocked && input.moveL,
+          moveR: isLocked && input.moveR,
+        });
 
         // Initialize dodge
         dodge.isActive = true;
         dodge.timeElapsed = 0;
-        dodge.direction.copy(dodgeDir);
+        dodge.direction.set(dodgeDir.x, 0, dodgeDir.z);
         dodge.lastDodgeTime = nowTime;
 
         // Set invincible callback in store
         useGameStore.setState({
-          isPlayerInvincible: () => {
-            return dodge.isActive && dodge.timeElapsed <= dodge.iframeDuration;
-          }
+          isPlayerInvincible: () => isDodgeInvincible(dodge.isActive, dodge.timeElapsed, dodge.iframeDuration)
         });
 
         // Trigger spatial audio
@@ -1039,9 +1028,9 @@ export const Player = ({ isWorldBuilt }) => {
         // omission). Per-form pace lives in the walk speed (x moveMult). Flag for Kevin if he wants a
         // form-paced dodge (comet far / golem short).
         const progress = dodge.timeElapsed / dodge.duration;
-        const dodgeSpeed = THREE.MathUtils.lerp(28, 10, progress);
-        desiredVelX = dodge.direction.x * dodgeSpeed;
-        desiredVelZ = dodge.direction.z * dodgeSpeed;
+        const spd = dodgeSpeed(progress);
+        desiredVelX = dodge.direction.x * spd;
+        desiredVelZ = dodge.direction.z * spd;
       }
     } else if (isLocked) {
       // Normal WASD movement input direction
