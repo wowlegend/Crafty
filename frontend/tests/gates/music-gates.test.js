@@ -11,16 +11,19 @@ const read = (p) => readFileSync(resolve(__dir, '../../src', p), 'utf8');
 const asset = (p) => resolve(__dir, '../../public', p);
 
 describe('music overhaul', () => {
-  it('the day + night track assets exist and are non-trivial audio', () => {
-    for (const f of ['music/day.mp3', 'music/night.mp3']) {
+  it('the day + night + boss track assets exist and are non-trivial audio', () => {
+    for (const f of ['music/day.mp3', 'music/night.mp3', 'music/boss.mp3']) {
       expect(existsSync(asset(f)), `${f} missing`).toBe(true);
       expect(statSync(asset(f)).size).toBeGreaterThan(50000); // real audio, not an empty/error file
     }
   });
-  it('MusicPlayer loads the tracks, is capture-safe + musicEnabled-gated, renders null', () => {
+  it('MusicPlayer loads the tracks, picks by context (boss>night/day), crossfades, capture/music-gated', () => {
     const mp = read('ui/MusicPlayer.jsx');
     expect(mp).toMatch(/\/music\/day\.mp3/);
     expect(mp).toMatch(/\/music\/night\.mp3/);
+    expect(mp).toMatch(/\/music\/boss\.mp3/);
+    expect(mp).toMatch(/bossActive/);          // boss takes priority
+    expect(mp).toMatch(/setInterval/);          // smooth crossfade (not an instant swap)
     expect(mp).toMatch(/isCaptureMode\(\)/);
     expect(mp).toMatch(/musicEnabled/);
     expect(mp).toMatch(/return null/);
