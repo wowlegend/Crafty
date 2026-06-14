@@ -444,6 +444,24 @@ function GameApp({ experienceSystem }) {
         if (store.spawnMob) store.spawnMob(OX + (i - 1) * GAP, OZ, type, OY - 0.5);
       });
     });
+    // MOB-BESTIARY fixture (mob-distinctness milestone T2): the FEATURED mob types in a studio row,
+    // left->right, so each species' silhouette is judged in ONE frame (the T3 eyeball surface). Sky-
+    // studio lane x=280 (next free slot, clear of the other cards by >=40u). Self-clears mobs first +
+    // stages off-frame from every other fixture camera, so it is order-independent. DEV-only.
+    registerTestHook('mobBestiary', () => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);
+      store.setCaptureStudio(true);
+      store.setDangerLevel(0);
+      store.setTimeOfDay(0.5);
+      const OX = 280, OY = 146, OZ = -8, GAP = 4.5;
+      for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
+      // Pulled back to fit 5 subjects (incl. the 2.0-tall moss_brute); front-on (+Z), the proven card path.
+      enterCaptureMode({ camera: { position: [OX, OY + 2.0, OZ + 18], lookAt: [OX, OY + 0.9, OZ] } });
+      ['skitterling', 'duskhound', 'skeleton', 'cow', 'moss_brute'].forEach((type, i) => {
+        if (store.spawnMob) store.spawnMob(OX + (i - 2) * GAP, OZ, type, OY - 0.5);
+      });
+    });
     // ELEMANCER-showcase fixture (S2-B4-M6): the four element ZONES judged in a row.
     // Sky-studio lane x=200 (the next 40u slot). The bridge is capture-gated so the live
     // registry stays empty in every NORMAL capture; THIS hook injects zones directly via

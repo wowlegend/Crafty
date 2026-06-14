@@ -274,6 +274,15 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'loot-showcase.png') });
     console.log('captured loot-showcase');
 
+    // mob-bestiary (mob-distinctness milestone): the featured mob types in a studio row, the
+    // silhouette-distinctness eyeball surface. Self-clears mobs + stages at x=280 (off-frame for every
+    // other fixture camera), so order-independent; placed in the early studio-card cluster.
+    captureStage = 'mob-bestiary';
+    await page.evaluate(() => window.__craftyTest.call('mobBestiary'));
+    await delay(1800); // mobs mount + spawn-pop settles + the capture freeze pins the pose
+    await page.screenshot({ path: resolve(OUT, 'mob-bestiary.png') });
+    console.log('captured mob-bestiary');
+
     // character-closeup: deterministic single-zombie + chest close-up that gates the
     // M2b character render language (toon + rim + outline). Resets danger/day first.
     captureStage = 'character-closeup';
