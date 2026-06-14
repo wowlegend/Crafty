@@ -16,6 +16,7 @@ import { AchievementsPanel } from './QuestSystem';
 import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu } from './ui/panelState.js';
+import { isTouchDevice } from './input/touchDevice';
 
 // The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the
 // three/R3F chunk never blocks the menu's first paint; the old 2D icon is the fallback until
@@ -89,6 +90,17 @@ export function MenuSystem({
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
   const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats, showAuthModal });
 
+  // Enter (or re-enter) play = open the active gate. On desktop the active SoT is Pointer Lock
+  // (Components.jsx's pointerlockchange -> setActive). iPad/iPhone have NO Pointer Lock, and the title
+  // menu hides ONLY when active -- so without a direct bridge, tapping "Start Adventure" did nothing and
+  // touch was stuck on the title screen (confirmed by scripts/visual/touch-probe.mjs). On touch we set the
+  // active gate ourselves (single-active-authority still holds -- touch owns setActive on this path).
+  const enterPlay = () => {
+    if (gameState.requestPointerLock) gameState.requestPointerLock();
+    else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+    if (isTouchDevice()) setIsPointerLocked(true);
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -99,8 +111,7 @@ export function MenuSystem({
             stats={questSystem.stats}
             onClose={() => {
               setShowAchievements(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -111,8 +122,7 @@ export function MenuSystem({
           <SpellUpgradePanel
             onClose={() => {
               setShowSpellUpgrades(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -125,8 +135,7 @@ export function MenuSystem({
             onClose={() => {
               gameState.setShowChestInterface(false);
               gameState.setActiveChestCoords(null);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -138,8 +147,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -148,8 +156,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -158,8 +165,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowBuildingTools(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -168,8 +174,7 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowSettings(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
             onOpenWorldManager={() => {
               gameState.setShowSettings(false);
@@ -198,8 +203,7 @@ export function MenuSystem({
           <CreditsScreen
             onClose={() => {
               gameState.setShowCredits(false);
-              if (gameState.requestPointerLock) gameState.requestPointerLock();
-              else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+              enterPlay();
             }}
           />
         )}
@@ -292,14 +296,7 @@ export function MenuSystem({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.5 }}
-                  onClick={() => {
-                    // KEVIN-FIX C3: the lock state follows reality (pointerlockchange), not hope.
-                    if (gameState.requestPointerLock) {
-                      gameState.requestPointerLock();
-                    } else if (document.body.requestPointerLock) {
-                      document.body.requestPointerLock().catch(e => console.warn(e));
-                    }
-                  }}
+                  onClick={enterPlay}
                   className="glow-button inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-10 rounded-xl text-xl pixel-font"
                   style={{ border: '1px solid rgba(255,255,255,0.15)' }}
                 >
