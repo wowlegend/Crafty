@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (🎮 GAME-FEEL — slam + landing camera-kicks; loop iter 153)
+- **The per-verb camera-kick set is now COMPLETE** (melee/cast shipped @139; slam/land were deferred with their `KICK_PROFILES` already defined). Every VOIDHAND **slam** now recoils the camera hard-down + forward (look-dir-relative via `localToWorldKick`, mirroring melee/cast); every **landing** from a fall/jump dips it (`KICK_PROFILES.land`, pure vertical) — high-frequency tactile weight on a near-universal action.
+- Hooked at the existing slam trigger (`Components:653`) + the landing edge (the `isGrounded && !prevGrounded` block that already fires the landing thud). **Capture-immune by design:** the kick only applies via `stepKick` in the follow-cam, which is below the Player loop's `isCaptureMode` early-return → the 18 baselines never see it (no re-baseline).
+- + a `camera-kick-gate` asserting all 4 profiles are dispatched (signature-fires insurance). **1031→1033 unit · build clean · visual 18/18.** Commit `592c1c3`.
+
 ### June 13, 2026 (🧱 S3 de-monolith — EnhancedMagicSystem: spellVfx render group → render/; loop iter 152)
 - **`EnhancedMagicSystem.jsx` de-god-filed (904 → 474 LOC, under the 900 threshold).** Extracted the 5 spell-VFX render sub-components (`EnhancedSpellProjectile` / `SpellProjectileCore` / `SpellImpactPop` / `CastTelegraph` / `MagicWand`, `HEAD:473-904`, 432 lines) to `render/spellVfx.jsx` byte-exact (byte-equality PROVEN: moved slice == HEAD identical).
 - They reference each other → moved as a cohesive group (refs stay intra-module). The main system imports back the 3 it renders directly (`EnhancedSpellProjectile`/`SpellImpactPop`/`CastTelegraph`); `SpellProjectileCore` stays internal to spellVfx; EMS **re-exports** `MagicWand` (`Components.jsx:56` → `render/playerRender.jsx` uses it → unchanged). Pruned `ENERGY_PROFILE`/`_defaultEnergy`/`WAND_CONFIGS` (render-only; `SPARK_PROFILE` stays). **Dep-completeness: zero module-local free-vars** (the SPELL_UPGRADES landmine from this file was already defused by S3-M2).
