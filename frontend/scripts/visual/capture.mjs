@@ -74,10 +74,30 @@ async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max =
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
+  // Page-error observability (the silent-crash hole): an uncaught render-loop throw used to
+  // freeze the R3F canvas so every later 3D fixture screenshotted the SAME frozen frame — the
+  // diff gate then passed on STALE/wrong frames (it hid 3 crashes for 6 iters: iter 159/160
+  // lookSensitivity + MagicWand, iter 161 the _trailDir freeze). `crashes` = uncaught exceptions
+  // (these FREEZE the loop → FAIL the gate); `consoleErrs` = React dev warnings (logged, non-fatal).
+  // Declared out here (not in the try) so the post-finally summary can read them.
+  const crashes = [];
+  const consoleErrs = [];
+  let captureStage = 'boot';
   const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--no-open'], { cwd: ROOT, stdio: 'ignore' });
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   try {
     const page = await browser.newPage();
+    page.on('pageerror', (err) => {
+      crashes.push({ stage: captureStage, msg: String(err && err.message || err) });
+      console.error(`PAGEERROR [@${captureStage}]: ${err && err.stack ? err.stack : err}`);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const t = msg.text();
+        consoleErrs.push({ stage: captureStage, msg: t });
+        console.error(`CONSOLE.ERROR [@${captureStage}]: ${t}`);
+      }
+    });
     await page.setViewport({ width: 1280, height: 800 });
     await waitForServer(URL);
     await page.goto(URL, { waitUntil: 'networkidle2' });
@@ -238,6 +258,7 @@ async function main() {
 
     // character-closeup: deterministic single-zombie + chest close-up that gates the
     // M2b character render language (toon + rim + outline). Resets danger/day first.
+    captureStage = 'character-closeup';
     await page.evaluate(() => window.__craftyTest.call('spawnCharacterCloseup'));
     await delay(1800); // mob mounts + spawn-pop settles + mood/lighting lerp completes
     await page.screenshot({ path: resolve(OUT, 'character-closeup.png') });
@@ -246,6 +267,7 @@ async function main() {
     // boss-closeup: deterministic frozen Shadow Dragon close-up that gates the boss
     // render language (emissive telegraph PRESERVED + inverted-hull contour, NO toon).
     // force-spawns the boss and freezes its movement/attacks/flap in capture.
+    captureStage = 'boss-closeup';
     await page.evaluate(() => window.__craftyTest.call('spawnBossCloseup'));
     await delay(1800); // boss mounts + freezes + mood/lighting lerp completes
     await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
@@ -256,6 +278,7 @@ async function main() {
     // with its stretch-trail + a seeded GPU spark spray/shockwave at the impact point.
     // The magic clock is frozen in capture so the cast holds its placed pose; the seeded
     // spark burst + the GPUSparkSystem capture-phase fix make the spray render at uTime=0.
+    captureStage = 'spell-cast';
     await page.evaluate(() => window.__craftyTest.call('spawnSpellCast'));
     await flushFrames(page, 8);
     await delay(1200); // cast injects + telegraph/projectile/sparks settle into the frozen pose
@@ -268,6 +291,7 @@ async function main() {
     // M7d/M8: the 4-beast ROSTER (distinct silhouettes: fire=winged warrior, ice=horned quadruped brute,
     // lightning=avian raptor, arcane=blocky construct) -- IN-WORLD third-person reveals for review.
     for (const el of ['fire', 'ice', 'lightning', 'arcane']) {
+      captureStage = `beast-${el}`;
       await page.evaluate((element) => window.__craftyTest.call('spawnBeastTransform', element), el);
       await flushFrames(page, 8);
       await delay(1000); // beast re-mounts + the camera settles into the frozen reveal pose
@@ -283,6 +307,7 @@ async function main() {
     // drop holds its exact spawn pose and the frame is byte-stable across runs. Staged far on +X
     // (x=80, y~146) -- clear of the stray character-closeup zombie (x=0), the boss-closeup dragon
     // (x=40) and the spell-cast (x=120) -- so none of those leak into the clean sky backdrop.
+    captureStage = 'loot-showcase';
     await page.evaluate(() => window.__craftyTest.call('lootShowcase'));
     await flushFrames(page, 8);
     await delay(1200); // drops inject into the frozen world + settle into their pinned pose
@@ -360,6 +385,28 @@ async function main() {
   } finally {
     await browser.close();
     server.kill('SIGTERM');
+  }
+  // Benign @boot noise (favicon 404, pre-server ERR_CONNECTION_REFUSED) is NOT a render crash.
+  // An uncaught exception during an actual capture STAGE freezes the R3F loop → later frames are
+  // stale → the diff gate would silently pass on wrong frames. FAIL LOUD (non-zero exit) so the
+  // loop treats it as broken-main, never as a clean capture. (The iter-161 _trailDir lesson.)
+  const dedupe = (arr) => {
+    const seen = new Set(); const out = [];
+    for (const e of arr) { const k = `${e.stage}::${e.msg}`; if (!seen.has(k)) { seen.add(k); out.push(e); } }
+    return out;
+  };
+  const realCrashes = dedupe(crashes.filter((e) => e.stage !== 'boot'));
+  const realWarns = dedupe(consoleErrs.filter((e) => e.stage !== 'boot'));
+  if (realWarns.length) {
+    console.warn(`\n=== ${realWarns.length} console warning(s) during capture (non-fatal) ===`);
+    for (const e of realWarns) console.warn(`  [@${e.stage}] ${e.msg}`);
+  }
+  if (realCrashes.length) {
+    console.error(`\n=== ${realCrashes.length} RENDER CRASH(ES) DURING CAPTURE — gate FAILS ===`);
+    for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
+    process.exitCode = 1;
+  } else {
+    console.log('\nNo render crashes during capture.');
   }
 }
 main().catch((e) => { console.error(e); process.exit(1); });
