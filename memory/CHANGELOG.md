@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (♾️ PROGRESSION — endless bounty quests; loop iter 186)
+- **The quest goal-feed never dries up now.** The authored quest list is finite (15); once all were claimed, the tracker went empty ("All quests completed!") — the late game had no goals (a retention gap). Added a pure `makeRepeatableQuest(seq)` end-game bounty generator (a unique `bounty_<seq>` kill-quest with target + reward scaling by sequence — 15+5n mobs, 150+50n XP) and a `claimQuest` fallback: authored quests are still preferred, but once exhausted, endless scaling bounties fill the tail (keyed off the existing-bounty count so ids never collide).
+- Fresh axis (progression/retention); verified real from the next-levers backlog (#9 — `claimQuest`'s refill genuinely returned nothing past the finite set).
+- **Verify:** unit 1142→1146 (+4) · build clean · visual 19/19 (claimQuest fires only on a player claim → frames byte-identical). Commit `def2636`.
+
 ### June 14, 2026 (🧭 NAVIGATION — HOME marker on the compass; loop iter 185)
 - **You can find your way home now.** The Hearth (the crafted home anchor at world origin) was unfindable — the Compass marked boss + chest but never home, so wandering out to mine/build left no way back (a real survival frustration: get home before the night siege). Added a gold "HOME (Nm)" compass marker that always points to the Hearth (hidden when you're standing on it). Extracted a pure `game/compass.js` `bearingToMarker()` helper (shared dx/dz→atan2→heading-relative percent math, node-tested) to drive it. Capture-suppressed like the boss/chest markers → explore frames unchanged.
 - Fresh axis (navigation) off the recent siege-feedback run; verified real from the next-levers backlog (#17).

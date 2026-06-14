@@ -35,7 +35,7 @@ verify each first.
 6. **Spell hotbar (1-4):** casting is a pillar but reduced to one text label while blocks get a slot hotbar. Mirror `MinecraftHotbar` (reuse Slot/Panel + `SPELL_COLOR_CLASS`/`SPELL_MANA_COSTS`). Adds a persistent HUD element → re-baseline.
 7. **Reward fanfare + flourish:** achievement/quest-complete are silent text toasts. Add one synth fanfare voice (reuse the `makeDawnChime` ascending-bell template) wired to the existing achievement/quest hooks + a gold scale-pop Toast variant.
 8. **Night-siege intensity ladder:** push a "Night N — the swarm grows" notification on the nightfall edge (reuse the `DayNightAudio`/`addNotification` seam) + optional siege-pip row. Surfaces a survival bragging number.
-9. **Endless quest/loot tiers:** quests + dawn-loot terminate at night 7 / night 5. `claimQuest` already cycles; add repeatable/endless-tier quests + a stacking/"mythic" `dawnLootRarity` tier. Data-only.
+9. ~~Endless quest/loot tiers~~ ✅ QUESTS SHIPPED iter 186 (makeRepeatableQuest endless bounty fallback in claimQuest). (Optional remainder: a stacking/"mythic" dawnLootRarity tier — dawn loot already plateaus at legendary night 5.)
 10. **Recallable onboarding:** the first-session tip is a single 4s auto-dismiss toast that can't be recalled — add a Help/controls recall (the controls panel exists).
 11. ~~Hearth on the compass~~ ✅ SHIPPED iter 185 (gold HOME marker via the pure `game/compass.js` bearingToMarker; capture-suppressed).
 
