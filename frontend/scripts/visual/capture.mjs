@@ -166,6 +166,17 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'ocean-depth.png') });
     console.log('captured ocean-depth');
 
+    // ocean-coast: pixel-gates the ocean S1-S3 SURFACE work (shore FOAM + the shallow-teal -> deep-navy
+    // top-surface depth grade) that ocean-depth (an underwater pose) and the other cameras never frame.
+    // A high 3/4 over the x~-40 shoreline shows the foam line at the coast + the depth grade from above.
+    // Camera-override, restored below (before the downstream diorama states).
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-12, 72, 34], lookAt: [-46, 18, -20] } }));
+    await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
+    await flushFrames(page, 10);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'ocean-coast.png') });
+    console.log('captured ocean-coast');
+
     // landmark: the World-M6 signature silhouettes. Probed nearest LAND landmark = a Sky-arch at
     // [40,-88] (baseY 41 -> top 92). A 3/4 pose ~66 units back frames the full arch clearing the
     // terrain against the sky. Off the diorama frame -> needs its own pose. Camera-override, restored below.

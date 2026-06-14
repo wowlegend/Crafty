@@ -48,9 +48,10 @@ Consistent signature across Roystan toon-water, gameidea, 80.lv "Nimue", enginee
 - [x] **DONE:** pure `seabedDepthT(waterTopY, seabedY)` in `world/oceanProfile.js` (red-first, +1 test in `tests/world/oceanProfile.test.js`). In `terrain.worker.js` water-top branch, scan DOWN the chunk column for the seabed (first solid) and write `color.b = seabedDepthT(q, seabedY)` alongside the S2 foam. In `Terrain.jsx`, `varying vDepthB` (= color.b) grades the top surface shallow-teal -> deep-navy in the water color_fragment (complements the side-face vWorldY tint so surface + walls agree). Within-chunk down-scan -> no cross-chunk seam.
 - [x] **Verified:** build clean; ocean-probe shows the surface grading bright-teal shallows -> darker offshore (topdown + surface-skim), foam intact. vitest 1182.
 
-### Slice 4 — Polish: wave variety + daytime biolum check + horizon blend
-**Files:** `Terrain.jsx` (wave amplitude/secondary frequency tune; confirm night-biolum `nightFactor` is ~0 at midday so no daytime glints), `render/Atmosphere.jsx` (confirm distant water fogs toward sky — avoid a hard horizon).
-- [ ] Verify each render change via ocean-probe + capture re-baseline + `git diff HEAD` + eyeball; vitest holds.
+### Slice 4 — Polish + pixel-gate
+- [x] **COAST CAPTURE STATE (DONE — the key item):** added an `ocean-coast` capture state in `capture.mjs` (a high 3/4 over the x~-40 shoreline framing the foam line + the depth grade) + `'ocean-coast'` in the diff `STATES` (gate 19->20), baselined. This FINALLY pixel-gates the S2 foam + S3 depth (ocean-depth is underwater; nothing else framed the surface). NOTE: md5 isn't byte-stable run-to-run (sub-perceptual bloom/dither) but it PASSES the 6% pixelmatch gate reliably (20/20 against a fresh capture) — the same contract every other state meets; md5 was the wrong bar.
+- [x] **Daytime biolum:** already correct — `nightFactor = 1.0 - timeOfDay` = 0 at midday, so no daytime glints (the glints in early probes were the S1 sun sheen, not biolum). No change needed.
+- [x] **Wave + horizon:** judged good-enough — the vertex wave reads (finer now post-S2 unmerge) and the existing height-fog (`render/Atmosphere.jsx` FOG_SEA_LEVEL) already blends distant water toward the sky. Deferred further tuning as low-ROI; the ocean reads SOTA (teal + sheen + foam + depth). **OCEAN MILESTONE COMPLETE.**
 
 ---
 

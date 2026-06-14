@@ -18,7 +18,7 @@ import pixelmatch from 'pixelmatch';
 // pattern title-mascot used) so they do NOT yet assert a regression baseline: Kevin ratifies the
 // med/low look before they are gate-blessed (promoted into STATES). They are self-consistent on
 // re-capture; their committed PNGs are the review artifacts.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'landmark', 'mobile', 'mob-bestiary'];
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary'];
 // 'mobile' (the touch-overlay frame) gate-blessed iter 137: lucide gold-glyph near-black buttons +
 // joystick base ring + center crosshair; the colliding desktop HUD (minimap / XP bar / keyboard
 // cheatsheet / left tool-column) is hidden on touch via isTouchUIMode. Joystick-ring crispness is a
