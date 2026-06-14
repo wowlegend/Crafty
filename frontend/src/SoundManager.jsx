@@ -577,6 +577,9 @@ export const useGameSounds = () => {
     playBind: (pos) => { if (spatialTrigger && pos) spatialTrigger('bind', pos, 1, 25); else playSound('bind'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
     playMagicCharge: () => playSound('magicCharge'),
-    playLevelUpSound: () => playSound('levelUp')
+    playLevelUpSound: () => playSound('levelUp'),
+    // UI foley (panel open/close) — subtle menu chrome responsiveness
+    playUIOpen: () => playSound('uiOpen'),
+    playUIClose: () => playSound('uiClose')
   };
 };

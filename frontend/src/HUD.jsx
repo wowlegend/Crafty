@@ -17,6 +17,7 @@ import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
+import UISounds from './ui/UISounds';
 import { PetIndicator } from './ui/PetIndicator';
 import { SurvivalWarning } from './ui/SurvivalWarning';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
@@ -489,6 +490,7 @@ export function HUD({
 
       <DamageOverlay active={gameSystems.damageFlash} intensity={gameSystems.screenShake} />
       <DamageDirection />
+      <UISounds />
 
       {!gameSystems.isAlive && (
         <DeathScreen onRespawn={() => {

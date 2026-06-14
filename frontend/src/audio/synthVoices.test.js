@@ -21,10 +21,11 @@ const ALL_NAMES = [
   'roar', 'aggroGrowl', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
   'ignite', 'freeze', 'zap', 'rune',
   'motifWildheart', 'motifVoidhand', 'motifSoulbind', 'motifElemancer', // music-motif v2
+  'uiOpen', 'uiClose', // UI foley (panel open/close)
 ];
 
 describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the 31 registered names', () => {
+  it('VOICES holds EXACTLY the 33 registered names', () => {
     expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
   });
   it('every factory returns a sane, audible, unclipped buffer', () => {

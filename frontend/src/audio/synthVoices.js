@@ -510,6 +510,33 @@ export const makeLevelUpSound = (ctx) => {
 };
 
 
+// UI foley: soft, low-gain panel open (rising) / close (falling) clicks. Subtle by design (peak ~0.2)
+// so menu chrome feels responsive without being intrusive. Same pure (ctx)=>AudioBuffer contract.
+export const makeUIOpen = (ctx) => {
+    if (!ctx) return null;
+    const sr = ctx.sampleRate, dur = 0.13, n = Math.floor(sr * dur);
+    const b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) {
+      const t = i / sr, k = t / dur;
+      const f = 480 + 260 * k; // gentle rise 480 -> 740
+      const env = Math.min(t * 60, 1) * Math.exp(-t * 9);
+      d[i] = Math.sin(2 * Math.PI * f * t) * env * 0.22;
+    }
+    return b;
+};
+export const makeUIClose = (ctx) => {
+    if (!ctx) return null;
+    const sr = ctx.sampleRate, dur = 0.13, n = Math.floor(sr * dur);
+    const b = ctx.createBuffer(1, n, sr), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) {
+      const t = i / sr, k = t / dur;
+      const f = 620 - 220 * k; // gentle fall 620 -> 400
+      const env = Math.min(t * 60, 1) * Math.exp(-t * 10);
+      d[i] = Math.sin(2 * Math.PI * f * t) * env * 0.2;
+    }
+    return b;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
@@ -533,6 +560,8 @@ export const VOICES = {
   levelUp: makeLevelUpSound,
   roar: makeRoarSound,
   aggroGrowl: makeAggroGrowl,
+  uiOpen: makeUIOpen,
+  uiClose: makeUIClose,
   grab: makeGrabSound,
   hurl: makeHurlSound,
   slam: makeSlamSound,
