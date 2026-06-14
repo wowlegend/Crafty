@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (📖 UX — just-in-time Aspect-unlock teaching toast; loop iter 157)
+- **Unlocking a signature Aspect verb now TEACHES it.** Before, unlocking taught nothing at the moment (the cheatsheet is an easy-to-miss corner reference). Now the first unlock of an Aspect verb-talent surfaces a 5s toast — e.g. "WILDHEART unlocked — press R to roar" — the key + verb, just-in-time.
+- `game/aspectHints.js`: pure `aspectUnlockHint(talentId)` sourced from `KEY_MAP` (the binding SoT → the taught key can't drift from the live handler); null for non-Aspect-verb talents (2 tests). `store.spendTalentPoint` sets `aspectHint` on `currentVal===0` (first unlock) + `setAspectHint`. `ui/AspectHintToast.jsx` (HUD-mounted) renders it via the Toast primitive + auto-clears after 5s. + an aspect-hint-gate.
+- **Capture-safe** (`aspectHint` null in capture → toast renders nothing → 18 baselines byte-identical). **1045→1049 unit · build clean · visual 18/18.** Commit `939585e`. In-play-verifiable (unlock an Aspect → the toast appears).
+
 ### June 13, 2026 (✨ CONTENT/FEEL — mob-death spark finisher; loop iter 156)
 - **A kill now reads as a payoff.** The `mobKill` path fed quests + Ferocity but had NO visual payoff — mobs just vanished. Now a kill fires a bigger, **mob-coloured** spark burst (a finisher, distinct from the per-hit `sparkFor`), on the most frequent player action.
 - `game/mobHitFx.js`: pure `deathBurst(mobType)` → `{color: the mob's body color, count: 40+xp clamped 50–110}` (tougher mobs burst harder; 4 characterization tests). `SimplifiedNPCSystem` damageMob death path triggers `store.triggerGPUSparks(pos, dColor, dCount, 'death')` before `emitMobKill` — reuses the **proven, baseline-validated** 1200-spark GPU pool (the look is pre-validated; only color+count differ). + an element-impact-gates signature-fires assertion.
