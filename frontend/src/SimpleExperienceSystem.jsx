@@ -184,3 +184,21 @@ export const SimpleExperienceBar = ({ level, currentXP, xpRequired, xpProgress }
     </div>
   );
 };
+
+// Compact TOUCH-only level/XP readout. The full SimpleExperienceBar lives bottom-center (over the thumb /
+// joystick zone), so it's desktop-only; touch players had no level visibility. This sits top-right (mirrors
+// the top-left player-stat column) and is kept small for a phone. Static fill width (no framer animation) so
+// the touch capture frame (mobile.png) stays byte-deterministic.
+export const SimpleExperienceBarTouch = ({ level, xpProgress }) => {
+  return (
+    // top-28 (below the centered spell-label band) so it never crowds "Spell: ... (MP)" on a narrow phone.
+    <div className="absolute top-28 right-4 z-20 pointer-events-none">
+      <Panel variant="base" className="flex items-center gap-2 px-2 py-1">
+        <span className="font-display text-sm tabular-nums text-accent-raise leading-none">LV{level}</span>
+        <div className="w-20 h-2 rounded-sm bg-track border-chrome border-ink overflow-hidden relative">
+          <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${xpProgress}%` }} />
+        </div>
+      </Panel>
+    </div>
+  );
+};

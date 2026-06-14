@@ -14,7 +14,7 @@ import {
   DeathScreen,
   SPELL_MANA_COSTS
 } from './GameSystems';
-import { SimpleExperienceBar, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
+import { SimpleExperienceBar, SimpleExperienceBarTouch, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
@@ -453,11 +453,15 @@ export function HUD({
             </div>
 
             {/* the bottom-center XP bar (bottom-32, min-w-80) overlaps the touch joystick zone
-                (left-7%/bottom-13%) -> desktop-only for now; M2b gives touch a top-placed XP readout */}
+                (left-7%/bottom-13%) -> desktop-only; touch gets the compact top-right readout below (M2b) */}
             {!isTouchUIMode() && <SimpleExperienceBar
               level={experienceSystem.playerLevel}
               currentXP={experienceSystem.currentXP}
               xpRequired={experienceSystem.xpRequired}
+              xpProgress={experienceSystem.xpProgress}
+            />}
+            {isTouchUIMode() && <SimpleExperienceBarTouch
+              level={experienceSystem.playerLevel}
               xpProgress={experienceSystem.xpProgress}
             />}
 

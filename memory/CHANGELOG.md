@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (📱 TOUCH POLISH — touch players can see their level/XP again)
+- **A touch player had zero level/XP visibility.** The full XP bar (`SimpleExperienceBar`, bottom-center, min-w-80) sits over the thumb/joystick zone, so it's `!isTouchUIMode()` desktop-only — leaving touch with no progression readout at all. Added a compact `SimpleExperienceBarTouch` (a small "LV{n}" badge + a thin XP fill bar) pinned top-right (mirrors the top-left player-stat column), touch-only. Placed at `top-28` (below the centered spell-label band) after the probe showed `top-16` crowded "Spell: … (MP)" on a 390px phone. Static fill width (no framer animation) so the touch capture stays deterministic.
+- Self-validated via the touch-probe screenshot (LV1 + bar visible top-right, clear of the spell label). RTL gate (`touch-xp-readout.test.jsx`) locks level text + progress width + the touch-only HUD gating.
+- **Verify:** unit 1172→1175 (+3) · build clean · touch-probe 6/6 · visual 19/19 · `mobile.png` re-baselined (the LV readout now shows in the touch fixture — confirmed a real change via `git diff HEAD`: 807045→806710 bytes; the delta was under the 6% gate so not forced, re-baselined for fixture truthfulness; the other 18 frames byte-identical). (This commit.)
+
 ### June 14, 2026 (📱 TOUCH POLISH — spell label no longer wraps on a phone)
 - **The active-spell readout broke onto two lines on a phone** ("Spell: FIREBALL (15" / "MP)"). Root cause: it's anchored `left-1/2` with auto width, so the panel can only grow ~50% of the viewport (to the right edge) before wrapping — fine at 1280px, too tight at ~390px. Added `whitespace-nowrap` so it stays one line; `-translate-x-1/2` then centers the full width. Universal fix (helps any narrow viewport), not touch-gated; desktop (1280px) never wrapped so it's a no-op there.
 - Self-validated via the touch-probe screenshot at 390px (was two lines, now one clean line).
