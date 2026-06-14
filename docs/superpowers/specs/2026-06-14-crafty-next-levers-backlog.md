@@ -15,7 +15,7 @@ before building.** Corrected so far: **#1** break-debris already exists (only pl
 **#4** incoming-hit flash+screenshake already fire from `damagePlayer` (only *hitstop* on incoming is absent);
 **#7** ✅ SHIPPED iter 183 (and uncovered a real BUG — the level-up sound was dead via an unassigned
 `window.playLevelUpSound`; fixed). Net: of the top-7 quick-wins, 1/3/4 were already-done/redundant, 1b/7
-shipped. Remaining plausibly-real: #2 day-dial, #5 coin sink, #8 night-count, #10 recallable onboarding —
+shipped. Remaining plausibly-real: #2 day-dial, #8 night-count, #10 recallable onboarding, #17 hearth-on-compass (#5 coin sink ✅ shipped iter 184) —
 verify each first.
 
 ## Verified-this-iteration corrections to the raw findings
