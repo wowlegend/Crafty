@@ -11,6 +11,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
   const blocks = gameState.inventory?.blocks || {};
   const magic = gameState.inventory?.magic || {};
+  const coins = gameState.coins || 0;
 
   const executeBlockTrade = (blockType, required, resultItem, resultCount = 1) => {
     const currentCount = blocks[blockType] || 0;
@@ -57,7 +58,21 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
     setTradeMessage(`Traded ${requiredCrystals} Crystals for ${resultCount} ${magicItem}!`);
   };
 
+  // Coin sink: coins (earned from surviving nights) buy genuinely-usable consumables. addToInventory routes
+  // to inventory.blocks[name], the flat bucket GamePanels consumes potions from -> the bought item is usable.
+  const executeCoinTrade = (resultItem, coinCost, resultCount = 1) => {
+    if (!gameState.spendCoins(coinCost)) {
+      setTradeMessage(`Not enough Coins! Need ${coinCost}.`);
+      return;
+    }
+    gameState.addToInventory(resultItem, resultCount);
+    playPickup();
+    setTradeMessage(`Bought ${resultCount} ${resultItem} for ${coinCost} coins!`);
+  };
+
   const trades = [
+    { type: 'coin', name: 'Coins to Health Potion', cost: 12, costItem: 'coins', get: 1, getItem: 'Health Potion', costColor: 'text-accent', getColor: 'text-danger' },
+    { type: 'coin', name: 'Coins to Mana Potion', cost: 10, costItem: 'coins', get: 1, getItem: 'Mana Potion', costColor: 'text-accent', getColor: 'text-spell-arcane' },
     { type: 'block', name: 'Stone to Crystal', cost: 16, costItem: 'stone', get: 1, getItem: 'crystals', costColor: 'text-gray-400', getColor: 'text-cyan-400' },
     { type: 'block', name: 'Coal to Crystal', cost: 8, costItem: 'coal', get: 1, getItem: 'crystals', costColor: 'text-slate-500', getColor: 'text-cyan-400' },
     { type: 'block', name: 'Iron to Crystal', cost: 4, costItem: 'iron', get: 1, getItem: 'crystals', costColor: 'text-orange-300', getColor: 'text-cyan-400' },
@@ -120,6 +135,11 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                 <span className="text-accent block font-bold uppercase tracking-wider">Wands</span>
                 <span className="font-display text-text text-sm">{magic.wand || 0}</span>
               </div>
+              <div className="col-span-4 border-t-chrome border-ink pt-2 mt-2 flex items-center justify-center gap-1.5">
+                <Icon name="coins" size={14} className="text-accent" />
+                <span className="text-accent font-bold uppercase tracking-wider">Coins</span>
+                <span className="font-display text-text text-sm tabular-nums">{coins}</span>
+              </div>
             </Panel>
 
             {/* Trade Message Feedback */}
@@ -141,7 +161,9 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
             {/* Trades Scroll Area */}
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {trades.map((t, idx) => {
-                const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0) : (magic[t.costItem] || 0);
+                const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0)
+                  : t.type === 'coin' ? coins
+                  : (magic[t.costItem] || 0);
                 const canTrade = currentStock >= t.cost;
 
                 return (
@@ -169,6 +191,8 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                         onClick={() => {
                           if (t.type === 'block') {
                             executeBlockTrade(t.costItem, t.cost, t.getItem, t.get);
+                          } else if (t.type === 'coin') {
+                            executeCoinTrade(t.getItem, t.cost, t.get);
                           } else {
                             executeCrystalTrade(t.getItem, t.cost, t.get);
                           }

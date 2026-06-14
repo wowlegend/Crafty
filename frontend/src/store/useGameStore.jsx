@@ -123,6 +123,15 @@ export const useGameStore = create((set, get) => ({
     // future spend can't underflow; a nullish/NaN amount is a safe no-op.
     coins: 0,
     addCoins: (n) => set((state) => ({ coins: Math.max(0, state.coins + (Number(n) || 0)) })),
+    // Spend coins (the merchant coin sink): deduct iff affordable, return success. A negative/nullish/NaN
+    // amount clamps to a 0-cost no-op (true, never ADDS coins). The ONLY consumer of the coin balance.
+    spendCoins: (n) => {
+        const amt = Math.max(0, Math.floor(Number(n) || 0));
+        const have = get().coins;
+        if (have < amt) return false;
+        set({ coins: have - amt });
+        return true;
+    },
     attributes: {
         strength: 10,
         agility: 10,
