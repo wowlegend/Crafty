@@ -1,5 +1,7 @@
 # Damage-direction cues (combat-legibility interleave) Implementation Plan
 
+> **✅ SHIPPED (loop iters 149-150, 2026-06-13).** T1 (149): pure `game/damageDirection.js` `hitDirection` + non-breaking `damagePlayer(…, sourcePos)` → `lastHitDir` + mob-melee threaded (commit `1abebbc`). T2 (150): `ui/DamageDirection.jsx` HUD cue — a red screen-edge glow placed from the angle (aspect-ratio robust), framer-motion fade ~0.8s in play / fixed-opacity gated on a `hitDir` capture-opt under capture (the 18 baselines pass no opt → null, like showTouch); mounted beside DamageOverlay. HD self-eyeballed (right-rear hit → lower-right glow, +26.5 red-dominance). 1031 unit · build clean · visual 18/18 byte-identical (capture-null → no re-baseline). Commit `83e6968`. **Follow-up (not blocking):** thread the projectile (`SimplifiedNPCSystem:609` — the stepper returns a hit COUNT, needs a small change to return positions) + BossEntity call-sites with their source positions; an optional permanent `damage-dir` gate fixture (the cue is capture-null in normal play, so no regression risk today).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
 **Goal:** When the player takes a hit, show WHICH WAY it came from (a screen-edge directional cue), not just the existing non-directional `damageFlash` + `screenShake`. A SOTA combat-legibility staple (Diablo/Vampire-Survivors/etc.) — you instinctively turn toward the threat. Fresh axis (combat game-feel) per the §5 interleave-floor.
