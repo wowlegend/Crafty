@@ -7,6 +7,7 @@ import { Panel, Button, Slot, Icon } from '../primitives/index.js';
 import { Grid } from 'lucide-react';
 import { getItemRarity } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
+import { RECIPES } from '../../data/recipes';
 
 export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore();
@@ -15,129 +16,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
     const [result, setResult] = React.useState(null);
     const [craftMessage, setCraftMessage] = React.useState(null);
 
-    const RECIPES = React.useMemo(() => [
-        // Swords & Weapons
-        {
-            name: 'Stone Sword',
-            pattern: [[null, 'cobblestone', null], [null, 'cobblestone', null], [null, 'wood', null]],
-            output: { 'Stone Sword': 1 }
-        },
-        {
-            name: 'Iron Sword',
-            pattern: [[null, 'iron', null], [null, 'iron', null], [null, 'wood', null]],
-            output: { 'Iron Sword': 1 }
-        },
-        {
-            name: 'Iron Sword (Nuggets)',
-            pattern: [[null, 'Iron Nugget', null], [null, 'Iron Nugget', null], [null, 'wood', null]],
-            output: { 'Iron Sword': 1 }
-        },
-        {
-            name: 'Diamond Sword',
-            pattern: [[null, 'diamond', null], [null, 'diamond', null], [null, 'wood', null]],
-            output: { 'Diamond Sword': 1 }
-        },
-        // Shields
-        {
-            name: 'Wooden Shield',
-            pattern: [['wood', 'wood', 'wood'], ['wood', 'wood', 'wood'], [null, 'wood', null]],
-            output: { 'Wooden Shield': 1 }
-        },
-        {
-            name: 'Iron Shield',
-            pattern: [['iron', 'iron', 'iron'], ['iron', 'iron', 'iron'], [null, 'iron', null]],
-            output: { 'Iron Shield': 1 }
-        },
-        {
-            name: 'Diamond Shield',
-            pattern: [['diamond', 'diamond', 'diamond'], ['diamond', 'diamond', 'diamond'], [null, 'diamond', null]],
-            output: { 'Diamond Shield': 1 }
-        },
-        // Helmets
-        {
-            name: 'Leather Helmet',
-            pattern: [['Leather', 'Leather', 'Leather'], ['Leather', null, 'Leather']],
-            output: { 'Leather Helmet': 1 }
-        },
-        {
-            name: 'Iron Helmet',
-            pattern: [['iron', 'iron', 'iron'], ['iron', null, 'iron']],
-            output: { 'Iron Helmet': 1 }
-        },
-        {
-            name: 'Diamond Helmet',
-            pattern: [['diamond', 'diamond', 'diamond'], ['diamond', null, 'diamond']],
-            output: { 'Diamond Helmet': 1 }
-        },
-        {
-            name: 'Golden Crown',
-            pattern: [['gold', 'gold', 'gold'], ['gold', null, 'gold']],
-            output: { 'Golden Crown': 1 }
-        },
-        // Chestplates
-        {
-            name: 'Leather Chestplate',
-            pattern: [['Leather', null, 'Leather'], ['Leather', 'Leather', 'Leather'], ['Leather', 'Leather', 'Leather']],
-            output: { 'Leather Chestplate': 1 }
-        },
-        {
-            name: 'Iron Chestplate',
-            pattern: [['iron', null, 'iron'], ['iron', 'iron', 'iron'], ['iron', 'iron', 'iron']],
-            output: { 'Iron Chestplate': 1 }
-        },
-        {
-            name: 'Diamond Chestplate',
-            pattern: [['diamond', null, 'diamond'], ['diamond', 'diamond', 'diamond'], ['diamond', 'diamond', 'diamond']],
-            output: { 'Diamond Chestplate': 1 }
-        },
-        // Boots
-        {
-            name: 'Leather Boots',
-            pattern: [['Leather', null, 'Leather'], ['Leather', null, 'Leather']],
-            output: { 'Leather Boots': 1 }
-        },
-        {
-            name: 'Iron Boots',
-            pattern: [['iron', null, 'iron'], ['iron', null, 'iron']],
-            output: { 'Iron Boots': 1 }
-        },
-        {
-            name: 'Diamond Boots',
-            pattern: [['diamond', null, 'diamond'], ['diamond', null, 'diamond']],
-            output: { 'Diamond Boots': 1 }
-        },
-        // Tools & Materials
-        {
-            name: 'Stone Pickaxe',
-            pattern: [['cobblestone', 'cobblestone', 'cobblestone'], [null, 'wood', null], [null, 'wood', null]],
-            output: { pickaxe: 1 }
-        },
-        {
-            name: 'Bow',
-            pattern: [['wood', 'String', null], ['wood', null, 'String'], ['wood', 'String', null]],
-            output: { 'Arrow': 5 }
-        },
-        {
-            name: 'Torch',
-            pattern: [['coal'], ['wood']],
-            output: { torch: 4 }
-        },
-        {
-            name: 'Glass',
-            pattern: [['sand']],
-            output: { glass: 1 }
-        },
-        {
-            name: 'Planks',
-            pattern: [['wood']],
-            output: { planks: 4 }
-        },
-        {
-            name: 'Magic Crystal',
-            pattern: [['diamond', 'gold']],
-            output: { crystals: 4 }
-        }
-    ], []);
 
     const normalizeGrid = (g) => {
         // Find boundaries
