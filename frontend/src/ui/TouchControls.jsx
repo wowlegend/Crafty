@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isCaptureMode, getCaptureOpts } from '../devtest/captureMode';
 import { isTouchDevice } from '../input/touchDevice';
 import { useGameStore } from '../store/useGameStore';
 import { useActiveInput } from '../input/useActiveInput';
-import { setIntent, setActive } from '../input/inputState';
+import { setIntent, setActive, getInput } from '../input/inputState';
 import { makeTouchRouter } from '../input/touchMath';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
+import { TRAY_PANELS, togglePanel } from './touchTray';
 import TouchControlsSurface from './TouchControlsSurface';
 
 /**
@@ -21,7 +22,8 @@ import TouchControlsSurface from './TouchControlsSurface';
  */
 export default function TouchControls({ isWorldBuilt }) {
   if (isCaptureMode()) {
-    return getCaptureOpts().showTouch ? <TouchControlsSurface /> : null;
+    // capture renders the tray OPEN so mobile.png locks the full M3a feature (grid icon + 4 openers).
+    return getCaptureOpts().showTouch ? <TouchControlsSurface trayOpen /> : null;
   }
   if (!isTouchDevice()) return null;
   return <TouchControlsLive isWorldBuilt={isWorldBuilt} />;
@@ -33,6 +35,11 @@ function TouchControlsLive({ isWorldBuilt }) {
   const routerRef = useRef(makeTouchRouter());
   const active = useActiveInput();              // SAFE reactive read (transition-state only)
   const isAlive = useGameStore((s) => s.isAlive);
+  const [trayOpen, setTrayOpen] = useState(false);
+  // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
+  // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
+  // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
+  const anyPanel = useGameStore((s) => s.showInventory || s.showCrafting || s.showBuildingTools || s.showMagic);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -48,12 +55,14 @@ function TouchControlsLive({ isWorldBuilt }) {
     };
 
     const onStart = (e) => {
+      if (!getInput().active) return; // focus gate: no move/look routing when paused / in a panel (M3a)
       const w = window.innerWidth;
       let routed = false;
       for (const t of e.changedTouches) if (!isButton(t)) { router.onStart(t, w); routed = true; }
       if (routed) e.preventDefault(); // skip for pure button taps so iOS does not suppress onPointerUp
     };
     const onMove = (e) => {
+      if (!getInput().active) return; // focus gate: let panel scroll / native touch through when not active
       handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: 1 });
       e.preventDefault();
     };
@@ -76,7 +85,7 @@ function TouchControlsLive({ isWorldBuilt }) {
 
   const dispatch = (b) => useGameStore.getState().performVerb?.(b);
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
-  const showTapToPlay = isWorldBuilt && isAlive && !active;
+  const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0 };
   return (
@@ -85,7 +94,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       style={{ position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
                WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
     >
-      {active && <TouchControlsSurface />}
+      {active && <TouchControlsSurface trayOpen={trayOpen} />}
 
       {showTapToPlay && (
         <button data-touch-btn onPointerUp={() => setActive(true)} aria-label="Tap to play"
@@ -111,6 +120,17 @@ function TouchControlsLive({ isWorldBuilt }) {
           onPointerLeave={() => setIntent('jump', false)}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 40px)', bottom: 'calc(11% + 96px)', width: 60, height: 60 }} />
       )}
+
+      {/* M3a panel-access tray: grid icon toggles the column; each opener toggles its panel + yields control */}
+      {active && (
+        <button data-touch-btn onPointerUp={() => setTrayOpen((o) => !o)} aria-label="Panels"
+          style={{ ...hit, top: 'calc(50% - 140px)', left: 'calc(env(safe-area-inset-left,0px) + 10px)', width: 46, height: 46 }} />
+      )}
+      {active && trayOpen && TRAY_PANELS.map((p, i) => (
+        <button key={p.id} data-touch-btn aria-label={p.label}
+          onPointerUp={() => { togglePanel(p, useGameStore.getState()); setTrayOpen(false); setActive(false); }}
+          style={{ ...hit, top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 }} />
+      ))}
     </div>
   );
 }
