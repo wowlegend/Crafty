@@ -618,6 +618,41 @@ export const makeDawnChime = (ctx) => {
     return buffer;
 };
 
+// Reward FANFARE: a triumphant brass arpeggio (C5-E5-G5 -> a held C6) fired on a designed reward beat
+// (level-up, achievement / quest complete). Brassy saw+tri (NOT the dawn-chime bells) so a reward reads as
+// a flourish, not a time-of-day cue. Headroom-guarded for the unclipped contract.
+export const makeFanfare = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.7;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    const notes = [
+      { f: 523.25, t0: 0.0, hold: 0.16 },   // C5
+      { f: 659.25, t0: 0.12, hold: 0.16 },  // E5
+      { f: 783.99, t0: 0.24, hold: 0.18 },  // G5
+      { f: 1046.5, t0: 0.36, hold: 0.34 },  // C6 (the resolve, held)
+    ];
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      let s = 0;
+      for (const n of notes) {
+        const tn = t - n.t0;
+        if (tn < 0 || tn > n.hold + 0.12) continue;
+        const saw = 2 * (tn * n.f - Math.floor(tn * n.f + 0.5));
+        const tri = 2 * Math.abs(2 * (tn * n.f - Math.floor(tn * n.f + 0.5))) - 1;
+        const env = Math.min(tn * 30, 1) * Math.exp(-Math.max(tn - n.hold, 0) * 8);
+        s += (saw * 0.4 + tri * 0.4) * env;
+      }
+      d[i] = s * 0.3;
+    }
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    return buffer;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
@@ -626,6 +661,7 @@ export const VOICES = {
   heartbeat: makeHeartbeat,
   siegeHorn: makeSiegeHorn,   // day->night transition sting
   dawnChime: makeDawnChime,   // night->day transition sting
+  fanfare: makeFanfare,       // reward beat (level-up / achievement / quest complete)
   blockPlace: (ctx) => makeTone(ctx, 200, 0.1, 'square'),
   blockBreak: (ctx) => makeTone(ctx, 150, 0.15, 'sawtooth'),
   footstep: (ctx) => makeNoise(ctx, 0.05),

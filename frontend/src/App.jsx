@@ -101,8 +101,17 @@ function GameApp({ experienceSystem }) {
   const showcaseView = useGameStore(s => s.showcaseView);
   const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic } = useSounds();
-  const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
-  
+  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare } = useGameSounds();
+
+  // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
+  // (SimpleExperienceSystem's window.playLevelUpSound, QuestSystem's window.playFanfare), but nothing
+  // assigned them -> level-up was SILENT (dead reference). Set them here from the live sound API. Null in
+  // capture/headless (playSound no-ops without an AudioContext), so this is capture-safe.
+  useEffect(() => {
+    window.playLevelUpSound = playLevelUpSound;
+    window.playFanfare = playFanfare;
+  }, [playLevelUpSound, playFanfare]);
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
   // DEV-only mascot studio overlay: false = hidden, true = the chosen Crafty Hero brand

@@ -144,6 +144,7 @@ export const useQuestSystem = () => {
             if (statValue >= ach.target) {
                 setUnlockedAchievements(prev => new Set([...prev, ach.id]));
                 addNotification(`Achievement Unlocked: ${ach.title}!`, 'achievement');
+                if (window.playFanfare) window.playFanfare(); // reward beat: the unlock is now HEARD, not just seen
             }
         });
     }, [unlockedAchievements, addNotification]);
@@ -165,6 +166,7 @@ export const useQuestSystem = () => {
 
             if (nowComplete && !quest.completed) {
                 addNotification(`Quest Complete: ${quest.title}! Click Q to claim reward.`, 'quest');
+                if (window.playFanfare) window.playFanfare(); // reward beat: the completion is now HEARD, not just seen
             }
 
             return { ...quest, progress: newProgress, completed: nowComplete };

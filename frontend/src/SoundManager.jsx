@@ -581,6 +581,7 @@ export const useGameSounds = () => {
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
     playMagicCharge: () => playSound('magicCharge'),
     playLevelUpSound: () => playSound('levelUp'),
+    playFanfare: () => playSound('fanfare'), // reward beat — achievement / quest complete (DayNight/reward audio)
     // UI foley (panel open/close) — subtle menu chrome responsiveness
     playUIOpen: () => playSound('uiOpen'),
     playUIClose: () => playSound('uiClose')
