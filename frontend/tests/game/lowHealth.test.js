@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lowHealthIntensity, LOW_HEALTH_THRESHOLD } from '../../src/game/lowHealth.js';
+import { lowHealthIntensity, heartbeatPeriod, LOW_HEALTH_THRESHOLD } from '../../src/game/lowHealth.js';
 
 // The danger-vignette gate: 0 while safe (>= threshold), ramping 0->1 as health falls to 0.
 describe('lowHealthIntensity', () => {
@@ -35,5 +35,20 @@ describe('lowHealthIntensity', () => {
 
   it('exposes the default threshold', () => {
     expect(LOW_HEALTH_THRESHOLD).toBe(0.35);
+  });
+});
+
+describe('heartbeatPeriod', () => {
+  it('slows toward ~1.3s at low intensity and quickens toward ~0.55s near death', () => {
+    expect(heartbeatPeriod(0)).toBeCloseTo(1.3, 6);
+    expect(heartbeatPeriod(1)).toBeCloseTo(0.55, 6);
+  });
+  it('is monotonic decreasing (higher danger -> faster beats)', () => {
+    expect(heartbeatPeriod(0.25)).toBeGreaterThan(heartbeatPeriod(0.75));
+  });
+  it('clamps out-of-range intensity', () => {
+    expect(heartbeatPeriod(-1)).toBeCloseTo(1.3, 6);
+    expect(heartbeatPeriod(2)).toBeCloseTo(0.55, 6);
+    expect(heartbeatPeriod(NaN)).toBeCloseTo(1.3, 6);
   });
 });

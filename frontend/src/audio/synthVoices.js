@@ -537,11 +537,34 @@ export const makeUIClose = (ctx) => {
     return b;
 };
 
+// Low-health HEARTBEAT (survival danger cue, paired with the LowHealthVignette): a soft low "lub-dub" --
+// two sub-bass thumps (lub stronger at t0, dub softer at ~0.16s) with a fast decay. Played on a repeating
+// interval that quickens as HP goes critical (HeartbeatAudio + heartbeatPeriod). Low + soft so it reads as
+// dread under the music, not an alarm.
+export const makeHeartbeat = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.45;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    const beat = (t, f, amp) => Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 22) * amp;
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const lub = beat(t, 58, 0.85);
+      const t2 = t - 0.16;
+      const dub = t2 >= 0 ? beat(t2, 52, 0.6) : 0;
+      d[i] = (lub + dub) * 0.7;
+    }
+    return buffer;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
 export const VOICES = {
   ...MOTIFS, // music-motif v2: the per-Aspect stingers (audio/aspectMotifs.js)
+  heartbeat: makeHeartbeat,
   blockPlace: (ctx) => makeTone(ctx, 200, 0.1, 'square'),
   blockBreak: (ctx) => makeTone(ctx, 150, 0.15, 'sawtooth'),
   footstep: (ctx) => makeNoise(ctx, 0.05),

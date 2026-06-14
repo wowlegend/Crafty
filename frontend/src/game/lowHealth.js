@@ -15,3 +15,10 @@ export function lowHealthIntensity(health, maxHealth, threshold = LOW_HEALTH_THR
   if (ratio <= 0) return 1;
   return (threshold - ratio) / threshold;
 }
+
+// Seconds between heartbeat thumps as a function of danger intensity [0,1]: a slow ~1.3s pulse when
+// danger just begins, quickening to a frantic ~0.55s near 0 HP. Drives HeartbeatAudio's interval.
+export function heartbeatPeriod(intensity) {
+  const i = Math.max(0, Math.min(1, Number(intensity) || 0));
+  return 1.3 - 0.75 * i;
+}
