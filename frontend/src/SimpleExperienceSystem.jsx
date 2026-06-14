@@ -85,9 +85,12 @@ export const SimpleXPGainVisual = ({ xpGains }) => {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
           >
-            <div className="bg-yellow-400 text-black px-3 py-1 rounded-lg font-bold text-sm shadow-lg border-2 border-yellow-600">
-              +{gain.amount} XP
-              <div className="text-xs text-yellow-800">{gain.reason}</div>
+            <div
+              className="px-3 py-1 rounded-md border-chrome border-ink shadow-elev-md text-text-inverse leading-none"
+              style={{ background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
+            >
+              <span className="font-display text-base tabular-nums">+{gain.amount}</span>
+              <span className="text-[10px] font-bold tracking-widest opacity-85 ml-1">XP</span>
             </div>
           </motion.div>
         ))}
@@ -111,22 +114,31 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
             onAnimationComplete={() => onEffectComplete && onEffectComplete(effect.id)}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="text-center">
+            {/* gold radial burst behind the banner (bold-flat accent; bloom-free CSS) */}
+            <motion.div
+              initial={{ scale: 0, opacity: 0.55 }}
+              animate={{ scale: [0, 1.6, 2.2], opacity: [0.55, 0.22, 0] }}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+              className="absolute w-80 h-80 rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(var(--ui-accent), 0.5) 0%, transparent 64%)' }}
+            />
+            <div className="text-center relative">
+              {/* LEVEL UP — gold sticker banner in the display face + ink frame (S1-C bold-flat) */}
               <motion.div
                 initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.2, 1] }}
-                transition={{ duration: 1, times: [0, 0.6, 1] }}
-                className="text-6xl font-bold text-yellow-400 drop-shadow-lg"
-                style={{ textShadow: '3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000' }}
+                animate={{ scale: [0, 1.22, 1] }}
+                transition={{ duration: 0.9, times: [0, 0.6, 1], ease: 'easeOut' }}
+                className="inline-block font-display text-text-inverse leading-none px-6 py-2 rounded-lg border-chrome border-ink shadow-elev-md tracking-wide"
+                style={{ fontSize: '3.25rem', background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
               >
-                LEVEL UP!
+                LEVEL UP
               </motion.div>
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-                className="text-3xl font-bold text-white mt-2"
-                style={{ textShadow: '2px 2px 0px #000' }}
+                transition={{ delay: 0.45, duration: 0.7 }}
+                className="font-display text-accent-raise mt-3 tabular-nums"
+                style={{ fontSize: '1.9rem', textShadow: '2px 2px 0 rgb(var(--ui-ink))' }}
               >
                 Level {effect.level}
               </motion.div>
