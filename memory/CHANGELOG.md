@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### June 14, 2026 (📟 UX — numbered siege ladder; loop iter 187)
+- **The night siege now reads as a ladder.** The nightfall banner was a fixed "Night has fallen…" with no night number, so the player couldn't tell which night they were on or sense the escalation (the siege ramps via `siegeParams`, but invisibly). Added a pure `siegeWarning(nightCount)` (a numbered + tiered message: "Night N — <first siege → presses harder → intensifies → ferocious → relentless>. Hold until dawn!") and wired it into the nightfall transition — giving the siege a readable progression + a survival score.
+- Verified real from the next-levers backlog (#8). Capture-safe (nightfall transition frozen under capture).
+- **Verify:** unit 1146→1150 (+4) · build clean · visual 19/19 (frames byte-identical). Commit `10087e4`.
+- **Strategic note:** the next-levers quick-win backlog is now harvested. The remaining high-value work is the 4 milestone levers (recurring boss spine, build-identity talents, enemy attack telegraphs, cinematic-beat pass) — but their crux is combat FEEL, which the headless loop can't validate (AI frozen in capture, no mob-attack capture state, no in-world eyeball). These are flagged as Kevin-playtest-gated (KEVIN-REVIEW #35); the loop will keep shipping validatable units (logic/data/capture-safe visuals/audio-with-ear-check) rather than build combat feel blind.
+
 ### June 14, 2026 (♾️ PROGRESSION — endless bounty quests; loop iter 186)
 - **The quest goal-feed never dries up now.** The authored quest list is finite (15); once all were claimed, the tracker went empty ("All quests completed!") — the late game had no goals (a retention gap). Added a pure `makeRepeatableQuest(seq)` end-game bounty generator (a unique `bounty_<seq>` kill-quest with target + reward scaling by sequence — 15+5n mobs, 150+50n XP) and a `claimQuest` fallback: authored quests are still preferred, but once exhausted, endless scaling bounties fill the tail (keyed off the existing-bounty count so ids never collide).
 - Fresh axis (progression/retention); verified real from the next-levers backlog (#9 — `claimQuest`'s refill genuinely returned nothing past the finite set).

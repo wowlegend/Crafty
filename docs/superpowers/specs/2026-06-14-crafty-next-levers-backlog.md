@@ -15,7 +15,7 @@ before building.** Corrected so far: **#1** break-debris already exists (only pl
 **#4** incoming-hit flash+screenshake already fire from `damagePlayer` (only *hitstop* on incoming is absent);
 **#7** ✅ SHIPPED iter 183 (and uncovered a real BUG — the level-up sound was dead via an unassigned
 `window.playLevelUpSound`; fixed). Net: of the top-7 quick-wins, 1/3/4 were already-done/redundant, 1b/7
-shipped. Remaining plausibly-real: #2 day-dial, #8 night-count, #10 recallable onboarding (#5 coin sink, #17 hearth-on-compass ✅ shipped iters 184-185) —
+shipped. Remaining plausibly-real: #2 day-dial, #8 night-count, #10 recallable onboarding, #2 day-dial (#5/#17/#9/#8 ✅ shipped iters 184-187). **Quick-wins harvested; remaining HIGH-value = the 4 MILESTONE levers, but they're combat-FEEL/playtest-gated → Kevin-steer needed (KEVIN-REVIEW #35).** —
 verify each first.
 
 ## Verified-this-iteration corrections to the raw findings
@@ -34,7 +34,7 @@ verify each first.
 5. **Coin sink (coins are a dead currency):** `TradingInterface` exists; add a coins-priced tab + a `spendCoins(n)` store action (mirror `addCoins`) selling existing `ITEMS`-registry consumables.
 6. **Spell hotbar (1-4):** casting is a pillar but reduced to one text label while blocks get a slot hotbar. Mirror `MinecraftHotbar` (reuse Slot/Panel + `SPELL_COLOR_CLASS`/`SPELL_MANA_COSTS`). Adds a persistent HUD element → re-baseline.
 7. **Reward fanfare + flourish:** achievement/quest-complete are silent text toasts. Add one synth fanfare voice (reuse the `makeDawnChime` ascending-bell template) wired to the existing achievement/quest hooks + a gold scale-pop Toast variant.
-8. **Night-siege intensity ladder:** push a "Night N — the swarm grows" notification on the nightfall edge (reuse the `DayNightAudio`/`addNotification` seam) + optional siege-pip row. Surfaces a survival bragging number.
+8. ~~Night-siege intensity ladder~~ ✅ SHIPPED iter 187 (pure `siegeWarning(nightCount)` numbered+tiered nightfall message via survivalSystem).
 9. ~~Endless quest/loot tiers~~ ✅ QUESTS SHIPPED iter 186 (makeRepeatableQuest endless bounty fallback in claimQuest). (Optional remainder: a stacking/"mythic" dawnLootRarity tier — dawn loot already plateaus at legendary night 5.)
 10. **Recallable onboarding:** the first-session tip is a single 4s auto-dismiss toast that can't be recalled — add a Help/controls recall (the controls panel exists).
 11. ~~Hearth on the compass~~ ✅ SHIPPED iter 185 (gold HOME marker via the pure `game/compass.js` bearingToMarker; capture-suppressed).
