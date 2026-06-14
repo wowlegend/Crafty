@@ -43,7 +43,7 @@ const Sun = ({ onReady }) => {
   });
   return (
     <mesh ref={ref} frustumCulled={false}>
-      <sphereGeometry args={[24, 28, 28]} />
+      <sphereGeometry args={[13, 28, 28]} />
       <meshBasicMaterial color="#FFFAF0" toneMapped={false} fog={false} />
     </mesh>
   );
