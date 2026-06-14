@@ -651,6 +651,7 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (vaction === 'slam') {
         requestSlam({ x: phantomWorldPos.x, y: phantomWorldPos.y, z: phantomWorldPos.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('slam', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 30); // AUDIO: the heavy thump
+        { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.slam)); } // game-feel: slam recoil (hard down + forward)
         // music-motif v2: the VOIDHAND stinger on the slam (gravity's signature), 10s-guarded
         if (stv.playSpatialSound) {
           const nowS = performance.now() / 1000;
@@ -1169,6 +1170,7 @@ export const Player = ({ isWorldBuilt }) => {
         const t = footstepTypeAt(px, pz);
         sStore.playSpatialSound?.('footstep', [px, camera.position.y, pz], (t === 'stone' ? 0.7 : 0.85), 8);
         lastStepRef.current = time;
+        addKick(kickRef.current, KICK_PROFILES.land); // game-feel: landing dip (vertical; capture-immune via the follow-cam early-return)
       }
       prevGroundedRef.current = isGrounded;
     }
