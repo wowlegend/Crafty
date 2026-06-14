@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 13, 2026 (🔊 AUDIO — UI panel open/close foley; loop iter 155)
+- **The menu chrome was silent — now it has soft tactile foley.** A SOTA audio interleave: two subtle low-gain voices (`makeUIOpen` rising 480→740Hz / `makeUIClose` falling 620→400Hz, peak ~0.2, 0.13s) registered in `VOICES` (contract 31→33) + `playUIOpen`/`playUIClose` verbs.
+- A `<UISounds>` watcher (mounted in HUD) plays them on the false↔true edge of the core panel layer (inventory/craft/build/magic) — a single reactive edge-watcher (those booleans change rarely → Game-Loop-safe), renders nothing. **Capture-safe** (audio null under capture + renders nothing → 18 baselines byte-identical). + a `ui-sounds-gate`. **1037→1040 unit · build clean · visual 18/18.** Commit `fba5f15`.
+
 ### June 13, 2026 (⚙️ SETTINGS — unified Look Sensitivity (mouse + touch); loop iter 154)
 - **A Look Sensitivity setting both platforms use.** Touch M2b, broadened from a touch-only slider to a single setting that tunes look speed for desktop (mouse) AND touch — desktop-verifiable. Store `lookSensitivity` (default 1, clamped 0.3–2.5) feeds the desktop `<PointerLockControls pointerSpeed={lookSensitivity}>` (drei spreads the three-stdlib `pointerSpeed` field) + the touch drag-look `applyLook` sensitivity (was hardcoded `1` at `TouchControls:66`). A "Look Sensitivity" slider in SettingsPanel (Build-Size idiom).
 - + a `look-sensitivity-gate` (all 3 consumers + the store setter wired). **Capture-safe:** default 1 == drei's `pointerSpeed` default → the 18 baselines are byte-identical (PLC is invisible; SettingsPanel + touch onMove aren't captured). **1033→1037 unit · build clean · visual 18/18.** Commit `ccd4bbb`.
