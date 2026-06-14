@@ -187,6 +187,57 @@ describe('characterization: LOOT_TABLES structure', () => {
             "xp": 2,
           },
         ],
+        "duskhound": [
+          {
+            "chance": 0.8,
+            "item": "Bone",
+            "xp": 3,
+          },
+          {
+            "chance": 0.5,
+            "item": "Leather",
+            "xp": 4,
+          },
+          {
+            "chance": 0.3,
+            "item": "Raw Beef",
+            "xp": 5,
+          },
+        ],
+        "emberhusk": [
+          {
+            "chance": 0.7,
+            "item": "Bone",
+            "xp": 4,
+          },
+          {
+            "chance": 0.4,
+            "item": "Iron Nugget",
+            "xp": 8,
+          },
+          {
+            "chance": 0.08,
+            "item": "Emerald",
+            "xp": 25,
+          },
+        ],
+        "moss_brute": [
+          {
+            "chance": 0.7,
+            "item": "Iron Nugget",
+            "xp": 10,
+          },
+          {
+            "chance": 0.35,
+            "item": "Emerald",
+            "xp": 25,
+          },
+          {
+            "chance": 0.06,
+            "item": "Diamond",
+            "xp": 60,
+          },
+        ],
         "pig": [
           {
             "chance": 0.8,
@@ -214,6 +265,23 @@ describe('characterization: LOOT_TABLES structure', () => {
             "chance": 0.2,
             "item": "Iron Nugget",
             "xp": 8,
+          },
+        ],
+        "skitterling": [
+          {
+            "chance": 0.7,
+            "item": "String",
+            "xp": 3,
+          },
+          {
+            "chance": 0.4,
+            "item": "Spider Eye",
+            "xp": 4,
+          },
+          {
+            "chance": 0.02,
+            "item": "Ender Pearl",
+            "xp": 30,
           },
         ],
         "spider": [

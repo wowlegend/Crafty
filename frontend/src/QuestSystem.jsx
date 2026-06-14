@@ -6,45 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
 import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
+import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
-
-export const LOOT_TABLES = {
-    pig: [
-        { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
-        { item: 'Bone', chance: 0.3, xp: 2 },
-    ],
-    cow: [
-        { item: 'Raw Beef', chance: 0.8, xp: 5 },
-        { item: 'Leather', chance: 0.5, xp: 3 },
-        { item: 'Bone', chance: 0.2, xp: 2 },
-    ],
-    zombie: [
-        { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
-        { item: 'Iron Nugget', chance: 0.3, xp: 8 },
-        { item: 'Emerald', chance: 0.05, xp: 25 },
-    ],
-    skeleton: [
-        { item: 'Bone', chance: 0.9, xp: 3 },
-        { item: 'Arrow', chance: 0.6, xp: 4 },
-        { item: 'Iron Nugget', chance: 0.2, xp: 8 },
-    ],
-    spider: [
-        { item: 'Spider Eye', chance: 0.6, xp: 5 },
-        { item: 'String', chance: 0.8, xp: 3 },
-        { item: 'Ender Pearl', chance: 0.03, xp: 30 },
-    ],
-};
-
-export const CHEST_LOOT = [
-    { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
-    { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-    { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-    { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
-    { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
-    { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
-    { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },
-];
+// Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
+// Re-exported here so existing importers of these names from QuestSystem keep working.
+export { LOOT_TABLES, CHEST_LOOT };
 
 const QUEST_LIST = [
     // Beginner quests
