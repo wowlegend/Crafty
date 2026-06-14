@@ -158,6 +158,12 @@ export const makeSlamSound = (ctx) => {
       const sub = Math.sin(2 * Math.PI * 45 * t) * Math.exp(-t * 7) * 0.6;
       d[i] = (click + thump + sub) * 0.55;
     }
+    // headroom guard: the random click + thump + sub can RARELY sum past 1.0 (~4% of seeds clipped at
+    // ~1.0005); normalize the rare loud buffer down so it never clips (common case untouched). Same
+    // pattern as aspectMotifs.makeArp. Keeps the voice-bank's "unclipped" contract deterministic.
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
     return buffer;
 };
 
