@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (✨ CONTENT/FEEL — mob-death spark finisher; loop iter 156)
+- **A kill now reads as a payoff.** The `mobKill` path fed quests + Ferocity but had NO visual payoff — mobs just vanished. Now a kill fires a bigger, **mob-coloured** spark burst (a finisher, distinct from the per-hit `sparkFor`), on the most frequent player action.
+- `game/mobHitFx.js`: pure `deathBurst(mobType)` → `{color: the mob's body color, count: 40+xp clamped 50–110}` (tougher mobs burst harder; 4 characterization tests). `SimplifiedNPCSystem` damageMob death path triggers `store.triggerGPUSparks(pos, dColor, dCount, 'death')` before `emitMobKill` — reuses the **proven, baseline-validated** 1200-spark GPU pool (the look is pre-validated; only color+count differ). + an element-impact-gates signature-fires assertion.
+- **Capture-safe:** spawns (hence kills) are suppressed under capture → the 18 baselines are byte-identical. **1040→1045 unit · build clean · visual 18/18.** Commit `4c711de`. In-play-verifiable (kill a mob → a bigger coloured burst).
+
 ### June 13, 2026 (🔊 AUDIO — UI panel open/close foley; loop iter 155)
 - **The menu chrome was silent — now it has soft tactile foley.** A SOTA audio interleave: two subtle low-gain voices (`makeUIOpen` rising 480→740Hz / `makeUIClose` falling 620→400Hz, peak ~0.2, 0.13s) registered in `VOICES` (contract 31→33) + `playUIOpen`/`playUIClose` verbs.
 - A `<UISounds>` watcher (mounted in HUD) plays them on the false↔true edge of the core panel layer (inventory/craft/build/magic) — a single reactive edge-watcher (those booleans change rarely → Game-Loop-safe), renders nothing. **Capture-safe** (audio null under capture + renders nothing → 18 baselines byte-identical). + a `ui-sounds-gate`. **1037→1040 unit · build clean · visual 18/18.** Commit `fba5f15`.
