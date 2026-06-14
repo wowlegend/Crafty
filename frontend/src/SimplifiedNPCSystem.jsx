@@ -15,7 +15,7 @@ import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
 import { stepXPOrb, stepLootDrop } from './game/xpOrbStepper';
-import { sparkFor, hitKnockback } from './game/mobHitFx';
+import { sparkFor, hitKnockback, deathBurst } from './game/mobHitFx';
 import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { getItemRarity } from './data/items.js';
 import { rarityBeam } from './game/lootJuice.js';
@@ -530,6 +530,12 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
           });
         }
 
+        // Death FINISHER: a bigger, mob-coloured spark burst so a kill reads as a payoff (was silent --
+        // the mob just vanished). Reuses the proven GPU spark pool; capture-safe (no kills under capture).
+        if (store.triggerGPUSparks) {
+          const { color: dColor, count: dCount } = deathBurst(entity.type);
+          store.triggerGPUSparks(new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), dColor, dCount, 'death');
+        }
         emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], source); // M3.5 fan-out + B3-M1 attribution
         ecs.remove(entity);
       }

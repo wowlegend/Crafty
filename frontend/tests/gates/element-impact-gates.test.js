@@ -37,4 +37,11 @@ describe('M5 element-at-impact gates', () => {
       expect(fx, `missing impact case for '${spell}'`).toMatch(new RegExp(`case '${spell}':`));
     }
   });
+  it('the mob-death FINISHER fires a deathBurst spark at the kill path (signature-fires)', () => {
+    // iter 156: a kill must read as a payoff, not a silent vanish.
+    expect(read('game/mobHitFx.js')).toMatch(/export function deathBurst/);
+    const npc = read('SimplifiedNPCSystem.jsx');
+    expect(npc, 'death path must trigger the deathBurst spark before emitMobKill').toMatch(/deathBurst\(entity\.type\)/);
+    expect(npc, 'the deathBurst color/count must feed triggerGPUSparks').toMatch(/dColor, dCount/);
+  });
 });
