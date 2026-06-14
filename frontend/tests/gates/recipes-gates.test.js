@@ -30,6 +30,13 @@ describe('the crafting recipe set', () => {
     expect(JSON.stringify(beef.pattern)).toMatch(/coal/);
   });
 
+  it('a Health Potion is craftable from gathered loot (alchemy sustain path)', () => {
+    const potion = RECIPES.find(r => r.output && r.output['Health Potion']);
+    expect(potion, 'no Health Potion recipe').toBeDefined();
+    // crafted from items the player gathers as loot (not free) — Emerald is the healing essence
+    expect(JSON.stringify(potion.pattern)).toMatch(/Emerald/);
+  });
+
   it('no two recipes share an identical pattern (each is reachable)', () => {
     const seen = new Set();
     for (const r of RECIPES) {

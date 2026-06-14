@@ -137,5 +137,12 @@ export const RECIPES = [
         name: 'Cooked Beef',
         pattern: [['Raw Beef'], ['coal']],
         output: { 'Cooked Beef': 1 }
+    },
+    // Alchemy — craft healing on demand from gathered loot (proactive sustain the chest/coin/dawn/food
+    // sources don't give). Emerald is the healing essence, bound by spider-eye reagents. Output heals 30.
+    {
+        name: 'Health Potion',
+        pattern: [['Spider Eye', 'Emerald', 'Spider Eye']],
+        output: { 'Health Potion': 1 }
     }
 ];
