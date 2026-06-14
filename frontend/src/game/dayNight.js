@@ -101,6 +101,23 @@ export function siegeParams(nightCount) {
   return { hostileChance, maxMobs };
 }
 
+/**
+ * The nightfall warning message, NUMBERED + tiered by nightCount, so the siege has a readable ladder
+ * (which night am I on? how bad is it now?) + a survival score. The intensity actually ramps via
+ * siegeParams; this surfaces it. A nullish / <=0 / NaN night clamps to night 1 (never "Night 0").
+ * @param {number} nightCount
+ * @returns {string}
+ */
+export function siegeWarning(nightCount) {
+  const n = Math.max(1, Math.floor(Number(nightCount) || 0) || 1);
+  const phrase = n <= 1 ? 'the first siege begins'
+    : n <= 2 ? 'the horde presses harder'
+    : n <= 4 ? 'the siege intensifies'
+    : n <= 6 ? 'a ferocious siege descends'
+    : 'a relentless siege howls';
+  return `Night ${n} — ${phrase}. Hold until dawn!`;
+}
+
 // --- M3b SURVIVE-TO-DAWN reward --------------------------------------------
 //
 // Survive a night -> a reward that scales with the night survived: bonus XP, coins,

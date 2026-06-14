@@ -3,6 +3,7 @@
 // does NOT write dangerLevel (the boss bridge is the sole dangerLevel writer — siege-gates locks this).
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import { siegeWarning } from '../game/dayNight.js';
 
 export const useSurvivalMode = (isDay) => {
     // nightCount is the STORE's single source of truth (lifted out of local useState
@@ -15,9 +16,11 @@ export const useSurvivalMode = (isDay) => {
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
-            // Night falls: bump the shared nightCount (drives the escalating siege).
+            // Night falls: bump the shared nightCount (drives the escalating siege), then surface a
+            // NUMBERED + tiered warning so the siege has a readable ladder + a survival score.
             useGameStore.getState().incrementNight();
-            setSurvivalWarning('Night has fallen... Hostile mobs are stronger!');
+            const night = useGameStore.getState().nightCount; // post-increment = the night just begun
+            setSurvivalWarning(siegeWarning(night));
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
 
