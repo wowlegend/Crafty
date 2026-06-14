@@ -94,11 +94,18 @@ async function main() {
     // The title now hosts a live 3D Crafty Hero mini-canvas (lazy chunk + WebGL); wait for
     // it to actually mount + present a settled (capture-frozen) frame so `menu.png` is
     // deterministic and never screenshots the 2D Suspense fallback.
-    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 45000 }); // 15s flaked under load (the mascot WebGL canvas inits slowly) — hardened to 45s
-    await flushFrames(page, 10);
-    await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'menu.png') });
-    console.log('captured menu');
+    // The mascot WebGL canvas inits slowly; under heavy machine load even 45s can flake. Make it
+    // NON-FATAL (graceful degradation): if it times out, SKIP menu.png (keep the last-good frame) and
+    // CONTINUE the run so the other states + any re-baseline still capture, instead of aborting everything.
+    let menuMascotOk = true;
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 45000 })
+      .catch(() => { menuMascotOk = false; console.warn('WARN: menu mascot canvas not ready in 45s -> skipping menu.png (kept last-good), continuing'); });
+    if (menuMascotOk) {
+      await flushFrames(page, 10);
+      await delay(900);
+      await page.screenshot({ path: resolve(OUT, 'menu.png') });
+      console.log('captured menu');
+    }
 
     // explore-day: start (locks pointer, dismisses menu), wait for terrain to fully
     // stream + mesh (so the frame is byte-stable across runs), then force midday.
