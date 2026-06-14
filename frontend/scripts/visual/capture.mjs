@@ -256,6 +256,24 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'boss-obsidian.png') });
     console.log('captured boss-obsidian');
 
+    // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): FOUR loot drops (one per rarity) in a
+    // sky studio, each with the iter-163 rarity AURA glow-shell. Capture freezes the bob/spin + the
+    // LootSystem physics/magnet/collection loop so the frame is byte-stable.
+    // ORDER (iter-164 fix): run BEFORE the character-closeup / boss-closeup / spell-cast / beast
+    // fixtures. Those spawn PERSISTENT entities (notably a force-spawned frozen dragon) that a
+    // studio-card hook cannot despawn (the boss `bossActive` is component-local useState), and the
+    // leftover boss leaked a stray cube into this frame's bottom edge. Run early — after only the
+    // world/explore/danger-mood fixtures, which spawn nothing persistent (proven clean by an
+    // isolation probe) — and the card is clean. The 4 drops at x=80 then sit >=38 units off-axis
+    // from every later fixture camera (boss x=40, spell x=120, beasts at player x=0) and 90 units
+    // above the in-world beast frames, so they don't leak forward either.
+    captureStage = 'loot-showcase';
+    await page.evaluate(() => window.__craftyTest.call('lootShowcase'));
+    await flushFrames(page, 8);
+    await delay(1200); // drops inject into the frozen world + settle into their pinned pose
+    await page.screenshot({ path: resolve(OUT, 'loot-showcase.png') });
+    console.log('captured loot-showcase');
+
     // character-closeup: deterministic single-zombie + chest close-up that gates the
     // M2b character render language (toon + rim + outline). Resets danger/day first.
     captureStage = 'character-closeup';
@@ -298,21 +316,6 @@ async function main() {
       await page.screenshot({ path: resolve(OUT, `beast-${el}.png`) });
       console.log(`captured beast-${el}`);
     }
-
-    // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): a deterministic sky-studio card
-    // showing FOUR loot drops side by side -- one per rarity -- so all four rarity drop-BEAMS
-    // (common short/dim -> legendary tall/bright, per lootJuice.rarityBeam) are eyeball-able +
-    // gate-verifiable for the first time. The loot bob/spin + the LootSystem physics/magnet/
-    // collection loop are frozen in capture (SimplifiedNPCSystem isCaptureMode guards), so each
-    // drop holds its exact spawn pose and the frame is byte-stable across runs. Staged far on +X
-    // (x=80, y~146) -- clear of the stray character-closeup zombie (x=0), the boss-closeup dragon
-    // (x=40) and the spell-cast (x=120) -- so none of those leak into the clean sky backdrop.
-    captureStage = 'loot-showcase';
-    await page.evaluate(() => window.__craftyTest.call('lootShowcase'));
-    await flushFrames(page, 8);
-    await delay(1200); // drops inject into the frozen world + settle into their pinned pose
-    await page.screenshot({ path: resolve(OUT, 'loot-showcase.png') });
-    console.log('captured loot-showcase');
 
     // primitives-showcase (en): the bold-flat UI system gallery. DEV-only overlay
     // driven via the test bridge. Wait for fonts to finish loading so the Lilita/
