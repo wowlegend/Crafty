@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 13, 2026 (🧱 S3 de-monolith — GamePanels: CraftingTable + itemUi → ui/panels/; loop iter 148)
+- **`ui/GamePanels.jsx` de-god-filed (1094 → 739 LOC, under the 900 threshold).** Capture-safe structural axis-change after the touch push. Extracted the largest component, `CraftingTable` (`HEAD:473-816`, 344 lines), to `ui/panels/CraftingTable.jsx` byte-exact (byte-equality PROVEN: moved slice == HEAD identical).
+- The shared `ItemIcon` helper (used by both Inventory and CraftingTable) moved to a leaf `ui/panels/itemUi.jsx` that both import — avoids a `GamePanels`↔`CraftingTable` circular import. `RECIPES` is internal to CraftingTable (a `React.useMemo`, moved with it). GamePanels **re-exports** CraftingTable (`export { CraftingTable } from './panels/CraftingTable'`) so `MenuSystem`'s import is unchanged. Pruned 2 now-dead GamePanels imports (`getItemIcon`, `useCallback`).
+- **1028 unit · build clean (import-resolution + the re-export) · visual 18/18 byte-identical** (`inventory-open` exercises ItemIcon through the itemUi import). Commit `456065f`. **Remaining god-files >900: Components 1297, GameScene 914, EnhancedMagicSystem 904** (NPC + GamePanels + SoundManager + AdvancedGameFeatures now all resolved).
+
 ### June 13, 2026 (📱 TOUCH M3a — panel-access tray + a surface-wide glyph color fix; loop iters 146-147)
 - **Touch players can now open panels.** After M2a the desktop openers (E/C/B/M) were hidden with no touch replacement → inventory/craft/build/magic were unreachable. M3a adds a left-edge **tray**: a grid icon → a center-anchored column of 4 lucide openers (Inventory/Craft/Build/Magic), collision-robust between the top-left quest tracker and the bottom joystick.
 - **T1 (iter 146, capture-safe):** pure `ui/touchTray.js` — `TRAY_PANELS` registry (→ the verified store actions `setShowInventory/Crafting/BuildingTools/Magic`, value-or-fn updaters) + `togglePanel` (null-safe) + a `touch-tray-gate` (every opener maps to a real store action). 1024→1028 unit. Commit `4c5f3f0`.

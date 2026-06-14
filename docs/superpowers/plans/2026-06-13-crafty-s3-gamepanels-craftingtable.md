@@ -1,5 +1,7 @@
 # S3 de-monolith — GamePanels: extract CraftingTable + shared itemUi Implementation Plan
 
+> **✅ SHIPPED (loop iter 148, 2026-06-13).** Byte-exact extraction of `CraftingTable` (`HEAD:473-816`, 344 lines) → `ui/panels/CraftingTable.jsx` (byte-equality PROVEN) + the shared `ItemIcon` → `ui/panels/itemUi.jsx` (both Inventory + CraftingTable import it; avoids a circular import). GamePanels re-exports CraftingTable (MenuSystem unchanged); pruned 2 dead imports (getItemIcon, useCallback). **GamePanels 1094→739 LOC — under the 900 god-file threshold.** Build clean · 1028 unit · visual 18/18 byte-identical (inventory-open exercises ItemIcon via itemUi). Commit `456065f`. Optional next: Inventory / remaining panels → `ui/panels/` (the panels-dir ladder).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
 **Goal:** De-god-file `ui/GamePanels.jsx` (1094 LOC) by extracting its largest component — `CraftingTable` (`:473-817`, ~344 LOC) — to `ui/panels/CraftingTable.jsx`, byte-exact, taking GamePanels **1094 → ~750 LOC, UNDER the 900 god-file threshold** in one cut. The shared `ItemIcon` helper (used by both Inventory and CraftingTable) moves to a leaf `ui/panels/itemUi.jsx` that both import (avoids a GamePanels↔CraftingTable circular import).
