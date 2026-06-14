@@ -34,6 +34,13 @@ const FEATURES = {
     { box: [d.bodyW * 0.80, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.45, d.bodyD / 2 + 0.02], tone: 'bone' },
     { box: [d.bodyW * 0.70, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.28, d.bodyD / 2 + 0.02], tone: 'bone' },
   ],
+  // charred night-siege husk -> a jagged charred head-CREST (a 3-spike crown, centre tallest, sides
+  // splayed) on the head top — reads front-on (unlike a back-crest, which a front view hides).
+  emberhusk: (d) => [
+    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [-d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, 0.32], tone: 'dark' },
+    { box: [d.headW * 0.16, d.headH * 0.90, d.headD * 0.18], pos: [0, d.bodyH + d.headH * 1.22, d.bodyD / 3], rot: [0, 0, 0], tone: 'dark' },
+    { box: [d.headW * 0.16, d.headH * 0.70, d.headD * 0.18], pos: [d.headW * 0.30, d.bodyH + d.headH * 1.12, d.bodyD / 3], rot: [0, 0, -0.32], tone: 'dark' },
+  ],
   // passive livestock -> horns angled up-out off the head sides (bigger so they read).
   cow: (d) => [
     { box: [d.headW * 0.40, d.headH * 0.26, d.headD * 0.22], pos: [-d.headW * 0.58, d.bodyH + d.headH * 0.98, d.bodyD / 3], rot: [0, 0, 0.45], tone: 'bone' },

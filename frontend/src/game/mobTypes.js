@@ -14,4 +14,8 @@ export const MOB_TYPES = {
   skitterling: { color: '#5B4FA8', health: 30, speed: 3.8, damage: 5, xp: 12, passive: false, bodySize: [0.7, 0.35, 0.9], headSize: [0.45, 0.3, 0.45], legMode: 'spider', weight: 1.2 },
   duskhound: { color: '#4A3A50', health: 70, speed: 3.2, damage: 12, xp: 28, passive: false, bodySize: [0.9, 0.7, 1.5], headSize: [0.6, 0.55, 0.7], legMode: 'quad', weight: 0.9 },
   moss_brute: { color: '#3D5A3A', health: 220, speed: 1.2, damage: 25, xp: 60, passive: false, bodySize: [1.6, 2.0, 1.0], headSize: [0.9, 0.8, 0.9], weight: 0.25 },
+  // content-variety (2026-06-14): a charred night-siege HUSK — warm ember color (new palette note vs the
+  // greens/greys/purples) + a jagged back-crest silhouette (mobFeatures). Mid-tier biped hostile; reuses
+  // the generic hostile AI (data-driven spawn via MOB_TYPES + spawnWeights).
+  emberhusk: { color: '#9A3B2A', health: 95, speed: 2.3, damage: 13, xp: 32, passive: false, bodySize: [0.85, 1.55, 0.55], headSize: [0.7, 0.65, 0.7], weight: 0.8 },
 };

@@ -9,7 +9,7 @@ const isVec3 = (v) => Array.isArray(v) && v.length === 3 && v.every((n) => Numbe
 
 describe('mobFeatures (mob-distinctness T1)', () => {
   it('exposes exactly the spec\'d featured types', () => {
-    expect([...FEATURED_TYPES].sort()).toEqual(['cow', 'duskhound', 'moss_brute', 'skeleton', 'skitterling']);
+    expect([...FEATURED_TYPES].sort()).toEqual(['cow', 'duskhound', 'emberhusk', 'moss_brute', 'skeleton', 'skitterling']);
   });
 
   it('every featured type returns a non-empty list of valid box specs', () => {

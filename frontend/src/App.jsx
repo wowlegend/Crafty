@@ -456,12 +456,12 @@ function GameApp({ experienceSystem }) {
       store.setCaptureStudio(true);
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5);
-      const OX = 280, OY = 146, OZ = -8, GAP = 4.5;
+      const OX = 280, OY = 146, OZ = -8, GAP = 4.2;
       for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
-      // Pulled back to fit 5 subjects (incl. the 2.0-tall moss_brute); front-on (+Z), the proven card path.
-      enterCaptureMode({ camera: { position: [OX, OY + 2.0, OZ + 18], lookAt: [OX, OY + 0.9, OZ] } });
-      ['skitterling', 'duskhound', 'skeleton', 'cow', 'moss_brute'].forEach((type, i) => {
-        if (store.spawnMob) store.spawnMob(OX + (i - 2) * GAP, OZ, type, OY - 0.5);
+      // Pulled back to fit 6 subjects (incl. the 2.0-tall moss_brute); front-on (+Z), the proven card path.
+      enterCaptureMode({ camera: { position: [OX, OY + 2.2, OZ + 20], lookAt: [OX, OY + 0.9, OZ] } });
+      ['skitterling', 'duskhound', 'skeleton', 'emberhusk', 'cow', 'moss_brute'].forEach((type, i) => {
+        if (store.spawnMob) store.spawnMob(OX + (i - 2.5) * GAP, OZ, type, OY - 0.5);
       });
     });
     // ELEMANCER-showcase fixture (S2-B4-M6): the four element ZONES judged in a row.
