@@ -24,20 +24,27 @@ function toThreeColor(css) {
 // Per-tier beam look. Height (world units) + emissive intensity (additive-opacity
 // multiplier) both climb with tier rank; color is the rarity's signature ring
 // accent from RARITY_FILL (e.g. legendary -> '#FFC23D').
+// `aura` = the soft glow-shell radius (world units) around the drop gem; it too climbs with
+// tier so a legendary's halo reads bigger/brighter up close (the iter-163 loot-aura interleave).
 const BEAM_LOOK = {
-  common:    { height: 1.6, intensity: 0.12 },
-  rare:      { height: 2.4, intensity: 0.22 },
-  epic:      { height: 3.2, intensity: 0.34 },
-  legendary: { height: 4.2, intensity: 0.5 },
+  common:    { height: 1.6, intensity: 0.12, aura: 0.42 },
+  rare:      { height: 2.4, intensity: 0.22, aura: 0.52 },
+  epic:      { height: 3.2, intensity: 0.34, aura: 0.62 },
+  legendary: { height: 4.2, intensity: 0.5,  aura: 0.74 },
 };
 
-// rarityBeam(rarity) -> { color, height, intensity }. Unknown/missing rarity
-// falls back to the common look (matches getItemRarity's common default).
+// rarityBeam(rarity) -> { color, height, intensity, auraRadius, auraOpacity }. Unknown/missing
+// rarity falls back to the common look (matches getItemRarity's common default). auraOpacity is
+// derived from intensity and CAPPED at 0.38 so the additive bloom-shell always reads as a soft
+// glow, never a solid coloured ball (the taste guard — the shell is toneMapped:false so the global
+// Bloom blows it into a halo, mirroring the spellVfx outer-glow-shell technique).
 export function rarityBeam(rarity) {
   const tier = BEAM_LOOK[rarity] ? rarity : 'common';
   return {
     color: toThreeColor(RARITY_FILL[tier].ring),
     height: BEAM_LOOK[tier].height,
     intensity: BEAM_LOOK[tier].intensity,
+    auraRadius: BEAM_LOOK[tier].aura,
+    auraOpacity: Math.min(0.38, BEAM_LOOK[tier].intensity * 0.55 + 0.12),
   };
 }

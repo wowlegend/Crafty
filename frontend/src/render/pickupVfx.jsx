@@ -81,6 +81,21 @@ export const LootDropRender = React.memo(({ entity }) => {
           roughness={0.2}
           metalness={0.8}
         />
+        {/* iter-163 rarity AURA — a soft additive glow-shell around the gem, tier-scaled +
+            toneMapped:false so the global Bloom blows it into a halo (the spellVfx outer-glow
+            technique). Nested under the gem so it tracks its position; the up-close "it glows"
+            tell that reads from any angle (the beam is the across-map tell). */}
+        <mesh>
+          <sphereGeometry args={[beam.auraRadius, 16, 16]} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={beam.auraOpacity}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
       </mesh>
 
       <mesh ref={beamRef}>

@@ -59,3 +59,37 @@ describe('rarityBeam', () => {
     expect(RARITY_TIERS).toEqual(['common', 'rare', 'epic', 'legendary']);
   });
 });
+
+// iter-163 loot rarity AURA: a soft additive glow-shell around the drop gem (bloom-softened,
+// mirroring the spellVfx outer-glow-shell technique) so a drop reads as premium + rarity-legible
+// from ANY angle (the beam is the across-map tell; the aura is the up-close "it glows" tell).
+// Radius climbs strictly by tier; opacity climbs but is capped so it always reads as a glow,
+// never a solid coloured ball (the taste guard).
+describe('rarityBeam aura (rarity glow shell)', () => {
+  it('returns numeric auraRadius + auraOpacity > 0 for every tier', () => {
+    for (const tier of RARITY_TIERS) {
+      const b = rarityBeam(tier);
+      expect(typeof b.auraRadius).toBe('number');
+      expect(typeof b.auraOpacity).toBe('number');
+      expect(b.auraRadius).toBeGreaterThan(0);
+      expect(b.auraOpacity).toBeGreaterThan(0);
+    }
+  });
+
+  it('auraRadius is strictly monotonic increasing common -> legendary', () => {
+    const r = RARITY_TIERS.map((t) => rarityBeam(t).auraRadius);
+    for (let i = 1; i < r.length; i++) {
+      expect(r[i]).toBeGreaterThan(r[i - 1]);
+    }
+  });
+
+  it('auraOpacity climbs (non-decreasing) and is capped at 0.38 (a glow, never a solid ball)', () => {
+    const o = RARITY_TIERS.map((t) => rarityBeam(t).auraOpacity);
+    for (let i = 1; i < o.length; i++) {
+      expect(o[i]).toBeGreaterThanOrEqual(o[i - 1]);
+    }
+    for (const v of o) {
+      expect(v).toBeLessThanOrEqual(0.38);
+    }
+  });
+});
