@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
+import { mobFeatures } from '../game/mobFeatures';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -13,6 +14,15 @@ import { TIERS } from './quality';
 // MobModel + HealthBar — the mob render cluster, extracted BYTE-EXACT from SimplifiedNPCSystem.jsx
 // (S3-M6 NPC de-monolith). OUTLINE_RIM_STRENGTH moved here (its only user). NPCSystem imports MobModel.
 const OUTLINE_RIM_STRENGTH = RIM.strength;
+
+// Mob-distinctness T3: a feature box's shade from its `tone` hint — 'bone' = a pale off-white (horns,
+// ribs), 'dark' = the body color crushed ~55% (shoulder slabs, moss-crown), else the body color.
+const _featTmp = new THREE.Color();
+function featureColor(tone, baseColor) {
+  if (tone === 'bone') return '#e6dcc4';
+  if (tone === 'dark') return '#' + _featTmp.set(baseColor).multiplyScalar(0.55).getHexString();
+  return baseColor;
+}
 
 const MobModel = React.memo(({ entity }) => {
   const groupRef = useRef();
@@ -27,6 +37,13 @@ const MobModel = React.memo(({ entity }) => {
   // every pre-M6 entity lacks these fields, so the fallback chain changes nothing for baselines.
   const [bodyW, bodyH, bodyD] = entity.bodySize || mobConfig.bodySize;
   const [headW, headH, headD] = entity.headSize || mobConfig.headSize;
+
+  // Mob-distinctness T3: per-type silhouette feature boxes (pure game/mobFeatures), derived from the
+  // body dims. Empty for unfeatured types (pig/zombie/villager/spider) -> zero render change for them.
+  const features = useMemo(
+    () => mobFeatures(entity.type, { bodyW, bodyH, bodyD, headW, headH, headD }),
+    [entity.type, bodyW, bodyH, bodyD, headW, headH, headD],
+  );
 
   const qualityTier = useGameStore(state => state.qualityTier) || 'low';
   const q = TIERS[qualityTier] || TIERS.low;
@@ -263,6 +280,16 @@ const MobModel = React.memo(({ entity }) => {
             </mesh>
           ))
         )}
+        {/* Mob-distinctness T3: per-type SILHOUETTE features (game/mobFeatures) — static boxes in the
+            body-local frame, same toon material + inverted-hull outline as the body so the creature
+            reads as ONE form; `tone` shades them. Empty for unfeatured types (no render change). */}
+        {features.map((f, i) => (
+          <mesh key={`feat-${i}`} castShadow receiveShadow position={f.pos} rotation={f.rot || [0, 0, 0]}>
+            <boxGeometry args={f.box} />
+            <MobToonMaterial color={featureColor(f.tone, entity.color)} rimStrength={rimStrength} />
+            {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
+          </mesh>
+        ))}
         {/* Dynamic cover-seeking shield aura — ALWAYS mounted, toggled transiently in useFrame.
             Review-fix (4-lens convergent, 2026-06-10): isCoverSeeking is a worker-MUTATED entity
             field; reading it in render JSX only worked pre-memo because every combat hit happened

@@ -22,10 +22,11 @@ const FEATURES = {
     { box: [d.headW * 0.18, d.headH * 0.50, d.headD * 0.20], pos: [ d.headW * 0.30, d.bodyH + d.headH * 1.10, d.bodyD / 3], rot: [0, 0, -0.20] },
     { box: [d.bodyW * 0.16, d.bodyH * 0.18, d.bodyD * 0.70], pos: [0, d.bodyH * 0.55, -d.bodyD * 0.70], rot: [0.50, 0, 0] },
   ],
-  // tiny swarmer -> an INSECT: antennae on the head front-top.
+  // tiny swarmer -> an INSECT: long antennae arcing up off the head front-top (taller so they read on
+  // the small low body, where the spider-sprawl already carries the rest of the silhouette).
   skitterling: (d) => [
-    { box: [d.headW * 0.10, d.headH * 0.70, d.headW * 0.10], pos: [-d.headW * 0.20, d.bodyH + d.headH * 1.20, d.bodyD / 3 + d.headD * 0.30], rot: [0.30, 0, 0.15] },
-    { box: [d.headW * 0.10, d.headH * 0.70, d.headW * 0.10], pos: [ d.headW * 0.20, d.bodyH + d.headH * 1.20, d.bodyD / 3 + d.headD * 0.30], rot: [0.30, 0, -0.15] },
+    { box: [d.headW * 0.13, d.headH * 1.50, d.headW * 0.13], pos: [-d.headW * 0.22, d.bodyH + d.headH * 1.75, d.bodyD / 3 + d.headD * 0.20], rot: [0.35, 0, 0.28] },
+    { box: [d.headW * 0.13, d.headH * 1.50, d.headW * 0.13], pos: [ d.headW * 0.22, d.bodyH + d.headH * 1.75, d.bodyD / 3 + d.headD * 0.20], rot: [0.35, 0, -0.28] },
   ],
   // fast bony hostile -> a SKELETON: rib slats across the torso front.
   skeleton: (d) => [
@@ -33,10 +34,10 @@ const FEATURES = {
     { box: [d.bodyW * 0.80, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.45, d.bodyD / 2 + 0.02], tone: 'bone' },
     { box: [d.bodyW * 0.70, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.28, d.bodyD / 2 + 0.02], tone: 'bone' },
   ],
-  // passive livestock -> stubby horns on the head sides.
+  // passive livestock -> horns angled up-out off the head sides (bigger so they read).
   cow: (d) => [
-    { box: [d.headW * 0.30, d.headH * 0.18, d.headD * 0.18], pos: [-d.headW * 0.55, d.bodyH + d.headH * 0.85, d.bodyD / 3], tone: 'bone' },
-    { box: [d.headW * 0.30, d.headH * 0.18, d.headD * 0.18], pos: [ d.headW * 0.55, d.bodyH + d.headH * 0.85, d.bodyD / 3], tone: 'bone' },
+    { box: [d.headW * 0.40, d.headH * 0.26, d.headD * 0.22], pos: [-d.headW * 0.58, d.bodyH + d.headH * 0.98, d.bodyD / 3], rot: [0, 0, 0.45], tone: 'bone' },
+    { box: [d.headW * 0.40, d.headH * 0.26, d.headD * 0.22], pos: [ d.headW * 0.58, d.bodyH + d.headH * 0.98, d.bodyD / 3], rot: [0, 0, -0.45], tone: 'bone' },
   ],
 };
 
