@@ -15,7 +15,11 @@ import { resolve } from 'node:path';
 // structural outcome, not pixels (the puppeteer visual gate covers pixels).
 
 const SRC = resolve(process.cwd(), 'src');
-const magic = () => readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8');
+// The spell-VFX system spans TWO files since the S3 de-monolith (iter 152): the main system in
+// EnhancedMagicSystem.jsx + the render group (projectile/core/impact/telegraph/wand) in render/spellVfx.jsx.
+// Read BOTH so these source-greps follow the code regardless of which file it lives in (the trap-1 repoint).
+const magic = () => readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8') + '\n' +
+  readFileSync(resolve(SRC, 'render', 'spellVfx.jsx'), 'utf8');
 // S3-M2: the per-element profile DATA lives in game/spellVisualProfiles.js (the de-monolith
 // data pull) — content checks on the profiles read THERE; live-call pins stay on EMS.
 const profiles = () => readFileSync(resolve(SRC, 'game', 'spellVisualProfiles.js'), 'utf8');
