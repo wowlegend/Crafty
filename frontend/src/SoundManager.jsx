@@ -5,6 +5,11 @@ import { useGameStore } from './store/useGameStore';
 import { surfaceBlockAt } from './world/climate.js';
 import { biomeAmbience } from './audio/biomeAmbience.js';
 
+// Procedural music gain. 0 = the synthPad chords + arpeggiator are MUTED (Kevin disliked the procedural
+// music) in favour of the ElevenLabs tracks played by ui/MusicPlayer.jsx. The biome-ambience wind bed is a
+// SEPARATE node (windBedRef) and is unaffected. Set to 1 to restore the procedural music.
+const PROC_MUSIC_GAIN = 0;
+
 // Ambient chord progressions for mood adjustments
 
 const SoundContext = createContext();
@@ -126,7 +131,7 @@ export const SoundProvider = ({ children }) => {
       // 1. Create nodes
       pad.masterGain = audioContext.current.createGain();
       pad.masterGain.gain.setValueAtTime(0, now);
-      pad.masterGain.gain.linearRampToValueAtTime(0.22 * volume, now + 2.0);
+      pad.masterGain.gain.linearRampToValueAtTime(0.22 * volume * PROC_MUSIC_GAIN, now + 2.0);
 
       pad.filter = audioContext.current.createBiquadFilter();
       pad.filter.type = 'lowpass';
@@ -236,7 +241,7 @@ export const SoundProvider = ({ children }) => {
       const now = audioContext.current.currentTime;
       synthPadRef.current.masterGain.gain.cancelScheduledValues(now);
       synthPadRef.current.masterGain.gain.setValueAtTime(synthPadRef.current.masterGain.gain.value, now);
-      synthPadRef.current.masterGain.gain.linearRampToValueAtTime(0.22 * volume, now + 0.5);
+      synthPadRef.current.masterGain.gain.linearRampToValueAtTime(0.22 * volume * PROC_MUSIC_GAIN, now + 0.5);
     }
   }, [volume]);
 
@@ -284,7 +289,7 @@ export const SoundProvider = ({ children }) => {
       }
       arp.masterGain.gain.cancelScheduledValues(now);
       arp.masterGain.gain.setValueAtTime(0, now);
-      arp.masterGain.gain.linearRampToValueAtTime(0.75 * volume, now + 1.2);
+      arp.masterGain.gain.linearRampToValueAtTime(0.75 * volume * PROC_MUSIC_GAIN, now + 1.2);
 
       arp.nextNoteTime = now + 0.05;
       arp.noteIndex = 0;

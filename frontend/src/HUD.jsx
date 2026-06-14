@@ -22,6 +22,7 @@ import LowHealthVignette from './ui/LowHealthVignette';
 import HeartbeatAudio from './ui/HeartbeatAudio';
 import DayNightAudio from './ui/DayNightAudio';
 import DuskWarning from './ui/DuskWarning';
+import MusicPlayer from './ui/MusicPlayer';
 import UISounds from './ui/UISounds';
 import AspectHintToast from './ui/AspectHintToast';
 import { PetIndicator } from './ui/PetIndicator';
@@ -516,6 +517,7 @@ export function HUD({
       <HeartbeatAudio />
       <DayNightAudio />
       <DuskWarning />
+      <MusicPlayer />
       <DamageDirection />
       <UISounds />
       <AspectHintToast />
