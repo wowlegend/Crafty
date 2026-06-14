@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (🍖 CONTENT — cooking recipes + recipe-set extraction; loop iter 189)
+- **The food loop is complete.** Mobs drop Raw Porkchop / Raw Beef and the inventory consumes Cooked Porkchop / Cooked Beef as better food, but no recipe bridged raw→cooked (you could only eat cooked food found in chests). Added "cook over coal" recipes (Raw + coal → Cooked) so kill → raw drop → cook → eat closes. Extracted the recipe set to a pure `src/data/recipes.js` module (the loot-tables precedent — testable + a small CraftingTable de-monolith; existing rows byte-exact) and added a recipe gate (every recipe valid + cooking present + no duplicate patterns — a free integrity check on the whole set).
+- Capture-safe (crafting panel is a C-toggle modal). Validatable content unit; the milestone levers stay Kevin-playtest-gated.
+- **Verify:** unit 1150→1153 (+3) · build clean · visual 19/19 (frames byte-identical). Commit `ce08cf5`.
+
 ### June 14, 2026 (📟 UX — numbered siege ladder; loop iter 187)
 - **The night siege now reads as a ladder.** The nightfall banner was a fixed "Night has fallen…" with no night number, so the player couldn't tell which night they were on or sense the escalation (the siege ramps via `siegeParams`, but invisibly). Added a pure `siegeWarning(nightCount)` (a numbered + tiered message: "Night N — <first siege → presses harder → intensifies → ferocious → relentless>. Hold until dawn!") and wired it into the nightfall transition — giving the siege a readable progression + a survival score.
 - Verified real from the next-levers backlog (#8). Capture-safe (nightfall transition frozen under capture).
