@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 14, 2026 (🎺 AUDIO — day/night transition stings (siege horn + dawn chime); loop iter 179)
+- **The night siege + dawn now have a HEARD signature.** They had a `SurvivalWarning` banner + a gradual DAY/NIGHT music shift, but no one-shot sting to punctuate the transition — so the siege onset (the beat the iter-177 onboarding nudge promises) began silently. Added two synth voices: `makeSiegeHorn` (an ominous war-horn call — a low brassy note lifting a fifth, detuned twin + octave-below body + slow swell, at nightfall) and `makeDawnChime` (a bright ascending C5-E5-G5 bell arpeggio, at daybreak), both with the deterministic headroom guard (unclipped contract).
+- Wiring: `SoundManager` `playSiegeHorn`/`playDawnChime` verbs + `ui/DayNightAudio.jsx`, a tiny HUD-mounted store-watcher that fires on the `isDay` edge (mirrors HeartbeatAudio/UISounds — a Game-Loop-safe reactive read; no sound on mount; renders null). Capture-safe (clock frozen under capture → never fires; audio null there). New gate `tests/gates/daynight-audio-gates.test.js` locks voices + verbs + watcher + mount.
+- **Verify:** unit 1107→1111 (+4 gate) · build clean · visual 19/19 (null component + edge-only fire → frames byte-identical). Commit `256a86e`. Ear-check owed (horn/chime balance).
+
 ### June 14, 2026 (🎁 REWARD+CONTENT — level-up flourish, onboarding, mob loot coverage; loop iters 176-178)
 - **Premium level-up flourish + XP chip (iter 176):** the LEVEL-UP burst + `+XP` chip were still raw-yellow AI-generic; upgraded both to S1-C bold-flat (gold display-face sticker banner + ink frame + gold radial burst; gold `+XP` chip) so the reward moment matches the UI system. Transient → capture-null (no fixture). Commit `9642e68`.
 - **First-session onboarding nudge (iter 177):** the title taught keys but not the GOAL loop; added a one-time first-spawn toast ("Build by day, survive the night siege — defeat foes to unlock powerful Aspect abilities") via the existing `addNotification` pipe, localStorage-flagged (shows once) + capture-suppressed. Broad-audience legibility (P5). Commit `9893a79`.
