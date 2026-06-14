@@ -13,7 +13,7 @@ import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 // Re-exported here so existing importers of these names from QuestSystem keep working.
 export { LOOT_TABLES, CHEST_LOOT };
 
-const QUEST_LIST = [
+export const QUEST_LIST = [
     // Beginner quests
     { id: 'first_blood', title: 'First Blood', icon: 'sword', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
     { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1 },
@@ -27,6 +27,12 @@ const QUEST_LIST = [
     { id: 'explorer', title: 'Explorer', icon: 'compass', description: 'Travel 500 blocks from spawn', type: 'distance', target: 500, xpReward: 100, tier: 2 },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
     { id: 'architect', title: 'Architect', icon: 'building', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
+    // Survival-progression: surviving the night siege is now a tracked GOAL (ties the onboarding promise +
+    // the siege/dawn audio to the quest loop). Driven by the dawn transition (onNightSurvived), tier >= 2 so
+    // the initial active set (tier-1 first-3) is unchanged -> capture frames stable.
+    { id: 'nightwatch', title: 'Nightwatch', icon: 'star', description: 'Survive 3 nights', type: 'survive_nights', target: 3, xpReward: 120, tier: 2 },
+    // A targeted hunt for the charred siege husk (the night-siege themed hostile).
+    { id: 'ember_hunter', title: 'Ember Hunter', icon: 'skull', description: 'Defeat 10 emberhusks', type: 'kill_type', mobType: 'emberhusk', target: 10, xpReward: 130, tier: 2 },
 
     // Advanced quests
     { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3 },
@@ -34,6 +40,10 @@ const QUEST_LIST = [
     { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
     { id: 'world_builder', title: 'World Builder', icon: 'globe', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
     { id: 'undead_destroyer', title: 'Undead Destroyer', icon: 'skull', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
+    // The endurance capstone of the survival dimension.
+    { id: 'siege_veteran', title: 'Siege Veteran', icon: 'shield', description: 'Survive 7 nights', type: 'survive_nights', target: 7, xpReward: 350, tier: 3 },
+    // An elite-hunt goal for the rare 220-HP moss brute (the heavy-tank kill the loot pass rewards richly).
+    { id: 'brute_breaker', title: 'Brute Breaker', icon: 'trophy', description: 'Defeat 5 moss brutes', type: 'kill_type', mobType: 'moss_brute', target: 5, xpReward: 220, tier: 3 },
 ];
 
 const ACHIEVEMENTS = [
@@ -280,6 +290,12 @@ export const useQuestSystem = () => {
         });
     }, [checkAchievements]);
 
+    // Record a survived night (fired once per dawn from useSurvivalMode, gated on the dawn reward
+    // actually granting -> exactly once per genuinely-survived night). Drives the survive_nights quests.
+    const onNightSurvived = useCallback(() => {
+        updateQuestProgress('survive_nights');
+    }, [updateQuestProgress]);
+
     // Track player level
     const updateLevel = useCallback((level) => {
         setStats(prev => {
@@ -296,8 +312,9 @@ export const useQuestSystem = () => {
         useGameStore.setState({ onBlockBreak: onBlockBreak });
         useGameStore.setState({ onChestOpen: onChestOpen });
         useGameStore.setState({ onPlayerDeath: onDeath });
+        useGameStore.setState({ onNightSurvived: onNightSurvived });
         useGameStore.setState({ addNotification: addNotification });
-    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, addNotification]);
+    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification]);
 
     // S2-B1-M3.5: mob kills now flow through the fan-out bus (was a single store.onMobKill slot a 2nd
     // consumer like ferocity would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.

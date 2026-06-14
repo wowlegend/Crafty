@@ -37,6 +37,10 @@ export const useSurvivalMode = (isDay) => {
             // re-fired transition, a hook remount, or a reload mid-run cannot double-grant.
             const survived = useGameStore.getState().nightCount;
             const r = survived > 0 ? useGameStore.getState().grantDawnReward(survived) : null;
+            // Credit the survive_nights quests exactly once per genuinely-survived night: grantDawnReward
+            // returns its descriptor only when it actually granted (null on a re-fired/duplicate dawn), so
+            // gating on `r` inherits that once-per-night guard (no double-count on remount/reload).
+            if (r) useGameStore.getState().onNightSurvived?.();
             setSurvivalWarning(r
                 ? `Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`
                 : 'Dawn breaks! You survived the night!');
