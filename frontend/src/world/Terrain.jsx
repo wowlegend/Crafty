@@ -131,6 +131,10 @@ const compileShader = (shader) => {
         if (isWaterPixel) {
             float wdepth = clamp((${SEA_LEVEL}.0 - vWorldY) / 22.0, 0.0, 1.0);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.015, 0.09, 0.20), wdepth * 0.82);
+            // Ocean S1 surface lift: the depth-tint above only reaches the side/underwater faces (vWorldY
+            // is ~SEA_LEVEL on the top face -> wdepth~0), so the surface read flat. Lift the shallow/surface
+            // water toward a brighter tropical teal (deep water keeps the navy). Static -> capture-stable.
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.04, 0.37, 0.50), (1.0 - wdepth) * 0.55);
         }
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
@@ -155,6 +159,11 @@ const compileShader = (shader) => {
             float pulse = sin(time * 1.5 + vViewPosition.y * 3.0) * 0.5 + 0.5;
             vec3 bioluminescence = vec3(0.0, 0.45, 0.9) * pulse * 0.65 * nightFactor;
             gl_FragColor.rgb += bioluminescence;
+            // Ocean S1 sheen: a view-angle Fresnel lifts the surface toward a bright sky-teal at grazing
+            // angles (light catching the water -> the surface stops reading matte/flat). Day-weighted;
+            // static geometry/camera -> capture-deterministic. normal = view-space shading normal.
+            float fres = pow(1.0 - clamp(abs(normal.z), 0.0, 1.0), 4.0);
+            gl_FragColor.rgb += vec3(0.12, 0.30, 0.36) * fres * 0.6 * timeOfDay;
         }
         `
     );
