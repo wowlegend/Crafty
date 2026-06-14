@@ -4,6 +4,7 @@ import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
+import { isTouchUIMode } from './input/touchDevice';
 import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
@@ -352,15 +353,21 @@ export const useQuestSystem = () => {
 };
 
 export const QuestTracker = React.memo(({ quests, onClaim }) => {
-    const [expanded, setExpanded] = useState(true);
+    // Collapse-by-default on touch: on a phone the expanded log ate ~60% of the width and its
+    // pointer-events body covered the top-left of the move-joystick zone. Desktop stays expanded.
+    // Evaluate the default at RENDER time (not just at mount) so it's correct even when the capture
+    // harness flips showTouch after mount; a user tap then overrides it. null = use the per-mode default.
+    const touch = isTouchUIMode();
+    const [userToggled, setUserToggled] = useState(null);
+    const expanded = userToggled === null ? !touch : userToggled;
 
     return (
-        <div className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: 280 }}>
+        <div className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 220 : 280 }}>
             <Panel variant="raise" className="overflow-hidden p-0">
                 <button
                     type="button"
                     className="w-full flex items-center justify-between px-3 py-2 bg-panel-raise"
-                    onClick={() => setExpanded(!expanded)}
+                    onClick={() => setUserToggled(!expanded)}
                 >
                     <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-accent text-sm">
                         <Icon name="scroll" size={16} className="text-accent" /> Quests
@@ -394,7 +401,7 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                                                 onClick={() => onClaim(quest.id)}
                                                 className="px-2 py-0.5 text-xs"
                                             >
-                                                Press Q
+                                                {touch ? 'Claim' : 'Press Q'}
                                             </Button>
                                         )}
                                     </div>
