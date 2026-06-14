@@ -386,7 +386,12 @@ function generateChunkData(cx, cz) {
       let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5;
       n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.1;
       
-      const baseHeight = 30 + n * 40;
+      // Flatter plains + RARER highland swells (Kevin: world read "very mountainous" — the old
+      // 30+n*40 gave a 40-block hill amplitude everywhere). Base relief is gentle (~40-58); a low-freq
+      // squared+thresholded highland mask adds occasional mountains. Origin stays ~49 so the Hearth
+      // (y56 plinth) + SEA_LEVEL(28)/beach relationships hold; coasts still drop via oceanSurfaceY.
+      const highland = Math.max(0, noise2D(worldX * 0.0018, worldZ * 0.0018) - 0.45);
+      const baseHeight = 40 + n * 18 + highland * highland * 120;
       
       let surfaceY;
       if (continent < OCEAN_CONTINENT_THRESHOLD) {
