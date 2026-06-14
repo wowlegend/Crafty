@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 13, 2026 (⚙️ SETTINGS — unified Look Sensitivity (mouse + touch); loop iter 154)
+- **A Look Sensitivity setting both platforms use.** Touch M2b, broadened from a touch-only slider to a single setting that tunes look speed for desktop (mouse) AND touch — desktop-verifiable. Store `lookSensitivity` (default 1, clamped 0.3–2.5) feeds the desktop `<PointerLockControls pointerSpeed={lookSensitivity}>` (drei spreads the three-stdlib `pointerSpeed` field) + the touch drag-look `applyLook` sensitivity (was hardcoded `1` at `TouchControls:66`). A "Look Sensitivity" slider in SettingsPanel (Build-Size idiom).
+- + a `look-sensitivity-gate` (all 3 consumers + the store setter wired). **Capture-safe:** default 1 == drei's `pointerSpeed` default → the 18 baselines are byte-identical (PLC is invisible; SettingsPanel + touch onMove aren't captured). **1033→1037 unit · build clean · visual 18/18.** Commit `ccd4bbb`.
+
 ### June 13, 2026 (🎮 GAME-FEEL — slam + landing camera-kicks; loop iter 153)
 - **The per-verb camera-kick set is now COMPLETE** (melee/cast shipped @139; slam/land were deferred with their `KICK_PROFILES` already defined). Every VOIDHAND **slam** now recoils the camera hard-down + forward (look-dir-relative via `localToWorldKick`, mirroring melee/cast); every **landing** from a fall/jump dips it (`KICK_PROFILES.land`, pure vertical) — high-frequency tactile weight on a near-universal action.
 - Hooked at the existing slam trigger (`Components:653`) + the landing edge (the `isGrounded && !prevGrounded` block that already fires the landing thud). **Capture-immune by design:** the kick only applies via `stepKick` in the follow-cam, which is below the Player loop's `isCaptureMode` early-return → the 18 baselines never see it (no re-baseline).

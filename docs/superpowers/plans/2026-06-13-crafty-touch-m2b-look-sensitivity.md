@@ -1,6 +1,6 @@
 # Touch M2b — unified Look-Sensitivity setting (mouse + touch) Implementation Plan
 
-> **✅ SHIPPED (loop iter 154).** `lookSensitivity` store key (clamped 0.3–2.5) → desktop PLC `pointerSpeed={lookSensitivity}` (GameScene) + touch `onMove` `applyLook` sensitivity (TouchControls) + a "Look Sensitivity" slider in SettingsPanel + a `look-sensitivity-gate`. Default 1 → 18/18 byte-identical (capture-safe). 1033→1037 unit, build clean. Commit `<feat>`.
+> **✅ SHIPPED (loop iter 154).** `lookSensitivity` store key (clamped 0.3–2.5) → desktop PLC `pointerSpeed={lookSensitivity}` (GameScene) + touch `onMove` `applyLook` sensitivity (TouchControls) + a "Look Sensitivity" slider in SettingsPanel + a `look-sensitivity-gate`. Default 1 → 18/18 byte-identical (capture-safe). 1033→1037 unit, build clean. Commit `ccd4bbb`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
