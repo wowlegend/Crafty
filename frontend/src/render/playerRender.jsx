@@ -10,6 +10,7 @@ import { SPELL_COLORS } from '../GameSystems';
 import { buildRibbonIndices } from '../combat/ribbonIndices.js';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useGameStore } from '../store/useGameStore';
+import { MagicWand } from './spellVfx';
 
 export const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const bladeColor = useMemo(() => {
