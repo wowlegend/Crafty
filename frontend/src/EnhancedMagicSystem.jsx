@@ -447,12 +447,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   );
 });
 
-// Shared scratch objects for the stretch-billboard math (avoid per-frame allocs).
-const _trailDir = new THREE.Vector3();
-const _trailMid = new THREE.Vector3();
-const _trailQuat = new THREE.Quaternion();
-const _trailUp = new THREE.Vector3(0, 1, 0);
-
 // S1-D POLISH: per-element ENERGY identity. The old projectile was ONE flat emissive
 // sphere reading as a pastel ball. The premium-energy read is a LAYERED body: a hot,
 // near-white INNER CORE (the bright heart bloom blows out) wrapped in a saturated,

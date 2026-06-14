@@ -4,6 +4,16 @@ import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
 import { isCaptureMode } from '../devtest/captureMode';
 
+// Shared scratch objects for the stretch-billboard trail math (avoid per-frame allocs).
+// Defined HERE, in the module that uses them: they were orphaned in EnhancedMagicSystem
+// during the iter-152 spellVfx extraction, throwing `_trailDir is not defined` EVERY frame a
+// spell projectile rendered (live + capture) — a broken-main hidden by the stale-diff hole.
+// This is the dep-completeness pass the charter mandates after a byte-exact extraction.
+const _trailDir = new THREE.Vector3();
+const _trailMid = new THREE.Vector3();
+const _trailQuat = new THREE.Quaternion();
+const _trailUp = new THREE.Vector3(0, 1, 0);
+
 // Spell-VFX render group (S3 de-monolith from EnhancedMagicSystem): the projectile / core / impact-pop /
 // cast-telegraph / wand renderers. EMS imports the 3 it renders directly; SpellProjectileCore is internal
 // (used by EnhancedSpellProjectile); MagicWand is exported (Components -> playerRender uses it).
