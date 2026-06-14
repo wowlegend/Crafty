@@ -58,6 +58,7 @@ const compileShader = (shader) => {
         uniform float timeOfDay;
         flat varying float vBlockType;
         varying float vWorldY;
+        varying float vFoam;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -69,8 +70,9 @@ const compileShader = (shader) => {
         `
         void main() {
             vBlockType = color.r;
+            vFoam = color.g; // ocean S2: shore-foam factor baked per water-top vertex by the mesher
             vUv = uv;
-        `
+`
     );
 
     shader.vertexShader = shader.vertexShader.replace(
@@ -99,6 +101,7 @@ const compileShader = (shader) => {
         uniform float mood;
         flat varying float vBlockType;
         varying float vWorldY;
+        varying float vFoam;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -164,6 +167,9 @@ const compileShader = (shader) => {
             // static geometry/camera -> capture-deterministic. normal = view-space shading normal.
             float fres = pow(1.0 - clamp(abs(normal.z), 0.0, 1.0), 4.0);
             gl_FragColor.rgb += vec3(0.12, 0.30, 0.36) * fres * 0.6 * timeOfDay;
+            // Ocean S2 shore foam (POST-lighting so it pops over the lit teal): water-top cells touching
+            // land carry vFoam=1 (baked per-block by the mesher) -> a bright foam ring at every shore.
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.98, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85);
         }
         `
     );

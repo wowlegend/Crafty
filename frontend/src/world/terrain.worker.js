@@ -1,6 +1,6 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
-import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, shoreFoamFactor } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
 
@@ -637,16 +637,29 @@ function generateMesh(cx, cz, blocks) {
           const blockType = val & 0xFF;
           const dirFlag = val >> 8;
 
-          // Find maximum horizontal width w along axis u
+          // Ocean S2b: water TOP faces must NOT greedy-merge -- each surface cell carries a per-block foam
+          // factor in color.g (a merged quad's uniform color can't vary per-column). Foam = a water-top
+          // cell touching land. For d===1 the cell is (cv, q, cu); the 4 horizontal neighbors are at y=q;
+          // getBlock returns 0 across chunk edges (so a cross-chunk shoreline seam may miss foam -- minor).
+          const isWaterTopFace = (d === 1 && dirFlag === 1 && blockType === 9);
+          let foamG = 0;
+          if (isWaterTopFace) {
+            foamG = shoreFoamFactor(getBlock(cv, q, cu), getBlock(cv, q + 1, cu), [
+              getBlock(cv - 1, q, cu), getBlock(cv + 1, q, cu),
+              getBlock(cv, q, cu - 1), getBlock(cv, q, cu + 1),
+            ]);
+          }
+
+          // Find maximum horizontal width w along axis u (water-top faces stay 1x1 -> no merge)
           let w = 1;
-          while (cu + w < sizeU && mask[(cu + w) + cv * sizeU] === val) {
+          while (!isWaterTopFace && cu + w < sizeU && mask[(cu + w) + cv * sizeU] === val) {
             w++;
           }
 
           // Find maximum vertical height h along axis v
           let h = 1;
           let hPossible = true;
-          while (cv + h < sizeV) {
+          while (!isWaterTopFace && cv + h < sizeV) {
             for (let k = 0; k < w; k++) {
               if (mask[(cu + k) + (cv + h) * sizeU] !== val) {
                 hPossible = false;
@@ -736,12 +749,13 @@ function generateMesh(cx, cz, blocks) {
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-          // Pack blockType in color.r for standard material vertexColor reading
+          // Pack blockType in color.r for standard material vertexColor reading; color.g = shore-foam
+          // factor on water-top faces (0 elsewhere) for the ocean S2 foam band (read in Terrain.jsx).
           colors.push(
-            blockType, 0, 0,
-            blockType, 0, 0,
-            blockType, 0, 0,
-            blockType, 0, 0
+            blockType, foamG, 0,
+            blockType, foamG, 0,
+            blockType, foamG, 0,
+            blockType, foamG, 0
           );
 
           // Tiled repeats UV coordinates mapping matching CCW corners
