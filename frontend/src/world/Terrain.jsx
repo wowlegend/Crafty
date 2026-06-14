@@ -19,6 +19,7 @@ import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { SEA_LEVEL } from './oceanProfile.js';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { surfaceBlockAt } from './climate.js';
+import { BLOCK_TYPES } from './Blocks';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -797,6 +798,11 @@ export const MinecraftWorld = React.memo(() => {
             // S2-B4-M2: placing banks MORE than digging (the build-verb economy)
             if (store.isDay) store.accrueResonance(PLACE_GAIN);
             playBlockPlace(placePos, useGameStore.getState().selectedBlock);
+            // next-levers #1b: a gentle PLACE PUFF — colored dust at the placed block (break shatters into
+            // falling debris via BlockParticleSystem; place poofs). GPU sparks are store-reachable; a low
+            // count keeps the iPad/mobile fill-rate envelope. Capture-safe: place() runs only on real input.
+            const puffColor = (BLOCK_TYPES[type] && BLOCK_TYPES[type].color) || '#cccccc';
+            store.triggerGPUSparks?.(placePos, puffColor, 6, 'physical');
 
             // Update worldBlocks in Zustand Map
             const newBlocks = new Map(store.worldBlocks);
