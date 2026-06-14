@@ -46,6 +46,24 @@ export const QUEST_LIST = [
     { id: 'brute_breaker', title: 'Brute Breaker', icon: 'trophy', description: 'Defeat 5 moss brutes', type: 'kill_type', mobType: 'moss_brute', target: 5, xpReward: 220, tier: 3 },
 ];
 
+// Endless end-game BOUNTY: once the authored QUEST_LIST is exhausted, claimQuest falls back to these so the
+// goal feed never dries up. Target + reward scale gently with how many bounties you've already done. Pure +
+// a unique `bounty_<seq>` id so it never collides with a claimed/active quest. type 'kill' = any mob counts.
+export function makeRepeatableQuest(seq) {
+    const n = Math.max(0, Math.floor(Number(seq) || 0));
+    return {
+        id: `bounty_${n}`,
+        title: `Bounty ${n + 1}`,
+        icon: 'trophy',
+        description: `Defeat ${15 + n * 5} mobs`,
+        type: 'kill',
+        target: 15 + n * 5,
+        xpReward: 150 + n * 50,
+        tier: 3,
+        repeatable: true,
+    };
+}
+
 const ACHIEVEMENTS = [
     { id: 'first_step', title: 'First Steps', description: 'Enter the world', icon: 'footprints', auto: true },
     { id: 'first_kill', title: 'Warrior', description: 'Defeat your first mob', icon: 'sword', stat: 'kills', target: 1 },
@@ -190,8 +208,13 @@ export const useQuestSystem = () => {
             const claimedIds = new Set([...completedQuestIds, questId]);
             setCompletedQuestIds(claimedIds);
 
-            // Find next uncompleted quest
-            const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id));
+            // Find next uncompleted authored quest; once the authored list is exhausted, fall back to an
+            // endless scaling BOUNTY so the goal feed never dries up. The bounty seq = how many bounties
+            // already exist (claimed + active) -> a unique `bounty_<seq>` id that can't collide.
+            const bountyCount = [...claimedIds].filter(id => String(id).startsWith('bounty_')).length
+                + active.filter(a => String(a.id).startsWith('bounty_')).length;
+            const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
+                || makeRepeatableQuest(bountyCount);
             if (nextQuest && active.length < 3) {
                 active.push({ ...nextQuest, progress: 0, completed: false, claimed: false });
             }
