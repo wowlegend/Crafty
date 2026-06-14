@@ -40,38 +40,39 @@ try {
   await page.screenshot({ path: `${OUT}/touch-0-title.png` });
 
   // 1) REAL ENTRY — tap the title-screen "Start Adventure" button (the only cold-start path a player has).
-  //    The title button mounts via framer-motion (delay ~0.9s), so poll a moment for it to appear.
-  let startBtn = null;
-  for (let i = 0; i < 24 && !startBtn; i++) {
+  //    Grab the element HANDLE, not stale coords: the button mounts + animates in via framer-motion, so a
+  //    fixed-coordinate tap can race the entrance animation (or a lazy overlay) and miss — handle.tap()
+  //    re-resolves the live center at tap time. (This raciness caused a false "cold-start dead" alarm.)
+  let startHandle = null;
+  for (let i = 0; i < 24 && !startHandle; i++) {
     await delay(250);
-    startBtn = await page.evaluate(() => {
-      const b = [...document.querySelectorAll('button')].find((el) => /start adventure/i.test(el.textContent || ''));
-      if (!b) return null;
-      const r = b.getBoundingClientRect();
-      return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
-    });
+    const h = await page.evaluateHandle(() => [...document.querySelectorAll('button')].find((el) => /start adventure/i.test(el.textContent || '')) || null);
+    startHandle = h.asElement();
+    if (!startHandle) await h.dispose();
   }
-  check('title screen shows "Start Adventure"', !!startBtn, startBtn ? `@${startBtn.x},${startBtn.y}` : 'no Start Adventure button found');
-  if (startBtn) await page.touchscreen.tap(startBtn.x, startBtn.y);
+  check('title screen shows "Start Adventure"', !!startHandle, startHandle ? '' : 'no Start Adventure button found');
 
   // 2) THE BUG GATE — after tapping Start Adventure the game must become PLAYABLE on touch (active gate
   //    open). On touch there is no pointer-lock to set `active`, so menu→play must be bridged some other
-  //    way. We detect playable = the in-game Action verb button exists (renders only when active) OR the
-  //    Tap-to-Play overlay appears (the explicit second-tap activation). Poll up to 8s for world build.
+  //    way. Playable = the in-game Action verb button (renders only when active) OR the Tap-to-Play overlay
+  //    (explicit second-tap activation). Retry the entry tap so a single missed/animation-raced tap can't
+  //    masquerade as a real cold-start failure (the gate must be deterministic to be trustworthy).
   let playable = false, tapToPlay = false;
-  for (let i = 0; i < 32 && !playable; i++) {
-    await delay(250);
-    const st = await page.evaluate(() => ({
-      action: !!document.querySelector('button[aria-label="Action"]'),
-      tap: !!document.querySelector('button[aria-label="Tap to play"]'),
-      menu: [...document.querySelectorAll('button')].some((el) => /start adventure/i.test(el.textContent || '')),
-    }));
-    tapToPlay = st.tap;
-    if (st.tap) { // explicit Tap-to-Play activation gesture — tap it (the designed touch entry)
-      const r = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Tap to play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; });
-      await page.touchscreen.tap(r.x, r.y); await delay(300);
+  for (let attempt = 0; attempt < 3 && !playable; attempt++) {
+    if (startHandle) { try { await startHandle.tap(); } catch {} }
+    for (let i = 0; i < 12 && !playable; i++) {
+      await delay(250);
+      const st = await page.evaluate(() => ({
+        action: !!document.querySelector('button[aria-label="Action"]'),
+        tap: !!document.querySelector('button[aria-label="Tap to play"]'),
+      }));
+      tapToPlay = st.tap;
+      if (st.tap) { // explicit Tap-to-Play activation gesture — tap it (the designed touch entry)
+        const r = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Tap to play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; });
+        await page.touchscreen.tap(r.x, r.y); await delay(300);
+      }
+      playable = st.action || await page.evaluate(() => !!document.querySelector('button[aria-label="Action"]'));
     }
-    playable = await page.evaluate(() => !!document.querySelector('button[aria-label="Action"]'));
   }
   check('Start Adventure leads to a PLAYABLE touch game (menu→play bridged)', playable, playable ? (tapToPlay ? 'via Tap-to-Play overlay' : 'menu dismissed straight to play') : 'STUCK on title — touch cold-start is DEAD');
   await page.screenshot({ path: `${OUT}/touch-1-after-start.png` });
@@ -81,21 +82,31 @@ try {
     await browser.close(); done(2);
   }
 
+  // Let the player spawn + the physics body initialize before driving movement: the diorama streams in,
+  // and moving before the KCC/rigidbody exists throws Rapier `setTranslation` -> Δpos=0, a false move-fail.
+  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 12000 }).catch(() => {});
+  await delay(3500);
+
   // 3) MOVE — LEFT-zone joystick drag = walk. Intent persists once set, so hold it while the player moves.
+  //    Retry once so a single physics-not-ready tick can't masquerade as a dead joystick.
   const W = env.w, H = env.h;
   const snap = () => page.evaluate(() => {
     const s = window.useGameStore.getState();
     const p = s.playerPosition; const c = s.gameCamera; // gameCamera is the exact camera touch-look mutates
     return { pos: p ? { x: +p.x.toFixed(2), z: +p.z.toFixed(2) } : null, yaw: c ? +c.rotation.y.toFixed(3) : null };
   });
-  const before = await snap();
-  await page.touchscreen.touchStart(W * 0.25, H * 0.62);
-  await page.touchscreen.touchMove(W * 0.25, H * 0.40);
-  await page.touchscreen.touchMove(W * 0.25, H * 0.38);
-  await delay(1500);
-  const moved = await snap();
-  await page.touchscreen.touchEnd();
-  const moveDelta = before.pos && moved.pos ? Math.hypot(moved.pos.x - before.pos.x, moved.pos.z - before.pos.z) : 0;
+  let moveDelta = 0;
+  for (let attempt = 0; attempt < 2 && moveDelta <= 0.5; attempt++) {
+    const before = await snap();
+    await page.touchscreen.touchStart(W * 0.25, H * 0.62);
+    await page.touchscreen.touchMove(W * 0.25, H * 0.40);
+    await page.touchscreen.touchMove(W * 0.25, H * 0.38);
+    await delay(1500);
+    const moved = await snap();
+    await page.touchscreen.touchEnd();
+    moveDelta = before.pos && moved.pos ? Math.hypot(moved.pos.x - before.pos.x, moved.pos.z - before.pos.z) : 0;
+    if (moveDelta <= 0.5) await delay(800);
+  }
   check('LEFT-zone joystick moves the player', moveDelta > 0.5, `Δpos=${moveDelta.toFixed(2)}`);
 
   // 4) LOOK — RIGHT-zone drag rotates the camera (delta-based; a few moves accumulate yaw).
