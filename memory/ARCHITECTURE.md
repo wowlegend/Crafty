@@ -23,6 +23,8 @@
 > channel; `ui/panelState.js`). The blueprint BELOW remains the pre-initiative self-description —
 > still awaiting the full reality-rewrite (deferred, tracked).
 
+> **CURRENT-SESSION ADDENDUM (2026-06-15, HEAD eb924db — all SHIPPED to main):** five self-validatable fronts landed since the Aspect-Era block. (1) P0 CAMERA: desktop mouse-look was DEAD (drei PointerLockControls, element-fragile + untestable in the pinned-camera harness) -> replaced with own `src/input/pointerLook.js` (applyMouseLook/attachPointerLook) + the FIRST live-input gate `npm run test:look` (`scripts/visual/look-e2e.mjs`). (2) MUSIC: ElevenLabs day/night/boss tracks (`frontend/public/music/*.mp3`) + smooth crossfade via `src/ui/MusicPlayer.jsx`; procedural pad/arp MUTED (`SoundManager` `PROC_MUSIC_GAIN=0`), biome wind-bed kept -> the '4-Voice Procedural FM Synth Pad' section below is now muted-by-default. (3) TERRAIN flattened (`terrain.worker.js` baseHeight gentle plains + rare highland; 'Terrain height range 12-22' below is stale) + SUN mesh shrunk (radius 24->13). (4) TOUCH FRONT COMPLETE (iPad/iPhone), probe-exhausted -> the 'future touch layer' notes above are now BUILT: src/input/ adds touchDevice.js/touchHandlers.js/touchMath.js/verbRouter.js/useActiveInput.js; iOS cold-start bridged via enterPlay() in src/MenuSystem.jsx; QuestTracker touch-collapse (QuestSystem.jsx), spell-label whitespace-nowrap (HUD.jsx), compact SimpleExperienceBarTouch (SimpleExperienceSystem.jsx); deterministic scripts/visual/touch-probe.mjs; touch minimap JUDGED+SKIPPED. (5) OCEAN MILESTONE COMPLETE (plan docs/superpowers/plans/2026-06-14-crafty-ocean-coast.md, 4 slices): brighter tropical-teal surface + sun-Fresnel sheen (Terrain.jsx); shore FOAM (un-merged the greedy mesher's water-top faces in terrain.worker.js -> per-cell shoreFoamFactor baked into color.g, read as vFoam, post-lighting white mix); depth-graded TOP surface (seabedDepthT -> color.b -> vDepthB shallow-teal->deep-navy); + ocean-coast capture state. New scripts/visual/ocean-probe.mjs + pov-probe.mjs. GATES NOW: 1182 unit tests, 20-state visual gate (added 'ocean-coast'), build clean. REMAINING = KEVIN-GATED only (redeploy crafty-sand.vercel.app, real-device iOS touch feel, music ear-check, ocean taste sign-off).
+
 ## Project Overview
 
 A 3D browser game built with React and Three.js, featuring Minecraft-style gameplay with block building, magic system, NPCs, and procedural terrain generation.
@@ -70,7 +72,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 
 **Character render language (M2b):** mobs = 2-band toon (body/head/legs/nose) + tier-gated fresnel rim + inverted-hull `drei <Outlines>` on ALL body parts; the per-frame hit-flash traversal is a positive material-type allow-list (Standard/Toon) so it flashes the toon body but skips the outline `ShaderMaterial`. Boss = outline on torso+neck ONLY, emissive attack-telegraph preserved (no toon), capture freeze-gate + DEV-only `forceBossSpawn`. Chests + pets outlined. **drei `<Outlines>` `thickness` is screen-PIXELS at the default `screenspace=false`** (not world units). Two deterministic capture states gate the look: `character-closeup` + `boss-closeup`. Static gates in `tests/gates/character-render-gates.test.js`.
 
-**Visual-regression gate:** `npm run test:visual` (puppeteer + pixelmatch, 6% threshold, 6 states) — replaces the blind `test_swarm.js`; re-baseline per intended look change under forced `high` tier, human-reviewed.
+**Visual-regression gate:** `npm run test:visual` (puppeteer + pixelmatch, 6% threshold, 20 states (2026-06-15, incl. ocean-coast/mobile/mob-bestiary)) — replaces the blind `test_swarm.js`; re-baseline per intended look change under forced `high` tier, human-reviewed.
 
 ## Architecture
 
@@ -111,7 +113,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | Key | Action |
 | --- | ------ |
 | WASD | Move |
-| Mouse | Look around (click to enable) |
+| Mouse | Look around (click to enable; own `src/input/pointerLook.js`, not drei PointerLockControls as of 2026-06-15) |
 | F | Cast spell / Melee attack |
 | 1-4 | Select spell type |
 | E | Inventory |
@@ -181,7 +183,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | --------- | ----- |
 | CHUNK_SIZE | 16 blocks |
 | RENDER_DISTANCE | 4 chunks |
-| Terrain height range | 12-22 |
+| Terrain height range | 12-22 (STALE — flattened 2026-06-15: `terrain.worker.js` baseHeight gentle plains + rare highland) |
 | Player height offset | 1.2 units |
 | Initial spawn | (0, 40, 0) |
 | Physics gravity | -30 m/s² |
@@ -292,7 +294,7 @@ Dynamic atmospheric immersion in `GameScene.jsx`:
 - **Responsive FogEXP2**: A dedicated `<EnvironmentalFog />` component smoothly lerps scene fog color (`#e0f7fa` $\leftrightarrow$ `#0a0a23`) and density (`0.007` $\leftrightarrow$ `0.025`) as the sun rises/sets.
 - **Seamless Skybox Blending**: Copies the active fog color directly to `scene.background` on every frame, achieving perfect camera horizon blending.
 
-### 4. 4-Voice Procedural FM Synth Pad
+### 4. 4-Voice Procedural FM Synth Pad (MUTED as of 2026-06-15 — `PROC_MUSIC_GAIN=0`; superseded by ElevenLabs tracks + crossfade in `src/ui/MusicPlayer.jsx`; biome wind-bed retained)
 A premium, continuous soundscape synthesizer is built in `SoundManager.jsx`:
 - **Hybrid Timber**: Employs sawtooth and triangle oscillators with warm low-pass filters.
 - **Filter Sweeps**: Filter cutoff is swept continuously by a slow 0.08 Hz LFO.
@@ -305,7 +307,7 @@ To render high-fidelity, high-performance foliage, `OptimizedGrassSystem.jsx` ut
 - **Global Uniform Binding**: The player's 3D coordinates from the Zustand store are bound as a global uniform `playerPosition` into the shared grass material.
 - **Quadratic Bending Shaders**: In the `onBeforeCompile` vertex shader, the distance from each instance to the player is calculated. Vertices are pushed away dynamically using a quadratic falloff equation, allowing grass to bend naturally as the player walks through it.
 
-### 2. Bioluminescent Liquid Wave Shaders
+### 2. Bioluminescent Liquid Wave Shaders (OLD water shader only — 2026-06-15 ocean milestone added shore FOAM via `color.g`/`vFoam` + depth-grade via `color.b`/`vDepthB`; see `src/world/oceanProfile.js`)
 Procedural fluid surface dynamics are compiled inside `Terrain.jsx`:
 - **Shared Material Architecture**: All terrain chunks share a single custom standard material (`terrainMaterial`), reducing draw calls and context pressure.
 - **Wave Displacement**: An `onBeforeCompile` hook filters water vertices (`color.b > 0.6 && color.r < 0.15`) in the vertex shader, displacing height dynamically using high-frequency procedural wave equations.

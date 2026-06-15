@@ -32,10 +32,10 @@ Consistent signature across Roystan toon-water, gameidea, 80.lv "Nimue", enginee
 
 ### Slice 1 — Surface lift (shader-only, lowest risk): brighter tropical base + sun specular glint
 **Files:** Modify `frontend/src/world/Terrain.jsx` (the `compileShader` fragment, water-gated branch).
-- [ ] Reference-lock the target shallow color (a brighter teal-cyan than `#3F76E4`, e.g. ~`#2E8FB8`/tunable) — pick on the probe.
-- [ ] In the water-gated fragment branch, add a sun specular term (normal·view Fresnel-ish rim or a sun-dir glint) so the surface catches light instead of reading matte. Keep it gentle (stylized, not mirror).
-- [ ] Capture-determinism: the glint must be deterministic in capture (use the frozen sun dir / static view; no time-driven sparkle unless `!isCaptureMode`-gated).
-- [ ] Verify: `npm run build`; `node scripts/visual/ocean-probe.mjs` → eyeball surface-skim + topdown (livelier, not flat); `npm run visual:capture` + `npx vitest run --config vitest.visual.config.js` → re-baseline `ocean-depth` (+ any water-bearing frame) deliberately, `git diff HEAD` to confirm which frames changed + HD-eyeball each.
+- [x] Reference-lock the target shallow color (a brighter teal-cyan than `#3F76E4`, e.g. ~`#2E8FB8`/tunable) — pick on the probe.
+- [x] In the water-gated fragment branch, add a sun specular term (normal·view Fresnel-ish rim or a sun-dir glint) so the surface catches light instead of reading matte. Keep it gentle (stylized, not mirror).
+- [x] Capture-determinism: the glint must be deterministic in capture (use the frozen sun dir / static view; no time-driven sparkle unless `!isCaptureMode`-gated).
+- [x] **Verified (commit 3380c1f):** Verify: `npm run build`; `node scripts/visual/ocean-probe.mjs` → eyeball surface-skim + topdown (livelier, not flat); `npm run visual:capture` + `npx vitest run --config vitest.visual.config.js` → re-baseline `ocean-depth` (+ any water-bearing frame) deliberately, `git diff HEAD` to confirm which frames changed + HD-eyeball each.
 
 ### Slice 2 — Shore foam (the signature)
 **DESIGN FINDING (2026-06-14, verified in `generateMesh`):** the mesher is GREEDY — all water-top faces share `val = 9|(1<<8)` and merge into ONE quad at SEA_LEVEL, and a merged quad's 4 corners all get the same vertex color. So the original "per-vertex `shoreT` attribute on a merged quad" can't vary per-column (it'd be uniform). **CHOSEN APPROACH = Hyp A — unmerge water-top faces + bake per-block data into the spare color channels** (`color.r` already = blockType; `color.g`/`color.b` are 0/unused). This ALSO enables Slice 3's per-column depth-grade with the same one-time mesher change. (Alternatives rejected: Hyp B sparse foam-geometry stream = perf-safe but a whole new mesh pipeline for foam-only; Hyp E wet-sand block = changes terrain gen/block-types.)
@@ -56,7 +56,7 @@ Consistent signature across Roystan toon-water, gameidea, 80.lv "Nimue", enginee
 ---
 
 ## Verify / done bar (every slice)
-- `npm run build` clean · `npx vitest run` count holds-or-grows (never weaken a gate) · visual 19/19 OR a deliberate, eyeballed re-baseline of ONLY the water-bearing frames (confirmed via `git diff HEAD`).
+- `npm run build` clean · `npx vitest run` count holds-or-grows (never weaken a gate; now 1182) · visual 20/20 (the S4 ocean-coast state raised the gate 19->20) OR a deliberate, eyeballed re-baseline of ONLY the water-bearing frames (confirmed via `git diff HEAD`).
 - `node scripts/visual/ocean-probe.mjs` re-run + I LOOK at the result myself.
 - Commit per slice (no AI footer, explicit adds, leave `.state/`), push, update CHANGELOG + ACTIVE_PLAN.
 - Kevin: taste sign-off async (KEVIN-REVIEW #37 already invited a specific-look preference). swiftshader ≈ GPU; the final color/foam taste is a Kevin confirm.

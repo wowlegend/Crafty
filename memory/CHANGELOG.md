@@ -52,6 +52,20 @@
 - **Proven, not asserted:** a new real-browser probe `scripts/visual/touch-probe.mjs` emulates an iPhone 13 **and deletes the Pointer-Lock API** so it can't pass via a desktop-only path, then plays the real game the way a player does — tap Start Adventure → assert the world becomes playable → drive the left (move) and right (look) zones with real touch events. Post-fix: Start Adventure → playable, joystick Δpos=20, drag-look Δyaw=0.224, verb taps OK — all 6 checks green (3 were FAIL before). Static regression gate `tests/gates/touch-entry-gate.test.js` locks the bridge.
 - **Verify:** unit 1164→1168 (+4) · build clean · visual 19/19 (handler-prop change only, no rendered pixels) · desktop mouse-look not regressed (`npm run test:look` yawΔ0.92). **Kevin-owed:** real-device iOS-Safari finger-feel (swiftshader ≈ GPU, not a real finger); the QUESTS panel eats ~40% of a phone's width (touch-polish backlog).
 
+### June 14, 2026 (📷 P0 CAMERA FIX — desktop mouse-look was DEAD)
+- **Desktop mouse-look was completely dead.** The drei `<PointerLockControls>` proved element-fragile and was untestable in the pinned-camera capture harness (the same blind spot that hid the dead touch cold-start). Replaced it with our own `src/input/pointerLook.js` (`applyMouseLook` / `attachPointerLook`) — a tested, element-independent handler.
+- **First LIVE-input gate.** Added `npm run test:look` (`scripts/visual/look-e2e.mjs`), a real-browser gate that drives actual mouse movement and asserts yaw changes — the project's first live-input (not pixel) gate. Commit `85ff7b5`. **Kevin-owed:** redeploy crafty-sand.vercel.app.
+
+### June 14, 2026 (🎵 MUSIC OVERHAUL — day/night/boss tracks + smooth crossfade)
+- **Replaced procedural music with composed ElevenLabs tracks.** Day / night / boss `.mp3` tracks (`frontend/public/music/*.mp3`) with smooth crossfade via `src/ui/MusicPlayer.jsx`; the procedural pad/arp is muted (`SoundManager` `PROC_MUSIC_GAIN=0`); the biome wind-bed ambience is kept. Commits `25fc114` (day/night) + `bdc0ba5` (boss track + crossfade complete). **Kevin-owed:** music ear-check (KEVIN-REVIEW).
+
+### June 14, 2026 (⛰️ TERRAIN + SUN — flatten the relief, shrink the sun orb)
+- **Flattened the relief.** Per Kevin ("very mountainous"), `terrain.worker.js` `baseHeight` now generates gentle plains with rare highland mountains instead of pervasive relief. Commit `de55046`.
+- **Shrunk the oversized sun orb** (radius 24 → 13). POV-validated via the new player-POV probe `scripts/visual/pov-probe.mjs` (inspects the real game from the player's eye). Commits `0bfa03f` (sun) / `c9f4e49` (POV probe tool).
+
+### June 14, 2026 (🧪 CONTENT — Health Potion alchemy recipe; loop iter 190)
+- **Craft healing on demand from loot.** Added a Health Potion alchemy recipe so the player can brew healing rather than only finding it. Commit `f76790a`.
+
 ### June 14, 2026 (🍖 CONTENT — cooking recipes + recipe-set extraction; loop iter 189)
 - **The food loop is complete.** Mobs drop Raw Porkchop / Raw Beef and the inventory consumes Cooked Porkchop / Cooked Beef as better food, but no recipe bridged raw→cooked (you could only eat cooked food found in chests). Added "cook over coal" recipes (Raw + coal → Cooked) so kill → raw drop → cook → eat closes. Extracted the recipe set to a pure `src/data/recipes.js` module (the loot-tables precedent — testable + a small CraftingTable de-monolith; existing rows byte-exact) and added a recipe gate (every recipe valid + cooking present + no duplicate patterns — a free integrity check on the whole set).
 - Capture-safe (crafting panel is a C-toggle modal). Validatable content unit; the milestone levers stay Kevin-playtest-gated.
