@@ -2,6 +2,7 @@ import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
+import { blightHeartSite } from './world/blightHeart.js';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
@@ -332,6 +333,24 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
               </div>
             `);
           }
+        }
+      }
+
+      // 2d. Render the BLIGHT HEART marker (S9) — the FIXED far-frontier climax lair, the campaign's
+      // north star you see from early on (foreshadow). Obsidian-violet (#A24BFF) to read as ominous +
+      // distinct from HOME(amber)/BOSS(rose)/SHRINE(cyan). Capture-suppressed like the others. Fixed
+      // coord -> no throttle needed (one bearingToMarker call). Inline color avoids a Tailwind JIT purge.
+      if (!isCaptureMode()) {
+        const bh = blightHeartSite();
+        const bm = bearingToMarker(bh.x, bh.z, playerPos.x, playerPos.z, heading, fov);
+        const bDist = Math.round(bm.dist);
+        if (bm.inView && bDist > 12) {
+          markersHtml.push(`
+            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${bm.pct}%">
+              <span class="text-[9px] font-bold" style="color:#A24BFF;text-shadow:0 0 5px rgba(162,75,255,0.7)">BLIGHT HEART (${bDist}m)</span>
+              <div class="w-1.5 h-1.5 mt-0.5 rotate-45" style="background:#A24BFF"></div>
+            </div>
+          `);
         }
       }
 
