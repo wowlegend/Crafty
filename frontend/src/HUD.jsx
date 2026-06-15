@@ -1,6 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker } from './game/compass';
+import { nearestLandmark } from './world/shrines.js';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
@@ -203,6 +204,9 @@ const Minimap = React.memo(() => {
 
 const Compass = React.memo(({ treasureChests, bossSystem }) => {
   const containerRef = useRef(null);
+  // S8b: throttle the nearest-shrine scan (nearestLandmark scans a chunk grid). The compass rAF runs
+  // every frame; the player can't outrun a shrine in <1s, so recompute at most ~once a second.
+  const shrineCache = useRef({ t: 0, shrine: null });
 
   useEffect(() => {
     let animFrame;
@@ -303,6 +307,31 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
               <div class="w-1.5 h-1.5 bg-amber-400 rotate-45 mt-0.5"></div>
             </div>
           `);
+        }
+      }
+
+      // 2c. Render nearest-SHRINE marker — the Ember-Frontier "go there" destination (the deterministic
+      // landmarks are now navigable shrines). Cyan to match the in-world beacon (#46E0FF). Capture-
+      // suppressed like HOME/boss/chest so explore frames stay byte-identical. The chunk-grid scan is
+      // throttled to ~1s (shrineCache) so the every-frame compass stays cheap. Inline color avoids a
+      // Tailwind JIT purge of a dynamic class.
+      if (!isCaptureMode()) {
+        const now = performance.now();
+        if (now - shrineCache.current.t > 750) {
+          shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };
+        }
+        const s = shrineCache.current.shrine;
+        if (s) {
+          const sb = bearingToMarker(s.worldX, s.worldZ, playerPos.x, playerPos.z, heading, fov);
+          const sDist = Math.round(sb.dist);
+          if (sb.inView && sDist > 8) { // hide while standing at the shrine
+            markersHtml.push(`
+              <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${sb.pct}%">
+                <span class="text-[9px] font-bold" style="color:#46E0FF;text-shadow:0 0 4px rgba(70,224,255,0.6)">SHRINE (${sDist}m)</span>
+                <div class="w-1.5 h-1.5 mt-0.5" style="background:#46E0FF;clip-path:polygon(50% 0,100% 100%,0 100%)"></div>
+              </div>
+            `);
+          }
         }
       }
 
