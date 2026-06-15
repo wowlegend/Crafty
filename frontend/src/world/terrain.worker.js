@@ -3,6 +3,7 @@ import { stampHomeAnchor } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, shoreFoamFactor, seabedDepthT } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
+import { computeHeight } from './heightAt.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -379,19 +380,9 @@ function generateChunkData(cx, cz) {
       const worldX = startX + x;
       const worldZ = startZ + z;
       
-      const continent = noise2D(worldX * 0.002, worldZ * 0.002);
-      const moisture = noise2D(worldX * 0.005, worldZ * 0.005) * 0.5 + 0.5;
-      const temperature = noise2D((worldX + 500) * 0.005, (worldZ + 500) * 0.005) * 0.5 + 0.5;
-      
-      let n = noise2D(worldX * 0.01, worldZ * 0.01) * 0.5 + 0.5;
-      n += noise2D(worldX * 0.05, worldZ * 0.05) * 0.1;
-      
-      // Flatter plains + RARER highland swells (Kevin: world read "very mountainous" — the old
-      // 30+n*40 gave a 40-block hill amplitude everywhere). Base relief is gentle (~40-58); a low-freq
-      // squared+thresholded highland mask adds occasional mountains. Origin stays ~49 so the Hearth
-      // (y56 plinth) + SEA_LEVEL(28)/beach relationships hold; coasts still drop via oceanSurfaceY.
-      const highland = Math.max(0, noise2D(worldX * 0.0018, worldZ * 0.0018) - 0.45);
-      const baseHeight = 40 + n * 18 + highland * highland * 120;
+      // Surface formula lives in the shared world/heightAt.js (single source — see that file +
+      // the heightat-single-source gate; climate.js imports the SAME computeHeight so they can't drift).
+      const { continent, moisture, temperature, n, baseHeight } = computeHeight(noise2D, worldX, worldZ);
       
       let surfaceY;
       if (continent < OCEAN_CONTINENT_THRESHOLD) {
