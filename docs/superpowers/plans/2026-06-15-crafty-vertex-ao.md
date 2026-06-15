@@ -1,5 +1,7 @@
 # Vertex AO (S1) — Implementation Plan
 
+> **STATUS: COMPLETE 2026-06-15 (steps 1-4).** Shipped: cornerAO kernel+test (`2900248`), mesher bake (`cf89a36`), Terrain.jsx attribute+shader + re-baseline (this commit). AO_MIN=0.55 -> KEVIN taste. See CHANGELOG "WORLD-PURPOSE S1".
+
 > **For agentic workers:** the world-purpose milestone's #1 flat-read fix. STRUCTURAL lever (the 4 gentle
 > global postproc/lighting knobs — aerial/fill/bloom/exposure — were all marginal-or-locked in the bold-flat
 > NEUTRAL pipeline; AO adds geometry-grounded occlusion that WILL visibly read). Built TDD red-first; the

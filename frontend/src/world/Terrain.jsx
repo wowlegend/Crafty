@@ -61,6 +61,8 @@ const compileShader = (shader) => {
         varying float vWorldY;
         varying float vFoam;
         varying float vDepthB;
+        attribute float aAO; // S1 vertex AO factor 0..3 (mesher cornerAO), forwarded to vAO
+        varying float vAO;
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -74,6 +76,7 @@ const compileShader = (shader) => {
             vBlockType = color.r;
             vFoam = color.g; // ocean S2: shore-foam factor baked per water-top vertex by the mesher
             vDepthB = color.b; // ocean S3: per-column seabed-depth factor (top-surface grade)
+            vAO = aAO; // S1 vertex AO 0..3 -> fragment diffuse multiplier
             vUv = uv;
 `
     );
@@ -107,6 +110,7 @@ const compileShader = (shader) => {
         varying float vWorldY;
         varying float vFoam;
         varying float vDepthB;
+        varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -156,6 +160,12 @@ const compileShader = (shader) => {
         float desat = danger <= 1.0 ? danger * 0.18 : 0.18 + (danger - 1.0) * 0.54;
         vec3 coolGrey = vec3(moodLum * 0.92, moodLum * 0.96, moodLum * 1.06);
         diffuseColor.rgb = mix(diffuseColor.rgb, coolGrey, clamp(desat, 0.0, 0.75));
+
+        // S1 vertex ambient occlusion: per-corner AO (aAO 0..3 from the mesher cornerAO) darkens concave
+        // corners / crevices / under-overhangs so the voxel terrain reads with FORM (soft contact-shadow)
+        // instead of flat-shaded-per-face. Applied to the albedo BEFORE lighting. Water faces carry AO 3
+        // (vAO/3=1 -> no-op). Static geometry attribute -> capture-deterministic.
+        diffuseColor.rgb *= mix(0.55, 1.0, clamp(vAO / 3.0, 0.0, 1.0));
         `
     );
 
@@ -243,7 +253,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             }
             // Bind the standard colors array directly to the 'color' attribute
             opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
-            
+            opaqueGeom.setAttribute('aAO', new THREE.BufferAttribute(meshData.ao, 1)); // S1 vertex AO
+
             opaqueGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(opaqueIndicesArr), 1));
             opaqueGeom.computeBoundingSphere();
         }
@@ -258,7 +269,8 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             }
             // Bind the standard colors array directly to the 'color' attribute
             waterGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
-            
+            waterGeom.setAttribute('aAO', new THREE.BufferAttribute(meshData.ao, 1)); // S1 vertex AO
+
             waterGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(waterIndicesArr), 1));
             waterGeom.computeBoundingSphere();
         }
