@@ -20,7 +20,15 @@
 - **Chinese (zh-CN) = a locale TOGGLE with ENGLISH as the default** (the shipped i18n design: en default +
   lazy-loaded zh-CN). Full game-content translation is owed (#73) but the game is EN-first; design copy in
   English, then route through t() so the toggle stays complete.
-- **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` →
+- **Game-design direction (Kevin-CONFIRMED 2026-06-15, decision-of-record — do NOT relitigate):** "The Ember
+  Frontier, gated toward a Blight Heart climax" — outward *see-it-go-to-it* exploration on the already-built
+  landmark + compass rails, the Shadow Dragon relocated from its ~25-block ambush to a single fixed, foreshadowed
+  far-edge "Blight Heart" lair = a real WIN-STATE + endless post-climax handoff. North star for the gameplay layer
+  (tier-by-distance, shrines, climax). Source: `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`.
+  REVERSING this is §4-genuinely-Kevin; AFFIRMING a sub-direction within it is loop authority.
+- **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` (incl. the 2026-06-15
+  mega-directive set: `plans/2026-06-15-crafty-world-purpose-sota.md` [S5..S10 ladder + direction], `research/2026-06-15-crafty-codebase-reality-audit.md`
+  [ranked file:line P0-debt backlog of record], `research/2026-06-15-crafty-agentic-e2e-testing.md` [E2E roadmap]) →
   `memory/STATE-REVIEW-*.md` → this charter → `SOTA-INITIATIVE.md` v2 (direction-canonical; its §3 status
   line is LIVING — loop-maintained at every milestone per §1.6 below).
 - The loop has **no terminal state** — SOTA is a direction. It runs until Kevin stops it.
@@ -34,17 +42,31 @@
    file-absence from a relative path.
 2. **STABILIZE:** if the tree is dirty from an interrupted iteration — finish it to green or revert it,
    commit, THEN proceed. Never stack new work on an unverified half-state.
-3. **PICK exactly ONE work unit** by §2 priority. One unit = completable + verifiable + committable in one
-   iteration (a milestone task, a fix bundle slice, a polish pass). Too big → split it; record the split in
-   the plan doc.
+3. **PICK exactly ONE COMMITTABLE unit (multi-front aware)** by §2 priority. The loop may hold MULTIPLE
+   concurrent fronts — a build slice + an in-flight background Workflow + a pending Kevin decision — but commits
+   exactly ONE verifiable unit per iteration. A unit is one of: (a) a CODE SLICE (completable+verifiable+committable
+   this tick), (b) a WORKFLOW LAUNCH (the authored workflow-spec is the deliverable — see step 4), or (c) a
+   WORKFLOW-ARTIFACT INTEGRATION (synthesizing a returned workflow's output into a plan/spec/decision is itself the
+   unit). Background workflows run in parallel + do NOT block the tick; await+integrate is its own later unit.
+   Too big → split it; record the split in the plan doc.
 4. **BUILD with the standing method:** milestone-scale work gets a `superpowers:writing-plans` plan doc in
    `docs/superpowers/plans/` FIRST (CLAUDE.md §Method — no build-from-spec shortcuts); TDD red-first for
    logic; extract-pure modules + thin god-file wiring; AST-safe edits only; Game-Loop-Isolation; NO-RE-MESH;
    capture-determinism. Big/risky deltas: adversarially review via a multi-agent Workflow (explicitly
    authorized) — confirmed findings get fixed before the unit is "done".
+   **Workflow orchestration (ultracode mode):** AUTHORING a background multi-agent Workflow is a first-class
+   substantive activity (not just a within-iteration review step) for research / codebase audit / SOTA-design /
+   concept-judging fan-outs. Spin a BACKGROUND Workflow (not inline work) when the task is breadth-first analysis,
+   needs parallel independent investigation, or would blow one tick's context. A workflow-launch (or artifact-
+   integration) tick is EXEMPT from the §3 test-growth invariant — its deliverable is a committed plan/spec/research
+   doc, not code. **T3-trust caveat:** agent/workflow CLAIMS are UNTRUSTED until verified against LIVE code
+   (grep/Read the cited file:line) — the 2026-06-15 codebase audit itself made false claims later corrected by
+   verify-before-assert (e.g. "breaking already shatters" was wrong — debris was invisible). Persist the artifact
+   (commit the doc) as the tick's PERSIST step.
 5. **VERIFY before declaring (evidence, not belief):** from `frontend/` — `npx vitest run` (count must HOLD
-   OR GROW — see §3 ratchet) · `npm run build` clean · the visual gate (18/18, or a DELIBERATE re-baseline per
-   §4 with rationale + self-eyeball). **⚠️ VISUAL-GATE HAZARD (the iter-159 lesson — a crash hid on main for 5
+   OR GROW — see §3 ratchet; a workflow/doc-only tick may hold the count FLAT, say so) · `npm run build` clean · the
+   N-state visual gate (read N LIVE from ACTIVE_PLAN — 20 as of 2026-06-15; do NOT hardcode it here, counts drift),
+   or a DELIBERATE re-baseline per §4 with rationale + self-eyeball. **⚠️ VISUAL-GATE HAZARD (the iter-159 lesson — a crash hid on main for 5
    iters):** `npx vitest run --config vitest.visual.config.js` ALONE only DIFFS the pre-existing `current/`
    PNGs against `baseline/` — it does NOT re-render. So it reports "18/18" on STALE frames + silently MISSES
    any render-affecting change (the iter-154 GameScene crash passed this "gate" @154-158 on iter-150 frames).
@@ -53,6 +75,15 @@
    valid ONLY for changes that provably cannot render (pure logic / capture-null overlays / non-rendering props
    — and say WHY in the report). A unit that can't reach green this iteration gets reverted or parked behind a
    note in ACTIVE_PLAN — never left silently broken.
+   **⚠️ LIVE-PROBE + LOOK is a REQUIRED verification axis, not optional:** the headless gates (visual = static
+   pinned-camera diorama; unit = pure logic) are BLIND to live input/camera/feel/audio — this blind spot shipped a
+   DEAD desktop mouse-look AND a DEAD iOS touch cold-start, both "green". For ANY change touching input/camera/feel/
+   render-in-motion, run the standing per-modality LIVE probe (`frontend/scripts/visual/{pov-probe,touch-probe,ocean-probe,look-e2e}.mjs`
+   — drive the REAL app HUD-hidden, screenshot, LOOK with your own eyes) BEFORE claiming done. Gate metric = 6%
+   pixelmatch, NOT md5 (bloom/dither is sub-perceptually non-byte-stable). swiftshader ≈ GPU but is NOT a real finger
+   or ear — audio + real-device feel stay honestly Kevin-gated. **Also: the capture cams don't frame a highland peak,
+   so a world-SHAPE change can be INVISIBLE to the gate — verify world-gen changes via DATA (a worldShape-style test)
+   + a probe pointed at the actual thing, not the gate alone (the 2026-06-15 S4 lesson).**
 6. **PERSIST (the filesystem is the only memory that survives):** commit (no AI footers; no `git add -A`;
    `.state/` untouched) + **push `main`** + update `memory/ACTIVE_PLAN.md` (what shipped + the NEXT unit) and
    `memory/CHANGELOG.md` (milestone-grade entries). Batch Kevin-facing decisions/eyeballs into
@@ -65,8 +96,11 @@
    was caught TWICE by Kevin in the week of 2026-06-09 (24 stale plan headers; the master plan missed by a
    de-stale pass) — this step exists so it never needs catching again.
 7. **REPORT** one short paragraph to the chat: shipped-what, evidence (test/frame counts), next-unit.
-8. **CONTINUE:** schedule the next firing ~60–120s out while workable units remain; ~30min if EVERYTHING is
-   blocked on Kevin/external (say so in the report). Never end the loop yourself; never idle-spin tokens.
+8. **CONTINUE (three-state cadence):** schedule the next firing ~60–150s out while committable units remain (the
+   DEFAULT — Phase-2 is an ACTIVE build queue, not a hold). If a background Workflow is in flight whose output gates
+   the next build, AWAIT+INTEGRATE it (poll /tmp task outputs + TaskList each orient; the integration is the next
+   unit — do not idle-spin or manufacture churn while waiting). ~30min ONLY if EVERYTHING is blocked on Kevin/external
+   (say so explicitly). Never end the loop yourself; never idle-spin tokens.
 
 ## 2. Work-selection priority (top-down; skip = locked/blocked only)
 
@@ -74,23 +108,33 @@
 2. **The current in-flight milestone** per ACTIVE_PLAN (finish > start).
 3. **Pre-requisites the plan-of-record marks blocking** (e.g. #72 verb-mode seam before VOIDHAND M3;
    #69 gate inversion before M3).
-4. **The post-spine spine (amended 2026-06-11 — the four-Aspect spine COMPLETED that day: WILDHEART ·
-   VOIDHAND · SOULBIND · ELEMANCER all live):** **S3 de-monolith + engine hardening** is the new
-   structural spine — the 5 god-files tax every future milestone; characterization-first, the same
-   design-workflow → spec → per-milestone-plans discipline. B4-v1.5 (reagents/frost-plates/fire-spread)
-   and the v2 voxel-mutation seam (iPad-gated) queue behind it; S4 stays Kevin-gated.
+4. **The active structural spine = the 2026-06-15 MEGA-DIRECTIVE overhaul** (world+purpose+visual via the
+   `world-purpose-sota` S5..S10 slice ladder + the `codebase-reality-audit` P0-debt chain). The four-Aspect spine
+   (WILDHEART · VOIDHAND · SOULBIND · ELEMANCER) completed 2026-06-11; S3 de-monolith is now LARGELY DONE (4-of-5
+   god-files dissolved; only Components ~1297 + GameScene ~914 remain, formally PARKED iter-175 — risky
+   imperative-loop extraction, not actively blocking) → de-monolith is now a DEBT LANE behind the mega-directive,
+   not the spine. B4-v1.5 + the v2 voxel-mutation seam (iPad-gated) + S4 stay Kevin-gated/later.
 5. **SOTA experience enhancements** (the explicit Kevin mandate — interleave at least one every 2–3
    milestones, don't ghetto them to "later"): §6 backlog — audio/music, game-feel/juice, visual/render
    polish, content variety, UX legibility, i18n.
-6. **Quality-infrastructure debt** from STATE-REVIEW + tasks (#70 panel matrix, #71 legibility, #73 i18n,
+6. **Codebase-debt triage (NEW standing posture — "treat ALL pre-masterplan code as suspect until SOTA-reviewed",
+   Kevin 2026-06-15):** work the ranked file:line backlog in `research/2026-06-15-crafty-codebase-reality-audit.md`.
+   Verified P0 (highest player-visible leverage): the postproc 3-bug chain (dim/flat root cause), invisible
+   block-break debris, worker↔climate height drift [✅ S5], no master audio bus/limiter, AudioContext-never-resumed,
+   palette fork. Sequencing rule: audit ranks 1/7/13/14 OVERLAP the visual plan → co-sequence with the world-purpose
+   slices, do NOT double-tune the pipeline.
+7. **Quality-infrastructure debt** from STATE-REVIEW + tasks (#70 panel matrix, #71 legibility, #73 i18n,
    #32 vitest bump, characterization before any de-monolith).
-7. **Hygiene** (doc currency, dead code per the coherence rules).
+8. **Hygiene** (doc currency, dead code per the coherence rules).
 
 ## 3. Quality gates + the ratchet (non-negotiable)
 
 - **Test ratchet:** NEVER delete, weaken, skip, or edit-to-pass an existing test or static gate to make work
   green (the canonical long-running-agent failure). A genuinely wrong test may be CHANGED only with a
-  written justification in the commit body + an ACTIVE_PLAN note. Unit count holds-or-grows every iteration.
+  written justification in the commit body + an ACTIVE_PLAN note. Unit count holds-or-grows every iteration —
+  EXCEPT a Workflow-LAUNCH or Workflow-ARTIFACT-INTEGRATION tick (§1 step 4), whose deliverable is a committed
+  design/audit/research doc not code; such a tick holds the count flat + says so in the report. The destructive
+  ratchet (never delete/weaken/skip/edit-to-pass a test or static gate) stays in FULL force for every CODE tick.
 - **Static gates are seam-allowlists** — when adding a gated-class feature, extend the gate FIRST (red) then
   build (green). New invariants of CLAUDE.md-critical class get their own gate.
 - **Perf envelope:** every new render/physics feature states its frame-cost story (pooled? capped? tier-gated?
@@ -113,12 +157,23 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
 - **Visual re-baselines are allowed and expected** (the look is MEANT to improve): re-baseline = render →
   self-eyeball at HD (340dpi-equivalent zoom, IB-grade scrutiny) → commit baseline + a one-line rationale +
   a KEVIN-REVIEW-BATCH entry with the before/after paths. Capture-determinism stays load-bearing (new
-  effects freeze or self-null under `isCaptureMode()`).
+  effects freeze or self-null under `isCaptureMode()`). **BATCH re-baseline cadence (visual-overhaul campaigns,
+  Kevin-confirmed 2026-06-15 = "re-baselines = BATCH review"):** when a planned campaign produces MULTIPLE intended
+  re-baselines each exceeding the 6% gate (e.g. the world-purpose AO/aerial/beacon/postproc slices), accumulate the
+  before/after pairs across iterations + present them as ONE consolidated KEVIN-REVIEW-BATCH taste review at
+  slice-ladder close (a contact-sheet of N frames + one taste ask), NOT slice-by-slice. Each individual re-baseline
+  still gets its HD self-eyeball + commit + one-line rationale at the tick it ships; only the Kevin-facing TASTE
+  sign-off batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
 - **Audio is a first-class axis** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
   WILDHEART roar-set backfill is owed (#74 — the loop now OWNS this decision: do it).
-- **Genuinely-Kevin items** (park + batch, never block the loop): real-device iPad FPS runs, anything
-  spending money / creating accounts / publishing externally, big direction reversals of his recorded
-  decisions (third-person timing, monetization=S4, audience).
+- **Genuinely-Kevin items** (park + batch, never block the loop): real-device iPad/phone runs, anything
+  spending money / creating accounts / publishing externally, big direction REVERSALS of his recorded decisions
+  (third-person timing, monetization=S4, audience, the Ember-Frontier direction); **NEW-DIRECTION CONFIRMATION**
+  (when the loop surfaces a proposed game-direction/sub-direction for Kevin to AFFIRM before building the gameplay
+  layer — a PICK, distinct from a reversal; the Ember-Frontier pick was this before 2026-06-15); **adding any NEW dev
+  dependency / test substrate / install** (e.g. @react-three/test-renderer + Playwright/WebKit — approved + landed
+  `0f8cad9`; the zero-dep gameplay-flow + state-hash E2E needs NO ask, built under loop authority); ear / taste
+  sign-off (audio mix, final colour/foam taste).
 
 ## 5. Process deltas vs the pre-loop era (so old docs don't confuse the loop)
 
@@ -130,8 +185,22 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   KEVIN-REVIEW-BATCH, and proceeds. Exceptions: the §4 genuinely-Kevin list.
 - The master plan itself may be edited (status banners, re-sequencing, adding named passes) — keep §1–§2
   vision intact, log every edit in CHANGELOG.
+- **CAPTURE-MODE HID REAL LIGHTING (verified 2026-06-15):** capture mode was DISABLING both cast shadows AND the
+  landmark emissive crowns — so every reviewed visual baseline was the FLATTEST, beacon-less version of the world,
+  NOT real play. Treat pre-S3 visual baselines as a floor, not ground truth; world-purpose S3 un-gates beacons+shadows
+  in capture so reviewed frames match play. This is WHY the step-5 LIVE-PROBE axis is load-bearing: the diorama lied.
 
-## 6. SOTA-experience backlog (seed list — extend it as you learn; as of 2026-06-10)
+## 6. SOTA-experience backlog
+
+**SUPERSEDED (2026-06-15) by two newer, file:line-cited backlogs of record — work THOSE first:** (1) the
+**codebase-reality-audit** (`research/2026-06-15-crafty-codebase-reality-audit.md`): the ranked P0 debt chain
+(postproc 3-bug dim/flat root cause, invisible debris, height drift [✅ S5], audio clipping/no-limiter, palette fork,
+build-verb mis-map, token-SoT) + the SOTA visual-opportunity ranking; (2) the **world-purpose-sota** plan
+(`plans/2026-06-15-crafty-world-purpose-sota.md`): vertex AO, aerial perspective, un-gate landmark emissive crowns +
+cast shadows in capture, ore generation, tier-by-distance, shrines, fixed Blight-Heart climax + win-state.
+**ANTI-REDO (verified — do NOT re-tune):** ToneMapping is ALREADY NEUTRAL (not ACES) + the per-mood MOOD_GRADE
+script ALREADY ships in `render/mood.js`. The original 2026-06-10 seed list below stays a valid INTERLEAVE candidate
+pool where not subsumed:
 
 Audio: per-Aspect motifs + roar/transform/grab/hurl SFX · hit/kill audio split (player vs enemy) · pad LFO
 movement + arpeggiator stingers · ambient day/night/biome beds · UI sounds. Game-feel: hitstop/screenshake
