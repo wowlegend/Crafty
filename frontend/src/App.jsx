@@ -133,6 +133,13 @@ function GameApp({ experienceSystem }) {
               const add = useGameStore.getState().addNotification;
               if (add) add('Build by day, survive the night siege — defeat foes to unlock powerful Aspect abilities.', 'info');
             }, 1600);
+            // S10: name the CAMPAIGN goal once (after the loop toast) so a new player knows the point. The
+            // compass already shows the SHRINE + BLIGHT HEART markers this references. Capture-safe (inside
+            // the !isCaptureMode + localStorage-once guard).
+            setTimeout(() => {
+              const add2 = useGameStore.getState().addNotification;
+              if (add2) add2('Your goal: journey to the frontier shrines, then shatter the Blight Heart at the world\'s edge — follow the compass.', 'quest');
+            }, 8600);
           }
         } catch (e) { /* localStorage blocked -> skip onboarding (non-fatal) */ }
       }
