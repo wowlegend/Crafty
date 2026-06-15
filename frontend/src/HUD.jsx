@@ -3,7 +3,7 @@ import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
 import { CombatInstructions } from './ui/CombatInstructions';
@@ -14,6 +14,7 @@ import {
   PlayerHungerBar,
   DamageOverlay,
   DeathScreen,
+  VictoryOverlay,
   SPELL_MANA_COSTS
 } from './GameSystems';
 import { SimpleExperienceBar, SimpleExperienceBarTouch, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
@@ -461,6 +462,8 @@ export function HUD({
   setShowStats,
   setIsPointerLocked
 }) {
+  // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
+  const [victoryDismissed, setVictoryDismissed] = useState(false);
   return (
     <>
       <AnimatePresence>
@@ -599,6 +602,10 @@ export function HUD({
         }} />
       )}
       
+      {bossSystem?.bossDefeated && !victoryDismissed && (
+        <VictoryOverlay onDismiss={() => setVictoryDismissed(true)} />
+      )}
+
       {isPointerLocked && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30">
           <div className="w-6 h-6">

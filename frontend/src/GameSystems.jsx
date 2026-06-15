@@ -234,4 +234,46 @@ export const DeathScreen = ({ onRespawn }) => {
     );
 };
 
+// S9c: the WIN-STATE beat. Shown once the Blight Heart (Shadow Dragon) is defeated (bossSystem.bossDefeated).
+// Mirrors DeathScreen (full-screen bold-flat overlay) but triumphant amber. "Keep exploring" dismisses it ->
+// the sandbox continues (post-climax endless handoff: mobs/shrines remain). Only renders post-defeat, which
+// can never be true in capture (a fresh level-1 game), so it stays out of the visual baselines.
+export const VictoryOverlay = ({ onDismiss }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+        >
+            <div className="text-center px-6">
+                <motion.h1
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="text-6xl font-bold text-amber-300 mb-4"
+                    style={{ textShadow: '3px 3px 0 #000' }}
+                >
+                    VICTORY
+                </motion.h1>
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-gray-300 mb-8 max-w-md mx-auto"
+                >
+                    The Blight Heart is shattered. The frontier is yours.
+                </motion.p>
+                <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    onClick={onDismiss}
+                    className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 px-8 rounded-lg text-xl transition-all"
+                >
+                    Keep exploring
+                </motion.button>
+            </div>
+        </motion.div>
+    );
+};
+
 export { solveMeleeDamage, solveSpellDamage, mitigateDamage } from './utils/combat';
