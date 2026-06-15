@@ -14,8 +14,12 @@
 // traversable plains): the swell only fires where the low-freq highland noise exceeds THRESHOLD,
 // and grows with the square of the excess scaled by AMP. Origin stays ~49 so the Hearth (y56) +
 // SEA_LEVEL(28)/beach relationships hold.
-export const HIGHLAND_THRESHOLD = 0.45;
-export const HIGHLAND_AMP = 120;
+// S4 tame-the-mountains (2026-06-15, Kevin: "very mountainous"): raised THRESHOLD 0.45->0.62
+// (highland fires on ~4.4% of columns, was ~15%) + cut AMP 120->90 (max relief +12.8, was +36).
+// Gentle traversable continents with occasional modest rises; the see-it-go-to-it landmarks are
+// the shrines (Ember Frontier direction), not oppressive peaks. Tunables measured via a grid sweep.
+export const HIGHLAND_THRESHOLD = 0.62;
+export const HIGHLAND_AMP = 90;
 
 // Compute the climate fields + base surface height for a world column.
 // Returns { continent, moisture, temperature, n, baseHeight }.
