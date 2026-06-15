@@ -9,6 +9,7 @@ import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 import { zoneTier } from './world/zoneTier.js';
+import { nearestLandmark } from './world/shrines.js';
 import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
 
@@ -28,7 +29,7 @@ export const QUEST_LIST = [
     // Intermediate quests
     { id: 'zombie_slayer', title: 'Zombie Slayer', icon: 'zombie', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
     { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
-    { id: 'explorer', title: 'Explorer', icon: 'compass', description: 'Travel 500 blocks from spawn', type: 'distance', target: 500, xpReward: 100, tier: 2 },
+    { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2 },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
     { id: 'architect', title: 'Architect', icon: 'building', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
     // Survival-progression: surviving the night siege is now a tracked GOAL (ties the onboarding promise +
@@ -194,6 +195,27 @@ export const useQuestSystem = () => {
             return { ...quest, progress: newProgress, completed: nowComplete };
         }));
     }, [addNotification]);
+
+    // S8c: the Pilgrimage quest — fire reach_shrine progress when the player reaches a NEW shrine (within
+    // ~10 blocks of the nearest landmark). Claimed-once via reachedShrines (keyed by chunk) so re-visits
+    // don't re-fire. Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives
+    // the outward journey a concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
+    const reachedShrines = useRef(new Set());
+    useEffect(() => {
+        if (isCaptureMode()) return;
+        const interval = setInterval(() => {
+            const playerPos = useGameStore.getState().playerPosition;
+            if (!playerPos) return;
+            const s = nearestLandmark(playerPos.x, playerPos.z);
+            if (!s) return;
+            const key = `${s.cx}_${s.cz}`;
+            if (reachedShrines.current.has(key)) return;
+            if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 10) return;
+            reachedShrines.current.add(key);
+            updateQuestProgress('reach_shrine');
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [updateQuestProgress]);
 
     // Claim quest reward and add new quest
     const claimQuest = useCallback((questId) => {
