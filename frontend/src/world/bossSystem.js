@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
+import { blightHeartSite } from './blightHeart.js';
 
 export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
@@ -15,23 +16,32 @@ export const useBossSystem = (playerLevel) => {
     const [bossNotification, setBossNotification] = useState(null);
     const bossSpawned = useRef(false);
 
+    // S9: the Shadow Dragon now AWAITS at the fixed Blight Heart lair (NOT a level-5 ambush at the player).
+    // Once you are strong enough (level 5), poll for ARRIVAL at the lair (~24 blocks) -- the dragon awakens
+    // when you REACH the foreshadowed, compass-marked destination. A useEffect keyed on [playerLevel] does
+    // NOT re-fire as the player MOVES, so a poll is required to detect arrival. Transient store reads ->
+    // Game-Loop-Isolation. The DEV forceBossSpawn (boss-closeup fixture) is a separate effect, untouched.
     useEffect(() => {
-        if (playerLevel >= 5 && !bossSpawned.current && !bossDefeated) {
-            bossSpawned.current = true;
-            setBossNotification('Warning: A Shadow Dragon is descending from the skies! [Level 5 Boss Event]');
-            setTimeout(() => setBossNotification(null), 6000);
-
+        if (playerLevel < 5 || bossSpawned.current || bossDefeated) return;
+        const lair = blightHeartSite();
+        const interval = setInterval(() => {
+            if (bossSpawned.current) return;
             const playerPos = useGameStore.getState().playerPosition;
-            const x = playerPos ? playerPos.x + 25 : 25;
-            const z = playerPos ? playerPos.z + 25 : 25;
-            let y = 35; // Spawn high up
-            if (useGameStore.getState().getMobGroundLevel) {
-                const gy = useGameStore.getState().getMobGroundLevel(x, z);
+            if (!playerPos) return;
+            if (Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) > 24) return; // not at the lair yet
+            bossSpawned.current = true;
+            setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]');
+            setTimeout(() => setBossNotification(null), 6000);
+            let y = 35; // spawn high up over the lair
+            const getGy = useGameStore.getState().getMobGroundLevel;
+            if (getGy) {
+                const gy = getGy(lair.x, lair.z);
                 if (gy !== null && !isNaN(gy)) y = gy + 15;
             }
-            bossPositionRef.current = [x, y, z];
+            bossPositionRef.current = [lair.x, y, lair.z];
             setBossActive(true);
-        }
+        }, 1500);
+        return () => clearInterval(interval);
     }, [playerLevel, bossDefeated]);
 
     useEffect(() => {
