@@ -100,7 +100,7 @@ function GameApp({ experienceSystem }) {
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);
   const { isAuthenticated, loading } = useAuth();
-  const { musicEnabled, playBackgroundMusic } = useSounds();
+  const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare } = useGameSounds();
 
   // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
@@ -652,10 +652,13 @@ function GameApp({ experienceSystem }) {
   }, []);
 
   useEffect(() => {
-    if (isPointerLocked && musicEnabled) {
-      playBackgroundMusic();
+    if (isPointerLocked) {
+      // Resume the audio ctx on the entry gesture regardless of music -> SFX work even with music off
+      // (the music-start path resumes too but early-returns when music is disabled). Idempotent.
+      resumeAudio();
+      if (musicEnabled) playBackgroundMusic();
     }
-  }, [isPointerLocked, musicEnabled, playBackgroundMusic]);
+  }, [isPointerLocked, musicEnabled, playBackgroundMusic, resumeAudio]);
 
   if (loading) {
     return (

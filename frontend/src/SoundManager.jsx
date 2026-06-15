@@ -508,6 +508,17 @@ export const SoundProvider = ({ children }) => {
     }
   };
 
+  // SFX overhaul Slice 3: resume the AudioContext on the entry gesture, INDEPENDENT of music. Browsers
+  // suspend a fresh ctx until a user gesture; the music-start paths resume it but early-return when music
+  // is off -- so without this a music-off player kept a suspended ctx and ALL SFX were silently dropped.
+  // Idempotent (only resumes if suspended) -> safe to call on every gesture; capture-safe (no ctx in
+  // capture -> no-op).
+  const resumeAudio = () => {
+    if (audioContext.current && audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+  };
+
   const playBackgroundMusic = () => {
     startSynthPad();
   };
@@ -545,6 +556,7 @@ export const SoundProvider = ({ children }) => {
     setVolume,
     playSound,
     playBackgroundMusic,
+    resumeAudio,
     playTone,
     audioContext: audioContext.current,
     sounds: sounds.current

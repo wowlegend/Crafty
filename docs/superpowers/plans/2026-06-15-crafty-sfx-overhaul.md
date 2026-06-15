@@ -45,10 +45,17 @@ per-SFX levels/timbre + fill gaps — the quality pass judged by Kevin's ear.
   runtime). EAR-CHECK (Kevin): the mix should sound fuller + never crackle when many sounds fire ->
   surfaced to KEVIN-REVIEW.
 
-## Slice 3 — autoplay-resume robustness (verify, fix if needed)
-- [ ] resume() exists in the music-start paths; confirm a FIRST USER GESTURE reliably resumes the ctx for SFX
-  too (an `enterPlay`/pointer-gesture resume), so early SFX aren't dropped on a suspended ctx. If a gap exists,
-  add a one-time resume on first gesture. Autonomous-verifiable (the call wiring). Commit.
+## Slice 3 — autoplay-resume robustness (verify, fix if needed) ✅ DONE — REAL GAP FOUND + FIXED
+- [x] Grounded live: the ONLY ctx-resume sites were inside `startSynthPad`/`startArpeggiator`, both of which
+  early-return on `!musicEnabled`; App.jsx's entry effect only ran `playBackgroundMusic()` when
+  `isPointerLocked && musicEnabled`. So a player with MUSIC OFF never resumed the suspended ctx -> ALL SFX
+  silently dropped. SFX wrongly depended on the music subsystem. (Not a no-op slice.)
+- [x] Fixed: idempotent `resumeAudio()` on `SoundManager` (resumes only if suspended; capture-safe) exposed
+  on the SoundContext; App.jsx resumes on the entry gesture regardless of music
+  (`if (isPointerLocked) { resumeAudio(); if (musicEnabled) playBackgroundMusic(); }`). Locked by
+  `tests/gates/audio-resume-gates.test.js` (+4). VERIFIED: build clean · eslint clean · unit 1251->1255 ·
+  captured + visual gate 20/20 (resume never fires in capture). EAR-CHECK: with music OFF, SFX should now be
+  audible (were silent) -> KEVIN-REVIEW.
 
 ## Slice 4 — (EAR-GATED) per-SFX level/timbre review + gaps
 - [ ] With the bus in place, review per-voice gains for balance (e.g. footsteps quieter, the boss roar/anvil
