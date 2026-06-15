@@ -8,6 +8,9 @@ import { isTouchUIMode } from './input/touchDevice';
 import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
+import { zoneTier } from './world/zoneTier.js';
+import { getItemRarity } from './data/items.js';
+import { tierLootChance } from './game/lootTier.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -252,8 +255,12 @@ export const useQuestSystem = () => {
         // Generate loot drops
         const lootTable = LOOT_TABLES[mobType] || [];
         const drops = [];
+        // S7 reward: far from spawn = rarer drops. The kill-position zone tier boosts non-common rows
+        // (common staples unchanged); tier 0 near spawn is identical to the legacy roll (no regression).
+        const killTier = zoneTier(position?.x ?? 0, position?.z ?? 0);
         lootTable.forEach(loot => {
-            if (Math.random() < loot.chance) {
+            const chance = tierLootChance(loot.chance, getItemRarity(loot.item), killTier);
+            if (Math.random() < chance) {
                 drops.push(loot);
                 if (GameMethods.spawnLootDrop) {
                     GameMethods.spawnLootDrop(loot.item, loot.xp || 5, position);
