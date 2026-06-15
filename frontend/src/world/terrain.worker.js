@@ -4,6 +4,7 @@ import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, sh
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
+import { cornerAO } from './vertexAO.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -66,14 +67,16 @@ self.onmessage = function(e) {
         normals: meshData.normals,
         colors: meshData.colors,
         uvs: meshData.uvs,
-        indices: meshData.indices
+        indices: meshData.indices,
+        ao: meshData.ao
       }
     }, [
-      meshData.positions.buffer, 
-      meshData.normals.buffer, 
-      meshData.colors.buffer, 
-      meshData.uvs.buffer, 
-      meshData.indices.buffer
+      meshData.positions.buffer,
+      meshData.normals.buffer,
+      meshData.colors.buffer,
+      meshData.uvs.buffer,
+      meshData.indices.buffer,
+      meshData.ao.buffer
     ]);
   }
   else if (type === 'update_block') {
@@ -120,14 +123,16 @@ self.onmessage = function(e) {
           normals: meshData.normals,
           colors: meshData.colors,
           uvs: meshData.uvs,
-          indices: meshData.indices
+          indices: meshData.indices,
+          ao: meshData.ao
         }
       }, [
-        meshData.positions.buffer, 
-        meshData.normals.buffer, 
-        meshData.colors.buffer, 
-        meshData.uvs.buffer, 
-        meshData.indices.buffer
+        meshData.positions.buffer,
+        meshData.normals.buffer,
+        meshData.colors.buffer,
+        meshData.uvs.buffer,
+        meshData.indices.buffer,
+        meshData.ao.buffer
       ]);
     }
   }
@@ -550,6 +555,7 @@ function generateMesh(cx, cz, blocks) {
   const colors = [];
   const uvs = [];
   const indices = [];
+  const ao = []; // S1 vertex AO: per-corner 0..3 occlusion baked here, read as the `aAO` attribute in Terrain.jsx
   let indexOffset = 0;
 
   const CHUNK_SIZE = 16;
@@ -747,6 +753,27 @@ function generateMesh(cx, cz, blocks) {
             }
           }
 
+          // S1 vertex AO (0fps per-corner, baked at mesh time): for each emitted corner sample the 3
+          // outward-side occluders (2 edge-adjacent + the diagonal) in the AIR layer (d = aoAd) and bake
+          // an AO level 0..3 into the `aAO` attribute (read in Terrain.jsx). Water faces carry AO 3 (no
+          // occlusion). Generic across all 6 face dirs: each corner's (u,v) comes from its world coords
+          // (u=(d+1)%3, v=(d+2)%3) so no per-winding special-casing. Capture-deterministic (static voxels).
+          const aoAd = dirFlag === 1 ? q + 1 : q; // the air-side d-layer in front of the face
+          const aoSolid = (uc, vc) => {
+            let b;
+            if (d === 0) b = getBlock(aoAd, uc, vc);
+            else if (d === 1) b = getBlock(vc, aoAd, uc);
+            else b = getBlock(uc, vc, aoAd);
+            return b > 0 && b !== 9 ? 1 : 0;
+          };
+          for (const C of [c0, c1, c2, c3]) {
+            if (blockType === 9) { ao.push(3); continue; } // water: no AO
+            const gu = C[u], gv = C[v];
+            const su = gu === cu ? -1 : 1, nu = gu === cu ? cu : cu + w - 1;
+            const sv = gv === cv ? -1 : 1, nv = gv === cv ? cv : cv + h - 1;
+            ao.push(cornerAO(aoSolid(nu + su, nv), aoSolid(nu, nv + sv), aoSolid(nu + su, nv + sv)));
+          }
+
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
@@ -782,7 +809,8 @@ function generateMesh(cx, cz, blocks) {
     normals: new Float32Array(normals),
     colors: new Float32Array(colors),
     uvs: new Float32Array(uvs),
-    indices: new Uint32Array(indices)
+    indices: new Uint32Array(indices),
+    ao: new Float32Array(ao)
   };
 }
 
