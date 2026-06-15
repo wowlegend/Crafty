@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { VOICES, makeNoise } from './audio/synthVoices';
+import { createMasterBus } from './audio/masterBus';
 import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
 import { surfaceBlockAt } from './world/climate.js';
@@ -31,6 +32,9 @@ export const SoundProvider = ({ children }) => {
   const audioContext = useRef(null);
   const sounds = useRef({});
   const ambientTimer = useRef(null);
+  // SFX overhaul: cache for the single master bus + limiter (audio/masterBus.js). Stores { ctx, input }
+  // so the bus is rebuilt if the AudioContext is ever swapped, rather than wiring voices into a dead bus.
+  const masterBusRef = useRef(null);
 
   // Subscribe reactively to hostile counts and boss state for dynamic soundtrack scaling
   const activeHostiles = useGameStore(state => state.activeHostilesCount) || 0;
@@ -172,7 +176,7 @@ export const SoundProvider = ({ children }) => {
       }
 
       pad.filter.connect(pad.masterGain);
-      pad.masterGain.connect(audioContext.current.destination);
+      pad.masterGain.connect(getMasterBus() || audioContext.current.destination);
 
       pad.lfo.start(now);
       pad.oscillators.forEach(osc => osc.start(now));
@@ -187,7 +191,7 @@ export const SoundProvider = ({ children }) => {
       wb.filter = audioContext.current.createBiquadFilter();
       wb.filter.type = 'bandpass'; wb.filter.frequency.setValueAtTime(900, now); wb.filter.Q.setValueAtTime(0.7, now);
       wb.gain = audioContext.current.createGain(); wb.gain.gain.setValueAtTime(0, now);
-      wb.source.connect(wb.filter); wb.filter.connect(wb.gain); wb.gain.connect(audioContext.current.destination);
+      wb.source.connect(wb.filter); wb.filter.connect(wb.gain); wb.gain.connect(getMasterBus() || audioContext.current.destination);
       wb.source.start(now); wb.active = true;
 
       // 4. Step-Scheduler loop
@@ -285,7 +289,7 @@ export const SoundProvider = ({ children }) => {
       const now = audioContext.current.currentTime;
       if (!arp.masterGain) {
         arp.masterGain = audioContext.current.createGain();
-        arp.masterGain.connect(audioContext.current.destination);
+        arp.masterGain.connect(getMasterBus() || audioContext.current.destination);
       }
       arp.masterGain.gain.cancelScheduledValues(now);
       arp.masterGain.gain.setValueAtTime(0, now);
@@ -428,6 +432,20 @@ export const SoundProvider = ({ children }) => {
     generateSounds();
   }, []);
 
+  // SFX overhaul Slice 2: lazily build ONE master bus + limiter on the shared ctx and route every voice
+  // (music pad/arp + every SFX) through it, so the SUMMED mix is limited before the speakers instead of
+  // each voice hitting destination directly (which let peaks sum + clip when many sounds fired at once).
+  // Returns the bus INPUT node (or null if there's no ctx -> callers fall back to destination so audio
+  // is never silenced). Rebuilt if the ctx is swapped.
+  const getMasterBus = () => {
+    if (!audioContext.current) return null;
+    if (!masterBusRef.current || masterBusRef.current.ctx !== audioContext.current) {
+      const bus = createMasterBus(audioContext.current);
+      masterBusRef.current = bus ? { ctx: audioContext.current, input: bus.input } : null;
+    }
+    return masterBusRef.current ? masterBusRef.current.input : null;
+  };
+
   const generateSounds = () => {
     if (!audioContext.current) return;
     // S3-M1: the voice bank lives in audio/synthVoices.js — one registry, one loop.
@@ -482,7 +500,7 @@ export const SoundProvider = ({ children }) => {
       gainNode.gain.value = volume;
 
       source.connect(gainNode);
-      gainNode.connect(audioContext.current.destination);
+      gainNode.connect(getMasterBus() || audioContext.current.destination);
 
       source.start();
     } catch (error) {
@@ -509,7 +527,7 @@ export const SoundProvider = ({ children }) => {
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + duration);
 
       oscillator.connect(gainNode);
-      gainNode.connect(audioContext.current.destination);
+      gainNode.connect(getMasterBus() || audioContext.current.destination);
 
       oscillator.start();
       oscillator.stop(audioContext.current.currentTime + duration);

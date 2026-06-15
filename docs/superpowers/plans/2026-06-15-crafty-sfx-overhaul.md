@@ -31,12 +31,19 @@ per-SFX levels/timbre + fill gaps — the quality pass judged by Kevin's ear.
   the 5 limiter params set via setValueAtTime.
 - [ ] VERIFY: build clean; npx vitest run grows; helper unused (no consumer yet) -> gate 20/20. Commit.
 
-## Slice 2 — route the whole mix through the master bus (the autonomous infra win)
-- [ ] In `SoundManager.jsx` `useSounds()`: a `masterBusRef` + a lazy `getMasterBus()` that calls
-  `createMasterBus(audioContext.current)` once (re-create if the ctx changed). Replace every
-  `audioContext.current.destination` connect-target (the 5 sites above) with `(getMasterBus()?.input || audioContext.current.destination)`.
-  Now music + SFX sum through the limiter before the speakers -> no clipping; one headroom point.
-- [ ] A static/source gate: SoundManager imports createMasterBus + has no remaining `.connect(audioContext.current.destination)` at the voice sites (or asserts getMasterBus is used). VERIFY build + unit + gate 20/20 (audio is runtime, not in the visual gate). Commit. EAR-CHECK (Kevin): the mix should sound fuller + never crackle when many sounds fire — surface to KEVIN-REVIEW.
+## Slice 2 — route the whole mix through the master bus (the autonomous infra win) ✅ DONE (commit pending push)
+- [x] In `SoundManager.jsx` `useSounds()`: a `masterBusRef` + a lazy `getMasterBus()` that calls
+  `createMasterBus(audioContext.current)` once (re-create if the ctx changed; stores `{ ctx, input }`,
+  returns the input node). Replaced every `audioContext.current.destination` connect-target (the 5
+  sites: pad L175, waterBass L190, arp L288, playSound L485, playTone L512) with
+  `(getMasterBus() || audioContext.current.destination)`. Now music + SFX sum through the limiter before
+  the speakers -> no clipping; one headroom point; `|| destination` fallback = never silence.
+- [x] A static/source gate (`tests/gates/master-bus-gates.test.js`, +5): SoundManager imports
+  createMasterBus, has the lazy getMasterBus on the shared ctx, caches+rebuilds on ctx change, has NO
+  remaining `.connect(audioContext.current.destination)`, and uses the bus-input-with-fallback form.
+  VERIFIED: build clean · eslint clean · unit 1246->1251 · captured + visual gate 20/20 (audio is
+  runtime). EAR-CHECK (Kevin): the mix should sound fuller + never crackle when many sounds fire ->
+  surfaced to KEVIN-REVIEW.
 
 ## Slice 3 — autoplay-resume robustness (verify, fix if needed)
 - [ ] resume() exists in the music-start paths; confirm a FIRST USER GESTURE reliably resumes the ctx for SFX
