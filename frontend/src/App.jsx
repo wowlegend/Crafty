@@ -806,7 +806,7 @@ function GameApp({ experienceSystem }) {
         setShowAuthModal={setShowAuthModal}
       />
 
-      {!hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
+      {import.meta.env.DEV && !hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
 
       {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
 

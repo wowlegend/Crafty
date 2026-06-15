@@ -772,7 +772,6 @@ export function GameScene({
           if (typeof window !== 'undefined') {
             window.__threeScene = scene;
             window.__threeCamera = camera;
-            console.log('Exposed scene and camera on window in onCreated');
           }
 
           const canvasEl = gl.domElement;
