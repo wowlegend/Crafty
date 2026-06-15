@@ -94,7 +94,11 @@
    iteration. Every ~5 iterations (or at every Aspect boundary), sweep `docs/superpowers/` + the master plan
    for stale "awaiting/draft/Status: PLAN" headers + a stale KEVIN-REVIEW-BATCH. Empirical basis: doc-drift
    was caught TWICE by Kevin in the week of 2026-06-09 (24 stale plan headers; the master plan missed by a
-   de-stale pass) — this step exists so it never needs catching again.
+   de-stale pass) — this step exists so it never needs catching again. **Sync the durable kernel copy too:**
+   when the `/loop` kernel's operating MODE / ORIENT / CONTINUE / ask-gates change, mirror it into
+   `docs/superpowers/LOOP-KERNEL-PROMPT.md` the SAME tick — that file is a self-standing duplicate of those
+   surfaces AND the cold/git-only recovery source, so it is a second drift surface (it went stale once: the
+   v2 file vs the refreshed live kernel, caught by Kevin 2026-06-15).
 7. **REPORT** one short paragraph to the chat: shipped-what, evidence (test/frame counts), next-unit.
 8. **CONTINUE (three-state cadence):** schedule the next firing ~60–150s out while committable units remain (the
    DEFAULT — Phase-2 is an ACTIVE build queue, not a hold). If a background Workflow is in flight whose output gates

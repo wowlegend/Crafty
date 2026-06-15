@@ -86,7 +86,8 @@ When compacting this session, ALWAYS preserve verbatim: (1) the current mileston
 (2) the latest test/build/visual gate counts and whether they were green; (3) the exact resume pointer
 (next unit of work); (4) any uncommitted-work state (which files, which task); (5) Kevin's standing
 directives in force (autonomous-build authority, TDD, gates, no-AI-footer); (6) if an autonomous loop is
-running: the fact that `docs/superpowers/LOOP-CHARTER.md` is the loop's constitution and must be re-read
+running: `docs/superpowers/LOOP-CHARTER.md` is the loop's constitution AND `docs/superpowers/LOOP-KERNEL-PROMPT.md`
+is the durable kernel-prompt copy (the cold/git-only recovery source for the `/loop` prompt) — both must be re-read/restored
 at the next orientation. Prefer dropping verbose tool output and exploratory dead-ends over ANY of the above.
 
 ## Autonomous build loop
