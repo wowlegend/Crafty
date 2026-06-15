@@ -11,7 +11,7 @@ import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
 import { getInput } from '../input/inputState';
-import { moodRef } from '../render/mood';
+import { moodRef, sampleMood } from '../render/mood';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
@@ -51,6 +51,7 @@ const compileShader = (shader) => {
     shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
+    shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from sampleMood)
 
     // Vertex Shader: Procedural undulating waves for water blocks
     shader.vertexShader = `
@@ -101,6 +102,7 @@ const compileShader = (shader) => {
         uniform float time;
         uniform float timeOfDay;
         uniform float mood;
+        uniform vec3 skyHorizon; // S2 aerial-perspective haze colour (= sky horizon, set per-frame from mood)
         flat varying float vBlockType;
         varying float vWorldY;
         varying float vFoam;
@@ -176,6 +178,18 @@ const compileShader = (shader) => {
             // Ocean S2 shore foam (POST-lighting so it pops over the lit teal): water-top cells touching
             // land carry vFoam=1 (baked per-block by the mesher) -> a bright foam ring at every shore.
             gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.98, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85);
+        }
+
+        // S2 aerial perspective (non-water LAND): distant terrain hazes toward the sky-horizon colour so far
+        // mountains read as atmospheric DEPTH, not an oppressive dark wall (complements the height-fog, which
+        // only fogs LOW areas, so tall distant terrain never faded). Pure view-distance + a gentle distance
+        // desaturation -> capture-deterministic (camera pinned in capture; skyHorizon snaps with mood). Tunables:
+        // the 38->165 distance band + the 0.22 desat / 0.55 haze strengths (eyeball explore/hearth/landmark).
+        if (abs(vBlockType - 9.0) >= 0.1) {
+            float aerial = smoothstep(38.0, 165.0, length(vViewPosition));
+            float alum = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(alum), aerial * 0.22);
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, skyHorizon, aerial * 0.55);
         }
         `
     );
@@ -489,17 +503,20 @@ export const MinecraftWorld = React.memo(() => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
         const timeOfDay = 1.0 - THREE.MathUtils.clamp(mood, 0.0, 1.0);   // night/obsidian -> 0 (biolum on)
 
+        const sky = sampleMood(mood).skyHorizon; // S2 aerial haze target (shared scratch -> copy, don't retain)
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
             opaqueShader.uniforms.time.value = time;
             opaqueShader.uniforms.timeOfDay.value = timeOfDay;
             opaqueShader.uniforms.mood.value = mood;
+            opaqueShader.uniforms.skyHorizon.value.copy(sky);
         }
         const waterShader = waterMaterial.userData.shader;
         if (waterShader) {
             waterShader.uniforms.time.value = time;
             waterShader.uniforms.timeOfDay.value = timeOfDay;
             waterShader.uniforms.mood.value = mood;
+            waterShader.uniforms.skyHorizon.value.copy(sky);
         }
     });
 
