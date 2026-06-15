@@ -36,13 +36,15 @@ describe('night siege wired into the spawn system (SimplifiedNPCSystem)', () => 
   });
 
   it('drives the night hostile bias from siegeParams(store.nightCount) (no literal 0.7)', () => {
-    expect(/siegeParams\(store\.nightCount\)\.hostileChance/.test(src)).toBe(true);
+    // S7: siegeParams now takes an optional zoneTier 2nd arg -> accept it ([^;]* spans the nested
+    // zoneTier(x,z) parens). Intent unchanged: hostileChance is DRIVEN by siegeParams + live nightCount.
+    expect(/siegeParams\(store\.nightCount[^;]*\)\.hostileChance/.test(src)).toBe(true);
     // the old literal hostile bias must be gone
     expect(/Math\.random\(\)\s*<\s*0\.7/.test(src)).toBe(false);
   });
 
   it('drives the night max-mob cap from siegeParams (no literal const maxMobs = 16)', () => {
-    expect(/siegeParams\(store\.nightCount\)\.maxMobs/.test(src)).toBe(true);
+    expect(/siegeParams\(store\.nightCount[^;]*\)\.maxMobs/.test(src)).toBe(true);
     expect(/const\s+maxMobs\s*=\s*16\s*;/.test(src)).toBe(false);
   });
 });

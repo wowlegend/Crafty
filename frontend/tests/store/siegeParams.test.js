@@ -53,3 +53,41 @@ describe('siegeParams(nightCount) — pure night-siege intensity', () => {
     expect(siegeParams(NaN).maxMobs).toBe(DAY_MAX_MOBS);
   });
 });
+
+// S7 Slice 2: the distance zone-tier (Ember Frontier) ADDS to the siege so the frontier is more
+// dangerous far from spawn -- more + more-hostile mobs even by DAY. zoneTier 0 (default / near spawn)
+// MUST be byte-identical to the 1-arg form (no regression). Numbers are a Kevin-tunable feel knob.
+describe('siegeParams(nightCount, zoneTier) — distance zone-tier ramps the siege (S7)', () => {
+  it('zoneTier 0 (default) is byte-identical to the 1-arg form (no regression near spawn)', () => {
+    for (const n of [0, 1, 3, 6, 50]) {
+      expect(siegeParams(n, 0)).toEqual(siegeParams(n));
+    }
+  });
+  it('a higher zoneTier raises maxMobs even by DAY (nightCount 0)', () => {
+    expect(siegeParams(0, 2).maxMobs).toBeGreaterThan(siegeParams(0, 0).maxMobs);
+    expect(siegeParams(0, 4).maxMobs).toBeGreaterThan(siegeParams(0, 2).maxMobs);
+  });
+  it('a higher zoneTier raises hostileChance', () => {
+    expect(siegeParams(0, 3).hostileChance).toBeGreaterThan(siegeParams(0, 0).hostileChance);
+  });
+  it('the zoneTier mob bonus is capped (far-out plateaus, total stays bounded)', () => {
+    expect(siegeParams(0, 99).maxMobs).toBe(siegeParams(0, 4).maxMobs);
+  });
+  it('hostileChance never exceeds an absolute ceiling (<= 0.98) at max night + tier', () => {
+    expect(siegeParams(99, 99).hostileChance).toBeLessThanOrEqual(0.98);
+  });
+  it('is monotonic non-decreasing in zoneTier (both outputs)', () => {
+    let prevMobs = -Infinity, prevChance = -Infinity;
+    for (let z = 0; z <= 8; z++) {
+      const p = siegeParams(2, z);
+      expect(p.maxMobs).toBeGreaterThanOrEqual(prevMobs);
+      expect(p.hostileChance).toBeGreaterThanOrEqual(prevChance);
+      prevMobs = p.maxMobs; prevChance = p.hostileChance;
+    }
+  });
+  it('is robust to a nullish / negative / NaN zoneTier (treated as 0)', () => {
+    expect(siegeParams(2, undefined)).toEqual(siegeParams(2, 0));
+    expect(siegeParams(2, -3)).toEqual(siegeParams(2, 0));
+    expect(siegeParams(2, NaN)).toEqual(siegeParams(2, 0));
+  });
+});

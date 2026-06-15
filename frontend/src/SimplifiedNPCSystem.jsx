@@ -10,6 +10,7 @@ import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { siegeParams } from './game/dayNight.js';
+import { zoneTier } from './world/zoneTier.js';
 import { weightedPick } from './game/spawnWeights';
 import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
@@ -104,7 +105,8 @@ const SpawnerSystem = () => {
     if (!type) {
       // M3b: at night the hostile-spawn bias ramps with nightCount (siegeParams);
       // day stays the calm baseline (this branch only fires when !store.isDay).
-      const nightHostileChance = siegeParams(store.nightCount).hostileChance;
+      // S7: the spawn point's distance zone-tier ADDS to the bias -> the frontier is more hostile far out.
+      const nightHostileChance = siegeParams(store.nightCount, zoneTier(x, z)).hostileChance;
       // the mob-variety pass: WEIGHTED picks (a 220hp brute must not roll like a zombie)
       const entriesFor = (keys) => keys.map((k) => [k, MOB_TYPES[k].weight ?? 1]);
       if (!store.isDay && Math.random() < nightHostileChance) {
@@ -187,7 +189,10 @@ const SpawnerSystem = () => {
         const activeMobs = mobsQuery.entities.filter(e => e.health > 0).length;
         // M3b: the night siege raises the max-mob cap with nightCount (siegeParams);
         // day holds the calm baseline (siegeParams(0).maxMobs === DAY_MAX_MOBS).
-        const maxMobs = store.isDay ? siegeParams(0).maxMobs : siegeParams(store.nightCount).maxMobs;
+        // S7: the player's distance zone-tier ADDS to the cap in BOTH day + night -> the frontier is
+        // busier far from spawn even by day (zoneTier 0 near spawn = unchanged baseline).
+        const pTier = zoneTier(playerX, playerZ);
+        const maxMobs = store.isDay ? siegeParams(0, pTier).maxMobs : siegeParams(store.nightCount, pTier).maxMobs;
         if (activeMobs < maxMobs) {
           const mobsNeeded = maxMobs - activeMobs;
           const spawnCount = Math.min(mobsNeeded, 3); // Spawn up to 3 per tick to prevent spikes

@@ -85,19 +85,33 @@ export const SIEGE_MOBS_RAMP_CAP = 24;
 export const SIEGE_HOSTILE_PER_NIGHT = 0.05;
 export const SIEGE_HOSTILE_CAP = 0.95;
 
+/** S7 distance zone-tier ramp: the Ember-Frontier far-from-spawn zone ADDS mobs + hostility even by DAY,
+ * so walking outward is a deliberate risk. ADDITIVE on top of the night ramp; capped so totals stay bounded.
+ * Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH). */
+export const SIEGE_MOBS_PER_TIER = 2;        // additive mobs per zone tier
+export const SIEGE_MOBS_TIER_CAP = 8;        // tier-bonus cap (= MAX_TIER 4 * SIEGE_MOBS_PER_TIER)
+export const SIEGE_HOSTILE_PER_TIER = 0.04;  // additive hostile bias per zone tier
+export const SIEGE_HOSTILE_TIER_CAP = 0.98;  // absolute ceiling incl. tier (above the night-only 0.95 cap)
+
 /**
- * Night-siege intensity as a PURE function of nightCount (nights survived). Ramps
- * monotonically and plateaus at a cap. nightCount 0 (and any nullish / negative /
- * NaN value) returns the calm day baseline, so a caller that hasn't survived a night
- * yet -- or reads a not-yet-initialized store field -- gets the gentle defaults.
+ * Night-siege intensity as a PURE function of nightCount (nights survived) AND the player's distance
+ * zone-tier (S7 Ember Frontier). Ramps monotonically and plateaus at caps. nightCount 0 + zoneTier 0
+ * (and any nullish / negative / NaN value) returns the calm day baseline, so a caller that hasn't
+ * survived a night yet -- or reads a not-yet-initialized store field -- gets the gentle defaults.
+ * The zoneTier term is ADDITIVE on top of the night term: far-from-spawn is dangerous even by day.
+ * `siegeParams(n, 0)` is byte-identical to the legacy 1-arg form (no regression near spawn).
  * Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH).
  * @param {number} nightCount
+ * @param {number} [zoneTier=0] distance zone-tier 0..MAX_TIER (see world/zoneTier.js)
  * @returns {{ hostileChance: number, maxMobs: number }}
  */
-export function siegeParams(nightCount) {
+export function siegeParams(nightCount, zoneTier = 0) {
   const n = Math.max(0, Math.floor(Number(nightCount) || 0));
-  const maxMobs = DAY_MAX_MOBS + Math.min(n * SIEGE_MOBS_PER_NIGHT, SIEGE_MOBS_RAMP_CAP);
-  const hostileChance = Math.min(DAY_HOSTILE_CHANCE + n * SIEGE_HOSTILE_PER_NIGHT, SIEGE_HOSTILE_CAP);
+  const z = Math.max(0, Math.floor(Number(zoneTier) || 0));
+  const tierMobs = Math.min(z * SIEGE_MOBS_PER_TIER, SIEGE_MOBS_TIER_CAP);
+  const maxMobs = DAY_MAX_MOBS + Math.min(n * SIEGE_MOBS_PER_NIGHT, SIEGE_MOBS_RAMP_CAP) + tierMobs;
+  const baseHostile = Math.min(DAY_HOSTILE_CHANCE + n * SIEGE_HOSTILE_PER_NIGHT, SIEGE_HOSTILE_CAP);
+  const hostileChance = Math.min(baseHostile + z * SIEGE_HOSTILE_PER_TIER, SIEGE_HOSTILE_TIER_CAP);
   return { hostileChance, maxMobs };
 }
 
