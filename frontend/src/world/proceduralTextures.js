@@ -50,32 +50,38 @@ export function createProceduralVoxelTextures() {
       }
 
       // Layer 3: Stone (blockType 3)
-      // Charcoal slate grey with dynamic granite veins
+      // Charcoal slate with readable granite veins + faint horizontal strata + a hair of cool blue
       {
-        const isVein = Math.abs(n1 * size - y) < 1.5 || Math.abs(n2 * size - x) < 1.5;
-        const baseColor = isVein ? 130 : 110;
-        const noiseFactor = 0.9 + n3 * 0.2;
-        const finalColor = Math.floor(baseColor * noiseFactor);
-        setPixel(3, x, y, finalColor, finalColor, finalColor);
+        const isVein = Math.abs(n1 * size - y) < 1.2 || Math.abs(n2 * size - x) < 1.2;
+        const strata = (Math.floor(y / 4) % 2) * 6; // faint slate banding
+        const baseColor = (isVein ? 132 : 104) + strata;
+        const noiseFactor = 0.9 + n3 * 0.18;
+        const c = Math.floor(baseColor * noiseFactor);
+        setPixel(3, x, y, c, c, Math.min(255, c + 3));
       }
 
       // Layer 4: Sand (blockType 4)
-      // Premium golden-tan desert dunes with wind ripple contours
+      // Golden-tan dunes with crossed wind-ripple contours (clearer than the old near-flat ripple)
       {
-        const ripple = Math.sin(x * 0.3 + y * 0.15) * 0.5 + 0.5;
-        const r = 194 + ripple * 20;
-        const g = 178 + ripple * 15;
-        const b = 128 + ripple * 10;
-        const noiseFactor = 0.95 + n2 * 0.08;
+        const ripple = Math.sin(x * 0.5 + y * 0.22) * 0.5 + 0.5;
+        const fine = Math.sin(x * 1.3 - y * 0.9) * 0.5 + 0.5; // finer cross-ripple = wind detail
+        const t = ripple * 0.7 + fine * 0.3;
+        const r = 188 + t * 30;
+        const g = 170 + t * 26;
+        const b = 120 + t * 18;
+        const noiseFactor = 0.96 + n2 * 0.06;
         setPixel(4, x, y, Math.floor(r * noiseFactor), Math.floor(g * noiseFactor), Math.floor(b * noiseFactor));
       }
 
       // Layer 5: Snow (blockType 5)
-      // Brilliant ice-blue highlights on snow fields
+      // Bright field with a soft ice-blue bias + gentle GRADUATED sparkle (was a harsh white binary speck)
       {
-        const factor = n1 > 0.7 ? 255 : 240;
-        const noiseFactor = 0.96 + n2 * 0.04;
-        setPixel(5, x, y, Math.floor(factor * noiseFactor), Math.floor(factor * noiseFactor), Math.floor((factor + 5) * noiseFactor));
+        const sparkle = n1 > 0.84 ? 1.0 : 0.0; // rarer, brighter glints
+        const base = 232 + n2 * 14;            // 232..246 soft tonal variation (not flat 240/255)
+        const r = base + sparkle * 8;
+        const g = base + sparkle * 8 + 2;
+        const b = base + sparkle * 8 + 12;     // ice-blue bias (b runs ahead of r/g)
+        setPixel(5, x, y, Math.min(255, Math.floor(r)), Math.min(255, Math.floor(g)), Math.min(255, Math.floor(b)));
       }
 
       // Layer 6: Wood Trunk (blockType 6)
