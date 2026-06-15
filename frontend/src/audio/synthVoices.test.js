@@ -25,10 +25,11 @@ const ALL_NAMES = [
   'heartbeat', // low-health danger cue
   'siegeHorn', 'dawnChime', // day/night transition stings
   'fanfare', // reward beat (level-up / achievement / quest complete)
+  'victory', // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
 ];
 
 describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the 37 registered names', () => {
+  it('VOICES holds EXACTLY the 38 registered names', () => {
     expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
   });
   it('every factory returns a sane, audible, unclipped buffer', () => {

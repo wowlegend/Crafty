@@ -653,6 +653,51 @@ export const makeFanfare = (ctx) => {
     return buffer;
 };
 
+// The CLIMAX payoff sting -- a grander sibling of the reward fanfare for the one biggest beat (the Blight
+// Heart shattered -> VictoryOverlay). A quick ascending major run that RESOLVES into a held C-major triad,
+// longer + fuller than the fanfare so the win feels earned, not like just another quest-complete.
+export const makeVictorySound = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 1.3;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    const run = [
+      { f: 523.25, t0: 0.0, hold: 0.12 },   // C5
+      { f: 659.25, t0: 0.1, hold: 0.12 },   // E5
+      { f: 783.99, t0: 0.2, hold: 0.12 },   // G5
+      { f: 1046.5, t0: 0.3, hold: 0.12 },   // C6
+    ];
+    const chord = [523.25, 659.25, 783.99, 1046.5]; // held C-major triad (the triumphant resolve)
+    const chordT0 = 0.42;
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      let s = 0;
+      for (const n of run) {
+        const tn = t - n.t0;
+        if (tn < 0 || tn > n.hold + 0.1) continue;
+        const tri = 2 * Math.abs(2 * (tn * n.f - Math.floor(tn * n.f + 0.5))) - 1;
+        const saw = 2 * (tn * n.f - Math.floor(tn * n.f + 0.5));
+        const env = Math.min(tn * 30, 1) * Math.exp(-Math.max(tn - n.hold, 0) * 8);
+        s += (tri * 0.4 + saw * 0.3) * env;
+      }
+      const tc = t - chordT0;
+      if (tc >= 0) {
+        const env = Math.min(tc * 20, 1) * Math.exp(-Math.max(tc - 0.6, 0) * 4);
+        for (const f of chord) {
+          const tri = 2 * Math.abs(2 * (tc * f - Math.floor(tc * f + 0.5))) - 1;
+          s += tri * 0.18 * env;
+        }
+      }
+      d[i] = s * 0.28;
+    }
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    return buffer;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
@@ -662,6 +707,7 @@ export const VOICES = {
   siegeHorn: makeSiegeHorn,   // day->night transition sting
   dawnChime: makeDawnChime,   // night->day transition sting
   fanfare: makeFanfare,       // reward beat (level-up / achievement / quest complete)
+  victory: makeVictorySound,  // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
   blockPlace: (ctx) => makeTone(ctx, 200, 0.1, 'square'),
   blockBreak: (ctx) => makeTone(ctx, 150, 0.15, 'sawtooth'),
   footstep: (ctx) => makeNoise(ctx, 0.05),

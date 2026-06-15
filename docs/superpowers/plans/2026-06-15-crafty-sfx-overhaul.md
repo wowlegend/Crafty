@@ -57,11 +57,22 @@ per-SFX levels/timbre + fill gaps — the quality pass judged by Kevin's ear.
   captured + visual gate 20/20 (resume never fires in capture). EAR-CHECK: with music OFF, SFX should now be
   audible (were silent) -> KEVIN-REVIEW.
 
-## Slice 4 — (EAR-GATED) per-SFX level/timbre review + gaps
-- [ ] With the bus in place, review per-voice gains for balance (e.g. footsteps quieter, the boss roar/anvil
-  punchier) + add any missing SFX (e.g. a shrine-reached chime, a victory sting if not covered). All in
-  `audio/synthVoices.js` (+ the VOICES registry + its 37-name test). Build + unit; EAR-CHECK -> KEVIN-REVIEW
-  (do NOT claim quality headless). This is the "thorough review" — surface a checklist for Kevin's ear.
+## Slice 4 — (EAR-GATED) per-SFX level/timbre review + gaps ✅ DONE
+- [x] Grounded the full 37-voice bank + every trigger. GAP FOUND + FILLED: the S9c **VictoryOverlay** (the
+  climax win screen) fired NO audio — the climax payoff was silent. Added a dedicated `victory` voice
+  (`makeVictorySound`: ascending C-major run resolving into a held triad, ~1.3s — grander than the reward
+  fanfare), registered (37->38), characterization-tested, wired on VictoryOverlay mount via the `window.*`
+  sound-bridge (playVictory verb -> App window-bridge -> mount useEffect). Capture-safe. Locked by
+  `tests/gates/victory-audio-gate.test.js` (+4). Shrine-reach checked = already covered by the quest-complete
+  fanfare (not a gap; a distinct chime would be taste -> didn't churn).
+- [x] EAR-GATED balance: the per-voice level/timbre tuning is surfaced as a KEVIN-REVIEW #45 checklist
+  (one-line gains in `audio/synthVoices.js`) rather than churned headless. VERIFIED: build clean · eslint
+  clean · unit 1255->1259 · captured + gate 20/20.
+
+## ✅ SFX OVERHAUL COMPLETE (Kevin mega-directive point 1)
+S1 master-bus + limiter kernel -> S2 whole-WebAudio-mix routed through the limiter -> S3 autoplay-resume
+robustness (SFX no longer silent with music off) -> S4 the climax victory sting. Remaining = EAR-GATED
+per-voice balance (KEVIN-REVIEW #45). Audio is ALL-SYNTH (#74); quality is Kevin's ear.
 
 ## Notes / Self-Review
 - **DRY/testable:** the bus is a pure helper (like synthVoices) so the DSP-ish wiring is unit-tested off a fake ctx.

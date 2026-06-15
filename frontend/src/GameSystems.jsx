@@ -239,6 +239,11 @@ export const DeathScreen = ({ onRespawn }) => {
 // the sandbox continues (post-climax endless handoff: mobs/shrines remain). Only renders post-defeat, which
 // can never be true in capture (a fresh level-1 game), so it stays out of the visual baselines.
 export const VictoryOverlay = ({ onDismiss }) => {
+    // The climax payoff: fire the triumphant victory sting once when the win screen appears (the boss-defeat
+    // beat was silent). window.playVictory is bridged from App's useGameSounds; no-op in capture (no ctx).
+    useEffect(() => {
+        if (window.playVictory) window.playVictory();
+    }, []);
     return (
         <motion.div
             initial={{ opacity: 0 }}

@@ -617,6 +617,7 @@ export const useGameSounds = () => {
     playMagicCharge: () => playSound('magicCharge'),
     playLevelUpSound: () => playSound('levelUp'),
     playFanfare: () => playSound('fanfare'), // reward beat — achievement / quest complete (DayNight/reward audio)
+    playVictory: () => playSound('victory'), // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
     // UI foley (panel open/close) — subtle menu chrome responsiveness
     playUIOpen: () => playSound('uiOpen'),
     playUIClose: () => playSound('uiClose')
