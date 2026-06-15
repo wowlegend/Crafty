@@ -63,6 +63,7 @@ const compileShader = (shader) => {
         varying float vDepthB;
         attribute float aAO; // S1 vertex AO factor 0..3 (mesher cornerAO), forwarded to vAO
         varying float vAO;
+        varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -86,6 +87,7 @@ const compileShader = (shader) => {
         `
         #include <begin_vertex>
         vWorldY = (modelMatrix * vec4(position, 1.0)).y; // M5a: world height for the water depth-tint
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz; // S(tex) de-tile: world cell for per-cell value variation
         // Check if vertex is water by its blockType index in color.r attribute (9.0)
         bool isWater = (abs(color.r - 9.0) < 0.1);
         if (isWater) {
@@ -111,6 +113,7 @@ const compileShader = (shader) => {
         varying float vFoam;
         varying float vDepthB;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
+        varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -160,6 +163,14 @@ const compileShader = (shader) => {
         float desat = danger <= 1.0 ? danger * 0.18 : 0.18 + (danger - 1.0) * 0.54;
         vec3 coolGrey = vec3(moodLum * 0.92, moodLum * 0.96, moodLum * 1.06);
         diffuseColor.rgb = mix(diffuseColor.rgb, coolGrey, clamp(desat, 0.0, 0.75));
+
+        // S(tex) de-tile: subtle per-world-cell value jitter (mirrors world/detile.js tileValueOffset) so a
+        // field of one block type stops reading as stamped identical tiles. Bounded +/-0.08, flat (no normal
+        // map -> respects the bold-flat lock). Non-water. Static world cell -> capture-deterministic.
+        if (abs(vBlockType - 9.0) >= 0.1) {
+            float dh = sin(floor(vWorldPos.x) * 12.989 + floor(vWorldPos.y) * 78.233 + floor(vWorldPos.z) * 37.719) * 43758.5453;
+            diffuseColor.rgb *= (1.0 + (fract(dh) - 0.5) * 0.16);
+        }
 
         // S1 vertex ambient occlusion: per-corner AO (aAO 0..3 from the mesher cornerAO) darkens concave
         // corners / crevices / under-overhangs so the voxel terrain reads with FORM (soft contact-shadow)
