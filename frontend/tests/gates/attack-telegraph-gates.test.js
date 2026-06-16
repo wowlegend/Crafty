@@ -73,3 +73,25 @@ describe('attack-telegraph render gates (M2 #4 Slice 2)', () => {
     expect(/if \(isHit\)[\s\S]{0,120}emissive\.copy\(hitColor\)/.test(mob)).toBe(true);
   });
 });
+
+// Slice 3: the boss Phase-3 lava AoE (its own attack loop in BossEntity, not the ai.worker) is telegraphed --
+// the lava ring spawns as a harmless forming warning, then arms. Makes the previously-undodgeable
+// instant-at-the-player lava dodgeable.
+describe('boss lava-AoE telegraph gates (M2 #4 Slice 3)', () => {
+  const boss = read('render/BossEntity.jsx');
+
+  it('BossEntity imports windupRamp + defines a lava windup window', () => {
+    expect(boss).toMatch(/import \{ windupRamp \} from '\.\.\/game\/attackTelegraph\.js'/);
+    expect(boss).toMatch(/const LAVA_WINDUP_MS = \d+/);
+  });
+  it('a spawned lava zone carries a telegraphUntil warning window', () => {
+    expect(boss).toMatch(/telegraphUntil: performance\.now\(\) \+ LAVA_WINDUP_MS/);
+  });
+  it('lava damage is GATED on the telegraph having elapsed (forming = harmless)', () => {
+    expect(boss).toMatch(/const forming = now < l\.telegraphUntil/);
+    expect(boss).toMatch(/if \(!forming && distSq < 7\.56\)/);
+  });
+  it('the forming ring grows in via windupRamp (the visible warning)', () => {
+    expect(boss).toMatch(/windupRamp\(now, l\.telegraphUntil, LAVA_WINDUP_MS\)/);
+  });
+});

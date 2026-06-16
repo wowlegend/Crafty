@@ -10,6 +10,13 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
+import { windupRamp } from '../game/attackTelegraph.js';
+
+// M2 #4 Slice 3: boss lava-AoE telegraph. The lava ring (already a ground decal) now appears + grows as
+// a HARMLESS warning for this window before it arms (starts dealing damage), so the player can read it
+// and step out -- it used to spawn instantly at the player's feet (undodgeable). Heavier than the mob
+// 380ms windup: it's a big AoE you must walk clear of. Tunable -> Kevin FEEL #50.
+const LAVA_WINDUP_MS = 750;
 
 const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
     const store = useGameStore.getState();
@@ -151,7 +158,8 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             id,
             position: pos.clone(),
             life: 6.0,
-            lastDamageTime: 0
+            lastDamageTime: 0,
+            telegraphUntil: performance.now() + LAVA_WINDUP_MS // harmless warning window before it arms
         };
         lavaZonesRef.current.push(lava);
         setEffects(prev => ({ ...prev, lavaZones: [...lavaZonesRef.current] }));
@@ -384,20 +392,29 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             l.life -= delta;
 
             const mesh = lavaZoneMeshes.current[l.id];
+            const forming = now < l.telegraphUntil;
             if (mesh) {
-                // Smoothly fade out transparency scale over time
-                mesh.material.opacity = 0.5 * Math.max(0, l.life / 6.0);
-                mesh.scale.setScalar(1.0 + Math.sin(state.clock.elapsedTime * 4) * 0.05); // Pulsing
+                if (forming) {
+                    // TELEGRAPH: the ring grows in + blinks fast as a danger warning (no damage yet) so
+                    // the player can read where the lava lands and step out before it arms.
+                    const wr = windupRamp(now, l.telegraphUntil, LAVA_WINDUP_MS); // 0 -> 1 as it arms
+                    mesh.material.opacity = 0.25 + 0.4 * Math.abs(Math.sin(now * 0.012));
+                    mesh.scale.setScalar(0.4 + 0.6 * wr);
+                } else {
+                    // ARMED hot lava: fade out over its life, gentle pulse.
+                    mesh.material.opacity = 0.5 * Math.max(0, l.life / 6.0);
+                    mesh.scale.setScalar(1.0 + Math.sin(state.clock.elapsedTime * 4) * 0.05);
+                }
             }
 
-            // Lava burning area-of-effect solver
+            // Lava burning area-of-effect solver (only once ARMED -- the telegraph window is harmless)
             const pX = camera.position.x;
             const pZ = camera.position.z;
             const dxL = pX - l.position.x;
             const dzL = pZ - l.position.z;
             const distSq = dxL * dxL + dzL * dzL;
 
-            if (distSq < 7.56) { // 2.75 units radius burning threshold
+            if (!forming && distSq < 7.56) { // 2.75 units radius burning threshold
                 if (now - l.lastDamageTime > 500) {
                     l.lastDamageTime = now;
                     if (useGameStore.getState().damagePlayer) {
