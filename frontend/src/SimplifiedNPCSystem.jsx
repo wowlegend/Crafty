@@ -481,7 +481,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       const isCrit = damage >= 40;
       // S2-B3-M1: camera shake is PLAYER feel — 3 allies on attack cooldowns would judder it continuously.
       if (source === 'player' && store.triggerCameraShake) {
-        store.triggerCameraShake(isCrit ? 1.6 : 1.0);
+        store.triggerCameraShake(isCrit ? 1.6 : 1.0, hitDir[0], hitDir[2]);
       }
       
       // Phase 11: Spatial Hit Sound

@@ -275,7 +275,14 @@ export const useGameStore = create((set, get) => ({
 
     // Phase 9: Camera Shake
     cameraShakeIntensity: 0,
-    triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),
+    // SOTA M2 #9: directional bias unit [x,z] (world) so a hit lurches the camera AWAY from the
+    // player along the real hit vector, not a symmetric jitter. Passing a dir sets it; omitting the
+    // dir (the per-frame decay calls) PRESERVES it across the multi-frame falloff.
+    cameraShakeDir: [0, 0],
+    triggerCameraShake: (intensity = 1.0, dirX, dirZ) => set((s) => ({
+      cameraShakeIntensity: intensity,
+      cameraShakeDir: dirX === undefined ? s.cameraShakeDir : [dirX, dirZ],
+    })),
 
     // SOTA M1 game-feel: ONE global feedback/juice dial scaling screenshake + hitstop magnitude.
     // 1 = full, 0 = off. The M3 Settings/accessibility "reduced motion" toggle drives this to 0.

@@ -1162,7 +1162,10 @@ export const Player = ({ isWorldBuilt }) => {
       // falloff + the dial replace the old flat linear Math.random jitter.
       const trauma = store.cameraShakeIntensity;
       const ji = store.juiceIntensity ?? 1;
-      const o = shakeOffset(trauma, performance.now() * 0.05, 0, 0, 0.55 * ji);
+      // M2 #9: bias the shake along the hit vector (set at trigger, preserved through decay) so a hit
+      // lurches the camera away from the player toward the impact, not a direction-less jitter.
+      const [dx, dz] = store.cameraShakeDir || [0, 0];
+      const o = shakeOffset(trauma, performance.now() * 0.05, dx, dz, 0.55 * ji);
       shakeX = o.x;
       shakeY = o.y;
       shakeZ = o.z;

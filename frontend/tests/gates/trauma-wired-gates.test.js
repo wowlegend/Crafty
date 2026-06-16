@@ -23,8 +23,18 @@ describe('M1 trauma core is wired', () => {
 
   it('the camera shake is scaled by the juiceIntensity dial', () => {
     const i = comp.indexOf('shakeOffset(');
-    const block = comp.slice(i - 200, i + 120);
+    const block = comp.slice(i - 400, i + 120); // widened: M2 #9 added the dx/dz lines between ji and the call
     expect(block.includes('juiceIntensity')).toBe(true);
+  });
+
+  it('M2 #9: the camera shake is biased along the hit direction (cameraShakeDir), not direction-less', () => {
+    // Components reads the stored hit-dir and feeds it into shakeOffset (was a literal 0, 0).
+    expect(comp.includes('store.cameraShakeDir')).toBe(true);
+    expect(/,\s*dx,\s*dz,/.test(comp)).toBe(true);            // dir threaded into the shakeOffset args
+    expect(comp.includes('* 0.05, 0, 0,')).toBe(false);       // the old direction-less call is gone
+    // the store carries the dir + a decay-preserving trigger signature
+    expect(/cameraShakeDir:\s*\[0,\s*0\]/.test(store)).toBe(true);
+    expect(/triggerCameraShake:\s*\(intensity = 1\.0, dirX, dirZ\)/.test(store)).toBe(true);
   });
 
   it('SimplifiedNPCSystem hitstop is weight-tiered via HITSTOP, not the flat +28', () => {
