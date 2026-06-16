@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 16, 2026 (🗿 SOTA M4 #8 Slice 2 -- a physical Blight-Heart monolith)
+- **The climax destination now reads from afar** (audit #8). Verify-Before-Assert: the SHRINES are the isLandmarkChunk spires/arches that S8d already gave silhouettes + bright beacons (NOT flat -- audit stale there). The real gap was the BLIGHT-HEART, an invisible coordinate (compass marker + boss spawn only). Added a `BlightMonolith` -- a tiered obsidian shard (taller than the shrines) + a blight-violet `#A030F0` beacon -- rendered by `BlightHeartRender` only when the ~906-block-out lair chunk is loaded. Pure `blightHeartChunk()` (TDD) gates the mount. Reuses the proven Cube/Emissive voxelKit primitives.
+- **Verify:** unit 1369->1374 (+5: blightHeart +2, gate +3) · build+eslint clean · visual 20/20 (lair chunk never loaded at the spawn capture camera -> capture-safe by construction). Commit `ca5d0c7`. On-approach LOOK + beacon-glow intensity -> KEVIN #50. NEXT = M4 S3 far-LOD #18.
+
 ### June 16, 2026 (🌿 SOTA M4 #5 Slice 1b -- wind-grass MOUNTED; #5 REVIVED)
 - **The dead wind-grass is alive** (audit #5 -- 'the #1 2019-hobby tell'). Terrain.jsx now mounts the previously-unmounted `OptimizedGrassSystem` per chunk from the worker's `grassTops` (S1a). The component takes the pre-filtered tops directly; the blade grew 0.1x0.18 -> 0.4x0.7 (a readable stylized tuft vs a sub-perceptual speck) rooted at the surface; its wind-sway + proximity-bend shader + capture-determinism already existed. Removed the dead import from Components.jsx.
 - **GROUND-LEVEL LOOK** (new reusable `scripts/visual/grass-probe.mjs`): green tufts visibly poke up from the grass terrain, stylized bold-flat. Density/size = a tunable taste knob -> KEVIN #50.
