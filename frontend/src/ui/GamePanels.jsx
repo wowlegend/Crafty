@@ -705,6 +705,21 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         />
                     </Panel>
 
+                    {/* Reduced Motion toggle (M3 #3): an explicit a11y switch -- ON pins the feedback dial
+                        to 0 (no shake/hitstop), OFF restores full. The OS prefers-reduced-motion default is
+                        auto-applied at mount (App); this is the discoverable in-game override. */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">Reduced Motion</span>
+                        <Button
+                            variant={(gameState.juiceIntensity ?? 1) === 0 ? 'primary' : 'secondary'}
+                            size="sm"
+                            onClick={() => gameState.setJuiceIntensity((gameState.juiceIntensity ?? 1) === 0 ? 1 : 0)}
+                            className="min-w-[64px]"
+                        >
+                            {(gameState.juiceIntensity ?? 1) === 0 ? 'ON' : 'OFF'}
+                        </Button>
+                    </Panel>
+
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Game Mode</span>

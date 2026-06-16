@@ -6,6 +6,8 @@ import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
+import { motionIntensity } from './game/a11y.js';
+import { isCaptureMode } from './devtest/captureMode';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
 import { usePetSystem } from './world/petSystem';
@@ -661,6 +663,18 @@ function GameApp({ experienceSystem }) {
       if (musicEnabled) playBackgroundMusic();
     }
   }, [isPointerLocked, musicEnabled, playBackgroundMusic, resumeAudio]);
+
+  // M3 #3: respect the OS prefers-reduced-motion preference -> drive the feedback-intensity dial to 0
+  // (kills screenshake + hitstop juice). Applies the OS default on mount + re-applies on change; the
+  // Settings slider/toggle remain the manual override between change events. No-op in capture.
+  useEffect(() => {
+    if (isCaptureMode() || typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const apply = () => useGameStore.getState().setJuiceIntensity(motionIntensity(mq.matches, 1));
+    if (mq.matches) apply(); // only force on mount when the OS asks for reduced motion
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   if (loading) {
     return (
