@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (⚔️ SOTA M2 #4 Slice 3 — boss lava AoE telegraph; ATTACK TELEGRAPHS #4 COMPLETE)
+- **The boss's worst unfair attack is now dodgeable** (audit #4, done). The boss runs its own attack loop (`BossEntity.jsx`, not the ai.worker); its Phase-3 lava breath spawned INSTANTLY at the player's feet (undodgeable). Now the lava ring (already a `ringGeometry` ground decal) spawns as a HARMLESS forming WARNING for `LAVA_WINDUP_MS` (750ms — heavier than the mob 380ms), growing in + blinking via the shared `windupRamp`, before it ARMS (damage gated on `!forming`) — so the player reads it + steps out. Reuses the existing ring mesh (no new geometry). The boss roar (boss-centered + notified) + fireball (travel-time arc) are inherently more readable -> further boss-telegraph polish -> KEVIN #50.
+- **Gated:** `attack-telegraph-gates.test.js` (+4: import+const, telegraphUntil, damage gated on !forming, forming ring via windupRamp).
+- **Verify:** unit 1317->1321 (+4) · build+eslint clean · captured + visual gate 20/20 (boss useFrame returns early in capture -> no lava -> zero drift). Commit `d82ed8c`. **#4 ATTACK TELEGRAPHS COMPLETE** (mob windup pose+glow+dodge [S1-S2] + boss lava ring [S3]). NEXT = M2 Theme 3 death/victory beats #7.
+
 ### June 16, 2026 (⚔️ SOTA M2 #4 Slice 2 — render the telegraph: anticipation pose + emissive charge ramp)
 - **The windup is now VISIBLE + readable** (audit #4 cont.). MobModel reads `entity.windupUntil` (round-tripped in slice 1): a mob **coils back + crouches** accelerating toward the strike (`windupRamp` t^2 ease) so the player can read + dodge it, and a danger red-orange (`#ff3a00`) **emissive charge ramp** brightens (pulsing) on the toon body toward the strike (rides BLOOM>=0.85). The flinch wins if a hit lands mid-windup; the white hit-flash wins on impact (charge -> white pop). New pure `windupRamp(now,windupUntil,windupMs)->[0,1]`.
 - **TDD/Gated:** `attackTelegraph.test.js` (+4 windupRamp) · `attack-telegraph-gates.test.js` (+3 render wiring).
