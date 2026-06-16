@@ -739,6 +739,37 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         />
                     </Panel>
 
+                    {/* Music Volume (M3 #3 S3b: scales the ElevenLabs music crossfade target). */}
+                    <Panel variant="inset" className="bg-slot p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Music</span>
+                            <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.musicVolume ?? 1) * 100)}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={gameState.musicVolume ?? 1}
+                            onChange={(e) => gameState.setMusicVolume(parseFloat(e.target.value))}
+                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            aria-label="Music volume"
+                        />
+                    </Panel>
+
+                    {/* Master Mute (M3 #3 S3b): one switch silences BOTH the SFX bus AND the music. */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">Mute All</span>
+                        <Button
+                            variant={gameState.masterMuted ? 'primary' : 'secondary'}
+                            size="sm"
+                            onClick={() => gameState.setMasterMuted(!gameState.masterMuted)}
+                            className="min-w-[64px]"
+                        >
+                            {gameState.masterMuted ? 'ON' : 'OFF'}
+                        </Button>
+                    </Panel>
+
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Game Mode</span>

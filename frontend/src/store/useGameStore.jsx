@@ -293,6 +293,12 @@ export const useGameStore = create((set, get) => ({
     // SoundManager effect). musicVolume + masterMuted land in S3b. Default 1 (full).
     sfxVolume: 1,
     setSfxVolume: (v) => set({ sfxVolume: Math.max(0, Math.min(1, v)) }),
+    // S3b: music volume (scales the MusicPlayer crossfade target) + a single master mute that silences
+    // BOTH the SFX bus AND the music (both audio paths are wired to it).
+    musicVolume: 1,
+    setMusicVolume: (v) => set({ musicVolume: Math.max(0, Math.min(1, v)) }),
+    masterMuted: false,
+    setMasterMuted: (m) => set({ masterMuted: !!m }),
 
     // S1-D-M1: Non-blocking hitstop. `damageMob` sets this to `performance.now() + ms`;
     // the player movement loop clamps its motion toward zero while now < hitstopUntil.

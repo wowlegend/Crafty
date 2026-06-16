@@ -10,7 +10,9 @@ import { isCaptureMode } from '../devtest/captureMode';
 const VOL = 0.4;
 
 export default function MusicPlayer() {
-  const { isDay, bossActive } = useGameStore(useShallow((s) => ({ isDay: s.isDay, bossActive: s.bossActive })));
+  const { isDay, bossActive, musicVolume, masterMuted } = useGameStore(useShallow((s) => ({
+    isDay: s.isDay, bossActive: s.bossActive, musicVolume: s.musicVolume ?? 1, masterMuted: s.masterMuted || false,
+  })));
   const { musicEnabled } = useSounds();
   const refs = useRef(null);
   const fadeRef = useRef(null);
@@ -36,15 +38,17 @@ export default function MusicPlayer() {
     if (fadeRef.current) clearInterval(fadeRef.current);
     fadeRef.current = setInterval(() => {
       let settled = true;
+      // M3 #3 S3b: the active-track target = the music-volume slider * VOL, silenced by the master mute.
+      const activeTarget = masterMuted ? 0 : VOL * musicVolume;
       for (const [k, a] of Object.entries(r)) {
-        const target = k === key ? VOL : 0;
+        const target = k === key ? activeTarget : 0;
         const d = target - a.volume;
         if (Math.abs(d) < 0.02) { a.volume = target; if (target === 0) a.pause(); }
         else { a.volume = Math.max(0, Math.min(1, a.volume + Math.sign(d) * 0.04)); settled = false; }
       }
       if (settled) { clearInterval(fadeRef.current); fadeRef.current = null; }
     }, 60);
-  }, [isDay, bossActive, musicEnabled]);
+  }, [isDay, bossActive, musicEnabled, musicVolume, masterMuted]);
 
   return null;
 }

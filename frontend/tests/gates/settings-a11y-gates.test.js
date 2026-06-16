@@ -68,10 +68,34 @@ describe('settings a11y gates (M3 #3 S3a -- SFX volume)', () => {
     expect(/type="range"[\s\S]{0,200}value=\{gameState\.sfxVolume/.test(panels)).toBe(true);
     expect(panels).toMatch(/gameState\.setSfxVolume\(parseFloat\(e\.target\.value\)\)/);
   });
-  it('SoundManager applies audioGain(sfxVolume) to the live master-bus gain', () => {
+  it('SoundManager applies audioGain(sfxVolume, masterMuted) to the live master-bus gain', () => {
     expect(sm).toMatch(/import \{ audioGain \} from '\.\/game\/audioSettings'/);
-    expect(/masterBusRef\.current\?\.input[\s\S]{0,120}gain\.value = audioGain\(sfxVolume\)/.test(sm)).toBe(true);
-    // a freshly-created bus seeds the current volume
-    expect(sm).toMatch(/gain\.value = audioGain\(useGameStore\.getState\(\)\.sfxVolume/);
+    expect(/masterBusRef\.current\?\.input[\s\S]{0,120}gain\.value = audioGain\(sfxVolume, masterMuted\)/.test(sm)).toBe(true);
+    // a freshly-created bus seeds the current volume + mute
+    expect(sm).toMatch(/audioGain\(st\.sfxVolume \?\? 1, st\.masterMuted/);
+  });
+});
+
+// S3b: music volume + a single master mute (silences BOTH the SFX bus and the separate music).
+describe('settings a11y gates (M3 #3 S3b -- music volume + master mute)', () => {
+  const panels = read('ui/GamePanels.jsx');
+  const store = read('store/useGameStore.jsx');
+  const music = read('ui/MusicPlayer.jsx');
+
+  it('the store carries clamped musicVolume + a masterMuted flag', () => {
+    expect(store).toMatch(/musicVolume:\s*1/);
+    expect(store).toMatch(/setMusicVolume:/);
+    expect(store).toMatch(/masterMuted:\s*false/);
+    expect(store).toMatch(/setMasterMuted:/);
+  });
+  it('MusicPlayer scales its crossfade target by musicVolume + zeroes on masterMuted', () => {
+    expect(music).toMatch(/masterMuted \? 0 : VOL \* musicVolume/);
+    expect(music).toMatch(/musicVolume, masterMuted\]/); // added to the effect deps
+  });
+  it('SettingsPanel has a Music slider + a Mute All toggle', () => {
+    expect(/Music<\/span>[\s\S]{0,500}value=\{gameState\.musicVolume/.test(panels)).toBe(true);
+    expect(panels).toMatch(/gameState\.setMusicVolume\(parseFloat/);
+    expect(panels).toMatch(/Mute All/);
+    expect(panels).toMatch(/gameState\.setMasterMuted\(!gameState\.masterMuted\)/);
   });
 });
