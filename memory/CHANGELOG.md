@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 16, 2026 (⛏️ SOTA M5 #13 mining feel -- VERIFY-BEFORE-ASSERT: break juice already there)
+- **No code -- break/place JUICE is already built** (5th-class verify-before-assert). Mining (`Terrain.jsx` mine handler) plays a spatial break sound (`playBlockBreak`) + the worker `block_broken` -> BlockParticleSystem spawns an 8-particle physics debris burst + drops the block to inventory; placing has a colored puff. So the audit #13's 'break/place juice + block-to-inventory loot' is DONE.
+- **The remaining #13 (hold-to-mine + crack overlay + per-block hardness) is a Kevin DIRECTION decision, not autonomous:** it fundamentally changes the dig-loop feel (slow survival-mining vs the current fast creative-mining that's good for building) + needs a hardness table + a crack shader + hold-input + balance -- surfaced to KEVIN (#50/direction). NEXT = M5 #11 element-zone VFX + beast verbs (verify-first).
+
 ### June 16, 2026 (🎒 SOTA M5 #15 inventory correctness COMPLETE -- verify + real lost-buy fix)
 - **Store math verified-correct + LOCKED**: the inventory is a guarded count-map (add increments, remove floors at 0, chest transfer conserves + refuses over-transfer, equip/unequip round-trips) -- new `tests/store/inventoryConservation.test.js` (+4) pins it. (`9f3ec95`)
 - **Real bug FOUND + FIXED** (verify-before-assert on the EXACT audit claim 'tools/magic items invisible'): the Inventory panel renders ONLY `inventory.blocks` and NO panel renders `magic`/`tools`, yet `executeBlockTrade` + `executeCrystalTrade` wrote BOUGHT items into `magic` -> purchases vanished (lost-buy). Routed both to `blocks` (the flat bucket; `executeCoinTrade` was already correct). Gated by `inventory-flat-bucket-gates.test.js` (+2). (`853da06`)
