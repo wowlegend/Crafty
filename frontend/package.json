@@ -27,7 +27,6 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:swarm": "node test_swarm.js",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "lint": "eslint src",
