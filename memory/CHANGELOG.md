@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (♿ SOTA M3 #3 Slice 1 — feedback-intensity slider, surfacing the M1 juice dial)
+- **The M1 juiceIntensity dial is now player-tunable** (audit #3, the a11y floor). It scaled screenshake + hitstop strength but had no UI; added a Feedback Intensity slider (0..100%) to the existing SettingsPanel (`ui/GamePanels.jsx`), mirroring the Look-Sensitivity slider, bound to `setJuiceIntensity` (clamped in-store). Sets up slice 2's `prefers-reduced-motion` hook to drive the same dial to 0.
+- **M3 plan doc** authored; reusable `scripts/visual/settings-probe.mjs` (force `showSettings` -> screenshot). LOOKED: the slider renders under Look Sensitivity, reads a forced 60% correctly, bold-flat consistent.
+- **Verify:** unit 1336->1339 (+3) · build+eslint clean · captured + visual gate 20/20 (settings panel not in capture). Commit `c5d1b7d`. NEXT = #3 S2 (reduced-motion hook). FEEL -> KEVIN #50.
+
 ### June 16, 2026 (🏁 SOTA M2 #7 Slice 2 — Death/Victory overlays on tokens; M2 COMBAT-READABILITY COMPLETE)
 - **The two off-brand last-impression screens are rebuilt on the bold-flat design system** (audit #7, done). DeathScreen + VictoryOverlay were raw Tailwind (bg-black panels, text-red-500/amber-300 titles, bg-green-600/amber-500 buttons); now they use the **Panel (raise) + Button primitives + theme tokens** (text-danger / text-warn titles, ink drop-shadow, framer-motion scale-in) with a **run summary** (RunStat: tabular-nums Level + Nights-survived). LOOKED at the rebuilt DeathScreen via a forced-state probe (`scripts/visual/death-probe.mjs`, reusable): bold-flat navy panel + red display title + clean stat row + RESPAWN button, no pageerror.
 - **Verify:** unit 1332->1336 (+4) · build+eslint clean · captured + visual gate 20/20 (overlays only mount on death/victory, never in a fresh-L1 capture). Commit `2a6b999`.
