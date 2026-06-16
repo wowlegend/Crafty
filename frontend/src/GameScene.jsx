@@ -245,7 +245,7 @@ const SpatialAudioController = () => {
 
     // 4. Expose spatial trigger globally with lowpass occlusion node allocation
     useGameStore.setState({ 
-      playSpatialSound: (soundName, position, playbackRate = 1, distance = 20) => {
+      playSpatialSound: (soundName, position, playbackRate = 1, distance = 20, jitter = true) => {
         if (!soundEnabled || !sounds || !sounds[soundName] || !listenerRef.current) return;
 
         try {
@@ -253,7 +253,11 @@ const SpatialAudioController = () => {
           sound.setBuffer(sounds[soundName]);
           sound.setRefDistance(distance);
           sound.setRolloffFactor(2); // volume falloff roll
-          sound.setPlaybackRate(playbackRate);
+          // +/-7% pitch variation kills the "machine-gun" fatigue of repeated combat/footstep SFX. Capture-
+          // safe (this fn early-returns when `sounds` is null in capture, so no RNG runs). Stingers/motifs go
+          // through non-spatial playSound; a caller can pass jitter=false to pin pitch.
+          const rate = jitter ? playbackRate * (0.93 + Math.random() * 0.14) : playbackRate;
+          sound.setPlaybackRate(rate);
           sound.setVolume(volume);
 
           const filterNode = audioContext.createBiquadFilter();

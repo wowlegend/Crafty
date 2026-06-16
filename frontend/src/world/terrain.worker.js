@@ -546,7 +546,11 @@ const BLOCK_COLORS = {
   7: toLinear('#2E7D32'), // Leaves
   8: toLinear('#2E7D32'), // Cactus
   9: toLinear('#3F76E4'), // Water
-  255: [1, 1, 1] 
+  10: toLinear('#2F2F2F'), // Coal ore   (S6 -- debris was shattering WHITE via the [1,1,1] fallback)
+  11: toLinear('#D8AF93'), // Iron ore
+  12: toLinear('#FCEE4B'), // Gold ore
+  13: toLinear('#4FD0E7'), // Diamond ore
+  255: [1, 1, 1]
 };
 
 // Pre-allocated reusable buffer to prevent GC churn (max size: 16x256 = 4096 entries)

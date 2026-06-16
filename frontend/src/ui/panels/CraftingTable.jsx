@@ -95,6 +95,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
         setCraftMessage({ type: 'success', text: `Crafted ${result.name}!` });
         setTimeout(() => setCraftMessage(null), 2000);
 
+        if (window.playCraft) window.playCraft(); // craft was silent (dead voice) -> a connected craft beat
         if (GameMethods.grantXP) GameMethods.grantXP(10);
     };
 

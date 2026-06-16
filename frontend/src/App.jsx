@@ -101,7 +101,7 @@ function GameApp({ experienceSystem }) {
   const showcaseView = useGameStore(s => s.showcaseView);
   const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
-  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory } = useGameSounds();
+  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory, playCraft } = useGameSounds();
 
   // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
   // (SimpleExperienceSystem's window.playLevelUpSound, QuestSystem's window.playFanfare), but nothing
@@ -111,7 +111,8 @@ function GameApp({ experienceSystem }) {
     window.playLevelUpSound = playLevelUpSound;
     window.playFanfare = playFanfare;
     window.playVictory = playVictory; // the climax sting, fired on VictoryOverlay mount
-  }, [playLevelUpSound, playFanfare, playVictory]);
+    window.playCraft = playCraft;     // crafting was silent (dead voice, zero callers) -> wire it to doCraft
+  }, [playLevelUpSound, playFanfare, playVictory, playCraft]);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
