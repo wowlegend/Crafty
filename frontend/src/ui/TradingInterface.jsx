@@ -20,15 +20,14 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
       return;
     }
 
+    // M5 #15 fix: route the bought item into `blocks` (the flat bucket the Inventory panel renders) --
+    // it used to land in `magic`, which NO panel renders, so the purchase vanished (lost-buy bug).
     gameState.setInventory(prev => ({
       ...prev,
       blocks: {
         ...prev.blocks,
-        [blockType]: currentCount - required
-      },
-      magic: {
-        ...prev.magic,
-        [resultItem]: (prev.magic[resultItem] || 0) + resultCount
+        [blockType]: currentCount - required,
+        [resultItem]: (prev.blocks[resultItem] || 0) + resultCount
       }
     }));
     playPickup();
@@ -42,12 +41,17 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
       return;
     }
 
+    // M5 #15 fix: spend the crystal currency from `magic` but route the bought item into `blocks` (the
+    // flat bucket the Inventory renders) so it is visible + usable (was landing in unrendered `magic`).
     gameState.setInventory(prev => ({
       ...prev,
       magic: {
         ...prev.magic,
-        crystals: currentCrystals - requiredCrystals,
-        [magicItem]: (prev.magic[magicItem] || 0) + resultCount
+        crystals: currentCrystals - requiredCrystals
+      },
+      blocks: {
+        ...prev.blocks,
+        [magicItem]: (prev.blocks[magicItem] || 0) + resultCount
       }
     }));
     if (magicItem === 'wand') {
