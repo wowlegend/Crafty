@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { attackPhase, WINDUP_MS } from './attackTelegraph.js';
+import { attackPhase, windupRamp, WINDUP_MS } from './attackTelegraph.js';
 
 describe('attackPhase (the dodgeable windup->strike machine)', () => {
   it('idle when not in range / on cooldown (no intent)', () => {
@@ -20,5 +20,22 @@ describe('attackPhase (the dodgeable windup->strike machine)', () => {
   });
   it('honors a custom windup window', () => {
     expect(attackPhase(0, 0, true, 500).windupUntil).toBe(500);
+  });
+});
+
+describe('windupRamp (0 at windup start -> 1 at the strike, for the render pose/emissive)', () => {
+  it('is 0 at the start of the windup', () => {
+    expect(windupRamp(1000, 1380, 380)).toBeCloseTo(0);
+  });
+  it('is 0.5 halfway through', () => {
+    expect(windupRamp(1190, 1380, 380)).toBeCloseTo(0.5);
+  });
+  it('is 1 at the strike moment', () => {
+    expect(windupRamp(1380, 1380, 380)).toBeCloseTo(1);
+  });
+  it('clamps to 1 past the strike and 0 with no windup', () => {
+    expect(windupRamp(2000, 1380, 380)).toBe(1);
+    expect(windupRamp(1000, 0, 380)).toBe(0);
+    expect(windupRamp(500, 1380, 380)).toBe(0); // before the window even opens
   });
 });

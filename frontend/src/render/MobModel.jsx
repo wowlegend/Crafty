@@ -7,6 +7,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
 import { mobFeatures } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
+import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -53,6 +54,7 @@ const MobModel = React.memo(({ entity }) => {
   const baseColor = useMemo(() => new THREE.Color(entity.color), [entity.color]);
   const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
   const blackColor = useMemo(() => new THREE.Color('#000000'), []);
+  const chargeColor = useMemo(() => new THREE.Color('#ff3a00'), []); // M2 #4: telegraph charge glow (danger red-orange)
 
   const [dialogue, setDialogue] = useState(null);
 
@@ -149,6 +151,14 @@ const MobModel = React.memo(({ entity }) => {
           modelRef.current.rotation.x = -0.2 * wave;
           modelRef.current.rotation.z = 0;
         }
+      } else if (entity.windupUntil && performance.now() < entity.windupUntil) {
+        // M2 #4 ANTICIPATION: coil back + crouch, accelerating toward the strike, so the player can
+        // read (and dodge) the incoming attack. Flinch above wins if a hit landed mid-windup.
+        const wt = windupRamp(performance.now(), entity.windupUntil, WINDUP_MS);
+        const ease = wt * wt; // accelerate the coil near the strike
+        modelRef.current.scale.set(1 + ease * 0.06, 1 - ease * 0.12, 1 + ease * 0.06);
+        modelRef.current.rotation.x = -0.18 * ease; // lean/coil back
+        modelRef.current.rotation.z = 0;
       } else {
         modelRef.current.scale.set(1, 1, 1);
         modelRef.current.rotation.set(0, 0, 0);
@@ -157,6 +167,11 @@ const MobModel = React.memo(({ entity }) => {
 
     // 3. Handle hit flash visually
     const isHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
+    // M2 #4: telegraph charge glow -- ramps the body emissive up toward the strike (not while hit-flashing).
+    const charging = !isHit && entity.windupUntil && performance.now() < entity.windupUntil;
+    const chargeI = charging
+      ? (0.6 + 0.4 * Math.sin(performance.now() * 0.025)) * windupRamp(performance.now(), entity.windupUntil, WINDUP_MS) ** 2 * 1.5
+      : 0;
     
     groupRef.current.traverse((child) => {
       // Only flash lit body materials (Standard/Toon). The drei outline mesh
@@ -164,8 +179,16 @@ const MobModel = React.memo(({ entity }) => {
       // eyes must NOT be mutated, or the outline color would be clobbered each frame.
       if (child.isMesh && flashableMaterial(child.material) && child.material.name !== "eye") {
          child.material.color.copy(isHit ? hitColor : baseColor);
-         child.material.emissive.copy(isHit ? hitColor : blackColor);
-         child.material.emissiveIntensity = isHit ? 1.5 : 0;
+         if (isHit) {
+           child.material.emissive.copy(hitColor);
+           child.material.emissiveIntensity = 1.5;
+         } else if (charging) {
+           child.material.emissive.copy(chargeColor);
+           child.material.emissiveIntensity = chargeI;
+         } else {
+           child.material.emissive.copy(blackColor);
+           child.material.emissiveIntensity = 0;
+         }
       }
     });
 

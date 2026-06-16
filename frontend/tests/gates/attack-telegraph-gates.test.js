@@ -53,3 +53,23 @@ describe('attack-telegraph gates (M2 #4)', () => {
     expect(attackPhase(1380, 1380, false).action).toBe('cancel');
   });
 });
+
+// Slice 2: MobModel RENDERS the telegraph -- an anticipation pose + emissive charge ramp driven by
+// entity.windupUntil (the field slice 1 round-trips). Imports the pure windupRamp (main-thread file).
+describe('attack-telegraph render gates (M2 #4 Slice 2)', () => {
+  const mob = read('render/MobModel.jsx');
+
+  it('MobModel imports the pure windupRamp + WINDUP_MS from the canonical module', () => {
+    expect(mob).toMatch(/import \{ windupRamp, WINDUP_MS \} from '\.\.\/game\/attackTelegraph'/);
+  });
+  it('renders an anticipation pose from entity.windupUntil (coil), composing after the flinch', () => {
+    expect(/entity\.windupUntil && performance\.now\(\) < entity\.windupUntil/.test(mob)).toBe(true);
+    expect(mob).toMatch(/windupRamp\(performance\.now\(\), entity\.windupUntil/);
+  });
+  it('ramps an emissive charge glow toward the strike, but the hit-flash still wins', () => {
+    expect(mob).toMatch(/const charging = !isHit && entity\.windupUntil/);
+    expect(mob).toMatch(/emissive\.copy\(chargeColor\)/);
+    // hit-flash precedence preserved in the traverse
+    expect(/if \(isHit\)[\s\S]{0,120}emissive\.copy\(hitColor\)/.test(mob)).toBe(true);
+  });
+});
