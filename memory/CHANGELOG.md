@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (🎒 SOTA M5 #15 inventory correctness COMPLETE -- verify + real lost-buy fix)
+- **Store math verified-correct + LOCKED**: the inventory is a guarded count-map (add increments, remove floors at 0, chest transfer conserves + refuses over-transfer, equip/unequip round-trips) -- new `tests/store/inventoryConservation.test.js` (+4) pins it. (`9f3ec95`)
+- **Real bug FOUND + FIXED** (verify-before-assert on the EXACT audit claim 'tools/magic items invisible'): the Inventory panel renders ONLY `inventory.blocks` and NO panel renders `magic`/`tools`, yet `executeBlockTrade` + `executeCrystalTrade` wrote BOUGHT items into `magic` -> purchases vanished (lost-buy). Routed both to `blocks` (the flat bucket; `executeCoinTrade` was already correct). Gated by `inventory-flat-bucket-gates.test.js` (+2). (`853da06`)
+- **Verify:** unit 1374->1380 (+6) · build+eslint clean · logic-only (no visual gate). **#15 COMPLETE.** NEXT = M5 #13 mining feel (verify-first).
+
 ### June 16, 2026 (🌍 SOTA M4 LIVING-WORLD MILESTONE COMPLETE)
 - **#12 biomes: verify-before-assert** -- 3 biomes (desert/snow/plains) already read DISTINCTLY (surface block color + signature flora: cacti / snow-pines / forest-trees, terrain.worker.js) + the new plains-only grass. The audit's 6-9 Whittaker expansion + blending + biome spawn-tables is a Kevin-scoped worldgen feature (design call), not an M4 slice.
 - **🌍 M4 COMPLETE:** wind-grass REVIVED (#5, the only truly-dead system -- built), Blight-Heart monolith (#8, built), far-LOD horizon-depth (#18, verified-already-built), biomes (#12, verified-distinct). **Meta-finding: 3 of 4 M4 items were ALREADY built** -- the 16-agent audit over-counted the 'static world' gaps vs prior S-work; surfaced to KEVIN with a recommend-playtest-then-re-confirm-M5/M6. NEXT = M5 (verify-first, starting #15 inventory correctness).
