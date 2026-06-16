@@ -720,6 +720,25 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         </Button>
                     </Panel>
 
+                    {/* SFX Volume (M3 #3: drives the WebAudio master-bus gain; 0% = silent SFX. Music volume
+                        + a master mute land in S3b). */}
+                    <Panel variant="inset" className="bg-slot p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Sound Effects</span>
+                            <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.sfxVolume ?? 1) * 100)}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={gameState.sfxVolume ?? 1}
+                            onChange={(e) => gameState.setSfxVolume(parseFloat(e.target.value))}
+                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            aria-label="Sound effects volume"
+                        />
+                    </Panel>
+
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Game Mode</span>

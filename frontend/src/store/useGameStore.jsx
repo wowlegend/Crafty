@@ -289,6 +289,11 @@ export const useGameStore = create((set, get) => ({
     juiceIntensity: 1,
     setJuiceIntensity: (v) => set({ juiceIntensity: Math.max(0, Math.min(1, v)) }),
 
+    // SOTA M3 #3 audio settings: SFX master volume 0..1 (drives the WebAudio master-bus input gain via a
+    // SoundManager effect). musicVolume + masterMuted land in S3b. Default 1 (full).
+    sfxVolume: 1,
+    setSfxVolume: (v) => set({ sfxVolume: Math.max(0, Math.min(1, v)) }),
+
     // S1-D-M1: Non-blocking hitstop. `damageMob` sets this to `performance.now() + ms`;
     // the player movement loop clamps its motion toward zero while now < hitstopUntil.
     // Replaces the old main-thread busy-wait. 0 = inactive (always in the past).

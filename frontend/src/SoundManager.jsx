@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { VOICES, makeNoise } from './audio/synthVoices';
 import { createMasterBus } from './audio/masterBus';
+import { audioGain } from './game/audioSettings';
 import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
 import { surfaceBlockAt } from './world/climate.js';
@@ -39,6 +40,8 @@ export const SoundProvider = ({ children }) => {
   // Subscribe reactively to hostile counts and boss state for dynamic soundtrack scaling
   const activeHostiles = useGameStore(state => state.activeHostilesCount) || 0;
   const bossActive = useGameStore(state => state.bossActive) || false;
+  // M3 #3: the SFX master volume slider -> the WebAudio master-bus input gain (effect below).
+  const sfxVolume = useGameStore(state => state.sfxVolume ?? 1);
 
   const arpeggiatorRef = useRef({
     timer: null,
@@ -239,6 +242,13 @@ export const SoundProvider = ({ children }) => {
       if (ambientTimer.current) clearTimeout(ambientTimer.current);
     }
   }, [musicEnabled]);
+
+  // M3 #3: the SFX-volume slider drives the live master-bus input gain (the WebAudio mix point all SFX
+  // route through). Applies whenever the slider changes; getMasterBus seeds a freshly-created bus too.
+  useEffect(() => {
+    const bus = masterBusRef.current?.input;
+    if (bus && bus.gain) bus.gain.value = audioGain(sfxVolume);
+  }, [sfxVolume]);
 
   useEffect(() => {
     if (synthPadRef.current.masterGain && synthPadRef.current.active && audioContext.current) {
@@ -442,6 +452,10 @@ export const SoundProvider = ({ children }) => {
     if (!masterBusRef.current || masterBusRef.current.ctx !== audioContext.current) {
       const bus = createMasterBus(audioContext.current);
       masterBusRef.current = bus ? { ctx: audioContext.current, input: bus.input } : null;
+      // M3 #3: a freshly-created bus picks up the current SFX-volume setting immediately.
+      if (masterBusRef.current?.input?.gain) {
+        masterBusRef.current.input.gain.value = audioGain(useGameStore.getState().sfxVolume ?? 1);
+      }
     }
     return masterBusRef.current ? masterBusRef.current.input : null;
   };

@@ -52,3 +52,26 @@ describe('settings a11y gates (M3 #3 S2 -- reduced motion)', () => {
     expect(/Reduced Motion[\s\S]{0,260}setJuiceIntensity\(\(gameState\.juiceIntensity \?\? 1\) === 0 \? 1 : 0\)/.test(panels)).toBe(true);
   });
 });
+
+// S3a: SFX volume slider -> the WebAudio master-bus input gain (the audit's "no audio sliders" gap).
+describe('settings a11y gates (M3 #3 S3a -- SFX volume)', () => {
+  const panels = read('ui/GamePanels.jsx');
+  const store = read('store/useGameStore.jsx');
+  const sm = read('SoundManager.jsx');
+
+  it('the store carries a clamped sfxVolume', () => {
+    expect(store).toMatch(/sfxVolume:\s*1/);
+    expect(store).toMatch(/setSfxVolume:/);
+  });
+  it('SettingsPanel has a Sound Effects slider bound to sfxVolume', () => {
+    expect(panels).toMatch(/Sound Effects/);
+    expect(/type="range"[\s\S]{0,200}value=\{gameState\.sfxVolume/.test(panels)).toBe(true);
+    expect(panels).toMatch(/gameState\.setSfxVolume\(parseFloat\(e\.target\.value\)\)/);
+  });
+  it('SoundManager applies audioGain(sfxVolume) to the live master-bus gain', () => {
+    expect(sm).toMatch(/import \{ audioGain \} from '\.\/game\/audioSettings'/);
+    expect(/masterBusRef\.current\?\.input[\s\S]{0,120}gain\.value = audioGain\(sfxVolume\)/.test(sm)).toBe(true);
+    // a freshly-created bus seeds the current volume
+    expect(sm).toMatch(/gain\.value = audioGain\(useGameStore\.getState\(\)\.sfxVolume/);
+  });
+});
