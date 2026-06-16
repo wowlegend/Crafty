@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### June 16, 2026 (💀 SOTA M2 #7 Slice 1 — death weight: mob dissolve + climactic boss-kill beat)
+- **Kills now have WEIGHT** (audit #7). A mob kill was an instant `ecs.remove` + a spark; now the corpse lingers `DEATH_DISSOLVE_MS` (320ms), shrinking + spinning out, before removal. New pure `game/deathFx.js` `dissolvePose(t)`. In SimplifiedNPCSystem the health<=0 finisher is guarded (`!dyingUntil` -> fires ONCE, a hit on a dissolving corpse can't re-kill it); XP / spark / kill-bus still fire at death; `ecs.remove` is DEFERRED to a dying-sweep after the dissolve; the render filter keeps a dissolving corpse rendering. MobModel renders the shrink+spin (via the shared `windupRamp`), winning over flinch/windup.
+- **Boss-kill climax** (S1b): the Shadow-Dragon defeat now fires a slow-mo freeze (M1 `HITSTOP.boss`, 160ms) + a bloom flash to punctuate the slaying (the victory stinger + overlay already fire on `bossDefeated`).
+- **TDD/Gated:** `deathFx.test.js` (+5) · `death-beats-gates.test.js` (+6: dissolve defer/guard, dying-sweep, render filter, MobModel pose, boss slow-mo+bloom).
+- **Verify:** unit 1321->1332 (+11) · build+eslint clean · captured + visual gate 20/20 (deaths/boss-defeat never fire in capture -> zero drift). Commits `f82f2a5` (mob dissolve) + `5f91d47` (boss beat). NEXT = #7 S2 (rebuild Death/Victory overlays on theme tokens) -> then M2 COMPLETE. FEEL -> KEVIN #50.
+
 ### June 16, 2026 (⚔️ SOTA M2 #4 Slice 3 — boss lava AoE telegraph; ATTACK TELEGRAPHS #4 COMPLETE)
 - **The boss's worst unfair attack is now dodgeable** (audit #4, done). The boss runs its own attack loop (`BossEntity.jsx`, not the ai.worker); its Phase-3 lava breath spawned INSTANTLY at the player's feet (undodgeable). Now the lava ring (already a `ringGeometry` ground decal) spawns as a HARMLESS forming WARNING for `LAVA_WINDUP_MS` (750ms — heavier than the mob 380ms), growing in + blinking via the shared `windupRamp`, before it ARMS (damage gated on `!forming`) — so the player reads it + steps out. Reuses the existing ring mesh (no new geometry). The boss roar (boss-centered + notified) + fireball (travel-time arc) are inherently more readable -> further boss-telegraph polish -> KEVIN #50.
 - **Gated:** `attack-telegraph-gates.test.js` (+4: import+const, telegraphUntil, damage gated on !forming, forming ring via windupRamp).
