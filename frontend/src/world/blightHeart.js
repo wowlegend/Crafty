@@ -14,3 +14,10 @@ export function blightHeartSite() {
   const d = Math.ceil(BLIGHT_RADIUS / Math.SQRT2);
   return { x: d, z: d };
 }
+
+// M4 #8: the chunk (CHUNK_SIZE 16) that CONTAINS the lair -- the render mounts the Blight-Heart monolith
+// only when this chunk is loaded (you're near the climax), mirroring the landmark streamer. Pure.
+export function blightHeartChunk() {
+  const { x, z } = blightHeartSite();
+  return { cx: Math.floor(x / 16), cz: Math.floor(z / 16) };
+}

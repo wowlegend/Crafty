@@ -20,6 +20,7 @@ import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { SEA_LEVEL } from './oceanProfile.js';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { surfaceBlockAt } from './climate.js';
+import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { BLOCK_TYPES } from './Blocks';
 
 const worker = new TerrainWorker();
@@ -512,6 +513,34 @@ const LandmarksRender = ({ chunks }) => {
     return <group>{marks}</group>;
 };
 
+// M4 #8: the Blight-Heart lair finally has a PHYSICAL landmark -- an ominous obsidian monolith + a
+// blight-violet beacon, so the CLIMAX destination reads from afar as you journey toward the compass marker
+// (it was an invisible coordinate before: only a marker + the boss spawn). Taller than the wayfinding
+// shrines (the ultimate landmark). Capture-safe: the lair is ~906 blocks out, never in a spawn-pinned
+// capture frame, and the beacon is real-play-only; mounts only when the lair chunk is loaded.
+function BlightMonolith({ baseY }) {
+    const top = Math.max(baseY + 78, 132);
+    const h = top - baseY;
+    return (
+        <group>
+            <Cube position={[0, baseY + h / 2, 0]} size={[9, h, 9]} color="#150B22" castShadow={false} />
+            <Cube position={[0, top - 6, 0]} size={[5.5, 14, 5.5]} color="#2A1240" castShadow={false} />
+            <Cube position={[0, top + 2, 0]} size={[2.4, 6, 2.4]} color="#3A1A55" castShadow={false} />
+            {!isCaptureMode() && <Emissive position={[0, top + 6, 0]} size={3.4} color="#A030F0" intensity={6.0} />}
+        </group>
+    );
+}
+const BlightHeartRender = ({ chunks }) => {
+    const { cx: bcx, cz: bcz } = blightHeartChunk();
+    let loaded = false;
+    for (const key in chunks) { const c = chunks[key]; if (c.cx === bcx && c.cz === bcz) { loaded = true; break; } }
+    if (!loaded) return null;
+    const site = blightHeartSite();
+    const { surfaceY, isWater } = surfaceBlockAt(site.x, site.z);
+    if (isWater) return null;
+    return <group position={[site.x, 0, site.z]}><BlightMonolith baseY={surfaceY} /></group>;
+};
+
 export const MinecraftWorld = React.memo(() => {
     const { camera } = useThree();
     const { rapier, world } = useRapier();
@@ -949,6 +978,7 @@ export const MinecraftWorld = React.memo(() => {
             <TreasureChestsRender />
             <HomeAnchorRender />
             <LandmarksRender chunks={chunks} />
+            <BlightHeartRender chunks={chunks} />
         </group>
     );
 });
