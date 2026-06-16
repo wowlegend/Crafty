@@ -91,6 +91,14 @@ describe('StatBar', () => {
     render(<StatBar kind="health" icon="health" value={50} max={100} data-testid="b" />);
     expect(screen.getByTestId('b').querySelector('svg')).toBeTruthy();
   });
+
+  // M6 #10 HUD-aliveness: the fill EASES to its new width instead of snapping (a 2026 HUD baseline,
+  // applied to every bar -- health/mana/ferocity/resonance/soul/kinetic/xp). Capture-gated off so the
+  // visual gate stays byte-stable (values are frozen in capture, so nothing would animate anyway).
+  it('eases the fill width (smooth transition) outside capture mode', () => {
+    render(<StatBar kind="health" value={50} max={100} data-testid="b" />);
+    expect(screen.getByTestId('b').querySelector('[data-fill]').className).toMatch(/transition-\[width\]/);
+  });
 });
 
 import { SpellRing } from '../../src/ui/primitives/SpellRing.jsx';

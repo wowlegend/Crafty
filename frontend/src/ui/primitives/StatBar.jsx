@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from './cn.js';
 import { Icon } from './Icon.jsx';
+import { isCaptureMode } from '../../devtest/captureMode';
 
 // Bold-flat stat bar (comp): an optional small colored game-icon to the LEFT, then an
 // inset track (deep groove + 4px ink frame + hard offset) with a flat saturated fill
@@ -17,7 +18,7 @@ export const StatBar = forwardRef(function StatBar(
     <div ref={ref} className={cn('inline-flex items-center gap-2', className)} {...props}>
       {icon && <Icon name={icon} size={18} className={ICON_COLOR[kind] || 'text-accent'} />}
       <div className="relative h-5 flex-1 bg-track rounded-md border-chrome border-ink shadow-elev-sm overflow-hidden">
-        <div data-fill className={cn('h-full', FILL[kind] || 'bg-accent')} style={{ width: `${pct}%` }} />
+        <div data-fill className={cn('h-full', FILL[kind] || 'bg-accent', !isCaptureMode() && 'transition-[width] duration-300 ease-out')} style={{ width: `${pct}%` }} />
         {(showValue || label) && (
           <div className="absolute inset-0 flex items-center justify-center text-xs font-body text-text">
             {label && <span className="mr-1">{label}</span>}
