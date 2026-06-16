@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (♿ SOTA M3 #3 Slice 2 — respect prefers-reduced-motion + explicit toggle)
+- **The game now respects the OS reduced-motion preference** (audit #3, the real a11y win). New pure `game/a11y.js` `motionIntensity(prefersReduced, userScale)`; App mounts a `matchMedia('(prefers-reduced-motion: reduce)')` listener that drives the M1 `juiceIntensity` dial to 0 (kills screenshake + hitstop) on the OS default + on change (capture-gated; the Settings slider/toggle remain the manual override). Added an explicit **Reduced Motion ON/OFF toggle** to SettingsPanel (mirrors Show Stats) wired to the same dial.
+- **TDD/Gated:** `a11y.test.js` (+4) · `settings-a11y-gates.test.js` (+3). LOOKED: 'Reduced Motion OFF' renders under the 60% slider.
+- **Verify:** unit 1339->1346 (+7) · build+eslint clean · captured + visual gate 20/20 (listener capture-gated + only fires under OS reduced-motion). Commit `ab8d96c`. NEXT = #3 S3 (audio mute/sliders).
+
 ### June 16, 2026 (♿ SOTA M3 #3 Slice 1 — feedback-intensity slider, surfacing the M1 juice dial)
 - **The M1 juiceIntensity dial is now player-tunable** (audit #3, the a11y floor). It scaled screenshake + hitstop strength but had no UI; added a Feedback Intensity slider (0..100%) to the existing SettingsPanel (`ui/GamePanels.jsx`), mirroring the Look-Sensitivity slider, bound to `setJuiceIntensity` (clamped in-store). Sets up slice 2's `prefers-reduced-motion` hook to drive the same dial to 0.
 - **M3 plan doc** authored; reusable `scripts/visual/settings-probe.mjs` (force `showSettings` -> screenshot). LOOKED: the slider renders under Look Sensitivity, reads a forced 60% correctly, bold-flat consistent.
