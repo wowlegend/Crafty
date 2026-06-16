@@ -10,9 +10,27 @@ import { createProceduralVoxelTextures } from '../../src/world/proceduralTexture
 describe('procedural voxel textures — bold-flat lock invariants', () => {
   const tex = createProceduralVoxelTextures();
 
-  it('is a 10-layer DataArrayTexture (one albedo tile per blockType 0..9)', () => {
+  it('is a 14-layer DataArrayTexture (blockType 0..9 + 4 ore tiles 10..13)', () => {
     expect(tex.isDataArrayTexture).toBe(true);
-    expect(tex.image.depth).toBe(10);
+    expect(tex.image.depth).toBe(14);
+  });
+
+  it('S6: the 4 ore layers (10=coal,11=iron,12=gold,13=diamond) are drawn on a stone base + speckled', () => {
+    // Ores ride the existing block-code->atlas-layer scheme (layer index == block code). Each must be
+    // actually drawn (non-blank) AND differ from the plain stone tile (layer 3) somewhere -> the ore
+    // speckle was applied. Bold-flat lock unchanged (still NearestFilter/no-mipmaps/square, asserted below).
+    const data = tex.image.data;
+    const size = tex.image.width;
+    const layerBytes = size * size * 4;
+    const sliceOf = (L) => data.subarray(L * layerBytes, (L + 1) * layerBytes);
+    const stone = sliceOf(3);
+    for (const L of [10, 11, 12, 13]) {
+      const ore = sliceOf(L);
+      expect(ore.some((b) => b !== 0), `ore layer ${L} is blank`).toBe(true);
+      let differs = false;
+      for (let i = 0; i < ore.length; i++) { if (ore[i] !== stone[i]) { differs = true; break; } }
+      expect(differs, `ore layer ${L} is byte-identical to stone (no ore speckle)`).toBe(true);
+    }
   });
 
   it('uses square tiles (UV tiling assumes width === height)', () => {

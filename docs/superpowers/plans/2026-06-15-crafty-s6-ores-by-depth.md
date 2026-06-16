@@ -39,7 +39,10 @@
 
 ---
 
-## Slice 1 — bake the 4 ore tiles into the atlas (pure, no gameplay)
+## Slice 1 — bake the 4 ore tiles into the atlas (pure, no gameplay) ✅ DONE
+> Shipped: `numLayers` 10->14; coal(10)/iron(11)/gold(12)/diamond(13) = stone base + clustered ore-color
+> nuggets (deterministic getNoise, bold-flat, no PBR). Test updated 10->14 + ore-layer-distinct-from-stone
+> invariant (bold-flat locks kept). unit 1259->1260, build clean, gate 20/20 (layers 0-9 byte-identical).
 
 **Files:**
 - Modify: `frontend/src/world/proceduralTextures.js` (numLayers 10 -> 14; draw layers 10-13)

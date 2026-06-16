@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export function createProceduralVoxelTextures() {
   const size = 32; // 32x32 resolution per texture slice
-  const numLayers = 10; // Layers 0 to 9 (indices matching blockType)
+  const numLayers = 14; // Layers 0..9 (block types) + 10..13 ore tiles (S6: coal/iron/gold/diamond)
   
   const data = new Uint8Array(size * size * 4 * numLayers);
   
@@ -131,6 +131,31 @@ export function createProceduralVoxelTextures() {
         const g = Math.floor(186 + ripple * 40);
         const b = Math.floor(178 + ripple * 42);
         setPixel(9, x, y, r, g, b, 255);
+      }
+
+      // Layers 10-13: ORE tiles (S6 mining payoff)
+      // The charcoal-slate STONE base (same formula as layer 3) speckled with clustered ore nuggets in
+      // each ore's locked BLOCK_TYPES color, so digging deep has a reward. Bold-flat pixel-art (NO PBR /
+      // normal maps); deterministic (getNoise, no Math.random); layer index == block code (10..13).
+      {
+        const isVein = Math.abs(n1 * size - y) < 1.2 || Math.abs(n2 * size - x) < 1.2;
+        const strata = (Math.floor(y / 4) % 2) * 6;
+        const baseColor = (isVein ? 132 : 104) + strata;
+        const c = Math.floor(baseColor * (0.9 + n3 * 0.18)); // the surrounding stone matrix
+        const ORES = [
+          { layer: 10, seed: 21.7, r: 47,  g: 47,  b: 47  }, // coal    #2F2F2F (dark flecks)
+          { layer: 11, seed: 33.1, r: 216, g: 175, b: 147 }, // iron    #D8AF93
+          { layer: 12, seed: 44.9, r: 252, g: 238, b: 75  }, // gold    #FCEE4B
+          { layer: 13, seed: 57.3, r: 79,  g: 208, b: 231 }, // diamond #4FD0E7
+        ];
+        for (const ore of ORES) {
+          if (getNoise(x, y, ore.seed) > 0.74) {
+            const v = 0.85 + getNoise(x, y, ore.seed + 1.0) * 0.3; // per-pixel grit on the nugget
+            setPixel(ore.layer, x, y, Math.min(255, Math.floor(ore.r * v)), Math.min(255, Math.floor(ore.g * v)), Math.min(255, Math.floor(ore.b * v)));
+          } else {
+            setPixel(ore.layer, x, y, c, c, Math.min(255, c + 3)); // stone matrix between nuggets
+          }
+        }
       }
     }
   }
