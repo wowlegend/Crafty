@@ -319,6 +319,7 @@ const AIWorkerSystem = () => {
             entity.targetX = update.targetX;
             entity.targetZ = update.targetZ;
             entity.lastAttackTime = update.lastAttackTime;
+            entity.windupUntil = update.windupUntil; // M2 #4: render reads this for the charge pose (slice 2)
             entity.moveTimer = update.moveTimer;
             entity.isCoverSeeking = update.isCoverSeeking;
 
@@ -398,6 +399,7 @@ const AIWorkerSystem = () => {
         isMoving: e.isMoving,
         isAggro: e.isAggro,
         lastAttackTime: e.lastAttackTime,
+        windupUntil: e.windupUntil || 0,
         damage: e.damage,
         type: e.type,
         moveTimer: e.moveTimer,

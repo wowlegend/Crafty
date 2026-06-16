@@ -155,10 +155,11 @@ self.onmessage = function(e) {
     // --- Step 2: Individual Mob State & Movement Pathfinding Solver ---
     for (let i = 0; i < mobs.length; i++) {
       const entity = mobs[i];
-      let { 
-        id, passive, x, y, z, targetX, targetZ, isMoving, isAggro, 
-        lastAttackTime, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid 
+      let {
+        id, passive, x, y, z, targetX, targetZ, isMoving, isAggro,
+        lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid
       } = entity;
+      let pendingAttack = null; // M2 #4: what this mob WOULD strike this tick (gated through the windup below)
       
       const dx = playerX - x;
       const dz = playerZ - z;
@@ -245,8 +246,7 @@ self.onmessage = function(e) {
             // Stop and shoot arrows
             isMoving = false;
             if (now - lastAttackTime > ATTACK_COOLDOWN + 500) {
-              attacks.push({ id, type: 'projectile', damage: 15, position: [x, y, z] });
-              lastAttackTime = now;
+              pendingAttack = { id, type: 'projectile', damage: 15, position: [x, y, z] };
             }
           }
         } else if (type === 'spider') {
@@ -255,11 +255,9 @@ self.onmessage = function(e) {
           targetX = playerX;
           targetZ = playerZ;
           if (distToPlayer2D < LEAP_RANGE && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
-            attacks.push({ id, type: 'leap', damage: 8, position: [x, y, z] });
-            lastAttackTime = now;
+            pendingAttack = { id, type: 'leap', damage: 8, position: [x, y, z] };
           } else if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
-            attacks.push({ damage, type: 'melee' });
-            lastAttackTime = now;
+            pendingAttack = { damage, type: 'melee' };
           }
         } else {
           // Standard Melee (Zombie & Bosses)
@@ -267,9 +265,22 @@ self.onmessage = function(e) {
           targetX = playerX;
           targetZ = playerZ;
           if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
-            attacks.push({ damage, type: 'melee' });
-            lastAttackTime = now;
+            pendingAttack = { damage, type: 'melee' };
           }
+        }
+
+        // M2 #4 attack telegraph (inline mirror of the unit-tested game/attackTelegraph.js -- this is a
+        // CLASSIC Worker so it can't import; attack-telegraph-gates.test.js pins the two in sync). Defer
+        // the strike behind a ~380ms windup; re-evaluate intent at strike time so dodging out of range
+        // during the windup whiffs the attack (the readability + fairness win).
+        const WINDUP_MS = 380; // Kevin FEEL #50 tunable; readable 300-500ms reaction band
+        if (windupUntil > 0) {
+          if (now >= windupUntil) {
+            windupUntil = 0;
+            if (pendingAttack) { attacks.push(pendingAttack); lastAttackTime = now; } // else: dodged -> whiff
+          }
+        } else if (pendingAttack) {
+          windupUntil = now + WINDUP_MS; // begin the telegraph; the strike lands when it elapses
         }
         
         // --- Step 3: Voxel Height-Aware 3D A* Path Steering ---
@@ -340,7 +351,7 @@ self.onmessage = function(e) {
       }
       
       updates.push({
-        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, moveTimer, isCoverSeeking
+        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, windupUntil, moveTimer, isCoverSeeking
       });
     }
     
