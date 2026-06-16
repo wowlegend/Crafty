@@ -43,3 +43,17 @@ describe('M6 #20 dead rubber-stamp removed', () => {
     expect(pkg.scripts.test).toBe('vitest run');
   });
 });
+
+// M6 #20: every package imported DIRECTLY in src/ must be a declared dependency, not relied on via
+// transitive resolution. `postprocessing` was imported directly (GameScene/MascotStudio: ToneMappingMode,
+// BloomEffect, HueSaturationEffect, BrightnessContrastEffect) but resolved only transitively through
+// @react-three/postprocessing -- a hoist/version change in the parent could break the direct import.
+// This pins it as a declared direct dependency.
+describe('M6 #20 direct deps declared (no transitive-resolution reliance)', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const declared = { ...pkg.dependencies, ...pkg.devDependencies };
+
+  it('postprocessing (imported directly in src) is a declared dependency', () => {
+    expect(declared).toHaveProperty('postprocessing');
+  });
+});
