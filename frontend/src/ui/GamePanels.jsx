@@ -686,6 +686,25 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         />
                     </Panel>
 
+                    {/* Feedback Intensity (M3 #3: the M1 juiceIntensity dial -- screenshake + hitstop
+                        strength; 0 = calm / reduced-motion, 100% = full punch. The a11y win the audit flagged). */}
+                    <Panel variant="inset" className="bg-slot p-3">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Feedback Intensity</span>
+                            <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.juiceIntensity ?? 1) * 100)}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={gameState.juiceIntensity ?? 1}
+                            onChange={(e) => gameState.setJuiceIntensity(parseFloat(e.target.value))}
+                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            aria-label="Feedback intensity (screenshake and hitstop)"
+                        />
+                    </Panel>
+
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Game Mode</span>
