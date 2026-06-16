@@ -66,7 +66,12 @@
   LOOK at the diff before re-blessing.
 - [ ] **Step 5 — Commit** (`git commit -F`): "S6 ores Slice 1: bake the 4 ore tiles into the voxel atlas".
 
-## Slice 2 — deterministic ore generation in the worker (capture-safe)
+## Slice 2 — deterministic ore generation in the worker (capture-safe) ✅ DONE
+> Shipped: pure `world/oreGen.js` `oreCodeFor` (position hash -> depth-banded coal10/iron11/gold12/diamond13,
+> tunable thresholds; no RNG/seed-dep) + `oreGen.test.js` (+5: determinism, valid-codes, shallow-never-diamond,
+> deepest-can-diamond, rarity coal>iron>gold>diamond + ores <8%). Wired into terrain.worker.js deep-solid
+> branch (cave/surface/water untouched, NO re-mesh). unit 1260->1265, build clean (worker import resolves),
+> gate 20/20 (ores deep; surface frames unchanged).
 
 **Files:**
 - Create: `frontend/src/world/oreGen.js` — a pure `oreCodeFor(worldX, worldY, worldZ, surfaceY)` ->

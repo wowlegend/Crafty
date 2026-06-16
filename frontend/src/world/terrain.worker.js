@@ -5,6 +5,7 @@ import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
+import { oreCodeFor } from './oreGen.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -427,7 +428,9 @@ function generateChunkData(cx, cz) {
             } else if (y >= surfaceY - 3) {
               blocks[index] = secondaryBlock;
             } else {
-              blocks[index] = 3; // Stone
+              // S6: deep solid voxels are mostly Stone (3) but deterministically seeded with depth-banded
+              // ores (10 coal .. 13 diamond) so mining has a payoff. Capture-safe (deep, position-hashed).
+              blocks[index] = oreCodeFor(worldX, y, worldZ, surfaceY);
             }
           }
         }
