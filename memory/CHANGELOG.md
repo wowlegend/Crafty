@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (🔊 SOTA M3 #3 Slice 3b — music volume + master mute; AUDIO SETTINGS COMPLETE)
+- **The audio controls are complete** (audit #3). Store `musicVolume` + `masterMuted`: MusicPlayer's crossfade target is now `masterMuted ? 0 : VOL * musicVolume` (the Music slider scales the ElevenLabs tracks; the mute fades them out), and the SoundManager SFX effect now applies `audioGain(sfxVolume, masterMuted)` (+ the getMasterBus seed) so the SAME master mute silences the WebAudio SFX bus too -- one honest 'Mute All'. SettingsPanel gains a Music slider + a Mute All ON/OFF toggle.
+- **Gated:** `settings-a11y-gates.test.js` (+3). LOOKED: the full audio group (Sound Effects / Music / Mute All) renders under the a11y controls.
+- **Verify:** unit 1352->1355 (+3) · build+eslint clean · captured + visual gate 20/20 (audio + panel not in capture). Commit `e368af3`. **#3 AUDIO COMPLETE** (SFX vol + music vol + master mute). NEXT = #6 touch dodge -> M3 COMPLETE.
+
 ### June 16, 2026 (🔊 SOTA M3 #3 Slice 3a — SFX volume slider -> the master-bus gain)
 - **First audio control** (audit #3, "no audio sliders"). A Sound Effects volume slider (0..100%) in SettingsPanel drives the WebAudio master-bus input gain (all SFX + ambient route through it) -> 0% silences SFX. New pure `game/audioSettings.js` `audioGain(volume, muted)`; store `sfxVolume` + `setSfxVolume`; a SoundManager effect applies it to the live bus gain on change + `getMasterBus` seeds it into a freshly-created bus (the store<->live-node bridge).
 - **TDD/Gated:** `audioSettings.test.js` (+3) · `settings-a11y-gates.test.js` (+3). LOOKED: 'SOUND EFFECTS 100%' renders under Reduced Motion.
