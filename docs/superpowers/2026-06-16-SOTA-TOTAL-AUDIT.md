@@ -25,6 +25,7 @@ enhancement backlog the loop then builds through.
 - 2026-06-16: initiative opened. Spawn-direction `ObjectiveTracker` shipped (`5271f73`). Phase-A audit COMPLETE (16 agents, ranked backlog below).
 - 2026-06-16: **M1 (game-feel core) COMPLETE** — Slice 1 quick-win bug cluster (`1a242b1`: ore-debris colors, playCraft wired, spatial pitch-jitter, npm-test repoint) + Slice 2 trauma pure core (`dffb49f`: game/trauma.js + 5 units) + Slice 3 wired (`<this commit>`: shakeOffset trauma^2 shake + weight-tiered HITSTOP + juiceIntensity dial). All Phase-B-verified vs live code. 1290 tests / 20/20 / build clean. NEXT: M2 (telegraphs #4 + directional impact #9 + death/victory beats #7).
 - 2026-06-16: **M2 directional impact (#9) COMPLETE** — Slice A flinch lean (`0e12ad2`: flinchTilt, facing-local), Slice B spark cone (`d89f2cc`: biasAlong dir param), Slice C camera-shake dir (`2f0bcef`: cameraShakeDir preserved through decay). hitDirection (was zero-consumer) now drives lean+spray+lurch. 1299 tests / 20/20 / build + eslint clean. NEXT M2: telegraphs #4 (flagship readability), then death/victory beats #7.
+- 2026-06-16: **M2 attack telegraphs (#4) IN PROGRESS** — Slice 1 timing core DONE (`7a74a14`): pure `game/attackTelegraph.js` dodgeable windup->strike machine + AI-worker windup gate (~380ms) + windupUntil round-trip. 1310 tests / 20/20. NEXT: slice 2 render (anticipation pose + emissive charge ramp), then slice 3 boss AoE ground-ring.
 
 ## Phase-A result (16-agent workflow `wd28y0to9`, 2.6M tokens) — 2026-06-16
 
