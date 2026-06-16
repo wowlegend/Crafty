@@ -21,6 +21,7 @@ import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { getItemRarity } from './data/items.js';
 import { rarityBeam } from './game/lootJuice.js';
 import { emitMobKill } from './game/mobKillBus.js';
+import { DEATH_DISSOLVE_MS } from './game/deathFx.js';
 import { HITSTOP } from './game/trauma.js';
 import { MobModel } from './render/MobModel';
 
@@ -237,6 +238,11 @@ const SpawnerSystem = () => {
 
       const maxDistance = 100;
       for (const entity of [...mobsQuery.entities]) {
+        // M2 #7: a dissolving corpse -- remove it only AFTER the death dissolve has played out.
+        if (entity.dyingUntil) {
+          if (performance.now() >= entity.dyingUntil) ecs.remove(entity);
+          continue;
+        }
         if (entity.health <= 0) continue;
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
         if (dist > maxDistance) {
@@ -522,9 +528,9 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         position: [entity.position.x, entity.position.y + 0.1, entity.position.z]
       }]);
 
-      if (entity.health <= 0) {
+      if (entity.health <= 0 && !entity.dyingUntil) {
         const store = useGameStore.getState();
-        
+
         // Spawn glowing physical green XP orbs scattered explosively
         const orbValue = 5;
         const totalXP = entity.xp || 10;
@@ -554,7 +560,9 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
           store.triggerGPUSparks(new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), dColor, dCount, 'death');
         }
         emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], source); // M3.5 fan-out + B3-M1 attribution
-        ecs.remove(entity);
+        // M2 #7 death weight: defer removal behind a dissolve so a kill has WEIGHT (XP / spark / kill-bus
+        // already fired this frame). The dying-sweep removes the corpse after the dissolve elapses.
+        entity.dyingUntil = performance.now() + DEATH_DISSOLVE_MS;
       }
       return entity;
     };
@@ -782,7 +790,7 @@ export const NPCSystem = React.memo(() => {
       <XPOrbSystem />
       <LootSystem />
 
-      {entities.filter(entity => entity && entity.health > 0).map(entity => (
+      {entities.filter(entity => entity && (entity.health > 0 || entity.dyingUntil)).map(entity => (
         <MobModel key={entity.id} entity={entity} />
       ))}
 

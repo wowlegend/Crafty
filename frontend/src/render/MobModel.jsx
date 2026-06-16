@@ -8,6 +8,7 @@ import { MOB_TYPES } from '../game/mobTypes';
 import { mobFeatures } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
+import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -132,6 +133,15 @@ const MobModel = React.memo(({ entity }) => {
 
     // 2. Squash & Tilt Flinch Animation
     if (modelRef.current) {
+      if (entity.dyingUntil) {
+        // M2 #7 death dissolve: the corpse shrinks + spins out over DEATH_DISSOLVE_MS so a kill has
+        // WEIGHT (was an instant vanish). Wins over flinch/windup -- a dying mob only dissolves.
+        const dt = windupRamp(performance.now(), entity.dyingUntil, DEATH_DISSOLVE_MS);
+        const dp = dissolvePose(dt);
+        modelRef.current.scale.setScalar(Math.max(0.001, dp.scale));
+        modelRef.current.rotation.set(0, dp.spin, dp.spin * 0.4);
+        return;
+      }
       const hitElapsed = entity.lastHit ? (performance.now() - entity.lastHit) : Infinity;
       if (hitElapsed < 250) {
         const t = hitElapsed / 250;
