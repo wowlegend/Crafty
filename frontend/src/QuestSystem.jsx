@@ -212,6 +212,9 @@ export const useQuestSystem = () => {
             if (reachedShrines.current.has(key)) return;
             if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 10) return;
             reachedShrines.current.add(key);
+            // Mirror a transient flag so the HUD ObjectiveTracker can switch the spawn-direction cue from
+            // "reach the frontier shrine" to "shatter the Blight Heart" once any shrine is reached.
+            useGameStore.setState({ shrineReached: true });
             updateQuestProgress('reach_shrine');
         }, 3000);
         return () => clearInterval(interval);

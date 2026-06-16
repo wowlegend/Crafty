@@ -1,6 +1,6 @@
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode } from './devtest/captureMode';
-import { bearingToMarker } from './game/compass';
+import { bearingToMarker, bearingDeg } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
 import React, { useRef, useEffect, useState } from 'react';
@@ -199,6 +199,76 @@ const Minimap = React.memo(() => {
       </Panel>
       <div className="text-center text-xs mt-1 tabular-nums text-text-muted">
         {coords.x}, {coords.z}
+      </div>
+    </div>
+  );
+});
+
+// ObjectiveTracker -- the PERSISTENT spawn-direction cue (Kevin 2026-06-16: "I spawn with no guide; where
+// do I go?"). Unlike the FOV-gated Compass markers (which vanish when you face away) and the localStorage-
+// once onboarding toast (dead for a returning player), this ALWAYS shows on spawn: it NAMES the current
+// objective + points to it with a FULL-CIRCLE rotating arrow (bearingToMarker at fov=2*PI -> facing-
+// INDEPENDENT) + live distance. Game-Loop-Isolation: a self-contained rAF doing transient getState() reads
+// + direct ref/DOM writes (no per-frame React state), copied from the Compass pattern. Capture-SUPPRESSED
+// (rAF never starts + returns null in capture) so the deterministic visual baselines stay byte-identical.
+const ObjectiveTracker = React.memo(() => {
+  const arrowRef = useRef(null);
+  const textRef = useRef(null);
+  const distRef = useRef(null);
+  const shrineCache = useRef({ t: 0, shrine: null });
+
+  useEffect(() => {
+    if (isCaptureMode()) return; // never animate/scan in capture -> zero baseline impact
+    let animFrame;
+    const tick = () => {
+      animFrame = requestAnimationFrame(tick);
+      const state = useGameStore.getState();
+      const camera = state.gameCamera;
+      const playerPos = state.playerPosition;
+      if (!camera || !camera.matrixWorld || !playerPos) return;
+      const arrow = arrowRef.current, txt = textRef.current, dist = distRef.current;
+      if (!arrow || !txt || !dist) return;
+
+      // Heading from the camera matrix (same derivation as Compass).
+      const el = camera.matrixWorld.elements;
+      const fx = -el[8];
+      const fz = -el[10];
+      const heading = Math.atan2(fx, -fz);
+
+      // Objective: the nearest frontier shrine until one is reached, then the Blight Heart climax.
+      let targetX, targetZ, label, color;
+      if (!state.shrineReached) {
+        const now = performance.now();
+        if (now - shrineCache.current.t > 750) {
+          shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };
+        }
+        const s = shrineCache.current.shrine;
+        if (s) { targetX = s.worldX; targetZ = s.worldZ; label = 'Reach the frontier shrine'; color = '#46E0FF'; }
+      }
+      if (targetX === undefined) {
+        const bh = blightHeartSite();
+        targetX = bh.x; targetZ = bh.z; label = 'Shatter the Blight Heart'; color = '#A24BFF';
+      }
+
+      // Full-circle bearing -> the arrow points to the objective regardless of which way the player faces.
+      const b = bearingToMarker(targetX, targetZ, playerPos.x, playerPos.z, heading, Math.PI * 2);
+      arrow.style.transform = `rotate(${bearingDeg(b.pct)}deg)`;
+      arrow.style.background = color;
+      txt.textContent = label;
+      dist.textContent = `${Math.round(b.dist)}m`;
+    };
+    tick();
+    return () => cancelAnimationFrame(animFrame);
+  }, []);
+
+  if (isCaptureMode()) return null;
+
+  return (
+    <div className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+      <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
+        <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
+        <span ref={textRef} className="text-[11px] font-bold text-text">Reach the frontier shrine</span>
+        <span ref={distRef} className="text-[11px] text-text-muted tabular-nums">--</span>
       </div>
     </div>
   );
@@ -477,6 +547,8 @@ export function HUD({
             {!isTouchUIMode() && <CombatInstructions />}{/* keyboard cheatsheet is desktop-only (touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
+
+            <ObjectiveTracker />
 
             <CoinReadout />
 

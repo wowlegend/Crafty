@@ -25,3 +25,15 @@ export function bearingToMarker(targetX, targetZ, playerX, playerZ, heading, fov
   const pct = ((diff / (fov / 2)) * 50) + 50;
   return { inView, pct, dist };
 }
+
+/**
+ * Full-circle bearing -> arrow rotation (degrees). When bearingToMarker is called with fov = 2*PI, its
+ * `pct` maps the normalized heading-relative bearing [-PI, PI] to [0, 100] (50 = dead-ahead). bearingDeg
+ * converts that to degrees in [-180, 180] for a CSS rotate(), so a HUD arrow points to the target REGARDLESS
+ * of which way the player faces -- the facing-independent cue the FOV-gated compass markers can't give.
+ * @param {number} pct  the bearingToMarker pct at fov = 2*PI
+ * @returns {number} rotation in degrees (0 = ahead, +90 = right, +/-180 = behind)
+ */
+export function bearingDeg(pct) {
+  return ((pct - 50) / 50) * 180;
+}
