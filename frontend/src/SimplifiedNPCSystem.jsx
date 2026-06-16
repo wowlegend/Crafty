@@ -466,6 +466,13 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       }
 
       const store = useGameStore.getState();
+
+      // Hit direction (away-from-player, world unit) -- computed up-front so the camera shake, the
+      // spark cone, AND the flinch tilt all share the SAME vector (pure pulls -> game/mobHitFx.js).
+      const { knockback, hitDir } = hitKnockback(entity.position, store.gameCamera ? store.gameCamera.position : null);
+      if (knockback) entity.knockback = knockback;
+      entity.hitDirection = new THREE.Vector3(hitDir[0], hitDir[1], hitDir[2]);
+
       // NOTE (M5 review [B]): this is a MAGNITUDE proxy ("big hit -> bigger spray"), NOT the crit
       // source-of-truth (that's the real isCrit at Components.jsx triggerMeleeAttack). Since M5 the
       // incoming `damage` is form-multiplied, so heavy beast forms (ice/golem) cross 40 more often and
@@ -489,21 +496,16 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         const { color: sparkColor, count } = sparkFor(type, isCrit); // pure pull -> game/mobHitFx.js (S3-M6)
 
         store.triggerGPUSparks(
-          new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), 
-          sparkColor, 
-          count, 
-          type
+          new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z),
+          sparkColor,
+          count,
+          type,
+          hitDir
         );
       }
 
       entity.health -= damage;
       entity.lastHit = performance.now();
-
-      // Store hit direction for flinch tilt + knockback (pure pulls -> game/mobHitFx.js, S3-M6)
-      const camera = useGameStore.getState().gameCamera;
-      const { knockback, hitDir } = hitKnockback(entity.position, camera ? camera.position : null);
-      if (knockback) entity.knockback = knockback;
-      entity.hitDirection = new THREE.Vector3(hitDir[0], hitDir[1], hitDir[2]);
 
       setDamageNumbers(nums => [...nums, {
         id: damageId.current++,

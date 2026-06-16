@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode, makeSeededRandom } from '../devtest/captureMode';
+import { biasAlong } from '../game/mobHitFx';
 
 const MAX_SPARKS = 1200;
 
@@ -112,7 +113,7 @@ export const GPUSparkSystem = () => {
   }, [positions, velocities, colors, startTimes, lifetimes]);
 
   useEffect(() => {
-    const triggerSparkBurst = (pos, colorHex, count = 25, type = 'physical') => {
+    const triggerSparkBurst = (pos, colorHex, count = 25, type = 'physical', dir = null) => {
       if (!meshRef.current) return;
       const geom = meshRef.current.geometry;
       const posAttr = geom.getAttribute('aPosition');
@@ -170,6 +171,14 @@ export const GPUSparkSystem = () => {
           vx = (rnd() - 0.5) * 6.5;
           vy = rnd() * 7.5 + 1.5;
           vz = (rnd() - 0.5) * 6.5;
+        }
+
+        // Directional cone: bias the horizontal spray AWAY from the player along the real hit
+        // vector (vy/upward arc untouched), so a hit's sparks fly off in the hit direction instead
+        // of a symmetric radial puff. Only combat hits pass `dir`; placement/ambient sparks stay radial.
+        if (dir) {
+          const b = biasAlong(vx, vz, dir.x ?? dir[0] ?? 0, dir.z ?? dir[2] ?? 0, 0.55);
+          vx = b.vx; vz = b.vz;
         }
 
         velAttr.array[idx * 3] = vx;
