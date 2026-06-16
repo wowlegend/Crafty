@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (♿ SOTA M3 #6 Slice 4 — touch dodge; M3 SETTINGS/A11Y COMPLETE)
+- **Touch players can dodge** (audit #6). Touch had no dodge (Shift-only, unreachable on iPad). Added a DODGE button to the touch action cluster (a Wind glyph above cast in TouchControlsSurface + a transparent hit-area in the live TouchControls overlay) dispatching the SAME edge-triggered `setIntent('dodge', true)` the keyboard uses -- the roll/i-frame state machine is unchanged. Re-baselined mobile.png for the new button (LOOK-verified: the dash glyph renders gold-on-navy in the cluster).
+- **Gated:** `touch-dodge-gates.test.js` (+3). unit 1355->1358 · build+eslint clean · visual 20/20 (mobile re-baselined). Commit `4eb001c`.
+- **🏆 M3 SETTINGS/A11Y MILESTONE COMPLETE** — #3 feedback-intensity slider + prefers-reduced-motion + audio (SFX/music volume + master mute) & #6 touch dodge. The game now meets the 2026 a11y floor for motion + audio + touch. **Deferred (future polish, not Kevin-gated):** within #3 — controls-remap, colorblind/text-scale, settings persistence, a true WebAudio music/SFX sub-bus split (today music is the separate `<audio>` path); within #6 — input buffering / coyote-time / jump-buffer / anim-cancel windows (movement-feel, a distinct effort). NEXT = M4 living world (wind grass #5 + landmarks #8 + far-LOD #18 + biomes #12). FEEL -> KEVIN #50.
+
 ### June 16, 2026 (🔊 SOTA M3 #3 Slice 3b — music volume + master mute; AUDIO SETTINGS COMPLETE)
 - **The audio controls are complete** (audit #3). Store `musicVolume` + `masterMuted`: MusicPlayer's crossfade target is now `masterMuted ? 0 : VOL * musicVolume` (the Music slider scales the ElevenLabs tracks; the mute fades them out), and the SoundManager SFX effect now applies `audioGain(sfxVolume, masterMuted)` (+ the getMasterBus seed) so the SAME master mute silences the WebAudio SFX bus too -- one honest 'Mute All'. SettingsPanel gains a Music slider + a Mute All ON/OFF toggle.
 - **Gated:** `settings-a11y-gates.test.js` (+3). LOOKED: the full audio group (Sound Effects / Music / Mute All) renders under the a11y controls.
