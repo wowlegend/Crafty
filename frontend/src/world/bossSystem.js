@@ -5,6 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
+import { HITSTOP } from '../game/trauma.js';
 
 export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
@@ -85,6 +86,11 @@ export const useBossSystem = (playerLevel) => {
                     store.addToInventory('Crown of the Dragon King', 1, 'Legendary');
                     store.addToInventory('Dragon Scale', 3, 'Epic');
                 }
+                // M2 #7 climactic boss-kill beat: a brief slow-mo freeze + a bloom flash punctuate the
+                // slaying (the victory stinger + overlay already fire via bossDefeated). Reuses the M1
+                // hitstop ('boss' tier) + the bloom-spike. FEEL/timing -> Kevin #50.
+                useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss });
+                if (store.triggerBloomSpike) store.triggerBloomSpike(450);
             }
             return newHealth;
         });

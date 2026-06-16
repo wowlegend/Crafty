@@ -44,3 +44,15 @@ describe('death-weight dissolve gates (M2 #7 S1)', () => {
     expect(mob).toMatch(/dissolvePose\(dt\)/);
   });
 });
+
+// S1b: the boss kill gets a climactic slow-mo freeze + bloom flash (the victory stinger + overlay
+// already fire on bossDefeated).
+describe('boss-kill climactic beat gates (M2 #7 S1b)', () => {
+  const boss = read('world/bossSystem.js');
+
+  it('the boss-defeat branch fires a slow-mo (boss-tier hitstop) + a bloom flash', () => {
+    expect(boss).toMatch(/import \{ HITSTOP \} from '\.\.\/game\/trauma\.js'/);
+    expect(/newHealth <= 0\)[\s\S]{0,1300}hitstopUntil: performance\.now\(\) \+ HITSTOP\.boss/.test(boss)).toBe(true);
+    expect(/newHealth <= 0\)[\s\S]{0,1400}triggerBloomSpike\(/.test(boss)).toBe(true);
+  });
+});
