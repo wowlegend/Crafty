@@ -1,4 +1,4 @@
-import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles } from 'lucide-react';
+import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
@@ -63,6 +63,11 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
       </div>
       <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 132px)', bottom: '10%', width: 68, height: 68 })}>
         <Zap size={34} strokeWidth={2.4} color={GLYPH} />
+      </div>
+      {/* M3 #6: touch DODGE (above cast) -- dispatches the same dodge intent as Shift; the roll/i-frames
+          state machine already runs in Components. A dash glyph evokes the evade-roll. */}
+      <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 132px)', bottom: 'calc(10% + 90px)', width: 60, height: 60 })}>
+        <Wind size={30} strokeWidth={2.4} color={GLYPH} />
       </div>
       <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 44px)', bottom: 'calc(12% + 104px)', width: 64, height: 64 })}>
         <ChevronUp size={38} strokeWidth={3} color={GLYPH} />

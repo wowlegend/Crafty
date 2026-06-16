@@ -120,6 +120,13 @@ function TouchControlsLive({ isWorldBuilt }) {
           onPointerLeave={() => setIntent('jump', false)}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 40px)', bottom: 'calc(11% + 96px)', width: 60, height: 60 }} />
       )}
+      {active && (
+        // M3 #6: touch DODGE -- edge-triggered (the dodge state machine in Components consumes the intent,
+        // so one press = one roll); mirrors the Wind glyph above cast in TouchControlsSurface.
+        <button data-touch-btn aria-label="Dodge"
+          onPointerDown={() => setIntent('dodge', true)}
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 124px)', bottom: 'calc(9% + 86px)', width: 60, height: 60 }} />
+      )}
 
       {/* M3a panel-access tray: grid icon toggles the column; each opener toggles its panel + yields control */}
       {active && (
