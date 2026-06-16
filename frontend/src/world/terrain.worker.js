@@ -6,6 +6,7 @@ import { pineShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
 import { oreCodeFor } from './oreGen.js';
+import { grassTops } from './grassField.js';
 
 // Constants
 const CHUNK_SIZE = 16;
@@ -58,7 +59,22 @@ self.onmessage = function(e) {
     
     // Generate mesh from blocks
     const meshData = generateMesh(cx, cz, blocks);
-    
+
+    // M4 #5: scan each column's TOP block (highest non-air) -> a sparse list of grass-top world
+    // positions for the wind-grass overlay (OptimizedGrassSystem). Gen-time read of `blocks` only --
+    // NO extra mesh work, NO re-mesh. The plain array is structured-cloned (not transferred).
+    const topCodes = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
+    const topYs = new Int16Array(CHUNK_SIZE * CHUNK_SIZE);
+    for (let z = 0; z < CHUNK_SIZE; z++) {
+      for (let x = 0; x < CHUNK_SIZE; x++) {
+        for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+          const b = blocks[getIndex(x, y, z)];
+          if (b !== 0) { topCodes[x + z * CHUNK_SIZE] = b; topYs[x + z * CHUNK_SIZE] = y; break; }
+        }
+      }
+    }
+    const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 });
+
     // Transfer buffers back to main thread
     self.postMessage({
       type: 'chunk_mesh',
@@ -69,7 +85,8 @@ self.onmessage = function(e) {
         colors: meshData.colors,
         uvs: meshData.uvs,
         indices: meshData.indices,
-        ao: meshData.ao
+        ao: meshData.ao,
+        grassTops: gTops
       }
     }, [
       meshData.positions.buffer,
