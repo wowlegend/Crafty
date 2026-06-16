@@ -56,3 +56,31 @@ describe('boss-kill climactic beat gates (M2 #7 S1b)', () => {
     expect(/newHealth <= 0\)[\s\S]{0,1400}triggerBloomSpike\(/.test(boss)).toBe(true);
   });
 });
+
+// S2: the Death + Victory overlays are rebuilt on the Panel/Button primitives + theme tokens (were raw
+// Tailwind: bg-black panels, text-red-500/amber-300 titles, bg-green-600/amber-500 buttons) + a run summary.
+describe('death/victory overlays on theme tokens (M2 #7 S2)', () => {
+  const gs = read('GameSystems.jsx');
+
+  it('imports the Panel + Button primitives', () => {
+    expect(gs).toMatch(/import \{ Panel \} from '\.\/ui\/primitives\/Panel\.jsx'/);
+    expect(gs).toMatch(/import \{ Button \} from '\.\/ui\/primitives\/Button\.jsx'/);
+  });
+  it('both overlays render on Panel + Button (not raw Tailwind buttons)', () => {
+    expect((gs.match(/<Panel variant="raise"/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((gs.match(/<Button variant="primary" size="lg"/g) || []).length).toBeGreaterThanOrEqual(2);
+    // the old off-token surfaces are gone
+    expect(gs.includes('bg-green-600')).toBe(false);
+    expect(gs.includes('bg-amber-500 hover:bg-amber-400')).toBe(false);
+    expect(gs.includes('text-red-500')).toBe(false);
+  });
+  it('titles use the danger/warn tokens', () => {
+    expect(gs).toMatch(/font-bold text-danger/);  // death
+    expect(gs).toMatch(/font-bold text-warn/);    // victory
+  });
+  it('shows a run summary (level + nights survived)', () => {
+    expect((gs.match(/<RunStat label="Level" value=\{level\}/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(gs).toMatch(/RunStat label="Nights survived" value=\{nights\}/);
+    expect((gs.match(/useGameStore\.getState\(\)\.nightCount/g) || []).length).toBeGreaterThanOrEqual(2);
+  });
+});

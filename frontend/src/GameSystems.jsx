@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 import { StatBar } from './ui/primitives/StatBar.jsx';
+import { Panel } from './ui/primitives/Panel.jsx';
+import { Button } from './ui/primitives/Button.jsx';
 
 
 const GameSystemsContext = createContext();
@@ -195,41 +197,39 @@ export const DamageOverlay = () => {
     );
 };
 
-// Death Screen Component
+// M2 #7 S2: a run-summary stat for the death/victory overlays. IB-grade -- tabular-nums value over a
+// muted uppercase label, baseline-stacked. Reads the run's level + nights-survived from the store.
+const RunStat = ({ label, value }) => (
+    <div className="flex flex-col items-center">
+        <span className="font-display text-3xl font-bold text-text tabular-nums leading-none">{value}</span>
+        <span className="text-xs uppercase tracking-wide text-text-muted mt-1">{label}</span>
+    </div>
+);
+
+// Death Screen Component -- M2 #7 S2: rebuilt on the Panel + Button primitives + theme tokens (was raw
+// Tailwind) with a run summary. Capture-safe (only mounts on player death, never in a fresh-L1 capture).
 export const DeathScreen = ({ onRespawn }) => {
+    const level = useGameStore.getState().level;
+    const nights = useGameStore.getState().nightCount;
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
         >
-            <div className="text-center">
-                <motion.h1
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="text-6xl font-bold text-red-500 mb-4"
-                    style={{ textShadow: '3px 3px 0 #000' }}
-                >
-                    YOU DIED
-                </motion.h1>
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-gray-400 mb-8"
-                >
-                    Better luck next time!
-                </motion.p>
-                <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.15 }} // KEVIN-FIX C4: impatient dead-clicks must hit the BUTTON
-                    onClick={onRespawn}
-                    className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg text-xl transition-all"
-                >
-                    Respawn
-                </motion.button>
-            </div>
+            <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                <Panel variant="raise" className="text-center px-10 py-8 max-w-sm">
+                    <h1 className="font-display text-5xl font-bold text-danger mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
+                        YOU DIED
+                    </h1>
+                    <p className="text-text-muted mb-6">The frontier claims another wanderer.</p>
+                    <div className="flex justify-center gap-8 mb-7">
+                        <RunStat label="Level" value={level} />
+                        <RunStat label="Nights survived" value={nights} />
+                    </div>
+                    <Button variant="primary" size="lg" onClick={onRespawn}>Respawn</Button>
+                </Panel>
+            </motion.div>
         </motion.div>
     );
 };
@@ -244,39 +244,27 @@ export const VictoryOverlay = ({ onDismiss }) => {
     useEffect(() => {
         if (window.playVictory) window.playVictory();
     }, []);
+    const level = useGameStore.getState().level;
+    const nights = useGameStore.getState().nightCount;
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
         >
-            <div className="text-center px-6">
-                <motion.h1
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="text-6xl font-bold text-amber-300 mb-4"
-                    style={{ textShadow: '3px 3px 0 #000' }}
-                >
-                    VICTORY
-                </motion.h1>
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-gray-300 mb-8 max-w-md mx-auto"
-                >
-                    The Blight Heart is shattered. The frontier is yours.
-                </motion.p>
-                <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.15 }}
-                    onClick={onDismiss}
-                    className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 px-8 rounded-lg text-xl transition-all"
-                >
-                    Keep exploring
-                </motion.button>
-            </div>
+            <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                <Panel variant="raise" className="text-center px-10 py-8 max-w-md">
+                    <h1 className="font-display text-5xl font-bold text-warn mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
+                        VICTORY
+                    </h1>
+                    <p className="text-text-muted mb-6 max-w-sm mx-auto">The Blight Heart is shattered. The frontier is yours.</p>
+                    <div className="flex justify-center gap-8 mb-7">
+                        <RunStat label="Level" value={level} />
+                        <RunStat label="Nights survived" value={nights} />
+                    </div>
+                    <Button variant="primary" size="lg" onClick={onDismiss}>Keep exploring</Button>
+                </Panel>
+            </motion.div>
         </motion.div>
     );
 };
