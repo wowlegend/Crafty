@@ -19,7 +19,8 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
   });
 
   it('hitstop, camera shake, and XP orbs are player-only', () => {
-    expect(npc).toMatch(/if \(source === 'player'\) useGameStore\.setState\(\{ hitstopUntil/);
+    // hitstop is player-only (SOTA M1 made it a weight-tiered block; the player-only guard is preserved).
+    expect(npc).toMatch(/if \(source === 'player'\)\s*\{[\s\S]{0,260}hitstopUntil:\s*performance\.now\(\)\s*\+\s*HITSTOP\[/);
     expect(npc).toMatch(/source === 'player' && store\.triggerCameraShake/);
     expect(npc).toMatch(/source === 'player' \? Math\.max\(1, Math\.floor\(totalXP \/ orbValue\)\) : 0/);
   });

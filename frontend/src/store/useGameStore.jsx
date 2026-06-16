@@ -277,6 +277,11 @@ export const useGameStore = create((set, get) => ({
     cameraShakeIntensity: 0,
     triggerCameraShake: (intensity = 1.0) => set({ cameraShakeIntensity: intensity }),
 
+    // SOTA M1 game-feel: ONE global feedback/juice dial scaling screenshake + hitstop magnitude.
+    // 1 = full, 0 = off. The M3 Settings/accessibility "reduced motion" toggle drives this to 0.
+    juiceIntensity: 1,
+    setJuiceIntensity: (v) => set({ juiceIntensity: Math.max(0, Math.min(1, v)) }),
+
     // S1-D-M1: Non-blocking hitstop. `damageMob` sets this to `performance.now() + ms`;
     // the player movement loop clamps its motion toward zero while now < hitstopUntil.
     // Replaces the old main-thread busy-wait. 0 = inactive (always in the past).

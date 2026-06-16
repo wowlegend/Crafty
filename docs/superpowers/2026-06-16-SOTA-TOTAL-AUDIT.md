@@ -22,7 +22,8 @@ enhancement backlog the loop then builds through.
 - **Phase C+ — build the backlog** autonomously: plan-doc per milestone, TDD red-first, gates (unit holds-or-grows · build clean · visual 20/20 or deliberate re-baseline · live-probe + LOOK) , ship, surface taste/playtest items to Kevin.
 
 ## Status
-- 2026-06-16: initiative opened. Spawn-direction `ObjectiveTracker` shipped (`5271f73`). Phase-A audit COMPLETE (16 agents, ranked backlog below). NEXT: build M1 (game-feel core + verified quick-win bugs), Phase-B-verifying each premise vs live code first.
+- 2026-06-16: initiative opened. Spawn-direction `ObjectiveTracker` shipped (`5271f73`). Phase-A audit COMPLETE (16 agents, ranked backlog below).
+- 2026-06-16: **M1 (game-feel core) COMPLETE** — Slice 1 quick-win bug cluster (`1a242b1`: ore-debris colors, playCraft wired, spatial pitch-jitter, npm-test repoint) + Slice 2 trauma pure core (`dffb49f`: game/trauma.js + 5 units) + Slice 3 wired (`<this commit>`: shakeOffset trauma^2 shake + weight-tiered HITSTOP + juiceIntensity dial). All Phase-B-verified vs live code. 1290 tests / 20/20 / build clean. NEXT: M2 (telegraphs #4 + directional impact #9 + death/victory beats #7).
 
 ## Phase-A result (16-agent workflow `wd28y0to9`, 2.6M tokens) — 2026-06-16
 

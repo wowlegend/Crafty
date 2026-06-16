@@ -21,6 +21,7 @@ import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { getItemRarity } from './data/items.js';
 import { rarityBeam } from './game/lootJuice.js';
 import { emitMobKill } from './game/mobKillBus.js';
+import { HITSTOP } from './game/trauma.js';
 import { MobModel } from './render/MobModel';
 
 
@@ -455,7 +456,14 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // (melee AND spells). Shorter window (28ms) since it's now a true motion dip,
       // not a wall-clock stall stacked on top of frame time.
       // S2-B3-M1: hitstop is PLAYER feel — an ally's hit must not clamp the player's motion.
-      if (source === 'player') useGameStore.setState({ hitstopUntil: performance.now() + 28 });
+      // SOTA M1: weight-TIERED hitstop (was a flat 28ms that collapsed the light/heavy/crit hierarchy --
+      // the audit's #1 game-feel gap). Tier by the incoming damage (matches the isCrit>=40 proxy below) +
+      // scale by the global juiceIntensity dial.
+      if (source === 'player') {
+        const weight = damage >= 40 ? 'crit' : damage >= 30 ? 'heavy' : 'light';
+        const ji = useGameStore.getState().juiceIntensity ?? 1;
+        useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP[weight] * ji });
+      }
 
       const store = useGameStore.getState();
       // NOTE (M5 review [B]): this is a MAGNITUDE proxy ("big hit -> bigger spray"), NOT the crit

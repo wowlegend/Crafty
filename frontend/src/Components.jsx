@@ -17,6 +17,7 @@ import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
+import { shakeOffset } from './game/trauma.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -1154,11 +1155,18 @@ export const Player = ({ isWorldBuilt }) => {
     let shakeZ = 0;
     const store = useGameStore.getState();
     if (store.cameraShakeIntensity > 0.01) {
-      const intensity = store.cameraShakeIntensity;
-      shakeX = (Math.random() - 0.5) * 0.5 * intensity;
-      shakeY = (Math.random() - 0.5) * 0.5 * intensity;
-      shakeZ = (Math.random() - 0.5) * 0.5 * intensity;
-      store.triggerCameraShake(intensity * 0.85); // Decay
+      // SOTA game-feel: the decaying cameraShakeIntensity IS the "trauma" value -> shake magnitude scales
+      // with trauma^2 (a light hit barely shakes, a crit PUNCHES), via seeded value-noise (game/trauma.js)
+      // scaled by the global juiceIntensity dial. Seed off the wall clock (this block is below the
+      // isCaptureMode early-return -> never in a baseline, so non-determinism here is fine). Quadratic
+      // falloff + the dial replace the old flat linear Math.random jitter.
+      const trauma = store.cameraShakeIntensity;
+      const ji = store.juiceIntensity ?? 1;
+      const o = shakeOffset(trauma, performance.now() * 0.05, 0, 0, 0.55 * ji);
+      shakeX = o.x;
+      shakeY = o.y;
+      shakeZ = o.z;
+      store.triggerCameraShake(trauma * 0.85); // Decay
     } else if (store.cameraShakeIntensity > 0) {
       store.triggerCameraShake(0);
     }
