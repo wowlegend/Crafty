@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sparkFor, hitKnockback, deathBurst } from './mobHitFx.js';
+import { sparkFor, hitKnockback, deathBurst, flinchTilt, biasAlong } from './mobHitFx.js';
 
 describe('sparkFor (the element -> spark table)', () => {
   it('count is 60 on crit, 25 otherwise', () => {
@@ -57,5 +57,40 @@ describe('deathBurst (the kill finisher)', () => {
   });
   it('unknown mob -> white, minimum burst', () => {
     expect(deathBurst('nope')).toEqual({ color: '#ffffff', count: 50 });
+  });
+});
+
+describe('flinchTilt (the directional reel)', () => {
+  it('zero hit direction -> no tilt', () => {
+    const t = flinchTilt(0, 0, 0, 1);
+    expect(t.pitch).toBeCloseTo(0); expect(t.roll).toBeCloseTo(0);
+  });
+  it('facing 0: a hit along world +Z pitches, no roll', () => {
+    const t = flinchTilt(0, 1, 0, 1);
+    expect(t.pitch).toBeCloseTo(0.22); expect(t.roll).toBeCloseTo(0);
+  });
+  it('facing 0: a hit along world +X rolls, no pitch', () => {
+    const t = flinchTilt(1, 0, 0, 1);
+    expect(t.pitch).toBeCloseTo(0); expect(t.roll).toBeCloseTo(-0.22);
+  });
+  it('scales with the wave envelope', () => {
+    expect(flinchTilt(0, 1, 0, 0.5).pitch).toBeCloseTo(0.11);
+  });
+  it('is facing-relative: a side hit while turned 90deg rolls, not pitches', () => {
+    const t = flinchTilt(0, 1, Math.PI / 2, 1); // world +Z hit, facing +90deg = local side
+    expect(t.pitch).toBeCloseTo(0); expect(Math.abs(t.roll)).toBeCloseTo(0.22);
+  });
+});
+
+describe('biasAlong (spark velocity cone)', () => {
+  it('no direction -> velocity unchanged', () => {
+    expect(biasAlong(3, 4, 0, 0, 0.6)).toEqual({ vx: 3, vz: 4 });
+  });
+  it('strength 1 aligns the full horizontal speed along the dir', () => {
+    const r = biasAlong(3, 4, 1, 0, 1); // speed 5
+    expect(r.vx).toBeCloseTo(5); expect(r.vz).toBeCloseTo(0);
+  });
+  it('strength 0 leaves it radial', () => {
+    expect(biasAlong(3, 4, 1, 0, 0)).toEqual({ vx: 3, vz: 4 });
   });
 });

@@ -50,3 +50,32 @@ export function hitKnockback(entityPos, cameraPos) {
   const kd = Math.sqrt(kx * kx + kz * kz) || 1;
   return { knockback: [kx / kd * 2, 0, kz / kd * 2], hitDir: [kx / kd, 0, kz / kd] };
 }
+
+/**
+ * Directional flinch tilt for a hit. The mob model is a child of a group rotated by `facingY`
+ * about Y, so the WORLD away-from-player hit dir (hitDirX, hitDirZ) is rotated into the model's
+ * LOCAL frame, then the model tips its top along that push: pitch (rotation.x) along local Z,
+ * roll (rotation.z) along local X, scaled by the `wave` flinch envelope. Replaces the old
+ * arbitrary id-parity roll. Pure + RNG-free.
+ * @returns {{pitch:number, roll:number}}
+ */
+export function flinchTilt(hitDirX, hitDirZ, facingY, wave, tilt = 0.22) {
+  const c = Math.cos(facingY), s = Math.sin(facingY);
+  const localX = hitDirX * c - hitDirZ * s;
+  const localZ = hitDirX * s + hitDirZ * c;
+  return { pitch: localZ * tilt * wave, roll: -localX * tilt * wave };
+}
+
+/**
+ * Bias a horizontal spark velocity (vx,vz) toward a unit hit direction (dirX,dirZ) by `strength`
+ * in [0,1], preserving horizontal speed. strength 0 = radial (unchanged); 1 = fully along the dir.
+ * Used to spray hit sparks in a cone AWAY from the player along the real hit vector. Pure.
+ * @returns {{vx:number, vz:number}}
+ */
+export function biasAlong(vx, vz, dirX, dirZ, strength = 0.6) {
+  const dl = Math.hypot(dirX, dirZ);
+  if (dl === 0) return { vx, vz };
+  const ux = dirX / dl, uz = dirZ / dl;
+  const speed = Math.hypot(vx, vz);
+  return { vx: vx * (1 - strength) + ux * speed * strength, vz: vz * (1 - strength) + uz * speed * strength };
+}

@@ -6,6 +6,7 @@ import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
 import { mobFeatures } from '../game/mobFeatures';
+import { flinchTilt } from '../game/mobHitFx';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -137,9 +138,17 @@ const MobModel = React.memo(({ entity }) => {
         const scaleXZ = 1.0 + wave * 0.1; // X/Z swells to 1.10
         modelRef.current.scale.set(scaleXZ, scaleY, scaleXZ);
 
-        // Tilt backward relative to hit direction
-        modelRef.current.rotation.x = -0.2 * wave;
-        modelRef.current.rotation.z = (entity.id % 2 === 0 ? 1 : -1) * 0.08 * wave;
+        // Tilt the model in the direction it was hit (entity.hitDirection = away-from-player, world),
+        // converted into the model's facing-local frame. Falls back to a flat back-lean if no dir yet.
+        const hd = entity.hitDirection;
+        if (hd) {
+          const tl = flinchTilt(hd.x, hd.z, entity.rotation || 0, wave);
+          modelRef.current.rotation.x = tl.pitch;
+          modelRef.current.rotation.z = tl.roll;
+        } else {
+          modelRef.current.rotation.x = -0.2 * wave;
+          modelRef.current.rotation.z = 0;
+        }
       } else {
         modelRef.current.scale.set(1, 1, 1);
         modelRef.current.rotation.set(0, 0, 0);
