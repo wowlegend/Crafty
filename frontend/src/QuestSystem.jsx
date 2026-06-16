@@ -735,6 +735,9 @@ export const useTreasureChests = () => {
     const openChest = useCallback((chestIdToOpen) => {
         setOpenedChestIds(prev => new Set([...prev, chestIdToOpen]));
 
+        const chest = chests.find(c => c.id === chestIdToOpen);
+        const position = chest ? chest.position : [0, 15, 0];
+
         // Generate random loot
         const loot = [];
         CHEST_LOOT.forEach(item => {
@@ -748,8 +751,16 @@ export const useTreasureChests = () => {
             loot.push(CHEST_LOOT[0]); // Health potion fallback
         }
 
-        const chest = chests.find(c => c.id === chestIdToOpen);
-        const position = chest ? chest.position : [0, 15, 0];
+        // S8c-bis: shrine chests pay MORE on the frontier -- (1 + zoneTier) extra guaranteed rolls biased
+        // to the rarer half of CHEST_LOOT. zoneTier already caps at MAX_TIER, so far shrines reward more
+        // (matching the S7 lootTier risk/reward philosophy). Non-shrine chests are unchanged.
+        if (chest && chest.shrine) {
+            const tier = zoneTier(chest.position[0], chest.position[2]);
+            const pool = CHEST_LOOT.slice(Math.floor(CHEST_LOOT.length / 2));
+            for (let i = 0; i < 1 + tier; i++) {
+                loot.push(pool[Math.floor(Math.random() * pool.length)] || CHEST_LOOT[0]);
+            }
+        }
 
         // Spawn physical loot items in the 3D scene
         loot.forEach(item => {

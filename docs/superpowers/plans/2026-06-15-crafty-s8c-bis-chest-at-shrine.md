@@ -50,7 +50,12 @@
   capture-guarded -> no chest in any baseline). If a frame moves, the guard leaked -> fix, don't re-bless.
 - [ ] **Step 5 — Commit** (`-F`): "S8c-bis Slice 1: a reward chest spawns at each shrine".
 
-## Slice 2 — tier-scale the shrine chest's reward (far shrines pay more)
+## Slice 2 — tier-scale the shrine chest's reward (far shrines pay more) ✅ DONE — S8c-bis COMPLETE
+> Shipped: in openChest (chest-find moved above the loot roll), a `chest.shrine` chest gets `(1 + zoneTier)`
+> extra rolls biased to the rarer half of CHEST_LOOT (zoneTier caps at MAX_TIER -> far shrines pay more);
+> non-shrine unchanged. Gate +1 (openChest refs chest.shrine + zoneTier). unit 1270->1271, build+eslint
+> clean, gate 20/20. **S8c-bis MILESTONE COMPLETE** — shrine destinations now have a tangible, frontier-
+> scaled payoff. Reward magnitude + 12-block radius = playtest tunables (KEVIN-REVIEW #47).
 **Files:** Modify `frontend/src/QuestSystem.jsx` (`openChest`); extend `shrine-chest-gates.test.js`
 
 - [ ] **Step 1 — Extend the gate (red).** Assert `openChest` references `chest.shrine` + `zoneTier` (a shrine

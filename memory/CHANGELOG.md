@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### June 15, 2026 (🗝️ S8c-bis CHEST-AT-SHRINE Slice 2 — far shrines pay more; S8c-bis MILESTONE COMPLETE)
+- **Tier-scaled the shrine chest reward.** In `openChest` (QuestSystem.jsx), moved the chest-find above the loot roll, then for a `chest.shrine` chest added `(1 + zoneTier(x,z))` extra guaranteed rolls biased to the rarer half of CHEST_LOOT. `zoneTier` already caps at MAX_TIER, so a far-frontier shrine pays meaningfully more than a near one — matching the S7 lootTier risk/reward philosophy. Non-shrine chest behavior is unchanged.
+- **TDD red-first:** extended `tests/gates/shrine-chest-gates.test.js` (+1) to assert `openChest` references `chest.shrine` + `zoneTier(`.
+- **Verify:** unit 1270->1271 (+1) · build clean · eslint clean · captured + visual gate 20/20 (loot logic, no render/capture change).
+- **🗝️ S8c-bis CHEST-AT-SHRINE MILESTONE COMPLETE.** The S8 destination loop now has a tangible payoff end-to-end: see a shrine on the horizon -> compass cue -> journey there -> a guaranteed reward chest spawns at its base (richer the farther out you go) + the Pilgrimage quest completes. Built with NO cross-hook bridge (the spawn + reward both live in the setChests-owning hook). The reward MAGNITUDE + the 12-block trigger radius are PLAYTEST tunables -> KEVIN-REVIEW #47 (after a redeploy). (This commit.)
+
 ### June 15, 2026 (🗝️ S8c-bis CHEST-AT-SHRINE Slice 1 — a reward chest now spawns at each shrine)
 - **Reaching a shrine now yields a chest.** Added a deterministic, once-per-shrine, capture-guarded spawner INSIDE `useTreasureChests()` (QuestSystem.jsx): a `shrineChestsSpawned` ref Set (keyed by chunk `cx_cz`) + a ~3s poll that, when the player comes within 12 blocks of the nearest shrine (`nearestLandmark`), spawns a `{...chest, shrine:true}` at the shrine base (ground via `getMobGroundLevel`), exempt from the periodic spawner's 5-cap (a guaranteed reward). Mirrors the existing `reachedShrines` reach_shrine poll.
 - **No cross-hook bridge** (the original S8c defer reason): the spawn lives in the hook that owns `setChests`, so eslint stays clean (no no-undef). The chest renders (HUD reads `treasureChests.chests`) + opens (existing proximity -> openChest -> CHEST_LOOT) for free — zero new components.

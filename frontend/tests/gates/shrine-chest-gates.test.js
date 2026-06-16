@@ -28,4 +28,13 @@ describe('S8c-bis Slice 1 — a reward chest spawns at each shrine', () => {
     expect(/shrine:\s*true/.test(block)).toBe(true);
     expect(block.includes('setChests(')).toBe(true);
   });
+
+  // Slice 2: a shrine chest pays MORE on the frontier -- openChest grants extra rolls scaled by zoneTier.
+  it('openChest tier-scales the shrine chest reward (chest.shrine + zoneTier)', () => {
+    const oi = src.indexOf('const openChest');
+    expect(oi).toBeGreaterThan(-1);
+    const open = src.slice(oi, oi + 1100);
+    expect(open.includes('chest.shrine')).toBe(true);
+    expect(/zoneTier\(/.test(open)).toBe(true);
+  });
 });
