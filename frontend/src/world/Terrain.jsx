@@ -7,6 +7,7 @@ import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
+import { OptimizedGrassSystem } from '../OptimizedGrassSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
@@ -928,14 +929,20 @@ export const MinecraftWorld = React.memo(() => {
     return (
         <group>
             {renderChunks.map(chunk => (
-                <ChunkMesh
-                    key={`${chunk.cx}_${chunk.cz}`} 
-                    cx={chunk.cx} 
-                    cz={chunk.cz} 
-                    meshData={chunk.meshData} 
-                    onMount={handleMount}
-                    onUnmount={handleUnmount}
-                />
+                <React.Fragment key={`${chunk.cx}_${chunk.cz}`}>
+                    <ChunkMesh
+                        cx={chunk.cx}
+                        cz={chunk.cz}
+                        meshData={chunk.meshData}
+                        onMount={handleMount}
+                        onUnmount={handleUnmount}
+                    />
+                    {/* M4 #5: revive the wind-grass -- mount the (previously dead) per-chunk instanced grass
+                        renderer from the worker's sparse grass-top positions. Only for chunks with grass tops. */}
+                    {chunk.meshData.grassTops && chunk.meshData.grassTops.length > 0 && (
+                        <OptimizedGrassSystem chunkX={chunk.cx} chunkZ={chunk.cz} blockPositions={chunk.meshData.grassTops} />
+                    )}
+                </React.Fragment>
             ))}
             <TargetOutline />
             <BlockParticleSystem worker={worker} />

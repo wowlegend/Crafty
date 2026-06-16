@@ -56,7 +56,6 @@ import {
 // Import optimized systems
 import { useSimpleExperience } from './SimpleExperienceSystem';
 import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
-import { OptimizedGrassSystem } from './OptimizedGrassSystem';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';

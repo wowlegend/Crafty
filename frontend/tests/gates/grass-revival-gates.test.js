@@ -29,3 +29,19 @@ describe('grass revival 1a -- worker emits grass-tops', () => {
     expect(out).toEqual([[0, 8, 0]]); // only the grass column (code 1), y = topY + 1
   });
 });
+
+// Slice 1b: Terrain mounts the (previously dead) OptimizedGrassSystem per chunk from the worker grass-tops.
+describe('grass revival 1b -- mounted + visible', () => {
+  const terrain = read('world/Terrain.jsx');
+  const grass = read('OptimizedGrassSystem.jsx');
+
+  it('Terrain imports + mounts OptimizedGrassSystem from the chunk grass-tops', () => {
+    expect(terrain).toMatch(/import \{ OptimizedGrassSystem \} from '\.\.\/OptimizedGrassSystem'/);
+    expect(terrain).toMatch(/chunk\.meshData\.grassTops && chunk\.meshData\.grassTops\.length > 0/);
+    expect(terrain).toMatch(/<OptimizedGrassSystem chunkX=\{chunk\.cx\} chunkZ=\{chunk\.cz\} blockPositions=\{chunk\.meshData\.grassTops\}/);
+  });
+  it('the grass renderer takes the pre-filtered grass-tops directly (no blockType re-filter)', () => {
+    expect(grass).toMatch(/blockPositions\.slice\(0, 50\)/);
+    expect(grass.includes("blockType === 'grass'")).toBe(false);
+  });
+});

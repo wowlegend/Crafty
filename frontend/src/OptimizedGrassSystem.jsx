@@ -77,11 +77,9 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
   const grassMeshRef = useRef();
   const particleMeshRef = useRef();
 
-  const grassBlocks = useMemo(() => {
-    return blockPositions
-      .filter(([x, y, z, blockType]) => blockType === 'grass')
-      .slice(0, 50); // Limit for performance
-  }, [blockPositions]);
+  // M4 #5: blockPositions are the worker's pre-filtered grass-top [x,y,z] tuples (world/grassField.js
+  // grassTops) -- already grass-only + capped, so just take them (the instancing forEach uses [x,y,z]).
+  const grassBlocks = useMemo(() => blockPositions.slice(0, 50), [blockPositions]);
 
   const grassCount = grassBlocks.length;
   
@@ -110,7 +108,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
     const dummy = new THREE.Object3D();
     
     grassBlocks.forEach(([x, y, z], i) => {
-      dummy.position.set(x, y + 0.5, z);
+      dummy.position.set(x, y + 0.35, z); // root the 0.7-tall tuft base at the grass surface (grassTop y)
       dummy.updateMatrix();
       grassMeshRef.current.setMatrixAt(i, dummy.matrix);
     });
@@ -187,7 +185,9 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
     <group>
       {grassCount > 0 && (
         <instancedMesh ref={grassMeshRef} args={[null, grassMaterial, grassCount]}>
-          <planeGeometry args={[0.1, 0.18]} />
+          {/* M4 #5: a READABLE stylized tuft (was 0.1x0.18 -- sub-perceptual specks). 0.4 wide x 0.7 tall
+              billboard, DoubleSide, wind-swayed at the top by the shader. Bold-flat (flat blade, locked palette). */}
+          <planeGeometry args={[0.4, 0.7]} />
         </instancedMesh>
       )}
       {particleCount > 0 && (
