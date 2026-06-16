@@ -24,6 +24,7 @@ enhancement backlog the loop then builds through.
 ## Status
 - 2026-06-16: initiative opened. Spawn-direction `ObjectiveTracker` shipped (`5271f73`). Phase-A audit COMPLETE (16 agents, ranked backlog below).
 - 2026-06-16: **M1 (game-feel core) COMPLETE** — Slice 1 quick-win bug cluster (`1a242b1`: ore-debris colors, playCraft wired, spatial pitch-jitter, npm-test repoint) + Slice 2 trauma pure core (`dffb49f`: game/trauma.js + 5 units) + Slice 3 wired (`<this commit>`: shakeOffset trauma^2 shake + weight-tiered HITSTOP + juiceIntensity dial). All Phase-B-verified vs live code. 1290 tests / 20/20 / build clean. NEXT: M2 (telegraphs #4 + directional impact #9 + death/victory beats #7).
+- 2026-06-16: **M2 directional impact (#9) COMPLETE** — Slice A flinch lean (`0e12ad2`: flinchTilt, facing-local), Slice B spark cone (`d89f2cc`: biasAlong dir param), Slice C camera-shake dir (`2f0bcef`: cameraShakeDir preserved through decay). hitDirection (was zero-consumer) now drives lean+spray+lurch. 1299 tests / 20/20 / build + eslint clean. NEXT M2: telegraphs #4 (flagship readability), then death/victory beats #7.
 
 ## Phase-A result (16-agent workflow `wd28y0to9`, 2.6M tokens) — 2026-06-16
 
@@ -56,7 +57,7 @@ enhancement backlog the loop then builds through.
 6. **[H/M/AUTO] Input buffering + coyote-time + jump buffer + anim-cancel windows + touch dodge.** (MOVEMENT/COMBAT)
 7. **[H/L/AUTO] Choreographed death/victory/level-up beats** + rebuild DeathScreen & VictoryOverlay on bold-flat tokens with a run summary. (PROGRESSION/UX)
 8. **[H/L/AUTO] Make landmarks/shrines/Blight-Heart REAL destinations** — visible horizon Blight-Heart obelisk that grows on approach + interactable shrines (light-up + buff/lore/loot) + tiered objective chain. (WORLD/PROGRESSION)
-9. **[M/S/AUTO] Directional impact** — feed hitDirection into sparks/flinch/knockback + the ore-debris white-color one-liner. (COMBAT/MOBS)
+9. **[DONE 2026-06-16 · M2 A-C] Directional impact** — hitDirection now drives flinch lean (flinchTilt) + spark cone (biasAlong) + camera-shake bias (cameraShakeDir); ore-debris colors fixed in M1 S1. (COMBAT/MOBS)
 10. **[M/M/AUTO] Persistent day-phase dial** (sun/moon arc clock) + two-layer ghost-drain/critical-pulse stat & boss bars. (HUD/PROGRESSION)
 11. **[H/M/AUTO] Element-zone chemistry & zone-ambiance VFX** (fire+ice=steam reads) + per-beast-form signature verb (comet-dash/bull-charge/...). (ASPECTS)
 12. **[H/L/AUTO] Biome upgrade** — Whittaker temp×moisture grid (6-9 biomes) + transition blending + climate foliage density + biome/zone-tier spawn tables. (WORLD)
