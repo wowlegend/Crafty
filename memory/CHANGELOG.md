@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (🔊 SOTA M3 #3 Slice 3a — SFX volume slider -> the master-bus gain)
+- **First audio control** (audit #3, "no audio sliders"). A Sound Effects volume slider (0..100%) in SettingsPanel drives the WebAudio master-bus input gain (all SFX + ambient route through it) -> 0% silences SFX. New pure `game/audioSettings.js` `audioGain(volume, muted)`; store `sfxVolume` + `setSfxVolume`; a SoundManager effect applies it to the live bus gain on change + `getMasterBus` seeds it into a freshly-created bus (the store<->live-node bridge).
+- **TDD/Gated:** `audioSettings.test.js` (+3) · `settings-a11y-gates.test.js` (+3). LOOKED: 'SOUND EFFECTS 100%' renders under Reduced Motion.
+- **Verify:** unit 1346->1352 (+6) · build+eslint clean · captured + visual gate 20/20 (panel + audio not in capture). Commit `b1bd1cf`. NEXT = #3 S3b (music volume + a master mute covering SFX + the separate ElevenLabs music).
+
 ### June 16, 2026 (♿ SOTA M3 #3 Slice 2 — respect prefers-reduced-motion + explicit toggle)
 - **The game now respects the OS reduced-motion preference** (audit #3, the real a11y win). New pure `game/a11y.js` `motionIntensity(prefersReduced, userScale)`; App mounts a `matchMedia('(prefers-reduced-motion: reduce)')` listener that drives the M1 `juiceIntensity` dial to 0 (kills screenshake + hitstop) on the OS default + on change (capture-gated; the Settings slider/toggle remain the manual override). Added an explicit **Reduced Motion ON/OFF toggle** to SettingsPanel (mirrors Show Stats) wired to the same dial.
 - **TDD/Gated:** `a11y.test.js` (+4) · `settings-a11y-gates.test.js` (+3). LOOKED: 'Reduced Motion OFF' renders under the 60% slider.
