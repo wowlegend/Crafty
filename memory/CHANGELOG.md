@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 16, 2026 (🌿 SOTA M4 #5 Slice 1b -- wind-grass MOUNTED; #5 REVIVED)
+- **The dead wind-grass is alive** (audit #5 -- 'the #1 2019-hobby tell'). Terrain.jsx now mounts the previously-unmounted `OptimizedGrassSystem` per chunk from the worker's `grassTops` (S1a). The component takes the pre-filtered tops directly; the blade grew 0.1x0.18 -> 0.4x0.7 (a readable stylized tuft vs a sub-perceptual speck) rooted at the surface; its wind-sway + proximity-bend shader + capture-determinism already existed. Removed the dead import from Components.jsx.
+- **GROUND-LEVEL LOOK** (new reusable `scripts/visual/grass-probe.mjs`): green tufts visibly poke up from the grass terrain, stylized bold-flat. Density/size = a tunable taste knob -> KEVIN #50.
+- **Verify:** unit 1367->1369 (+2 gate) · build+eslint clean · visual 20/20 (grass sub-6% at the high diorama cameras -> no re-baseline; rendering confirmed via the ground probe). Commit `059777c`. **#5 WIND-GRASS REVIVED.** NEXT = M4 S2 landmarks #8.
+
 ### June 16, 2026 (🌱 SOTA M4 #5 Slice 1a -- worker emits grass-top positions)
 - **Step 1 of reviving the dead wind-grass** (audit #5). The terrain worker now scans each column's top block at gen-time and emits a sparse, strided/capped list of grass-coded world positions (`grassTops`) on the chunk_mesh payload -- the per-chunk grass-position source the unmounted `OptimizedGrassSystem` needs. New pure `world/grassField.js` `grassTops()` (TDD). NO extra mesh work / NO re-mesh; data-only (1b mounts the renderer).
 - **Verify:** unit 1358->1367 (+9: grassField +5, gate +4) · build+eslint clean · visual 20/20 (no render change yet). Commit `bd9ab34`. NEXT = 1b (mount OptimizedGrassSystem per chunk -> visible grass, deliberate re-baseline).
