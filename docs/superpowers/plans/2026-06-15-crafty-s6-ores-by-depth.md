@@ -99,7 +99,13 @@
   baseline -> LOOK, then deliberate re-bless.
 - [ ] **Step 6 — Commit:** "S6 ores Slice 2: deterministic depth-banded ore generation in the worker".
 
-## Slice 3 — mine an ore -> drop its item (close the loop)
+## Slice 3 — mine an ore -> drop its item (close the loop) ✅ DONE — S6 COMPLETE
+> Shipped: BLOCK_ID_MAP (Terrain.jsx) extended 10:'coal' 11:'iron' 12:'gold' 13:'diamond' (LOWERCASE block
+> keys — VERIFIED: addToInventory uses a raw key, recipes.js matches lowercase incl. a Gold Helmet recipe,
+> inventory renders via BLOCK_TYPES[key]; display-names would break recipe-matching). Gate
+> `tests/gates/ore-drop-gates.test.js` (+2: ore codes + no-regression). unit 1265->1267, build clean, gate
+> 20/20. **S6 MILESTONE COMPLETE** — gen (S2) -> render (S1) -> mine/drop/craft (S3), one block-code integer
+> end-to-end. Rarity/depth curve = playtest tunable (oreGen.js) -> KEVIN-REVIEW #46.
 
 **Files:**
 - Modify: `frontend/src/world/Terrain.jsx` (extend `BLOCK_ID_MAP`)

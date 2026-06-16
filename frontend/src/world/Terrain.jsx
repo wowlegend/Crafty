@@ -594,7 +594,9 @@ export const MinecraftWorld = React.memo(() => {
             } else if (type === 'block_broken') {
                 // Phase 12: Collect block logic
                 const store = useGameStore.getState();
-                const BLOCK_ID_MAP = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood', 7: 'leaves', 8: 'cactus' };
+                // S6: ore codes 10-13 drop their LOWERCASE block keys (matches recipes.js patterns +
+                // BLOCK_TYPES render path; NOT display names which wouldn't match the primary recipes).
+                const BLOCK_ID_MAP = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood', 7: 'leaves', 8: 'cactus', 10: 'coal', 11: 'iron', 12: 'gold', 13: 'diamond' };
                 const blockName = BLOCK_ID_MAP[payload.blockType];
                 if (blockName && store.addToInventory) {
                     store.addToInventory(blockName, 1);
