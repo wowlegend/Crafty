@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { User, Mail, Lock, LogIn, UserPlus, X } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { Panel, Button, Toast } from './ui/primitives/index.js';
+
+// M6 #17 (brand conformance): the AuthModal is a first-impression UI reachable from the title menu.
+// It was raw Tailwind palette classes (dark-gray panel, green submit button, blue links, soft radius)
+// -- off-brand vs the LOCKED bold-flat design system. Rebuilt on the Panel/Button/Toast primitives +
+// theme tokens (same
+// pattern as the #7-S2 Death/Victory overlays + TradingInterface). The auth LOGIC is unchanged; only
+// the presentation now conforms. lucide outline icons are correct here (app-chrome, not game content).
+const FIELD = 'w-full bg-panel-inset border-chrome border-ink rounded-sm pl-10 pr-4 py-3 ' +
+  'text-text placeholder:text-text-muted focus:outline-none focus:border-accent';
 
 export const AuthModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -58,142 +68,123 @@ export const AuthModal = ({ isOpen, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/50 flex items-center justify-center z-50"
+        className="absolute inset-0 z-modal flex items-center justify-center bg-ink/75"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          className="w-full max-w-md mx-4"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold text-white mb-2">
-              {isLogin ? 'Welcome Back' : 'Join Crafty'}
-            </h2>
-            <p className="text-gray-300">
-              {isLogin ? 'Sign in to your account' : 'Create your account'}
-            </p>
-          </div>
-
-          {error && (
-            <div className="bg-red-600 text-white p-3 rounded mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-white font-medium mb-2">Username</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-gray-700 text-white pl-10 pr-4 py-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your username"
-                  required
-                />
+          <Panel variant="raise" data-testid="auth-modal" className="relative overflow-hidden p-0">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
+              <div className="flex items-center gap-3">
+                {isLogin ? <LogIn size={22} className="text-accent" /> : <UserPlus size={22} className="text-accent" />}
+                <h2 className="font-display text-xl tracking-wide text-accent uppercase">
+                  {isLogin ? 'Welcome Back' : 'Join Crafty'}
+                </h2>
               </div>
+              <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                <X size={18} />
+              </Button>
             </div>
 
-            {!isLogin && (
-              <div>
-                <label className="block text-white font-medium mb-2">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-gray-700 text-white pl-10 pr-4 py-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
-              </div>
-            )}
+            <div className="p-5">
+              <p className="text-text-muted text-sm mb-4">
+                {isLogin ? 'Sign in to your account' : 'Create your account'}
+              </p>
 
-            <div>
-              <label className="block text-white font-medium mb-2">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-700 text-white pl-10 pr-4 py-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-500 disabled:bg-green-800 text-white py-3 rounded font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <>
-                  {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-                  {isLogin ? 'Sign In' : 'Create Account'}
-                </>
+              {error && (
+                <Toast status="danger" className="w-full mb-4 text-sm">
+                  {error}
+                </Toast>
               )}
-            </button>
-          </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-300">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
-            </p>
-            <button
-              onClick={switchMode}
-              className="text-blue-400 hover:text-blue-300 font-medium mt-1"
-            >
-              {isLogin ? 'Create one here' : 'Sign in here'}
-            </button>
-          </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-text font-medium mb-2 text-sm uppercase tracking-wider">Username</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className={FIELD}
+                      placeholder="Enter your username"
+                      required
+                    />
+                  </div>
+                </div>
 
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white"
-          >
-            ×
-          </button>
+                {!isLogin && (
+                  <div>
+                    <label className="block text-text font-medium mb-2 text-sm uppercase tracking-wider">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={FIELD}
+                        placeholder="Enter your email"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-text font-medium mb-2 text-sm uppercase tracking-wider">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={20} />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={FIELD}
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-text-inverse"></div>
+                  ) : (
+                    <>
+                      {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
+                      {isLogin ? 'Sign In' : 'Create Account'}
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-text-muted text-sm">
+                  {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                </p>
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-accent hover:text-accent-raise font-medium mt-1 text-sm"
+                >
+                  {isLogin ? 'Create one here' : 'Sign in here'}
+                </button>
+              </div>
+            </div>
+          </Panel>
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
-};
-
-const UserProfile = ({ onShowWorldManager }) => {
-  const { user, logout } = useAuth();
-
-  return (
-    <div className="flex items-center space-x-3">
-      <div className="text-white text-sm">
-        <div className="font-medium">{user.username}</div>
-      </div>
-      
-      <div className="flex space-x-2">
-        <button
-          onClick={onShowWorldManager}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm"
-        >
-          Worlds
-        </button>
-        <button
-          onClick={logout}
-          className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
   );
 };

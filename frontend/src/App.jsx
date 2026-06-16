@@ -616,6 +616,12 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setCaptureStudio(false); // panel OVER the explore world -> motes on
       setShowAchievements?.(true);
     });
+    // M6 #17: the first-impression AuthModal (rebuilt bold-flat) gets a visual look-gate. showAuthModal
+    // is useState in this component (not the store), so drive the local setter directly (identity-stable).
+    registerTestHook('openAuth', () => {
+      useGameStore.getState().setCaptureStudio(false);
+      setShowAuthModal?.(true);
+    });
     installTestBridge();
   }, []);
 
