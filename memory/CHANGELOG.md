@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 16, 2026 (🌱 SOTA M4 #5 Slice 1a -- worker emits grass-top positions)
+- **Step 1 of reviving the dead wind-grass** (audit #5). The terrain worker now scans each column's top block at gen-time and emits a sparse, strided/capped list of grass-coded world positions (`grassTops`) on the chunk_mesh payload -- the per-chunk grass-position source the unmounted `OptimizedGrassSystem` needs. New pure `world/grassField.js` `grassTops()` (TDD). NO extra mesh work / NO re-mesh; data-only (1b mounts the renderer).
+- **Verify:** unit 1358->1367 (+9: grassField +5, gate +4) · build+eslint clean · visual 20/20 (no render change yet). Commit `bd9ab34`. NEXT = 1b (mount OptimizedGrassSystem per chunk -> visible grass, deliberate re-baseline).
+
 ### June 16, 2026 (♿ SOTA M3 #6 Slice 4 — touch dodge; M3 SETTINGS/A11Y COMPLETE)
 - **Touch players can dodge** (audit #6). Touch had no dodge (Shift-only, unreachable on iPad). Added a DODGE button to the touch action cluster (a Wind glyph above cast in TouchControlsSurface + a transparent hit-area in the live TouchControls overlay) dispatching the SAME edge-triggered `setIntent('dodge', true)` the keyboard uses -- the roll/i-frame state machine is unchanged. Re-baselined mobile.png for the new button (LOOK-verified: the dash glyph renders gold-on-navy in the cluster).
 - **Gated:** `touch-dodge-gates.test.js` (+3). unit 1355->1358 · build+eslint clean · visual 20/20 (mobile re-baselined). Commit `4eb001c`.
