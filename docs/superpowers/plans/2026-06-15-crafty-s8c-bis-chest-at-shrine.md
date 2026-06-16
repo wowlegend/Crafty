@@ -25,7 +25,12 @@
 
 ---
 
-## Slice 1 — spawn a deterministic, once-per-shrine reward chest at the shrine base
+## Slice 1 — spawn a deterministic, once-per-shrine reward chest at the shrine base ✅ DONE
+> Shipped: `shrineChestsSpawned` ref Set + a capture-guarded ~3s poll in useTreasureChests; spawns a
+> `{...chest, shrine:true}` at the shrine base when the player is within 12 blocks of nearestLandmark,
+> once per chunk, exempt from the 5-cap. Gate `shrine-chest-gates.test.js` (+3). No cross-hook bridge
+> (spawn is in the setChests-owning hook); renders/opens via existing path. unit 1267->1270, build+eslint
+> clean, captured+gate 20/20 (guarded -> no baseline leak).
 **Files:** Modify `frontend/src/QuestSystem.jsx` (`useTreasureChests`); Test `frontend/tests/gates/shrine-chest-gates.test.js`
 
 - [ ] **Step 1 — Write the source-gate (red).** `shrine-chest-gates.test.js` reads QuestSystem.jsx and asserts

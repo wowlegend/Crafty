@@ -680,6 +680,37 @@ export const useTreasureChests = () => {
         }
     }, [chests.length]);
 
+    // S8c-bis: a guaranteed reward chest at each frontier shrine -- the deferred S8 destination payoff.
+    // Lives HERE (the hook that owns setChests) so no cross-hook bridge is needed. Deterministic +
+    // once-per-shrine (keyed by chunk in a ref Set) + capture-guarded (shrines can sit near origin, so the
+    // guard keeps chests out of the deterministic baselines). Mirrors the reach_shrine `reachedShrines`
+    // poll. Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
+    const shrineChestsSpawned = useRef(new Set());
+    useEffect(() => {
+        if (isCaptureMode()) return;
+        const interval = setInterval(() => {
+            const playerPos = useGameStore.getState().playerPosition;
+            if (!playerPos) return;
+            const s = nearestLandmark(playerPos.x, playerPos.z);
+            if (!s) return;
+            if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 12) return;
+            const key = `${s.cx}_${s.cz}`;
+            if (shrineChestsSpawned.current.has(key)) return;
+            shrineChestsSpawned.current.add(key);
+
+            let y = 15;
+            let resolved = false;
+            const getLevel = useGameStore.getState().getMobGroundLevel;
+            if (getLevel) {
+                const h = getLevel(s.worldX, s.worldZ);
+                if (typeof h === 'number' && !isNaN(h)) { y = h + 1; resolved = true; }
+            }
+            // EXEMPT from the periodic spawner's 5-cap: a guaranteed, once-per-shrine reward.
+            setChests(prev => [...prev, { id: chestId.current++, position: [s.worldX, y, s.worldZ], opened: false, resolved, shrine: true }]);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
     // Check if player is near a chest (Strict 3D Proximity)
     const checkChestProximity = useCallback(() => {
         const playerPos = useGameStore.getState().playerPosition;
