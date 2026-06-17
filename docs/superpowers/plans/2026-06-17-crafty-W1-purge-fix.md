@@ -1,5 +1,7 @@
 # W1 — Purge & Fix Implementation Plan
 
+> **✅ COMPLETE 2026-06-17 (main @ `8b6e3a4`).** All 18 tasks shipped via subagent-driven execution (3 batches; implement→spec-review→quality-review per task), gates green (1479 unit / build / eslint), all targeted dead code gone, the 2 visible changes (ESC-pause/no-flash + M-key panel) live-look-verified. Kevin-ear/eye items + follow-ups in `KEVIN-REVIEW-BATCH.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement task-by-task. Steps use checkbox (- [ ]) syntax.
 
 **Goal:** Restore lived-correctness and trust by purging the dead/legacy rot (auth, CRAFTY-RPG overlay, pet/tame, dead ECS/audio/combat/economy code) and fixing the real shipped-broken bugs (the dead `gameStarted` flag, 0-mana potion, SFX bypassing the limiter, free spell upgrades, junk boss reward, unique-key error, KeyF conflict, hostile ally eyes, prod log spam).
