@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
 import { isTouchUIMode } from './input/touchDevice';
-import { Panel, Button, Slot, Icon, Toast } from './ui/primitives/index.js';
+import { Panel, Button, Slot, Icon, Toast, Modal } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 import { zoneTier } from './world/zoneTier.js';
@@ -533,10 +533,11 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
     ];
 
     return (
-        <div
-            data-testid="achievements-panel"
+        <Modal
+            testId="achievements-panel"
+            label="Achievements"
             className="absolute inset-0 z-50 grid place-items-center bg-ink/75 animate-fade-in"
-            onClick={onClose}
+            onClose={onClose}
         >
             <motion.div
                 initial={{ scale: 0.8, y: 30 }}
@@ -601,7 +602,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                     </div>
                 </Panel>
             </motion.div>
-        </div>
+        </Modal>
     );
 });
 

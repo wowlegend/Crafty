@@ -33,3 +33,35 @@ describe('#52 S1 modals use the shared Modal primitive', () => {
     expect(m).toMatch(/if \(!isCaptureMode\(\)\) dialogRef\.current\?\.focus\(\)/);
   });
 });
+
+// #52 S2: the 3 capture-state modals + the chest panel get the same a11y win without ANY pixel drift.
+// The two plain-div backdrops (Inventory, Achievements) become <Modal> (its rendered div is byte-identical
+// to the old backdrop + role/aria + capture-gated focus). The two framer motion.div backdrops
+// (SpellUpgrade [progression-open capture], Chest) keep their element + the load-bearing overflow-y-auto
+// (capture.mjs scrolls .closest('.overflow-y-auto')) and gain role/aria/tabIndex inline.
+describe('#52 S2 capture-state modals carry role=dialog (zero-pixel a11y)', () => {
+  it('Inventory (GamePanels) is a <Modal> keeping the inventory-modal testId on the backdrop', () => {
+    const src = read('ui/GamePanels.jsx');
+    expect(src).toMatch(/<Modal[\s\S]{0,140}testId="inventory-modal"/);
+    expect(src).toMatch(/<Modal[\s\S]{0,200}label=\{t\('ui\.inventory'\)\}/);
+  });
+
+  it('AchievementsPanel (QuestSystem) is a <Modal> keeping the achievements-panel testId', () => {
+    const src = read('QuestSystem.jsx');
+    expect(src).toMatch(/import \{[^}]*\bModal\b[^}]*\} from '\.\/ui\/primitives\/index\.js'/);
+    expect(src).toMatch(/<Modal[\s\S]{0,140}testId="achievements-panel"/);
+    expect(src).toMatch(/<Modal[\s\S]{0,200}label="Achievements"/);
+  });
+
+  it('SpellUpgradePanel motion.div backdrop gains role=dialog + keeps overflow-y-auto (progression-open capture)', () => {
+    const src = read('ui/SpellUpgradePanel.jsx');
+    expect(src).toMatch(/role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label="Progression"[\s\S]{0,120}tabIndex=\{-1\}/);
+    expect(src).toMatch(/role="dialog"[\s\S]{0,200}overflow-y-auto/);
+  });
+
+  it('ChestInventoryPanel motion.div backdrop gains role=dialog + keeps overflow-y-auto', () => {
+    const src = read('ui/ChestInventoryPanel.jsx');
+    expect(src).toMatch(/role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label="Chest"[\s\S]{0,120}tabIndex=\{-1\}/);
+    expect(src).toMatch(/role="dialog"[\s\S]{0,200}overflow-y-auto/);
+  });
+});

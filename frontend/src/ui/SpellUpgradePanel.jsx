@@ -33,6 +33,10 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Progression"
+            tabIndex={-1}
             className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"
         >
             <motion.div

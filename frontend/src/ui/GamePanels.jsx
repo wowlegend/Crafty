@@ -246,7 +246,7 @@ export const Inventory = ({ onClose }) => {
     const slotsUsed = Object.values(gameState.inventory.blocks).filter(v => v > 0).length;
 
     return (
-        <div data-testid="inventory-modal" className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal testId="inventory-modal" label={t('ui.inventory')} className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[884px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -456,7 +456,7 @@ export const Inventory = ({ onClose }) => {
                     Press E to close • Click gear to equip • Hover to inspect • Click equipped gear to unequip
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 };
 
