@@ -520,7 +520,7 @@ const MagicSystem = ({ onClose }) => {
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
-                    Press M to close • Click or F to cast selected spell
+                    Press M to close • Right-Click to cast selected spell
                 </div>
             </Panel>
         </div>
