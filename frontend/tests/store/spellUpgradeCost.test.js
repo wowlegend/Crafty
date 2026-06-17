@@ -1,20 +1,45 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { resolveCastManaCost } from '../../src/utils/spellCast.js';
+import { SPELL_MANA_COSTS } from '../../src/GameSystems.jsx';
 
-// W1 TASK 9: the cast used to charge the STATIC SPELL_MANA_COSTS (always 15 for fireball) while reading the
-// LEVELED damage from getSpellStats -> L2/L3 mana upgrades were free. The fix (EnhancedMagicSystem.jsx) charges
-// the leveled manaCost (getSpellStats(spellType).manaCost) with a null-safe fallback to the static base.
-// This store test locks the leveled-cost drain: a stubbed getSpellStats returning L2 fireball (manaCost 18)
-// must drain 18, not the static 15.
-describe('cast charges the leveled mana cost', () => {
-  beforeEach(() => useGameStore.setState({
-    mana: 100, maxMana: 100, isAlive: true,
-    getSpellStats: (t) => ({ fireball: { damage: 80, manaCost: 18 } }[t]),
-  }));
-  it('useMana drains the LEVELED cost, not the static 15', () => {
-    // proxy: useMana(leveledCost) leaves 100-18 = 82
-    const leveled = useGameStore.getState().getSpellStats('fireball').manaCost;
-    useGameStore.getState().useMana(leveled);
-    expect(useGameStore.getState().mana).toBe(82);
+// W1 TASK 9 (mana-wire): the cast used to read the LEVELED damage from getSpellStats but charge the STATIC
+// SPELL_MANA_COSTS, so L2/L3 mana upgrades were free. The original version of THIS test was a rubber-stamp:
+// it stubbed getSpellStats, re-read that same stubbed value, and fed it into useMana(18) directly — it never
+// touched the production resolution expression, so reverting the source to charge the static base left it
+// green. It only re-proved that useMana subtracts its argument (covered elsewhere).
+//
+// This rewrite guards the actual fix. It exercises the REAL production seam (resolveCastManaCost — the exact
+// function EnhancedMagicSystem.jsx feeds into useMana) against the REAL static fallback table, then drives
+// the result through the REAL useMana store action. The branch coverage of the seam itself lives in
+// tests/unit/spellCast.test.js; the source-wiring (that EnhancedMagicSystem actually calls this seam) is
+// locked by tests/gates/spell-cast-level-wire-gates.test.js. Together those fail closed on a revert.
+describe('cast charges the leveled mana cost (production seam, end-to-end)', () => {
+  beforeEach(() => useGameStore.setState({ mana: 100, maxMana: 100, isAlive: true }));
+
+  it('an UPGRADED fireball (leveled manaCost 18) drains 18, not the static 15', () => {
+    // getSpellStats mirrors the spell-upgrade hook; an L2 fireball reports a higher manaCost than the base.
+    const getSpellStats = (t) => ({ fireball: { damage: 80, manaCost: 18 } }[t]);
+    // resolve via the SAME seam the production castSpell uses, with the SAME static fallback table.
+    const manaCost = resolveCastManaCost(getSpellStats, 'fireball', SPELL_MANA_COSTS.fireball);
+    expect(manaCost).toBe(18); // leveled cost, NOT the static SPELL_MANA_COSTS.fireball (15)
+    useGameStore.getState().useMana(manaCost);
+    expect(useGameStore.getState().mana).toBe(82); // 100 - 18; the static path would have left 85
+  });
+
+  it('a pre-mount cast (getSpellStats not yet pushed) falls back to the static base', () => {
+    // getSpellStats is undefined before EnhancedMagicSystem mounts — the cast must still charge the base.
+    const manaCost = resolveCastManaCost(undefined, 'fireball', SPELL_MANA_COSTS.fireball);
+    expect(manaCost).toBe(15); // static fireball base
+    useGameStore.getState().useMana(manaCost);
+    expect(useGameStore.getState().mana).toBe(85);
+  });
+
+  it('an unmapped spell (shield — absent from the upgrade table) charges the static base', () => {
+    const getSpellStats = () => null; // shield/heal are not in the upgrade table
+    const manaCost = resolveCastManaCost(getSpellStats, 'shield', SPELL_MANA_COSTS.shield);
+    expect(manaCost).toBe(30); // static shield base
+    useGameStore.getState().useMana(manaCost);
+    expect(useGameStore.getState().mana).toBe(70);
   });
 });

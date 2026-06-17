@@ -7,7 +7,7 @@ import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
-import { resolveCastBaseDamage } from './utils/spellCast';
+import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
@@ -154,10 +154,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       if (!camera || !spell) return;
       if (!useGameStore.getState().isAlive) return; // KEVIN-FIX C2: defense in depth
 
-      // W1: charge the LEVELED mana cost (getSpellStats mirrors the upgrade hook) so upgrades aren't free;
-      // null-safe fallback to the static base for unmapped/pre-mount (byte-identical at L1).
-      const leveled = useGameStore.getState().getSpellStats?.(spellType);
-      const manaCost = (leveled && leveled.manaCost) || SPELL_MANA_COSTS[spellType] || 15;
+      // W1 #9: charge the LEVELED mana cost via the pure resolveCastManaCost seam (mirrors the #51 damage
+      // wire). getSpellStats mirrors the upgrade hook so L2/L3 upgrades aren't free; null-safe fallback to
+      // the static SPELL_MANA_COSTS base for unmapped/pre-mount (byte-identical at L1).
+      const manaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;
