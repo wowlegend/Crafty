@@ -35,11 +35,11 @@ describe('cast charges the leveled mana cost (production seam, end-to-end)', () 
     expect(useGameStore.getState().mana).toBe(85);
   });
 
-  it('an unmapped spell (shield — absent from the upgrade table) charges the static base', () => {
-    const getSpellStats = () => null; // shield/heal are not in the upgrade table
-    const manaCost = resolveCastManaCost(getSpellStats, 'shield', SPELL_MANA_COSTS.shield);
-    expect(manaCost).toBe(30); // static shield base
+  it('an unmapped spell (no upgrade-table entry) charges the static base', () => {
+    const getSpellStats = () => null; // this spell has no entry in the upgrade table
+    const manaCost = resolveCastManaCost(getSpellStats, 'arcane', SPELL_MANA_COSTS.arcane);
+    expect(manaCost).toBe(18); // static arcane base
     useGameStore.getState().useMana(manaCost);
-    expect(useGameStore.getState().mana).toBe(70);
+    expect(useGameStore.getState().mana).toBe(82);
   });
 });

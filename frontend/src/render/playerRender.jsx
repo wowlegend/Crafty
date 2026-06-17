@@ -368,7 +368,6 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   });
 
   const isWeaponEquipped = ['Stone Sword', 'Iron Sword', 'Diamond Sword', 'sword', 'pickaxe'].includes(equippedWeapon);
-  const isSwingingMelee = attackType === 'melee' && (attackStartTime.current > 0) && (state => state.clock.getElapsedTime() - attackStartTime.current < 0.2);
 
   return (
     <group>
@@ -412,7 +411,6 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
             <pointLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} />
-            <SpellLeftHandEffects spellType={activeSpell} />
           </group>
         )}
         {attackType !== 'spell' && selectedBlock && (
@@ -440,9 +438,5 @@ const SpellHandEffects = ({ spellType }) => {
     }
   });
   if (spellType === 'fireball') return <mesh ref={effectRef} position={[0.1, 0.2, 0]}><coneGeometry args={[0.07, 0.22, 6]} /><meshBasicMaterial color="#FF4500" transparent opacity={0.55} /></mesh>;
-  return null;
-};
-
-const SpellLeftHandEffects = ({ spellType }) => {
   return null;
 };

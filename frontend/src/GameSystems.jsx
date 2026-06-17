@@ -141,28 +141,7 @@ export const SPELL_MANA_COSTS = {
     iceball: 12,
     lightning: 25,
     arcane: 18,
-    shield: 30,
-    heal: 40,
 };
-
-const SPELL_EFFECTS = {
-    fireball: {
-        burn: { duration: 3, damagePerSecond: 5 },
-    },
-    iceball: {
-        slow: { duration: 4, speedMultiplier: 0.5 },
-        freezeChance: 0.15,
-    },
-    lightning: {
-        chain: { maxTargets: 3, damageReduction: 0.3 },
-        stun: { duration: 1 },
-    },
-    arcane: {
-        pierce: true,
-        lifeSteal: 0.1,
-    },
-};
-
 
 // Health Bar Component
 export const PlayerHealthBar = ({ health, maxHealth }) => (
