@@ -868,6 +868,10 @@ export const MinecraftWorld = React.memo(() => {
                 newChests.delete(h.targetCoords);
                 useGameStore.setState({ chests: newChests });
             }
+
+            // M6: a mined block advances the Miner quest + Deep Digger achievement (the callback is
+            // registered by QuestSystem; mine() is the 1-action-1-count verb -- NOT the worker handler).
+            store.onBlockBreak?.();
         };
 
         const place = (h) => {
@@ -908,6 +912,10 @@ export const MinecraftWorld = React.memo(() => {
                 newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
                 useGameStore.setState({ chests: newChests });
             }
+
+            // M6: a placed block advances the Builder/Architect/World Builder quests + Master Builder
+            // achievement (the callback is registered by QuestSystem; one count per place verb).
+            store.onBlockPlace?.();
         };
 
         const open = (h) => {
