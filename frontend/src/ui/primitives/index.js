@@ -7,3 +7,4 @@ export { SpellRing } from './SpellRing.jsx';
 export { Icon } from './Icon.jsx';
 export { Toast } from './Toast.jsx';
 export { Tooltip } from './Tooltip.jsx';
+export { Slider } from './Slider.jsx';

@@ -21,8 +21,8 @@ describe('settings a11y gates (M3 #3 S1 -- feedback-intensity slider)', () => {
 
   it('SettingsPanel has a Feedback Intensity slider', () => {
     expect(panels).toMatch(/Feedback Intensity/);
-    // a range input bound to the dial
-    expect(/type="range"[\s\S]{0,200}value=\{gameState\.juiceIntensity/.test(panels)).toBe(true);
+    // a bold-flat Slider primitive bound to the dial (M6 #2: was a raw <input type=range>)
+    expect(/<Slider[\s\S]{0,220}value=\{gameState\.juiceIntensity/.test(panels)).toBe(true);
   });
 
   it('the slider writes through setJuiceIntensity (the clamped store setter)', () => {
@@ -65,7 +65,7 @@ describe('settings a11y gates (M3 #3 S3a -- SFX volume)', () => {
   });
   it('SettingsPanel has a Sound Effects slider bound to sfxVolume', () => {
     expect(panels).toMatch(/Sound Effects/);
-    expect(/type="range"[\s\S]{0,200}value=\{gameState\.sfxVolume/.test(panels)).toBe(true);
+    expect(/<Slider[\s\S]{0,220}value=\{gameState\.sfxVolume/.test(panels)).toBe(true);
     expect(panels).toMatch(/gameState\.setSfxVolume\(parseFloat\(e\.target\.value\)\)/);
   });
   it('SoundManager applies audioGain(sfxVolume, masterMuted) to the live master-bus gain', () => {

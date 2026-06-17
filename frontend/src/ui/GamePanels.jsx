@@ -4,7 +4,7 @@ import { useGameStore, EQUIPMENT_STATS } from '../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
-import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
+import { Panel, Button, Slot, Icon, SpellRing, Slider } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
@@ -576,13 +576,13 @@ export const BuildingTools = React.memo(({ onClose }) => {
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Build Size</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{buildSize}</span>
                         </div>
-                        <input
-                            type="range"
+                        <Slider
                             min="1"
                             max="10"
                             value={buildSize}
                             onChange={(e) => setBuildSize(parseInt(e.target.value))}
-                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            className="w-full"
+                            aria-label="Build size"
                         />
                     </Panel>
 
@@ -676,14 +676,14 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Look Sensitivity</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{(gameState.lookSensitivity ?? 1).toFixed(1)}</span>
                         </div>
-                        <input
-                            type="range"
+                        <Slider
                             min="0.3"
                             max="2.5"
                             step="0.1"
                             value={gameState.lookSensitivity ?? 1}
                             onChange={(e) => gameState.setLookSensitivity(parseFloat(e.target.value))}
-                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            className="w-full"
+                            aria-label="Look sensitivity"
                         />
                     </Panel>
 
@@ -694,14 +694,13 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Feedback Intensity</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.juiceIntensity ?? 1) * 100)}%</span>
                         </div>
-                        <input
-                            type="range"
+                        <Slider
                             min="0"
                             max="1"
                             step="0.05"
                             value={gameState.juiceIntensity ?? 1}
                             onChange={(e) => gameState.setJuiceIntensity(parseFloat(e.target.value))}
-                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            className="w-full"
                             aria-label="Feedback intensity (screenshake and hitstop)"
                         />
                     </Panel>
@@ -728,14 +727,13 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Sound Effects</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.sfxVolume ?? 1) * 100)}%</span>
                         </div>
-                        <input
-                            type="range"
+                        <Slider
                             min="0"
                             max="1"
                             step="0.05"
                             value={gameState.sfxVolume ?? 1}
                             onChange={(e) => gameState.setSfxVolume(parseFloat(e.target.value))}
-                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            className="w-full"
                             aria-label="Sound effects volume"
                         />
                     </Panel>
@@ -746,14 +744,13 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Music</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.musicVolume ?? 1) * 100)}%</span>
                         </div>
-                        <input
-                            type="range"
+                        <Slider
                             min="0"
                             max="1"
                             step="0.05"
                             value={gameState.musicVolume ?? 1}
                             onChange={(e) => gameState.setMusicVolume(parseFloat(e.target.value))}
-                            className="w-full accent-[rgb(var(--ui-accent))]"
+                            className="w-full"
                             aria-label="Music volume"
                         />
                     </Panel>
