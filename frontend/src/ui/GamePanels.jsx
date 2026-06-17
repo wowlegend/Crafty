@@ -461,7 +461,7 @@ export const Inventory = ({ onClose }) => {
 };
 
 
-const MagicSystem = ({ onClose }) => {
+export const MagicSystem = ({ onClose }) => {
     const gameState = useGameStore();
     const t = useT();
     // `spell` keys the bold-flat SpellRing comp (color via --ui-spell-<spell>); `icon`

@@ -5,7 +5,8 @@ import {
   Inventory,
   CraftingTable,
   BuildingTools,
-  SettingsPanel
+  SettingsPanel,
+  MagicSystem
 } from './ui/GamePanels';
 import { Icon } from './ui/primitives/index.js';
 import { CreditsScreen } from './ui/CreditsScreen';
@@ -156,6 +157,14 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowCrafting(false);
+              enterPlay();
+            }}
+          />
+        )}
+        {gameState.showMagic && (
+          <MagicSystem
+            onClose={() => {
+              gameState.setShowMagic(false);
               enterPlay();
             }}
           />
