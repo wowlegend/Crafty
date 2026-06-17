@@ -1,6 +1,6 @@
 import {
   Settings, X, ChevronRight, Compass,
-  Gift, Lock, Check, AlertTriangle, Skull, Sun, CloudRain,
+  Gift, Lock, Check, AlertTriangle, Skull, Sun, Moon, CloudRain,
   Snowflake, Home, Globe, Backpack, Footprints, Sparkles, PartyPopper,
   ArrowRight, ArrowUp, ArrowDown, Building2, Dumbbell, Landmark, Hammer, Heart,
 } from 'lucide-react';
@@ -24,6 +24,7 @@ const CHROME = {
   warning: AlertTriangle,
   skull: Skull,
   sun: Sun,
+  moon: Moon,
   rain: CloudRain,
   snow: Snowflake,
   home: Home,

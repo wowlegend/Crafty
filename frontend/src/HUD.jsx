@@ -3,6 +3,7 @@ import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker, bearingDeg } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
+import { dayPhase } from './game/dayPhase.js';
 import React, { useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
@@ -49,6 +50,65 @@ const CoinReadout = React.memo(() => {
       <Panel variant="base" className="px-3 py-1.5 flex items-center gap-1.5">
         <Icon name="coins" size={18} className="flex-none text-warn" />
         <span className="font-bold tabular-nums text-text">{coins}</span>
+      </Panel>
+    </div>
+  );
+});
+
+// M6 #10 day-phase dial: a persistent sun/moon clock so the player can read the day-night SIEGE cycle
+// at a glance (night = the siege; DuskWarning is the transient toast, this is the ambient companion).
+// A small bold-flat "sky" ring with a sun(day)/moon(night) marker that ORBITS it -- noon at top, sunrise
+// left, sunset right, midnight bottom. ALL math is in the pure dayPhase() kernel; the component does zero
+// arithmetic beyond a fixed display offset. Game-Loop-Isolation: gameTime mutates every tick, so the orbit
+// is driven by a self-contained 1s interval (a clock needs ~1s granularity) reading getState() transiently
+// + writing a ref transform -- NO per-frame React state; only the rare isDay flip re-renders (sun<->moon).
+// Capture-SUPPRESSED (return null + interval never starts) -> the 20 visual baselines stay byte-identical.
+const DayPhaseDial = React.memo(() => {
+  const isDay = useGameStore((s) => s.isDay);
+  const orbitRef = useRef(null);
+  const labelRef = useRef(null);
+
+  useEffect(() => {
+    if (isCaptureMode()) return undefined; // never animate in capture -> zero baseline impact
+    const apply = () => {
+      const st = useGameStore.getState();
+      const p = dayPhase(st.gameTime, st.isDay);
+      if (orbitRef.current) orbitRef.current.style.transform = `rotate(${p.angleDeg - 180}deg)`;
+      if (labelRef.current) {
+        labelRef.current.textContent = p.duskApproaching ? 'DUSK' : (!p.isDay ? 'NIGHT' : '');
+        labelRef.current.style.color = p.duskApproaching ? 'rgb(var(--ui-warn))' : '';
+      }
+    };
+    apply();
+    const id = setInterval(apply, 1000); // ~1.2deg/s orbit -> 1s steps read smooth; clock-appropriate
+    return () => clearInterval(id);
+  }, []);
+
+  if (isCaptureMode()) return null;
+
+  // Initial values from the live clock so an isDay re-render never resets to a stale frame.
+  const init = dayPhase(useGameStore.getState().gameTime, isDay);
+  return (
+    <div className="absolute top-14 right-4 z-20 pointer-events-none">
+      <Panel variant="base" className="px-2 py-2 flex flex-col items-center gap-1">
+        <div className="relative w-11 h-11 rounded-full border-chrome border-ink bg-slot overflow-hidden">
+          {/* horizon line: above = sky (sun/moon high), below = night/ground -> the orbit reads as a sky arc */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-ink opacity-50" />
+          <div ref={orbitRef} className="absolute inset-0" style={{ transform: `rotate(${init.angleDeg - 180}deg)` }}>
+            <div className="absolute left-1/2 top-0.5 -translate-x-1/2">
+              {isDay
+                ? <Icon name="sun" size={14} className="text-accent" />
+                : <Icon name="moon" size={14} className="text-info" />}
+            </div>
+          </div>
+        </div>
+        <span
+          ref={labelRef}
+          className="text-[9px] font-bold tabular-nums text-text-muted h-3 leading-3"
+          style={{ color: init.duskApproaching ? 'rgb(var(--ui-warn))' : undefined }}
+        >
+          {init.duskApproaching ? 'DUSK' : (!init.isDay ? 'NIGHT' : '')}
+        </span>
       </Panel>
     </div>
   );
@@ -551,6 +611,8 @@ export function HUD({
             <ObjectiveTracker />
 
             <CoinReadout />
+
+            <DayPhaseDial />
 
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
               <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
