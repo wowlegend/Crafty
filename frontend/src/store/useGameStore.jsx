@@ -88,6 +88,9 @@ export const useGameStore = create((set, get) => ({
     setLocale: (loc) => {
       const next = loc === 'zh-CN' ? 'zh-CN' : 'en';
       set({ locale: next });
+      // M6 #5: keep <html lang> in sync (was static 'en' -> wrong for screen readers/SEO under zh-CN).
+      // The locale values are valid BCP-47 codes; harmless under capture (the attr is invisible).
+      if (typeof document !== 'undefined') document.documentElement.lang = next;
       if (next === 'zh-CN') import('../i18n/cjkFonts.js').then((m) => m.loadCjkFonts());
     },
 

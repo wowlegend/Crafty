@@ -1,5 +1,8 @@
 # Changelog & Development History
 
+### June 16, 2026 (#5 html lang syncs with the UI locale)
+- **<html lang> was static 'en'** -- setLocale flipped the i18n table + CJK fonts but never updated document.documentElement.lang, so screen readers + SEO reported English under zh-CN. setLocale now mirrors the locale ('en'/'zh-CN', valid BCP-47) onto <html> (guarded for non-browser; harmless under capture -- the attr is invisible). 2 jsdom behavioural tests (+2 -> 1427). build + eslint clean; NO visual gate run needed -- lang is a non-visual attribute (zero pixel impact; primitives-showcase-zh already rendered zh-CN before this).
+
 ### June 16, 2026 (#3 boss-melee sparks -- verb-consistency with the mob path)
 - **A melee hit on the BOSS sparked nothing.** The mob loop sparks via damageMob, but the boss is a separate (non-ECS) entity so its hit branch only played a sound + crit shake -- no GPU spark spray. Added it at the boss-hit point (reuses store.triggerGPUSparks + sparkFor(sparkType, isCrit) + the swing lookDir), so a boss melee now reads as visceral as a mob hit. Static gate boss-melee-spark-gates.test.js (+2 -> 1425). build + eslint clean; capture-inert (melee = real input; the boss is never melee'd in any capture state) -> gate 20/20.
 
