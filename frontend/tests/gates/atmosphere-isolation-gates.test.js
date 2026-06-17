@@ -66,3 +66,11 @@ describe('S1-D-M3 studio-fixture mote isolation', () => {
     }
   });
 });
+
+describe('W2-T1 hemisphere bounce light', () => {
+  it('W2-T1 Atmosphere mounts a mood-driven hemisphereLight', () => {
+    const src = readFileSync(resolve(process.cwd(), 'src/render/Atmosphere.jsx'), 'utf8');
+    expect(src).toMatch(/hemisphereLight/);
+    expect(src).toMatch(/groundColor/);
+  });
+});

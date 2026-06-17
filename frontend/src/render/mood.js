@@ -14,9 +14,9 @@ const STATES = ['explore', 'dusk', 'obsidian']; // index === integer mood
 
 // Per-state lighting scalars (tunable). Colours are sourced from tokens.PALETTE.
 export const MOOD_SCALARS = {
-  explore:  { ambientIntensity: 0.90, sunIntensity: 1.90, fogDensity: 0.0025, fillIntensity: 0.00, sunPos: [-55, 48, -52] },
-  dusk:     { ambientIntensity: 0.62, sunIntensity: 0.85, fogDensity: 0.0120, fillIntensity: 0.45, sunPos: [-30, 40, -50] },
-  obsidian: { ambientIntensity: 0.38, sunIntensity: 0.35, fogDensity: 0.0200, fillIntensity: 0.85, sunPos: [-50, 30, -50] },
+  explore:  { ambientIntensity: 0.90, sunIntensity: 1.90, fogDensity: 0.0025, fillIntensity: 0.35, hemiIntensity: 0.55, sunPos: [-55, 48, -52] },
+  dusk:     { ambientIntensity: 0.62, sunIntensity: 0.85, fogDensity: 0.0120, fillIntensity: 0.45, hemiIntensity: 0.30, sunPos: [-30, 40, -50] },
+  obsidian: { ambientIntensity: 0.38, sunIntensity: 0.35, fogDensity: 0.0200, fillIntensity: 0.85, hemiIntensity: 0.12, sunPos: [-50, 30, -50] },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export const MOOD_SCALARS = {
 // The effect ranges are clamped/blended in MoodGradeDriver; all three are SAFE to retune
 // without touching the shader. Capture-safe: mood is snapped in capture so grade is stable.
 export const MOOD_GRADE = {
-  explore:  { saturation: 0.20, brightness: 0.05, contrast: 0.06 }, // magic-hour: warm, lifted, tasteful
+  explore:  { saturation: 0.30, brightness: 0.09, contrast: 0.06 }, // magic-hour: warm, lifted, tasteful
   dusk:     { saturation: 0.10, brightness: -0.02, contrast: 0.12 }, // cooler, slightly crushed, more punch
   obsidian: { saturation: -0.45, brightness: -0.06, contrast: 0.18 }, // near-mono, crushed, dramatic
 };
@@ -65,6 +65,9 @@ for (const s of STATES) {
     skyTop: new THREE.Color(PALETTE[s].skyTop),
     skyMid: new THREE.Color(PALETTE[s].skyMid),
     skyHorizon: new THREE.Color(PALETTE[s].skyHorizon),
+    // Hemisphere bounce: sky colour from above, ground colour from below (mood-scaled).
+    hemiSky: new THREE.Color(PALETTE[s].skyMid),
+    hemiGround: new THREE.Color(PALETTE[s].fog),
   };
 }
 
@@ -74,7 +77,8 @@ for (const s of STATES) {
 const _out = {
   ambient: new THREE.Color(), sun: new THREE.Color(), fog: new THREE.Color(), fill: new THREE.Color(),
   skyTop: new THREE.Color(), skyMid: new THREE.Color(), skyHorizon: new THREE.Color(),
-  ambientIntensity: 0, sunIntensity: 0, fogDensity: 0, fillIntensity: 0, sunPos: [0, 0, 0],
+  hemiSky: new THREE.Color(), hemiGround: new THREE.Color(),
+  ambientIntensity: 0, sunIntensity: 0, fogDensity: 0, fillIntensity: 0, hemiIntensity: 0, sunPos: [0, 0, 0],
   grade: { saturation: 0, brightness: 0, contrast: 0 },
 };
 
@@ -104,6 +108,9 @@ export function sampleMood(mood) {
   _out.sunIntensity = lerp(sa.sunIntensity, sb.sunIntensity, t);
   _out.fogDensity = lerp(sa.fogDensity, sb.fogDensity, t);
   _out.fillIntensity = lerp(sa.fillIntensity, sb.fillIntensity, t);
+  _out.hemiSky.lerpColors(COL[a].hemiSky, COL[b].hemiSky, t);
+  _out.hemiGround.lerpColors(COL[a].hemiGround, COL[b].hemiGround, t);
+  _out.hemiIntensity = lerp(sa.hemiIntensity, sb.hemiIntensity, t);
   _out.sunPos[0] = lerp(sa.sunPos[0], sb.sunPos[0], t);
   _out.sunPos[1] = lerp(sa.sunPos[1], sb.sunPos[1], t);
   _out.sunPos[2] = lerp(sa.sunPos[2], sb.sunPos[2], t);

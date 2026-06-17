@@ -142,11 +142,15 @@ describe('static gates', () => {
       .toMatch(/<N8AO\b/);
   });
 
-  it('S1-B: bloom luminanceThreshold >= 0.85', () => {
+  // W2-T1: Kevin REVERSED the restrained-NEUTRAL lock — warm magic-hour glow is now the
+  // intended look, so highlights are MEANT to bloom (threshold lowered from the old 0.85
+  // floor to 0.65). The floor stays >= 0.60 so an accidental near-zero threshold (which would
+  // blow EVERYTHING out, losing all highlight detail) still trips the gate.
+  it('W2-T1: bloom luminanceThreshold >= 0.60 (warm magic-hour glow, not blown-out)', () => {
     const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
     const m = src.match(/luminanceThreshold=\{\s*([0-9.]+)\s*\}/);
     expect(m, 'Bloom luminanceThreshold prop not found').not.toBeNull();
-    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.85);
+    expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.60);
   });
 
   // S1-C-M1: the new primitives must consume tokens (no raw hex chrome) — keeps the

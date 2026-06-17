@@ -140,6 +140,7 @@ export function Atmosphere({ shadowConfig }) {
   const ambientRef = useRef();
   const sunRef = useRef();
   const fillRef = useRef();
+  const hemiRef = useRef();
   const domeRef = useRef();
   const domeMat = useMemo(makeSkyDomeMaterial, []);
   const domeGeo = useMemo(() => new THREE.SphereGeometry(100, 32, 16), []);
@@ -187,6 +188,11 @@ export function Atmosphere({ shadowConfig }) {
       fillRef.current.color.copy(m.fill);
       fillRef.current.intensity = m.fillIntensity;
     }
+    if (hemiRef.current) {
+      hemiRef.current.color.copy(m.hemiSky);          // sky bounce (top)
+      hemiRef.current.groundColor.copy(m.hemiGround); // ground bounce (bottom)
+      hemiRef.current.intensity = m.hemiIntensity;
+    }
   });
 
   return (
@@ -208,6 +214,7 @@ export function Atmosphere({ shadowConfig }) {
         shadow-bias={-0.0001}
       />
       <pointLight ref={fillRef} position={[0, 20, 0]} intensity={0} distance={50} />
+      <hemisphereLight ref={hemiRef} intensity={0.55} />
     </>
   );
 }

@@ -78,3 +78,34 @@ describe('sampleMood.grade (magic-hour colour script)', () => {
     expect(MOOD_GRADE.obsidian.contrast).toBeGreaterThan(MOOD_GRADE.explore.contrast);
   });
 });
+
+import { MOOD_SCALARS } from '../../src/render/mood.js';
+
+describe('W2-T1 warm magic-hour explore grade', () => {
+  it('daytime explore fill light is ON (warm) — was 0', () => {
+    expect(MOOD_SCALARS.explore.fillIntensity).toBeGreaterThanOrEqual(0.30);
+    expect(MOOD_SCALARS.explore.fillIntensity).toBeLessThanOrEqual(0.45);
+  });
+  it('explore grade is glowier/warmer than the old neutral lock', () => {
+    expect(MOOD_GRADE.explore.saturation).toBeGreaterThanOrEqual(0.28);
+    expect(MOOD_GRADE.explore.brightness).toBeGreaterThanOrEqual(0.08);
+  });
+  it('sampleMood(0) reflects the warmed explore grade', () => {
+    const m = sampleMood(0);
+    expect(m.fillIntensity).toBeGreaterThanOrEqual(0.30);
+    expect(m.grade.saturation).toBeGreaterThanOrEqual(0.28);
+  });
+});
+
+describe('W2-T1 hemisphere bounce', () => {
+  it('sampleMood exposes hemisphere intensity + sky/ground colors', () => {
+    const m = sampleMood(0);
+    expect(m.hemiIntensity).toBeGreaterThan(0); // daytime sky/ground bounce ON
+    expect(m.hemiSky).toBeDefined();
+    expect(m.hemiGround).toBeDefined();
+    expect(typeof m.hemiSky.getHex).toBe('function'); // a THREE.Color
+  });
+  it('explore hemisphere is stronger than obsidian (boss dread is darker)', () => {
+    expect(sampleMood(0).hemiIntensity).toBeGreaterThan(sampleMood(2).hemiIntensity);
+  });
+});

@@ -900,12 +900,12 @@ export function GameScene({
                 in mood.js MOOD_GRADE). The props here are the EXPLORE-grade initial values
                 so the first frame already reads warm before the driver resolves the live
                 effect instances. Capture-safe (mood snapped in capture). */}
-            <HueSaturation saturation={0.20} />
-            <BrightnessContrast brightness={0.05} contrast={0.06} />
+            <HueSaturation saturation={0.30} />
+            <BrightnessContrast brightness={0.09} contrast={0.06} />
             <Bloom
-              intensity={0.8}
-              luminanceThreshold={1.0}
-              luminanceSmoothing={0.1}
+              intensity={0.95}
+              luminanceThreshold={0.65}
+              luminanceSmoothing={0.25}
               mipmapBlur={q.bloomMipmap}
             />
             <SMAA />
