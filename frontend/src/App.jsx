@@ -637,10 +637,6 @@ function GameApp({ experienceSystem }) {
 
   // SINGLE canonical panel set (panelState.js) — was a 4th hand-kept list (missing showCredits/showStats);
   // the click-to-play overlay gates on it just like the title menu + the key handlers.
-  const anyPanelOpen = isAnyPanelOpen({ ...gameState, showAchievements, showSpellUpgrades, showStats, showAuthModal });
-
-  const showClickToPlay = isWorldBuilt && !isPointerLocked && !anyPanelOpen && (gameSystems?.isAlive !== false);
-
   useEffect(() => {
     const handleResizeError = (e) => {
       if (e.message === 'ResizeObserver loop limit exceeded' ||
@@ -729,80 +725,6 @@ function GameApp({ experienceSystem }) {
             GENERATING WORLD
           </h2>
           <p className="text-green-400 font-mono text-sm animate-pulse">Building Terrain and Physics Colliders...</p>
-        </div>
-      )}
-
-      {showClickToPlay && (
-        <div 
-          onClick={() => {
-            const state = useGameStore.getState();
-            if (state.requestPointerLock) {
-              state.requestPointerLock();
-            } else {
-              const canvas = document.querySelector('canvas');
-              if (canvas && canvas.requestPointerLock) {
-                canvas.requestPointerLock();
-              } else if (document.body.requestPointerLock) {
-                document.body.requestPointerLock();
-              }
-            }
-          }}
-          className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-md cursor-pointer transition-all duration-300 hover:bg-slate-950/50 pointer-events-auto"
-        >
-          <div className="max-w-md p-8 rounded-2xl bg-slate-900/80 border border-slate-700/50 shadow-2xl flex flex-col items-center justify-center text-center transform scale-100 transition-transform duration-300 hover:scale-105" style={{ boxShadow: '0 0 40px rgba(59, 130, 246, 0.15)' }}>
-            <div className="w-20 h-20 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center mb-6 animate-pulse" style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
-              <svg className="w-8 h-8 text-blue-400 fill-current translate-x-0.5" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-            
-            <h1 className="text-3xl font-extrabold text-white mb-2 tracking-wide font-sans bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-200 to-blue-400">
-              CRAFTY RPG
-            </h1>
-            <p className="text-slate-300 mb-6 text-sm">
-              Click anywhere on the screen to capture mouse and resume gameplay
-            </p>
-
-            <div className="w-full border-t border-slate-800 my-4"></div>
-
-            <div className="w-full text-left space-y-2.5 mt-2">
-              <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-1.5 font-mono">Quick Controls</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono text-slate-400">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">W A S D</span>
-                  <span>Move</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">Left-Click</span>
-                  <span>Melee Attack</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">Right-Click</span>
-                  <span>Cast Active Spell</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">1-4</span>
-                  <span>Select Spells</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">E / C / B</span>
-                  <span>Inventory / Craft / Build</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">G</span>
-                  <span>Interact (NPC/Chest)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">Tab</span>
-                  <span>Quests & Achievements</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/60 shadow-sm">U</span>
-                  <span>Upgrade Spells</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
