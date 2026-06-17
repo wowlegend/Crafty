@@ -29,7 +29,6 @@ import DuskWarning from './ui/DuskWarning';
 import MusicPlayer from './ui/MusicPlayer';
 import UISounds from './ui/UISounds';
 import AspectHintToast from './ui/AspectHintToast';
-import { PetIndicator } from './ui/PetIndicator';
 import { SurvivalWarning } from './ui/SurvivalWarning';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
@@ -586,7 +585,6 @@ export function HUD({
   treasureChests,
   survivalMode,
   bossSystem,
-  petSystem,
   spellUpgrades,
   showStats,
   setShowStats,
@@ -672,8 +670,6 @@ export function HUD({
               openedChestIds={treasureChests.openedChestIds}
             />
 
-            <PetIndicator pets={petSystem.pets} />
-
             <AnimatePresence>
               <SurvivalWarning message={survivalMode.survivalWarning} />
             </AnimatePresence>
@@ -688,11 +684,6 @@ export function HUD({
             {bossSystem.bossNotification && (
               <div className="absolute top-48 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
                 <Toast status="danger">{bossSystem.bossNotification}</Toast>
-              </div>
-            )}
-            {petSystem.petNotification && (
-              <div className="absolute top-56 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <Toast status="success">{petSystem.petNotification}</Toast>
               </div>
             )}
             {spellUpgrades.upgradeNotification && (

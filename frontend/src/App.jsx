@@ -9,7 +9,6 @@ import { motionIntensity } from './game/a11y.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
-import { usePetSystem } from './world/petSystem';
 import { useSpellUpgrades } from './world/spellUpgrades';
 import { useSurvivalMode } from './world/survivalSystem';
 import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from './world/accrualHooks';
@@ -176,7 +175,6 @@ function GameApp({ experienceSystem }) {
   useKineticAccrual(); // S2-B2-M4: twin — bank Kinetic on day kills (spent per combat grab)
   useSoulAccrual(); // S2-B3-M2: twin — bank Soul on day kills (spent per bind/fuse)
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
-  const petSystem = usePetSystem();
   const spellUpgrades = useSpellUpgrades();
 
   const {
@@ -686,7 +684,6 @@ function GameApp({ experienceSystem }) {
         gameState={gameState}
         isWorldBuilt={isWorldBuilt}
         bossSystem={bossSystem}
-        petSystem={petSystem}
         showStats={showStats}
         showAchievements={showAchievements}
         showSpellUpgrades={showSpellUpgrades}
@@ -720,7 +717,6 @@ function GameApp({ experienceSystem }) {
           treasureChests={treasureChests}
           survivalMode={survivalMode}
           bossSystem={bossSystem}
-          petSystem={petSystem}
           spellUpgrades={spellUpgrades}
           showStats={showStats}
           setShowStats={setShowStats}

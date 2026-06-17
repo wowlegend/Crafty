@@ -194,27 +194,6 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
-      if (event.code === 'KeyT' && active && !anyPanelOpen) {
-        event.preventDefault();
-        // Offloaded nearest Euclidean distance calculation slightly by referencing state
-        if (state.mobEntities && state.gameCamera) {
-          const camera = state.gameCamera;
-          const px = camera.position.x, pz = camera.position.z;
-          let nearest = null, nearestDist = 4;
-          state.mobEntities.forEach(mob => {
-            if (!mob.passive) return;
-            const dx = mob.position[0] - px;
-            const dz = mob.position[2] - pz;
-            const d = Math.sqrt(dx * dx + dz * dz);
-            if (d < nearestDist) { nearest = mob; nearestDist = d; }
-          });
-          if (nearest && state.tameMob) {
-            state.tameMob(nearest.id, nearest.type, nearest.position);
-          }
-        }
-        return;
-      }
-
       if (event.code === 'KeyU' && (active || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();

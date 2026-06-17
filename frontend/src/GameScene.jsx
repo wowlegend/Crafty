@@ -17,7 +17,6 @@ import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { BossEntity } from './render/BossEntity';
-import { PetEntities } from './render/PetEntities';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { captureRandom, isCaptureMode } from './devtest/captureMode';
@@ -710,7 +709,6 @@ export function GameScene({
   gameState,
   isWorldBuilt,
   bossSystem,
-  petSystem,
   showStats,
   showAchievements,
   showSpellUpgrades
@@ -877,8 +875,6 @@ export function GameScene({
               bossPhase={bossSystem.bossPhase}
               bossHealth={bossSystem.bossHealth}
             />
-
-            <PetEntities pets={petSystem.pets} />
           </Physics>
 
           <Sun onReady={setSunMesh} />

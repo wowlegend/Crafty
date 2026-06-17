@@ -28,7 +28,6 @@ export const KEY_MAP = [
   { key: 'B',   code: 'KeyB',   label: 'Building',               group: 'Panels' },
   { key: 'U',   code: 'KeyU',   label: 'Talents & Aspect guide', group: 'Panels' },
   { key: 'G',   code: 'KeyG',   label: 'Open chest / trade',     group: 'Panels', panelHide: true },
-  { key: 'T',   code: 'KeyT',   label: 'Tame',                   group: 'Panels', panelHide: true },
   { key: 'Tab', code: 'Tab',    label: 'Achievements',           group: 'Panels', panelHide: true },
   { key: 'ESC', code: 'Escape', label: 'Settings / pause',       group: 'Panels' },
 ];
