@@ -47,6 +47,8 @@ export const ITEMS = {
   diamond_helmet:     { name: 'Diamond Helmet',      icon: 'helmet',     rarity: 'legendary' },
   diamond_chestplate: { name: 'Diamond Chestplate',  icon: 'chestplate', rarity: 'legendary' },
   diamond_boots:      { name: 'Diamond Boots',       icon: 'boots',      rarity: 'legendary' },
+  crown_dragon_king:  { name: 'Crown of the Dragon King', icon: 'crown',  rarity: 'legendary' },
+  dragon_scale:       { name: 'Dragon Scale',             icon: 'shield', rarity: 'epic' },
 };
 
 // Lookup maps built from ITEMS (clean display name -> id / rarity).

@@ -83,8 +83,8 @@ export const useBossSystem = (playerLevel) => {
                 // Reward player with Legendary Crown or material drops
                 const store = useGameStore.getState();
                 if (store.addToInventory) {
-                    store.addToInventory('Crown of the Dragon King', 1, 'Legendary');
-                    store.addToInventory('Dragon Scale', 3, 'Epic');
+                    store.addToInventory('Crown of the Dragon King', 1);
+                    store.addToInventory('Dragon Scale', 3);
                 }
                 // M2 #7 climactic boss-kill beat: a brief slow-mo freeze + a bloom flash punctuate the
                 // slaying (the victory stinger + overlay already fire via bossDefeated). Reuses the M1
