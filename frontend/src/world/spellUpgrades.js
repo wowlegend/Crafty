@@ -1,11 +1,11 @@
 // spellUpgrades.js — the spell-upgrade progression hook (extracted from AdvancedGameFeatures
 // S3-M4 p2: same SPELL_UPGRADES table + per-spell level/stat logic; mounted once in App).
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 
 // the spell-upgrade table — this hook's data (S3-M4 fix: it was orphaned into render/PetEntities.jsx
 // by the part-3 slice while the hook referenced it undefined — a mount crash; restored to its home).
-const SPELL_UPGRADES = {
+export const SPELL_UPGRADES = {
     fireball: {
         name: 'Fireball',
         icon: 'fire',
@@ -49,6 +49,20 @@ export const useSpellUpgrades = () => {
         fireball: 1, iceball: 1, lightning: 1, arcane: 1,
     });
     const [upgradeNotification, setUpgradeNotification] = useState(null);
+
+    // #51 S3 restore-fix: hydrate local spellLevels FROM the store ONCE on mount so a loaded save's restored
+    // levels (useGameStore.jsx restore path) aren't clobbered by the all-1s default + the push effect below.
+    // Adopt only a NON-EMPTY restored map (store default is {} -> keep all-1s); merge keeps defaults for any
+    // spell the save omits (forward-compat). One-shot (no two-way bind -> no push<->hydrate feedback loop).
+    const hydratedRef = useRef(false);
+    useEffect(() => {
+        if (hydratedRef.current) return;
+        hydratedRef.current = true;
+        const restored = useGameStore.getState().spellLevels;
+        if (restored && Object.keys(restored).length > 0) {
+            setSpellLevels(prev => ({ ...prev, ...restored }));
+        }
+    }, []);
 
     const getSpellStats = useCallback((spellType) => {
         const upgrade = SPELL_UPGRADES[spellType];
