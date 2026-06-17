@@ -271,7 +271,7 @@ const MobModel = React.memo(({ entity }) => {
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Eyes for hostile mobs */}
-        {!mobConfig.passive && entity.type !== 'villager' && (
+        {!mobConfig.passive && entity.type !== 'villager' && !entity.isAlly && (
           <>
             <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />
