@@ -391,6 +391,19 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
     console.log('captured achievements-open');
 
+    // progression-open (#51): the talents + Spell Mastery progression panel (the U key). The openModal
+    // hook closes the sibling panels first. Deterministic (default spellLevels all-1s, getPlayerLevel fixed).
+    await page.evaluate(() => window.__craftyTest.call('openModal', 'spellUpgrades'));
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="progression-panel"]'), { timeout: 8000 });
+    // the panel is tall (talents + the new Spell Mastery section); scroll the modal to the bottom so the
+    // Spell Mastery rows are in-frame for the baseline (the talent grid above has its own coverage).
+    await page.evaluate(() => { const p = document.querySelector('[data-testid="progression-panel"]'); const sc = p && p.closest('.overflow-y-auto'); if (sc) sc.scrollTop = sc.scrollHeight; });
+    await flushFrames(page, 8);
+    await delay(900);
+    await page.screenshot({ path: resolve(OUT, 'progression-open.png') });
+    console.log('captured progression-open');
+
     // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the
     // standalone studio overlay (fixed camera + explore-day lighting + post-stack) with its
     // idle animation FROZEN by capture mode, so the frame is deterministic. This is the
