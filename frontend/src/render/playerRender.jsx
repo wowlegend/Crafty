@@ -5,12 +5,21 @@
 // camera, so the visual gate won't pixel-diff them; the capture COMPLETING is the mount/crash guard.)
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
 import { SPELL_COLORS } from '../GameSystems';
 import { buildRibbonIndices } from '../combat/ribbonIndices.js';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useGameStore } from '../store/useGameStore';
+import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
+
+// FPV gloved-hand tokens — match the character render language (dark ink glove base +
+// inverted-hull <Outlines> at screen-px thickness like mobs) with a white-gold accent cuff.
+const GLOVE_INK = '#2A2A33';        // dark glove base (toon-ish standard material)
+const GLOVE_CUFF = '#E8D9A8';       // white-gold accent cuff at the wrist
+const GLOVE_OUTLINE = '#1A1A1F';    // crisp ink outline (slightly warmer than mob #0b0e14)
+const GLOVE_OUTLINE_T = OUTLINE.prop.thickness; // 3px — props/held-item tier, hands sit close to camera
 
 export const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const bladeColor = useMemo(() => {
@@ -381,9 +390,11 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       )}
 
       <group ref={rightHandRef}>
-        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
-        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
-        
+        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.55} metalness={0.15} color={GLOVE_INK} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
+        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.55} metalness={0.15} color={GLOVE_INK} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
+        {/* White-gold accent cuff at the wrist */}
+        <mesh castShadow receiveShadow position={[0, 0.07, 0]}><boxGeometry args={[0.22, 0.06, 0.14]} /><meshStandardMaterial roughness={0.4} metalness={0.5} color={GLOVE_CUFF} emissive={GLOVE_CUFF} emissiveIntensity={0.12} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
+
         {/* Branch weapon model rendering: procedurally modeled 3D sword vs. magic wand */}
         {isWeaponEquipped ? (
           <group ref={wandRef} position={[0.15, 0.32, -0.16]} rotation={[0.0, 0.0, 0.0]}>
@@ -402,8 +413,10 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         {attackType === 'spell' && <SpellHandEffects spellType={activeSpell} />}
       </group>
       <group ref={leftHandRef}>
-        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
-        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.8} metalness={0.1} color="#fdbcb4" /></mesh>
+        <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.55} metalness={0.15} color={GLOVE_INK} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
+        <mesh castShadow receiveShadow position={[0, -0.05, 0]}><boxGeometry args={[0.2, 0.24, 0.12]} /><meshStandardMaterial roughness={0.55} metalness={0.15} color={GLOVE_INK} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
+        {/* White-gold accent cuff at the wrist */}
+        <mesh castShadow receiveShadow position={[0, 0.07, 0]}><boxGeometry args={[0.22, 0.06, 0.14]} /><meshStandardMaterial roughness={0.4} metalness={0.5} color={GLOVE_CUFF} emissive={GLOVE_CUFF} emissiveIntensity={0.12} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
         {attackType === 'spell' && (
           <group>
             <mesh castShadow receiveShadow position={[0, 0.1, -0.2]}>
