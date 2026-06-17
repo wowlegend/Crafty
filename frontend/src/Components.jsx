@@ -146,9 +146,6 @@ export const Player = ({ isWorldBuilt }) => {
     }
   }, [world]);
 
-  // FIX #1: Use useRef for keyboard state — prevents 60+ re-renders/sec
-  // useState caused stale closures inside useFrame AND triggered full React re-renders on every keypress
-  const keysRef = useRef({});
   const spawnPosSet = useRef(false);
 
   const lastCastTime = useRef(0);
@@ -342,13 +339,9 @@ export const Player = ({ isWorldBuilt }) => {
   }, [activeSpell]);
 
   useEffect(() => {
-    // WRITER: the keyboard/mouse listeners are the INPUT SOURCE. They write the same physical
-    // keys into keysRef (the raw substrate continuous-reads like held-F casting still use) AND
-    // mirror movement keys into the input-intent module so the verb loop reads intents, not raw
-    // keys. Bindings are UNCHANGED — this is a pure abstraction-boundary refactor.
+    // WRITER: the keyboard/mouse listeners are the INPUT SOURCE. They mirror movement keys into
+    // the input-intent module so the verb loop reads intents, not raw keys. Bindings are UNCHANGED.
     const handleKeyDown = (e) => {
-      keysRef.current[e.code] = true;
-
       // WASD -> continuous movement intents (W=forward, S=back, A=left, D=right).
       if (e.code === 'KeyW') setIntent('moveF', true);
       else if (e.code === 'KeyS') setIntent('moveB', true);
@@ -396,8 +389,6 @@ export const Player = ({ isWorldBuilt }) => {
       }
     };
     const handleKeyUp = (e) => {
-      keysRef.current[e.code] = false;
-
       if (e.code === 'KeyW') setIntent('moveF', false);
       else if (e.code === 'KeyS') setIntent('moveB', false);
       else if (e.code === 'KeyA') setIntent('moveL', false);
@@ -881,8 +872,6 @@ export const Player = ({ isWorldBuilt }) => {
       };
     }
 
-    // Read from keysRef instead of stale keys state
-    const keys = keysRef.current;
     // READER: read the live intent object ONCE per frame (transient, alloc-free — Game-Loop
     // Isolation). `input.active` is the centralized gate that replaces the old scattered
     // raw pointer-lock reads; movement/dodge read input.moveF/.moveB/.moveL/.moveR.
@@ -1228,23 +1217,6 @@ export const Player = ({ isWorldBuilt }) => {
     if (!cameraInitialized.current && translation.y > 0) {
       camera.rotation.set(0, 0, 0);
       cameraInitialized.current = true;
-    }
-
-    // Continuous spell casting
-    if (keys.KeyF) {
-      const now = performance.now();
-      if (now - lastCastTime.current >= CAST_COOLDOWN) {
-        lastCastTime.current = now;
-
-        if (useGameStore.getState().castSpell) {
-          const currentSpell = activeSpell;
-          useGameStore.getState().castSpell(currentSpell);
-          if (useGameStore.getState().onSpellCast) useGameStore.getState().onSpellCast();
-        }
-
-        setAttackType('spell');
-        setTimeout(() => setAttackType(null), 150);
-      }
     }
 
     // Sync attackStartTime at-action-time in game loop

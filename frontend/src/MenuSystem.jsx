@@ -305,7 +305,7 @@ export function MenuSystem({
                   <span>•</span>
                   <span>Space Jump</span>
                   <span>•</span>
-                  <span>F Cast</span>
+                  <span>F Attack</span>
                   <span>•</span>
                   <span>1-4 Spells</span>
                   <span>•</span>

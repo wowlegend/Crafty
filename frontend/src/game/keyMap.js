@@ -13,7 +13,7 @@ export const KEY_MAP = [
   // --- Combat ---
   { key: 'LMB',   label: 'Attack / mine',           group: 'Combat' },
   { key: 'RMB',   label: 'Cast / place / interact',  group: 'Combat' },
-  { key: 'F',     code: 'KeyF', label: 'Attack / cast spell', group: 'Combat' },
+  { key: 'F',     code: 'KeyF', label: 'Attack', group: 'Combat' },
   { key: '1–4',   label: 'Select spell',            group: 'Combat' },
   { key: 'Wheel', label: 'Cycle block',             group: 'Combat', panelHide: true },
   // --- Aspects (the signature identity — R/V/X/Z) ---
