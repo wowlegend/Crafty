@@ -17,6 +17,7 @@ import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
+import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset } from './game/trauma.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
@@ -303,6 +304,13 @@ export const Player = ({ isWorldBuilt }) => {
             // path) plus the same visceral crit camera-shake the mob path triggers.
             if (store.playSpatialSound) {
               store.playSpatialSound('hit', bp, 1.1, 30);
+            }
+            // M6 #3: spark spray at the boss-hit point -- verb-consistency with the mob melee path (the
+            // mob loop sparks via damageMob; the boss is a separate entity so a melee hit on it sparked
+            // NOTHING). Reuses the GPU spark pool + the form sparkType; capture-inert (melee = real input).
+            if (store.triggerGPUSparks) {
+              const { color: sparkColor, count } = sparkFor(sparkType, isCrit);
+              store.triggerGPUSparks(new THREE.Vector3(bp[0], bp[1] + 0.8, bp[2]), sparkColor, count, sparkType, lookDir);
             }
             hitSomething = true;
           }

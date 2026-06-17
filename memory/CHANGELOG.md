@@ -1,5 +1,8 @@
 # Changelog & Development History
 
+### June 16, 2026 (#3 boss-melee sparks -- verb-consistency with the mob path)
+- **A melee hit on the BOSS sparked nothing.** The mob loop sparks via damageMob, but the boss is a separate (non-ECS) entity so its hit branch only played a sound + crit shake -- no GPU spark spray. Added it at the boss-hit point (reuses store.triggerGPUSparks + sparkFor(sparkType, isCrit) + the swing lookDir), so a boss melee now reads as visceral as a mob hit. Static gate boss-melee-spark-gates.test.js (+2 -> 1425). build + eslint clean; capture-inert (melee = real input; the boss is never melee'd in any capture state) -> gate 20/20.
+
 ### June 16, 2026 (#4 connecting-melee swing audio -- dead playAttackSounds wired)
 - **Connecting melee hits had impact but NO swing whoosh** -- the 'swing' sound only played on a MISS, and playAttackSounds (App.jsx, the swing + delayed attack whoosh) was DEFINED-BUT-NEVER-CALLED (verify-before-assert: grep = zero callers). Wired store.playAttackSounds?.() into triggerMeleeAttack so EVERY committed swing whooshes (a hit adds the spatial 'hit' impact; a miss is just the whoosh); removed the now-redundant miss-only spatial swing. Un-deads the intended helper. Static gate melee-swing-audio-gates.test.js (+3 -> 1423). build + eslint clean; capture-inert (the melee input executor never runs under capture) -> gate 20/20. Ear-check (whoosh balance) = Kevin.
 
