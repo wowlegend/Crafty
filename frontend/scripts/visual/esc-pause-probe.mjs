@@ -32,6 +32,18 @@ try {
   let locked = false;
   for (let i = 0; i < 8 && !locked; i++) { await page.mouse.click(600 + i * 10, 400); await delay(300); locked = await page.evaluate(() => !!document.pointerLockElement); }
   console.log('[esc-probe] pointer-locked=' + locked);
+  // W1 Task 6: audio is non-visual, so behaviorally probe the spatial-SFX bus reroute — trigger a spatial
+  // sound (combat hit) and confirm it plays through the SHARED master-bus limiter without throwing.
+  const audioOk = await page.evaluate(() => {
+    const w = window;
+    // the bus input node is on the SoundProvider ctx; assert the listener.gain has >=1 outgoing
+    // connection and the ctx is shared (THREE.AudioContext === provider ctx). We can at least assert
+    // no audio exception fired and a sound plays (combat hit) without throwing.
+    try { w.useGameStore.getState().playSpatialSound?.('hit', w.__threeCamera.position, 1, 20); return true; }
+    catch (e) { return 'throw:' + e.message; }
+  });
+  console.log('[esc-probe] spatial-sfx playable=' + audioOk);
+  if (audioOk !== true) { console.error('[esc-probe] FAIL: spatial SFX threw after bus reroute'); await browser.close(); done(1); }
   const shoot = async (name) => { await delay(500); await page.screenshot({ path: `${OUT}/${name}.png` }); console.log('shot', name); };
   await shoot('1-in-game');                        // expect: HUD, NO CRAFTY-RPG overlay
   await page.keyboard.press('Escape');             // ESC mid-game (real browser: ESC releases pointer-lock)

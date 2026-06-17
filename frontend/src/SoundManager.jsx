@@ -575,6 +575,7 @@ export const SoundProvider = ({ children }) => {
     resumeAudio,
     playTone,
     audioContext: audioContext.current,
+    getMasterBus,
     sounds: sounds.current
   };
 

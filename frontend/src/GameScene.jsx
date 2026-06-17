@@ -134,7 +134,7 @@ const MoodGradeDriver = () => {
 // Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
   const { camera, scene } = useThree();
-  const { audioContext, sounds, soundEnabled, volume } = useSounds();
+  const { audioContext, sounds, soundEnabled, volume, getMasterBus } = useSounds();
   const { rapier, world } = useRapier();
   const listenerRef = useRef();
   const filterRef = useRef();
@@ -227,10 +227,14 @@ const SpatialAudioController = () => {
     const wetGain = audioContext.createGain();
     wetGain.gain.setValueAtTime(0.0, audioContext.currentTime); // dry to start
 
-    // Connect routing
+    // Connect routing — W1: route the spatial SFX listener through the SHARED master-bus limiter
+    // (SoundManager built it on this same ctx, unified at THREE.AudioContext.setContext above), so
+    // the in-game mix is limited AND the SFX-volume slider + Mute-All (which drive the bus gain) work.
+    // Fallback to destination only if the bus failed to build (never silence).
+    const busInput = (getMasterBus && getMasterBus()) || audioContext.destination;
     listener.gain.disconnect();
     listener.gain.connect(filter);
-    filter.connect(audioContext.destination);
+    filter.connect(busInput);
 
     // Reverb loop path
     filter.connect(delayNode);
@@ -238,7 +242,7 @@ const SpatialAudioController = () => {
     reverbFilter.connect(feedbackGain);
     feedbackGain.connect(delayNode);
     feedbackGain.connect(wetGain);
-    wetGain.connect(audioContext.destination);
+    wetGain.connect(busInput);
 
     filterRef.current = filter;
     wetGainRef.current = wetGain;
@@ -376,7 +380,7 @@ const SpatialAudioController = () => {
       }
 
       // Dynamic recursive raycasting audio occlusion calculations
-      const freshVolume = useGameStore.getState().volume !== undefined ? useGameStore.getState().volume : volume;
+      const freshVolume = useGameStore.getState().sfxVolume ?? volume;
       const activeSounds = activeSpatialSoundsRef.current;
       const listenerPos = camera.position;
 
