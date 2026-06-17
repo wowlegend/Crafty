@@ -26,6 +26,7 @@ import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
+import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
@@ -136,14 +137,14 @@ function GameApp({ experienceSystem }) {
             localStorage.setItem('crafty_onboarded', '1');
             setTimeout(() => {
               const add = useGameStore.getState().addNotification;
-              if (add) add('Build by day, survive the night siege — defeat foes to unlock powerful Aspect abilities.', 'info');
+              if (add) add(ONBOARDING_TIPS[0].text, ONBOARDING_TIPS[0].type);
             }, 1600);
             // S10: name the CAMPAIGN goal once (after the loop toast) so a new player knows the point. The
             // compass already shows the SHRINE + BLIGHT HEART markers this references. Capture-safe (inside
             // the !isCaptureMode + localStorage-once guard).
             setTimeout(() => {
               const add2 = useGameStore.getState().addNotification;
-              if (add2) add2('Your goal: journey to the frontier shrines, then shatter the Blight Heart at the world\'s edge — follow the compass.', 'quest');
+              if (add2) add2(ONBOARDING_TIPS[1].text, ONBOARDING_TIPS[1].type);
             }, 8600);
           }
         } catch (e) { /* localStorage blocked -> skip onboarding (non-fatal) */ }

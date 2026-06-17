@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 16, 2026 (onboarding/goal RECALL -- returning players can re-show the goal + controls)
+- **The first-session goal/loop framing is now recallable.** The two boot toasts (build-by-day loop + the journey-to-shrines / shatter-the-Blight-Heart goal) are localStorage-once -> dead for returning players. New game/onboardingTips.js holds them as ONE shared source (DRY: App boot + the recall both use it; App.jsx now references ONBOARDING_TIPS, behaviour-identical). A 'How to Play' button in the SettingsPanel re-fires both via the existing addNotification bus (closes the panel first so the toasts show). 3 red-first unit tests -> 1413. LOOK-verified via settings-probe (the button renders bold-flat above Manage Worlds). build + eslint clean; gate 20/20 (SettingsPanel is not a capture state + the App refactor is behaviour-neutral).
+- **CLEAN AUTONOMOUS QUEUE DRAINED** (#10 dial + settings-persistence + onboarding-recall all shipped post-re-grant). Remaining is Kevin-gated: #51 spell-upgrade revival (his design-intent call), #44 playtest, #10 dial taste, standing #41-#50. Loop lengthens to ~30min idle-watch.
+
 ### June 16, 2026 (settings-persistence -- audio/feedback/look prefs survive sessions)
 - **The 5 settings dials now persist** (juiceIntensity / sfxVolume / musicVolume / masterMuted / lookSensitivity) -- they reset to default every session before. New game/settingsPersist.js (mirrors worldSaves.js safe-localStorage): pure sanitizeSettings (whitelist + clamp; drops unknown / non-finite / corrupt blobs -> no bad-state injection) + load/save + initSettingsPersistence glue (hydrate on boot, persist on change). Wired once in App boot, CAPTURE-GUARDED (the visual harness never touches localStorage -> deterministic; gate 20/20). 8 red-first unit tests -> 1410; build + eslint clean. (M3 had listed settings-persistence as deferred-not-Kevin-gated; now done.)
 

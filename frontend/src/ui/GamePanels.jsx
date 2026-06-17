@@ -8,6 +8,7 @@ import { Panel, Button, Slot, Icon, SpellRing } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
+import { replayOnboardingTips } from '../game/onboardingTips.js';
 import { ItemIcon } from './panels/itemUi';
 export { CraftingTable } from './panels/CraftingTable';
 
@@ -799,6 +800,17 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     </Panel>
 
                     <hr className="border-ink border-t-chrome my-1" />
+
+                    {/* M6 onboarding recall: re-show the goal/loop tips (the boot toast is localStorage-once,
+                        dead for returning players). Close the panel first so the toasts are visible. */}
+                    <Button
+                        variant="secondary"
+                        size="md"
+                        onClick={() => { onClose(); replayOnboardingTips(useGameStore.getState().addNotification); }}
+                        className="w-full gap-2"
+                    >
+                        <Icon name="compass" size={18} className="flex-none" /> How to Play
+                    </Button>
 
                     {onOpenWorldManager && (
                         <Button
