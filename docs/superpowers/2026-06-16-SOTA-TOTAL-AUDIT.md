@@ -1,5 +1,7 @@
 # Crafty — Total SOTA Audit + Enhance (Kevin mega-directive #2, 2026-06-16)
 
+> **➡️ SUPERSEDED 2026-06-17 — the audit/build tracked HERE (M1–M6 + #51/#52) is HISTORY.** Kevin reviewed the LIVE game on 06-17 and found the work was largely INVISIBLE (green gates measured code-presence, not lived result). The response is the **COMPREHENSIVE SOTA REBUILD** via the full superpowers process — see `memory/ACTIVE_PLAN.md` + `docs/superpowers/specs/2026-06-17-crafty-sota-rebuild-design.md` + the W1–W4 plans + `docs/superpowers/audits/2026-06-17-*`. This file is retained as history.
+
 > **Directive (Kevin):** "Map/review/TEST every single line of code; make sure everything actually works AND
 > that the deep SOTA plan actually enhanced EVERY element/aspect/feature (down to the tiniest control button /
 > UI / effect). A lot still looks/feels PRE-master-plan. Treat it like a TOTAL FRESH GAME; you're allowed to

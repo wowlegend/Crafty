@@ -56,7 +56,9 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 8. **No AI footers in commits; no `git add -A`; absolute paths (TWO-LEVEL repo).** Own repo + own
    initiative — **separate from moneymaker** (its rules/ledgers/AUP frame do not apply here).
 
-## 3. Status (LIVING — refresh at every milestone; last: 2026-06-15)
+## 3. Status (LIVING — refresh at every milestone; last: 2026-06-17)
+
+**🔶 2026-06-17 COMPREHENSIVE SOTA REBUILD (supersedes the 2026-06-15 Phase-2 ladder as the active spine).** Kevin reviewed the LIVE game and found the prior "SOTA" work was largely INVISIBLE — green capture gates measured code-PRESENCE, not lived result (~309 commits since 06-13, only ~21 capture frames changed; the grass was the only always-on visible change). Re-run via the FULL superpowers process: an 11-agent every-element audit (`docs/superpowers/audits/2026-06-17-*`) → a Kevin-APPROVED design spec (`docs/superpowers/specs/2026-06-17-crafty-sota-rebuild-design.md`) → 4 trust-first plans (`docs/superpowers/plans/2026-06-17-crafty-W{1,2,3,4}-*.md`, 503 steps) → subagent-driven execution with a controller LIVE-LOOK + gate checkpoint per batch. **Decisions of record:** trust-first W1 purge/fix → W2 look → W3 content → W4 polish; DELETE auth + pet system; title = Cinematic 3D vista; ocean = stylized toon Caribbean (a real water plane); **grade = WARM MAGIC-HOUR — the restrained-NEUTRAL grade lock is REVERSED, glowier AUTHORIZED**; W3 = Living-frontier MAX; spells = 4 distinct silhouettes. The Ember-Frontier game DIRECTION (§0 + below) still stands; the rebuild fixes LOOK + dead-code + content fidelity on top of it. Live cursor in `memory/ACTIVE_PLAN.md`. The 2026-06-15 status below is retained as history.
 
 **S0 ✅ · S1-A/B/C/D ✅ (foundation, render recipe, bold-flat UI system, signatures) · S2 design ✅ ·
 S2-A foundation ✅ · 🏆 THE FOUR-ASPECT SPINE COMPLETE (2026-06-10/11): S2-B1 WILDHEART ✅ ·

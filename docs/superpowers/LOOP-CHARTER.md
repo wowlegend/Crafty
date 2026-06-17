@@ -26,6 +26,18 @@
   far-edge "Blight Heart" lair = a real WIN-STATE + endless post-climax handoff. North star for the gameplay layer
   (tier-by-distance, shrines, climax). Source: `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`.
   REVERSING this is §4-genuinely-Kevin; AFFIRMING a sub-direction within it is loop authority.
+- **2026-06-17 COMPREHENSIVE REBUILD (Kevin redirection — the ACTIVE spine; supersedes the 2026-06-15 Phase-2
+  S5–S10 ladder as the work-of-record):** Kevin reviewed the LIVE game; the prior "SOTA" work was largely
+  INVISIBLE (green gates measured code-PRESENCE, not lived result — only the grass visibly changed across ~21
+  frames). Re-run via the FULL superpowers flow → an 11-agent every-element audit (`docs/superpowers/audits/2026-06-17-*`)
+  + a Kevin-APPROVED design spec (`specs/2026-06-17-crafty-sota-rebuild-design.md`) + 4 trust-first plans
+  (`plans/2026-06-17-crafty-W{1,2,3,4}-*.md`), executed **subagent-driven in batches with a controller LIVE-LOOK
+  + gate checkpoint between batches** (a green pinned-capture gate is necessary NOT sufficient — that blind spot
+  is the whole reason for the rebuild; the §1.5 LIVE-PROBE axis is now load-bearing on EVERY visible slice).
+  **LOCK REVERSAL (Kevin 2026-06-17):** the restrained-NEUTRAL grade lock is REVERSED — glowier/warmer is
+  AUTHORIZED (ocean = toon Caribbean water-plane; title = Cinematic 3D vista; W3 = Living-frontier MAX; spells =
+  4 distinct silhouettes). The Ember-Frontier game DIRECTION (above) still stands — the rebuild fixes LOOK +
+  dead-code + content fidelity on top of it.
 - **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` (incl. the 2026-06-15
   mega-directive set: `plans/2026-06-15-crafty-world-purpose-sota.md` [S5..S10 ladder + direction], `research/2026-06-15-crafty-codebase-reality-audit.md`
   [ranked file:line P0-debt backlog of record], `research/2026-06-15-crafty-agentic-e2e-testing.md` [E2E roadmap]) →
@@ -112,8 +124,10 @@
 2. **The current in-flight milestone** per ACTIVE_PLAN (finish > start).
 3. **Pre-requisites the plan-of-record marks blocking** (e.g. #72 verb-mode seam before VOIDHAND M3;
    #69 gate inversion before M3).
-4. **The active structural spine = the 2026-06-15 MEGA-DIRECTIVE overhaul** (world+purpose+visual via the
-   `world-purpose-sota` S5..S10 slice ladder + the `codebase-reality-audit` P0-debt chain). The four-Aspect spine
+4. **The active structural spine = the 2026-06-17 COMPREHENSIVE REBUILD** (the W1–W4 trust-first plans
+   `plans/2026-06-17-crafty-W{1,2,3,4}-*.md`, executed subagent-driven; see §0). The 2026-06-15 mega-directive
+   S5–S10 ladder + `codebase-reality-audit` P0 chain are SUPERSEDED as the spine — their shipped parts are
+   subsumed by the 2026-06-17 11-agent audit; any remaining items are folded into W1–W4. The four-Aspect spine
    (WILDHEART · VOIDHAND · SOULBIND · ELEMANCER) completed 2026-06-11; S3 de-monolith is now LARGELY DONE (4-of-5
    god-files dissolved; only Components ~1297 + GameScene ~914 remain, formally PARKED iter-175 — risky
    imperative-loop extraction, not actively blocking) → de-monolith is now a DEBT LANE behind the mega-directive,
