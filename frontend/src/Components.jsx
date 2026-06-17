@@ -243,6 +243,10 @@ export const Player = ({ isWorldBuilt }) => {
     if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
+    // M6: every committed swing whooshes (playAttackSounds = swing + attack; was DEFINED-BUT-NEVER-CALLED,
+    // so connecting hits had impact but no whoosh + swings only sounded on a MISS). A hit adds the spatial
+    // 'hit' impact below; a miss is just the whoosh. Capture never runs the input path -> capture-inert.
+    store.playAttackSounds?.();
 
     setAttackType('melee');
     setTimeout(() => setAttackType(null), 200);
@@ -305,16 +309,10 @@ export const Player = ({ isWorldBuilt }) => {
         }
       }
 
-      if (hitSomething) {
-        if (isCrit && store.triggerCameraShake) {
-          store.triggerCameraShake(1.6); // Visceral Crit camera shake
-        }
-      } else {
-        // Play miss sound
-        if (store.playSpatialSound) {
-          store.playSpatialSound('swing', [camera.position.x, camera.position.y, camera.position.z], 0.7, 10);
-        }
+      if (hitSomething && isCrit && store.triggerCameraShake) {
+        store.triggerCameraShake(1.6); // Visceral Crit camera shake
       }
+      // (the swing whoosh now plays on EVERY swing via playAttackSounds above -- no miss-only sound)
     }
   }, [camera]);
 

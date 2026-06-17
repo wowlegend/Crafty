@@ -1,5 +1,8 @@
 # Changelog & Development History
 
+### June 16, 2026 (#4 connecting-melee swing audio -- dead playAttackSounds wired)
+- **Connecting melee hits had impact but NO swing whoosh** -- the 'swing' sound only played on a MISS, and playAttackSounds (App.jsx, the swing + delayed attack whoosh) was DEFINED-BUT-NEVER-CALLED (verify-before-assert: grep = zero callers). Wired store.playAttackSounds?.() into triggerMeleeAttack so EVERY committed swing whooshes (a hit adds the spatial 'hit' impact; a miss is just the whoosh); removed the now-redundant miss-only spatial swing. Un-deads the intended helper. Static gate melee-swing-audio-gates.test.js (+3 -> 1423). build + eslint clean; capture-inert (the melee input executor never runs under capture) -> gate 20/20. Ear-check (whoosh balance) = Kevin.
+
 ### June 16, 2026 (#2 bold-flat Slider primitive -- the 5 raw range-sliders now conform to the design lock)
 - **The 5 settings/building sliders were raw <input type=range>** (browser-default thumb/track = off the locked bold-flat system). New Slider primitive (src/ui/primitives/Slider.jsx + .bf-slider CSS in index.css): ink-framed groove + accent fill (--pct) + a hard ink-bordered square thumb with a hard offset shadow + a focus-visible ring; keeps the native input (full keyboard + a11y). Swapped all 5 (Look Sensitivity / Feedback Intensity / Sound Effects / Music / Build Size); each onChange wiring identical. 4 red-first Slider tests -> 1420; the M3 settings-a11y gates updated to assert the Slider primitive (STRONGER bold-flat conformance, not a weakening). LOOK-verified via settings-probe (every slider reads bold-flat -- amber fill + square thumb). build + eslint clean; gate 20/20 (.bf-slider CSS is class-scoped; sliders are not a capture state).
 
