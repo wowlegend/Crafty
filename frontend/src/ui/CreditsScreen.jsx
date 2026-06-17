@@ -1,5 +1,5 @@
 import React from 'react';
-import { Panel, Button, Icon } from './primitives/index.js';
+import { Panel, Button, Icon, Modal } from './primitives/index.js';
 import { useT } from '../i18n/i18n.js';
 
 // Bold-flat Credits / Attributions modal (S1C-M3-T5). Mirrors SettingsPanel:
@@ -22,7 +22,7 @@ function CreditRow({ label, license }) {
 export const CreditsScreen = React.memo(({ onClose }) => {
     const t = useT();
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('credits.title')} onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[420px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -82,6 +82,6 @@ export const CreditsScreen = React.memo(({ onClose }) => {
                     </Button>
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 });

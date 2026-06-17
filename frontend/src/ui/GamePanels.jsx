@@ -4,7 +4,7 @@ import { useGameStore, EQUIPMENT_STATS } from '../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
-import { Panel, Button, Slot, Icon, SpellRing, Slider } from './primitives/index.js';
+import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitives/index.js';
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
@@ -551,7 +551,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
     }, [selectedTool, buildSize, gameState.selectedBlock]);
 
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Building Tools" onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[480px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -630,7 +630,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                     Press B to close • Right-click to build • Left-click to remove
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 });
 
@@ -638,7 +638,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
     const gameState = useGameStore();
     const t = useT();
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Settings" onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[380px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -844,6 +844,6 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     Press ESC to return to game
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 });

@@ -8,3 +8,4 @@ export { Icon } from './Icon.jsx';
 export { Toast } from './Toast.jsx';
 export { Tooltip } from './Tooltip.jsx';
 export { Slider } from './Slider.jsx';
+export { Modal } from './Modal.jsx';

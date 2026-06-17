@@ -3,7 +3,7 @@ import { GameMethods } from '../../GameMethods';
 import { useGameStore } from '../../store/useGameStore';
 import { BLOCK_TYPES } from '../../world/Blocks';
 import { useT } from '../../i18n/i18n.js';
-import { Panel, Button, Slot, Icon } from '../primitives/index.js';
+import { Panel, Button, Slot, Icon, Modal } from '../primitives/index.js';
 import { Grid } from 'lucide-react';
 import { getItemRarity } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
@@ -100,7 +100,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
     };
 
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Crafting" onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[640px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -228,6 +228,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
                     Pattern Matcher v2.0 {'•'} Press C to close
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useGameSounds } from '../SoundManager';
-import { Panel, Button, Icon, Toast } from './primitives/index.js';
+import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
   const gameState = useGameStore();
@@ -87,7 +87,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" onClick={onClose}>
+    <Modal className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" label="Villager Merchant" onClose={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -213,6 +213,6 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
           </div>
         </Panel>
       </motion.div>
-    </div>
+    </Modal>
   );
 });
