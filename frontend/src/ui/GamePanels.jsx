@@ -203,7 +203,7 @@ export const Inventory = ({ onClose }) => {
         } else if (item.includes('Rotten Flesh')) {
             if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(10);
         } else if (item.includes('Mana Potion')) {
-            if (window.addMana) window.addMana(40);
+            useGameStore.getState().restoreMana(40);
         } else if (item.includes('Diamond')) {
             if (GameMethods.grantXP) GameMethods.grantXP(50, item);
         } else if (item.includes('Golden Crown')) {

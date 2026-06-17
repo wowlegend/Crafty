@@ -760,6 +760,12 @@ export const useGameStore = create((set, get) => ({
         set({ playerHealth: Math.min(state.playerHealth + amount, state.maxHealth) });
     },
 
+    restoreMana: (amount) => {
+        const state = get();
+        if (!state.isAlive) return;
+        set({ mana: Math.min(state.mana + amount, state.maxMana) });
+    },
+
     useMana: (cost) => {
         const state = get();
         if (state.mana >= cost) {
