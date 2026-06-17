@@ -36,9 +36,10 @@ export const MOOD_SCALARS = {
 //
 // TUNING KNOBS (eyeball the re-captured explore frame, then nudge these):
 //   saturation  HueSaturation.saturation  — colour intensity. Higher = punchier; too
-//               high reads "candy". Explore 0.20 is the premium ceiling.
+//               high reads "candy". Explore 0.30 is the warm magic-hour ceiling (Kevin reversed the
+//               restrained-NEUTRAL lock 2026-06-17 W2; was 0.20).
 //   brightness  BrightnessContrast.brightness — shadow LIFT (+) / crush (−). The
-//               magic-hour "lift" is explore's +0.05; obsidian crushes to −0.06.
+//               magic-hour "lift" is explore's +0.09 (W2; was +0.05); obsidian crushes to −0.06.
 //   contrast    BrightnessContrast.contrast — tonal punch. Dusk/obsidian add drama.
 // The effect ranges are clamped/blended in MoodGradeDriver; all three are SAFE to retune
 // without touching the shader. Capture-safe: mood is snapped in capture so grade is stable.
