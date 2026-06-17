@@ -89,6 +89,15 @@ module.exports = {
         'elev-xl': 'var(--ui-elev-xl)',
       },
       zIndex: { 'scene': '1', 'hud': '100', 'panel': '200', 'modal': '300', 'toast': '400', 'tooltip': '500', 'dev-overlay': '9000' },
+      // M6 #6: `animate-fade-in` was referenced by 8 panels (Credits/Quest/Crafting/GamePanels) but NO
+      // keyframe existed -> a silent no-op (panels popped in). A short 150ms opacity fade; it settles well
+      // before the visual harness's 900ms capture delay, so the deterministic baselines stay byte-identical.
+      keyframes: {
+        fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+      },
+      animation: {
+        'fade-in': 'fadeIn 150ms ease-out',
+      },
     },
   },
   plugins: [],

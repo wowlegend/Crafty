@@ -1,5 +1,8 @@
 # Changelog & Development History
 
+### June 16, 2026 (#6 animate-fade-in keyframe -- 8 panels' fade was a silent no-op)
+- **animate-fade-in was referenced by 8 panels** (Credits/Quest/Crafting/GamePanels) but NO keyframe/animation existed (tailwind plugins:[], no @keyframes) -> the class silently did nothing; panels popped in. Added the fadeIn keyframe + 'fade-in' animation (150ms ease-out) to tailwind.config.cjs so the class resolves -> panels now fade in. Static gate fade-in-keyframe-gates.test.js (+2 -> 1429); build now emits @keyframes fadeIn + .animate-fade-in; eslint clean. Capture-safe: the 150ms fade settles well before the harness's 900ms capture delay, so the 2 affected capture states (inventory-open/achievements-open) stay byte-identical -> gate 20/20.
+
 ### June 16, 2026 (#5 html lang syncs with the UI locale)
 - **<html lang> was static 'en'** -- setLocale flipped the i18n table + CJK fonts but never updated document.documentElement.lang, so screen readers + SEO reported English under zh-CN. setLocale now mirrors the locale ('en'/'zh-CN', valid BCP-47) onto <html> (guarded for non-browser; harmless under capture -- the attr is invisible). 2 jsdom behavioural tests (+2 -> 1427). build + eslint clean; NO visual gate run needed -- lang is a non-visual attribute (zero pixel impact; primitives-showcase-zh already rendered zh-CN before this).
 
