@@ -680,6 +680,11 @@ export const useGameStore = create((set, get) => ({
     maxMana: 100,
     hunger: 100,
     isAlive: true,
+    // W1 BUG-FIX: `gameStarted` was read at 5 guard-sites (App ESC=pause + 3 MenuSystem relock guards)
+    // but never defined -> always undefined -> all 5 dead. One-way latch: set true the first time the
+    // player enters play (Components pointer-lock OR touch enterPlay) and never unset (pre-game vs mid-game).
+    gameStarted: false,
+    markGameStarted: () => set((state) => (state.gameStarted ? {} : { gameStarted: true })),
     damageFlash: false,
     screenShake: 0,
     lastHitDir: null, // {angle,t} of the most recent directional hit (combat-legibility cue); null until a sourced hit
