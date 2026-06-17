@@ -89,7 +89,7 @@ const GearInspector = ({ itemName, equippedGear }) => {
 
     if (!stats) {
         // Fallback for blocks/consumables
-        const isFood = ['Cooked Porkchop', 'Cooked Beef', 'Apple'].includes(itemName);
+        const isFood = ['Cooked Porkchop', 'Cooked Beef'].includes(itemName);
         const isPotion = itemName.includes('Potion');
         let desc = 'Standard building voxel or crafting element.';
         if (isFood) desc = 'Consumable: Feeds and heals champion.';
@@ -185,7 +185,7 @@ export const Inventory = ({ onClose }) => {
 
     const isConsumable = (item) => {
         if (!item) return false;
-        return ['Health Potion', 'Mana Potion', 'Cooked Porkchop', 'Cooked Beef', 'Apple', 'Raw Porkchop', 'Raw Beef', 'Rotten Flesh', 'Diamond', 'Golden Crown', 'Star Fragment'].some(c => item.includes(c));
+        return ['Health Potion', 'Mana Potion', 'Cooked Porkchop', 'Cooked Beef', 'Raw Porkchop', 'Raw Beef', 'Rotten Flesh', 'Diamond', 'Golden Crown', 'Star Fragment'].some(c => item.includes(c));
     };
 
     const handleConsume = (e, item) => {
@@ -195,9 +195,6 @@ export const Inventory = ({ onClose }) => {
         } else if (item.includes('Cooked')) {
             if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(40);
             if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(10);
-        } else if (item.includes('Apple')) {
-            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(20);
-            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(5);
         } else if (item.includes('Raw')) {
             if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(15);
         } else if (item.includes('Rotten Flesh')) {

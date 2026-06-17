@@ -64,8 +64,6 @@ export const LOOT_TABLES = {
 export const CHEST_LOOT = [
     { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
     { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },
-    { item: 'Damage Scroll', chance: 0.3, effect: 'buff_damage', value: 1.5, duration: 30 },
-    { item: 'Shield Scroll', chance: 0.25, effect: 'buff_defense', value: 0.5, duration: 30 },
     { item: 'Diamond', chance: 0.15, effect: 'xp', value: 50 },
     { item: 'Golden Crown', chance: 0.05, effect: 'xp', value: 200 },
     { item: 'Star Fragment', chance: 0.08, effect: 'xp', value: 100 },

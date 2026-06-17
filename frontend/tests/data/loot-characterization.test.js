@@ -340,20 +340,6 @@ describe('characterization: CHEST_LOOT structure', () => {
           "value": 40,
         },
         {
-          "chance": 0.3,
-          "duration": 30,
-          "effect": "buff_damage",
-          "item": "Damage Scroll",
-          "value": 1.5,
-        },
-        {
-          "chance": 0.25,
-          "duration": 30,
-          "effect": "buff_defense",
-          "item": "Shield Scroll",
-          "value": 0.5,
-        },
-        {
           "chance": 0.15,
           "effect": "xp",
           "item": "Diamond",
@@ -405,7 +391,6 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
       [
         "Arrow",
         "Bone",
-        "Damage Scroll",
         "Diamond",
         "Emerald",
         "Ender Pearl",
@@ -417,7 +402,6 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
         "Raw Beef",
         "Raw Porkchop",
         "Rotten Flesh",
-        "Shield Scroll",
         "Spider Eye",
         "Star Fragment",
         "String",
@@ -426,9 +410,10 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
   });
 
   it('counts the unique loot item identity strings', () => {
-    // 18 unique identity strings across LOOT_TABLES + CHEST_LOOT (count unchanged
-    // by the decouple — only the emoji prefix was stripped, no items added/removed).
-    expect([...new Set(allLootItemNames)].length).toBe(18);
+    // 16 unique identity strings across LOOT_TABLES + CHEST_LOOT (W1 purged the dead
+    // Damage Scroll + Shield Scroll chest drops — buff_damage/buff_defense effects were
+    // never applied — dropping the count from 18 to 16).
+    expect([...new Set(allLootItemNames)].length).toBe(16);
   });
 });
 

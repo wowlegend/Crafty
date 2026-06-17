@@ -82,7 +82,6 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
     { type: 'block', name: 'Coal to Crystal', cost: 8, costItem: 'coal', get: 1, getItem: 'crystals' },
     { type: 'block', name: 'Iron to Crystal', cost: 4, costItem: 'iron', get: 1, getItem: 'crystals' },
     { type: 'block', name: 'Gold to Crystal', cost: 2, costItem: 'gold', get: 1, getItem: 'crystals' },
-    { type: 'crystal', name: 'Crystals to Scroll', cost: 5, costItem: 'crystals', get: 1, getItem: 'scrolls' },
     { type: 'crystal', name: 'Crystals to Wand', cost: 15, costItem: 'crystals', get: 1, getItem: 'wand' },
   ];
 
@@ -131,10 +130,6 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
               <div className="col-span-2 border-t-chrome border-ink pt-2 mt-2">
                 <span className="text-accent block font-bold uppercase tracking-wider">Crystals</span>
                 <span className="font-display text-text text-sm">{magic.crystals || 0}</span>
-              </div>
-              <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
-                <span className="text-accent block font-bold uppercase tracking-wider">Scrolls</span>
-                <span className="font-display text-text text-sm">{magic.scrolls || 0}</span>
               </div>
               <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
                 <span className="text-accent block font-bold uppercase tracking-wider">Wands</span>

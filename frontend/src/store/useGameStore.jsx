@@ -557,7 +557,7 @@ export const useGameStore = create((set, get) => ({
             'Health Potion': 5, 'Mana Potion': 5
         },
         tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
-        magic: { wand: 1, crystals: 8, scrolls: 4 }
+        magic: { wand: 1, crystals: 8 }
     },
     setInventory: (inventoryArg) => set((state) => ({
         inventory: typeof inventoryArg === 'function' ? inventoryArg(state.inventory) : inventoryArg
