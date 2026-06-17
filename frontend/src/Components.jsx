@@ -815,7 +815,7 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
-      console.warn("[DEBUG] Player fell into void! Teleporting to safety.");
+      console.warn('Player fell into void; teleporting to safety.');
       rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       spawnPosSet.current = false;
@@ -860,7 +860,7 @@ export const Player = ({ isWorldBuilt }) => {
       return;
     }
     if (isNaN(velocityY.current) || isNaN(currentTrans.y)) {
-      console.error(`[DEBUG] Physics corrupted! vel:`, velocityY.current, `trans:`, currentTrans);
+      console.error('Physics corrupted', velocityY.current, currentTrans);
     }
 
     // Ensure applyImpulse is bound on the rigid body for boss compatibility

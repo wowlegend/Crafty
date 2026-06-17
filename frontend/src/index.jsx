@@ -1,4 +1,4 @@
-if (typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   window.__debugLogs = window.__debugLogs || [];
   window.__debugListeners = window.__debugListeners || new Set();
 

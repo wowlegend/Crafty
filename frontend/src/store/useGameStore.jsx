@@ -707,7 +707,7 @@ export const useGameStore = create((set, get) => ({
 
         // Ignore damage if player is currently in invincible dodge roll i-frames
         if (state.isPlayerInvincible && state.isPlayerInvincible()) {
-            console.log(`[i-frames] Damage ignored (source: ${source})`);
+            if (import.meta.env.DEV) console.log(`[i-frames] Damage ignored (source: ${source})`);
             return;
         }
 
@@ -722,7 +722,7 @@ export const useGameStore = create((set, get) => ({
         const dr = armor / (armor + 100);
         const finalDamage = mitigateDamage(effective, amount);
 
-        console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
+        if (import.meta.env.DEV) console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
 
         // Combat-legibility: when the caller supplies the attacker position, record the screen-relative
         // hit direction (read the live camera yaw + player pos) so the HUD can point you at the threat.

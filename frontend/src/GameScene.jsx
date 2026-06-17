@@ -791,7 +791,7 @@ export function GameScene({
             useGameStore.getState().setIsWebGLContextLost(true);
           };
           const handleContextRestored = () => {
-            console.log('WebGL context successfully restored in GameScene.');
+            if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
             useGameStore.getState().setIsWebGLContextLost(false);
           };
           
