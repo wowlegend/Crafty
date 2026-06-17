@@ -77,6 +77,7 @@ function GameApp({ experienceSystem }) {
         isSpawnChunkLoaded: state.isSpawnChunkLoaded,
         isDay: state.isDay,
         isAlive: state.isAlive,
+        gameStarted: state.gameStarted,
         inventory: state.inventory,
         addToInventory: state.addToInventory,
         removeFromInventory: state.removeFromInventory,
