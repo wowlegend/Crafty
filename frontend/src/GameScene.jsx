@@ -380,7 +380,6 @@ const SpatialAudioController = () => {
       }
 
       // Dynamic recursive raycasting audio occlusion calculations
-      const freshVolume = useGameStore.getState().sfxVolume ?? volume;
       const activeSounds = activeSpatialSoundsRef.current;
       const listenerPos = camera.position;
 
@@ -426,7 +425,10 @@ const SpatialAudioController = () => {
         item.filterNode.frequency.setTargetAtTime(targetSoundFreq, time, 0.08);
         
         if (item.sound.gain && item.sound.gain.gain) {
-          const targetVol = item.initialVolume * targetGainFactor * freshVolume;
+          // W1: per-voice gain carries ONLY the intrinsic loudness x occlusion factor. The master
+          // SFX-volume (sfxVolume / Mute-All) is owned by the master-bus input gain this voice routes
+          // through (SoundManager:251); re-applying it here would square the slider response.
+          const targetVol = item.initialVolume * targetGainFactor;
           item.sound.gain.gain.setTargetAtTime(targetVol, time, 0.08);
         }
       }
