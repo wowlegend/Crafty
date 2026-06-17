@@ -154,7 +154,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       if (!camera || !spell) return;
       if (!useGameStore.getState().isAlive) return; // KEVIN-FIX C2: defense in depth
 
-      const manaCost = SPELL_MANA_COSTS[spellType] || 15;
+      // W1: charge the LEVELED mana cost (getSpellStats mirrors the upgrade hook) so upgrades aren't free;
+      // null-safe fallback to the static base for unmapped/pre-mount (byte-identical at L1).
+      const leveled = useGameStore.getState().getSpellStats?.(spellType);
+      const manaCost = (leveled && leveled.manaCost) || SPELL_MANA_COSTS[spellType] || 15;
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;
