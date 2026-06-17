@@ -17,6 +17,7 @@ import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu } from './ui/panelState.js';
 import { isTouchDevice } from './input/touchDevice';
+import { useGameStore } from './store/useGameStore';
 
 // The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the
 // three/R3F chunk never blocks the menu's first paint; the old 2D icon is the fallback until
@@ -99,6 +100,9 @@ export function MenuSystem({
     if (gameState.requestPointerLock) gameState.requestPointerLock();
     else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
     if (isTouchDevice()) setIsPointerLocked(true);
+    // W1: touch has no pointerlockchange event, so latch gameStarted here too (one-way; desktop also
+    // re-latches via Components' pointer-lock writer -- idempotent).
+    useGameStore.getState().markGameStarted();
   };
 
   return (

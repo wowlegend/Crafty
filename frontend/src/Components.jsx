@@ -498,7 +498,11 @@ export const Player = ({ isWorldBuilt }) => {
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
     // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
     const handlePointerLockChange = () => {
-      setActive(!!document.pointerLockElement);
+      const locked = !!document.pointerLockElement;
+      setActive(locked);
+      // W1: the FIRST real pointer-lock = the player has entered play -> latch the gameStarted flag
+      // (the single authoritative writer; the one-way latch makes repeated calls a no-op).
+      if (locked) useGameStore.getState().markGameStarted();
     };
     // KEVIN-FIX C3: the missing FAILURE channel — a rejected requestPointerLock (Chrome's
     // ~1-2.5s post-ESC cooldown, no-user-activation) could strand active=true with no lock:
