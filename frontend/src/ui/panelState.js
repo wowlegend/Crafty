@@ -5,16 +5,16 @@
 // InputManager's key gate — and they DRIFTED: the menu guard listed only 5 of the 13 panels, so opening
 // the Aspect tree (or achievements / chest / world-manager / credits / trading / auth / stats) popped the
 // main menu OVER the panel (2026-06-07, caught in playtest). Both call-sites now read THIS list, so a new
-// panel can't be half-wired. (Most flags live in the zustand store; the 4 React-local ones —
-// showSpellUpgrades / showAchievements / showStats / showAuthModal — are merged in by each caller. The
-// durable follow-up is to move those 4 into the store so a single store selector suffices.)
+// panel can't be half-wired. (Most flags live in the zustand store; the 3 React-local ones —
+// showSpellUpgrades / showAchievements / showStats — are merged in by each caller. The
+// durable follow-up is to move those 3 into the store so a single store selector suffices.)
 
 export const PANEL_FLAGS = [
   // store-backed
   'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
   'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits',
   // React-local (passed in by the caller)
-  'showSpellUpgrades', 'showAchievements', 'showStats', 'showAuthModal',
+  'showSpellUpgrades', 'showAchievements', 'showStats',
 ];
 
 /**

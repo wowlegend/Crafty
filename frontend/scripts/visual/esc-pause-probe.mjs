@@ -17,6 +17,10 @@ try {
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
+  // W1 Task 4: the deleted auth subsystem booted the app behind an axios.get(localhost:8001/api/auth/me).
+  // Record every failed request so we can assert the dead auth/backend call is GONE (no 8001 / /api/auth).
+  const reqFails = [];
+  page.on('requestfailed', (r) => { const u = r.url(); reqFails.push(u); console.log('REQFAIL', u); });
   await page.setViewport({ width: 1280, height: 800 });
   await page.goto(URL, { waitUntil: 'networkidle2' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
@@ -40,6 +44,10 @@ try {
   await shoot('2-after-esc');                       // expect: Settings (pause) panel, NOT title menu, NOT slate CRAFTY-RPG flash
   const started = await page.evaluate(() => window.useGameStore.getState().gameStarted);
   console.log('[esc-probe] gameStarted=' + started + ' showSettings-after-ESC=' + paused);
+  // W1 Task 4: assert the dead per-boot auth/backend call is gone (no localhost:8001 / /api/auth failure).
+  const authFail = reqFails.find((u) => u.includes('8001') || u.includes('/api/auth'));
+  console.log('[esc-probe] authBackendReqFail=' + (authFail || 'none'));
   if (!started || !paused) { console.error('[esc-probe] FAIL: gameStarted or ESC=pause not satisfied'); await browser.close(); done(1); }
+  if (authFail) { console.error('[esc-probe] FAIL: dead auth/backend request still firing: ' + authFail); await browser.close(); done(1); }
   await browser.close(); done(0);
 } catch (e) { console.error('ESC-PROBE ERROR:', e); done(1); }

@@ -707,8 +707,7 @@ export function GameScene({
   petSystem,
   showStats,
   showAchievements,
-  showSpellUpgrades,
-  showAuthModal
+  showSpellUpgrades
 }) {
   const canvasRef = useRef(null); // the WebGL canvas (set in onCreated) — the element we pointer-lock
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.

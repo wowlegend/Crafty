@@ -12,14 +12,11 @@ import {
   Upload,
   Save
 } from 'lucide-react';
-import axios from 'axios';
-import { useAuth } from './AuthContext';
 import { useGameStore } from './store/useGameStore';
 import { buildSaveData } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, getActiveWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
-  const { user } = useAuth();
   const [worlds, setWorlds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('my-worlds');
@@ -27,8 +24,6 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const [newWorldName, setNewWorldName] = useState('');
   const [newWorldPublic, setNewWorldPublic] = useState(false);
   const [error, setError] = useState('');
-
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
   useEffect(() => {
     loadWorlds();
@@ -38,14 +33,9 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     try {
       setLoading(true);
       setError('');
-      if (user) {
-        const response = await axios.get(`${BACKEND_URL}/api/worlds`);
-        setWorlds(response.data);
-      } else {
-        setWorlds(listWorlds());
-      }
+      setWorlds(listWorlds());
     } catch (error) {
-      console.warn('Backend load failed, falling back to LocalStorage:', error);
+      console.warn('LocalStorage world load failed:', error);
       setWorlds(listWorlds());
     } finally {
       setLoading(false);
@@ -53,8 +43,8 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   };
 
   const saveCurrentWorld = async () => {
-    const name = `${user?.username || 'Guest'}'s World - ${new Date().toLocaleDateString()}`;
-    // ONE serializer (buildSaveData) for both the cloud body and the local blob.
+    const name = `Guest's World - ${new Date().toLocaleDateString()}`;
+    // ONE serializer (buildSaveData) for the local blob.
     const saveData = buildSaveData(useGameStore.getState(), { position: useGameStore.getState().playerPosition });
     const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
     const persistLocal = () => {
@@ -68,19 +58,11 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     };
     try {
       setError('');
-      if (user) {
-        // S4: cloud sync — backend not yet implemented; local-first (localStorage) is the live path
-        await axios.post(`${BACKEND_URL}/api/worlds`, { ...meta, ...saveData });
-        loadWorlds();
-        setError('World saved to cloud successfully!');
-      } else {
-        persistLocal();
-        setError('World saved to LocalStorage successfully!');
-      }
-    } catch (error) {
-      console.warn('Backend save failed, saving to LocalStorage instead:', error);
       persistLocal();
-      setError('World saved to LocalStorage successfully (offline fallback)!');
+      setError('World saved to LocalStorage successfully!');
+    } catch (error) {
+      console.warn('LocalStorage save failed:', error);
+      setError('World save failed.');
     }
   };
 
@@ -121,38 +103,22 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     };
     try {
       setError('');
-      if (user) {
-        // S4: cloud sync — backend not yet implemented; local-first (localStorage) is the live path
-        await axios.post(`${BACKEND_URL}/api/worlds`, { ...meta, ...freshBlob });
-        setNewWorldName('');
-        setNewWorldPublic(false);
-        setShowCreateModal(false);
-        loadWorlds();
-      } else {
-        persistLocal();
-        setError('New world created locally!');
-      }
-    } catch (error) {
-      console.warn('Backend create failed, creating locally instead:', error);
       persistLocal();
-      setError('New world created locally (offline fallback)!');
+      setError('New world created locally!');
+    } catch (error) {
+      console.warn('LocalStorage create failed:', error);
+      setError('World creation failed.');
     }
   };
 
   const loadWorld = async (worldId) => {
     try {
       setError('');
-      let worldData;
-      
-      if (typeof worldId === 'string' && worldId.startsWith('local_')) {
-        worldData = readWorld(worldId);
-        if (!worldData) throw new Error('Local save not found');
-        // Point subsequent autosaves at the slot we just loaded (else they orphan to a fresh slot).
-        setActiveWorldId(worldId);
-      } else {
-        const response = await axios.get(`${BACKEND_URL}/api/worlds/${worldId}`);
-        worldData = response.data;
-      }
+      // Local saves only (cloud worlds were removed with the auth subsystem).
+      const worldData = readWorld(worldId);
+      if (!worldData) throw new Error('Local save not found');
+      // Point subsequent autosaves at the slot we just loaded (else they orphan to a fresh slot).
+      setActiveWorldId(worldId);
 
       if (onWorldLoad) {
         onWorldLoad(worldData);
@@ -172,14 +138,10 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
 
     try {
       setError('');
-      if (typeof worldId === 'string' && worldId.startsWith('local_')) {
-        deleteWorldSave(worldId);
-        setWorlds(listWorlds());
-        setError('World deleted locally.');
-      } else {
-        await axios.delete(`${BACKEND_URL}/api/worlds/${worldId}`);
-        loadWorlds();
-      }
+      // Local saves only (cloud worlds were removed with the auth subsystem).
+      deleteWorldSave(worldId);
+      setWorlds(listWorlds());
+      setError('World deleted locally.');
     } catch (error) {
       setError('Failed to delete world');
       console.error('Error deleting world:', error);

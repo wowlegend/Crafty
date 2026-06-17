@@ -19,20 +19,21 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
     }
   });
 
-  it('covers the 8 panels the old menu guard silently OMITTED (the bug)', () => {
+  it('covers the panels the old menu guard silently OMITTED (the bug)', () => {
     // these were absent from MenuSystem's hardcoded `!showInventory && ...` guard -> menu popped over them
     for (const flag of ['showSpellUpgrades', 'showAchievements', 'showChestInterface',
-      'showWorldManager', 'showCredits', 'showTradingInterface', 'showAuthModal', 'showStats']) {
+      'showWorldManager', 'showCredits', 'showTradingInterface', 'showStats']) {
       expect(PANEL_FLAGS).toContain(flag);
       expect(isAnyPanelOpen({ [flag]: true })).toBe(true);
     }
   });
 
-  it('is the COMPLETE set of 13 panels (catch a forgotten new panel)', () => {
+  it('is the COMPLETE set of 12 panels (catch a forgotten new panel)', () => {
+    // W1: the auth panel was deleted (auth subsystem purge) -> the auth flag is gone.
     expect(PANEL_FLAGS).toEqual([
       'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
       'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits',
-      'showSpellUpgrades', 'showAchievements', 'showStats', 'showAuthModal',
+      'showSpellUpgrades', 'showAchievements', 'showStats',
     ]);
   });
 });

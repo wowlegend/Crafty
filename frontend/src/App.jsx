@@ -1,7 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import './App.css';
-import { AuthProvider, useAuth } from './AuthContext';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
@@ -55,11 +54,9 @@ const MascotStudio = import.meta.env.DEV
 
 function App() {
   return (
-    <AuthProvider>
-      <SoundProvider>
-        <GameAppWrapper />
-      </SoundProvider>
-    </AuthProvider>
+    <SoundProvider>
+      <GameAppWrapper />
+    </SoundProvider>
   );
 }
 
@@ -104,7 +101,6 @@ function GameApp({ experienceSystem }) {
   // Capture-only HUD suppression (character-studio shots). Default false in gameplay.
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);
-  const { isAuthenticated, loading } = useAuth();
   const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
   const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory, playCraft } = useGameSounds();
 
@@ -119,7 +115,6 @@ function GameApp({ experienceSystem }) {
     window.playCraft = playCraft;     // crafting was silent (dead voice, zero callers) -> wire it to doCraft
   }, [playLevelUpSound, playFanfare, playVictory, playCraft]);
 
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
   // DEV-only mascot studio overlay: false = hidden, true = the chosen Crafty Hero brand
   // face. Driven by the `showMascot` test hook (visual harness). No-op in prod.
@@ -209,11 +204,11 @@ function GameApp({ experienceSystem }) {
     if (was && !isPointerLocked) {
       const s = useGameStore.getState();
       if (!isTouchDevice() && s.isAlive && s.gameStarted &&
-          !isAnyPanelOpen({ ...s, showSpellUpgrades, showAchievements, showStats, showAuthModal })) {
+          !isAnyPanelOpen({ ...s, showSpellUpgrades, showAchievements, showStats })) {
         s.setShowSettings(true);
       }
     }
-  }, [isPointerLocked, showSpellUpgrades, showAchievements, showStats, showAuthModal]);
+  }, [isPointerLocked, showSpellUpgrades, showAchievements, showStats]);
 
   // Select the device quality tier once at startup (runs in prod + dev).
   useEffect(() => {
@@ -623,12 +618,6 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setCaptureStudio(false); // panel OVER the explore world -> motes on
       setShowAchievements?.(true);
     });
-    // M6 #17: the first-impression AuthModal (rebuilt bold-flat) gets a visual look-gate. showAuthModal
-    // is useState in this component (not the store), so drive the local setter directly (identity-stable).
-    registerTestHook('openAuth', () => {
-      useGameStore.getState().setCaptureStudio(false);
-      setShowAuthModal?.(true);
-    });
     installTestBridge();
     // M6 settings-persistence: hydrate audio/feedback/look prefs from localStorage + persist on change.
     // Capture-guarded inside (the visual harness never touches localStorage -> deterministic baselines).
@@ -688,17 +677,6 @@ function GameApp({ experienceSystem }) {
     return () => mq.removeEventListener('change', apply);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-xl">Loading Crafty...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
@@ -712,7 +690,6 @@ function GameApp({ experienceSystem }) {
         showStats={showStats}
         showAchievements={showAchievements}
         showSpellUpgrades={showSpellUpgrades}
-        showAuthModal={showAuthModal}
       />
 
       {/* S2-B2-M2 perf probe (dev-only, self-nulls unless ?perf=A..E) — DOM layer, outside the Canvas */}
@@ -765,9 +742,6 @@ function GameApp({ experienceSystem }) {
         setShowStats={setShowStats}
         questSystem={questSystem}
         spellUpgrades={spellUpgrades}
-        isAuthenticated={isAuthenticated}
-        showAuthModal={showAuthModal}
-        setShowAuthModal={setShowAuthModal}
       />
 
       {import.meta.env.DEV && !hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}

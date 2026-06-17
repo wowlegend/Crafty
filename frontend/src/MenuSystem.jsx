@@ -11,7 +11,6 @@ import { Icon } from './ui/primitives/index.js';
 import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
 import { TradingInterface } from './ui/TradingInterface';
-import { AuthModal } from './AuthComponents';
 import { AchievementsPanel } from './QuestSystem';
 import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
@@ -38,10 +37,7 @@ export function MenuSystem({
   showStats,
   setShowStats,
   questSystem,
-  spellUpgrades,
-  isAuthenticated,
-  showAuthModal,
-  setShowAuthModal
+  spellUpgrades
 }) {
   // Menu starfield/particles. In dev capture mode positions are seeded (order-independent)
   // and CSS twinkle/float animations are frozen, so the menu frame is byte-stable. In normal
@@ -89,7 +85,7 @@ export function MenuSystem({
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
-  const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats, showAuthModal });
+  const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
 
   // Enter (or re-enter) play = open the active gate. On desktop the active SoT is Pointer Lock
   // (Components.jsx's pointerlockchange -> setActive). iPad/iPhone have NO Pointer Lock, and the title
@@ -225,15 +221,6 @@ export function MenuSystem({
           }}
         />
       )}
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          // KEVIN-FIX C4: relock only mid-game (the title-menu auth path must NOT lock)
-          if (gameState.gameStarted && gameState.isAlive && gameState.requestPointerLock) gameState.requestPointerLock();
-        }}
-      />
 
       <AnimatePresence>
         {titleMenuVisible && (
