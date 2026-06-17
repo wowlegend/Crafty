@@ -76,13 +76,22 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // M6 #8: bold-flat last-resort crash screen. Self-contained inline styles (palette hex, NOT theme
+      // tokens/Tailwind) since a crash can predate applyThemeVars/CSS. The raw component stack is DEV-only
+      // (players see a clean reload prompt, not an internals dump).
       return (
-        <div style={{ padding: '20px', backgroundColor: '#fee', color: 'red', height: '100vh', overflow: 'auto' }}>
-          <h1>Something went wrong.</h1>
-          <p style={{ fontWeight: 'bold' }}>{this.state.error && this.state.error.toString()}</p>
-          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12px' }}>
-            {this.state.errorInfo && this.state.errorInfo.componentStack}
-          </pre>
+        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', background: '#0D1320', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          <div style={{ maxWidth: '560px', width: '100%', background: '#16213A', border: '4px solid #0A0F1A', borderRadius: '12px', boxShadow: '8px 8px 0 #0A0F1A', padding: '28px', color: '#E8EDF4' }}>
+            <h1 style={{ margin: '0 0 12px', color: '#C9A86A', fontSize: '28px', fontWeight: 800, letterSpacing: '0.5px' }}>Something went wrong</h1>
+            <p style={{ margin: '0 0 16px', color: '#CBD5E1' }}>The game hit an unexpected error. Reload to get back to the frontier.</p>
+            <p style={{ margin: '0 0 18px', fontWeight: 700, color: '#F2B33D', fontSize: '14px', wordBreak: 'break-word' }}>{this.state.error && this.state.error.toString()}</p>
+            <button onClick={() => window.location.reload()} style={{ background: '#C9A86A', color: '#0A0F1A', border: '3px solid #0A0F1A', borderRadius: '8px', boxShadow: '3px 3px 0 #0A0F1A', padding: '10px 18px', fontWeight: 800, fontSize: '15px', cursor: 'pointer' }}>Reload</button>
+            {import.meta.env.DEV && this.state.errorInfo && (
+              <pre style={{ whiteSpace: 'pre-wrap', fontSize: '11px', color: '#8A97AB', marginTop: '18px', maxHeight: '40vh', overflow: 'auto' }}>
+                {this.state.errorInfo.componentStack}
+              </pre>
+            )}
+          </div>
         </div>
       );
     }

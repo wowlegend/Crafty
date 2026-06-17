@@ -1,5 +1,9 @@
 # Changelog & Development History
 
+### June 16, 2026 (#8 ErrorBoundary bold-flat crash screen)
+- **The crash fallback was a raw inline-style red debug box** (backgroundColor:#fee / color:red) that ALWAYS dumped the React component stack to the player. Rebuilt bold-flat with self-contained palette hex (robust during a crash when the theme system may be down: dark panel + 4px ink border + hard offset shadow + amber heading) + a Reload button; the component stack is now DEV-gated (players get a clean reload prompt, not an internals dump). Static gate error-boundary-gates.test.js (+3 -> 1432). build + eslint clean; OFF the visual gate (the crash screen is never in a capture state) -> no re-baseline.
+- **#7 modal a11y deferred -> Kevin #52:** role=dialog/aria-modal/focus-mgmt across 9 panel modals deserves a shared Modal primitive (a focused refactor touching capture-adjacent panels), not a rushed 9-file attribute sprinkle (incomplete + eslint-risky). Surfaced.
+
 ### June 16, 2026 (#6 animate-fade-in keyframe -- 8 panels' fade was a silent no-op)
 - **animate-fade-in was referenced by 8 panels** (Credits/Quest/Crafting/GamePanels) but NO keyframe/animation existed (tailwind plugins:[], no @keyframes) -> the class silently did nothing; panels popped in. Added the fadeIn keyframe + 'fade-in' animation (150ms ease-out) to tailwind.config.cjs so the class resolves -> panels now fade in. Static gate fade-in-keyframe-gates.test.js (+2 -> 1429); build now emits @keyframes fadeIn + .animate-fade-in; eslint clean. Capture-safe: the 150ms fade settles well before the harness's 900ms capture delay, so the 2 affected capture states (inventory-open/achievements-open) stay byte-identical -> gate 20/20.
 
