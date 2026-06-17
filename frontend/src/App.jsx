@@ -25,6 +25,7 @@ import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
+import { initSettingsPersistence } from './game/settingsPersist.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
@@ -623,6 +624,9 @@ function GameApp({ experienceSystem }) {
       setShowAuthModal?.(true);
     });
     installTestBridge();
+    // M6 settings-persistence: hydrate audio/feedback/look prefs from localStorage + persist on change.
+    // Capture-guarded inside (the visual harness never touches localStorage -> deterministic baselines).
+    initSettingsPersistence(useGameStore, isCaptureMode);
   }, []);
 
   // SINGLE canonical panel set (panelState.js) — was a 4th hand-kept list (missing showCredits/showStats);
