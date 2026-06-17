@@ -7,6 +7,7 @@ import { useGameStore } from './store/useGameStore';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
+import { resolveCastBaseDamage } from './utils/spellCast';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
@@ -177,7 +178,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       // Apply pure RPG spell damage solving scaling with intellect & agility
       const effectiveStats = useGameStore.getState().getEffectiveAttributes();
-      const { damage: finalDamage } = solveSpellDamage(effectiveStats, spell.damage, spellType);
+      // #51: read the LEVELED base damage from the spell-upgrade hook (store-mirrored getSpellStats);
+      // null-safe -> static base when pre-mount/unmapped. Byte-identical at L1 (L1 dmg == SPELL_TYPES base).
+      const baseDamage = resolveCastBaseDamage(useGameStore.getState().getSpellStats, spell, spellType);
+      const { damage: finalDamage } = solveSpellDamage(effectiveStats, baseDamage, spellType);
 
       const newProjectile = {
         id: projectileId.current++,
