@@ -65,9 +65,9 @@ const LOOT_SET = [
 // 1. ITEMS table integrity
 // ─────────────────────────────────────────────────────────────────────────────
 describe('ITEMS registry', () => {
-  it('has 37 entries, each with name/icon/rarity', () => {
+  it('has 39 entries, each with name/icon/rarity', () => {
     const ids = Object.keys(ITEMS);
-    expect(ids).toHaveLength(37);
+    expect(ids).toHaveLength(39);
     for (const id of ids) {
       const def = ITEMS[id];
       expect(def).toMatchObject({
