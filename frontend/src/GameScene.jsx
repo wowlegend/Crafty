@@ -59,7 +59,12 @@ const Sun = ({ onReady }) => {
 // structure to JSON" — the effect's Textures get serialized on reconciliation). So we do
 // NOT ref the component. Instead we reach the live BloomEffect through the composer
 // context (`composer.passes[].effects`) — a one-time lookup cached on first frame.
-const BLOOM_BASE = 0.8;
+// W2-T1 fix: the warm magic-hour grade bumped <Bloom intensity> 0.8->0.95, but the
+// BloomSpikeDriver clamps the LIVE BloomEffect back to BLOOM_BASE every frame (both in
+// capture and in live play, once the spike window has elapsed). So the JSX prop alone
+// was a dead no-op — the rendered base must be set HERE. Raised 0.8->0.95 to make the
+// intended glowier base real (matches the <Bloom intensity={0.95}> prop on line ~906).
+const BLOOM_BASE = 0.95;
 const BLOOM_PEAK = 2.4;
 const BloomSpikeDriver = () => {
   const ctx = useContext(EffectComposerContext);
