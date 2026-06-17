@@ -29,6 +29,11 @@ import { MobModel } from './render/MobModel';
 const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
 const lootDropsQuery = ecs.with('isLootDrop', 'position', 'item', 'xp');
 
+// Shared monotonic id for ECS-spawned pickups (loot drops + XP orbs). These are
+// rendered with key={loot.id}/key={orb.id}; without a stamped id React threw the
+// duplicate/undefined unique-key warning. One counter keeps both streams unique.
+let _spawnId = 0;
+
 const spawnLootDrop = (item, xp, pos) => {
   // Capture-determinism: in capture mode the LootSystem physics loop is frozen, so the
   // drop never moves -> a zero velocity keeps the drop pinned exactly at its spawn pos
@@ -45,6 +50,7 @@ const spawnLootDrop = (item, xp, pos) => {
     : new THREE.Vector3(0, 15, 0);
 
   ecs.add({
+    id: _spawnId++,
     isLootDrop: true,
     item,
     xp: xp || 0,
@@ -544,6 +550,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
           const vz = Math.sin(angle) * speed;
 
           ecs.add({
+            id: _spawnId++,
             isXPOrb: true,
             position: new THREE.Vector3(entity.position.x, entity.position.y + 0.2, entity.position.z),
             velocity: new THREE.Vector3(vx, vy, vz),
