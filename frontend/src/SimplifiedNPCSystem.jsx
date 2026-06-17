@@ -581,7 +581,6 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       return convertMobToAlly(ecs, entity);
     };
 
-    useGameStore.setState({ attackEntity: damageMob });
     useGameStore.setState({ damageMob: damageMob });
     GameMethods.damageMob = damageMob;
     GameMethods.captureMob = captureMob;

@@ -368,8 +368,6 @@ export const useGameStore = create((set, get) => ({
     gameCamera: null,
     setGameCamera: (camera) => set({ gameCamera: camera }),
 
-    attackEntity: null,
-    setAttackEntity: (fn) => set({ attackEntity: fn }),
     damageMob: null,
     setDamageMob: (fn) => set({ damageMob: fn }),
     checkMobCollision: null,
