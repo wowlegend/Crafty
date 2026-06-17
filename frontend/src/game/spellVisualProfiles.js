@@ -18,60 +18,68 @@ export const ENERGY_PROFILE = {
     coreColor: '#FFF4D6',   // white-hot heart (blooms white, edges go orange)
     glowColor: '#FF7A1A',   // saturated fiery orange shell (spec §4 #FF7A3C, pushed hot)
     coreIntensity: 6.0,
-    glowIntensity: 4.0,
-    coreScale: 0.62,        // larger hot heart so it dominates + blooms
+    glowIntensity: 5.5,     // W2-T4: shape is the hero — boost the silhouette emissive
+    coreScale: 0.40,        // W2-T4: white core shrunk to a small bloom spec
     glowScale: 0.92,        // tighter halo (less pink wash)
     glowOpacity: 0.22,      // restrained outer wash so the hot core wins
     flicker: 0.18,          // strong fiery turbulence (gameplay only)
     flickerSpeed: 14,
     capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
     shape: 'sphere',
+    trail: 'embers',        // W2-T4: soft turbulent ember taper
+    impact: 'burst',        // W2-T4: expanding fireball burst
   },
   iceball: {
     coreColor: '#F2FCFF',   // crystalline white heart
     glowColor: '#3FB7FF',   // cool saturated cyan shell (spec §4 #6FC8FF, pushed saturated)
     coreIntensity: 5.5,
-    glowIntensity: 3.6,
-    coreScale: 0.58,
+    glowIntensity: 5.0,     // W2-T4: shape is the hero — boost the crystal emissive
+    coreScale: 0.36,        // W2-T4: white core shrunk to a small bloom spec
     glowScale: 0.86,
     glowOpacity: 0.20,
     flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
     flickerSpeed: 7,
     capturePhase: 0.30,
     shape: 'crystal',
+    trail: 'shard',         // W2-T4: sharp thin shard streak
+    impact: 'shatter',      // W2-T4: radial shard shatter
   },
   lightning: {
     coreColor: '#FFFFFF',   // pure electric white heart
     glowColor: '#86B8FF',   // white-blue electric shell (over the §4 #FFE066 bolt)
     coreIntensity: 8.0,
-    glowIntensity: 4.0,
-    coreScale: 0.50,
+    glowIntensity: 5.5,     // W2-T4: shape is the hero — boost the bolt emissive
+    coreScale: 0.30,        // W2-T4: white core shrunk to a small bloom spec
     glowScale: 0.74,        // thin, jagged — lightning is a hot line, not a ball
     glowOpacity: 0.18,
     flicker: 0.34,          // jagged, high-frequency electric jitter (gameplay only)
     flickerSpeed: 26,
     capturePhase: 1.10,     // frozen at a jagged-but-flattering peak
     shape: 'bolt',
+    trail: 'segments',      // W2-T4: thin jagged lightning segments
+    impact: 'fork',         // W2-T4: forked flash + chain segment
   },
   arcane: {
     coreColor: '#FBEEFF',   // luminous near-white violet heart
     glowColor: '#B84DFF',   // saturated purple-magenta shell (spec §4 #B36BFF, pushed)
     coreIntensity: 6.0,
-    glowIntensity: 3.8,
-    coreScale: 0.60,
+    glowIntensity: 5.2,     // W2-T4: shape is the hero — boost the sigil emissive
+    coreScale: 0.38,        // W2-T4: white core shrunk to a small bloom spec
     glowScale: 0.90,
     glowOpacity: 0.22,
     flicker: 0.14,          // gentle swirling pulse
     flickerSpeed: 10,
     capturePhase: 0.50,
-    shape: 'swirl',
+    shape: 'sigil',         // W2-T4: rotating sigil orb (rings + rune glyph)
+    trail: 'ribbon',        // W2-T4: flat double-sided arcane ribbon
+    impact: 'rune',         // W2-T4: imploding rune ring
   },
 };
 
 export const _defaultEnergy = {
   coreColor: '#FFFFFF', glowColor: '#46E0FF', coreIntensity: 5.0, glowIntensity: 3.4,
-  coreScale: 0.58, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
-  capturePhase: 0.5, shape: 'sphere',
+  coreScale: 0.38, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
+  capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst',
 };
 
 export const WAND_CONFIGS = {
