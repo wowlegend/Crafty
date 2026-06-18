@@ -28,11 +28,12 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
     }
   });
 
-  it('is the COMPLETE set of 12 panels (catch a forgotten new panel)', () => {
+  it('is the COMPLETE set of 13 panels (catch a forgotten new panel)', () => {
     // W1: the auth panel was deleted (auth subsystem purge) -> the auth flag is gone.
+    // M-NARRATIVE.3: showQuestLog added (the quest LOG panel, L).
     expect(PANEL_FLAGS).toEqual([
       'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
-      'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits',
+      'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
       'showSpellUpgrades', 'showAchievements', 'showStats',
     ]);
   });

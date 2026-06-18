@@ -72,6 +72,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowMagic(false);
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
+          state.setShowQuestLog(false);
           state.setShowTradingInterface(false);
           state.setSelectedVillager(null);
           state.setShowChestInterface(false);
@@ -101,6 +102,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowMagic(false);
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
+          state.setShowQuestLog(false);
 
           const newValue = !currentValue;
           setter(newValue);
@@ -118,6 +120,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         if (event.code === 'KeyC') toggleUI(state.setShowCrafting, state.showCrafting);
         if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
         if (event.code === 'KeyM') toggleUI(state.setShowMagic, state.showMagic); // UX-legibility: the advertised M key now opens Magic (was an unhandled HUD lie)
+        if (event.code === 'KeyL') toggleUI(state.setShowQuestLog, state.showQuestLog); // M-NARRATIVE.3: the quest LOG (lore/giver/objective)
       }
 
       if (active && !anyPanelOpen) {

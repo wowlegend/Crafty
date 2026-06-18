@@ -603,6 +603,9 @@ export const useGameStore = create((set, get) => ({
     showInventory: false,
     setShowInventory: (show) => set((state) => ({ showInventory: typeof show === 'function' ? show(state.showInventory) : show })),
 
+    showQuestLog: false,
+    setShowQuestLog: (show) => set((state) => ({ showQuestLog: typeof show === 'function' ? show(state.showQuestLog) : show })),
+
     showCrafting: false,
     setShowCrafting: (show) => set((state) => ({ showCrafting: typeof show === 'function' ? show(state.showCrafting) : show })),
 

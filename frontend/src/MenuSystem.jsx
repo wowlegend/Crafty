@@ -12,6 +12,7 @@ import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
 import { TradingInterface } from './ui/TradingInterface';
 import { AchievementsPanel } from './QuestSystem';
+import { QuestLog } from './ui/QuestLog';
 import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu } from './ui/panelState.js';
@@ -105,6 +106,15 @@ export function MenuSystem({
             gameState={gameState}
             onClose={() => {
               gameState.setShowInventory(false);
+              enterPlay();
+            }}
+          />
+        )}
+        {gameState.showQuestLog && (
+          <QuestLog
+            quests={questSystem.quests}
+            onClose={() => {
+              gameState.setShowQuestLog(false);
               enterPlay();
             }}
           />
