@@ -19,7 +19,13 @@ describe('nametags gates', () => {
   it('capture-suppressed (no overlay in the deterministic baselines)', () => {
     expect(nt).toMatch(/isCaptureMode\(\)/);
   });
-  it('LOD-culled by distance (uses the nametagFor visible flag)', () => {
-    expect(nt).toMatch(/\.visible/);
+  // Static-source presence check only — the LOD range / showBar / danger-color BEHAVIOR is
+  // genuinely exercised in tests/data/nametagData.test.js (M-HUD.5). Here we assert the render
+  // layer WIRES the tag.visible flag to group visibility, and gates BOTH the bar fill AND its
+  // dark background with tag.showBar (so name-only tags never leave a stray empty rectangle).
+  it('wires tag.visible to group visibility and gates bar fill + background by tag.showBar', () => {
+    expect(nt).toMatch(/g\.visible\s*=\s*tag\.visible/);
+    expect(nt).toMatch(/bgRef\.current\.visible\s*=\s*tag\.showBar/);
+    expect(nt).toMatch(/barRef\.current\.visible\s*=\s*tag\.showBar/);
   });
 });

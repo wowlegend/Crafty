@@ -32,6 +32,7 @@ function useEntities(query) {
 function Tag({ entity }) {
   const groupRef = useRef();
   const textRef = useRef();
+  const bgRef = useRef();
   const barRef = useRef();
   const barMatRef = useRef();
   useFrame(() => {
@@ -46,6 +47,10 @@ function Tag({ entity }) {
     if (!g.visible) return;
     g.position.set(entity.position.x, entity.position.y + 2.4, entity.position.z);
     if (textRef.current) { textRef.current.text = tag.text; textRef.current.color = tag.color; }
+    // name-only tags (passive mobs / NPCs / bound allies return showBar:false) must NOT render the
+    // dark bar BACKGROUND either — gate it with the same flag as the fill, else a stray empty
+    // rectangle floats under the name (the M-HUD.5 name-only vs name+bar distinction).
+    if (bgRef.current) bgRef.current.visible = tag.showBar;
     if (barRef.current) {
       barRef.current.visible = tag.showBar;
       barRef.current.scale.x = Math.max(0.001, tag.hpFrac);
@@ -60,7 +65,7 @@ function Tag({ entity }) {
         <Text ref={textRef} fontSize={0.34} anchorX="center" anchorY="bottom" outlineWidth={0.02} outlineColor="#1A1206" position={[0, 0.2, 0]}>
           {entity.type}
         </Text>
-        <mesh position={[0, 0, 0]} scale={[1, 0.12, 1]}>
+        <mesh ref={bgRef} position={[0, 0, 0]} scale={[1, 0.12, 1]}>
           <planeGeometry args={[1, 1]} />
           <meshBasicMaterial color="#1A1206" />
         </mesh>
