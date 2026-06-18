@@ -17,7 +17,6 @@ import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
-import { SEA_LEVEL } from './oceanProfile.js';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
@@ -28,8 +27,8 @@ worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
 const voxelTextures = createProceduralVoxelTextures();
 
-// Shared SOTA Terrain Material with GPU wave sways and night bioluminescence
-// Shared SOTA Terrain Materials with GPU wave sways and night bioluminescence
+// Shared SOTA opaque-LAND terrain material (W2: water is owned by the Ocean.jsx Gerstner plane now;
+// this material renders only land — de-tile, vertex AO, danger-mood grade, aerial perspective).
 const opaqueMaterial = new THREE.MeshStandardMaterial({
     roughness: 0.85,
     metalness: 0.1,
@@ -40,20 +39,14 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
 });
 
 const compileShader = (shader) => {
-    shader.uniforms.time = { value: 0 };
-    shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
     shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from sampleMood)
 
-    // Vertex Shader: Procedural undulating waves for water blocks
+    // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
-        uniform float time;
-        uniform float timeOfDay;
         flat varying float vBlockType;
         varying float vWorldY;
-        varying float vFoam;
-        varying float vDepthB;
         attribute float aAO; // S1 vertex AO factor 0..3 (mesher cornerAO), forwarded to vAO
         varying float vAO;
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
@@ -68,8 +61,6 @@ const compileShader = (shader) => {
         `
         void main() {
             vBlockType = color.r;
-            vFoam = color.g; // ocean S2: shore-foam factor baked per water-top vertex by the mesher
-            vDepthB = color.b; // ocean S3: per-column seabed-depth factor (top-surface grade)
             vAO = aAO; // S1 vertex AO 0..3 -> fragment diffuse multiplier
             vUv = uv;
 `
@@ -79,32 +70,22 @@ const compileShader = (shader) => {
         '#include <begin_vertex>',
         `
         #include <begin_vertex>
-        vWorldY = (modelMatrix * vec4(position, 1.0)).y; // M5a: world height for the water depth-tint
+        vWorldY = (modelMatrix * vec4(position, 1.0)).y; // world height (drives the land aerial-perspective grade)
         vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz; // S(tex) de-tile: world cell for per-cell value variation
-        // Check if vertex is water by its blockType index in color.r attribute (9.0)
-        bool isWater = (abs(color.r - 9.0) < 0.1);
-        if (isWater) {
-            // Compute a world-aligned coordinate for coherent wave structures across chunk boundaries
-            vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-            float waveX = sin(time * 2.5 + worldPosition.x * 0.8) * 0.12;
-            float waveZ = cos(time * 2.0 + worldPosition.z * 0.8) * 0.12;
-            transformed.y += waveX + waveZ - 0.05; // slightly lower to reduce z-fighting with shorelines
-        }
+        // W2: voxel water faces are no longer emitted (Ocean.jsx owns the surface), so the old per-vertex
+        // water wave-displacement is gone. Every emitted quad is opaque LAND.
         `
     );
 
-    // Fragment Shader: Glowing neon blue bioluminescent pulse during Night
+    // Fragment Shader: land albedo (texture-array sample + linear decode), de-tile jitter, vertex AO,
+    // danger-mood grade, and the distance aerial-perspective haze. (W2: the old water render path is gone.)
     shader.fragmentShader = `
         precision highp sampler2DArray;
         uniform sampler2DArray voxelTextures;
-        uniform float time;
-        uniform float timeOfDay;
         uniform float mood;
         uniform vec3 skyHorizon; // S2 aerial-perspective haze colour (= sky horizon, set per-frame from mood)
         flat varying float vBlockType;
         varying float vWorldY;
-        varying float vFoam;
-        varying float vDepthB;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
         #ifndef USE_UV
@@ -121,32 +102,13 @@ const compileShader = (shader) => {
         // Sample nearest pixel-art repeating tile coordinates from array layer
         vec4 texColor = texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layerIndex));
         
-        // Set ocean block transparency
-        float customAlpha = 1.0;
-        bool isWaterPixel = (abs(layerIndex - 9.0) < 0.1);
-        if (isWaterPixel) {
-            customAlpha = 0.75;
-        }
-
         // Set the diffuse color to the sampled texture (before lighting calculations).
         // The DataArrayTexture stores sRGB-display bytes but is sampled through a
         // custom sampler2DArray (so material.colorSpace is a no-op). Decode to linear
         // here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
-        diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a * customAlpha);
-
-        // M5a depth-tint: water darkens + shifts to deep-navy with depth below SEA_LEVEL (the M2
-        // divable basins now READ deep). Static (vWorldY geometry) -> capture-stable. Water-gated.
-        if (isWaterPixel) {
-            float wdepth = clamp((${SEA_LEVEL}.0 - vWorldY) / 22.0, 0.0, 1.0);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.015, 0.09, 0.20), wdepth * 0.82);
-            // Ocean S1 surface lift: the depth-tint above only reaches the side/underwater faces (vWorldY
-            // is ~SEA_LEVEL on the top face -> wdepth~0), so the surface read flat. Lift the shallow/surface
-            // water toward a brighter tropical teal (deep water keeps the navy). Static -> capture-stable.
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.04, 0.37, 0.50), (1.0 - wdepth) * 0.55);
-            // Ocean S3 top-surface depth grade: the flat top face (wdepth~0) grades shallow-teal -> deep-navy
-            // by the per-column seabed depth baked in color.b (the vWorldY tint only reaches the side faces).
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.012, 0.07, 0.18), clamp(vDepthB, 0.0, 1.0) * 0.7);
-        }
+        // W2: every quad is opaque LAND now (the Ocean.jsx plane owns the water surface), so the
+        // old water transparency/depth-tint path is gone — alpha is always opaque.
+        diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a);
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
         // at obsidian. LUMINANCE-PRESERVING (no darkening) so dusk stays readable — the per-mood
@@ -177,22 +139,9 @@ const compileShader = (shader) => {
         '#include <opaque_fragment>',
         `
         #include <opaque_fragment>
-        
-        if (abs(vBlockType - 9.0) < 0.1) {
-            float nightFactor = 1.0 - timeOfDay;
-            // Pulsing bioluminescence frequency
-            float pulse = sin(time * 1.5 + vViewPosition.y * 3.0) * 0.5 + 0.5;
-            vec3 bioluminescence = vec3(0.0, 0.45, 0.9) * pulse * 0.65 * nightFactor;
-            gl_FragColor.rgb += bioluminescence;
-            // Ocean S1 sheen: a view-angle Fresnel lifts the surface toward a bright sky-teal at grazing
-            // angles (light catching the water -> the surface stops reading matte/flat). Day-weighted;
-            // static geometry/camera -> capture-deterministic. normal = view-space shading normal.
-            float fres = pow(1.0 - clamp(abs(normal.z), 0.0, 1.0), 4.0);
-            gl_FragColor.rgb += vec3(0.12, 0.30, 0.36) * fres * 0.6 * timeOfDay;
-            // Ocean S2 shore foam (POST-lighting so it pops over the lit teal): water-top cells touching
-            // land carry vFoam=1 (baked per-block by the mesher) -> a bright foam ring at every shore.
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.98, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85);
-        }
+
+        // W2: the in-mesher water render path is gone — the Ocean.jsx Gerstner plane owns the animated
+        // water surface now, so the mesher emits no water faces and this material renders only land.
 
         // S2 aerial perspective (non-water LAND): distant terrain hazes toward the sky-horizon colour so far
         // mountains read as atmospheric DEPTH, not an oppressive dark wall (complements the height-fog, which
@@ -494,21 +443,14 @@ export const MinecraftWorld = React.memo(() => {
     const { rapier, world } = useRapier();
     const { playBlockPlace, playBlockBreak } = useGameSounds();
 
-    // Update shared terrain shader uniforms
-    useFrame((state) => {
-        // Dev capture-determinism: pin the shader clock to a fixed value so the water
-        // waves + night bioluminescence shimmer hold a frozen frame across capture runs
-        // (wall-clock elapsedTime differs run-to-run -> ground-plane jitter). Inert in
-        // normal gameplay — falls through to the live clock so the surface animates as before.
-        const time = isCaptureMode() ? 0 : state.clock.elapsedTime;
+    // Update shared terrain shader uniforms (the surviving LAND grade: danger-mood + aerial haze).
+    // W2: the water clock (time/timeOfDay) is gone — Ocean.jsx owns the animated surface + its own
+    // capture-frozen wave time now, so the land material has no time-varying term.
+    useFrame(() => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
-        const timeOfDay = 1.0 - THREE.MathUtils.clamp(mood, 0.0, 1.0);   // night/obsidian -> 0 (biolum on)
-
         const sky = sampleMood(mood).skyHorizon; // S2 aerial haze target (shared scratch -> copy, don't retain)
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
-            opaqueShader.uniforms.time.value = time;
-            opaqueShader.uniforms.timeOfDay.value = timeOfDay;
             opaqueShader.uniforms.mood.value = mood;
             opaqueShader.uniforms.skyHorizon.value.copy(sky);
         }

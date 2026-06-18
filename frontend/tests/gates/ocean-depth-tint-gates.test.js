@@ -6,22 +6,27 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = resolve(HERE, '../../src');
 const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 
-// World-M5a: the water depth-tint. A world-Y varying carries depth to the fragment; the tint mixes
-// toward deep-navy by (SEA_LEVEL - vWorldY), water-gated, and is STATIC (no time -> capture-stable).
-describe('Ocean depth-tint gate (World-M5a)', () => {
+// W2-T2: the voxel-water render path is RETIRED. The Ocean.jsx Gerstner plane owns the animated
+// water surface now, and the mesher emits no blockType-9 faces (color.g/color.b are hardwired to 0),
+// so the old in-mesher water depth-tint / shore-foam / bioluminescence shader path in Terrain.jsx is
+// dead and was removed. This gate guards against its REINTRODUCTION (a stale water path would be
+// unreachable dead code at best, and a double-rendered surface at worst).
+describe('Ocean voxel-water render path is retired (W2-T2)', () => {
   const t = read('world/Terrain.jsx');
-  it('a world-Y varying is declared (vertex + fragment) and written in the vertex', () => {
-    expect((t.match(/varying float vWorldY;/g) || []).length).toBeGreaterThanOrEqual(2); // both shaders
-    expect(t).toMatch(/vWorldY\s*=\s*\(modelMatrix \* vec4\(position, 1\.0\)\)\.y;/);
+  it('the per-vertex foam/depth varyings are gone (the mesher no longer bakes them)', () => {
+    expect(t).not.toMatch(/varying float vFoam;/);
+    expect(t).not.toMatch(/varying float vDepthB;/);
   });
-  it('the depth-tint reads vWorldY + SEA_LEVEL (compile-time const from oceanProfile) and is water-gated', () => {
-    expect(t).toMatch(/from '\.\/oceanProfile\.js'/);
-    expect(t).toMatch(/isWaterPixel\)/);
-    expect(t).toMatch(/vWorldY/);
+  it('the M5a water depth-tint block is gone', () => {
+    expect(t).not.toMatch(/M5a depth-tint/);
+    expect(t).not.toMatch(/isWaterPixel/);
   });
-  it('the depth-tint is capture-stable (the labeled M5a block introduces no `time` term)', () => {
-    const m = t.match(/\/\/ M5a depth-tint[\s\S]{0,400}/);
-    expect(m, 'a labeled M5a depth-tint block exists').not.toBe(null);
-    expect(m[0]).not.toMatch(/\btime\b/);
+  it('the water bioluminescence + Fresnel sheen + shore-foam ring is gone', () => {
+    expect(t).not.toMatch(/bioluminescence/);
+    expect(t).not.toMatch(/shore foam/i);
+  });
+  it('Ocean.jsx is the surviving water surface owner', () => {
+    const ocean = read('render/Ocean.jsx');
+    expect(ocean).toMatch(/gerstnerHeight/);
   });
 });
