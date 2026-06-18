@@ -42,6 +42,8 @@ describe('M5 element-at-impact gates', () => {
     expect(read('game/mobHitFx.js')).toMatch(/export function deathBurst/);
     const npc = read('SimplifiedNPCSystem.jsx');
     expect(npc, 'death path must trigger the deathBurst spark before emitMobKill').toMatch(/deathBurst\(entity\.type\)/);
-    expect(npc, 'the deathBurst color/count must feed triggerGPUSparks').toMatch(/dColor, dCount/);
+    // W2-T5: the kill path now forwards the FULL deathBurst descriptor (db.color carries the
+    // hue-preserving dark-mob tint floor; db.burst selects the upward-biased death velocity branch).
+    expect(npc, 'the deathBurst descriptor (color/count/burst) must feed triggerGPUSparks').toMatch(/db\.color, db\.count, db\.burst/);
   });
 });

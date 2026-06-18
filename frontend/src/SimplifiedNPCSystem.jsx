@@ -15,6 +15,7 @@ import { weightedPick } from './game/spawnWeights';
 import { MOB_TYPES } from './game/mobTypes';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
+import { DeathFxRender } from './render/deathVfx';
 import { stepXPOrb, stepLootDrop } from './game/xpOrbStepper';
 import { sparkFor, hitKnockback, deathBurst } from './game/mobHitFx';
 import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
@@ -562,9 +563,16 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
 
         // Death FINISHER: a bigger, mob-coloured spark burst so a kill reads as a payoff (was silent --
         // the mob just vanished). Reuses the proven GPU spark pool; capture-safe (no kills under capture).
+        // W2-T5: pass the FULL deathBurst descriptor -- db.color carries the hue-preserving dark-mob
+        // tint floor, db.burst selects the upward-biased death velocity branch, hitDir gives the rise
+        // a directional lean away from the player. A t=0 flash + a fading ground decal are spawned too.
+        const db = deathBurst(entity.type);
+        const deathPos = new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z);
         if (store.triggerGPUSparks) {
-          const { color: dColor, count: dCount } = deathBurst(entity.type);
-          store.triggerGPUSparks(new THREE.Vector3(entity.position.x, entity.position.y + 0.8, entity.position.z), dColor, dCount, 'death');
+          store.triggerGPUSparks(deathPos, db.color, db.count, db.burst, entity.hitDirection);
+        }
+        if (GameMethods.spawnDeathFx) {
+          GameMethods.spawnDeathFx([entity.position.x, entity.position.y, entity.position.z], deathPos.y, db.color);
         }
         emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], source); // M3.5 fan-out + B3-M1 attribution
         // M2 #7 death weight: defer removal behind a dissolve so a kill has WEIGHT (XP / spark / kill-bus
@@ -748,6 +756,7 @@ export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const [shockwaves, setShockwaves] = useState([]);
   const [lootPops, setLootPops] = useState([]);
+  const [deathFx, setDeathFx] = useState([]);
   const damageId = useRef(0);
   const entities = useEntities(mobsQuery);
   const allies = useEntities(alliesQuery); // S2-B3-M5: bound creatures RENDER again (they left mobsQuery at bind)
@@ -781,6 +790,16 @@ export const NPCSystem = React.memo(() => {
       setLootPops(prev => [...prev, {
         id: damageId.current++,
         position: [position.x, position.y + 0.1, position.z],
+        color
+      }]);
+    };
+    // W2-T5: mob-death flourish -- a t=0 hot flash at the burst centre + a fading ground-ring decal
+    // in the mob's hue-preserved colour, fired from the damageMob kill path.
+    GameMethods.spawnDeathFx = (position, flashY, color) => {
+      setDeathFx(prev => [...prev, {
+        id: damageId.current++,
+        position,
+        flashY,
         color
       }]);
     };
@@ -844,6 +863,17 @@ export const NPCSystem = React.memo(() => {
           position={pop.position}
           color={pop.color}
           onComplete={(id) => setLootPops(prev => prev.filter(p => p.id !== id))}
+        />
+      ))}
+
+      {deathFx.map(fx => (
+        <DeathFxRender
+          key={fx.id}
+          id={fx.id}
+          position={fx.position}
+          flashY={fx.flashY}
+          color={fx.color}
+          onComplete={(id) => setDeathFx(prev => prev.filter(f => f.id !== id))}
         />
       ))}
     </group>

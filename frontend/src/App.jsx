@@ -417,6 +417,41 @@ function GameApp({ experienceSystem }) {
         });
       }
     });
+    // W2-T5 death-FX LIVE-LOOK fixture: a deterministic sky-studio card of a GREEN zombie being
+    // KILLED, so the hue-preserving death burst (a rising green spark soul-burst, NOT a white/black
+    // puff), the t=0 hot flash, and the fading ground-ring decal are eyeball-able in one frame.
+    // Capture mode pins the camera + freezes clocks: the GPU spark burst renders mid-flight at
+    // uTime=0 (the GPUSparkSystem capture-phase fix), the DeathFxRender holds a fixed early-life
+    // pose (flash bright, decal mid-expand), and the corpse-removal sweep is frozen (mob AI early-
+    // returns in capture) so the dying zombie + its FX stay in-frame. The kill is forced AFTER
+    // entering capture so it's injected into an already-frozen world. DEV-only (tree-shaken).
+    registerTestHook('killMobShowcase', (opts = {}) => {
+      const store = useGameStore.getState();
+      store.setHudHidden(true);     // clean studio card: suppress HUD + toasts
+      store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
+      store.setDangerLevel(0);
+      // Additive VFX hue READS against a backdrop -- a near-white midday sky desaturates a green
+      // additive spark; the dark night sky (the real gameplay context for a kill) lets the green
+      // survive. Default to night so the hue-preservation claim is honestly judged; opts.day forces
+      // the bright midday card for a contrast read.
+      store.setTimeOfDay(opts.day ? 0.5 : 0.0);
+      useGameStore.setState({ treasureChestsList: [] });
+      // Sky studio centered far on +X (x=160): clear of the character-closeup zombie (x=0), the
+      // boss dragon (x=40), the spell-cast (x=120) and the loot row (x=80) by >=40 units.
+      const MX = 160, MY = 146, MZ = -8;
+      // Clear any stray mobs, then spawn the hero green zombie at the studio spot.
+      for (const e of [...mobsQuery.entities]) ecs.remove(e);
+      if (store.spawnMob) store.spawnMob(MX, MZ, 'zombie', MY);
+      // Enter capture (pins cam + freezes clocks) BEFORE the kill so the FX is frozen mid-burst.
+      // 3/4 side angle, pulled back + aimed slightly UP so the rising spark burst (vy up to ~11)
+      // fits and the terrain horizon stays out of frame -> clean sky backdrop for the additive read.
+      enterCaptureMode({ camera: { position: [MX + 1.6, MY + 1.8, MZ + 4.2], lookAt: [MX, MY + 1.2, MZ] } });
+      // Force the lethal hit (massive damage) on the just-spawned zombie -> fires the death path
+      // (hue-preserving GPU spark burst + spawnDeathFx flash + ground decal). source 'player' so the
+      // full finisher path runs. The mob group sits at world y=MY+0.5; the burst centre is +0.8 above.
+      const z = mobsQuery.entities.find((e) => e.type === 'zombie' && Math.abs(e.position.x - MX) < 1);
+      if (z && GameMethods.damageMob) GameMethods.damageMob(z.id, 9999, 'physical', 'player');
+    });
     // Loot-showcase fixture (S2-A-M4b / M3c eyeball gap): a deterministic sky-studio card
     // showing FOUR loot drops -- one per rarity (common/rare/epic/legendary) -- laid out
     // left->right so all four rarity BEAMS stand side by side, ascending in height + bright-
