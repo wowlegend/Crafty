@@ -7,6 +7,7 @@ import { World } from 'miniplex';
 import { ecs, mobsQuery, alliesQuery } from './ecs/world';
 import { HUB_NPCS, makeNpcEntity } from './world/npcSpawn.js';
 import { HEARTH_Y } from './world/homeAnchor.js';
+import { routinePosition } from './game/npcRoutine.js';
 import { convertMobToAlly } from './game/allegiance';
 import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
@@ -369,6 +370,27 @@ const AIWorkerSystem = () => {
       }
     };
   }, []);
+
+  // M-AMBIENT.2: gentle ambient routine for the static hub NPCs (the AI worker + knockback skip them).
+  // Each isNPC lerps toward routinePosition (a slow daytime patrol around its post; retreat home at
+  // night) and re-raycasts ground Y so it stays FLUSH even at the patrol extremes (the M-HUB float
+  // class). Capture-suppressed -> NPCs freeze + don't even spawn in capture, so baselines are byte-stable.
+  useFrame(() => {
+    if (isCaptureMode()) return;
+    const store = useGameStore.getState();
+    const isDay = store.isDay;
+    const gameTime = store.gameTime || 0;
+    for (const e of mobsQuery.entities) {
+      if (!e || !e.isNPC) continue;
+      const target = routinePosition({ x: e.homeX, z: e.homeZ }, gameTime, isDay);
+      e.position.x += (target.x - e.position.x) * 0.04;
+      e.position.z += (target.z - e.position.z) * 0.04;
+      if (store.getMobGroundLevel) {
+        const gy = store.getMobGroundLevel(e.position.x, e.position.z);
+        if (gy != null && !isNaN(gy)) e.position.y += ((gy + 0.5) - e.position.y) * 0.1;
+      }
+    }
+  });
 
   useFrame((state, delta) => {
     if (!camera || !workerRef.current) return;

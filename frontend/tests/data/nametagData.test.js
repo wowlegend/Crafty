@@ -17,6 +17,10 @@ describe('nametagFor', () => {
     expect(tag.showBar).toBe(false);
     expect(tag.text).toBe('Bram the Trader');
   });
+  it('a hub NPC with a glyph -> the glyph is prepended to the floating nametag (M-AMBIENT.2 interactable cue)', () => {
+    const tag = nametagFor({ type: 'villager', health: 200, maxHealth: 200, passive: true, npcName: 'Bram the Trader', glyph: '?' }, 10);
+    expect(tag.text).toMatch(/^\?\s+Bram the Trader$/);
+  });
   it('bound ally -> jade color, friendly read', () => {
     expect(nametagFor({ type: 'zombie', health: 50, maxHealth: 60, isAlly: true }, 10).color).toMatch(/3DFFB0|jade/i);
   });
