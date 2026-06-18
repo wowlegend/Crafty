@@ -39,15 +39,6 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
     side: THREE.FrontSide
 });
 
-const waterMaterial = new THREE.MeshStandardMaterial({
-    roughness: 0.15,
-    metalness: 0.1,
-    vertexColors: true,
-    transparent: true,
-    depthWrite: false,
-    side: THREE.FrontSide
-});
-
 const compileShader = (shader) => {
     shader.uniforms.time = { value: 0 };
     shader.uniforms.timeOfDay = { value: 1.0 }; // 1.0 = Day, 0.0 = Night
@@ -223,11 +214,6 @@ opaqueMaterial.onBeforeCompile = (shader) => {
     opaqueMaterial.userData.shader = shader;
 };
 
-waterMaterial.onBeforeCompile = (shader) => {
-    compileShader(shader);
-    waterMaterial.userData.shader = shader;
-};
-
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     if (!meshData || meshData.positions.length === 0) return null;
 
@@ -238,73 +224,35 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
             if (onUnmount) onUnmount(key);
         };
     }, [cx, cz, onMount, onUnmount]);
-    const [opaqueGeometry, waterGeometry] = React.useMemo(() => {
-        const indices = meshData.indices;
-        const colors = meshData.colors;
-        const opaqueIndicesArr = [];
-        const waterIndicesArr = [];
-        
-        for (let i = 0; i < indices.length; i += 3) {
-            const idx0 = indices[i];
-            const blockType = colors[idx0 * 3];
-            const isWater = Math.abs(blockType - 9.0) < 0.1;
-            
-            if (isWater) {
-                waterIndicesArr.push(indices[i], indices[i+1], indices[i+2]);
-            } else {
-                opaqueIndicesArr.push(indices[i], indices[i+1], indices[i+2]);
-            }
+    // W2: the mesher emits NO water faces now (the Ocean.jsx Gerstner plane owns the water surface),
+    // so every emitted quad is opaque LAND -> one geometry built straight from the full index buffer
+    // (the old opaque/water index split is dead).
+    const opaqueGeometry = React.useMemo(() => {
+        if (!meshData.indices || meshData.indices.length === 0) return null;
+        const opaqueGeom = new THREE.BufferGeometry();
+        opaqueGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
+        opaqueGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
+        if (meshData.uvs) {
+            opaqueGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
         }
-        
-        let opaqueGeom = null;
-        if (opaqueIndicesArr.length > 0) {
-            opaqueGeom = new THREE.BufferGeometry();
-            opaqueGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
-            opaqueGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-            if (meshData.uvs) {
-                opaqueGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
-            }
-            // Bind the standard colors array directly to the 'color' attribute
-            opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
-            opaqueGeom.setAttribute('aAO', new THREE.BufferAttribute(meshData.ao, 1)); // S1 vertex AO
-
-            opaqueGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(opaqueIndicesArr), 1));
-            opaqueGeom.computeBoundingSphere();
-        }
-        
-        let waterGeom = null;
-        if (waterIndicesArr.length > 0) {
-            waterGeom = new THREE.BufferGeometry();
-            waterGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
-            waterGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
-            if (meshData.uvs) {
-                waterGeom.setAttribute('uv', new THREE.BufferAttribute(meshData.uvs, 2));
-            }
-            // Bind the standard colors array directly to the 'color' attribute
-            waterGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
-            waterGeom.setAttribute('aAO', new THREE.BufferAttribute(meshData.ao, 1)); // S1 vertex AO
-
-            waterGeom.setIndex(new THREE.BufferAttribute(new Uint32Array(waterIndicesArr), 1));
-            waterGeom.computeBoundingSphere();
-        }
-        
-        return [opaqueGeom, waterGeom];
+        // Bind the standard colors array directly to the 'color' attribute
+        opaqueGeom.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3));
+        opaqueGeom.setAttribute('aAO', new THREE.BufferAttribute(meshData.ao, 1)); // S1 vertex AO
+        opaqueGeom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+        opaqueGeom.computeBoundingSphere();
+        return opaqueGeom;
     }, [meshData]);
- 
+
     React.useEffect(() => {
         return () => {
             if (opaqueGeometry) opaqueGeometry.dispose();
-            if (waterGeometry) waterGeometry.dispose();
         };
-    }, [opaqueGeometry, waterGeometry]);
+    }, [opaqueGeometry]);
 
     return (
         <group position={[cx * 16, 0, cz * 16]}>
             {opaqueGeometry && (
                 <mesh geometry={opaqueGeometry} material={opaqueMaterial} castShadow receiveShadow />
-            )}
-            {waterGeometry && (
-                <mesh geometry={waterGeometry} material={waterMaterial} receiveShadow />
             )}
             <RigidBody type="fixed" colliders={false}>
                 <TrimeshCollider args={[meshData.positions, meshData.indices]} />
@@ -563,13 +511,6 @@ export const MinecraftWorld = React.memo(() => {
             opaqueShader.uniforms.timeOfDay.value = timeOfDay;
             opaqueShader.uniforms.mood.value = mood;
             opaqueShader.uniforms.skyHorizon.value.copy(sky);
-        }
-        const waterShader = waterMaterial.userData.shader;
-        if (waterShader) {
-            waterShader.uniforms.time.value = time;
-            waterShader.uniforms.timeOfDay.value = timeOfDay;
-            waterShader.uniforms.mood.value = mood;
-            waterShader.uniforms.skyHorizon.value.copy(sky);
         }
     });
 

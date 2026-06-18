@@ -10,8 +10,9 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 // World-Design M2: the two shoreline consts must stay distinct (the 28->30 gap is the shoreline),
-// the worker must route the ocean profile through the named module (no leftover magic 28/30 at the
-// 4 worldgen sites), and the water mesh must NOT cast shadow (perf + transparent-shadow artifact).
+// and the worker must route the ocean profile through the named module (no leftover magic 28/30 at the
+// 4 worldgen sites). (W2: the voxel water mesh is GONE -- the Ocean.jsx Gerstner plane owns the surface
+// now, so the old "water mesh does NOT cast shadow" assertion no longer applies.)
 describe('Ocean + coastline gates (World-M2)', () => {
   const worker = strip(read('world/terrain.worker.js'));
 
@@ -28,11 +29,5 @@ describe('Ocean + coastline gates (World-M2)', () => {
     expect(worker, 'beach override').toMatch(/surfaceY < BEACH_BAND_TOP/);
     // the ocean branch routes through the module, not an inline 12 + n*12
     expect(worker).not.toMatch(/targetOceanHeight\s*=\s*12 \+ n \* 12/);
-  });
-  it('the water mesh does NOT cast shadow (perf + transparent-shadow artifact)', () => {
-    const terrain = strip(read('world/Terrain.jsx'));
-    const m = terrain.match(/material=\{waterMaterial\}[^/]*\/>/);
-    expect(m, 'water mesh found').not.toBe(null);
-    expect(m[0], 'water mesh must not castShadow').not.toMatch(/castShadow/);
   });
 });

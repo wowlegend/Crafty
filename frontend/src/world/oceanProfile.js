@@ -34,34 +34,45 @@ export function oceanSurfaceY(baseHeight, n, continent) {
   return Math.floor(baseHeight * (1 - t) + seabed * t);
 }
 
-// --- Shore-foam kernel (ocean S2) ---
-// A voxel water TOP face (water below, air above) reads as SHORE when a horizontal neighbor at the same
-// level is land (a solid, non-water block). The greedy mesher merges all water-top faces into ONE quad
-// at SEA_LEVEL, so per-column foam can't ride a merged quad's vertex color -- the mesher will stop merging
-// water-top faces and bake this factor into a spare vertex-color channel (color.g). Pure (block-type ints
-// only) -> unit-testable without GL. Block ids per BLOCK_COLORS: 0=air, 9=water, >0 and not 9 = solid land.
-export const WATER_BLOCK = 9;
-const isSolidLand = (b) => b > 0 && b !== WATER_BLOCK;
+// --- W2 stylized-toon ocean SURFACE (summed Gerstner) ---
+// World-space (x,z) in, height around SEA_LEVEL out. 4 summed Gerstner components with world-space
+// phase (k.x*x + k.z*z) so the surface is CROSS-CHUNK coherent (no per-chunk reset) and the Ocean.jsx
+// plane can be re-positioned under the camera without seams. `time` is the wave clock; the Ocean
+// component FREEZES it to a fixed phase in capture mode for byte-stable frames. Pure (no THREE/state)
+// -> unit-testable without GL. REPLACES the old voxel-water foam/depth bake (the mesher no longer
+// emits water faces; this animated plane owns the whole ocean surface read).
+export const WAVES = [
+  // [dirX, dirZ, wavelength, amplitude, speed]
+  [1.0, 0.35, 18.0, 0.85, 0.55],
+  [-0.6, 1.0, 11.0, 0.45, 0.80],
+  [0.3, -1.0, 6.5, 0.28, 1.15],
+  [1.0, -0.2, 27.0, 0.55, 0.40],
+];
+const _norm = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
 
-// A water surface (top) cell = water with air directly above (so it carries the visible top face).
-export function isWaterTop(self, above) {
-  return self === WATER_BLOCK && above === 0;
+export function gerstnerHeight(x, z, time) {
+  let h = 0;
+  for (const [dx, dz, wl, amp, spd] of WAVES) {
+    const [nx, nz] = _norm(dx, dz);
+    const k = (Math.PI * 2) / wl;            // wave number
+    const phase = k * (nx * x + nz * z) + time * spd * k;
+    h += amp * Math.sin(phase);
+  }
+  return SEA_LEVEL + h;
 }
 
-// neighbors = the 4 horizontal block ids at the water-surface level. Returns 1 if this water-top cell
-// touches land (-> foam), else 0. Binary for S2; a graded seaward falloff can layer on later.
-export function shoreFoamFactor(self, above, neighbors) {
-  if (!isWaterTop(self, above)) return 0;
-  for (const nb of neighbors) if (isSolidLand(nb)) return 1;
-  return 0;
-}
-
-// --- Per-column seabed-depth factor for the TOP-surface depth grade (ocean S3) ---
-// The side/underwater faces already darken by world-Y in the shader, but the flat top face is at SEA_LEVEL
-// everywhere, so it needs the seabed depth baked PER COLUMN (the S2 water-top-unmerge makes each surface
-// cell its own quad that can carry it in color.b). t in [0,1]: 0 = shallow (seabed near the surface),
-// 1 = deepest. maxDepth = SEA_LEVEL - DEEP_FLOOR (= 22), the bounded divable basin depth.
-export function seabedDepthT(waterTopY, seabedY) {
-  const maxDepth = SEA_LEVEL - DEEP_FLOOR;
-  return Math.min(1, Math.max(0, (waterTopY - seabedY) / maxDepth));
+// Analytic normal from the partial derivatives of the summed height field (recomputed, not the flat
+// plane normal -- this is what makes Fresnel + glossy bands read off the REAL surface).
+export function gerstnerNormal(x, z, time) {
+  let dHdx = 0, dHdz = 0;
+  for (const [dx, dz, wl, amp, spd] of WAVES) {
+    const [nx, nz] = _norm(dx, dz);
+    const k = (Math.PI * 2) / wl;
+    const phase = k * (nx * x + nz * z) + time * spd * k;
+    const c = amp * k * Math.cos(phase);
+    dHdx += c * nx;
+    dHdz += c * nz;
+  }
+  const len = Math.hypot(-dHdx, 1, -dHdz) || 1;
+  return [-dHdx / len, 1 / len, -dHdz / len];
 }

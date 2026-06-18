@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SEA_LEVEL, BEACH_BAND_TOP, DEEP_FLOOR,
-  OCEAN_CONTINENT_THRESHOLD, oceanBlend, oceanSurfaceY, seabedDepthT,
+  OCEAN_CONTINENT_THRESHOLD, oceanBlend, oceanSurfaceY,
 } from '../../src/world/oceanProfile.js';
 
 describe('Ocean + coastline profile (World-M2)', () => {
@@ -50,13 +50,5 @@ describe('Ocean + coastline profile (World-M2)', () => {
     const justBelowBeachTop = BEACH_BAND_TOP - 1; // 29
     expect(justBelowBeachTop < BEACH_BAND_TOP).toBe(true); // sand override fires
     expect(justBelowBeachTop > SEA_LEVEL).toBe(true);      // foliage allowed; no water column above
-  });
-
-  it('seabedDepthT (ocean S3 top-surface grade): 0 at the surface, 1 at the deepest, clamped', () => {
-    expect(seabedDepthT(SEA_LEVEL, SEA_LEVEL)).toBe(0);            // seabed at the surface = shallowest
-    expect(seabedDepthT(SEA_LEVEL, DEEP_FLOOR)).toBe(1);          // seabed at DEEP_FLOOR = deepest
-    expect(seabedDepthT(SEA_LEVEL, SEA_LEVEL - 11)).toBeCloseTo(0.5); // half the max divable depth
-    expect(seabedDepthT(SEA_LEVEL, DEEP_FLOOR - 5)).toBe(1);      // below DEEP_FLOOR clamps to 1
-    expect(seabedDepthT(SEA_LEVEL, SEA_LEVEL + 3)).toBe(0);       // seabed above surface clamps to 0
   });
 });

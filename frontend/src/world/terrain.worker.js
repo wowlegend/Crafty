@@ -1,6 +1,6 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor } from './homeAnchor.js';
-import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, shoreFoamFactor, seabedDepthT } from './oceanProfile.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
@@ -633,19 +633,20 @@ function generateMesh(cx, cz, blocks) {
           const bIsSolid = blockB > 0 && blockB !== 9;
           const bIsWater = blockB === 9;
 
-          if (blockA > 0 && blockB === 0) {
-            // Positive face of block A (facing +d)
+          if (blockA > 0 && blockA !== 9 && blockB === 0) {
+            // Positive face of SOLID block A (facing +d) against air
             mask[cu + cv * sizeU] = blockA | (1 << 8);
-          } else if (blockA === 0 && blockB > 0) {
-            // Negative face of block B (facing -d)
+          } else if (blockA === 0 && blockB > 0 && blockB !== 9) {
+            // Negative face of SOLID block B (facing -d) against air
             mask[cu + cv * sizeU] = blockB | (2 << 8);
           } else if (aIsSolid && bIsWater) {
-            // Solid block next to water -> Draw solid face facing +d
+            // Solid block next to water -> still draw the solid face (the seabed/shore wall)
             mask[cu + cv * sizeU] = blockA | (1 << 8);
           } else if (bIsSolid && aIsWater) {
-            // Solid block next to water -> Draw solid face facing -d
             mask[cu + cv * sizeU] = blockB | (2 << 8);
           }
+          // Water emits NO faces (Ocean.jsx owns the water surface): water-vs-air top/bottom,
+          // water-vs-water, and water-vs-solid (the solid side is drawn above) are all skipped.
         }
       }
 
@@ -658,39 +659,16 @@ function generateMesh(cx, cz, blocks) {
           const blockType = val & 0xFF;
           const dirFlag = val >> 8;
 
-          // Ocean S2b: water TOP faces must NOT greedy-merge -- each surface cell carries a per-block foam
-          // factor in color.g (a merged quad's uniform color can't vary per-column). Foam = a water-top
-          // cell touching land. For d===1 the cell is (cv, q, cu); the 4 horizontal neighbors are at y=q;
-          // getBlock returns 0 across chunk edges (so a cross-chunk shoreline seam may miss foam -- minor).
-          const isWaterTopFace = (d === 1 && dirFlag === 1 && blockType === 9);
-          let foamG = 0;
-          let depthB = 0;
-          if (isWaterTopFace) {
-            foamG = shoreFoamFactor(getBlock(cv, q, cu), getBlock(cv, q + 1, cu), [
-              getBlock(cv - 1, q, cu), getBlock(cv + 1, q, cu),
-              getBlock(cv, q, cu - 1), getBlock(cv, q, cu + 1),
-            ]);
-            // S3: scan DOWN this chunk column for the seabed (first solid below the water) -> per-column
-            // depth in color.b, so the flat TOP surface grades shallow-teal -> deep-navy (the vWorldY tint
-            // only reaches the side faces). Within-chunk column read -> no cross-chunk seam.
-            let seabedY = 0;
-            for (let sy = q - 1; sy >= 0; sy--) {
-              const b = getBlock(cv, sy, cu);
-              if (b !== 0 && b !== 9) { seabedY = sy; break; }
-            }
-            depthB = seabedDepthT(q, seabedY);
-          }
-
-          // Find maximum horizontal width w along axis u (water-top faces stay 1x1 -> no merge)
+          // Find maximum horizontal width w along axis u
           let w = 1;
-          while (!isWaterTopFace && cu + w < sizeU && mask[(cu + w) + cv * sizeU] === val) {
+          while (cu + w < sizeU && mask[(cu + w) + cv * sizeU] === val) {
             w++;
           }
 
           // Find maximum vertical height h along axis v
           let h = 1;
           let hPossible = true;
-          while (!isWaterTopFace && cv + h < sizeV) {
+          while (cv + h < sizeV) {
             for (let k = 0; k < w; k++) {
               if (mask[(cu + k) + (cv + h) * sizeU] !== val) {
                 hPossible = false;
@@ -801,13 +779,14 @@ function generateMesh(cx, cz, blocks) {
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-          // color.r = blockType (vertexColor); color.g = shore-foam factor (S2); color.b = per-column
-          // seabed-depth factor (S3) -- both 0 off water-top faces. Read in Terrain.jsx as vFoam / vDepthB.
+          // color.r = blockType (vertexColor read by the terrain shader); color.g/color.b are now unused
+          // (the old shore-foam/seabed-depth bake moved to the Ocean.jsx plane) but the attribute stays
+          // 3-wide so the shader's `attribute vec3 color` read is unchanged.
           colors.push(
-            blockType, foamG, depthB,
-            blockType, foamG, depthB,
-            blockType, foamG, depthB,
-            blockType, foamG, depthB
+            blockType, 0, 0,
+            blockType, 0, 0,
+            blockType, 0, 0,
+            blockType, 0, 0
           );
 
           // Tiled repeats UV coordinates mapping matching CCW corners
