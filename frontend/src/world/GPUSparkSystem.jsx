@@ -67,8 +67,11 @@ const fragmentShader = `
   void main() {
     if (vLife <= 0.0) discard;
 
-    // Glowing core glow blending
-    vec3 glow = vColor * (1.5 + vLife * 3.5);
+    // Glowing core glow blending. W2-T5: a HUE-PRESERVING cap — the old (1.5 + vLife*3.5) gain
+    // pushed a saturated color (e.g. a green mob) past 1.0 on its brightest channel under additive
+    // blending, clipping toward white at peak. A lower gain keeps the additive glow within range so
+    // the mob's color SURVIVES (a green mob reads green at peak), still bright enough to bloom.
+    vec3 glow = vColor * (1.0 + vLife * 2.0);
     
     // Soft radial round edge for premium particle looks
     vec2 coord = gl_PointCoord - vec2(0.5);
@@ -167,6 +170,15 @@ export const GPUSparkSystem = () => {
           vx *= 0.3;
           vy = rnd() * 3.5 + 2.5;
           vz *= 0.3;
+        } else if (type === 'death') {
+          // W2-T5: a KILL burst — a rising soul-burst that puffs OUTWARD then lifts UP, so a
+          // death reads as a satisfying upward release (vs a flat radial puff). Combined with the
+          // mob-coloured hue-preserving glow (deathBurst tint floor + the capped shader gain below).
+          const angle = rnd() * Math.PI * 2;
+          const speed = 1.5 + rnd() * 3.5;
+          vx = Math.cos(angle) * speed;
+          vy = rnd() * 7.0 + 4.0;   // strong upward bias (a rising soul-burst)
+          vz = Math.sin(angle) * speed;
         } else if (type === 'physical') {
           vx = (rnd() - 0.5) * 6.5;
           vy = rnd() * 7.5 + 1.5;

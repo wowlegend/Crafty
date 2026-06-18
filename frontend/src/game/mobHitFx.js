@@ -10,13 +10,23 @@ import { MOB_TYPES } from './mobTypes';
  * Death-burst spark color + count for a mob KILL -- a bigger finisher than the per-hit sparkFor, so a
  * kill reads as a satisfying payoff (was silent: mobs just vanished). color = the mob's body color;
  * count scales with its xp (tougher mobs burst harder), clamped 50..110. Unknown -> white, 50.
- * @returns {{color:string, count:number}}
+ * W2-T5: a dark-mob TINT FLOOR lifts very-dark body colors toward a visible glow while PRESERVING
+ * hue (so a near-black mob reads as a colored soul-burst, not a black puff, and a green mob stays
+ * green at peak rather than washing to white), and a `burst:'death'` tag selects the GPU pool's
+ * upward-biased death velocity branch.
+ * @returns {{color:string, count:number, burst:string}}
  */
 export function deathBurst(mobType) {
   const m = MOB_TYPES[mobType];
-  const color = (m && m.color) || '#ffffff';
+  let color = (m && m.color) || '#ffffff';
   const xp = (m && m.xp) || 0;
-  return { color, count: Math.max(50, Math.min(110, 40 + xp)) };
+  // dark-mob tint floor: lift very-dark body colors toward a visible glow while PRESERVING hue
+  // (so a green mob reads green at peak, not white/black). Scale the channels up if the max < floor.
+  const hex = color.replace('#', '');
+  let r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+  const mx = Math.max(r, g, b, 1), floor = 110;
+  if (mx < floor) { const k = floor / mx; r = Math.min(255, r * k) | 0; g = Math.min(255, g * k) | 0; b = Math.min(255, b * k) | 0; color = '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join(''); }
+  return { color, count: Math.max(50, Math.min(110, 40 + xp)), burst: 'death' };
 }
 
 /**

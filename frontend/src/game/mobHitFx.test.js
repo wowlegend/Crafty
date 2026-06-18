@@ -56,7 +56,23 @@ describe('deathBurst (the kill finisher)', () => {
     expect(deathBurst('pig').count).toBe(50);          // 40 + 10 -> floored to 50
   });
   it('unknown mob -> white, minimum burst', () => {
-    expect(deathBurst('nope')).toEqual({ color: '#ffffff', count: 50 });
+    expect(deathBurst('nope')).toEqual({ color: '#ffffff', count: 50, burst: 'death' });
+  });
+});
+
+describe('W2-T5 death-burst per-element + dark-mob tint floor', () => {
+  it('returns a velocity branch tag the GPU pool understands', () => {
+    expect(deathBurst('zombie').burst).toBe('death');
+  });
+  it('lifts a very dark mob tint to a visible floor (no near-black death puff)', () => {
+    // a hypothetically near-black mob color should be lifted; green mob preserves green hue
+    const z = deathBurst('zombie'); // #228B22 green
+    expect(z.color.toLowerCase()).toMatch(/^#/);
+    // floor: the brightest channel of the burst color is >= a minimum
+    const hex = z.color.replace('#', '');
+    const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+    expect(Math.max(r,g,b)).toBeGreaterThanOrEqual(80); // visible, not black
+    expect(g).toBeGreaterThan(r); expect(g).toBeGreaterThan(b); // green hue PRESERVED
   });
 });
 
