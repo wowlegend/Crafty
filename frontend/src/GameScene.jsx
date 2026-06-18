@@ -500,14 +500,16 @@ const WeatherSystem = () => {
   }, []);
 
   // S2-A-M4a: scale the instanced-particle COUNT by the active quality tier's weather
-  // multiplier (TIERS.low 0.25 / med 0.6 / high 1.0). Read transiently from the store
-  // (getState, NOT a reactive subscription -> Game-Loop-Isolation; the count is fixed at
-  // mount, the particle buffers are not re-bound per frame). high == 1.0 -> full base
-  // density -> the forced-high capture frames are byte-identical (capture forces high).
-  const weatherDensity = useMemo(() => {
-    const tier = useGameStore.getState().qualityTier;
-    return (TIERS[tier] || TIERS.low).weather;
-  }, []);
+  // multiplier (TIERS.low 0.25 / med 0.6 / high 1.0). W4 fix: read the tier REACTIVELY (a
+  // useGameStore selector, NOT a mount-time getState) so a PerformanceMonitor downgrade actually
+  // lowers the live particle count -- the S3 "mount-time-only" bug (useMemo([]) froze density at
+  // the boot tier). The rain/snow/firefly data useMemos key on their count, so a (rare) tier change
+  // regenerates the data + re-sizes the buffers in lockstep. This is a RENDER-time subscription
+  // (re-renders WeatherSystem only on a tier change), NOT a useFrame read -> no Game-Loop-Isolation
+  // breach (the hot loop still reads via getState). high == 1.0 -> full base density -> the forced-
+  // high capture frames stay byte-identical (capture forces 'high').
+  const qualityTier = useGameStore((s) => s.qualityTier);
+  const weatherDensity = (TIERS[qualityTier] || TIERS.low).weather;
 
   const rainCountBase = 400;
   const rainCount = Math.round(rainCountBase * weatherDensity);
@@ -524,7 +526,7 @@ const WeatherSystem = () => {
       });
     }
     return data;
-  }, []);
+  }, [rainCount]);
 
   const snowCountBase = 200;
   const snowCount = Math.round(snowCountBase * weatherDensity);
@@ -543,7 +545,7 @@ const WeatherSystem = () => {
       });
     }
     return data;
-  }, []);
+  }, [snowCount]);
 
   const fireflyCountBase = 30;
   const fireflyCount = Math.round(fireflyCountBase * weatherDensity);
@@ -560,7 +562,7 @@ const WeatherSystem = () => {
       });
     }
     return data;
-  }, []);
+  }, [fireflyCount]);
 
   useFrame((state, frameDelta) => {
     // Dev capture mode: pin the animation clock + delta to fixed constants so all
