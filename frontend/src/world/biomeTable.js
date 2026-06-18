@@ -4,16 +4,22 @@
 // into this one pure function so M4 can add per-biome columns (height curve, foliage, seabed) without
 // touching the worker's hot loop. M3 was BYTE-IDENTICAL (3 biomes; continent accepted but ignored).
 //
-// W2-T8 (2026-06-17): the table grew from 3 -> 9 biomes with a multi-axis (temperature x moisture x
-// continent) selection so the world no longer reads same-everywhere. Each biome now carries:
+// W2-T8 (2026-06-17): the table grew from 3 -> 10 biomes (snow/taiga/plains/forest/meadow/swamp/
+// jungle/savanna/desert/mesa) with a multi-axis (temperature x moisture x continent) selection so the
+// world no longer reads same-everywhere. Each biome now carries:
 //   surfaceBlock   — the top voxel (EXISTING atlas layer id only: 1 grass / 2 dirt / 3 stone /
 //                    4 sand / 5 snow / 6 wood — the texture atlas has 14 layers; NEW surface
 //                    materials are M4b, so variety here is achieved by RECOMBINING existing layers
 //                    + the flora/tint metadata below, not by minting new block ids).
 //   secondaryBlock — the 3-deep subsurface band under the surface voxel.
-//   flora          — a flora-KIND string the foliage decorator branches on (the worker reads it in
-//                    M4; today the worker still branches on surfaceBlock, so flora is the forward
-//                    contract that makes forest/jungle/savanna distinct even where they share grass).
+//   flora          — a flora-KIND string the foliage decorator WILL branch on in M4. TODAY the worker
+//                    (terrain.worker.js ~484-522) still branches on surfaceBlock, so flora is a FORWARD
+//                    CONTRACT, not yet truthful: until M4 wires it, biomes that share a surfaceBlock
+//                    share foliage regardless of flora. Known present-day mismatches that M4 resolves:
+//                    mesa (flora 'none', surfaceBlock 4=sand) spawns CACTI like the desert — a mild
+//                    rust-badland oddity that exists now; swamp (flora 'swamp', surfaceBlock 2=dirt)
+//                    spawns NO foliage; taiga (flora 'pine', surfaceBlock 1=grass) spawns broadleaf
+//                    trees, not pines (only surfaceBlock 5=snow currently triggers pines).
 //   tint           — a per-biome vertex-tint hex the M4 mesher folds into the unused color.g/color.b
 //                    vertex channels (the terrain shader currently reads only color.r = blockType).
 //
@@ -50,10 +56,9 @@ export function pickBiome(temperature, moisture, continent) {
   const coastal = continent < 0; // near a continental edge (low/zero continent noise)
 
   // --- HARD CORNER 1: cold -> snow (preserves climate.test.js [0,-40] snow + biome-snow baseline) ---
+  // temperature < 0.3 stays snow byte-identically; the cold-but-wetter taiga fringe is a SEPARATE
+  // branch below (it sits just ABOVE this corner so every column the old branch made snow stays snow).
   if (temperature < 0.3) {
-    // a cold-but-wetter inland fringe reads as boreal taiga (cool grass + pines) rather than pure
-    // snowfield — but ONLY just above the hard snow corner so the snow surface block is preserved
-    // wherever the old branch produced snow. temperature < 0.3 stays snow byte-identically.
     return { ...BIOMES.snow };
   }
 
@@ -74,6 +79,9 @@ export function pickBiome(temperature, moisture, continent) {
   }
 
   // --- COOL TEMPERATE FRINGE just above the cold corner: boreal taiga ---
+  // a cold-but-wetter inland strip (0.3 <= temperature < 0.42, moisture >= 0.4) reads as boreal taiga
+  // (cool grass + pines) rather than pure snowfield. This is the ONLY place taiga is selected — it sits
+  // just above the hard snow corner, so it never steals a column the legacy branch would have made snow.
   if (temperature < 0.42 && moisture >= 0.4) {
     return { ...BIOMES.taiga };
   }
