@@ -1,0 +1,13 @@
+{
+  "name": "Crafty",
+  "short_name": "Crafty",
+  "description": "A magical voxel action-RPG — cast spells, hold the frontier, and face the Shadow Dragon.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0C1322",
+  "theme_color": "#0C1322",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
