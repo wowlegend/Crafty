@@ -56,4 +56,11 @@ describe('shouldShowTitleMenu — the exact menu-overlay gate (not just the list
       expect(shouldShowTitleMenu({ isPointerLocked: false, [flag]: true })).toBe(false);
     }
   });
+
+  it('NEVER shows once the game has started — an in-game unlock = the settings pause menu, not the title (KEVIN-FIX 2026-06-18 ESC flow)', () => {
+    // pre-game (no gameStarted): the title/click-to-play screen shows
+    expect(shouldShowTitleMenu({ isPointerLocked: false, isAlive: true, gameStarted: false })).toBe(true);
+    // in-game ESC-unlock: the title menu must NOT flash in (App opens the pause panel on the transition)
+    expect(shouldShowTitleMenu({ isPointerLocked: false, isAlive: true, gameStarted: true })).toBe(false);
+  });
 });

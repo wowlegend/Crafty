@@ -41,5 +41,11 @@ export function shouldShowTitleMenu(state) {
   // KEVIN-FIX C5: dying exits pointer lock, and without this gate the z-9999 title menu
   // mounted OVER the DeathScreen (z-50) — the respawn UI was occluded (2026-06-10 playtest).
   if (state.isAlive === false) return false;
+  // KEVIN-FIX (2026-06-18 ESC flow): the title menu is a PRE-GAME screen only. Once the game has
+  // started, an unlock means PAUSE — App opens the settings/pause panel on the unlock TRANSITION. On
+  // that transition isPointerLocked flips false ONE render BEFORE showSettings is set, so without this
+  // gate the title menu flashed in for a frame (then the pause panel) = the "overlapping/weird menu
+  // sequence" Kevin reported. Suppressing it post-gameStarted leaves exactly ONE pause menu, no flash.
+  if (state.gameStarted) return false;
   return !state.isPointerLocked && !isAnyPanelOpen(state);
 }
