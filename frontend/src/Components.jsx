@@ -16,7 +16,7 @@ import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
-import { rampVelocity } from './game/gameFeel.js';
+import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -105,6 +105,9 @@ export const Player = ({ isWorldBuilt }) => {
 
   const velocityY = useRef(0);
   const planarVelRef = useRef({ x: 0, z: 0 }); // W4 game-feel: smoothed horizontal velocity (accel/decel ramp)
+  const lastGroundedAtRef = useRef(0);     // W4 coyote-time: performance.now()/1000 of the last grounded frame
+  const lastJumpPressRef = useRef(null);   // W4 jump-buffer: performance.now()/1000 of the last jump-intent rising edge
+  const prevJumpIntentRef = useRef(false); // edge-detect the jump intent so a held key only stamps the buffer once
   const lastStepRef = useRef(0);        // locomotion-audio: stride throttle (footstep cadence)
   const prevGroundedRef = useRef(true); // locomotion-audio: landing-edge detection
   const kickRef = useRef(makeKick());   // game-feel: per-verb camera-kick impulse (decays in the follow-cam)
@@ -982,6 +985,13 @@ export const Player = ({ isWorldBuilt }) => {
     // Kinematic ground check from Rapier character controller
     const isGrounded = controllerRef.current ? controllerRef.current.computedGrounded() : false;
 
+    // W4 game-feel: maintain coyote + jump-buffer timestamps (seconds; pure refs, no React state).
+    const nowSec = performance.now() / 1000;
+    if (isGrounded) lastGroundedAtRef.current = nowSec; // refresh the coyote anchor each grounded frame
+    // jump-buffer: stamp the RISING edge of the jump intent so a slightly-early press still fires on land.
+    if (input.jump && !prevJumpIntentRef.current) lastJumpPressRef.current = nowSec;
+    prevJumpIntentRef.current = !!input.jump;
+
     // Phase 23: Ledge Parkour Climb/Vault System
     if (!isGrounded && isLocked && input.moveF && velocityY.current <= 2.0 && controllerRef.current) {
       const cameraDir = new THREE.Vector3();
@@ -1037,18 +1047,28 @@ export const Player = ({ isWorldBuilt }) => {
       }
     }
 
-    // Handle jumping & gravity
-    if (isGrounded) {
-      if (isLocked && input.jump && !dodge.isActive) {
-        velocityY.current = jumpVelocity(loco); // M5: hawk hops higher (low-gravity), bull/golem lower
-        useGameStore.getState().playSpatialSound?.('jump', [camera.position.x, camera.position.y, camera.position.z], 1, 6); // locomotion-audio: jump cue
-        // Consume the jump intent on a grounded jump. OS key-repeat re-sets the intent via
-        // repeated keydown, so held-Space bunny-hopping is preserved byte-identically.
-        setIntent('jump', false);
-      } else {
-        // Small downward force to stay glued to slopes and stairs
-        velocityY.current = GLUE_VELOCITY;
-      }
+    // Handle jumping & gravity (W4 coyote-time + jump-buffer, ADDITIVE over the original grounded jump).
+    // `groundedPress` is the EXACT original condition (isGrounded && jump) so held-Space bunny-hop is
+    // preserved byte-identically (OS key-repeat re-raises the consumed intent each frame). `gracePress`
+    // only ADDS forgiveness — a ledge-edge jump (coyote: <=COYOTE_TIME after leaving ground) or a slightly-
+    // early press (buffer: queued <=JUMP_BUFFER before landing) — guarded by velocityY<=~0 so it can never
+    // become an air double-jump. The grace path is a strict SUPERSET: it never suppresses a jump the
+    // original allowed, so this cannot regress existing movement (the FEEL of the windows is Kevin's call).
+    const groundedPress = isGrounded && input.jump;
+    const gracePress = velocityY.current <= 0.001
+      && coyoteOk(isGrounded, nowSec, lastGroundedAtRef.current, COYOTE_TIME)
+      && bufferOk(lastJumpPressRef.current, nowSec, JUMP_BUFFER);
+    if (isLocked && !dodge.isActive && (groundedPress || gracePress)) {
+      velocityY.current = jumpVelocity(loco); // M5: hawk hops higher (low-gravity), bull/golem lower
+      useGameStore.getState().playSpatialSound?.('jump', [camera.position.x, camera.position.y, camera.position.z], 1, 6); // locomotion-audio: jump cue
+      // Consume the live intent (OS key-repeat re-raises it -> bunny-hop) + the buffer/coyote stamps so one
+      // press = one jump (no buffer re-fire next frame, no second coyote hop in the same window).
+      setIntent('jump', false);
+      lastJumpPressRef.current = null;
+      lastGroundedAtRef.current = 0;
+    } else if (isGrounded) {
+      // Small downward force to stay glued to slopes and stairs
+      velocityY.current = GLUE_VELOCITY;
     } else {
       // Apply gravity over time (clamped at terminal velocity) — game/locomotion.js
       velocityY.current = applyGravity(velocityY.current, loco.gravityMult, delta);
