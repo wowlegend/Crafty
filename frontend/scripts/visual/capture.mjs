@@ -111,15 +111,16 @@ async function main() {
     await delay(1500);
 
     // menu (title screen — pointer still unlocked, auto-lock suppressed by capture mode).
-    // The title now hosts a live 3D Crafty Hero mini-canvas (lazy chunk + WebGL); wait for
-    // it to actually mount + present a settled (capture-frozen) frame so `menu.png` is
-    // deterministic and never screenshots the 2D Suspense fallback.
-    // The mascot WebGL canvas inits slowly; under heavy machine load even 45s can flake. Make it
+    // The title now hosts a full-bleed live 3D Hearth diorama VISTA (W2 — lazy chunk + WebGL),
+    // which replaced the old fixed-size 2D-canvas TitleMascot lockup. Wait for the DIORAMA canvas
+    // to actually mount + present a settled (capture-frozen) frame so `menu.png` is deterministic
+    // and never screenshots the empty Suspense fallback.
+    // The WebGL canvas inits slowly; under heavy machine load even 45s can flake. Make it
     // NON-FATAL (graceful degradation): if it times out, SKIP menu.png (keep the last-good frame) and
     // CONTINUE the run so the other states + any re-baseline still capture, instead of aborting everything.
     let menuMascotOk = true;
-    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-mascot"] canvas'), { timeout: 45000 })
-      .catch(() => { menuMascotOk = false; console.warn('WARN: menu mascot canvas not ready in 45s -> skipping menu.png (kept last-good), continuing'); });
+    await page.waitForFunction(() => !!document.querySelector('[data-testid="title-diorama"] canvas'), { timeout: 45000 })
+      .catch(() => { menuMascotOk = false; console.warn('WARN: menu diorama canvas not ready in 45s -> skipping menu.png (kept last-good), continuing'); });
     if (menuMascotOk) {
       await flushFrames(page, 10);
       await delay(900);

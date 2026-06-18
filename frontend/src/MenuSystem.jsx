@@ -1,6 +1,5 @@
-import React, { useMemo, lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { isCaptureMode, captureRandom } from './devtest/captureMode';
 import {
   Inventory,
   CraftingTable,
@@ -8,7 +7,7 @@ import {
   SettingsPanel,
   MagicSystem
 } from './ui/GamePanels';
-import { Icon } from './ui/primitives/index.js';
+import { Icon, Button } from './ui/primitives/index.js';
 import { CreditsScreen } from './ui/CreditsScreen';
 import { WorldManager } from './WorldManager';
 import { TradingInterface } from './ui/TradingInterface';
@@ -19,12 +18,13 @@ import { shouldShowTitleMenu } from './ui/panelState.js';
 import { isTouchDevice } from './input/touchDevice';
 import { useGameStore } from './store/useGameStore';
 
-// The live 3D "Crafty Hero" brand face for the title screen. Lazy + Suspense-wrapped so the
-// three/R3F chunk never blocks the menu's first paint; the old 2D icon is the fallback until
-// the canvas mounts. The hero's idle freezes in capture mode, so the `menu` frame stays
+// The full-bleed live 3D Hearth diorama VISTA — the title screen's hero face (W2). It REPLACES
+// the old fixed-size 2D-canvas TitleMascot lockup (which double-stacked a second hero over the
+// vista). Lazy + Suspense-wrapped so the three/R3F chunk never blocks the menu's first paint; the
+// diorama camera + motes FREEZE in capture mode (isCaptureMode), so the `menu` frame stays
 // deterministic for the visual gate.
-const TitleMascot = lazy(() =>
-  import('./render/mascots/TitleMascot').then((m) => ({ default: m.TitleMascot }))
+const TitleDiorama = lazy(() =>
+  import('./render/TitleDiorama').then((m) => ({ default: m.TitleDiorama }))
 );
 
 export function MenuSystem({
@@ -40,49 +40,6 @@ export function MenuSystem({
   questSystem,
   spellUpgrades
 }) {
-  // Menu starfield/particles. In dev capture mode positions are seeded (order-independent)
-  // and CSS twinkle/float animations are frozen, so the menu frame is byte-stable. In normal
-  // gameplay this is identical to the original random, animated decoration.
-  const capture = isCaptureMode();
-  const menuStars = useMemo(() => {
-    return Array.from({ length: 40 }, (_, i) => {
-      const r = captureRandom(`menu-star-${i}`);
-      const left = r() * 100, top = r() * 100;
-      const dur = 1.5 + r() * 3, delay = r() * 3;
-      const w = 2 + r() * 2, h = 2 + r() * 2;
-      const style = {
-        left: `${left}%`, top: `${top}%`,
-        width: `${w}px`, height: `${h}px`,
-      };
-      if (capture) { style.animation = 'none'; style.opacity = 1; }
-      else { style.animationDuration = `${dur}s`; style.animationDelay = `${delay}s`; }
-      return { key: `star-${i}`, style };
-    });
-  }, [capture]);
-
-  const menuParticles = useMemo(() => {
-    const colors = ['#567C35', '#976D4D', '#808080', '#8B6914', '#5B9BD5', '#9932CC', '#FF4500', '#00BFFF'];
-    return Array.from({ length: 15 }, (_, i) => {
-      const r = captureRandom(`menu-particle-${i}`);
-      const color = colors[i % colors.length];
-      const size = 12 + r() * 20;
-      const top = 10 + r() * 80;
-      const dur = 8 + r() * 12, delay = r() * 8;
-      const opacity = 0.3 + r() * 0.4;
-      const blur = r() > 0.5 ? 1 : 0;
-      const style = {
-        width: `${size}px`, height: `${size}px`,
-        backgroundColor: color, top: `${top}%`,
-        opacity,
-        filter: `blur(${blur}px)`,
-        boxShadow: `0 0 ${size / 2}px ${color}40`,
-      };
-      if (capture) { style.animation = 'none'; style.left = `${(i / 15) * 100}%`; }
-      else { style.animationDuration = `${dur}s`; style.animationDelay = `${delay}s`; }
-      return { key: `particle-${i}`, style };
-    });
-  }, [capture]);
-
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
@@ -237,45 +194,30 @@ export function MenuSystem({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center pointer-events-auto"
-              style={{ zIndex: 9999, background: 'radial-gradient(ellipse at 50% 30%, #1a1040 0%, #0a0a1a 50%, #050510 100%)' }}
+              className="fixed inset-0 flex flex-col items-center justify-end pb-16 pointer-events-auto bg-panel overflow-hidden"
+              style={{ zIndex: 9999 }}
             >
-              {menuStars.map((s) => (
-                <div
-                  key={s.key}
-                  className="menu-star"
-                  style={s.style}
-                />
-              ))}
+              {/* Full-bleed live 3D Hearth VISTA — the Crafty Hero IS the subject of the vista
+                  (replaces the flat purple gradient + 2D confetti AND the old front-layer 2D-canvas
+                  mascot lockup, which double-stacked a second hero over this one). Camera + motes
+                  freeze in capture mode so the `menu` frame is byte-stable. Suspense fallback =
+                  empty (the bg-panel surface shows through) so first paint is never broken while
+                  the three/R3F chunk loads. */}
+              <Suspense fallback={null}>
+                <TitleDiorama />
+              </Suspense>
 
-              {menuParticles.map((p) => (
-                <div
-                  key={p.key}
-                  className="menu-particle"
-                  style={p.style}
-                />
-              ))}
+              {/* Bottom scrim so the wordmark + CTA + controls stay legible against the vista. */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0) 28%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.86) 100%)' }}
+              />
 
-              <div className="text-center text-white max-w-xl mx-4 relative z-10">
-                <motion.div
-                  initial={{ y: -40, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ type: "spring", duration: 1 }}
-                  className="flex justify-center mb-2 text-purple-300"
-                  // The 3D hero carries its own idle bob; the wrapper float is purely
-                  // decorative and is frozen in capture mode so the `menu` frame is stable.
-                  style={capture ? undefined : { animation: 'float 4s ease-in-out infinite' }}
-                >
-                  {/* Live 3D Crafty Hero brand face (replaces the old 2D pointy-hat icon).
-                      Suspense fallback = the original icon so first paint is never empty. */}
-                  <Suspense fallback={<Icon name="mascot" size={96} />}>
-                    <TitleMascot size={176} />
-                  </Suspense>
-                </motion.div>
-
+              <div className="text-center max-w-xl mx-4 relative z-10 flex flex-col items-center">
                 <motion.h1
-                  className="text-8xl font-bold mb-2 pixel-font shimmer-text"
-                  initial={{ scale: 0.3, opacity: 0 }}
+                  className="text-8xl mb-1 font-display text-accent"
+                  style={{ textShadow: '0 4px 20px rgba(0,0,0,0.7)' }}
+                  initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", duration: 0.8, delay: 0.2 }}
                 >
@@ -283,32 +225,31 @@ export function MenuSystem({
                 </motion.h1>
 
                 <motion.p
-                  className="text-xl mb-10 tracking-wider"
+                  className="text-xl mb-8 tracking-wider whitespace-nowrap text-text-inverse/90"
+                  style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.8 }}
-                  style={{ color: 'rgba(200, 180, 255, 0.8)' }}
                 >
-                  Build • Craft • Cast Spells • Explore Infinite Worlds
+                  Build • Craft • Cast Spells • Explore
                 </motion.p>
 
-                <motion.button
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.5 }}
-                  onClick={enterPlay}
-                  className="glow-button inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-10 rounded-xl text-xl pixel-font"
-                  style={{ border: '1px solid rgba(255,255,255,0.15)' }}
                 >
-                  <Icon name="sword" size={22} className="flex-none" /> Start Adventure
-                </motion.button>
+                  <Button variant="primary" size="lg" onClick={enterPlay}>
+                    <Icon name="sword" size={22} className="flex-none" /> Start Adventure
+                  </Button>
+                </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.5, duration: 1 }}
-                  className="mt-12 flex justify-center gap-6 text-xs"
-                  style={{ color: 'rgba(150, 140, 180, 0.6)' }}
+                  className="mt-8 flex justify-center gap-5 text-xs text-text-inverse/75"
+                  style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
                 >
                   <span>WASD Move</span>
                   <span>•</span>
