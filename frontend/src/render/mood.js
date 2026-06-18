@@ -85,10 +85,12 @@ const _out = {
 
 const lerp = THREE.MathUtils.lerp;
 
-/** Map (isDay, dangerLevel) -> target mood in [0,2]. Night = dusk(1); danger overrides up. */
-export function moodTarget({ isDay = true, dangerLevel = 0 } = {}) {
+/** Map (isDay, dangerLevel, weatherBoost) -> target mood in [0,2]. Night = dusk(1); danger AND a storm
+ *  sky-darken boost override up — all MAXed, so a daytime storm reads overcast/moody without forcing full
+ *  night, and at night the already-dusk mood swallows the storm boost (no double-darkening). */
+export function moodTarget({ isDay = true, dangerLevel = 0, weatherBoost = 0 } = {}) {
   const night = isDay ? 0 : 1;
-  return THREE.MathUtils.clamp(Math.max(night, Number(dangerLevel) || 0), 0, 2);
+  return THREE.MathUtils.clamp(Math.max(night, Number(dangerLevel) || 0, Number(weatherBoost) || 0), 0, 2);
 }
 
 /** Resolve the blended atmosphere for a continuous mood. Returns shared scratch. */

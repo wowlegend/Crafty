@@ -147,8 +147,13 @@ export function Atmosphere({ shadowConfig }) {
 
   useFrame((state, delta) => {
     const st = useGameStore.getState();
-    const target = moodTarget({ isDay: st.isDay, dangerLevel: st.dangerLevel });
-    if (isCaptureMode()) {
+    const cap = isCaptureMode();
+    // W4-T8: the storm sky-darken boost is FORCED to 0 in capture. The weather state machine still ticks
+    // during a capture (which runs >90s, longer than the 90s weather cycle), so a live weatherMoodBoost
+    // would darken every frame captured after the first transition -> non-deterministic baselines. Capture
+    // always renders the clear-sky mood; the storm darken is a live-play-only effect.
+    const target = moodTarget({ isDay: st.isDay, dangerLevel: st.dangerLevel, weatherBoost: cap ? 0 : st.weatherMoodBoost });
+    if (cap) {
       moodRef.current = target; // snap -> deterministic capture frames
     } else {
       moodRef.current = THREE.MathUtils.lerp(moodRef.current, target, Math.min(1, delta * 2.0));

@@ -26,6 +26,7 @@ import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { shouldProbeGround } from './game/particleProbe.js';
+import { stormMoodBoost } from './game/weatherGate.js';
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
 // fixed mood-driven direction (reads as infinitely far) and tints with the mood sun colour.
@@ -485,6 +486,9 @@ const WeatherSystem = () => {
       weatherRef.current = nextWeather;
 
       const store = useGameStore.getState();
+      // W4-T8: drive the storm sky-darken mood boost (0 clear, ~0.85 rain/snow) so the Atmosphere grade
+      // reads overcast/moody during a storm (weatherGate.stormMoodBoost MAXed into moodTarget).
+      store.setWeatherMoodBoost(stormMoodBoost(nextWeather));
       if (store.addNotification) {
         if (nextWeather === 'rain') {
           store.addNotification('Atmospheric shift... Dynamic rain storm has started!', 'info');
