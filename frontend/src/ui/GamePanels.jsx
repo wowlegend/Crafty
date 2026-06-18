@@ -471,7 +471,7 @@ export const MagicSystem = ({ onClose }) => {
     ];
 
     return (
-        <div className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClick={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Magic Spells" onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[440px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -520,7 +520,7 @@ export const MagicSystem = ({ onClose }) => {
                     Press M to close • Right-Click to cast selected spell
                 </div>
             </Panel>
-        </div>
+        </Modal>
     );
 };
 
