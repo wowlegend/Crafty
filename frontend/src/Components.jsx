@@ -16,6 +16,7 @@ import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
+import { rampVelocity } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -103,6 +104,7 @@ export const Player = ({ isWorldBuilt }) => {
   const { rapier, world } = useRapier();
 
   const velocityY = useRef(0);
+  const planarVelRef = useRef({ x: 0, z: 0 }); // W4 game-feel: smoothed horizontal velocity (accel/decel ramp)
   const lastStepRef = useRef(0);        // locomotion-audio: stride throttle (footstep cadence)
   const prevGroundedRef = useRef(true); // locomotion-audio: landing-edge detection
   const kickRef = useRef(makeKick());   // game-feel: per-verb camera-kick impulse (decays in the follow-cam)
@@ -1078,16 +1080,23 @@ export const Player = ({ isWorldBuilt }) => {
         const spd = dodgeSpeed(progress);
         desiredVelX = dodge.direction.x * spd;
         desiredVelZ = dodge.direction.z * spd;
+        // W4: while dodging, the ramp is bypassed (burst velocity); keep the smoothed planar velocity in
+        // sync with the dodge so the first post-dodge walk frame ramps from the real speed, not a stale 0.
+        planarVelRef.current = { x: desiredVelX, z: desiredVelZ };
       }
     } else if (isLocked) {
-      // Normal WASD movement — camera-relative planar velocity (pure, game/locomotion.moveVector).
+      // Normal WASD movement — camera-relative planar velocity (pure, game/locomotion.moveVector),
+      // then a W4 accel/decel ramp toward it (weight on start, crisp stop). Dodge is left INSTANTANEOUS
+      // above (the i-frame burst must be immediate); only walking carries momentum.
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       const mv = moveVector(cameraDir.x, cameraDir.z, input, speed);
-      if (mv.moving) {
-        desiredVelX = mv.x;
-        desiredVelZ = mv.z;
-      }
+      const targetX = mv.moving ? mv.x : 0;
+      const targetZ = mv.moving ? mv.z : 0;
+      const ramped = rampVelocity(planarVelRef.current, { x: targetX, z: targetZ }, delta);
+      planarVelRef.current = ramped;
+      desiredVelX = ramped.x;
+      desiredVelZ = ramped.z;
     }
 
     // Combine keyboard input velocity and knockback
