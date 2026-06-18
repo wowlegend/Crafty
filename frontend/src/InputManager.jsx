@@ -194,6 +194,14 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
+      // W3 M-HUD.9: H toggles the controls cheatsheet (CombatInstructions), which is now auto-fade +
+      // on-demand rather than always-on. Gameplay-only (no panel open) so it never fights a panel hotkey.
+      if (event.code === 'KeyH' && active && !anyPanelOpen) {
+        event.preventDefault();
+        state.setShowControls(!state.showControls);
+        return;
+      }
+
       if (event.code === 'KeyU' && (active || anyPanelOpen)) {
         event.preventDefault();
         event.stopImmediatePropagation();

@@ -535,6 +535,12 @@ export const useGameStore = create((set, get) => ({
     gameMode: 'creative',
     setGameMode: (mode) => set({ gameMode: mode }),
 
+    // W3 M-HUD.9: the controls cheatsheet (CombatInstructions) is now a toggle/auto-fade, not always-on.
+    // HUD auto-fades it after the first ~8s of play; H re-summons it (InputManager). Default false so the
+    // deterministic visual capture (which never runs the fade timer) renders a clean, sheet-free HUD.
+    showControls: false,
+    setShowControls: (v) => set({ showControls: v }),
+
     selectedBlock: 'grass',
     setSelectedBlock: (block) => set({ selectedBlock: block }),
 

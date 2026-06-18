@@ -94,6 +94,7 @@ function GameApp({ experienceSystem }) {
         selectedVillager: state.selectedVillager,
         loadWorldData: state.loadWorldData,
         selectedBlock: state.selectedBlock,
+        gameMode: state.gameMode,
         activeSpell: state.activeSpell,
         setActiveSpell: state.setActiveSpell
     })));

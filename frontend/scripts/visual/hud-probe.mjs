@@ -69,6 +69,46 @@ try {
   });
   console.log('mirror:', JSON.stringify(snap));
 
+  // --- M-HUD.9 LIVE-LOOK: controls cheatsheet auto-fade + H-toggle + top-center declutter ---
+  // CombatInstructions is DEMOTED from always-on to a store-`showControls` toggle: the HUD auto-shows it
+  // on enter, then fades it after ~8s; H re-summons it. The fade timer is capture-SUPPRESSED so this is
+  // only observable in the real (non-capture) game. We snapshot three states: (1) onboarding (sheet
+  // visible), (2) faded (sheet gone), (3) re-summoned (sheet back). We also assert the top-center is no
+  // longer a 3-band stack: the standalone "Spell: ..." band is removed (no element holds the "Spell:"
+  // text). Run this BEFORE the mob-swarm steps below so the player is alive + the HUD is mounted (a dead
+  // player unmounts the whole gameplay HUD). Saves PNGs to /tmp/crafty-hud/.
+  // Detect the sheet by its unambiguous "Controls" header (the CombatInstructions Panel) rather than a
+  // class chain that the Panel primitive may transform.
+  const sheetVisible = () => page.evaluate(() =>
+    [...document.querySelectorAll('div')].some((d) => d.textContent.trim() === 'Controls' && d.className.includes('uppercase')));
+  const spellBandPresent = () => page.evaluate(() =>
+    [...document.querySelectorAll('span')].some((s) => s.textContent.trim() === 'Spell:'));
+  try {
+    // Force showControls true so we capture the onboarding state deterministically even if the 8s
+    // onboarding window has already elapsed during the prior AbilityBar burst.
+    await page.evaluate(() => window.useGameStore.getState().setShowControls(true));
+    await delay(300);
+    const onboarding = { showControls: await page.evaluate(() => window.useGameStore.getState().showControls), sheet: await sheetVisible(), spellBand: await spellBandPresent() };
+    await page.screenshot({ path: `${OUT}/declutter.png` });
+    console.log('shot declutter.png (controls visible) snap=', JSON.stringify(onboarding));
+
+    // fade: drive the store flag false (the same end-state the 8s timer reaches) + LOOK the sheet is gone.
+    await page.evaluate(() => window.useGameStore.getState().setShowControls(false));
+    await delay(300);
+    const faded = { showControls: await page.evaluate(() => window.useGameStore.getState().showControls), sheet: await sheetVisible() };
+    await page.screenshot({ path: `${OUT}/declutter-faded.png` });
+    console.log('shot declutter-faded.png (controls faded) snap=', JSON.stringify(faded));
+
+    // H re-summons: press KeyH (the InputManager handler toggles showControls) + confirm the sheet returns.
+    await page.keyboard.down('KeyH'); await delay(40); await page.keyboard.up('KeyH');
+    await delay(300);
+    const resummoned = { showControls: await page.evaluate(() => window.useGameStore.getState().showControls), sheet: await sheetVisible() };
+    await page.screenshot({ path: `${OUT}/declutter-resummoned.png` });
+    console.log('shot declutter-resummoned.png (H re-summoned) snap=', JSON.stringify(resummoned));
+    // leave the HUD clean (sheet hidden) for the downstream swarm steps
+    await page.evaluate(() => window.useGameStore.getState().setShowControls(false));
+  } catch (e) { console.error('DECLUTTER-PROBE step error:', e); }
+
   // --- M-HUD.6 LIVE-LOOK: billboarded nametags over live ECS mobs ---
   // Nametags are capture-suppressed (invisible to the diorama baselines) and LOD-culled, so the
   // only way to SEE them is to drive the real (non-capture) game, spawn a few mobs near the player,

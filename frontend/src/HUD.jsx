@@ -15,8 +15,7 @@ import {
   PlayerHungerBar,
   DamageOverlay,
   DeathScreen,
-  VictoryOverlay,
-  SPELL_MANA_COSTS
+  VictoryOverlay
 } from './GameSystems';
 import { SimpleExperienceBar, SimpleExperienceBarTouch, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
@@ -172,14 +171,25 @@ const KineticBar = React.memo(() => {
   );
 });
 
-// Map a game activeSpell id -> bold-flat token spell color (mirrors the old inline-hex
-// mapping: fireball=fire, iceball=ice, lightning=lightning, everything else=arcane).
-const SPELL_COLOR_CLASS = {
-  fireball: 'text-spell-fire',
-  iceball: 'text-spell-ice',
-  lightning: 'text-spell-lightning',
-  arcane: 'text-spell-arcane',
-};
+// W3 M-HUD.9: the controls cheatsheet is DEMOTED from always-on to a toggle/auto-fade. A returning
+// player no longer stares at a permanent keycap legend cluttering the top-right; it auto-shows for the
+// first ~8s of play (onboarding), then fades, and H (InputManager) re-summons it on demand. The visible
+// state is the store `showControls` flag; this wrapper owns the one-shot auto-fade timer. Game-Loop-
+// Isolation-safe: a plain useEffect timer (not bound to useFrame), and capture-SUPPRESSED so the timer
+// never fires under isCaptureMode() -> the deterministic baselines render a clean, sheet-free HUD
+// (the explore frames lose the old always-on sheet, a deliberate re-baseline).
+const ControlsSheet = React.memo(() => {
+  const showControls = useGameStore((s) => s.showControls);
+  useEffect(() => {
+    if (isCaptureMode()) return undefined; // never auto-show/fade in capture -> deterministic frames
+    const st = useGameStore.getState();
+    st.setShowControls(true); // onboarding: show on enter
+    const id = setTimeout(() => useGameStore.getState().setShowControls(false), 8000);
+    return () => clearTimeout(id);
+  }, []);
+  if (!showControls) return null;
+  return <CombatInstructions />;
+});
 
 // ObjectiveTracker -- the PERSISTENT spawn-direction cue (Kevin 2026-06-16: "I spawn with no guide; where
 // do I go?"). Unlike the FOV-gated Compass markers (which vanish when you face away) and the localStorage-
@@ -520,7 +530,7 @@ export function HUD({
               showStats={showStats}
               setShowStats={setShowStats}
             />
-            {!isTouchUIMode() && <CombatInstructions />}{/* keyboard cheatsheet is desktop-only (touch has on-screen controls) */}
+            {!isTouchUIMode() && <ControlsSheet />}{/* W3 M-HUD.9: keyboard cheatsheet demoted to auto-fade + H-toggle (desktop-only; touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
 
@@ -533,25 +543,18 @@ export function HUD({
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
               <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
-              <PlayerHungerBar hunger={gameSystems.hunger} />
+              {/* W3 M-HUD.9: the hunger bar is a SURVIVAL-mode mechanic — in creative it pinned a static
+                  100/100 pill that read as a duplicate stat. Gate it on survival so non-survival stacks clean. */}
+              {gameState.gameMode === 'survival' && <PlayerHungerBar hunger={gameSystems.hunger} />}
               <FerocityBar />
               <KineticBar />
               <SoulBar />
           <ResonanceBar />
             </div>
 
-            <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-              {/* whitespace-nowrap: anchored at left-1/2 the auto-width panel can only grow to the right
-                  edge (~50% of the viewport) before wrapping, so on a phone "Spell: FIREBALL (15 MP)"
-                  broke onto two lines. nowrap keeps it one line; -translate-x-1/2 centers the full width. */}
-              <Panel variant="base" className="px-4 py-2 text-sm text-center whitespace-nowrap">
-                <span className="text-text-muted">Spell: </span>
-                <span className={`font-bold ${SPELL_COLOR_CLASS[gameState.activeSpell] || 'text-spell-arcane'}`}>
-                  {gameState.activeSpell.toUpperCase()}
-                </span>
-                <span className="text-text-muted ml-2 tabular-nums">({SPELL_MANA_COSTS[gameState.activeSpell]} MP)</span>
-              </Panel>
-            </div>
+            {/* W3 M-HUD.9: the standalone top-center "Spell: FIREBALL (15 MP)" band is REMOVED — it
+                triple-stacked the top-center lane with the ObjectiveTracker + Compass. The active spell +
+                MP cost read off the action bar / hotbar; removing the redundant band reclaims the lane. */}
 
             {/* the bottom-center XP bar (bottom-32, min-w-80) overlaps the touch joystick zone
                 (left-7%/bottom-13%) -> desktop-only; touch gets the compact top-right readout below (M2b) */}
