@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, BASE_MOVE_SPEED, JUMP_VELOCITY, GRAVITY, TERMINAL_VELOCITY } from '../../src/game/locomotion.js';
 
 describe('locomotion (S3-M5 p2) — movement math (pinned to the old inline literals)', () => {
-  it('move speed = 10 * moveMult', () => {
-    expect(moveSpeed({ moveMult: 1 })).toBe(10);
-    expect(moveSpeed({ moveMult: 1.3 })).toBeCloseTo(13);
-    expect(BASE_MOVE_SPEED).toBe(10);
+  it('move speed = 14 * moveMult (base bumped 10 -> 14 for snappier travel, Kevin 2026-06-18)', () => {
+    expect(moveSpeed({ moveMult: 1 })).toBe(14);
+    expect(moveSpeed({ moveMult: 1.3 })).toBeCloseTo(18.2);
+    expect(BASE_MOVE_SPEED).toBe(14);
   });
   it('jump velocity = 12 * jumpMult (hawk higher, golem lower)', () => {
     expect(jumpVelocity({ jumpMult: 1 })).toBe(12);

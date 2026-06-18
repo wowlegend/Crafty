@@ -6,7 +6,7 @@ import { TIER_RING, MAX_TIER } from './zoneTier.js';
 // never appears in a baseline). Sits deep in the top zone tier (the most dangerous ring) at a fixed bearing,
 // so it reads as "the dark thing at the edge of the world" that the whole run builds toward.
 // The compass marker (S9b) + the boss spawn (S9b) both consume this one source.
-export const BLIGHT_RADIUS = TIER_RING * (MAX_TIER + 1); // 256 * 5 = 1280 blocks -> deep tier 4
+export const BLIGHT_RADIUS = TIER_RING * MAX_TIER; // 256 * 4 = 1024 blocks -> the outer edge of the deepest tier (pulled in from 1280 2026-06-18: the journey was too long — Kevin). All consumers (boss spawn, FarBeacon, compass, minimap) read blightHeartSite() so they move together.
 
 export function blightHeartSite() {
   // Fixed NE-ish bearing at BLIGHT_RADIUS; integer coords for clean chunk alignment. ceil (not round) so the
