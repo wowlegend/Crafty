@@ -945,6 +945,29 @@ export const Player = ({ isWorldBuilt }) => {
           imbue: (t['elemancer_imbue'] ?? 0) > 0,
         },
       }));
+
+      // W3 M-HUD.7: mirror the looked-at mob/NPC for the HUD TargetFrame nameplate. Reuses the EXACT
+      // aim-cone seam performVerb uses for aimedMobDist (checkMobsInMeleeCone + AIM_CONE_RANGE/ARC off
+      // the true, unflattened look dir) and picks the NEAREST cone hit. JSON-safe + transient store
+      // write (Game-Loop-Isolation); null when nothing is aimed at. Same ~150ms throttle as the
+      // cooldown mirror above (piggybacks _lastCdMirror).
+      const _aimDir = new THREE.Vector3();
+      camera.getWorldDirection(_aimDir);
+      const _aimPos = camera.position.clone();
+      _aimPos.y -= 0.8;
+      let _aimed = null;
+      let _aimedDist = Infinity;
+      if (GameMethods.checkMobsInMeleeCone) {
+        for (const m of GameMethods.checkMobsInMeleeCone(_aimPos, _aimDir, AIM_CONE_RANGE, AIM_CONE_ARC)) {
+          if (!m || m.health <= 0) continue;
+          const dx = m.position.x - _aimPos.x, dy = m.position.y - _aimPos.y, dz = m.position.z - _aimPos.z;
+          const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (d < _aimedDist) { _aimedDist = d; _aimed = m; }
+        }
+      }
+      useGameStore.getState().setTargetEntity(_aimed
+        ? { id: _aimed.id, type: _aimed.type, name: _aimed.npcName || _aimed.type, health: _aimed.health, maxHealth: _aimed.maxHealth, isAlly: !!_aimed.isAlly }
+        : null);
     }
 
     // Set up robust player physics exclusions to prevent self-collision

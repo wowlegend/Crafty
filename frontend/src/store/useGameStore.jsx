@@ -551,6 +551,12 @@ export const useGameStore = create((set, get) => ({
     abilityCooldowns: { grab: null, snare: null, roar: null, imbue: null, dodge: { ready: true, remaining: 0, duration: 0.8 } },
     setAbilityCooldowns: (m) => set({ abilityCooldowns: m }),
 
+    // W3 M-HUD.7: the looked-at mob/NPC mirror for the HUD TargetFrame (nameplate). A throttled,
+    // JSON-safe transient write from Components.jsx's useFrame (Game-Loop-Isolation) off the aim-cone
+    // seam; null when nothing is aimed at. The TargetFrame component is the sole reader.
+    targetEntity: null,
+    setTargetEntity: (t) => set({ targetEntity: t }),
+
     inventory: {
         blocks: {
             grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,

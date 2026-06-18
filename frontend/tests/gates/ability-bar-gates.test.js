@@ -21,3 +21,21 @@ describe('ability-bar cooldown mirror wiring', () => {
     expect(c).toMatch(/_lastCdMirror|cdMirrorThrottle/);
   });
 });
+
+describe('AbilityBar component', () => {
+  const bar = read('ui/AbilityBar.jsx');
+  it('reads abilityCooldowns from the store (not the SM refs)', () => {
+    expect(bar).toMatch(/abilityCooldowns/);
+    expect(bar).not.toMatch(/voidhandSMRef|soulbindSMRef/);
+  });
+  it('uses a conic-gradient radial sweep + the Slot primitive', () => {
+    expect(bar).toMatch(/conic-gradient/);
+    expect(bar).toMatch(/Slot/);
+  });
+  it('is capture-suppressed (returns null under isCaptureMode)', () => {
+    expect(bar).toMatch(/isCaptureMode\(\)/);
+  });
+  it('labels the 5 signature abilities', () => {
+    for (const k of ['GRAB', 'SNARE', 'IMBUE', 'ROAR', 'DODGE']) expect(bar).toMatch(new RegExp(k));
+  });
+});

@@ -30,6 +30,8 @@ import MusicPlayer from './ui/MusicPlayer';
 import UISounds from './ui/UISounds';
 import AspectHintToast from './ui/AspectHintToast';
 import { SurvivalWarning } from './ui/SurvivalWarning';
+import { AbilityBar } from './ui/AbilityBar';
+import { TargetFrame } from './ui/TargetFrame';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
@@ -660,6 +662,10 @@ export function HUD({
             />
 
             {!isTouchUIMode() && <Minimap />}{/* bottom-right minimap collides with the touch action cluster — desktop-only for now (M2b gives touch its own placement) */}
+
+            {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
+
+            <TargetFrame />{/* W3 M-HUD.7: top-center unit nameplate off the aim-cone seam; self-gates on store.targetEntity + isCaptureMode (touch-safe, top-center clear of the action cluster) */}
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
