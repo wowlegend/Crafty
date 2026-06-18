@@ -20,6 +20,7 @@ import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
+import { nearestLandmark } from './shrines.js';
 import { BLOCK_TYPES } from './Blocks';
 
 const worker = new TerrainWorker();
@@ -436,6 +437,68 @@ const BlightHeartRender = ({ chunks }) => {
     const { surfaceY, isWater } = surfaceBlockAt(site.x, site.z);
     if (isWater) return null;
     return <group position={[site.x, 0, site.z]}><BlightMonolith baseY={surfaceY} /></group>;
+};
+
+// W3 M-HUD.10 — far-LOD spawn beacons. The old LandmarksRender/BlightHeartRender only draw their
+// landmark once that CHUNK is loaded, so a freshly-spawned player sees an empty horizon with no goal
+// cue (Kevin 2026-06-16: "I spawn with no guide; where do I go?"). FarBeacon draws two tall additive
+// light-shafts — cyan toward the NEAREST shrine, violet toward the Blight-Heart — DECOUPLED from chunk
+// load. Positioned by a transient per-frame read of the player position (Game-Loop-Isolation-safe: no
+// reactive subscription). Capture-SUPPRESSED (renders null + the useFrame early-returns) so the
+// deterministic baselines are byte-identical — zero gate impact.
+//
+// Spawn-legibility design note (M-HUD.10 tuning, controller live-look): the literal landmark coords are
+// FAR — the Blight-Heart sits at ~1280 blocks (≈99% fogged out; a thin world-space cylinder there is
+// sub-pixel) and the nearest shrine up to ~256. So each beacon is a CLAMPED GUIDING BEAM: placed along
+// the true bearing at min(trueDist, BEACON_CLAMP) from the player, keeping it inside fog-light view so it
+// ALWAYS reads from spawn and points the way. Once the player is within BEACON_CLAMP of a real shrine the
+// beam sits on it (the chunk's Landmark mesh then renders too). A bright core + soft halo, toneMapped
+// false so the beams stay vivid + catch the scene bloom (glow as distant light-shafts, not ACES-muted).
+const BEACON_CLAMP = 150;
+const FarBeacon = () => {
+    const shrine = useRef();
+    const shrineHalo = useRef();
+    const blight = useRef();
+    const blightHalo = useRef();
+    useFrame(() => {
+        if (isCaptureMode()) return;
+        const pp = useGameStore.getState().playerPosition;
+        if (!pp) return;
+        const place = (core, halo, tx, tz, baseY) => {
+            const dx = tx - pp.x, dz = tz - pp.z;
+            const dist = Math.hypot(dx, dz);
+            const vis = dist > 0.5;
+            const f = vis ? Math.min(dist, BEACON_CLAMP) / dist : 0;
+            const x = pp.x + dx * f, z = pp.z + dz * f;
+            for (const r of [core, halo]) { if (r.current) { r.current.visible = vis; r.current.position.set(x, baseY, z); } }
+        };
+        const s = nearestLandmark(pp.x, pp.z, 16);
+        if (s) place(shrine, shrineHalo, s.worldX, s.worldZ, 95);
+        else for (const r of [shrine, shrineHalo]) if (r.current) r.current.visible = false;
+        const bh = blightHeartSite();
+        place(blight, blightHalo, bh.x, bh.z, 110);
+    });
+    if (isCaptureMode()) return null;
+    return (
+        <group>
+            <mesh ref={shrineHalo} visible={false}>
+                <cylinderGeometry args={[7, 5, 190, 12, 1, true]} />
+                <meshBasicMaterial color="#46E0FF" transparent opacity={0.10} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+            </mesh>
+            <mesh ref={shrine} visible={false}>
+                <cylinderGeometry args={[3, 2, 200, 12, 1, true]} />
+                <meshBasicMaterial color="#9CF3FF" transparent opacity={0.55} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+            </mesh>
+            <mesh ref={blightHalo} visible={false}>
+                <cylinderGeometry args={[8, 6, 220, 12, 1, true]} />
+                <meshBasicMaterial color="#A24BFF" transparent opacity={0.13} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+            </mesh>
+            <mesh ref={blight} visible={false}>
+                <cylinderGeometry args={[3.4, 2.2, 230, 12, 1, true]} />
+                <meshBasicMaterial color="#D9A0FF" transparent opacity={0.62} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+            </mesh>
+        </group>
+    );
 };
 
 export const MinecraftWorld = React.memo(() => {
@@ -870,6 +933,7 @@ export const MinecraftWorld = React.memo(() => {
             <HomeAnchorRender />
             <LandmarksRender chunks={chunks} />
             <BlightHeartRender chunks={chunks} />
+            <FarBeacon />
         </group>
     );
 });
