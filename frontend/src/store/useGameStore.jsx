@@ -545,6 +545,12 @@ export const useGameStore = create((set, get) => ({
     selectedVillager: null,
     setSelectedVillager: (villager) => set({ selectedVillager: villager }),
 
+    // W3 M-HUD.2: the ability-bar cooldown mirror — a JSON-safe snapshot of the Aspect/dodge cooldown
+    // timers written ~6.7x/s from Components.jsx's useFrame (Game-Loop-Isolation: a throttled setState,
+    // never per-frame React state). The HUD AbilityBar reads this, never the component-local SM refs.
+    abilityCooldowns: { grab: null, snare: null, roar: null, imbue: null, dodge: { ready: true, remaining: 0, duration: 0.8 } },
+    setAbilityCooldowns: (m) => set({ abilityCooldowns: m }),
+
     inventory: {
         blocks: {
             grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,

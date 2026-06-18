@@ -12,6 +12,7 @@ import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
+import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
@@ -118,6 +119,7 @@ export const Player = ({ isWorldBuilt }) => {
   const prevRoarRef = useRef(false);
   const voidhandSMRef = useRef(makeVoidhandState()); // S2-B2-M1: the VOIDHAND grab SM state
   const soulbindSMRef = useRef(makeSoulbindState()); // S2-B3-M4: the SOULBIND snare SM state
+  const _lastCdMirror = useRef(0); // W3 M-HUD.2: throttle clock for the ability-bar cooldown mirror
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
   const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
@@ -920,6 +922,29 @@ export const Player = ({ isWorldBuilt }) => {
           useGameStore.getState().triggerCameraShake(0.5);
         }
       }
+    }
+
+    // W3 M-HUD.2: Mirror the Aspect/dodge cooldown timers into the store ~6.7x/s so the HUD ability bar
+    // can sweep them WITHOUT reading these component-local SM refs (Game-Loop-Isolation: a throttled
+    // setState, never per-frame React state). All SMs + the dodge ref share the getElapsedTime() seconds
+    // clock (`nowTime`), so cooldownUntil/lastDodgeTime are in the same domain `buildCooldownMirror` reads.
+    // owned flags come from unlockedTalents (the same gate the SM canEnter/canGrab/canSnare checks use).
+    if (nowTime - _lastCdMirror.current > 0.15) {
+      _lastCdMirror.current = nowTime;
+      const t = useGameStore.getState().unlockedTalents || {};
+      useGameStore.getState().setAbilityCooldowns(buildCooldownMirror({
+        now: nowTime,
+        voidhand: voidhandSMRef.current,
+        soulbind: soulbindSMRef.current,
+        beast: beastSMRef.current,
+        dodge: dodgeStateRef.current,
+        owned: {
+          grab: (t['voidhand_grasp'] ?? 0) > 0,
+          snare: (t['soulbind_snare'] ?? 0) > 0,
+          roar: (t['wildheart_roar'] ?? 0) > 0,
+          imbue: (t['elemancer_imbue'] ?? 0) > 0,
+        },
+      }));
     }
 
     // Set up robust player physics exclusions to prevent self-collision
