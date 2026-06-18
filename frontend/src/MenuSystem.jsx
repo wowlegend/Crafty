@@ -224,9 +224,19 @@ export function MenuSystem({
                   Crafty
                 </motion.h1>
 
+                {/* The tagline sits over the hero's blue robe, where the middle words were
+                    near-invisible (low contrast). Two fixes: (1) it now uses the LIGHT `text` token
+                    (#ECECEF) — the old `text-inverse` (#231708) is the near-black "text on gold
+                    fills" token and was the real culprit (dark text on a busy mid-tone robe); (2) it
+                    is given its OWN focused legibility scrim — a soft dark pill behind the text only —
+                    so the near-white text stays fully legible against the robe (and against the
+                    drifting hero in non-capture mode), mirroring the page's bottom-scrim pattern. */}
                 <motion.p
-                  className="text-xl mb-8 tracking-wider whitespace-nowrap text-text-inverse/90"
-                  style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}
+                  className="text-xl mb-8 tracking-wider whitespace-nowrap text-text rounded-full px-6 py-1.5"
+                  style={{
+                    textShadow: '0 2px 12px rgba(0,0,0,0.95)',
+                    background: 'radial-gradient(ellipse 70% 135% at center, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.30) 82%, rgba(0,0,0,0) 100%)',
+                  }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.8 }}
