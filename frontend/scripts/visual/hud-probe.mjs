@@ -205,5 +205,24 @@ try {
     console.log('shot minimap.png mmSnap=', JSON.stringify(mmSnap));
   } catch (e) { console.error('RADIAL-MINIMAP-PROBE step error:', e); }
 
+  // === W3 M-HUD.4: CombatLog corner ticker (bottom-left). Capture-suppressed -> drive the real game:
+  // inject a few varied notifications via the store-wired addNotification (QuestSystem.jsx:374 sets it;
+  // the same stream the corner toasts use) and screenshot the quiet bottom-left feed. Entries auto-
+  // dismiss after a few seconds, so shoot right after adding.
+  try {
+    await page.evaluate(() => {
+      const add = window.useGameStore.getState().addNotification;
+      if (add) {
+        add('Defeated dire-wolf', 'loot');
+        add('Quest Complete: First Light', 'quest');
+        add('+25 XP from quest reward', 'reward');
+        add('A skeleton archer closes in', 'danger');
+      }
+    });
+    await delay(400);
+    await page.screenshot({ path: `${OUT}/combat-log.png` });
+    console.log('shot combat-log.png');
+  } catch (e) { console.error('COMBAT-LOG-PROBE step error:', e); }
+
   await browser.close(); done(0);
 } catch (e) { console.error('HUD-PROBE ERROR:', e); done(1); }

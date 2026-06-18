@@ -19,6 +19,7 @@ import {
 } from './GameSystems';
 import { SimpleExperienceBar, SimpleExperienceBarTouch, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
+import { CombatLog } from './ui/CombatLog';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
 import LowHealthVignette from './ui/LowHealthVignette';
@@ -589,6 +590,10 @@ export function HUD({
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
             <NotificationStack notifications={questSystem.notifications} />
+
+            {/* W3 M-HUD.4: quiet bottom-left combat-log ticker over the SAME addNotification stream as the
+                corner toasts (classic-RPG "what just happened" read). Capture-suppressed; collapses on touch. */}
+            <CombatLog notifications={questSystem.notifications} />
 
             <ChestIndicator
               chests={treasureChests.chests}
