@@ -32,6 +32,7 @@ import AspectHintToast from './ui/AspectHintToast';
 import { SurvivalWarning } from './ui/SurvivalWarning';
 import { AbilityBar } from './ui/AbilityBar';
 import { TargetFrame } from './ui/TargetFrame';
+import { RadialMinimap } from './ui/RadialMinimap';
 import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
 import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
@@ -179,91 +180,6 @@ const SPELL_COLOR_CLASS = {
   lightning: 'text-spell-lightning',
   arcane: 'text-spell-arcane',
 };
-
-const Minimap = React.memo(() => {
-  const canvasRef = useRef(null);
-  const MAP_SIZE = 130;
-  const MAP_RANGE = 60;
-  const [coords, setCoords] = React.useState({ x: 0, z: 0 });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    const draw = () => {
-      const playerPos = useGameStore.getState().playerPosition;
-      if (!playerPos) return;
-
-      setCoords({ x: playerPos.x, z: playerPos.z });
-
-      ctx.fillStyle = 'rgba(10, 10, 20, 0.85)';
-      ctx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < MAP_SIZE; i += MAP_SIZE / 6) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0); ctx.lineTo(i, MAP_SIZE);
-        ctx.moveTo(0, i); ctx.lineTo(MAP_SIZE, i);
-        ctx.stroke();
-      }
-
-      const cx = MAP_SIZE / 2;
-      const cy = MAP_SIZE / 2;
-      const scale = MAP_SIZE / MAP_RANGE;
-
-      if (useGameStore.getState().mobEntities) {
-        useGameStore.getState().mobEntities.forEach(mob => {
-          const dx = (mob.position[0] - playerPos.x) * scale;
-          const dz = (mob.position[2] - playerPos.z) * scale;
-          if (Math.abs(dx) < MAP_SIZE / 2 && Math.abs(dz) < MAP_SIZE / 2) {
-            ctx.beginPath();
-            ctx.arc(cx + dx, cy + dz, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = mob.passive ? '#4ade80' : '#ef4444';
-            ctx.fill();
-          }
-        });
-      }
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 4);
-      ctx.lineTo(cx - 2.5, cy + 2);
-      ctx.lineTo(cx + 2.5, cy + 2);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fill();
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.font = '9px Orbitron, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('N', cx, 10);
-    };
-
-    const interval = setInterval(draw, 250);
-    draw();
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="absolute bottom-20 right-4 z-20 pointer-events-none">
-      <Panel variant="base" className="overflow-hidden p-0 leading-none">
-        <canvas ref={canvasRef} width={MAP_SIZE} height={MAP_SIZE} className="block" />
-      </Panel>
-      <div className="text-center text-xs mt-1 tabular-nums text-text-muted">
-        {coords.x}, {coords.z}
-      </div>
-    </div>
-  );
-});
 
 // ObjectiveTracker -- the PERSISTENT spawn-direction cue (Kevin 2026-06-16: "I spawn with no guide; where
 // do I go?"). Unlike the FOV-gated Compass markers (which vanish when you face away) and the localStorage-
@@ -661,7 +577,7 @@ export function HUD({
               }}
             />
 
-            {!isTouchUIMode() && <Minimap />}{/* bottom-right minimap collides with the touch action cluster — desktop-only for now (M2b gives touch its own placement) */}
+            {!isTouchUIMode() && <RadialMinimap />}{/* W3 M-HUD.8: circular radial minimap with HOME/SHRINE/BLIGHT/NPC destination blips clamped to the rim; bottom-right collides with the touch action cluster — desktop-only for now (M2b gives touch its own placement) */}
 
             {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
 

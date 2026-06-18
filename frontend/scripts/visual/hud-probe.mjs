@@ -139,5 +139,31 @@ try {
     console.log(`shot target-frame-cleared.png targetEntity-null=${cleared}`);
   } catch (e) { console.error('TARGET-FRAME-PROBE step error:', e); }
 
+  // --- M-HUD.8 LIVE-LOOK: the RadialMinimap (circular, bottom-right) ---
+  // Capture-suppressed (returns null + the canvas redraw never starts under isCaptureMode), so it is
+  // invisible to the diorama baselines; the only way to SEE it is to drive the real game. By now the
+  // prior steps have spawned a cluster of live mobs, so the minimap plots mob blips (red/green) inside
+  // the rim plus the always-present HOME/SHRINE/BLIGHT destination blips clamped to the rim. We locate
+  // the bottom-right minimap container live, let one 250ms canvas redraw land, then clip-screenshot it.
+  try {
+    await delay(600); // let >=2 canvas redraws (250ms interval) land so blips are painted
+    // The radial minimap is a 132x132 2D canvas (the WebGL scene canvas is full-frame 1280x800),
+    // so size is an unambiguous, render-state-robust handle even when the class-descendant query is
+    // flaky mid-sequence. Query rect + state in ONE evaluate so they are consistent.
+    const mmSnap = await page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      const c = [...document.querySelectorAll('canvas')].find((x) => x.width === 132 && x.height === 132);
+      const r = c ? c.getBoundingClientRect() : null;
+      return {
+        mobCount: (s.mobEntities || []).length, npcCount: (s.npcEntities || []).length, hasCanvas: !!c,
+        clip: r ? { x: Math.max(0, r.x - 8), y: Math.max(0, r.y - 8), width: r.width + 16, height: r.height + 36 } : null,
+      };
+    });
+    const MM_CLIP = mmSnap.clip || { x: 1116, y: 556, width: 152, height: 172 };
+    console.log('RadialMinimap rect:', JSON.stringify(MM_CLIP));
+    await page.screenshot({ path: `${OUT}/minimap.png`, clip: MM_CLIP });
+    console.log('shot minimap.png mmSnap=', JSON.stringify(mmSnap));
+  } catch (e) { console.error('RADIAL-MINIMAP-PROBE step error:', e); }
+
   await browser.close(); done(0);
 } catch (e) { console.error('HUD-PROBE ERROR:', e); done(1); }
