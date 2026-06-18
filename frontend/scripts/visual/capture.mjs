@@ -374,6 +374,12 @@ async function main() {
     });
     await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 0));
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
+    // PIN day directly: setTimeOfDay only FLIPS isDay on a half-cycle crossing, so after the night
+    // frames above (setTimeOfDay 0.0) it could leave isDay=false -> the panel backgrounds rendered
+    // NIGHT non-deterministically (a green-confetti-grade flake: same code, day one run / night another).
+    // The panel baselines are bright-day, so pin isDay=true outright before the inventory/achievements/
+    // progression captures (mood is snapped in capture -> the day grade applies immediately).
+    await page.evaluate(() => window.useGameStore.setState({ isDay: true }));
     await page.evaluate(() => window.__craftyTest.call('openModal', 'inventory'));
     await page.evaluate(() => document.fonts.ready);
     // The migrated modal no longer carries `.game-panel`; gate on the stable test id.
