@@ -39,9 +39,18 @@ export const AbilityBar = React.memo(() => {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // SUBSCRIBE to a STABLE membership key so the bar re-renders when an Aspect ability is unlocked/lost.
+  // We do NOT subscribe to the whole abilityCooldowns object (it churns ~6.7x/s -> a re-render storm);
+  // the selector returns a string that only changes when the OWNED SET changes. Without this, the
+  // React.memo'd bar (no props, getState-only) froze at its spawn null-render and NEVER reappeared once
+  // an Aspect was unlocked. The rAF above still owns the per-frame conic sweep via getState().
+  const ownedKey = useGameStore((s) => {
+    const cds = s.abilityCooldowns || {};
+    return SLOTS.filter((sl) => sl.key === 'dodge' || cds[sl.key] != null).map((sl) => sl.key).join(',');
+  });
+
   if (isCaptureMode()) return null;
-  const cds = useGameStore.getState().abilityCooldowns || {};
-  const owned = SLOTS.filter((s) => s.key === 'dodge' || cds[s.key] != null);
+  const owned = ownedKey ? ownedKey.split(',').map((k) => SLOTS.find((sl) => sl.key === k)) : [];
   if (owned.length <= 1) return null; // only dodge -> no Aspect unlocked yet; keep HUD clean
 
   return (
