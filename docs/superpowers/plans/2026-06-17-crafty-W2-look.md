@@ -1,5 +1,7 @@
 # W2 — The Look Implementation Plan
 
+> **✅ COMPLETE 2026-06-18 (on main).** All 8 task-groups shipped subagent-driven w/ live-look gates: warm magic-hour lighting, gloved hands, 4 distinct spell silhouettes, per-element death-FX, continuous toon-Caribbean ocean (Gerstner), cinematic 3D title vista, de-islanded continent spawn, biome data-model + 3 cleanups (Modal-M a11y, tagline fix, brand gate). Follow-ups: biome-worker-wiring, ocean GPU-perf.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement task-by-task. Steps use checkbox (- [ ]) syntax.
 
 **Goal:** Lift Crafty's always-on visible fidelity to a SOTA-June-2026 bar — warm magic-hour grade, a real stylized tropical-toon ocean surface, a cinematic 3D title vista, distinct per-element spell silhouettes/VFX, hue-preserving death-FX, stylized FPV hands, a de-islanded flat-spawn world, and biome variety — each validated by a LIVE-LOOK probe plus a deliberate capture re-baseline (the pinned gate is necessary, not sufficient).
