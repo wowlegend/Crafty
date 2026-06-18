@@ -547,14 +547,6 @@ const SpellImpactPop = React.memo(({ impact }) => {
         )}
       </group>
 
-      {/* W2-T4: lightning CHAIN SEGMENT — a thin additive cylinder from the impact toward
-          the chained target, drawn ONLY when impact.chainTo is supplied (deterministic;
-          gameplay chain-targeting may set it). Absent today on the capture fixture -> no
-          extra geometry, so the frozen frame is unaffected unless a chain is staged. */}
-      {kind === 'fork' && impact.chainTo ? (
-        <ChainSegment from={impact.position} to={impact.chainTo} color={energy.glowColor} />
-      ) : null}
-
       {/* hot-white core flash — the bright punch at the moment of impact (bloom-catchable) */}
       <mesh ref={flashRef}>
         <sphereGeometry args={[0.55, 16, 16]} />
@@ -575,33 +567,6 @@ const SpellImpactPop = React.memo(({ impact }) => {
         decay={2}
       />
     </group>
-  );
-});
-
-// W2-T4: a thin additive chain-lightning SEGMENT from the impact point toward a chained
-// target. Deterministic (pure geometry placed by the two endpoints — no clock/Math.random),
-// so a staged chain holds a byte-stable capture pose. `from`/`to` are world-space Vector3s;
-// the segment is drawn LOCAL to the impact group (which is positioned at `from`), so it is
-// offset by (to - from) and oriented along that delta.
-const ChainSegment = React.memo(({ from, to, color }) => {
-  const d = new THREE.Vector3(to.x - from.x, to.y - from.y, to.z - from.z);
-  const len = d.length();
-  if (len < 0.001) return null;
-  const dir = d.clone().multiplyScalar(1 / len);
-  const mid = dir.clone().multiplyScalar(len * 0.5); // midpoint, local to `from`
-  const quat = new THREE.Quaternion().setFromUnitVectors(_trailUp, dir);
-  return (
-    <mesh position={[mid.x, mid.y, mid.z]} quaternion={quat}>
-      <cylinderGeometry args={[0.05, 0.05, len, 5]} />
-      <meshBasicMaterial
-        color={color}
-        transparent
-        opacity={0.8}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-      />
-    </mesh>
   );
 });
 
