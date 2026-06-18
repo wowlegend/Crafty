@@ -11,12 +11,14 @@ export const DEEP_FLOOR = 6;        // deepest seabed -> max divable depth = SEA
 
 // The ocean blend: as `continent` falls below the threshold, the surface lerps from the land
 // baseHeight down toward the deep seabed over a transition band (the shore -> deep ramp).
-// De-island (Kevin "seemingly on an island") is DEFERRED to S4b: lowering this pushes every coastline
-// outward, which requires relocating the ocean-depth/ocean-coast capture cameras (pinned to the old
-// -0.15 shore) to the new ocean + is a "how far from spawn should sea be" taste call — handled as its
-// own slice. S4 ships the mountain-taming only; this threshold stays at -0.15 until S4b.
-export const OCEAN_CONTINENT_THRESHOLD = -0.15;
-export const OCEAN_FULL_SPAN = 0.15; // continent in [-0.30, -0.15] = shore -> full-ocean
+// De-island (Kevin "seemingly on an island") EXECUTED in W2-T7 (2026-06-17): the threshold dropped
+// -0.15 -> -0.35 to push every coastline outward, paired with a lower continent-noise frequency in
+// heightAt.js (0.002 -> 0.0011, bigger landmasses). Measured (seed 12345): nearest deep water moved
+// from 27m to 98m (8-cardinal). The ocean-depth/ocean-coast/hearth capture cameras were re-posed to
+// the new coast in the same slice. OCEAN_FULL_SPAN (the shore->deep RAMP width) is unchanged — it's a
+// separate concern from WHERE the shore sits; the ramp now runs continent [-0.50, -0.35].
+export const OCEAN_CONTINENT_THRESHOLD = -0.35;
+export const OCEAN_FULL_SPAN = 0.15; // continent in [thr - SPAN, thr] = shore -> full-ocean (ramp width)
 
 export function oceanBlend(continent) {
   return Math.min(1, Math.max(0, (OCEAN_CONTINENT_THRESHOLD - continent) / OCEAN_FULL_SPAN));

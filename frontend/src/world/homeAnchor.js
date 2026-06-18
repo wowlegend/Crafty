@@ -4,14 +4,16 @@
 // flat top simply BECOMES the spawn floor — no spawn code changes. Pure coordinate math (NO RNG):
 // the same seed regenerates the identical Hearth every load, zero save data (like the dungeon).
 //
-// HEARTH_Y is the natural origin grade (≈50 for the locked seed 12345 — computed across the
-// footprint: min 41 / max 58 / avg 49.5) raised a few voxels, so the plinth is a gently-raised
-// crafted PAD flush-to-slightly-above the local terrain — NOT a sunken pit (the early "~Y30"
-// design assumption was wrong by ~20 voxels; corrected against the real worldgen height formula).
+// HEARTH_Y is the natural origin grade raised just enough to read as a deliberate crafted PAD that
+// nestles FLUSH in the terrain — NOT a podium the player is perched on. W2-T7 (2026-06-17) FLUSHED
+// the pad: was 56 (a 3-11 voxel plinth above the surrounding grade — Kevin "perched on an island").
+// Re-measured under the W2-T7 enlarged continent (seed 12345): the footprint[-7..7] base grade is
+// min 45 / max 53 / avg 49 — so 51 caps ~1.5 above the average and ~2 BELOW the footprint max: a
+// gently-raised pad flush with the land, still well above the water fill (y<=28) so it never floods.
 const CHUNK_SIZE = 16;
 const CHUNK_HEIGHT = 256;
 
-export const HEARTH_Y = 56;       // a raised pad over the ≈y50 origin grade; >> the water fill (y<=28)
+export const HEARTH_Y = 51;       // a flush pad nestled in the ≈y45-53 origin grade; >> the water fill (y<=28)
 export const HEARTH_RADIUS = 7;   // world [-7,7] in x/z -> a 15x15 standable platform
 const STONE = 3;                  // existing block id (no new blocks in M1 — palette is M4)
 

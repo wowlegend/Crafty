@@ -24,7 +24,12 @@ export const HIGHLAND_AMP = 90;
 // Compute the climate fields + base surface height for a world column.
 // Returns { continent, moisture, temperature, n, baseHeight }.
 export function computeHeight(noise2D, worldX, worldZ) {
-  const continent = noise2D(worldX * 0.002, worldZ * 0.002);
+  // W2-T7 de-island (2026-06-17): continent frequency lowered 0.002 -> 0.0011 so landmasses are larger
+  // (lower freq = broader continents), paired with OCEAN_CONTINENT_THRESHOLD -0.15 -> -0.35 in
+  // oceanProfile.js. This only enlarges the continent footprint; the base SURFACE height uses the
+  // 0.01/0.05/0.0018 octaves below, so the origin grade is unchanged (still ~y49). Measured (seed
+  // 12345): nearest deep water moved 27m -> 98m, so spawn reads continent, not a tiny island.
+  const continent = noise2D(worldX * 0.0011, worldZ * 0.0011);
   const moisture = noise2D(worldX * 0.005, worldZ * 0.005) * 0.5 + 0.5;
   const temperature = noise2D((worldX + 500) * 0.005, (worldZ + 500) * 0.005) * 0.5 + 0.5;
 
