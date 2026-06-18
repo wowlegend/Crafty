@@ -1,5 +1,5 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
-import { stampHomeAnchor } from './homeAnchor.js';
+import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
 import { pineShape } from './foliage.js';
@@ -528,6 +528,9 @@ function generateChunkData(cx, cz) {
   //     tree in its footprint; BEFORE the player-mod replay so player edits still win. NO-RE-MESH
   //     (baked into the chunk array here, meshed once like all gen output).
   stampHomeAnchor(blocks, cx, cz);
+  // 5c. Flatten a small terrace under each frontier-outpost building so they sit flush (M-HUB). Same
+  //     timing/constraints as stampHomeAnchor (after foliage, before player-mod replay). NO-RE-MESH.
+  stampHub(blocks, cx, cz);
 
   // 6. Apply late player in-game block modifications over the chunk data
   const modKey = `${cx}_${cz}`;

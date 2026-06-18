@@ -21,6 +21,8 @@ import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark } from './shrines.js';
+import { HubRender } from '../render/HubRender';
+import { HEARTH_Y } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
 
 const worker = new TerrainWorker();
@@ -338,7 +340,7 @@ const TreasureChestsRender = () => {
 // look) — NOT PBR. Sibling of TreasureChestsRender. Static (one fixed place at origin, no store
 // read). The brazier glow + its light self-null under isCaptureMode (the chest-beacon pattern) so
 // the studio cards stay clean; the toon cubes freeze naturally (no animation).
-const HEARTH_TOP = 56; // mirrors HEARTH_Y in world/homeAnchor.js (the plinth cap; ≈y50 origin grade + raise)
+const HEARTH_TOP = HEARTH_Y; // = the flushed plinth cap (single source of truth). W2-T7 flushed HEARTH_Y 56->51 but left this hard-coded at 56, so the lodge/brazier floated ~5 blocks above the pad — corrected (M-HUB live-look catch).
 const HomeAnchorRender = () => {
     const WOOD = '#6B4A2F', STONE = '#8A8A8A', ROOF = '#7A3B2E', LEAF = '#3E7D32';
     return (
@@ -931,6 +933,7 @@ export const MinecraftWorld = React.memo(() => {
             <BlockParticleSystem worker={worker} />
             <TreasureChestsRender />
             <HomeAnchorRender />
+            <HubRender />
             <LandmarksRender chunks={chunks} />
             <BlightHeartRender chunks={chunks} />
             <FarBeacon />
