@@ -10,6 +10,7 @@ import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 import { zoneTier } from './world/zoneTier.js';
 import { nearestLandmark } from './world/shrines.js';
+import { loreFor, themedDescription } from './game/questLore.js';
 import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
 
@@ -91,8 +92,13 @@ export const useQuestSystem = () => {
         const saved = useGameStore.getState().questState;
         if (saved && saved.quests) return saved.quests;
         // Initialize active quests (first 3 from tier 1)
+        // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
+        // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
+        // claim flow are unchanged; loreFor returns {} for non-chain quests (spreads nothing).
         return QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
             ...q,
+            description: themedDescription(q),
+            ...(loreFor(q.id) || {}),
             progress: 0,
             completed: false,
             claimed: false,
@@ -245,7 +251,7 @@ export const useQuestSystem = () => {
             const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
                 || makeRepeatableQuest(bountyCount);
             if (nextQuest && active.length < 3) {
-                active.push({ ...nextQuest, progress: 0, completed: false, claimed: false });
+                active.push({ ...nextQuest, description: themedDescription(nextQuest), ...(loreFor(nextQuest.id) || {}), progress: 0, completed: false, claimed: false });
             }
 
             return active;
