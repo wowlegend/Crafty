@@ -5,6 +5,8 @@ import { useGameSounds } from './SoundManager';
 import * as THREE from 'three';
 import { World } from 'miniplex';
 import { ecs, mobsQuery, alliesQuery } from './ecs/world';
+import { HUB_NPCS, makeNpcEntity } from './world/npcSpawn.js';
+import { HEARTH_Y } from './world/homeAnchor.js';
 import { convertMobToAlly } from './game/allegiance';
 import { GameMethods } from './GameMethods';
 import { isPointInCone } from './combat/cone.js';
@@ -97,6 +99,7 @@ const SpawnerSystem = () => {
   const { camera } = useThree();
   const lastSpawnCheck = useRef(0);
   const nextId = useRef(0);
+  const _npcSpawned = useRef(false); // M-NPCS.2: spawn the static hub NPCs exactly once
 
   const spawnMob = (x, z, forceType = null, explicitY = null) => {
     const store = useGameStore.getState();
@@ -169,6 +172,19 @@ const SpawnerSystem = () => {
           const x = Math.cos(angle) * distance;
           const z = Math.sin(angle) * distance;
           spawnMob(x, z);
+        }
+        // M-NPCS.2: spawn the 4 static hub NPCs ONCE (non-capture path — line 164 returns under capture,
+        // so they never appear in the deterministic baselines). They reuse the mob render + the
+        // type==='villager' npcEntities minimap mirror; the worker tick + knockback loop skip them
+        // (isStatic) so they hold their post. Placed on the flushed grade via the ground raycast.
+        if (!_npcSpawned.current) {
+          _npcSpawned.current = true;
+          for (const npc of HUB_NPCS) {
+            const a = makeNpcEntity(npc, nextId.current++, 0);
+            const gy = state.getMobGroundLevel(a.homeX, a.homeZ);
+            a.position.y = (gy != null && !isNaN(gy)) ? gy + 0.5 : HEARTH_Y + 1;
+            ecs.add(a);
+          }
         }
         clearInterval(checkInterval);
       }
@@ -362,6 +378,7 @@ const AIWorkerSystem = () => {
     // Process knockback in main thread
     for (const entity of mobsQuery.entities) {
       if (entity.health <= 0) continue;
+      if (entity.isStatic) continue; // static hub NPCs hold their post — never worker-moved (filtered) nor knockback-shoved
       if (entity.knockback) {
         entity.position.x += entity.knockback[0] * delta * 4;
         entity.position.z += entity.knockback[2] * delta * 4;
@@ -384,7 +401,7 @@ const AIWorkerSystem = () => {
 
     const store = useGameStore.getState();
     const getMobGroundLevel = store.getMobGroundLevel;
-    const mobsData = mobsQuery.entities.filter(e => e && e.health > 0).map(e => {
+    const mobsData = mobsQuery.entities.filter(e => e && e.health > 0 && !e.isStatic).map(e => {
       let heightGrid = null;
       if (!e.passive && e.isAggro) {
         heightGrid = [];
