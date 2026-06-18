@@ -321,6 +321,11 @@ export const useGameStore = create((set, get) => ({
     mobEntities: [],
     setMobEntities: (entities) => set((state) => ({ mobEntities: typeof entities === 'function' ? entities(state.mobEntities) : entities })),
 
+    // Friendly-NPC minimap mirror (quest villagers + converted allies). Mirrors the mobEntities path;
+    // consumed by RadialMinimap to plot gold NPC blips. Written by MinimapSyncSystem on the same 250ms tick.
+    npcEntities: [],
+    setNpcEntities: (entities) => set((state) => ({ npcEntities: typeof entities === 'function' ? entities(state.npcEntities) : entities })),
+
     // Transient Events & System Hooks
     _spawnTime: Date.now(),
     getPlayerLevel: () => get().level,

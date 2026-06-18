@@ -445,10 +445,17 @@ const MinimapSyncSystem = () => {
       store.setMobEntities(activeMobs.map(e => ({
         id: e.id, type: e.type, passive: e.passive, position: [e.position.x, e.position.y, e.position.z]
       })));
+      // Friendly-NPC mirror: quest villagers (passive quest NPCs) + converted allies. Mirrors the mob
+      // path so RadialMinimap can plot gold NPC blips from the store (the consumer reads npcEntities).
+      const villagers = activeMobs.filter(e => e.type === 'villager');
+      const allies = alliesQuery.entities.filter(e => e && e.health > 0 && e.position);
+      store.setNpcEntities([...villagers, ...allies].map(e => ({
+        id: e.id, type: e.type, position: [e.position.x, e.position.y, e.position.z]
+      })));
       const hostileCount = activeMobs.filter(e => !e.passive).length;
-      useGameStore.setState({ 
+      useGameStore.setState({
         _lastMinimapUpdate: now,
-        activeHostilesCount: hostileCount 
+        activeHostilesCount: hostileCount
       });
     }
   });
