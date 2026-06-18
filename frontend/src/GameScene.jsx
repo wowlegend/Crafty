@@ -17,6 +17,7 @@ import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
+import { Nametags } from './render/Nametags';
 import { BossEntity } from './render/BossEntity';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
@@ -878,6 +879,8 @@ export function GameScene({
             <EnhancedMagicSystem />
 
             <NPCSystem />
+
+            <Nametags />
 
             <BossEntity
               bossActive={bossSystem.bossActive}
