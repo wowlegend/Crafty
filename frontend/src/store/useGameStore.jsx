@@ -82,6 +82,12 @@ export const useGameStore = create((set, get) => ({
     dangerLevel: 0,
     setDangerLevel: (n) => set({ dangerLevel: Number(n) || 0 }),
 
+    // W4 storm sky-darken: the active storm's mood boost (0 clear, ~0.85 rain/snow), MAXed into moodTarget
+    // by the Atmosphere driver so a daytime storm reads overcast/moody (not full night). Set by the
+    // WeatherSystem on each weather transition; transient (not persisted).
+    weatherMoodBoost: 0,
+    setWeatherMoodBoost: (n) => set({ weatherMoodBoost: Number(n) || 0 }),
+
     // UI locale (S1-C): 'en' default + togglable 'zh-CN'. (A later task makes
     // setLocale also lazy-load CJK fonts on the flip to zh-CN.)
     locale: 'en',
