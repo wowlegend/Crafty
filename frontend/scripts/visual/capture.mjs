@@ -139,10 +139,11 @@ async function main() {
     console.log('captured explore-day');
 
     // hearth: the World-M1 Home Anchor (the crafted origin plinth + lodge + brazier). The
-    // default diorama camera frames the DISTANT vista, so the Hearth at origin (y56 pad) needs
-    // its OWN pose — a high 3/4 looking down at the pad. Override the capture camera for this
-    // shot only, then RESTORE the default pose so every downstream frame stays byte-identical.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [13, 86, 13], lookAt: [0, 56, 0] } }));
+    // default diorama camera frames the DISTANT vista, so the Hearth at origin needs its OWN pose
+    // — a high 3/4 looking down at the pad. W2-T7 FLUSHED the pad (HEARTH_Y 56 -> 51), so the lookAt
+    // dropped [0,56,0] -> [0,51,0] and the camera height dropped proportionally (86 -> 81) to keep
+    // the same framing of the now-lower pad. Override for this shot only, then RESTORE below.
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [13, 81, 13], lookAt: [0, 51, 0] } }));
     await flushFrames(page, 10);
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'hearth.png') });
@@ -159,9 +160,12 @@ async function main() {
 
     // ocean-depth: the World-M5a water depth-tint. The tint shades water by world-Y, so it's
     // INVISIBLE on the flat top surface (all at SEA_LEVEL) — it reads underwater + at shore faces.
-    // Probed deep basin [-40,0] (seabed y7, depth 21); an underwater 3/4 pose looking down the
-    // water column at the sandy seabed shows the navy-deepening gradient. Camera-override, restored below.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-40, 25, 16], lookAt: [-40, 8, -8] } }));
+    // W2-T7 de-island pushed the coast out (threshold -0.15 -> -0.35), so the old x-40 basin is now
+    // LAND. Re-probed the new shore->deep RAMP at x-100..-128 (seabed drops y29 -> y9): an underwater
+    // pose looking DOWN the slope shows the seabed receding into the deepening navy depth-tint with the
+    // Gerstner surface above. (The far flat basin at x-135 reads as a featureless sandy flat — the ramp
+    // is where the depth gradient actually reads.)
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-100, 26, 20], lookAt: [-128, 10, -10] } }));
     await flushFrames(page, 10);
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'ocean-depth.png') });
@@ -169,9 +173,10 @@ async function main() {
 
     // ocean-coast: pixel-gates the ocean S1-S3 SURFACE work (shore FOAM + the shallow-teal -> deep-navy
     // top-surface depth grade) that ocean-depth (an underwater pose) and the other cameras never frame.
-    // A high 3/4 over the x~-40 shoreline shows the foam line at the coast + the depth grade from above.
-    // Camera-override, restored below (before the downstream diorama states).
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-12, 72, 34], lookAt: [-46, 18, -20] } }));
+    // W2-T7 de-island moved the coast out: the -X shoreline now sits at x~-90..-110 (foam onset x-80,
+    // deep basin x-120+). A high 3/4 over that NEW shoreline shows the foam line at the coast + the
+    // shallow->deep grade from above. Camera-override, restored below (before the downstream diorama states).
+    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-60, 78, 40], lookAt: [-110, 22, -6] } }));
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 10);
     await delay(900);

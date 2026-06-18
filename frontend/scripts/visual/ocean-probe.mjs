@@ -22,11 +22,13 @@ try {
   await page.evaluate(() => window.__craftyTest.call('start'));
   await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
   await delay(1500);
+  // W2-T7 de-island moved the coast out (threshold -0.15 -> -0.35): the -X shoreline now sits at
+  // x~-90..-110, the deep basin at x~-120..-150 (was x~-40). These shots track the NEW coast.
   const shots = [
-    { name: 'coast-overlook', cam: { position: [20, 42, 20], lookAt: [-55, 27, -10] } },  // land -> beach -> open water
-    { name: 'surface-skim',   cam: { position: [-22, 31, 26], lookAt: [-60, 28, -14] } },  // low over the surface
-    { name: 'underwater',     cam: { position: [-40, 22, 12], lookAt: [-46, 11, -10] } },  // below sea level: depth tint
-    { name: 'topdown-coast',  cam: { position: [-12, 72, 34], lookAt: [-46, 18, -20] } },  // high 3/4: coastline shape
+    { name: 'coast-overlook', cam: { position: [-30, 44, 22], lookAt: [-120, 27, -10] } }, // land -> beach -> open water
+    { name: 'surface-skim',   cam: { position: [-82, 31, 26], lookAt: [-130, 28, -14] } }, // low over the surface
+    { name: 'underwater',     cam: { position: [-100, 26, 20], lookAt: [-128, 10, -10] } }, // shore->deep ramp: depth tint
+    { name: 'topdown-coast',  cam: { position: [-60, 78, 40], lookAt: [-110, 22, -6] } },  // high 3/4: coastline shape
   ];
   for (const s of shots) {
     // enterCapture freezes determinism + pins the camera; hide the HUD for a clean read (mirrors the studio cards).
