@@ -21,8 +21,11 @@ export const XPOrbRender = React.memo(({ entity }) => {
 
   return (
     <mesh ref={meshRef} position={[entity.position.x, entity.position.y, entity.position.z]} castShadow>
-      <icosahedronGeometry args={[0.15, 0]} />
-      <meshStandardMaterial color="#00ff44" emissive="#00ff44" emissiveIntensity={0.8} roughness={0.1} metalness={0.9} />
+      <icosahedronGeometry args={[0.14, 0]} />
+      {/* Warm gold XP mote (was a garish bright-green #00ff44 that read as "confetti" on every kill).
+          Gold = a consistent, tasteful reward read that matches the magic-hour grade; low metalness +
+          softer emissive so it glows like an essence mote, not a shiny plastic bead. */}
+      <meshStandardMaterial color="#FFC24B" emissive="#FFB02E" emissiveIntensity={0.7} roughness={0.4} metalness={0.0} toneMapped={false} />
     </mesh>
   );
 });

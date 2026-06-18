@@ -44,19 +44,19 @@ describe('hitKnockback', () => {
 });
 
 describe('deathBurst (the kill finisher)', () => {
-  it("uses the mob's body color", () => {
-    expect(deathBurst('zombie').color).toBe('#228B22');
-    expect(deathBurst('skeleton').color).toBe('#F5F5DC');
+  it('uses a consistent warm-gold essence color for ALL mobs (reversed the green-confetti hue-preserving burst)', () => {
+    expect(deathBurst('zombie').color).toBe('#FFB84D');
+    expect(deathBurst('skeleton').color).toBe('#FFB84D');
   });
-  it('count scales with xp (40 + xp), tougher mobs burst harder', () => {
-    expect(deathBurst('zombie').count).toBe(65);      // 40 + 25
-    expect(deathBurst('moss_brute').count).toBe(100);  // 40 + 60
+  it('count scales with xp (8 + xp), tougher mobs burst harder (tuned down from 40+xp -> no confetti)', () => {
+    expect(deathBurst('pig').count).toBe(18);          // 8 + 10
   });
-  it('count is clamped to a 50..110 floor/ceiling', () => {
-    expect(deathBurst('pig').count).toBe(50);          // 40 + 10 -> floored to 50
+  it('count is clamped to a tasteful 14..28 floor/ceiling (was 50..110 confetti)', () => {
+    expect(deathBurst('zombie').count).toBe(28);       // 8 + 25 -> ceiled to 28
+    expect(deathBurst('moss_brute').count).toBe(28);   // 8 + 60 -> ceiled to 28
   });
-  it('unknown mob -> white, minimum burst', () => {
-    expect(deathBurst('nope')).toEqual({ color: '#ffffff', count: 50, burst: 'death' });
+  it('unknown mob -> warm gold, minimum burst (14 floor)', () => {
+    expect(deathBurst('nope')).toEqual({ color: '#FFB84D', count: 14, burst: 'death' });
   });
 });
 
@@ -64,15 +64,14 @@ describe('W2-T5 death-burst per-element + dark-mob tint floor', () => {
   it('returns a velocity branch tag the GPU pool understands', () => {
     expect(deathBurst('zombie').burst).toBe('death');
   });
-  it('lifts a very dark mob tint to a visible floor (no near-black death puff)', () => {
-    // a hypothetically near-black mob color should be lifted; green mob preserves green hue
-    const z = deathBurst('zombie'); // #228B22 green
-    expect(z.color.toLowerCase()).toMatch(/^#/);
-    // floor: the brightest channel of the burst color is >= a minimum
+  it('is a consistent visible WARM-GOLD essence for every mob (no green/near-black death puff)', () => {
+    // reversed from the old mob-coloured/hue-preserving burst: every mob now bursts warm gold so a kill
+    // never reads as green confetti (Kevin 2026-06-18). Warm = the red channel leads, all channels bright.
+    const z = deathBurst('zombie'); // a green mob -> still warm gold now
     const hex = z.color.replace('#', '');
     const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
     expect(Math.max(r,g,b)).toBeGreaterThanOrEqual(80); // visible, not black
-    expect(g).toBeGreaterThan(r); expect(g).toBeGreaterThan(b); // green hue PRESERVED
+    expect(r).toBeGreaterThanOrEqual(g); expect(g).toBeGreaterThan(b); // warm gold (r>=g>b), NOT green
   });
 });
 

@@ -18,15 +18,13 @@ import { MOB_TYPES } from './mobTypes';
  */
 export function deathBurst(mobType) {
   const m = MOB_TYPES[mobType];
-  let color = (m && m.color) || '#ffffff';
   const xp = (m && m.xp) || 0;
-  // dark-mob tint floor: lift very-dark body colors toward a visible glow while PRESERVING hue
-  // (so a green mob reads green at peak, not white/black). Scale the channels up if the max < floor.
-  const hex = color.replace('#', '');
-  let r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-  const mx = Math.max(r, g, b, 1), floor = 110;
-  if (mx < floor) { const k = floor / mx; r = Math.min(255, r * k) | 0; g = Math.min(255, g * k) | 0; b = Math.min(255, b * k) | 0; color = '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join(''); }
-  return { color, count: Math.max(50, Math.min(110, 40 + xp)), burst: 'death' };
+  // WARM-GOLD essence burst for ALL mobs. This REVERSES the old hue-preserving (mob-coloured) death
+  // burst — on the common green mobs it read as bright-GREEN "confetti" (Kevin 2026-06-18). A single
+  // warm amber-gold "soul released" colour matches the gold XP motes + the magic-hour grade, so every
+  // kill is a clean warm payoff regardless of mob colour. Count tuned DOWN (was 50..110 = a confetti
+  // fountain) to a tasteful 14..28 chunky burst.
+  return { color: '#FFB84D', count: Math.max(14, Math.min(28, 8 + xp)), burst: 'death' };
 }
 
 /**

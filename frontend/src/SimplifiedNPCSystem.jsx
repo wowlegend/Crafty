@@ -562,16 +562,17 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       if (entity.health <= 0 && !entity.dyingUntil) {
         const store = useGameStore.getState();
 
-        // Spawn glowing physical green XP orbs scattered explosively
-        const orbValue = 5;
-        const totalXP = entity.xp || 10;
-        // S2-B3-M1: XP drops only on YOUR kills (ally kills would farm pickups).
-        const count = source === 'player' ? Math.max(1, Math.floor(totalXP / orbValue)) : 0;
+        // Spawn warm-gold XP motes (recoloured from the old garish green). XP drops only on YOUR kills
+        // (S2-B3-M1: ally kills would farm pickups). CAP the COUNT so a high-XP kill is a tasteful few
+        // motes, not a confetti storm — and scale each mote's value to totalXP/count so no XP is lost.
+        const totalXP = source === 'player' ? (entity.xp || 10) : 0;
+        const count = totalXP > 0 ? Math.min(6, Math.max(1, Math.round(totalXP / 8))) : 0;
+        const orbValue = count > 0 ? Math.ceil(totalXP / count) : 0;
         for (let i = 0; i < count; i++) {
           const angle = Math.random() * Math.PI * 2;
-          const speed = 1.5 + Math.random() * 2.5;
+          const speed = 1.0 + Math.random() * 1.4;  // gentler scatter (was 1.5 + 2.5 -> "spilled like confetti")
           const vx = Math.cos(angle) * speed;
-          const vy = 4 + Math.random() * 4; // Upward impulse
+          const vy = 3 + Math.random() * 2.2; // softer upward pop (was 4 + 4)
           const vz = Math.sin(angle) * speed;
 
           ecs.add({

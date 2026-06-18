@@ -22,7 +22,9 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     // hitstop is player-only (SOTA M1 made it a weight-tiered block; the player-only guard is preserved).
     expect(npc).toMatch(/if \(source === 'player'\)\s*\{[\s\S]{0,260}hitstopUntil:\s*performance\.now\(\)\s*\+\s*HITSTOP\[/);
     expect(npc).toMatch(/source === 'player' && store\.triggerCameraShake/);
-    expect(npc).toMatch(/source === 'player' \? Math\.max\(1, Math\.floor\(totalXP \/ orbValue\)\) : 0/);
+    // XP orbs are player-only: totalXP is 0 unless source==='player', and the orb count is 0 when totalXP is 0.
+    expect(npc).toMatch(/const totalXP = source === 'player' \? \(entity\.xp \|\| 10\) : 0/);
+    expect(npc).toMatch(/const count = totalXP > 0 \?[\s\S]{0,80}: 0/);
   });
 
   it('the death emit threads source', () => {
