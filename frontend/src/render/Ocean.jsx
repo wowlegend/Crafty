@@ -46,7 +46,7 @@ export function Ocean() {
       const h = gerstnerHeight(wx, wz, t);
       pos.setZ(i, h - SEA_LEVEL); // local-z displacement (before the -90deg rotation lifts it to world-Y)
       const nv = gerstnerNormal(wx, wz, t);
-      nrm.setXYZ(i, nv[0], nv[2], nv[1]); // remap world normal into plane-local (rotation-aware)
+      nrm.setXYZ(i, nv[0], -nv[2], nv[1]); // remap world normal into plane-local (rotation -90deg X: world nv -> local (x,-z,y))
       // continuous toon foam at the crest (smoothstep on height) — a soft white cap on ONLY the highest
       // crests (the summed amplitude reaches ~+2.1, so a low threshold whitewashes the whole sea; keep
       // foam to the top swell so the turquoise base reads). Continuous band, not a binary 1x1 cell.
