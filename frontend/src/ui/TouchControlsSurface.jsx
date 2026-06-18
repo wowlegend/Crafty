@@ -53,7 +53,7 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
       <div style={{ position: 'absolute', left: 'max(env(safe-area-inset-left,0px), 7%)', bottom: '13%',
                     width: 148, height: 148, borderRadius: '50%', border: `4px solid ${INK}`,
                     background: 'rgba(10,14,24,0.6)', boxShadow: '0 5px 16px rgba(0,0,0,0.55)' }}>
-        <div style={{ position: 'absolute', left: '50%', top: '50%', width: 64, height: 64,
+        <div data-touch-knob style={{ position: 'absolute', left: '50%', top: '50%', width: 64, height: 64,
                       transform: `translate(calc(-50% + ${nub?.x ?? 0}px), calc(-50% + ${nub?.y ?? 0}px))`,
                       borderRadius: '50%', background: GOLD, border: `4px solid ${INK}`, boxShadow: '0 3px 10px rgba(0,0,0,0.55)' }} />
       </div>

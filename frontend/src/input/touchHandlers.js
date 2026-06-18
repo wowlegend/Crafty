@@ -12,19 +12,27 @@ export const MOVE_KEYS = ['moveF', 'moveB', 'moveL', 'moveR'];
  * Apply a touchmove event's changed touches: move-zone -> quantized boolean move intents;
  * look-zone -> camera.rotation yaw/pitch (reusing the M0 clamp). deps = {camera,setIntent,sensitivity}.
  */
+// Max knob travel from the floating ring center (px) — the 64px knob in the 148px ring (~42px before it clips).
+export const NUB_MAX = 42;
+
 export function handleTouchMove(router, touchList, { camera, setIntent, sensitivity = 1 }) {
+  let nub = null; // {x,y} clamped knob offset for the move-zone touch (caller renders it; cosmetic only)
   for (const t of touchList) {
     const r = router.onMove(t);
     if (!r) continue;
     if (r.zone === 'move') {
       const m = joystickToMove(r.vecX, r.vecY);
       for (const k of MOVE_KEYS) setIntent(k, m[k]); // write every key every frame (keydown/up parity)
+      const len = Math.hypot(r.vecX, r.vecY);
+      const k = len > NUB_MAX ? NUB_MAX / len : 1; // clamp the visual knob inside the ring
+      nub = { x: r.vecX * k, y: r.vecY * k };
     } else if (camera && camera.rotation) {
       const { yaw, pitch } = applyLook(camera.rotation.y, camera.rotation.x, r.dx, r.dy, sensitivity);
       camera.rotation.y = yaw;
       camera.rotation.x = pitch;
     }
   }
+  return nub;
 }
 
 /** On touch end/cancel: if the released touch owned the MOVE zone, clear all four move intents. */

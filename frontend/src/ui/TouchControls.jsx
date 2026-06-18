@@ -36,6 +36,7 @@ function TouchControlsLive({ isWorldBuilt }) {
   const active = useActiveInput();              // SAFE reactive read (transition-state only)
   const isAlive = useGameStore((s) => s.isAlive);
   const [trayOpen, setTrayOpen] = useState(false);
+  const nubRafRef = useRef(0);                  // W4-T11: rAF throttle for the imperative knob-follow (no React state -> GLI trap-6)
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
   // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
@@ -63,10 +64,29 @@ function TouchControlsLive({ isWorldBuilt }) {
     };
     const onMove = (e) => {
       if (!getInput().active) return; // focus gate: let panel scroll / native touch through when not active
-      handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: useGameStore.getState().lookSensitivity ?? 1 });
+      const n = handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: useGameStore.getState().lookSensitivity ?? 1 });
       e.preventDefault();
+      // W4-T11: move the visible joystick knob to follow the thumb -- IMPERATIVELY (a ref + a direct DOM
+      // transform write, throttled to one rAF), NEVER React state, so the move path stays Game-Loop-Isolated
+      // (trap-6: refs only in the touchmove handler, no reactive-state writes). The move INTENTS are written every event
+      // inside handleTouchMove; this only nudges the cosmetic knob, and only when a move-zone touch is in this
+      // batch (n is null on a look-only event -> the held stick is not recentered).
+      if (n) {
+        if (nubRafRef.current) return;
+        nubRafRef.current = requestAnimationFrame(() => {
+          nubRafRef.current = 0;
+          const knob = rootRef.current && rootRef.current.querySelector('[data-touch-knob]');
+          if (knob) knob.style.transform = `translate(calc(-50% + ${n.x}px), calc(-50% + ${n.y}px))`;
+        });
+      }
     };
-    const onEnd = (e) => { handleTouchEnd(router, e.changedTouches, { setIntent }); e.preventDefault(); };
+    const onEnd = (e) => {
+      handleTouchEnd(router, e.changedTouches, { setIntent });
+      e.preventDefault();
+      // recenter the knob on release (imperative DOM write -> GLI-safe)
+      const knob = rootRef.current && rootRef.current.querySelector('[data-touch-knob]');
+      if (knob) knob.style.transform = 'translate(-50%, -50%)';
+    };
 
     // passive:false so preventDefault() actually cancels scroll/zoom/pull-to-refresh (spec section 4).
     el.addEventListener('touchstart', onStart, { passive: false });
@@ -78,6 +98,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       el.removeEventListener('touchmove', onMove);
       el.removeEventListener('touchend', onEnd);
       el.removeEventListener('touchcancel', onEnd);
+      cancelAnimationFrame(nubRafRef.current); // W4-T11: drop any pending knob-render frame
       for (const k of MOVE_KEYS) setIntent(k, false); // clear on unmount
       setActive(false); // relinquish the active gate so it never stays stuck with no touch surface
     };

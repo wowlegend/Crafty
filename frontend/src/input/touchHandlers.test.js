@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { makeTouchRouter } from './touchMath.js';
-import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from './touchHandlers.js';
+import { handleTouchMove, handleTouchEnd, MOVE_KEYS, NUB_MAX } from './touchHandlers.js';
 
 const T = (identifier, clientX, clientY) => ({ identifier, clientX, clientY });
 const fakeCamera = () => ({ rotation: { x: 0, y: 0, order: 'YXZ' } });
@@ -59,5 +59,29 @@ describe('handleTouchEnd', () => {
     const setIntent = vi.fn();
     handleTouchEnd(router, [T(2, 900, 400)], { setIntent });
     expect(setIntent).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleTouchMove nub return', () => {
+  it('returns a clamped knob offset for a move-zone drag', () => {
+    const router = makeTouchRouter();
+    router.onStart(T(1, 100, 400), 1000); // left half -> move zone
+    const nub = handleTouchMove(router, [T(1, 160, 400)], { camera: null, setIntent: () => {} });
+    expect(nub).not.toBeNull();
+    expect(Math.hypot(nub.x, nub.y)).toBeLessThanOrEqual(NUB_MAX + 0.001);
+    expect(nub.x).toBeGreaterThan(0); // dragged right
+  });
+  it('clamps a far drag to NUB_MAX', () => {
+    const router = makeTouchRouter();
+    router.onStart(T(2, 100, 400), 1000);
+    const nub = handleTouchMove(router, [T(2, 600, 400)], { camera: null, setIntent: () => {} });
+    expect(Math.hypot(nub.x, nub.y)).toBeCloseTo(NUB_MAX, 1);
+  });
+  it('returns null when only a look-zone touch moves', () => {
+    const router = makeTouchRouter();
+    router.onStart(T(3, 900, 400), 1000); // right half -> look zone
+    const camera = { rotation: { x: 0, y: 0 } };
+    const nub = handleTouchMove(router, [T(3, 920, 400)], { camera, setIntent: () => {} });
+    expect(nub).toBeNull();
   });
 });
