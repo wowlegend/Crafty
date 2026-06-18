@@ -277,6 +277,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   const leftHandRef = useRef();
   const wandRef = useRef();
   const magicAuraRef = useRef();
+  const slashRef = useRef(); // M-bugfix: a bright crescent slash-arc on EVERY melee swing (the ribbon trail only fires when a weapon is equipped, so bare-handed F looked like "no effect" — Kevin 2026-06-18)
 
   const currentSpellColor = SPELL_COLORS[activeSpell] || SPELL_COLORS.fireball;
 
@@ -373,6 +374,22 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         const opacityPulse = Math.cos(time * auraSpeed) * (isAttacking ? 0.08 : 0.015);
         magicAuraRef.current.material.opacity = opacityBase + opacityPulse;
       }
+
+      // M-bugfix: a bright crescent SLASH-ARC on every melee swing so F always reads as a real hit
+      // (was invisible bare-handed — the ribbon trail is weapon-only). Sweeps diagonally + blooms in
+      // then fades over the 0.2s swing. Camera-attached (screen-space), so it reads like a blade arc.
+      if (slashRef.current) {
+        if (isSwingingMelee) {
+          const t = Math.min(1, swingElapsed / 0.2);
+          slashRef.current.visible = true;
+          slashRef.current.rotation.z = -1.15 + t * 2.3;                 // diagonal sweep
+          const s = 0.85 + t * 0.5; slashRef.current.scale.set(s, s, s); // grow through the arc
+          slashRef.current.material.opacity = Math.sin(t * Math.PI) * 0.85; // bloom in -> fade out
+        } else if (slashRef.current.visible) {
+          slashRef.current.visible = false;
+          slashRef.current.material.opacity = 0;
+        }
+      }
     }
   });
 
@@ -382,12 +399,19 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
     <group>
       {/* Dynamic sweeping ribbon trail inside camera local viewport space */}
       {isWeaponEquipped && (
-        <ProceduralRibbonTrail 
-          rightHandRef={rightHandRef} 
-          isSwinging={attackType === 'melee'} 
-          weaponType={equippedWeapon} 
+        <ProceduralRibbonTrail
+          rightHandRef={rightHandRef}
+          isSwinging={attackType === 'melee'}
+          weaponType={equippedWeapon}
         />
       )}
+
+      {/* M-bugfix: universal melee SLASH-ARC crescent — a bright additive arc that sweeps across the
+          view on every F swing (armed or bare-handed). Driven by the useFrame above (sweep + fade). */}
+      <mesh ref={slashRef} position={[0, -0.1, -1.0]} visible={false}>
+        <ringGeometry args={[0.32, 0.62, 32, 1, Math.PI * 0.2, Math.PI * 0.85]} />
+        <meshBasicMaterial color="#cdeeff" transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
 
       <group ref={rightHandRef}>
         <mesh castShadow receiveShadow position={[0, 0.3, 0]}><boxGeometry args={[0.16, 0.7, 0.16]} /><meshStandardMaterial roughness={0.55} metalness={0.15} color={GLOVE_INK} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
