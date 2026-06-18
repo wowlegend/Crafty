@@ -17,8 +17,8 @@ export const TargetFrame = React.memo(() => {
           <span className="text-xs font-bold text-text capitalize">{target.name}</span>
           <span className="text-[10px] text-text-muted tabular-nums">{Math.ceil(target.health)}/{target.maxHealth}</span>
         </div>
-        <div className="mt-1 h-1.5 bg-track rounded-sm border-chrome border-ink overflow-hidden">
-          <div className="h-full" style={{ width: `${frac * 100}%`, background: target.isAlly ? '#3DFFB0' : frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#F5D76E' : '#FF6B6B' }} />
+        <div className="relative mt-1 h-2 bg-track rounded-sm ring-1 ring-ink overflow-hidden">
+          <div className="absolute inset-y-0 left-0" style={{ width: `${frac * 100}%`, background: target.isAlly ? '#3DFFB0' : frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#F5D76E' : '#FF6B6B' }} />
         </div>
       </Panel>
     </div>

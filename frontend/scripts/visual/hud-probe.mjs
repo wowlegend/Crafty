@@ -95,5 +95,49 @@ try {
     console.log('shot nametags.png mobSnap=', JSON.stringify(ntSnap));
   } catch (e) { console.error('NAMETAGS-PROBE step error:', e); }
 
+  // --- M-HUD.7 LIVE-LOOK: the TargetFrame unit nameplate (top-center) ---
+  // The frame is capture-suppressed and gated on store.targetEntity, which Components.jsx writes off
+  // the real aim-cone (camera.getWorldDirection + checkMobsInMeleeCone) ~6.7x/s. Headless pointer-lock
+  // + camera aim is flaky, and there is no camera-yaw test hook, so we verify the VISIBLE deliverable
+  // two ways: (1) a real-aim best-effort — ring mobs tight around the player so one likely lands in the
+  // forward cone and the live mirror populates; (2) a deterministic render check — drive the store
+  // mirror directly with a synthetic aimed mob, screenshot the nameplate, then clear it and confirm it
+  // disappears. Both shots land in /tmp/crafty-hud/.
+  try {
+    // (1) real-aim best-effort: a tight ring so >=1 mob sits in the ~PI/8 forward cone within 24m.
+    await page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      const pp = s.playerPosition || { x: 0, y: 64, z: 0 };
+      if (s.spawnMob) {
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          s.spawnMob(pp.x + Math.cos(a) * 5, pp.z + Math.sin(a) * 5, 'zombie', pp.y);
+        }
+      }
+    });
+    await delay(900); // let the ~150ms throttled mirror fire a few times
+    const liveAim = await page.evaluate(() => window.useGameStore.getState().targetEntity);
+    console.log('M-HUD.7 live aim mirror:', JSON.stringify(liveAim));
+    await page.screenshot({ path: `${OUT}/target-frame-live-aim.png` });
+
+    // (2) deterministic render check: synthetic aimed mob -> the nameplate MUST render top-center.
+    await page.evaluate(() => {
+      window.useGameStore.getState().setTargetEntity({
+        id: 9999, type: 'zombie', name: 'zombie', health: 14, maxHealth: 20, isAlly: false,
+      });
+    });
+    await delay(250);
+    const shown = await page.evaluate(() => !!window.useGameStore.getState().targetEntity);
+    await page.screenshot({ path: `${OUT}/target-frame.png` });
+    console.log(`shot target-frame.png targetEntity-present=${shown}`);
+
+    // clear it -> the nameplate MUST disappear (return null).
+    await page.evaluate(() => window.useGameStore.getState().setTargetEntity(null));
+    await delay(250);
+    const cleared = await page.evaluate(() => window.useGameStore.getState().targetEntity === null);
+    await page.screenshot({ path: `${OUT}/target-frame-cleared.png` });
+    console.log(`shot target-frame-cleared.png targetEntity-null=${cleared}`);
+  } catch (e) { console.error('TARGET-FRAME-PROBE step error:', e); }
+
   await browser.close(); done(0);
 } catch (e) { console.error('HUD-PROBE ERROR:', e); done(1); }
