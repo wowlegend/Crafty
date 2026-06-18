@@ -20,3 +20,21 @@ describe('npc spawn + AI-skip gates', () => {
     expect(npc).toMatch(/npcsSpawned|_npcSpawned/);
   });
 });
+
+describe('npc interaction + mirror', () => {
+  it('store mirrors npcEntities for the minimap/nametags', () => {
+    expect(read('store/useGameStore.jsx')).toMatch(/npcEntities:/);
+  });
+  it('MinimapSyncSystem syncs npcEntities (static NPC positions)', () => {
+    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/npcEntities/);
+  });
+  it('the mob mirror carries role + npcName so the G-interact can route by role', () => {
+    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/role: e\.role/);
+  });
+  it('the G-interact routes a role to its panel (merchant -> trading, others by role)', () => {
+    expect(read('InputManager.jsx')).toMatch(/role/);
+  });
+  it('the TradingInterface title can show the NPC name', () => {
+    expect(read('ui/TradingInterface.jsx')).toMatch(/npcName/);
+  });
+});

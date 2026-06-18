@@ -460,7 +460,7 @@ const MinimapSyncSystem = () => {
     if (now - (store._lastMinimapUpdate || 0) > 250) {
       const activeMobs = mobsQuery.entities.filter(e => e && e.health > 0);
       store.setMobEntities(activeMobs.map(e => ({
-        id: e.id, type: e.type, passive: e.passive, position: [e.position.x, e.position.y, e.position.z]
+        id: e.id, type: e.type, passive: e.passive, role: e.role, npcName: e.npcName, position: [e.position.x, e.position.y, e.position.z]
       })));
       // Friendly-NPC mirror: quest villagers (passive quest NPCs) + converted allies. Mirrors the mob
       // path so RadialMinimap can plot gold NPC blips from the store (the consumer reads npcEntities).

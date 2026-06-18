@@ -183,10 +183,25 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         }
 
         if (nearestVillager) {
+          // M-NPCS.3: route the G-interact by the NPC's role. Merchant + legacy role-less quest
+          // villagers -> the trade panel; the smith -> crafting; the healer heals on the spot; the
+          // warden (guide) gives a directional hint via the notification feed (his quest-log comes in
+          // M-NARRATIVE). Only panel-opening roles exit pointer lock.
           state.setSelectedVillager(nearestVillager);
-          state.setShowTradingInterface(true);
-          if (document.exitPointerLock) {
-            document.exitPointerLock();
+          const role = nearestVillager.role;
+          const who = nearestVillager.npcName || 'The villager';
+          if (role === 'smith') {
+            state.setShowCrafting(true);
+            if (document.exitPointerLock) document.exitPointerLock();
+          } else if (role === 'healer') {
+            state.healPlayer?.(state.maxHealth || 100);
+            state.restoreMana?.(state.maxMana || 100);
+            state.addNotification?.(`${who} mends your wounds — health and mana restored.`, 'reward');
+          } else if (role === 'guide') {
+            state.addNotification?.(`${who}: the frontier shrine lies ahead — follow the light on the horizon.`, 'quest');
+          } else {
+            state.setShowTradingInterface(true);
+            if (document.exitPointerLock) document.exitPointerLock();
           }
         } else if (state.openNearbyChest) {
           state.openNearbyChest();

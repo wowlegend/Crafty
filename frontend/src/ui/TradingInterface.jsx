@@ -86,7 +86,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
   ];
 
   return (
-    <Modal className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" label="Villager Merchant" onClose={onClose}>
+    <Modal className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" label={villager?.npcName || "Villager Merchant"} onClose={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -100,7 +100,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
             <div className="flex items-center gap-3">
               <Icon name="coins" size={22} className="text-accent" />
               <h2 className="font-display text-xl tracking-wide text-accent uppercase">
-                Villager Merchant
+                {villager?.npcName || 'Villager Merchant'}
               </h2>
             </div>
             <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
