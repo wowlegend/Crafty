@@ -26,7 +26,10 @@ import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { shouldProbeGround } from './game/particleProbe.js';
-import { stormMoodBoost } from './game/weatherGate.js';
+import { stormMoodBoost, allowedPrecip } from './game/weatherGate.js';
+import { createStormBed } from './audio/stormBed.js';
+import { getAudioBridge } from './audio/audioBridge.js';
+import { surfaceBlockAt } from './world/climate.js';
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
 // fixed mood-driven direction (reads as infinitely far) and tints with the mood sun colour.
@@ -476,6 +479,7 @@ const WeatherSystem = () => {
   const firefliesMeshRef = useRef();
   
   const weatherRef = useRef('clear');
+  const stormBedRef = useRef(null); // W4-T9b: lazily-built storm ambience bed (audio/stormBed.js)
 
   // Weather loop state machine: clear -> rain -> snow -> loop
   useEffect(() => {
@@ -489,6 +493,20 @@ const WeatherSystem = () => {
       // W4-T8: drive the storm sky-darken mood boost (0 clear, ~0.85 rain/snow) so the Atmosphere grade
       // reads overcast/moody during a storm (weatherGate.stormMoodBoost MAXed into moodTarget).
       store.setWeatherMoodBoost(stormMoodBoost(nextWeather));
+      // W4-T9b: drive the storm ambience bed (rain/snow on, clear off). CAPTURE-GATED -- the interval fires
+      // during the >4min capture and audio must not start there (the T8 long-interval lesson). Routes through
+      // the shared master-bus via audioBridge so it obeys the SFX slider; no-ops until the AudioContext
+      // exists (post user gesture). The bed object persists across stop/start; stop() tears down its nodes.
+      if (!isCaptureMode()) {
+        const { ctx, busInput } = getAudioBridge();
+        if (ctx && busInput) {
+          if (!stormBedRef.current) stormBedRef.current = createStormBed(ctx, busInput);
+          if (stormBedRef.current) {
+            if (nextWeather === 'clear') stormBedRef.current.stop();
+            else { stormBedRef.current.start(); stormBedRef.current.setIntensity(0.85); }
+          }
+        }
+      }
       if (store.addNotification) {
         if (nextWeather === 'rain') {
           store.addNotification('Atmospheric shift... Dynamic rain storm has started!', 'info');
@@ -500,7 +518,7 @@ const WeatherSystem = () => {
       }
     }, 90000); // 90 seconds per cycle
 
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); if (stormBedRef.current) stormBedRef.current.stop(); };
   }, []);
 
   // S2-A-M4a: scale the instanced-particle COUNT by the active quality tier's weather
@@ -583,8 +601,15 @@ const WeatherSystem = () => {
 
     const isDay = useGameStore.getState().isDay;
     const activeWeather = weatherRef.current;
-    const isRaining = activeWeather === 'rain';
-    const isSnowing = activeWeather === 'snow';
+    // W4-T9b: gate the precip by the player's biome (desert never snows, the snow biome never rains).
+    // Only sample the climate when a storm is active -- surfaceBlockAt's noise calc is cheap but not free,
+    // and the common case is 'clear'. (Same main-thread sampler footstep audio uses; no remesh.)
+    let isRaining = false, isSnowing = false;
+    if (activeWeather !== 'clear') {
+      const permitted = allowedPrecip(surfaceBlockAt(px, pz).surfaceBlock);
+      isRaining = activeWeather === 'rain' && permitted === 'rain';
+      isSnowing = activeWeather === 'snow' && permitted === 'snow';
+    }
 
     const getMobGroundLevel = useGameStore.getState().getMobGroundLevel;
     // S2-B2-pre-M2 perf: stride counter for the rain/snow ground probes (see game/particleProbe.js)
