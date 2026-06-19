@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { VOICES, makeNoise } from './audio/synthVoices';
 import { createMasterBus } from './audio/masterBus';
+import { setAudioBridge } from './audio/audioBridge';
 import { audioGain } from './game/audioSettings';
 import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
@@ -441,6 +442,9 @@ export const SoundProvider = ({ children }) => {
 
     // Generate procedural sounds
     generateSounds();
+    // W4-T9b: publish the shared ctx + master-bus input so the WeatherSystem can route its storm bed
+    // through the same limiter (null-safe: getMasterBus() returns null if the ctx failed to init).
+    setAudioBridge(audioContext.current, getMasterBus());
   }, []);
 
   // SFX overhaul Slice 2: lazily build ONE master bus + limiter on the shared ctx and route every voice
