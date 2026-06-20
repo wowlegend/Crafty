@@ -15,10 +15,3 @@ export function routinePosition(home, t, isDay) {
 }
 
 export function nextEmote(seq) { return EMOTES[Math.floor(Math.abs(seq)) % EMOTES.length]; }
-
-// A wandering traveler: appears occasionally, walks a line across the hub edge, then despawns. Pure
-// schedule — given a phase 0..1 returns the lerped world pos along the crossing (or null when away).
-export function travelerPosition(phase, from, to) {
-  if (phase <= 0 || phase >= 1) return null;
-  return { x: from.x + (to.x - from.x) * phase, z: from.z + (to.z - from.z) * phase };
-}

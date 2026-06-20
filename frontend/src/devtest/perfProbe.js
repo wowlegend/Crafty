@@ -17,7 +17,6 @@ if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) {
 export function isPerfProbe() { return _scenario != null; }
 export function perfScenarioId() { return _scenario; }
 export function setProbePhase(p) { _phase = p; }
-export function getProbePhase() { return _phase; }
 
 /** Transient hurl channel: the runner schedules, PerfProbeSystem consumes in useFrame (GLI-clean). */
 export function requestHurl() { _hurlRequests += 1; }
