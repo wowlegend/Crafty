@@ -1,0 +1,2614 @@
+# Crafty — Exhaustive Code Review (2026-06-20)
+
+> Whole-repo line-by-line review: 39-agent workflow over 23 buckets covering all 221 source files (27.4k LOC) -> adversarial verification of every critical/high -> prioritized synthesis. **157 raw findings, 156 confirmed** (1 false-positive dropped). 5 true-HIGH, 9 adversarially demoted.
+
+## By category (confirmed)
+
+bug: 58, perf: 35, memory-leak: 26, game-feel: 18, deadcode: 10, maintainability: 9, duplication: 5, security: 2, a11y: 1 (1 dropped: InputManager F3 stale-closure, false-positive). Note: critical/high adversarially re-graded — 5 stay HIGH, 9 demoted to medium/low.
+
+## Summary
+
+157 raw findings; 156 confirmed after dropping 1 false-positive (InputManager.jsx:145 F3 toggle — the handler reads the ref-backed value via the line-61 destructure, not the frozen closure, so it toggles correctly). Adversarial verdicts confirmed all 14 critical/high as real defects but re-graded severities: 5 remain HIGH, 9 demoted (mostly to medium, two to low). The 5 true-HIGH are the autonomous loop's first priority: (1) Terrain ChunkMesh Rules-of-Hooks early-return that HARD-CRASHES the render tree on an empty<->non-empty chunk re-mesh — now reachable through normal mining of ocean/water-adjacent columns since Ocean owns the water surface; (2) static hub-NPC distance cull with no respawn (permanently kills trading/smithing/healing after roaming); (3) update_block dropping grassTops (kills wind-grass on any block edit); (4) boss fireball applyEuler-on-world-vector (breaks the marquee Phase-1 attack visually AND mechanically — frequent zero-damage); (5) frozen-mob permanent 40% slow after the last ice zone expires. The autonomousFixQueue front-loads these 5 plus a long tail of mechanical, autonomousSafe fixes — undisposed three.js resources (Ocean/Atmosphere/ElementZone/combatVfx/playerRibbon), uncleared setTimeouts, dead bindings (setIsBossActive footgun, MagicSystem full-store subscribe, dead trail bookkeeping, orphaned comments/imports), useShallow-selector conversions, NaN/clamp guards, and per-frame allocation hoists. kevinDecisions isolate game-feel/balance/architecture/privacy items that need a human call (de-aggro leash, grass uniform-driver refactor, grantXP full-heal, optimistic place/mine feedback, HUD innerHTML+a11y, bossSystem idempotency, save-data validation, the BlockParticleSystem rapier migration which needs a live render verification). The codebase is broadly well-architected: GLI discipline, capture-determinism, seeded RNG, and resource hygiene are consistently and correctly applied across the pure-logic modules, hot-loop systems, and HUD edge-watchers — defects cluster narrowly in (a) prop-attached three.js resources missing manual dispose, (b) ungated/un-throttled per-frame work, and (c) lifecycle edge cases (unmount cleanup, non-idempotent setState updaters).
+
+## CRITICAL / HIGH (adversarially verified)
+
+- frontend/src/world/Terrain.jsx:170-202 - high - ChunkMesh early-returns before 3 hook calls; empty<->non-empty re-mesh (now reachable via ocean/water-column mining since Ocean owns water surface) flips hook count and HARD-CRASHES the render tree - hoist `const empty = !meshData || meshData.positions.length===0` and gate only the JSX, keep all hooks unconditional.
+- frontend/src/SimplifiedNPCSystem.jsx:264-274 - high - Distance >100u cull deletes the 4 static hub NPCs (merchant/smith/guide/healer) with no respawn path; trading/smithing/healing/blips permanently gone after roaming - add `if (entity.isStatic) continue;` right after the health<=0 check (line 270), mirroring the worker-serializer/knockback isStatic skip.
+- frontend/src/world/terrain.worker.js:136-146 - high - update_block re-mesh payload omits grassTops (generate path includes it at L89); editing ANY block in a chunk permanently kills its wind-grass overlay until reload - factor the top-scan+grassTops block (L66-76) into a helper and add `grassTops: gTops` to the update_block payload (plain array, not transferable, safe).
+- frontend/src/render/BossEntity.jsx:272 - high - Fireball mouth position does applyEuler on a WORLD-space vector (rotates about origin, not the boss); boss orbits player so error is near-ubiquitous, fireball streaks from far point AND aim is skewed so Phase-1 attack frequently deals zero damage - `new THREE.Vector3(0,1.2,1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(bx,by,bz))`.
+- frontend/src/game/elementZones.js:114 (caller gate world/ElementZoneSystem.jsx:61) - high(adj medium) - Frozen mobs keep zoneSlowMult=0.4 forever after the LAST frozen zone expires because the early-return `if (zones.length===0) return` skips the reset sweep; enemies that touched an expired ice patch crawl at 40% permanently - don't gate the reset behind a non-empty registry (run apply([], mobs, fn) on empty, or clear mults on stepZones expiry).
+- frontend/src/render/BossEntity.jsx:552-563 - high(adj medium) - fireballMeshes/lavaZoneMeshes ref-callback maps never delete on unmount (`if(el)` only); every effect ever fired retains a detached Mesh+geometry+material+pointLight for the fight, not even reset between boss activations - `ref={el => el ? (map.current[id]=el) : delete map.current[id]}`.
+- frontend/src/render/playerRender.jsx:168-196,265 - high(adj medium) - ProceduralRibbonTrail ShaderMaterial attached via prop (not JSX child) is never disposed; leaks on every weapon equip/unequip AND on weapon-swap (memo recompute) - `useEffect(() => () => material.dispose(), [material])`.
+- frontend/src/workers/ai.worker.js:260,268 - high(adj medium) - Melee attack payload omits `position` (projectile/leap branches include it); HUD threat-direction never fires for the most common attack type and melee SFX play at world origin - `pendingAttack = { id, damage, type:'melee', position:[x,y,z] }` in both melee branches.
+- frontend/src/world/BlockParticleSystem.jsx:88-103 - high(adj medium) - Uses removed @react-three/rapier array props positions/rotations/scales (2.2.0 requires single `instances` prop); zero rigid bodies created, `[].at(idx).setTranslation` throws per block-break, debris VFX non-functional - migrate to memoized `instances={[{key,position,rotation,scale}]}` array.
+- frontend/src/OptimizedGrassSystem.jsx:118-155 - high(adj medium) - Shared module-level grassMaterial means the entity-uniform gather+write runs once PER CHUNK (~81 at renderDist 4) per frame, all writing the same uniforms (last-write-wins); also iterates ALL ecs.entities instead of mobsQuery - hoist the uniform gather to one scene-level useFrame driver, leave only per-chunk particle instancing.
+- frontend/src/Components.jsx:688-701 - high(adj medium) - SOULBIND snare target-scan runs every frame ungated on ability ownership/intent (sibling TargetFrame scan IS throttled 150ms), O(mobCount) cone filter + per-frame `new THREE.Vector3()` - gate behind `unlockedTalents.soulbind_snare`+intent and hoist sDir to a scratch vector.
+- frontend/src/render/combatVfx.jsx:119-124 - high(adj low) - DamageNumber CanvasTexture disposed only in useFrame elapsed>1 branch; unmount before then (Canvas/scene teardown, HMR, StrictMode) leaks the 256x128 texture - `useEffect(() => () => texture.dispose(), [texture])` (no mid-session pool reset exists, so impact is bounded).
+- frontend/src/GameScene.jsx:313-323 - high(adj low) - SpatialAudioController cleanup disconnects only the static reverb network, never drains activeSpatialSoundsRef; in-flight voices + scene Object3Ds leak on unmount (NOTE: the claimed per-slider-tick frequency is false — `volume` is a never-mutated useState) - drain the ref in cleanup (stop/disconnect/removeFromParent each).
+
+## Autonomous fix queue (confirmed + autonomousSafe, value/risk-ordered)
+
+1. frontend/src/world/Terrain.jsx:170-202 - hoist `const empty=...` and gate only the JSX so all 3 hooks stay unconditional (fixes render-tree crash; mechanical, autonomousSafe)
+2. frontend/src/SimplifiedNPCSystem.jsx:270 - add `if (entity.isStatic) continue;` after the health<=0 check (single-line, mirrors existing isStatic convention)
+3. frontend/src/world/terrain.worker.js:136-146 - add `grassTops` to update_block payload (factor L66-76 into a helper; plain array, safe)
+4. frontend/src/render/BossEntity.jsx:272 - rotate the local mouth offset then add boss world pos (autonomousSafe transform fix)
+5. frontend/src/render/BossEntity.jsx:552-563 - add the else-delete branch to both ref callbacks (one-liner each)
+6. frontend/src/workers/ai.worker.js:260,268 - add `position:[x,y,z]` to both melee payloads (2-line parity fix)
+7. frontend/src/render/playerRender.jsx - add `useEffect(()=>()=>material.dispose(),[material])` to ProceduralRibbonTrail (covers equip/unequip + weapon-swap leaks)
+8. frontend/src/render/combatVfx.jsx - add `useEffect(()=>()=>texture.dispose(),[texture])` to DamageNumber
+9. frontend/src/render/Ocean.jsx:19-28 - add `useEffect(()=>()=>{geo.dispose();mat.dispose();},[geo,mat])` (prop-attached resources, matches Terrain/combatVfx convention)
+10. frontend/src/render/Atmosphere.jsx:145-146 - add dispose useEffect for domeMat/domeGeo (same prop-attach leak class)
+11. frontend/src/world/ElementZoneRenderSystem.jsx:52-66 - add dispose useEffect for ringGeo/charGeo/skirtGeo
+12. frontend/src/QuestSystem.jsx - track addNotification(154) + openChest(792) setTimeouts in a ref Set and clear on unmount (setState-after-unmount + leaked timers)
+13. frontend/src/SoundManager.jsx:269-288,429 - disconnect+null arp masterGain on stop/unmount (un-disposed WebAudio node)
+14. frontend/src/store/useGameStore.jsx:402 - delete dead `setIsBossActive` action (no callers; footgun that can clobber the isBossActive getter)
+15. frontend/src/ui/GamePanels.jsx:450 - delete unused `const gameState = useGameStore();` in MagicSystem (dead binding + full-store re-render)
+16. frontend/src/ui/GamePanels.jsx:516,623 + ui/panels/CraftingTable.jsx:13 + ui/TradingInterface.jsx:8 - replace bare useGameStore() with useShallow selectors (defeats React.memo / re-renders on every mana/hunger tick)
+17. frontend/src/SoundManager.jsx:570 - drop dead `playSpatialSound` from useSounds() destructure (context never provides it)
+18. frontend/src/SoundManager.jsx:479-509 - delete orphaned comment block describing migrated SFX functions
+19. frontend/src/SoundManager.jsx:36,244,430 - remove dead `ambientTimer` ref + its two no-op clears
+20. frontend/src/EnhancedMagicSystem.jsx:297-306,211-212,260-261 - delete dead trailPositions maintenance (per-frame alloc feeding a non-rendering array)
+21. frontend/src/EnhancedMagicSystem.jsx:28,33,36 - remove unused debuffs/setDebuffs/debuffId/frameCounter
+22. frontend/src/WorldManager.jsx:107,144 - make create/delete success messages contain 'success' (or use a severity flag) so they render green not red
+23. frontend/src/WorldManager.jsx:7,9,11,12 - remove 4 unused lucide-react icon imports (Users/Settings/Download/Upload)
+24. frontend/src/world/worldSaves.js:29-34 - write blob FIRST, check safeSet boolean, then index; return success flag (prevents dangling index entry on quota failure)
+25. frontend/src/SimplifiedNPCSystem.jsx:303-311 - guard leap-knockback `mag` with `|| 1` to prevent NaN position when mob is directly under player
+26. frontend/src/store/useGameStore.jsx:278-283 - coerce addAttributePoints amount via `Math.max(0,Math.floor(Number(amount)||0))` (NaN-poison guard)
+27. frontend/src/ui/SpellUpgradePanel.jsx:183 - clamp `lvl` to levels-array bounds before indexing (corrupt save -> panel crash)
+28. frontend/src/ui/TargetFrame.jsx:18 - clamp displayed HP via `Math.max(0, Math.ceil(target.health))`
+29. frontend/src/HUD.jsx:424 - hoist a module-level EMPTY_SET fallback (per-frame `new Set()` in compass rAF)
+30. frontend/src/GameScene.jsx:368,577,608,641 - hoist scratch Vector3 + 3 dummy Object3Ds out of WeatherSystem/occlusion useFrame (per-frame alloc)
+31. frontend/src/OptimizedGrassSystem.jsx:159 - hoist a reusable dummy Object3D out of the particle useFrame
+32. frontend/src/ui/GamePanels.jsx:531-536 - collapse 3 setState calls into one zustand setState
+33. frontend/src/render/BossEntity.jsx:144,156 - replace Math.random() effect ids with a monotonic counter ref (React-key/mesh-map collision)
+34. frontend/src/SimpleExperienceSystem.jsx:35 + SimpleExperienceSystem.jsx:27 + ui/panels/CraftingTable.jsx:96 - monotonic id for levelUpEffects + clear XP/craft setTimeouts on unmount
+35. frontend/src/index.jsx:39-45 - use addEventListener for error/unhandledrejection instead of clobbering window.onerror (DEV)
+36. frontend/src/ui/RadialMinimap.jsx:22 - add `if (!ctx) return;` after getContext('2d')
+37. frontend/src/SimplifiedNPCSystem.jsx:695 - add `if (!camera) return;` guard mirroring sibling systems
+38. frontend/src/SimplifiedNPCSystem.jsx:132 - add `if (!mobConfig) return false;` guard after weightedPick
+39. frontend/src/store/useGameStore.jsx:746-750 - move armor/dr computation inside the DEV-only log block (dead prod work + duplicated formula)
+40. frontend/src/Components.jsx:346 - drop [activeSpell] dep on triggerSpellCast (reads getState) so the input-listener effect stops re-running on every spell switch
+41. frontend/src/QuestSystem.jsx:623-665 - make the 30s chest spawner interval mount-once with ref-read counts (cadence currently resets on every chest mutation)
+
+## Kevin decisions (taste / scope / balance / architecture / privacy)
+
+1. BlockParticleSystem rapier-API migration (BlockParticleSystem.jsx:88-103) — mechanical fix is specified but REQUIRES a live in-app run to confirm block-break debris actually renders; not blind-autonomous. Also implement the dead scale-decay (L15-17,72-86) or delete the stale comment.
+2. OptimizedGrassSystem scene-level uniform driver (L118-155) — touches render architecture (hoist per-chunk gather to one driver); safe refactor but warrants a quick design check, not blind auto-apply.
+3. playerRender ribbon per-frame buffer reuse (L220-256) — larger hot-loop refactor (pre-allocate fixed-capacity buffers + setDrawRange); scope decision separate from the autonomousSafe material-dispose one-liner.
+4. spellVfx unbounded per-projectile + per-impact pointLights (L378,562) — can exceed forward-renderer light budget and trigger shader recompiles; needs a projectile concurrency cap or light-pool design decision.
+5. AI worker mob de-aggro/leash (ai.worker.js:169-171,316-318) — mobs chase player forever with no leash; ARPG-feel tuning call (suggested AGGRO_RANGE*1.5).
+6. Snare/Fuse scan intent predicate (Components.jsx:688-701,736-746) — ownership gate + scratch-vector are mechanical, but the exact 'holding aim IS the skill' channel predicate is a game-feel/balance call.
+7. grantXP full-heal on every level-up (useGameStore.jsx:339-360) — large XP rewards double as panic full-heals, can flatten night-siege tension; likely intended RPG behavior, confirm.
+8. Dodge intent consumed before cooldown check (Components.jsx:892-897) — drops dodge presses made during cooldown instead of buffering; feel call (buffer vs eat).
+9. 'Bow' recipe outputs 5 Arrows (recipes.js:104-108) — name/output mismatch; rename to 'Arrows' or add a real Bow item.
+10. place()/mine() optimistic feedback (Terrain.jsx:825-867) — SFX/puff/resonance/quest credit fire even when the worker rejects the edit; needs accept/reject echo design decision.
+11. bossSystem double-kill idempotency + side-effects-in-setState-updater (bossSystem.js:70-97) — verify how damageBoss is invoked (multi-hit/frame) before guarding; React-19 concurrent/StrictMode hazard.
+12. QuestSystem impure setState updaters (claimQuest:232, checkAchievements:160) — latent under React-19 concurrent rendering; reducer/useEffect refactor is a scope decision.
+13. Persisted questState/save-data validation (QuestSystem.jsx:91-106, save rehydration) — untrusted localStorage input rendered without shape validation; security/robustness scope.
+14. terrain.worker chunkModifications never freed on unload (L157-160) — likely deliberate persistence; needs confirmation vs an LRU cap before changing.
+15. HUD compass innerHTML rebuild every rAF frame (HUD.jsx:475) — per-frame reparse + breaks marker CSS animations; fix is a node-pool/diff refactor (not a one-liner), worth doing before commercial ship.
+16. HUD a11y track (HUD.jsx:475) — entire wayfinding/HUD surface is non-semantic divs with no ARIA/live-region; larger a11y initiative for commercial bound.
+17. Tree trunk grows through rock (terrain.worker.js:482-487) — trunks overwrite non-air; decide whether to guard-air or abort blocked trees.
+
+## Clean areas (verified no defects)
+
+- [
+- "
+- s
+- t
+- o
+- r
+- e
+- /
+- u
+- s
+- e
+- G
+- a
+- m
+- e
+- S
+- t
+- o
+- r
+- e
+- .
+- j
+- s
+- x
+-  
+- —
+-  
+- G
+- L
+- I
+- -
+- d
+- i
+- s
+- c
+- i
+- p
+- l
+- i
+- n
+- e
+- d
+- ,
+-  
+- b
+- a
+- n
+- k
+- s
+-  
+- c
+- o
+- n
+- s
+- i
+- s
+- t
+- e
+- n
+- t
+- l
+- y
+-  
+- c
+- l
+- a
+- m
+- p
+- e
+- d
+- ,
+-  
+- e
+- x
+- e
+- m
+- p
+- l
+- a
+- r
+- y
+-  
+- d
+- e
+- a
+- t
+- h
+- -
+- e
+- d
+- g
+- e
+-  
+- t
+- r
+- a
+- n
+- s
+- i
+- e
+- n
+- t
+-  
+- c
+- l
+- e
+- a
+- n
+- u
+- p
+- ;
+-  
+- o
+- n
+- l
+- y
+-  
+- r
+- e
+- a
+- l
+-  
+- d
+- e
+- f
+- e
+- c
+- t
+- s
+-  
+- a
+- r
+- e
+-  
+- t
+- h
+- e
+-  
+- d
+- e
+- a
+- d
+-  
+- s
+- e
+- t
+- I
+- s
+- B
+- o
+- s
+- s
+- A
+- c
+- t
+- i
+- v
+- e
+-  
+- f
+- o
+- o
+- t
+- g
+- u
+- n
+-  
+- +
+-  
+- m
+- i
+- n
+- o
+- r
+-  
+- c
+- o
+- e
+- r
+- c
+- i
+- o
+- n
+- /
+- t
+- r
+- a
+- n
+- s
+- i
+- e
+- n
+- t
+- -
+- r
+- e
+- s
+- e
+- t
+-  
+- g
+- a
+- p
+- s
+- .
+- "
+- ,
+-  
+- "
+- a
+- u
+- d
+- i
+- o
+- /
+- s
+- y
+- n
+- t
+- h
+- V
+- o
+- i
+- c
+- e
+- s
+- .
+- j
+- s
+-  
+- —
+-  
+- M
+- o
+- n
+- t
+- e
+- -
+- C
+- a
+- r
+- l
+- o
+- '
+- d
+-  
+- h
+- e
+- a
+- d
+- r
+- o
+- o
+- m
+-  
+- a
+- c
+- r
+- o
+- s
+- s
+-  
+- 2
+- 0
+- 0
+- 0
+-  
+- s
+- e
+- e
+- d
+- s
+- :
+-  
+- a
+- l
+- l
+-  
+- u
+- n
+- g
+- a
+- t
+- e
+- d
+-  
+- v
+- o
+- i
+- c
+- e
+- s
+-  
+- s
+- t
+- a
+- y
+-  
+- <
+- 1
+- .
+- 0
+- ,
+-  
+- g
+- u
+- a
+- r
+- d
+- s
+-  
+- c
+- o
+- r
+- r
+- e
+- c
+- t
+- l
+- y
+-  
+- p
+- l
+- a
+- c
+- e
+- d
+-  
+- o
+- n
+- l
+- y
+-  
+- w
+- h
+- e
+- r
+- e
+-  
+- l
+- a
+- y
+- e
+- r
+- i
+- n
+- g
+-  
+- n
+- e
+- e
+- d
+- s
+-  
+- t
+- h
+- e
+- m
+- ;
+-  
+- c
+- h
+- a
+- r
+- a
+- c
+- t
+- e
+- r
+- i
+- z
+- a
+- t
+- i
+- o
+- n
+- -
+- t
+- e
+- s
+- t
+- -
+- p
+- i
+- n
+- n
+- e
+- d
+- .
+-  
+- O
+- n
+- l
+- y
+-  
+- t
+- h
+- e
+-  
+- m
+- a
+- k
+- e
+- T
+- o
+- n
+- e
+-  
+- m
+- i
+- s
+- s
+- i
+- n
+- g
+-  
+- d
+- e
+- f
+- a
+- u
+- l
+- t
+- -
+- c
+- a
+- s
+- e
+-  
+- i
+- s
+-  
+- l
+- a
+- t
+- e
+- n
+- t
+- .
+- "
+- ,
+-  
+- "
+- P
+- u
+- r
+- e
+-  
+- l
+- o
+- g
+- i
+- c
+-  
+- m
+- o
+- d
+- u
+- l
+- e
+- s
+-  
+- (
+- d
+- a
+- y
+- N
+- i
+- g
+- h
+- t
+- ,
+-  
+- p
+- r
+- o
+- c
+- e
+- d
+- u
+- r
+- a
+- l
+- T
+- e
+- x
+- t
+- u
+- r
+- e
+- s
+- ,
+-  
+- t
+- o
+- k
+- e
+- n
+- s
+- /
+- c
+- s
+- s
+- V
+- a
+- r
+- s
+- ,
+-  
+- c
+- l
+- i
+- m
+- a
+- t
+- e
+- -
+- a
+- d
+- j
+- a
+- c
+- e
+- n
+- t
+- ,
+-  
+- c
+- a
+- m
+- e
+- r
+- a
+- K
+- i
+- c
+- k
+- ,
+-  
+- c
+- o
+- n
+- e
+- ,
+-  
+- t
+- r
+- a
+- u
+- m
+- a
+- ,
+-  
+- d
+- o
+- d
+- g
+- e
+- ,
+-  
+- b
+- e
+- a
+- s
+- t
+- M
+- o
+- r
+- p
+- h
+- ,
+-  
+- p
+- r
+- o
+- g
+- r
+- e
+- s
+- s
+- i
+- o
+- n
+- ,
+-  
+- s
+- o
+- u
+- l
+- ,
+-  
+- e
+- l
+- e
+- m
+- a
+- n
+- c
+- e
+- r
+- ,
+-  
+- a
+- f
+- f
+- i
+- x
+- e
+- s
+- ,
+-  
+- c
+- h
+- a
+- i
+- n
+- A
+- r
+- c
+- /
+- c
+- h
+- a
+- i
+- n
+- L
+- i
+- g
+- h
+- t
+- n
+- i
+- n
+- g
+- ,
+-  
+- c
+- o
+- m
+- p
+- a
+- s
+- s
+- ,
+-  
+- o
+- r
+- e
+- G
+- e
+- n
+- ,
+-  
+- h
+- e
+- i
+- g
+- h
+- t
+- A
+- t
+- ,
+-  
+- r
+- i
+- b
+- b
+- o
+- n
+- I
+- n
+- d
+- i
+- c
+- e
+- s
+- ,
+-  
+- l
+- o
+- o
+- t
+- J
+- u
+- i
+- c
+- e
+- ,
+-  
+- m
+- o
+- o
+- d
+- ,
+-  
+- i
+- n
+- p
+- u
+- t
+- S
+- t
+- a
+- t
+- e
+- ,
+-  
+- h
+- u
+- r
+- l
+- ,
+-  
+- s
+- p
+- e
+- l
+- l
+- C
+- a
+- s
+- t
+- ,
+-  
+- c
+- o
+- n
+- s
+- u
+- m
+- a
+- b
+- l
+- e
+- s
+- ,
+-  
+- e
+- q
+- u
+- i
+- p
+- m
+- e
+- n
+- t
+- ,
+-  
+- m
+- a
+- s
+- t
+- e
+- r
+- B
+- u
+- s
+- ,
+-  
+- a
+- u
+- d
+- i
+- o
+- G
+- a
+- i
+- n
+- )
+-  
+- —
+-  
+- d
+- e
+- t
+- e
+- r
+- m
+- i
+- n
+- i
+- s
+- t
+- i
+- c
+- ,
+-  
+- f
+- i
+- n
+- i
+- t
+- e
+- -
+- g
+- u
+- a
+- r
+- d
+- e
+- d
+- ,
+-  
+- n
+- o
+- d
+- e
+- -
+- t
+- e
+- s
+- t
+- a
+- b
+- l
+- e
+- ;
+-  
+- n
+- o
+-  
+- d
+- e
+- f
+- e
+- c
+- t
+- s
+- .
+- "
+- ,
+-  
+- "
+- C
+- o
+- m
+- p
+- o
+- n
+- e
+- n
+- t
+- s
+- .
+- j
+- s
+- x
+-  
+- h
+- o
+- t
+-  
+- l
+- o
+- o
+- p
+- s
+-  
+- —
+-  
+- G
+- L
+- I
+-  
+- r
+- e
+- s
+- p
+- e
+- c
+- t
+- e
+- d
+-  
+- (
+- g
+- e
+- t
+- I
+- n
+- p
+- u
+- t
+- /
+- g
+- e
+- t
+- S
+- t
+- a
+- t
+- e
+- /
+- r
+- e
+- f
+- s
+- )
+- ,
+-  
+- a
+- t
+- o
+- m
+- i
+- c
+-  
+- b
+- e
+- a
+- s
+- t
+- -
+- c
+- o
+- l
+- l
+- i
+- d
+- e
+- r
+-  
+- s
+- w
+- a
+- p
+- ,
+-  
+- c
+- o
+- n
+- s
+- i
+- s
+- t
+- e
+- n
+- t
+-  
+- k
+- e
+- y
+-  
+- f
+- o
+- r
+- m
+- a
+- t
+- s
+- ,
+-  
+- l
+- i
+- s
+- t
+- e
+- n
+- e
+- r
+- s
+-  
+- a
+- l
+- l
+-  
+- r
+- e
+- m
+- o
+- v
+- e
+- d
+-  
+- i
+- n
+-  
+- c
+- l
+- e
+- a
+- n
+- u
+- p
+- ;
+-  
+- i
+- s
+- s
+- u
+- e
+- s
+-  
+- a
+- r
+- e
+-  
+- p
+- e
+- r
+- f
+- -
+- a
+- l
+- l
+- o
+- c
+- a
+- t
+- i
+- o
+- n
+- /
+- u
+- n
+- g
+- a
+- t
+- e
+- d
+- -
+- s
+- c
+- a
+- n
+-  
+- o
+- n
+- l
+- y
+- ,
+-  
+- n
+- o
+-  
+- s
+- t
+- a
+- l
+- e
+- -
+- r
+- e
+- f
+-  
+- G
+- L
+- I
+-  
+- b
+- r
+- e
+- a
+- k
+- s
+- .
+- "
+- ,
+-  
+- "
+- T
+- e
+- r
+- r
+- a
+- i
+- n
+- .
+- j
+- s
+- x
+-  
+- h
+- o
+- t
+-  
+- p
+- a
+- t
+- h
+- s
+-  
+- —
+-  
+- T
+- a
+- r
+- g
+- e
+- t
+- O
+- u
+- t
+- l
+- i
+- n
+- e
+- /
+- F
+- a
+- r
+- B
+- e
+- a
+- c
+- o
+- n
+- /
+- s
+- h
+- a
+- d
+- e
+- r
+- -
+- u
+- n
+- i
+- f
+- o
+- r
+- m
+-  
+- u
+- s
+- e
+- F
+- r
+- a
+- m
+- e
+-  
+- a
+- l
+- l
+-  
+- r
+- e
+- f
+- /
+- g
+- e
+- t
+- S
+- t
+- a
+- t
+- e
+- -
+- b
+- a
+- s
+- e
+- d
+- ,
+-  
+- p
+- e
+- r
+- -
+- c
+- h
+- u
+- n
+- k
+-  
+- g
+- e
+- o
+- m
+- e
+- t
+- r
+- y
+-  
+- d
+- i
+- s
+- p
+- o
+- s
+- e
+- d
+- ,
+-  
+- s
+- i
+- n
+- g
+- l
+- e
+-  
+- r
+- e
+- u
+- s
+- e
+- d
+-  
+- R
+- a
+- y
+- +
+- f
+- i
+- l
+- t
+- e
+- r
+-  
+- i
+- n
+-  
+- t
+- h
+- e
+-  
+- p
+- h
+- y
+- s
+- i
+- c
+- s
+-  
+- p
+- a
+- t
+- h
+- ;
+-  
+- o
+- n
+- l
+- y
+-  
+- t
+- h
+- e
+-  
+- C
+- h
+- u
+- n
+- k
+- M
+- e
+- s
+- h
+-  
+- h
+- o
+- o
+- k
+- s
+- -
+- o
+- r
+- d
+- e
+- r
+-  
+- c
+- r
+- a
+- s
+- h
+-  
+- i
+- s
+-  
+- s
+- t
+- r
+- u
+- c
+- t
+- u
+- r
+- a
+- l
+- .
+- "
+- ,
+-  
+- "
+- G
+- a
+- m
+- e
+- S
+- c
+- e
+- n
+- e
+- .
+- j
+- s
+- x
+-  
+- —
+-  
+- w
+- r
+- a
+- p
+- E
+- f
+- f
+- e
+- c
+- t
+-  
+- p
+- o
+- s
+- t
+- -
+- p
+- r
+- o
+- c
+- e
+- s
+- s
+- i
+- n
+- g
+-  
+- c
+- o
+- n
+- t
+- e
+- x
+- t
+-  
+- l
+- o
+- o
+- k
+- u
+- p
+- ,
+-  
+- c
+- a
+- p
+- t
+- u
+- r
+- e
+-  
+- g
+- a
+- t
+- i
+- n
+- g
+- ,
+-  
+- r
+- e
+- a
+- c
+- t
+- i
+- v
+- e
+-  
+- q
+- u
+- a
+- l
+- i
+- t
+- y
+- T
+- i
+- e
+- r
+- -
+- a
+- t
+- -
+- r
+- e
+- n
+- d
+- e
+- r
+- -
+- t
+- i
+- m
+- e
+-  
+- a
+- l
+- l
+-  
+- v
+- e
+- r
+- i
+- f
+- i
+- e
+- d
+-  
+- i
+- n
+- t
+- e
+- n
+- t
+- i
+- o
+- n
+- a
+- l
+- ;
+-  
+- n
+- o
+-  
+- G
+- L
+- I
+- -
+- b
+- r
+- e
+- a
+- k
+- i
+- n
+- g
+-  
+- s
+- t
+- a
+- l
+- e
+-  
+- r
+- e
+- f
+- s
+- .
+- "
+- ,
+-  
+- "
+- S
+- i
+- m
+- p
+- l
+- i
+- f
+- i
+- e
+- d
+- N
+- P
+- C
+- S
+- y
+- s
+- t
+- e
+- m
+- .
+- j
+- s
+- x
+-  
+- —
+-  
+- w
+- o
+- r
+- k
+- e
+- r
+-  
+- t
+- e
+- r
+- m
+- i
+- n
+- a
+- t
+- e
+- /
+- i
+- n
+- t
+- e
+- r
+- v
+- a
+- l
+- /
+- m
+- i
+- n
+- i
+- p
+- l
+- e
+- x
+-  
+- c
+- l
+- e
+- a
+- n
+- u
+- p
+-  
+- a
+- l
+- l
+-  
+- c
+- o
+- r
+- r
+- e
+- c
+- t
+- ,
+-  
+- n
+- o
+-  
+- p
+- e
+- r
+- -
+- f
+- r
+- a
+- m
+- e
+-  
+- a
+- l
+- l
+- o
+- c
+-  
+- i
+- n
+-  
+- w
+- o
+- r
+- s
+- t
+-  
+- p
+- a
+- t
+- h
+- s
+- ,
+-  
+- V
+- F
+- X
+-  
+- s
+- e
+- l
+- f
+- -
+- c
+- o
+- m
+- p
+- l
+- e
+- t
+- e
+- ;
+-  
+- o
+- n
+- l
+- y
+-  
+- t
+- h
+- e
+-  
+- s
+- t
+- a
+- t
+- i
+- c
+- -
+- N
+- P
+- C
+-  
+- c
+- u
+- l
+- l
+-  
+- +
+-  
+- l
+- e
+- a
+- p
+-  
+- N
+- a
+- N
+-  
+- a
+- r
+- e
+-  
+- r
+- e
+- a
+- l
+- .
+- "
+- ,
+-  
+- "
+- M
+- a
+- n
+- y
+-  
+- p
+- u
+- r
+- e
+- -
+- p
+- r
+- e
+- s
+- e
+- n
+- t
+- a
+- t
+- i
+- o
+- n
+- a
+- l
+-  
+- U
+- I
+-  
+- (
+- C
+- r
+- e
+- d
+- i
+- t
+- s
+- S
+- c
+- r
+- e
+- e
+- n
+- ,
+-  
+- Q
+- u
+- e
+- s
+- t
+- L
+- o
+- g
+- ,
+-  
+- G
+- a
+- m
+- e
+- H
+- u
+- d
+- ,
+-  
+- T
+- o
+- u
+- c
+- h
+- C
+- o
+- n
+- t
+- r
+- o
+- l
+- s
+- S
+- u
+- r
+- f
+- a
+- c
+- e
+- ,
+-  
+- H
+- u
+- b
+- R
+- e
+- n
+- d
+- e
+- r
+- ,
+-  
+- S
+- p
+- e
+- l
+- l
+- U
+- p
+- g
+- r
+- a
+- d
+- e
+- P
+- a
+- n
+- e
+- l
+-  
+- a
+- 1
+- 1
+- y
+- ,
+-  
+- S
+- l
+- o
+- t
+- /
+- S
+- p
+- e
+- l
+- l
+- R
+- i
+- n
+- g
+- /
+- M
+- o
+- d
+- a
+- l
+- /
+- C
+- o
+- m
+- b
+- a
+- t
+- L
+- o
+- g
+- /
+- v
+- o
+- x
+- e
+- l
+- K
+- i
+- t
+- ,
+-  
+- P
+- r
+- i
+- m
+- i
+- t
+- i
+- v
+- e
+- s
+- S
+- h
+- o
+- w
+- c
+- a
+- s
+- e
+- ,
+-  
+- M
+- a
+- s
+- c
+- o
+- t
+- *
+-  
+- s
+- t
+- u
+- d
+- i
+- o
+- )
+-  
+- —
+-  
+- c
+- l
+- e
+- a
+- n
+- ,
+-  
+- a
+- 1
+- 1
+- y
+- -
+- l
+- a
+- b
+- e
+- l
+- e
+- d
+- .
+- "
+- ,
+-  
+- "
+- A
+- l
+- w
+- a
+- y
+- s
+- -
+- m
+- o
+- u
+- n
+- t
+- e
+- d
+-  
+- s
+- c
+- e
+- n
+- e
+-  
+- s
+- i
+- n
+- g
+- l
+- e
+- t
+- o
+- n
+- s
+-  
+- f
+- o
+- l
+- l
+- o
+- w
+- i
+- n
+- g
+-  
+- c
+- a
+- p
+- t
+- u
+- r
+- e
+- -
+- d
+- e
+- t
+- e
+- r
+- m
+- i
+- n
+- i
+- s
+- m
+-  
+- +
+-  
+- l
+- i
+- g
+- h
+- t
+- -
+- p
+- o
+- o
+- l
+-  
+- p
+- a
+- t
+- t
+- e
+- r
+- n
+- s
+-  
+- (
+- A
+- t
+- m
+- o
+- s
+- p
+- h
+- e
+- r
+- e
+- ,
+-  
+- L
+- i
+- g
+- h
+- t
+- M
+- o
+- t
+- e
+- s
+- ,
+-  
+- G
+- P
+- U
+- S
+- p
+- a
+- r
+- k
+- S
+- y
+- s
+- t
+- e
+- m
+- ,
+-  
+- S
+- n
+- a
+- r
+- e
+- T
+- e
+- t
+- h
+- e
+- r
+- S
+- y
+- s
+- t
+- e
+- m
+- ,
+-  
+- P
+- h
+- a
+- n
+- t
+- o
+- m
+- B
+- l
+- o
+- c
+- k
+- S
+- y
+- s
+- t
+- e
+- m
+- ,
+-  
+- T
+- i
+- t
+- l
+- e
+- D
+- i
+- o
+- r
+- a
+- m
+- a
+- ,
+-  
+- E
+- l
+- e
+- m
+- e
+- n
+- t
+- Z
+- o
+- n
+- e
+- R
+- e
+- n
+- d
+- e
+- r
+- S
+- y
+- s
+- t
+- e
+- m
+- )
+-  
+- —
+-  
+- G
+- L
+- I
+- -
+- c
+- l
+- e
+- a
+- n
+- ;
+-  
+- f
+- i
+- n
+- d
+- i
+- n
+- g
+- s
+-  
+- a
+- r
+- e
+-  
+- u
+- n
+- m
+- o
+- u
+- n
+- t
+- -
+- d
+- i
+- s
+- p
+- o
+- s
+- e
+- /
+- d
+- o
+- u
+- b
+- l
+- e
+- -
+- r
+- e
+- g
+- i
+- s
+- t
+- e
+- r
+-  
+- e
+- d
+- g
+- e
+-  
+- c
+- a
+- s
+- e
+- s
+-  
+- l
+- a
+- t
+- e
+- n
+- t
+-  
+- o
+- n
+- l
+- y
+-  
+- o
+- n
+-  
+- r
+- e
+- m
+- o
+- u
+- n
+- t
+- .
+- "
+- ,
+-  
+- "
+- T
+- h
+- e
+-  
+- ~
+- 8
+- 6
+- -
+- f
+- i
+- l
+- e
+-  
+- f
+- i
+- n
+- a
+- l
+-  
+- b
+- u
+- c
+- k
+- e
+- t
+-  
+- (
+- e
+- c
+- o
+- n
+- o
+- m
+- y
+- /
+- l
+- o
+- c
+- o
+- m
+- o
+- t
+- i
+- o
+- n
+- /
+- s
+- p
+- a
+- w
+- n
+- /
+- l
+- o
+- o
+- t
+- /
+- z
+- o
+- n
+- e
+-  
+- l
+- o
+- g
+- i
+- c
+-  
+- +
+-  
+- R
+- e
+- a
+- c
+- t
+-  
+- H
+- U
+- D
+-  
+- e
+- d
+- g
+- e
+- -
+- w
+- a
+- t
+- c
+- h
+- e
+- r
+- s
+-  
+- +
+-  
+- t
+- r
+- a
+- n
+- s
+- i
+- e
+- n
+- t
+-  
+- m
+- o
+- d
+- u
+- l
+- e
+- -
+- s
+- i
+- n
+- g
+- l
+- e
+- t
+- o
+- n
+-  
+- c
+- h
+- a
+- n
+- n
+- e
+- l
+- s
+- )
+-  
+- —
+-  
+- r
+- i
+- g
+- o
+- r
+- o
+- u
+- s
+-  
+- G
+- L
+- I
+- ,
+-  
+- c
+- a
+- p
+- t
+- u
+- r
+- e
+- -
+- d
+- e
+- t
+- e
+- r
+- m
+- i
+- n
+- i
+- s
+- m
+-  
+- t
+- h
+- r
+- e
+- a
+- d
+- e
+- d
+-  
+- t
+- h
+- r
+- o
+- u
+- g
+- h
+- o
+- u
+- t
+- ,
+-  
+- n
+- o
+-  
+- l
+- e
+- a
+- k
+- s
+- /
+- s
+- t
+- a
+- l
+- e
+- -
+- c
+- l
+- o
+- s
+- u
+- r
+- e
+- s
+- /
+- u
+- n
+- s
+- a
+- f
+- e
+- -
+- s
+- t
+- o
+- r
+- a
+- g
+- e
+- ;
+-  
+- v
+- e
+- r
+- i
+- f
+- i
+- e
+- d
+-  
+- n
+- o
+- n
+- -
+- i
+- s
+- s
+- u
+- e
+- s
+-  
+- i
+- n
+- c
+- l
+- .
+-  
+- c
+- o
+- n
+- s
+- u
+- m
+- a
+- b
+- l
+- e
+- s
+-  
+- e
+- x
+- a
+- c
+- t
+- -
+- n
+- a
+- m
+- e
+-  
+- f
+- i
+- x
+- ,
+-  
+- B
+- o
+- s
+- s
+- H
+- e
+- a
+- l
+- t
+- h
+- B
+- a
+- r
+-  
+- p
+- h
+- a
+- s
+- e
+- -
+- 0
+-  
+- s
+- u
+- b
+- T
+- e
+- x
+- t
+- ,
+-  
+- e
+- n
+- e
+- m
+- y
+- P
+- r
+- o
+- j
+- e
+- c
+- t
+- i
+- l
+- e
+- s
+-  
+- p
+- e
+- r
+- -
+- s
+- e
+- c
+- o
+- n
+- d
+-  
+- c
+- o
+- n
+- v
+- e
+- r
+- s
+- i
+- o
+- n
+- .
+- "
+- ]
+
+---
+*Full raw findings + adversarial verdicts: workflow run wf_03144f12-2bd transcript.*
