@@ -364,30 +364,6 @@ export const makeSwingSound = (ctx) => {
     return buffer;
 };
 
-export const makeMagicSound = (ctx) => {
-    if (!ctx) return null;
-
-    const sampleRate = ctx.sampleRate;
-    const duration = 0.5;
-    const frameCount = sampleRate * duration;
-    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
-    const channelData = buffer.getChannelData(0);
-
-    for (let i = 0; i < frameCount; i++) {
-      const t = i / sampleRate;
-      const freq1 = 440 + Math.sin(t * 20) * 100;
-      const freq2 = 660 + Math.cos(t * 15) * 80;
-
-      const sample1 = Math.sin(2 * Math.PI * freq1 * t);
-      const sample2 = Math.sin(2 * Math.PI * freq2 * t);
-
-      const envelope = Math.exp(-t * 2);
-      channelData[i] = (sample1 + sample2) * envelope * 0.2;
-    }
-
-    return buffer;
-};
-
 export const makeMagicCastSound = (ctx) => {
     if (!ctx) return null;
 
@@ -453,27 +429,6 @@ export const makeMagicExplosionSound = (ctx) => {
 
       const envelope = Math.exp(-t * 3);
       channelData[i] = (noise * 0.7 + tone * 0.3) * envelope * 0.4;
-    }
-
-    return buffer;
-};
-
-export const makeMagicChargeSound = (ctx) => {
-    if (!ctx) return null;
-
-    const sampleRate = ctx.sampleRate;
-    const duration = 0.8;
-    const frameCount = sampleRate * duration;
-    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
-    const channelData = buffer.getChannelData(0);
-
-    for (let i = 0; i < frameCount; i++) {
-      const t = i / sampleRate;
-      const freq = 200 + t * 400; // Rising charge sound
-      const sample = Math.sin(2 * Math.PI * freq * t);
-
-      const envelope = t / duration * Math.exp(-t * 0.5);
-      channelData[i] = sample * envelope * 0.2;
     }
 
     return buffer;
@@ -714,7 +669,6 @@ export const VOICES = {
   jump: (ctx) => makeTone(ctx, 300, 0.2, 'sine'),
   pickup: (ctx) => makeTone(ctx, 400, 0.1, 'sine'),
   craft: (ctx) => makeTone(ctx, 350, 0.3, 'triangle'),
-  magic: makeMagicSound,
   attack: makeAttackSound,
   hit: makeHitSound,
   defeat: makeDefeatSound,
@@ -722,7 +676,6 @@ export const VOICES = {
   magicCast: makeMagicCastSound,
   magicHit: makeMagicHitSound,
   magicExplosion: makeMagicExplosionSound,
-  magicCharge: makeMagicChargeSound,
   levelUp: makeLevelUpSound,
   roar: makeRoarSound,
   aggroGrowl: makeAggroGrowl,

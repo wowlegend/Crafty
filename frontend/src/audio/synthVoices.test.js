@@ -15,9 +15,9 @@ const fakeCtx = () => ({
 });
 
 const ALL_NAMES = [
-  'blockPlace', 'blockBreak', 'footstep', 'jump', 'pickup', 'craft', 'magic',
+  'blockPlace', 'blockBreak', 'footstep', 'jump', 'pickup', 'craft',
   'attack', 'hit', 'defeat', 'swing',
-  'magicCast', 'magicHit', 'magicExplosion', 'magicCharge', 'levelUp',
+  'magicCast', 'magicHit', 'magicExplosion', 'levelUp',
   'roar', 'aggroGrowl', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
   'ignite', 'freeze', 'zap', 'rune',
   'motifWildheart', 'motifVoidhand', 'motifSoulbind', 'motifElemancer', // music-motif v2
