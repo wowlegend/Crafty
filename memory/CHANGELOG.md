@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 20, 2026 — kevinDecisions sprint (Phase A) + a commit-message note
+- **`ea4c221` IS the AI de-aggro leash** (ai.worker: a chased mob drops aggro past 1.5x AGGRO_RANGE and resumes wandering, instead of pursuing across the whole map). Its commit MESSAGE was clobbered to a stray `{"message":"Welcome to the Kimi For Coding API!"}` because a stale /tmp/k1.txt + zsh noclobber blocked the heredoc write; the CODE is correct + gated + pushed. (Lesson re-applied: use `>|` / `rm -f` for /tmp heredocs.)
+- **`d6d4cab` tree-through-rock guard** — terrain.worker trunk stamps (tree/cactus/pine) now break at the first non-air block instead of overwriting rock/overhangs (leaves already air-guarded). biome-foliage + grass-revival + no-re-mesh gates green.
+
+
 ### June 20, 2026 — Review fix-sprint cont. (Phase A tail, gated + pushed)
 - **re-render perf** `46fff59` GamePanels MagicSystem dead-binding removed + BuildingTools/SettingsPanel useShallow selectors + setState-collapse · `43ecf84` CraftingTable + TradingInterface useShallow (no more whole-store re-renders on every tick).
 - **robustness guards** `c2b78cf` minimap null-ctx + projectile camera + unknown-mob-type (spawnMob false-on-failure).
