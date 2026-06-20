@@ -497,7 +497,29 @@ function generateChunkData(cx, cz) {
 
       if (surfaceY > SEA_LEVEL && vegRandom(worldX, worldZ, 1) < 0.02) {
         const surfaceBlock = blocks[x + z * CHUNK_SIZE + surfaceY * 256];
-        if (surfaceBlock === 1) { // Forest Trees
+        // M4b biome-flora wiring: branch foliage on the biome's flora KIND (biomeTable), not just the
+        // surface block, so grass biomes diverge (taiga pines vs forest oaks) + mesa stays bare.
+        // pickBiome + computeHeight are PURE -> capture-deterministic, gen-time only (NO-RE-MESH).
+        const { continent: fCont, moisture: fMoist, temperature: fTemp } = computeHeight(noise2D, worldX, worldZ);
+        const flora = pickBiome(fTemp, fMoist, fCont).flora;
+        if (surfaceBlock === 1 && flora === 'pine') { // taiga: boreal pines on cool grass (not broadleaf)
+          const pineH = 5 + Math.floor(vegRandom(worldX, worldZ, 4) * 4);
+          const { trunk, leaves } = pineShape(pineH);
+          for (const [, dy] of trunk) {
+            const ny = surfaceY + dy;
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break;
+            blocks[idx] = 6;
+          }
+          for (const [dx, dy, dz] of leaves) {
+            const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
+            if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+              const leafIdx = getIndex(nx, ny, nz);
+              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+            }
+          }
+        } else if (surfaceBlock === 1) { // Forest Trees (broadleaf — per-biome density/shape variety is slice 2)
           const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
           for (let ty = 1; ty <= treeHeight; ty++) {
             const ny = surfaceY + ty;
@@ -520,7 +542,7 @@ function generateChunkData(cx, cz) {
               }
             }
           }
-        } else if (surfaceBlock === 4) { // Desert Cacti
+        } else if (surfaceBlock === 4 && flora === 'cactus') { // Desert cacti only — mesa (flora 'none') stays bare badlands; beaches near non-desert biomes too
           const cactusHeight = 2 + Math.floor(vegRandom(worldX, worldZ, 3) * 2);
           for (let ty = 1; ty <= cactusHeight; ty++) {
             const ny = surfaceY + ty;
