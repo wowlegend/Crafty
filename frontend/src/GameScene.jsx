@@ -323,44 +323,9 @@ const SpatialAudioController = () => {
   }, [camera, scene, audioContext, sounds, soundEnabled, volume]);
 
   // Step 3: Environmental Acoustics Update Loop
-  const ambientWind = useRef(null);
-  const windGain = useRef(null);
-
-  useEffect(() => {
-    if (!audioContext || !soundEnabled) return;
-    
-    // Generate procedural wind
-    const bufferSize = 2 * audioContext.sampleRate;
-    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-    }
-
-    const source = audioContext.createBufferSource();
-    source.buffer = noiseBuffer;
-    source.loop = true;
-
-    const filter = audioContext.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 500;
-
-    const gain = audioContext.createGain();
-    gain.gain.value = 0.05 * volume;
-
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioContext.destination);
-    
-    source.start();
-    ambientWind.current = filter;
-    windGain.current = gain;
-
-    return () => {
-        source.stop();
-        source.disconnect();
-    };
-  }, [audioContext, soundEnabled, volume]);
+  // (Removed a duplicate procedural wind generator that ran here and routed straight to ctx.destination,
+  // BYPASSING the master-bus limiter + SFX-volume slider and doubling the SoundManager biome wind bed
+  // [SoundManager windBedRef is the single SoT, routed through getMasterBus()].)
 
   useFrame((state) => {
     if (filterRef.current && camera) {
@@ -379,14 +344,6 @@ const SpatialAudioController = () => {
           ? THREE.MathUtils.lerp(0.5, 0.0, Math.max(0, y / undergroundLimit)) * volume
           : 0.0;
         wetGainRef.current.gain.setTargetAtTime(targetWet, audioContext.currentTime, 0.1);
-      }
-
-      // Adjust wind based on height and day/night
-      if (ambientWind.current && windGain.current) {
-        const heightFactor = Math.min(2, Math.max(0.5, y / 30));
-        const dayFactor = useGameStore.getState().isDay ? 1.0 : 0.6;
-        ambientWind.current.frequency.setTargetAtTime(400 * heightFactor * dayFactor, audioContext.currentTime, 0.5);
-        windGain.current.gain.setTargetAtTime(0.03 * heightFactor * volume, audioContext.currentTime, 0.5);
       }
 
       // Dynamic recursive raycasting audio occlusion calculations
