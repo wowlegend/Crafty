@@ -269,7 +269,10 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 lastFireballTime.current = now;
                 
                 // Spawn fireball starting at mouth and aiming directly at player capsule core
-                const headPos = new THREE.Vector3(bx, by + 1.2, bz + 1.5).applyEuler(meshRef.current.rotation);
+                // rotate the LOCAL mouth offset by the boss rotation, THEN add the boss world pos.
+                // (the old code applyEuler'd the already-world-space vector -> rotated about the origin,
+                //  so the fireball streaked from a far point and Phase-1 aim was skewed to frequent misses)
+                const headPos = new THREE.Vector3(0, 1.2, 1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(bx, by, bz));
                 const targetPos = new THREE.Vector3(playerX, camera.position.y - 0.5, playerZ);
                 const fireballDir = targetPos.clone().sub(headPos).normalize();
                 
@@ -549,7 +552,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             
             {/* 1. Aerial Fireballs */}
             {effects.fireballs.map(f => (
-                <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; }} position={f.position}>
+                <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; else delete fireballMeshes.current[f.id]; }} position={f.position}>
                     <sphereGeometry args={[0.45, 12, 12]} />
                     <meshBasicMaterial color="#f97316" toneMapped={false} />
                     <pointLight color="#f97316" intensity={2.0} distance={6} />
@@ -560,7 +563,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             {effects.lavaZones.map(l => (
                 <mesh 
                     key={l.id} 
-                    ref={el => { if (el) lavaZoneMeshes.current[l.id] = el; }} 
+                    ref={el => { if (el) lavaZoneMeshes.current[l.id] = el; else delete lavaZoneMeshes.current[l.id]; }}
                     position={l.position} 
                     rotation={[-Math.PI / 2, 0, 0]} 
                     receiveShadow
