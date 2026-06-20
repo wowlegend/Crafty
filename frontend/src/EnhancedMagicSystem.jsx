@@ -323,7 +323,9 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
             // impact gets a beefier camera-shake + spark spray (S1-D-M1).
             let wasKill = false;
             if (GameMethods.damageMob) {
-              const hitEntity = GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type);
+              // spawnRing=false: this direct projectile hit renders its own SpellImpactPop below
+              // (createSpellImpact) — skip damageMob's ImpactShockwave so spells show ONE ring, not two.
+              const hitEntity = GameMethods.damageMob(hitMob.id, projectile.damage, projectile.type, 'player', false);
               if (hitEntity && hitEntity.health <= 0) wasKill = true;
             }
             // S2-B4-M5: a mob hit grounds the zone at the impact point (zone effects are

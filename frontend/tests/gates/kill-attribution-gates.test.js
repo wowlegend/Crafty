@@ -15,7 +15,9 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
   const npc = read('SimplifiedNPCSystem.jsx');
 
   it('damageMob carries the 4-arg attribution signature', () => {
-    expect(npc).toMatch(/damageMob = \(id, damage = 25, type = 'physical', source = 'player'\)/);
+    // extension-tolerant: asserts the (id, damage, type, source) attribution prefix is intact;
+    // a trailing orthogonal param (e.g. spawnRing, the impact-ring dedup) is allowed.
+    expect(npc).toMatch(/damageMob = \(id, damage = 25, type = 'physical', source = 'player'(,|\))/);
   });
 
   it('hitstop, camera shake, and XP orbs are player-only', () => {

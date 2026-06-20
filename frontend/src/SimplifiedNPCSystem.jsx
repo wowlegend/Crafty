@@ -506,7 +506,7 @@ const MinimapSyncSystem = () => {
 const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
   const { playHit } = useGameSounds();
   useEffect(() => {
-    const damageMob = (id, damage = 25, type = 'physical', source = 'player') => {
+    const damageMob = (id, damage = 25, type = 'physical', source = 'player', spawnRing = true) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
 
@@ -577,7 +577,9 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         position: [entity.position.x, entity.position.y, entity.position.z]
       }]);
 
-      setShockwaves(waves => [...waves, {
+      // spawnRing=false from spell-projectile hits, which render their own SpellImpactPop ring
+      // (EnhancedMagicSystem.createSpellImpact) — avoids the double ImpactShockwave+SpellImpactPop stack.
+      if (spawnRing) setShockwaves(waves => [...waves, {
         id: damageId.current++,
         type,
         position: [entity.position.x, entity.position.y + 0.1, entity.position.z]
