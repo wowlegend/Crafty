@@ -73,7 +73,8 @@ export const useBossSystem = (playerLevel) => {
 
         setBossHealth(prev => {
             const newHealth = Math.max(0, prev - amount);
-            if (newHealth <= 0 && !bossKilledRef.current) {
+            if (newHealth <= 0) {
+                if (bossKilledRef.current) return newHealth; // idempotent: already killed -> no double XP/drops/bloom
                 bossKilledRef.current = true;
                 setBossActive(false);
                 setBossDefeated(true);
