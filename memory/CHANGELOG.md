@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### June 20, 2026 — Phase B M1 biome-flora: distinct shapes (slices 3+4)
+- **`c3757a8` savanna acacias** — new deterministic acaciaShape (tall bare trunk + flat wide umbrella canopy), unit-tested; savanna spawns sparse acacias dotting the veld (own flora branch) instead of round oaks.
+- **`5a075b2` swamp trees** — swamp was BARREN (surfaceBlock===2 had no foliage); new swampShape (short trunk + wide LOW droopy canopy draping below the crown), unit-tested; branched on surfaceBlock===2 && flora==='swamp'.
+- Biome-flora M1 now: taiga pines · bare mesa · gated cacti · forest/jungle dense vs plains/savanna/meadow open · taller jungle · savanna acacia · swamp droopy. All deterministic (vegRandom), gen-time NO-RE-MESH, gate-pinned paths intact, per-biome LOOK surfaced for Kevin (headless can't stand in a biome). 1679 unit.
+- **Autonomous additive-flora work now captured** (jungle already distinct via tall oaks = marginal; meadow flowers need a new block id = M4b out-of-scope). Remaining Phase-B is TASTE/DECISION (spell-color re-baseline, shrine, quest rewards, mob/boss art, starting-inventory, economy, S4) -> prioritization ask in KEVIN-REVIEW; loop on ~30min hold for Kevin's steer.
+
+
 ### June 20, 2026 — Phase B M1: biome-flora render-wiring (slices 1+2)
 - The 10-biome `flora` contract (biomeTable) is now wired into the terrain.worker foliage pass (plan: docs/superpowers/plans/2026-06-20-crafty-biome-flora.md). **`8f4eec4` slice 1:** taiga grows pines (was broadleaf), mesa stays bare (was wrongly cacti), cacti gated to flora==='cactus' (no more cacti on every sand column/beach); +biome-flora-gates. **`4625123` slice 2:** forest/jungle DENSE, plains/savanna/meadow OPEN (thinning roll), jungle canopies TALLER. Deterministic (vegRandom), gen-time NO-RE-MESH, gate-pinned snow/cactus paths intact. 1673 unit green.
 - **Phase B autonomous runway now thin** — remaining items are Kevin-taste/eye/scope: biome-flora slice-3 distinct SHAPES (acacia/flowers/swamp — visual, hard to headless-verify per-biome), spell-color unify (needs a deliberate visual re-baseline), + the art/balance milestones (shrine model, quest rewards, mob/boss art, starting-inventory, economy) + S4. Prioritization ask written to KEVIN-REVIEW; loop cadence lengthened to ~30min, holding for Kevin's steer.
