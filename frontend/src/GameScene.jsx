@@ -806,8 +806,9 @@ export function GameScene({
           //  (2) No onFallback handler -> a flipflop-exhausted device strands at its last tier
           //      (the one-way ratchet can RE-EMERGE post-fallback). S3: add onFallback pinning
           //      a safe-middle tier.
-          //  (3) The weather lever is MOUNT-TIME only (GameScene WeatherSystem reads tier in a
-          //      useMemo([])); it does NOT re-thin/restore on a runtime tier change. S3.
+          //  (was 3) The weather density lever is now REACTIVE (WeatherSystem reads qualityTier via a
+          //      useGameStore selector + count-keyed useMemos) -> it re-thins/restores on a runtime tier
+          //      change. RESOLVED; only (1)+(2) remain as real-device S3 tuning residues.
           // So onIncline ADDS recovery (the ratchet is no longer strictly one-way at the happy
           // path) but is not yet bulletproof. The whole monitor stays inside !isCaptureMode so
           // the deterministic forced-high capture path is never perturbed by recovery logic.
