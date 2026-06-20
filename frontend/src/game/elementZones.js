@@ -9,7 +9,7 @@
  * the look. All numbers Kevin-tunable.
  */
 export const MAX_ZONES = 8;
-export const DEDUPE_DIST = 2;       // same-kind within this = refresh, not respawn
+const DEDUPE_DIST = 2;       // same-kind within this = refresh, not respawn (module-internal)
 export const AMP_RADIUS_MULT = 1.5; // the rune's gift
 export const AMP_TTL_MULT = 1.5;
 

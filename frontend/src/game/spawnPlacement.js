@@ -2,7 +2,7 @@
 // setTranslation/setLinvel stays in Player; this is the math + the branch logic, characterization-
 // pinned to the old inline behavior (Components.jsx:803-860). NO React/Rapier.
 export const SPAWN_FREEZE_Y = 120;       // hold in the sky until the world builds / on void-fall
-export const VOID_RESET_Y = 10;          // y below this = fell through the floor -> reset
+const VOID_RESET_Y = 10;          // y below this = fell through the floor -> reset (module-internal)
 export const SPAWN_PROBE_MAX_FAILS = 120; // bounded probe wait (frames) before the fallback
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)

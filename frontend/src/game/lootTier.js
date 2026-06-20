@@ -4,7 +4,7 @@
 // import -- the caller passes the row's rarity) -> unit-testable + capture-safe (loot is runtime, never
 // in the visual baselines). zoneTier 0 (near spawn) is identical to the legacy behaviour (no regression).
 // Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH).
-export const RARITY_BONUS_PER_TIER = 0.25; // each zone tier adds +25% RELATIVE chance to a non-common row
+const RARITY_BONUS_PER_TIER = 0.25; // each zone tier adds +25% RELATIVE chance to a non-common row (module-internal)
 export const RARITY_BONUS_CAP = 1.0;       // capped at +100% (2x) far out
 
 /** Relative drop-chance boost for non-common loot at a given zone tier. 0 at tier 0, rising, capped. */

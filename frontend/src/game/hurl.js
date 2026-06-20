@@ -4,8 +4,8 @@
 // flight dir — the seam M4's base-as-anvil wall ray consumes (this module stays wall-agnostic).
 
 export const HURL_SPEED = 22;        // m/s along camera-forward (M2 stand-in ballpark)
-export const HURL_LIFT = 2;          // small initial vy lift -> readable arc
-export const HURL_GRAVITY = 9;       // mild pull-down (full 30 reads like a brick)
+const HURL_LIFT = 2;          // small initial vy lift -> readable arc (module-internal)
+const HURL_GRAVITY = 9;       // mild pull-down (full 30 reads like a brick) (module-internal)
 export const HURL_TTL_SEC = 1.5;     // max flight
 export const HURL_HIT_RADIUS = 1.4;  // 0.85 cube + mob body
 export const HURL_DAMAGE = 30;       // base; element type re-skins via damageMob's spark switch
@@ -52,8 +52,8 @@ export function stepHurl(h, dt, mobs) {
   return { done: h.age >= HURL_TTL_SEC, hit: null };
 }
 
-export const HURL_MAX_STEP_SEC = 0.05;  // 1.1m/substep at HURL_SPEED < HIT_RADIUS -> no tunneling
-export const HURL_FRAME_CAP_SEC = 0.25; // a pathological frame advances the flight at most this much
+const HURL_MAX_STEP_SEC = 0.05;  // 1.1m/substep at HURL_SPEED < HIT_RADIUS -> no tunneling (module-internal)
+const HURL_FRAME_CAP_SEC = 0.25; // a pathological frame advances the flight at most this much (module-internal)
 
 /**
  * Frame-spike-safe stepping: integrates in substeps of ≤ HURL_MAX_STEP_SEC so a long frame

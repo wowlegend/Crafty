@@ -6,7 +6,7 @@
  */
 const INDEX_KEY = 'crafty_world_saves';
 const BLOB_PREFIX = 'crafty_world_save_';
-export const ACTIVE_WORLD_KEY = 'crafty_active_world';
+const ACTIVE_WORLD_KEY = 'crafty_active_world';
 
 const safeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const safeSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };

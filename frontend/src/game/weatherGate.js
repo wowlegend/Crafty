@@ -4,7 +4,7 @@
 // biome. Also resolves the storm sky-darkening mood boost. Consumed by the WeatherSystem in GameScene.
 
 export const SNOW_SURFACE = 5;   // snow biome surface block
-export const SAND_SURFACE = 4;   // desert/beach (dry — no precip)
+const SAND_SURFACE = 4;   // desert/beach (dry — no precip) (module-internal)
 
 // Partial mood darkening during a storm: explore(0) -> ~dusk feel. Less than obsidian(2) so a daytime
 // storm reads as overcast/moody, not full night. The Atmosphere driver MAXes this with the day/night mood.

@@ -78,20 +78,21 @@ export const DAY_MAX_MOBS = 16;
 export const DAY_HOSTILE_CHANCE = 0.7;
 
 /** Per-night maxMobs ramp + its additive cap (so maxMobs caps at 16 + 24 = 40). */
-export const SIEGE_MOBS_PER_NIGHT = 4;
-export const SIEGE_MOBS_RAMP_CAP = 24;
+// Module-internal constants (consumed by nightSiege below; not imported elsewhere — un-exported 2026-06-20 knip pass).
+const SIEGE_MOBS_PER_NIGHT = 4;
+const SIEGE_MOBS_RAMP_CAP = 24;
 
 /** Per-night hostileChance ramp + its absolute ceiling. */
-export const SIEGE_HOSTILE_PER_NIGHT = 0.05;
-export const SIEGE_HOSTILE_CAP = 0.95;
+const SIEGE_HOSTILE_PER_NIGHT = 0.05;
+const SIEGE_HOSTILE_CAP = 0.95;
 
 /** S7 distance zone-tier ramp: the Ember-Frontier far-from-spawn zone ADDS mobs + hostility even by DAY,
  * so walking outward is a deliberate risk. ADDITIVE on top of the night ramp; capped so totals stay bounded.
  * Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH). */
-export const SIEGE_MOBS_PER_TIER = 2;        // additive mobs per zone tier
-export const SIEGE_MOBS_TIER_CAP = 8;        // tier-bonus cap (= MAX_TIER 4 * SIEGE_MOBS_PER_TIER)
-export const SIEGE_HOSTILE_PER_TIER = 0.04;  // additive hostile bias per zone tier
-export const SIEGE_HOSTILE_TIER_CAP = 0.98;  // absolute ceiling incl. tier (above the night-only 0.95 cap)
+const SIEGE_MOBS_PER_TIER = 2;        // additive mobs per zone tier
+const SIEGE_MOBS_TIER_CAP = 8;        // tier-bonus cap (= MAX_TIER 4 * SIEGE_MOBS_PER_TIER)
+const SIEGE_HOSTILE_PER_TIER = 0.04;  // additive hostile bias per zone tier
+const SIEGE_HOSTILE_TIER_CAP = 0.98;  // absolute ceiling incl. tier (above the night-only 0.95 cap)
 
 /**
  * Night-siege intensity as a PURE function of nightCount (nights survived) AND the player's distance
