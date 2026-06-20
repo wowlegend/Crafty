@@ -165,9 +165,12 @@ self.onmessage = function(e) {
       const dz = playerZ - z;
       const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
       
-      // Aggro transition
+      // Aggro transition (+ de-aggro leash): a chased mob drops aggro once the player gets past
+      // 1.5x aggro range, so it stops pursuing across the whole map and falls back to wandering below.
       if (!passive && distToPlayer2D < AGGRO_RANGE) {
         isAggro = true;
+      } else if (isAggro && distToPlayer2D > AGGRO_RANGE * 1.5) {
+        isAggro = false;
       }
       
       let isCoverSeeking = false;
