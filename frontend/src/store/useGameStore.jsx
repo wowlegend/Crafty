@@ -741,11 +741,13 @@ export const useGameStore = create((set, get) => ({
 
         // Apply Armor Damage Mitigation
         const effective = state.getEffectiveAttributes();
-        const armor = effective.armor || 0;
-        const dr = armor / (armor + 100);
         const finalDamage = mitigateDamage(effective, amount);
 
-        if (import.meta.env.DEV) console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
+        if (import.meta.env.DEV) {
+            const armor = effective.armor || 0;
+            const dr = armor / (armor + 100);
+            console.log(`[hit] Player hit by ${source}: raw damage ${amount} -> mitigated to ${finalDamage} (Armor: ${armor}, DR: ${Math.round(dr * 100)}%)`);
+        }
 
         // Combat-legibility: when the caller supplies the attacker position, record the screen-relative
         // hit direction (read the live camera yaw + player pos) so the HUD can point you at the threat.

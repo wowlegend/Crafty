@@ -343,7 +343,7 @@ export const Player = ({ isWorldBuilt }) => {
 
     setAttackType('spell');
     setTimeout(() => setAttackType(null), 150);
-  }, [activeSpell]);
+  }, [camera]); // reads store.activeSpell via getState (not the closure) -> depend on camera (used), not activeSpell -> stable callback, input-listener effect no longer re-subscribes on every spell switch
 
   useEffect(() => {
     // WRITER: the keyboard/mouse listeners are the INPUT SOURCE. They mirror movement keys into
