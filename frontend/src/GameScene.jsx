@@ -72,6 +72,9 @@ const Sun = ({ onReady }) => {
 // intended glowier base real (matches the <Bloom intensity={0.95}> prop on line ~906).
 const BLOOM_BASE = 0.95;
 const BLOOM_PEAK = 2.4;
+// reused per-frame scratch (avoid allocating inside the audio-occlusion + weather-instancing useFrames)
+const _audioDir = new THREE.Vector3();
+const _weatherDummy = new THREE.Object3D();
 const BloomSpikeDriver = () => {
   const ctx = useContext(EffectComposerContext);
   const fxRef = useRef(null);
@@ -365,7 +368,7 @@ const SpatialAudioController = () => {
       // Update spatial filter frequency and gain muffling dynamically based on block intersections
       for (const item of activeSpatialSoundsRef.current) {
         const soundPos = item.soundSource.position;
-        const dir = new THREE.Vector3().subVectors(listenerPos, soundPos);
+        const dir = _audioDir.subVectors(listenerPos, soundPos);
         const dist = dir.length();
         dir.normalize();
 
@@ -574,7 +577,7 @@ const WeatherSystem = () => {
 
     // 1. Instanced Rain Particle displacement
     if (rainMeshRef.current) {
-      const dummy = new THREE.Object3D();
+      const dummy = _weatherDummy;
       rainData.forEach((r, i) => {
         if (isRaining) {
           r.y -= r.speed * delta;
@@ -605,7 +608,7 @@ const WeatherSystem = () => {
 
     // 2. Instanced Snow Particle drift
     if (snowMeshRef.current) {
-      const dummy = new THREE.Object3D();
+      const dummy = _weatherDummy;
       snowData.forEach((s, i) => {
         if (isSnowing) {
           s.y -= s.speed * delta;
@@ -638,7 +641,7 @@ const WeatherSystem = () => {
 
     // 3. Glowing Firefly drift (Night cycles only)
     if (firefliesMeshRef.current) {
-      const dummy = new THREE.Object3D();
+      const dummy = _weatherDummy;
       fireflyData.forEach((f, i) => {
         if (!isDay) {
           const wobbleX = Math.sin(time * 0.5 + f.seed) * 0.05;

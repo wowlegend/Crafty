@@ -44,6 +44,9 @@ import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
 // store subscription here is fine + Game-Loop-Isolation-safe). Gated on coins > 0
 // so the default-zero wallet renders NOTHING -- the capture harness never grants
 // coins, so the explore-day/night baselines stay byte-identical (no drift).
+// shared empty-Set fallback so the per-frame compass loop doesn't allocate a new Set() each frame
+const EMPTY_SET = new Set();
+
 const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
   if (!coins || coins <= 0) return null;
@@ -421,7 +424,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
       // character-closeup/boss-closeup fixtures hide the whole HUD, so this is purely
       // the explore-* compass. No-op in normal gameplay.
       const chests = isCaptureMode() ? [] : (treasureChests?.chests || []);
-      const openedChestIds = treasureChests?.openedChestIds || new Set();
+      const openedChestIds = treasureChests?.openedChestIds || EMPTY_SET;
       chests.forEach(chest => {
         const isOpened = openedChestIds instanceof Set ? openedChestIds.has(chest.id) : openedChestIds.includes(chest.id);
         if (isOpened) return;
