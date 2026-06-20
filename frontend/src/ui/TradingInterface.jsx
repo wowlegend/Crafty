@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
-  const gameState = useGameStore();
+  const gameState = useGameStore(useShallow(state => ({
+    inventory: state.inventory,
+    coins: state.coins,
+    setInventory: state.setInventory,
+    spendCoins: state.spendCoins,
+    addToInventory: state.addToInventory,
+  })));
   const { playPickup, playLevelUpSound } = useGameSounds();
   const [tradeMessage, setTradeMessage] = useState('');
 

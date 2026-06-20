@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameMethods } from '../../GameMethods';
 import { useGameStore } from '../../store/useGameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../../world/Blocks';
 import { useT } from '../../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, Modal } from '../primitives/index.js';
@@ -10,7 +11,13 @@ import { ItemIcon } from './itemUi';
 import { RECIPES } from '../../data/recipes';
 
 export const CraftingTable = React.memo(({ onClose }) => {
-    const gameState = useGameStore();
+    const gameState = useGameStore(useShallow(state => ({
+        inventory: state.inventory,
+        selectedBlock: state.selectedBlock,
+        addToInventory: state.addToInventory,
+        removeFromInventory: state.removeFromInventory,
+        setSelectedBlock: state.setSelectedBlock,
+    })));
     const t = useT();
     const [grid, setGrid] = React.useState(Array(9).fill(null));
     const [result, setResult] = React.useState(null);
