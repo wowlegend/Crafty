@@ -1,7 +1,7 @@
 // combatVfx.jsx — the two pooled transient combat-hit VFX renderers (extracted from
 // SimplifiedNPCSystem S3-M3: same useFrame math, byte-identical). onComplete-driven,
 // fire on damage/impact events. No capture gate — they need a hit to spawn (suppressed in capture).
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -79,6 +79,10 @@ export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, 
     tex.needsUpdate = true;
     return tex;
   }, [damage, isXP, isAnvil, type]);
+
+  // the in-frame dispose only fires if the number lives >1s; a scene/HMR/StrictMode teardown
+  // before then (or a texture swap on prop change) would otherwise leak the 256x128 CanvasTexture
+  useEffect(() => () => texture.dispose(), [texture]);
 
   // Premium physically simulated arc bounce trajectory
   const velocity = useMemo(() => {

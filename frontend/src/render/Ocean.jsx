@@ -3,7 +3,7 @@
 // SEA_LEVEL, displaced by summed Gerstner waves (oceanProfile.gerstnerHeight) with RECOMPUTED
 // normals, a bright turquoise->teal toon palette, Fresnel off the real normal, glossy highlight
 // bands, and a continuous smoothstep shoreline foam. Capture-frozen time => byte-stable frames.
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SEA_LEVEL, gerstnerHeight, gerstnerNormal } from '../world/oceanProfile.js';
@@ -31,6 +31,9 @@ export function Ocean() {
     const n = geo.attributes.position.count;
     geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
   }, [geo]);
+
+  // prop-attached geometry + material are not auto-disposed by R3F -> dispose on unmount
+  useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
   useFrame((state) => {
     const t = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;

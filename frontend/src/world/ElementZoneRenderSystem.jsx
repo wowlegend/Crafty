@@ -1,4 +1,4 @@
-import { useMemo, useRef, useLayoutEffect } from 'react';
+import { useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -64,6 +64,9 @@ export function ElementZoneRenderSystem() {
     g.rotateX(-Math.PI / 2);
     return g;
   }, []);
+
+  // baked-once geometries are prop-attached -> dispose on unmount
+  useEffect(() => () => { ringGeo.dispose(); charGeo.dispose(); skirtGeo.dispose(); }, [ringGeo, charGeo, skirtGeo]);
 
   // r172 creates instanceColor LAZILY on first setColorAt — with zones empty (game start
   // AND every baseline capture) an unguarded instanceColor.needsUpdate would throw every
