@@ -7,8 +7,8 @@ import { Outlines } from '@react-three/drei';
 import { MobToonMaterial } from '../MobToonMaterial';
 import { OUTLINE, RIM } from '../characterStyle';
 
-export const OUTLINE_T = OUTLINE.mob.thickness;
-export const RIM_S = RIM.strength;
+const OUTLINE_T = OUTLINE.mob.thickness;
+const RIM_S = RIM.strength;
 
 // A toon voxel cube — one <mesh> = one cube, with the shared 2-band toon material +
 // rim + the inverted-hull outline. `size` is a scalar or [w,h,d].

@@ -21,7 +21,7 @@ const GLOVE_CUFF = '#E8D9A8';       // white-gold accent cuff at the wrist
 const GLOVE_OUTLINE = '#1A1A1F';    // crisp ink outline (slightly warmer than mob #0b0e14)
 const GLOVE_OUTLINE_T = OUTLINE.prop.thickness; // 3px — props/held-item tier, hands sit close to camera
 
-export const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
+const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const bladeColor = useMemo(() => {
     switch (type) {
       case 'Stone Sword': return '#555555';
@@ -147,7 +147,7 @@ export const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0
 });
 
 // Dynamic Camera-Local Sword Ribbon Trail Component
-export const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
+const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
   const meshRef = useRef(null);
   const geomRef = useRef(null);
   const trailPoints = useRef([]); // point history: { tip, base, time }
