@@ -1,5 +1,12 @@
 # Changelog & Development History
 
+### June 20, 2026 — Review fix-sprint (Phase A of the "fix everything + build everything" mandate)
+- Driving the CODE-REVIEW-2026-06-20 autonomousFixQueue to zero in small gated batches (each: vitest 1669 + build + eslint, pushed to main):
+- **memory-leaks** `4d412df`/`a46d545` dispose prop-attached three.js on unmount (Ocean geo+mat, combatVfx DamageNumber texture, ElementZoneRenderSystem 3 geos, playerRibbon ShaderMaterial, Atmosphere dome mat+geo).
+- **dead-code** `13a7d08` setIsBossActive footgun + 4 unused WorldManager icons · `4fddace` SoundManager ambientTimer (no-op clears) + unused playSpatialSound destructure · `4129e24` EnhancedMagicSystem dead debuffs/debuffId/frameCounter state + write-only projectile trailPositions per-frame .clone() loop (no renderer read it).
+- **robustness** `35dd84b` NaN/clamp guards: addAttributePoints coercion, SpellUpgradePanel level clamp (corrupt-save safe), TargetFrame HP Math.max(0).
+- Still in Phase A: GamePanels useShallow re-render cluster, setTimeout-leak cleanup, per-frame alloc hoists, misc guards, the 17 loop-decided kevinDecisions, knip 37-export backlog, impact-ring dedup. Then Phase B feature build-out.
+
 ### June 20, 2026 — Exhaustive whole-repo code review + 4/5 HIGH bugs fixed (Kevin directives)
 - Kevin approved serena + ast-grep, asked for an exhaustive `/code-review` of every line + a Dependabot fix.
 - **serena** installed the SOTA way (its README forbids the marketplace MCP): `uv tool install serena-agent` + `serena setup claude-code` (user scope, `--project-from-cwd`, ✔ Connected) + TS-LSP indexed; activates next Claude Code start. **ast-grep** 0.43.0 installed (`sg`). **Dependabot:** all 11 alerts cleared, 0 vulnerabilities (`025ffae` lockfile bump — vitest 3.2.6/vite 6.4.3/undici 7.28/ws 8.21/js-yaml 4.2/babel 7.29.7; all dev-scope, in-range).
