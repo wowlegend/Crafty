@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
@@ -737,4 +737,28 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
   );
 });
 
-export { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph };
+// Chain-lightning ARC — a short-lived additive jagged polyline between two chained targets (the signature
+// inter-target bolt that was missing; applyChainLightning only dealt damage per hop). Geometry is static
+// (game/chainArc.chainArcPoints, deterministic); only opacity fades by age via a ref (GLI-clean, no per-
+// frame React state). Capture-safe: EMS freezes age at 0 in capture AND no chain is cast there (chainArcs
+// stays empty), so it never perturbs a baseline. `arc` = { id, points: flat number[], color, age, maxAge }.
+const ChainArc = React.memo(({ arc }) => {
+  const matRef = useRef();
+  const positions = useMemo(() => new Float32Array(arc.points), [arc.points]);
+  useFrame(() => {
+    if (!matRef.current) return;
+    const progress = Math.min(1, arc.age / arc.maxAge);
+    matRef.current.opacity = 0.9 * (1 - progress); // fade out over the arc's short life
+  });
+  return (
+    <line>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <lineBasicMaterial ref={matRef} color={arc.color || '#FFE066'} transparent opacity={0.9}
+        blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+    </line>
+  );
+});
+
+export { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc };

@@ -14,7 +14,8 @@ import { SPARK_PROFILE } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
 import { notifyDenied } from './ui/denyToast';
 import * as THREE from 'three';
-import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph } from './render/spellVfx';
+import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc } from './render/spellVfx';
+import { chainArcPoints } from './game/chainArc';
 export { MagicWand } from './render/spellVfx';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
@@ -22,10 +23,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
   const [spellImpacts, setSpellImpacts] = useState([]);
+  const [chainArcs, setChainArcs] = useState([]); // chain-lightning inter-target bolts (transient)
   const [telegraphs, setTelegraphs] = useState([]); // S1-D-M2: cast-start rune-circle pops
   const [debuffs, setDebuffs] = useState([]);
   const projectileId = useRef(0);
   const impactId = useRef(0);
+  const arcId = useRef(0);
   const telegraphId = useRef(0);
   const debuffId = useRef(0);
 
@@ -57,9 +60,19 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     if (!allMobs) return;
     const pos = startPos.clone ? startPos : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
     const hits = solveChainTargets(allMobs, pos, { excludeId, baseDamage, maxChains, range, damageReduction });
+    // The signature inter-target ARC: a short-lived jagged additive bolt per hop (caster/first target ->
+    // each chained mob). chainArcPoints is pure + deterministic (capture-stable). Mob endpoints lifted
+    // ~0.9 to read at body height. The LOOK (color/jitter/lifetime) is a Kevin taste-gate -> KEVIN-REVIEW.
+    const arcColor = (SPELL_TYPES.lightning && SPELL_TYPES.lightning.glowColor) || '#FFE066';
+    const arcs = [];
+    let arcFrom = { x: pos.x, y: pos.y, z: pos.z };
     for (const h of hits) {
       if (GameMethods.damageMob) GameMethods.damageMob(h.id, h.damage, 'lightning');
+      const arcTo = { x: h.position[0], y: h.position[1] + 0.9, z: h.position[2] };
+      arcs.push({ id: arcId.current++, points: chainArcPoints(arcFrom, arcTo, { seed: arcId.current, jitter: 0.45 }), color: arcColor, age: 0, maxAge: 160 });
+      arcFrom = arcTo;
     }
+    if (arcs.length) setChainArcs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), ...arcs] : [...prev, ...arcs]));
   }, []);
 
   // S1-D-M1: Spell impacts now route through the SOTA shared GPU spark pool
@@ -435,6 +448,16 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     if (telegraphsChanged) {
       setTelegraphs(prev => prev.filter(t => t.age < t.maxAge));
     }
+
+    // Age + prune the chain-lightning arcs (same lightweight transient model; deltaMs=0 in capture).
+    let arcsChanged = false;
+    for (const arc of chainArcs) {
+      arc.age += deltaMs;
+      if (arc.age >= arc.maxAge) arcsChanged = true;
+    }
+    if (arcsChanged) {
+      setChainArcs(prev => prev.filter(a => a.age < a.maxAge));
+    }
   });
 
   return (
@@ -449,6 +472,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 
       {telegraphs.map(tele => (
         <CastTelegraph key={tele.id} telegraph={tele} />
+      ))}
+
+      {chainArcs.map(arc => (
+        <ChainArc key={arc.id} arc={arc} />
       ))}
     </group>
   );
