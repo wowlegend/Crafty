@@ -500,7 +500,11 @@ function generateChunkData(cx, cz) {
         if (surfaceBlock === 1) { // Forest Trees
           const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
           for (let ty = 1; ty <= treeHeight; ty++) {
-            if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 6;
+            const ny = surfaceY + ty;
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break; // don't grow the trunk through rock/overhangs
+            blocks[idx] = 6;
           }
           // Leaves
           for (let lx = -1; lx <= 1; lx++) {
@@ -519,14 +523,21 @@ function generateChunkData(cx, cz) {
         } else if (surfaceBlock === 4) { // Desert Cacti
           const cactusHeight = 2 + Math.floor(vegRandom(worldX, worldZ, 3) * 2);
           for (let ty = 1; ty <= cactusHeight; ty++) {
-            if (surfaceY + ty < CHUNK_HEIGHT) blocks[getIndex(x, surfaceY + ty, z)] = 8;
+            const ny = surfaceY + ty;
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break; // don't grow the cactus through rock
+            blocks[idx] = 8;
           }
         } else if (surfaceBlock === 5) { // Snow Pines (M4a — the snow biome's signature flora)
           const pineH = 5 + Math.floor(vegRandom(worldX, worldZ, 4) * 4); // 5-8, deterministic
           const { trunk, leaves } = pineShape(pineH);
           for (const [, dy] of trunk) {
             const ny = surfaceY + dy;
-            if (ny < CHUNK_HEIGHT) blocks[getIndex(x, ny, z)] = 6; // trunk (in this column)
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break; // don't grow the trunk through rock/overhangs
+            blocks[idx] = 6; // trunk (in this column)
           }
           for (const [dx, dy, dz] of leaves) {
             const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
