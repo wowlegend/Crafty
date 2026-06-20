@@ -38,6 +38,19 @@
   AUTHORIZED (ocean = toon Caribbean water-plane; title = Cinematic 3D vista; W3 = Living-frontier MAX; spells =
   4 distinct silhouettes). The Ember-Frontier game DIRECTION (above) still stands — the rebuild fixes LOOK +
   dead-code + content fidelity on top of it.
+- **2026-06-20 MANDATE EXPANSION (Kevin verbatim: "fix everything. and then build out everything too" + "keep going autonomously"):**
+  the loop now runs a FULL two-phase drive. **(A) FIX EVERYTHING:** drive the exhaustive-review backlog
+  (`docs/superpowers/CODE-REVIEW-2026-06-20.md` — 5 HIGH all fixed; ~36 mechanical autonomousFixQueue items; the 17
+  kevinDecisions are now LOOP-DECIDED with best judgment, NOT deferred — Kevin said "i'm too lazy to spell them out
+  one by one") + the knip dead-export backlog + impact-ring dedup → to ZERO, in small gated batches.
+  **(B) THEN BUILD OUT EVERYTHING:** the deferred KEVIN-REVIEW game features (biome-flora render-wiring, spell-color
+  unify, distinct shrine model, quest gear/coin rewards, mob/boss art, starting-inventory rebalance, …) + the
+  master-plan remaining work, each as a proper milestone (brainstorm→spec→plan→build). Arsenal now: knip (dead-code
+  gate), ast-grep `sg` (codemods), serena LSP / native `LSP` tool (prove-dead-before-delete, symbol nav).
+  **ONE carve-out still genuinely-Kevin:** S4 multiplayer + monetization is a product/business decision (servers,
+  accounts, real money, legal) → the loop SURFACES a scope-confirm before standing up netcode or payments; ALL other
+  single-player / content / polish / quality work is full loop authority. Taste calls the loop makes go to
+  KEVIN-REVIEW as FYI, not as blocking questions.
 - **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` (incl. the 2026-06-15
   mega-directive set: `plans/2026-06-15-crafty-world-purpose-sota.md` [S5..S10 ladder + direction], `research/2026-06-15-crafty-codebase-reality-audit.md`
   [ranked file:line P0-debt backlog of record], `research/2026-06-15-crafty-agentic-e2e-testing.md` [E2E roadmap]) →
