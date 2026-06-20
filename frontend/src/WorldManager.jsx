@@ -100,7 +100,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     try {
       setError('');
       persistLocal();
-      setError('New world created locally!');
+      setError('New world created successfully!');
     } catch (error) {
       console.warn('LocalStorage create failed:', error);
       setError('World creation failed.');
@@ -137,7 +137,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
       // Local saves only (cloud worlds were removed with the auth subsystem).
       deleteWorldSave(worldId);
       setWorlds(listWorlds());
-      setError('World deleted locally.');
+      setError('World deleted successfully.');
     } catch (error) {
       setError('Failed to delete world');
       console.error('Error deleting world:', error);
