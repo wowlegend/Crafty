@@ -447,7 +447,6 @@ export const Inventory = ({ onClose }) => {
 
 
 export const MagicSystem = ({ onClose }) => {
-    const gameState = useGameStore();
     const t = useT();
     // `spell` keys the bold-flat SpellRing comp (color via --ui-spell-<spell>); `icon`
     // keys the 2-tone game-icon. Each ring's color IS the spell's MAGIC color.
@@ -513,7 +512,7 @@ export const MagicSystem = ({ onClose }) => {
 };
 
 export const BuildingTools = React.memo(({ onClose }) => {
-    const gameState = useGameStore();
+    const gameState = useGameStore(useShallow(state => ({ selectedBlock: state.selectedBlock })));
     const [selectedTool, setSelectedTool] = React.useState('single');
     const [buildSize, setBuildSize] = React.useState(3);
 
@@ -529,10 +528,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
 
     // Set global building mode
     React.useEffect(() => {
-        useGameStore.setState({ buildingMode: selectedTool });
-        useGameStore.setState({ buildSize: buildSize });
-        useGameStore.setState({ selectedBuildBlock: gameState.selectedBlock });
-
+        useGameStore.setState({ buildingMode: selectedTool, buildSize, selectedBuildBlock: gameState.selectedBlock });
     }, [selectedTool, buildSize, gameState.selectedBlock]);
 
     return (
@@ -620,7 +616,15 @@ export const BuildingTools = React.memo(({ onClose }) => {
 });
 
 export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onOpenWorldManager, onOpenCredits }) => {
-    const gameState = useGameStore();
+    const gameState = useGameStore(useShallow(state => ({
+        lookSensitivity: state.lookSensitivity, setLookSensitivity: state.setLookSensitivity,
+        juiceIntensity: state.juiceIntensity, setJuiceIntensity: state.setJuiceIntensity,
+        sfxVolume: state.sfxVolume, setSfxVolume: state.setSfxVolume,
+        musicVolume: state.musicVolume, setMusicVolume: state.setMusicVolume,
+        masterMuted: state.masterMuted, setMasterMuted: state.setMasterMuted,
+        gameMode: state.gameMode, setGameMode: state.setGameMode,
+        isDay: state.isDay, setIsDay: state.setIsDay,
+    })));
     const t = useT();
     return (
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Settings" onClose={onClose}>
