@@ -6,6 +6,8 @@ import { ecs } from './ecs/world';
 import { isCaptureMode, captureRandom } from './devtest/captureMode';
 
 // Custom materials with GPU-based wind swaying & player displacement
+// reused scratch transform for the per-frame particle instancing (avoid a new Object3D each frame)
+const _grassDummy = new THREE.Object3D();
 const grassMaterial = new THREE.MeshBasicMaterial({
   color: '#4a7c59',
   transparent: true,
@@ -156,7 +158,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
 
     // 2. Update CPU particles (only 8 elements, minimal overhead)
     if (particleMeshRef.current) {
-      const dummy = new THREE.Object3D();
+      const dummy = _grassDummy;
       grassParticles.forEach((p, i) => {
         // In capture mode hold the seeded base pose: skip the per-frame drift
         // accumulation (otherwise p.x creeps each frame and run-to-run frame counts

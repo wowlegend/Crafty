@@ -138,10 +138,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     
     // Low-frequency trigger state to spawn/de-spawn bullet groups in the React tree
     const [effects, setEffects] = useState({ fireballs: [], lavaZones: [] });
+    const effectId = useRef(0); // monotonic effect ids — Math.random() collided React keys + the ref-map keys
 
     // Instanced Spawner callbacks
     const spawnFireball = useCallback((startPos, dir) => {
-        const id = Math.random();
+        const id = effectId.current++;
         const fireball = {
             id,
             position: startPos.clone(),
@@ -153,7 +154,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     }, []);
 
     const spawnLavaZone = useCallback((pos) => {
-        const id = Math.random();
+        const id = effectId.current++;
         const lava = {
             id,
             position: pos.clone(),
