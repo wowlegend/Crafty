@@ -519,25 +519,30 @@ function generateChunkData(cx, cz) {
               if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
             }
           }
-        } else if (surfaceBlock === 1) { // Forest Trees (broadleaf — per-biome density/shape variety is slice 2)
-          const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
-          for (let ty = 1; ty <= treeHeight; ty++) {
-            const ny = surfaceY + ty;
-            if (ny >= CHUNK_HEIGHT) break;
-            const idx = getIndex(x, ny, z);
-            if (blocks[idx] !== 0) break; // don't grow the trunk through rock/overhangs
-            blocks[idx] = 6;
-          }
-          // Leaves
-          for (let lx = -1; lx <= 1; lx++) {
-            for (let lz = -1; lz <= 1; lz++) {
-              for (let ly = 0; ly <= 2; ly++) {
-                const nx = x + lx;
-                const nz = z + lz;
-                const ny = surfaceY + treeHeight + ly;
-                if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
-                  const leafIdx = getIndex(nx, ny, nz);
-                  if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+        } else if (surfaceBlock === 1) { // grass broadleaf — per-biome density + height (slice 2)
+          // forest/jungle read DENSE (every rolled column); plains/savanna/meadow read OPEN (an extra
+          // thinning roll ~halves them). jungle canopy stands TALLER. Deterministic (vegRandom only).
+          const sparse = flora === 'plains_tree' || flora === 'savanna' || flora === 'flowers';
+          if (!sparse || vegRandom(worldX, worldZ, 5) < 0.5) {
+            const treeHeight = (flora === 'jungle' ? 7 : 4) + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
+            for (let ty = 1; ty <= treeHeight; ty++) {
+              const ny = surfaceY + ty;
+              if (ny >= CHUNK_HEIGHT) break;
+              const idx = getIndex(x, ny, z);
+              if (blocks[idx] !== 0) break; // don't grow the trunk through rock/overhangs
+              blocks[idx] = 6;
+            }
+            // Leaves
+            for (let lx = -1; lx <= 1; lx++) {
+              for (let lz = -1; lz <= 1; lz++) {
+                for (let ly = 0; ly <= 2; ly++) {
+                  const nx = x + lx;
+                  const nz = z + lz;
+                  const ny = surfaceY + treeHeight + ly;
+                  if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+                    const leafIdx = getIndex(nx, ny, nz);
+                    if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+                  }
                 }
               }
             }
