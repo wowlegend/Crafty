@@ -167,20 +167,25 @@ opaqueMaterial.onBeforeCompile = (shader) => {
 };
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
-    if (!meshData || meshData.positions.length === 0) return null;
+    // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData
+    // change (now reachable by mining ocean/water-adjacent columns, since Ocean owns the water
+    // surface) would change the hook count and HARD-CRASH the render tree. Compute the flag, keep
+    // every hook unconditional, and gate only the JSX output.
+    const empty = !meshData || !meshData.positions || meshData.positions.length === 0;
 
     React.useEffect(() => {
+        if (empty) return undefined; // empty chunks don't register (preserves prior behavior)
         const key = `${cx}_${cz}`;
         if (onMount) onMount(key);
         return () => {
             if (onUnmount) onUnmount(key);
         };
-    }, [cx, cz, onMount, onUnmount]);
+    }, [cx, cz, onMount, onUnmount, empty]);
     // W2: the mesher emits NO water faces now (the Ocean.jsx Gerstner plane owns the water surface),
     // so every emitted quad is opaque LAND -> one geometry built straight from the full index buffer
     // (the old opaque/water index split is dead).
     const opaqueGeometry = React.useMemo(() => {
-        if (!meshData.indices || meshData.indices.length === 0) return null;
+        if (empty || !meshData.indices || meshData.indices.length === 0) return null;
         const opaqueGeom = new THREE.BufferGeometry();
         opaqueGeom.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3));
         opaqueGeom.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3));
@@ -193,13 +198,15 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         opaqueGeom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
         opaqueGeom.computeBoundingSphere();
         return opaqueGeom;
-    }, [meshData]);
+    }, [meshData, empty]);
 
     React.useEffect(() => {
         return () => {
             if (opaqueGeometry) opaqueGeometry.dispose();
         };
     }, [opaqueGeometry]);
+
+    if (empty) return null;
 
     return (
         <group position={[cx * 16, 0, cz * 16]}>
