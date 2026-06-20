@@ -20,6 +20,7 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined; // context-loss / not-ready guard (else every ctx.* below throws)
     const cx = SIZE / 2, cy = SIZE / 2, scale = SIZE / 2 / RANGE, R = SIZE / 2 - 2;
     const shrineCache = { t: 0, s: null };
     const blip = (wx, wz, px, pz, color, clamp) => {

@@ -130,6 +130,7 @@ const SpawnerSystem = () => {
       }
     }
     const mobConfig = MOB_TYPES[type];
+    if (!mobConfig) return false; // weightedPick returned an unknown key -> don't spawn an undefined mob (NaN cascade)
 
     ecs.add({
       isMob: true,
@@ -696,6 +697,7 @@ const EnemyProjectileSystem = () => {
   useFrame((state, delta) => {
     const list = liveRef.current;
     if (list.length === 0) return;
+    if (!camera) return; // early-frame guard (mirrors sibling systems) — camera.position below would throw
     const { survivors, hits } = stepEnemyProjectiles(list, delta, camera.position);
     if (hits > 0) {
       const damagePlayer = useGameStore.getState().damagePlayer;
