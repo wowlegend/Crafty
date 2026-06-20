@@ -1,5 +1,13 @@
 # Changelog & Development History
 
+### June 20, 2026 — Review fix-sprint cont. (Phase A tail, gated + pushed)
+- **re-render perf** `46fff59` GamePanels MagicSystem dead-binding removed + BuildingTools/SettingsPanel useShallow selectors + setState-collapse · `43ecf84` CraftingTable + TradingInterface useShallow (no more whole-store re-renders on every tick).
+- **robustness guards** `c2b78cf` minimap null-ctx + projectile camera + unknown-mob-type (spawnMob false-on-failure).
+- **perf hoists** `131ec26` grass scratch Object3D + monotonic boss effect ids · `b2d4f25` GameScene audio Vector3 + weather Object3Ds + HUD compass EMPTY_SET (per-frame allocs out of hot loops).
+- **core** `af7ccc1` triggerSpellCast deps [activeSpell]->[camera] (reads activeSpell via getState; stops input-listener re-subscribe per spell switch) + DEV-gated per-hit armor/DR log · `4414dc6` quota-safe world-save write-order + addEventListener error handlers.
+- **quest/world** `4415e2c` chest spawner interval mount-once (its 30s cadence was resetting on every chest spawn/open) · `24d88dd` WorldManager create/delete success banners render green not red.
+- Phase-A autonomousFixQueue is nearly exhausted; remaining: a couple setTimeout-leak cleanups (React-18-benign) + SoundManager arp WebAudio node disposal, then the 17 loop-decided kevinDecisions, the knip 37-export backlog, and impact-ring dedup. Gates green throughout (1669 unit).
+
 ### June 20, 2026 — Review fix-sprint (Phase A of the "fix everything + build everything" mandate)
 - Driving the CODE-REVIEW-2026-06-20 autonomousFixQueue to zero in small gated batches (each: vitest 1669 + build + eslint, pushed to main):
 - **memory-leaks** `4d412df`/`a46d545` dispose prop-attached three.js on unmount (Ocean geo+mat, combatVfx DamageNumber texture, ElementZoneRenderSystem 3 geos, playerRibbon ShaderMaterial, Atmosphere dome mat+geo).
