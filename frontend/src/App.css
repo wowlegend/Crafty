@@ -1,7 +1,3 @@
-/* Orbitron is loaded here for the HUD's raw canvas font string ('9px Orbitron' in
-   HUD.jsx); keep this @import even though the old .pixel-font CLASS was deleted (W2-T3). */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
 /* Combat screen shake */
 @keyframes shake {
   0% {

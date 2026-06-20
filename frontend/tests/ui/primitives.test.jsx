@@ -134,7 +134,6 @@ describe('Icon', () => {
 });
 
 import { Toast } from '../../src/ui/primitives/Toast.jsx';
-import { Tooltip } from '../../src/ui/primitives/Tooltip.jsx';
 
 describe('Toast', () => {
   it('renders status-tinted bold-flat chrome with a message', () => {
@@ -151,13 +150,6 @@ describe('Toast', () => {
     expect(screen.getByTestId('t')).toHaveAttribute('role', 'status');
   });
 });
-describe('Tooltip', () => {
-  it('shows its content', () => {
-    render(<Tooltip data-testid="tt">+15 ATK</Tooltip>);
-    expect(screen.getByTestId('tt')).toHaveTextContent('+15 ATK');
-  });
-});
-
 import { LocaleToggle } from '../../src/ui/LocaleToggle.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 

@@ -13,7 +13,6 @@ export const SPELL_TYPES = {
       size: 1.2,
       damage: 50,
       trailLength: 25,
-      particleCount: 15,
       effect: 'fire',
       secondary: {
         type: 'burn',
@@ -31,7 +30,6 @@ export const SPELL_TYPES = {
       size: 1.0,
       damage: 40,
       trailLength: 20,
-      particleCount: 12,
       effect: 'ice',
       secondary: {
         type: 'freeze',
@@ -50,7 +48,6 @@ export const SPELL_TYPES = {
       size: 0.8,
       damage: 75,
       trailLength: 30,
-      particleCount: 20,
       effect: 'lightning',
       secondary: {
         type: 'chain',
@@ -70,7 +67,6 @@ export const SPELL_TYPES = {
       size: 1.1,
       damage: 60,
       trailLength: 22,
-      particleCount: 14,
       effect: 'arcane',
       secondary: {
         type: 'pierce',
