@@ -29,3 +29,6 @@ yarn-error.log*
 
 # brainstorming visual-companion sessions
 .superpowers/
+
+# Serena LSP index cache + project config (local tooling)
+.serena/
