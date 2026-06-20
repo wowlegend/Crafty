@@ -2,7 +2,7 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
-import { pineShape } from './foliage.js';
+import { pineShape, acaciaShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
 import { oreCodeFor } from './oreGen.js';
@@ -519,10 +519,29 @@ function generateChunkData(cx, cz) {
               if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
             }
           }
+        } else if (surfaceBlock === 1 && flora === 'savanna') { // savanna: sparse flat-canopy acacias dotting the veld
+          if (vegRandom(worldX, worldZ, 5) < 0.5) {
+            const aH = 5 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
+            const { trunk, leaves } = acaciaShape(aH);
+            for (const [, dy] of trunk) {
+              const ny = surfaceY + dy;
+              if (ny >= CHUNK_HEIGHT) break;
+              const idx = getIndex(x, ny, z);
+              if (blocks[idx] !== 0) break;
+              blocks[idx] = 6;
+            }
+            for (const [dx, dy, dz] of leaves) {
+              const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
+              if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+                const leafIdx = getIndex(nx, ny, nz);
+                if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+              }
+            }
+          }
         } else if (surfaceBlock === 1) { // grass broadleaf — per-biome density + height (slice 2)
-          // forest/jungle read DENSE (every rolled column); plains/savanna/meadow read OPEN (an extra
+          // forest/jungle read DENSE (every rolled column); plains/meadow read OPEN (an extra
           // thinning roll ~halves them). jungle canopy stands TALLER. Deterministic (vegRandom only).
-          const sparse = flora === 'plains_tree' || flora === 'savanna' || flora === 'flowers';
+          const sparse = flora === 'plains_tree' || flora === 'flowers';
           if (!sparse || vegRandom(worldX, worldZ, 5) < 0.5) {
             const treeHeight = (flora === 'jungle' ? 7 : 4) + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
             for (let ty = 1; ty <= treeHeight; ty++) {

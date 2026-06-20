@@ -22,3 +22,20 @@ export function pineShape(height) {
   }
   return { trunk, leaves };
 }
+
+// Acacia (savanna, Phase B M1 slice 3): a tall bare trunk capped by a FLAT WIDE umbrella canopy —
+// the iconic veld silhouette, distinct from the round oak and the conical pine. Deterministic; no RNG.
+export function acaciaShape(height) {
+  const trunk = [];
+  for (let ty = 1; ty <= height; ty++) trunk.push([0, ty, 0]);
+  const leaves = [];
+  const crown = height; // canopy sits AT the trunk top (flat) — no spire, unlike the pine
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      const md = Math.abs(dx) + Math.abs(dz);
+      if (md <= 3) leaves.push([dx, crown, dz]);        // wide flat top disc
+      if (md === 2 || md === 3) leaves.push([dx, crown - 1, dz]); // a thin rim-droop ring under the edge
+    }
+  }
+  return { trunk, leaves };
+}

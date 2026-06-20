@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pineShape } from '../../src/world/foliage.js';
+import { pineShape, acaciaShape } from '../../src/world/foliage.js';
 
 describe('pineShape (World-M4a) — deterministic conical evergreen', () => {
   it('the trunk is a single column of `height` blocks rising from the base', () => {
@@ -29,5 +29,25 @@ describe('pineShape (World-M4a) — deterministic conical evergreen', () => {
   });
   it('is deterministic (same height -> identical offsets)', () => {
     expect(pineShape(6)).toEqual(pineShape(6));
+  });
+});
+
+describe('acaciaShape (Phase B M1) — flat-top savanna umbrella', () => {
+  it('the trunk is a single column of `height` blocks', () => {
+    const { trunk } = acaciaShape(6);
+    expect(trunk).toHaveLength(6);
+    for (const [dx, , dz] of trunk) { expect(dx).toBe(0); expect(dz).toBe(0); }
+    expect(trunk.map(t => t[1])).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+  it('the canopy is a WIDE FLAT umbrella at the crown (radius >= 3, no spire) — distinct from the conical pine', () => {
+    const h = 6;
+    const { leaves } = acaciaShape(h);
+    const topY = Math.max(...leaves.map(l => l[1]));
+    expect(topY).toBeLessThanOrEqual(h); // crown at/under the trunk top — flat, NOT a spire above it
+    const topR = Math.max(...leaves.filter(l => l[1] === topY).map(l => Math.abs(l[0]) + Math.abs(l[2])));
+    expect(topR).toBeGreaterThanOrEqual(3); // wide flat canopy
+  });
+  it('is deterministic (same height -> identical offsets)', () => {
+    expect(acaciaShape(6)).toEqual(acaciaShape(6));
   });
 });
