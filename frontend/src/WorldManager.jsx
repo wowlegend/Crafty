@@ -4,12 +4,8 @@ import {
   Plus,
   Globe,
   Lock,
-  Users,
   Calendar,
-  Settings,
   Trash2,
-  Download,
-  Upload,
   Save
 } from 'lucide-react';
 import { useGameStore } from './store/useGameStore';

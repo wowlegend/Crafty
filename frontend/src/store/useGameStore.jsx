@@ -398,8 +398,6 @@ export const useGameStore = create((set, get) => ({
     bossActive: false,
     setBossActive: (v) => set({ bossActive: !!v }),
     isBossActive: () => get().bossActive,
-    // Retained for backward compatibility (no longer the driver; prefer setBossActive).
-    setIsBossActive: (fn) => set({ isBossActive: fn }),
     // S2-B1 WILDHEART -- single-writer beast-form authority (mirrors bossActive above). TRANSIENT:
     // never serialized (absent from saveSchema), so load/respawn ALWAYS returns to human -- this IS
     // the no-permanent-beast invariant. Components.jsx subscribes to `activeBeastForm` (a rare
