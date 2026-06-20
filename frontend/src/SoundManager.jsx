@@ -543,30 +543,6 @@ export const SoundProvider = ({ children }) => {
     startSynthPad();
   };
 
-  const playTone = (frequency, duration, volumeLevel = 0.3) => {
-    if (!audioContext.current) return;
-
-    try {
-      const oscillator = audioContext.current.createOscillator();
-      const gainNode = audioContext.current.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
-
-      gainNode.gain.setValueAtTime(0, audioContext.current.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volumeLevel * volume, audioContext.current.currentTime + 0.1);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + duration);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(getMasterBus() || audioContext.current.destination);
-
-      oscillator.start();
-      oscillator.stop(audioContext.current.currentTime + duration);
-    } catch (error) {
-      console.warn('Error playing tone:', error);
-    }
-  };
-
   const value = {
     soundEnabled,
     setSoundEnabled,
@@ -577,7 +553,6 @@ export const SoundProvider = ({ children }) => {
     playSound,
     playBackgroundMusic,
     resumeAudio,
-    playTone,
     audioContext: audioContext.current,
     getMasterBus,
     sounds: sounds.current
@@ -611,10 +586,8 @@ export const useGameSounds = () => {
       if (spatialTrigger && pos) spatialTrigger('footstep', pos, rate, 5);
       else playSound('footstep', rate);
     },
-    playJump: () => playSound('jump'),
     playPickup: () => playSound('pickup'),
     playCraft: () => playSound('craft'),
-    playMagic: () => playSound('magic'),
     playHeartbeat: () => playSound('heartbeat'), // low-health danger pulse (HeartbeatAudio)
     playSiegeHorn: () => playSound('siegeHorn'), // day->night transition sting (DayNightAudio)
     playDawnChime: () => playSound('dawnChime'), // night->day transition sting (DayNightAudio)
@@ -635,7 +608,6 @@ export const useGameSounds = () => {
     playAnvilHit: (pos) => { if (spatialTrigger && pos) spatialTrigger('anvilHit', pos, 1, 35); else playSound('anvilHit'); },
     playBind: (pos) => { if (spatialTrigger && pos) spatialTrigger('bind', pos, 1, 25); else playSound('bind'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
-    playMagicCharge: () => playSound('magicCharge'),
     playLevelUpSound: () => playSound('levelUp'),
     playFanfare: () => playSound('fanfare'), // reward beat — achievement / quest complete (DayNight/reward audio)
     playVictory: () => playSound('victory'), // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
