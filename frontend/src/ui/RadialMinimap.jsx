@@ -12,7 +12,7 @@ import { Panel } from './primitives/index.js';
 // Capture-SUPPRESSED (the canvas redraw never starts) so the 20 visual baselines stay byte-identical.
 const SIZE = 132, RANGE = 64;
 
-export const RadialMinimap = React.memo(() => {
+export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => {
   const canvasRef = useRef(null);
   const [coords, setCoords] = useState({ x: 0, z: 0 });
   useEffect(() => {
@@ -57,7 +57,7 @@ export const RadialMinimap = React.memo(() => {
   }, []);
   if (isCaptureMode()) return null;
   return (
-    <div className="absolute bottom-20 right-4 z-20 pointer-events-none">
+    <div className={`absolute ${position} z-20 pointer-events-none`}>
       <Panel variant="base" className="overflow-hidden p-0 leading-none rounded-full" style={{ borderRadius: '50%' }}>
         <canvas ref={canvasRef} width={SIZE} height={SIZE} className="block" style={{ borderRadius: '50%' }} />
       </Panel>

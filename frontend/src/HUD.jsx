@@ -581,7 +581,8 @@ export function HUD({
               }}
             />
 
-            {!isTouchUIMode() && <RadialMinimap />}{/* W3 M-HUD.8: circular radial minimap with HOME/SHRINE/BLIGHT/NPC destination blips clamped to the rim; bottom-right collides with the touch action cluster — desktop-only for now (M2b gives touch its own placement) */}
+            {!isTouchUIMode() && <RadialMinimap />}{/* W3 M-HUD.8: circular radial minimap with HOME/SHRINE/BLIGHT/NPC destination blips clamped to the rim; desktop default position (bottom-right). */}
+            {isTouchUIMode() && <RadialMinimap position="top-40 right-2" />}{/* touch placement: top-right BELOW the XP readout (top-28) — clear of the bottom joystick/action cluster + the top-left quest tracker. The map is the only wayfinding surface, so touch players need it (was desktop-only). Capture-suppressed (RadialMinimap returns null in capture), so no fixture drift. */}
 
             {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
 
