@@ -8,6 +8,7 @@ import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitive
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
+import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
 import { ItemIcon } from './panels/itemUi';
 export { CraftingTable } from './panels/CraftingTable';
@@ -183,31 +184,18 @@ export const Inventory = ({ onClose }) => {
     const [hoveredItem, setHoveredItem] = React.useState(null);
     const t = useT();
 
-    const isConsumable = (item) => {
-        if (!item) return false;
-        return ['Health Potion', 'Mana Potion', 'Cooked Porkchop', 'Cooked Beef', 'Raw Porkchop', 'Raw Beef', 'Rotten Flesh', 'Diamond', 'Golden Crown', 'Star Fragment'].some(c => item.includes(c));
-    };
-
+    // isConsumable / consumeEffect are the PURE exact-name registry (game/consumables.js). Exact match
+    // (not substring) so equippable 'Diamond Sword'/'Diamond Helmet'/etc never read as the raw 'Diamond'
+    // gem -> no "Use" button, no XP-grant-and-destroy on gear (the consume-trap bug).
     const handleConsume = (e, item) => {
         e.stopPropagation();
-        if (item.includes('Health Potion')) {
-            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(30);
-        } else if (item.includes('Cooked')) {
-            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(40);
-            if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(10);
-        } else if (item.includes('Raw')) {
-            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(15);
-        } else if (item.includes('Rotten Flesh')) {
-            if (useGameStore.getState().feedPlayer) useGameStore.getState().feedPlayer(10);
-        } else if (item.includes('Mana Potion')) {
-            useGameStore.getState().restoreMana(40);
-        } else if (item.includes('Diamond')) {
-            if (GameMethods.grantXP) GameMethods.grantXP(50, item);
-        } else if (item.includes('Golden Crown')) {
-            if (GameMethods.grantXP) GameMethods.grantXP(200, item);
-        } else if (item.includes('Star Fragment')) {
-            if (GameMethods.grantXP) GameMethods.grantXP(100, item);
-        }
+        const fx = consumeEffect(item);
+        if (!fx) return; // not a consumable (e.g. equippable gear) -> never consume/destroy it
+        const s = useGameStore.getState();
+        if (fx.heal && s.healPlayer) s.healPlayer(fx.heal);
+        if (fx.mana && s.restoreMana) s.restoreMana(fx.mana);
+        if (fx.feed && s.feedPlayer) s.feedPlayer(fx.feed);
+        if (fx.xp && GameMethods.grantXP) GameMethods.grantXP(fx.xp, item);
         gameState.removeFromInventory(item, 1);
     };
 
