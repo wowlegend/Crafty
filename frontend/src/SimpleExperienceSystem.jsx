@@ -14,6 +14,7 @@ export const useSimpleExperience = () => {
   const [xpGains, setXpGains] = useState([]);
   const [levelUpEffects, setLevelUpEffects] = useState([]);
   const xpGainId = useRef(0);
+  const levelUpId = useRef(0);
   const prevTotal = useRef(totalXP);
   const prevLevel = useRef(level);
 
@@ -32,7 +33,7 @@ export const useSimpleExperience = () => {
   useEffect(() => {
     if (level > prevLevel.current) {
       prevLevel.current = level;
-      setLevelUpEffects((prev) => [...prev, { id: Date.now(), level, timestamp: Date.now() }]);
+      setLevelUpEffects((prev) => [...prev, { id: levelUpId.current++, level, timestamp: Date.now() }]);
       if (window.playLevelUpSound) window.playLevelUpSound();
     } else {
       prevLevel.current = level;
