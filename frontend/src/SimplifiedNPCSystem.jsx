@@ -268,6 +268,7 @@ const SpawnerSystem = () => {
           continue;
         }
         if (entity.health <= 0) continue;
+        if (entity.isStatic) continue; // hub NPCs hold their post — never distance-culled (no respawn path; mirrors the AI-tick + serializer isStatic skips)
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
         if (dist > maxDistance) {
           ecs.remove(entity);
@@ -307,7 +308,7 @@ const AIWorkerSystem = () => {
                     8, // Vertical boost
                     camera.position.z - entity.position.z
                 ];
-                const mag = Math.sqrt(dir[0]*dir[0] + dir[2]*dir[2]);
+                const mag = Math.sqrt(dir[0]*dir[0] + dir[2]*dir[2]) || 1; // guard: mob directly under player -> 0 -> NaN position
                 entity.knockback = [dir[0]/mag * 15, dir[1], dir[2]/mag * 15]; // Reuse knockback for leap
             }
           } else if (store.damagePlayer) {
