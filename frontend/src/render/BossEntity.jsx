@@ -286,11 +286,10 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             if (now - lastRoarTime.current > 4200) {
                 lastRoarTime.current = now;
                 
-                // Roar causes directional camera shakes
-                if (useGameStore.getState().setScreenShake) {
-                    useGameStore.getState().setScreenShake(3.5);
-                    setTimeout(() => useGameStore.getState().setScreenShake(0), 200);
-                }
+                // Roar shakes the camera via the trauma model (self-decaying) — the same path player
+                // melee/spells/hurl use. (The old setScreenShake fed the DamageOverlay RED VIGNETTE, not
+                // the camera, so the roar wrongly flashed a damage tint and produced no real camera shake.)
+                useGameStore.getState().triggerCameraShake?.(1.8);
 
                 // Physical knockback vector computation
                 const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
@@ -377,10 +376,9 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 if (useGameStore.getState().damagePlayer) {
                     useGameStore.getState().damagePlayer(18, 'Dragon Fireball impact');
                 }
-                if (useGameStore.getState().setScreenShake) {
-                    useGameStore.getState().setScreenShake(2.0);
-                    setTimeout(() => useGameStore.getState().setScreenShake(0), 150);
-                }
+                // Camera shake via the trauma model; damagePlayer already owns the red damage vignette
+                // (the old setScreenShake here stomped that vignette's intensity + zeroed it early).
+                useGameStore.getState().triggerCameraShake?.(1.4);
             }
 
             if (f.life <= 0) hasDeadFireball = true;
