@@ -618,6 +618,9 @@ export const useTreasureChests = () => {
     const [openedChestIds, setOpenedChestIds] = useState(new Set());
     const lastChestCheck = useRef(0);
     const chestId = useRef(0);
+    // live mirrors so the mount-once spawner interval reads current counts without resetting its cadence (#41)
+    const chestsRef = useRef(chests); chestsRef.current = chests;
+    const openedRef = useRef(openedChestIds); openedRef.current = openedChestIds;
 
     // Generate chest near player periodically
     useEffect(() => {
@@ -632,7 +635,7 @@ export const useTreasureChests = () => {
             if (!playerPos) return;
 
             // Max 5 chests at a time
-            if (chests.length - openedChestIds.size >= 5) return;
+            if (chestsRef.current.length - openedRef.current.size >= 5) return;
 
             // Random position 20-60 blocks from player.
             const angle = Math.random() * Math.PI * 2;
@@ -662,7 +665,7 @@ export const useTreasureChests = () => {
         }, 30000); // New chest every 30 seconds
 
         return () => clearInterval(interval);
-    }, [chests.length, openedChestIds.size]);
+    }, []); // mount-once: the 30s cadence must NOT reset on every chest spawn/open (live counts via refs above)
 
     // Spawn initial chest near player
     useEffect(() => {
