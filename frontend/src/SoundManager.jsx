@@ -280,8 +280,13 @@ export const SoundProvider = ({ children }) => {
         arp.masterGain.gain.setValueAtTime(arp.masterGain.gain.value, now);
         arp.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
       } catch (e) {}
+      // disconnect + null after the fade so the gain node doesn't leak on the master bus on
+      // stop/unmount (review #13); next startArpeggiator recreates it (mirrors stopSynthPad).
+      const gainToDisconnect = arp.masterGain;
+      setTimeout(() => { try { gainToDisconnect.disconnect(); } catch (e) {} }, 1100);
+      arp.masterGain = null;
     }
-    
+
     arp.active = false;
   };
 
