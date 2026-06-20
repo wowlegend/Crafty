@@ -133,6 +133,21 @@ self.onmessage = function(e) {
       
       // Re-mesh
       const meshData = generateMesh(cx, cz, blocks);
+      // M4 #5 parity (review HIGH): refresh the wind-grass overlay on edit too — the generate path emits
+      // grassTops but update_block dropped it, so editing ANY block killed the chunk's wind-grass until
+      // reload. shortcut: inlined to mirror the generate-path scan (the grass-revival gate locks those
+      // literal tokens); a shared computeGrassTops helper is the upgrade path.
+      const topCodes = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
+      const topYs = new Int16Array(CHUNK_SIZE * CHUNK_SIZE);
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        for (let x = 0; x < CHUNK_SIZE; x++) {
+          for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+            const b = blocks[getIndex(x, y, z)];
+            if (b !== 0) { topCodes[x + z * CHUNK_SIZE] = b; topYs[x + z * CHUNK_SIZE] = y; break; }
+          }
+        }
+      }
+      const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 });
       self.postMessage({
         type: 'chunk_mesh',
         payload: {
@@ -142,7 +157,8 @@ self.onmessage = function(e) {
           colors: meshData.colors,
           uvs: meshData.uvs,
           indices: meshData.indices,
-          ao: meshData.ao
+          ao: meshData.ao,
+          grassTops: gTops
         }
       }, [
         meshData.positions.buffer,
