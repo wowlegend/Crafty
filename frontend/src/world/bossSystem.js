@@ -16,6 +16,7 @@ export const useBossSystem = (playerLevel) => {
     const [bossPhase, setBossPhase] = useState(0);
     const [bossNotification, setBossNotification] = useState(null);
     const bossSpawned = useRef(false);
+    const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
     // S9: the Shadow Dragon now AWAITS at the fixed Blight Heart lair (NOT a level-5 ambush at the player).
     // Once you are strong enough (level 5), poll for ARRIVAL at the lair (~24 blocks) -- the dragon awakens
@@ -72,7 +73,8 @@ export const useBossSystem = (playerLevel) => {
 
         setBossHealth(prev => {
             const newHealth = Math.max(0, prev - amount);
-            if (newHealth <= 0) {
+            if (newHealth <= 0 && !bossKilledRef.current) {
+                bossKilledRef.current = true;
                 setBossActive(false);
                 setBossDefeated(true);
                 setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
@@ -111,6 +113,7 @@ export const useBossSystem = (playerLevel) => {
         if (import.meta.env.DEV) {
             useGameStore.setState({ forceBossSpawn: (pos) => {
                 bossSpawned.current = true;
+                bossKilledRef.current = false; // a dev re-spawn can be killed again
                 bossPositionRef.current = pos;
                 setBossActive(true);
                 setBossPhase(0);
