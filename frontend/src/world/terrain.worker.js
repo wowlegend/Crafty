@@ -2,7 +2,7 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
-import { pineShape, acaciaShape } from './foliage.js';
+import { pineShape, acaciaShape, swampShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
 import { oreCodeFor } from './oreGen.js';
@@ -590,6 +590,23 @@ function generateChunkData(cx, cz) {
             if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
               const leafIdx = getIndex(nx, ny, nz);
               if (blocks[leafIdx] === 0) blocks[leafIdx] = 7; // needles, air-only (like the tree)
+            }
+          }
+        } else if (surfaceBlock === 2 && flora === 'swamp') { // swamp: short droopy trees on the murky dirt flats (was barren)
+          const swH = 3 + Math.floor(vegRandom(worldX, worldZ, 4) * 2); // 3-4 short trunk
+          const { trunk, leaves } = swampShape(swH);
+          for (const [, dy] of trunk) {
+            const ny = surfaceY + dy;
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break;
+            blocks[idx] = 6;
+          }
+          for (const [dx, dy, dz] of leaves) {
+            const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
+            if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny < CHUNK_HEIGHT) {
+              const leafIdx = getIndex(nx, ny, nz);
+              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
             }
           }
         }

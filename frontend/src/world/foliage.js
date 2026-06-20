@@ -39,3 +39,21 @@ export function acaciaShape(height) {
   }
   return { trunk, leaves };
 }
+
+// Swamp tree (Phase B M1 slice 4): a SHORT trunk under a wide LOW droopy canopy that drapes below the
+// crown — the murky wetland look, distinct from the round oak / conical pine / flat acacia. No RNG.
+export function swampShape(height) {
+  const trunk = [];
+  for (let ty = 1; ty <= height; ty++) trunk.push([0, ty, 0]);
+  const leaves = [];
+  const top = height;
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dz = -2; dz <= 2; dz++) {
+      const md = Math.abs(dx) + Math.abs(dz);
+      if (md <= 2) leaves.push([dx, top, dz]);       // modest cap
+      if (md <= 3) leaves.push([dx, top - 1, dz]);   // WIDE droopy underlayer (widest part sits low)
+      if (md === 3) leaves.push([dx, top - 2, dz]);  // hanging fringe drooping below the crown
+    }
+  }
+  return { trunk, leaves };
+}

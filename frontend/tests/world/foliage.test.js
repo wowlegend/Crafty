@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pineShape, acaciaShape } from '../../src/world/foliage.js';
+import { pineShape, acaciaShape, swampShape } from '../../src/world/foliage.js';
 
 describe('pineShape (World-M4a) — deterministic conical evergreen', () => {
   it('the trunk is a single column of `height` blocks rising from the base', () => {
@@ -49,5 +49,24 @@ describe('acaciaShape (Phase B M1) — flat-top savanna umbrella', () => {
   });
   it('is deterministic (same height -> identical offsets)', () => {
     expect(acaciaShape(6)).toEqual(acaciaShape(6));
+  });
+});
+
+describe('swampShape (Phase B M1) — short droopy wetland canopy', () => {
+  it('the trunk is a single column of `height` blocks', () => {
+    const { trunk } = swampShape(4);
+    expect(trunk).toHaveLength(4);
+    for (const [dx, , dz] of trunk) { expect(dx).toBe(0); expect(dz).toBe(0); }
+  });
+  it('the canopy droops BELOW the trunk top + is widest under the cap (droopy, not a round oak)', () => {
+    const h = 4;
+    const { leaves } = swampShape(h);
+    expect(Math.min(...leaves.map(l => l[1]))).toBeLessThan(h); // fringe hangs below the trunk top
+    const byY = new Map();
+    for (const [dx, dy, dz] of leaves) byY.set(dy, Math.max(byY.get(dy) || 0, Math.abs(dx) + Math.abs(dz)));
+    expect(byY.get(h - 1)).toBeGreaterThanOrEqual(byY.get(h)); // underlayer at least as wide as the cap (droopy)
+  });
+  it('is deterministic (same height -> identical offsets)', () => {
+    expect(swampShape(4)).toEqual(swampShape(4));
   });
 });
