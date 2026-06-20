@@ -19,6 +19,8 @@ export function nametagFor(entity, dist) {
   if (entity.isAlly) return { visible, text, showBar: false, color: '#3DFFB0', hpFrac: 1 };
   if (isPassive) return { visible, text, showBar: false, color: '#E8E0C8', hpFrac: 1 };
   const hpFrac = Math.max(0, Math.min(1, (entity.health || 0) / (entity.maxHealth || 1)));
-  const color = hpFrac > 0.5 ? '#F2F2F2' : hpFrac > 0.25 ? '#F5D76E' : '#FF6B6B';
+  // S2-B3-M4 snareable tell (ported from the deleted MobModel plane bar): a weakened hostile (<=30%)
+  // reads soulbind jade -- an honest "bindable" cue + the danger ladder's last rung. Else a white->gold ramp.
+  const color = hpFrac <= 0.3 ? '#3DFFB0' : hpFrac > 0.5 ? '#F2F2F2' : '#F5D76E';
   return { visible, text, showBar: true, color, hpFrac };
 }

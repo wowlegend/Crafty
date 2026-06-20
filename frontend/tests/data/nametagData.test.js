@@ -24,4 +24,12 @@ describe('nametagFor', () => {
   it('bound ally -> jade color, friendly read', () => {
     expect(nametagFor({ type: 'zombie', health: 50, maxHealth: 60, isAlly: true }, 10).color).toMatch(/3DFFB0|jade/i);
   });
+  it('weakened hostile (<=30% HP) -> snareable jade tell (ported from the removed plane HealthBar)', () => {
+    const tag = nametagFor({ type: 'zombie', health: 15, maxHealth: 60, passive: false, isAlly: false }, 10); // 0.25
+    expect(tag.showBar).toBe(true);
+    expect(tag.color).toBe('#3DFFB0');
+  });
+  it('healthy hostile -> white, not jade', () => {
+    expect(nametagFor({ type: 'zombie', health: 60, maxHealth: 60, passive: false }, 10).color).toBe('#F2F2F2');
+  });
 });

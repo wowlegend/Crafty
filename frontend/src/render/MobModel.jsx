@@ -342,9 +342,9 @@ const MobModel = React.memo(({ entity }) => {
           <meshBasicMaterial color="#06b6d4" transparent opacity={0.35} wireframe />
         </mesh>
       </group>
-      {/* Suppress the floating health bar in capture mode so character-studio
-          fixtures (e.g. character-closeup) render a clean silhouette. No-op in gameplay. */}
-      {!isCaptureMode() && <HealthBar entity={entity} />}
+      {/* The floating HP bar is now owned by render/Nametags.jsx (token-colored, LOD-culled, capture-
+          suppressed, name-only for passives/allies) — the legacy plane HealthBar was deleted to stop the
+          double-bar (it stacked under the nametag bar on hostiles + showed a stray green bar on passives). */}
       {dialogue && (
         <Html position={[0, bodyH + headH + 0.8, 0]} center distanceFactor={8}>
           <Panel
@@ -362,35 +362,5 @@ const MobModel = React.memo(({ entity }) => {
     </group>
   );
 });
-
-// Health Bar Component updated for ECS
-const HealthBar = ({ entity }) => {
-  const fillRef = useRef();
-  
-  useFrame(() => {
-    if (!fillRef.current) return;
-    const healthPercent = entity.health / entity.maxHealth;
-    fillRef.current.position.x = (healthPercent - 1) * 0.6;
-    fillRef.current.scale.x = Math.max(0.001, healthPercent);
-    // S2-B3-M4: the SNAREABLE TELL — a weakened hostile (<=30%) shows soulbind jade: an honest
-    // "bindable" read that doubles as the danger ladder's last rung. (Capture-safe: the bar is
-    // capture-suppressed at the mount site.)
-    const snareable = !entity.passive && healthPercent <= 0.3;
-    fillRef.current.material.color.set(snareable ? '#3DFFB0' : healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000');
-  });
-
-  return (
-    <group position={[0, 2.2, 0]}>
-      <mesh>
-        <planeGeometry args={[1.2, 0.15]} />
-        <meshBasicMaterial color="#333333" />
-      </mesh>
-      <mesh ref={fillRef} position={[0, 0, 0.01]}>
-        <planeGeometry args={[1.2, 0.12]} />
-        <meshBasicMaterial color="#00ff00" />
-      </mesh>
-    </group>
-  );
-};
 
 export { MobModel };
