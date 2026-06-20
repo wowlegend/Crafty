@@ -27,10 +27,14 @@ export function readWorld(id) {
 }
 
 export function writeWorld(id, meta, saveData) {
+  // write the blob FIRST and confirm it landed; only then update the index — a quota failure must
+  // not leave a dangling index entry pointing at a missing blob. Returns success.
+  const ok = safeSet(BLOB_PREFIX + id, JSON.stringify({ id, ...meta, ...saveData }));
+  if (!ok) return false;
   const list = listWorlds().filter((w) => w.id !== id);
   list.unshift({ id, ...meta });
   saveIndex(list);
-  safeSet(BLOB_PREFIX + id, JSON.stringify({ id, ...meta, ...saveData }));
+  return true;
 }
 
 export function deleteWorld(id) {

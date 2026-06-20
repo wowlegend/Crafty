@@ -36,13 +36,14 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   console.warn = (...args) => { origWarn(...args); addLog('warn', args); };
   console.error = (...args) => { origError(...args); addLog('error', args); };
 
-  window.onerror = (message, source, lineno, colno, error) => {
-    addLog('error', [`window.onerror: ${message} at ${source}:${lineno}:${colno}`, error]);
-  };
+  // addEventListener (not window.onerror = ) so we augment rather than clobber any other handler
+  window.addEventListener('error', (event) => {
+    addLog('error', [`error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`, event.error]);
+  });
 
-  window.onunhandledrejection = (event) => {
-    addLog('error', [`window.onunhandledrejection: ${event.reason}`]);
-  };
+  window.addEventListener('unhandledrejection', (event) => {
+    addLog('error', [`unhandledrejection: ${event.reason}`]);
+  });
 }
 
 import React from 'react';
