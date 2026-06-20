@@ -25,15 +25,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const [spellImpacts, setSpellImpacts] = useState([]);
   const [chainArcs, setChainArcs] = useState([]); // chain-lightning inter-target bolts (transient)
   const [telegraphs, setTelegraphs] = useState([]); // S1-D-M2: cast-start rune-circle pops
-  const [debuffs, setDebuffs] = useState([]);
   const projectileId = useRef(0);
   const impactId = useRef(0);
   const arcId = useRef(0);
   const telegraphId = useRef(0);
-  const debuffId = useRef(0);
 
   const projectilesRef = useRef([]);
-  const frameCounter = useRef(0);
   const projectilesDirty = useRef(false);
 
 
@@ -208,8 +205,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         damage: finalDamage,
         age: 0,
         maxAge: 3000,
-        trailPositions: [startPos.clone()],
-        lastTrailUpdate: 0,
         // S2-B4-M5: a latch-armed cast carries its element kind to the impact (null = normal)
         imbueKind: consumeImbueCast(),
       };
@@ -256,9 +251,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         ...spell,
         damage: spell.damage,
         age: 0,
-        maxAge: 3000,
-        trailPositions: [projPos.clone()],
-        lastTrailUpdate: 0
+        maxAge: 3000
       });
       projectilesDirty.current = true;
       setProjectiles([...projectilesRef.current]);
@@ -293,17 +286,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       projectile.position.x += projectile.velocity.x * delta;
       projectile.position.y += projectile.velocity.y * delta;
       projectile.position.z += projectile.velocity.z * delta;
-
-      if (time - projectile.lastTrailUpdate > 0.05) {
-        if (projectile.trailPositions.length >= projectile.trailLength) {
-           const oldest = projectile.trailPositions.shift();
-           oldest.copy(projectile.position);
-           projectile.trailPositions.push(oldest);
-        } else {
-           projectile.trailPositions.push(projectile.position.clone());
-        }
-        projectile.lastTrailUpdate = time;
-      }
 
       let keep = true;
 
