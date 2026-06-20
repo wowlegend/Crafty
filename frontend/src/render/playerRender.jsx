@@ -3,7 +3,7 @@
 // ProceduralWeapon + ProceduralRibbonTrail + the spell hand FX (all intra-module). Player imports
 // StableMagicHands. Extraction-only — NO behavior change. (These render off the pinned capture
 // camera, so the visual gate won't pixel-diff them; the capture COMPLETING is the mount/crash guard.)
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
@@ -194,6 +194,9 @@ const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
       side: THREE.DoubleSide
     });
   }, [uniforms]);
+
+  // prop-attached ShaderMaterial -> dispose on unmount + on swap (weapon equip/unequip/change)
+  useEffect(() => () => material.dispose(), [material]);
 
   useFrame((state) => {
     if (!rightHandRef.current || !meshRef.current || !geomRef.current) return;

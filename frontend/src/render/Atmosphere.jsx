@@ -3,7 +3,7 @@
 // isDay-ternary lights + drei <Sky> (removed). Each frame it lerps moodRef toward
 // moodTarget(isDay, dangerLevel) and applies the blended palette. In capture mode the
 // mood SNAPS to target for deterministic frames.
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore.jsx';
@@ -144,6 +144,8 @@ export function Atmosphere({ shadowConfig }) {
   const domeRef = useRef();
   const domeMat = useMemo(makeSkyDomeMaterial, []);
   const domeGeo = useMemo(() => new THREE.SphereGeometry(100, 32, 16), []);
+  // prop-attached sky-dome material + geometry -> dispose on unmount
+  useEffect(() => () => { domeMat.dispose(); domeGeo.dispose(); }, [domeMat, domeGeo]);
 
   useFrame((state, delta) => {
     const st = useGameStore.getState();
