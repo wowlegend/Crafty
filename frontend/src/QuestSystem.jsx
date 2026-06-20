@@ -85,12 +85,17 @@ const ACHIEVEMENTS = [
     { id: 'builder_ach', title: 'Master Builder', description: 'Place 200 blocks', icon: 'home', stat: 'blocks_placed', target: 200 },
 ];
 
+// save-data shape guards: persisted questState comes from localStorage and may be corrupt / tampered /
+// version-mismatched; coerce to safe shapes so a bad save can't crash the quest system on load (new Set(5) throws).
+const _arrOr = (v, fb) => (Array.isArray(v) ? v : fb);
+const _objOr = (v, fb) => (v && typeof v === 'object' && !Array.isArray(v) ? v : fb);
+
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
     // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
         const saved = useGameStore.getState().questState;
-        if (saved && saved.quests) return saved.quests;
+        if (saved && Array.isArray(saved.quests)) return saved.quests;
         // Initialize active quests (first 3 from tier 1)
         // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
         // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
@@ -105,14 +110,14 @@ export const useQuestSystem = () => {
         }));
     });
 
-    const [completedQuestIds, setCompletedQuestIds] = useState(() => new Set(useGameStore.getState().questState?.completedQuestIds || []));
-    const [stats, setStats] = useState(() => useGameStore.getState().questState?.stats || {
+    const [completedQuestIds, setCompletedQuestIds] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.completedQuestIds, [])));
+    const [stats, setStats] = useState(() => _objOr(useGameStore.getState().questState?.stats, {
         kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
         blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
-    });
+    }));
     const [lootDrops, setLootDrops] = useState([]);
     const [achievements, setAchievements] = useState([]);
-    const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(useGameStore.getState().questState?.unlockedAchievements || ['first_step']));
+    const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.unlockedAchievements, ['first_step'])));
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
     const lootId = useRef(0);
@@ -141,10 +146,10 @@ export const useQuestSystem = () => {
         if (!didMountQuest.current) { didMountQuest.current = true; return; }
         const qs = useGameStore.getState().questState;
         if (!qs) return;
-        if (qs.quests) setQuests(qs.quests);
-        setCompletedQuestIds(new Set(qs.completedQuestIds || []));
-        if (qs.stats) setStats(qs.stats);
-        setUnlockedAchievements(new Set(qs.unlockedAchievements || ['first_step']));
+        if (Array.isArray(qs.quests)) setQuests(qs.quests);
+        setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
+        if (_objOr(qs.stats, null)) setStats(qs.stats);
+        setUnlockedAchievements(new Set(_arrOr(qs.unlockedAchievements, ['first_step'])));
     }, [questLoadedAt]);
 
     // Add notification popup
