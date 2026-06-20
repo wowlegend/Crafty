@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 20, 2026 — kevinDecisions sprint cont. (gameplay/robustness, gated + pushed)
+- **boss double-kill idempotency** `38f978c` + gate-fix `254351e`: damageBoss fires from melee + spells (same-frame possible) sharing a stale closure bossHealth -> the kill side-effects (XP + legendary drops + hitstop + bloom, inside the setBossHealth updater) could double-fire; added a bossKilledRef latch (inner early-return so the death-beats static gate's literal `newHealth <= 0)` is preserved). NOTE: 38f978c briefly broke that gate on main (gate cmd printed the summary but didn't block the commit on vitest's exit) — fixed immediately @254351e; gate workflow now &&-chained.
+- **save-data validation** `15d6e2c`: QuestSystem rehydration shape-guards (_arrOr/_objOr) at every seed/re-seed site — a corrupt/tampered localStorage save (non-array completedQuestIds) would `new Set(5)`-throw and crash the quest system on load; now defaults safely. Valid-save behavior unchanged.
+- kevinDecisions remaining: BlockParticleSystem rapier-2.2 debris migration (needs LIVE render-verify — surface if unverifiable), + taste/larger items (place/mine echo, HUD a11y, grantXP heal, bossSystem updater-refactor) -> KEVIN-REVIEW FYI. Then knip 37 + impact-ring.
+
 ### June 20, 2026 — kevinDecisions sprint (Phase A) + a commit-message note
 - **`ea4c221` IS the AI de-aggro leash** (ai.worker: a chased mob drops aggro past 1.5x AGGRO_RANGE and resumes wandering, instead of pursuing across the whole map). Its commit MESSAGE was clobbered to a stray `{"message":"Welcome to the Kimi For Coding API!"}` because a stale /tmp/k1.txt + zsh noclobber blocked the heredoc write; the CODE is correct + gated + pushed. (Lesson re-applied: use `>|` / `rm -f` for /tmp heredocs.)
 - **`d6d4cab` tree-through-rock guard** — terrain.worker trunk stamps (tree/cactus/pine) now break at the first non-air block instead of overwriting rock/overhangs (leaves already air-guarded). biome-foliage + grass-revival + no-re-mesh gates green.
