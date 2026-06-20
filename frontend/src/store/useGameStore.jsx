@@ -278,7 +278,7 @@ export const useGameStore = create((set, get) => ({
     addAttributePoints: (amount) => set((state) => ({
         attributes: {
             ...state.attributes,
-            attributePoints: state.attributes.attributePoints + amount
+            attributePoints: state.attributes.attributePoints + Math.max(0, Math.floor(Number(amount) || 0))
         }
     })),
 

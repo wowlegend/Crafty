@@ -179,7 +179,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {SPELL_MASTERY.map(({ key, elem, label }) => {
-                                const lvl = spellLevels[key] || 1;
+                                const lvl = Math.max(1, Math.min(SPELL_UPGRADES[key].levels.length, spellLevels[key] || 1)); // clamp: a corrupt save must not index out of bounds
                                 const cur = SPELL_UPGRADES[key].levels[lvl - 1];
                                 const next = SPELL_UPGRADES[key].levels[lvl];
                                 const isMaxed = lvl >= 3;
