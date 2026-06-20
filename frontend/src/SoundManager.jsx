@@ -33,7 +33,6 @@ export const SoundProvider = ({ children }) => {
   // Audio context for sound effects
   const audioContext = useRef(null);
   const sounds = useRef({});
-  const ambientTimer = useRef(null);
   // SFX overhaul: cache for the single master bus + limiter (audio/masterBus.js). Stores { ctx, input }
   // so the bus is rebuilt if the AudioContext is ever swapped, rather than wiring voices into a dead bus.
   const masterBusRef = useRef(null);
@@ -241,7 +240,6 @@ export const SoundProvider = ({ children }) => {
       if (audioContext.current) startSynthPad();
     } else {
       stopSynthPad();
-      if (ambientTimer.current) clearTimeout(ambientTimer.current);
     }
   }, [musicEnabled]);
 
@@ -427,7 +425,6 @@ export const SoundProvider = ({ children }) => {
     return () => {
       stopSynthPad();
       stopArpeggiator();
-      if (ambientTimer.current) clearTimeout(ambientTimer.current);
       if (arpeggiatorRef.current.fadeTimer) clearTimeout(arpeggiatorRef.current.fadeTimer);
     };
   }, []);
@@ -567,7 +564,7 @@ export const SoundProvider = ({ children }) => {
 
 // Sound effect hooks for different actions
 export const useGameSounds = () => {
-  const { playSound, playSpatialSound } = useSounds();
+  const { playSound } = useSounds();
   const spatialTrigger = useGameStore(state => state.playSpatialSound);
 
   return {
