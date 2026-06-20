@@ -27,6 +27,7 @@ export function ElementZoneSystem() {
   const fxAccumRef = useRef(0);
   const prevIsDayRef = useRef(true);
   const dayMotifPlayedRef = useRef(false); // music-motif v2: the stinger plays on the DAY'S FIRST zone only
+  const zonesActiveRef = useRef(false); // tracks zone presence -> clear frozen-slow ONCE when the last zone expires
 
   useFrame((state, delta) => {
     if (isCaptureMode()) return;
@@ -58,7 +59,20 @@ export function ElementZoneSystem() {
     }
     stepZones(liveZones, now); // (M6 consumes .expired for char decals)
 
-    if (liveZones.zones.length === 0) return;
+    if (liveZones.zones.length === 0) {
+      // The last zone just expired: clear any lingering frozen-slow ONCE. The reset sweep inside
+      // applyZoneEffects normally owns this, but it never runs while there are no zones, so a mob
+      // that touched an expired ice patch would crawl at SLOW_MULT forever. Cheap O(mobs), gated
+      // to the non-empty -> empty transition.
+      if (zonesActiveRef.current) {
+        zonesActiveRef.current = false;
+        for (const e of mobsQuery.entities) {
+          if (e && e.zoneSlowMult !== undefined && e.zoneSlowMult !== 1) e.zoneSlowMult = 1;
+        }
+      }
+      return;
+    }
+    zonesActiveRef.current = true;
 
     fxAccumRef.current += AI_TICK_SEC;
     if (fxAccumRef.current < FX_TICK_SEC) return;
