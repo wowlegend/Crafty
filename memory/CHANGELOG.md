@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 22, 2026 — Phase B / B1 jungle vine-canopy (`e60b77a`)
+- **Each grass biome now reads unique.** Jungle shared the temperate broadleaf OAK canopy (just taller) — marginal. Now `jungleShape`: a tall trunk under a BROAD layered umbrella vine-canopy (radius-4 flat crown + wider underlayer ring + a small emergent tuft above + four hanging VINE strands below the rim) — the widest/most-layered foliage, distinct from oak/pine/acacia/swamp. So: taiga pines · savanna acacias · plains/forest oaks (open vs dense) · swamp droopy · jungle vine-canopy.
+- `world/foliage.js` pure deterministic `jungleShape` (5 structure tests; radius 4 > acacia radius 3, emergent above + vines below). `terrain.worker.js` own jungle branch (vegRandom-only, tree-through-rock guard, NO-RE-MESH); generic broadleaf branch simplified. Meadow flowers OUT OF SCOPE (need a new block id). Jungle is a far biome -> 21 visual green, no re-baseline; in-world look flagged for Kevin. 1727 unit / build + eslint.
+- **Queue remaining: B5 mob/boss art rebuild ONLY** (LARGE + most taste-heavy; box-stacks -> real silhouettes; mobs/boss ARE in capture frames so it re-baselines + LIVE-LOOK; needs Kevin's eye). Then ALL B1-B7 done (B8 + held items parked).
+
 ### June 22, 2026 — Phase B / B3 shrine model (`860ddd5`)
 - **A distinct sacred silhouette.** The pilgrim quest's landmark (type 0) was a generic 5-tier tapered grey tower. Now it's a recognizable SHRINE: stepped stone altar plinth + four corner pillars + a canopy lintel frame + a central pedestal crowned by a warm-gold CRYSTAL heart (the focal "light" the real-play beacon ignites). The type-1 sky-arch (alternate landmark) is unchanged.
 - `world/shrineShape.js` — pure deterministic `shrineParts(baseY, topY)` cube part-list (node-testable like the foliage shapes); 5 structure tests. `Terrain.jsx` Landmark type 0 maps it to bold-flat Cubes + warm beacon; capture-stable, NO-RE-MESH.
