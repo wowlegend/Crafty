@@ -18,6 +18,7 @@ import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
+import { shrineParts } from './shrineShape.js';
 import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark } from './shrines.js';
@@ -381,18 +382,18 @@ const HomeAnchorRender = () => {
 // --- SIGNATURE LANDMARKS (World-M6): tall wayfinding silhouettes, placed by deterministic hash,
 // only on loaded LAND chunks (in-range-culled + tier-capped by the streamer). Two voxelKit types.
 const LANDMARK_PAL = { stone: '#8A8A8A', dark: '#5A5A5A', accent: '#6B4A2F' };
+// B3: the shrine palette — stone/dark + a warm-gold CRYSTAL heart (the lit focal block the quests reference).
+const SHRINE_PAL = { stone: '#8A8A8A', dark: '#5A5A5A', crystal: '#E0B468' };
 function Landmark({ type, baseY }) {
     const top = Math.max(baseY + 58, 104); // S8d: taller wayfinding silhouette -- reads as a far-off landmark (was +46/92); clears fog (Y56) + valley mist
     const h = top - baseY;
-    if (type === 0) { // Spire: a tapered tower + a glowing crystal top (capture-null)
-        const tiers = 5;
+    if (type === 0) { // B3 Shrine: stepped altar plinth + 4 framing pillars + canopy lintel + a warm crystal heart
         return (
             <group>
-                {Array.from({ length: tiers }).map((_, i) => {
-                    const w = 6 - i * 0.9, y = baseY + (h * (i + 0.5)) / tiers;
-                    return <Cube key={i} position={[0, y, 0]} size={[w, h / tiers + 0.5, w]} color={i % 2 ? LANDMARK_PAL.dark : LANDMARK_PAL.stone} castShadow={false} />;
-                })}
-                {!isCaptureMode() && <Emissive position={[0, top + 1, 0]} size={2.4} color="#46E0FF" intensity={5.0} />}{/* S8d: brighter+bigger beacon (the pov faint-beacon fix); real-play only */}
+                {shrineParts(baseY, top).map((p, i) => (
+                    <Cube key={i} position={p.position} size={p.size} color={SHRINE_PAL[p.tone]} castShadow={false} />
+                ))}
+                {!isCaptureMode() && <Emissive position={[0, top + 1, 0]} size={2.6} color="#F5D76E" intensity={5.0} />}{/* the shrine's lit beacon (warm gold); real-play only */}
             </group>
         );
     }
