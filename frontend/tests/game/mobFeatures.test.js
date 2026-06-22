@@ -8,8 +8,8 @@ const DIMS = { bodyW: 1.6, bodyH: 2.0, bodyD: 1.0, headW: 0.9, headH: 0.8, headD
 const isVec3 = (v) => Array.isArray(v) && v.length === 3 && v.every((n) => Number.isFinite(n));
 
 describe('mobFeatures (mob-distinctness T1)', () => {
-  it('exposes exactly the spec\'d featured types', () => {
-    expect([...FEATURED_TYPES].sort()).toEqual(['cow', 'duskhound', 'emberhusk', 'moss_brute', 'skeleton', 'skitterling']);
+  it('exposes exactly the spec\'d featured types (B5: humanoids zombie/villager now carry arms)', () => {
+    expect([...FEATURED_TYPES].sort()).toEqual(['cow', 'duskhound', 'emberhusk', 'moss_brute', 'skeleton', 'skitterling', 'villager', 'zombie']);
   });
 
   it('every featured type returns a non-empty list of valid box specs', () => {
@@ -27,8 +27,17 @@ describe('mobFeatures (mob-distinctness T1)', () => {
   });
 
   it('unfeatured types return an empty list (plain box-mob, capture-safe)', () => {
-    for (const t of ['pig', 'zombie', 'villager', 'spider', 'unknown_xyz']) {
+    for (const t of ['pig', 'spider', 'unknown_xyz']) {
       expect(mobFeatures(t, DIMS)).toEqual([]);
+    }
+  });
+
+  it('B5: upright humanoids carry >=2 ARMS at the body sides (reads as a creature, not a box)', () => {
+    for (const t of ['zombie', 'skeleton', 'villager']) {
+      const arms = mobFeatures(t, DIMS).filter(
+        (f) => Math.abs(f.pos[0]) > DIMS.bodyW / 2 && f.box[1] > DIMS.bodyH * 0.4,
+      );
+      expect(arms.length, `${t} arms`).toBeGreaterThanOrEqual(2);
     }
   });
 
@@ -51,7 +60,10 @@ describe('mobFeatures (mob-distinctness T1)', () => {
   });
 
   it('skeleton ribs sit on the torso FRONT (+z face) so they read head-on', () => {
-    for (const rib of mobFeatures('skeleton', DIMS)) {
+    // the rib slats are the front-face features (z > body front); arms sit at the sides (excluded here).
+    const ribs = mobFeatures('skeleton', DIMS).filter((f) => f.pos[2] > DIMS.bodyD / 2);
+    expect(ribs.length).toBeGreaterThanOrEqual(3);
+    for (const rib of ribs) {
       expect(rib.pos[2]).toBeGreaterThan(DIMS.bodyD / 2); // in front of the body front face
       expect(rib.tone).toBe('bone');
     }

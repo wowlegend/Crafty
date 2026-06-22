@@ -9,7 +9,20 @@
 // `tone` is an optional shade hint the renderer applies (else the feature inherits the body color).
 // Positions/sizes are DERIVED from the body dims so features scale with each type's size.
 
+// Humanoid ARMS (B5 mob-art): two boxes at the body sides — the silhouette cue that reads an upright mob
+// as a CREATURE with limbs, not a box-stack torso. `reach` tilts them forward (the zombie shamble); `tone`
+// shades them (skeleton = bone). Derived from the body dims so they scale per type; static (capture-safe).
+const humanoidArms = (d, { tone, reach = 0 } = {}) => {
+  const x = d.bodyW * 0.5 + d.bodyW * 0.11;
+  const spec = (sx) => ({ box: [d.bodyW * 0.20, d.bodyH * 0.62, d.bodyD * 0.42], pos: [sx * x, d.bodyH * 0.52, 0], rot: [reach, 0, 0], ...(tone ? { tone } : {}) });
+  return [spec(-1), spec(1)];
+};
+
 const FEATURES = {
+  // upright undead -> a humanoid SHAMBLE: forward-reaching arms (the iconic zombie silhouette).
+  zombie: (d) => humanoidArms(d, { reach: -0.5 }),
+  // upright settler -> plain humanoid arms hanging at the sides (reads as a person, not a box).
+  villager: (d) => humanoidArms(d, {}),
   // rare heavy tank -> a looming, top-heavy BRUTE: hunched shoulder slabs + a head moss-crown.
   moss_brute: (d) => [
     { box: [d.bodyW * 0.55, d.bodyH * 0.22, d.bodyD * 0.80], pos: [-d.bodyW * 0.45, d.bodyH * 0.95, 0], rot: [0, 0, 0.35], tone: 'dark' },
@@ -33,6 +46,7 @@ const FEATURES = {
     { box: [d.bodyW * 0.85, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.62, d.bodyD / 2 + 0.02], tone: 'bone' },
     { box: [d.bodyW * 0.80, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.45, d.bodyD / 2 + 0.02], tone: 'bone' },
     { box: [d.bodyW * 0.70, d.bodyH * 0.08, 0.04], pos: [0, d.bodyH * 0.28, d.bodyD / 2 + 0.02], tone: 'bone' },
+    ...humanoidArms(d, { tone: 'bone' }), // bony arms at the sides
   ],
   // charred night-siege husk -> a jagged charred head-CREST (a 3-spike crown, centre tallest, sides
   // splayed) on the head top — reads front-on (unlike a back-crest, which a front view hides).
@@ -48,8 +62,8 @@ const FEATURES = {
   ],
 };
 
-// The types that carry silhouette features (pig/zombie/villager/spider are intentionally plain — the
-// spider's 8-leg sprawl + the zombie's render-side head-tilt [T3, a transform tweak not a box] carry them).
+// The types that carry silhouette features. pig (a stout quadruped) + spider (its 8-leg sprawl carries it)
+// stay plain; the upright humanoids (zombie/skeleton/villager) now carry ARMS (B5) so they read as creatures.
 export const FEATURED_TYPES = Object.keys(FEATURES);
 
 // mobFeatures(type, dims) -> array of accessory box specs (empty for unfeatured types / missing dims).
