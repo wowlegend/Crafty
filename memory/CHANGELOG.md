@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 22, 2026 — Phase B / B7 wand-crystal economy (`53c7478`)
+- **Closed the dead sink.** The ore->crystals->wand trade economy had no payoff: the `wand` counter was bought (15 crystals) but NOTHING consumed it, so crystals were a currency you couldn't meaningfully spend. Now each owned wand is a **SPELL FOCUS** — a capped, conservative spell mana-cost reduction (6%/wand, 30% cap; clamped + NaN-safe; floored at 1 so a cast is never free). Loop now closes: mine ore -> ore->crystals -> crystals->wands -> cast spells cheaper. A distinct lever from spell-upgrades (which raise damage).
+- `game/wandFocus.js` (pure, 6 tests) → applied at the single cast-time mana chokepoint in EnhancedMagicSystem (0 wands == byte-identical). `TradingInterface` now surfaces the live "-N% spell mana" so the trade has a visible payoff. Wiring locked by `wand-economy-gates`; updated the `spell-cast-level-wire` gate for the baseManaCost rename. No captured visual surface touched. 1707 unit / build + eslint.
+- **Queue remaining:** B4 quest rewards · B3 shrine model · B1 flora slice-3 shapes · B5 mob/boss art. (B8 parked.)
+
 ### June 22, 2026 — Phase B / B2 spell-color unify (`16a69f9`)
 - **One element-color SoT.** Every element-IDENTITY hue now derives from the canonical `MAGIC` palette in `theme/tokens.js` (fire #FF7A3C / ice #6FC8FF / lightning #FFE066 / arcane #B36BFF) — the same palette the HUD / element-zones / beast avatars already use. Killed the legacy drift where each element was redefined with contradictory hues in 5 places: `GameSystems.SPELL_COLORS` (#FF4500/#00BFFF/#FFD700/#9932CC → wand indicator), `spells.js` SPELL_TYPES color/trail/glow/secondary (→ projectile/telegraph/impact/trail), `spellVisualProfiles` WAND_CONFIGS tip/gem/aura + SPARK_PROFILE, `MascotCraftyHero` arcane gem. All → MAGIC.
 - **Preserved:** `spellVisualProfiles` ENERGY_PROFILE — the deliberately "pushed-hot" projectile core/glow (white-hot cores, the intentionally white-blue lightning shell over the §4 bolt) is the W2-T4 hero VFX, a documented derivative, NOT drift. Left hand-tuned.
