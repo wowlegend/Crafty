@@ -1,5 +1,10 @@
 # Changelog & Development History
 
+### June 22, 2026 — Phase B / B4 quest rewards (`728635c`)
+- **Quests pay off now.** Were XP-only; now every quest also grants COINS (explicit `coinReward`, else a conservative fraction of xp) and select quests grant an ITEM. The item payoffs are tied to B6 (which stripped the trivializing starter kit) — quests are how you EARN gear back: Hunter -> Iron Sword, Miner -> Iron Helmet, Builder -> wood, Pilgrimage -> Iron Chestplate, Champion -> Diamond Sword.
+- `game/questRewards.js` (pure `questRewards(quest)` -> {xp, coins, item}, clamped + NaN-safe; 6 tests). `QuestSystem.claimQuest` grants the full bundle (grantXP + store.addCoins + store.addToInventory into the rendered blocks bucket) with a combined notification. Wiring locked by `quest-rewards-gates`. No captured surface touched. 1717 unit / build + eslint.
+- **Queue remaining:** B3 shrine model · B1 flora slice-3 shapes · B5 mob/boss art. (B8 parked.)
+
 ### June 22, 2026 — Phase B / B7 wand-crystal economy (`53c7478`)
 - **Closed the dead sink.** The ore->crystals->wand trade economy had no payoff: the `wand` counter was bought (15 crystals) but NOTHING consumed it, so crystals were a currency you couldn't meaningfully spend. Now each owned wand is a **SPELL FOCUS** — a capped, conservative spell mana-cost reduction (6%/wand, 30% cap; clamped + NaN-safe; floored at 1 so a cast is never free). Loop now closes: mine ore -> ore->crystals -> crystals->wands -> cast spells cheaper. A distinct lever from spell-upgrades (which raise damage).
 - `game/wandFocus.js` (pure, 6 tests) → applied at the single cast-time mana chokepoint in EnhancedMagicSystem (0 wands == byte-identical). `TradingInterface` now surfaces the live "-N% spell mana" so the trade has a visible payoff. Wiring locked by `wand-economy-gates`; updated the `spell-cast-level-wire` gate for the baseManaCost rename. No captured visual surface touched. 1707 unit / build + eslint.
