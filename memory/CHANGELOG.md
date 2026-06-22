@@ -1,5 +1,11 @@
 # Changelog & Development History
 
+### June 22, 2026 — Phase B / B3 shrine model (`860ddd5`)
+- **A distinct sacred silhouette.** The pilgrim quest's landmark (type 0) was a generic 5-tier tapered grey tower. Now it's a recognizable SHRINE: stepped stone altar plinth + four corner pillars + a canopy lintel frame + a central pedestal crowned by a warm-gold CRYSTAL heart (the focal "light" the real-play beacon ignites). The type-1 sky-arch (alternate landmark) is unchanged.
+- `world/shrineShape.js` — pure deterministic `shrineParts(baseY, topY)` cube part-list (node-testable like the foliage shapes); 5 structure tests. `Terrain.jsx` Landmark type 0 maps it to bold-flat Cubes + warm beacon; capture-stable, NO-RE-MESH.
+- **Verification caveat:** structure unit-locked + reuses the proven arch Cube-render path (build + 21 visual green). The shrine is the type-0 landmark; the gate's `landmark.png` frames the type-1 ARCH, so the in-world shrine LOOK is not headless-capturable in the current gate — **flagged for Kevin's live eye** (a dedicated shrine capture fixture is a possible follow-up). 1722 unit / 21 visual / build + eslint.
+- **Queue remaining:** B1 flora slice-3 distinct shapes · B5 mob/boss art rebuild. (B8 parked.)
+
 ### June 22, 2026 — Phase B / B4 quest rewards (`728635c`)
 - **Quests pay off now.** Were XP-only; now every quest also grants COINS (explicit `coinReward`, else a conservative fraction of xp) and select quests grant an ITEM. The item payoffs are tied to B6 (which stripped the trivializing starter kit) — quests are how you EARN gear back: Hunter -> Iron Sword, Miner -> Iron Helmet, Builder -> wood, Pilgrimage -> Iron Chestplate, Champion -> Diamond Sword.
 - `game/questRewards.js` (pure `questRewards(quest)` -> {xp, coins, item}, clamped + NaN-safe; 6 tests). `QuestSystem.claimQuest` grants the full bundle (grantXP + store.addCoins + store.addToInventory into the rendered blocks bucket) with a combined notification. Wiring locked by `quest-rewards-gates`. No captured surface touched. 1717 unit / build + eslint.
