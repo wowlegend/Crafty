@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pineShape, acaciaShape, swampShape } from '../../src/world/foliage.js';
+import { pineShape, acaciaShape, swampShape, jungleShape } from '../../src/world/foliage.js';
 
 describe('pineShape (World-M4a) — deterministic conical evergreen', () => {
   it('the trunk is a single column of `height` blocks rising from the base', () => {
@@ -68,5 +68,34 @@ describe('swampShape (Phase B M1) — short droopy wetland canopy', () => {
   });
   it('is deterministic (same height -> identical offsets)', () => {
     expect(swampShape(4)).toEqual(swampShape(4));
+  });
+});
+
+describe('jungleShape (Phase B B1) — broad layered vine-canopy', () => {
+  it('the trunk is a single column of `height` blocks', () => {
+    const { trunk } = jungleShape(8);
+    expect(trunk).toHaveLength(8);
+    for (const [dx, , dz] of trunk) { expect(dx).toBe(0); expect(dz).toBe(0); }
+  });
+  it('the crown is the BROADEST canopy (radius 4 — wider than the acacia umbrella radius 3)', () => {
+    const h = 8;
+    const jWidest = Math.max(...jungleShape(h).leaves.map(l => Math.abs(l[0]) + Math.abs(l[2])));
+    const aWidest = Math.max(...acaciaShape(h).leaves.map(l => Math.abs(l[0]) + Math.abs(l[2])));
+    expect(jWidest).toBe(4);
+    expect(jWidest).toBeGreaterThan(aWidest);
+  });
+  it('has an emergent tuft ABOVE the crown AND hanging vines BELOW the rim (a layered tropical span)', () => {
+    const h = 8;
+    const ys = jungleShape(h).leaves.map(l => l[1]);
+    expect(Math.max(...ys)).toBeGreaterThan(h);     // emergent layer pokes above the crown
+    expect(Math.min(...ys)).toBeLessThan(h - 1);    // vines droop below the canopy rim
+  });
+  it('the hanging vines sit at the canopy RIM (full radius), not the trunk', () => {
+    const { leaves } = jungleShape(8);
+    const vines = leaves.filter(l => l[1] < 8 - 1 && (Math.abs(l[0]) + Math.abs(l[2])) === 3);
+    expect(vines.length).toBeGreaterThanOrEqual(4);
+  });
+  it('is deterministic (same height -> identical offsets)', () => {
+    expect(jungleShape(8)).toEqual(jungleShape(8));
   });
 });

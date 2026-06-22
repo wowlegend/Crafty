@@ -57,3 +57,33 @@ export function swampShape(height) {
   }
   return { trunk, leaves };
 }
+
+// Jungle tree (Phase B B1 slice 5): a tall trunk under a BROAD, LAYERED umbrella vine-canopy — a wide flat
+// crown over a wider underlayer ring, a small emergent tuft poking above (the tropical emergent layer), and
+// four hanging VINE strands drooping below the rim. The widest + most layered canopy; distinct from the round
+// oak / conical pine / flat acacia / low droopy swamp. Deterministic; no RNG.
+export function jungleShape(height) {
+  const trunk = [];
+  for (let ty = 1; ty <= height; ty++) trunk.push([0, ty, 0]);
+  const leaves = [];
+  const crown = height;
+  for (let dx = -3; dx <= 3; dx++) {
+    for (let dz = -3; dz <= 3; dz++) {
+      const md = Math.abs(dx) + Math.abs(dz);
+      if (md <= 4) leaves.push([dx, crown, dz]);              // wide flat crown disc (radius 4 — the broadest canopy)
+      if (md >= 2 && md <= 4) leaves.push([dx, crown - 1, dz]); // a wider underlayer ring -> layered tropical depth
+    }
+  }
+  // emergent tuft poking above the crown (the tallest tropical canopy layer)
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (Math.abs(dx) + Math.abs(dz) <= 1) leaves.push([dx, crown + 1, dz]);
+    }
+  }
+  // four hanging vine strands drooping below the canopy rim (the jungle "vine" read)
+  for (const [vx, vz] of [[3, 0], [-3, 0], [0, 3], [0, -3]]) {
+    leaves.push([vx, crown - 2, vz]);
+    leaves.push([vx, crown - 3, vz]);
+  }
+  return { trunk, leaves };
+}

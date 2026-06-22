@@ -2,7 +2,7 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
-import { pineShape, acaciaShape, swampShape } from './foliage.js';
+import { pineShape, acaciaShape, swampShape, jungleShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
 import { oreCodeFor } from './oreGen.js';
@@ -538,12 +538,29 @@ function generateChunkData(cx, cz) {
               }
             }
           }
-        } else if (surfaceBlock === 1) { // grass broadleaf — per-biome density + height (slice 2)
-          // forest/jungle read DENSE (every rolled column); plains/meadow read OPEN (an extra
-          // thinning roll ~halves them). jungle canopy stands TALLER. Deterministic (vegRandom only).
+        } else if (surfaceBlock === 1 && flora === 'jungle') { // jungle: a tall trunk + a BROAD layered VINE-CANOPY (B1 slice 5 — distinct from temperate oak)
+          const jH = 8 + Math.floor(vegRandom(worldX, worldZ, 2) * 3); // tall tropical trunk
+          const { trunk, leaves } = jungleShape(jH);
+          for (const [, dy] of trunk) {
+            const ny = surfaceY + dy;
+            if (ny >= CHUNK_HEIGHT) break;
+            const idx = getIndex(x, ny, z);
+            if (blocks[idx] !== 0) break;
+            blocks[idx] = 6;
+          }
+          for (const [dx, dy, dz] of leaves) {
+            const nx = x + dx, nz = z + dz, ny = surfaceY + dy;
+            if (nx >= 0 && nx < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE && ny >= 0 && ny < CHUNK_HEIGHT) {
+              const leafIdx = getIndex(nx, ny, nz);
+              if (blocks[leafIdx] === 0) blocks[leafIdx] = 7;
+            }
+          }
+        } else if (surfaceBlock === 1) { // grass broadleaf oak — forest/plains/meadow per-biome density (slice 2)
+          // forest reads DENSE (every rolled column); plains/meadow read OPEN (an extra thinning
+          // roll ~halves them). jungle now has its own vine-canopy branch above. Deterministic (vegRandom only).
           const sparse = flora === 'plains_tree' || flora === 'flowers';
           if (!sparse || vegRandom(worldX, worldZ, 5) < 0.5) {
-            const treeHeight = (flora === 'jungle' ? 7 : 4) + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
+            const treeHeight = 4 + Math.floor(vegRandom(worldX, worldZ, 2) * 3);
             for (let ty = 1; ty <= treeHeight; ty++) {
               const ny = surfaceY + ty;
               if (ny >= CHUNK_HEIGHT) break;
