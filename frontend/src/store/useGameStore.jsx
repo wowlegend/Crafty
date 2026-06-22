@@ -572,16 +572,18 @@ export const useGameStore = create((set, get) => ({
     targetEntity: null,
     setTargetEntity: (t) => set({ targetEntity: t }),
 
+    // B6 (Phase B, Kevin 2026-06-22): a HUMBLE frontier start so the loot/craft loop matters.
+    // The old loadout handed out a Diamond Sword + a near-full armor set + a diamond/gold hoard +
+    // a 5+5 potion stack — trivialising the whole earn/craft ladder turn 1. Now: building basics +
+    // basic tools + ONE humble Stone Sword + a little bootstrap ore (so the FIRST craft is reachable,
+    // not gifted) + a modest 2+1 potion safety net. Iron/Diamond gear is crafted (data/recipes.js) or
+    // looted; diamond/gold ore is mined. Locked by tests/store/startingLoadout.test.js.
     inventory: {
         blocks: {
-            grass: 64, dirt: 64, stone: 64, wood: 64, glass: 32, water: 16,
-            lava: 8, diamond: 4, gold: 8, iron: 16, coal: 32, sand: 64, cobblestone: 32,
-            'Stone Sword': 1, 'Iron Sword': 1, 'Diamond Sword': 1,
-            'Wooden Shield': 1, 'Iron Shield': 1,
-            'Golden Crown': 1, 'Iron Helmet': 1,
-            'Iron Chestplate': 1, 'Leather Chestplate': 1,
-            'Leather Boots': 1, 'Iron Boots': 1,
-            'Health Potion': 5, 'Mana Potion': 5
+            grass: 32, dirt: 32, stone: 16, wood: 16, glass: 8, sand: 16,
+            coal: 8, iron: 4,
+            'Stone Sword': 1,
+            'Health Potion': 2, 'Mana Potion': 1
         },
         tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
         magic: { wand: 1, crystals: 8 }

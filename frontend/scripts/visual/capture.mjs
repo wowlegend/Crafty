@@ -386,6 +386,14 @@ async function main() {
     await page.waitForFunction(() => !!document.querySelector('[data-testid="inventory-modal"]'), { timeout: 8000 });
     await flushFrames(page, 8);
     await delay(900);
+    // DETERMINISM (panel frames): the day/night world BEHIND these translucent panels is the
+    // regression-IRRELEVANT part, and its sky/mood proved non-deterministic across runs (the panel
+    // backdrop rendered day on some runs, night on others -> phantom 11-33% diffs that flake the gate
+    // regardless of any setTimeOfDay/isDay pin). The panel UI is the actual regression target, so hide
+    // the 3D canvas for the 3 panel shots -> a deterministic solid backdrop. The DOM HUD (hotbar/quests/
+    // coins) is unaffected (it's not in the canvas). Restored after progression-open below.
+    await page.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.style.visibility = 'hidden'; });
+    await flushFrames(page, 2);
     await page.screenshot({ path: resolve(OUT, 'inventory-open.png') });
     console.log('captured inventory-open');
 
@@ -415,6 +423,9 @@ async function main() {
     await delay(900);
     await page.screenshot({ path: resolve(OUT, 'progression-open.png') });
     console.log('captured progression-open');
+    // restore the 3D canvas for the subsequent world-dependent fixtures (title-mascot et al.).
+    await page.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.style.visibility = 'visible'; });
+    await flushFrames(page, 2);
 
     // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the
     // standalone studio overlay (fixed camera + explore-day lighting + post-stack) with its
