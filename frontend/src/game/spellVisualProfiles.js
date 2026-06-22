@@ -5,12 +5,17 @@
  * burst recipes); WAND_CONFIGS (the caster's wand looks). Values verbatim from
  * EnhancedMagicSystem; the test locks the four-element coverage + the fallback.
  */
+import { MAGIC } from '../theme/tokens.js';
+
+// B2 spell-color unify: spark + wand-mesh IDENTITY hues derive from the canonical MAGIC palette
+// (theme/tokens), the one element-color SoT. The projectile core/glow (ENERGY_PROFILE below) is the
+// deliberately "pushed-hot" W2-T4 hero VFX and stays hand-tuned — a documented derivative, not drift.
 export const SPARK_PROFILE = {
-    // [sparkColor, count] per element.
-    fireball:  ['#FF7A1A', 52],
-    iceball:   ['#7FD8FF', 42],
-    lightning: ['#FFF0A0', 48],
-    arcane:    ['#C77DFF', 46],
+    // [sparkColor, count] per element — identity hue from MAGIC.
+    fireball:  [MAGIC.fire, 52],
+    iceball:   [MAGIC.ice, 42],
+    lightning: [MAGIC.lightning, 48],
+    arcane:    [MAGIC.arcane, 46],
   };
 
 export const ENERGY_PROFILE = {
@@ -82,29 +87,31 @@ export const _defaultEnergy = {
   capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst',
 };
 
+// Wand mesh: the handle stays a neutral material; the tip/gem/aura carry the element IDENTITY
+// from MAGIC (B2 unify — was legacy-drifted per wand).
 export const WAND_CONFIGS = {
   fireball: {
     handleColor: '#8B4513',
-    tipColor: '#FF4500',
-    gemColor: '#FF6347',
-    auraColor: '#FFD700'
+    tipColor: MAGIC.fire,
+    gemColor: MAGIC.fire,
+    auraColor: MAGIC.fire
   },
   iceball: {
     handleColor: '#4169E1',
-    tipColor: '#00BFFF',
-    gemColor: '#87CEEB',
-    auraColor: '#E0FFFF'
+    tipColor: MAGIC.ice,
+    gemColor: MAGIC.ice,
+    auraColor: MAGIC.ice
   },
   lightning: {
-    handleColor: '#FFD700',
-    tipColor: '#FFFF00',
-    gemColor: '#FFFFE0',
-    auraColor: '#FFFACD'
+    handleColor: '#B8923A',
+    tipColor: MAGIC.lightning,
+    gemColor: MAGIC.lightning,
+    auraColor: MAGIC.lightning
   },
   arcane: {
-    handleColor: '#9932CC',
-    tipColor: '#DA70D6',
-    gemColor: '#DDA0DD',
-    auraColor: '#E6E6FA'
+    handleColor: '#5B2E86',
+    tipColor: MAGIC.arcane,
+    gemColor: MAGIC.arcane,
+    auraColor: MAGIC.arcane
   }
 };

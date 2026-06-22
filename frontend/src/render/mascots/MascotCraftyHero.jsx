@@ -11,6 +11,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Cube, Emissive, Ink } from './voxelKit';
 import { isCaptureMode } from '../../devtest/captureMode';
+import { MAGIC } from '../../theme/tokens.js';
 
 // --- Palette (Vanguard + Toon: bright, saturated, friendly, clear value separation) ---
 const ROBE = '#2C6CC4';       // deep royal-blue robe + hat (the dominant brand mass)
@@ -22,7 +23,7 @@ const CHEEK = '#E8956A';      // rosy cheek warmth
 const BOOT = '#6B4A2E';       // soft brown boots
 const STAFF = '#8A5A34';      // warm wood staff
 const STAFF_HI = '#A87242';   // staff highlight wrap
-const ARCANE = '#9B5BFF';     // arcane gem emissive (ties to the spell-VFX signature)
+const ARCANE = MAGIC.arcane;  // arcane gem emissive — canonical MAGIC.arcane (B2 unify; ties to the spell-VFX signature)
 const ARCANE_HOT = '#E0C2FF'; // hot inner gem core
 
 export function MascotCraftyHero() {

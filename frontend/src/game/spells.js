@@ -1,14 +1,24 @@
 /**
  * spells.js — the spell roster (pure data; S3-M2 T1 extraction from EnhancedMagicSystem's
  * component useMemo — a module constant is the same stable reference, one component less
- * to own it). Values verbatim; the shape test beside this file locks the four-spell set.
+ * to own it). The shape test beside this file locks the four-spell set + combat fields.
+ *
+ * B2 (Phase B) — spell-color unify: every element-IDENTITY hue (color/trail/glow + the
+ * secondary-effect tint) DERIVES from the canonical `MAGIC` palette in theme/tokens, the
+ * one element-color SoT that the HUD / element-zones / beast avatars already use. This
+ * killed the legacy drift (fire was #FF4500, lightning #FFD700, arcane #9932CC — out of
+ * step with the spec §4 palette). The projectile's deliberately "pushed-hot" core/glow VFX
+ * lives in spellVisualProfiles ENERGY_PROFILE (the W2-T4 hero look) and is intentionally
+ * separate. Locked by tests/gates/spell-color-unify-gates.test.js.
  */
+import { MAGIC } from '../theme/tokens.js';
+
 export const SPELL_TYPES = {
     fireball: {
-      color: '#FF4500',
-      trailColor: '#FF6347',
-      particleColor: '#FFD700',
-      glowColor: '#FF6600',
+      color: MAGIC.fire,
+      trailColor: MAGIC.fire,
+      particleColor: MAGIC.fire,
+      glowColor: MAGIC.fire,
       speed: 25,
       size: 1.2,
       damage: 50,
@@ -18,14 +28,14 @@ export const SPELL_TYPES = {
         type: 'burn',
         duration: 4,
         damagePerSecond: 8,
-        color: '#FF4500'
+        color: MAGIC.fire
       }
     },
     iceball: {
-      color: '#00BFFF',
-      trailColor: '#87CEEB',
-      particleColor: '#E0FFFF',
-      glowColor: '#00FFFF',
+      color: MAGIC.ice,
+      trailColor: MAGIC.ice,
+      particleColor: MAGIC.ice,
+      glowColor: MAGIC.ice,
       speed: 20,
       size: 1.0,
       damage: 40,
@@ -36,14 +46,14 @@ export const SPELL_TYPES = {
         duration: 5,
         slowPercent: 70,
         freezeChance: 0.2,
-        color: '#87CEEB'
+        color: MAGIC.ice
       }
     },
     lightning: {
-      color: '#FFD700',
-      trailColor: '#FFFF00',
-      particleColor: '#FFFFE0',
-      glowColor: '#FFFF00',
+      color: MAGIC.lightning,
+      trailColor: MAGIC.lightning,
+      particleColor: MAGIC.lightning,
+      glowColor: MAGIC.lightning,
       speed: 60,
       size: 0.8,
       damage: 75,
@@ -55,14 +65,14 @@ export const SPELL_TYPES = {
         chainRange: 8,
         chainDamageReduction: 0.3,
         stunDuration: 1,
-        color: '#FFFF00'
+        color: MAGIC.lightning
       }
     },
     arcane: {
-      color: '#9932CC',
-      trailColor: '#DA70D6',
-      particleColor: '#DDA0DD',
-      glowColor: '#FF00FF',
+      color: MAGIC.arcane,
+      trailColor: MAGIC.arcane,
+      particleColor: MAGIC.arcane,
+      glowColor: MAGIC.arcane,
       speed: 30,
       size: 1.1,
       damage: 60,
@@ -72,7 +82,7 @@ export const SPELL_TYPES = {
         type: 'pierce',
         pierceCount: 3,
         lifestealPercent: 15,
-        color: '#DA70D6'
+        color: MAGIC.arcane
       }
     }
   };

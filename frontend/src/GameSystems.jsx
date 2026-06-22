@@ -5,6 +5,7 @@ import { useGameStore } from './store/useGameStore';
 import { StatBar } from './ui/primitives/StatBar.jsx';
 import { Panel } from './ui/primitives/Panel.jsx';
 import { Button } from './ui/primitives/Button.jsx';
+import { MAGIC } from './theme/tokens.js';
 
 
 const GameSystemsContext = createContext();
@@ -129,11 +130,13 @@ export const GameSystemsProvider = ({ children }) => {
         </GameSystemsContext.Provider>
     );
 };
+// B2 spell-color unify: the wand/spell indicator hue derives from the canonical MAGIC
+// palette (theme/tokens), the one element-color SoT. Was legacy-drifted (#FF4500 etc.).
 export const SPELL_COLORS = {
-    fireball: '#FF4500',
-    iceball: '#00BFFF',
-    lightning: '#FFD700',
-    arcane: '#9932CC',
+    fireball: MAGIC.fire,
+    iceball: MAGIC.ice,
+    lightning: MAGIC.lightning,
+    arcane: MAGIC.arcane,
 };
 
 export const SPELL_MANA_COSTS = {
