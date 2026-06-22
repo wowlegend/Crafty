@@ -13,6 +13,7 @@ import { nearestLandmark } from './world/shrines.js';
 import { loreFor, themedDescription } from './game/questLore.js';
 import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
+import { questRewards } from './game/questRewards.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -22,15 +23,15 @@ export { LOOT_TABLES, CHEST_LOOT };
 export const QUEST_LIST = [
     // Beginner quests
     { id: 'first_blood', title: 'First Blood', icon: 'sword', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
-    { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1 },
-    { id: 'builder', title: 'Builder', icon: 'hammer', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1 },
-    { id: 'miner', title: 'Miner', icon: 'pickaxe', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1 },
+    { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1, itemReward: { item: 'Iron Sword', count: 1 } },
+    { id: 'builder', title: 'Builder', icon: 'hammer', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1, itemReward: { item: 'wood', count: 24 } },
+    { id: 'miner', title: 'Miner', icon: 'pickaxe', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1, itemReward: { item: 'Iron Helmet', count: 1 } },
     { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Cast 10 spells', type: 'spell_cast', target: 10, xpReward: 40, tier: 1 },
 
     // Intermediate quests
     { id: 'zombie_slayer', title: 'Zombie Slayer', icon: 'zombie', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
     { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
-    { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2 },
+    { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2, itemReward: { item: 'Iron Chestplate', count: 1 } },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
     { id: 'architect', title: 'Architect', icon: 'building', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
     // Survival-progression: surviving the night siege is now a tracked GOAL (ties the onboarding promise +
@@ -41,7 +42,7 @@ export const QUEST_LIST = [
     { id: 'ember_hunter', title: 'Ember Hunter', icon: 'skull', description: 'Defeat 10 emberhusks', type: 'kill_type', mobType: 'emberhusk', target: 10, xpReward: 130, tier: 2 },
 
     // Advanced quests
-    { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3 },
+    { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3, itemReward: { item: 'Diamond Sword', count: 1 } },
     { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Cast 100 spells', type: 'spell_cast', target: 100, xpReward: 250, tier: 3 },
     { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
     { id: 'world_builder', title: 'World Builder', icon: 'globe', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
@@ -233,11 +234,11 @@ export const useQuestSystem = () => {
 
     // Claim quest reward and add new quest
     const claimQuest = useCallback((questId) => {
-        let reward = 0;
+        let claimedQuest = null;
         setQuests(prev => {
             const updated = prev.map(q => {
                 if (q.id === questId && q.completed && !q.claimed) {
-                    reward = q.xpReward;
+                    claimedQuest = q;
                     return { ...q, claimed: true };
                 }
                 return q;
@@ -262,10 +263,19 @@ export const useQuestSystem = () => {
             return active;
         });
 
-        // Grant XP reward
-        if (reward > 0 && GameMethods.grantXP) {
-            GameMethods.grantXP(reward, 'Quest Reward');
-            addNotification(`+${reward} XP from quest reward!`, 'reward');
+        // B4: grant the FULL reward bundle (xp + coins + optional item), not just xp. questRewards
+        // normalizes the quest's reward fields (coins default to a fraction of xp; item optional).
+        if (claimedQuest) {
+            const r = questRewards(claimedQuest);
+            const store = useGameStore.getState();
+            if (r.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(r.xp, 'Quest Reward');
+            if (r.coins > 0 && store.addCoins) store.addCoins(r.coins);
+            if (r.item && store.addToInventory) store.addToInventory(r.item.item, r.item.count);
+            const parts = [];
+            if (r.xp > 0) parts.push(`+${r.xp} XP`);
+            if (r.coins > 0) parts.push(`+${r.coins} coins`);
+            if (r.item) parts.push(`+${r.item.count} ${r.item.item}`);
+            if (parts.length) addNotification(`Quest reward: ${parts.join(', ')}!`, 'reward');
         }
     }, [completedQuestIds, addNotification]);
 
