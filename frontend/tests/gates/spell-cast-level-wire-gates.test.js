@@ -27,7 +27,10 @@ describe('#51 S1 cast-wire (gameplay cast reads leveled damage)', () => {
 describe('#9 mana-wire (gameplay cast charges leveled manaCost)', () => {
   it('imports + uses resolveCastManaCost for the gameplay cast mana charge', () => {
     expect(ems).toMatch(/import \{ resolveCastBaseDamage, resolveCastManaCost \} from '\.\/utils\/spellCast'/);
-    expect(ems).toMatch(/const manaCost = resolveCastManaCost\(useGameStore\.getState\(\)\.getSpellStats, spellType, SPELL_MANA_COSTS\[spellType\]\)/);
+    // B7: resolveCastManaCost now feeds `baseManaCost`, which applyWandFocus reduces into the final
+    // `manaCost` (the leveled-cost wiring is preserved — this gate still fails closed if the leveled
+    // resolve is dropped for the static base).
+    expect(ems).toMatch(/const baseManaCost = resolveCastManaCost\(useGameStore\.getState\(\)\.getSpellStats, spellType, SPELL_MANA_COSTS\[spellType\]\)/);
   });
 
   it('feeds the resolved manaCost into the useMana spend (not a re-read static base)', () => {

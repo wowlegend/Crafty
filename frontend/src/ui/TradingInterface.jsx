@@ -4,6 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
+import { wandManaMultiplier } from '../game/wandFocus';
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
   const gameState = useGameStore(useShallow(state => ({
@@ -141,6 +142,10 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
               <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
                 <span className="text-accent block font-bold uppercase tracking-wider">Wands</span>
                 <span className="font-display text-text text-sm">{magic.wand || 0}</span>
+                {/* B7: a wand is a spell focus — surface the live mana-cost reduction so the trade has a payoff. */}
+                <span className="block text-spell-arcane text-[10px] font-bold tabular-nums">
+                  {`-${Math.round((1 - wandManaMultiplier(magic.wand || 0)) * 100)}% spell mana`}
+                </span>
               </div>
               <div className="col-span-4 border-t-chrome border-ink pt-2 mt-2 flex items-center justify-center gap-1.5">
                 <Icon name="coins" size={14} className="text-accent" />

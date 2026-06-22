@@ -8,6 +8,7 @@ import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
+import { applyWandFocus } from './game/wandFocus';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
@@ -167,7 +168,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       // W1 #9: charge the LEVELED mana cost via the pure resolveCastManaCost seam (mirrors the #51 damage
       // wire). getSpellStats mirrors the upgrade hook so L2/L3 upgrades aren't free; null-safe fallback to
       // the static SPELL_MANA_COSTS base for unmapped/pre-mount (byte-identical at L1).
-      const manaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
+      // B7: each owned wand is a SPELL FOCUS — shaves a capped % off the resolved cost (closes the
+      // ore->crystals->wand economy; pure applyWandFocus, floored at 1). 0 wands == byte-identical.
+      const baseManaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
+      const manaCost = applyWandFocus(baseManaCost, useGameStore.getState().inventory?.magic?.wand);
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;
