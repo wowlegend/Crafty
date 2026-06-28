@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { useGameSounds } from '../SoundManager';
 import { lowHealthIntensity, heartbeatPeriod } from '../game/lowHealth';
@@ -14,16 +14,21 @@ export default function HeartbeatAudio() {
   const health = useGameStore((s) => s.playerHealth);
   const maxHealth = useGameStore((s) => s.maxHealth);
   const { playHeartbeat } = useGameSounds();
+  // useGameSounds returns a fresh object each render, so playHeartbeat's identity churns every render.
+  // Read it through a ref so the interval effect can depend on [bucket] ALONE (re-arm only on a real
+  // danger-bucket change, the quantization's intent) instead of restarting on every HP tick.
+  const playRef = useRef(playHeartbeat);
+  playRef.current = playHeartbeat;
   const intensity = lowHealthIntensity(health, maxHealth);
   const bucket = intensity > 0 ? Math.ceil(intensity * 4) : 0; // 0..4
 
   useEffect(() => {
-    if (bucket <= 0 || !playHeartbeat) return undefined;
+    if (bucket <= 0) return undefined;
     const period = heartbeatPeriod(bucket / 4); // representative intensity for this bucket
-    playHeartbeat(); // an immediate beat on entering / escalating danger
-    const id = setInterval(() => playHeartbeat(), period * 1000);
+    playRef.current?.(); // an immediate beat on entering / escalating danger
+    const id = setInterval(() => playRef.current?.(), period * 1000);
     return () => clearInterval(id);
-  }, [bucket, playHeartbeat]);
+  }, [bucket]);
 
   return null;
 }
