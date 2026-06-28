@@ -51,6 +51,24 @@
   accounts, real money, legal) → the loop SURFACES a scope-confirm before standing up netcode or payments; ALL other
   single-player / content / polish / quality work is full loop authority. Taste calls the loop makes go to
   KEVIN-REVIEW as FYI, not as blocking questions.
+- **2026-06-28 MANDATE = POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT (Kevin verbatim: "keep going autonomously to fix/implement all, dont miss anything"; "keep going"):**
+  the W1–W4 rebuild + Phase B are COMPLETE. An exhaustive multi-agent status audit ran 2026-06-28
+  (`docs/superpowers/AUDIT-2026-06-28-full-status.md`) — answers: completion NO (~70%; 159 items: 109 verified / 18 partial /
+  9 not-done / 16 parked / 7 superseded), code-review MOSTLY (fresh all-file pass; 3 HIGH all fixed), E2E/visual NO (the
+  weakest axis — now being closed). The loop's job: drive the audit's gap list + the tracked task queue (recorded in
+  ACTIVE_PLAN "2026-06-28 CAMPAIGN QUEUE") to completion, then continue the master plan. **⚠️ THE AUDIT IS PARTLY STALE —
+  VERIFY-BEFORE-ASSERT EVERY task against LIVE code (grep/Read the cited file:line) BEFORE fixing.** Empirical: task #1
+  ("boss reward = junk") was a FALSE ALARM — the items were registered + rarity resolved; a blind "fix" would have been
+  wrong. The audit also wrongly claimed @playwright/test was installed. Treat every audit finding as a T3 hypothesis.
+  **NEW DECISIONS OF RECORD (Kevin 2026-06-28, do NOT relitigate):** (1) control scheme = **Option A** with **F = cast spell**
+  (magic is the marquee feature), **T = melee** (shipped `74fd858`); the A enhancements (verb-telegraph reticle, hold-Alt
+  force-build, persistent control legend, full key-rebinding) are AUTHORIZED loop work; the touch Aspect-verb radial wheel is
+  DEFERRED to a Kevin playtest. (2) **bloom luminanceThreshold 0.65 (glowier) is INTENDED** — it supersedes the old ≥0.85
+  spec; do NOT "fix" it; reconcile the stale spec note instead. (3) **grantXP full-heal on level-up is INTENDED** — leave it.
+  (4) **E2E = `@playwright/test` gameplay-flow specs (`npm run test:e2e`, tests/e2e/) on the dev test-bridge + the headless-safe
+  `forcePlay` hook**, kept SEPARATE from the puppeteer visual gate; design-of-record `specs/2026-06-28-crafty-control-scheme-design.md`.
+  Execution posture: CONTROLLER-SEQUENTIAL (TDD→gate→commit→push per item) for code — NOT fan-out code-editors (shared god-files
+  rate-limit + conflict, the logged M-HUD lesson); use background Workflows for read-only analysis / adversarial verification.
 - **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` (incl. the 2026-06-15
   mega-directive set: `plans/2026-06-15-crafty-world-purpose-sota.md` [S5..S10 ladder + direction], `research/2026-06-15-crafty-codebase-reality-audit.md`
   [ranked file:line P0-debt backlog of record], `research/2026-06-15-crafty-agentic-e2e-testing.md` [E2E roadmap]) →

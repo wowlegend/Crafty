@@ -4,6 +4,27 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
+## 🎮 MODE (2026-06-28): POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT — drive the audit gap-list + campaign queue to done (Kevin: "fix/implement all, dont miss anything" + "keep going")
+
+**LIVE CURSOR (2026-06-28):** The W1–W4 rebuild + Phase B are COMPLETE. A multi-agent status audit shipped (`docs/superpowers/AUDIT-2026-06-28-full-status.md`): completion ~70% · code-review MOSTLY (fresh all-file pass) · E2E/visual NO (now closing). **Shipped + pushed this session:** 3 confirmed-HIGH bugs (HUD health-bar `7b6e7b7`, melee id+position `c01e244`, block-debris rapier-2.2 `a36384e`); a Playwright gameplay-flow E2E foundation `9b94040` (5/5 green, `npm run test:e2e`); F=cast / T=melee binding `74fd858`; win-state persistence `114e5a6`; iceball freeze `91fbc38`; audit + control-scheme-design docs `811c776`. HEAD `91fbc38`, origin synced, 1744 unit / 5 e2e / 21 visual / build + eslint green.
+
+**⚠️ THE AUDIT IS PARTLY STALE — VERIFY EACH ITEM vs LIVE code before fixing.** Task #1 ("boss reward=junk") was a verified FALSE ALARM (items registered, rarity resolves). Treat every audit finding as a T3 hypothesis.
+
+**2026-06-28 CAMPAIGN QUEUE (the durable task list; harness TaskList mirrors it in-session):**
+- ✅ #1 boss win-reward — NON-ISSUE (stale finding; no change).
+- ✅ #2 win-state gameWon persistence (`114e5a6`).
+- ✅ #3 iceball freeze/slow secondary (`91fbc38`).
+- ⏳ #4 TradingInterface stale-closure absolute-set trade bug → functional zustand updater.
+- ⏳ #5 bossSystem: clear the 3 uncleared setTimeouts on unmount (side-effects already idempotency-latched).
+- ⏳ #6 HUD compass: stop the per-frame `innerHTML` rebuild (node-pool / keyed diff).
+- ⏳ #7 per-frame allocation hoists (Components Player, GameScene WeatherSystem/occlusion, Ocean, MobModel traverse, OptimizedGrassSystem).
+- ⏳ #8 affixes.js — wire into loot/equip OR remove dead (decision).
+- ⏳ #9 control-scheme A enhancements — verb-telegraph reticle, hold-Alt force-build, persistent legend, key rebinding (FEEL → LIVE-LOOK + Kevin playtest).
+- ⏳ #10 remaining MEDIUM/LOW code-review findings sweep (small gated sub-batches).
+- 🚩 #11 SURFACE-only (do NOT auto-change): de-monolith (Components 1341 + SimplifiedNPCSystem 933 — and CLAUDE.md OVER-CLAIMS "2 god-files/NPC de-god-filed" → correct the doc); full zh-CN i18n (#73, big id/display-decouple refactor); touch Aspect-verb wheel (Kevin DEFERRED to playtest); optimistic place/mine feedback. **CONFIRMED-INTENDED (do NOT change): bloom 0.65 glowier; grantXP full-heal on level-up** — reconcile the stale visual-spec note instead.
+
+After the queue: continue SOTA-INITIATIVE master-plan work. Per-item discipline: verify-vs-live → TDD red → impl → chained gate (`cd frontend && npx vitest run && npm run build && npx eslint src`) → commit (no AI footer; no `git add -A`) → push `main` → update this cursor. S4 (multiplayer/monetization) stays Kevin-gated. — Superseded ↓.
+
 ## 🎮 MODE: COMPREHENSIVE SOTA REBUILD — executing the W1–W4 plans via subagent-driven-development (Kevin redirection 2026-06-17)
 
 **WHY THE REBUILD:** Kevin reviewed the LIVE game on 2026-06-17 and found the prior "SOTA" work was largely **INVISIBLE** — green capture gates + "verify-done / code-exists" verdicts measured code-PRESENCE, not the lived daytime view (~309 commits since 06-13, but only ~21 capture frames changed — clustered in UI panels / menus / night — so the only always-on visible change was the grass). **Root lesson (load-bearing): a green pinned-capture gate is NECESSARY, NOT SUFFICIENT → EVERY visible slice must be LIVE-LOOK validated (drive the real game, screenshot, LOOK) + `verification-before-completion`.** See [[feedback_headless_gate_live_probe]] + `project_crafty.md` (2026-06-17 block).
