@@ -710,6 +710,11 @@ export const useGameStore = create((set, get) => ({
     // player enters play (Components pointer-lock OR touch enterPlay) and never unset (pre-game vs mid-game).
     gameStarted: false,
     markGameStarted: () => set((state) => (state.gameStarted ? {} : { gameStarted: true })),
+    // S9c WIN-STATE (persisted): set true the first time the Blight-Heart (Shadow Dragon) is slain,
+    // so the victory survives a reload (the VictoryOverlay's bossDefeated is transient useState) and
+    // the boss does not auto-respawn into a beaten game. One-way latch; serialized in game_state.
+    gameWon: false,
+    markGameWon: () => set((state) => (state.gameWon ? {} : { gameWon: true })),
     damageFlash: false,
     screenShake: 0,
     lastHitDir: null, // {angle,t} of the most recent directional hit (combat-legibility cue); null until a sourced hit
@@ -852,6 +857,7 @@ export const useGameStore = create((set, get) => ({
             // with its gameTime and would not self-correct until the next half-cycle crossing.
             const isDay = isDayAtUnit(gameTime);
             const achievements = saveData.game_state?.achievements || state.achievements;
+            const gameWon = saveData.game_state?.gameWon ?? state.gameWon; // S9c: the win persists across reload
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
             const prog = saveData.progression;
@@ -914,6 +920,7 @@ export const useGameStore = create((set, get) => ({
                 isDay,
                 gameTime,
                 achievements,
+                gameWon,
                 level,
                 currentXP,
                 totalXP,

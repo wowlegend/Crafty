@@ -24,7 +24,8 @@ export const useBossSystem = (playerLevel) => {
     // NOT re-fire as the player MOVES, so a poll is required to detect arrival. Transient store reads ->
     // Game-Loop-Isolation. The DEV forceBossSpawn (boss-closeup fixture) is a separate effect, untouched.
     useEffect(() => {
-        if (playerLevel < 5 || bossSpawned.current || bossDefeated) return;
+        // S9c: a persisted win (gameWon) keeps the slain dragon from auto-respawning into a beaten game.
+        if (playerLevel < 5 || bossSpawned.current || bossDefeated || useGameStore.getState().gameWon) return;
         const lair = blightHeartSite();
         const interval = setInterval(() => {
             if (bossSpawned.current) return;
@@ -94,6 +95,7 @@ export const useBossSystem = (playerLevel) => {
                 // hitstop ('boss' tier) + the bloom-spike. FEEL/timing -> Kevin #50.
                 useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss });
                 if (store.triggerBloomSpike) store.triggerBloomSpike(450);
+                if (store.markGameWon) store.markGameWon(); // S9c: latch the persisted win-state (end of the once-only defeat block)
             }
             return newHealth;
         });

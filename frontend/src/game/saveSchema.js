@@ -52,6 +52,7 @@ export function buildSaveData(state, { position } = {}) {
       isDay: state.isDay,
       gameTime: state.gameTime,
       achievements: state.achievements,
+      gameWon: state.gameWon, // S9c: the win-state survives a reload
     },
   };
 }
