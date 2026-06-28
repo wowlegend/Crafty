@@ -74,6 +74,7 @@ const BLOOM_BASE = 0.95;
 const BLOOM_PEAK = 2.4;
 // reused per-frame scratch (avoid allocating inside the audio-occlusion + weather-instancing useFrames)
 const _audioDir = new THREE.Vector3();
+const _rayStart = new THREE.Vector3(); // audio-occlusion ray walk scratch (was new'd up to 5x/call/frame)
 const _weatherDummy = new THREE.Object3D();
 const BloomSpikeDriver = () => {
   const ctx = useContext(EffectComposerContext);
@@ -171,7 +172,7 @@ const SpatialAudioController = () => {
     };
 
     while (currentDist < maxDist && intersections < 5) {
-      const rayStart = new THREE.Vector3().addScaledVector(dir, currentDist).add(start);
+      const rayStart = _rayStart.copy(start).addScaledVector(dir, currentDist); // == start + dir*currentDist, reused scratch
       const remainingDist = maxDist - currentDist;
       
       if (remainingDist <= 0.02) break;
