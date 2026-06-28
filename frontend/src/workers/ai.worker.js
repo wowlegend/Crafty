@@ -260,7 +260,7 @@ self.onmessage = function(e) {
           if (distToPlayer2D < LEAP_RANGE && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
             pendingAttack = { id, type: 'leap', damage: 8, position: [x, y, z] };
           } else if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
-            pendingAttack = { damage, type: 'melee' };
+            pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         } else {
           // Standard Melee (Zombie & Bosses)
@@ -268,7 +268,7 @@ self.onmessage = function(e) {
           targetX = playerX;
           targetZ = playerZ;
           if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
-            pendingAttack = { damage, type: 'melee' };
+            pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         }
 

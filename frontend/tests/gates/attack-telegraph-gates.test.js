@@ -28,7 +28,11 @@ describe('attack-telegraph gates (M2 #4)', () => {
     // the three attack sites now stage a pendingAttack instead of striking + stamping cooldown inline
     expect(worker).toMatch(/pendingAttack = \{ id, type: 'projectile'/);
     expect(worker).toMatch(/pendingAttack = \{ id, type: 'leap'/);
-    expect(worker).toMatch(/pendingAttack = \{ damage, type: 'melee' \}/);
+    // 2026-06-28 audit (HIGH): melee MUST carry id + position like projectile/leap, or the HUD
+    // threat-direction arrow never fires for melee and the hit SFX plays at world origin (0,0,0).
+    // (This assertion previously pinned the BUGGY `{ damage, type: 'melee' }` shape, locking the bug in.)
+    expect(worker).toMatch(/pendingAttack = \{ id, type: 'melee', damage, position: \[x, y, z\] \}/);
+    expect(worker).not.toMatch(/pendingAttack = \{ damage, type: 'melee' \}/);
     // the OLD instant-strike form (push + same-tick lastAttackTime) is gone from those sites
     expect(worker.includes("attacks.push({ id, type: 'projectile'")).toBe(false);
     expect(worker.includes("attacks.push({ id, type: 'leap'")).toBe(false);
