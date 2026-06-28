@@ -11,10 +11,19 @@ export const BlockParticleSystem = ({ worker }) => {
     const particleIndex = useRef(0);
     const ages = useRef(new Float32Array(MAX_PARTICLES).fill(999));
     
-    // Initial hidden state
-    const positions = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, -1000, 0]), []);
-    const rotations = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, 0, 0]), []);
-    const scales = useMemo(() => Array.from({ length: MAX_PARTICLES }, () => [0, 0, 0]), []);
+    // rapier 2.2: InstancedRigidBodies takes a single `instances` prop (the legacy
+    // positions/rotations/scales array props were removed -> passing them created ZERO bodies).
+    // Start each body parked far below the world at FULL scale (the old [0,0,0] scale meant debris
+    // was invisible even when bodies existed); spawning teleports it in, ageing teleports it back.
+    const instances = useMemo(
+        () => Array.from({ length: MAX_PARTICLES }, (_, i) => ({
+            key: i,
+            position: [0, -1000, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+        })),
+        []
+    );
     const tempColor = useMemo(() => new THREE.Color(), []);
 
     useEffect(() => {
@@ -88,9 +97,7 @@ export const BlockParticleSystem = ({ worker }) => {
     return (
         <InstancedRigidBodies
             ref={api}
-            positions={positions}
-            rotations={rotations}
-            scales={scales}
+            instances={instances}
             colliders="cuboid"
             restitution={0.5}
             friction={0.8}
