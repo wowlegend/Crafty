@@ -275,9 +275,11 @@ export function MenuSystem({
                   <span>•</span>
                   <span>Space Jump</span>
                   <span>•</span>
-                  <span>F Attack</span>
+                  <span>F Cast</span>
                   <span>•</span>
                   <span>1-4 Spells</span>
+                  <span>•</span>
+                  <span>T Melee</span>
                   <span>•</span>
                   <span>Q Claim Quest</span>
                 </motion.div>

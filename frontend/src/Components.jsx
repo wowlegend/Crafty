@@ -390,8 +390,12 @@ export const Player = ({ isWorldBuilt }) => {
         if (!(useGameStore.getState().unlockedTalents?.['elemancer_imbue'] > 0)) notifyDenied('aspect-locked', 'ELEMANCER');
       }
 
+      // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
+      // selected spell; melee moves to T. Both gate on active+alive like every other live verb.
       if (e.code === 'KeyF') {
-        // KEVIN-FIX C2: was fully ungated — fired even dead/in menus.
+        if (getInput().active && useGameStore.getState().isAlive) triggerSpellCast();
+      }
+      if (e.code === 'KeyT') {
         if (getInput().active && useGameStore.getState().isAlive) triggerMeleeAttack();
       }
     };
