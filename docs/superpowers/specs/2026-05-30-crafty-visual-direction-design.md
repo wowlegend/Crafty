@@ -140,7 +140,7 @@ S0's root cause was a test that *cannot fail* on visuals/perf. Every S1 criterio
 
 1. **AO is live** — assert AO pass present in the composer (render-probe), and a visual-regression delta vs a no-AO baseline.
 2. **Color correct** — texture sRGB decode present; mean saturation/contrast within target band vs reference (catches the washout regression).
-3. **Bloom disciplined** — diffuse terrain does not bloom (visual-regression at a known frame); threshold ≥ 0.85.
+3. **Bloom disciplined** — diffuse terrain does not bloom (visual-regression at a known frame); ~~threshold ≥ 0.85~~. **SUPERSEDED (2026-06-17 glowier-grade reversal; Kevin re-confirmed 2026-06-28):** the restrained-NEUTRAL grade lock was REVERSED — glowier/warmer is the intended look. `GameScene.jsx luminanceThreshold = 0.65` is INTENDED, not a violation; do NOT "raise it to 0.85". This S1 rule reflects the pre-reversal direction.
 4. **One UI language** — no `minecraft-bevel` + `glass` + `neon` coexisting; UI built only from design tokens (CSS lint).
 5. **No emoji as brand/mascot/HUD** (grep gate).
 6. **Visual-regression suite** — reference screenshots at: menu, explore-day, explore-night, dusk-danger, boss-obsidian; diff on every change.
