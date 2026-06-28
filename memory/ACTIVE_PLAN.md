@@ -16,11 +16,11 @@
 - ✅ #3 iceball freeze/slow secondary (`91fbc38`).
 - ✅ #4 TradingInterface stale-closure → subtractions now read fresh `prev` (block + crystal trades); trade-fresh-prev-gates.
 - ✅ #5 bossSystem: 3 notification timeouts now tracked (notifTimers ref + scheduleNotifClear) + cleared on unmount; boss-notif-timer-gates.
-- ⏳ #6 HUD compass: stop the per-frame `innerHTML` rebuild (node-pool / keyed diff).
+- ⏳ #6 HUD compass innerHTML — DEFERRED to a planned slice: it's a render-path hot-loop rewrite that must PRESERVE CSS anim (the boss marker uses animate-pulse/animate-ping; per-frame innerHTML restarts them — a real correctness bug, not just perf), and it's headless-blind (compass renders once in capture; needs a live camera). Per charter = plan-doc + hud-probe LIVE-LOOK, NOT a safe blind 3am rewrite of a core HUD. Pick up with a probe-verified tick or surface for Kevin's eye.
 - ⏳ #7 per-frame allocation hoists (Components Player, GameScene WeatherSystem/occlusion, Ocean, MobModel traverse, OptimizedGrassSystem).
 - ⏳ #8 affixes.js — wire into loot/equip OR remove dead (decision).
 - ⏳ #9 control-scheme A enhancements — verb-telegraph reticle, hold-Alt force-build, persistent legend, key rebinding (FEEL → LIVE-LOOK + Kevin playtest).
-- ⏳ #10 remaining MEDIUM/LOW code-review findings sweep (small gated sub-batches).
+- ⏳ #10 remaining MEDIUM/LOW sweep (small gated sub-batches) — IN PROGRESS: ✓ proc-music mute lock restored (the combat-scaling arp ramp now multiplies by PROC_MUSIC_GAIN, so Kevin's =0 mute holds; proc-music-mute-gates). More to sweep: terrain-worker UV transpose + linear-vs-sRGB debris color, HeartbeatAudio unmemoized ctx, playerRender BufferAttribute churn, NaN/clamp guards, dispose/timer cleanups.
 - 🚩 #11 SURFACE-only (do NOT auto-change): de-monolith (Components 1341 + SimplifiedNPCSystem 933 — and CLAUDE.md OVER-CLAIMS "2 god-files/NPC de-god-filed" → correct the doc); full zh-CN i18n (#73, big id/display-decouple refactor); touch Aspect-verb wheel (Kevin DEFERRED to playtest); optimistic place/mine feedback. **CONFIRMED-INTENDED (do NOT change): bloom 0.65 glowier; grantXP full-heal on level-up** — reconcile the stale visual-spec note instead.
 
 After the queue: continue SOTA-INITIATIVE master-plan work. Per-item discipline: verify-vs-live → TDD red → impl → chained gate (`cd frontend && npx vitest run && npm run build && npx eslint src`) → commit (no AI footer; no `git add -A`) → push `main` → update this cursor. S4 (multiplayer/monetization) stays Kevin-gated. — Superseded ↓.

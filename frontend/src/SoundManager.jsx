@@ -401,7 +401,7 @@ export const SoundProvider = ({ children }) => {
           const now = audioContext.current.currentTime;
           arpeggiatorRef.current.masterGain.gain.cancelScheduledValues(now);
           arpeggiatorRef.current.masterGain.gain.setValueAtTime(arpeggiatorRef.current.masterGain.gain.value, now);
-          arpeggiatorRef.current.masterGain.gain.linearRampToValueAtTime(0.75 * volume, now + 0.5);
+          arpeggiatorRef.current.masterGain.gain.linearRampToValueAtTime(0.75 * volume * PROC_MUSIC_GAIN, now + 0.5);
         } catch(e) {}
       }
     } else {
