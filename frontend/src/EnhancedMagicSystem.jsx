@@ -9,6 +9,7 @@ import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { applyWandFocus } from './game/wandFocus';
+import { freezeSlowMult } from './game/freeze';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
@@ -347,8 +348,13 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
                 case 'burn':
                   applyBurnEffect(hitMob.id, sec.duration, sec.damagePerSecond);
                   break;
-                case 'freeze':
+                case 'freeze': {
+                  // iceball slow/freeze: stamp a temporary slow on the hit mob via a channel the
+                  // zone system won't reset (spellSlowMult/Until); the mob-speed line consumes it.
+                  hitMob.spellSlowMult = freezeSlowMult(sec.slowPercent, Math.random(), sec.freezeChance);
+                  hitMob.spellSlowUntil = performance.now() + (sec.duration || 0) * 1000;
                   break;
+                }
                 case 'chain':
                   applyChainLightning(
                     projectile.position,

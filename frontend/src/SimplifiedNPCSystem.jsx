@@ -25,6 +25,7 @@ import { stepEnemyProjectiles } from './game/enemyProjectiles.js';
 import { getItemRarity } from './data/items.js';
 import { rarityBeam } from './game/lootJuice.js';
 import { emitMobKill } from './game/mobKillBus.js';
+import { spellSlowFactor } from './game/freeze.js';
 import { DEATH_DISSOLVE_MS } from './game/deathFx.js';
 import { HITSTOP } from './game/trauma.js';
 import { MobModel } from './render/MobModel';
@@ -457,7 +458,7 @@ const AIWorkerSystem = () => {
         damage: e.damage,
         type: e.type,
         moveTimer: e.moveTimer,
-        speed: e.speed * (e.zoneSlowMult || 1), // S2-B4-M4: frozen zones slow (the ONE consumer — gate-locked)
+        speed: e.speed * (e.zoneSlowMult || 1) * spellSlowFactor(e, performance.now()), // zone slow + iceball spell-freeze (separate channels)
         rotation: e.rotation,
         health: e.health,
         maxHealth: e.maxHealth,
