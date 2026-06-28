@@ -18,6 +18,15 @@ export const useBossSystem = (playerLevel) => {
     const bossSpawned = useRef(false);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
+    // Track the boss-notification auto-clear timeouts so they can't fire setBossNotification AFTER unmount
+    // (the audit's setState-after-unmount leak). Schedule via the helper; the unmount effect clears all.
+    const notifTimers = useRef(new Set());
+    const scheduleNotifClear = useCallback((ms) => {
+        const t = setTimeout(() => { setBossNotification(null); notifTimers.current.delete(t); }, ms);
+        notifTimers.current.add(t);
+    }, []);
+    useEffect(() => () => { for (const t of notifTimers.current) clearTimeout(t); notifTimers.current.clear(); }, []);
+
     // S9: the Shadow Dragon now AWAITS at the fixed Blight Heart lair (NOT a level-5 ambush at the player).
     // Once you are strong enough (level 5), poll for ARRIVAL at the lair (~24 blocks) -- the dragon awakens
     // when you REACH the foreshadowed, compass-marked destination. A useEffect keyed on [playerLevel] does
@@ -34,7 +43,7 @@ export const useBossSystem = (playerLevel) => {
             if (Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) > 24) return; // not at the lair yet
             bossSpawned.current = true;
             setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]');
-            setTimeout(() => setBossNotification(null), 6000);
+            scheduleNotifClear(6000);
             let y = 35; // spawn high up over the lair
             const getGy = useGameStore.getState().getMobGroundLevel;
             if (getGy) {
@@ -61,7 +70,7 @@ export const useBossSystem = (playerLevel) => {
                     }
                     if (alertMsg) {
                         setBossNotification(alertMsg);
-                        setTimeout(() => setBossNotification(null), 5000);
+                        scheduleNotifClear(5000);
                     }
                 }
                 break;
@@ -80,7 +89,7 @@ export const useBossSystem = (playerLevel) => {
                 setBossActive(false);
                 setBossDefeated(true);
                 setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
-                setTimeout(() => setBossNotification(null), 6000);
+                scheduleNotifClear(6000);
                 if (GameMethods.grantXP) {
                     GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!');
                 }
