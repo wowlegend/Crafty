@@ -545,7 +545,7 @@ export function HUD({
             <DayPhaseDial />
 
             <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
-              <PlayerHealthBar health={gameSystems.health} maxHealth={gameSystems.maxHealth} />
+              <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               {/* W3 M-HUD.9: the hunger bar is a SURVIVAL-mode mechanic — in creative it pinned a static
                   100/100 pill that read as a duplicate stat. Gate it on survival so non-survival stacks clean. */}
