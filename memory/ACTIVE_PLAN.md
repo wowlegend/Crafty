@@ -14,7 +14,7 @@
 - ✅ #1 boss win-reward — NON-ISSUE (stale finding; no change).
 - ✅ #2 win-state gameWon persistence (`114e5a6`).
 - ✅ #3 iceball freeze/slow secondary (`91fbc38`).
-- ⏳ #4 TradingInterface stale-closure absolute-set trade bug → functional zustand updater.
+- ✅ #4 TradingInterface stale-closure → subtractions now read fresh `prev` (block + crystal trades); trade-fresh-prev-gates.
 - ⏳ #5 bossSystem: clear the 3 uncleared setTimeouts on unmount (side-effects already idempotency-latched).
 - ⏳ #6 HUD compass: stop the per-frame `innerHTML` rebuild (node-pool / keyed diff).
 - ⏳ #7 per-frame allocation hoists (Components Player, GameScene WeatherSystem/occlusion, Ocean, MobModel traverse, OptimizedGrassSystem).

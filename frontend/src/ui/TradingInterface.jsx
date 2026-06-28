@@ -30,11 +30,13 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
     // M5 #15 fix: route the bought item into `blocks` (the flat bucket the Inventory panel renders) --
     // it used to land in `magic`, which NO panel renders, so the purchase vanished (lost-buy bug).
+    // Subtract from the FRESH prev (not the render-snapshot currentCount) so a concurrent
+    // inventory change between render and click isn't clobbered by an absolute set.
     gameState.setInventory(prev => ({
       ...prev,
       blocks: {
         ...prev.blocks,
-        [blockType]: currentCount - required,
+        [blockType]: Math.max(0, (prev.blocks?.[blockType] || 0) - required),
         [resultItem]: (prev.blocks[resultItem] || 0) + resultCount
       }
     }));
@@ -51,11 +53,13 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
     // M5 #15 fix: spend the crystal currency from `magic` but route the bought item into `blocks` (the
     // flat bucket the Inventory renders) so it is visible + usable (was landing in unrendered `magic`).
+    // Spend from the FRESH prev (not the render-snapshot currentCrystals) — absolute-set on a stale
+    // snapshot would clobber a concurrent crystal change.
     gameState.setInventory(prev => ({
       ...prev,
       magic: {
         ...prev.magic,
-        crystals: currentCrystals - requiredCrystals
+        crystals: Math.max(0, (prev.magic?.crystals || 0) - requiredCrystals)
       },
       blocks: {
         ...prev.blocks,
