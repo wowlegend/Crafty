@@ -276,6 +276,13 @@ function GameApp({ experienceSystem }) {
         document.body.requestPointerLock().catch(() => {});
       }
     });
+    // `forcePlay` is the deterministic, headless-safe play-entry for E2E: it flips ONLY the
+    // active gate (the menu hides on active; the in-game HUD mounts on active+alive+worldBuilt)
+    // WITHOUT requestPointerLock (whose headless rejection resets active) and WITHOUT
+    // markGameStarted (which would arm the ESC-unlock->Settings path and cover the HUD).
+    registerTestHook('forcePlay', () => {
+      setActive(true);
+    });
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded

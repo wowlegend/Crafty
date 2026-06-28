@@ -1,2 +1,7 @@
 # Visual-regression run artifacts (transient; baselines under tests/visual/baseline/ ARE committed)
 tests/visual/current/
+
+# Playwright E2E artifacts (transient)
+test-results/
+playwright-report/
+playwright/.cache/

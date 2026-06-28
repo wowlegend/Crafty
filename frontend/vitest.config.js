@@ -8,7 +8,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.{js,jsx}', 'src/**/*.test.{js,jsx}'],
-    exclude: [...configDefaults.exclude, 'tests/visual/**'],
+    // tests/e2e/** are Playwright specs (*.spec.js, import @playwright/test) — never run by vitest
+    exclude: [...configDefaults.exclude, 'tests/visual/**', 'tests/e2e/**'],
     testTimeout: 20000,
   },
 });
