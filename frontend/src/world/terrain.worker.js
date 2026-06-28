@@ -6,6 +6,7 @@ import { pineShape, acaciaShape, swampShape, jungleShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { cornerAO } from './vertexAO.js';
 import { oreCodeFor } from './oreGen.js';
+import { linearRgbToHex } from '../game/colorHex.js';
 import { grassTops } from './grassField.js';
 
 // Constants
@@ -125,7 +126,8 @@ self.onmessage = function(e) {
             x: cx * CHUNK_SIZE + x,
             y,
             z: cz * CHUNK_SIZE + z,
-            color: `#${Math.round(colorArray[0]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[1]*255).toString(16).padStart(2,'0')}${Math.round(colorArray[2]*255).toString(16).padStart(2,'0')}`,
+            color: linearRgbToHex(colorArray), // BLOCK_COLORS are LINEAR; encode to sRGB so debris isn't double-darkened
+
             blockType: prevBlock
           }
         });
