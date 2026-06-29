@@ -7,7 +7,8 @@ import { dirname, resolve } from 'path';
 // bank (synthVoices.test) AND is actually triggered on the aggro edge here, cooldown-guarded. A future
 // refactor of the worker-update loop that drops the wire turns this red instead of silently muting mobs.
 const __dir = dirname(fileURLToPath(import.meta.url));
-const npc = readFileSync(resolve(__dir, '../../src/SimplifiedNPCSystem.jsx'), 'utf8');
+const npc = readFileSync(resolve(__dir, '../../src/SimplifiedNPCSystem.jsx'), 'utf8')
+  + readFileSync(resolve(__dir, '../../src/systems/AIWorkerSystem.jsx'), 'utf8'); // A1.4: aggro-snarl moved to AIWorkerSystem
 
 describe('mob aggro-snarl audio is wired (enemy-presence cue)', () => {
   it('fires aggroGrowl on the false->true isAggro edge, cooldown-guarded', () => {

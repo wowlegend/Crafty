@@ -14,7 +14,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // round-trip (SNS mobsData -> worker -> updates -> readback), the channel the render (slice 2) reads.
 describe('attack-telegraph gates (M2 #4)', () => {
   const worker = read('workers/ai.worker.js');
-  const npc = read('SimplifiedNPCSystem.jsx');
+  const npc = read('SimplifiedNPCSystem.jsx') + read('systems/AIWorkerSystem.jsx'); // A1.4: worker tick moved to AIWorkerSystem
 
   it('the worker mirror uses the same WINDUP_MS as the canonical pure module', () => {
     // sanity: the pure machine is the source of truth and is sane

@@ -7,7 +7,7 @@ const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
 describe('M2b static gates', () => {
   it('mob AI worker tick is capture-gated (deterministic closeup)', () => {
-    const src = read('src/SimplifiedNPCSystem.jsx');
+    const src = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/AIWorkerSystem.jsx'); // A1.4: worker tick moved
     // The worker-tick useFrame must early-return in capture mode BEFORE it posts the
     // AI TICK to the worker, so a spawned closeup mob never moves. Asserted as two
     // length-independent facts (guard exists + precedes the post) rather than a

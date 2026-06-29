@@ -35,7 +35,7 @@ describe('elemancer no-re-mesh gate', () => {
 describe('elemancer zone-slow wiring locks', () => {
   const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
   it('the mobsData speed line consumes zoneSlowMult (the ONE consumer)', () => {
-    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/e\.speed \* \(e\.zoneSlowMult \|\| 1\)/);
+    expect(read('SimplifiedNPCSystem.jsx') + read('systems/AIWorkerSystem.jsx')).toMatch(/e\.speed \* \(e\.zoneSlowMult \|\| 1\)/); // A1.4
   });
   it('the dead mobSlowEffects plumbing stays dead (no resurrection)', () => {
     expect(read('EnhancedMagicSystem.jsx')).not.toMatch(/mobSlowEffects|mobStunEffects/);

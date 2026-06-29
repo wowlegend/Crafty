@@ -8,7 +8,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('npc ambient routine wiring', () => {
-  const npc = strip(read('SimplifiedNPCSystem.jsx'));
+  const npc = strip(read('SimplifiedNPCSystem.jsx') + read('systems/AIWorkerSystem.jsx')); // A1.4: ambient routine moved
   it('isNPC entities follow routinePosition (patrol by day, retreat at night)', () => {
     expect(npc).toMatch(/routinePosition/);
   });
