@@ -4,7 +4,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const gameScene = readFileSync(path.resolve(__dirname, '../../src/GameScene.jsx'), 'utf8');
+const gameScene = readFileSync(path.resolve(__dirname, '../../src/GameScene.jsx'), 'utf8')
+  + readFileSync(path.resolve(__dirname, '../../src/render/SpatialAudioController.jsx'), 'utf8'); // A2.6: SpatialAudioController moved -> src/render/
 const soundMgr = readFileSync(path.resolve(__dirname, '../../src/SoundManager.jsx'), 'utf8');
 
 // W1 audio fix: spatial SFX (THREE.AudioListener.gain) must route through the master-bus limiter,

@@ -19,7 +19,7 @@ describe('M1 bug cluster', () => {
   });
 
   it('playSpatialSound applies +/-7% pitch jitter (machine-gun-fatigue fix)', () => {
-    const g = read('src/GameScene.jsx');
+    const g = read('src/GameScene.jsx') + read('src/render/SpatialAudioController.jsx'); // A2.6: playSpatialSound moved -> src/render/
     expect(/playSpatialSound:\s*\([^)]*jitter\s*=\s*true/.test(g)).toBe(true);
     expect(g.includes('0.93 + Math.random() * 0.14')).toBe(true);
   });
