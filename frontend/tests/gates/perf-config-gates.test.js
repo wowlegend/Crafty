@@ -55,7 +55,7 @@ describe('S2-A-M4a T2: weather density tier lever is WIRED', () => {
   });
 
   it('WeatherSystem scales its instanced particle COUNT by TIERS[...].weather (transient read)', () => {
-    const src = read('src/GameScene.jsx');
+    const src = read('src/GameScene.jsx') + read('src/render/WeatherSystem.jsx'); // A2.5: WeatherSystem moved -> src/render/
     // The effective rendered count must derive from the tier weather multiplier applied
     // to a base count (e.g. Math.round(rainCount * weather)). Lock the multiplier read +
     // its application to the particle base counts.

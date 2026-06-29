@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SRC = readFileSync(resolve(__dirname, '../../src/GameScene.jsx'), 'utf8');
+const SRC = readFileSync(resolve(__dirname, '../../src/GameScene.jsx'), 'utf8')
+  + readFileSync(resolve(__dirname, '../../src/render/WeatherSystem.jsx'), 'utf8'); // A2.5: WeatherSystem moved -> src/render/
 
 describe('weather density (mount-time bug regression gate)', () => {
   it('does NOT compute weatherDensity with an empty-dep useMemo (would freeze at mount tier)', () => {
