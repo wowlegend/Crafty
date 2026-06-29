@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameMethods } from '../../src/GameMethods.js';
 import { ecs } from '../../src/ecs/world.js';
-// Side-effect import: SimplifiedNPCSystem assigns GameMethods.spawnLootDrop at
-// module-eval time (the test seam). Without it, GameMethods is the bare {} export.
+// Side-effect import: SimplifiedNPCSystem transitively loads src/systems/_npcShared.js (v6 A1.5),
+// which assigns GameMethods.spawnLootDrop at module-eval time (the test seam). Without it, GameMethods
+// is the bare {} export.
 import '../../src/SimplifiedNPCSystem.jsx';
 
 describe('ECS spawn entities carry a unique id', () => {
