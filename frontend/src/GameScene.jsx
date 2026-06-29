@@ -13,6 +13,7 @@ import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
 import { LightMotes } from './render/LightMotes.jsx';
 import { moodRef, sampleMood } from './render/mood';
+import { Sun } from './render/Sun';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -33,26 +34,7 @@ import { surfaceBlockAt } from './world/climate.js';
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
 // fixed mood-driven direction (reads as infinitely far) and tints with the mood sun colour.
-const Sun = ({ onReady }) => {
-  const ref = useRef();
-  const { camera } = useThree();
-  const _dir = useMemo(() => new THREE.Vector3(), []);
-  useEffect(() => { if (ref.current) onReady(ref.current); }, [onReady]);
-  useFrame(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const m = sampleMood(moodRef.current);
-    _dir.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
-    mesh.position.copy(camera.position).addScaledVector(_dir, 380);
-    mesh.material.color.copy(m.sun);
-  });
-  return (
-    <mesh ref={ref} frustumCulled={false}>
-      <sphereGeometry args={[13, 28, 28]} />
-      <meshBasicMaterial color="#FFFAF0" toneMapped={false} fog={false} />
-    </mesh>
-  );
-};
+// Sun extracted -> src/render/Sun.jsx (v6 de-monolith A2.1).
 
 // S1-D-M1: Transient bloom-spike on spell impact. Reads `bloomSpikeUntil` from the store
 // and drives the Bloom effect's `intensity` (a live setter on the BloomEffect instance,
