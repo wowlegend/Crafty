@@ -30,7 +30,8 @@ describe('loot drop-beam (rarity-legible) wiring', () => {
 });
 
 describe('loot pickup feedback (sound + pop) wiring', () => {
-  const src = read('src/SimplifiedNPCSystem.jsx');
+  // LootSystem extracted to src/systems/ (v6 de-monolith A1.7) -- read both so the collect-branch asserts follow the code.
+  const src = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/LootSystem.jsx');
 
   // The loot collection branch (dist < 1.2) is the ONLY place loot pickup feedback
   // may fire. There are two `if (dist < 1.2)` guards (XP orb + loot); anchor on the

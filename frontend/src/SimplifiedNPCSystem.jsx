@@ -12,10 +12,8 @@ import { isCaptureMode } from './devtest/captureMode';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';
 import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
 import { DeathFxRender } from './render/deathVfx';
-import { stepXPOrb, stepLootDrop } from './game/xpOrbStepper';
 import { sparkFor, hitKnockback, deathBurst } from './game/mobHitFx';
 import { getItemRarity } from './data/items.js';
-import { rarityBeam } from './game/lootJuice.js';
 import { emitMobKill } from './game/mobKillBus.js';
 import { DEATH_DISSOLVE_MS } from './game/deathFx.js';
 import { HITSTOP } from './game/trauma.js';
@@ -25,6 +23,8 @@ import { EnemyProjectileSystem } from './systems/EnemyProjectileSystem';
 import { SpawnerSystem } from './systems/SpawnerSystem';
 import { AIWorkerSystem } from './systems/AIWorkerSystem';
 import { xpOrbsQuery, lootDropsQuery, useEntities, nextSpawnId } from './systems/_npcShared';
+import { XPOrbSystem } from './systems/XPOrbSystem';
+import { LootSystem } from './systems/LootSystem';
 
 
 // XP/loot queries + _spawnId/spawnLootDrop + the useEntities miniplex hook hoisted ->
@@ -217,35 +217,7 @@ const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
 // --- ORCHESTRATOR ---
 // EnemyProjectileSystem extracted -> src/systems/EnemyProjectileSystem.jsx (v6 de-monolith A1.2).
 
-// --- XP Orb Physics & Pull System ---
-const XPOrbSystem = () => {
-  const { camera } = useThree();
-  const { playPickup } = useGameSounds();
-
-  useFrame((state, delta) => {
-    if (!camera) return;
-    const store = useGameStore.getState();
-    const playerPos = camera.position;
-
-    for (const entity of [...xpOrbsQuery.entities]) {
-      // physics extracted to the pure game/xpOrbStepper.js (S3-M6 NPC de-monolith, byte-equivalent);
-      // the component keeps the ECS iteration + the collect side-effects.
-      const collected = stepXPOrb(entity, delta, {
-        playerPos,
-        groundYAt: store.getMobGroundLevel,
-      }).collected;
-      if (collected) {
-        if (GameMethods.grantXP) GameMethods.grantXP(entity.amount);
-        if (GameMethods.spawnXPText) GameMethods.spawnXPText(entity.amount, entity.position);
-        playPickup();
-        ecs.remove(entity);
-      }
-    }
-  });
-
-  return null;
-};
-
+// XPOrbSystem extracted -> src/systems/XPOrbSystem.jsx (v6 de-monolith A1.6).
 
 // --- Physical Loot Helpers ---
 // Re-exported for the M3 loot/rarity characterization tests, which import
@@ -255,43 +227,7 @@ const XPOrbSystem = () => {
 // cross-file divergence with GamePanels (both re-export the same registry function).
 export { getItemRarity };
 
-// --- Loot Physics & Pull System ---
-const LootSystem = () => {
-  const { camera } = useThree();
-  const { playPickup } = useGameSounds();
-
-  useFrame((state, delta) => {
-    if (!camera) return;
-    // Capture-determinism: FREEZE the loot physics/magnet/collection loop so spawned
-    // fixture drops hold their exact spawn position (no gravity arc, no camera-magnet
-    // pull, no auto-collect) -> the loot-showcase frame is byte-stable. Mirrors the mob
-    // AI freeze (NPCSystem useFrame early-returns in capture). No-op in gameplay.
-    if (isCaptureMode()) return;
-    const store = useGameStore.getState();
-    const playerPos = camera.position;
-
-    for (const entity of [...lootDropsQuery.entities]) {
-      // physics extracted to the pure game/xpOrbStepper.js stepLootDrop (S3-M6, byte-equivalent;
-      // magnet range 7 / base 40 / floor 3); the component keeps the loot collect side-effects.
-      const collected = stepLootDrop(entity, delta, {
-        playerPos,
-        groundYAt: store.getMobGroundLevel,
-      }).collected;
-      if (collected) {
-        if (store.addToInventory) store.addToInventory(entity.item, 1);
-        if (entity.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(entity.xp, entity.item);
-        if (entity.xp > 0 && GameMethods.spawnXPText) GameMethods.spawnXPText(entity.xp, entity.position);
-        if (store.addNotification) store.addNotification(`Looted: ${entity.item}`, 'loot');
-        playPickup();
-        // M3c-T2: rarity-tinted pickup pop at the collect point (same color as the drop's beam).
-        if (GameMethods.spawnLootPop) GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
-        ecs.remove(entity);
-      }
-    }
-  });
-
-  return null;
-};
+// LootSystem extracted -> src/systems/LootSystem.jsx (v6 de-monolith A1.7).
 
 export const NPCSystem = React.memo(() => {
   const [damageNumbers, setDamageNumbers] = useState([]);
