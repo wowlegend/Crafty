@@ -14,6 +14,7 @@ import { Ocean } from './render/Ocean.jsx';
 import { LightMotes } from './render/LightMotes.jsx';
 import { moodRef, sampleMood } from './render/mood';
 import { Sun } from './render/Sun';
+import { MoodGradeDriver } from './render/MoodGradeDriver';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -103,29 +104,7 @@ const BloomSpikeDriver = () => {
 // Capture-safe: mood is SNAPPED in capture, so the grade is byte-stable. Cheap ref read —
 // no React state. NOTE: <HueSaturation>/<BrightnessContrast> below keep their explore-grade
 // initial props so the very first frame (before this driver resolves) already reads warm.
-const MoodGradeDriver = () => {
-  const ctx = useContext(EffectComposerContext);
-  const hueRef = useRef(null);
-  const bcRef = useRef(null);
-  useFrame(() => {
-    if ((!hueRef.current || !bcRef.current) && ctx && ctx.composer) {
-      for (const pass of ctx.composer.passes || []) {
-        const effects = pass && pass.effects;
-        if (!Array.isArray(effects)) continue;
-        for (const e of effects) {
-          if (!hueRef.current && e instanceof HueSaturationEffect) hueRef.current = e;
-          if (!bcRef.current && e instanceof BrightnessContrastEffect) bcRef.current = e;
-        }
-      }
-    }
-    const hue = hueRef.current, bc = bcRef.current;
-    if (!hue && !bc) return;
-    const g = sampleMood(moodRef.current).grade;
-    if (hue) hue.saturation = g.saturation;
-    if (bc) { bc.brightness = g.brightness; bc.contrast = g.contrast; }
-  });
-  return null;
-};
+// MoodGradeDriver extracted -> src/render/MoodGradeDriver.jsx (v6 de-monolith A2.2).
 
 // Step 2: Spatial Audio Controller — bridges SoundProvider buffers to THREE.PositionalAudio with custom cavern reverb
 const SpatialAudioController = () => {
