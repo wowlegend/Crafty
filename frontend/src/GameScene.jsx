@@ -7,7 +7,7 @@ import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/dr
 import { attachPointerLook } from './input/pointerLook';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, EffectComposerContext, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
-import { ToneMappingMode, BloomEffect, HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
@@ -15,6 +15,7 @@ import { LightMotes } from './render/LightMotes.jsx';
 import { moodRef, sampleMood } from './render/mood';
 import { Sun } from './render/Sun';
 import { MoodGradeDriver } from './render/MoodGradeDriver';
+import { BloomSpikeDriver } from './render/BloomSpikeDriver';
 import { PositionTracker, Player } from './Components';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
@@ -53,47 +54,12 @@ import { surfaceBlockAt } from './world/climate.js';
 // capture and in live play, once the spike window has elapsed). So the JSX prop alone
 // was a dead no-op — the rendered base must be set HERE. Raised 0.8->0.95 to make the
 // intended glowier base real (matches the <Bloom intensity={0.95}> prop on line ~906).
-const BLOOM_BASE = 0.95;
-const BLOOM_PEAK = 2.4;
+// BLOOM_BASE/PEAK moved with BloomSpikeDriver -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).
 // reused per-frame scratch (avoid allocating inside the audio-occlusion + weather-instancing useFrames)
 const _audioDir = new THREE.Vector3();
 const _rayStart = new THREE.Vector3(); // audio-occlusion ray walk scratch (was new'd up to 5x/call/frame)
 const _weatherDummy = new THREE.Object3D();
-const BloomSpikeDriver = () => {
-  const ctx = useContext(EffectComposerContext);
-  const fxRef = useRef(null);
-  useFrame(() => {
-    // Resolve the live BloomEffect once (the composer's EffectPass holds it).
-    if (!fxRef.current && ctx && ctx.composer) {
-      for (const pass of ctx.composer.passes || []) {
-        const effects = pass && pass.effects;
-        if (Array.isArray(effects)) {
-          const bloom = effects.find((e) => e instanceof BloomEffect);
-          if (bloom) { fxRef.current = bloom; break; }
-        }
-      }
-    }
-    const fx = fxRef.current;
-    if (!fx) return;
-    if (isCaptureMode()) {
-      // Deterministic baseline in capture — never spike (no spells in capture states).
-      if (fx.intensity !== BLOOM_BASE) fx.intensity = BLOOM_BASE;
-      return;
-    }
-    const until = useGameStore.getState().bloomSpikeUntil || 0;
-    const remaining = until - performance.now();
-    if (remaining > 0) {
-      // Ease from peak -> base across the window (window seeded by triggerBloomSpike, ~80ms).
-      const t = Math.min(1, remaining / 80);
-      fx.intensity = BLOOM_BASE + (BLOOM_PEAK - BLOOM_BASE) * t;
-    } else if (fx.intensity !== BLOOM_BASE) {
-      // Settle smoothly back to baseline once the window has elapsed.
-      fx.intensity = THREE.MathUtils.lerp(fx.intensity, BLOOM_BASE, 0.25);
-      if (Math.abs(fx.intensity - BLOOM_BASE) < 0.01) fx.intensity = BLOOM_BASE;
-    }
-  });
-  return null;
-};
+// BloomSpikeDriver extracted -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).
 
 // S1-D-M3: THE MAGIC-HOUR COLOUR SCRIPT driver. Replaces the old STATIC global grade
 // (HueSaturation 0.22 + BrightnessContrast 0.04/0.08) with a per-mood grade lerped on the
