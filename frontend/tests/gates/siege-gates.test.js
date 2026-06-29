@@ -29,10 +29,13 @@ describe('night siege state (single dangerLevel authority)', () => {
 });
 
 describe('night siege wired into the spawn system (SimplifiedNPCSystem)', () => {
-  const src = read('src/SimplifiedNPCSystem.jsx');
+  // SpawnerSystem extracted to src/systems/ (v6 de-monolith A1.3) -- read both so the spawn-wiring
+  // assertions follow the code wherever it lives in the NPC-system surface.
+  const src = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/SpawnerSystem.jsx');
 
   it('imports the pure siegeParams helper', () => {
-    expect(/import\s*\{\s*siegeParams\s*\}\s*from\s*'\.\/game\/dayNight\.js'/.test(src)).toBe(true);
+    // accept ./ (host) or ../ (extracted src/systems/SpawnerSystem.jsx, A1.3) -- same pure helper, moved file.
+    expect(/import\s*\{\s*siegeParams\s*\}\s*from\s*'\.\.?\/game\/dayNight\.js'/.test(src)).toBe(true);
   });
 
   it('drives the night hostile bias from siegeParams(store.nightCount) (no literal 0.7)', () => {

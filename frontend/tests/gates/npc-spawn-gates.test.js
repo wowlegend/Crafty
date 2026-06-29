@@ -8,7 +8,9 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('npc spawn + AI-skip gates', () => {
-  const npc = strip(read('SimplifiedNPCSystem.jsx'));
+  // SpawnerSystem extracted to src/systems/ (v6 de-monolith A1.3); the spawn/hub-NPC wiring lives there
+  // now while isStatic/AI-skip stays in the host -- read both so each assertion follows its code.
+  const npc = strip(read('SimplifiedNPCSystem.jsx') + read('systems/SpawnerSystem.jsx'));
   it('spawns the hub NPCs from the roster (makeNpcEntity / HUB_NPCS)', () => {
     expect(npc).toMatch(/HUB_NPCS|makeNpcEntity/);
   });

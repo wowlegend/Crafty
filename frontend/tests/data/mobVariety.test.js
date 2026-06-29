@@ -9,7 +9,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // LIVE (structural — strictly stronger than the prior textual regex). The two WIRING asserts
 // stay textual: they pin the NPC-file spawner (legMode copy to the entity + weightedPick usage),
 // which is behavior in SimplifiedNPCSystem, not shape in the registry object.
-const src = readFileSync(resolve(HERE, '../../src/SimplifiedNPCSystem.jsx'), 'utf8');
+const src = readFileSync(resolve(HERE, '../../src/SimplifiedNPCSystem.jsx'), 'utf8')
+  + readFileSync(resolve(HERE, '../../src/systems/SpawnerSystem.jsx'), 'utf8'); // A1.3: spawnMob moved to SpawnerSystem
 
 describe('the mob-variety pass: the registry contract (LIVE)', () => {
   it('the three new types exist with their design stats', () => {
