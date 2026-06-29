@@ -6,16 +6,32 @@
 // probe measures the real game under siege.
 
 let _scenario = null;
+let _durationSec = null;
 let _phase = 'boot'; // 'boot' | 'settling' | 'sampling' | 'done'
 let _hurlRequests = 0;
 
+// Pure parse of the perf-probe URL params. DEV-only feature, but the parse itself is pure -> unit-
+// testable. `perfsec` lets a fast harness (the Playwright perf e2e) run a SHORT siege window instead
+// of the 60s production default, clamped to a sane [3,120]s; absent/out-of-range -> null (use default).
+export function parsePerfParams(search) {
+  const params = new URLSearchParams(search || '');
+  const p = params.get('perf');
+  const scenario = p && /^[A-E]$/.test(p) ? p : null;
+  const d = Number(params.get('perfsec'));
+  const durationSec = Number.isFinite(d) && d >= 3 && d <= 120 ? d : null;
+  return { scenario, durationSec };
+}
+
 if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-  const p = new URLSearchParams(window.location.search).get('perf');
-  _scenario = p && /^[A-E]$/.test(p) ? p : null;
+  const parsed = parsePerfParams(window.location.search);
+  _scenario = parsed.scenario;
+  _durationSec = parsed.durationSec;
 }
 
 export function isPerfProbe() { return _scenario != null; }
 export function perfScenarioId() { return _scenario; }
+/** Resolved sampling-window seconds: the ?perfsec override if present, else the caller's default. */
+export function perfDurationSec(fallback) { return _durationSec != null ? _durationSec : fallback; }
 export function setProbePhase(p) { _phase = p; }
 
 /** Transient hurl channel: the runner schedules, PerfProbeSystem consumes in useFrame (GLI-clean). */

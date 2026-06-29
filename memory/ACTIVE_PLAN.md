@@ -19,6 +19,13 @@
 
 **STILL KEVIN-GATED (do NOT auto-do — surface to KEVIN-REVIEW only):** zh-CN i18n #73 · S4 multiplayer+monetization · control-scheme #9 (reticle/legend/rebinding) · compass #6 (probe+eye) · touch radial Aspect-verb wheel · mob/boss art rebuild · W4 weather-as-specced · shareable-moment/clip/photo-mode · live-eye taste pass · affixes full loot-depth wiring (future milestone). F=cast/T=melee = SETTLED. affixes #8 = KEPT.
 
+**▶️ v6 LIVE PROGRESS (cursor):**
+- ✅ **C1 visual-gate fail-loud** (`f14ed1b`) — `src/devtest/captureFreshness.js` pure predicate (9 unit tests) + capture sentinel (invalidate-at-start/validate-at-clean-end) + `diff.test.js` freshness assert. Verified: visual gate **22/22** on a real fresh capture. Closes the silent-green-on-stale-frames hole (the diff-alone-of-prior-good-capture path still passes).
+- ✅ **C2a E2E perf — frame-rate-under-load** — `?perfsec` DEV fast-window override (pure `parsePerfParams`, 6 unit tests) + `tests/e2e/perf-siege.spec.js` (scenario B night-siege, ~12s window) asserting UNDER-LOAD LIVENESS (loop ran the full window, sampled real frames, no fatal throw) — the honest swiftshader metric (absolute FPS is GPU/load-dependent). Verified: **1 passed (1.6m)**. unit 1881→1896, build+eslint green.
+- ⏳ **C2b E2E perf — memory** (in progress) — extend the probe to gc+sample heap across the siege; assert bounded heap growth (measure first, then set the ceiling). Needs `--js-flags=--expose-gc` in the playwright config for a reliable retained-growth signal.
+- ⏳ **C3 coherence-gate** — SCOPED as a VERIFY tick (not a build): the destructive cut-gate is intentionally PARKED behind a blind 100%-must-NOT-cut calibration bound (the anti-99.2%-FP guard) → building/admitting it autonomously is a Kevin-gated, goal-frame-risky metric-design task. Autonomous-safe = verify the deterministic NON-destructive accretion ratchet (knip dead-exports / god-file LOC / dup-blocks) + confirm the cut-gate stays parked; surface the calibrate-vs-keep-parked decision to Kevin.
+- ⏳ **A de-monolith** (after C zero) — plan-doc-first. MAP: SimplifiedNPCSystem 934 = 8 independent ECS-system components (Spawner/AIWorker/MinimapSync/Combat/EnemyProjectile/XPOrb/Loot + NPCSystem orchestrator) → `src/systems/` (cleanest); GameScene 933 = driver components (Sun/BloomSpike/MoodGrade/SpatialAudio/Weather) → `src/render/`; Components 1345 = giant `Player` useFrame loop → pure-helper extraction only (hardest, highest GLI risk).
+
 — Superseded MODE blocks below (history) ↓
 
 ## 🎮 MODE (2026-06-28): POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT — drive the audit gap-list + campaign queue to done (Kevin: "fix/implement all, dont miss anything" + "keep going")

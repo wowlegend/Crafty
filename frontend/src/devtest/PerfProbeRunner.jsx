@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { callTestHook } from './testBridge';
-import { isPerfProbe, perfScenarioId, setProbePhase, requestHurl, seedRandom } from './perfProbe';
+import { isPerfProbe, perfScenarioId, perfDurationSec, setProbePhase, requestHurl, seedRandom } from './perfProbe';
 import { SCENARIOS, scenarioEvents, SCENARIO_SEC } from './perfScenarios';
 import { frameStats } from './frameStats';
 
@@ -24,6 +24,7 @@ export function PerfProbeRunner() {
     let cancelled = false;
     const id = perfScenarioId();
     const scn = SCENARIOS[id];
+    const durationSec = perfDurationSec(SCENARIO_SEC); // ?perfsec override (fast e2e) else 60s default
     const store = () => useGameStore.getState();
     const restoreRandom = seedRandom();
 
@@ -57,8 +58,8 @@ export function PerfProbeRunner() {
       if (cancelled) return;
 
       setProbePhase('sampling');
-      setStatus(`scenario ${id} — sampling ${SCENARIO_SEC}s…`);
-      const events = scenarioEvents(id);
+      setStatus(`scenario ${id} — sampling ${durationSec}s…`);
+      const events = scenarioEvents(id, durationSec);
       const deltas = [];
       let prev = performance.now();
       let lastHeal = prev;
@@ -79,7 +80,7 @@ export function PerfProbeRunner() {
               requestHurl();
             }
           }
-          if (tSec >= SCENARIO_SEC || cancelled) { res(); return; }
+          if (tSec >= durationSec || cancelled) { res(); return; }
           requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
