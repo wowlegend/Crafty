@@ -4,6 +4,22 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
+## 🛑 LOOP STOPPED BY KEVIN (2026-06-29) → POST-COMPACTION DEEP-DIVE QUEUE (read FIRST on resume)
+
+**The autonomous /loop is STOPPED (Kevin's instruction 2026-06-29). Do NOT re-arm ScheduleWakeup.** (One stray wakeup may have been armed at ~04:45 from the last idle tick; if it fires, READ THIS BANNER and HALT — do not resume the loop. Kevin will drive the next phase manually.) Compaction prep done + `pre-compact-flush-kz` run. **Next session = a DEEP DIVE WITH KEVIN on all punted / incomplete / blocking items below** — do not auto-execute; discuss + plan first.
+
+**State at stop:** HEAD `8688601` (origin synced), clean tree (only `.state/`), **1881 unit · 10 e2e files/21 cases · 21-state visual GREEN · build + eslint green**. Visual gate RECOVERED (Kevin's Chrome restart fixed the puppeteer infra outage). Blocking items also rendered for Kevin at `docs/superpowers/KEVIN-REVIEW.html`.
+
+**This 2026-06-28→29 campaign DONE (all safe autonomous veins closed):** 3 confirmed-HIGH bug fixes (HUD health-bar, melee id+pos, block-debris rapier-2.2) · win-state persistence · iceball freeze · F=cast/T=melee · vein A (4 DOM-panel integration suites) · vein B (5 e2e gameplay-flow specs) · vein E (13 pure-module unit suites; unit 1756→1881) · vein C render-perf (audio-occlusion hoist `485fa95` + ocean gerstner precompute `4bc981f`). affixes #8 RESOLVED→KEPT.
+
+**🔎 DEEP-DIVE QUEUE — punted / incomplete / blocking (reconcile each vs LIVE code first; source: `docs/superpowers/AUDIT-2026-06-28-full-status.md` Q2 lists + KEVIN-REVIEW-BATCH.md):**
+- **A. KEVIN-DECISION (scope/taste):** de-monolith (Components 1345 · SimplifiedNPCSystem 934 · GameScene 933 LOC) · zh-CN i18n #73 (gameplay corpus still EN; only ~49 chrome keys) · S4 multiplayer + monetization (model TBD) · control-scheme #9 (reticle/legend/rebinding — spec `specs/2026-06-28-crafty-control-scheme-design.md`) · touch radial Aspect-verb wheel (Touch-M3 MISSING) · mob/boss art full silhouette/proportion/animation rebuild (only arms slice-1 done) · W4 weather built as-specced (currently a dusk-mood reuse) · shareable-moment / clip / photo-mode tooling (named COMMERCIAL blocker).
+- **B. PROBE + KEVIN-EYE:** compass #6 (per-frame `innerHTML` at HUD.jsx:478 restarts boss-marker CSS pulse every frame — diff-based fix + live probe) · live-eye taste pass (shrine · per-biome flora · mob arms · spell colors · movement feel · storm/victory audio · ocean) · W1–W4 + B1/B2/B3/B5 live-playtest verification owed.
+- **C. AUTONOMOUS-DOABLE tech-debt (could resume the loop on these if Kevin says go):** E2E coverage gaps (frame-rate-under-load + memory-leak gating — a `devtest/perfProbe` harness already exists to extend; no WebKit-iOS/Firefox run) · visual-gate FAIL-LOUD hardening (KEVIN-REVIEW-BATCH item #12 — capture timeout / stale `current/` should fail the gate, not silent-green; this session's infra outage is the live proof) · coherence-gate calibration-verify.
+- **D. FUTURE MILESTONE (greenlit-gated):** affixes full loot-depth wiring (roll-on-drop → item carries affixes → fold into combat stats → inventory UI → per-rarity balance; foundation `src/game/affixes.js` is built + tested).
+
+— Superseded MODE blocks below (history) ↓
+
 ## 🎮 MODE (2026-06-28): POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT — drive the audit gap-list + campaign queue to done (Kevin: "fix/implement all, dont miss anything" + "keep going")
 
 **LIVE CURSOR (2026-06-28):** The W1–W4 rebuild + Phase B are COMPLETE. A multi-agent status audit shipped (`docs/superpowers/AUDIT-2026-06-28-full-status.md`): completion ~70% · code-review MOSTLY (fresh all-file pass) · E2E/visual NO (now closing). **Shipped + pushed this session:** 3 confirmed-HIGH bugs (HUD health-bar `7b6e7b7`, melee id+position `c01e244`, block-debris rapier-2.2 `a36384e`); a Playwright gameplay-flow E2E foundation `9b94040` (5/5 green, `npm run test:e2e`); F=cast / T=melee binding `74fd858`; win-state persistence `114e5a6`; iceball freeze `91fbc38`; audit + control-scheme-design docs `811c776`. HEAD `91fbc38`, origin synced, 1744 unit / 5 e2e / 21 visual / build + eslint green.
