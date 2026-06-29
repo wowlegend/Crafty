@@ -24,8 +24,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
-      // software WebGL so it renders deterministically headless without a GPU
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+      // software WebGL so it renders deterministically headless without a GPU.
+      // --expose-gc lets the perf-probe force a full GC around its sampling window so the heap
+      // delta is a RETAINED-growth (leak) signal rather than allocation-since-last-scavenge noise.
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--js-flags=--expose-gc'],
     },
   },
   webServer: {

@@ -38,6 +38,18 @@ test('survives a sustained night-siege without freezing or throwing (perf probe 
   expect(Number.isFinite(r.p95Ms) && r.p95Ms > 0, `p95 frame time not finite: ${r.p95Ms}`).toBe(true);
   expect(Number.isFinite(r.maxMs) && r.maxMs > 0, `max frame time not finite: ${r.maxMs}`).toBe(true);
 
+  // MEMORY (catastrophic-leak tripwire): with --expose-gc the probe forces a full GC around the siege
+  // window, so heapGrowthMB is RETAINED growth, not allocation-since-last-scavenge noise. MEASURED on a
+  // clean tree: heapStart==heapEnd==~117MB -> growth 0 (the gc'd live set is stable across the siege;
+  // Chrome's coarse usedJSHeapSize is bucket-quantized). The ceiling is a generous 50MB so the gate
+  // never false-fails on bucket jitter yet still trips on a CATASTROPHIC per-frame/per-spawn retention
+  // (which would cross many buckets into 10s-100s of MB). A subtle slow leak in a 12s window is out of
+  // scope (would need a long repeated-cycle test). null = gc/memory unavailable -> skip.
+  console.log(`[perf-mem] heapStartMB=${r.heapStartMB} heapEndMB=${r.heapEndMB} heapGrowthMB=${r.heapGrowthMB}`);
+  if (r.heapGrowthMB != null) {
+    expect(r.heapGrowthMB, `heap RETAINED +${r.heapGrowthMB?.toFixed(1)}MB across the siege -- possible leak`).toBeLessThan(50);
+  }
+
   // No FATAL throw during the siege (the value-add over the short smoke boot). Pointer-lock rejection
   // + benign React dev warnings are ignored -- only the crash/throw classes this codebase has shipped.
   const fatal = errors.filter((e) =>

@@ -61,6 +61,11 @@ export function PerfProbeRunner() {
       setStatus(`scenario ${id} — sampling ${durationSec}s…`);
       const events = scenarioEvents(id, durationSec);
       const deltas = [];
+      // memory: force a full GC (DEV `--js-flags=--expose-gc`) then snapshot the heap so the post-siege
+      // delta is RETAINED growth (a leak signal), not allocation-since-last-scavenge noise. null when
+      // gc/performance.memory are unavailable (non-Chromium / no flag) -> the e2e skips the heap assert.
+      const readHeap = () => { try { if (window.gc) window.gc(); } catch { /* no --expose-gc */ } return (performance.memory && performance.memory.usedJSHeapSize) || null; };
+      const heapStart = readHeap();
       let prev = performance.now();
       let lastHeal = prev;
       const t0 = prev;
@@ -88,8 +93,14 @@ export function PerfProbeRunner() {
 
       setProbePhase('done');
       restoreRandom();
+      const heapEnd = readHeap();
+      const MB = 1024 * 1024;
+      const heapGrowthMB = (heapStart != null && heapEnd != null) ? (heapEnd - heapStart) / MB : null;
       const stats = frameStats(deltas.slice(1)); // drop the settle-boundary delta
-      const out = { scenario: id, label: scn.label, ...stats };
+      const out = { scenario: id, label: scn.label, ...stats,
+        heapStartMB: heapStart != null ? heapStart / MB : null,
+        heapEndMB: heapEnd != null ? heapEnd / MB : null,
+        heapGrowthMB };
       window.__craftyPerfResult = out;
       setResult(out);
       setStatus(`scenario ${id} — DONE`);
