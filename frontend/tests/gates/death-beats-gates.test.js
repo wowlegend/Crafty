@@ -12,7 +12,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // (shrink + spin) over DEATH_DISSOLVE_MS before ecs.remove, so the kill has weight. The XP / spark /
 // kill-bus still fire at health<=0 (unchanged); only the REMOVAL is deferred.
 describe('death-weight dissolve gates (M2 #7 S1)', () => {
-  const npc = read('SimplifiedNPCSystem.jsx') + read('systems/SpawnerSystem.jsx'); // A1.3: dissolve-sweep moved to SpawnerSystem
+  const npc = read('SimplifiedNPCSystem.jsx') + read('systems/SpawnerSystem.jsx') + read('systems/CombatSystem.jsx'); // A1.3 sweep + A1.8 dyingUntil set
   const mob = read('render/MobModel.jsx');
 
   it('the pure dissolve is sane (full->gone)', () => {

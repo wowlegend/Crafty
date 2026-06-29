@@ -11,7 +11,7 @@ const read = (p) => readFileSync(path.resolve(__dirname, '../../', p), 'utf8');
 // (not flat Math.random jitter) + weight-tiered hitstop (not a flat 28ms).
 describe('M1 trauma core is wired', () => {
   const comp = read('src/Components.jsx');
-  const sns = read('src/SimplifiedNPCSystem.jsx');
+  const sns = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/CombatSystem.jsx'); // A1.8: hitstop moved to CombatSystem
   const store = read('src/store/useGameStore.jsx');
 
   it('Components uses shakeOffset (trauma^2) for the camera shake, not flat Math.random jitter', () => {
@@ -38,7 +38,7 @@ describe('M1 trauma core is wired', () => {
   });
 
   it('SimplifiedNPCSystem hitstop is weight-tiered via HITSTOP, not the flat +28', () => {
-    expect(sns.includes("from './game/trauma")).toBe(true);
+    expect(/from '\.\.?\/game\/trauma/.test(sns)).toBe(true); // ./ (host) or ../ (CombatSystem extracted, A1.8)
     expect(/hitstopUntil:\s*performance\.now\(\)\s*\+\s*HITSTOP\[/.test(sns)).toBe(true);
     expect(/hitstopUntil:\s*performance\.now\(\)\s*\+\s*28\b/.test(sns)).toBe(false);
     expect(sns.includes('juiceIntensity')).toBe(true); // dial scales the freeze too

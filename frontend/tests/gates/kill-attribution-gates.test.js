@@ -12,7 +12,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // AFK-farm. damageMob is component-closure-scoped (untestable directly) — these source-shape
 // gates pin the wiring; the bus semantics are unit-tested in mobKillBus.test.js.
 describe('kill-attribution gates (S2-B3-M1)', () => {
-  const npc = read('SimplifiedNPCSystem.jsx');
+  const npc = read('SimplifiedNPCSystem.jsx') + read('systems/CombatSystem.jsx'); // A1.8: damageMob/attribution moved to CombatSystem
 
   it('damageMob carries the 4-arg attribution signature', () => {
     // extension-tolerant: asserts the (id, damage, type, source) attribution prefix is intact;

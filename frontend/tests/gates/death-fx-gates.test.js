@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-const SRC = readFileSync(resolve(process.cwd(), 'src/SimplifiedNPCSystem.jsx'), 'utf8');
+const SRC = readFileSync(resolve(process.cwd(), 'src/SimplifiedNPCSystem.jsx'), 'utf8')
+  + readFileSync(resolve(process.cwd(), 'src/systems/CombatSystem.jsx'), 'utf8'); // A1.8: death FX wiring moved to CombatSystem
 const FX = readFileSync(resolve(process.cwd(), 'src/game/mobHitFx.js'), 'utf8');
 describe('W2-T5 death FX wiring', () => {
   // The kill path no longer hardcodes the literal -- it now passes the deathBurst descriptor's

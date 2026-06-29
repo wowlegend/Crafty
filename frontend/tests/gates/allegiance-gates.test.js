@@ -11,7 +11,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // component-twiddling at call sites — the converter owns the semantics + the blocklist).
 describe('allegiance gates (S2-B3-M3)', () => {
   it('captureMob is registered and routes through convertMobToAlly', () => {
-    const npc = read('SimplifiedNPCSystem.jsx');
+    const npc = read('SimplifiedNPCSystem.jsx') + read('systems/CombatSystem.jsx'); // A1.8: captureMob moved to CombatSystem
     expect(npc).toMatch(/GameMethods\.captureMob = captureMob/);
     expect(npc).toMatch(/convertMobToAlly\(ecs, entity\)/);
   });

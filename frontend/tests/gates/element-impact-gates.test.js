@@ -40,7 +40,7 @@ describe('M5 element-at-impact gates', () => {
   it('the mob-death FINISHER fires a deathBurst spark at the kill path (signature-fires)', () => {
     // iter 156: a kill must read as a payoff, not a silent vanish.
     expect(read('game/mobHitFx.js')).toMatch(/export function deathBurst/);
-    const npc = read('SimplifiedNPCSystem.jsx');
+    const npc = read('SimplifiedNPCSystem.jsx') + read('systems/CombatSystem.jsx'); // A1.8: death path moved to CombatSystem
     expect(npc, 'death path must trigger the deathBurst spark before emitMobKill').toMatch(/deathBurst\(entity\.type\)/);
     // W2-T5: the kill path now forwards the FULL deathBurst descriptor (db.color carries the
     // hue-preserving dark-mob tint floor; db.burst selects the upward-biased death velocity branch).

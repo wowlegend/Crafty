@@ -23,7 +23,7 @@ const magic = () => readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8'
 // S3-M2: the per-element profile DATA lives in game/spellVisualProfiles.js (the de-monolith
 // data pull) — content checks on the profiles read THERE; live-call pins stay on EMS.
 const profiles = () => readFileSync(resolve(SRC, 'game', 'spellVisualProfiles.js'), 'utf8');
-const npc = () => readFileSync(resolve(SRC, 'SimplifiedNPCSystem.jsx'), 'utf8');
+const npc = () => readFileSync(resolve(SRC, 'SimplifiedNPCSystem.jsx'), 'utf8') + readFileSync(resolve(SRC, 'systems/CombatSystem.jsx'), 'utf8'); // A1.8: damage/hitstop path moved to CombatSystem
 const gameScene = () => readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
 const sparks = () => readFileSync(resolve(SRC, 'world', 'GPUSparkSystem.jsx'), 'utf8');
 const app = () => readFileSync(resolve(SRC, 'App.jsx'), 'utf8');
