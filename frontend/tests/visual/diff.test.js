@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js';
 
 // S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
 // cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
@@ -25,6 +26,26 @@ const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'charac
 // minor M2b refinement. The 17 desktop frames stay byte-identical (the touch gates are isTouchUIMode-off there).
 const DIR = resolve(process.cwd(), 'tests/visual');
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
+
+// FAIL-LOUD freshness gate (KEVIN-REVIEW-BATCH item #12): refuse to diff a STALE/partial/crashed
+// capture. capture.mjs writes current/.capture-meta.json (complete:false at START, complete:true only
+// at a clean end). Without this, an isolated diff-alone run silently passed on pre-failure frames left
+// behind by a crashed/timed-out capture (the iter-105 mount-crash hid for ~4 iters; the 2026-06-28
+// heavy-scene capture timeout was the same class). A deliberate diff-alone of a PRIOR good capture still
+// passes (its sentinel is complete:true). Logic is unit-tested in src/devtest/captureFreshness.test.js.
+describe('visual capture freshness (item #12 fail-loud)', () => {
+  it('current/ comes from a fresh, complete, crash-free capture run', () => {
+    const metaPath = resolve(DIR, 'current', '.capture-meta.json');
+    const meta = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, 'utf8')) : null;
+    const pngInfo = {};
+    for (const state of STATES) {
+      const p = resolve(DIR, 'current', `${state}.png`);
+      pngInfo[state] = existsSync(p) ? { exists: true, mtimeMs: statSync(p).mtimeMs } : { exists: false };
+    }
+    const { ok, reasons } = evaluateCaptureFreshness(meta, STATES, pngInfo);
+    expect(ok, `STALE/incomplete capture -- run \`npm run visual:capture\` first:\n  - ${reasons.join('\n  - ')}`).toBe(true);
+  });
+});
 
 describe('visual regression', () => {
   for (const state of STATES) {

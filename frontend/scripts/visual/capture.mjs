@@ -11,7 +11,7 @@
 // Capture mode also suppresses the auto-pointer-lock, keeping the menu overlay visible
 // until we explicitly `start`, so the `menu` frame is the real title screen.
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -20,6 +20,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..'); // frontend/
 const isBaseline = process.argv.includes('--baseline');
 const OUT = resolve(ROOT, 'tests/visual', isBaseline ? 'baseline' : 'current');
+// FAIL-LOUD sentinel (item #12): invalidated to complete:false at capture START, re-written
+// complete:true ONLY at a clean (crash-free) end -> diff.test.js refuses to run on a stale/partial/
+// crashed capture instead of silently diffing pre-failure frames. See src/devtest/captureFreshness.js.
+const META = resolve(OUT, '.capture-meta.json');
 const PORT = 4178;
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -74,6 +78,11 @@ async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max =
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
+  // Invalidate the freshness sentinel up front: if this run crashes / times out / is aborted, the
+  // sentinel stays complete:false so an isolated `diff.test.js` run FAILS LOUD on the stale frames
+  // (the iter-105 hole). Re-written complete:true at the clean end below.
+  const runStartedAt = Date.now();
+  writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, complete: false }));
   // Page-error observability (the silent-crash hole): an uncaught render-loop throw used to
   // freeze the R3F canvas so every later 3D fixture screenshotted the SAME frozen frame — the
   // diff gate then passed on STALE/wrong frames (it hid 3 crashes for 6 iters: iter 159/160
@@ -464,8 +473,12 @@ async function main() {
     console.error(`\n=== ${realCrashes.length} RENDER CRASH(ES) DURING CAPTURE — gate FAILS ===`);
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
+    // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length }));
   } else {
     console.log('\nNo render crashes during capture.');
+    // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0 }));
   }
 }
 main().catch((e) => { console.error(e); process.exit(1); });
