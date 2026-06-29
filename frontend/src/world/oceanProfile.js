@@ -52,13 +52,22 @@ export const WAVES = [
 ];
 const _norm = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
 
+// Per-wave DERIVED constants, precomputed ONCE — the normalized direction (nx,nz) + wave number k
+// depend only on the fixed WAVES table, yet gerstnerHeight/Normal used to recompute _norm() (a fresh
+// array) + k for every wave on EVERY ocean vertex EVERY frame (Ocean.jsx sweeps all plane verts each
+// frame). Precomputing is byte-identical (same values) and removes that per-vertex-per-frame garbage +
+// redundant trig from the hot loop. Index-based iteration also avoids the per-wave array-destructure alloc.
+const _WAVES_D = WAVES.map(([dx, dz, wl, amp, spd]) => {
+  const [nx, nz] = _norm(dx, dz);
+  return { nx, nz, k: (Math.PI * 2) / wl, amp, spd };
+});
+
 export function gerstnerHeight(x, z, time) {
   let h = 0;
-  for (const [dx, dz, wl, amp, spd] of WAVES) {
-    const [nx, nz] = _norm(dx, dz);
-    const k = (Math.PI * 2) / wl;            // wave number
-    const phase = k * (nx * x + nz * z) + time * spd * k;
-    h += amp * Math.sin(phase);
+  for (let i = 0; i < _WAVES_D.length; i++) {
+    const w = _WAVES_D[i];
+    const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
+    h += w.amp * Math.sin(phase);
   }
   return SEA_LEVEL + h;
 }
@@ -67,13 +76,12 @@ export function gerstnerHeight(x, z, time) {
 // plane normal -- this is what makes Fresnel + glossy bands read off the REAL surface).
 export function gerstnerNormal(x, z, time) {
   let dHdx = 0, dHdz = 0;
-  for (const [dx, dz, wl, amp, spd] of WAVES) {
-    const [nx, nz] = _norm(dx, dz);
-    const k = (Math.PI * 2) / wl;
-    const phase = k * (nx * x + nz * z) + time * spd * k;
-    const c = amp * k * Math.cos(phase);
-    dHdx += c * nx;
-    dHdz += c * nz;
+  for (let i = 0; i < _WAVES_D.length; i++) {
+    const w = _WAVES_D[i];
+    const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
+    const c = w.amp * w.k * Math.cos(phase);
+    dHdx += c * w.nx;
+    dHdz += c * w.nz;
   }
   const len = Math.hypot(-dHdx, 1, -dHdz) || 1;
   return [-dHdx / len, 1 / len, -dHdz / len];
