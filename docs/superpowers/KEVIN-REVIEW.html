@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crafty — what's waiting on you</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2330; --line:#2a3340;
+    --ink:#e6edf3; --dim:#9aa7b4; --faint:#6b7785;
+    --block:#ff6b6b; --ready:#ffc14d; --infra:#5db0ff; --fyi:#8b94a1;
+    --go:#3fb950; --accent:#c8a4ff;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 28px 80px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:30px}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-0.02em}
+  .sub{color:var(--dim);font-size:14px;margin:0}
+  .tldr{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:8px;padding:16px 18px;margin:22px 0 8px}
+  .tldr b{color:#fff}
+  .tldr .one{font-size:15px;margin:0}
+  .status{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12.5px;color:var(--faint);font-family:var(--mono)}
+  .status span{white-space:nowrap} .status b{color:var(--dim);font-weight:600}
+  section{margin-top:38px}
+  .sechead{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+  .secnum{font-family:var(--mono);font-size:13px;color:var(--faint)}
+  h2{font-size:18px;margin:0;letter-spacing:-0.01em}
+  .sectag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+  .t-block{color:var(--block)} .t-ready{color:var(--ready)} .t-infra{color:var(--infra)} .t-fyi{color:var(--fyi)}
+  .secdesc{color:var(--dim);font-size:13.5px;margin:6px 0 18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0;position:relative}
+  .card.block{border-left:3px solid var(--block)}
+  .card.ready{border-left:3px solid var(--ready)}
+  .card.infra{border-left:3px solid var(--infra)}
+  .card.fyi{border-left:3px solid var(--fyi);background:#13171d}
+  .card.done{border-left:3px solid var(--go);background:#11181300}
+  .card h3{margin:0 0 7px;font-size:15.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .id{font-family:var(--mono);font-size:12px;color:var(--faint);font-weight:700}
+  .size{font-family:var(--mono);font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:1px 7px}
+  .size.s{color:#7ee787} .size.m{color:#ffc14d} .size.l{color:#ff8e6b}
+  .card p{margin:7px 0;color:var(--ink);font-size:14px}
+  .card .why{color:var(--dim);font-size:13.5px}
+  .card .ask{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:14px}
+  .card .ask b{color:#fff} .rec{color:var(--go);font-weight:600}
+  .opts{margin:8px 0 2px;padding-left:0;list-style:none}
+  .opts li{margin:5px 0;padding-left:22px;position:relative;font-size:13.5px;color:var(--dim)}
+  .opts li::before{content:attr(data-k);position:absolute;left:0;font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;top:1px}
+  code{font-family:var(--mono);font-size:12.5px;background:#0a0d12;border:1px solid var(--line);padding:1px 5px;border-radius:4px;color:#c9d6e3}
+  footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:12.5px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--faint);margin-top:10px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Crafty — what's waiting on you</h1>
+    <p class="sub">The autonomous build loop's parked items, grouped by the kind of decision each needs. Source: <code>docs/superpowers/KEVIN-REVIEW-BATCH.md</code> + <code>memory/ACTIVE_PLAN.md</code> · refreshed 2026-06-29.</p>
+
+    <div class="tldr">
+      <p class="one"><b>Not stuck on a bug — stuck on you + one infra outage.</b> This session the loop closed every <em>safe</em> testing vein: <b>+125 unit tests (1756→1881)</b>, 4 real DOM-panel integration suites, 5 new gameplay E2E specs (10 files / 21 cases), 1 perf fix — all gates green. What's left is (1) the visual-gate infra (puppeteer was timing out; you restarted Chrome; I'm re-running + hardening it now — <b>my current priority</b>), and (2) the decisions in §1–§2 below. F=cast/T=melee = settled (fine). affixes = settled (I kept it; see §3).</p>
+      <div class="status">
+        <span><b>HEAD</b> e5afca9</span>
+        <span><b>branch</b> in sync 0&#8593;/0&#8595;</span>
+        <span><b>gates</b> 1881 unit · 21-state visual (infra-down, fixing) · build+eslint green</span>
+        <span><b>tree</b> clean (only <code>.state/</code>)</span>
+        <span><b>deploy</b> main &#8594; crafty-sand.vercel.app (auto)</span>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--block)"></i> Blocks the loop — your decision</span>
+      <span><i class="dot" style="background:var(--ready)"></i> Needs a probe + your eye</span>
+      <span><i class="dot" style="background:var(--infra)"></i> Infra (I'm on it)</span>
+      <span><i class="dot" style="background:var(--go)"></i> Resolved / FYI</span>
+    </div>
+  </header>
+
+  <!-- §1 -->
+  <section>
+    <div class="sechead"><span class="secnum">§1</span><h2>Decide — scope / strategy calls</h2><span class="sectag t-block">Blocks the loop</span></div>
+    <p class="secdesc">Each is a refactor or feature with high blast-radius, balance impact, or product scope — I won't blind-ship any of these overnight. Pick when you're ready; the loop reacts on reply.</p>
+
+    <div class="card block">
+      <h3><span class="id">de-monolith</span> Split the 3 remaining god-files <span class="size l">~large</span></h3>
+      <p>Three source files are still &gt;900 LOC: <code>Components.jsx</code> (1345), <code>SimplifiedNPCSystem.jsx</code> (934), <code>GameScene.jsx</code> (933). The plan is to extract each into focused modules (input, player-loop, mob-AI, render groups).</p>
+      <p class="why"><b>Why gated:</b> it's a pure refactor with <em>zero user-visible benefit</em> but high regression risk — these files hold the R3F <code>useFrame</code> game-loop + Rapier physics, where a botched extraction breaks movement/combat silently. No automated visual gate to catch it (and that gate's down). Net: real risk, no shipping value, only maintainability.</p>
+      <div class="ask"><b>Decide:</b> do it now (I'll go in small, individually-gated slices), or leave it — it works, it's just big? <span class="rec">My lean: defer until there's a feature reason to touch these files; refactor-for-its-own-sake isn't worth the regression risk right now.</span></div>
+    </div>
+
+    <div class="card block">
+      <h3><span class="id">zh-CN i18n (#73)</span> Full Simplified-Chinese localization <span class="size l">~large</span></h3>
+      <p>The i18n scaffold + English strings exist (<code>src/i18n/</code>, lazy-CJK ready) and a real Alibaba PuHuiTi CJK font is already sourced. What's missing: decoupling every item / quest / achievement <em>display name</em> from its internal id, then translating the full string set to zh-CN.</p>
+      <p class="why"><b>Why gated:</b> it's a broad id/display-decouple refactor across all content data + a translation pass — large, and best done once the content set is stable (else you re-translate churn). Also a +2.9 MB lazy font payload.</p>
+      <div class="ask"><b>Decide:</b> ship zh-CN now, or defer until the game's content is more final? <span class="rec">My lean: defer — content is still moving; translate near content-lock.</span></div>
+    </div>
+
+    <div class="card block">
+      <h3><span class="id">S4</span> Multiplayer + monetization <span class="size l">~very large</span></h3>
+      <p>Netcode (co-op / shared world) and a store/payments layer — the commercial milestone.</p>
+      <p class="why"><b>Why gated:</b> product + business scope. I will not start netcode or payment wiring without your explicit go + model — these are architecture-defining and money-handling.</p>
+      <div class="ask"><b>Decide:</b> in scope now? If yes, the model (you've mentioned cosmetics + a transparent pass, no gacha) and whether MP is co-op or competitive. Until then it stays untouched.</div>
+    </div>
+  </section>
+
+  <!-- §2 -->
+  <section>
+    <div class="sechead"><span class="secnum">§2</span><h2>Render / feel — needs a live probe + your eye</h2><span class="sectag t-ready">Probe + eye</span></div>
+    <p class="secdesc">These touch the in-game look/feel and the headless visual gate can't judge them — so I'll only build them with a live-look probe and your sign-off, not blind overnight.</p>
+
+    <div class="card ready">
+      <h3><span class="id">#6</span> Compass per-frame rebuild <span class="size s">~small fix</span></h3>
+      <p>The HUD compass rebuilds its whole marker strip via <code>container.innerHTML = …</code> <b>every frame</b> (<code>HUD.jsx:478</code>). That re-creates the boss-marker DOM each frame, which <em>restarts its CSS pulse/ping animation every frame</em> — so the boss marker visibly never animates — plus needless GC churn in a hot loop.</p>
+      <p class="why"><b>Why not auto-done:</b> it's a render-hot-loop rewrite (diff/patch the marker nodes instead of innerHTML) in a core HUD that the headless capture renders only once — so it needs a live probe to verify the animation actually runs after the fix.</p>
+      <div class="ask"><b>Decide:</b> want it fixed? (Real glitch — boss marker doesn't pulse — but cosmetic. I'll do it with a live-look probe.)</div>
+    </div>
+
+    <div class="card ready">
+      <h3><span class="id">#9</span> Control-scheme "Option A" enhancements <span class="size m">~medium</span></h3>
+      <p>The polish layer on the F=cast / T=melee scheme you approved. Three pieces (spec: <code>specs/2026-06-28-crafty-control-scheme-design.md</code>): <b>(a)</b> a verb-telegraph reticle — the crosshair shows whether your click will mine / place / cast / melee right now; <b>(b)</b> a persistent control legend (so the bindings are discoverable); <b>(c)</b> key rebinding (remap any action).</p>
+      <p class="why"><b>Why gated:</b> it's feel/UX that needs your hands to tune — reticle clarity + legend placement + which actions are rebindable are taste calls.</p>
+      <div class="ask"><b>Decide:</b> build the reticle + legend + rebinding now, or playtest the current scheme on crafty-sand first and tell me what's missing? <span class="rec">My lean: a quick playtest first, then I build to what you felt was unclear.</span></div>
+    </div>
+  </section>
+
+  <!-- §3 -->
+  <section>
+    <div class="sechead"><span class="secnum">§3</span><h2>Resolved this session — FYI, no action</h2><span class="sectag t-fyi">Settled / infra</span></div>
+
+    <div class="card done">
+      <h3><span class="id">#8</span> affixes.js — KEPT (my call) <span class="size s">decided</span></h3>
+      <p>It's a pure, unit-tested, deliberately-documented foundation for a future loot-depth pass (seeded affix roll + stat-fold) — <em>not</em> accidental dead code. I'm keeping it: deleting throws away working tested groundwork; fully wiring it (loot-roll-on-drop &#8594; items carry affixes &#8594; fold into combat stats &#8594; inventory UI &#8594; per-rarity balance) is a balance- and look-sensitive milestone I'll build the moment you greenlist loot-depth. (Override me with "delete it" if you'd rather not carry it.)</p>
+    </div>
+
+    <div class="card done">
+      <h3><span class="id">F / T</span> F=cast / T=melee — settled</h3>
+      <p>You said fine for now. Done. (The polish on top of it is §2 #9.)</p>
+    </div>
+
+    <div class="card done">
+      <h3><span class="id">infra</span> Visual gate — RECOVERED ✓ (your Chrome restart fixed it)</h3>
+      <p>The 21-state puppeteer+pixelmatch gate had failed all session with a CDP <code>Runtime.callFunctionOn timed out</code> (software-WebGL capture timing out under machine load — confirmed ~9× incl. on a clean tree, so environment not our code). <b>Your Chrome restart cleared it: re-ran just now → capture clean (no render crashes), all 21 states pass pixelmatch.</b> Bonus: this retroactively verifies the session's commits (incl. the audio perf-hoist) caused zero visual regression. Render-perf work (#7) is unblocked and the loop has resumed on it.</p>
+    </div>
+  </section>
+
+  <!-- §4 -->
+  <section>
+    <div class="sechead"><span class="secnum">§4</span><h2>Live-eye taste check — shipped, your judgment</h2><span class="sectag t-ready">Eyeball on crafty-sand</span></div>
+    <p class="secdesc">All shipped this session or earlier but the headless harness can't judge "does it look/feel good." Walk the live site and flag anything off — every one has an in-code knob I'll tune. None blocks the loop.</p>
+    <div class="card ready">
+      <p style="margin:2px 0"><b>Look:</b> shrine model · per-biome flora (incl. jungle vine-canopy) · humanoid mob arms (zombie/skeleton/villager up close) · spell colors in a cast · the ocean/foam.</p>
+      <p style="margin:8px 0 2px"><b>Feel / ear:</b> movement game-feel (accel ramp + coyote-time/jump-buffer) · the storm + victory audio mix under a busy siege.</p>
+      <div class="ask"><b>Decide:</b> nothing required — just flag any that read wrong next time you play and I'll tune the knobs.</div>
+    </div>
+  </section>
+
+  <footer>
+    Generated by the autonomous loop. §1 items block nothing but their own build; the loop idles on a ~30-min heartbeat and resumes the instant you reply here or the visual gate recovers. Full detail: <code>docs/superpowers/KEVIN-REVIEW-BATCH.md</code>.
+  </footer>
+
+</div>
+</body>
+</html>
