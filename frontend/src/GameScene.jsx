@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
-import { attachPointerLook } from './input/pointerLook';
+import { PointerLook } from './render/PointerLook';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, EffectComposerContext, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
@@ -621,15 +621,7 @@ const WeatherSystem = () => {
 
 // Desktop mouse-look: attach our own pointer-lock look handler to the live R3F camera (replaces drei's
 // pointer-lock controls). Suppressed in capture mode (the harness pins the camera). Renders nothing.
-function PointerLook() {
-  const camera = useThree((s) => s.camera);
-  const isCaptureMode = useGameStore((s) => s.isCaptureMode);
-  useEffect(() => {
-    if (isCaptureMode || !camera) return undefined;
-    return attachPointerLook({ camera, getSensitivity: () => useGameStore.getState().lookSensitivity });
-  }, [camera, isCaptureMode]);
-  return null;
-}
+// PointerLook extracted -> src/render/PointerLook.jsx (v6 de-monolith A2.4).
 
 export function GameScene({
   gameState,

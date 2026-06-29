@@ -7,7 +7,7 @@ import { dirname, resolve } from 'path';
 // (desktop own-pointer-lock handler + touch applyLook) AND is editable in SettingsPanel.
 const __dir = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(__dir, '../../src', p), 'utf8');
-const scene = read('GameScene.jsx');
+const scene = read('GameScene.jsx') + read('render/PointerLook.jsx'); // A2.4: PointerLook handler moved -> src/render/
 const touch = read('ui/TouchControls.jsx');
 const panels = read('ui/GamePanels.jsx');
 const store = read('store/useGameStore.jsx');
