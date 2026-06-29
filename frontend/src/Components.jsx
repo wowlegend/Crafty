@@ -69,22 +69,7 @@ import { notifyDenied } from './ui/denyToast';
 // Bold-flat UI primitives (S1C-M2a chrome migration)
 import { Panel, Slot } from './ui/primitives/index.js';
 
-export const PositionTracker = React.memo(() => {
-  const { camera } = useThree();
-  const lastUpdate = useRef(0);
-  useFrame(() => {
-    const now = performance.now();
-    if (camera && now - lastUpdate.current > 200) {
-      lastUpdate.current = now;
-      useGameStore.getState().setPlayerPosition({
-        x: Math.round(camera.position.x),
-        y: Math.round(camera.position.y),
-        z: Math.round(camera.position.z)
-      });
-    }
-  });
-  return null;
-});
+// PositionTracker extracted -> src/systems/PositionTracker.jsx (v6 de-monolith A3).
 
 
 
