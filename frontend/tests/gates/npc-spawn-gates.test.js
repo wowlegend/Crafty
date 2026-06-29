@@ -26,10 +26,11 @@ describe('npc interaction + mirror', () => {
     expect(read('store/useGameStore.jsx')).toMatch(/npcEntities:/);
   });
   it('MinimapSyncSystem syncs npcEntities (static NPC positions)', () => {
-    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/npcEntities/);
+    // extracted to src/systems/MinimapSyncSystem.jsx (v6 de-monolith A1.1) -- gate follows the code.
+    expect(read('systems/MinimapSyncSystem.jsx')).toMatch(/npcEntities/);
   });
   it('the mob mirror carries role + npcName so the G-interact can route by role', () => {
-    expect(read('SimplifiedNPCSystem.jsx')).toMatch(/role: e\.role/);
+    expect(read('systems/MinimapSyncSystem.jsx')).toMatch(/role: e\.role/);
   });
   it('the G-interact routes a role to its panel (merchant -> trading, others by role)', () => {
     expect(read('InputManager.jsx')).toMatch(/role/);

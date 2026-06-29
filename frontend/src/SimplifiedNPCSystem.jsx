@@ -29,6 +29,7 @@ import { spellSlowFactor } from './game/freeze.js';
 import { DEATH_DISSOLVE_MS } from './game/deathFx.js';
 import { HITSTOP } from './game/trauma.js';
 import { MobModel } from './render/MobModel';
+import { MinimapSyncSystem } from './systems/MinimapSyncSystem';
 
 
 const xpOrbsQuery = ecs.with('isXPOrb', 'position', 'amount');
@@ -478,31 +479,7 @@ const AIWorkerSystem = () => {
   return null;
 };
 
-const MinimapSyncSystem = () => {
-  useFrame(() => {
-    const now = performance.now();
-    const store = useGameStore.getState();
-    if (now - (store._lastMinimapUpdate || 0) > 250) {
-      const activeMobs = mobsQuery.entities.filter(e => e && e.health > 0);
-      store.setMobEntities(activeMobs.map(e => ({
-        id: e.id, type: e.type, passive: e.passive, role: e.role, npcName: e.npcName, position: [e.position.x, e.position.y, e.position.z]
-      })));
-      // Friendly-NPC mirror: quest villagers (passive quest NPCs) + converted allies. Mirrors the mob
-      // path so RadialMinimap can plot gold NPC blips from the store (the consumer reads npcEntities).
-      const villagers = activeMobs.filter(e => e.type === 'villager');
-      const allies = alliesQuery.entities.filter(e => e && e.health > 0 && e.position);
-      store.setNpcEntities([...villagers, ...allies].map(e => ({
-        id: e.id, type: e.type, position: [e.position.x, e.position.y, e.position.z]
-      })));
-      const hostileCount = activeMobs.filter(e => !e.passive).length;
-      useGameStore.setState({
-        _lastMinimapUpdate: now,
-        activeHostilesCount: hostileCount
-      });
-    }
-  });
-  return null;
-};
+// MinimapSyncSystem extracted -> src/systems/MinimapSyncSystem.jsx (v6 de-monolith A1.1).
 
 const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
   const { playHit } = useGameSounds();
