@@ -5,6 +5,7 @@ import { useSounds } from './SoundManager';
 import { useGameStore } from './store/useGameStore';
 import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
+import { _audioDir, _rayStart, _weatherDummy } from './render/_sceneScratch';
 import { Physics, useRapier } from '@react-three/rapier';
 import { EffectComposer, EffectComposerContext, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
@@ -55,10 +56,7 @@ import { surfaceBlockAt } from './world/climate.js';
 // was a dead no-op — the rendered base must be set HERE. Raised 0.8->0.95 to make the
 // intended glowier base real (matches the <Bloom intensity={0.95}> prop on line ~906).
 // BLOOM_BASE/PEAK moved with BloomSpikeDriver -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).
-// reused per-frame scratch (avoid allocating inside the audio-occlusion + weather-instancing useFrames)
-const _audioDir = new THREE.Vector3();
-const _rayStart = new THREE.Vector3(); // audio-occlusion ray walk scratch (was new'd up to 5x/call/frame)
-const _weatherDummy = new THREE.Object3D();
+// per-frame scratch (_audioDir/_rayStart/_weatherDummy) hoisted -> src/render/_sceneScratch.js (v6 de-monolith A2.0).
 // BloomSpikeDriver extracted -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).
 
 // S1-D-M3: THE MAGIC-HOUR COLOUR SCRIPT driver. Replaces the old STATIC global grade
