@@ -338,6 +338,19 @@ async function main() {
     await page.screenshot({ path: resolve(OUT, 'spell-cast.png') });
     console.log('captured spell-cast');
 
+    // v7-S3.5a: the OTHER 3 elements each get their own frozen cast frame so the per-element
+    // shape redesigns (ice shard cluster / lightning wire / arcane rune-wheel) are visually GATED
+    // (spell-cast above is fireball-only). The deterministic cast now clears prior casts (isolation),
+    // so each frame shows exactly one element's telegraph + projectile + impact.
+    for (const el of ['iceball', 'lightning', 'arcane']) {
+      captureStage = `spell-${el}`;
+      await page.evaluate((s) => window.__craftyTest.call('spawnSpellCast', s), el);
+      await flushFrames(page, 8);
+      await delay(1200);
+      await page.screenshot({ path: resolve(OUT, `spell-${el}.png`) });
+      console.log(`captured spell-${el}`);
+    }
+
     // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal -- the LEAD (comet/fire) beast IN-WORLD (real
     // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
     // ③·5 silhouette + glow is judged in its TRUE context. Player is settled on terrain by now.

@@ -394,7 +394,7 @@ function GameApp({ experienceSystem }) {
     // point (the GPUSparkSystem capture-phase fix renders the spray visibly at uTime=0).
     // Coordinates sit at y~140 (the same sky-studio band as the character/boss close-ups)
     // so the terrain horizon falls out of frame -> a clean backdrop for the VFX read.
-    registerTestHook('spawnSpellCast', () => {
+    registerTestHook('spawnSpellCast', (spellType = 'fireball') => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
       store.setCaptureStudio(true); // sky-studio subject card -> suppress explore-scene motes
@@ -419,7 +419,7 @@ function GameApp({ experienceSystem }) {
       enterCaptureMode({ camera: { position: [OX, OY + 0.6, OZ + 12.5], lookAt: [OX, OY + 1.4, OZ] } });
       if (store.spawnDeterministicCast) {
         store.spawnDeterministicCast({
-          spellType: 'fireball',
+          spellType,                            // v7-S3.5a: parameterized so capture can cast all 4 elements
           muzzle: [OX - 4.0, OY + 0.6, OZ],     // cast-start rune-circle, left
           projectile: [OX - 0.6, OY + 1.0, OZ], // fireball frozen mid-flight, center
           impact: [OX + 3.8, OY + 1.2, OZ],     // spark spray + shockwave, right

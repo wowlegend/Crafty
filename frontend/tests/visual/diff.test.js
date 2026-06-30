@@ -19,7 +19,11 @@ import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js'
 // pattern title-mascot used) so they do NOT yet assert a regression baseline: Kevin ratifies the
 // med/low look before they are gate-blessed (promoted into STATES). They are self-consistent on
 // re-capture; their committed PNGs are the review artifacts.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open'];
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'spell-iceball', 'spell-lightning', 'spell-arcane', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open'];
+// v7-S3.5a: spell-iceball/lightning/arcane added — per-element frozen-cast frames so the per-element
+// spell-VFX redesigns (S3.5 ice shards / S3.6 lightning wire / S3.7 arcane rune-wheel) are gated
+// (previously only spell-cast=fireball was captured). Cast-isolation in spawnDeterministicCast keeps
+// each frame to one element.
 // 'mobile' (the touch-overlay frame) gate-blessed iter 137: lucide gold-glyph near-black buttons +
 // joystick base ring + center crosshair; the colliding desktop HUD (minimap / XP bar / keyboard
 // cheatsheet / left tool-column) is hidden on touch via isTouchUIMode. Joystick-ring crispness is a

@@ -238,6 +238,14 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       const spellType = opts.spellType || 'fireball';
       const spell = SPELL_TYPES[spellType];
       if (!spell) return;
+      // v7-S3.5a: isolate each deterministic cast so the capture's per-element frames don't accumulate
+      // (capture casts fireball, then ice/lightning/arcane in sequence; without this clear each later
+      // frame would also show every prior cast). Capture-only path; harmless in the single-cast case.
+      projectilesRef.current = [];
+      setProjectiles([]);
+      setTelegraphs([]);
+      setSpellImpacts([]);
+      setChainArcs([]);
       const muzzle = new THREE.Vector3(...(opts.muzzle || [0, 141.4, -4.2]));
       const projPos = new THREE.Vector3(...(opts.projectile || [0, 141.0, -8.5]));
       const impactPos = new THREE.Vector3(...(opts.impact || [0, 140.6, -12.5]));
