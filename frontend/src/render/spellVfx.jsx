@@ -2,6 +2,7 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
+import { computeSpellMotion } from '../game/spellMotion';
 import { isCaptureMode } from '../devtest/captureMode';
 
 // Shared scratch objects for the stretch-billboard trail math (avoid per-frame allocs).
@@ -154,25 +155,28 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
 
   useFrame((state) => {
     const capture = isCaptureMode();
-    // The turbulence phase: frozen at the flattering capturePhase in capture, else live.
+    // The motion phase: frozen at the flattering capturePhase in capture, else live.
     const phase = capture ? profile.capturePhase : state.clock.elapsedTime * profile.flickerSpeed;
-    const pulse = 1 + Math.sin(phase) * profile.flicker;
-    // A secondary high-freq jitter for the electric/jagged personalities (lightning), made
-    // DETERMINISTIC via a sine of a second phase rather than Math.random so capture stays
-    // byte-stable; frozen with everything else in capture.
-    const jitter = 1 + Math.sin(phase * 2.7 + 1.3) * profile.flicker * 0.4;
+    // v7-S3.1: per-element MOTION GRAMMAR (roil/static/strobe/orbit) instead of one shared sin-pulse +
+    // hardcoded uniform spin -- motion is read before colour, so identical motion made all 4 feel "samey".
+    // Pure + deterministic (frozen phase in capture) -> the regression frame stays byte-stable.
+    const m = computeSpellMotion(profile.motion, phase, profile.flicker);
 
     if (meshRef.current) {
-      meshRef.current.scale.setScalar(pulse);
-      if (!capture) {
-        // Gentle rotation in gameplay for life; frozen in capture for a stable frame.
-        meshRef.current.rotation.x += 0.06;
-        meshRef.current.rotation.y += 0.05;
-        meshRef.current.rotation.z += 0.04;
+      meshRef.current.scale.set(m.shapeScale[0], m.shapeScale[1], m.shapeScale[2]);
+      if (!capture && m.shapeSpin) {
+        // Per-element drift/spin in gameplay; frozen in capture (and null for static/strobe = no tumble).
+        meshRef.current.rotation.x += m.shapeSpin[0];
+        meshRef.current.rotation.y += m.shapeSpin[1];
+        meshRef.current.rotation.z += m.shapeSpin[2];
       }
     }
-    if (innerRef.current) innerRef.current.scale.setScalar(pulse * jitter);
-    if (outerRef.current) outerRef.current.scale.setScalar(pulse);
+    if (innerRef.current) {
+      innerRef.current.scale.setScalar(m.innerScale);
+      // strobe lever: lightning flickers the hot core on/off (coreIntensity<1); others stay at full 0.85.
+      if (innerRef.current.material) innerRef.current.material.opacity = 0.85 * m.coreIntensity;
+    }
+    if (outerRef.current) outerRef.current.scale.set(m.outerScale[0], m.outerScale[1], m.outerScale[2]);
   });
 
   // W2-T4: shared saturated-element silhouette material (the shape is the HERO — emissive

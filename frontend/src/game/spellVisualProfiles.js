@@ -33,6 +33,7 @@ export const ENERGY_PROFILE = {
     shape: 'sphere',
     trail: 'embers',        // W2-T4: soft turbulent ember taper
     impact: 'burst',        // W2-T4: expanding fireball burst
+    motion: 'roil',         // v7-S3.1: turbulent, non-uniform, RISING (vs the old shared sin-pulse)
   },
   iceball: {
     coreColor: '#F2FCFF',   // crystalline white heart
@@ -48,6 +49,7 @@ export const ENERGY_PROFILE = {
     shape: 'crystal',
     trail: 'shard',         // W2-T4: sharp thin shard streak
     impact: 'shatter',      // W2-T4: radial shard shatter
+    motion: 'static',       // v7-S3.1: near-frozen, no tumble (cold reads as still)
   },
   lightning: {
     coreColor: '#FFFFFF',   // pure electric white heart
@@ -63,6 +65,7 @@ export const ENERGY_PROFILE = {
     shape: 'bolt',
     trail: 'segments',      // W2-T4: thin jagged lightning segments
     impact: 'fork',         // W2-T4: forked flash + chain segment
+    motion: 'strobe',       // v7-S3.1: discontinuous on/off flash, erratic (vs smooth pulse)
   },
   arcane: {
     coreColor: '#FBEEFF',   // luminous near-white violet heart
@@ -78,13 +81,14 @@ export const ENERGY_PROFILE = {
     shape: 'sigil',         // W2-T4: rotating sigil orb (rings + rune glyph)
     trail: 'ribbon',        // W2-T4: flat double-sided arcane ribbon
     impact: 'rune',         // W2-T4: imploding rune ring
+    motion: 'orbit',        // v7-S3.1: smooth orbital rotation, no scale-breathing (hypnotic/uncanny)
   },
 };
 
 export const _defaultEnergy = {
   coreColor: '#FFFFFF', glowColor: '#46E0FF', coreIntensity: 5.0, glowIntensity: 3.4,
   coreScale: 0.38, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
-  capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst',
+  capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst', motion: 'pulse',
 };
 
 // Wand mesh: the handle stays a neutral material; the tip/gem/aura carry the element IDENTITY
