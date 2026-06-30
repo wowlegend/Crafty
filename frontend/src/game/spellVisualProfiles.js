@@ -22,11 +22,12 @@ export const ENERGY_PROFILE = {
   fireball: {
     coreColor: '#FFF4D6',   // white-hot heart (blooms white, edges go orange)
     glowColor: '#FF7A1A',   // saturated fiery orange shell (spec §4 #FF7A3C, pushed hot)
+    midColor: '#FFC24D',    // v7-S3.2: gold blackbody mid-stop (white->gold->orange ramp; consumed S3.4)
     coreIntensity: 6.0,
-    glowIntensity: 5.5,     // W2-T4: shape is the hero — boost the silhouette emissive
-    coreScale: 0.40,        // W2-T4: white core shrunk to a small bloom spec
-    glowScale: 0.92,        // tighter halo (less pink wash)
-    glowOpacity: 0.22,      // restrained outer wash so the hot core wins
+    glowIntensity: 7.0,     // v7-S3.2: push the ORANGE shape harder into HDR so the bloom HALO reads orange (was 5.5)
+    coreScale: 0.30,        // v7-S3.2: shrink the white heart -> less white/pink wash, orange shape dominates (was 0.40)
+    glowScale: 0.88,        // v7-S3.2: tighter halo -> denser orange, less diffuse pale wash (was 0.92)
+    glowOpacity: 0.12,      // v7-S3.2: RESTRAIN the additive shell (additive orange over a bright sky washes pale-pink; meshBasic can't go HDR) -> let the HDR emissive SHAPE (glowIntensity 7.0) bloom the orange halo instead (was 0.22)
     flicker: 0.18,          // strong fiery turbulence (gameplay only)
     flickerSpeed: 14,
     capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
@@ -37,12 +38,13 @@ export const ENERGY_PROFILE = {
   },
   iceball: {
     coreColor: '#F2FCFF',   // crystalline white heart
-    glowColor: '#3FB7FF',   // cool saturated cyan shell (spec §4 #6FC8FF, pushed saturated)
+    glowColor: '#9FD4E8',   // v7-S3.2: DESATURATED icy cyan (cold reads desaturated; was saturated #3FB7FF)
+    midColor: '#6FC8E8',    // v7-S3.2: mid ice-cyan stop (white->cyan->deep-teal ramp; consumed S3.4/S3.5)
     coreIntensity: 5.5,
     glowIntensity: 5.0,     // W2-T4: shape is the hero — boost the crystal emissive
     coreScale: 0.36,        // W2-T4: white core shrunk to a small bloom spec
     glowScale: 0.86,
-    glowOpacity: 0.20,
+    glowOpacity: 0.14,      // v7-S3.2: lower -> crisp high-contrast facets, not a glow ball (was 0.20)
     flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
     flickerSpeed: 7,
     capturePhase: 0.30,
@@ -53,7 +55,8 @@ export const ENERGY_PROFILE = {
   },
   lightning: {
     coreColor: '#FFFFFF',   // pure electric white heart
-    glowColor: '#86B8FF',   // white-blue electric shell (over the §4 #FFE066 bolt)
+    glowColor: '#C9B8FF',   // v7-S3.2: white-VIOLET (resolves the ice/lightning blue collision; lightning=highest value, was #86B8FF)
+    midColor: '#E0DCFF',    // v7-S3.2: pale electric mid-stop (near-white -> violet fringe)
     coreIntensity: 8.0,
     glowIntensity: 5.5,     // W2-T4: shape is the hero — boost the bolt emissive
     coreScale: 0.30,        // W2-T4: white core shrunk to a small bloom spec
@@ -70,6 +73,7 @@ export const ENERGY_PROFILE = {
   arcane: {
     coreColor: '#FBEEFF',   // luminous near-white violet heart
     glowColor: '#B84DFF',   // saturated purple-magenta shell (spec §4 #B36BFF, pushed)
+    midColor: '#5FE6D6',    // v7-S3.2: cyan split-complementary ACCENT -> arcane is the only DUOTONE element (consumed S3.7)
     coreIntensity: 6.0,
     glowIntensity: 5.2,     // W2-T4: shape is the hero — boost the sigil emissive
     coreScale: 0.38,        // W2-T4: white core shrunk to a small bloom spec
@@ -86,7 +90,7 @@ export const ENERGY_PROFILE = {
 };
 
 export const _defaultEnergy = {
-  coreColor: '#FFFFFF', glowColor: '#46E0FF', coreIntensity: 5.0, glowIntensity: 3.4,
+  coreColor: '#FFFFFF', glowColor: '#46E0FF', midColor: '#A0EFFF', coreIntensity: 5.0, glowIntensity: 3.4,
   coreScale: 0.38, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
   capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst', motion: 'pulse',
 };
