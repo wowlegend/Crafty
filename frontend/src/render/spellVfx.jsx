@@ -258,47 +258,29 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
         // W2-T4: a jagged, FORKING bolt — a deterministic zig-zag of short tilted cylinder
         // segments (the crackle in flight) plus a couple of short fork branches near the
         // head, so the silhouette reads as a hot forked line, NOT a smooth cylinder.
+        // v7-S3.6: a THIN hot crackling WIRE -- thin tapered ADDITIVE (meshBasic) segments + forks
+        // (not fat lit cylinders) + a bright thin WHITE core filament, so the bolt reads as a pure
+        // electric line. The strobe (motion 'strobe') flickers the core intensity; glowShape 'none'
+        // already dropped the round glow sphere. Additive + toneMapped=false -> blooms as a hot line.
         return (
           <group renderOrder={0}>
             {BOLT_SEGMENTS.map((s, i) => (
-              <mesh
-                key={`seg-${i}`}
-                position={[s.lateral * size, s.y * size * 1.7, 0]}
-                rotation={[0, 0, s.tilt]}
-              >
-                <cylinderGeometry args={[size * 0.09, size * 0.05, size * 0.72, 5]} />
-                {/* per-segment clone of the shared material (a fragment can't reuse one element) */}
-                <meshStandardMaterial
-                  color={profile.glowColor}
-                  emissive={profile.glowColor}
-                  emissiveIntensity={profile.glowIntensity}
-                  roughness={0.25}
-                  metalness={0.0}
-                  toneMapped={false}
-                  transparent
-                  opacity={1.0}
-                  depthWrite={false}
-                />
+              <mesh key={`seg-${i}`} position={[s.lateral * size, s.y * size * 1.7, 0]} rotation={[0, 0, s.tilt]}>
+                <cylinderGeometry args={[size * 0.045, size * 0.018, size * 0.78, 5]} />
+                <meshBasicMaterial color={profile.glowColor} transparent opacity={1.0} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
               </mesh>
             ))}
             {BOLT_FORKS.map((f, i) => (
-              <mesh
-                key={`fork-${i}`}
-                position={[f.lateral * size, f.y * size * 1.7, 0]}
-                rotation={[0, 0, f.tilt]}
-              >
-                <cylinderGeometry args={[size * 0.05, size * 0.02, size * f.len, 4]} />
-                <meshStandardMaterial
-                  color={profile.glowColor}
-                  emissive={profile.glowColor}
-                  emissiveIntensity={profile.glowIntensity}
-                  roughness={0.25}
-                  metalness={0.0}
-                  toneMapped={false}
-                  transparent
-                  opacity={1.0}
-                  depthWrite={false}
-                />
+              <mesh key={`fork-${i}`} position={[f.lateral * size, f.y * size * 1.7, 0]} rotation={[0, 0, f.tilt]}>
+                <cylinderGeometry args={[size * 0.022, size * 0.006, size * f.len, 4]} />
+                <meshBasicMaterial color={profile.glowColor} transparent opacity={0.95} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+              </mesh>
+            ))}
+            {/* bright thin WHITE core filament down the bolt axis (the hot electric heart) */}
+            {BOLT_SEGMENTS.map((s, i) => (
+              <mesh key={`core-${i}`} position={[s.lateral * size, s.y * size * 1.7, 0]} rotation={[0, 0, s.tilt]}>
+                <cylinderGeometry args={[size * 0.016, size * 0.005, size * 0.80, 4]} />
+                <meshBasicMaterial color="#FFFFFF" transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
               </mesh>
             ))}
           </group>
