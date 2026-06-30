@@ -3,7 +3,11 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
 import { computeSpellMotion } from '../game/spellMotion';
+import { buildFireTeardrop } from './spellGeometry';
 import { isCaptureMode } from '../devtest/captureMode';
+
+// v7-S3.4: the fireball silhouette geometry, built ONCE at module load (deterministic, capture-safe).
+const FIRE_TEARDROP = buildFireTeardrop();
 
 // Shared scratch objects for the stretch-billboard trail math (avoid per-frame allocs).
 // Defined HERE, in the module that uses them: they were orphaned in EnhancedMagicSystem
@@ -317,9 +321,20 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
             </mesh>
           </group>
         );
+      case 'teardrop':
+        // v7-S3.4: upward fiery teardrop (taller than wide, pointed tip) with a baked blackbody
+        // vertexColor ramp (white-hot tip -> gold -> orange base). meshBasic + vertexColors +
+        // toneMapped=false so the ramp shows + blooms at the bright tip; NormalBlending (default) so
+        // it reads as a SOLID fiery form over the bright sky, not an additive pink wash. The additive
+        // hot core + conform glow (renderOrder 1-3) still paint the hot heart over it.
+        return (
+          <mesh geometry={FIRE_TEARDROP} scale={size} renderOrder={0}>
+            <meshBasicMaterial vertexColors transparent opacity={1.0} depthWrite={false} toneMapped={false} />
+          </mesh>
+        );
       case 'sphere':
       default:
-        // round roiling fireball
+        // round roiling fireball (fallback for the default energy profile)
         return (
           <mesh renderOrder={0}>
             <icosahedronGeometry args={[size * 0.5, 1]} />

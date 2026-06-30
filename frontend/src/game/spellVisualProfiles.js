@@ -31,7 +31,7 @@ export const ENERGY_PROFILE = {
     flicker: 0.18,          // strong fiery turbulence (gameplay only)
     flickerSpeed: 14,
     capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
-    shape: 'sphere',
+    shape: 'teardrop',      // v7-S3.4: upward fiery teardrop (spellGeometry.buildFireTeardrop) -> was 'sphere' (round ball)
     trail: 'embers',        // W2-T4: soft turbulent ember taper
     impact: 'burst',        // W2-T4: expanding fireball burst
     motion: 'roil',         // v7-S3.1: turbulent, non-uniform, RISING (vs the old shared sin-pulse)

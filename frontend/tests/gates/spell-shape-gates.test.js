@@ -8,3 +8,16 @@ describe('W2-T4 spellVfx renders distinct per-element geometry', () => {
   it('the trail varies per element (not one shared cylinder)', () => { expect(SRC).toMatch(/profile\.trail|energy\.trail|\.trail/); });
   it('the impact varies per element (per-element impact geometry)', () => { expect(SRC).toMatch(/energy\.impact|profile\.impact|\.impact/); });
 });
+
+// v7-S3.4: fire is an upward TEARDROP (spellGeometry.buildFireTeardrop), not a symmetric icosahedron ball.
+import { ENERGY_PROFILE } from '../../src/game/spellVisualProfiles.js';
+describe('v7-S3.4 fire teardrop silhouette', () => {
+  it("fireball declares shape 'teardrop' (was 'sphere')", () => {
+    expect(ENERGY_PROFILE.fireball.shape).toBe('teardrop');
+  });
+  it('spellVfx renders the prebuilt FIRE_TEARDROP geometry for the teardrop case', () => {
+    expect(SRC).toMatch(/case 'teardrop'/);
+    expect(SRC).toMatch(/buildFireTeardrop/);
+    expect(SRC).toMatch(/geometry=\{FIRE_TEARDROP\}/);
+  });
+});
