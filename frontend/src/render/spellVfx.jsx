@@ -3,11 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
 import { computeSpellMotion } from '../game/spellMotion';
-import { buildFireTeardrop } from './spellGeometry';
+import { buildFireTeardrop, buildIceShards } from './spellGeometry';
 import { isCaptureMode } from '../devtest/captureMode';
 
-// v7-S3.4: the fireball silhouette geometry, built ONCE at module load (deterministic, capture-safe).
+// v7-S3.4/S3.5: per-element silhouette geometries, built ONCE at module load (deterministic, capture-safe).
 const FIRE_TEARDROP = buildFireTeardrop();
+const ICE_SHARDS = buildIceShards();
 
 // Shared scratch objects for the stretch-billboard trail math (avoid per-frame allocs).
 // Defined HERE, in the module that uses them: they were orphaned in EnhancedMagicSystem
@@ -213,8 +214,40 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
   // wrapping meshRef group so every sub-mesh animates together (capture-frozen).
   const renderSilhouette = () => {
     switch (profile.shape) {
+      case 'shards':
+        // v7-S3.5: ice = a SOLID faceted shard CLUSTER with glowing EDGES only -- THE ice fix. Ice was
+        // an additive glow-ball identical in grammar to fire; now it is a NON-additive solid crystal
+        // (NormalBlending + depthWrite, emissive BELOW the 0.65 bloom threshold so the body does NOT
+        // bloom = reads as cold solid crystal) plus an inverted-hull RIM (a slightly-larger BackSide copy,
+        // bright cyan + toneMapped=false so ONLY the silhouette edge clears the bloom threshold -> glowing
+        // crystal edges; a geometry-only fresnel approximation, the true fresnel shader being Phase-2).
+        return (
+          <group scale={size}>
+            <mesh geometry={ICE_SHARDS} renderOrder={0}>
+              <meshStandardMaterial
+                vertexColors
+                emissive={profile.glowColor}
+                emissiveIntensity={0.35}
+                roughness={0.12}
+                metalness={0.15}
+                depthWrite
+                toneMapped
+              />
+            </mesh>
+            <mesh geometry={ICE_SHARDS} scale={1.08} renderOrder={1}>
+              <meshBasicMaterial
+                color={profile.glowColor}
+                side={THREE.BackSide}
+                transparent
+                opacity={0.85}
+                toneMapped={false}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
+        );
       case 'crystal':
-        // angular ice shard (faceted, sharp)
+        // angular ice shard (faceted, sharp) -- legacy single-dodecahedron fallback (pre-S3.5)
         return (
           <mesh renderOrder={0}>
             <dodecahedronGeometry args={[size * 0.5, 0]} />

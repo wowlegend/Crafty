@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFireTeardrop } from './spellGeometry.js';
+import { buildFireTeardrop, buildIceShards } from './spellGeometry.js';
 
 // v7-S3.4: pure static geometry builders for the spell silhouettes. Deterministic + module-load (no
 // clock/RNG) so the capture frame stays byte-stable. Fire = an upward asymmetric teardrop with a baked
@@ -48,6 +48,50 @@ describe('buildFireTeardrop — upward fiery teardrop with baked blackbody ramp'
   it('is DETERMINISTIC (byte-stable across calls -> capture-safe)', () => {
     const a = buildFireTeardrop().attributes;
     const b = buildFireTeardrop().attributes;
+    expect(Array.from(a.position.array)).toEqual(Array.from(b.position.array));
+    expect(Array.from(a.color.array)).toEqual(Array.from(b.color.array));
+  });
+});
+
+describe('buildIceShards — solid faceted shard CLUSTER (not a glow ball)', () => {
+  it('returns a merged BufferGeometry with position + color attributes', () => {
+    const g = buildIceShards();
+    expect(g.attributes.position).toBeTruthy();
+    expect(g.attributes.color).toBeTruthy();
+    expect(g.attributes.color.count).toBe(g.attributes.position.count);
+  });
+
+  it('is a CLUSTER (multiple shards merged -> more verts than a single octahedron)', () => {
+    const g = buildIceShards();
+    // one non-indexed octahedron = 8 faces * 3 = 24 verts; a 2-3 shard cluster is well above one.
+    expect(g.attributes.position.count).toBeGreaterThan(40);
+  });
+
+  it('is TALLER than wide (sharp pointed crystal, not a round ball)', () => {
+    const g = buildIceShards();
+    g.computeBoundingBox();
+    const b = g.boundingBox;
+    expect(b.max.y - b.min.y).toBeGreaterThan(b.max.x - b.min.x);
+  });
+
+  it('bakes a desaturated ramp: top edge brighter than the deep base', () => {
+    const g = buildIceShards();
+    const pos = g.attributes.position, col = g.attributes.color;
+    g.computeBoundingBox();
+    const { min, max } = g.boundingBox;
+    const range = (max.y - min.y) || 1;
+    const lum = (i) => 0.299 * col.getX(i) + 0.587 * col.getY(i) + 0.114 * col.getZ(i);
+    let top = 0, tN = 0, bot = 0, bN = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const t = (pos.getY(i) - min.y) / range;
+      if (t > 0.8) { top += lum(i); tN++; } else if (t < 0.2) { bot += lum(i); bN++; }
+    }
+    expect(tN).toBeGreaterThan(0); expect(bN).toBeGreaterThan(0);
+    expect(top / tN).toBeGreaterThan(bot / bN);
+  });
+
+  it('is DETERMINISTIC (byte-stable -> capture-safe)', () => {
+    const a = buildIceShards().attributes, b = buildIceShards().attributes;
     expect(Array.from(a.position.array)).toEqual(Array.from(b.position.array));
     expect(Array.from(a.color.array)).toEqual(Array.from(b.color.array));
   });

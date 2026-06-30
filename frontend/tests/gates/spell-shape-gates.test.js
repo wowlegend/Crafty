@@ -21,3 +21,25 @@ describe('v7-S3.4 fire teardrop silhouette', () => {
     expect(SRC).toMatch(/geometry=\{FIRE_TEARDROP\}/);
   });
 });
+
+// v7-S3.5: ice = a SOLID faceted shard cluster (buildIceShards), NON-additive body + inverted-hull
+// edge-bloom rim -- not the additive glow-ball it shared with fire.
+describe('v7-S3.5 ice solid shard cluster', () => {
+  it("iceball declares shape 'shards' (was 'crystal') + glowShape 'none' (no additive halo)", () => {
+    expect(ENERGY_PROFILE.iceball.shape).toBe('shards');
+    expect(ENERGY_PROFILE.iceball.glowShape).toBe('none');
+  });
+  it('spellVfx renders the prebuilt ICE_SHARDS for the shards case', () => {
+    expect(SRC).toMatch(/case 'shards'/);
+    expect(SRC).toMatch(/buildIceShards/);
+    expect(SRC).toMatch(/geometry=\{ICE_SHARDS\}/);
+  });
+  it('the ice body is NON-additive (depthWrite) with an inverted-hull BackSide rim', () => {
+    expect(SRC).toMatch(/THREE\.BackSide/);
+    // the body uses a standard (lit, non-additive) material, not AdditiveBlending
+    const shardsIdx = SRC.indexOf("case 'shards'");
+    const window = SRC.slice(shardsIdx, shardsIdx + 900);
+    expect(window).toMatch(/meshStandardMaterial/);
+    expect(window).toMatch(/depthWrite/);
+  });
+});

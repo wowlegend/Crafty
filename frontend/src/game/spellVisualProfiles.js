@@ -43,17 +43,17 @@ export const ENERGY_PROFILE = {
     midColor: '#6FC8E8',    // v7-S3.2: mid ice-cyan stop (white->cyan->deep-teal ramp; consumed S3.4/S3.5)
     coreIntensity: 5.5,
     glowIntensity: 5.0,     // W2-T4: shape is the hero — boost the crystal emissive
-    coreScale: 0.36,        // W2-T4: white core shrunk to a small bloom spec
+    coreScale: 0.20,        // v7-S3.5: shrink the white core to a tiny frozen spec (the solid crystal must not be washed white; was 0.36)
     glowScale: 0.86,
     glowOpacity: 0.14,      // v7-S3.2: lower -> crisp high-contrast facets, not a glow ball (was 0.20)
     flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
     flickerSpeed: 7,
     capturePhase: 0.30,
-    shape: 'crystal',
+    shape: 'shards',        // v7-S3.5: solid faceted shard cluster (spellGeometry.buildIceShards) -> was 'crystal' (dodecahedron)
     trail: 'shard',         // W2-T4: sharp thin shard streak
     impact: 'shatter',      // W2-T4: radial shard shatter
     motion: 'static',       // v7-S3.1: near-frozen, no tumble (cold reads as still)
-    glowShape: 'sphere',    // v7-S3.3: (the solid faceted shard body + edge-bloom comes in S3.5)
+    glowShape: 'none',      // v7-S3.5: DROP the additive cyan halo -> pure solid crystal + edge-bloom rim (no glow ball)
   },
   lightning: {
     coreColor: '#FFFFFF',   // pure electric white heart
