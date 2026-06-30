@@ -285,15 +285,25 @@ export const WeatherSystem = () => {
     }
   });
 
+  // frustumCulled={false} on ALL THREE particle meshes (W4 cull fix): the instances are
+  // repositioned every frame via setMatrixAt to surround the moving player, but THREE computes
+  // an instancedMesh's bounding sphere ONCE (lazily, from the initial all-at-origin instanceMatrix)
+  // and never recomputes it as the matrices change. The stale bounding sphere makes frustum culling
+  // misfire -- the particle cloud only survived from certain camera angles / near spawn and VANISHED
+  // when the player turned away (Kevin-reported: "rain shows in only one area; turn away + back and it
+  // disappears"). Since the particles always track the player (px/py/pz-relative) they are effectively
+  // always on-camera, so culling provided ~zero benefit while causing the bug; disabling it is the
+  // canonical moving-instanced-particle fix. (When weather is 'clear' the instances are scale-0 -> the
+  // draw is empty, so this is pixel-identical in the forced-'clear' capture.)
   return (
     <group>
-      <instancedMesh ref={rainMeshRef} args={[null, rainMaterial, rainCount]}>
+      <instancedMesh ref={rainMeshRef} args={[null, rainMaterial, rainCount]} frustumCulled={false}>
         <boxGeometry args={[0.02, 1.0, 0.02]} />
       </instancedMesh>
-      <instancedMesh ref={snowMeshRef} args={[null, snowMaterial, snowCount]}>
+      <instancedMesh ref={snowMeshRef} args={[null, snowMaterial, snowCount]} frustumCulled={false}>
         <planeGeometry args={[0.12, 0.12]} />
       </instancedMesh>
-      <instancedMesh ref={firefliesMeshRef} args={[null, fireflyMaterial, fireflyCount]}>
+      <instancedMesh ref={firefliesMeshRef} args={[null, fireflyMaterial, fireflyCount]} frustumCulled={false}>
         <sphereGeometry args={[0.1, 4, 4]} />
       </instancedMesh>
     </group>

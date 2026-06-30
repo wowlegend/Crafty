@@ -20,3 +20,21 @@ describe('weather density (mount-time bug regression gate)', () => {
     expect(/useGameStore\(\s*\(s\)\s*=>\s*s\.qualityTier\s*\)/.test(SRC)).toBe(true);
   });
 });
+
+describe('weather frustum-cull regression gate (rain/snow vanish-on-turn fix)', () => {
+  // The bug: the rain/snow/firefly <instancedMesh> instances are repositioned every frame via
+  // setMatrixAt to surround the moving player, but THREE computes the bounding sphere ONCE (from
+  // the initial all-at-origin instanceMatrix) and never recomputes it. The stale sphere makes
+  // frustum culling misfire -> the cloud only renders from certain angles / near spawn and VANISHES
+  // when the camera turns (Kevin-reported). The fix: frustumCulled={false} on ALL THREE meshes.
+  const WEATHER = readFileSync(resolve(__dirname, '../../src/render/WeatherSystem.jsx'), 'utf8');
+
+  it('all three weather instancedMeshes set frustumCulled={false}', () => {
+    // Every <instancedMesh ...> opening tag in WeatherSystem must carry frustumCulled={false}.
+    const tags = WEATHER.match(/<instancedMesh[\s\S]*?>/g) || [];
+    expect(tags.length).toBe(3); // rain + snow + fireflies
+    tags.forEach((tag) => {
+      expect(/frustumCulled=\{false\}/.test(tag)).toBe(true);
+    });
+  });
+});
