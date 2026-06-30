@@ -27,3 +27,23 @@ describe('spell motion-grammar wiring (v7-S3.1)', () => {
     expect(new Set(motions).size).toBe(4); // genuinely distinct, no two share a grammar
   });
 });
+
+// v7-S3.3 — anisotropy / glowShape: lightning drops the round glow sphere (reads as a wire);
+// fire's glow conforms (elongates vertically). Lock the field + the conditional render wiring.
+describe('spell glowShape / anisotropy wiring (v7-S3.3)', () => {
+  it('every element declares glowShape; lightning=none (drop sphere), fire=conform', () => {
+    expect(ENERGY_PROFILE.lightning.glowShape).toBe('none');
+    expect(ENERGY_PROFILE.fireball.glowShape).toBe('conform');
+    for (const k of ['fireball', 'iceball', 'lightning', 'arcane']) {
+      expect(typeof ENERGY_PROFILE[k].glowShape).toBe('string');
+    }
+  });
+
+  it("SpellProjectileCore omits the outer glow shell for glowShape 'none'", () => {
+    expect(/profile\.glowShape\s*!==\s*'none'\s*&&/.test(VFX)).toBe(true);
+  });
+
+  it("SpellProjectileCore elongates the glow vertically for glowShape 'conform'", () => {
+    expect(/profile\.glowShape\s*===\s*'conform'/.test(VFX)).toBe(true);
+  });
+});

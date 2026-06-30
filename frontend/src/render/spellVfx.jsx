@@ -176,7 +176,13 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
       // strobe lever: lightning flickers the hot core on/off (coreIntensity<1); others stay at full 0.85.
       if (innerRef.current.material) innerRef.current.material.opacity = 0.85 * m.coreIntensity;
     }
-    if (outerRef.current) outerRef.current.scale.set(m.outerScale[0], m.outerScale[1], m.outerScale[2]);
+    if (outerRef.current) {
+      // v7-S3.3 glowShape 'conform' (fire): elongate the halo vertically so it licks like a flame,
+      // not a round ball. Other shapes use the motion outerScale as-is. (lightning 'none' renders no
+      // outer glow mesh at all -> outerRef.current is null -> this guard skips it.)
+      const gy = profile.glowShape === 'conform' ? m.outerScale[1] * 1.5 : m.outerScale[1];
+      outerRef.current.scale.set(m.outerScale[0], gy, m.outerScale[2]);
+    }
   });
 
   // W2-T4: shared saturated-element silhouette material (the shape is the HERO — emissive
@@ -364,19 +370,23 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
         </mesh>
       </mesh>
 
-      {/* (3) soft outer glow shell — saturated element halo giving volume + bloom */}
-      <mesh ref={outerRef} renderOrder={1}>
-        <sphereGeometry args={[size * profile.glowScale, 16, 16]} />
-        <meshBasicMaterial
-          color={profile.glowColor}
-          toneMapped={false}
-          transparent
-          opacity={profile.glowOpacity}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* (3) soft outer glow shell — saturated element halo giving volume + bloom. v7-S3.3:
+          glowShape 'none' (lightning) OMITS this round shell entirely so the bolt reads as a hot
+          WIRE, not a ball; 'conform' (fire) keeps it but the useFrame elongates it vertically. */}
+      {profile.glowShape !== 'none' && (
+        <mesh ref={outerRef} renderOrder={1}>
+          <sphereGeometry args={[size * profile.glowScale, 16, 16]} />
+          <meshBasicMaterial
+            color={profile.glowColor}
+            toneMapped={false}
+            transparent
+            opacity={profile.glowOpacity}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
 
       {/* point-light pop so the energy actually casts onto nearby voxels (gameplay) */}
       <pointLight color={profile.glowColor} intensity={5} distance={7} decay={2} />

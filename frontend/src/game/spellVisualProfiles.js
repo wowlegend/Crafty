@@ -35,6 +35,7 @@ export const ENERGY_PROFILE = {
     trail: 'embers',        // W2-T4: soft turbulent ember taper
     impact: 'burst',        // W2-T4: expanding fireball burst
     motion: 'roil',         // v7-S3.1: turbulent, non-uniform, RISING (vs the old shared sin-pulse)
+    glowShape: 'conform',   // v7-S3.3: anisotropic glow -> taller, conforms to the rising teardrop (not a round ball)
   },
   iceball: {
     coreColor: '#F2FCFF',   // crystalline white heart
@@ -52,6 +53,7 @@ export const ENERGY_PROFILE = {
     trail: 'shard',         // W2-T4: sharp thin shard streak
     impact: 'shatter',      // W2-T4: radial shard shatter
     motion: 'static',       // v7-S3.1: near-frozen, no tumble (cold reads as still)
+    glowShape: 'sphere',    // v7-S3.3: (the solid faceted shard body + edge-bloom comes in S3.5)
   },
   lightning: {
     coreColor: '#FFFFFF',   // pure electric white heart
@@ -69,6 +71,7 @@ export const ENERGY_PROFILE = {
     trail: 'segments',      // W2-T4: thin jagged lightning segments
     impact: 'fork',         // W2-T4: forked flash + chain segment
     motion: 'strobe',       // v7-S3.1: discontinuous on/off flash, erratic (vs smooth pulse)
+    glowShape: 'none',      // v7-S3.3: DROP the round glow sphere -> the bolt reads as a hot WIRE, not a ball
   },
   arcane: {
     coreColor: '#FBEEFF',   // luminous near-white violet heart
@@ -86,13 +89,14 @@ export const ENERGY_PROFILE = {
     trail: 'ribbon',        // W2-T4: flat double-sided arcane ribbon
     impact: 'rune',         // W2-T4: imploding rune ring
     motion: 'orbit',        // v7-S3.1: smooth orbital rotation, no scale-breathing (hypnotic/uncanny)
+    glowShape: 'sphere',    // v7-S3.3: round halo suits the orbital wheel (rune-wheel geom comes in S3.7)
   },
 };
 
 export const _defaultEnergy = {
   coreColor: '#FFFFFF', glowColor: '#46E0FF', midColor: '#A0EFFF', coreIntensity: 5.0, glowIntensity: 3.4,
   coreScale: 0.38, glowScale: 0.9, glowOpacity: 0.22, flicker: 0.12, flickerSpeed: 10,
-  capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst', motion: 'pulse',
+  capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst', motion: 'pulse', glowShape: 'sphere',
 };
 
 // Wand mesh: the handle stays a neutral material; the tip/gem/aura carry the element IDENTITY
