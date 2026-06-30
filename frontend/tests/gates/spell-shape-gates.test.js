@@ -55,3 +55,14 @@ describe('v7-S3.6 lightning thin additive wire', () => {
     expect(window).not.toMatch(/emissiveIntensity=\{profile\.glowIntensity\}/);
   });
 });
+
+// v7-S3.7: arcane is a layered rune-WHEEL (2 concentric rings + orbiting motes) + DUOTONE (cyan accent).
+describe('v7-S3.7 arcane rune-wheel + duotone', () => {
+  it('the sigil has a second concentric ring + orbiting motes using the cyan accent (midColor)', () => {
+    const sigilIdx = SRC.indexOf("case 'sigil'");
+    const window = SRC.slice(sigilIdx, SRC.indexOf("case 'teardrop'", sigilIdx)); // the whole sigil case
+    expect(window).toMatch(/profile\.midColor/);          // the cyan duotone accent is used
+    expect(window).toMatch(/mote-/);                       // orbiting glyph motes
+    expect((window.match(/torusGeometry/g) || []).length).toBeGreaterThanOrEqual(2); // 2 concentric rings
+  });
+});

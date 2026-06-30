@@ -334,6 +334,24 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
                 depthWrite={false}
               />
             </mesh>
+            {/* v7-S3.7: a SECOND smaller concentric ring in the cyan ACCENT (midColor) -> the only
+                DUOTONE element (magenta wheel + cyan accent), reading as a layered rune mechanism. */}
+            <mesh>
+              <torusGeometry args={[size * 0.26, size * 0.05, 8, 20]} />
+              <meshBasicMaterial color={profile.midColor} transparent opacity={0.9} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+            {/* v7-S3.7: orbiting glyph MOTES (cyan) at seeded angles around the wheel -> secondary
+                motion / "intelligent mechanism" read (they ride the orbit spin; frozen in capture). */}
+            {[0, 1, 2, 3].map((i) => {
+              const a = (i / 4) * Math.PI * 2 + seededUnit(i + 40) * 0.25;
+              const r = size * 0.56;
+              return (
+                <mesh key={`mote-${i}`} position={[Math.cos(a) * r, Math.sin(a) * r, 0]}>
+                  <octahedronGeometry args={[size * 0.05, 0]} />
+                  <meshBasicMaterial color={profile.midColor} transparent opacity={0.95} toneMapped={false} blending={THREE.AdditiveBlending} depthWrite={false} />
+                </mesh>
+              );
+            })}
           </group>
         );
       case 'teardrop':
