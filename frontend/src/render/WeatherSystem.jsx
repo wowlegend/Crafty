@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { TIERS } from './quality';
 import { captureRandom, isCaptureMode } from '../devtest/captureMode';
 import { shouldProbeGround } from '../game/particleProbe.js';
-import { stormMoodBoost, allowedPrecip } from '../game/weatherGate.js';
+import { stormMoodBoost, allowedPrecip, precipFor } from '../game/weatherGate.js';
 import { createStormBed } from '../audio/stormBed.js';
 import { getAudioBridge } from '../audio/audioBridge.js';
 import { surfaceBlockAt } from '../world/climate.js';
@@ -50,11 +50,15 @@ export const WeatherSystem = () => {
   const weatherRef = useRef('clear');
   const stormBedRef = useRef(null); // W4-T9b: lazily-built storm ambience bed (audio/stormBed.js)
 
-  // Weather loop state machine: clear -> rain -> snow -> loop
+  // Weather loop state machine (v7 snow-model): clear <-> storm. The precip TYPE (rain vs snow vs dry)
+  // is NO LONGER a global phase -- it is decided per-frame by the player's CURRENT biome (precipFor).
+  // The old clear->rain->snow global timer almost never lined the 'snow' phase up with actually standing
+  // in a cold biome (and a snow biome during the 'rain' phase rendered nothing) -> "snow never shows".
   useEffect(() => {
     const interval = setInterval(() => {
-      const states = ['clear', 'rain', 'snow'];
+      const states = ['clear', 'storm'];
       const currentIndex = states.indexOf(weatherRef.current);
+      // Back-compat: a legacy 'rain'/'snow' value (or any unknown) maps to index -1 -> next = 'storm'.
       const nextWeather = states[(currentIndex + 1) % states.length];
       weatherRef.current = nextWeather;
 
@@ -77,15 +81,22 @@ export const WeatherSystem = () => {
         }
       }
       if (store.addNotification) {
-        if (nextWeather === 'rain') {
-          store.addNotification('Atmospheric shift... Dynamic rain storm has started!', 'info');
-        } else if (nextWeather === 'snow') {
-          store.addNotification('Cold front moving in... White volumetric snow begins to drift!', 'info');
+        if (nextWeather === 'storm') {
+          // Storm-onset copy reflects what the player's CURRENT biome will actually render.
+          const pos = store.playerPosition;
+          const kind = pos ? allowedPrecip(surfaceBlockAt(pos.x, pos.z).surfaceBlock) : 'rain';
+          if (kind === 'snow') {
+            store.addNotification('Cold front moving in... White volumetric snow begins to drift!', 'info');
+          } else if (kind === 'none') {
+            store.addNotification('A dry dust storm rolls across the dunes...', 'info');
+          } else {
+            store.addNotification('Atmospheric shift... Dynamic rain storm has started!', 'info');
+          }
         } else {
           store.addNotification('The storm passes. Clear skies and warm rays return!', 'success');
         }
       }
-    }, 90000); // 90 seconds per cycle
+    }, 90000); // 90 seconds per cycle (clear <-> storm)
 
     return () => { clearInterval(interval); if (stormBedRef.current) stormBedRef.current.stop(); };
   }, []);
@@ -170,14 +181,15 @@ export const WeatherSystem = () => {
 
     const isDay = useGameStore.getState().isDay;
     const activeWeather = weatherRef.current;
-    // W4-T9b: gate the precip by the player's biome (desert never snows, the snow biome never rains).
-    // Only sample the climate when a storm is active -- surfaceBlockAt's noise calc is cheap but not free,
-    // and the common case is 'clear'. (Same main-thread sampler footstep audio uses; no remesh.)
+    // v7 snow-model: during a storm the player's CURRENT biome decides the precip form (precipFor:
+    // cold biome -> snow, temperate -> rain, desert -> dry). Only sample the climate when storming --
+    // surfaceBlockAt's noise calc is cheap but not free, and the common case is 'clear'. (Same
+    // main-thread sampler footstep audio uses; no remesh.) desert never snows; snow biome never rains.
     let isRaining = false, isSnowing = false;
-    if (activeWeather !== 'clear') {
-      const permitted = allowedPrecip(surfaceBlockAt(px, pz).surfaceBlock);
-      isRaining = activeWeather === 'rain' && permitted === 'rain';
-      isSnowing = activeWeather === 'snow' && permitted === 'snow';
+    if (activeWeather === 'storm') {
+      const precip = precipFor(activeWeather, surfaceBlockAt(px, pz).surfaceBlock);
+      isRaining = precip === 'rain';
+      isSnowing = precip === 'snow';
     }
 
     const getMobGroundLevel = useGameStore.getState().getMobGroundLevel;

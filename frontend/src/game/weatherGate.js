@@ -17,7 +17,22 @@ export function allowedPrecip(surfaceBlock) {
   return 'rain';
 }
 
-// Sky-darkening boost for the active weather state ('rain'|'snow' -> boost; else 0).
+// v7 snow-model: what ACTUALLY falls, given the unified weather state + the player's current biome.
+// The state machine now cycles clear<->'storm' (decoupled from the precip TYPE); when a storm is
+// active the player's biome decides the form via allowedPrecip. This fixes "snow never shows": the
+// OLD model cycled a GLOBAL clear->rain->snow type that almost never lined the 'snow' phase up with
+// actually standing in a cold biome (and a snow biome during the 'rain' phase rendered nothing). Now
+// any storm in a cold biome snows, any storm in a temperate biome rains, the desert stays dry.
+// Pure: 'none' when not storming, else allowedPrecip(surfaceBlock).
+export function precipFor(activeWeather, surfaceBlock) {
+  if (activeWeather !== 'storm') return 'none';
+  return allowedPrecip(surfaceBlock);
+}
+
+// Sky-darkening boost for the active weather state. The v7 unified 'storm' state darkens the sky;
+// the legacy 'rain'/'snow' values are still honored for back-compat. Clear/none -> 0.
 export function stormMoodBoost(activeWeather) {
-  return (activeWeather === 'rain' || activeWeather === 'snow') ? STORM_MOOD_BOOST : 0;
+  return (activeWeather === 'rain' || activeWeather === 'snow' || activeWeather === 'storm')
+    ? STORM_MOOD_BOOST
+    : 0;
 }
