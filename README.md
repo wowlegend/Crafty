@@ -8,9 +8,9 @@
 [![Miniplex ECS](https://img.shields.io/badge/ECS-Miniplex-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://github.com/hmans/miniplex)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
 
-A buttery-smooth, high-craft 3D voxel sandbox and magic RPG engine running entirely in the browser. Powered by a modern declarative-imperative hybrid architecture to deliver immersive performance at 120Hz/ProMotion refresh rates.
+A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a procedurally generated frontier of distinct biomes, wield four combat Aspects and an elemental spell arsenal, and chase the Blight-Heart climax. Built on a declarative-imperative hybrid (React + R3F/Three.js + Rapier) tuned for high-refresh (ProMotion 120Hz) smoothness, and playable on desktop, iPad, and iPhone.
 
-[Live Demo](http://localhost:3000) • [Architecture](#-architecture) • [Keybindings](#-controls) • [Quick Start](#-quick-start)
+[▶ Play the Live Demo](https://crafty-sand.vercel.app) • [Architecture](#-architecture) • [Controls](#-controls) • [Quick Start](#-quick-start)
 
 </div>
 
@@ -18,12 +18,15 @@ A buttery-smooth, high-craft 3D voxel sandbox and magic RPG engine running entir
 
 ## ✨ Features
 
-* **⚡ Zero-Stutter Performance**: High-frequency gameplay calculations (mob movement, spatial tracking, particles) are fully decoupled from React's state tree, utilising direct object pools and offscreen **Web Workers** to maintain a flawless 60/120 FPS.
-* **🌀 Dynamic Voxel World**: Noise-based moisture and temperature map generating distinct biomes (Forest, Desert, Snowy Mountains) with real-time vertex-based **Ambient Occlusion** cave networks.
-* **🧙 Enhanced Magic & Combat**: Interactive spell-casting pipeline supporting fireball projectiles, spatial grid-optimized chain lightning, and zombie AI mobs with inverse-kinematics leg articulation and leap attacks.
-* **💚 Physical ECS XP Orbs**: Dynamic `miniplex` ECS-driven emerald XP orbs with explosive scatter physics, physical ground bounces, and high-fidelity quadratic magnetic pull to the player.
-* **🛒 Passive Villagers & Trading**: Interactive passive merchant mobs featuring rich glassmorphic reciprocal trading panels and procedural audio chimes.
-* **💾 Offline World Save & Sync**: Complete world chunk modification saving, guest-friendly inventory preservation, and local storage restoration bypassing authentication walls.
+* **🗡️ Four combat Aspects**: WILDHEART (beast-form transformation with per-form movement + melee), VOIDHAND (telekinetic grab/hurl), SOULBIND (convert enemies into allies), and ELEMANCER (elemental spell mastery) — each with its own verbs, VFX, and audio motif.
+* **🔥 Distinct elemental spells**: fire, ice, lightning, and arcane, each a genuinely distinct silhouette + motion + palette — a roiling flame teardrop, a solid faceted ice crystal, a thin crackling lightning wire, and an orbital arcane rune-wheel — with per-cast telegraphs and impacts.
+* **🌍 Procedural frontier world**: noise-driven temperature × moisture × continent selection across 10 biomes (snow, taiga, plains, forest, meadow, swamp, jungle, savanna, desert, mesa) with per-biome flora, vertex ambient occlusion, a toon ocean + shore foam, a dynamic day/night cycle, and biome-aware weather (rain/snow).
+* **⚡ Decoupled high-frequency loop**: mob AI, spatial tracking, particles, and terrain meshing run off React's state tree via transient refs, object pools, and offscreen **Web Workers** (A* pathfinding + greedy-mesher chunk generation) to keep the render loop smooth on the web/mobile envelope.
+* **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic emerald XP orbs; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
+* **🛒 Trading, crafting & progression**: passive merchant villagers with reciprocal trading, a 3×3 crafting grid, an attribute/talent progression tree, and a spell-mastery upgrade system.
+* **📱 Desktop + touch**: full desktop mouse-look/keyboard plus a built-out iPad/iPhone touch layer (virtual joystick, verb wheel, pointer-lock-free cold start).
+* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and a deterministic 24-state visual-regression gate + ~1900 unit tests guarding it.
+* **💾 Offline world save**: chunk modifications, inventory, and progression persist to local storage — no login wall.
 
 ---
 
@@ -69,17 +72,20 @@ graph TD
 | **`W` `A` `S` `D`** | Walk & Strafe |
 | **`Space`** | Jump |
 | **`Mouse`** | Look around |
-| **`Left Click`** | Mine Block / Attack Mob |
-| **`Right Click`** | Place Block |
-| **`Scroll Wheel`** | Cycle Hotbar blocks |
-| **`1` - `4`** | Select Magic Spell (Fireball, Frost, Lightning, Build) |
-| **`F`** | Cast Selected Spell |
-| **`E`** | Open Inventory UI |
-| **`C`** | Open Crafting Grid (3x3 grid matching) |
-| **`M`** | Open Magic Panel |
-| **`B`** | Open Building Tools |
-| **`G`** | Proximity Interact (Trading with Villager / Opening Loot Chest) |
-| **`ESC`** | Game Settings Menu |
+| **`F`** | **Cast** selected spell (magic is the marquee verb) |
+| **`T`** | **Melee** attack |
+| **`Left Click`** | Mine block / melee |
+| **`Right Click`** | Cast selected spell / place block |
+| **`Scroll Wheel`** | Cycle hotbar blocks |
+| **`1` - `4`** | Select spell (Fireball, Iceball, Lightning, Arcane) |
+| **`E`** | Open Inventory |
+| **`C`** | Open Crafting Grid (3×3) |
+| **`M`** | Open Magic / Spell panel |
+| **`B`** | Open Building tools |
+| **`G`** | Interact (trade with villager / open loot chest) |
+| **`ESC`** | Settings menu |
+
+_On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace the keyboard/mouse verbs._
 
 ---
 
