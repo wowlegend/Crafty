@@ -4,7 +4,11 @@
 
 > **Method (session-archivist 4-piece):** this is the volatile current-task POINTER. It points at the detailed `superpowers` plan for the active work — it does NOT duplicate the TDD checklist. Ground truth = git `main` + `docs/superpowers/`.
 
-## ▶️ LOOP STEER 2026-06-29 (v7 = WEATHER BUGS + SPELL-VFX SOTA) — read FIRST on resume
+## 🛑 LOOP PAUSED (Kevin, 2026-07-02) — read FIRST
+
+> **Kevin: "pause the loop."** The autonomous /loop is PAUSED. Do NOT re-arm the ScheduleWakeup heartbeat and do NOT pick up work — even if a previously-scheduled heartbeat fires (an in-flight wakeup was pending at pause-time), treat it as a NO-OP: report "loop paused" and DO NOT re-arm. **Resume ONLY when Kevin explicitly re-invokes `/loop`** (the durable kernel to re-arm from = `docs/superpowers/LOOP-KERNEL-PROMPT.md`). State at pause = v6+v7 COMPLETE + fully gate-green @ ccf0e46 (origin-synced, tree clean); nothing in-flight, nothing owed except the Kevin-gated deferred items below. Safe to compact / close the session.
+
+## ▶️ LOOP STEER 2026-06-29 (v7 = WEATHER BUGS + SPELL-VFX SOTA) — read after the PAUSE banner
 
 > **🧭 COMPACTION HANDOFF (2026-06-30, resume-first):** v7 is **COMPLETE + fully gate-green** @ `e0558ae` (origin-synced, tree clean). Both weather bugs fixed (`f0dd78c` rain frustum-cull · `5d3e10b` biome-driven snow) + all 4 spells SOTA-redesigned (fire teardrop / ice solid crystal / lightning thin wire / arcane rune-wheel; S3.1-S3.7 + capture-extend S3.5a; clean 24-state visual gate banked). unit 1936, build+eslint+visual all green. The loop is **IDLE-HOLD awaiting Kevin's spell taste sign-off** (durable kernel = `docs/superpowers/LOOP-KERNEL-PROMPT.md`, synced to v7 this handoff). **NEXT on resume:** re-arm the idle-hold heartbeat; IF Kevin has steered → execute (likely: approve→do deferred S3.8 secondary-motion / S3.9 impact-timing per the spec+plan, OR tune an element via `spellVisualProfiles.js`/`spellGeometry.js` + capture-eyeball + re-baseline, OR a new feature). DEFERRED (Kevin-gated, NOT auto): S3.8/S3.9 spell polish, Phase-2 spell shaders (ice fresnel / fire heat-haze), biome-tint shader. Full detail in the v7 PROGRESS + S3 bullets below.
 
