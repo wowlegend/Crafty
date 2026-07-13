@@ -35,34 +35,36 @@ the `[KEVIN-GATED]` tag on them was stale).
 
 ---
 
-## 📌 IN FLIGHT RIGHT NOW
+## ✅ SHIPPED THIS SESSION (2026-07-13)
 
-**Harness-first tranche** (must land before the build tranche, so the build is actually verifiable):
-1. ▣ **Doc consolidation** — `memory/STATUS.md` (new, canonical) + `docs/superpowers/INDEX.md` (the map) +
-   role banners on the competing surfaces. *This file is part of that change.*
-2. ▢ **SOTA loop rewrite** — LOOP-CHARTER + LOOP-KERNEL to mid-2026 harness practice (context-reset > compaction;
-   evaluator ≠ generator; the ANTI-VACUOUS-GATE rule; doc-gardening; the session-close GitHub ritual).
-3. ▢ **CI + pre-push hook** — verified absent today (`no .github/workflows`, no `core.hooksPath`) while Vercel
-   auto-deploys every push, so a red push ships live.
-
-**Then the build tranche** begins at **R1** (the quest multi-claim reward-theft bug — RED-first).
-
----
-
-## ⏭️ NEXT UNIT
-
-**R1 — quest multi-claim.** Write the behavioral test FIRST (two completed quests, one `Q` press → assert BOTH
-rewards grant AND both ids land in `completedQuestIds`). It **must go RED against HEAD** before any fix. A
-green-on-day-one version is a rubber stamp and the slice is void.
+**Harness tranche — DONE.** The build is now actually verifiable:
+1. ✅ **Doc consolidation** (`6857b57`) — `memory/STATUS.md` canonical + `docs/superpowers/INDEX.md` (the map)
+   + role banners. The six-way status scatter is over.
+2. ✅ **SOTA loop rewrite** (`4e32dbf`) — LOOP-CHARTER §0-B (mutation-proof-every-gate · evaluator ≠ generator ·
+   drive the product surface · context-reset > compaction · never weaken to pass) + KERNEL v8 (points at
+   STATUS instead of inlining volatile state) + the §6.5 session-close ritual.
+3. ✅ **CI + pre-push hook** (`58972b4`, `939da0e`) — the first CI this repo has ever had, plus two
+   MUTATION-PROVEN gates (`bundle-budget.mjs`, `doc-currency.mjs`) and a live `core.hooksPath` pre-push gate.
+   CI caught a real repro bug on run #1 (the lockfile could not `npm ci` on linux).
+4. ✅ **R1 — the quest reward-theft + save-corruption bug** (`926751e`) — RED-first, pure reducer, and it
+   exposed a HARMFUL source-grep gate that was anti-correlated with correctness.
 
 ---
 
-## 🔎 Open background work
+## ⏭️ NEXT UNIT (pick up here)
 
-- Workflow `wdqzgav3q` — exhaustive mining of all 142 `docs/superpowers` files (verify each claimed-open item
-  against live code). **Awaiting completion; its deltas get folded into `STATUS.md` §2, not into this file.**
-- Backfill agent — the `specs/` lane (it errored in the workflow: the `specs/s1c-ui-reference/` dir holds two
-  **PNG binaries** that a text-reader choked on).
+**R4 — the block-id collapse (`world/Terrain.jsx:724`).** Placing diamond/gold/iron/coal/lava/glass/cobblestone
+all send worker id `3` (stone), while the reverse map at `:585` reads 10-13 as the real ores → **placing a
+diamond turns it into stone and persists that to disk; mining it back returns stone. The material is
+destroyed.** (`sand:4` also collides with `water:4`.)
+**RED-first:** a round-trip property test — for EVERY block type, `place(x) → read back == x`. It must fail
+against HEAD. Then give the ores their real ids, resolve sand/water, and make the forward + reverse maps a
+**single shared source of truth** so they can never disagree again.
+
+**Then:** X3 (the touch hotbar dead-tap — a one-line `pointerEvents` ship-blocker) → V1 (the 114 vacuous gates)
+→ V2/V3 (input-driven E2E).
+
+Full registry + attack order: **`memory/STATUS.md`**.
 
 ---
 

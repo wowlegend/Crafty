@@ -1,4 +1,51 @@
-# Changelog & Development History
+# Changelog
+
+## 2026-07-13 — v8 session 1: the harness gets teeth (Kevin: "fix/enhance everything, don't miss anything")
+
+**Harness (so the build is actually verifiable):**
+- **The status scatter is over** (`6857b57`). Six surfaces each carried a competing "where we are" across 142
+  docs / 44k lines. New `memory/STATUS.md` = THE single source of truth (registry + attack order, every item
+  code-verified, tagged [LOOP]/[KEVIN]); new `docs/superpowers/INDEX.md` = the map (CANONICAL / HISTORICAL /
+  SUPERSEDED, so an agent knows what to IGNORE). Consolidated by AUTHORITY, not relocation — a reverse-dep
+  grep proved every archive candidate is cited by 1-7 other docs, so moving files would have broken the
+  loop's read-path.
+- **SOTA loop rewrite** (`4e32dbf`) — charter §0-B, researched live (Anthropic long-running-harness x2,
+  OpenAI harness-engineering, arXiv 2606.26300): mutation-prove every gate · the worker may not judge its own
+  completion · drive the product surface not the implementation · context-reset > compaction · never weaken to
+  pass. Kernel v8 stops inlining volatile state and points at STATUS. Adds the §6.5 session-close ritual
+  (refresh the REMOTE GitHub surfaces at the context watermark — the step that kept getting skipped).
+- **CI — the first this repo has ever had** (`58972b4`, `939da0e`). There was no `.github/workflows` and no
+  git hook while Vercel auto-deploys EVERY push, so a red push shipped straight to the live demo. Now: CI
+  (eslint/unit/knip/build/bundle-budget + e2e + doc-currency) and a live `core.hooksPath` pre-push gate. Both
+  new gates MUTATION-PROVEN (break it -> RED -> revert). CI caught a real bug on run #1: the lockfile could
+  not `npm ci` on linux (macOS-generated lock never records the linux-only optional napi binaries).
+
+**Bugs — one fixed, two found:**
+- **R1 FIXED** (`926751e`) — quest multi-claim silently STOLE rewards and CORRUPTED the save. Kill your first
+  zombie, press Q: one reward granted, the other swallowed, the first quest erased from the save and re-offered
+  at progress 0. Two React-batching faults (a closure mutated inside a setState updater; a stale-closure Set
+  rebuild), reachable because Q claims every completed quest in one forEach and quests complete in pairs.
+  Fixed RED-first with a pure reducer (`game/questClaim.js`). **It also exposed a HARMFUL gate:** the old
+  `quest-rewards-gates.test.js` source-grep stayed GREEN through the entire bug and went RED the moment it was
+  fixed (a variable was renamed) — anti-correlated with correctness. Replaced with a behavioral, mutation-proven
+  gate. unit 1936 -> 1938.
+- **R4 FOUND (save-corrupting, unfiled)** — `Terrain.jsx:724` collapses diamond/gold/iron/coal/lava/glass/
+  cobblestone all to id 3 (stone) while the reverse map reads 10-13 as the real ores. Place a diamond -> it
+  becomes stone, persisted to disk. **Your materials are destroyed.** (sand:4 collides with water:4.)
+- **X3 FOUND (touch ship-blocker)** — `TouchControls.jsx:113` full-screen root at z-40 with no
+  `pointerEvents:none` hit-covers the hotbar. **iPad players can never change the selected block: a voxel
+  BUILDING game locked to grass.**
+
+**Corrections to our own claims (verify-before-assert cuts both ways):**
+- The boss body is **already obsidian** (`BossEntity.jsx:467` `#111029`). My "it's indigo" diagnosis read the
+  wrong line. The real culprit is `:468` — the phase colour is flooded as EMISSIVE across the whole torso
+  (intensity 0.8->2.2), drowning the obsidian. The purple box is real (I read the PNG); the cause was not.
+- The mob art is **good** — distinct silhouettes, coherent language. Do not touch it. Its gap is BEHAVIOR
+  (10 creatures, 3 AI brains).
+- The vacuous-gate scale is **worse** than recorded: `tests/gates/` = 123 files, **114 of them regex the
+  source**, and **0 of 12 e2e specs fire a single real key or click.**
+
+ & Development History
 
 ### June 29-30, 2026 — 🏁 v7 SPELL-VFX SOTA REDESIGN COMPLETE (all 4 elements) + weather bug fixes (Kevin steer)
 - **Kevin steered:** rain/snow weather bugs + "the 4 spells are still looking a bit too childish, and not quite differentiated… deep research on most SOTA spell casting effects / combat effects. then autonomously enhance all."

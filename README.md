@@ -2,6 +2,8 @@
 
 <div align="center">
 
+[![CI](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml/badge.svg)](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml)
+
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Three.js](https://img.shields.io/badge/Three.js-r172-000000?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org)
 [![Rapier Physics](https://img.shields.io/badge/Rapier-2.2-E15B35?style=for-the-badge&logo=rust&logoColor=white)](https://rapier.rs)
