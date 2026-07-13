@@ -9,10 +9,15 @@ import { Package, Hammer, Wand2, Grid } from 'lucide-react';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
 import { isTouchUIMode } from '../input/touchDevice';
 
+// X3: `data-hud-interactive` marks this as a real UI control surface. The full-screen TOUCH layer
+// (ui/TouchControls.jsx, z-40) sits ABOVE the HUD (z-20) and routed EVERY touch into its move/look zones —
+// so on a touch device a tap here was hit-covered and swallowed, and the block selection could never change:
+// a voxel BUILDING game permanently locked to placing grass, on its own stated iPad target. The touch router
+// now skips touches landing on a [data-hud-interactive] surface, letting the tap reach these onClick handlers.
 const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
   return (
-    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+    <div data-hud-interactive className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
       <Panel variant="base" className="flex gap-2 p-2.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
@@ -26,6 +31,8 @@ const MinecraftHotbar = React.memo(({ gameState }) => {
               className="w-[62px] cursor-pointer"
               onClick={() => gameState.setSelectedBlock(blockType)}
               title={`${blockConfig.name} (${quantity})`}
+              // stable seam for the input-driven E2E (X3)
+              data-hotbar-block={blockType}
             >
               {/* block-color swatch — gameplay data (inline color allowed) */}
               <div

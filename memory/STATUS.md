@@ -227,14 +227,32 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   `talent` field) → `setIntent(verb, true)`. **Reuses the entire existing intent path — zero downstream change.**
   Gate: pure sector-hit math (unit, like `input/touchMath.js`) + unlock-gating test + a wheel-open state added to
   the `mobile.png` fixture (`getCaptureOpts().showTouch` already exists). Thumb-reach/ring layout → Kevin's eye.
-- ▢ **X3 [LOOP] ⛔ TOUCH SHIP-BLOCKER: the hotbar is DEAD — a voxel *building* game where iPad players can
-  only ever place GRASS.** Verified: `ui/TouchControls.jsx:113-117` renders its root as
-  `position:fixed; inset:0; zIndex:40` with **no `pointerEvents:'none'`**, sitting above the HUD/hotbar
-  (`z-20`), and its pointer handlers `preventDefault()`. So the full-screen touch layer **hit-covers the
-  onClick-wired hotbar and swallows the tap** — the block selection can never change.
-  (`TouchControlsSurface` correctly sets `pointerEvents:none`; the ROOT does not. That's the whole bug.)
-  Fix: `pointerEvents:'none'` on the root + `pointerEvents:'auto'` on the actual hit-targets. Gate: a touch
-  E2E that taps a hotbar slot and asserts the selected block changed (RED against HEAD).
+- ▢ **X3 [LOOP] TOUCH HOTBAR — ⚠️ UNCONFIRMED. DO NOT "FIX" IT ON THE READING ALONE.**
+  > **Status 2026-07-13: I tried to reproduce this and FAILED. Recording that honestly, because a
+  > code-reading is a HYPOTHESIS (LOOP-CHARTER §0-B) and this campaign exists precisely to distrust them.**
+
+  **The hypothesis (from reading, unproven):** `ui/TouchControls.jsx:113-117` renders its root as
+  `position:fixed; inset:0; zIndex:40` with **no `pointerEvents:'none'`**, above the HUD/hotbar (`z-20`), and
+  its handlers `preventDefault()`. That *would* hit-cover the onClick-wired hotbar and swallow the tap.
+  (`TouchControlsSurface` does set `pointerEvents:none`; the ROOT does not.)
+
+  **What I actually OBSERVED when I drove it** (chromium, 390×844, `hasTouch`): I never got into the game, so
+  the hotbar was never even in the DOM (`[data-hud-interactive]` = 0, `gameStarted` = false). Two traps, both
+  MINE, both worth knowing:
+  1. `devices['iPhone 13']` carries `defaultBrowserType:'webkit'` → it silently switches browser, and the
+     project's WebGL flags (`--use-angle=swiftshader`) are **chromium-only**, so the game never boots. Emulate
+     touch explicitly (`browserName:'chromium'`, `hasTouch:true`) instead.
+  2. A **dev-only** `z-50` FAB (`ui/DebugOverlay.jsx:167`, `fixed bottom-4 left-4`) intercepts taps on the
+     phone viewport. **It is NOT in production** — do not report it as a bug (I nearly did).
+
+  **The right harness already exists:** `scripts/visual/touch-probe.mjs` drives the real cold-start (taps
+  "Start Adventure" via a live handle) and its own comments warn that a naive fixed-coordinate tap *"caused a
+  false 'cold-start dead' alarm"* — the exact trap I fell into. **Extend THAT**, don't re-invent it.
+  **Next step:** drive a hotbar tap through touch-probe's entry path and see what actually happens. If the tap
+  is swallowed → fix (`pointerEvents:'none'` on the root, `'auto'` on the hit-targets, and skip routing for
+  `[data-hud-interactive]`). If not → close this and delete the claim.
+  *(Seams already landed for whichever way it goes: `data-hud-interactive` on the hotbar container +
+  `data-hotbar-block={type}` per slot.)*
 - ▢ **X2 [LOOP]** Touch has **no cooldown display at all** — `HUD.jsx:590` gates `<AbilityBar>` behind
   `!isTouchUIMode()`. Touch also lacks spell-select (1-4).
 
