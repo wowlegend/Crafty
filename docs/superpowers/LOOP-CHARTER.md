@@ -8,7 +8,64 @@
 > The kernel prompt is re-injected verbatim each firing (compaction-proof); this file is git-tracked
 > (machine-loss-proof); CLAUDE.md auto-loads (session-proof). Three redundant layers — that is the design.
 
-## 0. Mission + hard frame (never overridden by taste)
+## 0-A. READ ORDER (this replaces the old accreted mandate-ladder)
+
+> **The loop's ground truth, in strict order:**
+> 1. `git main` (the code is the only truth that cannot lie)
+> 2. **`memory/STATUS.md`** — **where we are · the open-work REGISTRY · what's next.** THE source of truth.
+> 3. `memory/ACTIVE_PLAN.md` — the live cursor (the ONE unit in flight)
+> 4. **this charter** — how the loop operates
+> 5. `docs/superpowers/INDEX.md` — the map of all 142 docs (what to read, what to IGNORE)
+> 6. `SOTA-INITIATIVE.md` — DIRECTION only (its §3 status is FROZEN/superseded)
+>
+> **Every historical mandate (2026-06-10 authority grant · 06-17 rebuild · 06-20 "fix everything then build
+> everything" · 06-28 post-audit · 06-29 tech-debt/de-monolith · v7) is now HISTORY. Their decisions-of-record
+> are preserved in §0-C below. Do not re-read the old ladder to find work — the work is in STATUS.md.**
+>
+> **CURRENT MANDATE (Kevin, 2026-07-13):** *"fix / enhance and address every single one of these items you
+> identified, don't miss anything. leave the truly manual ones for me to review later. the mob/boss art
+> direction you should have a go at fixing / enhancing as you decide best."* → **campaign v8, work-of-record =
+> the STATUS.md registry.** This de-gated **mob/boss art** (now full loop authority) and confirmed the
+> **control-scheme Option-A** enhancements (which were already authorized on 06-28; the `[KEVIN-GATED]` tag on
+> them was stale).
+
+## 0-B. THE SOTA HARNESS LAYER (added 2026-07-13 — researched live, A1 sources)
+
+Sources: Anthropic *Effective harnesses for long-running agents* + *Harness design for long-running application
+development*; OpenAI *Harness engineering*; arXiv **2606.26300** *The Verification Horizon*. These are not
+philosophy — each maps to a rule this project has already been burned by.
+
+1. **⛔ A GATE THAT GREPS SOURCE TEXT IS NOT A GATE.** *(Our own hardest-won lesson — now a hard rule.)*
+   `quest-rewards-gates.test.js` asserts `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)` — it proves the
+   **line exists**, not that it **runs**. It sat green while a live bug stole every 2nd quest reward and
+   corrupted the save. **Every gate must be MUTATION-PROVEN: break the behavior → the gate must go RED.** If you
+   cannot make it go red, it is not a gate; it is decoration. A new gate that is green on day one is a rubber
+   stamp and the slice is VOID.
+2. **The worker may not judge its own completion.** (arXiv 2606.26300: unit-test-as-verifier is exploitable —
+   agents tamper with tests or retrieve artifacts. Adding a **judge that is not the worker** + trajectory
+   monitoring dropped the hacked-solve rate **28.6% → 0.6%** *while raising* the clean solve rate **40% → 61%**.)
+   ⇒ For any milestone-scale unit: an **independent evaluator** (a subagent, or Kevin) grades against the
+   sprint's own stated criteria. The evaluator judges **surfaced evidence**, and **hard thresholds fail the
+   sprint** — a self-reported "done" is not evidence.
+3. **Sprint contract BEFORE code.** State what "done" looks like and *how it will be proven* before writing the
+   implementation. (This is already the plan-doc discipline — now it must name the GATE, not just the steps.)
+4. **Drive the product surface, not the implementation.** (Anthropic: Claude marked features complete after
+   shallow checks; forcing **browser automation — test as a human user would** — measurably improved results.)
+   ⇒ **E2E that fires real input outranks unit tests for "does it work".** Unit tests are too close to the code.
+   This is exactly why `memory/STATUS.md §V2` (input-driven E2E) is the campaign's spine.
+5. **Context RESET > compaction for long work.** (Anthropic: compaction preserves continuity but not a clean
+   slate, so "context anxiety" — premature wrap-up — persists.) ⇒ The loop's durable artifacts (STATUS +
+   ACTIVE_PLAN + CHANGELOG + git) ARE the handoff. **Prefer a fresh session with a clean read of STATUS over
+   grinding a deeply-compacted one.**
+6. **Give the agent a MAP, not a manual.** (OpenAI.) → `docs/superpowers/INDEX.md`. 142 docs / 44k lines cannot
+   all be read; a **stale doc is a live trap** (a stale charter line regenerated a week-sized dead proposal on
+   2026-07-13). ⇒ **doc-gardening is a first-class loop duty**, and doc-currency should fail a lint, not a human.
+7. **Reward-hacking watch.** The classic failure is *"delete the failing test to turn CI green."* The test
+   ratchet (§3) is absolute. Additionally: **never widen a timeout, loosen a threshold, or narrow a test's scope
+   to pass.** If a gate is wrong, fix it deliberately WITH written justification in the commit body — never
+   silently.
+
+## 0-C. Mission + hard frame (never overridden by taste)
 
 - **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
@@ -71,11 +128,11 @@
   rate-limit + conflict, the logged M-HUD lesson); use background Workflows for read-only analysis / adversarial verification.
 - **2026-06-29 MANDATE = v6 TECH-DEBT → DE-MONOLITH (Kevin verbatim: "do all the autonomous-doable tech-debt first. and then the de-monolith. get the loop / charter updated first and invoke the loop. keep going autonomously"):**
   the post-audit campaign closed all safe veins; Kevin RE-ARMED the loop with a strict two-phase order. **PHASE C (autonomous tech-debt — do ALL first, to zero):** (1) visual-gate FAIL-LOUD hardening (item #12 — capture already non-zero-exits on a render-crash; the residual hole is `diff.test.js` passing on STALE `current/` when run isolated after a crashed/timed-out capture → a run-sentinel + a pure `captureFreshness` predicate + a freshness assertion); (2) E2E perf coverage (frame-rate + memory via the existing `devtest/perfProbe` harness, wired into a Playwright spec); (3) coherence-gate calibration-verify. **PHASE A (de-monolith — after C is zero):** Components ~1345 / SimplifiedNPCSystem ~934 / GameScene ~933 LOC → plan-doc-first (`superpowers:writing-plans`), then extract-pure-module + thin-wiring slices, each INDIVIDUALLY gated (characterization test before extraction; capture-verify any render-touching slice). **DE-MONOLITH IS NOW FULL LOOP AUTHORITY** — it was parked as Kevin-gated scope/taste (iter-175); Kevin has now explicitly DIRECTED it, so it is no longer a §4-genuinely-Kevin item. STILL Kevin-gated: zh-CN i18n #73, S4, control-scheme #9, compass #6, touch radial wheel, mob/boss art, W4 weather, clip/photo-mode, live-eye taste, affixes full wiring. Live cursor + per-item detail in `memory/ACTIVE_PLAN.md` (the v6 block).
-- **Ground truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` → `docs/superpowers/specs+plans` (incl. the 2026-06-15
-  mega-directive set: `plans/2026-06-15-crafty-world-purpose-sota.md` [S5..S10 ladder + direction], `research/2026-06-15-crafty-codebase-reality-audit.md`
-  [ranked file:line P0-debt backlog of record], `research/2026-06-15-crafty-agentic-e2e-testing.md` [E2E roadmap]) →
-  `memory/STATE-REVIEW-*.md` → this charter → `SOTA-INITIATIVE.md` v2 (direction-canonical; its §3 status
-  line is LIVING — loop-maintained at every milestone per §1.6 below).
+- **Ground truth precedence (REPLACED 2026-07-13 — see §0-A):** git `main` → **`memory/STATUS.md`** (the single
+  source of truth: registry + what's next) → `memory/ACTIVE_PLAN.md` (the live cursor) → **this charter** →
+  `docs/superpowers/INDEX.md` (the map: what to read, what to IGNORE) → the specific spec/plan for the unit in
+  hand → `SOTA-INITIATIVE.md` (DIRECTION only — **its §3 status block is FROZEN and superseded by STATUS.md**).
+  **Do not go mining old plans/audits for "what's next" — that scatter is what STATUS.md exists to end.**
 - The loop has **no terminal state** — SOTA is a direction. It runs until Kevin stops it.
 
 ## 1. Per-iteration procedure (the only loop shape)
@@ -180,6 +237,20 @@
 
 ## 3. Quality gates + the ratchet (non-negotiable)
 
+- **⛔ MUTATION-PROOF EVERY NEW GATE (added 2026-07-13 — the hardest lesson this project has learned).**
+  A gate that greps SOURCE TEXT is **not a gate**. Before a gate counts: **break the behavior it claims to
+  guard and watch it go RED**, then revert. If you cannot make it go red, it is decoration — delete it or
+  replace it. A gate that is **green on day one** against unfixed code is a **rubber stamp**, and the slice that
+  shipped it is VOID.
+  *Empirical:* `quest-rewards-gates.test.js` asserts `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)` — it
+  proved the line EXISTED while the line never RAN on a 2nd claim, so it sat green through a live bug that stole
+  quest rewards and corrupted the save. `bundle-split-gates.test.js` greps `vite.config.js` for `manualChunks`
+  and asserts **zero bytes** against a ~4.5MB bundle. **Both are typical, not exceptional — assume a gate is
+  vacuous until you have seen it fail.**
+- **Never weaken to pass.** No widening a timeout, loosening a threshold, narrowing a test's scope, or
+  `.skip`-ing to get green. If a gate is genuinely wrong, change it **deliberately, with written justification
+  in the commit body** — never silently. (This is the classic reward-hack: *delete the failing test to turn CI
+  green.*)
 - **Test ratchet:** NEVER delete, weaken, skip, or edit-to-pass an existing test or static gate to make work
   green (the canonical long-running-agent failure). A genuinely wrong test may be CHANGED only with a
   written justification in the commit body + an ACTIVE_PLAN note. Unit count holds-or-grows every iteration —
@@ -222,9 +293,14 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   (third-person timing, monetization=S4, audience, the Ember-Frontier direction); **NEW-DIRECTION CONFIRMATION**
   (when the loop surfaces a proposed game-direction/sub-direction for Kevin to AFFIRM before building the gameplay
   layer — a PICK, distinct from a reversal; the Ember-Frontier pick was this before 2026-06-15); **adding any NEW dev
-  dependency / test substrate / install** (e.g. @react-three/test-renderer + Playwright/WebKit — approved + landed
-  `0f8cad9`; the zero-dep gameplay-flow + state-hash E2E needs NO ask, built under loop authority); ear / taste
-  sign-off (audio mix, final colour/foam taste).
+  dependency / test substrate / install**; ear / taste sign-off (audio mix, final colour/foam taste).
+  > **⚠️ CORRECTED 2026-07-13 (this line was a LIVE TRAP).** It used to claim `@react-three/test-renderer` was
+  > "approved + landed (`0f8cad9`)". **It was REMOVED as unused by `8b6e3a44`** — verified: absent from
+  > `package.json`, imported nowhere. That single stale sentence caused an agent to propose a week-sized
+  > "wire the installed E2E substrates" campaign for a package that does not exist. **Current truth:**
+  > `@playwright/test` **IS** installed and wired (`playwright.config.js`, `npm run test:e2e`, 11 specs) — but
+  > those specs drive the **store**, not real input (see STATUS §V2). The zero-dep input-driven E2E + state-hash
+  > work needs **no ask** and is full loop authority.
 
 ## 5. Process deltas vs the pre-loop era (so old docs don't confuse the loop)
 
@@ -262,6 +338,31 @@ bestiary distinctness (post-B3 per plan, pull earlier if cheap) · loot-VFX prem
 toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full zh-CN content pass (#73 — locale
 TOGGLE, English default, natural Simplified Chinese for a broad kids-to-adults audience). Each of
 these follows §4 (reference/spec first for look-bearing ones).
+
+## 6.5 SESSION-CLOSE RITUAL — fire at the CONTEXT WATERMARK (Kevin, 2026-07-13)
+
+> **Kevin, verbatim:** *"get Crafty's remote github surfaces updated too near the end of every session when you
+> hit the context-watermark."*
+
+**Trigger:** the context watermark (the harness nudges at **85 / 90 / 94%** of the auto-compact window). Also
+fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wait to be asked.**
+
+**The ritual (in order — each is cheap, and skipping one is how state rots):**
+1. **Green the tree.** Finish-or-revert the in-flight unit. Never close a session on an unverified half-state.
+2. **Local surfaces:** `memory/STATUS.md` (registry ticked: what closed, what opened) → `memory/ACTIVE_PLAN.md`
+   (the NEXT unit, so a cold session resumes in one read) → `memory/CHANGELOG.md` (what shipped) →
+   plan-doc banners (`✅ SHIPPED`).
+3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:
+   - **README.md** — is it still TRUE? (It went ~6 weeks stale once, with a **`localhost:3000` "Live Demo"
+     link** shipped to the public.) Features, controls, and the demo URL must match reality.
+   - **Repo description + topics** (`gh repo edit`) — must describe the game as it *is*.
+   - **CI badge** green (once CI exists — §V6).
+   - `git push` — **the tree must be pushed, not just committed.** Vercel auto-deploys from `main`.
+4. **Durable memory:** mark-truth any operator-state change; snapshot the native-memory dir.
+5. **Re-arm** the loop with the kernel (`LOOP-KERNEL-PROMPT.md`) so the next firing orients from disk.
+
+**Rule:** a session that ends without step 3 has left the project's **public face** lying about it. That is a
+first-class failure, not a nicety.
 
 ## 7. Compaction + crash resilience (why this survives anything)
 

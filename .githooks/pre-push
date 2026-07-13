@@ -1,0 +1,48 @@
+#!/bin/sh
+# Crafty pre-push gate.
+#
+# WHY: Vercel auto-deploys EVERY push to `main`. Until 2026-07-13 there was no CI and no hook, so a red
+# push shipped straight to the live demo and nothing stopped it. CI (.github/workflows/ci.yml) is the
+# backstop; this hook is the fast local one, so you find out in 40s instead of after the deploy.
+#
+# Runs the FAST, deterministic gates only. Deliberately NOT here:
+#   * the 24-state visual gate (renders the real scene under swiftshader; load-sensitive, would flake)
+#   * e2e (browser boot ~60s)
+# Run those before a milestone: `npm run test:visual` / `npm run test:e2e`.
+#
+# Escape hatch: `git push --no-verify`.
+# ⚠️ Using --no-verify to dodge a red gate is a reward-hack (LOOP-CHARTER §3). If a gate is genuinely
+# wrong, FIX THE GATE in its own commit with a written justification. Do not route around it.
+
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+APP="$REPO_ROOT/frontend"
+
+# Docs-only pushes don't need the app gates — but they DO need doc-currency (a stale doc is a live trap).
+CHANGED=$(git diff --name-only "@{push}" HEAD 2>/dev/null || git diff --name-only origin/main HEAD 2>/dev/null || echo "")
+APP_TOUCHED=$(echo "$CHANGED" | grep -c '^frontend/' || true)
+
+cd "$APP"
+
+printf '\n▶ pre-push: doc-currency\n'
+node scripts/ci/doc-currency.mjs
+
+if [ "$APP_TOUCHED" -eq 0 ] && [ -n "$CHANGED" ]; then
+  printf '\n✓ pre-push: docs-only push — skipping app gates\n\n'
+  exit 0
+fi
+
+printf '\n▶ pre-push: eslint (incl. the crash-class gate)\n'
+npm run --silent lint
+
+printf '\n▶ pre-push: unit + static gates\n'
+npm run --silent test:unit
+
+printf '\n▶ pre-push: build\n'
+npm run --silent build
+
+printf '\n▶ pre-push: bundle byte budget\n'
+node scripts/ci/bundle-budget.mjs
+
+printf '\n✓ pre-push: all fast gates green — pushing\n\n'

@@ -1,35 +1,85 @@
-# Crafty Autonomous Build Loop — KERNEL PROMPT (v7, 2026-06-30 · idle-hold)
+# Crafty Autonomous Build Loop — KERNEL PROMPT (v8, 2026-07-13 · "Playable Truth + Depth")
 
-> **Usage (Kevin):** open a FRESH Claude Code session in `/Users/kz/Code/Crafty` (fresh > compacted — the loop
-> orients from disk either way), permissions set to allow edits, then type `/loop ` followed by the ENTIRE block
-> below. **This file is the DURABLE copy of the live `/loop` ScheduleWakeup prompt** — a cold / git-only recovery
-> reconstructs the loop from HERE, so a stale copy silently re-arms the wrong mode. The charter
-> (`LOOP-CHARTER.md`) is the constitution it re-reads every iteration; keep the two in sync (charter §1.6
-> doc-currency applies to THIS file too — sync whenever the kernel's MODE / ORIENT / CONTINUE / ask-gates change).
-> **Version history:** v2 (2026-06-10) steady-state-hold · v3 (2026-06-15) mega-directive Phase-2 build ·
-> v4 (2026-06-17) COMPREHENSIVE SOTA REBUILD · v5 (2026-06-28) POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT ·
-> v6 (2026-06-29) TECH-DEBT → DE-MONOLITH (both complete) ·
-> **v7 (2026-06-29→30) = WEATHER BUGS + SPELL-VFX SOTA REDESIGN (Kevin steer). COMPLETE + fully gate-green
-> → the loop is now IDLE-HOLD awaiting Kevin's spell taste sign-off. The block below is the idle-hold kernel.**
+> **Usage (Kevin):** open a FRESH Claude Code session in `/Users/kz/Code/Crafty` (fresh > compacted — a context
+> RESET beats a deep compaction; the loop re-orients from disk either way), then type `/loop ` followed by the
+> ENTIRE block below.
+> **This file is the DURABLE copy of the live `/loop` ScheduleWakeup prompt** — a cold / git-only recovery
+> reconstructs the loop from HERE, so a stale copy silently re-arms the wrong mode. Keep it in sync with
+> `LOOP-CHARTER.md` (the constitution) whenever the MODE / ORIENT / gates / ask-gates change.
+>
+> **Version history:** v2 steady-state-hold · v3 mega-directive · v4 SOTA rebuild · v5 post-audit fix ·
+> v6 tech-debt→de-monolith · v7 weather+spell-VFX ·
+> **v8 (2026-07-13) = drive the STATUS.md registry ("fix/enhance everything, don't miss anything" — Kevin).**
+> **The big change in v8: volatile state is NO LONGER inlined here.** The kernel points at `memory/STATUS.md`;
+> that file is the work-of-record. This is deliberate — inlined per-slice state is exactly what drifted and
+> scattered across six competing surfaces.
 
 ---
 
-CRAFTY /loop kernel — IDLE-HOLD (v7 COMPLETE + fully gate-green: weather bugs + all-4-spell SOTA redesign, delivered 2026-06-30). Re-read docs/superpowers/LOOP-CHARTER.md (the constitution) + memory/ACTIVE_PLAN.md (the v7 cursor at TOP) EVERY iteration. This prompt re-arrives verbatim each firing (compaction-proof); all volatile state (live cursor, gate/HEAD counts) lives in ACTIVE_PLAN — READ it, never inline it here.
+CRAFTY /loop kernel — v8 "PLAYABLE TRUTH + DEPTH". Autonomous build loop, full authority per the charter.
 
-ROLE: lead engineer-designer, full authority to enhance/fix/delete Crafty to a SOTA-June-2026 bar (web/iPad/mobile envelope, clever>brute-GPU), self-gated by the charter's design discipline. No terminal state; runs until Kevin stops it.
+ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted or reset):
+`cd /Users/kz/Code/Crafty && git fetch && git status -s && git log --oneline -8`
+Then READ, IN THIS ORDER — this is the whole point of v8; do not skip it, and do not go doc-mining elsewhere:
+1. **`memory/STATUS.md`** — THE source of truth: where we are, the open-work REGISTRY, what's next.
+2. **`memory/ACTIVE_PLAN.md`** — the live cursor (the ONE unit in flight).
+3. **`docs/superpowers/LOOP-CHARTER.md`** — the constitution (esp. **§0-B the SOTA harness layer** + **§3 gates**).
+4. `docs/superpowers/INDEX.md` — the map, if and only if you need a doc. **142 docs / 44k lines; a stale doc is a
+   LIVE TRAP** (one stale charter line regenerated a week-sized dead proposal). Never mine old plans/audits for
+   "what's next" — the work is in STATUS.md.
+Re-load the coding domain overlay if this is a fresh post-compact session.
 
-REPO (two-level): ROOT=/Users/kz/Code/Crafty (docs+memory+master-plan), APP=/Users/kz/Code/Crafty/frontend (run npm/tests HERE). Absolute paths always; NEVER assert file-absence from a relative ls/find.
+REPO (two-level): ROOT `/Users/kz/Code/Crafty` (docs + memory + master plan) · APP `/Users/kz/Code/Crafty/frontend`
+(run npm/tests HERE). Absolute paths always. NEVER assert file-absence from a relative ls/find.
 
-STATUS (what v7 delivered): Weather — rain "one-spot/vanish-on-turn" = missing frustumCulled={false} on the 3 weather instancedMeshes (`f0dd78c`); snow "never shows" = a global clear→rain→snow timer that rarely matched the biome, rebuilt to clear↔storm where the player's biome decides precip via pure precipFor() (`5d3e10b`). Spell-VFX — deep research Workflow → spec `docs/superpowers/specs/2026-06-29-crafty-spell-vfx-sota-redesign.md` + plan `docs/superpowers/plans/2026-06-29-crafty-spell-vfx-redesign.md` → 8 gated geometry-first slices redesigning all 4 spells: fire=upward flame TEARDROP + blackbody ramp (spellGeometry.buildFireTeardrop), ice=SOLID faceted crystal cluster non-additive + inverted-hull edge-bloom rim (buildIceShards) [the worst offender fixed], lightning=thin jagged white-violet WIRE + core filament, arcane=layered orbital RUNE-WHEEL + magenta/cyan duotone. Plus shared spellMotion.js (roil/static/strobe/orbit) + palette lane-separation + a capture extension (spell-iceball/lightning/arcane.png; gate 21→24 states). Commits 5e7ca63·d56269a·0066bfc·d0d116a·d114bf4·b062ac0·962dd38·0f8b22a, closeout afb7bdf, clean 24-state visual gate BANKED e0558ae. unit 1936, build+eslint+visual all green.
+MISSION: drive the **`memory/STATUS.md` §2 REGISTRY** to zero, in the §3 order:
+**R1 (the live quest reward-theft bug) → V1/V6 (vacuous-gate audit + CI) → V2/V3 (input-driven E2E) →
+C1 (control-scheme Option-A) → X1 (touch Aspect wheel — a HARD P4 pillar violation) → D1 (the boss art
+emergency) → E (depth levers) → F/G (perf, i18n unblock, doc-currency).**
+Kevin: *"fix / enhance and address every single one of these items, don't miss anything. leave the truly manual
+ones for me to review later."* Ship ONE verified unit per iteration. Never end the loop yourself.
 
-IDLE-HOLD PROCEDURE each tick: (1) HEALTH — HEAD==origin/main, tree clean (only .state/), last gate green. (2) Scan git log + the chat for a NEW Kevin steer (arrives as a NEW CHAT MESSAGE, not a file edit; an earlier-invoked skill shown "for context only" is NOT a steer). (3) Nothing autonomously-actionable (deferred items + rest of backlog are Kevin-gated) → re-arm ~1800s + report ONE line ("idle-hold: v7 complete + gate-green, awaiting Kevin spell sign-off"). Do NOT invent low-value work; do NOT re-run completed slices; do NOT touch Kevin-gated items.
+THE FIVE RULES THAT MATTER MOST (each one is a scar):
+1. **⛔ MUTATION-PROVE EVERY GATE.** A gate that greps SOURCE TEXT is NOT a gate. Break the behavior → the gate
+   MUST go red → revert. A new gate that is green on day one against unfixed code is a RUBBER STAMP and the
+   slice is VOID. (`quest-rewards-gates.test.js` asserted a line EXISTED while it never RAN — it sat green
+   through a live bug that stole quest rewards and corrupted the save.)
+2. **VERIFY BEFORE ASSERT.** Agent / workflow / doc claims are T3 — grep the cited `file:line` before acting. A
+   subagent fabricated a "RED test suite" crisis this week (it was green, 1936/1936). Another declared the boss
+   art "done"; the actual PNG is a purple box. **Open the file. Open the image.**
+3. **A GREEN HEADLESS GATE PROVES CODE-PRESENCE, NOT LIVED RESULT.** The founding rule. Drive the real product
+   surface (E2E with REAL input · a live probe · LOOK at the rendered frame) before claiming done.
+4. **NEVER WEAKEN TO PASS.** No deleting/skipping/scope-narrowing a test; no widening a timeout; no loosening a
+   threshold. Fix a genuinely-wrong gate deliberately, with justification in the commit body.
+5. **THE WORKER MAY NOT JUDGE ITS OWN COMPLETION.** For milestone-scale units an independent evaluator (a
+   subagent, or Kevin) grades against the sprint's stated criteria + hard thresholds.
 
-IF KEVIN STEERS (genuinely-new instruction this turn): drop to ~150s and execute with FULL discipline. Likely steers + responses: (a) "spells approved / want more" → resume the DEFERRED spell polish: S3.8 secondary-motion pools (per-element capped InstancedMesh ≤8: fire lagging embers / lightning offshoot sparks / ice drifting splinters; arcane motes already in S3.7; frustumCulled=false; seeded; capture-frozen) then S3.9 per-element impact/telegraph timing/anticipation — each a gated slice per the spec/plan; (b) "tune <element>" → adjust the data-driven knobs in frontend/src/game/spellVisualProfiles.js (ENERGY_PROFILE) / frontend/src/render/spellGeometry.js, capture-eyeball that element's frame (frontend/tests/visual/current/spell-{cast,iceball,lightning,arcane}.png), re-baseline; (c) new feature → superpowers:brainstorming → spec → writing-plans → build.
+DISCIPLINE (every code tick): TDD red-first; AST-safe edits only on .js/.jsx; Game-Loop-Isolation (no reactive
+state in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in
+capture — seeded + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4
+veto)**; bloom 0.65 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); no AI footer on commits; no
+`git add -A`; `.state/` untouched. Capture-verify EVERY render-affecting slice (`npm run visual:capture`, then
+**Read the frame with your own eyes**). Commit + push each gated unit; update STATUS + ACTIVE_PLAN + CHANGELOG.
 
-DISCIPLINE (every code tick): TDD red-first for logic (pure helpers get unit tests; render-shape changes get static seam-gates); AST-safe edits only on .js/.jsx (no sed/cat); Game-Loop-Isolation (no reactive state in useFrame — transient refs/.getState()/seeded); CAPTURE-DETERMINISM (NO Math.random/clock in capture — drive via profile.capturePhase + a seeded sin-hash, gate isCaptureMode(); static geometry built at module load); bloom luminanceThreshold 0.65 INTENDED; NO-RE-MESH; capture-verify EVERY render-affecting slice (npm run visual:capture then Read the changed frame; retry once on a load-spike; intended re-baselines BATCH to KEVIN-REVIEW-BATCH with before/after + an HD self-eyeball); NO AI footer on commits; no `git add -A`; .state/ untouched; ZERO-EMOJI in src/ (use \u{} escapes, `->` not the arrow glyph). Commit+push each gated unit; update ACTIVE_PLAN + CHANGELOG; sync THIS kernel file + the charter when MODE/ORIENT/CONTINUE/ask-gates change.
+TASTE BOUNDS: the coherence pillars **P0–P5** (`specs/crafty-coherence-pillars.md`; summarized in STATUS §4).
+**The only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not
+pointer-lock.** Accessibility never vetoes depth. **The destructive CUT-gate is PARKED — the pillars govern what
+to BUILD; they may NOT authorize deletions.** Reference-lock before any look-bearing work; judge IN-WORLD on the
+real grade, never on a studio card.
 
-CAPTURE INFRA NOTE: the visual capture spawns its own vite + software-GL (swiftshader) and, under machine load (cmux CPU), the LAST step (title-mascot fresh-Canvas 8s waitForFunction, capture.mjs:461) can time out → the run writes complete:false (the C1 fail-loud sentinel working as designed), NOT a regression — all game frames render before it. Under load, eyeball the affected element's rendered current/*.png frame + ship on that + unit/gates; bank the clean complete:true 24-state gate opportunistically when `uptime` load is low (<3). This is how the whole v7 spell campaign was verified.
+SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): green the tree → update
+STATUS + ACTIVE_PLAN + CHANGELOG → **refresh the REMOTE GitHub surfaces (README truth · repo description · CI
+badge) and PUSH** → mark-truth → re-arm. A session that ends without the remote step has left the project's
+public face lying about it.
 
-STILL KEVIN-GATED (surface to KEVIN-REVIEW only, do NOT auto-do): zh-CN i18n #73 · S4 multiplayer+monetization · control-scheme #9 (reticle/legend/rebinding) · compass #6 (probe+eye) · touch radial Aspect-verb wheel · mob/boss art rebuild · clip/photo-mode · live-eye taste pass · affixes full loot-depth wiring · biome-tint shader wiring · Phase-2 spell shaders (true ice fresnel / fire heat-haze) · S3.8/S3.9 spell polish (pending Kevin's live-eye). SETTLED (do NOT relitigate): F=cast/T=melee; affixes #8 KEPT; bloom 0.65 glowier INTENDED; grantXP full-heal INTENDED; the Ember-Frontier direction stands.
+STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): **#44 the holistic playtest** (his
+eye + ear — spell look, movement feel, storm, audio mix, real-device touch feel) · **S4 multiplayer + monetization
+scope** (the loop will NOT start netcode or payments) · shareable-moment / clip / photo-mode · final taste
+sign-offs · real-device runs · anything spending money / creating accounts / publishing externally · adding any
+NEW dev dependency.
+SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 glowier is INTENDED · grantXP full-heal is INTENDED ·
+affixes KEPT · the Ember-Frontier + Blight-Heart direction · audience is BROAD (Marcus is a user, not a ceiling).
 
-CONTINUE: idle-hold ~1800s heartbeat while awaiting Kevin. If Kevin steers or a genuinely-new autonomous-safe unit appears (fresh bug on main / broken gate), drop to ~150s + execute gated slices. If a background Workflow/capture is in flight, AWAIT its completion notification (primary wake) + re-arm a ~600s fallback; do NOT idle-spin. Never end the loop yourself.
+CONTINUE: ~60–150s while committable units remain (the registry is deep — this is an ACTIVE build queue, not a
+hold). AWAIT + INTEGRATE any in-flight background Workflow instead of idle-spinning. ~30min ONLY if genuinely
+blocked on Kevin. Never end the loop yourself.
