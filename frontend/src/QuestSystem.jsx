@@ -14,6 +14,7 @@ import { loreFor, themedDescription } from './game/questLore.js';
 import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
 import { questRewards } from './game/questRewards.js';
+import { reduceClaim } from './game/questClaim.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -122,6 +123,9 @@ export const useQuestSystem = () => {
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
     const lootId = useRef(0);
+    // R1: synchronous in-tick mirrors of the claim-relevant state (assigned in the render body below).
+    const questsRef = useRef(quests);
+    const completedRef = useRef(completedQuestIds);
 
     // S2a — MIRROR (hook -> store, one-way): keep a JSON-safe snapshot of the
     // persistable state in the store so buildSaveData can serialize it. Sets are
@@ -232,52 +236,67 @@ export const useQuestSystem = () => {
         return () => clearInterval(interval);
     }, [updateQuestProgress]);
 
-    // Claim quest reward and add new quest
+    // R1 — LIVE MIRRORS of the claim-relevant state ("latest ref" pattern).
+    // React state is asynchronous and batched. The Q key claims EVERY completed quest in ONE synchronous
+    // forEach (InputManager.jsx), and quests routinely complete in pairs (one zombie kill finishes both
+    // `first_blood` and `zombie_slayer`). The old code read `completedQuestIds` from a stale closure and
+    // captured the claimed quest by mutating a variable from inside a setState updater — so the 2nd claim
+    // in a tick silently granted NO reward and ERASED the 1st quest from the save. These refs are the
+    // synchronous truth WITHIN a tick; state stays the render truth. Locked by quest-multiclaim-gates.
+    questsRef.current = quests;
+    completedRef.current = completedQuestIds;
+
+    // Claim quest reward and add the next quest.
     const claimQuest = useCallback((questId) => {
-        let claimedQuest = null;
-        setQuests(prev => {
-            const updated = prev.map(q => {
-                if (q.id === questId && q.completed && !q.claimed) {
-                    claimedQuest = q;
-                    return { ...q, claimed: true };
-                }
-                return q;
-            });
-
-            // Remove claimed, add next available quest
-            const active = updated.filter(q => !q.claimed);
-            const claimedIds = new Set([...completedQuestIds, questId]);
-            setCompletedQuestIds(claimedIds);
-
-            // Find next uncompleted authored quest; once the authored list is exhausted, fall back to an
-            // endless scaling BOUNTY so the goal feed never dries up. The bounty seq = how many bounties
-            // already exist (claimed + active) -> a unique `bounty_<seq>` id that can't collide.
+        // Supplies the replacement quest. Kept here (not in the pure reducer) because the lore/theming
+        // belongs to the component; the reducer only decides IF there is room for one.
+        const pickNext = (claimedIds, active) => {
+            // Once the authored list is exhausted, fall back to an endless scaling BOUNTY so the goal feed
+            // never dries up. seq = how many bounties already exist (claimed + active) -> a unique id.
             const bountyCount = [...claimedIds].filter(id => String(id).startsWith('bounty_')).length
                 + active.filter(a => String(a.id).startsWith('bounty_')).length;
             const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
                 || makeRepeatableQuest(bountyCount);
-            if (nextQuest && active.length < 3) {
-                active.push({ ...nextQuest, description: themedDescription(nextQuest), ...(loreFor(nextQuest.id) || {}), progress: 0, completed: false, claimed: false });
-            }
+            if (!nextQuest) return null;
+            return {
+                ...nextQuest,
+                description: themedDescription(nextQuest),
+                ...(loreFor(nextQuest.id) || {}),
+                progress: 0,
+                completed: false,
+                claimed: false,
+            };
+        };
 
-            return active;
-        });
+        // Reduce PURELY from the live (ref) state — never from a stale closure, never from inside an updater.
+        const next = reduceClaim(
+            { quests: questsRef.current, completedQuestIds: completedRef.current },
+            questId,
+            pickNext,
+        );
+        // Not claimable (already claimed / not complete) -> a true no-op. This is what makes a repeated
+        // dispatch of the same id provably unable to double-pay.
+        if (!next.claimed) return;
 
-        // B4: grant the FULL reward bundle (xp + coins + optional item), not just xp. questRewards
-        // normalizes the quest's reward fields (coins default to a fraction of xp; item optional).
-        if (claimedQuest) {
-            const r = questRewards(claimedQuest);
-            const store = useGameStore.getState();
-            if (r.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(r.xp, 'Quest Reward');
-            if (r.coins > 0 && store.addCoins) store.addCoins(r.coins);
-            if (r.item && store.addToInventory) store.addToInventory(r.item.item, r.item.count);
-            const parts = [];
-            if (r.xp > 0) parts.push(`+${r.xp} XP`);
-            if (r.coins > 0) parts.push(`+${r.coins} coins`);
-            if (r.item) parts.push(`+${r.item.count} ${r.item.item}`);
-            if (parts.length) addNotification(`Quest reward: ${parts.join(', ')}!`, 'reward');
-        }
-    }, [completedQuestIds, addNotification]);
+        // Commit to the refs IMMEDIATELY so a SECOND claim in this same tick sees this one.
+        questsRef.current = next.quests;
+        completedRef.current = next.completedQuestIds;
+        setQuests(next.quests);
+        setCompletedQuestIds(next.completedQuestIds);
+
+        // B4: grant the FULL reward bundle (xp + coins + optional item). Paid from the PURE reduction's
+        // `claimed`, so batching can never swallow it.
+        const r = questRewards(next.claimed);
+        const store = useGameStore.getState();
+        if (r.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(r.xp, 'Quest Reward');
+        if (r.coins > 0 && store.addCoins) store.addCoins(r.coins);
+        if (r.item && store.addToInventory) store.addToInventory(r.item.item, r.item.count);
+        const parts = [];
+        if (r.xp > 0) parts.push(`+${r.xp} XP`);
+        if (r.coins > 0) parts.push(`+${r.coins} coins`);
+        if (r.item) parts.push(`+${r.item.count} ${r.item.item}`);
+        if (parts.length) addNotification(`Quest reward: ${parts.join(', ')}!`, 'reward');
+    }, [addNotification]);
 
     // Record mob kill and generate loot
     const onMobKill = useCallback((mobType, position, source) => {
