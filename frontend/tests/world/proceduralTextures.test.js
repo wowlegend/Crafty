@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
+import { BLOCK_ID } from '../../src/world/blockIds.js';
 
 // REGRESSION LOCK for the bold-flat / pixel-art design language (CLAUDE.md "Design Language LOCKED S1-C").
 // These invariants are what keep the voxel surfaces reading as crisp stylized pixel-art rather than
@@ -10,9 +11,40 @@ import { createProceduralVoxelTextures } from '../../src/world/proceduralTexture
 describe('procedural voxel textures — bold-flat lock invariants', () => {
   const tex = createProceduralVoxelTextures();
 
-  it('is a 14-layer DataArrayTexture (blockType 0..9 + 4 ore tiles 10..13)', () => {
+  // ⚠️ DELIBERATE CHANGE 2026-07-13 (R4a), 14 -> 16 layers. NOT a weakened gate — a widened one.
+  // `cobblestone` and `glass` were offered in HOTBAR_BLOCKS but had NO voxel id and NO texture layer, so
+  // placing them silently produced STONE (and `cobblestone` is even a Stone Sword recipe ingredient). They
+  // now have real ids (14, 15) + real texture layers. Layer index == block code, so the array had to grow.
+  // The invariant this test protects (layer count matches the id space) is UNCHANGED and still enforced —
+  // it is asserted against blockIds.js below so the two can never drift apart again.
+  it('is a 16-layer DataArrayTexture (blockType 0..9 + ore tiles 10..13 + cobblestone 14 + glass 15)', () => {
     expect(tex.isDataArrayTexture).toBe(true);
-    expect(tex.image.depth).toBe(14);
+    expect(tex.image.depth).toBe(16);
+  });
+
+  it('the layer count covers the ENTIRE block-id space (layer index == block code)', () => {
+    // The structural invariant. If someone adds a block id without adding its texture layer, that block
+    // renders untextured — this fails instead of shipping it.
+    const maxId = Math.max(...Object.values(BLOCK_ID));
+    expect(tex.image.depth, `every block id must have a texture layer (max id = ${maxId})`).toBeGreaterThan(maxId);
+  });
+
+  it('the two new layers are actually DRAWN (not blank) and differ from stone', () => {
+    // Same discipline as the ore-layer test: a layer that exists but was never painted would render black.
+    const size = tex.image.width;
+    const layerPixels = (layer) => {
+      const start = layer * size * size * 4;
+      return tex.image.data.slice(start, start + size * size * 4);
+    };
+    const stone = layerPixels(3);
+    for (const [layer, name] of [[14, 'cobblestone'], [15, 'glass']]) {
+      const px = layerPixels(layer);
+      expect(px.some((v) => v !== 0), `${name} (layer ${layer}) is blank — it was never drawn`).toBe(true);
+      expect(
+        px.some((v, i) => v !== stone[i]),
+        `${name} (layer ${layer}) is pixel-identical to stone — it would read as stone in-world`,
+      ).toBe(true);
+    }
   });
 
   it('S6: the 4 ore layers (10=coal,11=iron,12=gold,13=diamond) are drawn on a stone base + speckled', () => {

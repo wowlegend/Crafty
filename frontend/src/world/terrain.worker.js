@@ -679,6 +679,13 @@ const BLOCK_COLORS = {
   11: toLinear('#D8AF93'), // Iron ore
   12: toLinear('#FCEE4B'), // Gold ore
   13: toLinear('#4FD0E7'), // Diamond ore
+  // R4a: cobblestone + glass were offered in the HOTBAR but had NO voxel id — placing them produced STONE.
+  // Ids must stay in sync with src/world/blockIds.js AND the texture-array layer index (layer == block code,
+  // proceduralTextures.js numLayers). block-id-gates.test.js locks the three together.
+  14: toLinear('#7F7F7F'), // Cobblestone
+  15: toLinear('#F0F8FF'), // Glass (renders OPAQUE for now -- see blockIds.js; true transparency needs a
+  //                          second transparent draw pass, tracked as a follow-up. Correct identity beats
+  //                          a silent substitution to stone.)
   255: [1, 1, 1]
 };
 

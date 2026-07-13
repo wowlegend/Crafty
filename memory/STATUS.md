@@ -47,11 +47,24 @@ S4 is at **literal zero** and is **Kevin's call**. Product-wise this is a **1–
 moment-to-moment feel**. The single-player game is essentially feature-complete; what remains is the
 registry below plus Kevin's decisions.
 
-**⚠️ The finding that reframes everything (2026-06-28 audit, still true):** of **185 features, exactly ONE
-(0.5%) has full validation; ~75% have NO visual and NO live validation.** The 11 e2e specs assert **store
-transitions via the test bridge** (`grantXP`, `useMana`, `equip`) — **not one fires a real click or keypress.**
-Nothing proves the game is *playable*. This is the class that shipped a dead desktop mouse-look, a dead iOS
-cold-start, a permanently `0/100` health bar, and the F-key confusion — all of them "green".
+**⚠️ The finding that reframes everything — and be precise about which parts are MEASURED vs INHERITED:**
+
+**MEASURED (hard-verified 2026-07-13; reproduce with the commands below):**
+- **124 gate files in `tests/gates/`; 114 of them `readFileSync` + regex the SOURCE.** That is **92% of the
+  entire gate corpus asserting TEXT, not behaviour.** Only **10** are behavioural.
+  `ls tests/gates/*.test.js* | wc -l` · `grep -rl readFileSync tests/gates/ | wc -l`
+- **11 e2e specs; exactly ZERO fire a real key or click.** They drive `__craftyTest` / `getState()` — the
+  store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → nothing.
+
+**INHERITED, NOT RE-VERIFIED (treat as T3):** the often-quoted *"of 185 features, ONE (0.5%) is fully
+validated; ~75% have no visual and no live validation"* comes from `AUDIT-2026-06-28-full-status.md` — which
+**itself states it only agent-audited 10 of its 18 coverage domains** (the other 8 were "inventory-inferred,
+not agent-deep"), and it predates v6/v7. **Do not quote it as a measurement.** The conclusion does not depend
+on it: the two measured facts above are stronger and sufficient.
+
+**The conclusion (which the measured facts fully support):** nothing in the corpus proves the game is
+*playable*. This is the exact class that shipped a dead desktop mouse-look, a dead iOS cold-start, a
+permanently `0/100` health bar, the F-key confusion, and R1's reward theft — **all of them "green".**
 
 **And it is worse than untested — some gates are VACUOUS.** `quest-rewards-gates.test.js` asserts
 `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)` — it proves *the line exists in the source*, not that it
@@ -81,15 +94,39 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   quest #1** from `completedQuestIds` (re-offered; bounty seq miscounts). Reachable: `InputManager.jsx:136-140`
   — the **Q key claims EVERY completed quest in one synchronous `forEach`**, and quests complete in pairs
   routinely (one zombie kill advances `first_blood` AND `zombie_slayer`). *Fix RED-first.*
-- ▢ **R4 [LOOP] ⚠️ YOUR DIAMONDS ARE BEING DESTROYED (save-corrupting; found 2026-07-13, nobody had filed it).**
-  `world/Terrain.jsx:724` maps a PLACED block to its worker id — and collapses **`diamond`, `gold`, `iron`,
-  `coal`, `lava`, `glass`, `cobblestone` ALL to id `3` (stone)**, while the reverse map at `:585` correctly
-  reads ids `10-13` as the real ores. So: mine diamond ore → receive `diamond` → **place it → it becomes grey
-  stone**, and *that* is what persists to disk. Mine it back → you get `stone`. **The material is gone.** In a
-  voxel game with an ore economy this destroys progression. (`sand:4` also COLLIDES with `water:4`.)
-  Fix: give the ores/glass/lava/cobblestone their real ids, resolve the sand/water collision, and make the
-  forward and reverse maps a SINGLE shared source of truth so they can never disagree again.
-  Gate: a round-trip property test — for every block type, `place(x) → read back == x` (RED against HEAD).
+- ▢ **R4 [LOOP] THE HOTBAR LIES — 4 of your 9 hotbar blocks place the WRONG material.**
+  > **⚠️ SEVERITY CORRECTED 2026-07-13 (I over-claimed, and so did the audit agent).** The original write-up
+  > said "the material is DESTROYED / save-corrupting". **That is false.** The place path in `Terrain.jsx`
+  > **never calls `removeFromInventory`** — blocks are free to place, nothing is consumed, nothing is lost.
+  > The *wrong id is* persisted, but no material is destroyed. Logged because an overstated bug is still a
+  > false claim, and this file is the source of truth.
+
+  **What is actually true (verified):** `world/Terrain.jsx:724` maps a placed block to a worker id, and it
+  disagrees with the engine's real id space (`terrain.worker.js` `BLOCK_COLORS`: 1 grass · 2 dirt · 3 stone ·
+  4 sand · 5 snow · 6 wood · 7 leaves · 8 cactus · **9 water** · **10 coal · 11 iron · 12 gold · 13 diamond**).
+  - `diamond/gold/iron/coal` → sent as **`3` (stone)** instead of 13/12/11/10 → **you place grey stone.**
+  - `water` → sent as **`4` (SAND)** instead of 9.
+  - `glass / cobblestone / lava` → sent as `3` — but these have **NO engine id and no texture layer at all**
+    (`proceduralTextures.js`: `numLayers = 14`, and **layer index == block code**, so the id space is 0–13).
+    The game offers blocks in the hotbar that the engine literally cannot place.
+  - An unmapped type falls back to **`|| 1` (grass)** — another silent substitution.
+  `HOTBAR_BLOCKS = [grass, dirt, stone, wood, **glass**, **diamond**, sand, **cobblestone**, chest]` → **glass,
+  diamond, cobblestone place as stone; chest places as wood.** In a voxel *builder*, the palette IS the product.
+
+  **▣✓ R4a — FIXED (pending capture-verify).** ONE canonical registry (`world/blockIds.js`): both the place-map
+  and the mine-map now derive from it, so they cannot drift again. Ores get their real ids (10-13), water gets
+  9, and **`cobblestone` (14) + `glass` (15) became real blocks** — new voxel ids + new texture layers
+  (`numLayers` 14→16). An unplaceable block is now **REFUSED**, never silently substituted (the old `|| 1`
+  fell back to *grass*). Note `cobblestone` is a **Stone Sword recipe ingredient**, so the engine was unable to
+  produce a material its own crafting depends on.
+  *Glass renders OPAQUE for now* — the greedy mesher's only non-solid block is water (`blockA !== 9`), so true
+  see-through glass needs a second transparent draw pass. Correct identity beats a silent substitution;
+  transparency is a tracked follow-up (**R4b**).
+  Gates: `block-id-gates.test.js` (round-trip property over the whole block set + the HOTBAR contract;
+  mutation-proven — re-break diamond→3 and 3 tests go red). unit 1938→1950, all 304 files green.
+  **It also killed two more vacuous gates:** `ore-drop-gates.test.js` was source-grepping the text of the very
+  id-map literal that WAS the bug — so it went RED when the code got FIXED. Rewritten behavioral. (That's the
+  3rd such gate this session; see V1.)
 - ▢ **R2 [LOOP]** Repo-wide sweep for the same anti-pattern: any closure var mutated inside a setState updater;
   any `setX()` called inside a `setY(prev => ...)` body. Fix only hits with a real multi-dispatch caller.
 - ▢ **R3 [LOOP]** `tests/e2e/smoke.spec.js` canvas-**detach** race — three `<Canvas>` mounts exist

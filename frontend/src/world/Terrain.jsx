@@ -25,6 +25,7 @@ import { nearestLandmark } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
+import { idForBlock, blockForId } from './blockIds';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -582,8 +583,9 @@ export const MinecraftWorld = React.memo(() => {
                 const store = useGameStore.getState();
                 // S6: ore codes 10-13 drop their LOWERCASE block keys (matches recipes.js patterns +
                 // BLOCK_TYPES render path; NOT display names which wouldn't match the primary recipes).
-                const BLOCK_ID_MAP = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood', 7: 'leaves', 8: 'cactus', 10: 'coal', 11: 'iron', 12: 'gold', 13: 'diamond' };
-                const blockName = BLOCK_ID_MAP[payload.blockType];
+                // R4a: this used to be a SECOND hand-written literal, independent of the place-map above.
+                // They drifted (that is the whole bug). Both now derive from src/world/blockIds.js.
+                const blockName = blockForId(payload.blockType);
                 if (blockName && store.addToInventory) {
                     store.addToInventory(blockName, 1);
                 }
@@ -720,27 +722,11 @@ export const MinecraftWorld = React.memo(() => {
     // Components path) and registers them on the GameMethods registry; the ONE Components
     // listener routes each click to exactly one verb and passes the SAME ray hit back in.
     useEffect(() => {
-        // Map string ID to worker numeric ID
-        const blockIdMap = {
-            'grass': 1,
-            'dirt': 2,
-            'stone': 3,
-            'wood': 6,
-            'birch_wood': 6,
-            'leaves': 7,
-            'glass': 3,
-            'water': 4,
-            'lava': 3,
-            'diamond': 3,
-            'gold': 3,
-            'iron': 3,
-            'coal': 3,
-            'sand': 4,
-            'cobblestone': 3,
-            'flower_red': 7,
-            'flower_yellow': 7,
-            'chest': 6
-        };
+        // R4a: the name->id map used to be a hand-written literal HERE, and a SECOND, independent id->name
+        // literal lived in the mine path below. They drifted, and the hotbar lied: diamond/gold/iron/coal
+        // were all sent as 3 (STONE), water was sent as 4 (SAND), glass/cobblestone had no id at all, and an
+        // unmapped name fell back to `|| 1` (GRASS). Both directions now derive from the ONE table in
+        // src/world/blockIds.js, so they cannot drift again. Locked by block-id-gates.test.js.
 
         // The single per-click build ray. null on no-hit; else everything the router needs
         // (toi, chestTargeted) plus everything the executors need (hitPoint/normal/coords).
@@ -834,7 +820,11 @@ export const MinecraftWorld = React.memo(() => {
             if (!h) return;
             const store = useGameStore.getState();
             const type = store.selectedBlock || 'grass';
-            const numericType = blockIdMap[type] || 1;
+            // R4a: resolve through the ONE table. `null` means the engine genuinely cannot place this block
+            // (no voxel id, no texture layer) -> REFUSE it. The old code silently substituted stone (or grass
+            // via `|| 1`), which is how a voxel builder ends up lying to its player about what it placed.
+            const numericType = idForBlock(type);
+            if (numericType === null) return;
             // PLACE
             const placeDirection = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().multiplyScalar(-1);
             const placePos = h.hitPoint.clone().add(placeDirection.multiplyScalar(0.01));

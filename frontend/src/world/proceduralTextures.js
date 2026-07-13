@@ -2,7 +2,9 @@ import * as THREE from 'three';
 
 export function createProceduralVoxelTextures() {
   const size = 32; // 32x32 resolution per texture slice
-  const numLayers = 14; // Layers 0..9 (block types) + 10..13 ore tiles (S6: coal/iron/gold/diamond)
+  // Layer index == block code (see src/world/blockIds.js + BLOCK_COLORS in terrain.worker.js).
+  // 0..9 base block types · 10..13 ore tiles (S6: coal/iron/gold/diamond) · 14 cobblestone · 15 glass (R4a).
+  const numLayers = 16;
   
   const data = new Uint8Array(size * size * 4 * numLayers);
   
@@ -157,9 +159,42 @@ export function createProceduralVoxelTextures() {
           }
         }
       }
+
+      // R4a — Layer 14: COBBLESTONE. Was in the HOTBAR with no voxel id, so placing it produced STONE.
+      // Reads as cobble (not stone) via chunky rounded aggregate: coarse cells with dark mortar gaps and
+      // per-cell tonal variation, vs stone's fine speckle. Deterministic (getNoise, no Math.random).
+      {
+        const cell = 8;                                   // aggregate size -> chunky, reads at distance
+        const cx = Math.floor(x / cell);
+        const cy = Math.floor(y / cell);
+        const jitter = getNoise(cx * 3.1, cy * 3.1, 12.5); // per-cobble tone
+        const fx = (x % cell) / cell - 0.5;
+        const fy = (y % cell) / cell - 0.5;
+        const d = Math.sqrt(fx * fx + fy * fy);           // distance from the cobble's centre
+        const isMortar = d > 0.42 - getNoise(x, y, 18.3) * 0.06; // irregular gaps between cobbles
+        const base = isMortar ? 74 : 118 + Math.floor(jitter * 34);
+        const grit = Math.floor(getNoise(x, y, 27.9) * 12);
+        const v = Math.max(0, Math.min(255, base + grit));
+        setPixel(14, x, y, v, v, Math.min(255, v + 2));
+      }
+
+      // R4a — Layer 15: GLASS. Same story (hotbar block with no voxel id -> placed as stone).
+      // Renders OPAQUE for now: the greedy mesher's only non-solid block is water (blockA !== 9), so true
+      // see-through glass needs a second transparent draw pass (tracked follow-up). An opaque pane that
+      // READS as glass — pale blue-white, bright frame, a diagonal sheen — is still GLASS, and is vastly
+      // better than silently becoming grey stone.
+      {
+        const edge = x < 2 || y < 2 || x > size - 3 || y > size - 3; // the pane's frame
+        const sheen = Math.abs((x + y) % size - size / 2) < 2.5;      // a soft diagonal highlight
+        let r = 214, g = 232, b = 244;                                 // pale blue-white pane
+        if (sheen) { r = 236; g = 248; b = 255; }
+        if (edge) { r = 244; g = 250; b = 255; }
+        const n = Math.floor(getNoise(x, y, 31.4) * 8) - 4;            // faint imperfection
+        setPixel(15, x, y, Math.max(0, Math.min(255, r + n)), Math.max(0, Math.min(255, g + n)), Math.max(0, Math.min(255, b + n)));
+      }
     }
   }
-  
+
   const texture = new THREE.DataArrayTexture(data, size, size, numLayers);
   texture.format = THREE.RGBAFormat;
   texture.type = THREE.UnsignedByteType;
