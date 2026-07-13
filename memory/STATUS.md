@@ -81,6 +81,15 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   quest #1** from `completedQuestIds` (re-offered; bounty seq miscounts). Reachable: `InputManager.jsx:136-140`
   — the **Q key claims EVERY completed quest in one synchronous `forEach`**, and quests complete in pairs
   routinely (one zombie kill advances `first_blood` AND `zombie_slayer`). *Fix RED-first.*
+- ▢ **R4 [LOOP] ⚠️ YOUR DIAMONDS ARE BEING DESTROYED (save-corrupting; found 2026-07-13, nobody had filed it).**
+  `world/Terrain.jsx:724` maps a PLACED block to its worker id — and collapses **`diamond`, `gold`, `iron`,
+  `coal`, `lava`, `glass`, `cobblestone` ALL to id `3` (stone)**, while the reverse map at `:585` correctly
+  reads ids `10-13` as the real ores. So: mine diamond ore → receive `diamond` → **place it → it becomes grey
+  stone**, and *that* is what persists to disk. Mine it back → you get `stone`. **The material is gone.** In a
+  voxel game with an ore economy this destroys progression. (`sand:4` also COLLIDES with `water:4`.)
+  Fix: give the ores/glass/lava/cobblestone their real ids, resolve the sand/water collision, and make the
+  forward and reverse maps a SINGLE shared source of truth so they can never disagree again.
+  Gate: a round-trip property test — for every block type, `place(x) → read back == x` (RED against HEAD).
 - ▢ **R2 [LOOP]** Repo-wide sweep for the same anti-pattern: any closure var mutated inside a setState updater;
   any `setX()` called inside a `setY(prev => ...)` body. Fix only hits with a real multi-dispatch caller.
 - ▢ **R3 [LOOP]** `tests/e2e/smoke.spec.js` canvas-**detach** race — three `<Canvas>` mounts exist
@@ -89,9 +98,15 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   the 60s timeout.**
 
 ### B. Verification truth (the structural gap)
-- ▢ **V1 [LOOP] Vacuous-gate audit.** Classify EVERY file in `frontend/tests/gates/` (~57) as BEHAVIORAL
-  (executes code, asserts outcome) vs VACUOUS (regex over source). Replace/augment every vacuous one.
-  **Mutation-prove each**: break the behavior → the gate must go RED.
+- ▢ **V1 [LOOP] Vacuous-gate audit — THE SCALE IS WORSE THAN WE THOUGHT.** Measured 2026-07-13:
+  **`frontend/tests/gates/` holds 123 files, and 114 of them `readFileSync` the source and regex it.**
+  (The old "~57 static gates" figure undercounted by half.) And **0 of the 12 Playwright e2e specs fire a
+  single real key or click** — `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` returns
+  NOTHING; they all drive store setters through the test bridge. So the test corpus proves the setters work,
+  not that a player can play. **That is the machine that shipped the dead mouse-look, the dead iOS cold-start,
+  the 0/100 health bar, and R1's reward theft.**
+  Classify all 123; replace/augment every vacuous one. **Mutation-prove each**: break the behavior → RED.
+  *(V4 — the bundle-byte gate — is DONE + mutation-proven, `4e32dbf`.)*
 - ▢ **V2 [LOOP] Input-driven E2E harness ("Playable Truth").** The gap IS closable: `input/inputState.js`
   documents `setActive(v)` as the abstract input-live gate that *"replaces the scattered
   `document.pointerLockElement` checks"* — every verb reads `getInput().active`, **not pointer-lock**. So
@@ -129,9 +144,14 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   head, two grey stick-wings, two vestigial horn nubs and lavender dot-eyes** — a toy imp, *cheaper-looking than
   the trash mobs*, and it is **the payoff of the entire run**. `DRAGON_FEATURES` (horns/tail/back-ridge) DO exist
   in code (iter-172) and still don't read.
-  **Root cause found:** `game/bossConfig.js:6` sets the body `color: '#4B0082'` — **bright indigo, not obsidian**
-  — and phase-1 emissive is the same hue, so the emissive washes the entire mass to cartoon purple. Dread =
-  **dark mass + hot glowing detail**; this is all glow, no mass.
+  **Root cause — CORRECTED 2026-07-13 (my first diagnosis was wrong; verify-before-assert applies to ME too):**
+  the body colour is **already obsidian** — `render/BossEntity.jsx:467` `bodyColor = "#111029"`. I had blamed
+  `bossConfig.js:6` (`color: '#4B0082'`); that is the PHASE colour, and the real culprit is the next line:
+  **`:468 bodyEmissive = phase.color`** — the indigo is flooded as **emissive across the ENTIRE torso** at
+  `emissiveIntensity` 0.8 → 2.2 (`:469`). The emissive drowns the obsidian, so the mass renders as flat toy
+  purple. The observation (a purple box — I read the PNG) was right; the attributed line was wrong.
+  **⇒ Fix vector: keep the obsidian body; move the phase colour OFF the torso and onto DETAIL** (eye-slits,
+  edge-rim, back-ridge, vein accents) so it reads as dark mass + hot detail. Do NOT "fix" `bodyColor`.
   **Fix vector:** near-black obsidian body (the `#111029` the design intends) + phase-colored *emissive detail*
   (veins/eye-slits/edge-rim) rather than a phase-colored *body*; a real dragon silhouette in the bold-flat voxel
   vocabulary the mobs already prove works (neck + snout + membraned wings + tail + legs + mass); scale up.
@@ -170,8 +190,16 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   `talent` field) → `setIntent(verb, true)`. **Reuses the entire existing intent path — zero downstream change.**
   Gate: pure sector-hit math (unit, like `input/touchMath.js`) + unlock-gating test + a wheel-open state added to
   the `mobile.png` fixture (`getCaptureOpts().showTouch` already exists). Thumb-reach/ring layout → Kevin's eye.
+- ▢ **X3 [LOOP] ⛔ TOUCH SHIP-BLOCKER: the hotbar is DEAD — a voxel *building* game where iPad players can
+  only ever place GRASS.** Verified: `ui/TouchControls.jsx:113-117` renders its root as
+  `position:fixed; inset:0; zIndex:40` with **no `pointerEvents:'none'`**, sitting above the HUD/hotbar
+  (`z-20`), and its pointer handlers `preventDefault()`. So the full-screen touch layer **hit-covers the
+  onClick-wired hotbar and swallows the tap** — the block selection can never change.
+  (`TouchControlsSurface` correctly sets `pointerEvents:none`; the ROOT does not. That's the whole bug.)
+  Fix: `pointerEvents:'none'` on the root + `pointerEvents:'auto'` on the actual hit-targets. Gate: a touch
+  E2E that taps a hotbar slot and asserts the selected block changed (RED against HEAD).
 - ▢ **X2 [LOOP]** Touch has **no cooldown display at all** — `HUD.jsx:590` gates `<AbilityBar>` behind
-  `!isTouchUIMode()`. Touch also lacks spell-select (1-4) and a hotbar.
+  `!isTouchUIMode()`. Touch also lacks spell-select (1-4).
 
 ### E-ter. Other spec'd-but-unbuilt (from the full specs audit)
 
