@@ -51,6 +51,28 @@ the `[KEVIN-GATED]` tag on them was stale).
 
 ---
 
+## 🚨 IN-FLIGHT BACKGROUND WORK — MUST BE INTEGRATED, DO NOT LOSE THIS
+
+**Workflow `w9flt750j` (run `wf_e310cbcd-7b8`) — THE 18-DOMAIN DEEP REVIEW.** Kevin explicitly approved all
+4 phases and said: *"make sure this major work progress survives compaction and is fully completed."*
+
+- **What it is:** all 18 feature domains (not the 10 the 06-28 audit managed). Per domain: (1) MEASURE the real
+  validation coverage by grep — behavioural vs source-grep-only vs visual vs live vs none, **no inference**;
+  (2) **DRIVE the code** — agents run throwaway scripts importing the real modules and report *observed output*
+  (every bug found today came from running or looking, never from reading); (3) adversarially REFUTE every
+  finding (agents fabricate — one invented a RED test suite this session); (4) synthesize.
+- **Why it matters:** it replaces the INHERITED, partially-inferred "0.5% of 185 features" estimate (from an
+  audit that only agent-audited 10 of 18 domains) with a **measured** number.
+- **ON COMPLETION (this is the obligation):** fold the confirmed bugs into the `memory/STATUS.md` §2 REGISTRY,
+  record the measured coverage in STATUS §1 (replacing the inherited estimate), add the ranked gate-backlog to
+  V1, and log it in CHANGELOG. **The workflow finishing is NOT the deliverable — the integration is.**
+- **If the session died mid-run:** resume with
+  `Workflow({scriptPath: "<see below>", resumeFromRunId: "wf_e310cbcd-7b8"})` — completed agents replay from
+  cache, so nothing is re-billed. Script:
+  `~/.claude/projects/-Users-kz-Code-Crafty/c7297111-afb7-46c9-83b3-6edc09ed7f41/workflows/scripts/crafty-18-domain-deep-review-wf_e310cbcd-7b8.js`
+  Its per-agent results are in that run's `journal.jsonl` (one `{"type":"result"}` line per agent) — READ THAT
+  before assuming the work is lost.
+
 ## ⏭️ NEXT UNIT (pick up here)
 
 **R4 — the block-id collapse (`world/Terrain.jsx:724`).** Placing diamond/gold/iron/coal/lava/glass/cobblestone
