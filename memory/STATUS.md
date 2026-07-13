@@ -135,15 +135,26 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   the 60s timeout.**
 
 ### B. Verification truth (the structural gap)
-- ▢ **V1 [LOOP] Vacuous-gate audit — THE SCALE IS WORSE THAN WE THOUGHT.** Measured 2026-07-13:
-  **`frontend/tests/gates/` holds 123 files, and 114 of them `readFileSync` the source and regex it.**
-  (The old "~57 static gates" figure undercounted by half.) And **0 of the 12 Playwright e2e specs fire a
-  single real key or click** — `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` returns
-  NOTHING; they all drive store setters through the test bridge. So the test corpus proves the setters work,
-  not that a player can play. **That is the machine that shipped the dead mouse-look, the dead iOS cold-start,
-  the 0/100 health bar, and R1's reward theft.**
-  Classify all 123; replace/augment every vacuous one. **Mutation-prove each**: break the behavior → RED.
-  *(V4 — the bundle-byte gate — is DONE + mutation-proven, `4e32dbf`.)*
+- ▢ **V1 [LOOP] Vacuous-gate audit — ⚠️ MY OWN HEADLINE WAS OVERSTATED. Corrected below.**
+  > **I was saying "114 of 124 gates are source-greps — 92% of the corpus asserts TEXT not behaviour."**
+  > That framing is **wrong in its implication**: reading the source is not the same as being vacuous.
+  > Correcting it here, because an overstated claim is still a false claim (and this file is the SoT).
+
+  **Measured (2026-07-13, first-pass classification of all 124 files in `frontend/tests/gates/`):**
+  | Class | Count | Meaning |
+  |---|---|---|
+  | **VACUOUS** | **3** | asserts a code line EXISTS as a proxy for behaviour that *could* be tested behaviourally → the dangerous class (`boss-notif-timer`, `melee-swing-audio`, `survival-quests`) |
+  | **STRUCTURAL (legit)** | ~31 | a cross-file invariant that genuinely CANNOT be behavioural — e.g. the `ai.worker.js` inline-mirror sync gate (a classic worker cannot import, so comparing source IS the correct tool), zero-emoji-in-src, no-raw-hex-outside-theme, capture-determinism (no `Math.random`) |
+  | **NEEDS REVIEW** | ~80 | source-reading, not yet classified — this is the actual work |
+  | **BEHAVIOURAL** | 10 | already execute the code |
+
+  **What remains TRUE and is the real finding:** three gates this session were *anti-correlated with
+  correctness* — green while the code was broken, RED once it was fixed (`quest-rewards`, `ore-drop`, and the
+  `bundle-split` gate that asserted **zero bytes** against a 4.5MB bundle). And **0 of 11 e2e specs fire a
+  single real key or click** (`grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → nothing).
+  **The work:** triage the ~80 unclassified; replace only the genuinely vacuous ones; **mutation-prove each**
+  (break the behaviour → it must go RED). Do NOT mass-rewrite the structural gates — they are correct.
+  *(V4, the bundle-byte gate, is DONE + mutation-proven, `4e32dbf`.)*
 - ▢ **V2 [LOOP] Input-driven E2E harness ("Playable Truth").** The gap IS closable: `input/inputState.js`
   documents `setActive(v)` as the abstract input-live gate that *"replaces the scattered
   `document.pointerLockElement` checks"* — every verb reads `getInput().active`, **not pointer-lock**. So

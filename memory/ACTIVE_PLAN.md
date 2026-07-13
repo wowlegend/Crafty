@@ -73,7 +73,22 @@ the `[KEVIN-GATED]` tag on them was stale).
   Its per-agent results are in that run's `journal.jsonl` (one `{"type":"result"}` line per agent) — READ THAT
   before assuming the work is lost.
 
-## ⏭️ NEXT UNIT (pick up here)
+## ⏭️ NEXT UNIT (pick up here — 2026-07-13, session 2 close)
+
+**1. INTEGRATE the 18-domain review** (`w9flt750j`) the moment it lands — see the pinned block above. That is
+the first priority and the integration IS the deliverable.
+
+**2. V1 triage (in progress).** First-pass classification of all 124 gate files is DONE and recorded in
+STATUS §V1. **My earlier "114 of 124 are vacuous / 92%" headline was OVERSTATED and is corrected there** —
+reading source ≠ vacuous. Real counts: **3 clearly VACUOUS** (`boss-notif-timer-gates`,
+`melee-swing-audio-gates`, `survival-quests-gates`), **~31 legitimately STRUCTURAL** (worker inline-mirror
+sync, zero-emoji, no-raw-hex, capture-determinism — do NOT rewrite these, they are the correct tool),
+**~80 still to triage**, 10 already behavioural.
+→ Next concrete step: rewrite the 3 vacuous ones behaviourally (mutation-prove each), then work the ~80.
+
+---
+
+## ⏭️ (older cursor, still valid after the above)
 
 **R4 — the block-id collapse (`world/Terrain.jsx:724`).** Placing diamond/gold/iron/coal/lava/glass/cobblestone
 all send worker id `3` (stone), while the reverse map at `:585` reads 10-13 as the real ores → **placing a
