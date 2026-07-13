@@ -339,6 +339,25 @@ toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full z
 TOGGLE, English default, natural Simplified Chinese for a broad kids-to-adults audience). Each of
 these follows §4 (reference/spec first for look-bearing ones).
 
+## 6.4 ⚠️ BROWSER / TEST-PROCESS HYGIENE — anything you launch, you kill (Kevin, 2026-07-13)
+
+**This degrades Kevin's actual machine. Treat it as a hard rule, not housekeeping.**
+
+Headless Chromium and vite dev servers spawned by capture / e2e / ad-hoc probes **do NOT die when the script
+throws or the run is interrupted.** On 2026-07-13 one session leaked **7 vite servers + a headless Chromium
+spinning at 622% CPU (six cores)** → machine load average **25** → the visual-capture gate timed out. That
+presented as a *"flaky gate"*. It was **self-inflicted**, and it wasted a real debugging cycle.
+
+- Every ad-hoc Playwright/Puppeteer probe closes its browser in a **`finally`** (a throw must still close it).
+- Never leave a hand-started dev server running — prefer Playwright's `webServer` (self-managing). If you start
+  one by hand, kill it in the same turn.
+- Delete throwaway probe scripts (`rm -f frontend/dbg-*.mjs`); never commit them.
+- **Sweep with `sh frontend/scripts/dev/kill-test-procs.sh`** — it only kills THIS repo's vite + Playwright's
+  own cached browsers, never a user browser.
+- **When the box is slow, check for leaks BEFORE blaming a gate.** `uptime` + `ps aux | grep ms-playwright`.
+  A leaked browser is the most common cause of a "mystery" capture timeout, and the capture harness is
+  load-sensitive by design.
+
 ## 6.5 SESSION-CLOSE RITUAL — fire at the CONTEXT WATERMARK (Kevin, 2026-07-13)
 
 > **Kevin, verbatim:** *"get Crafty's remote github surfaces updated too near the end of every session when you
@@ -348,6 +367,8 @@ these follows §4 (reference/spec first for look-bearing ones).
 fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wait to be asked.**
 
 **The ritual (in order — each is cheap, and skipping one is how state rots):**
+0. **Kill your leaked test processes** — `sh frontend/scripts/dev/kill-test-procs.sh` (§6.4). Never end a
+   session leaving a headless browser or dev server burning Kevin's CPU.
 1. **Green the tree.** Finish-or-revert the in-flight unit. Never close a session on an unverified half-state.
 2. **Local surfaces:** `memory/STATUS.md` (registry ticked: what closed, what opened) → `memory/ACTIVE_PLAN.md`
    (the NEXT unit, so a cold session resumes in one read) → `memory/CHANGELOG.md` (what shipped) →

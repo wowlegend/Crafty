@@ -40,6 +40,35 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
 - **Architecture reality (per the 2026-05-30 S0 audit — do NOT trust older "clean ECS" claims):** the codebase is **MONOLITHIC** (~14.4k LOC / ~31 JS(X) files; originally 5 god-files >900 LOC, now (post-S3 + v6 de-monolith) **Components ~1330 is the LAST single large file — a documented IRREDUCIBLE residual, NOT an accidental god-file (verified 2026-06-29):** it is one component, the `Player` useFrame imperative controller, which already delegates ALL pure logic to 32 imported `game/*` modules; the remainder is the imperative loop + input wiring that MUST NOT be split (Game-Loop-Isolation / ordering, decision-of-record). PositionTracker → src/systems/ was the one cleanly-separable piece (A3.1). GameScene 933→304 (v6 Phase A2 DONE: 6 drivers [Sun/MoodGrade/BloomSpike/PointerLook/SpatialAudio/Weather] + scratch seam → `src/render/`, now a thin Canvas shell). SimplifiedNPCSystem 934→183 (A1 DONE: 7 systems + `_npcShared` → `src/systems/`) (v6 Phase A1 DONE: 7 ECS systems [MinimapSync/EnemyProjectile/Spawner/AIWorker/XPOrb/Loot/Combat] + the `_npcShared` seam → `src/systems/`; now a thin NPCSystem orchestrator), ui/GamePanels 1094→739 @ iter 148 (CraftingTable+itemUi → ui/panels/), EnhancedMagicSystem 904→474 @ iter 152 (spellVfx render group → render/spellVfx.jsx), SoundManager dropped under, AdvancedGameFeatures deleted @ S3-M4). `miniplex` ECS is a **NARROW** slice — real + load-bearing for **mobs/loot/XP only**, NOT the whole architecture. De-monolithing the god-files + ECS hardening is an **S3** goal, not the current state.
 - Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, deterministic `scripts/visual/touch-probe.mjs` gate; only real-device feel is Kevin-gated. The real test surface is the vitest unit suite (~1660 tests) + the 21-state puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates.
 
+## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
+
+**Anything you launch, you kill. Every time. This is not optional politeness — it degrades Kevin's machine.**
+
+Browser/E2E/capture/probe work spawns **headless Chromium** and **vite dev servers**. They do **NOT** die when
+your script throws or a run is interrupted — they linger, burning CPU and RAM. On 2026-07-13 a single session
+leaked **7 vite servers + a headless Chromium spinning at 622% CPU (six cores)**, which drove the machine to
+**load average 25** and made the visual-capture gate time out. That looked like a "flaky gate". It was
+self-inflicted.
+
+**The rules:**
+1. **Every ad-hoc Playwright/Puppeteer probe MUST close the browser in a `finally`** — not on the happy path:
+   ```js
+   const b = await chromium.launch(...);
+   try { /* probe */ } finally { await b.close(); }   // a throw must STILL close it
+   ```
+2. **Never leave a hand-started dev server running.** Prefer Playwright's `webServer` config (it manages its
+   own lifecycle). If you start one by hand (`npx vite --port …`), **kill it in the same turn.**
+3. **Delete throwaway probe scripts** when done (`rm -f frontend/dbg-*.mjs`). Do not commit them.
+4. **Sweep before you finish a session** (and any time the box feels slow):
+   ```
+   sh frontend/scripts/dev/kill-test-procs.sh
+   ```
+   It only kills THIS repo's vite + Playwright's own cached browsers. It can never touch Kevin's
+   Chrome/Brave/Safari.
+5. **If the machine load is high, check for leaks BEFORE blaming a flaky gate** — `uptime`, then
+   `ps aux | grep -E "ms-playwright|Crafty/frontend/node_modules/.bin/vite"`. The capture harness is
+   load-sensitive, and a leaked browser is the most common cause of a "mystery" timeout.
+
 ## Build / Test (from `frontend/`)
 - `npm run build` · `npm run test:unit` (vitest) · `npm run test:visual` (puppeteer+pixelmatch, 6% gate) · `npm run visual:capture` (regen frames).
 - Visual gate is deterministic (forced `high` tier); re-baseline + human-review per intended look change. Capture-determinism is load-bearing (gate anims on `isCaptureMode()`; seed RNG; freeze clocks).

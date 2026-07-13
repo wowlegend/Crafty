@@ -67,7 +67,15 @@ pointer-lock.** Accessibility never vetoes depth. **The destructive CUT-gate is 
 to BUILD; they may NOT authorize deletions.** Reference-lock before any look-bearing work; judge IN-WORLD on the
 real grade, never on a studio card.
 
-SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): green the tree → update
+⚠️ BROWSER / TEST-PROCESS HYGIENE (charter §6.4 — Kevin, hard rule): **anything you launch, you kill.** Headless
+Chromium + vite dev servers from capture/e2e/probes do NOT die when a script throws. One session leaked 7 vite
+servers + a Chromium at 622% CPU → load average 25 → the capture gate "flaked" (it was self-inflicted). Every
+ad-hoc probe closes its browser in a `finally`; never leave a hand-started dev server up; delete throwaway
+`dbg-*.mjs`; sweep with `sh frontend/scripts/dev/kill-test-procs.sh`. **When the box is slow, check for leaks
+BEFORE blaming a gate.**
+
+SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs →
+green the tree → update
 STATUS + ACTIVE_PLAN + CHANGELOG → **refresh the REMOTE GitHub surfaces (README truth · repo description · CI
 badge) and PUSH** → mark-truth → re-arm. A session that ends without the remote step has left the project's
 public face lying about it.
