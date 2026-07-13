@@ -65,7 +65,16 @@ source text is not a gate.
 Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` open · `▣` in flight · `▣✓` done
 
 ### A. Confirmed live bugs
-- ▢ **R1 [LOOP] Quest multi-claim steals rewards + corrupts the save.** `QuestSystem.jsx:236-280` mutates the
+- ▣✓ **R1 — FIXED + SHIPPED `926751e` (2026-07-13).** RED-first: 3 behavioral tests reproduced it exactly
+  (`expected [30] to equal [30,120]` = the 2nd reward swallowed · `expected ['zombie_slayer'] to equal
+  ['first_blood','zombie_slayer']` = the save corrupted · first_blood re-offered at progress 0). Fixed with a
+  PURE reduction (`src/game/questClaim.js reduceClaim()`) + live refs (the synchronous truth within a tick);
+  no closure mutation, no nested setState; a repeat dispatch provably cannot double-pay.
+  **AND it exposed a harmful gate:** the old `quest-rewards-gates.test.js` was a SOURCE-GREP that stayed GREEN
+  through the whole bug and went RED the moment it was fixed (a variable got renamed) — **anti-correlated with
+  correctness.** Replaced with a behavioral gate; mutation-proven. unit 1936→1938, 303 files green.
+  *~~Original diagnosis kept below for the record.~~*
+- ~~▢ **R1 [LOOP] Quest multi-claim steals rewards + corrupts the save.**~~ `QuestSystem.jsx:236-280` mutates the
   closure var `claimedQuest` from *inside* the `setQuests` updater and reads it after; on a 2nd claim in the
   same tick React has pending lanes → the updater is not eager → `claimedQuest` stays null → **reward never
   granted**. And `new Set([...completedQuestIds, questId])` reads a **stale closure** → claim #2 **erases
