@@ -1,5 +1,13 @@
 # Crafty — Exhaustive Status Audit (2026-06-28)
 
+> ## 🗄️ SNAPSHOT — superseded for STATUS purposes (2026-07-13)
+> This remains **the most honest scorecard ever taken of this project** — read it for its *method* and for the
+> Q4 finding (**of 185 features, ONE has full validation; ~75% have no visual AND no live validation**), which
+> is still true and still the project's #1 structural gap.
+> **But do NOT use its gap list as the open-work registry** — much of it was closed by the v6/v7 loops
+> (the 3 HIGH bugs, the E2E foundation, de-monolith, tech-debt, weather, spells). The living registry is
+> **`memory/STATUS.md`**. Anything from this audit that is genuinely still open has been folded in there.
+
 > Answers Kevin's 4 questions: (Q1) status of everything? (Q2) is every plan/spec/enhancement/fix thoroughly complete? (Q3) is every line of code reviewed? (Q4) is there thorough E2E + visual validation on every feature/click/UI/progression/combat/vibe?
 >
 > **Method:** a hardened multi-agent workflow — 18 plan/spec/backlog auditors + 15 code-review buckets (all 224 source files) + 3 adversarial verifiers + coverage mapping of 18 feature domains (10 completed by agents before a session-usage-limit; the other 8 assessed from the test inventory) — plus the controller's own first-hand work: live review of 16 of 28 visual baseline frames and direct source-verification of the top bugs. Founding rule applied throughout: **a green headless gate proves code-presence, not lived result.** 159 plan/doc items + 129 code findings + 185 features classified.

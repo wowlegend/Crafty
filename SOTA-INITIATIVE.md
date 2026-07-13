@@ -1,4 +1,14 @@
-# Crafty → SOTA Initiative — Master Plan v2 (LIVING — read this FIRST in a fresh session)
+# Crafty → SOTA Initiative — Master Plan v2 (DIRECTION-canonical)
+
+> ## 🧭 DOC ROLE (2026-07-13) — this file owns DIRECTION, **not status**
+> **For "where are we / what's open / what's next", read `memory/STATUS.md`. It is the single source of truth.**
+> **§3 below is FROZEN as of 2026-06-18 and is NOT maintained** — it was one of six competing status surfaces,
+> which is exactly the scatter that STATUS.md exists to end. Treat §3 as a historical snapshot.
+> What is still LIVE in this file: **§1 the goal · §2 the hard guardrails · §4 the workstream ladder (S0→S4) ·
+> §5 the SOTA-experience axes · §6 process.** The map of every doc: `docs/superpowers/INDEX.md`.
+>
+> Short version of where the ladder stands: **S0/S1/S2/S2-B (the four-Aspect spine) and S3 are DONE; the
+> 2026-06-17 W1–W4 rebuild is DONE; S4 (multiplayer + monetization) is at ZERO and is Kevin's call.**
 
 > **v2 rewrite 2026-06-10** (authority: Kevin's 2026-06-10 grant — the loop/agent may enhance/delete/fix this
 > plan as judged best). v1 (the 2026-05-30 brainstorm-kickoff brief) is HISTORICAL — in git history at tag-time
