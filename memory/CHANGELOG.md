@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-07-13 — v8 session 2: R4a shipped, X3 disproved, the 18-domain review launched
+
+- **R4a SHIPPED (`15fcc96`) — the hotbar lied.** Selecting Diamond and clicking placed a grey STONE block;
+  glass/cobblestone also became stone; water became SAND; an unmapped block became grass. Root cause: TWO
+  independent hand-written id maps (place at Terrain.jsx:724, mine at :585) that drifted from the engine's
+  real id space. Fixed with ONE source of truth (`world/blockIds.js`) that both directions derive from, so
+  they cannot drift again. **cobblestone (14) + glass (15) became real blocks** for the first time (new voxel
+  ids + new texture layers, numLayers 14->16) — cobblestone is a Stone Sword recipe ingredient, so the engine
+  could not produce a material its own crafting depends on. Unplaceable blocks are now REFUSED, never silently
+  substituted. Severity was CORRECTED down from the audit's "materials destroyed / save-corrupting": placing
+  never consumed inventory, so nothing was lost. unit 1938->1950; visual 24-state gate green on a FRESH capture.
+- **A third vacuous gate died.** `ore-drop-gates.test.js` was source-grepping the TEXT of the very id-map
+  literal that WAS the bug — so it went RED when the code got FIXED. Rewritten behavioural. (Running total:
+  3 gates this session that were anti-correlated with correctness.)
+- **X3 (touch hotbar) — DISPROVED, not fixed.** It was filed as a ship-blocker from READING z-index +
+  pointerEvents. I drove a real browser and could not reproduce it: I never got into the game, so the hotbar
+  was never in the DOM. Two traps, both mine: `devices['iPhone 13']` silently switches to WebKit (where the
+  project's chromium-only WebGL flags don't apply, so the game never boots), and a DEV-ONLY z-50 debug FAB
+  intercepts phone-viewport taps (I nearly reported "the CTA is unreachable on mobile" — a false alarm).
+  The right harness already existed (`scripts/visual/touch-probe.mjs`), and its own comments warn about
+  exactly the trap I fell into. Recorded honestly in STATUS as UNCONFIRMED; seams landed; no fix shipped.
+- **The 18-domain deep review is running** (workflow `w9flt750j`) and is PINNED in ACTIVE_PLAN so compaction
+  cannot lose it. It measures real validation coverage across ALL 18 domains (the 06-28 audit only managed
+  10, and its "0.5% of 185 features" was partly INFERRED — that number is now marked as inherited, not
+  measured). Hard-measured instead: **124 gate files, 114 of which regex the source (92%), and 0 of 11 e2e
+  specs fire a single real key or click.**
+
+
+
 ## 2026-07-13 — v8 session 1: the harness gets teeth (Kevin: "fix/enhance everything, don't miss anything")
 
 **Harness (so the build is actually verifiable):**
