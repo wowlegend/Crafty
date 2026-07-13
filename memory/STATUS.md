@@ -152,8 +152,19 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   correctness* — green while the code was broken, RED once it was fixed (`quest-rewards`, `ore-drop`, and the
   `bundle-split` gate that asserted **zero bytes** against a 4.5MB bundle). And **0 of 11 e2e specs fire a
   single real key or click** (`grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → nothing).
-  **The work:** triage the ~80 unclassified; replace only the genuinely vacuous ones; **mutation-prove each**
-  (break the behaviour → it must go RED). Do NOT mass-rewrite the structural gates — they are correct.
+  **⚠️ REFINEMENT (2026-07-13, after actually opening the 3 "vacuous" ones): the fix is NOT to rewrite the
+  test.** All 3 are **WIRING gates** — "does function A call function B" — e.g. `melee-swing-audio-gates`
+  asserts `triggerMeleeAttack` contains `playAttackSounds?.()`. They guard a REAL bug class (that helper was
+  *defined but never called*, so melee swings were silent). But `triggerMeleeAttack` lives **inside the R3F
+  `Player` component and is not exported**, so it cannot be driven without mounting the whole Rapier/R3F tree.
+  **⇒ You cannot fix a vacuous gate by editing its assertion. You fix it by making the behaviour REACHABLE** —
+  extract the decision into a pure/injectable seam (the pattern already proven twice today: `game/questClaim.js`
+  for R1, `world/blockIds.js` for R4a), then assert the seam behaviourally.
+  **So V1's real work is SEAM EXTRACTION, not test-rewriting.** Budget it as such. The three:
+  `melee-swing-audio` (audio-on-swing), `boss-notif-timer` (timer/notification), `survival-quests` (quest wiring).
+  **The work:** triage the ~80 unclassified; for the genuinely vacuous ones extract a seam, then
+  **mutation-prove** (break the behaviour → it must go RED). Do NOT mass-rewrite the structural gates — for a
+  classic Worker that cannot import, comparing source IS the correct tool.
   *(V4, the bundle-byte gate, is DONE + mutation-proven, `4e32dbf`.)*
 - ▢ **V2 [LOOP] Input-driven E2E harness ("Playable Truth").** The gap IS closable: `input/inputState.js`
   documents `setActive(v)` as the abstract input-live gate that *"replaces the scattered
