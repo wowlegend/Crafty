@@ -56,11 +56,22 @@ registry below plus Kevin's decisions.
 - **11 e2e specs; exactly ZERO fire a real key or click.** They drive `__craftyTest` / `getState()` — the
   store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → nothing.
 
-**INHERITED, NOT RE-VERIFIED (treat as T3):** the often-quoted *"of 185 features, ONE (0.5%) is fully
-validated; ~75% have no visual and no live validation"* comes from `AUDIT-2026-06-28-full-status.md` — which
-**itself states it only agent-audited 10 of its 18 coverage domains** (the other 8 were "inventory-inferred,
-not agent-deep"), and it predates v6/v7. **Do not quote it as a measurement.** The conclusion does not depend
-on it: the two measured facts above are stronger and sufficient.
+**MEASURED — the real coverage number (18-domain deep review, 2026-07-13/14; `docs/superpowers/audits/2026-07-13-18-domain-review.md`).**
+18 agents enumerated their domain's features and measured how each one is *actually* validated. **650 features:**
+
+| How it is actually validated | Features | Share |
+|---|---:|---:|
+| Behavioral test (would go RED on a real break) | 276 | 42.5% |
+| Live probe (real browser / real worker) | 24 | 3.7% |
+| **Source-grep only** (proves the code EXISTS, not that it RUNS) | 156 | 24.0% |
+| Visual-diff only (6% pixel gate) | 20 | 3.1% |
+| **Nothing at all** | 174 | 26.8% |
+
+**Real validation = 300/650 = 46.2%.** The rest is text-assertions, a loose pixel diff, or nothing.
+
+*This REPLACES the old "of 185 features, ONE (0.5%) is fully validated" line, which was **inherited** from
+`AUDIT-2026-06-28-full-status.md` — that audit agent-audited only 10 of its 18 domains and inventory-inferred
+the other 8, and it predates v6/v7. It was never a measurement. **Do not quote it again.***
 
 **The conclusion (which the measured facts fully support):** nothing in the corpus proves the game is
 *playable*. This is the exact class that shipped a dead desktop mouse-look, a dead iOS cold-start, a
@@ -334,7 +345,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 **Current campaign: v8 — "Playable Truth + Depth".** Order of attack:
 1. **R1** (the live reward-theft bug) — RED-first. It is the proof-of-need for everything below.
 2. **V1/V6** (vacuous-gate audit + CI) — stop shipping false confidence.
-3. **V2/V3** (input-driven E2E) — close the 0.5%-validation gap at its root.
+3. **V2/V3** (input-driven E2E) — close the validation gap at its root (54% of features have no behavioral cover).
 4. **C1** (control-scheme A) — authorized, unbuilt, rides the same verbRouter seam as V3.
 5. **D** (art pass) — newly de-gated.
 6. **E** (depth levers) — the retention spine.
