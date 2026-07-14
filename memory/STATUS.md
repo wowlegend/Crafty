@@ -156,7 +156,17 @@ Severity of survivors: **17 CRITICAL · 29 HIGH · 32 MEDIUM · 13 LOW.**
 **The 91 are not 91 pieces of work — they collapse into 8 root seams.** Fix the seam, not the symptom. Ordered
 by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — no exceptions.
 
-- ▢ **B1 [LOOP] FRIEND/FOE — combat has no allegiance filter.** `mobsQuery = ecs.with('isMob','position','type')`;
+- ▣✓ **B1 — FIXED + SHIPPED `86c76d1` (2026-07-14).** Seam-extracted to `src/combat/targeting.js` (three tiers:
+  PROTECTED `isNPC` = the questgivers, undamageable by anything, ever · NEUTRAL `passive` = livestock, killable
+  when deliberately aimed at but never AUTO-targeted · HOSTILE = the rest). The guard lives in **`damageMob`,
+  the choke point** — melee, projectiles, the fireball DoT, chain, element zones, hurl and ally AI all funnel
+  through it, so the invariant holds for damage paths that don't exist yet. `checkMobCollision` now resolves
+  NEAREST instead of first-in-ECS. **Caught while wiring it:** the `mobEntities` snapshot (what chain lightning
+  actually targets off) carried `passive` but **not** `isNPC` — the questgivers were excluded only
+  *incidentally*, because they happen to be passive. Field added; snapshot contract pinned by a gate.
+  Mutation-proven 4 ways (each guard → RED; restore → GREEN). unit 1950→1960, 305 files.
+  *~~Original diagnosis below.~~*
+- ~~▢ **B1 [LOOP] FRIEND/FOE — combat has no allegiance filter.**~~ `mobsQuery = ecs.with('isMob','position','type')`;
   `npcSpawn.makeNpcEntity` sets `isMob:true, isNPC:true, isStatic:true` to reuse the renderer. Nothing in combat
   ever re-filters. *(I verified this one myself.)* Consequences, all CONFIRMED:
   **melee permanently kills all 4 hub questgivers** (2.7s of LMB → trading/crafting/healing/quests gone for the
@@ -164,7 +174,27 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   mob** (`checkMobCollision` returns *first-in-ECS*, not nearest).
   **Seam:** one targeting module — `hostilesQuery` + a nearest-in-cone selector — consumed by melee, chain, and
   aimed casts. `CombatSystem.jsx:160-174`, `EnhancedMagicSystem.jsx:331`, `game/chainLightning.js:10-46`.
-- ▢ **B2 [LOOP] SAVE/LOAD is the most broken system in the game** (8 confirmed bugs; the save domain has the
+- ▣ **B2 — 4 of 8 FIXED (`4c05ff8`, `e5aafbb`, 2026-07-14).** Still open: **B2e** Spell Mastery dead after load
+  (`world/spellUpgrades.js:57-66` hydratedRef one-shot) · **B2f** the night-ratchet on load
+  (`world/survivalSystem.js:17-25`) · **B2g** the boss resets to full HP on reload (`world/bossSystem.js:11-18`
+  — nothing but `gameWon` is serialized) · **B2h** the 11-side-effect kill block inside a setState updater.
+  - **B2a ✓** the autosave no longer destroys your world. `_sessionWorldId` (in-memory, never persisted): an
+    autosave may only write to a slot THIS SESSION opened or created; unowned → mint. Also stopped renaming
+    "Marcus's Castle" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within
+    a millisecond — my own RED test caught that in my own fix).
+  - **B2b ✓** "Create New World" no longer clones the world you're playing. `startNewWorld()` resets by
+    round-tripping the store's INITIAL state through the save schema → drift-proof by construction. That gate
+    immediately found a second bug: `gameTime` loaded with `||`, and **gameTime 0 is DAWN** (falsy) — so any
+    save made at the start of a day kept your *current* clock.
+  - **B2c ✓** a grind session no longer dies with the tab. coins/XP/attributes/spellLevels/nightCount/**gameWon**
+    were not autosave triggers, so an hour of grinding — and beating the boss — scheduled nothing and flushed
+    nothing. The gate derives the trigger list FROM saveSchema, so it can't rot.
+  - **B2d ✓** "Load World" no longer destroys the terrain. `requestedChunks` was never drained on load, so the
+    streamer could never re-request a chunk → 81 chunks → 0, forever, free-falling. **Proven by a live E2E**
+    (`tests/e2e/world-rebuild-after-load.spec.js`) — and the test had to be rewritten 3× because the first two
+    versions were VACUOUS and passed with the bug deliberately reintroduced. Mutation-proven: bug → "had 81,
+    settled at 0".
+- ~~▢ **B2 [LOOP] SAVE/LOAD is the most broken system in the game**~~ (8 confirmed bugs; the save domain has the
   worst coverage of all 18). **The autosave destroys the player's world on their next visit** — nothing
   auto-resumes at boot, but the autosave still targets the same slot, so session 2 saves an empty world over
   session 1. **"Load World" permanently destroys the terrain** (the chunk streamer can never re-request a chunk

@@ -1,6 +1,6 @@
 // spellUpgrades.js — the spell-upgrade progression hook (extracted from AdvancedGameFeatures
 // S3-M4 p2: same SPELL_UPGRADES table + per-spell level/stat logic; mounted once in App).
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore';
 
 // the spell-upgrade table — this hook's data (S3-M4 fix: it was orphaned into render/PetEntities.jsx
@@ -44,39 +44,41 @@ export const SPELL_UPGRADES = {
     },
 };
 
+/** The level a spell is actually at, given the persisted map. Absent/blank -> Level 1. */
+export const levelOf = (spellLevels, spellType) => (spellLevels && spellLevels[spellType]) || 1;
+
+/** Pure: the stat row a spell casts at. The ONE place level -> stats is resolved. */
+export function statsFor(spellLevels, spellType) {
+    const upgrade = SPELL_UPGRADES[spellType];
+    if (!upgrade) return null;
+    return upgrade.levels[levelOf(spellLevels, spellType) - 1];
+}
+
 export const useSpellUpgrades = () => {
-    const [spellLevels, setSpellLevels] = useState({
-        fireball: 1, iceball: 1, lightning: 1, arcane: 1,
-    });
+    // B2e (18-domain review, CRITICAL): THE STORE OWNS spellLevels. There is no local copy.
+    //
+    // This hook used to keep its own React `spellLevels` state and hydrate it from the store exactly ONCE,
+    // on mount. It mounts at App boot — when the store's spellLevels is still the `{}` default — so the
+    // hydration adopted nothing and the one-shot latch closed forever. When the player then clicked Load,
+    // `loadWorldData` restored their levels into the STORE and nothing told the hook. So:
+    //   - the Progression panel (reading the store) displayed "MAX RANK"
+    //   - every spell cast (reading this hook's getSpellStats) fired at LEVEL 1
+    //   - and the first Upgrade click pushed the hook's stale all-1s map back over the restored levels,
+    //     which the autosave then wrote to disk. The player's mastery was silently deleted.
+    //
+    // A hydrate-once mirror of persisted state is a bug generator. spellLevels is persisted; the store is
+    // its home; this hook derives from it and writes through it. Nothing to hydrate, nothing to clobber.
+    const spellLevels = useGameStore((s) => s.spellLevels);
     const [upgradeNotification, setUpgradeNotification] = useState(null);
 
-    // #51 S3 restore-fix: hydrate local spellLevels FROM the store ONCE on mount so a loaded save's restored
-    // levels (useGameStore.jsx restore path) aren't clobbered by the all-1s default + the push effect below.
-    // Adopt only a NON-EMPTY restored map (store default is {} -> keep all-1s); merge keeps defaults for any
-    // spell the save omits (forward-compat). One-shot (no two-way bind -> no push<->hydrate feedback loop).
-    const hydratedRef = useRef(false);
-    useEffect(() => {
-        if (hydratedRef.current) return;
-        hydratedRef.current = true;
-        const restored = useGameStore.getState().spellLevels;
-        if (restored && Object.keys(restored).length > 0) {
-            setSpellLevels(prev => ({ ...prev, ...restored }));
-        }
-    }, []);
-
-    const getSpellStats = useCallback((spellType) => {
-        const upgrade = SPELL_UPGRADES[spellType];
-        if (!upgrade) return null;
-        const level = spellLevels[spellType] || 1;
-        return upgrade.levels[level - 1];
-    }, [spellLevels]);
+    const getSpellStats = useCallback((spellType) => statsFor(spellLevels, spellType), [spellLevels]);
 
     const upgradeSpell = useCallback((spellType) => {
         const upgrade = SPELL_UPGRADES[spellType];
         if (!upgrade) return false;
 
-        const currentLevel = spellLevels[spellType] || 1;
-        if (currentLevel >= 3) {
+        const currentLevel = levelOf(useGameStore.getState().spellLevels, spellType);
+        if (currentLevel >= upgrade.levels.length) {
             setUpgradeNotification('Spell is already at maximum level!');
             setTimeout(() => setUpgradeNotification(null), 2000);
             return false;
@@ -94,18 +96,22 @@ export const useSpellUpgrades = () => {
             return false;
         }
 
-        setSpellLevels(prev => ({ ...prev, [spellType]: currentLevel + 1 }));
+        // Write through to the owner. Merge onto the LIVE map (not a captured one) so a concurrent
+        // load/upgrade cannot resurrect a stale snapshot of the other spells.
+        useGameStore.setState((s) => ({
+            spellLevels: { ...s.spellLevels, [spellType]: currentLevel + 1 },
+        }));
         setUpgradeNotification(`${nextLevel.name} unlocked! Damage: ${nextLevel.damage}, Cost: ${nextLevel.manaCost} MP`);
         setTimeout(() => setUpgradeNotification(null), 4000);
 
         return true;
-    }, [spellLevels]);
+    }, []);
 
+    // Publish the resolvers for the imperative consumers (EnhancedMagicSystem's cast path reads
+    // getSpellStats off the store). NOTE: no spellLevels write here — that was the clobber.
     useEffect(() => {
-        useGameStore.setState({ spellLevels: spellLevels });
-        useGameStore.setState({ getSpellStats: getSpellStats });
-        useGameStore.setState({ upgradeSpell: upgradeSpell });
-    }, [spellLevels, getSpellStats, upgradeSpell]);
+        useGameStore.setState({ getSpellStats: getSpellStats, upgradeSpell: upgradeSpell });
+    }, [getSpellStats, upgradeSpell]);
 
     return { spellLevels, getSpellStats, upgradeSpell, upgradeNotification, SPELL_UPGRADES };
 };
