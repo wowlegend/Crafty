@@ -145,6 +145,83 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   `locator('canvas').first()` races the title→play transition. Bind the game canvas explicitly. **Do not widen
   the 60s timeout.**
 
+### A-bis. ⭐ THE 18-DOMAIN REVIEW — 91 confirmed bugs (2026-07-14). THIS IS NOW THE WORK.
+
+**Full report + every executed-probe transcript: `docs/superpowers/audits/2026-07-13-18-domain-review.md`.**
+18 domain agents drove the real code (187 probes: vitest, node, Playwright, puppeteer). 135 raw findings, each
+then handed to an *independent refuter* whose job was to KILL it. **91 survived; 43 were killed** (the refuters
+threw out 22 LOW / 15 MEDIUM / 6 HIGH as no-impact-or-wrong, and caught one agent citing fabricated evidence).
+Severity of survivors: **17 CRITICAL · 29 HIGH · 32 MEDIUM · 13 LOW.**
+
+**The 91 are not 91 pieces of work — they collapse into 8 root seams.** Fix the seam, not the symptom. Ordered
+by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — no exceptions.
+
+- ▢ **B1 [LOOP] FRIEND/FOE — combat has no allegiance filter.** `mobsQuery = ecs.with('isMob','position','type')`;
+  `npcSpawn.makeNpcEntity` sets `isMob:true, isNPC:true, isStatic:true` to reuse the renderer. Nothing in combat
+  ever re-filters. *(I verified this one myself.)* Consequences, all CONFIRMED:
+  **melee permanently kills all 4 hub questgivers** (2.7s of LMB → trading/crafting/healing/quests gone for the
+  run, no respawn) · **chain lightning auto-zaps passive villagers + livestock** · **aimed spells hit the WRONG
+  mob** (`checkMobCollision` returns *first-in-ECS*, not nearest).
+  **Seam:** one targeting module — `hostilesQuery` + a nearest-in-cone selector — consumed by melee, chain, and
+  aimed casts. `CombatSystem.jsx:160-174`, `EnhancedMagicSystem.jsx:331`, `game/chainLightning.js:10-46`.
+- ▢ **B2 [LOOP] SAVE/LOAD is the most broken system in the game** (8 confirmed bugs; the save domain has the
+  worst coverage of all 18). **The autosave destroys the player's world on their next visit** — nothing
+  auto-resumes at boot, but the autosave still targets the same slot, so session 2 saves an empty world over
+  session 1. **"Load World" permanently destroys the terrain** (the chunk streamer can never re-request a chunk
+  it already requested → 81 chunks → 0, forever). **"Create New World" silently clones the current one.** Every
+  autosave **clobbers the world's name** with `Save_<timestamp>`. `flush()` on tab-close is a no-op unless a
+  debounce is already pending — and coins/XP/gameWon/nightCount are not autosave triggers, so **a grind session
+  dies with the tab**. **Spell Mastery is dead after a load** (every spell casts at Level 1 while the panel says
+  MAX RANK; the first Upgrade click writes the Level-1 state to disk). Loading a NIGHT save **adds a night to
+  the siege, and it ratchets on every reload**. A page reload mid-boss-fight **resets the 700-HP climax boss to
+  full**. `App.jsx:220-261`, `useGameStore.jsx:858/967-973`, `Terrain.jsx:657/592-595`, `WorldManager.jsx:65-108`,
+  `world/spellUpgrades.js:57-66`, `game/autosave.js:8`, `world/bossSystem.js:11-18`.
+- ▢ **B3 [LOOP] THE ECONOMY IS A BLACK HOLE.** Crystals live in TWO buckets (`inventory.magic.crystals` vs
+  `inventory.blocks.crystals`) and the trade UI reads one and writes the other → **ore→crystal trades destroy
+  your ore for nothing, the Crystals→Wand trade is mathematically unreachable, and a bought wand gives 0% mana
+  discount.** **The entire sword tree is uncraftable** — `normalizeGrid` trims the player's grid to its bounding
+  box, but the recipe pattern is compared raw, and the 4 sword patterns are the only ones with null-padded outer
+  columns *(I re-derived this: exactly 4 unmatchable recipes, exactly the swords)* → weapon progression is
+  permanently capped at the starting Stone Sword. **Placing a block is FREE while mining grants +1** → infinite
+  diamonds in seconds. **CraftingTable permanently destroys every material left in the grid when you close it.**
+  `TradingInterface.jsx:24-75`, `data/recipes.js:9-28`, `ui/panels/CraftingTable.jsx:22/27-54/75`,
+  `world/Terrain.jsx:819-848`.
+- ▢ **B4 [LOOP] MOB AI IS 2D — the Y axis does not exist.** `ai.worker.js:166` uses `distToPlayer2D`. Pillaring
+  up, walling in, or going underground gives **ZERO** protection — mobs melee you through 200 blocks of vertical
+  separation. In a voxel game with a night-siege loop, **building is strategically pointless.** This is the one
+  that most damages the core fantasy. Also here: the attack telegraph is bypassable (a stale `windupUntil`
+  survives de-aggro → instant undodgeable hit on re-aggro, `ai.worker.js:280-287`).
+- ▢ **B5 [LOOP] THE HUD LIES.** **The health bar is 100% invisible during normal play** — the QUESTS panel is
+  painted on top of it (same `z-20`, later in DOM); the mana bar is 59% buried. **All 7 stat bars lay out as a
+  1232px horizontal ribbon** instead of a vertical stack (`space-y-2` is a no-op on `inline-flex` children).
+  **The day/night dial is 90° out of phase** — it draws the sun at ZENITH one second before nightfall while
+  printing "DUSK". The Progression panel's entire header (incl. the close X) is **off-screen and unreachable**
+  at 1280×800; the Inventory's attribute-point "+" buttons are **below the fold with no scroll affordance**.
+  `HUD.jsx:547/80-102`, `ui/primitives/StatBar.jsx:18`, `ui/SpellUpgradePanel.jsx:40`, `ui/GamePanels.jsx:252`.
+- ▢ **B6 [LOOP] QUESTS MISCOUNT.** Every "Defeat N mobs" quest **completes at half the advertised cost** —
+  `onMobKill` fires `updateQuestProgress('kill')` AND `('kill_type')` and the match arm accepts both, so **each
+  kill counts twice**. The **mobType filter is dead code** — killing any mob advances every targeted-hunt quest
+  ("Defeat 5 moss brutes" completes on 5 spider kills). Two of the twelve achievements **can never unlock**
+  (`updateLevel` has zero callers). `QuestSystem.jsx:197-199/317-318/398-404`.
+- ▢ **B7 [LOOP] TOUCH IS VISUALLY + FUNCTIONALLY BROKEN** (rolls X1/X3 in). **The joystick knob is 100%
+  transparent** and every touch-button border is silently dropped — bare `var(--ui-*)` used as a colour against
+  space-separated **RGB-channel** tokens. **The Pause hit-button is 100% disjoint from the Pause glyph** and it
+  covers the Settings gear, so **tapping Settings pauses the game.** A stray tap anywhere in the left half
+  **kills a held joystick** (player freezes mid-run). The hotbar **overflows the phone viewport** — 2 of 9 slots
+  entirely off-screen on an iPhone. `ui/TouchControlsSurface.jsx:11-20/53-58/76`, `ui/TouchControls.jsx:126-127`,
+  `input/touchHandlers.js:39-44`, `ui/GameHud.jsx:20-24`.
+- ▢ **B8 [LOOP] COMBAT + WORLD FEEL.** A pack of N enemies deals the damage of **ONE** (a 500ms *global* damage
+  lockout caps ALL incoming damage at 2 hits/sec → the siege cannot threaten you). Camera shake decays **per
+  frame, not per second** (1067ms @30fps vs 267ms @120fps). **Fireball — the default starting spell — cannot hit
+  anything past ~12m** (gravity applied to a projectile that was never designed to arc). Arcane "pierce 3
+  targets" **triple-hits ONE target**. **The ocean plane renders inside every inland cave** and burns ~14% of
+  the frame budget 1.1km from any water. **Alt-tab leaves movement keys stuck ON.** **Left-clicking a chest
+  MINES it** — chest and contents deleted, no drop, no confirm. Spatial audio is **dead until the first hostile
+  spawns** (footsteps/jump/swing silent at game start).
+
+**MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
+a root cause; do not open 45 separate tickets.
+
 ### B. Verification truth (the structural gap)
 - ▢ **V1 [LOOP] Vacuous-gate audit — ⚠️ MY OWN HEADLINE WAS OVERSTATED. Corrected below.**
   > **I was saying "114 of 124 gates are source-greps — 92% of the corpus asserts TEXT not behaviour."**
@@ -342,10 +419,19 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ## 3. What's next (the cursor)
 
-**Current campaign: v8 — "Playable Truth + Depth".** Order of attack:
-1. **R1** (the live reward-theft bug) — RED-first. It is the proof-of-need for everything below.
-2. **V1/V6** (vacuous-gate audit + CI) — stop shipping false confidence.
-3. **V2/V3** (input-driven E2E) — close the validation gap at its root (54% of features have no behavioral cover).
+**Current campaign: v8 — "Playable Truth + Depth".**
+
+**⚠️ The 18-domain review reordered this. `A-bis` (B1–B8) now outranks everything below it.** We were about to
+spend the campaign building E2E scaffolding and an art pass on a game where the autosave destroys your world,
+the swords don't exist, and you can accidentally murder every questgiver. **Fix the game first.** The gates
+come with each fix (RED-first, mutation-proven), which is V2/V3 earned rather than scaffolded.
+
+Order of attack:
+1. **B1** friend/foe (you can kill the questgivers) → **B2** save/load (the autosave eats your world) →
+   **B3** economy (swords uncraftable, crystals a black hole) → **B4** 2D mob AI (building is pointless) →
+   **B5** the HUD lies (health bar invisible) → **B6** quests miscount → **B7** touch → **B8** combat/world feel.
+2. **V1/V6** (vacuous-gate audit + CI) — stop shipping false confidence. *Each B-slice pays into this.*
+3. **V2/V3** (input-driven E2E) — 54% of features still have no behavioral cover.
 4. **C1** (control-scheme A) — authorized, unbuilt, rides the same verbRouter seam as V3.
 5. **D** (art pass) — newly de-gated.
 6. **E** (depth levers) — the retention spine.

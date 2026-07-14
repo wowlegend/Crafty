@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-14 — the 18-domain review COMPLETED: 91 confirmed bugs, and the real coverage number
+
+- **The review survived its own death.** Phase 1 (18 domain agents, 187 executed probes) finished; then an API
+  session limit killed all 134 refutation + synthesis agents mid-flight. The results were never lost — they were
+  in the run journal. Recovered them, persisted to `docs/superpowers/audits/` and **committed before doing
+  anything else** (`45778e7`), then resumed the run from cache: the 18 domain agents replayed for free and only
+  the killed agents re-ran.
+- **The measured coverage number, at last** (`1386b5e`). **650 features across 18 domains: 300 (46.2%) have a
+  behavioral test or a live probe. 156 are source-grep-only. 174 have nothing at all.** This REPLACES the
+  inherited *"of 185 features, ONE (0.5%) is validated"* line that STATUS quoted for weeks — that number came
+  from the 06-28 audit, which agent-audited 10 of its 18 domains and inventory-inferred the rest. It was never a
+  measurement. The conclusion is unchanged and unsoftened: **54% of the game has no gate that would go red if it
+  broke** — and that is exactly where these 91 bugs were hiding.
+- **135 raw findings → 91 confirmed, 43 killed.** Every finding was handed to an *independent refuter* whose job
+  was to destroy it (evaluator ≠ generator — arXiv 2606.26300). The refuters earned their keep: they threw out
+  22 LOW / 15 MEDIUM / 6 HIGH as no-player-impact or plain wrong, and **caught one agent citing fabricated
+  evidence**. Survivors: **17 CRITICAL · 29 HIGH · 32 MEDIUM · 13 LOW**.
+- **I re-derived the three load-bearing CRITICALs myself before believing any of it** (agents fabricated twice
+  this week): melee kills all 4 hub questgivers (`mobsQuery` has no `isNPC`/`isStatic` guard — confirmed) ·
+  placing a block is free while mining grants +1 (confirmed) · the sword tree is uncraftable (confirmed, and
+  re-computed independently: **exactly 4 recipes are unmatchable, exactly the swords** — `normalizeGrid` trims
+  the player's grid to its bounding box while the recipe pattern is compared raw, and the swords are the only
+  patterns declared with null-padded outer columns).
+- **The 91 collapse into 8 root seams** (STATUS §2 `A-bis`), and they reorder the whole campaign. We were about
+  to build E2E scaffolding and an art pass on a game where **the autosave destroys your world on your next
+  visit**, **"Load World" permanently destroys the terrain**, **the swords don't exist**, **mob AI has no Y axis
+  so building is strategically pointless**, **the health bar is painted over by the quest panel**, and **you can
+  accidentally murder every questgiver with 2.7 seconds of left-click**. Fix the game first; the gates come with
+  each fix.
+- Process note for the loop: I misread `ps` `etime` (MM:SS) as seconds and came within one command of killing a
+  live 16-agent fleet as "9-hour-old leaks". Caught it before acting. `etime` is MM:SS.
+
 ## 2026-07-13 — v8 session 2: R4a shipped, X3 disproved, the 18-domain review launched
 
 - **R4a SHIPPED (`15fcc96`) — the hotbar lied.** Selecting Diamond and clicking placed a grey STONE block;
