@@ -12,8 +12,12 @@ export const MinimapSyncSystem = () => {
     const store = useGameStore.getState();
     if (now - (store._lastMinimapUpdate || 0) > 250) {
       const activeMobs = mobsQuery.entities.filter(e => e && e.health > 0);
+      // B1: the snapshot MUST carry every field `combat/targeting.js` reads (`passive`, `isNPC`) —
+      // chain lightning targets off THIS snapshot, not off live entities. `isNPC` was missing, so the
+      // questgivers were only excluded incidentally (they happen to be `passive`). A protected entity
+      // that was not also passive would have slipped straight through. Pinned by a gate.
       store.setMobEntities(activeMobs.map(e => ({
-        id: e.id, type: e.type, passive: e.passive, role: e.role, npcName: e.npcName, position: [e.position.x, e.position.y, e.position.z]
+        id: e.id, type: e.type, passive: e.passive, isNPC: e.isNPC, role: e.role, npcName: e.npcName, position: [e.position.x, e.position.y, e.position.z]
       })));
       // Friendly-NPC mirror: quest villagers (passive quest NPCs) + converted allies. Mirrors the mob
       // path so RadialMinimap can plot gold NPC blips from the store (the consumer reads npcEntities).

@@ -7,6 +7,8 @@
  * The component keeps the thin wrapper (the store read + damageMob/spark application).
  * Mob positions arrive as [x,y,z] arrays (the mobEntities snapshot format).
  */
+import { isAutoTargetable } from '../combat/targeting.js';
+
 export function solveChainTargets(mobs, startPos, { excludeId, baseDamage, maxChains, range, damageReduction }) {
   if (!mobs || mobs.length === 0) return [];
 
@@ -17,6 +19,11 @@ export function solveChainTargets(mobs, startPos, { excludeId, baseDamage, maxCh
 
   const maxPossibleRangeSq = (range * maxChains) ** 2;
   const nearby = mobs.filter((mob) => {
+    // B1 (18-domain review): the chain picks its own victims, so it only gets HOSTILES. It was hopping
+    // onto the Ox you happened to be standing next to and onto the hub healer — a spell you aimed at a
+    // zombie was executing the village. Aiming AT livestock still works (that goes through the direct
+    // hit, not the chain); what is forbidden is the auto-targeter choosing them for you.
+    if (!isAutoTargetable(mob)) return false;
     const dx = mob.position[0] - last.x;
     const dy = mob.position[1] - last.y;
     const dz = mob.position[2] - last.z;

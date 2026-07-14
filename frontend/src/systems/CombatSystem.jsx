@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { ecs, mobsQuery } from '../ecs/world';
 import { GameMethods } from '../GameMethods';
 import { convertMobToAlly } from '../game/allegiance';
-import { isPointInCone } from '../combat/cone.js';
+import { canPlayerDamage, damageableInCone, nearestDamageable } from '../combat/targeting.js';
 import { sparkFor, hitKnockback, deathBurst } from '../game/mobHitFx';
 import { emitMobKill } from '../game/mobKillBus.js';
 import { DEATH_DISSOLVE_MS } from '../game/deathFx.js';
@@ -22,6 +22,14 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
     const damageMob = (id, damage = 25, type = 'physical', source = 'player', spawnRing = true) => {
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
+
+      // B1 (18-domain review): THE choke point. Every damage path in the game funnels through here —
+      // melee, spell projectiles, the fireball DoT, chain lightning, element zones (which apply to
+      // `mobsQuery.entities` wholesale), hurl impacts, and ally squad AI. The hub questgivers sit in
+      // mobsQuery on purpose (they reuse the MobModel renderer), so ONE guard here is what makes
+      // "you cannot delete the game's service layer by mashing left-click" an invariant rather than
+      // a filter each caller has to remember. Refuse before any side effect fires.
+      if (!canPlayerDamage(entity)) return null;
 
       // Phase 9 / S1-D-M1: Visceral Hitstop (micro-freeze for game feel).
       // Was a MAIN-THREAD BUSY-WAIT (a spin loop on the wall clock) that froze
@@ -157,24 +165,19 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
     GameMethods.damageMob = damageMob;
     GameMethods.captureMob = captureMob;
 
-    const checkMobCollision = (pos, range = 3) => {
-      return mobsQuery.entities.find(e => {
-        const dx = e.position.x - pos.x;
-        const dy = e.position.y - pos.y;
-        const dz = e.position.z - pos.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return dist < range;
-      });
-    };
+    // B1: projectile hit-resolution is a NEAREST test, not a first-in-ECS test. The old `.find()`
+    // returned whichever entity miniplex happened to hold first, so a fireball aimed dead at a zombie
+    // resolved against a cow standing behind it if the cow was inserted first. `nearestDamageable`
+    // also skips the questgivers, so a spell now passes THROUGH the healer to the enemy behind her
+    // instead of detonating on her face.
+    const checkMobCollision = (pos, range = 3) => nearestDamageable(mobsQuery.entities, pos, range);
 
-    const checkMobsInMeleeCone = (playerPos, lookDir, range = 4.5, angleRad = Math.PI / 2) => {
-      // Cone geometry extracted to the pure, unit-tested helper `isPointInCone`
-      // (src/combat/cone.js) so the SAME front-arc test is reused for the boss
-      // (Components.jsx triggerMeleeAttack). Behaviour here is IDENTICAL.
-      return mobsQuery.entities.filter(e =>
-        isPointInCone(playerPos, lookDir, e.position, range, angleRad)
-      );
-    };
+    // Cone geometry lives in the pure, unit-tested `isPointInCone` (src/combat/cone.js) so the SAME
+    // front-arc test is reused for the boss (Components.jsx triggerMeleeAttack). B1 adds the allegiance
+    // filter: `damageableInCone` = in-cone AND not a hub questgiver. Livestock stay in — hunting is a
+    // feature; deleting the merchant is not.
+    const checkMobsInMeleeCone = (playerPos, lookDir, range = 4.5, angleRad = Math.PI / 2) =>
+      damageableInCone(mobsQuery.entities, playerPos, lookDir, range, angleRad);
 
     useGameStore.setState({ checkMobCollision: checkMobCollision, checkMobsInMeleeCone: checkMobsInMeleeCone });
     GameMethods.checkMobCollision = checkMobCollision;
