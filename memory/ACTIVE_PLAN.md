@@ -30,8 +30,27 @@ updated too near the end of every session when you hit the context-watermark."*
 authority) and the **control-scheme Option-A enhancements** (which were *already* authorized on 2026-06-28 —
 the `[KEVIN-GATED]` tag on them was stale).
 
-**The work-of-record is the REGISTRY in `memory/STATUS.md` §2.** Attack order (STATUS §3):
-`R1 → V1/V6 → V2/V3 → C1 → D → E → F/G`.
+**The work-of-record is the REGISTRY in `memory/STATUS.md` §2.**
+
+## 📍 THE CURSOR (2026-07-14)
+
+**The 18-domain review is COMPLETE and INTEGRATED** — 91 confirmed bugs (17 CRITICAL), full report at
+`docs/superpowers/audits/2026-07-13-18-domain-review.md`, folded into STATUS §2 as **`A-bis` B1–B8**.
+It **reordered the campaign**: fix the game before building E2E scaffolding and an art pass on top of it.
+
+**IN FLIGHT — `A-bis` B2, the save/load seam.** 5 of the 8 done and pushed:
+B1 ✓ friend/foe · B2a ✓ autosave-destroys-world · B2b ✓ new-world-clones · B2c ✓ grind-dies-with-tab ·
+B2d ✓ load-destroys-terrain · B2e ✓ spell-mastery-dead-after-load.
+
+**NEXT, in order:** **B2f** the night-ratchet on load (`world/survivalSystem.js:17-25`) → **B2g** the boss
+resets to full HP on reload (`world/bossSystem.js:11-18` — only `gameWon` is serialized) → **B2h** the
+11-side-effect kill block inside a setState updater → then **B3** (the economy: swords uncraftable, crystals
+a black hole, free block placement, crafting grid eats materials) → **B4** (2D mob AI) → **B5** (the HUD lies)
+→ **B6** (quests miscount) → **B7** (touch) → **B8** (combat/world feel) → V1/V6 → V2/V3 → C1 → D → E → F/G.
+
+**Every slice: RED-first, then MUTATION-PROVE the gate** (break the behaviour → it must go red → revert).
+Three separate times this week a "green" gate turned out to be measuring nothing — including two versions
+of the B2d E2E that I wrote myself and that passed with the bug deliberately reintroduced.
 
 ---
 

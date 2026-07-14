@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-07-14 — B1 + B2a-e: five CRITICALs from the review, shipped
+
+The review found the game was quietly destroying the player's stuff in five different ways. Each fix is
+RED-first and mutation-proven (break it → the gate must go red → revert); none of them is a patch at the
+call site, because every one of these bugs was a MISSING SEAM.
+
+- **B1 (`86c76d1`) — you could permanently kill every questgiver with 2.7 seconds of left-click.** Hub NPCs
+  carry `isMob: true` to reuse the renderer, so they sit in `mobsQuery`; the AI tick gates them out with
+  `!isStatic` and **combat never did**. Melee killed them (no respawn — trading, crafting, healing and the
+  quest chain gone for the run), chain lightning auto-hopped onto them and onto livestock, element zones
+  burned them, and `checkMobCollision` returned *first-in-ECS* so an aimed fireball hit the cow behind the
+  zombie. Fixed with one seam (`combat/targeting.js`, three tiers) and one guard at the choke point
+  (`damageMob`), so the invariant holds for damage paths that don't exist yet. **Caught while wiring it:**
+  the `mobEntities` snapshot chain lightning actually targets off carried `passive` but not `isNPC` — the
+  questgivers were excluded only *incidentally*.
+- **B2a (`4c05ff8`) — the autosave destroyed your world on your next visit.** Nothing resumes a save at
+  boot, but the autosave still targeted the slot in localStorage. Session 2 started at level 1 and saved
+  straight over session 1. Now a session may only write to a slot it OPENED or CREATED. (My own RED test
+  then caught my own fix: `'local_' + Date.now()` collides within a millisecond, so the "new" slot was the
+  same slot.)
+- **B2b (`4c05ff8`) — "Create New World" cloned the world you were playing.** It wrote a fresh blob but
+  never reset the store. `startNewWorld()` now resets by round-tripping the store's INITIAL state through
+  the save schema — drift-proof by construction, because a hand-maintained list of fields to reset is what
+  shipped the bug. That gate immediately found a second one: `gameTime` was loaded with `||`, and
+  **gameTime 0 is DAWN** — falsy — so any save made at the start of a day kept your *current* clock.
+- **B2c (`4c05ff8`) — a grind session died with the tab.** coins / XP / attributes / spellLevels /
+  nightCount / **gameWon** were never autosave triggers, so an hour of grinding scheduled nothing and the
+  tab-close flush had nothing to flush. Beating the boss and closing the tab lost the win.
+- **B2d (`e5aafbb`) — "Load World" permanently destroyed the terrain.** `requestedChunks` was never drained
+  on load, so the streamer could never re-request a chunk: 81 chunks → 0, forever, free-falling through a
+  hollow world. **Proven with a live E2E** — and the test had to be rewritten THREE times, because the first
+  two versions were vacuous and passed with the bug deliberately reintroduced. Final gate: bug → "had 81,
+  settled at 0".
+- **B2e (`1e46d6e`) — Spell Mastery was dead after a load.** The panel said "MAX RANK" while every cast
+  fired at Level 1, and the first Upgrade click wrote the Level-1 map to disk. A hydrate-once mirror of
+  persisted state that mounts before the data arrives is only ever correct by luck. Deleted the second
+  source of truth.
+
+Gates: unit **1950 → 1976** (307 files), 1 new live E2E, eslint clean, CI green.
+
 ## 2026-07-14 — the 18-domain review COMPLETED: 91 confirmed bugs, and the real coverage number
 
 - **The review survived its own death.** Phase 1 (18 domain agents, 187 executed probes) finished; then an API

@@ -27,7 +27,7 @@ A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a
 * **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic emerald XP orbs; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
 * **🛒 Trading, crafting & progression**: passive merchant villagers with reciprocal trading, a 3×3 crafting grid, an attribute/talent progression tree, and a spell-mastery upgrade system.
 * **📱 Desktop + touch**: full desktop mouse-look/keyboard plus a built-out iPad/iPhone touch layer (virtual joystick, verb wheel, pointer-lock-free cold start).
-* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and a deterministic 24-state visual-regression gate + ~1900 unit tests guarding it.
+* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and a deterministic 24-state visual-regression gate + ~1,970 unit tests guarding it.
 * **💾 Offline world save**: chunk modifications, inventory, and progression persist to local storage — no login wall.
 
 ---
@@ -109,7 +109,8 @@ _On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace th
    npm install
    npm run dev
    ```
-3. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**.
+3. Open your browser and navigate to **[http://localhost:5173](http://localhost:5173)** (Vite's default port —
+   the README said `3000` for months, which is a server nothing in this repo has ever started).
 
 ---
 
