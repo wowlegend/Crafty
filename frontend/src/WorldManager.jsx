@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useGameStore } from './store/useGameStore';
 import { buildSaveData } from './game/saveSchema.js';
-import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, getActiveWorldId, setActiveWorldId } from './game/worldSaves.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, getActiveWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const [worlds, setWorlds] = useState([]);
@@ -44,10 +44,11 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     const saveData = buildSaveData(useGameStore.getState(), { position: useGameStore.getState().playerPosition });
     const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
     const persistLocal = () => {
-      // Reuse the active slot so a manual save + the autosave converge on ONE world
-      // (matches store.saveActiveWorld's getActiveWorldId() || mint pattern).
-      let id = getActiveWorldId();
-      if (!id) { id = `local_${Date.now()}`; }
+      // B2a: reuse the slot THIS SESSION owns, so a manual "Save" and the autosave converge on ONE
+      // world — and so a manual save can no more overwrite a world this session never opened than an
+      // autosave can. Unowned session -> mint (collision-proof; a bare Date.now() can repeat in a ms).
+      let id = useGameStore.getState()._sessionWorldId;
+      if (!id) { id = mintWorldId(); useGameStore.setState({ _sessionWorldId: id }); }
       setActiveWorldId(id);
       writeWorld(id, meta, saveData);
       setWorlds(listWorlds());
@@ -68,30 +69,16 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
       return;
     }
 
-    // A fresh world is INTENTIONALLY minimal (empty blocks) — not a snapshot of live state,
-    // so it does NOT route through buildSaveData. Persistence still goes through writeWorld.
-    const freshBlob = {
-      world_data: { blocks: [] },
-      player_data: {
-        position: { x: 0, y: 18, z: 0 },
-        inventory: gameState.inventory,
-        stats: { blocksPlaced: 0, blocksDestroyed: 0 }
-      },
-      game_state: {
-        gameMode: 'creative',
-        selectedBlock: 'grass',
-        activeSpell: 'fireball',
-        isDay: true,
-        gameTime: 0,
-        achievements: []
-      }
-    };
     const meta = { name: newWorldName, created_at: new Date().toISOString(), is_public: newWorldPublic, is_owner: true };
     const persistLocal = () => {
-      const id = `local_${Date.now()}`;
-      writeWorld(id, meta, freshBlob);
-      // Freshly-created world becomes the autosave target.
-      setActiveWorldId(id);
+      const id = mintWorldId();
+      // B2b: RESET THE LIVE GAME FIRST, then persist it. This used to hand-roll a `freshBlob` and write
+      // it to disk without ever touching the store — so the live game kept its level, coins and blocks,
+      // and the next autosave wrote them into the "new" world. Creating a world CLONED the old one.
+      // `startNewWorld` resets by round-tripping the store's INITIAL state through the save schema, so
+      // it cannot drift out of sync with what we persist.
+      gameState.startNewWorld(id);
+      writeWorld(id, meta, buildSaveData(useGameStore.getState(), { position: { x: 0, y: 18, z: 0 } }));
       setNewWorldName('');
       setNewWorldPublic(false);
       setShowCreateModal(false);

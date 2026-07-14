@@ -4,7 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progressio
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
-import { writeWorld, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
+import { writeWorld, listWorlds, mintWorldId, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
@@ -56,6 +56,12 @@ export const useGameStore = create((set, get) => ({
     // always false in production (the bridge is tree-shaken out of prod builds).
     isCaptureMode: false,
     setCaptureMode: (on) => set({ isCaptureMode: !!on }),
+
+    // B2a: which world slot THIS SESSION owns. Set by loadWorldData (opened one) or by the first
+    // autosave (minted one). Deliberately NOT persisted: it must die with the tab, or a fresh session
+    // inherits a pointer to a save it never opened and the autosave writes a level-1 world over it.
+    // NEVER serialize this into saveSchema.
+    _sessionWorldId: null,
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
     // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
@@ -842,6 +848,16 @@ export const useGameStore = create((set, get) => ({
 
     loadWorldData: (rawSaveData) => {
         const saveData = migrateSaveData(rawSaveData);
+        // B2a: opening a world CLAIMS its slot for this session — subsequent autosaves write back into
+        // it (rather than minting a new slot every save). `writeWorld` stores the id inside the blob, so
+        // a loaded save knows which slot it came from. Without an id (a hand-fed payload, a test
+        // fixture), the session stays unowned and the next autosave mints a fresh slot — which is the
+        // safe direction: never overwrite a world you cannot identify.
+        const loadedId = rawSaveData && rawSaveData.id;
+        if (loadedId) {
+            set({ _sessionWorldId: loadedId });
+            setActiveWorldId(loadedId);
+        }
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys — use directly.
@@ -850,7 +866,13 @@ export const useGameStore = create((set, get) => ({
             const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
-            const gameTime = saveData.game_state?.gameTime || state.gameTime;
+            // `??`, not `||`: gameTime 0 is DAWN — a real, common, perfectly valid clock value, and it is
+            // falsy. With `||`, loading any save made at the start of a day silently kept the CURRENT
+            // clock instead of the saved one (so a dawn save could resume at dusk, and a new world could
+            // not reset the clock at all). Every numeric field in the progression slice below already
+            // uses `??` for exactly this reason; game_state was missed. Found by the drift-proof
+            // new-world gate, not by anyone reading this line.
+            const gameTime = saveData.game_state?.gameTime ?? state.gameTime;
             // Derive isDay from the restored gameTime so a resumed save is always
             // phase-consistent (the clock is authoritative; the manual setIsDay toggle is
             // transient by design). Fixes the edge where a save's stored isDay disagreed
@@ -962,13 +984,53 @@ export const useGameStore = create((set, get) => ({
         get().exitBeastForm();
     },
 
-    // Local-first autosave: serialize the live state to the active world slot. No-op
+    // B2b: START a genuinely new world — reset the live game, then claim the new slot.
+    //
+    // "Create New World" used to write a fresh blob to disk and set it active... without ever resetting
+    // the store or loading the blob. So the live game kept its level 12, its 4321 coins and its blocks,
+    // and the next autosave wrote all of that into the "new" slot. The new world was a CLONE of the old
+    // one. (The fresh blob also copied `gameState.inventory` straight in, and carried no `progression`
+    // key at all — so loadWorldData's fallback-to-current-state kept the old level anyway.)
+    //
+    // Reset is DRIFT-PROOF by construction: `buildSaveData` already enumerates every persisted key and
+    // `loadWorldData` already knows how to apply them, so a new world is simply "load a save built from
+    // the store's INITIAL state". Add a new persisted field to saveSchema and it resets here for free —
+    // which is the only version of this I trust, given that the last hand-maintained list of fields is
+    // what shipped this bug.
+    startNewWorld: (id) => {
+        const fresh = buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } });
+        get().loadWorldData(fresh);
+        set({ _sessionWorldId: id || null });
+        if (id) setActiveWorldId(id);
+    },
+
+    // Local-first autosave: serialize the live state to the world slot THIS SESSION OWNS. No-op
     // under the visual-capture harness so capture frames never touch localStorage.
+    //
+    // B2a (18-domain review, CRITICAL): this used to write to `getActiveWorldId()`, which lives in
+    // localStorage and therefore SURVIVES a page reload — while NOTHING resumes a save at boot
+    // (`loadWorldData` has exactly one caller: the World Manager's Load button). So the player's second
+    // visit started at level 1, walked three steps, autosaved... straight over their level-15 world.
+    //
+    // The invariant: an autosave may only write to a slot this session actually OPENED (loaded) or
+    // CREATED. `_sessionWorldId` is deliberately in-memory-only — it must NOT survive a reload, because
+    // "which world am I playing" is a fact about the session, not about the browser. With no owned slot,
+    // the autosave MINTS A NEW ONE. A save you never opened is not a save you may overwrite.
     saveActiveWorld: (position) => {
         if (get().isCaptureMode) return;
         const data = buildSaveData(get(), { position });
-        let id = getActiveWorldId();
-        if (!id) { id = 'local_' + Date.now(); setActiveWorldId(id); }
-        writeWorld(id, { name: data.save_name, created_at: new Date().toISOString(), is_owner: true }, data);
+        let id = get()._sessionWorldId;
+        if (!id) {
+            id = mintWorldId();   // collision-proof: 'local_' + Date.now() alone can repeat within a ms
+            set({ _sessionWorldId: id });
+            setActiveWorldId(id);
+        }
+        // Preserve the player's chosen name. `data.save_name` is a `Save_<timestamp>` placeholder minted
+        // fresh on every serialize, so writing it back renamed "Marcus's Castle" to "Save_7/13/2026,
+        // 10:25:06 AM" on the first autosave. Only a brand-new slot gets the placeholder.
+        const existing = listWorlds().find((w) => w.id === id);
+        const name = (existing && existing.name) || data.save_name;
+        const created_at = (existing && existing.created_at) || new Date().toISOString();
+        writeWorld(id, { name, created_at, is_owner: true }, data);
     }
 }));

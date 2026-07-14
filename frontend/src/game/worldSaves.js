@@ -20,6 +20,23 @@ export function listWorlds() {
 
 function saveIndex(list) { safeSet(INDEX_KEY, JSON.stringify(list)); }
 
+/**
+ * Mint a world id that CANNOT collide with an existing one.
+ *
+ * B2a: the old inline `'local_' + Date.now()` was minted in two places. Two worlds created inside the
+ * same millisecond get the same id — and "the same id" means "silently write on top of the other one",
+ * which is the exact class of bug this whole slice exists to kill. Checked against the live index; the
+ * suffix only grows on an actual collision, so the common id stays readable.
+ */
+export function mintWorldId() {
+  const taken = new Set(listWorlds().map((w) => w.id));
+  const base = 'local_' + Date.now();
+  if (!taken.has(base) && !safeGet(BLOB_PREFIX + base)) return base;
+  let n = 2;
+  while (taken.has(`${base}_${n}`) || safeGet(BLOB_PREFIX + `${base}_${n}`)) n++;
+  return `${base}_${n}`;
+}
+
 export function readWorld(id) {
   const raw = safeGet(BLOB_PREFIX + id);
   if (!raw) return null;

@@ -230,16 +230,33 @@ function GameApp({ experienceSystem }) {
     });
     // zustand v5 vanilla subscribe gives (state, prevState). Schedule only when a TRANSITION
     // key changes — NOT on the per-frame playerPosition writes (which also pass through here).
+    // B2c: EVERY field saveSchema persists must be able to schedule a save. `autosave.flush()` (below,
+    // on tab-hide/close) only saves if a debounce is already PENDING — which is right in itself, but it
+    // means a field that never schedules is a field that never persists. coins / currentXP / totalXP /
+    // attributes / spellLevels / unlockedTalents / nightCount / gameWon were all missing here, so an hour
+    // of grinding — 3000 coins, a full XP bar, the boss dead — scheduled nothing, flushed nothing, and
+    // died with the tab. (`level` was a trigger, so it only persisted if you happened to level up.)
+    // Pinned by a gate that derives this list FROM saveSchema, so adding a persisted field and forgetting
+    // to trigger on it goes RED.
     const unsub = useGameStore.subscribe((s, prevS) => {
       if (
         s.level !== prevS.level ||
+        s.currentXP !== prevS.currentXP ||
+        s.totalXP !== prevS.totalXP ||
+        s.coins !== prevS.coins ||
+        s.attributes !== prevS.attributes ||
         s.equipment !== prevS.equipment ||
         s.chests !== prevS.chests ||
         s.talentPoints !== prevS.talentPoints ||
+        s.unlockedTalents !== prevS.unlockedTalents ||
+        s.spellLevels !== prevS.spellLevels ||
         s.gameMode !== prevS.gameMode ||
         s.worldBlocks !== prevS.worldBlocks ||
         s.inventory !== prevS.inventory ||
         s.questState !== prevS.questState ||
+        s.gameWon !== prevS.gameWon || // beating the boss and closing the tab must not lose the win
+        s.nightCount !== prevS.nightCount || // the siege ratchet + its dawn-reward guard
+        s.lastRewardedNight !== prevS.lastRewardedNight ||
         s.ferocityBanked !== prevS.ferocityBanked || // S2-B1-M4: a day-banked roar survives a tab-close
         s.kineticBanked !== prevS.kineticBanked || // S2-B2-M4: a day-banked kinetic charge survives a tab-close
         s.soulBanked !== prevS.soulBanked || // S2-B3-M2: twin
