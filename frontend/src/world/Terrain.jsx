@@ -532,6 +532,12 @@ export const MinecraftWorld = React.memo(() => {
 
     const [chunks, setChunks] = useState({});
     const chunksRef = useRef(new Set());
+    // B2d: the streamer's in-flight/dedup bookkeeping. This USED to be a `new Set()` local to the
+    // streaming effect — unreachable from the worker's message handler, which is exactly why the handler
+    // could not drain it on a world load, and why loading a save permanently destroyed the terrain.
+    // It is a ref so the two effects share ONE set: whoever wipes the chunks must also wipe the record
+    // of having asked for them, or the streamer can never ask again.
+    const requestedChunksRef = useRef(new Set());
 
     const handleMount = React.useCallback((key) => {
         chunksRef.current.add(key);
@@ -590,8 +596,16 @@ export const MinecraftWorld = React.memo(() => {
                     store.addToInventory(blockName, 1);
                 }
             } else if (type === 'load_modifications_done') {
+                // Wipe the live world so the worker can re-stream it with the save's block edits applied.
                 setChunks({});
                 chunksRef.current.clear();
+                // B2d: ...and wipe the record of having REQUESTED those chunks. Without this the
+                // streamer's guard (`!requestedChunks.has(key)`) still considers every chunk
+                // "already requested", so it never asks again — and the cull path that would have
+                // drained the set iterates the chunk list we just emptied. The world never came back:
+                // no meshes, no colliders, no ground, the player free-falling forever. Loading a save
+                // deleted the world it was supposed to restore.
+                requestedChunksRef.current.clear();
             }
         };
         worker.addEventListener('message', handleMessage);
@@ -654,7 +668,7 @@ export const MinecraftWorld = React.memo(() => {
     // Progressive chunk loading
     useEffect(() => {
         let isProcessing = true;
-        const requestedChunks = new Set();
+        const requestedChunks = requestedChunksRef.current;   // B2d: shared with the worker message handler
 
         const processChunks = () => {
             if (!isProcessing || !camera) return;
