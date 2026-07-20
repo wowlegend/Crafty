@@ -426,3 +426,7 @@
 - **game-icons.net KEPT + credited** — a `CreditsScreen.jsx` (reachable from Settings) attributes game-icons.net (CC BY 3.0) + the fonts. (Answers the M2 open question "OK to keep game-icons vs Lucide-only?" — kept, properly credited.)
 - **Deliberate rarity fix shipped** — decoupling emoji from item names exposed + fixed a latent bug (emoji prefix broke exact-match rarity → Golden Crown/Star Fragment were COMMON, Mana Potion/Emerald/Ender Pearl mis-tiered). Now correct. Damage/Shield Scroll bumped common→rare (buff consumables) as a taste enhancement. Flag if you'd tier any item differently.
 - **3D loot-drop sprite** — the floating loot drop previously painted the item's emoji on a canvas billboard; that emoji glyph was removed (kept the rarity-colored octahedron + light beam). A proper game-icon billboard on physical drops would be a small SVG→WebGL-texture task (candidate for S3 polish) — flag if wanted.
+
+## Fireball/iceball flight arc (from B8, 2026-07-14)
+- Fixed the functional bug: the default fireball couldn't hit past ~12m (gravity 12/s^2 on a crosshair-aimed spell arced it into the ground). Set drop = 0 (straight flight, aim == hit) in `frontend/src/game/projectilePhysics.js`.
+- **Taste option for you:** if you want fireball to feel like a WEIGHTY lobbed grenade (a slight arc), bump `PROJECTILE_GRAVITY.fireball` and add upward aim-compensation so it still hits the crosshair. Left at 0 (matches lightning/arcane direct-fire) as the neutral, non-guessed default.

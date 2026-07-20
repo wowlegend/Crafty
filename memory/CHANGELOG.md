@@ -6,6 +6,9 @@
   inside `setBossHealth(prev=>{})` with the idempotency latch first and markGameWon last; a throwing reward
   stranded the win (gameWon FALSE forever). Extracted to `game/bossKill.js`: pure `applyBossDamage` + a
   post-commit isolated `runBossKillEffects` with the win latch LAST. RED-first e2e (throwing grantXP), mutation-proven.
+- **B8-fireball (`9c7c1af`) — the default spell couldn't hit past ~12m.** fireball/iceball got 12/s^2 gravity on a
+  crosshair-aimed (straight) launch, arcing into the ground. Per-type drop seam (`projectilePhysics.js`), drop=0.
+  RED-first trajectory sim, mutation-proven. Lob-arc left as a Kevin taste option (KEVIN-REVIEW-BATCH). unit 2040.
 - **B8-pierce (`a845bef`) — arcane "pierce 3 targets" triple-hit ONE target.** The hit-loop never excluded the
   mob it just hit, so a pierced projectile re-resolved the same nearest mob every frame. Fix: per-projectile
   hitIds + `nearestDamageable(...,excludeIds)`. RED-first behavioral, mutation-proven. unit 2035.
