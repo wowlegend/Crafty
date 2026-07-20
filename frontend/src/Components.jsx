@@ -64,6 +64,7 @@ import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
+import { installBlurReset } from './input/blurReset';
 import { notifyDenied } from './ui/denyToast';
 
 // Bold-flat UI primitives (S1C-M2a chrome migration)
@@ -503,12 +504,15 @@ export const Player = ({ isWorldBuilt }) => {
     window.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
+    // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
+    const removeBlurReset = installBlurReset();
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
+      removeBlurReset();
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 

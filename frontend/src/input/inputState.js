@@ -124,3 +124,13 @@ export function resetInput() {
   for (const k of INTENT_KEYS) _state[k] = false;
   setActive(false);
 }
+
+/**
+ * Clear every held intent (movement/action) WITHOUT touching the `active` gate. Used on window blur /
+ * tab-hide: the browser delivers a held key's keydown while focused but drops its keyup (it fires while
+ * another window owns focus), so the intent would otherwise stick ON and the player keeps moving after
+ * an alt-tab. `active` is left to the pointer-lock owner (B8, 18-domain review).
+ */
+export function clearHeldIntents() {
+  for (const k of INTENT_KEYS) _state[k] = false;
+}
