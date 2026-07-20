@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
+import { getCrystals } from '../game/crystalWallet';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
@@ -45,24 +46,20 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
   };
 
   const executeCrystalTrade = (magicItem, requiredCrystals, resultCount = 1) => {
-    const currentCrystals = magic.crystals || 0;
+    const currentCrystals = getCrystals(gameState.inventory);
     if (currentCrystals < requiredCrystals) {
       setTradeMessage(`Not enough Crystals! Need ${requiredCrystals}.`);
       return;
     }
 
-    // M5 #15 fix: spend the crystal currency from `magic` but route the bought item into `blocks` (the
-    // flat bucket the Inventory renders) so it is visible + usable (was landing in unrendered `magic`).
-    // Spend from the FRESH prev (not the render-snapshot currentCrystals) — absolute-set on a stale
-    // snapshot would clobber a concurrent crystal change.
+    // B3b: crystals are SPENT from `blocks` (the canonical bucket ore->crystal + craft bank into) — not
+    // from `magic`, where nothing accumulates, which made the wand trade unreachable. The bought item still
+    // lands in `blocks` (M5 #15). Spend from the FRESH prev, not the render-snapshot currentCrystals.
     gameState.setInventory(prev => ({
       ...prev,
-      magic: {
-        ...prev.magic,
-        crystals: Math.max(0, (prev.magic?.crystals || 0) - requiredCrystals)
-      },
       blocks: {
         ...prev.blocks,
+        crystals: Math.max(0, (prev.blocks?.crystals || 0) - requiredCrystals),
         [magicItem]: (prev.blocks[magicItem] || 0) + resultCount
       }
     }));
@@ -179,7 +176,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
               {trades.map((t, idx) => {
                 const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0)
                   : t.type === 'coin' ? coins
-                  : (magic[t.costItem] || 0);
+                  : (blocks[t.costItem] || 0); // B3b: crystal-cost trades spend from the canonical `blocks` bucket
                 const canTrade = currentStock >= t.cost;
 
                 return (

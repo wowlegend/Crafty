@@ -590,10 +590,15 @@ export const useGameStore = create((set, get) => ({
             grass: 32, dirt: 32, stone: 16, wood: 16, glass: 8, sand: 16,
             coal: 8, iron: 4,
             'Stone Sword': 1,
-            'Health Potion': 2, 'Mana Potion': 1
+            'Health Potion': 2, 'Mana Potion': 1,
+            // B3b: crystals + the starter wand live in the CANONICAL `blocks` bucket (the one the Inventory
+            // panel renders and every writer targets). They used to seed into `magic`, which no panel
+            // renders and which the wand trade + mana-discount consumer read — so the starting 8 crystals
+            // were unspendable and the starter wand gave 0% discount. crystalWallet.js is the one accessor.
+            crystals: 8, wand: 1
         },
         tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
-        magic: { wand: 1, crystals: 8 }
+        magic: {}
     },
     setInventory: (inventoryArg) => set((state) => ({
         inventory: typeof inventoryArg === 'function' ? inventoryArg(state.inventory) : inventoryArg

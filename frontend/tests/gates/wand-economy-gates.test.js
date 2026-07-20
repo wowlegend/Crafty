@@ -17,7 +17,9 @@ describe('B7 wand-economy wiring (the wand is consumed at cast)', () => {
     expect(ems).toMatch(/import\s*\{\s*applyWandFocus\s*\}\s*from\s*['"]\.\/game\/wandFocus['"]/);
   });
   it('applies the wand focus to the resolved mana cost using the owned wand count', () => {
-    expect(ems).toMatch(/applyWandFocus\(\s*baseManaCost\s*,[\s\S]*?inventory\?\.magic\?\.wand/);
+    // B3b: the wand count comes from the canonical bucket via getWands(...) (was inventory.magic.wand,
+    // which a bought wand never landed in -> 0% discount).
+    expect(ems).toMatch(/applyWandFocus\(\s*baseManaCost\s*,\s*getWands\(/);
   });
   it('the focused manaCost (not the base) is what useMana charges', () => {
     // manaCost is the focused value; useMana(manaCost) deducts it.

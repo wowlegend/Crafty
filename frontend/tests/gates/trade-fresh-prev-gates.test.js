@@ -18,8 +18,9 @@ describe('TradingInterface — subtract from fresh prev, not the render snapshot
     expect(src).not.toMatch(/\[blockType\]: currentCount - required/);
   });
 
-  it('crystal trade subtracts from prev.magic.crystals (not currentCrystals)', () => {
-    expect(src).toMatch(/\(prev\.magic\?\.crystals \|\| 0\) - requiredCrystals/);
+  it('crystal trade subtracts from prev.blocks.crystals (not currentCrystals)', () => {
+    // B3b: crystals are spent from the canonical `blocks` bucket (was `magic`, which nothing accumulates into).
+    expect(src).toMatch(/\(prev\.blocks\?\.crystals \|\| 0\) - requiredCrystals/);
     expect(src).not.toMatch(/crystals: currentCrystals - requiredCrystals/);
   });
 });

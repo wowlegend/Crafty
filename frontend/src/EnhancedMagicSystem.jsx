@@ -9,6 +9,7 @@ import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { applyWandFocus } from './game/wandFocus';
+import { getWands } from './game/crystalWallet';
 import { freezeSlowMult } from './game/freeze';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
@@ -172,7 +173,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       // B7: each owned wand is a SPELL FOCUS — shaves a capped % off the resolved cost (closes the
       // ore->crystals->wand economy; pure applyWandFocus, floored at 1). 0 wands == byte-identical.
       const baseManaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
-      const manaCost = applyWandFocus(baseManaCost, useGameStore.getState().inventory?.magic?.wand);
+      const manaCost = applyWandFocus(baseManaCost, getWands(useGameStore.getState().inventory)); // B3b: wands live in blocks
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;

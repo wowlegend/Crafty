@@ -55,13 +55,14 @@ describe('TradingInterface (jsdom) — real trade buttons mutate the store', () 
   });
 
   it('crystal trade: Crystals -> Wand spends 15 crystals (from fresh prev) and grants 1 wand', () => {
-    useGameStore.setState({ inventory: { blocks: {}, tools: {}, magic: { crystals: 20 } } });
+    // B3b: crystals are earned into + spent from the canonical `blocks` bucket (was split with `magic`).
+    useGameStore.setState({ inventory: { blocks: { crystals: 20 }, tools: {}, magic: {} } });
     renderTrade();
 
     clickTradeFor('Crystals to Wand');
 
     const inv = useGameStore.getState().inventory;
-    expect(inv.magic.crystals).toBe(5); // 20 - 15, spent from magic
+    expect(inv.blocks.crystals).toBe(5); // 20 - 15, spent from the canonical blocks bucket
     expect(inv.blocks.wand).toBe(1); // bought item lands in the rendered blocks bucket
   });
 
