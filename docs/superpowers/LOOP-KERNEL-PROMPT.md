@@ -72,7 +72,11 @@ Chromium + vite dev servers from capture/e2e/probes do NOT die when a script thr
 servers + a Chromium at 622% CPU → load average 25 → the capture gate "flaked" (it was self-inflicted). Every
 ad-hoc probe closes its browser in a `finally`; never leave a hand-started dev server up; delete throwaway
 `dbg-*.mjs`; sweep with `sh frontend/scripts/dev/kill-test-procs.sh`. **When the box is slow, check for leaks
-BEFORE blaming a gate.**
+BEFORE blaming a gate.** cmux ALSO opens a browser preview tab per localhost port that OUTLIVES the killed
+process → husks pile up; use ONE managed port (E2E 4179 --strictPort, capture 4178), never hand-start vite on
+an ad-hoc port. `sh frontend/scripts/dev/close-preview-tabs.sh` LISTS husks; **NEVER hand-run `cmux
+close-surface` or the helper's `--close` in the loop — an unresolved `--surface` closes `$CMUX_SURFACE_ID` =
+YOUR OWN tab (a loop self-decapitated its session this way). List only; a human runs `--close`.**
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs →
 green the tree → update

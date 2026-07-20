@@ -68,6 +68,24 @@ self-inflicted.
 5. **If the machine load is high, check for leaks BEFORE blaming a flaky gate** — `uptime`, then
    `ps aux | grep -E "ms-playwright|Crafty/frontend/node_modules/.bin/vite"`. The capture harness is
    load-sensitive, and a leaked browser is the most common cause of a "mystery" timeout.
+6. **cmux PREVIEW TABS are a SECOND kind of leak — the process is only half of it (Kevin, 2026-07-14).**
+   cmux opens a **browser preview surface for every localhost port it detects.** Every E2E / capture /
+   ad-hoc probe server spawns one, and **the tab OUTLIVES the process you kill** — `kill-test-procs.sh`
+   never touched surfaces, so 30+ dead `localhost:*` / "Crafty | Magical" husks piled up across sessions.
+   **Prevention is the real fix:** E2E uses ONE managed port (Playwright `webServer`, 4179 `--strictPort`);
+   capture uses 4178. **Do NOT hand-start vite on an ad-hoc port** (`vite --port 4197` for a one-off probe
+   is what minted the worst husks). If you truly must, reuse a fixed dedicated port and close its surface
+   after. To clear husks: `sh frontend/scripts/dev/close-preview-tabs.sh` (LISTS by default; `--close` to
+   close).
+   **⚠️ THE FOOTGUN — do not touch `cmux close-surface` by hand.** With an UNRESOLVED `--surface` it falls
+   back to closing `$CMUX_SURFACE_ID` — **your own Claude Code tab.** An autonomous loop iteration
+   self-decapitated its own session this way (exit 0, "OK", session gone). The helper above is the ONLY
+   sanctioned path: it excludes SELF by UUID (marker-shift-proof), matches preview titles with globs (an
+   awk `\|` regex de-escapes and matches an agent tab titled "Crafty game" — the first version's bug),
+   overrides `$CMUX_SURFACE_ID` to the dead target so a fall-through cannot hit you, and aborts if SELF
+   ever vanishes. **The autonomous loop must NEVER auto-run `--close`** — a destructive CLI whose default
+   target is the caller is not fired unattended. Loop session-close may RUN THE LIST (report only); Kevin
+   or an attended agent runs `--close`.
 
 ## Build / Test (from `frontend/`)
 - `npm run build` · `npm run test:unit` (vitest) · `npm run test:visual` (puppeteer+pixelmatch, 6% gate) · `npm run visual:capture` (regen frames).

@@ -357,6 +357,15 @@ presented as a *"flaky gate"*. It was **self-inflicted**, and it wasted a real d
 - **When the box is slow, check for leaks BEFORE blaming a gate.** `uptime` + `ps aux | grep ms-playwright`.
   A leaked browser is the most common cause of a "mystery" capture timeout, and the capture harness is
   load-sensitive by design.
+- **cmux PREVIEW TABS are the OTHER half of the leak (Kevin, 2026-07-14).** cmux opens a browser preview
+  surface per localhost port; **the tab outlives the process you kill**, so `kill-test-procs.sh` alone leaves
+  husks (30+ `localhost:*` tabs piled up across sessions). Prevention: E2E uses ONE managed port (4179
+  `--strictPort`); capture uses 4178; **never hand-start vite on an ad-hoc port** for a probe. Clear husks
+  with `sh frontend/scripts/dev/close-preview-tabs.sh` (LISTS by default). **⚠️ FOOTGUN: never touch
+  `cmux close-surface` by hand — an unresolved `--surface` falls back to closing `$CMUX_SURFACE_ID`, YOUR OWN
+  tab. A loop iteration self-decapitated its session this way.** The helper is the only sanctioned path
+  (SELF-excluded by UUID + fallback overridden + aborts if SELF vanishes). **The loop must NEVER auto-run
+  `--close`** — session-close may run the LIST (report only); a human runs `--close`.
 
 ## 6.5 SESSION-CLOSE RITUAL — fire at the CONTEXT WATERMARK (Kevin, 2026-07-13)
 
@@ -368,7 +377,9 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
 
 **The ritual (in order — each is cheap, and skipping one is how state rots):**
 0. **Kill your leaked test processes** — `sh frontend/scripts/dev/kill-test-procs.sh` (§6.4). Never end a
-   session leaving a headless browser or dev server burning Kevin's CPU.
+   session leaving a headless browser or dev server burning Kevin's CPU. Then **LIST orphan cmux preview
+   tabs** — `sh frontend/scripts/dev/close-preview-tabs.sh` (list only; report the count — do NOT auto-close,
+   §6.4 footgun).
 1. **Green the tree.** Finish-or-revert the in-flight unit. Never close a session on an unverified half-state.
 2. **Local surfaces:** `memory/STATUS.md` (registry ticked: what closed, what opened) → `memory/ACTIVE_PLAN.md`
    (the NEXT unit, so a cold session resumes in one read) → `memory/CHANGELOG.md` (what shipped) →
