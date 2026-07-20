@@ -134,7 +134,20 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B8 spatial-audio FIXED (`e78bd1c`, 2026-07-14) — ALL B8 FIXABLE DONE; NEXT = campaign spine (V1)
+## 📍 V1 gate-triage STARTED (`8ab8938`, 2026-07-14) — boss-notif gate now behavioral; NEXT = 2 more vacuous gates
+✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous `tests/gates/boss-notif-timer-gates.test.js`
+(source-grep of bossSystem.js) is REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,
+wired into `useBossSystem`, + a behavioral `bossNotifTimers.test.js` (fake timers) proving clearAll() cancels
+pending timers → no setBossNotification-after-unmount. RED-first (module-missing) + mutation-proven (clearAll
+no-op → RED). Deleted the source-grep. unit 2058.
+**NEXT — the other 2 known-vacuous gates (§V1, one per iteration, VERIFY each is actually vacuous first):**
+`tests/gates/melee-swing-audio-gates` + `tests/gates/survival-quests-gates` — read each, find the real behaviour
+(swing SFX fires on a swing; survival quests advance/complete), seam-extract if needed, write a behavioral test,
+mutation-prove, delete the source-grep. Then triage the ~80 untriaged gates (STATUS §V1) or V2·V3 input-driven E2E.
+**OWED (do if `uptime` load < ~10):** ocean LIVED PROBE + B5/B7 VISUAL RE-BASELINE (capture harness hangs at
+title-mascot — needs a box-free/Chrome-restart).
+
+## 📍 (prior) B8 spatial-audio FIXED (`e78bd1c`, 2026-07-14) — ALL B8 FIXABLE DONE
 ✅ **B8 spatial-audio — DONE.** Was "dead until the first hostile spawns." ROOT CAUSE (traced, not the registry's
 guess): the SoundProvider context `value` exposes `audioContext.current` + `sounds.current` (REFS read at render),
 but they're populated in a mount-effect — a ref mutation doesn't re-render, so consumers got stale undefined/{}

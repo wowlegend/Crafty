@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-14 (cont.) — V1 gate-triage: the boss-notif-timer gate is now behavioral
+
+- **V1-boss-notif (`b1846f3`+`8ab8938`) — replaced a vacuous source-grep gate with a behavioral one.** The old
+  `boss-notif-timer-gates.test.js` only readFileSync + regex'd bossSystem.js for `scheduleNotifClear(` /
+  `clearTimeout(...)` — it proved the code existed, not that the notif auto-clear timers actually get cancelled
+  on unmount (the 2026-06-28 setState-after-unmount leak). Seam-extracted `world/bossNotifTimers.js`
+  (`makeNotifClearTracker`), wired into `useBossSystem`, + a behavioral test (fake timers) proving clearAll()
+  cancels pending timers so setBossNotification is not called after unmount. Mutation-proven (clearAll no-op →
+  RED); deleted the source-grep. First of the 3 known-vacuous gates. unit 2058.
+
 ## 2026-07-14 (cont.) — B8: spatial audio was dead until the first hostile spawned (B8 autonomous COMPLETE)
 
 - **B8-spatial-audio (`e78bd1c`) — footsteps/jump/swing were silent from game start.** Root cause (traced):
