@@ -135,8 +135,9 @@ Full registry + attack order: **`memory/STATUS.md`**.
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
 ## 📍 V1 gate-triage STARTED (`8ab8938`, 2026-07-14) — boss-notif gate now behavioral; NEXT = 2 more vacuous gates
-✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous `tests/gates/boss-notif-timer-gates.test.js`
-(source-grep of bossSystem.js) is REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,
+✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous source-grep gate that used to be at
+`tests/gates/boss-notif-timer-gates.test.js` (a readFileSync+regex of bossSystem.js) is now REMOVED and
+REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,
 wired into `useBossSystem`, + a behavioral `bossNotifTimers.test.js` (fake timers) proving clearAll() cancels
 pending timers → no setBossNotification-after-unmount. RED-first (module-missing) + mutation-proven (clearAll
 no-op → RED). Deleted the source-grep. unit 2058.
