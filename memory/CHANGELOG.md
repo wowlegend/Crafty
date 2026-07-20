@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B5 parts 1+2: the health bar was buried + the stat bars ribboned
+
+- **B5-layout (`7e0f004`) — the health bar was 100% invisible during play.** The player stat stack sat at
+  `top-16 left-4 z-20`, directly under the opaque QuestTracker panel (`top-4 left-4 z-20`, later in the DOM);
+  the expanded quest panel painted over it, leaving only a ~2-char mana-value sliver poking past the panel's
+  right edge. And StatBar's root is `inline-flex`, so the container's `space-y-2` couldn't stack the bars →
+  all 7 laid out as a horizontal ribbon. Fix: moved the stack to the free **bottom-left** corner + made the
+  container a real `flex flex-col gap-2 w-44` column. Verified in a REAL browser via a new
+  `tests/e2e/hud-layout.spec.js` that measures rendered geometry (jsdom has no layout engine): RED-first
+  showed health at (16,72) inside the quest panel, mana on the same row; GREEN puts health at (16,736), mana
+  below at (16,764), both clear. First lived HUD-DOM e2e gate (existing e2e only read the store). A capture
+  re-baseline of the gameplay HUD frames is owed once machine load drops (was ~24; the harness times out
+  above ~10) — an intended visual improvement, batched for Kevin. unit 2044.
+
 ## 2026-07-14 (cont.) — B5 part 3: the day/night dial was a quarter-cycle out of phase
 
 - **B5-dial (`712ea78`) — the HUD clock lied by 90°.** The day-phase dial drew the sun at ZENITH one second

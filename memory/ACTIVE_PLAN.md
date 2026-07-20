@@ -134,7 +134,32 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B5 — part 3 (DIAL) SHIPPED (`712ea78`, 2026-07-14); parts 1+2 are NEXT
+## 📍 B5 stat-stack layout SHIPPED (`7e0f004`, 2026-07-14); NEXT = B7 (touch)
+✅ **B5 parts 1+2 (health-bar collision + ribbon) — DONE.** Moved the stat stack from `top-16 left-4`
+(buried under the QuestTracker panel) to **bottom-left** + `flex flex-col gap-2 w-44`. Verified in a REAL
+browser via new `tests/e2e/hud-layout.spec.js` (measures rendered geometry): RED-first health at (16,72)
+inside the quest panel; GREEN health at (16,736), mana below at (16,764), clear of the panel. Lived e2e
+geometry gate (stronger than a pixel diff for this bug), mutation-proven (className is the sole RED→GREEN
+variable). **The forcePlay/HUD-mount lesson:** the in-game HUD DOM needs the world FULLY built + `active`
+re-asserted in a poll (the optimistic `active` gets reset by the input controller's mount-time pointer-lock
+sync). `bootDev` → wait `isSpawnChunkLoaded` (90s, load-sensitive) → poll `forcePlay` until `stat-health`
+attaches → measure. Existing e2e read the store, never the HUD DOM — this is the first lived HUD-DOM gate.
+**⚠️ VISUAL RE-BASELINE OWED:** the gameplay HUD baselines (explore-day/night, hearth, landmark, ocean-*,
+etc.) still show the OLD buried position; a `npm run test:visual` re-capture is owed once machine load < ~10
+(was ~24 — the capture harness times out above that). Intended §4 improvement (health bar now visible),
+batched for Kevin in KEVIN-REVIEW with the before/after. (DebugOverlay is dev-only `import.meta.env.DEV`, so
+prod bottom-left is clean; any capture overlap is dev-chrome, not a shipped collision.)
+
+**B5 REMAINDER (smaller, separate — a modal-overflow class, own probe, LOW):** the Progression panel header
+(incl. close X) off-screen at 1280×800 (`ui/SpellUpgradePanel.jsx:40`); the Inventory attribute "+" buttons
+below the fold, no scroll (`ui/GamePanels.jsx:252`).
+
+**NEXT — B7 (touch is visually + functionally broken).** Per the loop prompt: puppeteer, iPhone-13 viewport
+via `browserName: 'chromium', hasTouch: true` (NOT `devices[...]`). Transparent joystick knob, disjoint pause
+button, hotbar overflow. RED-first via the touch probe (`scripts/visual/touch-probe.mjs` pattern) or a
+Playwright touch spec. Then the B5 modal-overflow remainder, then B8 feel/balance → KEVIN-REVIEW-BATCH.
+
+## 📍 (superseded) B5 — part 3 (DIAL) SHIPPED (`712ea78`, 2026-07-14)
 ✅ **Part 3 (day/night dial phase) — DONE.** The dial was a quarter-cycle (90°) out of phase. The offset
 `-180` assumed `cf=0` was midnight, but the game's real clock (`dayNight.isDayAtUnit`) is day=`[0,600)`.
 Fix: pure `dayPhase.markerAngleDeg` seam with offset `-90` + a `markerQuadrant` geometry helper; RED-first

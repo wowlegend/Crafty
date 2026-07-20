@@ -227,7 +227,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   separation. In a voxel game with a night-siege loop, **building is strategically pointless.** This is the one
   that most damages the core fantasy. Also here: the attack telegraph is bypassable (a stale `windupUntil`
   survives de-aggro → instant undodgeable hit on re-aggro, `ai.worker.js:280-287`).
-- ▣ **B5 [LOOP] THE HUD LIES — dial phase FIXED (`712ea78`, 2026-07-14); layout parts still OPEN.**
+- ▣ **B5 [LOOP] THE HUD LIES — dial (`712ea78`) + stat-stack layout (`7e0f004`) FIXED, 2026-07-14; modal-overflow remainder + visual re-baseline OPEN.**
   ✓ **The day/night dial is now synced to the real clock.** It was a quarter-cycle (90°) out of phase —
   the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
   (`dayNight.isDayAtUnit`) is day=`[0,600)` / night=`[600,1200)`, so real noon is t=300. Symptom: the sun
@@ -236,12 +236,20 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   `markerQuadrant` geometry helper → sun above the horizon all day, moon below it all night
   (sunrise-left / noon-top / sunset-right / midnight-bottom). RED-first against the REAL clock (not the
   module's own mislabeled comment — that mislabel was the trap), mutation-proven (`-90`→`-180` goes RED).
-  unit 2040→2044. **STILL OPEN — need a puppeteer LAYOUT probe (jsdom has no layout engine, so no pure
-  unit can catch these):** the health bar is 100% invisible during play (QUESTS panel painted on top, same
-  `z-20`, later in DOM); the mana bar 59% buried; **all 7 stat bars lay out as a 1232px horizontal ribbon**
-  (`space-y-2` is a no-op on `inline-flex` children). The Progression panel's header (incl. the close X) is
-  off-screen at 1280×800; the Inventory's attribute-point "+" buttons are below the fold with no scroll
-  affordance. `HUD.jsx:547`, `ui/primitives/StatBar.jsx:18`, `ui/SpellUpgradePanel.jsx:40`, `ui/GamePanels.jsx:252`.
+  unit 2040→2044.
+  ✓ **The stat-stack layout is FIXED (`7e0f004`, 2026-07-14).** The health/mana bars are no longer buried:
+  moved the stack from `top-16 left-4` (under the opaque QuestTracker panel — 100% invisible, only a ~2-char
+  mana-value sliver poked past the panel's right edge) to the free **bottom-left** corner, and made the
+  container a real `flex flex-col gap-2 w-44` column (StatBar's `inline-flex` root made `space-y-2` a no-op →
+  the 7 bars had ribboned horizontally). Verified in a REAL browser — new **`tests/e2e/hud-layout.spec.js`**
+  measures rendered geometry: RED-first showed health at (16,72) inside the quest panel (16..296 × 16..279)
+  and mana on the same row; GREEN after the fix puts health at (16,736), mana below at (16,764), both clear
+  of the quest panel. Non-vacuous (className is the sole RED→GREEN variable). `HUD.jsx:547`, `StatBar.jsx:18`.
+  **STILL OPEN (B5 remainder — smaller, separate; a modal-overflow class, own probe):** the Progression
+  panel's header (incl. close X) is off-screen at 1280×800 (`ui/SpellUpgradePanel.jsx:40`); the Inventory's
+  attribute-point "+" buttons are below the fold with no scroll (`ui/GamePanels.jsx:252`). **+ VISUAL
+  RE-BASELINE OWED** — the gameplay HUD baselines still show the OLD buried position; a re-capture is owed
+  once machine load < ~10 (was ~24; the capture harness times out above that). Intended change → KEVIN-REVIEW.
 - ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
   one pure `game/questMatch.js` seam replaced the buggy inline matcher: a 'kill' quest advances only on the
   'kill' dispatch (not the kill_type echo), a 'kill_type' quest only for its own mob. RED-first e2e through the

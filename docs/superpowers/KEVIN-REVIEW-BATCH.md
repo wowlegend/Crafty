@@ -1,5 +1,21 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🎨 2026-07-14 — VISUAL RE-BASELINE OWED (taste sign-off + a capture re-run when the box frees):
+> the health/mana bars are no longer buried.** The 18-domain review found the player health bar was **100%
+> invisible during play** — the stat stack sat directly under the QUESTS panel (top-left), so the quest panel
+> painted over it; only a ~2-char sliver of the mana value poked past the panel's right edge. See it in the
+> current baseline `git show HEAD:frontend/tests/visual/baseline/explore-day.png` — the tiny `00` bar to the
+> right of the QUESTS panel IS the covered health/mana ribbon. **Fix (`7e0f004`): moved the stat stack to the
+> free bottom-left corner + fixed the horizontal-ribbon bug (the bars now stack vertically).** Verified in a
+> real browser (new `tests/e2e/hud-layout.spec.js` — health at (16,736), mana below, clear of the quest
+> panel). **Two asks:** (1) **a capture re-baseline is owed** — every gameplay HUD frame (explore-day/night,
+> hearth, landmark, ocean-*, …) still shows the OLD buried position; I couldn't re-capture (machine load was
+> ~24; the capture harness times out above ~10). Once the box frees I'll re-render + re-baseline and add the
+> before/after contact sheet here. (2) **taste:** bottom-left is the conventional RPG health placement and is
+> clear of the quest panel; if you'd rather it elsewhere, say so. Two coexistence FYIs at bottom-left: the
+> CombatLog ticker (transient, z-10, behind) and the DebugOverlay badge (dev-only `import.meta.env.DEV`, never
+> ships) share that corner — a fully-charged 7-bar stack could briefly overlap the ticker; acceptable, flag it.
+
 > **👁️ 2026-07-14 — FYI eyeball (no decision needed): the day/night dial now reads truthfully.** The HUD
 > sun/moon clock (top-right) was a quarter-cycle out of phase — it drew the SUN at the top (zenith) right as
 > night fell, and the MOON high in the sky through most of the night. Fixed (`712ea78`): the sun now stays
