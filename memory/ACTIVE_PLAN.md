@@ -134,8 +134,16 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B7 touch invisible-controls SHIPPED (`d45b698`, 2026-07-14); NEXT = B7 remainder
-✅ **B7 invisible-controls — DONE.** The touch joystick knob + all button borders were invisible: bare
+## 📍 B7 stray-tap-freeze SHIPPED (`83ef50d`, 2026-07-14); NEXT = B7 remainder (2 left)
+✅ **B7 stray-tap-kills-joystick — DONE.** The touch zone router made EVERY left-half touch a 'move' touch,
+so a stray tap while the joystick was held owned the move zone too — and `handleTouchEnd` clears all four
+move intents when ANY move touch ends → the tap's release froze the player mid-run. Fix (pure, in
+`touchMath.js makeTouchRouter.onStart`): exactly ONE move touch active; a concurrent second left-half touch →
+inert `'ignore'` zone (no move/look, no cleanup on release). RED-first pure unit test (router + handleTouchEnd,
+no DOM), mutation-proven (drop the single-owner guard → RED). unit 2044→2046. Pure logic, no render change →
+no visual baseline impact (clean headless win, no browser needed).
+
+✅ **B7 invisible-controls — DONE (`d45b698`).** The touch joystick knob + all button borders were invisible: bare
 `var(--ui-accent)` resolves to space-separated channels `201 168 106` (an invalid CSS color; the hex fallback
 never fires because the var is always defined) → transparent knob + dropped borders. Fix: wrapped INK/GOLD in
 `rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser via new
@@ -152,13 +160,17 @@ false-green). OWED frames: every in-world HUD frame (explore-day/night, hearth, 
 B5-layout + `mobile.png` from B7. When the harness is healthy: `npm run test:visual`, HD self-eyeball,
 re-baseline, add the before/after contact sheet to KEVIN-REVIEW.
 
-**NEXT — B7 remainder (3 sub-bugs, own probes) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
-(1) the Pause hit-button is disjoint from the glyph + covers the Settings gear → tapping Settings pauses
-(`input/touchHandlers.js:39-44`, `ui/TouchControls.jsx`); (2) a stray tap in the left half kills a held
-joystick (`input/touchHandlers.js`); (3) hotbar overflows the phone viewport, 2 of 9 slots off-screen
-(`ui/GameHud.jsx:20-24`). Use the `tests/e2e/touch-controls.spec.js` pattern (chromium + hasTouch + a mobile
-viewport). B5 modal-overflow remainder: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`),
-Inventory "+" below fold (`ui/GamePanels.jsx:252`).
+**NEXT — B7 remainder (2 sub-bugs left) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
+(1) the Pause hit-button is disjoint from the glyph + covers the Settings gear → tapping Settings pauses —
+VERIFY the real hit-target on live HEAD first (the registry's `touchHandlers.js:39-44` ref is STALE — it
+points at look-zone camera code; the pause glyph is at `TouchControlsSurface.jsx:76 right:64`, and the hit
+targets are in `ui/TouchControls.jsx`'s `isButton`/button-rect logic). (2) hotbar overflows the phone
+viewport — 9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px centered on a 390px phone (`ui/GameHud.jsx:20-24`);
+measurable via the touch e2e (all 9 `[data-hotbar-block]` rects within [0, viewportWidth]); the fix is a
+taste-adjacent responsive-shrink/scroll call — pick the conventional mobile approach + note it for Kevin.
+Use the `tests/e2e/touch-controls.spec.js` pattern (chromium + hasTouch + a mobile viewport). B5
+modal-overflow remainder: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`), Inventory "+" below
+fold (`ui/GamePanels.jsx:252`).
 
 ## 📍 (superseded) B5 stat-stack layout SHIPPED (`7e0f004`, 2026-07-14)
 ✅ **B5 parts 1+2 (health-bar collision + ribbon) — DONE.** Moved the stat stack from `top-16 left-4`

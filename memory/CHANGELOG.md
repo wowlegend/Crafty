@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B7: a stray tap in the left half froze a player mid-run
+
+- **B7-touch (`83ef50d`) — a stray tap killed a held joystick.** The touch zone router (`touchMath.js`) made
+  EVERY left-half touch a 'move' touch, so a second concurrent left-half touch (a stray tap while the
+  joystick was held) also owned the move zone — and `handleTouchEnd` clears all four move intents when ANY
+  move touch ends, so the tap's release ran the move cleanup and froze the player mid-run. Fix (pure, in
+  `makeTouchRouter.onStart`): exactly ONE move touch may be active; a concurrent second left-half touch is
+  routed to an inert `'ignore'` zone (no move vector, no look, no cleanup on release). RED-first pure unit
+  test (router + `handleTouchEnd`, no DOM), mutation-proven. Pure logic, no render change → no baseline
+  impact. unit 2044→2046.
+
 ## 2026-07-14 (cont.) — B7: the touch joystick knob + button borders were invisible
 
 - **B7-touch (`d45b698`) — the on-screen touch controls were invisible.** `cssVars.js` emits every `--ui-*`
