@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B8: alt-tab left the movement keys stuck ON
+
+- **B8-alt-tab (`92d92ec`) — the player ran on its own after alt-tabbing.** The keyboard listeners set
+  movement intents on keydown and clear them on keyup, but when the window loses focus the browser delivers
+  the keydown while focused and DROPS the keyup (it fires while another window owns focus) — so a held move
+  intent stuck ON and the player kept running after returning. Fix (seam-extracted, pure): a new
+  `inputState.clearHeldIntents()` (clears every held intent, leaves the `active` gate to pointer-lock) +
+  `input/blurReset.js installBlurReset()` wiring `blur` + `visibilitychange`→hidden to it, wired into the
+  Components input effect. RED-first jsdom test (blur/tab-hide clears a held moveF, preserves active, cleanup
+  removes listeners), mutation-proven (drop the blur listener → RED). Pure logic, no render change. unit
+  2046→2050.
+
 ## 2026-07-14 (cont.) — B5 inventory "+" VERIFIED STALE (no fix needed); B5 DONE
 
 - **B5 (verify-only) — the Inventory attribute "+" buttons were already reachable.** The 18-domain review

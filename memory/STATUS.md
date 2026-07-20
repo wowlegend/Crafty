@@ -294,14 +294,17 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   Lived e2e measures every `[data-hotbar-block]` rect (RED off-screen → GREEN all within [0,390]),
   mutation-proven. **B7 DONE.** The only remainder is the owed `mobile.png` re-baseline (capture harness
   unhealthy — see the owed-re-baseline batch). Touch-target-size vs all-9-visible is a taste note for Kevin.
-- ▢ **B8 [LOOP] COMBAT + WORLD FEEL.** A pack of N enemies deals the damage of **ONE** (a 500ms *global* damage
-  lockout caps ALL incoming damage at 2 hits/sec → the siege cannot threaten you). Camera shake decays **per
-  frame, not per second** (1067ms @30fps vs 267ms @120fps). **Fireball — the default starting spell — cannot hit
-  anything past ~12m** (gravity applied to a projectile that was never designed to arc). Arcane "pierce 3
-  targets" **triple-hits ONE target**. **The ocean plane renders inside every inland cave** and burns ~14% of
-  the frame budget 1.1km from any water. **Alt-tab leaves movement keys stuck ON.** **Left-clicking a chest
-  MINES it** — chest and contents deleted, no drop, no confirm. Spatial audio is **dead until the first hostile
-  spawns** (footsteps/jump/swing silent at game start).
+- ▣ **B8 [LOOP] COMBAT + WORLD FEEL — 3 fixed, 3 fixable open, 2 → Kevin.**
+  ✓ **Fireball 12m cap** (`9c7c1af`) · ✓ **Arcane pierce triple-hit** (`a845bef`) · ✓ **Alt-tab stuck keys**
+  (`92d92ec` — held move intents now cleared on blur/tab-hide via `input/blurReset.js` + `clearHeldIntents`).
+  **STILL FIXABLE (autonomous, pick one — VERIFY on live HEAD first):** (1) **left-clicking a chest MINES it**
+  — chest + contents deleted, no drop, no confirm (destructive; the mine path is in Components.jsx raycast
+  logic — guard chest blocks); (2) **the ocean plane renders inside every inland cave** (~14% frame budget
+  1.1km from water — gate the ocean render on proximity/altitude); (3) **spatial audio dead until the first
+  hostile spawns** (AudioContext/listener init ordering). **→ KEVIN-REVIEW (feel/balance, do NOT change):**
+  the 500ms *global* damage-lockout (a pack of N deals the damage of ONE — the siege can't threaten you);
+  camera-shake decays per-frame-not-per-second (1067ms @30fps vs 267ms @120fps). **B4** mob-AI-2D→3D is a
+  separate balance item → Kevin.
 
 **MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
 a root cause; do not open 45 separate tickets.

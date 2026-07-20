@@ -134,15 +134,23 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B5 DONE (2026-07-14); NEXT = a fixable B8 bug (chest-mining or alt-tab-keys)
-✅ **B5 fully DONE** — dial (`712ea78`) + stat-stack layout (`7e0f004`) + progression-modal (`690b070`) fixed;
-the inventory-"+" item **VERIFIED STALE** this iteration. The registry claimed the "+" buttons were "below the
-fold with no scroll", but lived @1280×800 they measured top=572, hittable=true, and stayed reachable through
-two layout mutations (the modal was refactored to a fitting h-[440px] body + Column 1 `overflow-y-auto`). No
-code change (fixing a non-bug = the dial-detour trap); no permanent gate kept (couldn't make a reachability
-assertion fail → decoration per the charter). **Verify-before-assert win — the 3rd+ stale registry ref this
-session.** (Progression-modal fix recap: flex-center + overflow on one element clipped the header 556px above
-→ two-div scrollable-modal pattern; RED −556 → GREEN +169, mutation-proven.)
+## 📍 B8 alt-tab-stuck-keys FIXED (`92d92ec`, 2026-07-14); NEXT = another fixable B8 bug
+✅ **B8 alt-tab-stuck-keys — DONE.** Alt-tab away while holding W left the move intent stuck ON (the browser
+delivers the keydown while focused but drops the keyup) → the player ran on its own after returning. Fix
+(seam-extracted, pure): `inputState.clearHeldIntents()` (clears held intents, leaves `active` to pointer-lock)
++ `input/blurReset.js installBlurReset()` wiring `blur`/`visibilitychange`→hidden → it, wired into the
+Components input effect. RED-first jsdom test, mutation-proven (drop the blur listener → RED). No render
+change. unit 2046→2050.
+
+**NEXT — another fixable B8 bug (VERIFY on live HEAD first; the registry is a hypothesis):**
+(1) **left-clicking a chest MINES it** — chest + contents deleted, no drop, no confirm (destructive; the mine
+path is Components.jsx raycast logic — guard chest blocks; may be a god-file/e2e unit); (2) **ocean plane in
+inland caves** (~14% frame budget 1.1km from water — gate ocean render on proximity/altitude; needs a lived
+probe); (3) **spatial audio dead until first hostile spawns** (AudioContext/listener init ordering).
+**→ KEVIN-REVIEW (do NOT change):** 500ms damage-lockout, camera-shake-per-frame, B4 mob-AI-2D. B2g deferred.
+
+✅ **B5 fully DONE** (dial `712ea78` + stat-stack `7e0f004` + progression-modal `690b070`; inventory-"+"
+verified STALE `f332ac7` — 3rd+ stale registry ref caught by verify-before-assert this session).
 
 ✅ **B7 DONE — all 4 touch sub-bugs** (colors `d45b698` · stray-tap `83ef50d` · pause-mistap `9f6c422` ·
 hotbar-overflow `efa844e`), each RED-first + mutation-proven in `tests/e2e/touch-controls.spec.js`.
