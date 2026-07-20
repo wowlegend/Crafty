@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B7: the touch joystick knob + button borders were invisible
+
+- **B7-touch (`d45b698`) — the on-screen touch controls were invisible.** `cssVars.js` emits every `--ui-*`
+  color as space-separated RGB channels (`--ui-accent: 201 168 106`), but `TouchControlsSurface` used them
+  bare (`const GOLD = 'var(--ui-accent, #C9A86A)'; background: GOLD`) → the resolved `201 168 106` is an
+  invalid CSS color (the hex fallback never fires because the var is always defined) → the joystick knob was
+  100% transparent and every touch-button border was dropped (`border: 4px solid <invalid>` → shorthand
+  invalid → border-style none). Only the lucide glyphs showed (literal hex). Fix: wrapped the INK/GOLD
+  constants in `rgb(...)`. Verified in a REAL touch browser via a new `tests/e2e/touch-controls.spec.js`
+  (chromium + `hasTouch` → `isTouchUIMode()` true) reading the knob's computed style — RED-first
+  `bg rgba(0,0,0,0)` / `border 0px`, GREEN `bg rgb(201,168,106)` / `border 4px`; mutation-proven. The
+  `mobile.png` touch baseline now shows the old invisible knob → owed re-baseline. unit 2044.
+
 ## 2026-07-14 (cont.) — B5 parts 1+2: the health bar was buried + the stat bars ribboned
 
 - **B5-layout (`7e0f004`) — the health bar was 100% invisible during play.** The player stat stack sat at

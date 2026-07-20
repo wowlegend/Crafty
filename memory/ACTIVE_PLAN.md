@@ -134,7 +134,33 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B5 stat-stack layout SHIPPED (`7e0f004`, 2026-07-14); NEXT = B7 (touch)
+## 📍 B7 touch invisible-controls SHIPPED (`d45b698`, 2026-07-14); NEXT = B7 remainder
+✅ **B7 invisible-controls — DONE.** The touch joystick knob + all button borders were invisible: bare
+`var(--ui-accent)` resolves to space-separated channels `201 168 106` (an invalid CSS color; the hex fallback
+never fires because the var is always defined) → transparent knob + dropped borders. Fix: wrapped INK/GOLD in
+`rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser via new
+`tests/e2e/touch-controls.spec.js` (chromium + `hasTouch` → `maxTouchPoints>0` → `isTouchUIMode()` true):
+RED-first `bg rgba(0,0,0,0)` / `border 0px`; GREEN `bg rgb(201,168,106)` / `border 4px`. Mutation-proven
+(cp-backup revert to bare var → RED). unit 2044. **The `mobile.png` touch baseline now shows the OLD invisible
+knob → joins the owed re-baseline batch.**
+
+**⚠️ VISUAL RE-BASELINE — still OWED + capture harness is UNHEALTHY.** Attempted `npm run test:visual` at
+load 3.48 this iteration; the capture hung with a puppeteer `ProtocolError` (a single `callFunctionOn` > 180s)
+at the **title-mascot** step — the charter's documented recurring infra timeout (needs a box-free / Chrome
+restart, NOT just low load). Wrote NO fresh frames (fail-loud `complete:true` sentinel guards the diff, so no
+false-green). OWED frames: every in-world HUD frame (explore-day/night, hearth, landmark, ocean-*, …) from
+B5-layout + `mobile.png` from B7. When the harness is healthy: `npm run test:visual`, HD self-eyeball,
+re-baseline, add the before/after contact sheet to KEVIN-REVIEW.
+
+**NEXT — B7 remainder (3 sub-bugs, own probes) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
+(1) the Pause hit-button is disjoint from the glyph + covers the Settings gear → tapping Settings pauses
+(`input/touchHandlers.js:39-44`, `ui/TouchControls.jsx`); (2) a stray tap in the left half kills a held
+joystick (`input/touchHandlers.js`); (3) hotbar overflows the phone viewport, 2 of 9 slots off-screen
+(`ui/GameHud.jsx:20-24`). Use the `tests/e2e/touch-controls.spec.js` pattern (chromium + hasTouch + a mobile
+viewport). B5 modal-overflow remainder: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`),
+Inventory "+" below fold (`ui/GamePanels.jsx:252`).
+
+## 📍 (superseded) B5 stat-stack layout SHIPPED (`7e0f004`, 2026-07-14)
 ✅ **B5 parts 1+2 (health-bar collision + ribbon) — DONE.** Moved the stat stack from `top-16 left-4`
 (buried under the QuestTracker panel) to **bottom-left** + `flex flex-col gap-2 w-44`. Verified in a REAL
 browser via new `tests/e2e/hud-layout.spec.js` (measures rendered geometry): RED-first health at (16,72)

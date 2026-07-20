@@ -260,13 +260,18 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   kill counts twice**. The **mobType filter is dead code** — killing any mob advances every targeted-hunt quest
   ("Defeat 5 moss brutes" completes on 5 spider kills). Two of the twelve achievements **can never unlock**
   (`updateLevel` has zero callers). `QuestSystem.jsx:197-199/317-318/398-404`.
-- ▢ **B7 [LOOP] TOUCH IS VISUALLY + FUNCTIONALLY BROKEN** (rolls X1/X3 in). **The joystick knob is 100%
-  transparent** and every touch-button border is silently dropped — bare `var(--ui-*)` used as a colour against
-  space-separated **RGB-channel** tokens. **The Pause hit-button is 100% disjoint from the Pause glyph** and it
-  covers the Settings gear, so **tapping Settings pauses the game.** A stray tap anywhere in the left half
-  **kills a held joystick** (player freezes mid-run). The hotbar **overflows the phone viewport** — 2 of 9 slots
-  entirely off-screen on an iPhone. `ui/TouchControlsSurface.jsx:11-20/53-58/76`, `ui/TouchControls.jsx:126-127`,
-  `input/touchHandlers.js:39-44`, `ui/GameHud.jsx:20-24`.
+- ▣ **B7 [LOOP] TOUCH IS BROKEN — invisible-controls FIXED (`d45b698`, 2026-07-14); 3 sub-bugs OPEN.**
+  ✓ **The joystick knob + all touch-button borders are now visible.** They were bare `var(--ui-*)` used as
+  colours against space-separated **RGB-channel** tokens (`--ui-accent: 201 168 106`) → invalid colour →
+  transparent knob + dropped borders (the lucide glyphs survived on a literal hex). Fix: wrapped the INK/GOLD
+  constants in `rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser — new
+  **`tests/e2e/touch-controls.spec.js`** (chromium + `hasTouch`) reads the knob's computed style: RED-first
+  `bg rgba(0,0,0,0)` / `border 0px`; GREEN `bg rgb(201,168,106)` / `border 4px`. Mutation-proven (constants
+  are the sole RED→GREEN variable). **STILL OPEN (3 separate sub-bugs, own probes):** (1) the Pause hit-button
+  is disjoint from the glyph + covers the Settings gear → **tapping Settings pauses** (`input/touchHandlers.js:39-44`,
+  `ui/TouchControls.jsx`); (2) a stray tap in the left half **kills a held joystick** (player freezes mid-run);
+  (3) the hotbar **overflows the phone viewport** — 2 of 9 slots off-screen (`ui/GameHud.jsx:20-24`). **+ the
+  `mobile.png` visual baseline (touch overlay) now shows the OLD invisible knob → joins the owed re-baseline batch.**
 - ▢ **B8 [LOOP] COMBAT + WORLD FEEL.** A pack of N enemies deals the damage of **ONE** (a 500ms *global* damage
   lockout caps ALL incoming damage at 2 hits/sec → the siege cannot threaten you). Camera shake decays **per
   frame, not per second** (1067ms @30fps vs 267ms @120fps). **Fireball — the default starting spell — cannot hit

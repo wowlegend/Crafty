@@ -8,10 +8,15 @@
 > right of the QUESTS panel IS the covered health/mana ribbon. **Fix (`7e0f004`): moved the stat stack to the
 > free bottom-left corner + fixed the horizontal-ribbon bug (the bars now stack vertically).** Verified in a
 > real browser (new `tests/e2e/hud-layout.spec.js` — health at (16,736), mana below, clear of the quest
-> panel). **Two asks:** (1) **a capture re-baseline is owed** — every gameplay HUD frame (explore-day/night,
-> hearth, landmark, ocean-*, …) still shows the OLD buried position; I couldn't re-capture (machine load was
-> ~24; the capture harness times out above ~10). Once the box frees I'll re-render + re-baseline and add the
-> before/after contact sheet here. (2) **taste:** bottom-left is the conventional RPG health placement and is
+> panel). **Also (`d45b698`): the touch joystick knob + button borders are no longer invisible** — they used
+> the theme color tokens as bare CSS colors (an invalid space-separated-channels value → transparent knob +
+> dropped borders); wrapped them in `rgb(...)`. The `mobile.png` touch baseline joins the same owed batch.
+> **Two asks:** (1) **a capture re-baseline is owed** — every gameplay HUD frame (explore-day/night, hearth,
+> landmark, ocean-*, …) + `mobile.png` still show the OLD state. ⚠️ **The capture harness is currently
+> unhealthy** — a re-run at load 3.48 (well below the ~10 threshold) still hung with a puppeteer
+> `ProtocolError` at the **title-mascot** step (the documented recurring infra timeout). It likely needs a
+> box-free / Chrome restart, not just low load. Once the harness is healthy I'll re-render + re-baseline and
+> add the before/after contact sheet here. (2) **taste:** bottom-left is the conventional RPG health placement and is
 > clear of the quest panel; if you'd rather it elsewhere, say so. Two coexistence FYIs at bottom-left: the
 > CombatLog ticker (transient, z-10, behind) and the DebugOverlay badge (dev-only `import.meta.env.DEV`, never
 > ships) share that corner — a fully-charged 7-bar stack could briefly overlap the ticker; acceptable, flag it.
