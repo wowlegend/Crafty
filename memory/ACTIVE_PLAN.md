@@ -134,16 +134,23 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 V1 gate-triage STARTED (`8ab8938`, 2026-07-14) — boss-notif gate now behavioral; NEXT = 2 more vacuous gates
+## 📍 V1 gate-triage (`8ab8938`→`72edf32`→melee, 2026-07-14/20) — boss-notif + melee-swing behavioral; NEXT = survival-quests (last of 3)
 ✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous source-grep gate that used to be at
 `tests/gates/boss-notif-timer-gates.test.js` (a readFileSync+regex of bossSystem.js) is now REMOVED and
 REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,
 wired into `useBossSystem`, + a behavioral `bossNotifTimers.test.js` (fake timers) proving clearAll() cancels
 pending timers → no setBossNotification-after-unmount. RED-first (module-missing) + mutation-proven (clearAll
 no-op → RED). Deleted the source-grep. unit 2058.
-**NEXT — the other 2 known-vacuous gates (§V1, one per iteration, VERIFY each is actually vacuous first):**
-`tests/gates/melee-swing-audio-gates` + `tests/gates/survival-quests-gates` — read each, find the real behaviour
-(swing SFX fires on a swing; survival quests advance/complete), seam-extract if needed, write a behavioral test,
+✅ **V1 melee-swing-audio gate — DONE (behavioral).** The vacuous melee-swing-audio-gates source-grep (it
+readFileSync+regex'd App.jsx/Components.jsx for `playAttackSounds` strings — proved code STRINGS existed, never
+that a swing made a sound) is now REMOVED. M6 #4 regression: `playAttackSounds` was dead code + the swing whoosh
+was MISS-ONLY. Seam-extracted the audio composition to `game/attackSounds.js makeAttackSoundPlayer` (playSwing
+NOW + playAttack after 100ms, injectable scheduler), wired into App.jsx, + a behavioral `attackSounds.test.js`
+(fake timers) proving the swing whoosh fires SYNCHRONOUSLY, the strike after the delay, order swing→attack, and
+every swing re-whooshes. RED-first (module-missing) + mutation-proven (drop `playSwing()` → 3 RED). Deleted the
+source-grep. unit 2058→2060.
+**NEXT — the LAST known-vacuous gate (§V1, VERIFY it's actually vacuous first):** survival-quests-gates — read it,
+find the real behaviour (survival quests advance/complete), seam-extract if needed, write a behavioral test,
 mutation-prove, delete the source-grep. Then triage the ~80 untriaged gates (STATUS §V1) or V2·V3 input-driven E2E.
 **OWED (do if `uptime` load < ~10):** ocean LIVED PROBE + B5/B7 VISUAL RE-BASELINE (capture harness hangs at
 title-mascot — needs a box-free/Chrome-restart).

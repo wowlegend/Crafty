@@ -6,6 +6,7 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { motionIntensity } from './game/a11y.js';
+import { makeAttackSoundPlayer } from './game/attackSounds.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
@@ -698,10 +699,7 @@ function GameApp({ experienceSystem }) {
   }, []);
 
   useEffect(() => {
-    useGameStore.setState({ playAttackSounds: () => {
-      playSwing();
-      setTimeout(() => playAttack(), 100);
-    }});
+    useGameStore.setState({ playAttackSounds: makeAttackSoundPlayer(playSwing, playAttack) });
     useGameStore.setState({ playHitSound: playHit });
     useGameStore.setState({ playDefeatSound: playDefeat });
   }, [playAttack, playSwing, playHit, playDefeat]);

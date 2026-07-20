@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-07-20 — V1 gate-triage: the melee-swing-audio gate is now behavioral (2nd of 3)
+
+- **V1-melee-swing (`<this commit>`) — replaced the vacuous melee-swing-audio source-grep with a behavioral
+  test.** The old `melee-swing-audio-gates.test.js` only readFileSync + regex'd App.jsx/Components.jsx for
+  `playAttackSounds: () =>` / `playAttackSounds?.()` / `playSpatialSound('swing'` — it proved the code STRINGS
+  existed, never that a swing actually makes a sound. The M6 #4 regression it nominally guarded: `playAttackSounds`
+  was DEFINED-BUT-NEVER-CALLED and the swing whoosh was MISS-ONLY, so a *connecting* melee hit had impact but no
+  whoosh. Seam-extracted the audio composition to `game/attackSounds.js` (`makeAttackSoundPlayer`: playSwing() NOW
+  + playAttack() after 100ms, with an injectable scheduler so the delay is fake-timer testable), wired it into
+  App.jsx's `playAttackSounds` setter, + a behavioral `game/attackSounds.test.js` (fake timers) proving the swing
+  whoosh fires SYNCHRONOUSLY, the strike fires only after the delay, order is swing→attack, and every swing
+  re-whooshes (guards the miss-only regression's inverse). RED-first (module-missing) + mutation-proven (drop
+  `playSwing()` → 3 tests RED). Deleted the source-grep. 2nd of the 3 known-vacuous gates; `survival-quests` is
+  the last. Build/eslint/knip clean; unit 2058 → 2060.
+
 ## 2026-07-14 (cont.) — V1 gate-triage: the boss-notif-timer gate is now behavioral
 
 - **V1-boss-notif (`b1846f3`+`8ab8938`) — replaced a vacuous source-grep gate with a behavioral one.** The old
