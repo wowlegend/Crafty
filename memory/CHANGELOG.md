@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B8: the ocean plane rendered + recomputed inside caves and deep inland
+
+- **B8-ocean (`05082fa`) — the ocean burned ~14% of the frame budget 1.1km from water.** `render/Ocean.jsx`
+  pinned a 220m water plane at SEA_LEVEL, re-centred it under the camera, and CPU-recomputed ~9.4k Gerstner
+  vertices EVERY frame regardless of location — so deep inland the plane was buried under terrain (invisible)
+  yet still cost ~14%, and inside an inland cave it rendered through the cave walls. Fix (seam-extracted, pure):
+  `world/oceanVisibility.js oceanVisibleNear()` samples the surface height (`climate.surfaceBlockAt`) at the
+  camera + an 8-point ring and returns whether any column within the plane's ~110m coverage is at/below sea
+  level; `Ocean.jsx` gates both the render and the wave recompute on it, so it skips both when the plane is
+  fully buried. Always on in capture → the 20+ visual baselines stay byte-identical. RED-first pure unit,
+  mutation-proven (flip the `<= seaLevel` comparison → RED); safe by construction (only hides an
+  already-invisible plane). A lived probe (coast shows / cave gone / no coastal regression) is owed once load
+  drops. unit 2050→2056.
+
 ## 2026-07-14 (cont.) — B8 chest-mining routed to Kevin (design decision, not a silent fix)
 
 - **B8 (verify + route) — chest-mining is an explicitly-tested design behavior, so it went to Kevin.** The

@@ -134,16 +134,27 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B8 chest-mining routed to Kevin (design decision), 2026-07-14; NEXT = ocean or spatial-audio
-✅ **B8 chest-mining — VERIFIED as a DESIGN DECISION → routed to Kevin (no autonomous change).** The registry
-called it a bug ("LMB mines a chest, contents deleted"). Verified: chests DO store real inventory (`chests` Map
-of `{ inventory: {...} }`, e.g. Iron Sword), so mining loses items — BUT `input/verbRouter.js` routes RMB→open
-and LMB→mine, and `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine ("break chest, existing cleanup"). The
-#72 router was a behavior-preserving refactor, so §5-12 codified pre-existing behavior. Reversing an
-explicitly-tested player-facing behavior with real trade-offs (can't-break vs drops-contents vs as-is) is a §4
-Kevin call → filed in KEVIN-REVIEW with a recommendation (LMB-opens-not-mines). **Verify-before-assert win:
-not an autonomous fix.** Also routed the feel/balance items (500ms damage-lockout, camera-shake-per-frame, B4
-mob-AI-2D) to KEVIN-REVIEW with concrete file:line + decision entries.
+## 📍 B8 ocean-in-caves FIXED (`05082fa`, 2026-07-14); NEXT = spatial-audio (last fixable B8)
+✅ **B8 ocean-in-caves — DONE.** The ocean plane rendered + CPU-recomputed ~9.4k Gerstner vertices every frame
+even buried inland / inside caves (~14% budget; also rendered through cave walls). Fix (seam-extracted, pure):
+`world/oceanVisibility.js oceanVisibleNear()` samples surface height (climate.surfaceBlockAt) at the camera +
+an 8-point ring; hidden when every sample is dry land above SEA_LEVEL (plane fully buried). `render/Ocean.jsx`
+gates BOTH render + recompute on it; capture-suppressed → baselines byte-identical. RED-first pure unit,
+mutation-proven, **safe-by-construction** (only hides an already-invisible plane). unit 2050→2056.
+**⚠️ Lived probe OWED** (coast shows / cave gone / no coastal regression) once load < ~10 (was ~20 — a browser
+probe hangs like the capture). CI + visual gate unaffected (gate is capture-suppressed).
+
+**NEXT — spatial-audio (the LAST fixable B8 bug), then the campaign's next spine.** Spatial audio is dead until
+the first hostile spawns (AudioContext/listener init ordering) — VERIFY on live HEAD first (registry is a
+hypothesis; audio is hard to verify headlessly, so prefer a pure init-ordering seam if extractable, else route
+to Kevin as needs-a-lived-ear). After B8: the campaign's next spine per STATUS (V1 gate-triage / V2·V3
+input-driven E2E — pure/gate work, no lived probe needed).
+
+✅ **B8 chest-mining → Kevin (design, `verbRouter.test.js` §5-12 explicitly tests LMB→mine); feel/balance
+(500ms damage-lockout, camera-shake, B4 mob-AI-2D) → KEVIN-REVIEW.** Verify-before-assert wins, not autonomous.
+
+✅ **B8 alt-tab-stuck-keys — DONE (`92d92ec`).** Held move intents now cleared on blur/tab-hide
+(`inputState.clearHeldIntents` + `input/blurReset.js`); RED-first jsdom, mutation-proven. unit 2050.
 
 ✅ **B8 alt-tab-stuck-keys — DONE (`92d92ec`).** Held move intents now cleared on blur/tab-hide
 (`inputState.clearHeldIntents` + `input/blurReset.js`); RED-first jsdom, mutation-proven. unit 2050.
