@@ -7,6 +7,7 @@ import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
+import { makeNotifClearTracker } from './bossNotifTimers.js';
 
 export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
@@ -20,13 +21,11 @@ export const useBossSystem = (playerLevel) => {
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
     // Track the boss-notification auto-clear timeouts so they can't fire setBossNotification AFTER unmount
-    // (the audit's setState-after-unmount leak). Schedule via the helper; the unmount effect clears all.
-    const notifTimers = useRef(new Set());
-    const scheduleNotifClear = useCallback((ms) => {
-        const t = setTimeout(() => { setBossNotification(null); notifTimers.current.delete(t); }, ms);
-        notifTimers.current.add(t);
-    }, []);
-    useEffect(() => () => { for (const t of notifTimers.current) clearTimeout(t); notifTimers.current.clear(); }, []);
+    // (the audit's setState-after-unmount leak). Extracted to bossNotifTimers.js (behavioral test, V1).
+    const notifTracker = useRef(null);
+    if (!notifTracker.current) notifTracker.current = makeNotifClearTracker(setBossNotification);
+    const scheduleNotifClear = useCallback((ms) => notifTracker.current.schedule(ms), []);
+    useEffect(() => () => notifTracker.current.clearAll(), []);
 
     // S9: the Shadow Dragon now AWAITS at the fixed Blight Heart lair (NOT a level-5 ambush at the player).
     // Once you are strong enough (level 5), poll for ARRIVAL at the lair (~24 blocks) -- the dragon awakens
