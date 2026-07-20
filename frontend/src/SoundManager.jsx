@@ -29,6 +29,12 @@ export const SoundProvider = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [volume, setVolume] = useState(0.5);
+  // B8: the audio-init effect populates the audioContext + sounds REFS, but the context `value` below reads
+  // `.current` at render time — a ref mutation does not re-render, so consumers (SpatialAudioController)
+  // saw stale undefined/{} until an UNRELATED re-render (the first hostile spawn, via the music effect) —
+  // "spatial audio dead until the first hostile spawns". Flip this once, at the end of the init effect, to
+  // re-provide the value with the populated refs immediately.
+  const [, setAudioReady] = useState(false);
 
   // Audio context for sound effects
   const audioContext = useRef(null);
@@ -447,6 +453,9 @@ export const SoundProvider = ({ children }) => {
     // W4-T9b: publish the shared ctx + master-bus input so the WeatherSystem can route its storm bed
     // through the same limiter (null-safe: getMasterBus() returns null if the ctx failed to init).
     setAudioBridge(audioContext.current, getMasterBus());
+    // B8: re-provide the context value now that audioContext.current + sounds.current are populated (refs
+    // don't re-render) — so consumers get the real context immediately, not after the first hostile spawn.
+    setAudioReady(true);
   }, []);
 
   // SFX overhaul Slice 2: lazily build ONE master bus + limiter on the shared ctx and route every voice
