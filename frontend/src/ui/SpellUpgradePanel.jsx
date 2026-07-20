@@ -37,8 +37,13 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             aria-modal="true"
             aria-label="Progression"
             tabIndex={-1}
-            className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"
+            className="absolute inset-0 z-50 overflow-y-auto bg-ink/75"
         >
+            {/* B5: the OUTER element is the scroll container; this inner min-h-full flex wrapper centers the
+                panel when it fits AND keeps its top (header + close X) reachable when it overflows. The
+                4-column panel is ~1962px tall at 1280x800, and items-center on the scroll element itself
+                clipped the header 556px above the viewport (the close X was unreachable). */}
+            <div className="flex min-h-full items-center justify-center p-4">
             <motion.div
                 initial={{ scale: 0.9, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
@@ -47,7 +52,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             >
                 <Panel variant="raise" data-testid="progression-panel" className="p-6 flex flex-col">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
+                    <div data-testid="progression-header" className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
                         <div>
                             <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide text-accent">
                                 <Icon name="sparkles" size={28} className="flex-none" /> Progression — Aspects & Spells
@@ -223,6 +228,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     </div>
                 </Panel>
             </motion.div>
+            </div>
         </motion.div>
     );
 });
