@@ -67,7 +67,17 @@ export function makeTouchRouter() {
   const touches = new Map(); // identifier -> {zone, originX, originY, lastX, lastY}
   return {
     onStart(touch, viewportWidth) {
-      const zone = touch.clientX < viewportWidth / 2 ? 'move' : 'look';
+      // Exactly ONE move (joystick) touch may be active at a time. A second concurrent left-half touch --
+      // a stray tap while the joystick is held -- must NOT become a move touch: otherwise its release runs
+      // the move-zone cleanup (handleTouchEnd clears all four move intents), freezing the player mid-run.
+      // Route the extra to an inert 'ignore' zone (no move vector, no look, no cleanup on release). (B7.)
+      let zone;
+      if (touch.clientX < viewportWidth / 2) {
+        const moveHeld = [...touches.values()].some((t) => t.zone === 'move');
+        zone = moveHeld ? 'ignore' : 'move';
+      } else {
+        zone = 'look';
+      }
       touches.set(touch.identifier, {
         zone, originX: touch.clientX, originY: touch.clientY,
         lastX: touch.clientX, lastY: touch.clientY,
@@ -80,6 +90,7 @@ export function makeTouchRouter() {
       if (t.zone === 'move') {
         return { zone: 'move', vecX: touch.clientX - t.originX, vecY: touch.clientY - t.originY };
       }
+      if (t.zone === 'ignore') return null; // inert second-finger touch — never moves or looks
       const dx = touch.clientX - t.lastX, dy = touch.clientY - t.lastY;
       t.lastX = touch.clientX; t.lastY = touch.clientY;
       return { zone: 'look', dx, dy };

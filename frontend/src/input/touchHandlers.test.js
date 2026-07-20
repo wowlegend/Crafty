@@ -85,3 +85,39 @@ describe('handleTouchMove nub return', () => {
     expect(nub).toBeNull();
   });
 });
+
+// B7 (18-domain review): a stray tap anywhere in the LEFT half froze a player mid-run. The router made
+// EVERY left-half touch a 'move' touch, so a second left-half touch (a stray tap while the joystick is
+// held) also owned the move zone -- and handleTouchEnd clears ALL four move intents when ANY move touch
+// ends. So the stray tap's release ran the move cleanup and killed the held joystick.
+//
+// Fix: exactly ONE move touch may be active; a second concurrent left-half touch is routed to an inert
+// 'ignore' zone (no move vector, no look, and its release runs no cleanup).
+//
+// MUTATION-PROOF: revert makeTouchRouter.onStart to `zone = clientX < w/2 ? 'move' : 'look'` (drop the
+// single-owner guard) and both assertions below go RED (the stray becomes 'move' and its release clears).
+describe('touch router — a stray second left-half touch must not hijack or kill the joystick (B7)', () => {
+  const W = 1000;
+  it('routes the FIRST left-half touch to move and a concurrent second one to inert ignore', () => {
+    const router = makeTouchRouter();
+    expect(router.onStart(T(1, 100, 300), W).zone).toBe('move');   // the joystick owner
+    expect(router.onStart(T(2, 200, 500), W).zone).toBe('ignore'); // a stray tap while it is held
+    expect(router.onStart(T(3, 800, 300), W).zone).toBe('look');   // right half is unaffected
+    // the ignore touch never yields a move vector or a look delta
+    expect(router.onMove(T(2, 220, 520))).toBeNull();
+  });
+
+  it("the stray tap's release does NOT clear the held move intents (no freeze); the owner's release does", () => {
+    const router = makeTouchRouter();
+    router.onStart(T(1, 100, 300), W); // joystick owner
+    router.onStart(T(2, 200, 500), W); // stray tap
+
+    const strayCleared = [];
+    handleTouchEnd(router, [T(2, 200, 500)], { setIntent: (k, v) => { if (v === false) strayCleared.push(k); } });
+    expect(strayCleared).toEqual([]); // RED on HEAD: all four move keys were cleared -> player froze
+
+    const ownerCleared = [];
+    handleTouchEnd(router, [T(1, 100, 300)], { setIntent: (k, v) => { if (v === false) ownerCleared.push(k); } });
+    expect([...ownerCleared].sort()).toEqual([...MOVE_KEYS].sort()); // the real owner's release DOES clear
+  });
+});
