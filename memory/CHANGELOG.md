@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B5: the Progression panel header + close X were unreachable
+
+- **B5-modal (`690b070`) — you couldn't close the Progression panel without a keyboard.** SpellUpgradePanel
+  put flex-centering AND `overflow-y-auto` on the same element, so the ~1962px-tall panel's header (title +
+  Talent Points + close X) was clipped 556px above the viewport by `align-items: center` — and the browser
+  won't let you scroll up past a centered flex item, so it was unreachable. Fix: the standard scrollable-modal
+  pattern — outer element is the scroll container, a new inner `min-h-full flex items-center justify-center`
+  wrapper centers when it fits and keeps the top reachable when it overflows. Verified in a REAL browser
+  (`panel-overflow.spec.js` @1280×800, opens via the openModal hook): RED header top −556 → GREEN +169.
+  Mutation-proven. (Build-first discipline: checked build + eslint on the JSX restructure before the slow e2e.)
+
 ## 2026-07-14 (cont.) — B7 COMPLETE: the 9-slot hotbar ran off both edges of a phone
 
 - **B7-touch (`efa844e`) — the block hotbar overflowed the phone viewport.** 9 slots × `w-[62px]` + gaps +

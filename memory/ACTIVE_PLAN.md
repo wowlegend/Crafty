@@ -134,16 +134,20 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B7 COMPLETE (`efa844e`, 2026-07-14); NEXT = B5 modal-overflow remainder
-✅ **B7 DONE — all 4 touch sub-bugs fixed** (colors `d45b698` · stray-tap `83ef50d` · pause-mistap `9f6c422` ·
-hotbar-overflow `efa844e`), each RED-first + mutation-proven, lived-verified in `tests/e2e/touch-controls.spec.js`
-(chromium + `hasTouch`). Latest: the 9-slot hotbar (≈622px centered) ran off both edges of a 390px phone
-(grass/dirt/cobblestone/chest off-screen); fixed with a viewport-responsive `max-[640px]:scale-[0.56]
-origin-bottom` (all 9 fit + centered; tablets keep full size). Mutation-proven (remove scale → RED).
-**⚠️ SELF-LESSON (verify-before-assert on MYSELF):** I blamed "env load" for a boot timeout that was actually
-my own broken JSX — a `{/* */}` comment placed directly after `return (` is a syntax error, so esbuild failed
-and the dev server served a broken module (`useGameStore` never defined → the "boot timeout"). Check the
-BUILD / browser console before blaming load. JSX comments go INSIDE children or as `//` above the return.
+## 📍 B5 Progression-header FIXED (`690b070`, 2026-07-14); NEXT = Inventory "+" (last B5 item)
+✅ **B5 Progression-header — DONE.** SpellUpgradePanel put flex-centering + `overflow-y-auto` on the SAME
+element, so the ~1962px-tall panel's header (+ close X) was clipped 556px above the viewport, unreachable
+(couldn't close without a keyboard). Fix: the two-div scrollable-modal pattern (outer = scroll container,
+inner `min-h-full flex items-center justify-center` wrapper). Lived e2e (`panel-overflow.spec.js`, opens via
+the `openModal` hook @1280×800): RED header top −556 → GREEN +169 (within [0,800]). Mutation-proven (pre-fix
+single-div = RED, structure the sole variable). **BUILD-FIRST discipline held this time** (checked build +
+eslint on the JSX structure change BEFORE the slow e2e — the last iter's self-lesson applied).
+
+✅ **B7 DONE — all 4 touch sub-bugs** (colors `d45b698` · stray-tap `83ef50d` · pause-mistap `9f6c422` ·
+hotbar-overflow `efa844e`), each RED-first + mutation-proven in `tests/e2e/touch-controls.spec.js`.
+**⚠️ SELF-LESSON (still live):** a boot "timeout" was my own broken JSX (a `{/* */}` after `return (` = esbuild
+syntax error → broken module). CHECK THE BUILD / console before blaming env load; JSX comments go inside
+children or as `//` above the return.
 
 **⚠️ OWED (env-blocked): the VISUAL RE-BASELINE.** Every in-world HUD frame (B5-layout) + `mobile.png` (B7).
 The capture harness is UNHEALTHY — it hangs with a puppeteer `ProtocolError` at title-mascot even at low load
@@ -151,11 +155,11 @@ The capture harness is UNHEALTHY — it hangs with a puppeteer `ProtocolError` a
 before/after to KEVIN-REVIEW. (The hotbar scale only applies ≤640px, so the 1280px `mobile.png` capture is
 likely unaffected by it — only the B7 color fix changed `mobile.png`.)
 
-**NEXT — B5 modal-overflow remainder → then B8 feel/balance (→ KEVIN-REVIEW, do NOT change).**
-B5 modal-overflow (small, LOW): the Progression panel header incl. the close X is off-screen at 1280×800
-(`ui/SpellUpgradePanel.jsx:40`); the Inventory attribute "+" buttons are below the fold with no scroll
-(`ui/GamePanels.jsx:252`). VERIFY on live HEAD first (registry refs have repeatedly been stale). These are a
-modal-layout class — likely a lived e2e (open the panel, measure the header/buttons are within the viewport)
-or a pure-ish overflow check. B8 feel/balance items (500ms damage-lockout, camera-shake-per-frame, mob-AI-2D)
-are Kevin-taste → add a file:line + decision entry to KEVIN-REVIEW-BATCH, do not change.
+**NEXT — B5 last item (Inventory "+" below fold) → then B8 feel/balance (→ KEVIN-REVIEW, do NOT change).**
+The Inventory attribute-point "+" buttons are below the fold with no scroll (`ui/GamePanels.jsx:252` — VERIFY
+on live HEAD, ref may be stale; likely the SAME modal-overflow class as the Progression panel just fixed —
+check whether the inventory modal is flex-centered + overflow on one element). Lived e2e (extend
+`panel-overflow.spec.js` — open the inventory via `openModal('inventory')` or the store, measure the "+"
+buttons are within [0, viewportHeight]). B8 feel/balance items (500ms damage-lockout, camera-shake-per-frame,
+mob-AI-2D) are Kevin-taste → add a file:line + decision entry to KEVIN-REVIEW-BATCH, do not change.
 

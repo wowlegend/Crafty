@@ -245,9 +245,12 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   measures rendered geometry: RED-first showed health at (16,72) inside the quest panel (16..296 × 16..279)
   and mana on the same row; GREEN after the fix puts health at (16,736), mana below at (16,764), both clear
   of the quest panel. Non-vacuous (className is the sole RED→GREEN variable). `HUD.jsx:547`, `StatBar.jsx:18`.
-  **STILL OPEN (B5 remainder — smaller, separate; a modal-overflow class, own probe):** the Progression
-  panel's header (incl. close X) is off-screen at 1280×800 (`ui/SpellUpgradePanel.jsx:40`); the Inventory's
-  attribute-point "+" buttons are below the fold with no scroll (`ui/GamePanels.jsx:252`). **+ VISUAL
+  **B5 REMAINDER:** ✓ **Progression panel header FIXED (`690b070`)** — it put flex-centering + `overflow-y-auto`
+  on the SAME element, so the ~1962px-tall panel's header (+ close X) was clipped 556px above the viewport,
+  unreachable. Fixed with the two-div scrollable-modal pattern (outer scroll, inner `min-h-full` flex-center).
+  Lived e2e (`panel-overflow.spec.js`) at 1280×800: RED header top −556 → GREEN +169. Mutation-proven.
+  **STILL OPEN (last B5 item):** the Inventory attribute-point "+" buttons are below the fold with no scroll
+  (`ui/GamePanels.jsx:252` — verify on live HEAD, ref may be stale). **+ VISUAL
   RE-BASELINE OWED** — the gameplay HUD baselines still show the OLD buried position; a re-capture is owed
   once machine load < ~10 (was ~24; the capture harness times out above that). Intended change → KEVIN-REVIEW.
 - ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
