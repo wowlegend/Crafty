@@ -134,33 +134,28 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B8 ocean-in-caves FIXED (`05082fa`, 2026-07-14); NEXT = spatial-audio (last fixable B8)
-✅ **B8 ocean-in-caves — DONE.** The ocean plane rendered + CPU-recomputed ~9.4k Gerstner vertices every frame
-even buried inland / inside caves (~14% budget; also rendered through cave walls). Fix (seam-extracted, pure):
-`world/oceanVisibility.js oceanVisibleNear()` samples surface height (climate.surfaceBlockAt) at the camera +
-an 8-point ring; hidden when every sample is dry land above SEA_LEVEL (plane fully buried). `render/Ocean.jsx`
-gates BOTH render + recompute on it; capture-suppressed → baselines byte-identical. RED-first pure unit,
-mutation-proven, **safe-by-construction** (only hides an already-invisible plane). unit 2050→2056.
-**⚠️ Lived probe OWED** (coast shows / cave gone / no coastal regression) once load < ~10 (was ~20 — a browser
-probe hangs like the capture). CI + visual gate unaffected (gate is capture-suppressed).
+## 📍 B8 spatial-audio FIXED (`e78bd1c`, 2026-07-14) — ALL B8 FIXABLE DONE; NEXT = campaign spine (V1)
+✅ **B8 spatial-audio — DONE.** Was "dead until the first hostile spawns." ROOT CAUSE (traced, not the registry's
+guess): the SoundProvider context `value` exposes `audioContext.current` + `sounds.current` (REFS read at render),
+but they're populated in a mount-effect — a ref mutation doesn't re-render, so consumers got stale undefined/{}
+until an UNRELATED re-render; the music effect keys on `activeHostiles`, so the first hostile spawn was the first
+such re-render. Fix: `setAudioReady(true)` at the end of the audio-init effect forces one re-render so the value
+carries the populated refs immediately. RED-first jsdom (mock Web Audio; consumer sees a defined audioContext
+after mount), mutation-proven (setAudioReady the sole RED→GREEN variable). unit 2056→2057. **Aural confirmation
+(footsteps audible from start) → a quick Kevin ear (audio can't be verified headlessly).**
 
-**NEXT — spatial-audio (LAST fixable B8), IN-PROGRESS DIAGNOSIS (flushed at the 85% watermark — resume here):**
-`store.playSpatialSound` is registered by ONE place: `render/SpatialAudioController.jsx:131` (`useGameStore.setState({ playSpatialSound: … })`),
-inside the component's audio-graph `useEffect`. EVERY spatial call site gates on it (`if (store.playSpatialSound)`):
-footsteps `Components.jsx:1208`, jump `:1056`, swing `:914`/`:1037`, block place/break `SoundManager.jsx:578/583`.
-So until that effect runs the setState, footsteps/jump/swing are silent. SpatialAudioController is rendered at
-`GameScene.jsx:238` (always mounted, NOT mob-gated) — it uses `useSounds()` → `{ audioContext, sounds, soundEnabled }`,
-and the registered fn early-returns if `!soundEnabled || !sounds || !sounds[soundName] || !listenerRef.current`.
-**→ The "until first hostile spawns" is a HYPOTHESIS about TIMING, NOT verified.** The real defer-cause is one of:
-(a) the effect's dep array delays the setState until `sounds` (buffers) finish loading; (b) `audioContext` isn't
-created/resumed until the entry gesture (SoundManager:440/533 resume-on-gesture); (c) the first-mob-spawn timing
-merely COINCIDES with sounds finishing. **RESUME STEP:** read SpatialAudioController's audio-graph effect + its
-DEP ARRAY (the `}, [deps])` after the setState block) + when `sounds` loads (SoundProvider) — pin the ACTUAL
-trigger BEFORE fixing (don't trust the registry's "first hostile" — 3 B8 items were stale/design this session).
-If it's a clean init-ordering seam (register playSpatialSound earlier / independent of the deferred dep), fix it
-RED-first (a pure orderer/predicate if extractable). Audio can't be verified headlessly → if it needs a lived ear,
-route to KEVIN-REVIEW. After B8: the campaign's next spine per STATUS (V1 gate-triage — rewrite the 3 vacuous gates
-[boss-notif-timer, melee-swing-audio, survival-quests] behaviorally, mutation-prove; PURE, no browser).
+**B8 IS COMPLETE (autonomous):** all 5 fixable fixed (fireball, arcane-pierce, alt-tab, ocean-in-caves,
+spatial-audio); chest-mining + damage-lockout + camera-shake + B4 mob-AI-2D are → KEVIN-REVIEW (design/feel).
+
+**The A-bis 18-domain confirmed-bug backlog is essentially DRAINED** (B1·B2a-h·B3·B5·B6·B7·B8 all fixed or
+correctly routed; B2g boss-persistence stays DEFERRED — needs lived/Kevin). 9 bugs fixed this session +2 earlier
+B8; 2 verified-not-autonomous (inventory stale, chest-mining design). unit 1950→2057.
+
+**NEXT — the campaign's next spine per STATUS §V1 (PURE test work, NO browser — ideal under load):** rewrite the
+3 known-VACUOUS gates behaviorally + mutation-prove each — `boss-notif-timer-gates`, `melee-swing-audio-gates`,
+`survival-quests-gates` (they assert source TEXT / timers, not behaviour). Then triage the ~80 untriaged gates
+(STATUS §V1). **OWED (do when `uptime` load < ~10):** the ocean LIVED PROBE + the B5/B7 VISUAL RE-BASELINE (the
+capture harness hangs at title-mascot even low load — needs a box-free/Chrome-restart).
 
 ✅ **B8 chest-mining → Kevin (design, `verbRouter.test.js` §5-12 explicitly tests LMB→mine); feel/balance
 (500ms damage-lockout, camera-shake, B4 mob-AI-2D) → KEVIN-REVIEW.** Verify-before-assert wins, not autonomous.

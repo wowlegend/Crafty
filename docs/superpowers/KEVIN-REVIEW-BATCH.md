@@ -1,5 +1,13 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **👂 2026-07-14 — FYI + a quick ear (no decision): spatial audio now works from game start.** Footsteps, jump,
+> and swing SFX used to be silent until the first hostile spawned — a stale-ref-in-context bug (the SoundProvider
+> handed consumers `audioContext.current`/`sounds.current` captured at render, but populated them in a mount-effect
+> that doesn't re-render, so the real context didn't propagate until an unrelated re-render, which the first mob
+> spawn happened to trigger). Fixed (`e78bd1c`) with a one-line re-render after audio init; unit-tested with a
+> mocked Web Audio context. **Audio can't be verified headlessly** — next time you're in-game (crafty-sand), just
+> confirm you hear footsteps/jump/swing immediately at spawn (before any enemy appears). If anything's off, say so.
+
 > **⚖️ 2026-07-14 — DECIDE (B8 combat/feel/balance — I did NOT change these; they're design calls or explicitly-tested behavior):**
 > - **Left-clicking a chest MINES it — and chests store real inventory, so the items are lost.** `chests` is a
 >   Map of `{ inventory: {...} }` (e.g. `{ 'Iron Sword': 1 }`, `game/saveSchema.js`), and a chest voxel renders

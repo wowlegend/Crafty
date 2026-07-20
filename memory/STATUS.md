@@ -294,7 +294,13 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   Lived e2e measures every `[data-hotbar-block]` rect (RED off-screen → GREEN all within [0,390]),
   mutation-proven. **B7 DONE.** The only remainder is the owed `mobile.png` re-baseline (capture harness
   unhealthy — see the owed-re-baseline batch). Touch-target-size vs all-9-visible is a taste note for Kevin.
-- ▣ **B8 [LOOP] COMBAT + WORLD FEEL — 4 fixed, 1 fixable open, 3 → Kevin.**
+- ▣✓ **B8 [LOOP] COMBAT + WORLD FEEL — ALL 5 FIXABLE DONE, 3 → Kevin.** ✓ fireball · ✓ arcane-pierce · ✓ alt-tab
+  · ✓ ocean-in-caves · ✓ **spatial-audio (`e78bd1c`)** — was dead until the first hostile spawned: the SoundProvider
+  context exposed `audioContext.current`/`sounds.current` (refs read at render) but populated them in a mount-effect,
+  so consumers got stale undefined/{} until an unrelated re-render (first-hostile via the music effect); fix =
+  `setAudioReady(true)` re-render after init. RED-first jsdom (mock Web Audio), mutation-proven. **Aural confirmation
+  (footsteps audible from start) → a quick Kevin ear.** → KEVIN (design/feel): chest-mining, 500ms damage-lockout,
+  camera-shake-per-frame, B4 mob-AI-2D. **B8 autonomous work COMPLETE.**
   ✓ **Fireball 12m cap** (`9c7c1af`) · ✓ **Arcane pierce triple-hit** (`a845bef`) · ✓ **Alt-tab stuck keys**
   (`92d92ec` — held move intents now cleared on blur/tab-hide via `input/blurReset.js` + `clearHeldIntents`).
   ✓ **Ocean-in-caves FIXED (`05082fa`):** the ocean plane rendered + CPU-recomputed ~9.4k Gerstner vertices
@@ -303,8 +309,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   plane fully buried) gates the render + recompute in `render/Ocean.jsx`; capture-suppressed so baselines are
   byte-identical. RED-first pure unit, mutation-proven, safe-by-construction. ⚠️ **Lived probe OWED** (confirm
   ocean shows at coast + gone in caves, no coastal regression) once load drops (was ~20 — browser probe hangs).
-  **STILL FIXABLE (autonomous, last one — VERIFY on live HEAD first):** **spatial audio dead until the first
-  hostile spawns** (AudioContext/listener init ordering; audio is hard to verify headlessly).
+  **(all fixable B8 bugs now shipped — see the header; spatial-audio was the last, fixed `e78bd1c`.)**
   **→ KEVIN-REVIEW (routed 2026-07-14 — design/feel, do NOT change):** **chest-mining** (LMB on a chest MINES
   it + loses its stored inventory; RMB opens; but `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine as
   "break chest, existing cleanup" → a design call, recommended LMB-opens-not-mines); the 500ms *global*

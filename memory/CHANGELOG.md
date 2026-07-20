@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B8: spatial audio was dead until the first hostile spawned (B8 autonomous COMPLETE)
+
+- **B8-spatial-audio (`e78bd1c`) — footsteps/jump/swing were silent from game start.** Root cause (traced):
+  the SoundProvider context value exposes `audioContext.current` + `sounds.current` (refs read at render), but
+  they're populated in a mount-effect — a ref mutation doesn't re-render, so consumers (SpatialAudioController,
+  which registers `playSpatialSound`) got the stale first-render undefined/{} until an *unrelated* re-render.
+  The music effect keys on `activeHostiles`, so the first hostile spawn was the first such re-render → the
+  "dead until first hostile" symptom. Fix: a `setAudioReady(true)` at the end of the audio-init effect forces
+  one re-render so the context value carries the populated refs immediately. RED-first jsdom integration test
+  (mock Web Audio; a consumer must see a defined audioContext after mount), mutation-proven. Aural confirmation
+  is a quick Kevin ear. unit 2056→2057. **This completes all 5 fixable B8 bugs** (fireball, arcane-pierce,
+  alt-tab, ocean-in-caves, spatial-audio); chest-mining + damage-lockout + camera-shake + B4 → KEVIN-REVIEW.
+
 ## 2026-07-14 (cont.) — B8: the ocean plane rendered + recomputed inside caves and deep inland
 
 - **B8-ocean (`05082fa`) — the ocean burned ~14% of the frame budget 1.1km from water.** `render/Ocean.jsx`
