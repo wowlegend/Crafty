@@ -6,6 +6,7 @@ import { GameMethods } from '../GameMethods';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
+import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
 
 export const useBossSystem = (playerLevel) => {
     const [bossActive, setBossActive] = useState(false);
@@ -78,37 +79,34 @@ export const useBossSystem = (playerLevel) => {
         }
     }, [bossHealth, bossMaxHealth, bossPhase]);
 
+    // B2h: the updater is now PURE — it only computes the new health. The kill's ~8 side effects moved to
+    // the post-commit effect below, so a throwing reward can no longer void the win (they used to run inside
+    // this updater, with the idempotency latch set first and markGameWon last — one throw stranded the win).
     const damageBoss = useCallback((amount) => {
         if (!bossActive || bossHealth <= 0) return;
-
-        setBossHealth(prev => {
-            const newHealth = Math.max(0, prev - amount);
-            if (newHealth <= 0) {
-                if (bossKilledRef.current) return newHealth; // idempotent: already killed -> no double XP/drops/bloom
-                bossKilledRef.current = true;
-                setBossActive(false);
-                setBossDefeated(true);
-                setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!');
-                scheduleNotifClear(6000);
-                if (GameMethods.grantXP) {
-                    GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!');
-                }
-                // Reward player with Legendary Crown or material drops
-                const store = useGameStore.getState();
-                if (store.addToInventory) {
-                    store.addToInventory('Crown of the Dragon King', 1);
-                    store.addToInventory('Dragon Scale', 3);
-                }
-                // M2 #7 climactic boss-kill beat: a brief slow-mo freeze + a bloom flash punctuate the
-                // slaying (the victory stinger + overlay already fire via bossDefeated). Reuses the M1
-                // hitstop ('boss' tier) + the bloom-spike. FEEL/timing -> Kevin #50.
-                useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss });
-                if (store.triggerBloomSpike) store.triggerBloomSpike(450);
-                if (store.markGameWon) store.markGameWon(); // S9c: latch the persisted win-state (end of the once-only defeat block)
-            }
-            return newHealth;
-        });
+        setBossHealth(prev => applyBossDamage(prev, amount).newHealth);
     }, [bossActive, bossHealth]);
+
+    // B2h: the boss-kill beat. Fires ONCE (bossKilledRef latch) when health reaches 0, AFTER the health
+    // commit — never inside a setState updater. Each effect runs in ISOLATION and the WIN LATCH runs LAST,
+    // so a throwing reward (grantXP, loot) cannot prevent markGameWon. This is the game's win; it must not
+    // be strandable by a reward that throws.
+    useEffect(() => {
+        if (!bossActive || bossHealth > 0 || bossKilledRef.current) return;
+        bossKilledRef.current = true;
+        const store = useGameStore.getState();
+        runBossKillEffects([
+            ['deactivate', () => setBossActive(false)],
+            ['defeated', () => setBossDefeated(true)],
+            ['notify', () => { setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!'); scheduleNotifClear(6000); }],
+            ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!')],
+            ['loot', () => { if (store.addToInventory) { store.addToInventory('Crown of the Dragon King', 1); store.addToInventory('Dragon Scale', 3); } }],
+            // M2 #7 climactic boss-kill beat: a brief slow-mo freeze ('boss'-tier hitstop) + a bloom flash.
+            ['hitstop', () => useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss })],
+            ['bloom', () => store.triggerBloomSpike && store.triggerBloomSpike(450)],
+            ['win', () => store.markGameWon && store.markGameWon()], // S9c: the persisted win — LAST + idempotent
+        ]);
+    }, [bossActive, bossHealth, scheduleNotifClear]);
 
     useEffect(() => {
         useGameStore.setState({ damageBoss: damageBoss });

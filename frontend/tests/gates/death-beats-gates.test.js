@@ -50,10 +50,14 @@ describe('death-weight dissolve gates (M2 #7 S1)', () => {
 describe('boss-kill climactic beat gates (M2 #7 S1b)', () => {
   const boss = read('world/bossSystem.js');
 
-  it('the boss-defeat branch fires a slow-mo (boss-tier hitstop) + a bloom flash', () => {
+  it('the boss-defeat beat fires a slow-mo (boss-tier hitstop) + a bloom flash', () => {
     expect(boss).toMatch(/import \{ HITSTOP \} from '\.\.\/game\/trauma\.js'/);
-    expect(/newHealth <= 0\)[\s\S]{0,1300}hitstopUntil: performance\.now\(\) \+ HITSTOP\.boss/.test(boss)).toBe(true);
-    expect(/newHealth <= 0\)[\s\S]{0,1400}triggerBloomSpike\(/.test(boss)).toBe(true);
+    // B2h: the boss-kill effects moved OUT of the setState updater into a post-commit isolated runner
+    // (game/bossKill.js), so they are no longer positionally adjacent to `newHealth <= 0`. That a boss kill
+    // ACTUALLY fires the hitstop + bloom (and that a throwing reward cannot void the win) is now proven
+    // BEHAVIORALLY in boss-killblock-gates.test.jsx. Here we keep only the loose presence check.
+    expect(boss).toMatch(/hitstopUntil: performance\.now\(\) \+ HITSTOP\.boss/);
+    expect(boss).toMatch(/triggerBloomSpike\(/);
   });
 });
 
