@@ -67,12 +67,18 @@ export function damageableInCone(entities, playerPos, lookDir, range, angleRad) 
  * The old `checkMobCollision` did `mobsQuery.entities.find(...)`, returning whatever miniplex happened
  * to hold first. A fireball aimed dead at a zombie standing in front of a cow would resolve against
  * the COW if the cow was inserted first. Projectile hit-resolution must be a nearest-hit test.
+ *
+ * B8 (arcane pierce): `excludeIds` skips entities a piercing projectile has ALREADY hit, so it pierces to
+ * DISTINCT targets. Without it, a pierced projectile stays inside the hit mob's radius and re-resolves
+ * against the SAME nearest mob every frame — the "pierce 3 targets" arcane spell triple-hit ONE target
+ * (3x damage, 3x lifesteal, zero pierces). Absent/empty excludeIds -> unchanged single-hit behaviour.
  */
-export function nearestDamageable(entities, pos, range = 3) {
+export function nearestDamageable(entities, pos, range = 3, excludeIds = null) {
   let best = null;
   let bestDist = Infinity;
   for (const e of entities || []) {
     if (!canPlayerDamage(e) || !e.position) continue;
+    if (excludeIds && excludeIds.has(e.id)) continue;
     const dx = e.position.x - pos.x;
     const dy = e.position.y - pos.y;
     const dz = e.position.z - pos.z;

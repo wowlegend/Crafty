@@ -170,7 +170,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
     // resolved against a cow standing behind it if the cow was inserted first. `nearestDamageable`
     // also skips the questgivers, so a spell now passes THROUGH the healer to the enemy behind her
     // instead of detonating on her face.
-    const checkMobCollision = (pos, range = 3) => nearestDamageable(mobsQuery.entities, pos, range);
+    const checkMobCollision = (pos, range = 3, excludeIds = null) => nearestDamageable(mobsQuery.entities, pos, range, excludeIds);
 
     // Cone geometry lives in the pure, unit-tested `isPointInCone` (src/combat/cone.js) so the SAME
     // front-arc test is reused for the boss (Components.jsx triggerMeleeAttack). B1 adds the allegiance

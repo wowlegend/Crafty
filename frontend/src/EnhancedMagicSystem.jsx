@@ -329,8 +329,12 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
         }
 
         if (keep && GameMethods.checkMobCollision) {
-          const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5);
+          // B8 (arcane pierce): exclude mobs this projectile already hit, so a piercing shot advances to
+          // DISTINCT targets instead of re-resolving against the SAME nearest mob every frame (which made
+          // "pierce 3 targets" triple-hit ONE target).
+          const hitMob = GameMethods.checkMobCollision(projectile.position, projectile.size + 1.5, projectile.hitIds);
           if (hitMob) {
+            (projectile.hitIds || (projectile.hitIds = new Set())).add(hitMob.id);
             const spellConfig = SPELL_TYPES[projectile.type];
 
             // damageMob returns the entity; health<=0 means this hit killed it, so the
