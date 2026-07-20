@@ -78,7 +78,7 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
         <ChevronUp size={38} strokeWidth={3} color={GLYPH} />
       </div>
       {/* Pause (top-right, offset LEFT of the GameHud settings gear at right-4) */}
-      <div style={BTN({ top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 })}>
+      <div data-testid="touch-pause-glyph" style={BTN({ top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 })}>
         <Pause size={22} strokeWidth={2.6} color={GLYPH} />
       </div>
     </div>

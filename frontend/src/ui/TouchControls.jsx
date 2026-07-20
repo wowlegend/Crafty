@@ -123,8 +123,11 @@ function TouchControlsLive({ isWorldBuilt }) {
       )}
 
       {active && (
+        // B7: the hit-target MUST mirror the visible Pause glyph (TouchControlsSurface `right: 64, 46x46`).
+        // It used to sit at `right: 8` -- disjoint from its glyph AND on top of the GameHud Settings gear
+        // (right-4), so tapping the glyph did nothing and tapping Settings paused the game.
         <button data-touch-btn onPointerUp={() => setActive(false)} aria-label="Pause"
-          style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 8px)', right: 8, width: 44, height: 44 }} />
+          style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 }} />
       )}
       {active && (
         <button data-touch-btn onPointerUp={() => dispatch(0)} aria-label="Action"

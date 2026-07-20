@@ -21,6 +21,26 @@ import { bootDev } from './_boot.js';
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
+// Boot on the touch viewport and enter play (forcePlay bridges menu->play; no pointer lock on touch),
+// re-asserting until `sel` attaches (the optimistic `active` can be reset by the mount-time sync).
+async function enterTouchPlay(page, sel) {
+  await bootDev(page);
+  await page.waitForFunction(() => window.useGameStore.getState().isSpawnChunkLoaded === true, null, { timeout: 90000 });
+  for (let i = 0; i < 25; i++) {
+    await page.evaluate(() => window.__craftyTest.call('forcePlay'));
+    await page.waitForTimeout(600);
+    if (await page.evaluate((s) => !!document.querySelector(s), sel)) break;
+  }
+}
+const rectOf = (page, sel) =>
+  page.evaluate((s) => {
+    const el = document.querySelector(s);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height };
+  }, sel);
+const overlaps = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
+
 test.describe('B7 — the touch joystick knob renders a visible fill + border', () => {
   test('the resting knob has a gold fill and a 4px ink border (not transparent/dropped)', async ({ page }) => {
     test.setTimeout(150000); // world-build is load-sensitive in headless swiftshader
@@ -50,5 +70,32 @@ test.describe('B7 — the touch joystick knob renders a visible fill + border', 
     expect(style.bg, 'the knob fill should be the gold accent').toBe('rgb(201, 168, 106)');
     // (2) BORDER: `border: 4px solid <invalid-channels>` drops the whole shorthand -> width 0 on HEAD.
     expect(style.borderWidth, 'the knob ink border was dropped (invalid bare-channel color)').toBe('4px');
+  });
+
+  // B7 (18-domain review): the Pause TOUCH hit-target was disjoint from the visible Pause glyph and
+  // instead sat on top of the GameHud Settings gear, so tapping the visible Pause did nothing and tapping
+  // Settings PAUSED the game. The transparent hit-target (`button[aria-label="Pause"]`) was at `right: 8`
+  // while the glyph is at `right: 64`. Fix: align the hit-target to the glyph (the pattern the code's own
+  // comment states: "hit-target geometry mirrors the visible glyphs").
+  //
+  // MUTATION-PROOF: move the Pause hit-target back to `right: 8, width: 44` and both assertions go RED
+  // (it no longer overlaps its glyph, and it overlaps the Settings gear again).
+  test('the Pause hit-target sits under its glyph and clear of the Settings gear', async ({ page }) => {
+    test.setTimeout(150000);
+    await enterTouchPlay(page, 'button[aria-label="Pause"]');
+
+    const glyph = await rectOf(page, '[data-testid="touch-pause-glyph"]');
+    const hit = await rectOf(page, 'button[aria-label="Pause"]');
+    const gear = await rectOf(page, 'button[aria-label="Settings"]');
+    console.log('B7 pause rects:', JSON.stringify({ glyph, hit, gear }));
+
+    expect(glyph, 'the pause glyph must render').not.toBeNull();
+    expect(hit, 'the pause hit-target must render').not.toBeNull();
+    expect(gear, 'the settings gear must render').not.toBeNull();
+
+    // (1) the pause hit-target must overlap its own visible glyph (so tapping the icon actually pauses)
+    expect(overlaps(hit, glyph), 'the pause hit-target is disjoint from its glyph').toBe(true);
+    // (2) the pause hit-target must NOT overlap the Settings gear (so tapping Settings does not pause)
+    expect(overlaps(hit, gear), 'the pause hit-target covers the Settings gear').toBe(false);
   });
 });
