@@ -144,11 +144,23 @@ mutation-proven, **safe-by-construction** (only hides an already-invisible plane
 **⚠️ Lived probe OWED** (coast shows / cave gone / no coastal regression) once load < ~10 (was ~20 — a browser
 probe hangs like the capture). CI + visual gate unaffected (gate is capture-suppressed).
 
-**NEXT — spatial-audio (the LAST fixable B8 bug), then the campaign's next spine.** Spatial audio is dead until
-the first hostile spawns (AudioContext/listener init ordering) — VERIFY on live HEAD first (registry is a
-hypothesis; audio is hard to verify headlessly, so prefer a pure init-ordering seam if extractable, else route
-to Kevin as needs-a-lived-ear). After B8: the campaign's next spine per STATUS (V1 gate-triage / V2·V3
-input-driven E2E — pure/gate work, no lived probe needed).
+**NEXT — spatial-audio (LAST fixable B8), IN-PROGRESS DIAGNOSIS (flushed at the 85% watermark — resume here):**
+`store.playSpatialSound` is registered by ONE place: `render/SpatialAudioController.jsx:131` (`useGameStore.setState({ playSpatialSound: … })`),
+inside the component's audio-graph `useEffect`. EVERY spatial call site gates on it (`if (store.playSpatialSound)`):
+footsteps `Components.jsx:1208`, jump `:1056`, swing `:914`/`:1037`, block place/break `SoundManager.jsx:578/583`.
+So until that effect runs the setState, footsteps/jump/swing are silent. SpatialAudioController is rendered at
+`GameScene.jsx:238` (always mounted, NOT mob-gated) — it uses `useSounds()` → `{ audioContext, sounds, soundEnabled }`,
+and the registered fn early-returns if `!soundEnabled || !sounds || !sounds[soundName] || !listenerRef.current`.
+**→ The "until first hostile spawns" is a HYPOTHESIS about TIMING, NOT verified.** The real defer-cause is one of:
+(a) the effect's dep array delays the setState until `sounds` (buffers) finish loading; (b) `audioContext` isn't
+created/resumed until the entry gesture (SoundManager:440/533 resume-on-gesture); (c) the first-mob-spawn timing
+merely COINCIDES with sounds finishing. **RESUME STEP:** read SpatialAudioController's audio-graph effect + its
+DEP ARRAY (the `}, [deps])` after the setState block) + when `sounds` loads (SoundProvider) — pin the ACTUAL
+trigger BEFORE fixing (don't trust the registry's "first hostile" — 3 B8 items were stale/design this session).
+If it's a clean init-ordering seam (register playSpatialSound earlier / independent of the deferred dep), fix it
+RED-first (a pure orderer/predicate if extractable). Audio can't be verified headlessly → if it needs a lived ear,
+route to KEVIN-REVIEW. After B8: the campaign's next spine per STATUS (V1 gate-triage — rewrite the 3 vacuous gates
+[boss-notif-timer, melee-swing-audio, survival-quests] behaviorally, mutation-prove; PURE, no browser).
 
 ✅ **B8 chest-mining → Kevin (design, `verbRouter.test.js` §5-12 explicitly tests LMB→mine); feel/balance
 (500ms damage-lockout, camera-shake, B4 mob-AI-2D) → KEVIN-REVIEW.** Verify-before-assert wins, not autonomous.
