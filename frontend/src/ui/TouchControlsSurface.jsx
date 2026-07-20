@@ -8,8 +8,13 @@ const TRAY_ICON = { inventory: Package, craft: Hammer, build: Blocks, magic: Spa
 // S1-C: 4px ink chrome, navy fill, GOLD glyph. Touch CONTROLS are app-chrome -> lucide outline icons
 // (they tint via currentColor, unlike the 2-tone game-icons whose baked fills ignored `color` and
 // rendered dark — the iter-136 eyeball bug). Opaque + drop-shadow so controls read over any scene.
-const INK = 'var(--ui-ink, #0C1322)';
-const GOLD = 'var(--ui-accent, #C9A86A)';
+// B7 (18-domain review): cssVars.js emits every --ui-* color as SPACE-SEPARATED RGB CHANNELS (e.g.
+// `--ui-accent: 201 168 106`, so Tailwind's `rgb(var(--x) / <a>)` opacity modifier works). So these MUST
+// be wrapped in rgb() -- a bare `var(--ui-accent)` resolves to `201 168 106`, an INVALID color, which
+// silently dropped the knob fill (transparent) and every button border (the hex fallback never fired
+// because the var is always defined). The channel fallbacks match #0C1322 / #C9A86A.
+const INK = 'rgb(var(--ui-ink, 12 19 34))';
+const GOLD = 'rgb(var(--ui-accent, 201 168 106))';
 // lucide glyphs take a LITERAL hex (the headless capture renders `color: var(...)` inconsistently on the
 // fixed-overlay SVGs -> empty glyphs); #C9A86A is the --ui-accent token value, kept in sync by hand.
 const GLYPH = '#C9A86A';
