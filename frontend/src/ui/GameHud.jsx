@@ -16,8 +16,11 @@ import { isTouchUIMode } from '../input/touchDevice';
 // now skips touches landing on a [data-hud-interactive] surface, letting the tap reach these onClick handlers.
 const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
+  // B7 (18-domain review): the 9-slot hotbar (9 × w-[62px] + gaps + padding ≈ 622px) overflowed a phone
+  // viewport — ~2 slots ran off each edge, unreachable in a voxel BUILDING game. Scale it down to fit on
+  // narrow screens (≤640px) while tablets/desktop keep full size; origin-bottom keeps it anchored + centered.
   return (
-    <div data-hud-interactive className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+    <div data-hud-interactive className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.56] pointer-events-auto">
       <Panel variant="base" className="flex gap-2 p-2.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
