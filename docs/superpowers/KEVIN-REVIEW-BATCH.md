@@ -1,5 +1,28 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **⚖️ 2026-07-14 — DECIDE (B8 combat/feel/balance — I did NOT change these; they're design calls or explicitly-tested behavior):**
+> - **Left-clicking a chest MINES it — and chests store real inventory, so the items are lost.** `chests` is a
+>   Map of `{ inventory: {...} }` (e.g. `{ 'Iron Sword': 1 }`, `game/saveSchema.js`), and a chest voxel renders
+>   as wood (`world/blockIds.js:65`). The verb router (`input/verbRouter.js`) routes **RMB on a chest → interact
+>   (open)** but **LMB on a chest → mine (break)**, deleting the voxel + its stored inventory with no drop, no
+>   confirm. ⚠️ This is EXPLICITLY tested (`verbRouter.test.js` §5-12 "b0 on chest -> mine, break chest, existing
+>   cleanup") — but the #72 router was a behavior-preserving refactor, so §5-12 likely just codified pre-existing
+>   behavior the 18-domain review then flagged. **It's a design call, so it's yours.** Options: (a) LMB on a
+>   chest OPENS it (mirror RMB — you can't mouse-break a chest, safest against loss); (b) LMB still breaks it but
+>   DROPS the contents first (keep breakability, no loss); (c) leave as-is (chests are freely destroyable). I
+>   recommend **(a)** — it matches RMB, prevents accidental loss, and a placed chest is rare enough that "can't
+>   break it with a click" is a fair trade. Say which and I'll implement + flip the §5-12 test with justification.
+> - **A pack of N enemies deals the damage of ONE (500ms *global* damage lockout).** ALL incoming damage is
+>   capped at ~2 hits/sec regardless of how many mobs hit you, so a siege can't threaten you. This is a
+>   balance/feel knob (`combat` damage-application path) — do you want per-attacker i-frames (each mob can land
+>   its own hit) instead of one global lockout? Your call on the difficulty target.
+> - **Camera shake decays per FRAME, not per second** — a shake lasts 1067ms @30fps vs 267ms @120fps (4× longer
+>   on a slow machine). A frame-rate-independent decay (multiply by `delta`) is the fix, but the *feel* (how
+>   long/strong a shake reads) is a taste call — confirm the target duration and I'll make it fps-independent.
+> - **B4 — mob AI pathfinds in 2D (ignores height).** Mobs navigate on the flat plane, so they can't climb/descend
+>   to reach you on terrain — a balance + world-traversal decision (3D A* is heavier). Your call on whether to
+>   invest in 3D mob navigation now or park it.
+
 > **📱 2026-07-14 — FYI + taste (no decision needed): the phone hotbar now fits on-screen.** The 9-slot block
 > hotbar used to run ~2 slots off EACH edge on a phone (unreachable blocks in a building game). I scaled it to
 > ~56% on narrow screens (≤640px) so all 9 fit and stay centered; tablets/desktop are unchanged. **Taste

@@ -297,14 +297,14 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
 - ▣ **B8 [LOOP] COMBAT + WORLD FEEL — 3 fixed, 3 fixable open, 2 → Kevin.**
   ✓ **Fireball 12m cap** (`9c7c1af`) · ✓ **Arcane pierce triple-hit** (`a845bef`) · ✓ **Alt-tab stuck keys**
   (`92d92ec` — held move intents now cleared on blur/tab-hide via `input/blurReset.js` + `clearHeldIntents`).
-  **STILL FIXABLE (autonomous, pick one — VERIFY on live HEAD first):** (1) **left-clicking a chest MINES it**
-  — chest + contents deleted, no drop, no confirm (destructive; the mine path is in Components.jsx raycast
-  logic — guard chest blocks); (2) **the ocean plane renders inside every inland cave** (~14% frame budget
-  1.1km from water — gate the ocean render on proximity/altitude); (3) **spatial audio dead until the first
-  hostile spawns** (AudioContext/listener init ordering). **→ KEVIN-REVIEW (feel/balance, do NOT change):**
-  the 500ms *global* damage-lockout (a pack of N deals the damage of ONE — the siege can't threaten you);
-  camera-shake decays per-frame-not-per-second (1067ms @30fps vs 267ms @120fps). **B4** mob-AI-2D→3D is a
-  separate balance item → Kevin.
+  **STILL FIXABLE (autonomous, pick one — VERIFY on live HEAD first):** (1) **the ocean plane renders inside
+  every inland cave** (~14% frame budget 1.1km from water — gate the ocean render on proximity/altitude);
+  (2) **spatial audio dead until the first hostile spawns** (AudioContext/listener init ordering).
+  **→ KEVIN-REVIEW (routed 2026-07-14 — design/feel, do NOT change):** **chest-mining** (LMB on a chest MINES
+  it + loses its stored inventory; RMB opens; but `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine as
+  "break chest, existing cleanup" → a design call, recommended LMB-opens-not-mines); the 500ms *global*
+  damage-lockout (a pack of N deals the damage of ONE); camera-shake decays per-frame-not-per-second (1067ms
+  @30fps vs 267ms @120fps). **B4** mob-AI-2D→3D → Kevin. Details in KEVIN-REVIEW-BATCH.
 
 **MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
 a root cause; do not open 45 separate tickets.

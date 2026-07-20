@@ -134,20 +134,25 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B8 alt-tab-stuck-keys FIXED (`92d92ec`, 2026-07-14); NEXT = another fixable B8 bug
-✅ **B8 alt-tab-stuck-keys — DONE.** Alt-tab away while holding W left the move intent stuck ON (the browser
-delivers the keydown while focused but drops the keyup) → the player ran on its own after returning. Fix
-(seam-extracted, pure): `inputState.clearHeldIntents()` (clears held intents, leaves `active` to pointer-lock)
-+ `input/blurReset.js installBlurReset()` wiring `blur`/`visibilitychange`→hidden → it, wired into the
-Components input effect. RED-first jsdom test, mutation-proven (drop the blur listener → RED). No render
-change. unit 2046→2050.
+## 📍 B8 chest-mining routed to Kevin (design decision), 2026-07-14; NEXT = ocean or spatial-audio
+✅ **B8 chest-mining — VERIFIED as a DESIGN DECISION → routed to Kevin (no autonomous change).** The registry
+called it a bug ("LMB mines a chest, contents deleted"). Verified: chests DO store real inventory (`chests` Map
+of `{ inventory: {...} }`, e.g. Iron Sword), so mining loses items — BUT `input/verbRouter.js` routes RMB→open
+and LMB→mine, and `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine ("break chest, existing cleanup"). The
+#72 router was a behavior-preserving refactor, so §5-12 codified pre-existing behavior. Reversing an
+explicitly-tested player-facing behavior with real trade-offs (can't-break vs drops-contents vs as-is) is a §4
+Kevin call → filed in KEVIN-REVIEW with a recommendation (LMB-opens-not-mines). **Verify-before-assert win:
+not an autonomous fix.** Also routed the feel/balance items (500ms damage-lockout, camera-shake-per-frame, B4
+mob-AI-2D) to KEVIN-REVIEW with concrete file:line + decision entries.
 
-**NEXT — another fixable B8 bug (VERIFY on live HEAD first; the registry is a hypothesis):**
-(1) **left-clicking a chest MINES it** — chest + contents deleted, no drop, no confirm (destructive; the mine
-path is Components.jsx raycast logic — guard chest blocks; may be a god-file/e2e unit); (2) **ocean plane in
-inland caves** (~14% frame budget 1.1km from water — gate ocean render on proximity/altitude; needs a lived
-probe); (3) **spatial audio dead until first hostile spawns** (AudioContext/listener init ordering).
-**→ KEVIN-REVIEW (do NOT change):** 500ms damage-lockout, camera-shake-per-frame, B4 mob-AI-2D. B2g deferred.
+✅ **B8 alt-tab-stuck-keys — DONE (`92d92ec`).** Held move intents now cleared on blur/tab-hide
+(`inputState.clearHeldIntents` + `input/blurReset.js`); RED-first jsdom, mutation-proven. unit 2050.
+
+**NEXT — a genuinely-fixable B8 bug (VERIFY on live HEAD first):** (1) **ocean plane in inland caves**
+(~14% frame budget 1.1km from water — find the ocean render, gate it on proximity/altitude; a pure predicate
+`shouldRenderOcean(playerPos, waterLevel)` seam + a lived probe); (2) **spatial audio dead until first hostile
+spawns** (AudioContext/listener init ordering — find where the listener/context resumes). Then the campaign's
+next spine per STATUS (V1 gate-triage / V2·V3 input-driven E2E). B2g boss-persistence stays DEFERRED.
 
 ✅ **B5 fully DONE** (dial `712ea78` + stat-stack `7e0f004` + progression-modal `690b070`; inventory-"+"
 verified STALE `f332ac7` — 3rd+ stale registry ref caught by verify-before-assert this session).

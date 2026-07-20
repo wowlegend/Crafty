@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B8 chest-mining routed to Kevin (design decision, not a silent fix)
+
+- **B8 (verify + route) — chest-mining is an explicitly-tested design behavior, so it went to Kevin.** The
+  18-domain review flagged "LMB on a chest mines it, contents deleted, no drop/confirm." Verified: chests store
+  real inventory (`game/saveSchema.js` — a `chests` Map of `{ inventory: {...} }`), so mining loses items. BUT
+  `input/verbRouter.js` routes RMB→open / LMB→mine, and `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine
+  ("break chest, existing cleanup"). Reversing an explicitly-tested, player-facing behavior with real trade-offs
+  (LMB-opens-not-mines vs mine-drops-contents vs leave-as-is) is a §4 design decision, not an autonomous fix —
+  filed in KEVIN-REVIEW-BATCH with a recommendation (LMB-opens-not-mines). Also routed the B8 feel/balance items
+  (500ms global damage-lockout, camera-shake decays per-frame-not-per-second, B4 mob-AI-2D→3D) to KEVIN-REVIEW
+  with concrete file:line + decision entries. No code change (a verification/routing tick; unit holds at 2050).
+
 ## 2026-07-14 (cont.) — B8: alt-tab left the movement keys stuck ON
 
 - **B8-alt-tab (`92d92ec`) — the player ran on its own after alt-tabbing.** The keyboard listeners set
