@@ -227,13 +227,21 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   separation. In a voxel game with a night-siege loop, **building is strategically pointless.** This is the one
   that most damages the core fantasy. Also here: the attack telegraph is bypassable (a stale `windupUntil`
   survives de-aggro → instant undodgeable hit on re-aggro, `ai.worker.js:280-287`).
-- ▢ **B5 [LOOP] THE HUD LIES.** **The health bar is 100% invisible during normal play** — the QUESTS panel is
-  painted on top of it (same `z-20`, later in DOM); the mana bar is 59% buried. **All 7 stat bars lay out as a
-  1232px horizontal ribbon** instead of a vertical stack (`space-y-2` is a no-op on `inline-flex` children).
-  **The day/night dial is 90° out of phase** — it draws the sun at ZENITH one second before nightfall while
-  printing "DUSK". The Progression panel's entire header (incl. the close X) is **off-screen and unreachable**
-  at 1280×800; the Inventory's attribute-point "+" buttons are **below the fold with no scroll affordance**.
-  `HUD.jsx:547/80-102`, `ui/primitives/StatBar.jsx:18`, `ui/SpellUpgradePanel.jsx:40`, `ui/GamePanels.jsx:252`.
+- ▣ **B5 [LOOP] THE HUD LIES — dial phase FIXED (`712ea78`, 2026-07-14); layout parts still OPEN.**
+  ✓ **The day/night dial is now synced to the real clock.** It was a quarter-cycle (90°) out of phase —
+  the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
+  (`dayNight.isDayAtUnit`) is day=`[0,600)` / night=`[600,1200)`, so real noon is t=300. Symptom: the sun
+  was drawn at ZENITH one second before nightfall (and underground at dawn); the moon rode high in the sky
+  most of the night. Fix: moved the offset to `- 90` in a pure `dayPhase.markerAngleDeg` seam +
+  `markerQuadrant` geometry helper → sun above the horizon all day, moon below it all night
+  (sunrise-left / noon-top / sunset-right / midnight-bottom). RED-first against the REAL clock (not the
+  module's own mislabeled comment — that mislabel was the trap), mutation-proven (`-90`→`-180` goes RED).
+  unit 2040→2044. **STILL OPEN — need a puppeteer LAYOUT probe (jsdom has no layout engine, so no pure
+  unit can catch these):** the health bar is 100% invisible during play (QUESTS panel painted on top, same
+  `z-20`, later in DOM); the mana bar 59% buried; **all 7 stat bars lay out as a 1232px horizontal ribbon**
+  (`space-y-2` is a no-op on `inline-flex` children). The Progression panel's header (incl. the close X) is
+  off-screen at 1280×800; the Inventory's attribute-point "+" buttons are below the fold with no scroll
+  affordance. `HUD.jsx:547`, `ui/primitives/StatBar.jsx:18`, `ui/SpellUpgradePanel.jsx:40`, `ui/GamePanels.jsx:252`.
 - ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
   one pure `game/questMatch.js` seam replaced the buggy inline matcher: a 'kill' quest advances only on the
   'kill' dispatch (not the kill_type echo), a 'kill_type' quest only for its own mob. RED-first e2e through the

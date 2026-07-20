@@ -134,7 +134,26 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B5 ANALYSIS (in progress, 2026-07-14 — resume here)
-All 3 B5 parts CONFIRMED live: (1) health/mana stat stack `HUD.jsx:547 absolute top-16 left-4 z-20` COLLIDES with QuestTracker `QuestSystem.jsx:437 absolute top-4 left-4 z-20` (same z, later in DOM → covers health). (2) `StatBar.jsx:18` root is `inline-flex` → the stat-stack's `space-y-2` is a no-op → 7 bars ribbon horizontally. (3) DayPhaseDial `HUD.jsx:81,102` uses `rotate(angleDeg - 180)` → 90° out of phase (sun shows at midnight).
-**HUD zone map (for the fix): occupied = top-3/14 right (coins/dial), top-4 left (quest tracker), top-12/center + top-1/2 center, bottom-4 center (hotbar). BOTTOM-LEFT is FREE.**
-**RECOMMENDED (autonomous, prompt-authorized): move the stat stack to bottom-left (conventional RPG health placement, non-colliding) AND fix the ribbon (`flex flex-col gap-2` container, or StatBar `flex` not `inline-flex`). Verify via a PUPPETEER probe on port 4179 (getBoundingClientRect + elementFromPoint at the health-bar center = the health bar, not the quest panel; bars stack vertically). The DIAL (part 3) is a SEPARATE PURE unit — `rotate(-90)` fix, unit-testable, do it standalone.**
+## 📍 B5 — part 3 (DIAL) SHIPPED (`712ea78`, 2026-07-14); parts 1+2 are NEXT
+✅ **Part 3 (day/night dial phase) — DONE.** The dial was a quarter-cycle (90°) out of phase. The offset
+`-180` assumed `cf=0` was midnight, but the game's real clock (`dayNight.isDayAtUnit`) is day=`[0,600)`.
+Fix: pure `dayPhase.markerAngleDeg` seam with offset `-90` + a `markerQuadrant` geometry helper; RED-first
+against the REAL clock, mutation-proven, wired both HUD sites. unit 2040→2044.
+**⚠️ RECORD CORRECTION (verify-before-assert lesson):** mid-analysis I briefly concluded "the dial is
+correct" because I anchored on `dayPhase.js`'s OWN comment (which mislabels `cf=0` as midnight) and the
+math was self-consistent with that mislabel. Running the two modules TOGETHER (cycleFraction vs
+`isDayAtUnit`) exposed a 7/12 glyph-vs-horizon desync → the original registry diagnosis ("90° out of
+phase") was RIGHT; my read-the-comment detour was the trap. The oracle was RUNNING it, not reading it.
+
+**NEXT — B5 parts 1+2 (the layout lies; need a PUPPETEER probe, no pure oracle):**
+(1) health/mana stat stack `HUD.jsx:547 absolute top-16 left-4 z-20` COLLIDES with QuestTracker
+`QuestSystem.jsx:437 absolute top-4 left-4 z-20` (same z, later in DOM → covers the health bar).
+(2) `StatBar.jsx:18` root is `inline-flex` → the stat-stack's `space-y-2` is a no-op → 7 bars ribbon
+horizontally.
+**HUD zone map: occupied = top-3/14 right (coins/dial), top-4 left (quest tracker), top-12/center +
+top-1/2 center, bottom-4 center (hotbar). BOTTOM-LEFT is FREE.**
+**RECOMMENDED (autonomous, prompt-authorized): move the stat stack to bottom-left (conventional RPG
+health placement, non-colliding) AND fix the ribbon (`flex flex-col gap-2`, or StatBar `flex` not
+`inline-flex`). RED-first via a PUPPETEER probe on the managed port 4179 `--strictPort` (getBoundingClientRect
++ elementFromPoint at the health-bar centre = the health bar, not the quest panel; bars stack vertically) —
+browser.close in a `finally`; `kill-test-procs.sh` after. Then B7 (touch).**

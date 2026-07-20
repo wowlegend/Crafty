@@ -1,5 +1,14 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **👁️ 2026-07-14 — FYI eyeball (no decision needed): the day/night dial now reads truthfully.** The HUD
+> sun/moon clock (top-right) was a quarter-cycle out of phase — it drew the SUN at the top (zenith) right as
+> night fell, and the MOON high in the sky through most of the night. Fixed (`712ea78`): the sun now stays
+> above the horizon line all day and the moon below it all night, with sunrise on the left, noon at the top,
+> sunset on the right, midnight at the bottom. Correctness is proven (pure geometry unit-tested against the
+> game's real day/night clock + mutation-proven), so this is not a decision — just a lived-visual change
+> worth a glance next time you're in-game, since the dial is capture-suppressed and the headless visual gate
+> can't see it. If the orbit direction or the sunrise-left convention reads wrong to you, say so and I'll flip it.
+
 > **✅ 2026-06-29 — v7 WEATHER + SPELL-VFX COMPLETE (your steer: rain/snow bugs + "4 spells too childish… deep research → enhance all"). Autonomous; your taste sign-off + live-eye requested below.**
 > **Weather bugs — both FIXED (no action):** (1) *rain only in one spot / vanishes when you turn* = the rain/snow/firefly particle `instancedMesh`es had no `frustumCulled={false}`; THREE caches their bounding sphere once (all-at-origin) and never recomputes as particles move, so frustum-culling misfired — `f0dd78c`. (2) *snow never shows* = a global `clear→rain→snow` timer that almost never matched the local biome; rebuilt to `clear↔storm` where your CURRENT biome decides precip (cold→snow, temperate→rain, desert→dry) — `5d3e10b`, TDD'd. Snow now appears whenever a storm hits a cold region.
 > **Biomes (your question):** spatial, NOT a toggle — you travel; climate noise picks 1 of 10 biomes/area; they differ by terrain + trees, but the per-biome ground **tint isn't wired into the shader yet** so grass-surfaced biomes look similar at ground level (I flagged "wire biome tint" as an optional follow-up — say the word).

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B5 part 3: the day/night dial was a quarter-cycle out of phase
+
+- **B5-dial (`712ea78`) — the HUD clock lied by 90°.** The day-phase dial drew the sun at ZENITH one second
+  before nightfall (and underground at dawn); the moon rode high in the sky most of the night. Root cause:
+  the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
+  (`dayNight.isDayAtUnit`) makes day the FIRST half-cycle `[0,600)` and night the second — real noon is
+  t=300 — so the display offset was a quarter-cycle off. Fix: extracted the display offset into a pure
+  `dayPhase.markerAngleDeg` seam (offset `-90`) + a `markerQuadrant` geometry helper, and wired both HUD
+  render sites. Now the sun stays above the horizon all day and the moon below it all night
+  (sunrise-left / noon-top / sunset-right / midnight-bottom). RED-first against the REAL clock (an empirical
+  cross-module glyph-vs-horizon check — reading the module's own comment, which mislabels `cf=0` as
+  midnight, was the trap that briefly hid the bug), mutation-proven (`-90`→`-180` turns the anchor gate RED).
+  Dial is capture-suppressed so the 20 visual baselines are provably unaffected. unit 2040→2044.
+
 ## 2026-07-14 (cont.) — B3a, B3c, B3d, B2f: four more review seams, verified-draft → mutation-proven landing
 
 - **B2h (`9200986`) — the boss kill ran inside a setState updater; one throw voided the win.** ~8 effects ran
