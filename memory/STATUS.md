@@ -40,7 +40,7 @@ auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.
   chain + log) → polish (movement feel, weather, affix model, boot chrome).
 - **Ember Frontier + Blight-Heart climax** — a real win-state (the answer to "what is the point").
 - **v6** (tech-debt + de-monolith) · **v7** (weather bugs + all-4-spell SOTA VFX redesign).
-- Gates today: **~1936 unit · 24-state visual · 11 e2e specs · eslint/knip/build clean.**
+- Gates today: **~2033 unit · 24-state visual · 12+ e2e specs · eslint/knip/build clean.**
 
 **The honest bar:** the plan's own end-state is "SOTA taste sign-off + S4 (multiplayer + monetization)".
 S4 is at **literal zero** and is **Kevin's call**. Product-wise this is a **1–2 hour demo with excellent
@@ -208,10 +208,10 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   the siege, and it ratchets on every reload**. A page reload mid-boss-fight **resets the 700-HP climax boss to
   full**. `App.jsx:220-261`, `useGameStore.jsx:858/967-973`, `Terrain.jsx:657/592-595`, `WorldManager.jsx:65-108`,
   `world/spellUpgrades.js:57-66`, `game/autosave.js:8`, `world/bossSystem.js:11-18`.
-- ▣ **B3 — 3 of 4 FIXED (2026-07-14).** ✓ **B3a** swords uncraftable (`60e2b67` — pure `game/crafting.js`
-  trims both grid + pattern) · ✓ **B3c** free placement (`69c88c4` — survival costs the block, creative free)
-  · ✓ **B3d** crafting grid eats materials (`02acb83` — unmount returns the escrow). **Still open: B3b** the
-  crystal/wand two-bucket black hole (REVISE / high-distrust — re-derive a behavioral RED first).
+- ▣✓ **B3 — ALL 4 FIXED (2026-07-14).** ✓ B3a swords (`60e2b67`) · ✓ B3c free placement (`69c88c4`) · ✓ B3d
+  crafting-grid escrow (`02acb83`) · ✓ **B3b** crystal/wand black hole (`b707c60` — one canonical
+  `game/crystalWallet.js`; the seed + trade read/spend + wand consumer all use the rendered `blocks` bucket;
+  3 bug-pinning gates corrected, behavioral RED + mutation-proven).
 - ~~▢ **B3 [LOOP] THE ECONOMY IS A BLACK HOLE.**~~ Crystals live in TWO buckets (`inventory.magic.crystals` vs
   `inventory.blocks.crystals`) and the trade UI reads one and writes the other → **ore→crystal trades destroy
   your ore for nothing, the Crystals→Wand trade is mathematically unreachable, and a bought wand gives 0% mana

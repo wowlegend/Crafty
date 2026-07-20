@@ -6,6 +6,9 @@
   inside `setBossHealth(prev=>{})` with the idempotency latch first and markGameWon last; a throwing reward
   stranded the win (gameWon FALSE forever). Extracted to `game/bossKill.js`: pure `applyBossDamage` + a
   post-commit isolated `runBossKillEffects` with the win latch LAST. RED-first e2e (throwing grantXP), mutation-proven.
+- **B3b (`b707c60`) — the crystal/wand economy was a black hole.** Currency split across two buckets: writes
+  banked into the rendered `blocks`, but reads/spend/seed pointed at unrendered `magic` — so earned crystals
+  were unspendable and the wand trade unreachable. One canonical `game/crystalWallet.js`; behavioral RED + mutation-proven.
 - **B6a+B6b (`df90131`) — quests miscounted.** Every "Defeat N mobs" quest completed at HALF cost (each kill
   counted twice) and every targeted-hunt advanced on ANY kill (dead mobType filter). One pure `game/questMatch.js`
   seam fixes both; RED-first e2e through the real hook, mutation-proven both ways.

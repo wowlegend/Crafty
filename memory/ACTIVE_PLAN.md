@@ -43,23 +43,12 @@ adversarially skeptic-checked into verified RED-first drafts (`docs/superpowers/
 land-plan `…-landplan.md`). Landing them one at a time, RED-first + mutation-proven by me (the drafts are
 hypotheses; two of my own tests this week passed with the bug reintroduced).
 
-**SHIPPED:** B1 ✓ friend/foe · B2a–e ✓ (save/load: autosave-destroys-world, new-world-clones,
-grind-dies-with-tab, load-destroys-terrain, spell-mastery-dead) · **B3a ✓** swords uncraftable (`60e2b67`)
-· **B3c ✓** free block placement (`69c88c4`) · **B3d ✓** crafting grid eats materials (`02acb83`) ·
-**B2f ✓** night-ratchet-on-load (`f98d3c4`).
+**SHIPPED (2026-07-14 loop):** B1 · B2a-f · **B2h** (boss kill-block extracted) · B3a/B3c/B3d · **B3b** (crystal black hole) · B6a+B6b (quest miscount). All seam-extracted + mutation-proven. Unit 1950→2033.
 
-**NEXT (verified drafts ready; land RED-first + mutation-prove):**
-1. **Group A — B2g + B2h (ATOMIC, `world/bossSystem.js`):** boss resets to full HP on reload (persist the
-   fight through saveSchema) + the 11-side-effect kill block inside a setState updater (extract effects out
-   of the updater). Co-edit `tests/gates/death-beats-gates.test.js`. Land as ONE change.
-2. **Group B — B6a + B6b (ATOMIC, `QuestSystem.jsx` → new `game/questMatch.js`):** every kill counts twice
-   (quest completes at half cost) + the kill_type mobType filter is dead (any kill advances every hunt). One
-   reducer seam fixes both; one gate covers both. Drop any redundant 196-201 edit if both drafts carry it.
-3. **B3b — crystal/wand economy black hole (REVISE, HIGH-DISTRUST):** the digger MISSED 2 of its own
-   breaking gates and leaned on source-grep proofs — re-derive a genuine BEHAVIORAL RED yourself first; keep
-   the `inventory-flat-bucket` wand-grant line VERBATIM (`prev.blocks[magicItem]`).
-Then **B4** (2D mob AI) → **B5** (HUD lies) → **B7** (touch) → **B8** (combat/world feel) → V1/V6 → V2/V3 →
-C1 → D → E → F/G.
+**NEXT:**
+- **B2g [DEFERRED — needs lived/Kevin verification]** — persist the boss fight across reload. The correct fix is a store-owns boss-state rewrite whose regression surface is the VISUAL/AUDIO boss layer (BossEntity, BossHealthBar, boss music) that CANNOT be verified headlessly (green units ≠ lived boss fight). Rare edge case (reload mid-climax). Draft in `2026-07-14-b-seams-drafts.json` (B2g-boss-reset). Do NOT rush unattended.
+- **B4** (mob AI 2D→3D — balance-sensitive) → **B5** (HUD lies — needs a puppeteer probe, not pure unit) → **B7** (touch — puppeteer) → **B8** (combat/world feel — the PURE ones first: arcane triple-hit, fireball 12m cap, camera-shake per-frame). Then V1/V6 → V2/V3 → C1 → D → E → F/G.
+- **Separate LOW:** the 2 unlockable achievements (`updateLevel` zero callers, QuestSystem.jsx).
 
 **PARALLEL (non-Crafty): the cmux self-close PR** — both trace + conventions workflows are DONE. Root cause
 `TerminalController+ControlSurfaceContext2.swift:408` (a `?? focusedPanelId` fallback closes the caller on a
