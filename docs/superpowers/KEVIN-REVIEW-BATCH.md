@@ -1,5 +1,14 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **📱 2026-07-14 — FYI + taste (no decision needed): the phone hotbar now fits on-screen.** The 9-slot block
+> hotbar used to run ~2 slots off EACH edge on a phone (unreachable blocks in a building game). I scaled it to
+> ~56% on narrow screens (≤640px) so all 9 fit and stay centered; tablets/desktop are unchanged. **Taste
+> trade-off for you:** fitting all 9 on a ~390px phone forces small slots either way (9×44px = 396px > a phone
+> width, so the 44px touch-target guideline is physically impossible with all 9 visible — Minecraft PE has the
+> same constraint). The scale keeps everything proportional but shrinks the slot NUMBERS too. If you'd prefer a
+> hand-tuned touch hotbar (readable numbers, ergonomic ~40px slots via a touch-specific slot size rather than a
+> uniform scale), say the word — this scale is the simple correct fix; the ergonomic polish is your call.
+
 > **🎨 2026-07-14 — VISUAL RE-BASELINE OWED (taste sign-off + a capture re-run when the box frees):
 > the health/mana bars are no longer buried.** The 18-domain review found the player health bar was **100%
 > invisible during play** — the stat stack sat directly under the QUESTS panel (top-left), so the quest panel

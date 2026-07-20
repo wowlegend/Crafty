@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B7 COMPLETE: the 9-slot hotbar ran off both edges of a phone
+
+- **B7-touch (`efa844e`) — the block hotbar overflowed the phone viewport.** 9 slots × `w-[62px]` + gaps +
+  padding ≈ 622px, centered, so on a 390px phone slots grass/dirt/cobblestone/chest ran off the edges
+  (measured x −116..506) — unreachable, in a voxel BUILDING game targeting iPad/iPhone. Fix: a
+  viewport-responsive scale on narrow screens (`max-[640px]:scale-[0.56] origin-bottom`) so all 9 fit and stay
+  centered; tablets/desktop keep full size. Verified in a REAL touch browser (`touch-controls.spec.js` measures
+  every `[data-hotbar-block]` rect on a 390px viewport): RED-first 4 slots off-screen → GREEN all 9 span
+  x21..369 within [0,390]. Mutation-proven. **This completes B7 — all 4 touch sub-bugs fixed** (colors,
+  stray-tap, pause-mistap, hotbar). unit 2046. (Self-lesson: a boot "timeout" I first blamed on load was
+  actually a `{/* */}` comment placed after `return (` — a JSX syntax error that broke the esbuild transform;
+  check the build/console before blaming load.)
+
 ## 2026-07-14 (cont.) — B7: tapping Settings paused the game; tapping Pause did nothing
 
 - **B7-touch (`9f6c422`) — the Pause touch hit-target was on the wrong button.** The transparent Pause

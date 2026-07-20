@@ -134,108 +134,28 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B7 pause-mistap SHIPPED (`9f6c422`, 2026-07-14); NEXT = B7 hotbar overflow (last sub-bug)
-✅ **B7 pause-mistap — DONE.** The transparent Pause touch hit-target was disjoint from the visible Pause
-glyph and sat on the GameHud Settings gear: on a 390px phone the glyph was at x280–326 but the hit-target at
-x338–382 (`right: 8`), overlapping the gear (x332–374) → tapping Settings paused, tapping the Pause icon did
-nothing. Fix: aligned the hit-target to its glyph (`right: 64, 46×46`, `TouchControls.jsx`) — the pattern the
-code's own comment states. RED-first via `touch-controls.spec.js` (measures glyph/hit/gear rects): hit
-disjoint + covering gear → GREEN hit under glyph + clear of gear. Mutation-proven. Only the transparent
-hit-target moved → no baseline impact. **Verify-before-assert win: the registry's `touchHandlers.js:39-44`
-ref was stale (look-zone code); the real hit-target was `TouchControls.jsx` line ~127.**
+## 📍 B7 COMPLETE (`efa844e`, 2026-07-14); NEXT = B5 modal-overflow remainder
+✅ **B7 DONE — all 4 touch sub-bugs fixed** (colors `d45b698` · stray-tap `83ef50d` · pause-mistap `9f6c422` ·
+hotbar-overflow `efa844e`), each RED-first + mutation-proven, lived-verified in `tests/e2e/touch-controls.spec.js`
+(chromium + `hasTouch`). Latest: the 9-slot hotbar (≈622px centered) ran off both edges of a 390px phone
+(grass/dirt/cobblestone/chest off-screen); fixed with a viewport-responsive `max-[640px]:scale-[0.56]
+origin-bottom` (all 9 fit + centered; tablets keep full size). Mutation-proven (remove scale → RED).
+**⚠️ SELF-LESSON (verify-before-assert on MYSELF):** I blamed "env load" for a boot timeout that was actually
+my own broken JSX — a `{/* */}` comment placed directly after `return (` is a syntax error, so esbuild failed
+and the dev server served a broken module (`useGameStore` never defined → the "boot timeout"). Check the
+BUILD / browser console before blaming load. JSX comments go INSIDE children or as `//` above the return.
 
-**NEXT — B7 hotbar overflow (LAST B7 sub-bug) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
-The hotbar (`ui/GameHud.jsx:20-24` MinecraftHotbar) is 9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px, centered
-(`left-1/2 -translate-x-1/2`), so on a 390px phone ~2 slots run off EACH edge. RED-first via the touch e2e:
-measure all 9 `[data-hotbar-block]` rects, assert each is within [0, viewportWidth]. Fix is taste-adjacent
-(shrink slots on touch / horizontal-scroll / scale-to-fit) — pick the conventional mobile approach (likely a
-touch-only smaller slot size or a max-w + scroll) + note it for Kevin. Use the `touch-controls.spec.js`
-pattern. B5 modal-overflow remainder after: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`),
-Inventory "+" below fold (`ui/GamePanels.jsx:252`).
+**⚠️ OWED (env-blocked): the VISUAL RE-BASELINE.** Every in-world HUD frame (B5-layout) + `mobile.png` (B7).
+The capture harness is UNHEALTHY — it hangs with a puppeteer `ProtocolError` at title-mascot even at low load
+(needs a box-free / Chrome restart). When healthy: `npm run test:visual`, HD self-eyeball, re-baseline,
+before/after to KEVIN-REVIEW. (The hotbar scale only applies ≤640px, so the 1280px `mobile.png` capture is
+likely unaffected by it — only the B7 color fix changed `mobile.png`.)
 
-## 📍 (superseded) B7 stray-tap-freeze SHIPPED (`83ef50d`, 2026-07-14)
-✅ **B7 stray-tap-kills-joystick — DONE.** The touch zone router made EVERY left-half touch a 'move' touch,
-so a stray tap while the joystick was held owned the move zone too — and `handleTouchEnd` clears all four
-move intents when ANY move touch ends → the tap's release froze the player mid-run. Fix (pure, in
-`touchMath.js makeTouchRouter.onStart`): exactly ONE move touch active; a concurrent second left-half touch →
-inert `'ignore'` zone (no move/look, no cleanup on release). RED-first pure unit test (router + handleTouchEnd,
-no DOM), mutation-proven (drop the single-owner guard → RED). unit 2044→2046. Pure logic, no render change →
-no visual baseline impact (clean headless win, no browser needed).
+**NEXT — B5 modal-overflow remainder → then B8 feel/balance (→ KEVIN-REVIEW, do NOT change).**
+B5 modal-overflow (small, LOW): the Progression panel header incl. the close X is off-screen at 1280×800
+(`ui/SpellUpgradePanel.jsx:40`); the Inventory attribute "+" buttons are below the fold with no scroll
+(`ui/GamePanels.jsx:252`). VERIFY on live HEAD first (registry refs have repeatedly been stale). These are a
+modal-layout class — likely a lived e2e (open the panel, measure the header/buttons are within the viewport)
+or a pure-ish overflow check. B8 feel/balance items (500ms damage-lockout, camera-shake-per-frame, mob-AI-2D)
+are Kevin-taste → add a file:line + decision entry to KEVIN-REVIEW-BATCH, do not change.
 
-✅ **B7 invisible-controls — DONE (`d45b698`).** The touch joystick knob + all button borders were invisible: bare
-`var(--ui-accent)` resolves to space-separated channels `201 168 106` (an invalid CSS color; the hex fallback
-never fires because the var is always defined) → transparent knob + dropped borders. Fix: wrapped INK/GOLD in
-`rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser via new
-`tests/e2e/touch-controls.spec.js` (chromium + `hasTouch` → `maxTouchPoints>0` → `isTouchUIMode()` true):
-RED-first `bg rgba(0,0,0,0)` / `border 0px`; GREEN `bg rgb(201,168,106)` / `border 4px`. Mutation-proven
-(cp-backup revert to bare var → RED). unit 2044. **The `mobile.png` touch baseline now shows the OLD invisible
-knob → joins the owed re-baseline batch.**
-
-**⚠️ VISUAL RE-BASELINE — still OWED + capture harness is UNHEALTHY.** Attempted `npm run test:visual` at
-load 3.48 this iteration; the capture hung with a puppeteer `ProtocolError` (a single `callFunctionOn` > 180s)
-at the **title-mascot** step — the charter's documented recurring infra timeout (needs a box-free / Chrome
-restart, NOT just low load). Wrote NO fresh frames (fail-loud `complete:true` sentinel guards the diff, so no
-false-green). OWED frames: every in-world HUD frame (explore-day/night, hearth, landmark, ocean-*, …) from
-B5-layout + `mobile.png` from B7. When the harness is healthy: `npm run test:visual`, HD self-eyeball,
-re-baseline, add the before/after contact sheet to KEVIN-REVIEW.
-
-**NEXT — B7 remainder (2 sub-bugs left) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
-(1) the Pause hit-button is disjoint from the glyph + covers the Settings gear → tapping Settings pauses —
-VERIFY the real hit-target on live HEAD first (the registry's `touchHandlers.js:39-44` ref is STALE — it
-points at look-zone camera code; the pause glyph is at `TouchControlsSurface.jsx:76 right:64`, and the hit
-targets are in `ui/TouchControls.jsx`'s `isButton`/button-rect logic). (2) hotbar overflows the phone
-viewport — 9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px centered on a 390px phone (`ui/GameHud.jsx:20-24`);
-measurable via the touch e2e (all 9 `[data-hotbar-block]` rects within [0, viewportWidth]); the fix is a
-taste-adjacent responsive-shrink/scroll call — pick the conventional mobile approach + note it for Kevin.
-Use the `tests/e2e/touch-controls.spec.js` pattern (chromium + hasTouch + a mobile viewport). B5
-modal-overflow remainder: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`), Inventory "+" below
-fold (`ui/GamePanels.jsx:252`).
-
-## 📍 (superseded) B5 stat-stack layout SHIPPED (`7e0f004`, 2026-07-14)
-✅ **B5 parts 1+2 (health-bar collision + ribbon) — DONE.** Moved the stat stack from `top-16 left-4`
-(buried under the QuestTracker panel) to **bottom-left** + `flex flex-col gap-2 w-44`. Verified in a REAL
-browser via new `tests/e2e/hud-layout.spec.js` (measures rendered geometry): RED-first health at (16,72)
-inside the quest panel; GREEN health at (16,736), mana below at (16,764), clear of the panel. Lived e2e
-geometry gate (stronger than a pixel diff for this bug), mutation-proven (className is the sole RED→GREEN
-variable). **The forcePlay/HUD-mount lesson:** the in-game HUD DOM needs the world FULLY built + `active`
-re-asserted in a poll (the optimistic `active` gets reset by the input controller's mount-time pointer-lock
-sync). `bootDev` → wait `isSpawnChunkLoaded` (90s, load-sensitive) → poll `forcePlay` until `stat-health`
-attaches → measure. Existing e2e read the store, never the HUD DOM — this is the first lived HUD-DOM gate.
-**⚠️ VISUAL RE-BASELINE OWED:** the gameplay HUD baselines (explore-day/night, hearth, landmark, ocean-*,
-etc.) still show the OLD buried position; a `npm run test:visual` re-capture is owed once machine load < ~10
-(was ~24 — the capture harness times out above that). Intended §4 improvement (health bar now visible),
-batched for Kevin in KEVIN-REVIEW with the before/after. (DebugOverlay is dev-only `import.meta.env.DEV`, so
-prod bottom-left is clean; any capture overlap is dev-chrome, not a shipped collision.)
-
-**B5 REMAINDER (smaller, separate — a modal-overflow class, own probe, LOW):** the Progression panel header
-(incl. close X) off-screen at 1280×800 (`ui/SpellUpgradePanel.jsx:40`); the Inventory attribute "+" buttons
-below the fold, no scroll (`ui/GamePanels.jsx:252`).
-
-**NEXT — B7 (touch is visually + functionally broken).** Per the loop prompt: puppeteer, iPhone-13 viewport
-via `browserName: 'chromium', hasTouch: true` (NOT `devices[...]`). Transparent joystick knob, disjoint pause
-button, hotbar overflow. RED-first via the touch probe (`scripts/visual/touch-probe.mjs` pattern) or a
-Playwright touch spec. Then the B5 modal-overflow remainder, then B8 feel/balance → KEVIN-REVIEW-BATCH.
-
-## 📍 (superseded) B5 — part 3 (DIAL) SHIPPED (`712ea78`, 2026-07-14)
-✅ **Part 3 (day/night dial phase) — DONE.** The dial was a quarter-cycle (90°) out of phase. The offset
-`-180` assumed `cf=0` was midnight, but the game's real clock (`dayNight.isDayAtUnit`) is day=`[0,600)`.
-Fix: pure `dayPhase.markerAngleDeg` seam with offset `-90` + a `markerQuadrant` geometry helper; RED-first
-against the REAL clock, mutation-proven, wired both HUD sites. unit 2040→2044.
-**⚠️ RECORD CORRECTION (verify-before-assert lesson):** mid-analysis I briefly concluded "the dial is
-correct" because I anchored on `dayPhase.js`'s OWN comment (which mislabels `cf=0` as midnight) and the
-math was self-consistent with that mislabel. Running the two modules TOGETHER (cycleFraction vs
-`isDayAtUnit`) exposed a 7/12 glyph-vs-horizon desync → the original registry diagnosis ("90° out of
-phase") was RIGHT; my read-the-comment detour was the trap. The oracle was RUNNING it, not reading it.
-
-**NEXT — B5 parts 1+2 (the layout lies; need a PUPPETEER probe, no pure oracle):**
-(1) health/mana stat stack `HUD.jsx:547 absolute top-16 left-4 z-20` COLLIDES with QuestTracker
-`QuestSystem.jsx:437 absolute top-4 left-4 z-20` (same z, later in DOM → covers the health bar).
-(2) `StatBar.jsx:18` root is `inline-flex` → the stat-stack's `space-y-2` is a no-op → 7 bars ribbon
-horizontally.
-**HUD zone map: occupied = top-3/14 right (coins/dial), top-4 left (quest tracker), top-12/center +
-top-1/2 center, bottom-4 center (hotbar). BOTTOM-LEFT is FREE.**
-**RECOMMENDED (autonomous, prompt-authorized): move the stat stack to bottom-left (conventional RPG
-health placement, non-colliding) AND fix the ribbon (`flex flex-col gap-2`, or StatBar `flex` not
-`inline-flex`). RED-first via a PUPPETEER probe on the managed port 4179 `--strictPort` (getBoundingClientRect
-+ elementFromPoint at the health-bar centre = the health bar, not the quest panel; bars stack vertically) —
-browser.close in a `finally`; `kill-test-procs.sh` after. Then B7 (touch).**

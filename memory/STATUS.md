@@ -260,7 +260,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   kill counts twice**. The **mobType filter is dead code** — killing any mob advances every targeted-hunt quest
   ("Defeat 5 moss brutes" completes on 5 spider kills). Two of the twelve achievements **can never unlock**
   (`updateLevel` has zero callers). `QuestSystem.jsx:197-199/317-318/398-404`.
-- ▣ **B7 [LOOP] TOUCH — colors (`d45b698`) + stray-tap (`83ef50d`) + pause-mistap (`9f6c422`) FIXED, 2026-07-14; 1 sub-bug (hotbar overflow) OPEN.**
+- ▣✓ **B7 [LOOP] TOUCH — ALL 4 SUB-BUGS FIXED, 2026-07-14: colors (`d45b698`) + stray-tap (`83ef50d`) + pause-mistap (`9f6c422`) + hotbar-overflow (`efa844e`). Only the owed `mobile.png` re-baseline remains (capture harness unhealthy).**
   ✓ **Pause-mistap FIXED.** The transparent Pause touch hit-target was disjoint from the visible Pause glyph
   and sat on top of the GameHud Settings gear: on a 390px phone the glyph was at x280–326 but the hit-target
   at x338–382 (`right: 8`), overlapping the gear (x332–374) → tapping Settings paused the game, tapping the
@@ -280,11 +280,12 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   constants in `rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser — new
   **`tests/e2e/touch-controls.spec.js`** (chromium + `hasTouch`) reads the knob's computed style: RED-first
   `bg rgba(0,0,0,0)` / `border 0px`; GREEN `bg rgb(201,168,106)` / `border 4px`. Mutation-proven (constants
-  are the sole RED→GREEN variable). **STILL OPEN (1 sub-bug):** the hotbar **overflows the phone viewport** —
-  9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px centered on a 390px phone → ~2 slots off each edge
-  (`ui/GameHud.jsx:20-24`, measurable via the touch e2e; the responsive-shrink/scroll approach is
-  taste-adjacent → pick the conventional mobile one + note for Kevin). **+ the `mobile.png` visual baseline
-  now shows the OLD invisible knob → joins the owed re-baseline batch.**
+  are the sole RED→GREEN variable). ✓ **Hotbar-overflow FIXED (`efa844e`):** the 9 slots (≈622px centered)
+  ran off both edges of a 390px phone (grass/dirt/cobblestone/chest off-screen). Fixed with a viewport-
+  responsive `max-[640px]:scale-[0.56] origin-bottom` (all 9 fit + stay centered; tablets keep full size).
+  Lived e2e measures every `[data-hotbar-block]` rect (RED off-screen → GREEN all within [0,390]),
+  mutation-proven. **B7 DONE.** The only remainder is the owed `mobile.png` re-baseline (capture harness
+  unhealthy — see the owed-re-baseline batch). Touch-target-size vs all-9-visible is a taste note for Kevin.
 - ▢ **B8 [LOOP] COMBAT + WORLD FEEL.** A pack of N enemies deals the damage of **ONE** (a 500ms *global* damage
   lockout caps ALL incoming damage at 2 hits/sec → the siege cannot threaten you). Camera shake decays **per
   frame, not per second** (1067ms @30fps vs 267ms @120fps). **Fireball — the default starting spell — cannot hit
