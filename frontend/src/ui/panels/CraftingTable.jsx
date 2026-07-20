@@ -9,6 +9,7 @@ import { Grid } from 'lucide-react';
 import { getItemRarity } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
 import { RECIPES } from '../../data/recipes';
+import { matchRecipe } from '../../game/crafting';
 
 export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore(useShallow(state => ({
@@ -24,56 +25,12 @@ export const CraftingTable = React.memo(({ onClose }) => {
     const [craftMessage, setCraftMessage] = React.useState(null);
 
 
-    const normalizeGrid = (g) => {
-        // Find boundaries
-        let minX = 3, minY = 3, maxX = -1, maxY = -1;
-        let hasItems = false;
-        for (let i = 0; i < 9; i++) {
-            if (g[i]) {
-                const x = i % 3;
-                const y = Math.floor(i / 3);
-                minX = Math.min(minX, x);
-                minY = Math.min(minY, y);
-                maxX = Math.max(maxX, x);
-                maxY = Math.max(maxY, y);
-                hasItems = true;
-            }
-        }
-        if (!hasItems) return null;
-
-        // Extract sub-grid
-        const rows = [];
-        for (let y = minY; y <= maxY; y++) {
-            const row = [];
-            for (let x = minX; x <= maxX; x++) {
-                row.push(g[y * 3 + x]);
-            }
-            rows.push(row);
-        }
-        return rows;
-    };
-
-    const gridsEqual = (g1, g2) => {
-        if (!g1 || !g2) return false;
-        if (g1.length !== g2.length) return false;
-        for (let i = 0; i < g1.length; i++) {
-            if (g1[i].length !== g2[i].length) return false;
-            for (let j = 0; j < g1[i].length; j++) {
-                if (g1[i][j] !== g2[i][j]) return false;
-            }
-        }
-        return true;
-    };
-
+    // B3a: recipe matching lives in the pure, unit-tested seam `game/crafting.js`. It trims BOTH the player
+    // grid AND each recipe pattern to their bounding box before comparing — the inline version here trimmed
+    // only the player grid, so the null-bordered sword patterns ([null,X,null] middle columns) could never
+    // match and the ENTIRE sword tree was uncraftable.
     React.useEffect(() => {
-        const normalized = normalizeGrid(grid);
-        if (!normalized) {
-            setResult(null);
-            return;
-        }
-
-        const match = RECIPES.find(r => gridsEqual(normalized, r.pattern));
-        setResult(match || null);
+        setResult(matchRecipe(grid, RECIPES));
     }, [grid, RECIPES]);
 
     const handleGridClick = (index) => {
