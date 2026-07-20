@@ -2,6 +2,10 @@
 
 ## 2026-07-14 (cont.) — B3a, B3c, B3d, B2f: four more review seams, verified-draft → mutation-proven landing
 
+- **B6a+B6b (`df90131`) — quests miscounted.** Every "Defeat N mobs" quest completed at HALF cost (each kill
+  counted twice) and every targeted-hunt advanced on ANY kill (dead mobType filter). One pure `game/questMatch.js`
+  seam fixes both; RED-first e2e through the real hook, mutation-proven both ways.
+
 An ultracode workflow (`wf_9104e3ca-cce`) dug + adversarially skeptic-checked the 9 remaining confirmed-bug
 seams into RED-first drafts (7 LAND / 2 REVISE / 0 REJECT; all 9 causes re-confirmed live on HEAD). Landing
 them one at a time — each draft re-run RED-first and mutation-proven by me before trusting it.

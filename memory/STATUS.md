@@ -233,7 +233,12 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   printing "DUSK". The Progression panel's entire header (incl. the close X) is **off-screen and unreachable**
   at 1280×800; the Inventory's attribute-point "+" buttons are **below the fold with no scroll affordance**.
   `HUD.jsx:547/80-102`, `ui/primitives/StatBar.jsx:18`, `ui/SpellUpgradePanel.jsx:40`, `ui/GamePanels.jsx:252`.
-- ▢ **B6 [LOOP] QUESTS MISCOUNT.** Every "Defeat N mobs" quest **completes at half the advertised cost** —
+- ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
+  one pure `game/questMatch.js` seam replaced the buggy inline matcher: a 'kill' quest advances only on the
+  'kill' dispatch (not the kill_type echo), a 'kill_type' quest only for its own mob. RED-first e2e through the
+  real hook + emitMobKill; mutation-proven both ways. **Still open (separate, LOW): the 2 unlockable
+  achievements — `updateLevel` has zero callers (`QuestSystem.jsx:398-404`).**
+- ~~▢ **B6 [LOOP] QUESTS MISCOUNT.**~~ Every "Defeat N mobs" quest **completes at half the advertised cost** —
   `onMobKill` fires `updateQuestProgress('kill')` AND `('kill_type')` and the match arm accepts both, so **each
   kill counts twice**. The **mobType filter is dead code** — killing any mob advances every targeted-hunt quest
   ("Defeat 5 moss brutes" completes on 5 spider kills). Two of the twelve achievements **can never unlock**
