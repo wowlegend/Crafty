@@ -174,10 +174,11 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   mob** (`checkMobCollision` returns *first-in-ECS*, not nearest).
   **Seam:** one targeting module — `hostilesQuery` + a nearest-in-cone selector — consumed by melee, chain, and
   aimed casts. `CombatSystem.jsx:160-174`, `EnhancedMagicSystem.jsx:331`, `game/chainLightning.js:10-46`.
-- ▣ **B2 — 4 of 8 FIXED (`4c05ff8`, `e5aafbb`, 2026-07-14).** Still open: **B2e** Spell Mastery dead after load
-  (`world/spellUpgrades.js:57-66` hydratedRef one-shot) · **B2f** the night-ratchet on load
-  (`world/survivalSystem.js:17-25`) · **B2g** the boss resets to full HP on reload (`world/bossSystem.js:11-18`
-  — nothing but `gameWon` is serialized) · **B2h** the 11-side-effect kill block inside a setState updater.
+- ▣ **B2 — 6 of 8 FIXED (`4c05ff8`, `e5aafbb`, `1e46d6e`, `f98d3c4`, 2026-07-14).** ✓ B2a-e ✓ **B2f** the
+  night-ratchet on load (moved the siege bump to the single clock-writer setGameTime→crossedIntoNight;
+  deleted incrementNight). **Still open (Group A, ATOMIC — `world/bossSystem.js`):** **B2g** the boss resets
+  to full HP on reload (nothing but `gameWon` is serialized) · **B2h** the 11-side-effect kill block inside a
+  setState updater.
   - **B2a ✓** the autosave no longer destroys your world. `_sessionWorldId` (in-memory, never persisted): an
     autosave may only write to a slot THIS SESSION opened or created; unowned → mint. Also stopped renaming
     "Marcus's Castle" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within
@@ -206,7 +207,11 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   the siege, and it ratchets on every reload**. A page reload mid-boss-fight **resets the 700-HP climax boss to
   full**. `App.jsx:220-261`, `useGameStore.jsx:858/967-973`, `Terrain.jsx:657/592-595`, `WorldManager.jsx:65-108`,
   `world/spellUpgrades.js:57-66`, `game/autosave.js:8`, `world/bossSystem.js:11-18`.
-- ▢ **B3 [LOOP] THE ECONOMY IS A BLACK HOLE.** Crystals live in TWO buckets (`inventory.magic.crystals` vs
+- ▣ **B3 — 3 of 4 FIXED (2026-07-14).** ✓ **B3a** swords uncraftable (`60e2b67` — pure `game/crafting.js`
+  trims both grid + pattern) · ✓ **B3c** free placement (`69c88c4` — survival costs the block, creative free)
+  · ✓ **B3d** crafting grid eats materials (`02acb83` — unmount returns the escrow). **Still open: B3b** the
+  crystal/wand two-bucket black hole (REVISE / high-distrust — re-derive a behavioral RED first).
+- ~~▢ **B3 [LOOP] THE ECONOMY IS A BLACK HOLE.**~~ Crystals live in TWO buckets (`inventory.magic.crystals` vs
   `inventory.blocks.crystals`) and the trade UI reads one and writes the other → **ore→crystal trades destroy
   your ore for nothing, the Crystals→Wand trade is mathematically unreachable, and a bought wand gives 0% mana
   discount.** **The entire sword tree is uncraftable** — `normalizeGrid` trims the player's grid to its bounding

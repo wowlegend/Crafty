@@ -38,15 +38,34 @@ the `[KEVIN-GATED]` tag on them was stale).
 `docs/superpowers/audits/2026-07-13-18-domain-review.md`, folded into STATUS §2 as **`A-bis` B1–B8**.
 It **reordered the campaign**: fix the game before building E2E scaffolding and an art pass on top of it.
 
-**IN FLIGHT — `A-bis` B2, the save/load seam.** 5 of the 8 done and pushed:
-B1 ✓ friend/foe · B2a ✓ autosave-destroys-world · B2b ✓ new-world-clones · B2c ✓ grind-dies-with-tab ·
-B2d ✓ load-destroys-terrain · B2e ✓ spell-mastery-dead-after-load.
+**IN FLIGHT — `A-bis` the confirmed-bug seams.** The 18-domain review's 9 remaining seams were dug +
+adversarially skeptic-checked into verified RED-first drafts (`docs/superpowers/audits/2026-07-14-b-seams-drafts.json`;
+land-plan `…-landplan.md`). Landing them one at a time, RED-first + mutation-proven by me (the drafts are
+hypotheses; two of my own tests this week passed with the bug reintroduced).
 
-**NEXT, in order:** **B2f** the night-ratchet on load (`world/survivalSystem.js:17-25`) → **B2g** the boss
-resets to full HP on reload (`world/bossSystem.js:11-18` — only `gameWon` is serialized) → **B2h** the
-11-side-effect kill block inside a setState updater → then **B3** (the economy: swords uncraftable, crystals
-a black hole, free block placement, crafting grid eats materials) → **B4** (2D mob AI) → **B5** (the HUD lies)
-→ **B6** (quests miscount) → **B7** (touch) → **B8** (combat/world feel) → V1/V6 → V2/V3 → C1 → D → E → F/G.
+**SHIPPED:** B1 ✓ friend/foe · B2a–e ✓ (save/load: autosave-destroys-world, new-world-clones,
+grind-dies-with-tab, load-destroys-terrain, spell-mastery-dead) · **B3a ✓** swords uncraftable (`60e2b67`)
+· **B3c ✓** free block placement (`69c88c4`) · **B3d ✓** crafting grid eats materials (`02acb83`) ·
+**B2f ✓** night-ratchet-on-load (`f98d3c4`).
+
+**NEXT (verified drafts ready; land RED-first + mutation-prove):**
+1. **Group A — B2g + B2h (ATOMIC, `world/bossSystem.js`):** boss resets to full HP on reload (persist the
+   fight through saveSchema) + the 11-side-effect kill block inside a setState updater (extract effects out
+   of the updater). Co-edit `tests/gates/death-beats-gates.test.js`. Land as ONE change.
+2. **Group B — B6a + B6b (ATOMIC, `QuestSystem.jsx` → new `game/questMatch.js`):** every kill counts twice
+   (quest completes at half cost) + the kill_type mobType filter is dead (any kill advances every hunt). One
+   reducer seam fixes both; one gate covers both. Drop any redundant 196-201 edit if both drafts carry it.
+3. **B3b — crystal/wand economy black hole (REVISE, HIGH-DISTRUST):** the digger MISSED 2 of its own
+   breaking gates and leaned on source-grep proofs — re-derive a genuine BEHAVIORAL RED yourself first; keep
+   the `inventory-flat-bucket` wand-grant line VERBATIM (`prev.blocks[magicItem]`).
+Then **B4** (2D mob AI) → **B5** (HUD lies) → **B7** (touch) → **B8** (combat/world feel) → V1/V6 → V2/V3 →
+C1 → D → E → F/G.
+
+**PARALLEL (non-Crafty): the cmux self-close PR** — both trace + conventions workflows are DONE. Root cause
+`TerminalController+ControlSurfaceContext2.swift:408` (a `?? focusedPanelId` fallback closes the caller on a
+failed resolution). Fix = server guard + CLI guard + budget bump; playbook says land on a clean branch off
+`origin/main`, two-commit red/green Swift test in the already-wired `cmuxTests/TerminalControllerSocketSecurityTests.swift`.
+Scripts: `scratchpad/cmux-close-surface-bug.js`, `cmux-pr-conventions.js` (outputs in the task .output files).
 
 **Every slice: RED-first, then MUTATION-PROVE the gate** (break the behaviour → it must go red → revert).
 Three separate times this week a "green" gate turned out to be measuring nothing — including two versions

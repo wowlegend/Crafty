@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B3a, B3c, B3d, B2f: four more review seams, verified-draft → mutation-proven landing
+
+An ultracode workflow (`wf_9104e3ca-cce`) dug + adversarially skeptic-checked the 9 remaining confirmed-bug
+seams into RED-first drafts (7 LAND / 2 REVISE / 0 REJECT; all 9 causes re-confirmed live on HEAD). Landing
+them one at a time — each draft re-run RED-first and mutation-proven by me before trusting it.
+
+- **B3a (`60e2b67`) — the entire sword tree was uncraftable.** The grid matched by trimming the PLAYER grid
+  to its bounding box but comparing against the RAW recipe pattern; every sword is a null-bordered middle
+  column, so it could never match. Weapon progression was capped at the starting Stone Sword. Pure seam
+  `game/crafting.js` trims both sides. RED-first through the real panel; mutation-proven.
+- **B3c (`69c88c4`) — placing a block was free while mining granted +1** (infinite diamonds in seconds).
+  Placement now costs the block in survival (creative — the default — stays free), via a pure rule +
+  a `consumeForPlacement` store seam that reuses the one removeFromInventory writer.
+- **B3d (`02acb83`) — the crafting grid permanently destroyed materials left in it on close.** Materials
+  are debited on place and escrowed only in local grid state, which unmount discards. A pure
+  `game/craftingGrid.js` + an unmount cleanup returns the escrow; a crafted recipe's consumed inputs are
+  NOT refunded. RED-first (neuter the cleanup → 3 gates RED).
+- **B2f (`f98d3c4`) — resuming a night save added a phantom siege night, ratcheting +1 per reload.** The
+  survival hook bumped nightCount on a reactive isDay edge, which fires on a LOAD too. Moved the ratchet to
+  the single clock-advance writer (setGameTime → crossedIntoNight); deleted the standalone incrementNight;
+  the hook stops mutating persisted state. Mutation-proven both writers.
+
+Gates: unit **2020** (311 files), eslint clean, each pushed green. Remaining review seams: Group A (boss:
+B2g+B2h), Group B (quests: B6a+B6b), B3b (crystal economy).
+
+Also this session: hardened the loop's cmux tab-cleanup after it self-decapitated a session (`4a2da96`),
+and traced + drafted the underlying cmux `close-surface` bug for an upstream PR (two workflows).
+
 ## 2026-07-14 — B1 + B2a-e: five CRITICALs from the review, shipped
 
 The review found the game was quietly destroying the player's stuff in five different ways. Each fix is
