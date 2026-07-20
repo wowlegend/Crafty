@@ -174,11 +174,12 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   mob** (`checkMobCollision` returns *first-in-ECS*, not nearest).
   **Seam:** one targeting module — `hostilesQuery` + a nearest-in-cone selector — consumed by melee, chain, and
   aimed casts. `CombatSystem.jsx:160-174`, `EnhancedMagicSystem.jsx:331`, `game/chainLightning.js:10-46`.
-- ▣ **B2 — 6 of 8 FIXED (`4c05ff8`, `e5aafbb`, `1e46d6e`, `f98d3c4`, 2026-07-14).** ✓ B2a-e ✓ **B2f** the
-  night-ratchet on load (moved the siege bump to the single clock-writer setGameTime→crossedIntoNight;
-  deleted incrementNight). **Still open (Group A, ATOMIC — `world/bossSystem.js`):** **B2g** the boss resets
-  to full HP on reload (nothing but `gameWon` is serialized) · **B2h** the 11-side-effect kill block inside a
-  setState updater.
+- ▣ **B2 — 7 of 8 FIXED (`…`, `f98d3c4`, `9200986`, 2026-07-14).** ✓ B2a-e ✓ **B2f** night-ratchet ✓ **B2h**
+  the kill block ran inside a setState updater (one throw voided the win) — extracted to `game/bossKill.js`
+  (pure `applyBossDamage` + a post-commit isolated `runBossKillEffects`, win latch LAST). **Still open:
+  B2g** — the boss fight is React-local (`world/bossSystem.js:11-18`), so a reload resets it to full HP;
+  persist it through saveSchema + rehydrate (do NOT re-arm a defeated boss). *(Split from B2h; the boss-state
+  rewrite is the bigger, riskier half — land it as its own verified unit.)*
   - **B2a ✓** the autosave no longer destroys your world. `_sessionWorldId` (in-memory, never persisted): an
     autosave may only write to a slot THIS SESSION opened or created; unowned → mint. Also stopped renaming
     "Marcus's Castle" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within

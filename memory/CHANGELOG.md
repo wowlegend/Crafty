@@ -2,6 +2,10 @@
 
 ## 2026-07-14 (cont.) — B3a, B3c, B3d, B2f: four more review seams, verified-draft → mutation-proven landing
 
+- **B2h (`9200986`) — the boss kill ran inside a setState updater; one throw voided the win.** ~8 effects ran
+  inside `setBossHealth(prev=>{})` with the idempotency latch first and markGameWon last; a throwing reward
+  stranded the win (gameWon FALSE forever). Extracted to `game/bossKill.js`: pure `applyBossDamage` + a
+  post-commit isolated `runBossKillEffects` with the win latch LAST. RED-first e2e (throwing grantXP), mutation-proven.
 - **B6a+B6b (`df90131`) — quests miscounted.** Every "Defeat N mobs" quest completed at HALF cost (each kill
   counted twice) and every targeted-hunt advanced on ANY kill (dead mobType filter). One pure `game/questMatch.js`
   seam fixes both; RED-first e2e through the real hook, mutation-proven both ways.
