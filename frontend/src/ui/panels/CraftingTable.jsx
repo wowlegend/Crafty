@@ -10,6 +10,7 @@ import { getItemRarity } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
 import { RECIPES } from '../../data/recipes';
 import { matchRecipe } from '../../game/crafting';
+import { returnGridToInventory } from '../../game/craftingGrid';
 
 export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore(useShallow(state => ({
@@ -21,6 +22,17 @@ export const CraftingTable = React.memo(({ onClose }) => {
     })));
     const t = useT();
     const [grid, setGrid] = React.useState(Array(9).fill(null));
+
+    // B3d escrow-return: materials are debited from inventory the moment they are placed into the grid,
+    // and the grid is React-LOCAL state that MenuSystem discards when it unmounts the panel on close. Keep
+    // a ref to the latest grid (an empty-dep unmount effect otherwise closes over the initial empty grid),
+    // and on teardown credit whatever is still escrowed back to inventory — else it is destroyed. doCraft
+    // clears the grid before teardown, so a successful craft returns nothing (its inputs were consumed).
+    const gridRef = React.useRef(grid);
+    React.useEffect(() => { gridRef.current = grid; }, [grid]);
+    React.useEffect(() => () => {
+        returnGridToInventory(gridRef.current, useGameStore.getState().addToInventory);
+    }, []);
     const [result, setResult] = React.useState(null);
     const [craftMessage, setCraftMessage] = React.useState(null);
 
