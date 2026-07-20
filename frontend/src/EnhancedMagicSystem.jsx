@@ -10,6 +10,7 @@ import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { applyWandFocus } from './game/wandFocus';
 import { getWands } from './game/crystalWallet';
+import { projectileGravity } from './game/projectilePhysics';
 import { freezeSlowMult } from './game/freeze';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
@@ -293,9 +294,10 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
       const projectile = projectilesRef.current[i];
       projectile.age += deltaMs;
 
-      if (projectile.type === 'fireball' || projectile.type === 'iceball') {
-        projectile.velocity.y -= 12 * delta;
-      }
+      // B8: per-type drop (game/projectilePhysics.js). fireball/iceball were a hard 12/s^2, which arced the
+      // crosshair-aimed default spell into the ground before ~12m; 0 = straight flight (aim == hit).
+      const drop = projectileGravity(projectile.type);
+      if (drop) projectile.velocity.y -= drop * delta;
 
       projectile.position.x += projectile.velocity.x * delta;
       projectile.position.y += projectile.velocity.y * delta;
