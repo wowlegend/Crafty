@@ -52,4 +52,12 @@ test.describe('B5 — the Progression panel header + close button are reachable'
     expect(m.headerTop, 'the progression header is clipped ABOVE the viewport (the close X is unreachable)').toBeGreaterThanOrEqual(0);
     expect(m.headerBottom, 'the progression header is below the viewport').toBeLessThanOrEqual(m.vh);
   });
+
+  // NB: the 18-domain review's B5 also claimed the Inventory attribute "+" buttons were "below the fold with
+  // no scroll". VERIFIED STALE 2026-07-14 (lived @1280x800): the inventory modal was refactored to a fixed
+  // h-[440px] body inside a ~505px panel that FITS the viewport (grid-centered), with Column 1 (the "+"
+  // buttons) on its own overflow-y-auto -- the "+" measured at top=572, hittable=true, and stayed reachable
+  // through two layout mutations (taller body; smaller body + no column scroll). No permanent gate is kept
+  // for it: a reachability assertion here could not be made to fail (the design is robustly reachable + a
+  // scrollIntoView masks any break), so per the charter it would be decoration. The registry is corrected.
 });

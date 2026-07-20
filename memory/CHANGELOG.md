@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B5 inventory "+" VERIFIED STALE (no fix needed); B5 DONE
+
+- **B5 (verify-only) — the Inventory attribute "+" buttons were already reachable.** The 18-domain review
+  claimed they were "below the fold with no scroll", but a lived e2e @1280×800 (opened via the openModal hook,
+  granted attribute points) measured the "+" at top=572, `hittable=true` — the modal had been refactored to a
+  fixed `h-[440px]` body in a ~505px panel that fits the viewport, with Column 1 (the "+" buttons) on its own
+  `overflow-y-auto`. It stayed reachable through two layout mutations. No code change (fixing a non-bug is the
+  dial-detour trap); no permanent gate kept (a reachability assertion couldn't be made to fail → decoration per
+  the charter, so it was removed). **This completes B5** (dial + stat-stack + progression-modal fixed; this
+  verified stale). The 3rd+ stale registry ref caught by verify-before-assert this session. unit 2046 (flat —
+  a verification tick).
+
 ## 2026-07-14 (cont.) — B5: the Progression panel header + close X were unreachable
 
 - **B5-modal (`690b070`) — you couldn't close the Progression panel without a keyboard.** SpellUpgradePanel

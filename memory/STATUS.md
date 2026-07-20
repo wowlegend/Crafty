@@ -227,7 +227,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   separation. In a voxel game with a night-siege loop, **building is strategically pointless.** This is the one
   that most damages the core fantasy. Also here: the attack telegraph is bypassable (a stale `windupUntil`
   survives de-aggro → instant undodgeable hit on re-aggro, `ai.worker.js:280-287`).
-- ▣ **B5 [LOOP] THE HUD LIES — dial (`712ea78`) + stat-stack layout (`7e0f004`) FIXED, 2026-07-14; modal-overflow remainder + visual re-baseline OPEN.**
+- ▣✓ **B5 [LOOP] THE HUD LIES — DONE, 2026-07-14: dial (`712ea78`) + stat-stack layout (`7e0f004`) + progression-modal (`690b070`) FIXED; inventory-"+" verified STALE. Only the owed visual re-baseline remains (capture harness unhealthy).**
   ✓ **The day/night dial is now synced to the real clock.** It was a quarter-cycle (90°) out of phase —
   the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
   (`dayNight.isDayAtUnit`) is day=`[0,600)` / night=`[600,1200)`, so real noon is t=300. Symptom: the sun
@@ -249,8 +249,13 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   on the SAME element, so the ~1962px-tall panel's header (+ close X) was clipped 556px above the viewport,
   unreachable. Fixed with the two-div scrollable-modal pattern (outer scroll, inner `min-h-full` flex-center).
   Lived e2e (`panel-overflow.spec.js`) at 1280×800: RED header top −556 → GREEN +169. Mutation-proven.
-  **STILL OPEN (last B5 item):** the Inventory attribute-point "+" buttons are below the fold with no scroll
-  (`ui/GamePanels.jsx:252` — verify on live HEAD, ref may be stale). **+ VISUAL
+  ✓ **Inventory "+" buttons — VERIFIED STALE (already reachable), 2026-07-14.** The registry claimed they were
+  "below the fold with no scroll", but the modal was refactored to a fixed `h-[440px]` body in a ~505px panel
+  that FITS an 800px viewport (grid-centered) with Column 1 (the "+" buttons) on its own `overflow-y-auto`.
+  Lived @1280×800: the "+" measured top=572, hittable=true, and stayed reachable through two layout mutations.
+  No code change (fixing a non-bug would be the dial-detour trap); no permanent gate kept (a reachability
+  assertion couldn't be made to fail → decoration). **B5 is DONE** (dial + layout + progression fixed; this
+  verified stale). **+ VISUAL
   RE-BASELINE OWED** — the gameplay HUD baselines still show the OLD buried position; a re-capture is owed
   once machine load < ~10 (was ~24; the capture harness times out above that). Intended change → KEVIN-REVIEW.
 - ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —

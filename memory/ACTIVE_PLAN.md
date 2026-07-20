@@ -134,14 +134,15 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B5 Progression-header FIXED (`690b070`, 2026-07-14); NEXT = Inventory "+" (last B5 item)
-✅ **B5 Progression-header — DONE.** SpellUpgradePanel put flex-centering + `overflow-y-auto` on the SAME
-element, so the ~1962px-tall panel's header (+ close X) was clipped 556px above the viewport, unreachable
-(couldn't close without a keyboard). Fix: the two-div scrollable-modal pattern (outer = scroll container,
-inner `min-h-full flex items-center justify-center` wrapper). Lived e2e (`panel-overflow.spec.js`, opens via
-the `openModal` hook @1280×800): RED header top −556 → GREEN +169 (within [0,800]). Mutation-proven (pre-fix
-single-div = RED, structure the sole variable). **BUILD-FIRST discipline held this time** (checked build +
-eslint on the JSX structure change BEFORE the slow e2e — the last iter's self-lesson applied).
+## 📍 B5 DONE (2026-07-14); NEXT = a fixable B8 bug (chest-mining or alt-tab-keys)
+✅ **B5 fully DONE** — dial (`712ea78`) + stat-stack layout (`7e0f004`) + progression-modal (`690b070`) fixed;
+the inventory-"+" item **VERIFIED STALE** this iteration. The registry claimed the "+" buttons were "below the
+fold with no scroll", but lived @1280×800 they measured top=572, hittable=true, and stayed reachable through
+two layout mutations (the modal was refactored to a fitting h-[440px] body + Column 1 `overflow-y-auto`). No
+code change (fixing a non-bug = the dial-detour trap); no permanent gate kept (couldn't make a reachability
+assertion fail → decoration per the charter). **Verify-before-assert win — the 3rd+ stale registry ref this
+session.** (Progression-modal fix recap: flex-center + overflow on one element clipped the header 556px above
+→ two-div scrollable-modal pattern; RED −556 → GREEN +169, mutation-proven.)
 
 ✅ **B7 DONE — all 4 touch sub-bugs** (colors `d45b698` · stray-tap `83ef50d` · pause-mistap `9f6c422` ·
 hotbar-overflow `efa844e`), each RED-first + mutation-proven in `tests/e2e/touch-controls.spec.js`.
@@ -155,11 +156,16 @@ The capture harness is UNHEALTHY — it hangs with a puppeteer `ProtocolError` a
 before/after to KEVIN-REVIEW. (The hotbar scale only applies ≤640px, so the 1280px `mobile.png` capture is
 likely unaffected by it — only the B7 color fix changed `mobile.png`.)
 
-**NEXT — B5 last item (Inventory "+" below fold) → then B8 feel/balance (→ KEVIN-REVIEW, do NOT change).**
-The Inventory attribute-point "+" buttons are below the fold with no scroll (`ui/GamePanels.jsx:252` — VERIFY
-on live HEAD, ref may be stale; likely the SAME modal-overflow class as the Progression panel just fixed —
-check whether the inventory modal is flex-centered + overflow on one element). Lived e2e (extend
-`panel-overflow.spec.js` — open the inventory via `openModal('inventory')` or the store, measure the "+"
-buttons are within [0, viewportHeight]). B8 feel/balance items (500ms damage-lockout, camera-shake-per-frame,
-mob-AI-2D) are Kevin-taste → add a file:line + decision entry to KEVIN-REVIEW-BATCH, do not change.
+**NEXT — the confirmed-bug backlog (A-bis) is nearly drained. Remaining = B8's split + deferrals.**
+**B8 has 4 FIXABLE bugs (pick ONE, VERIFY on live HEAD first):** (1) **left-clicking a chest MINES it** —
+chest + contents deleted, no drop, no confirm (destructive, high-impact; guard the mine action against chest
+blocks — likely a clean pure/e2e unit); (2) **alt-tab leaves movement keys stuck ON** (a blur/visibilitychange
+handler should clear held move intents — likely PURE + testable); (3) **the ocean plane renders inside inland
+caves** (~14% frame budget 1.1km from water — gate the ocean render on proximity/altitude); (4) **spatial
+audio dead until the first hostile spawns** (an AudioContext/listener init ordering bug). Recommend chest-mining
+(destructive) or alt-tab (pure) next.
+**B8 feel/balance → KEVIN-REVIEW-BATCH (do NOT change, add file:line + decision entry):** 500ms global
+damage-lockout, camera-shake decays per-frame-not-per-second, **B4** mob-AI-2D→3D (balance-sensitive). **B2g**
+boss-persistence stays DEFERRED (needs lived/Kevin verification of the store-owns boss-state rewrite).
+**Then:** the campaign's next spine per STATUS — V1 gate-triage / V2·V3 input-driven E2E.
 
