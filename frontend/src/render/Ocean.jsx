@@ -8,6 +8,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SEA_LEVEL, gerstnerHeight, gerstnerNormal } from '../world/oceanProfile.js';
 import { isCaptureMode } from '../devtest/captureMode.js';
+import { oceanVisibleNear } from '../world/oceanVisibility.js';
+import { surfaceBlockAt } from '../world/climate.js';
+
+// B8: surface world-Y sampler for the visibility gate (shares the terrain formula via climate.js).
+const sampleSurfaceY = (x, z) => surfaceBlockAt(x, z).surfaceY;
 
 const PLANE = 220;      // metres covered (re-centred under the camera each frame)
 const SEG = 96;         // subdivisions per axis (vertex density for the wave detail)
@@ -36,10 +41,17 @@ export function Ocean() {
   useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
   useFrame((state) => {
-    const t = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;
     const mesh = meshRef.current; if (!mesh) return;
-    // snap the plane centre to the camera's XZ (so it always covers the view); keep it at SEA_LEVEL.
     const cx = Math.round(camera.position.x), cz = Math.round(camera.position.z);
+    // B8: the plane only COVERS ~110m around the camera, so skip its render AND its ~9.4k-vertex wave
+    // recompute when no water column is within reach — deep inland / inside an inland cave, where the plane
+    // is fully buried under terrain (invisible) yet used to burn ~14% of the frame budget and render through
+    // cave walls. Always on in capture so the visual baselines stay byte-identical (a live-play perf gate).
+    const visible = isCaptureMode() || oceanVisibleNear(cx, cz, sampleSurfaceY);
+    mesh.visible = visible;
+    if (!visible) return;
+    const t = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;
+    // snap the plane centre to the camera's XZ (so it always covers the view); keep it at SEA_LEVEL.
     mesh.position.set(cx, SEA_LEVEL, cz);
     const pos = geo.attributes.position, nrm = geo.attributes.normal, col = geo.attributes.color;
     for (let i = 0; i < pos.count; i++) {
