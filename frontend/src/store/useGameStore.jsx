@@ -6,7 +6,7 @@ import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { writeWorld, listWorlds, mintWorldId, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
-import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
+import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
@@ -658,7 +658,9 @@ export const useGameStore = create((set, get) => ({
     // single-SoT discipline. The spawn loop READS this transiently (getState),
     // never subscribes, so Game-Loop-Isolation holds.
     nightCount: 0,
-    incrementNight: () => set((state) => ({ nightCount: state.nightCount + 1 })),
+    // B2f: nightCount is advanced by setGameTime (the single clock-crossing writer) — there is no
+    // standalone incrementNight action, because a second writer is exactly what let a load double-count
+    // the siege. Direct nightCount writes are reserved for loadWorldData (restore) and the new-world reset.
     // Highest night already rewarded at dawn — the once-per-night guard (persisted in
     // the save slice so a reload mid-run cannot re-grant a night's reward).
     lastRewardedNight: 0,
@@ -698,7 +700,18 @@ export const useGameStore = create((set, get) => ({
         // jump that skips the exact multiple still flips, and a save resumed at a
         // non-aligned gameTime (e.g. 437) still flips when a step first lands >= 600.
         if (crossedHalfCycle(state.gameTime, newTime)) {
-            return { gameTime: newTime, isDay: !state.isDay };
+            // B2f: the siege night-count advances HERE — on a genuine clock crossing INTO night — and
+            // NOWHERE else. It used to be bumped by a reactive isDay-edge watcher in the survival hook,
+            // which cannot tell a real nightfall from a LOAD (loadWorldData sets isDay directly via
+            // isDayAtUnit, with no crossing) — so resuming a night save silently added a phantom siege
+            // night, and it ratcheted +1 on every reload. setGameTime is the single clock-ADVANCE writer,
+            // so gating the bump here makes a load / dev time-jump unable to advance the siege.
+            const enteringNight = crossedIntoNight(state.gameTime, newTime);
+            return {
+                gameTime: newTime,
+                isDay: !state.isDay,
+                ...(enteringNight ? { nightCount: state.nightCount + 1 } : {}),
+            };
         }
         return { gameTime: newTime };
     }),

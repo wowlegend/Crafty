@@ -40,6 +40,21 @@ export function crossedHalfCycle(prevTime, nextTime) {
 }
 
 /**
+ * True iff advancing `gameTime` from `prevTime` to `nextTime` crosses a half-cycle boundary INTO a night
+ * half. This is the single canonical "a real nightfall occurred" signal — a genuine clock ADVANCE, as
+ * distinct from a load or dev time-jump that sets the phase DIRECTLY (loadWorldData via isDayAtUnit,
+ * setTimeOfDay). The siege night-count (nightCount) bumps on THIS, never on a raw `isDay` edge — a reactive
+ * isDay-edge watcher cannot tell a genuine crossing from a load, which is how resuming a night save silently
+ * ratcheted the siege one extra night per reload (B2f).
+ * @param {number} prevTime
+ * @param {number} nextTime
+ * @returns {boolean}
+ */
+export function crossedIntoNight(prevTime, nextTime) {
+  return crossedHalfCycle(prevTime, nextTime) && !isDayAtUnit(nextTime);
+}
+
+/**
  * The day/night phase implied by a `gameTime` value: each successive half-cycle
  * bucket alternates, starting with day at t in [0, 600).
  * @param {number} t

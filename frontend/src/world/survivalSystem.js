@@ -16,10 +16,13 @@ export const useSurvivalMode = (isDay) => {
 
     useEffect(() => {
         if (prevIsDay.current && !isDay) {
-            // Night falls: bump the shared nightCount (drives the escalating siege), then surface a
-            // NUMBERED + tiered warning so the siege has a readable ladder + a survival score.
-            useGameStore.getState().incrementNight();
-            const night = useGameStore.getState().nightCount; // post-increment = the night just begun
+            // Night falls: surface a NUMBERED + tiered warning so the siege has a readable ladder + a
+            // survival score. B2f: this hook NO LONGER writes nightCount — the siege ratchet is advanced
+            // solely by the clock (setGameTime -> crossedIntoNight). It used to call incrementNight() on
+            // this reactive isDay-edge, which fired on a LOAD too (loadWorldData flips isDay), silently
+            // adding a phantom siege night per reload. nightCount is already correct here (setGameTime
+            // bumped it in the same tick that flipped isDay).
+            const night = useGameStore.getState().nightCount;
             setSurvivalWarning(siegeWarning(night));
             setTimeout(() => setSurvivalWarning(null), 4000);
         }
