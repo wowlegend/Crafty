@@ -6,6 +6,9 @@
   inside `setBossHealth(prev=>{})` with the idempotency latch first and markGameWon last; a throwing reward
   stranded the win (gameWon FALSE forever). Extracted to `game/bossKill.js`: pure `applyBossDamage` + a
   post-commit isolated `runBossKillEffects` with the win latch LAST. RED-first e2e (throwing grantXP), mutation-proven.
+- **B8-pierce (`a845bef`) — arcane "pierce 3 targets" triple-hit ONE target.** The hit-loop never excluded the
+  mob it just hit, so a pierced projectile re-resolved the same nearest mob every frame. Fix: per-projectile
+  hitIds + `nearestDamageable(...,excludeIds)`. RED-first behavioral, mutation-proven. unit 2035.
 - **B3b (`b707c60`) — the crystal/wand economy was a black hole.** Currency split across two buckets: writes
   banked into the rendered `blocks`, but reads/spend/seed pointed at unrendered `magic` — so earned crystals
   were unspendable and the wand trade unreachable. One canonical `game/crystalWallet.js`; behavioral RED + mutation-proven.
