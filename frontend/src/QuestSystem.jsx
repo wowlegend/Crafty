@@ -1,5 +1,6 @@
 import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
+import { questMatches } from './game/questMatch.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -193,12 +194,11 @@ export const useQuestSystem = () => {
         setQuests(prev => prev.map(quest => {
             if (quest.completed || quest.claimed) return quest;
 
-            let matches = false;
-            if (quest.type === type) matches = true;
-            if (quest.type === 'kill_type' && type === 'kill_type' && quest.mobType === extra.mobType) matches = true;
-            if (quest.type === 'kill' && (type === 'kill' || type === 'kill_type')) matches = true;
-
-            if (!matches) return quest;
+            // B6a/B6b: the ONE matcher lives in the pure, unit-tested game/questMatch.js. The inline version
+            // here (a) advanced a generic 'kill' quest on BOTH the 'kill' AND 'kill_type' dispatch onMobKill
+            // fires for one death (every "Defeat N mobs" quest completed at half cost), and (b) matched a
+            // kill_type quest for ANY mob, never comparing quest.mobType (every hunt advanced on any kill).
+            if (!questMatches(quest, type, extra)) return quest;
 
             const newProgress = Math.min(quest.progress + amount, quest.target);
             const nowComplete = newProgress >= quest.target;
