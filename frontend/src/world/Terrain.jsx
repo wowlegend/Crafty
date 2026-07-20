@@ -839,6 +839,10 @@ export const MinecraftWorld = React.memo(() => {
             // via `|| 1`), which is how a voxel builder ends up lying to its player about what it placed.
             const numericType = idForBlock(type);
             if (numericType === null) return;
+            // B3c: placement costs the block in SURVIVAL (creative stays free). consumeForPlacement is the
+            // ONE decision point + debit (shared removeFromInventory writer); false = refuse. Placing was
+            // free while mining granted +1 -> an infinite-material loop that gutted the economy.
+            if (!store.consumeForPlacement(type)) return;
             // PLACE
             const placeDirection = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().multiplyScalar(-1);
             const placePos = h.hitPoint.clone().add(placeDirection.multiplyScalar(0.01));

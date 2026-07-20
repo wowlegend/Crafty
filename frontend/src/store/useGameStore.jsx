@@ -4,6 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progressio
 import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
+import { resolvePlacement } from '../world/placementEconomy.js';
 import { writeWorld, listWorlds, mintWorldId, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
@@ -611,6 +612,17 @@ export const useGameStore = create((set, get) => ({
             blocks: { ...state.inventory.blocks, [item]: Math.max(0, (state.inventory.blocks[item] || 0) - quantity) }
         }
     })),
+
+    // B3c: the ONE decision point for whether a placement is allowed and what it costs. Terrain.jsx place()
+    // delegates here so the debit reuses the single removeFromInventory writer (the floor-at-0 invariant
+    // cannot fork). Returns false to REFUSE the placement (survival, no block to place). Creative = free.
+    consumeForPlacement: (blockName) => {
+        const { gameMode, inventory, removeFromInventory } = get();
+        const { allowed, consume } = resolvePlacement(gameMode, inventory.blocks[blockName]);
+        if (!allowed) return false;
+        if (consume > 0) removeFromInventory(blockName, consume);
+        return true;
+    },
 
     showInventory: false,
     setShowInventory: (show) => set((state) => ({ showInventory: typeof show === 'function' ? show(state.showInventory) : show })),
