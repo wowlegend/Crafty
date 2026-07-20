@@ -30,6 +30,19 @@ export function cycleFraction(gameTime) {
   return (((t % CYCLE_UNITS) + CYCLE_UNITS) % CYCLE_UNITS) / CYCLE_UNITS;
 }
 
+// Which side of the dial ring the sun/moon marker lands on for a CSS `rotate(R deg)`. The marker sits at
+// the ring's TOP-CENTRE, so under CSS rotation (y-down => clockwise for +R) it maps to (sin R, -cos R).
+// Pure geometry (no DOM) so a node test can assert the LIVED marker position. |vertical| dominates -> the
+// sky/ground poles (top/bottom); otherwise the horizon sides (right/left) by the horizontal sign.
+export function markerQuadrant(rotationDeg) {
+  const r = ((Number(rotationDeg) || 0) * Math.PI) / 180;
+  const x = Math.sin(r);
+  const y = -Math.cos(r);
+  if (y <= -Math.SQRT1_2) return 'top';
+  if (y >= Math.SQRT1_2) return 'bottom';
+  return x >= 0 ? 'right' : 'left';
+}
+
 // Pure descriptor for the HUD day-phase dial -- the component reads this and does ZERO arithmetic
 // (Game-Loop-Isolation + determinism). isDay is echoed straight from the store's authoritative phase
 // (matches sky/lighting); duskApproaching delegates to isDuskApproaching so the dial's "night soon" cue
@@ -46,6 +59,12 @@ export function dayPhase(gameTime, isDay, nightCount = 0, duskLead = 0.18) {
     duskApproaching: dusk,     // night/siege imminent (same trigger as DuskWarning)
     nightImminent: dusk,       // alias
     nightCount: Math.max(0, Math.floor(Number(nightCount) || 0)),
-    angleDeg: cf * 360,        // ready-to-use marker orbit angle (component applies a -180 display offset)
+    angleDeg: cf * 360,        // raw orbit angle (cycleFraction origin). The dial uses markerAngleDeg, not this.
+    // Display-ready dial rotation. The -90 offset (NOT -180) syncs the marker to the game's REAL clock
+    // (dayNight.isDayAtUnit: day = first half-cycle, night = second) so the sun sits ABOVE the horizon all
+    // day and the moon BELOW it all night, with sunrise=left, noon=top, sunset=right, midnight=bottom.
+    // B5 (18-domain review): the old inline `angleDeg - 180` assumed cf=0 was MIDNIGHT -- it was a
+    // quarter-cycle out of phase (sun drawn underground at dawn; moon high in the sky most of the night).
+    markerAngleDeg: cf * 360 - 90,
   };
 }

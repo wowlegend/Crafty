@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { halfCycleFraction, isDuskApproaching, cycleFraction, dayPhase } from './dayPhase.js';
-import { HALF_CYCLE_UNITS, CYCLE_UNITS } from './dayNight.js';
+import { halfCycleFraction, isDuskApproaching, cycleFraction, dayPhase, markerQuadrant } from './dayPhase.js';
+import { HALF_CYCLE_UNITS, CYCLE_UNITS, isDayAtUnit } from './dayNight.js';
 
 // Pure day/night PHASE math for HUD legibility (dusk pre-warning + day-phase dial). Locks: positive-
 // modulo fractions (robust to resumed/negative gameTime), finite-guards, the dusk-approach predicate
@@ -76,5 +76,60 @@ describe('dayPhase descriptor', () => {
     expect(dayPhase(0, true, 3.7).nightCount).toBe(3); // floor
     expect(dayPhase(0, true, -5).nightCount).toBe(0); // clamp
     expect(dayPhase(0, true, NaN).nightCount).toBe(0);
+  });
+});
+
+// The day-phase dial (HUD.jsx DayPhaseDial): a sun/moon marker orbits a ring whose CSS rotation is
+// markerAngleDeg. The marker sits at the ring's TOP-CENTRE, so rotate(R) lands it at (sin R, -cos R)
+// (y-down => clockwise). markerQuadrant is that pure geometry; this block pins the mapping from the
+// GAME's REAL clock to the marker side.
+//
+// THE BUG THIS GUARDS (18-domain review, B5 "HUD lies"): the dial used the inline `angleDeg - 180`,
+// i.e. it assumed cf=0 was MIDNIGHT. But the game's authoritative phase (dayNight.isDayAtUnit) is DAY
+// for the FIRST half-cycle [0, 600) and NIGHT for [600, 1200) -> real noon is t=300, real midnight
+// t=900. `- 180` was a quarter-cycle (90 deg) out of phase: the SUN glyph was drawn BELOW the horizon
+// for the first quarter of the day and the MOON rode HIGH in the sky for most of the night. The fix
+// moves the offset to `- 90` (markerAngleDeg in the pure kernel) -> sun above the horizon all day,
+// moon below it all night.
+//
+// MUTATION-PROOF: change `cf * 360 - 90` back to `- 180` (or any other offset) in dayPhase.js and the
+// anchor assertions below go RED (real noon no longer lands on top).
+describe('day-phase dial marker — synced to the REAL day/night clock (B5)', () => {
+  // Real game phase anchors: sunrise = day start, noon = mid-day, sunset = day end, midnight = mid-night.
+  const SUNRISE = 0;
+  const NOON = HALF_CYCLE_UNITS / 2;      // t=300, deep in the FIRST (day) half
+  const SUNSET = HALF_CYCLE_UNITS;        // t=600, the day->night boundary
+  const MIDNIGHT = HALF_CYCLE_UNITS * 1.5; // t=900, deep in the SECOND (night) half
+  const side = (t) => markerQuadrant(dayPhase(t, isDayAtUnit(t)).markerAngleDeg);
+
+  it('sanity: the game clock has day in the first half-cycle, night in the second', () => {
+    expect(isDayAtUnit(NOON)).toBe(true);      // t=300 is day
+    expect(isDayAtUnit(MIDNIGHT)).toBe(false); // t=900 is night
+  });
+
+  it('places the sun/moon marker on the documented side at each real phase', () => {
+    expect(side(SUNRISE)).toBe('left');    // east on the left
+    expect(side(NOON)).toBe('top');        // sun high at midday
+    expect(side(SUNSET)).toBe('right');    // west on the right
+    expect(side(MIDNIGHT)).toBe('bottom'); // moon below the horizon at deep night
+  });
+
+  it('keeps the sun above the horizon ALL day and the moon below it ALL night (the real fix)', () => {
+    for (const t of [HALF_CYCLE_UNITS * 0.25, HALF_CYCLE_UNITS * 0.75]) {
+      expect(isDayAtUnit(t)).toBe(true);
+      expect(side(t)).not.toBe('bottom'); // daytime marker is never below the horizon
+    }
+    for (const t of [HALF_CYCLE_UNITS * 1.25, HALF_CYCLE_UNITS * 1.75]) {
+      expect(isDayAtUnit(t)).toBe(false);
+      expect(side(t)).not.toBe('top');    // night-time marker is never high in the sky
+    }
+  });
+
+  it('markerQuadrant classifies the exact cardinal rotations (y-down clockwise from top-centre)', () => {
+    expect(markerQuadrant(0)).toBe('top');
+    expect(markerQuadrant(90)).toBe('right');
+    expect(markerQuadrant(180)).toBe('bottom');
+    expect(markerQuadrant(270)).toBe('left');
+    expect(markerQuadrant(-90)).toBe('left');
   });
 });

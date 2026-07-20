@@ -78,7 +78,7 @@ const DayPhaseDial = React.memo(() => {
     const apply = () => {
       const st = useGameStore.getState();
       const p = dayPhase(st.gameTime, st.isDay);
-      if (orbitRef.current) orbitRef.current.style.transform = `rotate(${p.angleDeg - 180}deg)`;
+      if (orbitRef.current) orbitRef.current.style.transform = `rotate(${p.markerAngleDeg}deg)`;
       if (labelRef.current) {
         labelRef.current.textContent = p.duskApproaching ? 'DUSK' : (!p.isDay ? 'NIGHT' : '');
         labelRef.current.style.color = p.duskApproaching ? 'rgb(var(--ui-warn))' : '';
@@ -99,7 +99,7 @@ const DayPhaseDial = React.memo(() => {
         <div className="relative w-11 h-11 rounded-full border-chrome border-ink bg-slot overflow-hidden">
           {/* horizon line: above = sky (sun/moon high), below = night/ground -> the orbit reads as a sky arc */}
           <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-ink opacity-50" />
-          <div ref={orbitRef} className="absolute inset-0" style={{ transform: `rotate(${init.angleDeg - 180}deg)` }}>
+          <div ref={orbitRef} className="absolute inset-0" style={{ transform: `rotate(${init.markerAngleDeg}deg)` }}>
             <div className="absolute left-1/2 top-0.5 -translate-x-1/2">
               {isDay
                 ? <Icon name="sun" size={14} className="text-accent" />
