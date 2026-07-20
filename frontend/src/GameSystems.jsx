@@ -148,12 +148,12 @@ export const SPELL_MANA_COSTS = {
 
 // Health Bar Component
 export const PlayerHealthBar = ({ health, maxHealth }) => (
-    <StatBar kind="health" icon="health" value={health} max={maxHealth} showValue className="w-44" />
+    <StatBar data-testid="stat-health" kind="health" icon="health" value={health} max={maxHealth} showValue className="w-44" />
 );
 
 // Mana Bar Component
 export const PlayerManaBar = ({ mana, maxMana }) => (
-    <StatBar kind="mana" icon="water" value={mana} max={maxMana} showValue className="w-44" />
+    <StatBar data-testid="stat-mana" kind="mana" icon="water" value={mana} max={maxMana} showValue className="w-44" />
 );
 
 // Hunger Bar Component

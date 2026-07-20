@@ -544,7 +544,12 @@ export function HUD({
 
             <DayPhaseDial />
 
-            <div className="absolute top-16 left-4 pointer-events-none z-20 space-y-2">
+            {/* B5 (18-domain review, "HUD lies"): moved from `top-16 left-4` (buried under the QuestTracker
+                panel — the health bar was 100% invisible) to the free bottom-left corner (conventional RPG
+                placement). And the container is now a real `flex flex-col` column: StatBar's root is
+                `inline-flex`, so the old `space-y-2` (margin-top on inline-level boxes) laid the 7 bars out
+                as a horizontal RIBBON — flex-col stacks them vertically. `w-44` gives all bars one width. */}
+            <div data-testid="stat-stack" className="absolute bottom-4 left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               {/* W3 M-HUD.9: the hunger bar is a SURVIVAL-mode mechanic — in creative it pinned a static

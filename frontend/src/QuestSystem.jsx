@@ -434,7 +434,7 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
     const expanded = userToggled === null ? !touch : userToggled;
 
     return (
-        <div className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 220 : 280 }}>
+        <div data-testid="quest-tracker" className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 220 : 280 }}>
             <Panel variant="raise" className="overflow-hidden p-0">
                 <button
                     type="button"
