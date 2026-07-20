@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-14 (cont.) — B7: tapping Settings paused the game; tapping Pause did nothing
+
+- **B7-touch (`9f6c422`) — the Pause touch hit-target was on the wrong button.** The transparent Pause
+  hit-target (`button[aria-label="Pause"]`) was at `right: 8` while its visible glyph is at `right: 64`, so it
+  was disjoint from the glyph and instead overlapped the GameHud Settings gear (`right-4`). On a 390px phone
+  the glyph occupied x280–326 but the hit-target x338–382, overlapping the gear x332–374 → tapping the Pause
+  icon missed, tapping Settings paused the game. Fix: aligned the hit-target to its glyph (`right: 64, 46×46`)
+  — the pattern the code's own comment states ("hit-target geometry mirrors the visible glyphs"). Verified in
+  a REAL touch browser (`touch-controls.spec.js` measures the glyph/hit/gear rects), RED→GREEN, mutation-proven.
+  Only the transparent hit-target moved → no baseline impact. (Verify-before-assert: the registry's cited
+  `touchHandlers.js:39-44` was stale look-zone code; the real hit-target was in `TouchControls.jsx`.)
+
 ## 2026-07-14 (cont.) — B7: a stray tap in the left half froze a player mid-run
 
 - **B7-touch (`83ef50d`) — a stray tap killed a held joystick.** The touch zone router (`touchMath.js`) made

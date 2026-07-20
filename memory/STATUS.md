@@ -260,7 +260,14 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   kill counts twice**. The **mobType filter is dead code** — killing any mob advances every targeted-hunt quest
   ("Defeat 5 moss brutes" completes on 5 spider kills). Two of the twelve achievements **can never unlock**
   (`updateLevel` has zero callers). `QuestSystem.jsx:197-199/317-318/398-404`.
-- ▣ **B7 [LOOP] TOUCH — invisible-controls (`d45b698`) + stray-tap-freeze (`83ef50d`) FIXED, 2026-07-14; 2 sub-bugs OPEN.**
+- ▣ **B7 [LOOP] TOUCH — colors (`d45b698`) + stray-tap (`83ef50d`) + pause-mistap (`9f6c422`) FIXED, 2026-07-14; 1 sub-bug (hotbar overflow) OPEN.**
+  ✓ **Pause-mistap FIXED.** The transparent Pause touch hit-target was disjoint from the visible Pause glyph
+  and sat on top of the GameHud Settings gear: on a 390px phone the glyph was at x280–326 but the hit-target
+  at x338–382 (`right: 8`), overlapping the gear (x332–374) → tapping Settings paused the game, tapping the
+  Pause icon did nothing. Fix: aligned the hit-target to its glyph (`right: 64, 46×46`, `TouchControls.jsx`).
+  Verified in a REAL touch browser (`touch-controls.spec.js` measures the 3 rects): RED-first hit disjoint
+  from glyph + covering the gear; GREEN hit exactly under the glyph + clear of the gear. Mutation-proven. Only
+  the transparent hit-target moved → no baseline impact.
   ✓ **Stray-tap-kills-joystick FIXED.** The touch zone router made EVERY left-half touch a 'move' touch, so a
   stray tap while the joystick was held also owned the move zone — and `handleTouchEnd` clears all four move
   intents when ANY move touch ends, so the tap's release froze the player mid-run. Fix (pure, in
@@ -273,13 +280,11 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   constants in `rgb(...)` (`ui/TouchControlsSurface.jsx`). Verified in a REAL touch browser — new
   **`tests/e2e/touch-controls.spec.js`** (chromium + `hasTouch`) reads the knob's computed style: RED-first
   `bg rgba(0,0,0,0)` / `border 0px`; GREEN `bg rgb(201,168,106)` / `border 4px`. Mutation-proven (constants
-  are the sole RED→GREEN variable). **STILL OPEN (2 sub-bugs, own probes):** (1) the Pause hit-button is
-  disjoint from the glyph + covers the Settings gear → **tapping Settings pauses** (verify the real hit-target
-  location on live HEAD — the registry's `touchHandlers.js:39-44` ref is stale; the pause glyph is at
-  `TouchControlsSurface.jsx:76 right:64`); (2) the hotbar **overflows the phone viewport** — 9 slots ×
-  `w-[62px]` + gaps + padding ≈ 642px centered on a 390px phone → ~2 slots off each edge (`ui/GameHud.jsx:20-24`,
-  measurable via the touch e2e). **+ the `mobile.png` visual baseline now shows the OLD invisible knob → joins
-  the owed re-baseline batch.**
+  are the sole RED→GREEN variable). **STILL OPEN (1 sub-bug):** the hotbar **overflows the phone viewport** —
+  9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px centered on a 390px phone → ~2 slots off each edge
+  (`ui/GameHud.jsx:20-24`, measurable via the touch e2e; the responsive-shrink/scroll approach is
+  taste-adjacent → pick the conventional mobile one + note for Kevin). **+ the `mobile.png` visual baseline
+  now shows the OLD invisible knob → joins the owed re-baseline batch.**
 - ▢ **B8 [LOOP] COMBAT + WORLD FEEL.** A pack of N enemies deals the damage of **ONE** (a 500ms *global* damage
   lockout caps ALL incoming damage at 2 hits/sec → the siege cannot threaten you). Camera shake decays **per
   frame, not per second** (1067ms @30fps vs 267ms @120fps). **Fireball — the default starting spell — cannot hit

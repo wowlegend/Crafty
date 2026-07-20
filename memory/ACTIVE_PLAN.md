@@ -134,7 +134,26 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 B7 stray-tap-freeze SHIPPED (`83ef50d`, 2026-07-14); NEXT = B7 remainder (2 left)
+## 📍 B7 pause-mistap SHIPPED (`9f6c422`, 2026-07-14); NEXT = B7 hotbar overflow (last sub-bug)
+✅ **B7 pause-mistap — DONE.** The transparent Pause touch hit-target was disjoint from the visible Pause
+glyph and sat on the GameHud Settings gear: on a 390px phone the glyph was at x280–326 but the hit-target at
+x338–382 (`right: 8`), overlapping the gear (x332–374) → tapping Settings paused, tapping the Pause icon did
+nothing. Fix: aligned the hit-target to its glyph (`right: 64, 46×46`, `TouchControls.jsx`) — the pattern the
+code's own comment states. RED-first via `touch-controls.spec.js` (measures glyph/hit/gear rects): hit
+disjoint + covering gear → GREEN hit under glyph + clear of gear. Mutation-proven. Only the transparent
+hit-target moved → no baseline impact. **Verify-before-assert win: the registry's `touchHandlers.js:39-44`
+ref was stale (look-zone code); the real hit-target was `TouchControls.jsx` line ~127.**
+
+**NEXT — B7 hotbar overflow (LAST B7 sub-bug) → then B5 modal-overflow → then B8 feel/balance (KEVIN).**
+The hotbar (`ui/GameHud.jsx:20-24` MinecraftHotbar) is 9 slots × `w-[62px]` + gap-2 + p-2.5 ≈ 642px, centered
+(`left-1/2 -translate-x-1/2`), so on a 390px phone ~2 slots run off EACH edge. RED-first via the touch e2e:
+measure all 9 `[data-hotbar-block]` rects, assert each is within [0, viewportWidth]. Fix is taste-adjacent
+(shrink slots on touch / horizontal-scroll / scale-to-fit) — pick the conventional mobile approach (likely a
+touch-only smaller slot size or a max-w + scroll) + note it for Kevin. Use the `touch-controls.spec.js`
+pattern. B5 modal-overflow remainder after: Progression header off-screen (`ui/SpellUpgradePanel.jsx:40`),
+Inventory "+" below fold (`ui/GamePanels.jsx:252`).
+
+## 📍 (superseded) B7 stray-tap-freeze SHIPPED (`83ef50d`, 2026-07-14)
 ✅ **B7 stray-tap-kills-joystick — DONE.** The touch zone router made EVERY left-half touch a 'move' touch,
 so a stray tap while the joystick was held owned the move zone too — and `handleTouchEnd` clears all four
 move intents when ANY move touch ends → the tap's release froze the player mid-run. Fix (pure, in
