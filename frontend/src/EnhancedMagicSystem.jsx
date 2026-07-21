@@ -20,6 +20,7 @@ import { notifyDenied } from './ui/denyToast';
 import * as THREE from 'three';
 import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc } from './render/spellVfx';
 import { chainArcPoints } from './game/chainArc';
+import { makeBurnManager } from './game/burnManager';
 export { MagicWand } from './render/spellVfx';
 
 export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
@@ -38,20 +39,15 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
   const projectilesDirty = useRef(false);
 
 
+  // Fire DoT tickers are owned by a registry so an unmount mid-burn can stop them all — otherwise a burn
+  // still active at teardown would leak a 1s setInterval hammering damage into GameMethods forever.
+  const burnManagerRef = useRef(null);
+  if (!burnManagerRef.current) burnManagerRef.current = makeBurnManager();
+  useEffect(() => () => burnManagerRef.current?.stopAll(), []);
+
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
-    let ticksRemaining = Math.floor(duration);
-    const burnInterval = setInterval(() => {
-      if (ticksRemaining <= 0 || !GameMethods.damageMob) {
-        clearInterval(burnInterval);
-        return;
-      }
-      const mob = GameMethods.damageMob(mobId, dps, 'fireball');
-      if (!mob) {
-        clearInterval(burnInterval);
-        return;
-      }
-      ticksRemaining--;
-    }, 1000);
+    // damageMob is read per-tick (via the getter) so the burn stops the instant it disappears.
+    burnManagerRef.current.start(mobId, duration, dps, () => GameMethods.damageMob);
   }, []);
 
   const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
