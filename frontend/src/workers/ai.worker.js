@@ -94,22 +94,28 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
 // 2D Line-Of-Sight height check on a local 9x9 height grid
 // x1, z1 are starting grid coords (typically 4, 4)
 // x2, z2 are destination grid coords
+// hasLineOfSight — inline mirror of game/mobLineOfSight.js (this classic Worker cannot import; the
+// mob-los-sync gate keeps the two copies in step). Endpoints are clamped onto the 9x9 window so a
+// far-off player/target cell cannot read off-grid: an out-of-bounds index reads undefined, the height
+// comparison goes NaN, and LOS falsely reports "clear" — which makes cover unfindable at range.
 function hasLineOfSight(heightGrid, x1, z1, x2, z2) {
   const cols = 9;
-  const startH = heightGrid[x1 + z1 * cols];
-  const endH = heightGrid[x2 + z2 * cols];
-  
-  // Trace cells from (x1, z1) to (x2, z2)
-  const steps = Math.max(Math.abs(x2 - x1), Math.abs(z2 - z1));
+  const clampCell = (v) => (v < 0 ? 0 : v > 8 ? 8 : v);
+  const ax = clampCell(x1), az = clampCell(z1), bx = clampCell(x2), bz = clampCell(z2);
+  const startH = heightGrid[ax + az * cols];
+  const endH = heightGrid[bx + bz * cols];
+
+  // Trace cells from (ax, az) to (bx, bz)
+  const steps = Math.max(Math.abs(bx - ax), Math.abs(bz - az));
   if (steps === 0) return true;
-  
+
   for (let i = 1; i < steps; i++) {
     const t = i / steps;
-    const px = Math.round(x1 + (x2 - x1) * t);
-    const pz = Math.round(z1 + (z2 - z1) * t);
+    const px = Math.round(ax + (bx - ax) * t);
+    const pz = Math.round(az + (bz - az) * t);
     const idx = px + pz * cols;
     const cellH = heightGrid[idx];
-    
+
     // An intermediate column is blocking if it rises significantly higher than both ends
     if (cellH > Math.max(startH, endH) + 1.2) {
       return false; // Obstruction found!
