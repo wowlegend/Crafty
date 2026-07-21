@@ -51,8 +51,9 @@ export function reduceClaim(state, questId, pickNext) {
   const completedQuestIds = new Set(prevCompleted);
   completedQuestIds.add(questId);
 
-  // Drop the claimed quest (and any previously-claimed stragglers) from the active feed.
-  const active = quests.filter((q) => q.id !== questId && !q.claimed);
+  // Drop the claimed quest (and any previously-claimed stragglers) from the active feed. The `q &&`
+  // guard mirrors the find() above — a null/undefined entry must not crash the claim.
+  const active = quests.filter((q) => q && q.id !== questId && !q.claimed);
 
   if (active.length < MAX_ACTIVE_QUESTS && typeof pickNext === 'function') {
     const next = pickNext(completedQuestIds, active);
