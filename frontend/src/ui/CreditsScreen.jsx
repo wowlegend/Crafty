@@ -66,7 +66,7 @@ export const CreditsScreen = React.memo(({ onClose }) => {
                         <CreditRow label="Lilita One" license="OFL" />
                         <CreditRow label="Space Grotesk" license="OFL" />
                         <CreditRow label={t('credits.font_smiley')} license="OFL" />
-                        <CreditRow label="Alibaba PuHuiTi 3.0" license={t('credits.license_free_commercial')} />
+                        <CreditRow label={t('credits.font_puhuiti')} license={t('credits.license_free_commercial')} />
                     </Panel>
 
                     {/* Built with */}

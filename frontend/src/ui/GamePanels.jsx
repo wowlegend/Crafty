@@ -89,11 +89,12 @@ const GearInspector = ({ itemName, equippedGear }) => {
     const rarityText = RARITY_TEXT[rarity];
 
     if (!stats) {
-        // Fallback for blocks/consumables
-        const isFood = ['Cooked Porkchop', 'Cooked Beef'].includes(itemName);
+        // Fallback for blocks/consumables. Drive the consumable label off the shared registry so raw meats,
+        // rotten flesh, and XP gems (Diamond / Golden Crown / Star Fragment) aren't mislabelled as building
+        // material (the old hardcoded 2-item food list only caught Cooked cuts).
         const isPotion = itemName.includes('Potion');
         let desc = 'Standard building voxel or crafting element.';
-        if (isFood) desc = 'Consumable: Feeds and heals champion.';
+        if (isConsumable(itemName)) desc = 'Consumable: use it from your inventory.';
         if (isPotion) desc = 'Consumable: Restores Health or Mana.';
 
         return (

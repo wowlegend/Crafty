@@ -27,7 +27,7 @@ export const solveSpellDamage = (attackerStats, baseSpellDmg = 20, spellType = '
     else if (spellType === 'lightning') color = '#FFD700';
 
     return {
-        damage: Math.round(isCrit ? finalDmg * 1.8 : finalDmg),
+        damage: isCrit ? Math.round(finalDmg * 1.8) : finalDmg, // finalDmg is already rounded (L20); only crit needs re-rounding
         isCrit,
         color
     };

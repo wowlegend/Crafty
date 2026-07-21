@@ -1,5 +1,6 @@
 import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
+import { useT } from '../i18n/i18n.js';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
@@ -31,6 +32,7 @@ const BTN = (extra) => ({
  * baseline. `nub` = optional {x,y} px offset for the dynamic knob (live path).
  */
 export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
+  const t = useT();
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 42, pointerEvents: 'none' }}>
       {/* legibility scrim: faint dark vignette in the two thumb corners so controls pop over bright scenes */}
@@ -45,7 +47,7 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
       {trayOpen && TRAY_PANELS.map((p, i) => {
         const Icon = TRAY_ICON[p.id];
         return (
-          <div key={p.id} aria-label={p.label}
+          <div key={p.id} aria-label={t(p.labelKey)}
                style={BTN({ top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 })}>
             {Icon && <Icon size={26} strokeWidth={2.4} color={GLYPH} />}
           </div>

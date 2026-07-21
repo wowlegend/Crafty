@@ -1,5 +1,15 @@
 import * as THREE from 'three';
 
+// Ore tiles (layers 10..13): each nugget's locked BLOCK_TYPES colour + noise seed. Hoisted to module scope —
+// a fixed deterministic table that was previously re-allocated inside the per-pixel double loop (size*size
+// times per ore layer) for nothing.
+const ORE_TILES = [
+  { layer: 10, seed: 21.7, r: 47,  g: 47,  b: 47  }, // coal    #2F2F2F (dark flecks)
+  { layer: 11, seed: 33.1, r: 216, g: 175, b: 147 }, // iron    #D8AF93
+  { layer: 12, seed: 44.9, r: 252, g: 238, b: 75  }, // gold    #FCEE4B
+  { layer: 13, seed: 57.3, r: 79,  g: 208, b: 231 }, // diamond #4FD0E7
+];
+
 export function createProceduralVoxelTextures() {
   const size = 32; // 32x32 resolution per texture slice
   // Layer index == block code (see src/world/blockIds.js + BLOCK_COLORS in terrain.worker.js).
@@ -144,13 +154,7 @@ export function createProceduralVoxelTextures() {
         const strata = (Math.floor(y / 4) % 2) * 6;
         const baseColor = (isVein ? 132 : 104) + strata;
         const c = Math.floor(baseColor * (0.9 + n3 * 0.18)); // the surrounding stone matrix
-        const ORES = [
-          { layer: 10, seed: 21.7, r: 47,  g: 47,  b: 47  }, // coal    #2F2F2F (dark flecks)
-          { layer: 11, seed: 33.1, r: 216, g: 175, b: 147 }, // iron    #D8AF93
-          { layer: 12, seed: 44.9, r: 252, g: 238, b: 75  }, // gold    #FCEE4B
-          { layer: 13, seed: 57.3, r: 79,  g: 208, b: 231 }, // diamond #4FD0E7
-        ];
-        for (const ore of ORES) {
+        for (const ore of ORE_TILES) {
           if (getNoise(x, y, ore.seed) > 0.74) {
             const v = 0.85 + getNoise(x, y, ore.seed + 1.0) * 0.3; // per-pixel grit on the nugget
             setPixel(ore.layer, x, y, Math.min(255, Math.floor(ore.r * v)), Math.min(255, Math.floor(ore.g * v)), Math.min(255, Math.floor(ore.b * v)));

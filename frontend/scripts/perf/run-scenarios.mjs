@@ -71,7 +71,11 @@ try {
   console.log(`\nwrote ${file}`);
   if (Object.keys(report.deltas).length) console.table(report.deltas);
   const cb = report.deltas['C-B'];
-  if (cb) console.log(`M2 gate C−B vs budget ${JSON.stringify(M2_BUDGET)}: ${withinBudget(cb) ? 'PASS ✅' : 'FAIL ❌'}`);
+  if (cb) {
+    const pass = withinBudget(cb);
+    console.log(`M2 gate C−B vs budget ${JSON.stringify(M2_BUDGET)}: ${pass ? 'PASS ✅' : 'FAIL ❌'}`);
+    if (!pass) process.exitCode = 1; // the "gate" must actually FAIL the process, not merely log a verdict
+  }
 } finally {
   await shutdown(browser);
 }
