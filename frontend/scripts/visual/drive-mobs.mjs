@@ -23,7 +23,7 @@ try {
   await page.evaluate(() => window.__craftyTest.call('mobShowcase'));
   await delay(2500);
   await page.screenshot({ path: '/Users/kz/Code/Crafty/.superpowers/mob-variety-refs/mobs-card-1.png' });
-  console.log('CAPTURED zones-card-1');
+  console.log('CAPTURED mobs-card-1');
 } catch (e) { console.error('DRIVE-MOBS ERROR:', e); code = 1; }
 finally { await shutdown(browser); }
 process.exit(code);

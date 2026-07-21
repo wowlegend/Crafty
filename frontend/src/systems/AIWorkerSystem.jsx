@@ -44,7 +44,7 @@ export const AIWorkerSystem = () => {
             if (entity) {
                 const dir = [
                     camera.position.x - entity.position.x,
-                    8, // Vertical boost
+                    0, // no vertical term: the knockback consumer (below) applies X/Z only, so the leap is horizontal
                     camera.position.z - entity.position.z
                 ];
                 const mag = Math.sqrt(dir[0]*dir[0] + dir[2]*dir[2]) || 1; // guard: mob directly under player -> 0 -> NaN position

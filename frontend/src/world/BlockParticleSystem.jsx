@@ -81,7 +81,8 @@ export const BlockParticleSystem = ({ worker }) => {
     useFrame((state, delta) => {
         if (!meshRef.current || !api.current) return;
         
-        // Custom scale matrix manipulation to shrink particles as they die
+        // Age each live particle; at 2s it's "dead" and teleported far below the world (no scale change —
+        // particles hold full scale for their whole 2s life).
         for (let i = 0; i < MAX_PARTICLES; i++) {
             if (ages.current[i] < 2.0) {
                 ages.current[i] += delta;

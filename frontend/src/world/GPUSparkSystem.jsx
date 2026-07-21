@@ -72,10 +72,7 @@ const fragmentShader = `
     // blending, clipping toward white at peak. A lower gain keeps the additive glow within range so
     // the mob's color SURVIVES (a green mob reads green at peak), still bright enough to bloom.
     vec3 glow = vColor * (1.0 + vLife * 2.0);
-    
-    // Soft radial round edge for premium particle looks
-    vec2 coord = gl_PointCoord - vec2(0.5);
-    // (If drawing standard geometries, standard UV coordinates can serve circular feathering)
+    // Square additive sprites (no radial feathering — gl_PointCoord is meaningless for these plane quads).
     gl_FragColor = vec4(glow, vLife);
   }
 `;

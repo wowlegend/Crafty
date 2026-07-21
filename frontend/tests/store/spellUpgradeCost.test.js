@@ -35,8 +35,8 @@ describe('cast charges the leveled mana cost (production seam, end-to-end)', () 
     expect(useGameStore.getState().mana).toBe(85);
   });
 
-  it('an unmapped spell (no upgrade-table entry) charges the static base', () => {
-    const getSpellStats = () => null; // this spell has no entry in the upgrade table
+  it('a null getSpellStats (pre-mount / no leveled stats) charges the static base', () => {
+    const getSpellStats = () => null; // hook not mounted yet -> null -> fall back to the static base
     const manaCost = resolveCastManaCost(getSpellStats, 'arcane', SPELL_MANA_COSTS.arcane);
     expect(manaCost).toBe(18); // static arcane base
     useGameStore.getState().useMana(manaCost);

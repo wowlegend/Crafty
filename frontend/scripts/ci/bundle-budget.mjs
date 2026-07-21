@@ -15,7 +15,8 @@
  *   2. three / rapier / r3f stay in SEPARATE chunks (the cache-stability property manualChunks exists for).
  *
  * MUTATION-PROOF (per LOOP-CHARTER §3 — a gate you have not seen fail is not a gate):
- *   Add `import * as THREE from 'three'` to an entry module, rebuild → `index` blows its budget → RED.
+ *   Add `import * as THREE from 'three'` to an entry module, rebuild → manualChunks buckets the pulled
+ *   three modules into the `three` chunk, which blows its budget → RED.
  *   Remove `manualChunks` from vite.config.js, rebuild → the split assertion → RED.
  *   Point OUT_DIR at a non-existent dir → "no chunks found" → RED (it fails loud instead of passing empty).
  */

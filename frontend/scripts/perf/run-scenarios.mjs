@@ -1,4 +1,4 @@
-// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADED Chrome
+// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADLESS Chrome (headless:'new')
 // (real GPU — SwiftShader numbers would be meaningless) and collect window.__craftyPerfResult
 // per scenario. Writes the report JSON to <repo-root>/memory/perf/ (committed evidence) and
 // prints the C−B gate verdict using the same tested budget module the app uses.

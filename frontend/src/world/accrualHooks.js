@@ -20,7 +20,7 @@ export const useFerocityAccrual = () => {
     }), []);
 };
 
-// S2-B2-M4: the Kinetic twin — day kills bank grab charge (spent per combat grab, dawn-bled).
+// S2-B3: Soul accrual (Soulbind) — day kills bank Soul charge (spent on captures, dawn-bled).
 export const useSoulAccrual = () => {
     useEffect(() => subscribeMobKill((mobType, _pos, source) => {
         const s = useGameStore.getState();
@@ -29,6 +29,7 @@ export const useSoulAccrual = () => {
     }), []);
 };
 
+// S2-B2-M4: the Kinetic twin — day kills bank grab charge (spent per combat grab, dawn-bled).
 export const useKineticAccrual = () => {
     useEffect(() => subscribeMobKill((mobType, _pos, source) => {
         const s = useGameStore.getState();
