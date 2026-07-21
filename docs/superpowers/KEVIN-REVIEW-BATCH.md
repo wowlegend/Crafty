@@ -522,3 +522,34 @@
 ## Fireball/iceball flight arc (from B8, 2026-07-14)
 - Fixed the functional bug: the default fireball couldn't hit past ~12m (gravity 12/s^2 on a crosshair-aimed spell arced it into the ground). Set drop = 0 (straight flight, aim == hit) in `frontend/src/game/projectilePhysics.js`.
 - **Taste option for you:** if you want fireball to feel like a WEIGHTY lobbed grenade (a slight arc), bump `PROJECTILE_GRAVITY.fireball` and add upward aim-compensation so it still hits the crosshair. Left at 0 (matches lightning/arcane direct-fire) as the neutral, non-guessed default.
+
+## 🔭 Holistic review — visual/taste items routed (2026-07-21)
+Found during the Phase-2 holistic sweep. Each is a real defect or an intent question, but the RESULT is
+visual — a headless gate can't tell me it reads right — so I'm routing the look/decision to you rather than
+guessing. The code fix for the bug-class ones is understood and ready; say the word (or confirm the intended
+look) and I'll apply + re-baseline.
+
+- **[11] Render tier `high` is unreachable on real hardware** (`render/quality.js:33`). It gates on
+  `deviceMemory >= 12`, but `navigator.deviceMemory` is spec-clamped to a max of **8**, so NO real device
+  ever selects the `high` tier (the visual gate forces `high` separately for determinism). Options: lower to
+  `>= 8 && cores >= 8` (gives capable 8GB+ machines the high tier — but that's a real perf tradeoff on those
+  devices), or delete the dead branch if never-init-at-high is intended. **Your call — it changes what real
+  players get.** Left untouched.
+- **[0] Terrain UV tiling transposed on X/Z faces** (`world/terrain.worker.js:912`). The fixed `uvs.push`
+  order matches the +Y/-Y faces but transposes tiling on the side faces — block textures may read rotated on
+  walls. Fix is deterministic; want me to correct it and re-baseline the terrain shots?
+- **[3] Boss hit-flash may not fire** (`render/BossEntity.jsx:466`). The flash is driven by a ref
+  (`flashTime.current`) consumed at render time, which React doesn't re-render on — the boss may not visibly
+  flash when hit. Needs a lived hit to confirm before/after.
+- **[9] Mob hit-flash overwrites feature colors** (`render/MobModel.jsx:191`). The hit-flash traverse recolors
+  EVERY material (feature-boxes, villager nose) to the single flash color, not just the body — a mob may lose
+  its face detail mid-flash. Fix: scope the flash to body materials only. Visual confirm needed.
+- **[10] Rain streaks inherit a stale rotation** (`render/WeatherSystem.jsx:219`). The instancing loop never
+  resets the shared `_weatherDummy` rotation, so streaks can pick up a rotation left from a prior use (rain
+  slanting wrong). Fix: reset the dummy each instance. Deterministic; want it applied?
+- **spellVfx ice-trail cone taper DIRECTION** (`render/spellVfx.jsx:114`). The cone tapers to a point at the
+  HEAD (leading edge) and is wide at the tail — comment now describes reality, but did you intend a trailing
+  point (flip the cone)? Taste call.
+- **spellVfx cast-telegraph ring** (`render/spellVfx.jsx:720`). It's an octagonal 8-segment ring band, not the
+  "radial ticks" the old comment claimed. Keep the smooth band, or build real discrete radial ticks (+ rename
+  `spokesRef`)? Taste call.
