@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
-import { BOSS_CONFIG } from '../game/bossConfig.js';
+import { BOSS_CONFIG, BOSS_LOOT } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
@@ -99,7 +99,7 @@ export const useBossSystem = (playerLevel) => {
             ['defeated', () => setBossDefeated(true)],
             ['notify', () => { setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!'); scheduleNotifClear(6000); }],
             ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!')],
-            ['loot', () => { if (store.addToInventory) { store.addToInventory('Crown of the Dragon King', 1); store.addToInventory('Dragon Scale', 3); } }],
+            ['loot', () => { if (store.addToInventory) for (const [item, qty] of BOSS_LOOT) store.addToInventory(item, qty); }],
             // M2 #7 climactic boss-kill beat: a brief slow-mo freeze ('boss'-tier hitstop) + a bloom flash.
             ['hitstop', () => useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss })],
             ['bloom', () => store.triggerBloomSpike && store.triggerBloomSpike(450)],

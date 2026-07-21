@@ -23,6 +23,14 @@ describe('rarityBeam', () => {
     expect(rarityBeam('common').color).toMatch(/^rgb\(/); // common was rgba -> now rgb
   });
 
+  it('common: the rgba->rgb strip PRESERVES the r/g/b channel values (not just the format)', () => {
+    // A format-only check would still pass if toThreeColor dropped a channel (e.g. returned rgb(0,0,0)).
+    // Derived from the source rgba so it survives a palette re-tint. MUTATION-PROOF: make toThreeColor
+    // return the raw match[0] or rgb(0,0,0) and this goes RED.
+    const [, r, g, b] = /rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/.exec(RARITY_FILL.common.ring);
+    expect(rarityBeam('common').color).toBe(`rgb(${r}, ${g}, ${b})`);
+  });
+
   it('returns numeric height + intensity for every tier', () => {
     for (const tier of RARITY_TIERS) {
       const b = rarityBeam(tier);

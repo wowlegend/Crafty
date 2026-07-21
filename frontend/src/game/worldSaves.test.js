@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { listWorlds, readWorld, writeWorld, deleteWorld, getActiveWorldId, setActiveWorldId } from './worldSaves.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld, getActiveWorldId, setActiveWorldId, mintWorldId } from './worldSaves.js';
 
 describe('worldSaves localStorage helper', () => {
   beforeEach(() => localStorage.clear());
@@ -46,5 +46,22 @@ describe('worldSaves localStorage helper', () => {
     expect(getActiveWorldId()).toBe('local_42');
     setActiveWorldId(null);
     expect(getActiveWorldId()).toBeNull();
+  });
+
+  it('mintWorldId avoids same-millisecond collisions (base -> _2 -> _3, the id the slice exists to protect)', () => {
+    // Freeze the clock so Date.now() is stable -> two worlds minted in the same ms MUST NOT collide.
+    // MUTATION-PROOF: make mintWorldId return the bare base always and the _2/_3 assertions go RED.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-21T00:00:00Z'));
+    try {
+      const base = 'local_' + Date.now();
+      expect(mintWorldId()).toBe(base);              // nothing taken yet -> the bare base
+      writeWorld(base, { name: 'A' }, { version: 2 });
+      expect(mintWorldId()).toBe(`${base}_2`);       // base taken (index + blob) -> _2
+      writeWorld(`${base}_2`, { name: 'B' }, { version: 2 });
+      expect(mintWorldId()).toBe(`${base}_3`);       // base + _2 taken -> _3
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -35,6 +35,14 @@ describe('isTouchDevice', () => {
     expect(isTouchDevice()).toBe(true);
   });
 
+  it('legacy fallback: NO coarse pointer but `ontouchstart` in window -> touch (the || fallback)', () => {
+    // no maxTouchPoints -> no PointerEvent -> legacy path; coarse=false so the ONLY thing that can make
+    // it true is `'ontouchstart' in window`. MUTATION-PROOF: drop the `|| 'ontouchstart' in window` and
+    // this goes RED. Also exercises setEnv's previously-dead `ontouchstart` param.
+    setEnv({ anyCoarse: false, ontouchstart: true });
+    expect(isTouchDevice()).toBe(true);
+  });
+
   it('SSR / no window -> false (never crashes)', () => {
     vi.stubGlobal('window', undefined);
     vi.stubGlobal('navigator', undefined);

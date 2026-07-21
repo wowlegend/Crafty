@@ -37,4 +37,17 @@ describe('chainArcPoints — jagged inter-target lightning arc geometry', () => 
     const pts = chainArcPoints({ x: 0, y: 0, z: 0 }, { x: 4, y: 0, z: 0 });
     expect([pts[0], pts[1], pts[2]]).toEqual([0, 0, 0]);
   });
+  it('a near-vertical arc stays finite AND jagged (the |ay|>0.99 up-reference branch, chainArc.js:32)', () => {
+    // axis ~parallel to +Y: without the branch swapping the up-reference to +X, perp1 = axis x up is the
+    // ZERO vector -> the perp basis collapses -> interior points would NOT jitter (x=z=0). MUTATION-PROOF:
+    // delete the `if (Math.abs(ay) > 0.99)` block and the |x|+|z| jaggedness assertion goes RED.
+    const from = [0, 0, 0], to = [0, 10, 0];
+    const pts = chainArcPoints(from, to, { jitter: 0.5, seed: 5 });
+    expect([pts[0], pts[1], pts[2]]).toEqual([0, 0, 0]);            // first endpoint exact
+    const n = pts.length;
+    expect([pts[n - 3], pts[n - 2], pts[n - 1]]).toEqual([0, 10, 0]); // last endpoint exact
+    expect(pts.every(Number.isFinite)).toBe(true);                  // no degenerate NaN
+    const i = 3 * 3; // an interior sample
+    expect(Math.abs(pts[i]) + Math.abs(pts[i + 2])).toBeGreaterThan(0); // deviates off the vertical axis (x/z)
+  });
 });

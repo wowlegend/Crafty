@@ -19,3 +19,11 @@ export const BOSS_CONFIG = {
         { hpPercent: 0.3, speed: 7.0, damage: 35, color: '#ff3300' }, // Phase 3: Enraged Inferno
     ],
 };
+
+// The boss-kill loot drop as [itemName, quantity]. SINGLE SOURCE OF TRUTH: world/bossSystem consumes it in
+// the kill handler AND bossReward.test.js pins each item's registry rarity against it, so a change to the
+// drop can never silently decouple from the ITEMS registry (item names MUST exist in src/data/items.js).
+export const BOSS_LOOT = [
+    ['Crown of the Dragon King', 1],
+    ['Dragon Scale', 3],
+];
