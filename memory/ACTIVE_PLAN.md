@@ -53,10 +53,10 @@
 > Terrain comments+dead-branch · `b0d6846` shared `scripts/visual/_serve.mjs` helper + grass/death/pov probes (BOTH
 > lifecycle patterns proven end-to-end, 0 leaks) · `b3ea100` storm/hands · `1b8b32d` drive-mobs/drive-elemancer/
 > settings (Pattern-B) · `5fac04c` hub/mobdeath · `f48546e` quest-log/spell-elements/spawn-legibility · `19e4119`
-> magic-panel. **Probe-hygiene: 15 of ~22 probes on the helper; ~7 remain** (mechanical, all 3 shapes proven):
-> **dayphase, hud, touch, esc-pause, heldf, soulbind-eyes** + `scripts/perf/run-scenarios.mjs` + the 3 test-file
-> hygiene findings (night-ratchet-gates, spell-mastery-load-gates, blurReset.test.js — missing cleanup, DIFFERENT).
-> NEXT: finish them → comment-lie/doc-drift by-file
+> magic-panel · `c1516bc` heldf/dayphase · `052c284` hud/touch/esc-pause. **Probe-hygiene: 20 of ~22 probes on the
+> helper; ~2 remain: `soulbind-eyes-probe.mjs` (4 done-calls, drop each explicit browser.close before done) +
+> `scripts/perf/run-scenarios.mjs`** + the 3 test-file hygiene findings (night-ratchet-gates, spell-mastery-load-gates,
+> blurReset.test.js — missing test cleanup, DIFFERENT — read each). NEXT: finish those → comment-lie/doc-drift by-file
 > batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements → docs REORG.
 > Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
 > `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
