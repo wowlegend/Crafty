@@ -376,7 +376,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
                     sec.chainDamageReduction
                   );
                   break;
-                case 'pierce':
+                case 'pierce': {
                   const healAmount = Math.floor(projectile.damage * sec.lifestealPercent / 100);
                   if (useGameStore.getState().healPlayer) useGameStore.getState().healPlayer(healAmount);
                   projectile.pierceCount = (projectile.pierceCount || 0) + 1;
@@ -384,6 +384,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
                     willPierce = true;
                   }
                   break;
+                }
               }
             }
 

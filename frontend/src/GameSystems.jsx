@@ -23,7 +23,6 @@ export const useGameSystems = () => {
             damagePlayer: () => { },
             healPlayer: () => { },
             useMana: () => true,
-            regenerateMana: () => { },
             consumeHunger: () => { },
             feedPlayer: () => { },
             respawn: () => { },

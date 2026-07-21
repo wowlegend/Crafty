@@ -57,7 +57,7 @@ export function isAutoTargetable(e) {
 /** Everything the player's swing may legitimately connect with, inside the cone. */
 export function damageableInCone(entities, playerPos, lookDir, range, angleRad) {
   return (entities || []).filter(
-    (e) => canPlayerDamage(e) && isPointInCone(playerPos, lookDir, e.position, range, angleRad)
+    (e) => canPlayerDamage(e) && e.position && isPointInCone(playerPos, lookDir, e.position, range, angleRad)
   );
 }
 

@@ -6,7 +6,7 @@ import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon, SpellRing } from './primitives/index.js';
 import { ASPECT_TREES } from '../game/talentTree.js';
 import { ASPECT_GUIDE } from '../game/aspectGuide.js';
-import { SPELL_UPGRADES } from '../world/spellUpgrades.js';
+import { SPELL_UPGRADES, requiredLevelForUpgrade } from '../world/spellUpgrades.js';
 
 // M6 #51: the 4 castable spells for the Spell Mastery section (key -> element color token + cast-key label).
 const SPELL_MASTERY = [
@@ -15,8 +15,7 @@ const SPELL_MASTERY = [
     { key: 'lightning', elem: 'lightning', label: '3' },
     { key: 'arcane', elem: 'arcane', label: '4' },
 ];
-// The level-gate (display only) -- mirrors the gate baked into upgradeSpell (spellUpgrades.js).
-const requiredLevelFor = (next) => (!next ? 0 : next.xpCost <= 100 ? 2 : next.xpCost <= 200 ? 3 : 5);
+// The level-gate is the shared requiredLevelForUpgrade from spellUpgrades.js (same gate as upgradeSpell).
 
 export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const t = useT();
@@ -188,7 +187,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                 const cur = SPELL_UPGRADES[key].levels[lvl - 1];
                                 const next = SPELL_UPGRADES[key].levels[lvl];
                                 const isMaxed = lvl >= 3;
-                                const requiredLevel = requiredLevelFor(next);
+                                const requiredLevel = requiredLevelForUpgrade(next);
                                 const gated = !isMaxed && playerLevel < requiredLevel;
                                 const canUpgrade = !isMaxed && !gated;
                                 return (

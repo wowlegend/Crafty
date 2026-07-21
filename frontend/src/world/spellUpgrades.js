@@ -47,6 +47,17 @@ export const SPELL_UPGRADES = {
 /** The level a spell is actually at, given the persisted map. Absent/blank -> Level 1. */
 export const levelOf = (spellLevels, spellType) => (spellLevels && spellLevels[spellType]) || 1;
 
+/**
+ * The required PLAYER level to buy the given next-level upgrade entry, derived from its xpCost.
+ * SINGLE SOURCE OF TRUTH for the ladder: both the real gate (upgradeSpell) and the display gate
+ * (SpellUpgradePanel) call this, so the two can never drift. No next entry (maxed) -> 0.
+ */
+export function requiredLevelForUpgrade(nextLevelEntry) {
+    if (!nextLevelEntry) return 0;
+    const c = nextLevelEntry.xpCost;
+    return c <= 100 ? 2 : c <= 200 ? 3 : 5;
+}
+
 /** Pure: the stat row a spell casts at. The ONE place level -> stats is resolved. */
 export function statsFor(spellLevels, spellType) {
     const upgrade = SPELL_UPGRADES[spellType];
@@ -87,7 +98,7 @@ export const useSpellUpgrades = () => {
         const nextLevel = upgrade.levels[currentLevel];
         if (!nextLevel) return false;
 
-        const requiredLevel = nextLevel.xpCost <= 100 ? 2 : nextLevel.xpCost <= 200 ? 3 : 5;
+        const requiredLevel = requiredLevelForUpgrade(nextLevel);
         const playerLevel = useGameStore.getState().getPlayerLevel() || 1;
 
         if (playerLevel < requiredLevel) {

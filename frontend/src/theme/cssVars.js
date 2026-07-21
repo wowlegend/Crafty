@@ -99,6 +99,10 @@ export const TW_COLORS = {
   success: tw('--ui-success'),
   warn: tw('--ui-warn'),
   info: tw('--ui-info'),
+  ferocity: tw('--ui-ferocity'),
+  kinetic: tw('--ui-kinetic'),
+  soul: tw('--ui-soul'),
+  resonance: tw('--ui-resonance'),
   rarity: {
     common: tw('--ui-rarity-common'),
     rare: tw('--ui-rarity-rare'),
