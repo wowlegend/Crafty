@@ -344,7 +344,7 @@ const TreasureChestsRender = () => {
 };
 
 // --- THE HEARTH: the crafted home-anchor decoration (World-Design M1) ---
-// The voxel PLINTH is baked at gen (world/homeAnchor.js, top at HEARTH_Y=32); THIS group is the
+// The voxel PLINTH is baked at gen (world/homeAnchor.js, top at HEARTH_Y=51); THIS group is the
 // building read on top of it. Built from voxelKit Cube/Emissive (the shared toon+rim+ink character
 // look) — NOT PBR. Sibling of TreasureChestsRender. Static (one fixed place at origin, no store
 // read). The brazier glow + its light self-null under isCaptureMode (the chest-beacon pattern) so
@@ -425,7 +425,7 @@ const LandmarksRender = ({ chunks }) => {
 // M4 #8: the Blight-Heart lair finally has a PHYSICAL landmark -- an ominous obsidian monolith + a
 // blight-violet beacon, so the CLIMAX destination reads from afar as you journey toward the compass marker
 // (it was an invisible coordinate before: only a marker + the boss spawn). Taller than the wayfinding
-// shrines (the ultimate landmark). Capture-safe: the lair is ~906 blocks out, never in a spawn-pinned
+// shrines (the ultimate landmark). Capture-safe: the lair is ~1025 blocks out, never in a spawn-pinned
 // capture frame, and the beacon is real-play-only; mounts only when the lair chunk is loaded.
 function BlightMonolith({ baseY }) {
     const top = Math.max(baseY + 78, 132);
@@ -459,7 +459,7 @@ const BlightHeartRender = ({ chunks }) => {
 // deterministic baselines are byte-identical — zero gate impact.
 //
 // Spawn-legibility design note (M-HUD.10 tuning, controller live-look): the literal landmark coords are
-// FAR — the Blight-Heart sits at ~1280 blocks (≈99% fogged out; a thin world-space cylinder there is
+// FAR — the Blight-Heart sits at ~1025 blocks (≈99% fogged out; a thin world-space cylinder there is
 // sub-pixel) and the nearest shrine up to ~256. So each beacon is a CLAMPED GUIDING BEAM: placed along
 // the true bearing at min(trueDist, BEACON_CLAMP) from the player, keeping it inside fog-light view so it
 // ALWAYS reads from spawn and points the way. Once the player is within BEACON_CLAMP of a real shrine the
@@ -638,7 +638,7 @@ export const MinecraftWorld = React.memo(() => {
             probeRay.origin.z = z + 0.1;
             const hit = world.castRay(probeRay, 300, true, undefined, undefined, undefined, playerRigidBody, probeFilter);
             if (hit) {
-                return 255 - (hit.toi !== undefined ? hit.toi : hit.timeOfImpact);
+                return 255 - hit.timeOfImpact; // #72: this rapier build exposes timeOfImpact; legacy hit.toi is always undefined
             }
             return null;
         });
