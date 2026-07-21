@@ -48,8 +48,13 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~97 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21)
-> CATEGORIES COMPLETE; test-vacuity TRIAGED (3 strengthened, rest FP/legit — see below). Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~102 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21)
+> COMPLETE; test-vacuity TRIAGED (3 strengthened, rest FP/legit); COVERAGE-GAPS 5/8 (`4b06940`: chainArc
+> vertical branch, lootJuice channel-preservation, touchDevice ontouchstart fallback, worldSaves mintWorldId
+> collision, bossReward BOSS_LOOT seam-extraction — all mutation-checked). Remaining coverage: settingsPersist
+> initSettingsPersistence glue (findings [1]+[3], needs injectable-storage seam) + pointerLook attachPointerLook
+> (needs jsdom behavioral). **NEXT: those 2 coverage-gaps → inconsistency (11) → enhancements (7) → docs REORG
+> → eslint no-unused-vars unit.** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
 > [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
 > Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
 > refs, voxelKit/inputState content, + the r3f winding-rule doc's Bottom/Front/Back corrected to the shipped
