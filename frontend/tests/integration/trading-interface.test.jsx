@@ -88,4 +88,18 @@ describe('TradingInterface (jsdom) — real trade buttons mutate the store', () 
     expect(inv.blocks.stone).toBe(5); // unchanged
     expect(inv.blocks.crystals).toBeUndefined(); // no phantom grant
   });
+
+  it('Resources panel reads crystals/wands from the canonical `blocks` bucket (B3b residual)', () => {
+    // Regression: the Resources header + wand-payoff badge read the DEAD `magic` bucket, so earned
+    // crystals/wands always displayed 0 and the mana reduction always showed -0% — even though
+    // crystalWallet.js's B3b fix migrated every writer/spender/seed to the canonical `blocks` bucket.
+    // wandManaMultiplier(2) = 1 - 2*0.06 = 0.88 -> the badge must read "-12% spell mana".
+    useGameStore.setState({ inventory: { blocks: { crystals: 7, wand: 2 }, tools: {}, magic: {} } });
+    renderTrade();
+    const crystalsCell = screen.getByText('Crystals').parentElement;
+    expect(within(crystalsCell).getByText('7')).toBeTruthy(); // was 0 (read the empty magic.crystals)
+    const wandsCell = screen.getByText('Wands').parentElement;
+    expect(within(wandsCell).getByText('2')).toBeTruthy(); // was 0 (read the empty magic.wand)
+    expect(screen.getByText('-12% spell mana')).toBeTruthy(); // was "-0% spell mana" (read magic.wand)
+  });
 });
