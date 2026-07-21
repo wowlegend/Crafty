@@ -45,7 +45,10 @@ describe('cameraKick', () => {
 
   it('localToWorldKick maps a camera-local profile to a world impulse along the flat look-dir', () => {
     // looking down +z (fwdX=0,fwdZ=1): forward-local maps onto +z, up stays world-up
-    expect(localToWorldKick(0, 1, [0, -0.07, -0.09])).toEqual([0, -0.07, -0.09]); // back = -z
+    const back = localToWorldKick(0, 1, [0, -0.07, -0.09]); // back = -z (component-wise: ±0 is meaningless here)
+    expect(back[0]).toBeCloseTo(0, 6);
+    expect(back[1]).toBeCloseTo(-0.07, 6);
+    expect(back[2]).toBeCloseTo(-0.09, 6);
     // looking down +x: forward-local maps onto +x
     const w = localToWorldKick(1, 0, [0, 0, 0.1]);
     expect(w[0]).toBeCloseTo(0.1, 6);
@@ -60,5 +63,18 @@ describe('cameraKick', () => {
 
   it('localToWorldKick tolerates a zero forward (degenerate aim -> vertical-only)', () => {
     expect(localToWorldKick(0, 0, [0, -0.12, 0.05])).toEqual([0, -0.12, 0]);
+  });
+
+  it('a RIGHT-local kick maps onto screen-right = flatForward x worldUp (not its negation)', () => {
+    // right = flatForward x worldUp = (-fz, 0, fx). For a unit forward (0.6, 0.8) a pure +right kick
+    // must land at (-0.8, 0, 0.6). The pre-fix code computed (fz, -fx) = the NEGATION (screen-LEFT) —
+    // dormant only because every KICK_PROFILE has a zero right component. MUTATION-PROOF: flip L34 back
+    // to `rx = fz, rz = -fx` and this goes RED.
+    const w = localToWorldKick(0.6, 0.8, [1, 0, 0]);
+    expect(w[0]).toBeCloseTo(-0.8, 6);
+    expect(w[1]).toBeCloseTo(0, 6);
+    expect(w[2]).toBeCloseTo(0.6, 6);
+    // and right stays perpendicular to forward (dot == 0)
+    expect(w[0] * 0.6 + w[2] * 0.8).toBeCloseTo(0, 6);
   });
 });

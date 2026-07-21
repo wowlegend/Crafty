@@ -31,7 +31,7 @@ export function localToWorldKick(fwdX, fwdZ, [lx, ly, lz]) {
   const len = Math.hypot(fwdX, fwdZ);
   if (len < 1e-6) return [0, ly, 0];
   const fx = fwdX / len, fz = fwdZ / len;
-  const rx = fz, rz = -fx; // right = flatForward x worldUp
+  const rx = -fz, rz = fx; // right = flatForward x worldUp = (-fz, 0, fx)
   return [rx * lx + fx * lz, ly, rz * lx + fz * lz];
 }
 
