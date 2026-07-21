@@ -69,20 +69,21 @@ const sameSettings = (a, b) =>
   a.musicVolume === b.musicVolume && a.masterMuted === b.masterMuted &&
   a.lookSensitivity === b.lookSensitivity;
 
-// Glue (called once at boot): hydrate the store from localStorage, then persist on any dial change.
+// Glue (called once at boot): hydrate the store from storage, then persist on any dial change.
 // Capture-guarded: under the visual harness this is a no-op (defaults only) so baselines stay deterministic.
-// `store` is the zustand store (getState/setState/subscribe); `isCapture` gates the localStorage touch.
-export function initSettingsPersistence(store, isCapture) {
+// `store` is the zustand store (getState/setState/subscribe); `isCapture` gates the storage touch; `storage`
+// defaults to localStorage but is INJECTABLE so the hydrate+persist glue is unit-testable with a fake store.
+export function initSettingsPersistence(store, isCapture, storage = (typeof localStorage !== 'undefined' ? localStorage : null)) {
   if (typeof isCapture === 'function' && isCapture()) return () => {};
-  if (typeof localStorage === 'undefined') return () => {};
-  const loaded = loadSettings(localStorage);
+  if (!storage) return () => {};
+  const loaded = loadSettings(storage);
   if (Object.keys(loaded).length) store.setState(loaded);
   let prev = pick(store.getState());
   return store.subscribe((state) => {
     const cur = pick(state);
     if (!sameSettings(prev, cur)) {
       prev = cur;
-      saveSettings(cur, localStorage);
+      saveSettings(cur, storage);
     }
   });
 }

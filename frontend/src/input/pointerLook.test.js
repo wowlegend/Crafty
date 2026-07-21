@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { applyMouseLook } from './pointerLook.js';
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { applyMouseLook, attachPointerLook } from './pointerLook.js';
 
 // Desktop mouse-look math (the fix for the dead camera: drei PLC was element-match-fragile + untestable).
 // applyMouseLook reuses the touch applyLook, so this also guards that desktop + touch look identically.
@@ -37,5 +38,54 @@ describe('applyMouseLook', () => {
   it('is null-safe (no camera / no rotation -> no throw)', () => {
     expect(() => applyMouseLook(null, 10, 10, 1)).not.toThrow();
     expect(() => applyMouseLook({}, 10, 10, 1)).not.toThrow();
+  });
+});
+
+describe('attachPointerLook (document mousemove -> camera, gated on pointer lock)', () => {
+  const orig = Object.getOwnPropertyDescriptor(document, 'pointerLockElement');
+  const setLock = (el) => Object.defineProperty(document, 'pointerLockElement', { value: el, configurable: true });
+  const move = (mx, my) => document.dispatchEvent(Object.assign(new Event('mousemove'), { movementX: mx, movementY: my }));
+  afterEach(() => { if (orig) Object.defineProperty(document, 'pointerLockElement', orig); else delete document.pointerLockElement; });
+
+  it('rotates the camera on mousemove WHILE a pointer lock is held', () => {
+    const c = cam();
+    setLock(document.body); // lenient gate: ANY element holding the lock
+    const cleanup = attachPointerLook({ camera: c, getSensitivity: () => 1 });
+    move(100, 0);
+    expect(c.rotation.y).not.toBe(0);
+    cleanup();
+  });
+
+  it('does NOT rotate when no pointer lock is held (free cursor over menus/UI)', () => {
+    const c = cam();
+    setLock(null); // no lock
+    const cleanup = attachPointerLook({ camera: c, getSensitivity: () => 1 });
+    move(100, 0);
+    expect(c.rotation.y).toBe(0); // untouched — MUTATION-PROOF: drop the pointerLockElement gate and this goes RED
+    cleanup();
+  });
+
+  it('the returned cleanup removes the listener (no rotation after cleanup, even while locked)', () => {
+    const c = cam();
+    setLock(document.body);
+    const cleanup = attachPointerLook({ camera: c, getSensitivity: () => 1 });
+    cleanup();
+    move(100, 0);
+    expect(c.rotation.y).toBe(0);
+  });
+
+  it('pulls the LIVE sensitivity on each locked move (getSensitivity called per event)', () => {
+    const c = cam();
+    setLock(document.body);
+    const getSens = vi.fn(() => 1);
+    const cleanup = attachPointerLook({ camera: c, getSensitivity: getSens });
+    move(10, 0); move(10, 0);
+    expect(getSens).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+
+  it('is a no-op with no camera (returns a cleanup fn, never throws)', () => {
+    expect(typeof attachPointerLook({})).toBe('function');
+    expect(() => attachPointerLook({})()).not.toThrow();
   });
 });

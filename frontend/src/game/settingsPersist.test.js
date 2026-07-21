@@ -102,3 +102,58 @@ describe('initSettingsPersistence guards', () => {
     expect(store.setState).not.toHaveBeenCalled();
   });
 });
+
+// A minimal zustand-shaped store: getState/setState (merge) + a real subscribe so the persist glue can fire.
+const fakeStore = (initial = {}) => {
+  let state = { juiceIntensity: 1, sfxVolume: 1, musicVolume: 1, masterMuted: false, lookSensitivity: 1, ...initial };
+  const subs = new Set();
+  return {
+    getState: () => state,
+    setState: (patch) => { state = { ...state, ...patch }; },
+    subscribe: (cb) => { subs.add(cb); return () => subs.delete(cb); },
+    _change: (patch) => { state = { ...state, ...patch }; for (const cb of subs) cb(state); }, // fire a store change
+  };
+};
+
+describe('initSettingsPersistence hydrate + persist glue (injected storage)', () => {
+  it('HYDRATES the store from stored prefs on boot (sanitized)', () => {
+    const storage = fakeStorage({ [SETTINGS_KEY]: JSON.stringify({ sfxVolume: 0.4, masterMuted: true, bogus: 9 }) });
+    const store = fakeStore();
+    initSettingsPersistence(store, () => false, storage);
+    expect(store.getState().sfxVolume).toBe(0.4);       // MUTATION-PROOF: drop store.setState(loaded) -> RED
+    expect(store.getState().masterMuted).toBe(true);
+    expect('bogus' in store.getState()).toBe(false);    // unknown key never hydrated
+  });
+
+  it('PERSISTS a watched-dial change to storage (sanitized)', () => {
+    const storage = fakeStorage();
+    const store = fakeStore();
+    initSettingsPersistence(store, () => false, storage);
+    store._change({ sfxVolume: 0.25 });
+    expect(JSON.parse(storage.getItem(SETTINGS_KEY)).sfxVolume).toBe(0.25); // MUTATION-PROOF: drop saveSettings -> RED
+  });
+
+  it('does NOT persist when no watched dial changed (the sameSettings guard, no redundant writes)', () => {
+    const storage = fakeStorage();
+    const store = fakeStore();
+    initSettingsPersistence(store, () => false, storage);
+    store._change({ unrelated: 42 }); // not one of the 5 dials
+    expect(storage.getItem(SETTINGS_KEY)).toBeNull();
+  });
+
+  it('the returned cleanup unsubscribes (no persist after cleanup)', () => {
+    const storage = fakeStorage();
+    const store = fakeStore();
+    const cleanup = initSettingsPersistence(store, () => false, storage);
+    cleanup();
+    store._change({ sfxVolume: 0.9 });
+    expect(storage.getItem(SETTINGS_KEY)).toBeNull();
+  });
+
+  it('under capture: injected storage is NEVER read (no hydrate) even when seeded', () => {
+    const storage = fakeStorage({ [SETTINGS_KEY]: JSON.stringify({ sfxVolume: 0.4 }) });
+    const store = fakeStore();
+    initSettingsPersistence(store, () => true, storage);
+    expect(store.getState().sfxVolume).toBe(1); // defaults, not hydrated
+  });
+});
