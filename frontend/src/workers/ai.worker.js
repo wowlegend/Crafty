@@ -294,13 +294,17 @@ self.onmessage = function(e) {
           const startXGrid = mobGridX - 4;
           const startZGrid = mobGridZ - 4;
           
-          // Player's relative coordinates in our 9x9 local grid
-          const relPlayerX = Math.round(playerX - startXGrid);
-          const relPlayerZ = Math.round(playerZ - startZGrid);
-          
+          // The TACTICAL target's relative coords in our mob-centered 9x9 grid. This MUST resolve from the
+          // (targetX,targetZ) the mob decided above -- NOT the player -- otherwise Step-3 overrides a
+          // retreating archer's kite target and re-steers it back into melee (the archer never kites). Inline
+          // mirror of game/mobSteering.js steerGoalCell (classic worker can't import; archer-kite-steer-gates
+          // pins them in sync). Chasers are unaffected: their targetX/Z already equal playerX/Z.
+          const relTargetX = Math.round(targetX - startXGrid);
+          const relTargetZ = Math.round(targetZ - startZGrid);
+
           // Clamp target grid coordinate to ensure A* target sits on grid bounds
-          const targetGridX = Math.max(0, Math.min(8, relPlayerX));
-          const targetGridZ = Math.max(0, Math.min(8, relPlayerZ));
+          const targetGridX = Math.max(0, Math.min(8, relTargetX));
+          const targetGridZ = Math.max(0, Math.min(8, relTargetZ));
           
           // Run 3D A* from center cell (4, 4) to target grid cell
           const path = findAStarPath(heightGrid, 4, 4, targetGridX, targetGridZ);
