@@ -10,6 +10,7 @@ import { siegeParams } from '../game/dayNight.js';
 import { zoneTier } from '../world/zoneTier.js';
 import { weightedPick } from '../game/spawnWeights';
 import { MOB_TYPES } from '../game/mobTypes';
+import { runSpawnPlacement } from './spawnPlacement.js';
 
 // SpawnerSystem -- siege/day mob spawning + the one-time static hub-NPC spawn + distance-cull.
 // Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.3); behavior unchanged.
@@ -156,26 +157,18 @@ export const SpawnerSystem = () => {
             candidateChunks = loadedChunkKeys;
           }
 
-          let spawnedThisTick = 0;
-          let attempts = 0;
-          const maxAttempts = 12;
-
-          while (spawnedThisTick < spawnCount && attempts < maxAttempts) {
-            const randomKey = candidateChunks[Math.floor(Math.random() * candidateChunks.length)];
-            const [cx, cz] = randomKey.split('_').map(Number);
-            const x = cx * 16 + Math.random() * 16;
-            const z = cz * 16 + Math.random() * 16;
-            const dist = Math.sqrt((x - playerX) ** 2 + (z - playerZ) ** 2);
-
-            // Only spawn if not too close (avoid visible spawning) and not too far
-            if (dist >= 28 && dist <= 85) {
-              attempts++;
-              const success = spawnMob(x, z);
-              if (success) {
-                spawnedThisTick++;
-              }
-            }
-          }
+          // Bounded placement loop (extracted to systems/spawnPlacement.js so its termination is
+          // testable): maxAttempts caps TOTAL picks, so a candidate set skewed entirely too-near or
+          // too-far can never spin the frame.
+          runSpawnPlacement({
+            candidateChunks,
+            spawnCount,
+            maxAttempts: 12,
+            playerX,
+            playerZ,
+            rng: Math.random,
+            trySpawn: spawnMob,
+          });
         }
       }
 
