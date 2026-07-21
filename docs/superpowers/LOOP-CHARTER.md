@@ -67,6 +67,18 @@ philosophy — each maps to a rule this project has already been burned by.
 
 ## 0-C. Mission + hard frame (never overridden by taste)
 
+- **🔭 v9 ACTIVE MISSION + EXPANDED AUTHORITY (Kevin, 2026-07-20/21) — supersedes the day-to-day work-selection
+  below, does NOT override the hard frame:** a repo-wide, adversarially-verified review (source · tests/scripts/config
+  · docs) produced **`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — 215 confirmed findings**, now the PRIMARY work
+  queue (priority-laddered; `[AUTO]` safe-mechanical vs `[KEVIN]` owner-judgment). Kevin widened the mandate, verbatim:
+  *"be AGGRESSIVE on unilateral enhancement, do as much autonomous decision as you decide best, make everything
+  SOTA-shaped."* So the loop now APPLIES fixes AND enhancements autonomously (correctness/perf/a11y/quality/dead-code/
+  comment+doc truth/polish/patterns) and MAKES taste calls, noting them veto-ably rather than blocking. The guardrails
+  that keep aggressive *safe* remain binding: every change RED-first + mutation-proven + full suite green; atomic
+  verified checkpoints (auditable, git-reversible, ONE unit/commit); NO silent reversal of a recorded Kevin decision
+  (the "do NOT relitigate" set below); irreversible high-blast (hard-delete a REFERENCED file, force-push, external
+  send, money/accounts/publishing, a NEW dependency) still gets care + usually Kevin; ARCHIVE-over-DELETE for docs.
+  Progress dashboard: `docs/superpowers/LOOP-PROGRESS.html` (kept current) + its Artifact.
 - **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
   envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
@@ -349,6 +361,15 @@ spinning at 622% CPU (six cores)** → machine load average **25** → the visua
 presented as a *"flaky gate"*. It was **self-inflicted**, and it wasted a real debugging cycle.
 
 - Every ad-hoc Playwright/Puppeteer probe closes its browser in a **`finally`** (a throw must still close it).
+- **Spawn vite `detached` and SIGKILL the whole process GROUP (`process.kill(-server.pid, 'SIGKILL')`) in the
+  finally — a plain `server.kill()` only reaps the `npx` wrapper and ORPHANS the forked vite child holding the
+  port (2026-07-20; the repo-wide probe-hygiene bug class — ocean-probe + capture fixed, ~25 more flagged in the
+  holistic-review queue as `hygiene`).**
+- **Guard `browser.close()` with a timeout + a force-kill of the browser process** (race `close()` against ~8s,
+  cleared on settle, then `browser.process().kill('SIGKILL')`). A GPU-context-lost / crashed headless Chrome
+  leaves `close()` hanging on an unanswered CDP command forever — this WAS the long-blamed "capture hangs at the
+  title-mascot step" (it was `close()`, not the render; the fix at `75191ef` also made the ungated title-mascot
+  state NON-FATAL, so the harness runs to a clean end and the visual re-baseline is unblocked).
 - Never leave a hand-started dev server running — prefer Playwright's `webServer` (self-managing). If you start
   one by hand, kill it in the same turn.
 - Delete throwaway probe scripts (`rm -f frontend/dbg-*.mjs`); never commit them.
