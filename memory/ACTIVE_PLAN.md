@@ -134,7 +134,15 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 V1 gate-triage — all 3 known-vacuous gates now BEHAVIORAL (2026-07-14/20) — NEXT = triage the ~80 untriaged OR V2·V3 E2E
+## 📍 OWED ocean lived-probe DONE + 3 vacuous gates BEHAVIORAL (2026-07-14/20) — NEXT = triage the ~80 untriaged OR V2·V3 E2E
+✅ **OWED ocean LIVED PROBE — DONE (`cbc9f40`→ocean, load ~6).** Paid the RULE-3 debt on the `05082fa`
+oceanVisibleNear gate: hardened `scripts/visual/ocean-probe.mjs` FIRST (charter §6.4 hygiene — browser now closes
+in a `finally`; vite spawned `detached` so the finally SIGKILLs the whole process GROUP, fixing a real orphan-vite
+leak where `server.kill()` only reaped the `npx` wrapper — VERIFIED: re-run left zero leaked vite), then ran it.
+4 coast/surface/underwater shots ALL CLEAN — ocean renders at the coast (crisp coastline + animated water/foam),
+depth-tint + shore→deep ramp underwater, no black voids / missing chunks / land-bleed → **no coastal regression.**
+Caveat: COAST shots only — in-cave suppression is pure-unit-covered (oceanVisibility.test.js), not lived here; an
+in-cave shot + the water aesthetic sign-off → Kevin. **2 preview-tab husks (:4196) LISTED for attended `--close`.**
 ✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous source-grep gate that used to be at
 `tests/gates/boss-notif-timer-gates.test.js` (a readFileSync+regex of bossSystem.js) is now REMOVED and
 REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,

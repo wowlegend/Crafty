@@ -307,8 +307,13 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   every frame even buried inland / inside caves (~14% budget). Fix: pure `world/oceanVisibility.js`
   `oceanVisibleNear()` (samples surface height at the camera + a ring; hidden when all-land-above-sea-level →
   plane fully buried) gates the render + recompute in `render/Ocean.jsx`; capture-suppressed so baselines are
-  byte-identical. RED-first pure unit, mutation-proven, safe-by-construction. ⚠️ **Lived probe OWED** (confirm
-  ocean shows at coast + gone in caves, no coastal regression) once load drops (was ~20 — browser probe hangs).
+  byte-identical. RED-first pure unit, mutation-proven, safe-by-construction. ✅ **Lived probe DONE (2026-07-20,
+  load ~6):** `scripts/visual/ocean-probe.mjs` (hardened for hygiene first) — 4 coast/surface/underwater shots
+  all CLEAN: ocean renders at the coast (crisp coastline, animated water + foam in topdown-coast), depth-tint +
+  shore→deep ramp underwater, NO black voids / missing chunks / ocean-into-land bleed → **no coastal regression**
+  from the visibility gate. Caveat: these are COAST shots — the in-cave suppression is covered by the pure
+  `oceanVisibleNear` unit (returns false all-land-above-sea), NOT lived-confirmed (this probe takes no cave shot);
+  an in-cave lived shot + the water aesthetic sign-off remain → Kevin (KEVIN-REVIEW-BATCH).
   **(all fixable B8 bugs now shipped — see the header; spatial-audio was the last, fixed `e78bd1c`.)**
   **→ KEVIN-REVIEW (routed 2026-07-14 — design/feel, do NOT change):** **chest-mining** (LMB on a chest MINES
   it + loses its stored inventory; RMB opens; but `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine as

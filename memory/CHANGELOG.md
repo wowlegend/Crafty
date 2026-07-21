@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-20 — OWED ocean lived-probe paid + the probe harness hardened
+
+- **ocean-probe hygiene hardening + the OWED ocean lived probe (`<this commit>`).** Load finally dropped to ~6
+  (first sustained <10 window), so I paid the RULE-3 lived-probe debt on the `05082fa` `oceanVisibleNear` fix.
+  **First hardened `scripts/visual/ocean-probe.mjs` to charter §6.4 hygiene** (it was non-compliant): (a) the
+  browser now closes in a `finally` (was happy-path only → a throw after launch leaked it); (b) `process.exit()`
+  skips pending finally blocks, so the exit moved to AFTER the finally; (c) vite is now spawned `detached` and the
+  finally SIGKILLs the whole process GROUP (`process.kill(-pid)`) — plain `server.kill()` only reaped the `npx`
+  wrapper and ORPHANED the forked vite child (a real leaked vite on :4196 burning CPU + holding the port; observed
+  + then VERIFIED fixed: a re-run left zero leaked vite). **Then ran it** — 4 coast/surface/underwater shots all
+  CLEAN: ocean renders at the coast (crisp coastline, animated water + foam in topdown-coast), depth-tint +
+  shore→deep ramp underwater, no black voids / missing chunks / land-bleed → no coastal regression from the
+  visibility gate. Caveat recorded (STATUS §V1 + KEVIN-REVIEW): COAST shots only — the in-cave suppression stays
+  pure-unit-covered (`oceanVisibility.test.js`), not lived-confirmed; an in-cave shot + the water aesthetic
+  sign-off route to Kevin. 2 preview-tab husks (:4196) LISTed for attended `--close` (loop never auto-runs it).
+
 ## 2026-07-20 — V1 gate-triage: the survival-quests gate is now behavioral (3rd of 3 — all done)
 
 - **V1-survival-quests (`<this commit>`) — replaced the one vacuous sub-test with a behavioral seam; a

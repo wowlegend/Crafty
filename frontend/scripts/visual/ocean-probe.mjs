@@ -9,11 +9,16 @@ import puppeteer from 'puppeteer';
 const PORT = 4196, URL = `http://localhost:${PORT}`, OUT = '/tmp/crafty-ocean';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (c) => { try { server.kill('SIGKILL'); } catch {} process.exit(c); };
+// `detached: true` puts vite in its OWN process group so the finally can SIGKILL the whole group
+// (process.kill(-pid)). Plain server.kill() only reaps the `npx` wrapper and ORPHANS the vite child it
+// forked (a leaked vite on :4196 burning CPU + holding the port — observed 2026-07-20).
+const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', detached: true });
+// Hygiene (charter §6.4): the browser closes in a `finally` so a throw AFTER launch can't leak it, and the
+// server group is SIGKILLed there too. process.exit() skips pending finally blocks, so we exit AFTER it.
+let browser = null, code = 0;
 try {
   for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.setViewport({ width: 1280, height: 800 });
@@ -37,5 +42,10 @@ try {
     await page.screenshot({ path: `${OUT}/${s.name}.png` });
     console.log('shot', s.name);
   }
-  await browser.close(); done(0);
-} catch (e) { console.error('OCEAN-PROBE ERROR:', e); done(1); }
+} catch (e) { console.error('OCEAN-PROBE ERROR:', e); code = 1; }
+finally {
+  if (browser) { try { await browser.close(); } catch {} }
+  // kill the whole vite process GROUP (npx wrapper + its forked vite child); fall back to a plain kill.
+  try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch {} }
+}
+process.exit(code);

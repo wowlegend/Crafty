@@ -1,5 +1,17 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🌊 2026-07-20 — FYI + taste sign-off (no blocking decision): the ocean coast is lived-verified clean.** The
+> ocean-in-caves perf fix (`05082fa`) gated the wave-plane render on a proximity/altitude predicate; I owed you a
+> LIVED look that it didn't break the *coast*. Load finally sat low (~6), so I ran the hardened `ocean-probe.mjs`
+> (4 HUD-hidden coast/surface/underwater shots) — all clean: ocean renders at the coast (crisp coastline, animated
+> water + foam), depth-tint + shore→deep ramp underwater, no black voids or land-bleed → **no coastal regression.**
+> Two small things for you (non-blocking): **(1) taste** — want the water more tropical/moodier, foam stronger?
+> (one-liners in `world/Terrain.jsx`). **(2)** these were COAST shots; the *in-cave* suppression is proven only by
+> the pure unit test (`oceanVisibility.test.js`), not a lived cave shot — say if you want me to add a cave-angle
+> shot to the probe for a lived in-cave confirmation. **Also — housekeeping: 2 dead cmux preview tabs at
+> `localhost:4196`** (the ocean-probe's dedicated port; the tab outlives the process) are open — run
+> `sh frontend/scripts/dev/close-preview-tabs.sh --close` when convenient (the loop never auto-runs `--close`).
+
 > **👂 2026-07-14 — FYI + a quick ear (no decision): spatial audio now works from game start.** Footsteps, jump,
 > and swing SFX used to be silent until the first hostile spawned — a stale-ref-in-context bug (the SoundProvider
 > handed consumers `audioContext.current`/`sounds.current` captured at render, but populated them in a mount-effect
