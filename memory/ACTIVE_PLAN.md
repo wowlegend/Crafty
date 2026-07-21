@@ -51,9 +51,11 @@
 > **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~17 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
 > `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code · `aa121de` HIGH archer-kite (ai.worker) · `b5be02f`
 > Terrain comments+dead-branch · `b0d6846` shared `scripts/visual/_serve.mjs` helper + grass/death/pov probes (BOTH
-> lifecycle patterns proven end-to-end, 0 leaks) · `b3ea100` storm/hands probes. **Probe-hygiene: 6 of ~22 probes on
-> the helper; ~16 remain** (mechanical — Pattern-A `done()` + Pattern-B try/finally both proven; convert a few per
-> commit, run-verify optional). NEXT off the ladder: finish the probe conversions → comment-lie/doc-drift by-file
+> lifecycle patterns proven end-to-end, 0 leaks) · `b3ea100` storm/hands · `1b8b32d` drive-mobs/drive-elemancer/
+> settings (Pattern-B) · `5fac04c` hub/mobdeath (Pattern-A async-done, spot-run 0 leaks). **Probe-hygiene: 11 of ~22
+> probes on the helper; ~11 remain** (ALL 3 shapes proven: Pattern-B try/finally, Pattern-A single-exit [pov],
+> Pattern-A multi-`done()` async-done [mobdeath] — remaining are mechanical: dayphase/hud/touch/esc-pause/heldf/
+> magic-panel/quest-log/soulbind-eyes/spawn-legibility/spell-elements + perf/run-scenarios). NEXT: finish them → comment-lie/doc-drift by-file
 > batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements → docs REORG.
 > Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
 > `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
