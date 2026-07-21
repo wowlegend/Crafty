@@ -5,22 +5,23 @@
 // !entity.isAlly. This probe (a) screenshots the soulbind card for a human eye-check that no jade ally
 // has red eyes, and (b) programmatically asserts the showcase allies are isAlly=true with a hostile
 // type (proving the exact gated scenario is live). Mirrors esc-pause-probe.mjs harness. PNG -> /tmp/crafty-soulbind/.
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-const PORT = 4196, URL = `http://localhost:${PORT}`;
+import { serveVite } from './_serve.mjs';
+const PORT = 4196;
 const OUT = '/tmp/crafty-soulbind';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (c) => { try { server.kill('SIGKILL'); } catch {} process.exit(c); };
+const { url, waitReady, shutdown } = serveVite(PORT);
+let browser = null;
+const done = async (c) => { await shutdown(browser); process.exit(c); };
 try {
-  for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  await waitReady();
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.setViewport({ width: 1280, height: 800 });
-  await page.goto(URL, { waitUntil: 'networkidle2' });
+  await page.goto(url, { waitUntil: 'networkidle2' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
   const flushFrames = (n = 10) => page.evaluate(async (count) => {
     const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -45,7 +46,7 @@ try {
   // a crashed Canvas renders the ErrorBoundary fallback ("Something went wrong") — detect it so a
   // teardown can't masquerade as a vacuous "0 red eyes" PASS.
   const crashed = await page.evaluate(() => document.body.innerText.includes('Something went wrong'));
-  if (crashed) { console.error('[soulbind-probe] FAIL: app crashed to ErrorBoundary before render'); await browser.close(); done(1); }
+  if (crashed) { console.error('[soulbind-probe] FAIL: app crashed to ErrorBoundary before render'); done(1); }
   // programmatic ground-truth via the THREE scene graph (window.__threeScene): the fix controls the
   // RENDER, so traverse the live scene and count meshes whose material is named "eye" with the hostile
   // red color (0xff0000). The soulbindShowcase fixture cleared the live mob population and spawned ONLY
@@ -72,9 +73,9 @@ try {
   // scene shows zero hostile red eye meshes (the jade allies render no red eyes after the fix).
   if (eyeReport.ok && eyeReport.redEyes === 0) {
     console.log('[soulbind-probe] PASS: 0 hostile red-eye meshes on the all-ally soulbind card');
-    await browser.close(); done(0);
+    done(0);
   } else {
     console.error('[soulbind-probe] FAIL: redEyes=' + JSON.stringify(eyeReport) + ' (expected 0 on all-ally card)');
-    await browser.close(); done(1);
+    done(1);
   }
 } catch (e) { console.error('SOULBIND-PROBE ERROR:', e); done(1); }
