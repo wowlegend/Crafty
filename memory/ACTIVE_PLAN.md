@@ -48,11 +48,13 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21):** batch 1 shipped (`e8e218e` HIGH trade bug · `3660284` ci security ·
-> `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code). NEXT off the ladder: `ai.worker.js:302` HIGH (archer
-> kite bug — seam-extract the steer decision), the remaining ~24 probe-hygiene (consider a shared harness helper),
-> then comment-lie/doc-drift + vacuous-gate seams. New sub-finding: eslint `no-unused-vars` is OFF → enabling it is
-> its own unit (will surface a broad cleanup). — original Phase-1.5 note below —
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — 8 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
+> `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code · `aa121de` HIGH archer-kite (ai.worker) · `b5be02f`
+> Terrain comments+dead-branch. NEXT off the ladder: the remaining ~24 probe-hygiene findings (extract a shared
+> `scripts/visual/_serve.mjs` helper — detached spawn + finally-close + group-kill — then adopt across probes) →
+> comment-lie/doc-drift by-file batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements
+> → docs REORG. Held for care: the KEVIN shader comment `Terrain.jsx:138`. Sub-finding queued: eslint
+> `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
 > **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I
 > synthesise the review-derived next-steps queue — but BEFORE the fix-work is finished — UPDATE the loop kernel
 > (`docs/superpowers/LOOP-KERNEL-PROMPT.md` + the re-armed `/loop` ScheduleWakeup prompt) AND

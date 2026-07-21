@@ -16,7 +16,15 @@
   a queued finding), fixed the false "KeyT = legacy tame" comment (KeyT is melee), dropped an orphan trailing
   header, and nulled `performVerb` in the input-effect cleanup for teardown symmetry.
 
-All RED-first / verified; build + eslint + knip + 2063 unit tests green each push. Queue:
+- **`aa121de` fix(ai) — archers actually kite [HIGH bug].** ai.worker.js Step-3 A* re-resolved the steer goal
+  from the player every tick, overriding a retreating archer's kite target (it walked back into melee). Now steers
+  toward the tactical target; extracted the pure reference `game/mobSteering.js` (steerGoalCell) + behavioral test,
+  worker inline-mirrors it (classic worker can't import), pinned by a mutation-proven structural sync-gate. Lived
+  feel → Kevin.
+- **`b5be02f` fix(terrain) — stale comments + a dead raycast branch.** HEARTH_Y=32→51, ~906/~1280→~1025 (radius
+  pulled to 1024), and `hit.toi ?? timeOfImpact` → `timeOfImpact` (legacy toi always undefined in this rapier build).
+
+All RED-first / verified; build + eslint + knip + unit suite (now 2069) green each push. Queue:
 `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`.
 
 ## 2026-07-20 — capture-harness "title-mascot hang" fixed (unblocks the visual re-baseline)

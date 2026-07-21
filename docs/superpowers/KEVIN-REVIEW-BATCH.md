@@ -1,5 +1,15 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🏹 2026-07-21 — FYI + a feel/balance check (behavior change shipped): archers now actually KITE.** The holistic
+> review found a real bug (`aa121de`): the skeleton archer branch computes a *retreat* target to back away when you
+> close within 8 blocks, but the height-aware A* steering (Step 3) re-resolved its goal from YOUR position every
+> tick — overriding the retreat and walking the archer straight into melee. So the archer archetype never kited.
+> Fixed: the A* now steers toward the archer's tactical target (away when retreating). Chasers (zombies/spiders/boss)
+> are unaffected. **This is a genuine bug fix, but it changes how skeletons FEEL in a fight** — they'll now hold
+> range and reposition instead of clumping in. **Next time you play, tell me if the kite feels right** — the retreat
+> trigger (<8 blocks) and `ARCHERY_RANGE` are one-line tunables if archers now feel too slippery or too passive.
+
+
 > **🌊 2026-07-20 — FYI + taste sign-off (no blocking decision): the ocean coast is lived-verified clean.** The
 > ocean-in-caves perf fix (`05082fa`) gated the wave-plane render on a proximity/altitude predicate; I owed you a
 > LIVED look that it didn't break the *coast*. Load finally sat low (~6), so I ran the hardened `ocean-probe.mjs`
