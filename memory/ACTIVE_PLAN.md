@@ -17,6 +17,36 @@
 
 ---
 
+## 🔭 SUPER-CAMPAIGN (2026-07-20, Kevin): HOLISTIC REPO REVIEW → SOTA — every line/word, fix+enhance
+> **Expanded authority (Kevin, verbatim intent):** *"enumerate and review every line/word of code (incl comments/
+> descriptions) in the entire repo, fix/enhance everything holistically... be AGGRESSIVE on unilateral enhancement,
+> do as much autonomous decision as you decide best, make everything SOTA-shaped."* Also: reorganise/merge/delete/
+> archive redundant/completed docs; keep loop progress in an HTML.
+> **Operating boundary (widened):** APPLY enhancements autonomously (correctness/perf/a11y/quality/polish/patterns);
+> make taste calls + note them veto-ably. **Guardrails still binding:** every change RED-first + mutation-proven +
+> full suite green; atomic verified checkpoints (auditable/git-reversible); do NOT silently reverse a RECORDED Kevin
+> decision (world-design hybrid, CPU-ocean fork) — enhance within; irreversible high-blast (hard-delete referenced
+> files, force-push, external send) still gets care. Prefer ARCHIVE (reversible) over DELETE for docs.
+>
+> **Progress HTML:** `docs/superpowers/LOOP-PROGRESS.html` (committed SoT, regenerate each iteration) + Artifact
+> https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c (refresh at checkpoints).
+>
+> **PHASE 1 — REVIEW (3 workflows launched, background; find → adversarially-verify):**
+> - Source review — ALL 260 src files, 40 slices. run `wf_918f2239-024` (task wx1yji3gp). partition `scratchpad/slices.json`.
+> - Docs audit+reorg — classify every doc + merge/archive/delete plan. run `wf_3742b969-3aa` (task wmv6gbf42).
+> - Tests+scripts+config — 377 files, 16 slices (vacuity/hygiene/drift). run `wf_3e0ea8c9-340` (task wldf4k3de). partition `scratchpad/slices_b2.json`.
+> **When each completes:** read its return (CONFIRMED + PLAUSIBLE findings) from the tool result / journal; do NOT trust
+> uninspected cached results (Read journal.jsonl). Dedup + prioritise.
+> **PHASE 2 — FIX/ENHANCE (main-loop, verified units):** batch by severity/kind — correctness bugs → comment-lies →
+> dead-code → perf → a11y → consistency → SOTA enhancements. Each RED-first + mutation-proven + gated + committed
+> (ONE coherent unit per commit; no `git add -A`). Execute the doc reorg (archive completed → `docs/archive/…`,
+> fix drift, merge dupes; DELETE only genuinely-useless, git-recoverable). Route recorded-decision reversals + pure
+> taste to KEVIN-REVIEW-BATCH. Update LOOP-PROGRESS.html + STATUS + CHANGELOG each batch.
+> **This SUPER-CAMPAIGN supersedes the idle V1/V2 loop below** — the review findings ARE the new work queue. The
+> existing ScheduleWakeup heartbeat + workflow-completion notifications both resume HERE.
+
+---
+
 ## ▶️ CURRENT CAMPAIGN: **v8 — "Playable Truth + Depth"**
 
 **Steer (Kevin, 2026-07-13, verbatim):** *"fix / enhance and address every single one of these items you

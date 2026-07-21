@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crafty · Autonomous Loop Progress</title>
+<style>
+  /* ---- tokens : warm-obsidian ground, voxel-teal accent, magic-hour amber highlight ---- */
+  :root{
+    --ink:#0e1512; --ink-2:#141d1a; --panel:#16211d; --panel-2:#1b2723;
+    --line:#26332e; --line-2:#31423b;
+    --paper:#e9e4d8; --fg:#e7ede9; --fg-dim:#9fb3ab; --fg-faint:#6f8279;
+    --teal:#2bb6ac; --teal-ink:#0c1c1a; --amber:#e0a244;
+    --good:#5fb87a; --warn:#e0a244; --bad:#d9635f; --idle:#6c7d84; --info:#57a7c9;
+    --radius:10px; --maxw:1120px;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 12px 32px -18px rgba(0,0,0,.7);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ink:#f3efe6; --ink-2:#ece7db; --panel:#fbf8f1; --panel-2:#f4efe4;
+      --line:#ddd5c5; --line-2:#cfc6b3;
+      --fg:#1e2723; --fg-dim:#586b62; --fg-faint:#8a978f;
+      --teal:#0f8f86; --teal-ink:#effaf8; --amber:#b3701a;
+      --good:#2f8b52; --warn:#b3701a; --bad:#c0403c; --idle:#7c8a90; --info:#2f7fa1;
+      --shadow:0 1px 0 rgba(255,255,255,.6),0 14px 30px -20px rgba(60,50,30,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#0e1512; --ink-2:#141d1a; --panel:#16211d; --panel-2:#1b2723;
+    --line:#26332e; --line-2:#31423b; --fg:#e7ede9; --fg-dim:#9fb3ab; --fg-faint:#6f8279;
+    --teal:#2bb6ac; --amber:#e0a244; --good:#5fb87a; --warn:#e0a244; --bad:#d9635f; --idle:#6c7d84; --info:#57a7c9;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 12px 32px -18px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe6; --ink-2:#ece7db; --panel:#fbf8f1; --panel-2:#f4efe4;
+    --line:#ddd5c5; --line-2:#cfc6b3; --fg:#1e2723; --fg-dim:#586b62; --fg-faint:#8a978f;
+    --teal:#0f8f86; --amber:#b3701a; --good:#2f8b52; --warn:#b3701a; --bad:#c0403c; --idle:#7c8a90; --info:#2f7fa1;
+    --shadow:0 1px 0 rgba(255,255,255,.6),0 14px 30px -20px rgba(60,50,30,.35);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ink); color:var(--fg);
+    font-family:var(--sans); line-height:1.55; letter-spacing:.01em;
+    /* faint voxel-chunk grid */
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:44px 44px, 44px 44px;
+    background-position:center top;
+    background-attachment:fixed;
+  }
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(120% 80% at 50% -10%, color-mix(in srgb,var(--teal) 9%, transparent), transparent 60%);}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:28px 22px 72px; position:relative}
+  a{color:var(--teal); text-decoration:none} a:hover{text-decoration:underline}
+  .mono{font-family:var(--mono)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- topbar ---- */
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;
+    padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:var(--shadow)}
+  .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+  .glyph{width:34px;height:34px;border-radius:7px;flex:0 0 auto;
+    background:
+      conic-gradient(from 45deg, var(--teal), color-mix(in srgb,var(--teal) 55%, var(--amber)) 55%, var(--amber));
+    box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ink) 60%, transparent), 0 0 20px -6px var(--teal);
+    position:relative}
+  .glyph::after{content:"";position:absolute;inset:8px;border-radius:3px;
+    background:var(--ink);opacity:.35;
+    background-image:linear-gradient(var(--fg) 1px,transparent 1px),linear-gradient(90deg,var(--fg) 1px,transparent 1px);
+    background-size:5px 5px}
+  .brand h1{font:600 15px/1.1 var(--mono);letter-spacing:.06em;margin:0}
+  .brand .sub{font:500 11px/1.2 var(--mono);color:var(--fg-faint);letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+  .live{display:inline-flex;align-items:center;gap:8px;font:600 11px/1 var(--mono);
+    letter-spacing:.12em;text-transform:uppercase;color:var(--good);
+    padding:7px 11px;border:1px solid color-mix(in srgb,var(--good) 40%,var(--line));border-radius:100px;
+    background:color-mix(in srgb,var(--good) 12%, transparent)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 70%,transparent);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 60%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .meta{font:500 11.5px/1.5 var(--mono);color:var(--fg-dim);text-align:right}
+  .meta b{color:var(--fg);font-weight:600}
+
+  /* ---- stat strip ---- */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0 26px}
+  .stat{border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px 13px;
+    background:var(--panel);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal);opacity:.8}
+  .stat.amber::before{background:var(--amber)} .stat.good::before{background:var(--good)}
+  .stat .k{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
+  .stat .v{font:650 27px/1.05 var(--mono);margin-top:9px;letter-spacing:-.01em}
+  .stat .v small{font-size:13px;color:var(--fg-dim);font-weight:600}
+  .stat .d{font:500 11px/1.3 var(--mono);color:var(--fg-dim);margin-top:5px}
+  .up{color:var(--good)}
+
+  /* ---- sections ---- */
+  section{margin:30px 0 0}
+  .eyebrow{display:flex;align-items:center;gap:10px;margin:0 2px 14px}
+  .eyebrow h2{font:600 12.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--fg-dim);margin:0;white-space:nowrap}
+  .eyebrow .rule{height:1px;background:var(--line);flex:1}
+  .eyebrow .tag{font:600 11px/1 var(--mono);color:var(--fg-faint);letter-spacing:.06em}
+
+  .card{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+    box-shadow:var(--shadow);padding:0;overflow:hidden}
+  .band{border-left:3px solid var(--line-2)}
+  .band.run{border-left-color:var(--warn)} .band.done{border-left-color:var(--good)}
+  .band.block{border-left-color:var(--bad)} .band.queue{border-left-color:var(--idle)}
+  .band.accent{border-left-color:var(--teal)}
+
+  .mandate{padding:18px 20px;border-left:3px solid var(--teal)}
+  .mandate p{margin:0 0 10px;max-width:74ch}
+  .mandate p:last-child{margin-bottom:0}
+  .mandate strong{color:var(--fg)}
+  .mandate .guard{color:var(--fg-dim);font-size:14px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .wf{padding:16px 16px 15px}
+  .wf .h{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .wf .h .t{font:600 13.5px/1.2 var(--sans);margin:0}
+  .wf .desc{color:var(--fg-dim);font-size:13px;margin:0 0 12px}
+  .wf .prog{font:500 12px/1.5 var(--mono);color:var(--fg-dim)}
+  .wf .prog b{color:var(--fg)}
+  .bar{height:6px;border-radius:100px;background:var(--line);overflow:hidden;margin:10px 0 4px}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),color-mix(in srgb,var(--teal) 60%,var(--amber)));border-radius:100px}
+  .bar.indet>i{width:38%;animation:slide 1.8s ease-in-out infinite}
+  @keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font:600 10.5px/1 var(--mono);
+    letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:100px;border:1px solid var(--line-2)}
+  .pill.run{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,transparent)}
+  .pill.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));background:color-mix(in srgb,var(--good) 12%,transparent)}
+  .pill.block{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .pill.queue{color:var(--fg-dim);background:color-mix(in srgb,var(--idle) 10%,transparent)}
+  .pill .dot{width:7px;height:7px}
+  .pill.run .dot{background:var(--warn)} .pill.done .dot{background:var(--good);animation:none} .pill.block .dot{background:var(--bad);animation:none}
+
+  /* ---- ledger ---- */
+  .ledger{display:flex;flex-direction:column}
+  .row{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:start;
+    padding:13px 16px;border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row .sha{font:600 12px/1.6 var(--mono);color:var(--amber)}
+  .row .body .t{font-weight:600;font-size:14px}
+  .row .body .n{color:var(--fg-dim);font-size:12.5px;margin-top:2px}
+  .row .body .n code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .row .v{white-space:nowrap}
+
+  .klist{display:flex;flex-direction:column}
+  .krow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+  .krow:first-child{border-top:0}
+  .krow .t{font-size:13.5px} .krow .t b{font-weight:600}
+  .krow .t span{color:var(--fg-dim);font-size:12.5px}
+  .ktag{font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg-faint);
+    padding:4px 8px;border:1px solid var(--line-2);border-radius:100px;white-space:nowrap}
+
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;padding:16px}
+  .rule-c{padding:13px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+  .rule-c .n{font:650 12px/1 var(--mono);color:var(--teal);letter-spacing:.05em}
+  .rule-c p{margin:8px 0 0;font-size:12.5px;color:var(--fg-dim)}
+
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--fg-faint);font:500 11.5px/1.6 var(--mono);display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
+
+  @media (max-width:840px){ .stats{grid-template-columns:repeat(2,1fr)} .grid3{grid-template-columns:1fr} .meta{text-align:left} }
+  @media (max-width:520px){ .row{grid-template-columns:1fr;gap:4px} .row .sha{color:var(--amber)} }
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="glyph" aria-hidden="true"></div>
+      <div>
+        <h1>CRAFTY · BUILD LOOP</h1>
+        <div class="sub">autonomous · self-verifying · SOTA-shaped</div>
+      </div>
+    </div>
+    <span class="live"><span class="dot"></span> Loop active</span>
+    <div class="meta">
+      updated <b>2026-07-20 · 18:24</b><br>
+      HEAD <b>03036c6</b> · main · pushed
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2062 <small class="up">▲104</small></div><div class="d">319 files · all green</div></div>
+    <div class="stat good"><div class="k">Gates</div><div class="v num">GREEN</div><div class="d">build·eslint·knip·bundle·doc-currency</div></div>
+    <div class="stat amber"><div class="k">Verified units / session</div><div class="v num">12</div><div class="d">each RED-first + mutation-proven</div></div>
+    <div class="stat"><div class="k">Source under audit</div><div class="v num">29.4<small>k LOC</small></div><div class="d">260 files · 40 review slices</div></div>
+    <div class="stat amber"><div class="k">Review workflows</div><div class="v num">3 <small>live</small></div><div class="d">source · docs · tests/scripts/config</div></div>
+  </div>
+
+  <section>
+    <div class="eyebrow"><h2>Governing mandate</h2><span class="rule"></span><span class="tag">Kevin · 2026-07-20</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>Aggressive unilateral enhancement — make everything SOTA-shaped.</strong> Full authority to audit every line and word of the repo and apply fixes + enhancements autonomously: correctness, perf, a11y, code quality, polish, better patterns.</p>
+      <p class="guard"><strong>The guardrails that keep "aggressive" safe, not reckless:</strong> every change is RED-first &amp; mutation-proven with the full suite green (SOTA <em>requires</em> verification); commits are atomic verified units so history stays auditable and git-reversible; recorded owner decisions (world-design hybrid, CPU-ocean fork) are enhanced within, never silently reversed; irreversible high-blast actions (hard deletes of referenced files, force-push, external sends) still get care. Taste/gameplay calls are now <em>made</em> and noted veto-ably rather than blocking.</p>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Active campaign — holistic repo review</h2><span class="rule"></span><span class="tag">find → adversarially verify → fix</span></div>
+    <div class="grid3">
+      <div class="card band run"><div class="wf">
+        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Source review</p>
+        <p class="desc">Every line + comment of all <b>260</b> source files, one deep reviewer per slice, each finding adversarially refuted against live source.</p>
+        <div class="bar indet"><i></i></div>
+        <div class="prog"><b>40</b> slices · review → verify</div>
+      </div></div>
+      <div class="card band run"><div class="wf">
+        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Docs audit &amp; reorg</p>
+        <p class="desc">Classify every doc (live / completed / redundant / stale), check inbound refs, synthesize a <b>merge / archive / delete</b> plan.</p>
+        <div class="bar indet"><i></i></div>
+        <div class="prog">map → synthesize · reversible archive preferred</div>
+      </div></div>
+      <div class="card band run"><div class="wf">
+        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Tests · scripts · config</p>
+        <p class="desc">All <b>377</b> test/script/config files — vacuity classification, probe hygiene sweep, config drift; verified.</p>
+        <div class="bar indet"><i></i></div>
+        <div class="prog"><b>16</b> slices · review → verify</div>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Shipped this session</h2><span class="rule"></span><span class="tag">verified ledger</span></div>
+    <div class="card ledger">
+      <div class="row"><div class="sha">03036c6</div><div class="body"><div class="t">Ocean lived-probe paid + probe hardened</div><div class="n">RULE-3 debt on <code>05082fa</code>: coast lived-verified clean (4 shots). Fixed a real orphan-vite leak (<code>detached</code> + process-group kill).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">cbc9f40</div><div class="body"><div class="t">survival-quests gate → behavioral</div><div class="n">Seam <code>resolveDawn</code>: survive-night credited once per grant. RULE-2 catch — gate was 4/5 legit, seam-replaced only the source-grep.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8a1da93</div><div class="body"><div class="t">melee-swing-audio gate → behavioral</div><div class="n">Seam <code>makeAttackSoundPlayer</code>: swing whoosh fires on every committed swing. Mutation-proven (drop playSwing → 3 RED).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8ab8938</div><div class="body"><div class="t">boss-notif-timer gate → behavioral</div><div class="n">Seam <code>makeNotifClearTracker</code>: clearAll cancels pending timers → no setState-after-unmount leak.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">e78bd1c</div><div class="body"><div class="t">B8 — spatial audio was dead until first hostile</div><div class="n">Stale-ref-in-context: one re-render after audio init propagates the populated refs. jsdom Web-Audio mock test.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">05082fa</div><div class="body"><div class="t">B8 — ocean rendered inside caves &amp; 1.1km inland</div><div class="n">Pure <code>oceanVisibleNear</code> gates render + recompute (~14% frame budget reclaimed). Mutation-proven.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Awaiting Kevin</h2><span class="rule"></span><span class="tag">veto / taste / irreversible</span></div>
+    <div class="card band queue"><div class="klist">
+      <div class="krow"><div class="t"><b>Ocean water aesthetic</b> <span>— coast verified clean; want it more tropical / moodier, foam stronger? (one-liners in Terrain.jsx)</span></div><span class="ktag">taste</span></div>
+      <div class="krow"><div class="t"><b>2 preview-tab husks @ :4196</b> <span>— run close-preview-tabs.sh --close when convenient (loop never auto-closes)</span></div><span class="ktag">chore</span></div>
+      <div class="krow"><div class="t"><b>Chest LMB mines it</b> <span>— stored inventory lost; (a) LMB opens / (b) drops first / (c) leave. Recommend (a).</span></div><span class="ktag">design</span></div>
+      <div class="krow"><div class="t"><b>500 ms global damage-lockout</b> <span>— a pack hits like one mob; per-attacker i-frames instead?</span></div><span class="ktag">balance</span></div>
+      <div class="krow"><div class="t"><b>Camera-shake decays per frame</b> <span>— 4× longer on a slow box; fps-independent decay pending a target feel</span></div><span class="ktag">feel</span></div>
+      <div class="krow"><div class="t"><b>Mob AI pathfinds in 2D</b> <span>— can't climb terrain to reach you; invest in 3D A*?</span></div><span class="ktag">design</span></div>
+      <div class="krow"><div class="t"><b>B5/B7 visual re-baseline</b> <span>— blocked: capture harness hangs at title-mascot (needs box-free / Chrome restart)</span></div><span class="ktag">blocked</span></div>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>The five rules</h2><span class="rule"></span><span class="tag">every scar, encoded</span></div>
+    <div class="card"><div class="rules">
+      <div class="rule-c"><div class="n">01 · MUTATION-PROVE</div><p>Break the behaviour → it must go RED → revert via cp-backup, never <code>git checkout</code>. A gate never seen red is a rubber stamp.</p></div>
+      <div class="rule-c"><div class="n">02 · VERIFY THEN ASSERT</div><p>Every external/absence/root-cause claim gets a live check the same turn. The registry is a hypothesis.</p></div>
+      <div class="rule-c"><div class="n">03 · GREEN ≠ LIVED</div><p>A green headless gate isn't a lived result. Audio / render / feel → a lived probe or Kevin. Pure logic → a pure unit.</p></div>
+      <div class="rule-c"><div class="n">04 · NEVER WEAKEN TO PASS</div><p>A gate green on day one against unfixed code proves nothing. Assume vacuous until seen red.</p></div>
+      <div class="rule-c"><div class="n">05 · NOT SELF-JUDGED</div><p>The worker may not certify its own completion. Findings are adversarially verified before they count.</p></div>
+    </div></div>
+  </section>
+
+  <footer>
+    <span>Crafty · autonomous build loop · this dashboard regenerates each iteration</span>
+    <span>source of truth → git log · memory/STATUS.md · KEVIN-REVIEW-BATCH.md</span>
+  </footer>
+</div>
+
+<script>
+  // reflect the viewer's toggle if the host stamps data-theme; harmless standalone.
+  (function(){ try{ var t=document.documentElement.getAttribute('data-theme'); if(t){document.documentElement.setAttribute('data-theme',t);} }catch(e){} })();
+</script>
+</body>
+</html>
