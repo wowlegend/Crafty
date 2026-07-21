@@ -48,9 +48,11 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~57 findings fixed / 215.** Comment-lie batch 1 (`4ae60bc`, 11 fixed
-> across 9 files; 2 were already-fixed false-positives, skipped) + `edd0cec` routed 7 visual/taste items to
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~62 findings fixed / 215.** Comment-lie sweep batches 1+2
+> (`4ae60bc`+`4f05f77`+`bf1fa9a`, 16 fixed across 13 files; 3 were already-fixed/false-positive, skipped —
+> Terrain HEARTH_Y, Components KeyT, lootTables gate-scope) + `edd0cec` routed 7 visual/taste items to
 > KEVIN-REVIEW (quality high-tier, terrain UV, boss/mob hit-flash, rain rotation, 2 spellVfx look calls).
+> **NEXT comment-lies (carry-forward): App.jsx ×3 (stranded/placement-class — need careful context read).**
 > Probe-hygiene batch (~25 — all 22 probe/perf
 > scripts on `scripts/visual/_serve.mjs`) + Phase-2a bugs: `e8e218e` HIGH trade · `3660284` ci security · `93bf3d3`
 > Player dead-code · `aa121de` HIGH archer-kite · `b5be02f` Terrain. **Phase-2b correctness batch (7):** `0dee956`
