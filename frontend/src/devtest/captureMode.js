@@ -50,7 +50,8 @@ export function exitCaptureMode() {
   _opts = { ..._opts, showTouch: false }; // never leak a showTouch fixture into later frames
 }
 
-// xmur3 string hash -> 32-bit seed. Deterministic, well-distributed across keys.
+// MurmurHash2-style string hash -> 32-bit seed (0x5bd1e995 mix constant + a murmur3-style finalizer).
+// Deterministic, well-distributed across keys.
 function hashKey(str) {
   let h = BASE_SEED ^ str.length;
   for (let i = 0; i < str.length; i++) {

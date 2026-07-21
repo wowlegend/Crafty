@@ -709,8 +709,8 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         </Button>
                     </Panel>
 
-                    {/* SFX Volume (M3 #3: drives the WebAudio master-bus gain; 0% = silent SFX. Music volume
-                        + a master mute land in S3b). */}
+                    {/* SFX Volume (M3 #3: drives the WebAudio master-bus gain; 0% = silent SFX). Music
+                        volume + master mute are the sibling panels below (both shipped). */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Sound Effects</span>

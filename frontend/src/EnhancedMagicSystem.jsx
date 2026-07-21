@@ -490,7 +490,7 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
 // sphere reading as a pastel ball. The premium-energy read is a LAYERED body: a hot,
 // near-white INNER CORE (the bright heart bloom blows out) wrapped in a saturated,
 // element-COLORED OUTER GLOW shell — both emissive + `toneMapped={false}` so the §3
-// bloom pass (threshold 0.85, emissive-only) catches them and they read as light, not
+// bloom pass (threshold 0.65, emissive-only) catches them and they read as light, not
 // plastic. Hues are anchored to the spec §4 magic palette (fire #FF7A3C / ice #6FC8FF /
 // lightning #FFE066 / arcane #B36BFF), pushed hot at the core for a glowing heart.
 //

@@ -59,8 +59,9 @@ const FORK_LINES = Array.from({ length: 4 }, (_, i) => ({
 }));
 
 // Spell-VFX render group (S3 de-monolith from EnhancedMagicSystem): the projectile / core / impact-pop /
-// cast-telegraph / wand renderers. EMS imports the 3 it renders directly; SpellProjectileCore is internal
-// (used by EnhancedSpellProjectile); MagicWand is exported (Components -> playerRender uses it).
+// cast-telegraph / chain-arc / wand renderers. EMS imports the 4 it renders directly (EnhancedSpellProjectile,
+// SpellImpactPop, CastTelegraph, ChainArc); SpellProjectileCore is internal (used by EnhancedSpellProjectile);
+// MagicWand is exported (Components -> playerRender uses it).
 const EnhancedSpellProjectile = React.memo(({ projectile }) => {
   const groupRef = useRef();
   const trailRef = useRef();
@@ -391,7 +392,7 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
       {/* (2) hot inner core — near-white heart that bloom blows out into glowing light.
           renderOrder 2/3 (paints last, over the colored shape) so the white heart
           dominates. A tight white-hot HOTSPOT nested in the tinted core guarantees the
-          center clips past the bloom threshold (1.0) and blooms as a glowing point of
+          center clips past the bloom threshold (0.65) and blooms as a glowing point of
           light — the same recipe that makes the impact flash read premium. */}
       <mesh ref={innerRef} renderOrder={2}>
         <sphereGeometry args={[size * profile.coreScale, 16, 16]} />
@@ -717,7 +718,8 @@ const CastTelegraph = React.memo(({ telegraph }) => {
           toneMapped={false}
         />
       </mesh>
-      {/* mid spoke-ring: 8 short radial ticks (a glyph hint) on a thin ring band */}
+      {/* mid ring: a low-poly 8-segment (octagonal) ring band — a glyph hint (not discrete radial ticks;
+          `spokesRef` is a legacy name). Whether it should be real radial ticks is a KEVIN taste call. */}
       <mesh ref={spokesRef}>
         <ringGeometry args={[0.54, 0.64, 8, 1]} />
         <meshBasicMaterial

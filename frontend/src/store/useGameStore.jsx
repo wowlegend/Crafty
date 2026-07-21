@@ -95,8 +95,8 @@ export const useGameStore = create((set, get) => ({
     weatherMoodBoost: 0,
     setWeatherMoodBoost: (n) => set({ weatherMoodBoost: Number(n) || 0 }),
 
-    // UI locale (S1-C): 'en' default + togglable 'zh-CN'. (A later task makes
-    // setLocale also lazy-load CJK fonts on the flip to zh-CN.)
+    // UI locale (S1-C): 'en' default + togglable 'zh-CN'. setLocale lazy-loads the
+    // CJK fonts on the flip to zh-CN (see the dynamic import below).
     locale: 'en',
     setLocale: (loc) => {
       const next = loc === 'zh-CN' ? 'zh-CN' : 'en';

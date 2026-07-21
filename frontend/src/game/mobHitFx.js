@@ -8,12 +8,11 @@ import { MOB_TYPES } from './mobTypes';
 
 /**
  * Death-burst spark color + count for a mob KILL -- a bigger finisher than the per-hit sparkFor, so a
- * kill reads as a satisfying payoff (was silent: mobs just vanished). color = the mob's body color;
- * count scales with its xp (tougher mobs burst harder), clamped 50..110. Unknown -> white, 50.
- * W2-T5: a dark-mob TINT FLOOR lifts very-dark body colors toward a visible glow while PRESERVING
- * hue (so a near-black mob reads as a colored soul-burst, not a black puff, and a green mob stays
- * green at peak rather than washing to white), and a `burst:'death'` tag selects the GPU pool's
- * upward-biased death velocity branch.
+ * kill reads as a satisfying payoff (was silent: mobs just vanished). W2-T5 (Kevin 2026-06-18): a single
+ * WARM-GOLD "soul released" burst (#FFB84D) for ALL mobs — matches the gold XP motes + the magic-hour
+ * grade — REPLACING the old hue-preserving mob-coloured burst (which read as bright-green confetti on
+ * the common mobs). count scales with the mob's xp (tougher mobs burst harder), clamped to a tasteful
+ * 14..28, and a `burst:'death'` tag selects the GPU pool's upward-biased death velocity branch.
  * @returns {{color:string, count:number, burst:string}}
  */
 export function deathBurst(mobType) {

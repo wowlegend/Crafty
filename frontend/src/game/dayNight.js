@@ -92,7 +92,8 @@ export const DAY_MAX_MOBS = 16;
 /** Calm baseline: hostile-spawn bias at night-0 (the pre-M3b literal). */
 export const DAY_HOSTILE_CHANCE = 0.7;
 
-/** Per-night maxMobs ramp + its additive cap (so maxMobs caps at 16 + 24 = 40). */
+/** Per-night maxMobs ramp + its additive cap. The night ramp alone caps maxMobs at 16 + 24 = 40; the
+ *  S7 zone-tier term below is ADDITIVE on top (up to +8), so the TRUE ceiling is 48. */
 // Module-internal constants (consumed by nightSiege below; not imported elsewhere — un-exported 2026-06-20 knip pass).
 const SIEGE_MOBS_PER_NIGHT = 4;
 const SIEGE_MOBS_RAMP_CAP = 24;

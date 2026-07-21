@@ -2,8 +2,9 @@
 // Keyed by a STABLE id (emoji-free). `icon` is an `Icon` primitive name (see
 // src/ui/primitives/Icon.jsx); `rarity` is one of common/rare/epic/legendary.
 //
-// This file is purely ADDITIVE (M3-T2). It does NOT yet replace the duplicated
-// getItemRarity/getItemEmoji in SimplifiedNPCSystem/GamePanels — that is T3.
+// T3 done: this registry is now the single source of truth — the former duplicated
+// getItemRarity was consolidated here (defined only in this file) and getItemEmoji
+// was removed under the zero-emoji gate.
 //
 // getItemRarity preserves CURRENT observed behavior (the T1 characterization
 // net) for plain names + lowercase blocks + equipment, while FIXING the
