@@ -1,6 +1,26 @@
 # Changelog
 
-## 2026-07-21 — Holistic review Phase 2: correctness bug-fix batch (7 verified units)
+## 2026-07-21 — Holistic review Phase 2: comment-lie category COMPLETE (4 batches, ~29 fixed)
+
+Every `comment-lie` finding (34) dispositioned, each verified on live HEAD: 29 fixed across 4 batches, 3
+false-positives (Terrain HEARTH_Y + Components KeyT already fixed by earlier commits; lootTables gate-scope
+claim was actually accurate), 1 held for Kevin (Terrain.jsx:138 shader comment), 1 duplicate.
+
+- **`d2684fd` batch 3 — App.jsx ×3 (fixture comments):** boss-render comment was stranded above the
+  WILDHEART hook → moved to spawnBossCloseup; spawnSpellCast's "zombie CANNOT be cleared from a hook" was
+  doubly false (boss-closeup DOES clear via ecs.remove) → reworded to the real off-frame-staging mechanism;
+  the panelState.js note sat above the ResizeObserver effect → moved to the isAnyPanelOpen consumer.
+- **`5740c9e` batch 4 — the last 10 + a gate strengthened:** 2 carried dead values removed honestly
+  (AIWorkerSystem leap `8 //Vertical boost` never applied → 0 + honest comment; GPUSparkSystem shader `coord`
+  computed & discarded → removed, sparks are square). Comment corrections: accrualHooks Kinetic/Soul headers
+  swapped to their real hooks, spellCast dropped fictional shield/heal fallback, BlockParticleSystem
+  scale-shrink claim, spellUpgradeCost 'arcane' mislabel, run-scenarios HEADED→HEADLESS, bundle-budget
+  index→three chunk, drive-mobs log string. **Strengthened a vacuous gate:** spawn-legibility "far beacon is
+  capture-suppressed" only asserted the symbol exists → now slices the FarBeacon body and asserts the render
+  early-returns null under isCaptureMode (mutation-proven: the old assertion stayed green when the guard was
+  deleted; the new one goes RED).
+
+
 
 Down the priority ladder past probe-hygiene: test-cleanup hygiene + the deterministically-provable
 correctness bugs (mediums/lows), each RED-first + mutation-proven. Pure-visual bugs (UV tiling, hit-flash,
