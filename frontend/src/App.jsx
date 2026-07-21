@@ -199,6 +199,9 @@ function GameApp({ experienceSystem }) {
   // where ALL panel flags (store + the 4 React-local) are visible: a panel-open unlock is
   // suppressed (the flag is set before the lock exits), death is suppressed (the
   // DeathScreen owns it), pre-game is suppressed (gameStarted).
+  // The isAnyPanelOpen check below reads the SINGLE canonical panel set (panelState.js) — it replaced a
+  // 4th hand-kept list (that was missing showCredits/showStats); the click-to-play overlay + title menu
+  // + key handlers all gate on the same set.
   const prevLockedRef = useRef(false);
   useEffect(() => {
     const was = prevLockedRef.current;
@@ -358,10 +361,6 @@ function GameApp({ experienceSystem }) {
       // outline on BOTH the character and the prop chest. HealthBar/beacon suppressed.
       enterCaptureMode({ camera: { position: [SX + 1.0, SY + 1.5, SZ + 4.0], lookAt: [SX + 0.4, SY + 1.0, SZ] } });
     });
-    // Boss-render fixture: a deterministic close-up of the (frozen) Shadow Dragon
-    // against a bright sky studio, so the dark obsidian body + emissive telegraph +
-    // inverted-hull contour read clearly (a character card, not an in-context danger
-    // scene). force-spawn bypasses the level/HP gate; BossEntity freezes in capture.
     // S2-B1-M7d: the WILDHEART beast TRANSFORM reveal — the LEAD (comet/fire) beast IN-WORLD (real
     // sky+terrain, captureStudio:false, NOT a studio card) at a third-person reveal angle, so the
     // ③·5 silhouette + glow is judged in its TRUE context (the VFX discipline). Deterministic/frozen.
@@ -384,6 +383,10 @@ function GameApp({ experienceSystem }) {
       enterCaptureMode({ camera: CAMS[element] || CAMS.fire });
     });
 
+    // Boss-render fixture: a deterministic close-up of the (frozen) Shadow Dragon against a bright sky
+    // studio, so the dark obsidian body + emissive telegraph + inverted-hull contour read clearly (a
+    // character card, not an in-context danger scene). force-spawn bypasses the level/HP gate; BossEntity
+    // freezes in capture.
     registerTestHook('spawnBossCloseup', () => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
@@ -419,10 +422,10 @@ function GameApp({ experienceSystem }) {
       store.setDangerLevel(0);
       store.setTimeOfDay(0.5); // flattering midday so the additive VFX reads against sky
       useGameStore.setState({ treasureChestsList: [] });
-      // The character-closeup zombie lives at (0,140,-8) in the ECS and CANNOT be cleared
-      // from a hook (same constraint boss-closeup documents). So we stage the cast far
-      // away on +X (the boss-closeup band) where that stray zombie falls fully off-frame,
-      // giving a clean sky backdrop for the VFX read. Origin X used below: 60.
+      // A stray character-closeup zombie can sit at (0,140,-8) in the ECS. This fixture doesn't clear it
+      // (the sibling boss-closeup DOES, via ecs.remove — mobs ARE hook-clearable); instead it stages the
+      // cast far away on +X (the boss-closeup band) where that zombie falls fully off-frame, giving a
+      // clean sky backdrop for the VFX read. Origin X used below: 60.
       // Enter capture FIRST (freezes the magic clock + pins the cam) so the injected cast
       // is placed into an already-frozen world and holds a stable pose across runs. Camera:
       // a 3/4 side angle pulled back so the full arc (muzzle -> mid-flight head -> impact
@@ -685,8 +688,8 @@ function GameApp({ experienceSystem }) {
     initSettingsPersistence(useGameStore, isCaptureMode);
   }, []);
 
-  // SINGLE canonical panel set (panelState.js) — was a 4th hand-kept list (missing showCredits/showStats);
-  // the click-to-play overlay gates on it just like the title menu + the key handlers.
+  // Swallow the benign ResizeObserver loop errors some browsers emit (a harmless warning, not a real
+  // error) so they don't spam the console or trip an error overlay.
   useEffect(() => {
     const handleResizeError = (e) => {
       if (e.message === 'ResizeObserver loop limit exceeded' ||
