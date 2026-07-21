@@ -48,12 +48,13 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — 8 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~17 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
 > `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code · `aa121de` HIGH archer-kite (ai.worker) · `b5be02f`
-> Terrain comments+dead-branch. NEXT off the ladder: the remaining ~24 probe-hygiene findings (extract a shared
-> serve-helper (a new `_serve.mjs`, detached spawn + finally-close + group-kill) — then adopt across probes) →
-> comment-lie/doc-drift by-file batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements
-> → docs REORG. (The shared helper is a NEW `_serve.mjs` under scripts/visual/ — does not exist yet.)
+> Terrain comments+dead-branch · `b0d6846` shared `scripts/visual/_serve.mjs` helper + grass/death/pov probes (BOTH
+> lifecycle patterns proven end-to-end, 0 leaks) · `b3ea100` storm/hands probes. **Probe-hygiene: 6 of ~22 probes on
+> the helper; ~16 remain** (mechanical — Pattern-A `done()` + Pattern-B try/finally both proven; convert a few per
+> commit, run-verify optional). NEXT off the ladder: finish the probe conversions → comment-lie/doc-drift by-file
+> batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements → docs REORG.
 > Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
 > `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
 > **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I

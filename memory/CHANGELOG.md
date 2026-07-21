@@ -24,6 +24,14 @@
 - **`b5be02f` fix(terrain) — stale comments + a dead raycast branch.** HEARTH_Y=32→51, ~906/~1280→~1025 (radius
   pulled to 1024), and `hit.toi ?? timeOfImpact` → `timeOfImpact` (legacy toi always undefined in this rapier build).
 
+- **`b0d6846`+`b3ea100` fix(hygiene) — shared probe serve-helper (the orphan-vite class).** ~25 probe-hygiene
+  findings: probes spawned `npx vite` non-detached (server.kill reaps only npx, orphans the vite child) and often
+  closed the browser only on the happy path. Extracted `scripts/visual/_serve.mjs` (`serveVite` → detached spawn +
+  `shutdown()` that SIGKILLs the whole process group + closes the browser under a timeout+force-kill) — the pattern
+  proven in ocean-probe/capture. Converted 5 probes (grass/death/pov/storm/hands); **both lifecycle shapes verified
+  end-to-end** by running grass (Pattern-B try/finally) and pov (Pattern-A done()) at low load — both exit 0, 0 leaks.
+  ~16 probes remain (mechanical adoption).
+
 All RED-first / verified; build + eslint + knip + unit suite (now 2069) green each push. Queue:
 `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`.
 
