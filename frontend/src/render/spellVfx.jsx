@@ -112,7 +112,8 @@ const EnhancedSpellProjectile = React.memo(({ projectile }) => {
           plane ribbon. */}
       <mesh ref={trailRef}>
         {profile.trail === 'shard' ? (
-          // ice: a sharp thin cone streak (tapers to a point at the tail)
+          // ice: a sharp thin cone streak — Three's cone apex is at +Y (the leading edge), so it tapers to
+          // a point at the HEAD and is wide at the tail. (Whether it should taper at the tail: KEVIN call.)
           <coneGeometry args={[projectile.size * 0.16, 1, 5, 1, true]} />
         ) : profile.trail === 'segments' ? (
           // lightning: a thin narrow wake (low opacity below sells the flicker)
