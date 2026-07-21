@@ -8,12 +8,14 @@ import puppeteer from 'puppeteer';
 const PORT = 4191;
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (code) => { try { server.kill('SIGKILL'); } catch {} process.exit(code); };
+// detached: vite runs in its OWN process group so the finally can SIGKILL the whole group; a plain
+// server.kill() only reaps the npx wrapper and ORPHANS the vite child holding :4191 (hygiene, charter §6.4).
+const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', detached: true });
+let browser = null, code = 0;
 
 try {
   for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.setViewport({ width: 1280, height: 800 });
@@ -34,9 +36,13 @@ try {
   const dyaw = Math.abs(after.y - before.y);
   const dpitch = Math.abs(after.x - before.x);
 
-  await browser.close();
   const pass = before.locked && dyaw > 0.05;
   console.log(`[look-e2e] pointerLock=${before.locked} yawDelta=${dyaw.toFixed(3)} pitchDelta=${dpitch.toFixed(3)} -> ${pass ? 'PASS' : 'FAIL'}`);
-  if (!pass) { console.error('[look-e2e] FAIL: mouse movement did not rotate the camera under pointer lock (the dead-camera regression).'); done(1); }
-  done(0);
-} catch (e) { console.error('[look-e2e] ERROR:', e); done(1); }
+  if (!pass) { console.error('[look-e2e] FAIL: mouse movement did not rotate the camera under pointer lock (the dead-camera regression).'); code = 1; }
+} catch (e) { console.error('[look-e2e] ERROR:', e); code = 1; }
+finally {
+  if (browser) { try { await browser.close(); } catch {} }
+  // kill the whole vite process GROUP (npx wrapper + its forked child); fall back to a plain kill.
+  try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch {} }
+}
+process.exit(code);
