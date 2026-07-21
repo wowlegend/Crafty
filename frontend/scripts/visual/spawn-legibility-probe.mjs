@@ -3,22 +3,23 @@
 // is cyan (#46E0FF), the Blight-Heart beacon is violet (#A24BFF). Because the beacon bearing isn't
 // exposed to the page, we do a horizon-level YAW SWEEP (8 shots around the compass) so the tall additive
 // shafts appear in whichever direction they lie. Saves PNGs to /tmp/crafty-spawn/. Model: pov-probe.mjs.
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-const PORT = 4197, URL = `http://localhost:${PORT}`;
+import { serveVite } from './_serve.mjs';
+const PORT = 4197;
 const OUT = '/tmp/crafty-spawn';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (c) => { try { server.kill('SIGKILL'); } catch {} process.exit(c); };
+const { url, waitReady, shutdown } = serveVite(PORT);
+let browser = null;
+const done = async (c) => { await shutdown(browser); process.exit(c); };
 try {
-  for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  await waitReady();
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.setViewport({ width: 1280, height: 800 });
-  await page.goto(URL, { waitUntil: 'networkidle2' });
+  await page.goto(url, { waitUntil: 'networkidle2' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
   await page.evaluate(() => window.__craftyTest.call('start'));
   await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5)); // midday so the additive shaft reads against bright sky
@@ -44,5 +45,5 @@ try {
     return { locked: !!document.pointerLockElement, spawnChunk: s.isSpawnChunkLoaded, pos: pp && { x: +pp.x.toFixed(1), y: +pp.y.toFixed(1), z: +pp.z.toFixed(1) } };
   });
   console.log('state:', JSON.stringify(p));
-  await browser.close(); done(0);
+  done(0);
 } catch (e) { console.error('SPAWN-PROBE ERROR:', e); done(1); }
