@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { siegeWarning } from '../game/dayNight.js';
+import { resolveDawn } from './dawnSurvival.js';
 
 export const useSurvivalMode = (isDay) => {
     // nightCount is the STORE's single source of truth (lifted out of local useState
@@ -41,15 +42,16 @@ export const useSurvivalMode = (isDay) => {
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a
             // re-fired transition, a hook remount, or a reload mid-run cannot double-grant.
-            const survived = useGameStore.getState().nightCount;
-            const r = survived > 0 ? useGameStore.getState().grantDawnReward(survived) : null;
-            // Credit the survive_nights quests exactly once per genuinely-survived night: grantDawnReward
-            // returns its descriptor only when it actually granted (null on a re-fired/duplicate dawn), so
-            // gating on `r` inherits that once-per-night guard (no double-count on remount/reload).
-            if (r) useGameStore.getState().onNightSurvived?.();
-            setSurvivalWarning(r
-                ? `Dawn! +${r.xp} XP, +${r.coins} coins, ${r.lootItem}!`
-                : 'Dawn breaks! You survived the night!');
+            // resolveDawn owns the DECISION (credit the survive_nights quest once per genuinely-survived
+            // night, gated on the grant descriptor so a re-fired/duplicate dawn cannot double-count) + the
+            // HUD message. grantDawnReward is injected — it carries the grant side effect AND the persisted
+            // once-per-night guard (null on remount/reload). Behavioral seam: world/dawnSurvival.test.js.
+            const { creditSurvivedNight, message } = resolveDawn(
+                useGameStore.getState().nightCount,
+                useGameStore.getState().grantDawnReward,
+            );
+            if (creditSurvivedNight) useGameStore.getState().onNightSurvived?.();
+            setSurvivalWarning(message);
             setTimeout(() => setSurvivalWarning(null), 3000);
         }
 

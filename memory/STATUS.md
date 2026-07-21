@@ -328,7 +328,7 @@ a root cause; do not open 45 separate tickets.
   **Measured (2026-07-13, first-pass classification of all 124 files in `frontend/tests/gates/`):**
   | Class | Count | Meaning |
   |---|---|---|
-  | **VACUOUS** | **3** (2 DONE) | asserts a code line EXISTS as a proxy for behaviour that *could* be tested behaviourally → the dangerous class. `boss-notif-timer` ✅ seam→behavioral (`8ab8938`), `melee-swing-audio` ✅ seam→behavioral (2026-07-20), `survival-quests` ⬅ LAST remaining |
+  | **VACUOUS** | **3** (ALL DONE ✅) | asserts a code line EXISTS as a proxy for behaviour that *could* be tested behaviourally → the dangerous class. `boss-notif-timer` ✅ seam→behavioral (`8ab8938`), `melee-swing-audio` ✅ seam→behavioral (`8a1da93`), `survival-quests` ✅ (2026-07-20) — **RULE-2 correction: it was MIXED, only 1 of its 5 tests was a source-grep; the other 4 are genuine data-driven contract tests. Seam-extracted just the dawn-wiring sub-test.** |
   | **STRUCTURAL (legit)** | ~31 | a cross-file invariant that genuinely CANNOT be behavioural — e.g. the `ai.worker.js` inline-mirror sync gate (a classic worker cannot import, so comparing source IS the correct tool), zero-emoji-in-src, no-raw-hex-outside-theme, capture-determinism (no `Math.random`) |
   | **NEEDS REVIEW** | ~80 | source-reading, not yet classified — this is the actual work |
   | **BEHAVIOURAL** | 10 | already execute the code |
@@ -347,12 +347,16 @@ a root cause; do not open 45 separate tickets.
   for R1, `world/blockIds.js` for R4a), then assert the seam behaviourally.
   **So V1's real work is SEAM EXTRACTION, not test-rewriting.** Budget it as such. The three:
   `melee-swing-audio` (audio-on-swing), `boss-notif-timer` (timer/notification), `survival-quests` (quest wiring).
-  **PROGRESS (2026-07-20):** 2 of 3 done exactly this way — `boss-notif-timer` → `world/bossNotifTimers.js`
+  **PROGRESS (2026-07-20) — ALL 3 DONE exactly this way:** `boss-notif-timer` → `world/bossNotifTimers.js`
   (`makeNotifClearTracker`, `8ab8938`); `melee-swing-audio` → `game/attackSounds.js` (`makeAttackSoundPlayer` —
   the whoosh composition: playSwing NOW + playAttack after 100ms; behavioral fake-timer test, mutation-proven
-  by dropping `playSwing()`). Both source-greps deleted. **`survival-quests` is the last one.**
-  **The work:** triage the ~80 unclassified; for the genuinely vacuous ones extract a seam, then
-  **mutation-prove** (break the behaviour → it must go RED). Do NOT mass-rewrite the structural gates — for a
+  by dropping `playSwing()`, `8a1da93`); `survival-quests` → `world/dawnSurvival.js` (`resolveDawn` — the
+  survive_nights quest is credited EXACTLY ONCE per genuinely-survived night, gated on the grant descriptor so
+  a re-fired dawn can't double-count; behavioral test, mutation-proven by keying credit on `nightCount>0`
+  instead of the grant result). All source-greps that were genuinely vacuous removed. **RULE-2 lesson: the
+  "vacuous" label is a HYPOTHESIS — `survival-quests` was mostly legit (4/5 data-driven); VERIFY before rewriting.**
+  **NEXT:** no more pre-identified vacuous gates. Either triage the ~80 unclassified (classify then seam-fix the
+  genuinely-vacuous), or start V2·V3 input-driven E2E. Do NOT mass-rewrite the structural gates — for a
   classic Worker that cannot import, comparing source IS the correct tool.
   *(V4, the bundle-byte gate, is DONE + mutation-proven, `4e32dbf`.)*
 - ▢ **V2 [LOOP] Input-driven E2E harness ("Playable Truth").** The gap IS closable: `input/inputState.js`

@@ -1,20 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 import { QUEST_LIST } from '../../src/QuestSystem.jsx';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
 // Survival-progression quests (2026-06-14). The siege loop (onboarding promise -> siege audio) lacked a
 // matching GOAL: no quest rewarded surviving nights, and the distinctive new hostiles (moss_brute elite,
-// emberhusk siege-themed) had no targeted quest. This gate locks the new survive-nights quest TYPE + its
-// dawn wiring + the two new-mob targeted quests, and enforces the capture-safety invariant: every new
-// quest sits at tier >= 2 so the initial active set (tier-1 first-3) is unchanged -> baseline frames stable.
-const __dir = dirname(fileURLToPath(import.meta.url));
-const read = (p) => readFileSync(resolve(__dir, '../../src', p), 'utf8');
-const quest = read('QuestSystem.jsx');
-const survival = read('world/survivalSystem.js');
-
+// emberhusk siege-themed) had no targeted quest. This gate locks the new survive-nights quest TYPE + the
+// two new-mob targeted quests + the capture-safety invariant (every new quest sits at tier >= 2 so the
+// initial active set stays tier-1 first-3 -> baseline frames stable). These are genuine DATA-DRIVEN
+// contract tests over the real QUEST_LIST / MOB_TYPES. The former "dawn->survive_nights wiring" case was a
+// source-grep (readFileSync + regex of survivalSystem.js / QuestSystem.jsx) and is now a behavioral seam
+// test -- src/world/dawnSurvival.test.js: resolveDawn credits the survive_nights quest EXACTLY ONCE per
+// genuinely-survived night (gated on the grant descriptor, so a re-fired dawn can't double-count).
 const byId = Object.fromEntries(QUEST_LIST.map((q) => [q.id, q]));
 
 describe('survival-progression quests', () => {
@@ -50,11 +46,5 @@ describe('survival-progression quests', () => {
     }
   });
 
-  it('the dawn->survive_nights wiring is in place (QuestSystem exposes onNightSurvived; survival fires it once per survived night)', () => {
-    expect(quest).toMatch(/onNightSurvived/);
-    expect(quest).toMatch(/updateQuestProgress\('survive_nights'\)/);
-    expect(quest).toMatch(/setState\(\{\s*onNightSurvived/);
-    // survival fires it only when the dawn reward actually granted (r truthy) -> exactly once per night
-    expect(survival).toMatch(/if \(r\)[\s\S]*onNightSurvived/);
-  });
+  // (the former "dawn->survive_nights wiring" source-grep is now behavioral: src/world/dawnSurvival.test.js)
 });

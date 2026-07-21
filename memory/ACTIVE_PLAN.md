@@ -134,7 +134,7 @@ Full registry + attack order: **`memory/STATUS.md`**.
 
 *History of what shipped (v6, v7, W1–W4, the Aspect spine, …) lives in `memory/CHANGELOG.md`. Do not re-add it here.*
 
-## 📍 V1 gate-triage (`8ab8938`→`72edf32`→melee, 2026-07-14/20) — boss-notif + melee-swing behavioral; NEXT = survival-quests (last of 3)
+## 📍 V1 gate-triage — all 3 known-vacuous gates now BEHAVIORAL (2026-07-14/20) — NEXT = triage the ~80 untriaged OR V2·V3 E2E
 ✅ **V1 boss-notif-timer gate — DONE (behavioral).** The vacuous source-grep gate that used to be at
 `tests/gates/boss-notif-timer-gates.test.js` (a readFileSync+regex of bossSystem.js) is now REMOVED and
 REPLACED: seam-extracted `world/bossNotifTimers.js makeNotifClearTracker`,
@@ -149,9 +149,20 @@ NOW + playAttack after 100ms, injectable scheduler), wired into App.jsx, + a beh
 (fake timers) proving the swing whoosh fires SYNCHRONOUSLY, the strike after the delay, order swing→attack, and
 every swing re-whooshes. RED-first (module-missing) + mutation-proven (drop `playSwing()` → 3 RED). Deleted the
 source-grep. unit 2058→2060.
-**NEXT — the LAST known-vacuous gate (§V1, VERIFY it's actually vacuous first):** survival-quests-gates — read it,
-find the real behaviour (survival quests advance/complete), seam-extract if needed, write a behavioral test,
-mutation-prove, delete the source-grep. Then triage the ~80 untriaged gates (STATUS §V1) or V2·V3 input-driven E2E.
+✅ **V1 survival-quests gate — DONE (behavioral), with a RULE-2 correction.** VERIFY-first paid off: this gate was
+NOT wholly vacuous — 4 of its 5 tests are genuine DATA-DRIVEN contract tests (import the real QUEST_LIST/MOB_TYPES:
+survive_nights quest TYPE exists, moss_brute/emberhusk targeted quests, mobType cross-refs are real, new quests
+tier≥2). Only test 5 (the "dawn→survive_nights wiring") was a source-grep (regex of survivalSystem.js/QuestSystem.jsx
+for `onNightSurvived`/`if (r)…`). Seam-extracted the real invariant to `world/dawnSurvival.js resolveDawn`: the
+survive_nights quest is credited EXACTLY ONCE per genuinely-survived night, gated on the grant descriptor (grant
+returns null on a re-fired/duplicate dawn → no double-count). Wired into `useSurvivalMode`, + a behavioral
+`dawnSurvival.test.js`. RED-first + mutation-proven (credit keyed on `nightCount>0` instead of the grant result →
+duplicate-dawn test RED). Removed test 5 + its dead readFileSync helpers; KEPT the 4 data-driven tests. unit 2060→2062.
+**THE 3 KNOWN-VACUOUS GATES ARE ALL BEHAVIORAL NOW.**
+**NEXT — no more pre-identified vacuous gates. Pick one:** (a) triage the ~80 untriaged gates (STATUS §V1) — classify
+VACUOUS / STRUCTURAL-legit / BEHAVIORAL, then seam-fix any genuinely-vacuous ones; or (b) start V2·V3 input-driven
+E2E ("Playable Truth" — the 0-of-11-e2e-fire-a-real-key gap, STATUS §V1/§V2). Per RULE 2, VERIFY each candidate is
+actually vacuous before rewriting (survival-quests proved the label is a hypothesis — it was mostly legit).
 **OWED (do if `uptime` load < ~10):** ocean LIVED PROBE + B5/B7 VISUAL RE-BASELINE (capture harness hangs at
 title-mascot — needs a box-free/Chrome-restart).
 

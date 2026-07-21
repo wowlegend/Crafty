@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-07-20 — V1 gate-triage: the survival-quests gate is now behavioral (3rd of 3 — all done)
+
+- **V1-survival-quests (`<this commit>`) — replaced the one vacuous sub-test with a behavioral seam; a
+  RULE-2 correction.** Verify-first paid off: `survival-quests-gates.test.js` was NOT wholly vacuous. 4 of its
+  5 tests are genuine DATA-DRIVEN contract tests (they import the real `QUEST_LIST`/`MOB_TYPES` and assert the
+  `survive_nights` quest TYPE exists, the moss_brute/emberhusk targeted quests exist, every quest's `mobType`
+  cross-references a real registry mob, and all new quests are tier≥2 so the capture baseline stays stable).
+  Only test 5 — "the dawn→survive_nights wiring is in place" — was a source-grep (`readFileSync` + regex of
+  survivalSystem.js/QuestSystem.jsx for `onNightSurvived` / `if (r)…onNightSurvived`). Seam-extracted the real
+  invariant to `world/dawnSurvival.js` (`resolveDawn(nightCount, grantDawnReward)` → `{reward,
+  creditSurvivedNight, message}`): the `survive_nights` quest is credited EXACTLY ONCE per genuinely-survived
+  night, gated on the grant descriptor — `grantDawnReward` returns null on a re-fired/duplicate dawn (its
+  persisted once-per-night guard), so a remount/reload can't double-count. Wired into `useSurvivalMode`, +
+  a behavioral `world/dawnSurvival.test.js` (grants for the night survived, credits on a real grant, does NOT
+  credit when the grant returns null though nightCount>0). RED-first (module-missing) + mutation-proven (key
+  credit on `nightCount>0` instead of the grant result → the duplicate-dawn test goes RED). Removed test 5 +
+  its dead readFileSync helpers; kept the 4 data-driven tests. **This completes all 3 known-vacuous gates.**
+  Build/eslint/knip clean; unit 2060 → 2062. **RULE-2 lesson recorded in STATUS §V1: the "vacuous" label is a
+  hypothesis — VERIFY before rewriting.**
+
 ## 2026-07-20 — V1 gate-triage: the melee-swing-audio gate is now behavioral (2nd of 3)
 
 - **V1-melee-swing (`<this commit>`) — replaced the vacuous melee-swing-audio source-grep with a behavioral
