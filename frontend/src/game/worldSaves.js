@@ -18,7 +18,7 @@ export function listWorlds() {
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
-function saveIndex(list) { safeSet(INDEX_KEY, JSON.stringify(list)); }
+function saveIndex(list) { return safeSet(INDEX_KEY, JSON.stringify(list)); }
 
 /**
  * Mint a world id that CANNOT collide with an existing one.
@@ -50,8 +50,9 @@ export function writeWorld(id, meta, saveData) {
   if (!ok) return false;
   const list = listWorlds().filter((w) => w.id !== id);
   list.unshift({ id, ...meta });
-  saveIndex(list);
-  return true;
+  // propagate the index write result — a quota failure here orphans the blob, and the caller must
+  // know the save did not fully land rather than seeing a false success.
+  return saveIndex(list);
 }
 
 export function deleteWorld(id) {
