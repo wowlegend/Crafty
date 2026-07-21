@@ -182,8 +182,8 @@
     </div>
     <span class="live"><span class="dot"></span> Loop active</span>
     <div class="meta">
-      updated <b>2026-07-20 · 18:24</b><br>
-      HEAD <b>03036c6</b> · main · pushed
+      updated <b>2026-07-21</b><br>
+      HEAD <b>262665b</b> · main · pushed
     </div>
   </header>
 
@@ -192,7 +192,7 @@
     <div class="stat good"><div class="k">Gates</div><div class="v num">GREEN</div><div class="d">build·eslint·knip·bundle·doc-currency</div></div>
     <div class="stat amber"><div class="k">Verified units / session</div><div class="v num">12</div><div class="d">each RED-first + mutation-proven</div></div>
     <div class="stat"><div class="k">Source under audit</div><div class="v num">29.4<small>k LOC</small></div><div class="d">260 files · 40 review slices</div></div>
-    <div class="stat amber"><div class="k">Review workflows</div><div class="v num">3 <small>live</small></div><div class="d">source · docs · tests/scripts/config</div></div>
+    <div class="stat amber"><div class="k">Verified findings</div><div class="v num">215</div><div class="d">Phase 2 · fixing in verified batches</div></div>
   </div>
 
   <section>
@@ -204,35 +204,40 @@
   </section>
 
   <section>
-    <div class="eyebrow"><h2>Active campaign — holistic repo review</h2><span class="rule"></span><span class="tag">find → adversarially verify → fix</span></div>
+    <div class="eyebrow"><h2>Active campaign — holistic repo review</h2><span class="rule"></span><span class="tag">Phase 1 ✓ · Phase 2 fixing</span></div>
     <div class="grid3">
-      <div class="card band run"><div class="wf">
-        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
-        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Source review</p>
-        <p class="desc">Every line + comment of all <b>260</b> source files, one deep reviewer per slice, each finding adversarially refuted against live source.</p>
-        <div class="bar indet"><i></i></div>
-        <div class="prog"><b>40</b> slices · review → verify</div>
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Reviewed</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Source</p>
+        <p class="desc">All <b>260</b> src files / 29.4k LOC, 40 slices, adversarially verified against live source.</p>
+        <div class="prog"><b>119</b> confirmed · 71 plausible</div>
       </div></div>
-      <div class="card band run"><div class="wf">
-        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
-        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Docs audit &amp; reorg</p>
-        <p class="desc">Classify every doc (live / completed / redundant / stale), check inbound refs, synthesize a <b>merge / archive / delete</b> plan.</p>
-        <div class="bar indet"><i></i></div>
-        <div class="prog">map → synthesize · reversible archive preferred</div>
-      </div></div>
-      <div class="card band run"><div class="wf">
-        <div class="h"><span class="pill run"><span class="dot"></span>Running</span></div>
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Reviewed</span></div>
         <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Tests · scripts · config</p>
-        <p class="desc">All <b>377</b> test/script/config files — vacuity classification, probe hygiene sweep, config drift; verified.</p>
-        <div class="bar indet"><i></i></div>
-        <div class="prog"><b>16</b> slices · review → verify</div>
+        <p class="desc"><b>377</b> files. 32 vacuous gates, 25 probe-hygiene bugs, 13 test-bugs, 2 security.</p>
+        <div class="prog"><b>96</b> confirmed · 8 plausible</div>
+      </div></div>
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Planned</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Docs reorg</p>
+        <p class="desc"><b>132</b> classified. ~83 autonomous plan-archives + ~24 owner-gated. Archive-not-delete.</p>
+        <div class="prog">merge / archive / keep plan ready</div>
       </div></div>
     </div>
+    <div class="card band accent" style="margin-top:14px"><div class="wf">
+      <p style="font-weight:600;font-size:13.5px;margin:0 0 6px">Phase 2 — applying fixes &amp; enhancements <span class="pill run" style="margin-left:6px"><span class="dot"></span>Active</span></p>
+      <p class="desc" style="margin-bottom:10px">Priority ladder: security → bugs → probe-hygiene → dead-code → comment-lies → doc-drift → vacuous-gate seams → coverage → perf → a11y → inconsistency → enhancements. Each unit RED-first + mutation-proven + gated. Queue: <b>docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md</b>.</p>
+      <div class="prog"><b>215</b> confirmed findings · 132 autonomous · 83 owner-judgment</div>
+    </div></div>
   </section>
 
   <section>
     <div class="eyebrow"><h2>Shipped this session</h2><span class="rule"></span><span class="tag">verified ledger</span></div>
     <div class="card ledger">
+      <div class="row"><div class="sha">262665b</div><div class="body"><div class="t">Loop kernel + charter → v9 "Holistic SOTA"</div><div class="n">Repointed the loop's constitution at the 215-finding queue + expanded authority + the new probe-hygiene scars (orphan-vite, close-hang).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">0630708</div><div class="body"><div class="t">Phase-1 synthesis → 215-finding work queue</div><div class="n">3 adversarially-verified review workflows merged + deduped + priority-laddered into <code>HOLISTIC-REVIEW-2026-07-21.md</code>.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">75191ef</div><div class="body"><div class="t">Capture-harness title-mascot hang fixed</div><div class="n">Was <code>browser.close()</code> blocking on a GPU-context-lost Chrome (not env). Non-fatal ungated state + close timeout-guard + orphan-vite fix. Unblocks the visual re-baseline.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">03036c6</div><div class="body"><div class="t">Ocean lived-probe paid + probe hardened</div><div class="n">RULE-3 debt on <code>05082fa</code>: coast lived-verified clean (4 shots). Fixed a real orphan-vite leak (<code>detached</code> + process-group kill).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">cbc9f40</div><div class="body"><div class="t">survival-quests gate → behavioral</div><div class="n">Seam <code>resolveDawn</code>: survive-night credited once per grant. RULE-2 catch — gate was 4/5 legit, seam-replaced only the source-grep.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">8a1da93</div><div class="body"><div class="t">melee-swing-audio gate → behavioral</div><div class="n">Seam <code>makeAttackSoundPlayer</code>: swing whoosh fires on every committed swing. Mutation-proven (drop playSwing → 3 RED).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
