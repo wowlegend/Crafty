@@ -29,7 +29,7 @@ const ALL_NAMES = [
 ];
 
 describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the 38 registered names', () => {
+  it('VOICES holds EXACTLY the registered names (ALL_NAMES) — no extras, none missing', () => {
     expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
   });
   it('every factory returns a sane, audible, unclipped buffer', () => {

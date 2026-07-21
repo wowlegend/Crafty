@@ -23,7 +23,8 @@ export function isDuskApproaching(gameTime, isDay, leadFraction = 0.18) {
 }
 
 // Fraction [0,1) through the FULL day+night cycle (CYCLE_UNITS) -> drives the day-phase dial's sun/moon
-// orbit angle (cycleFraction 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk). Same finite-guard as above.
+// orbit angle. isDayAtUnit makes t=0 the day's start, so cycleFraction 0=dawn, 0.25=noon, 0.5=dusk
+// (night start), 0.75=midnight. Same finite-guard as above.
 export function cycleFraction(gameTime) {
   const t = Number(gameTime);
   if (!Number.isFinite(t)) return 0;

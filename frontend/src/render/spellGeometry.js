@@ -30,7 +30,7 @@ export function buildFireTeardrop() {
   for (let i = 0; i <= N; i++) {
     const t = i / N;                              // 0 base -> 1 tip
     const y = BASE_Y + (TIP_Y - BASE_Y) * t;
-    // radius: a bulb that peaks ~1/4 up then tapers to a point at the tip (teardrop).
+    // radius: a bulb that peaks ~44% up (sin maxes where t*1.12=0.5) then tapers to a point at the tip (teardrop).
     const r = 0.46 * Math.sin(Math.PI * Math.min(1, t * 1.12)) * (1 - t * 0.18);
     profile.push(new THREE.Vector2(Math.max(0.001, r), y));
   }

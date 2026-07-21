@@ -653,7 +653,7 @@ function generateChunkData(cx, cz) {
   return blocks;
 }
 
-// Helper to convert sRGB to Linear for BufferGeometry vertex colors
+// Helper to convert an sRGB hex to linear RGB for the BLOCK_COLORS table (which tints break-debris particles).
 function toLinear(hex) {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
