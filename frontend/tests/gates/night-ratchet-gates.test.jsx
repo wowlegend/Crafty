@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useSurvivalMode } from '../../src/world/survivalSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { buildSaveData } from '../../src/game/saveSchema';
@@ -37,6 +37,7 @@ const buildNightSave = () => {
 
 describe('B2f night-ratchet — the siege advances only on a real clock crossing, never on a load', () => {
   beforeEach(freshDaySession);
+  afterEach(cleanup); // unmount every renderHook mount so the survival effect doesn't leak into the next test
 
   it('the CLOCK is the single writer: advancing gameTime across day->night bumps nightCount once', () => {
     useGameStore.setState({ gameTime: 550, isDay: true, nightCount: 0 });

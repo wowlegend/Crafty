@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useSpellUpgrades } from '../../src/world/spellUpgrades';
 import { useGameStore } from '../../src/store/useGameStore';
 
@@ -27,6 +27,7 @@ const freshStore = () => useGameStore.setState({ spellLevels: {}, level: 10 });
 
 describe('B2e spell mastery survives a load', () => {
   beforeEach(freshStore);
+  afterEach(cleanup); // unmount every renderHook mount (7 in this file) so the spell hook doesn't leak
 
   it('a fresh game casts everything at Level 1', () => {
     const { result } = renderHook(() => useSpellUpgrades());

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { installBlurReset } from './blurReset.js';
 import { getInput, setIntent, setActive, resetInput, clearHeldIntents } from './inputState.js';
 
@@ -14,7 +14,15 @@ import { getInput, setIntent, setActive, resetInput, clearHeldIntents } from './
 // "blur clears held movement intents" assertion goes RED (moveF stays true).
 
 describe('B8 alt-tab — held input intents are cleared on focus loss', () => {
+  // The visibilitychange tests below Object.defineProperty(document,'visibilityState',…) to fake
+  // hidden/visible; capture the original own descriptor (a prototype getter in jsdom -> undefined here)
+  // so afterEach can restore it instead of leaving document.visibilityState pinned 'hidden'.
+  const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState');
   beforeEach(() => resetInput());
+  afterEach(() => {
+    if (originalVisibility) Object.defineProperty(document, 'visibilityState', originalVisibility);
+    else delete document.visibilityState;
+  });
 
   it('clearHeldIntents() clears every held intent but preserves the active gate', () => {
     setActive(true);
