@@ -48,15 +48,17 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~110 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
-> ✅ COVERAGE-GAPS (8/8) COMPLETE; test-vacuity TRIAGED (3 strengthened, rest FP/legit). Coverage finale
-> (`a4845ca`): settingsPersist injectable-storage seam + hydrate/persist behavioral tests, pointerLook jsdom
-> attachPointerLook tests — both mutation-proven. INCONSISTENCY 5/11 fixed (`18a210d`: targeting position
-> guard, pierce-case braces, dead regenerateMana, TW_COLORS Aspect colors, spellUpgrades level-ladder DRY;
-> [1] synthVoices skipped as false-premise). **NEXT inconsistency (5 remain): [0] GearInspector consumable
-> fallback, [5] strings font_puhuiti i18n key, [7] touchTray i18n labels, [9] loot-characterization emoji
-> fixtures (verify vs zero-emoji gate — may be FP), [10] heldf-probe port-reuse (low). Then enhancements (7) →
-> docs REORG → eslint no-unused-vars unit.** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~116 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
+> ✅ COVERAGE-GAPS (8/8) + ✅ INCONSISTENCY (11) + ✅ ENHANCEMENT (7) COMPLETE; test-vacuity TRIAGED (3
+> strengthened, rest FP/legit). Inconsistency finale (`d539b0b`): GearInspector consumable-registry fallback,
+> CreditsScreen font_puhuiti i18n, touchTray aria-label i18n (+ui.build/magic keys) — [9]/[10] were non-issues
+> (test-scoped emoji / cosmetic port-reuse). Enhancements (`d539b0b`): combat.js redundant-round, ORE_TILES
+> hoist out of per-pixel loop, run-scenarios perf-gate now exits non-zero on FAIL. Routed to KEVIN-REVIEW:
+> ai.worker A* Manhattan→octile heuristic (mob-pathing feel), ci.yml dependency-scan (touches the 2 dependabot
+> highs). Skipped/already-fixed: synthVoices [1], CombatSystem store-shadow, Components performVerb-cleanup.
+> **NEXT (the big mechanized units): (1) enable eslint `no-unused-vars` — its own unit; surfaces + clears the
+> dead-code 38 category. (2) docs REORG: Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
+> plans/; Wave-2 4 lint-CRITICAL (ARCHIVE-not-delete, drift-fix the citing LIVE doc in the same commit).** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
 > [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
 > Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
 > refs, voxelKit/inputState content, + the r3f winding-rule doc's Bottom/Front/Back corrected to the shipped

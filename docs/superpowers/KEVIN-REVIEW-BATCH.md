@@ -553,3 +553,21 @@ look) and I'll apply + re-baseline.
 - **spellVfx cast-telegraph ring** (`render/spellVfx.jsx:720`). It's an octagonal 8-segment ring band, not the
   "radial ticks" the old comment claimed. Keep the smooth band, or build real discrete radial ticks (+ rename
   `spokesRef`)? Taste call.
+
+## 🔭 Holistic review — enhancement items routed (2026-07-21, batch 2)
+Two enhancement findings whose result I can't verify headlessly (mob-pathing feel) or that touch a policy
+decision you own (dependency vuln handling). Fix is ready for each — say the word.
+
+- **A* heuristic is inadmissible (mob pathing)** — `workers/ai.worker.js:81`. The A* `f`-score uses a
+  MANHATTAN heuristic (`|dx| + |dz|`) but movement allows DIAGONAL moves at cost 1.414, so Manhattan
+  OVERESTIMATES → the heuristic is inadmissible → A* can return non-optimal mob paths. Correct fix is the
+  OCTILE distance: `h = max(dx,dz) + 0.414 * min(dx,dz)` (admissible for √2 diagonals → optimal paths, and
+  usually explores fewer nodes). Provably-better, but it changes how mobs path, which is a feel surface —
+  want it applied + a lived eyeball of mob movement? (Classic worker, so it'd also want a small structural
+  sync-gate.)
+- **No dependency vulnerability scanning in CI** — `.github/workflows/ci.yml:47`. install uses `--no-audit`
+  and there's no `npm audit` / Dependabot-review step, so a vulnerable dep can land silently (this is also
+  the root of the 2 open Dependabot highs GitHub keeps flagging on every push). Adding an audit step is
+  easy, BUT it would immediately FAIL CI on those 2 existing highs — so it needs your call on how to handle
+  them first (fix/upgrade the deps, or add the audit as non-blocking / with an allowlist). Your decision on
+  the deps + the 2 highs, then I wire the step.
