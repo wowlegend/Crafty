@@ -13,6 +13,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least-privilege GITHUB_TOKEN (OpenSSF hardening): without this the token inherits the repo/org default,
+# which may be read-write — a compromised transitive build/test dependency (npm install runs the full tree)
+# could then push commits or cut releases with the ambient token. This workflow only reads the checkout; the
+# e2e job's upload-artifact uses the Actions runtime token, not GITHUB_TOKEN, so contents:read covers all jobs.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
