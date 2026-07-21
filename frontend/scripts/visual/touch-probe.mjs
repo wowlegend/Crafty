@@ -5,22 +5,23 @@
 // player does: tap "Start Adventure" → the world must become PLAYABLE (no lock to fall back on) → drive
 // the LEFT (move) + RIGHT (look) zones with real touch and assert the player moves + camera rotates.
 // Screenshots the touch HUD to /tmp/crafty-touch/ so I can LOOK at it. Exit 0 only if every check passes.
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import puppeteer, { KnownDevices } from 'puppeteer';
+import { serveVite } from './_serve.mjs';
 
-const PORT = 4194, URL = `http://localhost:${PORT}`;
+const PORT = 4194;
 const OUT = '/tmp/crafty-touch';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (c) => { try { server.kill('SIGKILL'); } catch {} process.exit(c); };
+const { url, waitReady, shutdown } = serveVite(PORT);
+let browser = null;
+const done = async (c) => { await shutdown(browser); process.exit(c); };
 const results = [];
 const check = (name, ok, detail) => { results.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}  ${detail ?? ''}`); };
 
 try {
-  for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  await waitReady();
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.emulate(KnownDevices['iPhone 13']);   // touch + mobile viewport + iOS UA → isTouchDevice() true
@@ -31,7 +32,7 @@ try {
     try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch {}
     document.exitPointerLock = () => {};
   });
-  await page.goto(URL, { waitUntil: 'networkidle2' });
+  await page.goto(url, { waitUntil: 'networkidle2' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
 
   // 0) precondition — touch emulated + NO pointer lock (faithful iOS)
@@ -79,7 +80,7 @@ try {
 
   if (!playable) { // can't test the surface if we can't even enter — report and bail
     console.log('\nTOUCH CHECKS FAILED (cold-start blocked) — screenshots in ' + OUT);
-    await browser.close(); done(2);
+    done(2);
   }
 
   // Let the player spawn + the physics body initialize before driving movement: the diorama streams in,
@@ -129,5 +130,5 @@ try {
 
   const allOk = results.every((r) => r.ok);
   console.log(`\n${allOk ? 'ALL TOUCH CHECKS PASS' : 'TOUCH CHECKS FAILED'} — screenshots in ${OUT}`);
-  await browser.close(); done(allOk ? 0 : 2);
+  done(allOk ? 0 : 2);
 } catch (e) { console.error('TOUCH-PROBE ERROR:', e); done(1); }

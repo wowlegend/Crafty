@@ -3,18 +3,19 @@
 // pointer-lock acquire), then presses Escape mid-game and asserts ESC opens the Settings (pause) panel
 // rather than flashing the old slate-blue CRAFTY-RPG overlay or dumping to the title menu.
 // Saves PNGs to /tmp/crafty-esc/. Expects: gameStarted=true, showSettings-after-ESC=true.
-import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-const PORT = 4195, URL = `http://localhost:${PORT}`;
+import { serveVite } from './_serve.mjs';
+const PORT = 4195;
 const OUT = '/tmp/crafty-esc';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
-const done = (c) => { try { server.kill('SIGKILL'); } catch {} process.exit(c); };
+const { url, waitReady, shutdown } = serveVite(PORT);
+let browser = null;
+const done = async (c) => { await shutdown(browser); process.exit(c); };
 try {
-  for (let i = 0; i < 60; i++) { try { const r = await fetch(URL); if (r.ok) break; } catch {} await delay(250); }
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  await waitReady();
+  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   // W1 Task 4: the deleted auth subsystem booted the app behind an axios.get(localhost:8001/api/auth/me).
@@ -22,7 +23,7 @@ try {
   const reqFails = [];
   page.on('requestfailed', (r) => { const u = r.url(); reqFails.push(u); console.log('REQFAIL', u); });
   await page.setViewport({ width: 1280, height: 800 });
-  await page.goto(URL, { waitUntil: 'networkidle2' });
+  await page.goto(url, { waitUntil: 'networkidle2' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
   await page.evaluate(() => window.__craftyTest.call('start'));
   await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5)); // midday for clarity
@@ -43,7 +44,7 @@ try {
     catch (e) { return 'throw:' + e.message; }
   });
   console.log('[esc-probe] spatial-sfx playable=' + audioOk);
-  if (audioOk !== true) { console.error('[esc-probe] FAIL: spatial SFX threw after bus reroute'); await browser.close(); done(1); }
+  if (audioOk !== true) { console.error('[esc-probe] FAIL: spatial SFX threw after bus reroute'); done(1); }
   const shoot = async (name) => { await delay(500); await page.screenshot({ path: `${OUT}/${name}.png` }); console.log('shot', name); };
   await shoot('1-in-game');                        // expect: HUD, NO CRAFTY-RPG overlay
   await page.keyboard.press('Escape');             // ESC mid-game (real browser: ESC releases pointer-lock)
@@ -59,7 +60,7 @@ try {
   // W1 Task 4: assert the dead per-boot auth/backend call is gone (no localhost:8001 / /api/auth failure).
   const authFail = reqFails.find((u) => u.includes('8001') || u.includes('/api/auth'));
   console.log('[esc-probe] authBackendReqFail=' + (authFail || 'none'));
-  if (!started || !paused) { console.error('[esc-probe] FAIL: gameStarted or ESC=pause not satisfied'); await browser.close(); done(1); }
-  if (authFail) { console.error('[esc-probe] FAIL: dead auth/backend request still firing: ' + authFail); await browser.close(); done(1); }
-  await browser.close(); done(0);
+  if (!started || !paused) { console.error('[esc-probe] FAIL: gameStarted or ESC=pause not satisfied'); done(1); }
+  if (authFail) { console.error('[esc-probe] FAIL: dead auth/backend request still firing: ' + authFail); done(1); }
+  done(0);
 } catch (e) { console.error('ESC-PROBE ERROR:', e); done(1); }
