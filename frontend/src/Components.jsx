@@ -1,7 +1,6 @@
-import React, { useRef, useEffect, useState, useMemo, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
-import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
@@ -44,21 +43,6 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
-import {
-  PickaxeIcon,
-  Sun,
-  Moon,
-  Copy,
-  Download,
-  Upload,
-  Trash2,
-  Sword,
-  Star
-} from 'lucide-react';
-
-// Import optimized systems
-import { useSimpleExperience } from './SimpleExperienceSystem';
-import { EnhancedMagicSystem, MagicWand } from './EnhancedMagicSystem';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
@@ -66,9 +50,6 @@ import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
 import { notifyDenied } from './ui/denyToast';
-
-// Bold-flat UI primitives (S1C-M2a chrome migration)
-import { Panel, Slot } from './ui/primitives/index.js';
 
 // PositionTracker extracted -> src/systems/PositionTracker.jsx (v6 de-monolith A3).
 
@@ -363,7 +344,7 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // S2-B3-M4: snare -> the abstract 'snare' intent (SOULBIND SM in useFrame).
-      // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is double-bound legacy tame — avoided.)
+      // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is the melee-attack key below — not an Aspect verb.)
       if (e.code === 'KeyX') {
         setIntent('snare', true);
         if (!(useGameStore.getState().unlockedTalents?.['soulbind_snare'] > 0)) notifyDenied('aspect-locked', 'SOULBIND');
@@ -513,6 +494,7 @@ export const Player = ({ isWorldBuilt }) => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       removeBlurReset();
+      useGameStore.setState({ performVerb: null }); // symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
@@ -1330,5 +1312,3 @@ export const Player = ({ isWorldBuilt }) => {
     </group>
   );
 };
-
-// SOTA Procedural 3D Weapon Meshes (Stone, Iron, Diamond Swords & Pickaxe)
