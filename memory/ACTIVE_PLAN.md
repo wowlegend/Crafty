@@ -51,7 +51,7 @@
 > **▶ PHASE 2 IN PROGRESS (2026-07-21) — 8 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
 > `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code · `aa121de` HIGH archer-kite (ai.worker) · `b5be02f`
 > Terrain comments+dead-branch. NEXT off the ladder: the remaining ~24 probe-hygiene findings (extract a shared
-> `scripts/visual/_serve.mjs` helper — detached spawn + finally-close + group-kill — then adopt across probes) →
+> serve-helper (a new `_serve.mjs`, detached spawn + finally-close + group-kill) — then adopt across probes) →
 > comment-lie/doc-drift by-file batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements
 > → docs REORG. (The shared helper is a NEW `_serve.mjs` under scripts/visual/ — does not exist yet.)
 > Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
