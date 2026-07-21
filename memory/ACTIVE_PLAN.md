@@ -48,19 +48,20 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~17 findings fixed / 215:** `e8e218e` HIGH trade bug · `3660284` ci security ·
-> `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code · `aa121de` HIGH archer-kite (ai.worker) · `b5be02f`
-> Terrain comments+dead-branch · `b0d6846` shared `scripts/visual/_serve.mjs` helper + grass/death/pov probes (BOTH
-> lifecycle patterns proven end-to-end, 0 leaks) · `b3ea100` storm/hands · `1b8b32d` drive-mobs/drive-elemancer/
-> settings (Pattern-B) · `5fac04c` hub/mobdeath · `f48546e` quest-log/spell-elements/spawn-legibility · `19e4119`
-> magic-panel · `c1516bc` heldf/dayphase · `052c284` hud/touch/esc-pause · `75da3a2` soulbind-eyes + perf/run-scenarios.
-> **✅ PROBE-HYGIENE COMPLETE: all 22 probe/perf scripts on `scripts/visual/_serve.mjs` (~25 findings closed).**
-> NEXT: the 3 test-file hygiene findings (tests/gates/night-ratchet-gates.test.jsx, tests/gates/spell-mastery-load-gates.test.jsx,
-> src/input/blurReset.test.js — missing TEST cleanup, DIFFERENT class — read each finding in scratchpad/findings.json +
-> the file) → THEN the ladder: comment-lie/doc-drift by-file batches (~48; VERIFY each on live HEAD) → comment-lie/doc-drift by-file
-> batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements → docs REORG.
-> Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
-> `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~46 findings fixed / 215.** Probe-hygiene batch (~25 — all 22 probe/perf
+> scripts on `scripts/visual/_serve.mjs`) + Phase-2a bugs: `e8e218e` HIGH trade · `3660284` ci security · `93bf3d3`
+> Player dead-code · `aa121de` HIGH archer-kite · `b5be02f` Terrain. **Phase-2b correctness batch (7):** `0dee956`
+> test-cleanup ×3 · `a2ae62f` worldSaves index-write failure · `13184e6` spawner loop-bound (seam
+> `systems/spawnPlacement.js`) · `f3e87db` ai.worker LOS clamp (seam `game/mobLineOfSight.js` + sync-gate) ·
+> `d09b56d` cameraKick right-axis sign · `c71b57e` questClaim null-guard (+ the promised `game/questClaim.test.js`) ·
+> `c41d693` magic burn-ticker unmount leak (seam `game/burnManager.js`). All RED-first + mutation-proven.
+> **✅ PROBE-HYGIENE + TEST-CLEANUP + deterministic bug mediums/lows CLOSED.**
+> NEXT (down the ladder): the REMAINING bugs are VISUAL/feel (UV tiling, boss/mob hit-flash, rain rotation) →
+> KEVIN-REVIEW; [11] deviceMemory≥12 tier threshold → KEVIN (real-hardware perf tuning). Then comment-lie (34) +
+> doc-drift (21) by-file batches — pure text, VERIFY each on live HEAD (review had false-positives) → test-vacuity
+> seams (32, only genuinely-testable) → coverage (8) → inconsistency (11) → enhancements (7) → docs REORG (Wave-1
+> ~83 archives; Wave-2 4 lint-CRITICAL). Held for care: the KEVIN shader comment at Terrain.jsx:138. Queued: enable
+> eslint `no-unused-vars` (own unit — surfaces the dead-code 38 cleanup). — original Phase-1.5 note below —
 > **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I
 > synthesise the review-derived next-steps queue — but BEFORE the fix-work is finished — UPDATE the loop kernel
 > (`docs/superpowers/LOOP-KERNEL-PROMPT.md` + the re-armed `/loop` ScheduleWakeup prompt) AND

@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-07-21 — Holistic review Phase 2: correctness bug-fix batch (7 verified units)
+
+Down the priority ladder past probe-hygiene: test-cleanup hygiene + the deterministically-provable
+correctness bugs (mediums/lows), each RED-first + mutation-proven. Pure-visual bugs (UV tiling, hit-flash,
+rain rotation) and the device-tier threshold ([11] deviceMemory≥12, a real-hardware perf-tuning call) are
+routed to KEVIN-REVIEW rather than flipped unilaterally.
+
+- **`0dee956` test(hygiene) — afterEach teardown ×3.** night-ratchet-gates + spell-mastery-load-gates left
+  renderHook mounts un-unmounted (no `afterEach(cleanup)`; vitest has no global setup so RTL auto-cleanup is
+  inactive); blurReset.test.js pinned `document.visibilityState` 'hidden' via defineProperty and never
+  restored. Added the cleanups (capture+restore the original own descriptor for visibilityState).
+- **`a2ae62f` fix(worldSaves) — propagate index-write failure.** writeWorld wrote the blob then called
+  saveIndex and returned a hard `true`, so a localStorage quota failure on the index write orphaned the blob
+  while the caller saw success. saveIndex now returns the safeSet bool and writeWorld returns it. RED: stub
+  setItem to throw only for the index key.
+- **`13184e6` fix(spawner) — bound the placement loop by TOTAL picks.** `attempts++` sat inside the
+  `dist>=28 && <=85` guard, so out-of-range picks were free retries and maxAttempts never bounded the loop —
+  a candidate set skewed all-near/all-far spins the frame. Extracted the loop to `systems/spawnPlacement.js`
+  (rng+trySpawn injected) and moved `attempts++` to the top. RED: alternating in/out picks spawn 2 (fixed)
+  vs 4 (buggy); all-out-of-range terminates instead of spinning.
+- **`f3e87db` fix(ai.worker) — clamp LOS endpoints.** Cover-seeking passed an unclamped player cell to
+  hasLineOfSight; an off-grid index read undefined → NaN compare → a false "clear" so cover was unfindable at
+  range. Extracted `game/mobLineOfSight.js` (clampCell guard) + behavioral test; worker inline-mirrors it,
+  pinned by `mob-los-sync-gates`. Closes findings [15] and the OOB class at ai.worker:202. Both RED-proven.
+- **`d09b56d` fix(cameraKick) — screen-right axis sign.** localToWorldKick computed right as `(fz,-fx)` — the
+  negation of the `flatForward×worldUp = (-fz,fx)` its comment claims. Dormant (all KICK_PROFILEs have zero
+  right), latent for any future right-kick. Flipped; added a right-axis test (all prior used lx=0).
+- **`c71b57e` fix(questClaim) — null-guard the feed filter + add the promised pure test.** The active-feed
+  filter dereferenced `q.id` unguarded while the find() four lines up guarded `q &&` — a null entry crashed
+  the claim. Added the guard; created the `questClaim.test.js` the module header already claimed existed
+  (comment-lie + coverage-gap closed): reduceClaim happy path, idempotency, refill cap, null-entry (RED).
+- **`c41d693` fix(magic) — stop fire DoT tickers on unmount.** applyBurnEffect's setInterval self-cleared on
+  expiry/mob-death but a burn active at unmount leaked a 1s ticker hammering damage into GameMethods forever.
+  Extracted `game/burnManager.js` (handle registry + stopAll) wired to a useEffect cleanup. Fake-timer tests;
+  stopAll-halts is mutation-proven (RED with a no-op stopAll).
+
 ## 2026-07-21 — Holistic review Phase 2 begins: first verified fix batch
 
 - **`e8e218e` fix(trade) — Resources panel crystals/wands [HIGH bug].** The villager Resources header + wand
