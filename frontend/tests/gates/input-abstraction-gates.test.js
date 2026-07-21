@@ -41,8 +41,10 @@ describe('S2-A-M1 input-intent abstraction boundary', () => {
   });
 
   it('the controller gates on the active intent (getInput().active) instead of raw pointer-lock', () => {
-    expect(components(), 'Components.jsx must gate verbs on the active intent')
-      .toMatch(/\.active\b/);
+    // anchored to getInput().active — a bare /\.active\b/ matched ANY `.active` in the 1330-line
+    // controller (document.activeElement, entity.active, …) and never actually pinned the verb gate.
+    expect(components(), 'Components.jsx must gate verbs on getInput().active')
+      .toMatch(/getInput\(\)\.active\b/);
   });
 
   it('the single pointer-lock site routes through setActive (centralized active gate)', () => {

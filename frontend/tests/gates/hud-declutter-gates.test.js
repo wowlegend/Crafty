@@ -21,6 +21,8 @@ describe('hud declutter gates', () => {
     expect(hud).not.toMatch(/Spell:\s*<\/span>/);
   });
   it('PlayerHungerBar is gated on survival mode (no duplicate 100/100 pill in non-survival)', () => {
-    expect(read('HUD.jsx')).toMatch(/gameMode|survival.*Hunger|Hunger.*survival/s);
+    // anchored to the ACTUAL gate `gameMode === 'survival' && <PlayerHungerBar`; the old
+    // /gameMode|.../ alternation passed on any bare `gameMode` token anywhere in the file.
+    expect(read('HUD.jsx')).toMatch(/gameMode\s*===\s*'survival'\s*&&\s*<PlayerHungerBar\b/);
   });
 });

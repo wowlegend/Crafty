@@ -16,8 +16,15 @@ describe('hub render gates', () => {
   it('iterates HUB_BUILDINGS (the deterministic layout)', () => {
     expect(hub).toMatch(/HUB_BUILDINGS/);
   });
-  it('any glow self-nulls under capture (the brazier/beacon pattern)', () => {
-    if (hub.includes('<Emissive')) expect(hub).toMatch(/!isCaptureMode\(\)/);
+  it('EVERY glow self-nulls under capture (per-Emissive, not just once anywhere)', () => {
+    // HubRender HAS glows (forge fire + lookout lantern); each must be `!isCaptureMode() && <Emissive>`
+    // so none leaks into a deterministic baseline. MUTATION-PROOF: add an UNguarded <Emissive> and the
+    // count-match goes RED (the old `if (includes) toMatch(/!isCaptureMode/)` stayed green — it only
+    // needed the guard string to appear once, and was vacuous if Emissive were removed entirely).
+    const emissives = hub.match(/<Emissive\b/g) || [];
+    expect(emissives.length).toBeGreaterThan(0);
+    const guarded = hub.match(/!isCaptureMode\(\)\s*&&\s*<Emissive\b/g) || [];
+    expect(guarded.length).toBe(emissives.length);
   });
   it('Terrain.jsx mounts HubRender next to HomeAnchorRender', () => {
     const terrain = read('world/Terrain.jsx');
