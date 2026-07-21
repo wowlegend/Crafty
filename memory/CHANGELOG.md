@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-07-21 — Holistic review Phase 2 begins: first verified fix batch
+
+- **`e8e218e` fix(trade) — Resources panel crystals/wands [HIGH bug].** The villager Resources header + wand
+  payoff badge read the dead `inventory.magic` bucket, so earned Crystals/Wands always showed 0 and the mana
+  reduction "-0%" — the one reader crystalWallet.js's B3b migration missed. Routed through getCrystals/getWands;
+  RED-first integration test (blocks.crystals=7/wand=2 → 7 / 2 / "-12% spell mana").
+- **`3660284` ci(security) — least-privilege `permissions: contents: read`.** ci.yml had no permissions block,
+  so GITHUB_TOKEN inherited a potentially read-write default (OpenSSF gap); npm-install-then-run-scripts over the
+  full dep tree meant a compromised transitive dep could push with the ambient token.
+- **`399aeea` fix(hygiene) — look-e2e probe orphan-vite.** Spawn vite `detached` + finally-close + process-group
+  SIGKILL (was orphaning the vite child on :4191). First of ~25 probe-hygiene findings.
+- **`93bf3d3` refactor(Player) — dead imports + stale comments in Components.jsx.** Removed ~14 vestigial
+  monolith-era imports (verified 0 real uses — they slipped through because eslint `no-unused-vars` is disabled,
+  a queued finding), fixed the false "KeyT = legacy tame" comment (KeyT is melee), dropped an orphan trailing
+  header, and nulled `performVerb` in the input-effect cleanup for teardown symmetry.
+
+All RED-first / verified; build + eslint + knip + 2063 unit tests green each push. Queue:
+`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`.
+
 ## 2026-07-20 — capture-harness "title-mascot hang" fixed (unblocks the visual re-baseline)
 
 - **fix(capture): the long-"blocked" capture harness now runs to a clean end.** The documented hang at the

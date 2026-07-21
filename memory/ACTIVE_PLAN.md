@@ -46,6 +46,13 @@
 > (4 lint-CRITICAL — archive ONLY with a same-commit drift-fix to the citing LIVE doc; ARCHIVE-not-delete). Side-fix
 > already shipped `75191ef`: capture-harness hang FIXED (was `browser.close()` blocking on a crashed browser; not env).
 >
+> **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
+> authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
+> **▶ PHASE 2 IN PROGRESS (2026-07-21):** batch 1 shipped (`e8e218e` HIGH trade bug · `3660284` ci security ·
+> `399aeea` look-e2e hygiene · `93bf3d3` Player dead-code). NEXT off the ladder: `ai.worker.js:302` HIGH (archer
+> kite bug — seam-extract the steer decision), the remaining ~24 probe-hygiene (consider a shared harness helper),
+> then comment-lie/doc-drift + vacuous-gate seams. New sub-finding: eslint `no-unused-vars` is OFF → enabling it is
+> its own unit (will surface a broad cleanup). — original Phase-1.5 note below —
 > **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I
 > synthesise the review-derived next-steps queue — but BEFORE the fix-work is finished — UPDATE the loop kernel
 > (`docs/superpowers/LOOP-KERNEL-PROMPT.md` + the re-armed `/loop` ScheduleWakeup prompt) AND
