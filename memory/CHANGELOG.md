@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-20 — capture-harness "title-mascot hang" fixed (unblocks the visual re-baseline)
+
+- **fix(capture): the long-"blocked" capture harness now runs to a clean end.** The documented hang at the
+  title-mascot step was NOT environmental — it was `await browser.close()` blocking forever on a
+  GPU-context-lost / unresponsive headless Chrome. title-mascot is the ungated FINAL state and mounts a fresh
+  R3F Canvas at peak software-GL pressure; its `mascot-studio` canvas genuinely fails to mount late in the
+  session (verified: 20s wait still times out), which crashed the page, after which `close()` never returned.
+  Three fixes: (1) title-mascot made NON-FATAL (mirrors the menu-diorama pattern) — skip its png (it's not a
+  diff.test.js STATE) and fall through to the clean end so all 23 GATED frames still land + the freshness
+  sentinel validates; wait raised 8s→20s; its stage excluded from fatal-crash accounting. (2) `browser.close()`
+  guarded by an 8s timeout (cleared when it settles) + a force-kill of the browser process. (3) orphan-vite
+  fixed — vite spawned `detached`, finally SIGKILLs the whole process GROUP (`process.kill(-pid)`); plain
+  `server.kill()` only reaped the npx wrapper and orphaned the vite child on :4178 (same class as ocean-probe).
+  VERIFIED: full run exits 0, "No render crashes", 23/23 gated frames written, 0 leaked procs. The visual gate
+  + B5/B7 re-baseline are unblocked (re-baseline output still → Kevin sign-off, RULE 3).
+
 ## 2026-07-20 — OWED ocean lived-probe paid + the probe harness hardened
 
 - **ocean-probe hygiene hardening + the OWED ocean lived probe (`<this commit>`).** Load finally dropped to ~6

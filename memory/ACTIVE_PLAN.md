@@ -35,8 +35,22 @@
 > - Source review — ALL 260 src files, 40 slices. run `wf_918f2239-024` (task wx1yji3gp). partition `scratchpad/slices.json`.
 > - Docs audit+reorg — classify every doc + merge/archive/delete plan. run `wf_3742b969-3aa` (task wmv6gbf42).
 > - Tests+scripts+config — 377 files, 16 slices (vacuity/hygiene/drift). run `wf_3e0ea8c9-340` (task wldf4k3de). partition `scratchpad/slices_b2.json`.
+> **PROGRESS (2026-07-20 ~18:55):** ✅ Docs workflow DONE — reorg plan preserved `scratchpad/docs-reorg-result.json`
+> (132 docs; Wave-1 ~83 autonomous-safe plan archives, Wave-2 ~24 owner-gated incl. 4 lint-CRITICAL: ocean-coast /
+> world-purpose-sota / CODE-REVIEW-2026-06-20 / AUDIT-2026-06-28 — archive ONLY in a commit that drift-fixes the citing
+> LIVE doc; ARCHIVE-not-delete; targets `docs/archive/2026-Q2/{plans,research}`, `docs/superpowers/audits/`,
+> `memory/archive/2026-Q2/`). ⏳ Source-review + tests/scripts/config workflows still running. Side-fix in-flight: the
+> capture-harness HANG is FIXED (orphan-vite → detached+group-kill; title-mascot non-fatal + 20s wait; close()
+> timeout-guard) — verify run `bl7n5rsjo` progressing cleanly (30 states written; NOT an env-only issue after all).
 > **When each completes:** read its return (CONFIRMED + PLAUSIBLE findings) from the tool result / journal; do NOT trust
-> uninspected cached results (Read journal.jsonl). Dedup + prioritise.
+> uninspected cached results (Read journal.jsonl). Dedup + prioritise into the work queue.
+>
+> **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I
+> synthesise the review-derived next-steps queue — but BEFORE the fix-work is finished — UPDATE the loop kernel
+> (`docs/superpowers/LOOP-KERNEL-PROMPT.md` + the re-armed `/loop` ScheduleWakeup prompt) AND
+> `docs/superpowers/LOOP-CHARTER.md` to latest + SOTA-shaped (as of 2026-07-21), so the loop's work-queue reflects the
+> synthesised findings and subsequent firings continue on the RIGHT queue. Verbatim: *"update the loop after the
+> workflows land and you synthesise the latest next steps, not after the actual works are finished."*
 > **PHASE 2 — FIX/ENHANCE (main-loop, verified units):** batch by severity/kind — correctness bugs → comment-lies →
 > dead-code → perf → a11y → consistency → SOTA enhancements. Each RED-first + mutation-proven + gated + committed
 > (ONE coherent unit per commit; no `git add -A`). Execute the doc reorg (archive completed → `docs/archive/…`,

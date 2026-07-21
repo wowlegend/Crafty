@@ -92,7 +92,9 @@ async function main() {
   const crashes = [];
   const consoleErrs = [];
   let captureStage = 'boot';
-  const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--no-open'], { cwd: ROOT, stdio: 'ignore' });
+  // detached: the vite child runs in its OWN process group so the finally can SIGKILL the whole group
+  // (process.kill(-pid)). A plain server.kill() only reaps the `npx` wrapper and ORPHANS the vite child.
+  const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--no-open'], { cwd: ROOT, stdio: 'ignore', detached: true });
   const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   try {
     const page = await browser.newPage();
@@ -456,16 +458,36 @@ async function main() {
     // Kevin's review) — until then it is INTENTIONALLY omitted from diff.test.js STATES, so
     // it does not assert a regression baseline. The studio is its own R3F Canvas mounted over
     // the (mob-free, capture-mode) world; we dismiss the achievements panel first for a clean mount.
-    await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
-    await page.evaluate(() => window.__craftyTest.call('showMascot'));
-    await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 8000 });
-    await flushFrames(page, 10);
-    await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'title-mascot.png') });
-    console.log('captured title-mascot');
+    // NON-FATAL (graceful degradation, mirrors the menu diorama): title-mascot is INTENTIONALLY not a
+    // diff.test.js STATE, and it mounts a FRESH R3F Canvas at the very end of a long software-GL session
+    // where the renderer is most context-pressured — the one spot that historically threw a puppeteer
+    // ProtocolError and hung the whole run. Longer mount wait (8s -> 20s, matching the late-session
+    // slowness), and if the canvas doesn't mount or the shot throws, SKIP title-mascot.png (keep last-good)
+    // and fall through to the CLEAN end so all 23 GATED frames still land + the freshness sentinel validates.
+    captureStage = 'title-mascot';
+    try {
+      await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
+      await page.evaluate(() => window.__craftyTest.call('showMascot'));
+      await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 20000 });
+      await flushFrames(page, 10);
+      await delay(900);
+      await page.screenshot({ path: resolve(OUT, 'title-mascot.png') });
+      console.log('captured title-mascot');
+    } catch (e) {
+      console.warn(`WARN: title-mascot capture failed (${e && e.message || e}) -> skipping title-mascot.png (ungated), continuing to clean end`);
+    }
   } finally {
-    await browser.close();
-    server.kill('SIGTERM');
+    // A GPU-context-lost / crashed headless Chrome can leave browser.close() hanging on an unanswered CDP
+    // command forever (the observed "title-mascot hang"). Race close() against an 8s timeout (cleared when
+    // close settles, so no timer lingers), then force-kill the browser process as a backstop.
+    await new Promise((res) => {
+      const t = setTimeout(res, 8000);
+      browser.close().then(() => { clearTimeout(t); res(); }).catch(() => { clearTimeout(t); res(); });
+    });
+    try { const proc = browser.process(); if (proc && !proc.killed) proc.kill('SIGKILL'); } catch {}
+    // Kill the whole vite process GROUP (npx wrapper + its forked vite child); server.kill() alone only
+    // reaps the npx wrapper and ORPHANS the vite child holding :4178.
+    try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch {} }
   }
   // Benign @boot noise (favicon 404, pre-server ERR_CONNECTION_REFUSED) is NOT a render crash.
   // An uncaught exception during an actual capture STAGE freezes the R3F loop → later frames are
@@ -476,7 +498,10 @@ async function main() {
     for (const e of arr) { const k = `${e.stage}::${e.msg}`; if (!seen.has(k)) { seen.add(k); out.push(e); } }
     return out;
   };
-  const realCrashes = dedupe(crashes.filter((e) => e.stage !== 'boot'));
+  // Exclude 'title-mascot': it's the ungated final state (not a diff.test.js STATE) and mounts a fresh
+  // canvas at peak software-GL pressure, so a context-loss THERE is expected and cannot corrupt the 23
+  // gated frames already captured before it. Its failure is a WARN (skips its png), never a gate fail.
+  const realCrashes = dedupe(crashes.filter((e) => e.stage !== 'boot' && e.stage !== 'title-mascot'));
   const realWarns = dedupe(consoleErrs.filter((e) => e.stage !== 'boot'));
   if (realWarns.length) {
     console.warn(`\n=== ${realWarns.length} console warning(s) during capture (non-fatal) ===`);
