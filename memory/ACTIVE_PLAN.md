@@ -53,7 +53,8 @@
 > Terrain comments+dead-branch. NEXT off the ladder: the remaining ~24 probe-hygiene findings (extract a shared
 > `scripts/visual/_serve.mjs` helper — detached spawn + finally-close + group-kill — then adopt across probes) →
 > comment-lie/doc-drift by-file batches → test-vacuity seams → coverage → perf → a11y → inconsistency → enhancements
-> → docs REORG. Held for care: the KEVIN shader comment `Terrain.jsx:138`. Sub-finding queued: eslint
+> → docs REORG. (The shared helper is a NEW `_serve.mjs` under scripts/visual/ — does not exist yet.)
+> Held for care: the KEVIN shader comment at Terrain.jsx:138. Sub-finding queued: eslint
 > `no-unused-vars` is OFF (enabling it = its own unit, surfaces a broad cleanup). — original Phase-1.5 note below —
 > **PHASE 1.5 — UPDATE THE LOOP + CHARTER (Kevin 2026-07-20, timing clarified):** AFTER all 3 workflows land AND I
 > synthesise the review-derived next-steps queue — but BEFORE the fix-work is finished — UPDATE the loop kernel
