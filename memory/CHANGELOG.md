@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-21 — Holistic review Phase 2: doc-drift category COMPLETE (19 fixed, `88010a9`)
+
+All 21 `doc-drift` findings dispositioned (2 false-positives already fixed by b5be02f). Numeric/roster drift
+(numLayers 14→16 + block-id space 0..15, grimhound 'runner', nightSiege→siegeParams, rarityBeam's real
+5-field return, the phantom `duration?` loot field); stale prose counts dropped where they can't self-check
+(HUD/AspectHintToast baseline counts — 31 on disk); brittle moved-code references de-brittled after the v6
+de-monolith (cone→CombatSystem, ribbonIndices→playerRender, homeAnchor→spawnPlacement, allegiance/touchMath/
+touchTray/GameScene line refs dropped); content fixes (voxelKit 3 primitives, inputState now documents the
+grab/snare/imbue Aspect verbs). Notable: the `.claude/rules/r3f-pointer-lock-voxel-meshing.md` winding
+reference had Bottom(-Y) sharing Top(+Y)'s XZ order (impossible for both to be CCW-from-outside) and reversed
+Front/Back cycles — corrected all three to match the shipped, gate-verified terrain.worker.js mesher.
+
 ## 2026-07-21 — Holistic review Phase 2: comment-lie category COMPLETE (4 batches, ~29 fixed)
 
 Every `comment-lie` finding (34) dispositioned, each verified on live HEAD: 29 fixed across 4 batches, 3

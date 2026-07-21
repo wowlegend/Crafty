@@ -48,14 +48,15 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~75 findings fixed / 215.** ✅ COMMENT-LIE CATEGORY COMPLETE
-> (`4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e`: all 34 dispositioned — 29 fixed across 4 batches, 3
-> false-positives, 1 held [Terrain.jsx:138 KEVIN shader], 1 dup). Batches 3+4 incl. App.jsx fixture comments,
-> 2 dead-value removals (AIWorkerSystem leap-vertical, GPUSparkSystem shader coord), + a strengthened vacuous
-> gate (spawn-legibility far-beacon capture-suppress, mutation-proven). `edd0cec` routed 7 visual/taste items
-> to KEVIN-REVIEW. **NEXT: doc-drift (21) by-file batches — VERIFY each on live HEAD, pure text; then
-> test-vacuity seams (32, only genuinely-testable) → coverage (8) → inconsistency (11) → enhancements (7) →
-> docs REORG → eslint no-unused-vars unit.**
+> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~94 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21)
+> CATEGORIES COMPLETE. Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
+> [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
+> Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
+> refs, voxelKit/inputState content, + the r3f winding-rule doc's Bottom/Front/Back corrected to the shipped
+> gate-verified terrain.worker.js; 2 FP already fixed by b5be02f). `edd0cec` routed 7 visual/taste to KEVIN.
+> **NEXT: test-vacuity seams (32 — classic-worker/structural gates are LEGIT; only rewrite genuinely-testable
+> via seam-extraction + mutation-prove; spawn-legibility far-beacon already done) → coverage (8) →
+> inconsistency (11) → enhancements (7) → docs REORG → eslint no-unused-vars unit.**
 > Probe-hygiene batch (~25 — all 22 probe/perf
 > scripts on `scripts/visual/_serve.mjs`) + Phase-2a bugs: `e8e218e` HIGH trade · `3660284` ci security · `93bf3d3`
 > Player dead-code · `aa121de` HIGH archer-kite · `b5be02f` Terrain. **Phase-2b correctness batch (7):** `0dee956`
