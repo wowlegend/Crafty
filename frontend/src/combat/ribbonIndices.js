@@ -1,6 +1,6 @@
 /**
  * ribbonIndices.js — pure index-buffer builder for the procedural sword/weapon
- * ribbon trail (extracted from Components.jsx's ProceduralRibbonTrail).
+ * ribbon trail (extracted from ProceduralRibbonTrail, now in render/playerRender.jsx).
  *
  * A ribbon of `N` captured point-pairs has `2N` vertices (a base + a tip vertex
  * per point) and `N-1` quads between consecutive pairs. Each quad `i` spans the

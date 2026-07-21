@@ -6,9 +6,9 @@
 1. **The Voxel Winding Problem**: When implementing voxel greedy meshing under strict `FrontSide` culling (which culls back-facing geometries to minimize fragment overdraw), all six coordinate permutations (Top, Bottom, Left, Right, Front, Back) must wind in perfect **Counter-Clockwise (CCW)** order when viewed from the outside of the voxel. Clockwise (CW) windings are completely culled by WebGL, making the terrain see-through. Falling back to `DoubleSide` culling is a performance anti-pattern that triggers depth buffer precision fights (z-fighting) and chunk boundary cracks/horizon slits.
    - *SOTA CCW Winding Coordinates*:
      - **Top (+Y)**: `c0 = [x, y+1, z+w]`, `c1 = [x+h, y+1, z+w]`, `c2 = [x+h, y+1, z]`, `c3 = [x, y+1, z]`.
-     - **Bottom (-Y)**: `c0 = [x, y, z+w]`, `c1 = [x+h, y, z+w]`, `c2 = [x+h, y, z]`, `c3 = [x, y, z]`.
-     - **Front (+Z)**: `c0 = [x, y, z+1]`, `c1 = [x, y+h, z+1]`, `c2 = [x+w, y+h, z+1]`, `c3 = [x+w, y, z+1]`.
-     - **Back (-Z)**: `c0 = [x+w, y, z]`, `c1 = [x+w, y+h, z]`, `c2 = [x, y+h, z]`, `c3 = [x, y, z]`.
+     - **Bottom (-Y)**: `c0 = [x, y, z+w]`, `c1 = [x, y, z]`, `c2 = [x+h, y, z]`, `c3 = [x+h, y, z+w]` (the XZ order is REVERSED vs Top — both cannot share it and stay CCW-from-outside).
+     - **Front (+Z)**: `c0 = [x, y, z+1]`, `c1 = [x+w, y, z+1]`, `c2 = [x+w, y+h, z+1]`, `c3 = [x, y+h, z+1]`.
+     - **Back (-Z)**: `c0 = [x+w, y, z]`, `c1 = [x, y, z]`, `c2 = [x, y+h, z]`, `c3 = [x+w, y+h, z]`.
 2. **The Pointer Lock Mismatch Problem**: In React Three Fiber, Drei's `PointerLockControls` binds to the `<canvas>` DOM element (`gl.domElement`). When a user gesture closes a menu, calling `document.body.requestPointerLock()` locks the pointer on `document.body` instead of the canvas container. Drei detects `document.pointerLockElement !== gl.domElement` and stops listening to mouse events, completely freezing camera look-rotations.
    - *The Solution*: Direct all fallback locking requests to a unified pointer lock wrapper checking `state.requestPointerLock` first, then querying and locking on the `<canvas>` DOM element before falling back to `document.body`. This maintains Drei synchrony and prevents camera rotation freezes.
 

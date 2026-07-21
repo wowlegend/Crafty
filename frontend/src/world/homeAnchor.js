@@ -1,6 +1,6 @@
 // THE HEARTH — the crafted home-anchor plinth at the world origin (World-Design M1).
 // A flat, above-water, fully deterministic platform stamped at chunk-gen time. The spawn probe
-// (Components.jsx:892-930) raycasts ground at (0,0) and drops the player groundY+1.2, so this
+// (game/spawnPlacement.js resolveSpawnGround/spawnTargetY) resolves ground at (0,0) and drops the player groundY+1.2, so this
 // flat top simply BECOMES the spawn floor — no spawn code changes. Pure coordinate math (NO RNG):
 // the same seed regenerates the identical Hearth every load, zero save data (like the dungeon).
 //

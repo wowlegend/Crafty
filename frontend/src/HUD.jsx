@@ -67,7 +67,7 @@ const CoinReadout = React.memo(() => {
 // arithmetic beyond a fixed display offset. Game-Loop-Isolation: gameTime mutates every tick, so the orbit
 // is driven by a self-contained 1s interval (a clock needs ~1s granularity) reading getState() transiently
 // + writing a ref transform -- NO per-frame React state; only the rare isDay flip re-renders (sun<->moon).
-// Capture-SUPPRESSED (return null + interval never starts) -> the 20 visual baselines stay byte-identical.
+// Capture-SUPPRESSED (return null + interval never starts) -> the visual baselines stay byte-identical.
 const DayPhaseDial = React.memo(() => {
   const isDay = useGameStore((s) => s.isDay);
   const orbitRef = useRef(null);
@@ -134,13 +134,13 @@ const FerocityBar = React.memo(() => {
 
 // S2-B2-M4: the Kinetic bank (VOIDHAND grab charge). Same self-null-at-zero capture-safety as
 // FerocityBar, PLUS the unlock gate — no meter is shown for a locked ability (and capture saves
-// lack the talent, so the 13 baselines hold without a re-baseline). "GRAB!" reads when one
+// lack the talent, so the baselines hold without a re-baseline). "GRAB!" reads when one
 // grab is affordable. Violet = the shipped phantom-rim identity (one color per Aspect).
 // S2-B3-M6: the Soul bank (SOULBIND) — the KineticBar twin: self-null at zero + the unlock
-// gate keep all 13 capture baselines untouched. "SNARE!" reads when one bind is affordable.
+// gate keep all capture baselines untouched. "SNARE!" reads when one bind is affordable.
 // Jade = the tether/tint identity (one color per Aspect).
 // S2-B4-M6: the Resonance bank (ELEMANCER) — the SoulBar twin: self-null at zero + the
-// unlock gate keep all 13 capture baselines untouched. "IMBUE!" reads when a zone is
+// unlock gate keep all capture baselines untouched. "IMBUE!" reads when a zone is
 // affordable. White-gold = the player-side catalyst identity (one color per Aspect).
 const ResonanceBar = React.memo(() => {
   const resonance = useGameStore((s) => s.resonanceBanked);
@@ -488,7 +488,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
     <>
     {/* S2-B4-M5: the IMBUE tell — a white-gold ring at screen center while the latch is armed
         (it haloes the pointer-locked plus crosshair below). imbueArmed is edge-written only and
-        never set in capture, so the 13 baselines are untouched. */}
+        never set in capture, so the baselines are untouched. */}
     {imbueArmed && (
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
         <div className="w-5 h-5 rounded-full border-2 border-resonance shadow-elev-sm"></div>

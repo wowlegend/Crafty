@@ -1,7 +1,7 @@
 /**
  * hybrids.js — S2-B3-M6: the CURATED fusion roster (the spec-locked v1 stance: lookup, never
  * procedural splicing). Keys are sorted baseType pairs; values are COMPLETE parametric MobModel
- * data (the BEAST_FORMS data-driven precedent) — render-ready, role-spread (skirmisher/bruiser/
+ * data (the BEAST_FORMS data-driven precedent) — render-ready, role-spread (skirmisher/bruiser/runner/
  * harasser), names with weight. applyFusion consumes two allies and births ONE hybrid ally at the
  * midpoint of their X/Z (Y takes the HIGHER of the two, so it never spawns underground), reusing the
  * first consumed id (unique by construction; no id-allocator needed).

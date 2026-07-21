@@ -37,7 +37,7 @@ export const LootDropRender = React.memo(({ entity }) => {
   const rarity = useMemo(() => getItemRarity(entity.item), [entity.item]);
 
   // M3c-T1: the drop look is derived from the pure rarityBeam helper, keyed off
-  // the LOCKED RARITY_FILL palette -> { color, height, intensity } tiered by
+  // the LOCKED RARITY_FILL palette -> { color, height, intensity, auraRadius, auraOpacity } tiered by
   // rarity (common = short/dim, legendary = tall/bright). The gem + beam share
   // the color; the beam's height + additive opacity scale by tier so a legendary
   // drop reads across the map.

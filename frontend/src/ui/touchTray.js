@@ -1,7 +1,7 @@
 /**
- * touchTray.js — the touch panel-access registry (touch M3a). On desktop E/C/B/M open these panels
- * (InputManager:117-120); touch has no keyboard, so the tray surface (<TouchTray>) calls togglePanel
- * for each. PURE producer — the panels themselves already render (MenuSystem). Icons are lucide names
+ * touchTray.js — the touch panel-access registry (touch M3a). On desktop E/C/B/M open these panels;
+ * touch has no keyboard, so the tray surface (<TouchControlsSurface>) calls togglePanel for each. PURE
+ * producer — the panels themselves already render (MenuSystem). Icons are lucide names
  * (the 2-tone game-icons don't tint; M2a switched touch chrome to lucide).
  */
 

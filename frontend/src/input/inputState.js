@@ -35,6 +35,8 @@
  * `roar` (S2-B1-M3) is a REAL consumed intent: the keyboard listener writes it (KeyR) and the
  * beast-transform state machine reads `getInput().roar` transiently inside the player loop —
  * a deeper abstraction than the reserved attack/cast (which fire imperatively), and touch-ready.
+ * `grab`/`snare`/`imbue` (the S2-B Aspect verbs) follow the SAME pattern as `roar`: their key listeners
+ * write them and each Aspect's state machine reads them transiently in the player loop.
  * @type {readonly string[]}
  */
 export const INTENT_KEYS = ['moveF', 'moveB', 'moveL', 'moveR', 'jump', 'dodge', 'attack', 'cast', 'interact', 'roar', 'grab', 'snare', 'imbue'];

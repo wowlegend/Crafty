@@ -1,7 +1,6 @@
-// Shared voxel-mascot kit: the two render primitives every mascot direction reuses, so
-// all three render with the EXACT same character look (toon body + fresnel rim + drei
-// inverted-hull outline at screen-px thickness, matching how mobs render in
-// SimplifiedNPCSystem). Keeping them here makes the three mascot files apples-to-apples.
+// Shared voxel-mascot kit: the three render primitives (Cube / Emissive / Ink) the mascot reuses, so it
+// renders with the EXACT same character look (toon body + fresnel rim + drei inverted-hull outline at
+// screen-px thickness, matching how mobs render). Keeping them here keeps the mascot files apples-to-apples.
 import { forwardRef } from 'react';
 import { Outlines } from '@react-three/drei';
 import { MobToonMaterial } from '../MobToonMaterial';

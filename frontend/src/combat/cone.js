@@ -1,6 +1,6 @@
 /**
- * cone.js — pure melee-cone geometry, extracted from SimplifiedNPCSystem.jsx's
- * `checkMobsInMeleeCone` so the SAME front-arc test can be reused (mobs AND the
+ * cone.js — pure melee-cone geometry, extracted from `checkMobsInMeleeCone` (now in
+ * systems/CombatSystem.jsx) so the SAME front-arc test can be reused (mobs AND the
  * boss) and unit-tested without THREE / a GPU / the ECS.
  *
  * Behaviour is IDENTICAL to the original inline math:

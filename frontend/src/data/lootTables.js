@@ -60,7 +60,7 @@ export const LOOT_TABLES = {
     ],
 };
 
-// Treasure-chest loot. Each row: { item, chance (0..1], effect, value, duration? }.
+// Treasure-chest loot. Each row: { item, chance (0..1], effect, value }.
 export const CHEST_LOOT = [
     { item: 'Health Potion', chance: 0.6, effect: 'heal', value: 30 },
     { item: 'Mana Potion', chance: 0.5, effect: 'mana', value: 40 },

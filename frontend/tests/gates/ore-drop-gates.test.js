@@ -1,7 +1,7 @@
 // S6 Slice 3 — mining an ore must drop its (craftable) item. The `block_broken` handler maps the worker
 // block code -> an inventory key, then addToInventory(key). GROUNDED: addToInventory uses the string as a raw
 // inventory KEY, mined blocks drop LOWERCASE block keys ('stone'/'wood'/'sand'), and recipes.js patterns match
-// lowercase 'coal'/'iron'/'gold'/'diamond' (incl. a Gold Helmet recipe) -> the ore drops MUST be those
+// lowercase 'coal'/'iron'/'gold'/'diamond' (incl. a Golden Crown recipe) -> the ore drops MUST be those
 // lowercase keys, NOT display names like 'Iron Nugget', which would never match a recipe.
 //
 // ⚠️ REWRITTEN 2026-07-13 (R4a). This gate used to `readFileSync` Terrain.jsx and regex the text of a

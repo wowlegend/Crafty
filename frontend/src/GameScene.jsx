@@ -50,7 +50,7 @@ import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 // BloomSpikeDriver clamps the LIVE BloomEffect back to BLOOM_BASE every frame (both in
 // capture and in live play, once the spike window has elapsed). So the JSX prop alone
 // was a dead no-op — the rendered base must be set HERE. Raised 0.8->0.95 to make the
-// intended glowier base real (matches the <Bloom intensity={0.95}> prop on line ~906).
+// intended glowier base real (matches the <Bloom intensity={0.95}> prop below).
 // BLOOM_BASE/PEAK moved with BloomSpikeDriver -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).
 // per-frame scratch (_audioDir/_rayStart/_weatherDummy) hoisted -> src/render/_sceneScratch.js (v6 de-monolith A2.0).
 // BloomSpikeDriver extracted -> src/render/BloomSpikeDriver.jsx (v6 de-monolith A2.3).

@@ -42,7 +42,7 @@ export function joystickToMove(vecX, vecY, deadzone = DEFAULT_DEADZONE) {
 
 /** Base look sensitivity, rad/px — VERBATIM from three's PointerLockControls (onMouseMove). */
 export const LOOK_BASE_SENSITIVITY = 0.002;
-/** Pitch clamp — matches PLC (minPolarAngle 0.05) and the controller's defensive clamp (Components:1218). */
+/** Pitch clamp — matches PLC (minPolarAngle 0.05) and the controller's defensive pitch clamp. */
 export const MAX_PITCH = Math.PI / 2 - 0.05;
 
 /**

@@ -8,7 +8,7 @@ import { isCaptureMode } from '../devtest/captureMode';
  * FIRST unlock of an Aspect verb-talent, e.g. "WILDHEART unlocked -- press R to roar") for ~5s, then
  * auto-clears it. Teaches the signature verb AT the moment of unlock (the cheatsheet is an easy-to-miss
  * corner reference). Capture-safe: aspectHint is null in capture (no unlocks in the captured states)
- * -> renders nothing -> the 18 baselines are unaffected.
+ * -> renders nothing -> the visual baselines are unaffected.
  */
 export default function AspectHintToast() {
   const hint = useGameStore((s) => s.aspectHint);

@@ -1,8 +1,8 @@
 /**
  * allegiance.js — S2-B3-M3: the allegiance seam. Converting a mob into an ally is a miniplex
  * COMPONENT SWAP (isMob -> isAlly): queries re-index synchronously, so the entity atomically
- * exits mobsQuery — which the worker serializer, the per-message apply map (rebuilt fresh,
- * SimplifiedNPCSystem :753-757), the >100u cull, the spawn-cap count, the minimap hostile
+ * exits mobsQuery — which the worker serializer, the per-message apply map (rebuilt fresh),
+ * the >100u cull, the spawn-cap count, the minimap hostile
  * count, and the player melee cone ALL read live. One op, five hostile surfaces exited by
  * construction (design §1; the invariant tests pin this construction against future caching).
  * The villager (quest NPC) is blocklisted here — the deepest layer (design §4).

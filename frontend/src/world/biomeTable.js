@@ -8,7 +8,7 @@
 // jungle/savanna/desert/mesa) with a multi-axis (temperature x moisture x continent) selection so the
 // world no longer reads same-everywhere. Each biome now carries:
 //   surfaceBlock   — the top voxel (EXISTING atlas layer id only: 1 grass / 2 dirt / 3 stone /
-//                    4 sand / 5 snow / 6 wood — the texture atlas has 14 layers; NEW surface
+//                    4 sand / 5 snow / 6 wood — the texture atlas has 16 layers; NEW surface
 //                    materials are M4b, so variety here is achieved by RECOMBINING existing layers
 //                    + the flora/tint metadata below, not by minting new block ids).
 //   secondaryBlock — the 3-deep subsurface band under the surface voxel.
