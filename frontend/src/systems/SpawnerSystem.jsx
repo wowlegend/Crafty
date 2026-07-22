@@ -116,7 +116,7 @@ export const SpawnerSystem = () => {
     };
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!camera) return;
     const store = useGameStore.getState();
     const now = performance.now();

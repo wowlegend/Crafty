@@ -170,7 +170,7 @@ const SpatialAudioController = () => {
             try {
               sound.disconnect();
               soundSource.removeFromParent();
-            } catch(e) {}
+            } catch {}
             activeSpatialSoundsRef.current = activeSpatialSoundsRef.current.filter(item => item.sound !== sound);
           };
         } catch (e) {
@@ -187,7 +187,7 @@ const SpatialAudioController = () => {
         reverbFilter.disconnect();
         feedbackGain.disconnect();
         wetGain.disconnect();
-      } catch (err) {}
+      } catch {}
     };
   }, [camera, scene, audioContext, sounds, soundEnabled, volume]);
 
@@ -196,7 +196,7 @@ const SpatialAudioController = () => {
   // BYPASSING the master-bus limiter + SFX-volume slider and doubling the SoundManager biome wind bed
   // [SoundManager windBedRef is the single SoT, routed through getMasterBus()].)
 
-  useFrame((state) => {
+  useFrame(() => {
     if (filterRef.current && camera) {
       const undergroundLimit = 10;
       const y = camera.position.y;
@@ -225,7 +225,7 @@ const SpatialAudioController = () => {
           try {
             item.sound.disconnect();
             item.soundSource.removeFromParent();
-          } catch (e) {}
+          } catch {}
           return false;
         }
         return true;

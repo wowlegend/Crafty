@@ -146,7 +146,7 @@ function GameApp({ experienceSystem }) {
               if (add2) add2(ONBOARDING_TIPS[1].text, ONBOARDING_TIPS[1].type);
             }, 8600);
           }
-        } catch (e) { /* localStorage blocked -> skip onboarding (non-fatal) */ }
+        } catch { /* localStorage blocked -> skip onboarding (non-fatal) */ }
       }
       setTimeout(() => {
         const state = useGameStore.getState();

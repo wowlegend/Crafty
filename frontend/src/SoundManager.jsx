@@ -104,16 +104,16 @@ export const SoundProvider = ({ children }) => {
 
       setTimeout(() => {
         oscsToStop.forEach(osc => {
-          try { osc.stop(); } catch(e) {}
-          try { osc.disconnect(); } catch(e) {}
+          try { osc.stop(); } catch {}
+          try { osc.disconnect(); } catch {}
         });
         
-        try { pad.lfoGain.disconnect(); } catch(e) {}
-        try { pad.filter.disconnect(); } catch(e) {}
-        try { masterToDisconnect.disconnect(); } catch(e) {}
-        try { if (wb.source) { wb.source.stop(); wb.source.disconnect(); } } catch(e) {}
-        try { wb.filter && wb.filter.disconnect(); } catch(e) {}
-        try { wb.gain && wb.gain.disconnect(); } catch(e) {}
+        try { pad.lfoGain.disconnect(); } catch {}
+        try { pad.filter.disconnect(); } catch {}
+        try { masterToDisconnect.disconnect(); } catch {}
+        try { if (wb.source) { wb.source.stop(); wb.source.disconnect(); } } catch {}
+        try { wb.filter && wb.filter.disconnect(); } catch {}
+        try { wb.gain && wb.gain.disconnect(); } catch {}
       }, 1600);
     } catch (e) {
       console.warn('Error stopping synth pad:', e);
@@ -285,11 +285,11 @@ export const SoundProvider = ({ children }) => {
         arp.masterGain.gain.cancelScheduledValues(now);
         arp.masterGain.gain.setValueAtTime(arp.masterGain.gain.value, now);
         arp.masterGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
-      } catch (e) {}
+      } catch {}
       // disconnect + null after the fade so the gain node doesn't leak on the master bus on
       // stop/unmount (review #13); next startArpeggiator recreates it (mirrors stopSynthPad).
       const gainToDisconnect = arp.masterGain;
-      setTimeout(() => { try { gainToDisconnect.disconnect(); } catch (e) {} }, 1100);
+      setTimeout(() => { try { gainToDisconnect.disconnect(); } catch {} }, 1100);
       arp.masterGain = null;
     }
 
@@ -378,7 +378,7 @@ export const SoundProvider = ({ children }) => {
               cachedOsc.disconnect();
               cachedFilter.disconnect();
               cachedGain.disconnect();
-            } catch(e) {}
+            } catch {}
           }, 400);
 
           arp.nextNoteTime += stepDuration;
@@ -408,7 +408,7 @@ export const SoundProvider = ({ children }) => {
           arpeggiatorRef.current.masterGain.gain.cancelScheduledValues(now);
           arpeggiatorRef.current.masterGain.gain.setValueAtTime(arpeggiatorRef.current.masterGain.gain.value, now);
           arpeggiatorRef.current.masterGain.gain.linearRampToValueAtTime(0.75 * volume * PROC_MUSIC_GAIN, now + 0.5);
-        } catch(e) {}
+        } catch {}
       }
     } else {
       if (arpeggiatorRef.current.active && arpeggiatorRef.current.masterGain) {
@@ -425,7 +425,7 @@ export const SoundProvider = ({ children }) => {
           arpeggiatorRef.current.fadeTimer = setTimeout(() => {
             stopArpeggiator();
           }, 2000);
-        } catch(e) {
+        } catch {
           stopArpeggiator();
         }
       }

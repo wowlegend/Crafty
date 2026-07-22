@@ -6,7 +6,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     const message = args.map(arg => {
       if (arg instanceof Error) return arg.stack || arg.toString();
       if (typeof arg === 'object') {
-        try { return JSON.stringify(arg); } catch (e) { return String(arg); }
+        try { return JSON.stringify(arg); } catch { return String(arg); }
       }
       return String(arg);
     }).join(' ');
@@ -24,7 +24,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     }
 
     window.__debugListeners.forEach(listener => {
-      try { listener(logEntry); } catch(e) {}
+      try { listener(logEntry); } catch {}
     });
   };
 

@@ -6,9 +6,14 @@
 // to module-locals, and the visual gate only caught them at runtime (after they shipped to main).
 // This gate catches the entire class STATICALLY, at commit/CI time.
 //
-// Only two rules, both `error`:
+// Crash-class rules (`error`):
 //   - no-undef              → plain-JS identifier refs   (the _trailDir / lookSensitivity sub-class)
 //   - react/jsx-no-undef    → undefined JSX components   (the <MagicWand/> sub-class)
+// Dead-code rule (rolling out, currently `warn` during the holistic-review dead-code sweep; flips to
+// `error` once the last ~53 flagged unused imports/vars are cleared):
+//   - no-unused-vars        → dead imports / vars / args (varsIgnorePattern '^_' for intentional scratch)
+//   - react/jsx-uses-vars + jsx-uses-react keep JSX-referenced components + the React import from
+//     false-flagging under no-unused-vars.
 //
 // Globals are deliberately PERMISSIVE (browser + worker + node merged). The orphaned app symbols are
 // always app-specific names (PascalCase components, _camelCase scratch vars) that appear in NO
@@ -31,6 +36,9 @@ export default [
     rules: {
       'no-undef': 'error',
       'react/jsx-no-undef': 'error',
+      'react/jsx-uses-vars': 'error',
+      'react/jsx-uses-react': 'error',
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', ignoreRestSiblings: true }],
     },
   },
 ];

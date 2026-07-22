@@ -95,7 +95,7 @@ export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, 
     };
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (meshRef.current) {
       if (startTime.current === null) startTime.current = Date.now();
       const elapsed = (Date.now() - startTime.current) / 1000;
@@ -153,7 +153,7 @@ export const ImpactShockwave = ({ position, id, onComplete, type }) => {
     }
   }, [type]);
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (meshRef.current) {
       if (startTime.current === null) startTime.current = performance.now();
       const elapsed = performance.now() - startTime.current;

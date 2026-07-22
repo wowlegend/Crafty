@@ -55,7 +55,7 @@ export function createStormBed(ctx, destination) {
       const now = ctx.currentTime || 0;
       nodes.hissGain.gain.linearRampToValueAtTime(0, now + 0.8);
       nodes.rumbleGain.gain.linearRampToValueAtTime(0, now + 0.8);
-      try { nodes.src.stop(now + 1.0); nodes.rumbleSrc.stop(now + 1.0); } catch (e) { /* already stopped */ }
+      try { nodes.src.stop(now + 1.0); nodes.rumbleSrc.stop(now + 1.0); } catch { /* already stopped */ }
       nodes = null; active = false;
     },
     get active() { return active; },
