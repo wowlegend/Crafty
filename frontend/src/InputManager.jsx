@@ -1,7 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { useState, useEffect, useRef } from 'react';
 import { HOTBAR_BLOCKS } from './world/Blocks';
-import { getInput, setActive } from './input/inputState';
+import { getInput } from './input/inputState';
 import { isAnyPanelOpen } from './ui/panelState.js';
 
 const requestPointerLockSafely = (state) => {

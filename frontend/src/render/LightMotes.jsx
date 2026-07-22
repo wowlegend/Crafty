@@ -19,7 +19,7 @@ import React, { useRef, useMemo, useLayoutEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isCaptureMode, makeSeededRandom } from '../devtest/captureMode.js';
-import { moodRef, sampleMood } from './mood.js';
+import { moodRef } from './mood.js';
 
 // Mote count is supplied by the caller from the active quality tier (`TIERS[tier].moteCount`
 // in quality.js): low 36 / med 80 / high 140. Fill-rate scales with count, so low-end

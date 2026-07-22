@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { consumeImbueCast } from './game/elemancerChannel';
 import { requestZone } from './game/elemancerChannel';
 import { useFrame } from '@react-three/fiber';

@@ -5,7 +5,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../../world/Blocks';
 import { useT } from '../../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, Modal } from '../primitives/index.js';
-import { Grid } from 'lucide-react';
 import { getItemRarity } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
 import { RECIPES } from '../../data/recipes';

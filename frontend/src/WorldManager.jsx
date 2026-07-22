@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useGameStore } from './store/useGameStore';
 import { buildSaveData } from './game/saveSchema.js';
-import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, getActiveWorldId, setActiveWorldId } from './game/worldSaves.js';
+import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const [worlds, setWorlds] = useState([]);

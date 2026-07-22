@@ -1,6 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { useGameStore } from './store/useGameStore';
 import { mobsQuery, alliesQuery } from './ecs/world';
 import { GameMethods } from './GameMethods';
 import { DamageNumber, ImpactShockwave } from './render/combatVfx';

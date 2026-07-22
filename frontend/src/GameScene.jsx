@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, useEffect, useRef, useState } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
 import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
@@ -12,7 +12,6 @@ import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
 import { LightMotes } from './render/LightMotes.jsx';
-import { moodRef, sampleMood } from './render/mood';
 import { Sun } from './render/Sun';
 import { MoodGradeDriver } from './render/MoodGradeDriver';
 import { BloomSpikeDriver } from './render/BloomSpikeDriver';
@@ -25,7 +24,6 @@ import { Nametags } from './render/Nametags';
 import { BossEntity } from './render/BossEntity';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
-import { isCaptureMode } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
@@ -76,12 +74,9 @@ import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 // PointerLook extracted -> src/render/PointerLook.jsx (v6 de-monolith A2.4).
 
 export function GameScene({
-  gameState,
   isWorldBuilt,
   bossSystem,
-  showStats,
-  showAchievements,
-  showSpellUpgrades
+  showStats
 }) {
   const canvasRef = useRef(null); // the WebGL canvas (set in onCreated) — the element we pointer-lock
   // Dev capture mode: freeze the physics simulation so the scene is byte-stable.

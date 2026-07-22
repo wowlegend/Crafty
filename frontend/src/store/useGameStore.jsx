@@ -5,7 +5,7 @@ import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
-import { writeWorld, listWorlds, mintWorldId, getActiveWorldId, setActiveWorldId } from '../game/worldSaves.js';
+import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { clampFerocity } from '../game/ferocity.js';
@@ -343,7 +343,7 @@ export const useGameStore = create((set, get) => ({
     _spawnTime: Date.now(),
     getPlayerLevel: () => get().level,
     getPlayerXP: () => ({ current: get().currentXP, total: get().totalXP, level: get().level, required: xpForLevel(get().level) }),
-    grantXP: (amount, reason = 'Action') => set((state) => {
+    grantXP: (amount, _reason = 'Action') => set((state) => {
         let level = state.level;
         let currentXP = state.currentXP + (amount || 0);
         const totalXP = state.totalXP + (amount || 0);

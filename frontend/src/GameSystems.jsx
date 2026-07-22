@@ -1,6 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 import { StatBar } from './ui/primitives/StatBar.jsx';
 import { Panel } from './ui/primitives/Panel.jsx';
@@ -62,7 +62,6 @@ export const GameSystemsProvider = ({ children }) => {
         getEffectiveAttributes: state.getEffectiveAttributes
     })));
     const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
-    const { setPlayerHealth, setMaxHealth, setIsAlive, setDamageFlash, setScreenShake, setMana, setMaxMana, setHunger } = gameState;
 
     const manaRegenTimer = useRef(null);
     const hungerTimer = useRef(null);

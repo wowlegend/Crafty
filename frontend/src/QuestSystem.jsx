@@ -2,11 +2,11 @@ import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { questMatches } from './game/questMatch.js';
 import { GameMethods } from './GameMethods';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
 import { isTouchUIMode } from './input/touchDevice';
-import { Panel, Button, Slot, Icon, Toast, Modal } from './ui/primitives/index.js';
+import { Panel, Button, Icon, Toast, Modal } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 import { zoneTier } from './world/zoneTier.js';
@@ -118,12 +118,10 @@ export const useQuestSystem = () => {
         kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
         blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
     }));
-    const [lootDrops, setLootDrops] = useState([]);
-    const [achievements, setAchievements] = useState([]);
+    const [lootDrops] = useState([]);
     const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.unlockedAchievements, ['first_step'])));
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
-    const lootId = useRef(0);
     // R1: synchronous in-tick mirrors of the claim-relevant state (assigned in the render body below).
     const questsRef = useRef(quests);
     const completedRef = useRef(completedQuestIds);
@@ -650,7 +648,6 @@ export const useTreasureChests = () => {
     const addNotification = useGameStore(state => state.addNotification);
     const [chests, setChests] = useState([]);
     const [openedChestIds, setOpenedChestIds] = useState(new Set());
-    const lastChestCheck = useRef(0);
     const chestId = useRef(0);
     // live mirrors so the mount-once spawner interval reads current counts without resetting its cadence (#41)
     const chestsRef = useRef(chests); chestsRef.current = chests;
