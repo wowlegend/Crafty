@@ -56,9 +56,17 @@
 > hoist out of per-pixel loop, run-scenarios perf-gate now exits non-zero on FAIL. Routed to KEVIN-REVIEW:
 > ai.worker A* Manhattan→octile heuristic (mob-pathing feel), ci.yml dependency-scan (touches the 2 dependabot
 > highs). Skipped/already-fixed: synthVoices [1], CombatSystem store-shadow, Components performVerb-cleanup.
-> **NEXT (the big mechanized units): (1) enable eslint `no-unused-vars` — its own unit; surfaces + clears the
-> dead-code 38 category. (2) docs REORG: Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
-> plans/; Wave-2 4 lint-CRITICAL (ARCHIVE-not-delete, drift-fix the citing LIVE doc in the same commit).** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
+> **▶ DEAD-CODE (eslint no-unused-vars) IN PROGRESS (`0d1b28a`):** rule ENABLED at `warn` (jsx-uses-vars/react
+> + varsIgnorePattern '^_'; was OFF). eslint surfaced **80 items** (> the review's 38). Part-1 DONE (~28,
+> behavior-safe, suite green): ~24 catch bindings → optional-catch, 4 useFrame (state,delta) arg-drops.
+> **53 REMAIN** (enumerate: `cd frontend && npx eslint src 2>&1 | grep no-unused-vars`) — dead IMPORTS
+> (EMS/GameScene/GameSystems/QuestSystem/SimplifiedNPCSystem/WorldManager/useGameStore/CraftingTable/
+> SquadAISystem-React + 2 test files), unused LOCALS (Components/EMS/GameScene/QuestSystem/LightMotes/
+> ai.worker/Blocks/terrain.worker/hurl.test), destructured SETTERS (GameSystems:65 ×8/GameHud/HUD/InputManager),
+> unused PROPS (GameScene:79/83/84/EMS:26/MenuSystem:42). Fix each AST-safe (delete dead import/local; trim
+> destructure; drop/`_`-prefix contractual args), suite green, then **flip no-unused-vars → `error`** + update
+> the config header. **THEN: docs REORG (Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
+> plans/; Wave-2 4 lint-CRITICAL, ARCHIVE-not-delete, drift-fix the citing LIVE doc same commit).** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
 > [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
 > Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
 > refs, voxelKit/inputState content, + the r3f winding-rule doc's Bottom/Front/Back corrected to the shipped
