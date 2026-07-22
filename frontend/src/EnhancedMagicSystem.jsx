@@ -23,7 +23,7 @@ import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
 export { MagicWand } from './render/spellVfx';
 
-export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
+export const EnhancedMagicSystem = React.memo(() => {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);
@@ -282,7 +282,6 @@ export const EnhancedMagicSystem = React.memo(({ playerPosition }) => {
     const capture = isCaptureMode();
     const delta = capture ? 0 : frameDelta;
     const deltaMs = capture ? 0 : frameDelta * 1000;
-    const time = capture ? 0 : state.clock.elapsedTime;
 
     let survivingProjectiles = [];
 

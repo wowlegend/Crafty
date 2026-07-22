@@ -62,7 +62,6 @@ export const Player = ({ isWorldBuilt }) => {
     isWorldBuiltRef.current = isWorldBuilt;
   }, [isWorldBuilt]);
 
-  const activeSpell = useGameStore(state => state.activeSpell);
   const selectedBlock = useGameStore(state => state.selectedBlock);
   const { camera } = useThree();
   const [attackType, setAttackType] = useState(null); // 'melee' | 'spell' | null
@@ -792,7 +791,6 @@ export const Player = ({ isWorldBuilt }) => {
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
     const speed = moveSpeed(loco);
-    const currentVel = rigidBodyRef.current.linvel();
     const currentTrans = rigidBodyRef.current.translation();
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
