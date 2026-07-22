@@ -59,7 +59,15 @@
 > **▶ DEAD-CODE (eslint no-unused-vars) IN PROGRESS (`0d1b28a`):** rule ENABLED at `warn` (jsx-uses-vars/react
 > + varsIgnorePattern '^_'; was OFF). eslint surfaced **80 items** (> the review's 38). Part-1 DONE (~28,
 > behavior-safe, suite green): ~24 catch bindings → optional-catch, 4 useFrame (state,delta) arg-drops.
-> **53 REMAIN** (enumerate: `cd frontend && npx eslint src 2>&1 | grep no-unused-vars`) — dead IMPORTS
+> **PART-2 DONE (`a72bffd`+`b443141`): 34 more cleared, ~19 REMAIN.** ⚠️ LESSON: eslint-unused ≠ DEAD when a
+> structural GATE requires the symbol — removing InputManager's `setActive` import broke input-abstraction-gates
+> (pre-push caught it AFTER a bad push slipped through because pre-push tests the WORKING TREE not the commit;
+> restored in b443141). BEFORE deleting any remaining flagged IMPORT, grep tests/gates for it. Enumerate:
+> `cd frontend && npx eslint src 2>&1 | grep no-unused-vars`) — the ~19 remaining incl. Components activeSpell/
+> currentVel, EMS playerPosition/time, HUD setIsPointerLocked, MenuSystem spellUpgrades, GameHud showStats/
+> setShowStats, GamePanels slotName, ai.worker playerY, Blocks BLOCK_TYPE_KEYS, terrain.worker CHUNK_SIZE/HEIGHT,
+> hurl.test o/d/max, hybrids.test fuseKey, squadAI.test ATTACK_RANGE, + InputManager setActive (gate-required —
+> keep, needs a justified `// eslint-disable` when flipping to error, NOT a delete). ORIGINAL 53-breakdown: dead IMPORTS
 > (EMS/GameScene/GameSystems/QuestSystem/SimplifiedNPCSystem/WorldManager/useGameStore/CraftingTable/
 > SquadAISystem-React + 2 test files), unused LOCALS (Components/EMS/GameScene/QuestSystem/LightMotes/
 > ai.worker/Blocks/terrain.worker/hurl.test), destructured SETTERS (GameSystems:65 ×8/GameHud/HUD/InputManager),
