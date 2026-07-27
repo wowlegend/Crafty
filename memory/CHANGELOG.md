@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-07-27 — Holistic review Phase 2: dead-code category COMPLETE + `no-unused-vars` is now a blocking gate (`9387c7d`)
+
+The rule went OFF → `warn` (`0d1b28a`) → **`error`** (`9387c7d`). eslint surfaced **80** dead imports/vars/args —
+more than double the review's 38 estimate — and all 80 are now cleared across 6 batches (`0d1b28a`, `a72bffd`,
+`b443141`, `2824334`, `9387c7d`). `npm run lint` exits non-zero on any new dead symbol.
+
+The final 15 were mostly **dead prop-chains**, each traced end-to-end before deletion rather than trimmed at the leaf:
+
+- **showStats / setShowStats** — `GameUI` ignored them, `HUD` only passed them through, `App` fed both: dead at all
+  four levels. The LIVE consumers are `GameScene` (which renders `<Stats/>`) and `MenuSystem → SettingsPanel`, so
+  F3 and the Settings toggle are untouched.
+- **`setIsPointerLocked` on HUD** — dead since KEVIN-FIX C3 removed the optimistic active-write. `MenuSystem` still
+  uses it for the touch entry path, so the explanatory comment MOVED there instead of being deleted with the prop.
+- **`spellUpgrades` on MenuSystem** — `SpellUpgradePanel` reads talents straight from the store.
+- **`slotName` on PaperDollSlot** — passed by 5 call sites, read by none.
+
+Plus locals/imports: `ai.worker` playerY (elided — the mob brain is XZ-only), `Blocks` BLOCK_TYPE_KEYS,
+`terrain.worker`'s two LOCAL SHADOWS of the module `CHUNK_SIZE`/`CHUNK_HEIGHT` consts (the module ones are used
+53×/21× and stay), `hurl.test` mock args, `hybrids.test` fuseKey, `squadAI.test` ATTACK_RANGE.
+
+**A gate was strengthened, not silenced.** `InputManager`'s `setActive` import is REQUIRED by
+`input-abstraction-gates` (removing it in part-2 broke the gate), so it keeps a justified `eslint-disable-next-line`
+that names the gate. Auditing that carve-out surfaced a second-order bug: **the gate was vacuous** — it matched
+`/\bsetActive\b/` against the whole file, so the very comment explaining why the import is kept already satisfied
+it, and deleting the import still passed. It now matches the import SPECIFIER, mutation-proven RED under the new
+regex and GREEN under the old. **Generalizable:** a whole-file substring gate is satisfiable by a comment — anchor
+structural gates to the syntactic form, never a bare token.
+
+Verified: lint exit 0 at `error`, 329 files / 2114 tests, build, knip, doc-currency all green.
+
 ## 2026-07-21 — Holistic review Phase 2: doc-drift category COMPLETE (19 fixed, `88010a9`)
 
 All 21 `doc-drift` findings dispositioned (2 false-positives already fixed by b5be02f). Numeric/roster drift

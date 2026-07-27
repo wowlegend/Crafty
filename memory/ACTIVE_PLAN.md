@@ -48,32 +48,33 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21) — ~116 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
-> ✅ COVERAGE-GAPS (8/8) + ✅ INCONSISTENCY (11) + ✅ ENHANCEMENT (7) COMPLETE; test-vacuity TRIAGED (3
+> **▶ PHASE 2 IN PROGRESS (2026-07-21 → 27) — ~154 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
+> ✅ COVERAGE-GAPS (8/8) + ✅ INCONSISTENCY (11) + ✅ ENHANCEMENT (7) + ✅ DEAD-CODE (38 → 80 actual) COMPLETE;
+> test-vacuity TRIAGED (3
 > strengthened, rest FP/legit). Inconsistency finale (`d539b0b`): GearInspector consumable-registry fallback,
 > CreditsScreen font_puhuiti i18n, touchTray aria-label i18n (+ui.build/magic keys) — [9]/[10] were non-issues
 > (test-scoped emoji / cosmetic port-reuse). Enhancements (`d539b0b`): combat.js redundant-round, ORE_TILES
 > hoist out of per-pixel loop, run-scenarios perf-gate now exits non-zero on FAIL. Routed to KEVIN-REVIEW:
 > ai.worker A* Manhattan→octile heuristic (mob-pathing feel), ci.yml dependency-scan (touches the 2 dependabot
 > highs). Skipped/already-fixed: synthVoices [1], CombatSystem store-shadow, Components performVerb-cleanup.
-> **▶ DEAD-CODE (eslint no-unused-vars) IN PROGRESS (`0d1b28a`):** rule ENABLED at `warn` (jsx-uses-vars/react
-> + varsIgnorePattern '^_'; was OFF). eslint surfaced **80 items** (> the review's 38). Part-1 DONE (~28,
-> behavior-safe, suite green): ~24 catch bindings → optional-catch, 4 useFrame (state,delta) arg-drops.
-> **PART-2 DONE (`a72bffd`+`b443141`): 34 more cleared, ~19 REMAIN.** ⚠️ LESSON: eslint-unused ≠ DEAD when a
-> structural GATE requires the symbol — removing InputManager's `setActive` import broke input-abstraction-gates
-> (pre-push caught it AFTER a bad push slipped through because pre-push tests the WORKING TREE not the commit;
-> restored in b443141). BEFORE deleting any remaining flagged IMPORT, grep tests/gates for it. Enumerate:
-> `cd frontend && npx eslint src 2>&1 | grep no-unused-vars`) — the ~19 remaining incl. Components activeSpell/
-> currentVel, EMS playerPosition/time, HUD setIsPointerLocked, MenuSystem spellUpgrades, GameHud showStats/
-> setShowStats, GamePanels slotName, ai.worker playerY, Blocks BLOCK_TYPE_KEYS, terrain.worker CHUNK_SIZE/HEIGHT,
-> hurl.test o/d/max, hybrids.test fuseKey, squadAI.test ATTACK_RANGE, + InputManager setActive (gate-required —
-> keep, needs a justified `// eslint-disable` when flipping to error, NOT a delete). ORIGINAL 53-breakdown: dead IMPORTS
-> (EMS/GameScene/GameSystems/QuestSystem/SimplifiedNPCSystem/WorldManager/useGameStore/CraftingTable/
-> SquadAISystem-React + 2 test files), unused LOCALS (Components/EMS/GameScene/QuestSystem/LightMotes/
-> ai.worker/Blocks/terrain.worker/hurl.test), destructured SETTERS (GameSystems:65 ×8/GameHud/HUD/InputManager),
-> unused PROPS (GameScene:79/83/84/EMS:26/MenuSystem:42). Fix each AST-safe (delete dead import/local; trim
-> destructure; drop/`_`-prefix contractual args), suite green, then **flip no-unused-vars → `error`** + update
-> the config header. **THEN: docs REORG (Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
+> **✅ DEAD-CODE COMPLETE (2026-07-27, `9387c7d`) — the rule is now a BLOCKING gate.** `no-unused-vars` went
+> OFF → `warn` (`0d1b28a`) → **`error`** (`9387c7d`); eslint surfaced **80 items** (> the review's 38 estimate),
+> all 80 cleared across 6 batches: `0d1b28a` (~28 catch-bindings → optional-catch + useFrame arg-drops) ·
+> `a72bffd`+`b443141` (34) · `2824334` (4 Components/EMS locals+prop) · `9387c7d` (the last 15). `npm run lint`
+> now exits non-zero on any dead import/var/arg. Final-batch highlights: four DEAD PROP-CHAINS traced end-to-end
+> before deletion — showStats/setShowStats (App→HUD→GameUI was dead at all 4 levels; the LIVE consumers are
+> GameScene's `<Stats/>` and MenuSystem→SettingsPanel), HUD setIsPointerLocked (dead since KEVIN-FIX C3; MenuSystem
+> still uses it for touch entry, so the explanatory comment MOVED there), MenuSystem spellUpgrades (SpellUpgradePanel
+> reads talents from the store), PaperDollSlot slotName (5 callers, 0 readers).
+> **⚠️ LESSON (part-2 scar, kept):** eslint-unused ≠ DEAD when a structural GATE requires the symbol — removing
+> InputManager's `setActive` import broke input-abstraction-gates (pre-push caught it AFTER a bad push slipped
+> through, because pre-push tests the WORKING TREE not the commit; restored in `b443141`). ALWAYS grep tests/gates
+> before deleting a flagged import. `setActive` survives on a justified `// eslint-disable-next-line` naming the gate.
+> **⚠️ SECOND-ORDER FIND (`9387c7d`):** that gate was itself VACUOUS — it matched `/\bsetActive\b/` against the
+> whole file, so the *comment* explaining why the import is kept already satisfied it and deleting the import still
+> passed. Strengthened to match the import SPECIFIER, mutation-proven RED. **Generalizable:** any whole-file
+> substring gate is satisfiable by a comment; anchor structural gates to the syntactic form, not a bare token.
+> **NEXT: docs REORG (Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
 > plans/; Wave-2 4 lint-CRITICAL, ARCHIVE-not-delete, drift-fix the citing LIVE doc same commit).** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
 > [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
 > Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
