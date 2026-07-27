@@ -76,7 +76,23 @@
 > whole file, so the *comment* explaining why the import is kept already satisfied it and deleting the import still
 > passed. Strengthened to match the import SPECIFIER, mutation-proven RED. **Generalizable:** any whole-file
 > substring gate is satisfiable by a comment; anchor structural gates to the syntactic form, not a bare token.
-> **NEXT: docs REORG (Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
+> **▶ NEW 2026-07-27 — GOVERNING-DOC SOTA PASS (Kevin-requested). PLAN OF RECORD:
+> `docs/superpowers/LOOP-DOC-SOTA-PLAN-2026-07-27.md` — 14 edits, 3 SHIPPED, 11 REMAIN, with exact
+> paste-ready text + the adversarial critic's standing rejections.** Principle: *a rule names its
+> enforcer or it is deleted; a number is computed or it is deleted; a claim about state outside the
+> working tree is emitted by the command that observed it.* The audit's split was mechanism, not
+> diligence — every rule checkable from an artifact the loop already produced was obeyed ~100% across
+> 999 commits; every rule needing a separate experiment whose only consumer was the loop's own prose
+> was obeyed erratically or never. Highest-value remaining: **[2] `gate-shape.mjs`** (AST lint that
+> fails a gate whose assertion is satisfied by a COMMENT — kills the 85%-source-grep vacuity class
+> mechanically), **[3] pre-push certifies the PUSHED REFS** (it reads no stdin today, and a docs-only
+> push skips lint/tests/build entirely), **[5] `measure.mjs`** (one authority for every number, wired
+> into doc-currency so stale counts fail the push). **BEFORE applying any edit, read the critic's
+> standing rejections at the foot of the plan** — three otherwise-obvious remedies are already proven
+> dead (doc-currency mtime for STATUS freshness; CHANGELOG under the doc lint; any text claiming CI
+> is green — it has concluded `success` ZERO times).
+>
+> **THEN: docs REORG (Wave-1 ~83 shipped-plan archives via `git mv` → docs/archive/2026-Q2/
 > plans/; Wave-2 4 lint-CRITICAL, ARCHIVE-not-delete, drift-fix the citing LIVE doc same commit).** Comment-lie: `4ae60bc`+`4f05f77`+`bf1fa9a`+`d2684fd`+`5740c9e` (29 fixed, 3 FP, 1 held
 > [Terrain.jsx:138 KEVIN shader], 1 dup) incl. 2 dead-value removals + a mutation-proven gate strengthening.
 > Doc-drift: `88010a9` (19 fixed — numeric/roster drift, stale baseline counts dropped, de-brittled moved-code
