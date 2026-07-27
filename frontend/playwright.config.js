@@ -15,7 +15,17 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
-  timeout: 60000,
+  // 120s, not 60s. The shared helpers in tests/e2e/_boot.js declare inner waits of up to 30s
+  // (bootDev: store + test bridge) plus 45s (startPlay: isSpawnChunkLoaded) = 75s of legal waiting
+  // INSIDE a test — so a 60s per-test budget was structurally impossible to satisfy whenever terrain
+  // streaming ran slow. Six specs had already discovered this and set test.setTimeout(150000) or
+  // (180000) individually; the other ten inherited 60s and were one slow world-build away from a
+  // timeout. smoke.spec.js — the highest-value E2E in the repo — failed on BOTH CI and real hardware
+  // for exactly this reason, and it was invisible because the whole e2e job was being killed by its
+  // own job timeout before anyone read the result.
+  // This raises no assertion threshold and weakens no check: every expect() in the suite is
+  // unchanged. It gives a slow machine the wall-clock the helpers already say they may consume.
+  timeout: 120000,
   expect: { timeout: 15000 },
   use: {
     baseURL: URL,
