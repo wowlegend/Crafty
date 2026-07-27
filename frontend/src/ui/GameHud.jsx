@@ -59,7 +59,7 @@ const MinecraftHotbar = React.memo(({ gameState }) => {
   );
 });
 
-export const GameUI = ({ gameState, showStats, setShowStats }) => {
+export const GameUI = ({ gameState }) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">

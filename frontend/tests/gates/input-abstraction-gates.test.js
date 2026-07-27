@@ -76,7 +76,12 @@ describe('S2-A-M2d single pointer-lock authority (InputManager off the dup liste
     const src = inputManager();
     expect(src, 'InputManager must import from ./input/inputState')
       .toMatch(/from\s+['"]\.\/input\/inputState['"]/);
-    expect(src, 'InputManager must import getInput').toMatch(/\bgetInput\b/);
-    expect(src, 'InputManager must import setActive').toMatch(/\bsetActive\b/);
+    // Match the IMPORT SPECIFIER, not a bare mention: a `\bsetActive\b` whole-file match is
+    // satisfied by any comment naming the symbol (the file carries one explaining why the
+    // import is kept), which made this gate vacuous — deleting the import still passed.
+    const namedImport = (sym) =>
+      new RegExp(`import\\s*\\{[^}]*\\b${sym}\\b[^}]*\\}\\s*from\\s*['"]\\./input/inputState['"]`);
+    expect(src, 'InputManager must import getInput').toMatch(namedImport('getInput'));
+    expect(src, 'InputManager must import setActive').toMatch(namedImport('setActive'));
   });
 });

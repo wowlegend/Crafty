@@ -49,7 +49,7 @@ const RARITY_TEXT = {
 // Paper-doll gear cell — bold-flat. Equipped -> a gold `Slot gear` with the 2-tone
 // item Icon + a Remove hover overlay; empty -> an empty `Slot` with the placeholder
 // Icon + label. Preserves onUnequip (click) + onHover (hover-inspect).
-const PaperDollSlot = ({ slotName, label, placeholderIcon, equippedItem, onUnequip, onHover }) => {
+const PaperDollSlot = ({ label, placeholderIcon, equippedItem, onUnequip, onHover }) => {
     const t = useT();
     if (equippedItem) {
         return (
@@ -275,7 +275,6 @@ export const Inventory = ({ onClose }) => {
                             <div className="flex flex-col gap-2 items-center">
                                 {/* Head Slot */}
                                 <PaperDollSlot
-                                    slotName="head"
                                     label="Head"
                                     placeholderIcon="helmet"
                                     equippedItem={gameState.equipment?.head}
@@ -285,7 +284,6 @@ export const Inventory = ({ onClose }) => {
                                 <div className="flex gap-2 w-full justify-center">
                                     {/* Weapon Slot */}
                                     <PaperDollSlot
-                                        slotName="weapon"
                                         label="Main"
                                         placeholderIcon="sword"
                                         equippedItem={gameState.equipment?.weapon}
@@ -294,7 +292,6 @@ export const Inventory = ({ onClose }) => {
                                     />
                                     {/* Chest Slot */}
                                     <PaperDollSlot
-                                        slotName="chest"
                                         label="Chest"
                                         placeholderIcon="chest"
                                         equippedItem={gameState.equipment?.chest}
@@ -303,7 +300,6 @@ export const Inventory = ({ onClose }) => {
                                     />
                                     {/* Off-Hand Slot */}
                                     <PaperDollSlot
-                                        slotName="offhand"
                                         label="Off"
                                         placeholderIcon="shield"
                                         equippedItem={gameState.equipment?.offhand}
@@ -313,7 +309,6 @@ export const Inventory = ({ onClose }) => {
                                 </div>
                                 {/* Boots Slot */}
                                 <PaperDollSlot
-                                    slotName="boots"
                                     label="Boots"
                                     placeholderIcon="boots"
                                     equippedItem={gameState.equipment?.boots}

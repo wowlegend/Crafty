@@ -19,5 +19,4 @@ export const BLOCK_TYPES = Object.freeze({
     chest: Object.freeze({ color: '#A0522D', name: 'Wooden Chest', texture: 'wood' })
 });
 
-const BLOCK_TYPE_KEYS = Object.keys(BLOCK_TYPES);
 export const HOTBAR_BLOCKS = ['grass', 'dirt', 'stone', 'wood', 'glass', 'diamond', 'sand', 'cobblestone', 'chest'];

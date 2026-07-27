@@ -517,10 +517,7 @@ export function HUD({
   treasureChests,
   survivalMode,
   bossSystem,
-  spellUpgrades,
-  showStats,
-  setShowStats,
-  setIsPointerLocked
+  spellUpgrades
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
   const [victoryDismissed, setVictoryDismissed] = useState(false);
@@ -529,11 +526,7 @@ export function HUD({
       <AnimatePresence>
         {isPointerLocked && gameSystems.isAlive && isWorldBuilt && (
           <>
-            <GameUI
-              gameState={gameState}
-              showStats={showStats}
-              setShowStats={setShowStats}
-            />
+            <GameUI gameState={gameState} />
             {!isTouchUIMode() && <ControlsSheet />}{/* W3 M-HUD.9: keyboard cheatsheet demoted to auto-fade + H-toggle (desktop-only; touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />

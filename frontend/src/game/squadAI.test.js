@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stepSquad, FOLLOW_RING, ENGAGE_RADIUS, ATTACK_RANGE, ATTACK_COOLDOWN_SEC, LEASH_DIST } from './squadAI';
+import { stepSquad, FOLLOW_RING, ENGAGE_RADIUS, ATTACK_COOLDOWN_SEC, LEASH_DIST } from './squadAI';
 
 const P = { x: 0, y: 10, z: 0 };
 const ally = (over = {}) => ({ id: 1, position: { x: 10, y: 10, z: 0 }, type: 'zombie', lastAllyAttack: 0, ...over });

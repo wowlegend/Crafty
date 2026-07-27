@@ -96,7 +96,7 @@ describe('hurl substepping (frame-spike tunneling guard)', () => {
 describe('base-as-anvil (M4)', () => {
   const hit = { id: 'm', pos: { x: 0, y: 10, z: 0 }, dir: { x: 1, y: 0, z: 0 } };
   it('mob next to a wall along the hurl line -> ANVIL_MULT', () => {
-    const castRay = (o, d, max) => ({ toi: 1.2 }); // a wall 1.2m past the impact
+    const castRay = () => ({ toi: 1.2 }); // a wall 1.2m past the impact
     expect(resolveAnvil(castRay, hit)).toBe(ANVIL_MULT);
   });
   it('open air -> 1x', () => {

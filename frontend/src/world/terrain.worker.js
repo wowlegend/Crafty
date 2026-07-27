@@ -701,9 +701,6 @@ function generateMesh(cx, cz, blocks) {
   const ao = []; // S1 vertex AO: per-corner 0..3 occlusion baked here, read as the `aAO` attribute in Terrain.jsx
   let indexOffset = 0;
 
-  const CHUNK_SIZE = 16;
-  const CHUNK_HEIGHT = 256;
-
   // Helper to read blocks safely with boundary culling
   function getBlock(bx, by, bz) {
     if (bx < 0 || bx >= 16 || by < 0 || by >= 256 || bz < 0 || bz >= 16) return 0;

@@ -765,10 +765,6 @@ function GameApp({ experienceSystem }) {
         </div>
       )}
 
-      {/* setIsPointerLocked prop on HUD + MenuSystem is wired to setActive — the
-          OPTIMISTIC active writer (the prop NAME is kept to avoid churn in those
-          components). Components.jsx's pointerlock listener is the AUTHORITATIVE
-          active writer (the single source of truth). */}
       {!hudHidden && (
         <HUD
           isPointerLocked={isPointerLocked}
@@ -781,14 +777,15 @@ function GameApp({ experienceSystem }) {
           survivalMode={survivalMode}
           bossSystem={bossSystem}
           spellUpgrades={spellUpgrades}
-          showStats={showStats}
-          setShowStats={setShowStats}
-          setIsPointerLocked={setActive}
         />
       )}
 
       <TouchControls isWorldBuilt={isWorldBuilt} />
 
+      {/* MenuSystem's setIsPointerLocked prop is wired to setActive — the OPTIMISTIC
+          active writer, used by the touch entry path (the prop NAME is kept to avoid
+          churn in that component). Components.jsx's pointerlock listener is the
+          AUTHORITATIVE active writer (the single source of truth). */}
       <MenuSystem
         gameState={gameState}
         showAchievements={showAchievements}
@@ -800,7 +797,6 @@ function GameApp({ experienceSystem }) {
         showStats={showStats}
         setShowStats={setShowStats}
         questSystem={questSystem}
-        spellUpgrades={spellUpgrades}
       />
 
       {import.meta.env.DEV && !hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}

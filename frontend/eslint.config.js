@@ -9,8 +9,10 @@
 // Crash-class rules (`error`):
 //   - no-undef              → plain-JS identifier refs   (the _trailDir / lookSensitivity sub-class)
 //   - react/jsx-no-undef    → undefined JSX components   (the <MagicWand/> sub-class)
-// Dead-code rule (rolling out, currently `warn` during the holistic-review dead-code sweep; flips to
-// `error` once the last ~53 flagged unused imports/vars are cleared):
+// Dead-code rule (`error` since 2026-07-27 — the holistic-review sweep cleared all ~80 flagged unused
+// imports/vars/args across 6 batches; the ONE surviving exception is InputManager's `setActive`, which
+// input-abstraction-gates.test.js REQUIRES to be imported, carried on a justified
+// `eslint-disable-next-line` that names the gate):
 //   - no-unused-vars        → dead imports / vars / args (varsIgnorePattern '^_' for intentional scratch)
 //   - react/jsx-uses-vars + jsx-uses-react keep JSX-referenced components + the React import from
 //     false-flagging under no-unused-vars.
@@ -38,7 +40,7 @@ export default [
       'react/jsx-no-undef': 'error',
       'react/jsx-uses-vars': 'error',
       'react/jsx-uses-react': 'error',
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', ignoreRestSiblings: true }],
     },
   },
 ];

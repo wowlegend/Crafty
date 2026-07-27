@@ -127,7 +127,7 @@ function hasLineOfSight(heightGrid, x1, z1, x2, z2) {
 self.onmessage = function(e) {
   if (e.data.type === 'TICK') {
     const { playerPos, now, delta, mobs } = e.data;
-    const [playerX, playerY, playerZ] = playerPos;
+    const [playerX, , playerZ] = playerPos; // Y is elided: the mob brain reasons on the XZ plane only
     
     const AGGRO_RANGE = 20;
     const MELEE_RANGE = 2.5;

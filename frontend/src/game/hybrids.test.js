@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { HYBRIDS, fuseKey, lookupHybrid, applyFusion } from './hybrids';
+import { HYBRIDS, lookupHybrid, applyFusion } from './hybrids';
 import { ecs, alliesQuery } from '../ecs/world';
 
 const added = [];

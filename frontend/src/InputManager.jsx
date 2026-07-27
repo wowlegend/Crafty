@@ -1,7 +1,11 @@
 import { useGameStore } from './store/useGameStore';
 import { useState, useEffect, useRef } from 'react';
 import { HOTBAR_BLOCKS } from './world/Blocks';
-import { getInput, setActive } from './input/inputState'; // setActive kept: input-abstraction-gates requires the import (centralized active gate)
+// `setActive` is intentionally imported-but-unused: tests/gates/input-abstraction-gates.test.js
+// REQUIRES InputManager to import it, so the centralized active gate stays declared at this seam
+// (Components.jsx remains the authoritative writer). Deleting it pleases the linter and breaks the gate.
+// eslint-disable-next-line no-unused-vars
+import { getInput, setActive } from './input/inputState';
 import { isAnyPanelOpen } from './ui/panelState.js';
 
 const requestPointerLockSafely = (state) => {

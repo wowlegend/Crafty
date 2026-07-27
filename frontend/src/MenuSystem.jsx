@@ -38,8 +38,7 @@ export function MenuSystem({
   setIsPointerLocked,
   showStats,
   setShowStats,
-  questSystem,
-  spellUpgrades
+  questSystem
 }) {
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
