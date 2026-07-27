@@ -90,6 +90,7 @@
     background:var(--panel);position:relative;overflow:hidden}
   .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal);opacity:.8}
   .stat.amber::before{background:var(--amber)} .stat.good::before{background:var(--good)}
+  .stat.bad::before{background:var(--bad)} .stat.bad .v{color:var(--bad)}
   .stat .k{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
   .stat .v{font:650 27px/1.05 var(--mono);margin-top:9px;letter-spacing:-.01em}
   .stat .v small{font-size:13px;color:var(--fg-dim);font-weight:600}
@@ -161,11 +162,44 @@
   .rule-c .n{font:650 12px/1 var(--mono);color:var(--teal);letter-spacing:.05em}
   .rule-c p{margin:8px 0 0;font-size:12.5px;color:var(--fg-dim)}
 
+  /* ---- era timeline (the 9 campaigns) ---- */
+  .eras{display:flex;flex-direction:column}
+  .era{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:15px 16px;border-top:1px solid var(--line)}
+  .era:first-child{border-top:0}
+  .era .when{font:500 11.5px/1.5 var(--mono);color:var(--fg-faint)}
+  .era .when b{display:block;font:650 19px/1.15 var(--mono);color:var(--teal);letter-spacing:-.01em}
+  .era.dirty .when b{color:var(--warn)}
+  .era .h{font-weight:600;font-size:14px;margin-bottom:4px}
+  .era .d{color:var(--fg-dim);font-size:12.5px;margin:0}
+  .era .d code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .era .flag{display:inline-block;margin-top:8px;font:600 10.5px/1.45 var(--mono);letter-spacing:.05em;
+    color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,var(--line));border-radius:6px;padding:4px 9px;
+    background:color-mix(in srgb,var(--bad) 10%,transparent)}
+  .era .flag.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));
+    background:color-mix(in srgb,var(--good) 10%,transparent)}
+
+  /* ---- audit findings ---- */
+  .finds{display:flex;flex-direction:column}
+  .find{display:grid;grid-template-columns:94px 1fr;gap:14px;padding:13px 16px;border-top:1px solid var(--line)}
+  .find:first-child{border-top:0}
+  .sev{font:650 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:6px;
+    text-align:center;border:1px solid var(--line-2);height:fit-content}
+  .sev.crit{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line));background:color-mix(in srgb,var(--bad) 14%,transparent)}
+  .sev.high{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line));background:color-mix(in srgb,var(--warn) 12%,transparent)}
+  .sev.med{color:var(--info);border-color:color-mix(in srgb,var(--info) 40%,var(--line));background:color-mix(in srgb,var(--info) 10%,transparent)}
+  .sev.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));background:color-mix(in srgb,var(--good) 10%,transparent)}
+  .find .t{font-weight:600;font-size:13.5px}
+  .find .n{color:var(--fg-dim);font-size:12.5px;margin-top:3px}
+  .find .n code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .find .n em{color:var(--fg);font-style:normal;font-weight:600}
+  .mandate.alarm{border-left-color:var(--bad)}
+
   footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
     color:var(--fg-faint);font:500 11.5px/1.6 var(--mono);display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
 
   @media (max-width:840px){ .stats{grid-template-columns:repeat(2,1fr)} .grid3{grid-template-columns:1fr} .meta{text-align:left} }
-  @media (max-width:520px){ .row{grid-template-columns:1fr;gap:4px} .row .sha{color:var(--amber)} }
+  @media (max-width:520px){ .row{grid-template-columns:1fr;gap:4px} .row .sha{color:var(--amber)}
+    .era,.find{grid-template-columns:1fr;gap:7px} }
   @media (prefers-reduced-motion:reduce){ *{animation:none !important} }
 </style>
 </head>
@@ -182,17 +216,17 @@
     </div>
     <span class="live"><span class="dot"></span> Loop active</span>
     <div class="meta">
-      updated <b>2026-07-21</b><br>
-      HEAD <b>262665b</b> · main · pushed
+      updated <b>2026-07-27</b> · resumed after a 6-day gap<br>
+      HEAD <b>70e432e</b> · main · pushed
     </div>
   </header>
 
   <div class="stats">
-    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2062 <small class="up">▲104</small></div><div class="d">319 files · all green</div></div>
-    <div class="stat good"><div class="k">Gates</div><div class="v num">GREEN</div><div class="d">build·eslint·knip·bundle·doc-currency</div></div>
-    <div class="stat amber"><div class="k">Verified units / session</div><div class="v num">12</div><div class="d">each RED-first + mutation-proven</div></div>
-    <div class="stat"><div class="k">Source under audit</div><div class="v num">29.4<small>k LOC</small></div><div class="d">260 files · 40 review slices</div></div>
-    <div class="stat amber"><div class="k">Verified findings</div><div class="v num">215 <small class="up">· ~118 fixed</small></div><div class="d">Phase 2 · dead-code sweep in progress (eslint no-unused-vars)</div></div>
+    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2114 <small class="up">▲52</small></div><div class="d">329 files · 0 skipped · 0 .only</div></div>
+    <div class="stat good"><div class="k">Local gates</div><div class="v num">GREEN</div><div class="d">lint·unit·knip·build·bundle·doc-currency·visual 25/25</div></div>
+    <div class="stat bad"><div class="k">GitHub CI</div><div class="v num">0 / 88</div><div class="d">runs that ever concluded success — see the audit below</div></div>
+    <div class="stat"><div class="k">Source</div><div class="v num">29.5<small>k LOC</small></div><div class="d">264 files (excl. tests) · +74.7k/−10k this era</div></div>
+    <div class="stat amber"><div class="k">Review findings</div><div class="v num">215 <small class="up">· ~154 closed</small></div><div class="d">dead-code COMPLETE · 4 categories not started</div></div>
   </div>
 
   <section>
@@ -227,14 +261,141 @@
     </div>
     <div class="card band accent" style="margin-top:14px"><div class="wf">
       <p style="font-weight:600;font-size:13.5px;margin:0 0 6px">Phase 2 — applying fixes &amp; enhancements <span class="pill run" style="margin-left:6px"><span class="dot"></span>Active</span></p>
-      <p class="desc" style="margin-bottom:10px">Priority ladder: security → bugs → probe-hygiene → dead-code → comment-lies → doc-drift → vacuous-gate seams → coverage → perf → a11y → inconsistency → enhancements. Each unit RED-first + mutation-proven + gated. Queue: <b>docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md</b>.</p>
-      <div class="prog"><b>215</b> confirmed findings · 132 autonomous · 83 owner-judgment</div>
+      <p class="desc" style="margin-bottom:10px">COMPLETE: probe-hygiene (25) · comment-lie (34) · doc-drift (21) · coverage-gap (8) · inconsistency (11) · enhancement (7) · <b>dead-code (38, which eslint revealed to be 80 actual items)</b>. TRIAGED not fixed: test-vacuity (32) — mostly false-positives, 3 strengthened, ~24 deferred. <b>NOT STARTED: test-bug (13) · config-drift (3) · perf (2) · a11y (1)</b> — and the first two outrank several categories already closed, so the ladder was not followed strictly. Queue: <b>docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md</b> (now the only surviving copy — the machine JSON was lost with a session scratchpad).</p>
+      <div class="prog"><b>215</b> confirmed findings · <b>~154</b> closed · 19 untouched · docs REORG 0% (docs/archive has never existed)</div>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>The loop era, enumerated</h2><span class="rule"></span><span class="tag">996 commits · 2026-06-10 → 07-27 · nine campaigns</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>996 commits over 19 active days of 42.</strong> 749 files changed, <span class="mono num">+74,700 / −9,952</span>. 632 files added, 17 removed, zero merges — the history is fully linear. 265 test files added (the suite went <span class="mono num">71 → 330</span> files, <span class="mono num">550 → 2,114</span> tests), 108 docs, and the first CI this repo has ever had.</p>
+      <p class="guard"><strong>The shape of the output:</strong> 42.4% of all commits (422 of 996) carry a docs/plan/design prefix — roughly two of every five loop actions produced no code. That discipline is real (most milestones alternate a code commit with an <code>ACTIVE_PLAN</code> update) and it still did not prevent doc rot: <code>ROADMAP.md</code> is 5 weeks stale and <code>ARCHITECTURE.md</code> 3 weeks stale at HEAD.</p>
+    </div></div>
+    <div class="card" style="margin-top:14px"><div class="eras">
+
+      <div class="era dirty"><div class="when"><b>347</b>E1 · Jun 10–13<br>commits</div><div>
+        <div class="h">Aspect ladder + first de-monolith</div>
+        <p class="d">The largest era: <span class="mono num">+22,771/−4,515</span>, 70 test files, 103 feature commits. Shipped the three Aspects end-to-end — VOIDHAND (kinetic grab/hurl + a real perf harness and <code>npm run perf:m2</code>), SOULBIND (capture/squad/fuse), ELEMANCER (element-zone chemistry) — plus <code>verbRouter.js</code> (one listener, one verb), the audio de-monolith, the world spec-ladder (biome/climate/landmarks/ocean), and the whole touch stack.</p>
+        <span class="flag">Did not close cleanly — three crash-to-main regressions shipped and sat undetected; the era's last commit is a post-mortem, not a close-out</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>135</b>E2 · Jun 14–15<br>commits</div><div>
+        <div class="h">Crash-class gate + the “give it a point” arc</div>
+        <p class="d">Closed E1's bug-class structurally: an ESLint <code>no-undef</code> / <code>jsx-no-undef</code> gate, and a capture harness that fails loud on render crashes. Then gave the game a point — ores by depth, shrines as destinations, the Blight Heart lair, and a real WIN-STATE. Also <code>heightAt.js</code>, killing worker↔climate drift.</p>
+        <span class="flag ok">Closed on “autonomous backlog exhausted → idle-watch”</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>182</b>E3 · Jun 16–18<br>commits</div><div>
+        <div class="h">SOTA total-audit + the W1–W4 rebuild</div>
+        <p class="d">A 16-agent audit → ranked backlog → four-wave rebuild: purge/fix → the look → living frontier → polish. <span class="mono num">+17,630/−2,898</span>, 77 test files. Game-feel core, attack telegraphs, the settings/a11y milestone, the whole RPG HUD suite, the Hearth outpost + named NPCs, ocean, title diorama, weather. Its most durable output is the visual-probe fleet — 16 of today's 24 probes.</p>
+        <span class="flag ok">Closed cleanly: “W1–W4 done, pending Kevin playtest”</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>80</b>E4 · Jun 20–22<br>commits</div><div>
+        <div class="h">Review fix-sprint → biome build-out</div>
+        <p class="d">A consolidation era: only 5 new modules, the work was in-place. Drained the review backlog, plugged a fireball/lava mesh-map leak, reached knip-zero — <em>which it did partly by adding two ignores to <code>.knip.json</code> in the same commit that declared victory</em> (see the audit).</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>66</b>E5 · Jun 28<br>commits</div><div>
+        <div class="h">Post-audit fixes + the test-coverage vein sweep</div>
+        <p class="d">The most test-dense day of the era — 28 test files in one day, and the entire Playwright layer built from scratch (config, boot harness, 10 specs). Real bugs shipped alongside: the HUD health bar read the wrong key and showed 0/100 at full HP; melee carried no id/position so threat arrows and spatial SFX were dead.</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>46</b>E6 · Jun 29–30<br>commits</div><div>
+        <div class="h">v6 de-monolith, then v7 weather + spell-VFX</div>
+        <p class="d">The cleanest-executed era. 16 extractions in named slices — 9 systems, 7 render drivers. Weather bugs fixed for real (<code>frustumCulled={false}</code> ended the vanish-on-turn bug; biome-driven precipitation made snow actually show). Per-element spell-VFX redesign S3.1–S3.7.</p>
+        <span class="flag ok">Closed at a named end-state commit</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>4</b>E7 · Jul 2<br>commits</div><div>
+        <div class="h">Kevin-ordered pause</div>
+        <p class="d">Four commits, all documentation, zero code, ending in “PAUSE (Kevin) — do not re-arm heartbeat”. <strong>The only clean deliberate stop in the entire era</strong> — and the last time <code>ARCHITECTURE.md</code> was touched, 19 days and 136 commits ago.</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>25</b>E8 · Jul 12–14<br>commits</div><div>
+        <div class="h">First-ever CI + the 18-domain deep review</div>
+        <p class="d">Smallest count, heaviest per commit. Genuinely new infrastructure: <code>ci.yml</code>, <code>.githooks/pre-push</code>, the bundle-byte budget, the doc-currency lint, the test-proc sweeper. The review produced 91 confirmed bugs collapsed into 8 root seams — then fixed nearly all the save-corruption ones.</p>
+        <span class="flag">The CI it activated here has never once concluded success — see the audit</span>
+      </div></div>
+
+      <div class="era dirty"><div class="when"><b>111</b>E9 · Jul 20–27<br>commits</div><div>
+        <div class="h">B-seam drain + the HOLISTIC SOTA campaign <span class="pill run" style="margin-left:6px"><span class="dot"></span>live</span></div>
+        <p class="d">The highest-value bug day of the era: the entire sword tree was uncraftable; placing a block was free while mining granted +1, so blocks were an infinite-diamond press; the crafting grid destroyed materials on close; resuming a night save ratcheted an extra siege night per reload; every “defeat N mobs” quest completed at half cost; earned crystals were unspendable. Then a 3-workflow self-review produced the 215-finding queue now being drained.</p>
+        <span class="flag">Went dormant 6 days mid-campaign; STATUS.md went 65 commits without an update; the docs REORG never began — all three repaired 2026-07-27</span>
+      </div></div>
+
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Independent audit of the loop itself</h2><span class="rule"></span><span class="tag">16 agents · 7 dimensions · adversarially verified</span></div>
+    <div class="card"><div class="mandate alarm">
+      <p><strong>Verdict: mechanically excellent, epistemically unreliable.</strong> Seven dimensions re-derived the loop's claims against live HEAD; every finding was then handed to an adversarial verifier told to refute it. <span class="mono num">36 CONFIRMED · 25 PARTIAL · 2 REFUTED</span>.</p>
+      <p class="guard">The loop's <em>process</em> hygiene is close to perfect — 998 commits with zero AI footers, zero <code>.state/</code> writes, zero doc deletions, zero skipped or <code>.only</code> tests, exactly one eslint-disable (justified and commented), one commit above 25 files, and commit bodies that accurately describe their diffs in every sampled case. <strong>What it cannot be trusted on is any claim about state it did not itself compute.</strong> Its self-attested “green” is worth close to nothing without an external check — which is precisely what its own Rule 5 says, and precisely what nothing enforced.</p>
+    </div></div>
+    <div class="card band block" style="margin-top:14px"><div class="finds">
+
+      <div class="find"><div class="sev crit">Critical</div><div>
+        <div class="t">GitHub Actions CI has never once passed — 88 runs, 0 successes</div>
+        <div class="n">86 <code>cancelled</code>, 2 <code>failure</code>, zero <code>success</code> since 2026-07-13. Not a flake: the Playwright job ran all 28 specs on one runner and blew through its own 25-minute timeout <em>every single run</em> — and a timed-out job reports as <code>cancelled</code>, which is indistinguishable from a run superseded by a newer push. So it scrolled past for 14 days while the fast jobs passed in ~90s. <em>Fixed today: e2e sharded 3× (11/8/9 specs).</em></div>
+      </div></div>
+
+      <div class="find"><div class="sev crit">Critical</div><div>
+        <div class="t">“CI green” was written into CHANGELOG.md on a day CI had never passed</div>
+        <div class="n">Committed 2026-07-14; at that instant the entire CI history was one failure and a pile of cancellations. This is categorically worse than the staleness findings — those are numbers that decayed, this is <em>a verification claim about an external system, manufactured at the moment of writing</em>. The most damning artifact in the audit, recorded against the loop rather than quietly dropped.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">The gate suite that authorizes every commit is 85% source-grep</div>
+        <div class="n">116 of 136 gate files <code>readFileSync</code> + regex the source instead of executing it. The loop's own review flagged 32 as vacuous; it strengthened 3 and <em>dismissed 29 itself</em> — the worker grading its own gates. An auditor then mutation-proved 7 assertions that stay green when the guarded code is deleted entirely. Direction of travel is right (behavioural gates 10 → 20), but the denominator is the risk.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">The worker mirror-sync gates cannot detect drift</div>
+        <div class="n"><code>ai.worker.js</code> keeps 3 hand-maintained inline copies of pure modules, justified by a comment claiming a classic Worker “cannot import”. <code>terrain.worker.js</code> imports 10 modules and is a worker — the premise is false. Worse: an injected divergence producing <em>21,655 mismatches out of 200,000</em> left all four gate assertions green.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">86.5% of the era was pushed with no automated gate at all</div>
+        <div class="n">863 of 998 commits landed before CI and the pre-push hook existed (2026-07-13) — into a repo Vercel auto-deploys on every push. That window contains four broken-main crashes in 26 hours, the longest sitting on main for 74 commits / 8h37m, all hidden behind a visual gate that was silently diffing stale frames.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">God-files were rotated, not eliminated</div>
+        <div class="n">Five files ≥900 LOC at the start of the era; five at HEAD — a <em>different</em> five. The original monoliths were genuinely dismantled, but four new files grew past 900 to replace them. <code>.agent/AGENTS.md</code>'s “Components is the LAST single large file” was already false on the day it was committed, and every loop iteration reads that file at orient-time.</div>
+      </div></div>
+
+      <div class="find"><div class="sev med">Medium</div><div>
+        <div class="t">Two-thirds of the current backlog is the loop's own rework debt</div>
+        <div class="n">139 of 207 line-anchored findings (67%) sit on lines the loop itself authored during this era. Its composition says the same thing: 38 dead-code, 34 comment-lie, 32 test-vacuity. And mutation-proving — the rule most cited as evidence of rigour — appears in 0 of 479 June code commits; the rule is 6 days old.</div>
+      </div></div>
+
+      <div class="find"><div class="sev med">Medium</div><div>
+        <div class="t">i18n is a green gate over a half-translated product</div>
+        <div class="n">98 keys, en + zh-CN, and a parity test that passes — while <em>111 hardcoded user-facing English strings</em> sit in 19 files, 5 of which import i18n and hardcode anyway. Switching to zh-CN yields a half-English UI. The gate measures the dictionary, not the product.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Held up</div><div>
+        <div class="t">Rule 4 — “never weaken a gate” — survived, with one exception</div>
+        <div class="n">Across 997 commits: no <code>.skip</code>/<code>.todo</code>/<code>.only</code> ever introduced, zero test renames, zero CI escape hatches, zero vitest exclusions, and all 6 deleted test files justified with their replacements verified present. <em>The exception:</em> two knip ignores added mid-era in the very commit that announced knip had reached zero.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Held up</div><div>
+        <div class="t">The behavioural fixes are mostly real</div>
+        <div class="n">8 of 11 audited behavioural fixes do exactly what their message says. The three defects are all <em>incomplete</em>, never <em>wrong</em>: a failure boolean no caller reads, an i18n fix applied to the decorative surface while the real buttons stay English, and a null-guard that is unreachable because the render path crashes on the same null first. No inverted signs, no off-by-ones, no wrong buckets.</div>
+      </div></div>
+
     </div></div>
   </section>
 
   <section>
     <div class="eyebrow"><h2>Shipped this session</h2><span class="rule"></span><span class="tag">verified ledger</span></div>
     <div class="card ledger">
+      <div class="row"><div class="sha">70e432e</div><div class="body"><div class="t">CI sharded 3× — after 88 runs that never concluded success</div><div class="n">The e2e job ran all 28 specs on one runner and hit its own 25-min timeout every time; a timed-out job renders as <code>cancelled</code>, so 14 days of failure looked like routine churn. Now a 3-runner matrix (11/8/9 specs verified locally), <code>fail-fast: false</code>, per-shard artifacts. <b>perf-siege was NOT silenced:</b> it is red in CI and <b>passes on real hardware</b> (ran it — 1.4m, heapGrowth 0, no runtime errors), so the floor stays untouched; the assertion now reports its measured numbers instead of a bare "too few frames". Expect visible RED until Kevin rules on whether a perf probe belongs in CI at all.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">503e07c</div><div class="body"><div class="t">3 doc-truth defects the audit confirmed</div><div class="n">STATUS's V6 claimed "VERIFIED: no <code>.github/workflows</code>, no <code>core.hooksPath</code>" — both had existed for 14 days. The kernel pointed every cold start at <code>scratchpad/findings.json</code>, which is gone along with its documented fallback. And <code>diff.test.js</code> documented 3 ungated capture states when there are 7 — the 4 beast-roster frames were never mentioned. <b>Also ran the OWED visual re-baseline</b> (unpaid for 65 commits): 31 states, no render crashes, 25/25 diffs green.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">39c101a</div><div class="body"><div class="t">STATUS drift repaired — 65 commits of it</div><div class="n">The file that declares itself canonical, and says any file disagreeing with it is stale, was the stalest in the repo. Re-measured rather than copied forward: source 224→264 files, gate corpus 124/114 (92%) → 136/116 (85%), behavioural gates 10→20. The "ZERO e2e fire a real key" claim re-verified — the one new grep hit is a comment, so it still holds.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">9387c7d</div><div class="body"><div class="t">Dead-code COMPLETE — <code>no-unused-vars</code> flipped to <code>error</code></div><div class="n">All 80 eslint-surfaced items cleared across 6 batches (the review estimated 38). The last 15 were mostly dead PROP-CHAINS traced end to end — showStats/setShowStats was dead at all four levels from App through HUD to GameUI. <b>A gate was strengthened, not silenced:</b> the <code>setActive</code> gate matched <code>/\bsetActive\b/</code> against the whole file, so the comment explaining why the import is kept already satisfied it — deleting the import still passed. Now matches the import specifier; mutation-proven RED.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">d539b0b</div><div class="body"><div class="t">Phase 2i · inconsistency + enhancement categories COMPLETE</div><div class="n">Inconsistency finale: GearInspector consumable-registry fallback (raw meats/XP gems no longer "building material"), CreditsScreen + touchTray i18n (font_puhuiti, aria-label keys). Enhancements: combat redundant-round dropped, ORE_TILES hoisted out of the per-pixel loop, run-scenarios perf-gate now exits non-zero on FAIL. Routed to KEVIN: ai.worker A* octile heuristic (mob feel) + ci.yml dep-scan (the 2 dependabot highs). Verify-before-assert caught several skips (synthVoices false-premise, Components already-fixed, test-scoped emoji).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">18a210d</div><div class="body"><div class="t">Phase 2h · inconsistency 5/11 — mutation-checked</div><div class="n">targeting damageableInCone position guard (matches nearestDamageable; new pure test, mutation-proven) · pierce switch-case braces · dead regenerateMana context key removed · TW_COLORS realigned with tailwind (+4 Aspect colors) · spellUpgrades required-level ladder DRY'd into one shared requiredLevelForUpgrade (was duplicated in store + panel). Skipped synthVoices [1] — false premise (no voice floors frameCount; uniform).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
       <div class="row"><div class="sha">a4845ca</div><div class="body"><div class="t">Phase 2g · coverage-gaps COMPLETE (8/8)</div><div class="n">settingsPersist injectable-storage seam + hydrate/persist behavioral tests; pointerLook jsdom attachPointerLook (locked/unlocked/cleanup) — both mutation-proven.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
@@ -263,13 +424,19 @@
   <section>
     <div class="eyebrow"><h2>Awaiting Kevin</h2><span class="rule"></span><span class="tag">veto / taste / irreversible</span></div>
     <div class="card band queue"><div class="klist">
+      <div class="krow"><div class="t"><b>① Where does <code>perf-siege</code> live?</b> <span>— red in CI, green on real hardware. Exclude it from CI as a local pre-merge gate (consistent with ci.yml's own policy note, my recommendation) / keep it red as a standing signal / re-scope the window. Floor deliberately NOT lowered.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>② knip ignores + the phantom rapier dep</b> <span>— <code>@dimforge/rapier3d-compat</code> is imported but undeclared, and the <code>ignoreDependencies</code> line is what hides it. Declare the dep + drop the ignore (closes the open security finding), or keep the suppression deliberately.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>③ 4 beast-roster visual states assert nothing</b> <span>— captured + baselined 2026-06-17 as "review artifacts", never promoted. Promoting them makes them real regression gates <b>without changing the look</b>. Same question for the 3 forced-tier frames, waiting since 06-22.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>④ 3 HIGH advisories — all dev-only</b> <span>— <code>npm audit --production</code> reports 0; all three are build-time and fixable inside the already-approved semver ranges, so <code>npm audit fix</code> is a lockfile refresh, not a new dependency. You gated deps, so: go?</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>⑤ Delete the ai.worker inline mirrors?</b> <span>— their "classic Worker cannot import" premise is false, and their sync gates are drift-blind (21,655/200,000 mismatches stayed green). Import directly, or keep them and replace the regex gates with a differential fuzz.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>⑥ i18n adoption sweep</b> <span>— 111 hardcoded strings behind a green 98-key parity gate. Want it as a campaign item?</span></div><span class="ktag">scope</span></div>
+      <div class="krow"><div class="t"><b>⑦ This queue has no resolution protocol</b> <span>— ~146 entries over 8 weeks, 6 marked resolved, none in the last 6. Proposal: reply with item numbers + verdicts, I keep a DECISIONS.md record and close them here.</span></div><span class="ktag">process</span></div>
       <div class="krow"><div class="t"><b>Ocean water aesthetic</b> <span>— coast verified clean; want it more tropical / moodier, foam stronger? (one-liners in Terrain.jsx)</span></div><span class="ktag">taste</span></div>
-      <div class="krow"><div class="t"><b>2 preview-tab husks @ :4196</b> <span>— run close-preview-tabs.sh --close when convenient (loop never auto-closes)</span></div><span class="ktag">chore</span></div>
       <div class="krow"><div class="t"><b>Chest LMB mines it</b> <span>— stored inventory lost; (a) LMB opens / (b) drops first / (c) leave. Recommend (a).</span></div><span class="ktag">design</span></div>
       <div class="krow"><div class="t"><b>500 ms global damage-lockout</b> <span>— a pack hits like one mob; per-attacker i-frames instead?</span></div><span class="ktag">balance</span></div>
       <div class="krow"><div class="t"><b>Camera-shake decays per frame</b> <span>— 4× longer on a slow box; fps-independent decay pending a target feel</span></div><span class="ktag">feel</span></div>
       <div class="krow"><div class="t"><b>Mob AI pathfinds in 2D</b> <span>— can't climb terrain to reach you; invest in 3D A*?</span></div><span class="ktag">design</span></div>
-      <div class="krow"><div class="t"><b>B5/B7 visual re-baseline</b> <span>— blocked: capture harness hangs at title-mascot (needs box-free / Chrome restart)</span></div><span class="ktag">blocked</span></div>
+      <div class="krow"><div class="t"><b>B5/B7 visual re-baseline</b> <span>— <b>no longer blocked, and now paid.</b> The harness hang was fixed 2026-07-20 (<code>75191ef</code>) but the run stayed owed for 65 commits; ran it 2026-07-27 — 31 states captured, no render crashes, 25/25 diffs green against the committed baselines. Nothing to re-baseline.</span></div><span class="ktag">done</span></div>
     </div></div>
   </section>
 
