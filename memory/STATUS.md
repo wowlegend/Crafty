@@ -23,10 +23,10 @@
 
 ---
 
-## 1. Where Crafty actually is (2026-07-13)
+## 1. Where Crafty actually is (re-measured 2026-07-27)
 
-Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (~224 source files / ~28K LOC,
-auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
+Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**264 source files / 29.5K LOC**
+excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
 
 **DONE (verified against code, not docs):**
 - **S0** reality audit · **S1** art direction + render recipe + the locked bold-flat UI · **S2** game design
@@ -40,7 +40,9 @@ auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.
   chain + log) → polish (movement feel, weather, affix model, boot chrome).
 - **Ember Frontier + Blight-Heart climax** — a real win-state (the answer to "what is the point").
 - **v6** (tech-debt + de-monolith) · **v7** (weather bugs + all-4-spell SOTA VFX redesign).
-- Gates today: **~2033 unit · 24-state visual · 12+ e2e specs · eslint/knip/build clean.**
+- Gates today (measured 2026-07-27): **2114 unit across 329 files · 24-state visual · 15 e2e specs ·
+  build / knip / doc-currency clean · eslint clean and now BLOCKING on dead code** (`no-unused-vars` was
+  promoted OFF → `warn` → `error` during the holistic-review campaign, `9387c7d`).
 
 **The honest bar:** the plan's own end-state is "SOTA taste sign-off + S4 (multiplayer + monetization)".
 S4 is at **literal zero** and is **Kevin's call**. Product-wise this is a **1–2 hour demo with excellent
@@ -49,12 +51,15 @@ registry below plus Kevin's decisions.
 
 **⚠️ The finding that reframes everything — and be precise about which parts are MEASURED vs INHERITED:**
 
-**MEASURED (hard-verified 2026-07-13; reproduce with the commands below):**
-- **124 gate files in `tests/gates/`; 114 of them `readFileSync` + regex the SOURCE.** That is **92% of the
-  entire gate corpus asserting TEXT, not behaviour.** Only **10** are behavioural.
+**MEASURED (re-run 2026-07-27; first measured 2026-07-13. Reproduce with the commands below):**
+- **136 gate files in `tests/gates/`; 116 of them `readFileSync` + regex the SOURCE.** That is **85% of the
+  entire gate corpus asserting TEXT, not behaviour.** Only **20** are behavioural.
   `ls tests/gates/*.test.js* | wc -l` · `grep -rl readFileSync tests/gates/ | wc -l`
-- **11 e2e specs; exactly ZERO fire a real key or click.** They drive `__craftyTest` / `getState()` — the
-  store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → nothing.
+  *(Moved the right way since 07-13: 124→136 gates, behavioural 10→20, so the text-assert share fell 92%→85%.
+  The seam-extraction work in the holistic campaign is what bought that — but 85% is still the headline risk.)*
+- **15 e2e specs; exactly ZERO fire a real key or click.** They drive `__craftyTest` / `getState()` — the
+  store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → 1 hit, and it is a
+  COMMENT in `panel-overflow.spec.js` ("close it without a keyboard"), not a real input call. Still zero.
 
 **MEASURED — the real coverage number (18-domain deep review, 2026-07-13/14; `docs/superpowers/audits/2026-07-13-18-domain-review.md`).**
 18 agents enumerated their domain's features and measured how each one is *actually* validated. **650 features:**
@@ -529,7 +534,24 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ## 3. What's next (the cursor)
 
-**Current campaign: v8 — "Playable Truth + Depth".**
+**Current campaign: v9 — "HOLISTIC SOTA" (2026-07-20 → ).** A 3-workflow adversarial self-review produced
+**215 verified findings** (`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the queue of record), worked
+category-by-category. **~154/215 closed** as of 2026-07-27: probe-hygiene (25), comment-lie (34), doc-drift
+(21), coverage-gaps (8), inconsistency (11), enhancement (7), dead-code (38, which eslint revealed to be 80
+actual items) — plus a 7-fix Phase-2b correctness batch. Test-vacuity (32) is TRIAGED, not fixed: mostly
+false-positives, 3 genuinely-weak gates strengthened, ~24 deferred as low-ROI.
+
+**Open in this campaign:** the docs REORG (Wave-1 ~83 shipped-plan archives → `docs/archive/2026-Q2/plans/`;
+Wave-2 the 4 lint-CRITICAL docs, archive-not-delete) — **not started; `docs/archive/` does not exist yet and
+`docs/superpowers/plans/` still holds 100 files.** Then the deferred test-vacuity tail.
+
+**⚠️ Two process facts, recorded honestly:** (1) the loop went **dormant 2026-07-21 → 07-27** (6 days, no
+commits). (2) For the whole campaign it did **not** honour its own "update STATUS each batch" rule — this
+file went untouched for **65 commits** (last edit `03036c6`, 2026-07-20) while ACTIVE_PLAN and CHANGELOG were
+kept current. That is exactly the drift this file's own preamble says must never happen; repaired 2026-07-27.
+
+**The v8 campaign below is SUPERSEDED as the driver but its registry (§2) is still the open-work truth.**
+*v8 — "Playable Truth + Depth":*
 
 **⚠️ The 18-domain review reordered this. `A-bis` (B1–B8) now outranks everything below it.** We were about to
 spend the campaign building E2E scaffolding and an art pass on a game where the autosave destroys your world,
