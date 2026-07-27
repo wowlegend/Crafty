@@ -383,8 +383,18 @@ a root cause; do not open 45 separate tickets.
 - ▢ **V5 [LOOP]** Seeded sim RNG + **state-hash replay gate**. The sim is non-deterministic (**107
   `Math.random` sites**; mulberry32 lives only in captureMode/perfProbe) → a sim regression cannot be
   reproduced or bisected. Per-subsystem seeded streams + an FNV-1a golden hash → bisect to first diverging tick.
-- ▢ **V6 [LOOP]** **CI + pre-push hook.** VERIFIED: **no `.github/workflows`, no `core.hooksPath`** — while
-  Vercel auto-deploys **every push**. A red push ships to the live demo today.
+- ☑ **V6 [LOOP]** **CI + pre-push hook — DONE 2026-07-13 (`58972b4`).** *This item carried a stale
+  "VERIFIED: no `.github/workflows`, no `core.hooksPath`" for 14 days after both had landed — a
+  false OPEN item in the file that claims to win every disagreement. Corrected 2026-07-27.*
+  Live today: `.github/workflows/ci.yml` (lint → unit+static gates → knip → build → bundle-budget, plus a
+  separate playwright e2e job) and `.githooks/pre-push` (the fast deterministic subset; visual + e2e
+  deliberately excluded as load-sensitive).
+  **▢ RESIDUAL — the pre-push hook validates the WORKING TREE, not the commits being pushed.** A dirty tree
+  that fixes a broken commit lets that broken commit through green; this is not theoretical — it happened on
+  `a72bffd` (a gate-breaking import deletion pushed clean because the fix was already uncommitted in the
+  tree, then landed separately as `b443141`). CI catches it after the fact, but only after Vercel has already
+  auto-deployed the push. Fix: have the hook test the pushed refs (`git stash --include-untracked` around the
+  run, or a temporary worktree at the pushed sha).
 
 ### C. Authorized-but-never-built (a stale gate — Kevin already decided)
 - ▢ **C1 [LOOP] Control-scheme Option-A enhancements.** Charter 2026-06-28 decision-of-record: Kevin picked

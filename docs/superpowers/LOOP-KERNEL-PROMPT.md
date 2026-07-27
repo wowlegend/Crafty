@@ -33,8 +33,10 @@ ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted o
 Then READ, IN THIS ORDER — do not skip, do not go doc-mining elsewhere for "what's next":
 1. **`memory/ACTIVE_PLAN.md`** — the 🔭 SUPER-CAMPAIGN block (top) is the live cursor + phase.
 2. **`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`** — THE PRIMARY QUEUE: 215 verified findings, priority-laddered,
-   each tagged `[AUTO]` (safe mechanical) / `[KEVIN]` (owner-judgment) + the by-file execution batches. Machine copy:
-   `scratchpad/findings.json` (regenerate from the 3 preserved `scratchpad/*-result.json` if lost).
+   each tagged `[AUTO]` (safe mechanical) / `[KEVIN]` (owner-judgment) + the by-file execution batches.
+   ⚠️ **This markdown is now the ONLY copy.** The machine JSON `scratchpad/findings.json` and the three
+   `scratchpad/*-result.json` it was regenerable from all lived in a SESSION-SCOPED tmp scratchpad and are
+   GONE (verified absent 2026-07-27). Do not go looking for them; do not treat their absence as a blocker.
 3. **`memory/STATUS.md`** — the SECONDARY queue: gameplay/content/UX registry items the CODE review didn't cover
    (R*/C*/X*/D*/E/F/G). VERIFY each is still open before working it — much of the older A-bis/V1 work is DRAINED.
 4. **`docs/superpowers/LOOP-CHARTER.md`** — the constitution (esp. **§0-B SOTA harness layer** + **§3 gates**).

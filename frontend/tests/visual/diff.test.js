@@ -14,11 +14,17 @@ import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js'
 // four rarity drop-beams side by side in a sky studio, frozen byte-stable in capture. It asserts
 // a regression baseline below.
 //
-// The M4b forced-tier frames -- `explore-day-med`, `explore-day-low`, `explore-night-low` -- are
-// captured + baselined (deterministic), but are INTENTIONALLY omitted from STATES (the same
-// pattern title-mascot used) so they do NOT yet assert a regression baseline: Kevin ratifies the
-// med/low look before they are gate-blessed (promoted into STATES). They are self-consistent on
-// re-capture; their committed PNGs are the review artifacts.
+// ⚠️ UNGATED REVIEW ARTIFACTS — 7 of the 31 captured states (23%) are captured AND baselined but are
+// deliberately absent from STATES, so they assert NOTHING. Capture alone is not a gate. The full list
+// (this comment previously named only the first three, which under-reported the gap by 4 — corrected
+// 2026-07-27 after a capture-vs-STATES reconciliation):
+//   1-3. The M4b forced-tier frames `explore-day-med`, `explore-day-low`, `explore-night-low` — held
+//        pending Kevin ratifying the med/low look before they are gate-blessed (the title-mascot pattern).
+//   4-7. The WILDHEART roster frames `beast-fire`, `beast-ice`, `beast-lightning`, `beast-arcane` —
+//        committed 2026-06-17 by 2e0317fc as "review artifacts (per-element WILDHEART reveal)" and never
+//        promoted since. Same status, no explicit hold recorded; routed to KEVIN-REVIEW-BATCH 2026-07-27.
+// All 7 are deterministic and self-consistent on re-capture; their committed PNGs are the review artifacts.
+// Promoting any of them into STATES turns it into a real regression gate WITHOUT changing the look.
 const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'spell-iceball', 'spell-lightning', 'spell-arcane', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open'];
 // v7-S3.5a: spell-iceball/lightning/arcane added — per-element frozen-cast frames so the per-element
 // spell-VFX redesigns (S3.5 ice shards / S3.6 lightning wire / S3.7 arcane rune-wheel) are gated

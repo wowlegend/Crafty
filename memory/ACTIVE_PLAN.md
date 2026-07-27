@@ -37,7 +37,9 @@
 > - Tests+scripts+config — 377 files, 16 slices (vacuity/hygiene/drift). run `wf_3e0ea8c9-340` (task wldf4k3de). partition `scratchpad/slices_b2.json`.
 > **✅ PHASE 1 COMPLETE (2026-07-21) — all 3 workflows landed + SYNTHESISED.** Merged, deduped, priority-laddered
 > work queue → **`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`** (the audit-of-record) + machine JSON
-> `scratchpad/findings.json`. Raw results preserved: `scratchpad/{source-review,tests-scripts-config,docs-reorg}-result.json`.
+> `scratchpad/findings.json`. ⚠️ **BOTH THE JSON AND THE RAW RESULTS ARE GONE** — they lived in a session-scoped
+> tmp scratchpad, not the repo (verified absent 2026-07-27). The committed markdown is the only surviving copy;
+> that is fine, it holds all 215. **Lesson: an artifact the loop depends on across sessions must be COMMITTED.**
 > **215 CONFIRMED** (132 auto / 83 owner-judgment) + 79 plausible + 132 docs classified. By kind: dead-code 38,
 > comment-lie 34, test-vacuity 32, hygiene 25, doc-drift 21, bug 18, test-bug 13, inconsistency 11, coverage-gap 8,
 > enhancement 7, config-drift 3, perf 2, **security 2** (package.json phantom rapier dep; ci.yml no `permissions:` →
