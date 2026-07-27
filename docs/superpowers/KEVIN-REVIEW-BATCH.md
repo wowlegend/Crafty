@@ -1,5 +1,72 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🚨 2026-07-27 — LOOP-ERA AUDIT: 8 items, 5 need a decision from you.** A 16-agent adversarial audit
+> re-derived every claim of the 996-commit loop era against live HEAD. Verdict in one line: *mechanically
+> excellent, epistemically unreliable — the loop is trustworthy about what it did, and not trustworthy about
+> anything it graded itself on.* Full write-up in the dashboard. The items:
+>
+> **① CI HAS NEVER PASSED — 88 runs, ZERO successes (86 cancelled, 2 failed). ⚠️ THE BIG ONE.**
+> Not a flake: the Playwright job ran all 28 specs on one runner and blew through its own 25-min timeout on
+> every single run since 2026-07-13. A timed-out job reports as **`cancelled`**, which looks identical to a
+> run superseded by a newer push — so it scrolled past for 14 days. The `unit·lint·knip·build` and
+> `doc currency` jobs were passing the whole time (~90s), which is why nothing felt wrong.
+> **FIXED autonomously (harness, not product):** e2e is now sharded 3× (11/8/9 specs, verified locally), each
+> shard on its own runner with its own vite. **YOUR CALL →** see ②.
+>
+> **② `perf-siege.spec.js` is genuinely RED in CI and GREEN on real hardware — decide where it lives.**
+> It asserts the render loop stays live under a 12s saturated night-siege (`frames >= 5`). It has failed
+> every CI run for 13 days. **I ran it locally: PASSES in 1.4m, heap growth 0, no runtime errors** — so the
+> render loop is fine and this is a false negative from a 2-core shared runner under software WebGL.
+> I did **not** lower the floor and did **not** skip it (that is the reward-hack the charter forbids); I made
+> the assertion report its measured numbers so the next run says *how* red it is. Note `ci.yml`'s own policy
+> note already excludes perf probes from CI as machine-dependent — this probe contradicts that policy by
+> sitting in the e2e job. **Pick one:** (a) exclude it from CI, keep it as a local pre-merge gate alongside
+> the visual gate (consistent with the written policy — my recommendation); (b) keep it red in CI as a
+> standing signal; (c) re-scope it (longer window / liveness-only) so a slow runner can satisfy it honestly.
+> **Until you pick, CI will go visibly RED instead of invisibly cancelled — which is the improvement.**
+>
+> **③ "CI green" was written into CHANGELOG.md on 2026-07-14 when CI had never once passed.** Not staleness —
+> a verification claim about an external system, manufactured at the moment of writing. This is the single
+> most damning artifact in the audit and I am recording it against myself. No action needed from you; the
+> fix is mechanical (doc-currency should refuse the phrase unless a script emitted it from `gh run list`).
+>
+> **④ knip was made green by adding ignores in the same commit that declared it zero.** `frontend/.knip.json`
+> (which two of my own auditors wrongly reported as non-existent) carries `ignoreExportsUsedInFile: true` and
+> `ignoreDependencies: ["@dimforge/rapier3d-compat"]`, both added by `d3e86cf` (2026-06-20) — the commit whose
+> message ends "npx knip now reports ZERO issues". The rapier ignore is also the **still-open security finding**
+> from the review: `@dimforge/rapier3d-compat` is imported but never declared in package.json, and the ignore
+> is what hides it. **DECIDE:** declare the dep + delete the ignore (my recommendation, closes the finding), or
+> keep the suppression deliberately.
+>
+> **⑤ 7 of 31 visual states (23%) are captured + baselined but assert NOTHING.** 3 are the forced-tier frames
+> explicitly held for your ratification. The other 4 — `beast-fire/ice/lightning/arcane` — were committed
+> 2026-06-17 as "review artifacts" and simply never promoted; no hold was ever recorded. **DECIDE:** promote the
+> beast four into `STATES` (turns them into real regression gates **without changing the look**), or record an
+> explicit hold. Same question for the 3 tier frames, still waiting since 2026-06-22.
+>
+> **⑥ 3 HIGH advisories — all dev-only, all fixable without a dependency decision.** `npm audit --production`
+> reports **0**; the three (brace-expansion, js-yaml, postcss) are build-time only and all carry
+> `fixAvailable` inside the already-approved semver ranges — postcss is `^8.5.15` and the fix is `<=8.5.17`.
+> So `npm audit fix` is a **lockfile refresh, not a new dependency**. You gated deps, so it stays your call,
+> but the earlier framing ("2 dependabot highs needing a human upgrade decision") overstated it. **One word: go?**
+>
+> **⑦ i18n is a green gate over a half-translated product.** 98 keys, en + zh-CN, and a parity test that passes
+> — but only 9 files call `t()` while **111 hardcoded user-facing English strings** sit in 19 files, 5 of which
+> import i18n and hardcode anyway (GamePanels alone has 31). Switching to zh-CN yields a half-English UI. The
+> gate measures the dictionary, not the product. **DECIDE:** want the adoption sweep as a campaign item?
+>
+> **⑧ `ai.worker.js`'s 3 hand-maintained inline mirrors rest on a false premise.** They exist because of a
+> comment saying the classic Worker "cannot import" — but `terrain.worker.js` imports 10 modules and is a
+> worker, and an isolated Vite build reproduced it. Worse, the "sync gates" guarding the mirrors are
+> **drift-blind**: an injected divergence producing 21,655/200,000 behavioral mismatches left all four
+> assertions green. **DECIDE:** delete the mirrors and import directly (my recommendation — removes a whole
+> class of silent drift), or keep them and replace the regex gates with a differential fuzz.
+>
+> **⑨ Housekeeping — this file has no resolution protocol.** ~146 entries over 8 weeks; exactly 6 carry a
+> ✅RESOLVED marker and all 6 are dated 2026-06-02/03/13. Nothing in the last 6 weeks is marked answered, so
+> I cannot tell what you have already decided from what you have not read. **Proposal:** you reply with just
+> the item numbers and a verdict; I maintain a `DECISIONS.md` decision-record and mark entries closed here.
+
 > **🏹 2026-07-21 — FYI + a feel/balance check (behavior change shipped): archers now actually KITE.** The holistic
 > review found a real bug (`aa121de`): the skeleton archer branch computes a *retreat* target to back away when you
 > close within 8 blocks, but the height-aware A* steering (Step 3) re-resolved its goal from YOUR position every

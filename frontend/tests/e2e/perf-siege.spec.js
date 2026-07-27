@@ -28,12 +28,23 @@ test('survives a sustained night-siege without freezing or throwing (perf probe 
   await page.waitForFunction(() => !!window.__craftyPerfResult, null, { timeout: 130000 });
   const r = await page.evaluate(() => window.__craftyPerfResult);
 
+  // SELF-DIAGNOSING: always log the full measurement. This gate failed on every CI run for 13 days
+  // with a bare "too few frames sampled" and NO number, so nobody could tell a 4-frame near-miss from
+  // a 0-frame freeze -- and the job was being killed by its own timeout anyway, so the failure rendered
+  // as "cancelled" and scrolled past. A gate that cannot say HOW red it is teaches people to ignore it.
+  console.log(`[perf-siege] ${JSON.stringify(r)}`);
+
   expect(r.scenario, 'wrong scenario ran').toBe('B');
   // The loop sampled across (most of) the full wall-clock window -- a stall would cut this short.
   expect(r.seconds, `probe sampled only ${r.seconds}s of the ${PERF_SEC}s window -- loop stalled`).toBeGreaterThan(PERF_SEC * 0.5);
   // Real frames were produced under siege (a frozen loop never resolves -> we'd have timed out above;
   // this floor additionally rejects a degenerate single-frame resolve).
-  expect(r.frames, 'too few frames sampled under siege -- render loop is not live').toBeGreaterThanOrEqual(5);
+  // NOTE (2026-07-27): this line is RED on the GitHub-Actions runner and GREEN on real hardware
+  // (verified: passes locally in 1.4m, heapGrowth 0, no runtime errors). The floor is deliberately NOT
+  // being lowered to make CI pass -- that is the reward-hack the charter forbids. Whether a 2-core
+  // shared runner under swiftshader is a valid environment for THIS probe at all is an open question
+  // routed to KEVIN-REVIEW-BATCH; ci.yml's own note already excludes perf probes as machine-dependent.
+  expect(r.frames, `too few frames sampled under siege -- render loop is not live. MEASURED: frames=${r.frames} over ${r.seconds}s (fps=${r.fps}, p95=${r.p95Ms}ms, max=${r.maxMs}ms)`).toBeGreaterThanOrEqual(5);
   expect(Number.isFinite(r.fps) && r.fps > 0, `fps not finite/positive: ${r.fps}`).toBe(true);
   expect(Number.isFinite(r.p95Ms) && r.p95Ms > 0, `p95 frame time not finite: ${r.p95Ms}`).toBe(true);
   expect(Number.isFinite(r.maxMs) && r.maxMs > 0, `max frame time not finite: ${r.maxMs}`).toBe(true);

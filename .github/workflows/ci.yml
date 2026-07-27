@@ -74,10 +74,21 @@ jobs:
   # ---------------------------------------------------------------------------
   # E2E. Separate job so a slow browser run can't stall the fast gates.
   # ---------------------------------------------------------------------------
+  # SHARDED 2026-07-27. Before this, the job ran all 28 specs on ONE runner with `workers: 1` at
+  # ~30s-1.7m each and blew through its own timeout-minutes on EVERY run. A timed-out job reports as
+  # `cancelled`, which is visually indistinguishable from a run superseded by `cancel-in-progress`, so
+  # the workflow had concluded `success` ZERO times in 88 runs (86 cancelled / 2 failure) and nobody
+  # noticed — the fast `gates` and `doc currency` jobs were passing the whole time. Each shard is its
+  # own runner with its own vite webServer, so `fullyParallel: false` + `workers: 1` still hold within
+  # a shard (shared in-page game state is why they must stay serialized).
   e2e:
-    name: e2e (playwright)
+    name: e2e (playwright) ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false # one red shard must not hide the results of the other two
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -99,12 +110,12 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: E2E
-        run: npm run test:e2e
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }} # per-shard: a fixed name collides across the matrix
           path: frontend/playwright-report/
           retention-days: 7
 
@@ -130,3 +141,14 @@ jobs:
 #     Flaky gates get ignored, and an ignored gate is worse than none. It stays a LOCAL pre-merge gate.
 #   * perf probes: the median quantizes to the host vblank, so a cloud runner's number is meaningless
 #     (see STATUS §F2 — the perf harness's own honesty problem is a tracked item).
+#
+# ⚠️ KNOWN-RED, DELIBERATELY NOT SILENCED (2026-07-27):
+#   `tests/e2e/perf-siege.spec.js` is itself a perf probe and therefore sits inside the class the note
+#   above excludes — but it runs in the e2e job, and it has failed on EVERY CI run since 2026-07-13 at
+#   `expect(r.frames).toBeGreaterThanOrEqual(5)`. It PASSES on real hardware (verified 2026-07-27: 1.4m,
+#   heapGrowth 0, no runtime errors), so this is a false negative from a 2-core shared runner under
+#   software WebGL, not a shipped freeze. The floor has NOT been lowered and the test has NOT been
+#   skipped — lowering a threshold to make a gate green is the reward-hack LOOP-CHARTER §3 forbids.
+#   Instead the assertion now reports its measured numbers, and whether this probe belongs in CI at all
+#   is an open decision in KEVIN-REVIEW-BATCH. Expect this job to go visibly RED until that is decided —
+#   which is the point: a visible failure beats 88 invisible cancellations.
