@@ -152,3 +152,14 @@ jobs:
 #   Instead the assertion now reports its measured numbers, and whether this probe belongs in CI at all
 #   is an open decision in KEVIN-REVIEW-BATCH. Expect this job to go visibly RED until that is decided —
 #   which is the point: a visible failure beats 88 invisible cancellations.
+#
+#   SECOND KNOWN-RED, same class (added 2026-07-27 after the first sharded run actually concluded):
+#   `tests/e2e/world-rebuild-after-load.spec.js` fails on shard 3 with "the chunk streamer must re-request
+#   chunks after a load (had 50, settled at 30)" — expected >= 40. It PASSES on real hardware (measured:
+#   58.3s), so it is the same 2-core-swiftshader false negative as perf-siege: the runner cannot stream
+#   enough chunks inside the settle window. Also NOT lowered and NOT skipped. Both entries exist because
+#   sharding made the job CONCLUDE for the first time, which immediately surfaced failures the timeout had
+#   been hiding — the fix worked by making bad news visible, and this list is the bad news.
+#   (A third, `smoke.spec.js`, was revealed at the same time and turned out NOT to be an environment
+#   artifact — it failed locally too. Root cause was a 60s per-test budget against 75s of declared helper
+#   waits; fixed properly in `be798fc` by raising the budget, with no assertion touched.)

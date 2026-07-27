@@ -444,7 +444,17 @@ call site, because every one of these bugs was a MISSING SEAM.
   persisted state that mounts before the data arrives is only ever correct by luck. Deleted the second
   source of truth.
 
-Gates: unit **1950 → 1976** (307 files), 1 new live E2E, eslint clean, CI green.
+Gates: unit **1950 → 1976** (307 files), 1 new live E2E, eslint clean, ~~CI green~~.
+
+> **⚠️ CORRECTION (2026-07-27) — "CI green" above was FALSE when written.** This entry was committed
+> 2026-07-14 at 05:05 PDT. At that instant the complete CI history was a single `failure` (2026-07-13)
+> followed by cancellations; the workflow had concluded `success` **zero** times, and still had not after
+> 88 runs. The Playwright job exceeded its own `timeout-minutes` on every run, and GitHub renders a
+> timed-out job as `cancelled` — indistinguishable from a run superseded by a newer push — so nothing
+> looked wrong. The claim was not stale, it was never true: a verification claim about an external system,
+> asserted without observing it. Left in place struck through rather than deleted, because a changelog that
+> quietly edits its own errors is worth less than one that records them. The unit/eslint figures on this
+> line were locally computed and stand. See `70e432e` (e2e sharded so the workflow can conclude at all).
 
 ## 2026-07-14 — the 18-domain review COMPLETED: 91 confirmed bugs, and the real coverage number
 

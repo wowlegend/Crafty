@@ -25,6 +25,7 @@ import globals from 'globals';
 import reactPlugin from 'eslint-plugin-react';
 
 export default [
+  // The app source. Full crash-class + dead-code rules.
   {
     files: ['src/**/*.{js,jsx}'],
     plugins: { react: reactPlugin },
@@ -41,6 +42,37 @@ export default [
       'react/jsx-uses-vars': 'error',
       'react/jsx-uses-react': 'error',
       'no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+    },
+  },
+  // The HARNESS — scripts/ (visual probes, perf runner, CI scripts) and tests/. Added 2026-07-27.
+  //
+  // WHY: this gate exists because four ReferenceError crashes shipped to main from byte-exact god-file
+  // extractions — and for two weeks it did not cover the 28 script files that PRODUCE every visual, perf
+  // and CI verdict, nor the 330 test files that are the verdict. A crash in capture.mjs or a probe is
+  // exactly as capable of shipping a false GREEN as a crash in src/, and it is less likely to be noticed
+  // because nobody looks at a harness that "passed".
+  //
+  // Scoped to the crash class only (`no-undef`). Deliberately NOT `no-unused-vars`: an unused local in a
+  // throwaway probe is not a crash risk, and turning it on here would manufacture a cleanup backlog whose
+  // only effect is noise. This landed with ZERO findings across all 265 files — verified, and
+  // mutation-proven by injecting an undefined symbol into a probe and watching it go RED.
+  {
+    files: ['scripts/**/*.{js,mjs}', 'tests/**/*.{js,jsx,mjs}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.worker,
+        // vitest/playwright inject these; they are real at runtime, so they are not "undefined".
+        describe: 'readonly', it: 'readonly', test: 'readonly', expect: 'readonly', vi: 'readonly',
+        beforeEach: 'readonly', afterEach: 'readonly', beforeAll: 'readonly', afterAll: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'error',
     },
   },
 ];
