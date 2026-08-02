@@ -83,6 +83,7 @@ const PaperDollSlot = ({ label, placeholderIcon, equippedItem, onUnequip, onHove
 // name, rarity+slot label, and (for gear) the per-stat diff vs. the currently
 // equipped item in the same slot. Renders inside an `inset` Panel.
 const GearInspector = ({ itemName, equippedGear }) => {
+    const t = useT();
     const stats = EQUIPMENT_STATS[itemName];
     const slot = getItemSlot(itemName);
     const rarity = getItemRarity(itemName);
@@ -133,25 +134,25 @@ const GearInspector = ({ itemName, equippedGear }) => {
             <div className="space-y-1 mt-1 text-xs">
                 {stats.strength !== undefined && (
                     <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="sword" size={14} className="text-stat-atk" /> Strength:</span>
+                        <span className="text-text-muted flex items-center gap-1"><Icon name="sword" size={14} className="text-stat-atk" /> {t('stat.strength')}:</span>
                         <span className="tabular-nums">{renderStatDiff('strength', stats.strength)}</span>
                     </div>
                 )}
                 {stats.agility !== undefined && (
                     <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="run" size={14} className="text-stat-spd" /> Agility:</span>
+                        <span className="text-text-muted flex items-center gap-1"><Icon name="run" size={14} className="text-stat-spd" /> {t('stat.agility')}:</span>
                         <span className="tabular-nums">{renderStatDiff('agility', stats.agility)}</span>
                     </div>
                 )}
                 {stats.intellect !== undefined && (
                     <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="magic" size={14} className="text-spell-arcane" /> Intellect:</span>
+                        <span className="text-text-muted flex items-center gap-1"><Icon name="magic" size={14} className="text-spell-arcane" /> {t('stat.intellect')}:</span>
                         <span className="tabular-nums">{renderStatDiff('intellect', stats.intellect)}</span>
                     </div>
                 )}
                 {stats.armor !== undefined && (
                     <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="shield" size={14} className="text-stat-def" /> Armor:</span>
+                        <span className="text-text-muted flex items-center gap-1"><Icon name="shield" size={14} className="text-stat-def" /> {t('stat.armor')}:</span>
                         <span className="tabular-nums">{renderStatDiff('armor', stats.armor)}</span>
                     </div>
                 )}
@@ -271,7 +272,7 @@ export const Inventory = ({ onClose }) => {
 
                         {/* Gear slots */}
                         <div>
-                            <h3 className="font-display text-xs font-bold text-text-muted uppercase tracking-[2px] mb-2 text-center">Gear Slots</h3>
+                            <h3 className="font-display text-xs font-bold text-text-muted uppercase tracking-[2px] mb-2 text-center">{t('panel.gearSlots')}</h3>
                             <div className="flex flex-col gap-2 items-center">
                                 {/* Head Slot */}
                                 <PaperDollSlot
@@ -320,14 +321,14 @@ export const Inventory = ({ onClose }) => {
 
                         {/* Core attributes */}
                         <Panel variant="base" className="bg-slot px-3 py-2 mt-auto">
-                            <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">Core Attributes</h4>
+                            <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">{t('panel.coreAttributes')}</h4>
                             {attributePoints > 0 && (
                                 <div className="text-[10px] font-bold text-accent mb-1.5 flex items-center gap-1"><Icon name="upgrade" size={12} className="flex-none" />{attributePoints} point{attributePoints !== 1 ? 's' : ''} to spend</div>
                             )}
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Strength" onClick={() => gameState.allocateAttribute('strength')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
-                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Agility" onClick={() => gameState.allocateAttribute('agility')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
-                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span>{attributePoints > 0 && (<button type="button" aria-label="Allocate point to Intellect" onClick={() => gameState.allocateAttribute('intellect')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocStrength')} onClick={() => gameState.allocateAttribute('strength')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocAgility')} onClick={() => gameState.allocateAttribute('agility')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
+                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocIntellect')} onClick={() => gameState.allocateAttribute('intellect')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
                                 <div className="flex items-center gap-1.5"><Icon name="shield" size={14} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">Def</span><span className="font-bold tabular-nums">{effective.armor}</span></div>
                             </div>
                         </Panel>
@@ -349,7 +350,7 @@ export const Inventory = ({ onClose }) => {
 
                         {/* Combat stats */}
                         <Panel variant="base" className="bg-slot px-4 py-3 flex-none">
-                            <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">Combat Stats</h4>
+                            <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">{t('panel.combatStats')}</h4>
                             <div className="space-y-1.5 text-xs">
                                 <div className="flex items-center gap-2"><Icon name="sword" size={16} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Physical Hit</span><span className="font-bold tabular-nums">{meleeDmg} DMG</span></div>
                                 <div className="flex items-center gap-2"><Icon name="force" size={16} className="text-stat-crit flex-none" /><span className="flex-1 text-text-muted">Crit Strike</span><span className="font-bold tabular-nums">{critChance}%</span></div>

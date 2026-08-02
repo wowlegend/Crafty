@@ -49,11 +49,25 @@ const isProse = (s) => {
   if (!PROSE.test(t)) return false;
   if (/^[a-z-]+$/.test(t) && !t.includes(' ')) return false; // a lone css-ish token
   if (/^https?:|^\/|^#|^[\w.-]+\.(js|jsx|png|svg|json)$/i.test(t)) return false; // paths, urls, files
+  // NOT PROSE — CODE. The JSX-text regex below looks for `>text<`, and a COMPARISON operator also
+  // produces a `>`: `if (diff > 0) return <span ...>` yielded the "text node" `0) return `. That is a
+  // false positive, and a ratchet that cries wolf is a ratchet people learn to bypass. Real shipped copy
+  // starts with a letter and does not carry code punctuation.
+  if (!/^[A-Za-z]/.test(t)) return false;
+  if (/[(){};=]|=>|&&/.test(t)) return false;
   return true;
 };
 
+// DEV-ONLY surfaces are not product copy. DebugOverlay renders exclusively behind
+// `import.meta.env.DEV` (App.jsx:802) and is tree-shaken out of the shipped bundle, so a player can
+// never read it in any locale. Counting it inflated the ledger by 12 and would have sent someone
+// translating strings that do not ship. `devtest/` is the same case by construction.
+const DEV_ONLY = [/^src\/ui\/DebugOverlay\.jsx$/, /^src\/devtest\//];
+
 export function scan() {
-  const files = globSync('src/**/*.jsx', { cwd: APP }).sort();
+  const files = globSync('src/**/*.jsx', { cwd: APP })
+    .filter((rel) => !DEV_ONLY.some((re) => re.test(rel)))
+    .sort();
   const hits = {};
   for (const rel of files) {
     const src = readFileSync(resolve(APP, rel), 'utf8');
