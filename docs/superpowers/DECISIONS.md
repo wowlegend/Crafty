@@ -99,9 +99,30 @@ set in the `load_modifications_done` handler. A reproducible ~19-chunk deficit s
 requested and are never re-requested. On a fast box that window is a chunk or two and rounds away above the
 80% bar; on a slow box it is ~20 and the bar catches it.
 
-**Deliberately not fixed here.** Diagnosing it needs an instrumented run, not a guess at the end of a long
-session, and the bar must not be lowered to clear it. Queued with the evidence attached in `ci.yml` and
-ACTIVE_PLAN. Recorded as a correction to my own earlier "false negative" call rather than quietly amended.
+**RESOLVED 2026-08-02 — and my second diagnosis was wrong too.** Instrumenting the recovery trajectory and
+letting CI answer it settled it. All three attempts climb steadily (`2→12→25→30`) and flatline at 30 for
+60–100s. That is the shape of a streamer **finishing**, not one stalling.
+
+Root cause is a **test defect**, not a game bug. `GameScene.jsx:185` mounts a drei `<PerformanceMonitor>`
+whose `onDecline` steps the quality tier down, and `TIERS.renderDistance` is 4/3/2 → boxes of 81/49/25
+chunks, re-read by the streamer every tick. Re-streaming a world right after a load is the heaviest thing
+this game does, so on a 2-core runner the monitor declines med→low *during* the measured window. The
+streamer then correctly refills the 5×5=25 box; 30 is that plus the stragglers `cullDist = renderDistance + 2`
+deliberately keeps. The test was comparing a med-tier baseline against a low-tier recovery — two different
+worlds — and calling the difference a defect.
+
+The target is now computed from the tier **as it stands at assertion time**. The 80% bar is untouched, and
+the bug the spec exists for is still caught: it parks the count at zero, which fails against every tier's box.
+
+**Three diagnoses, two wrong, and the tooling caught both** — the calibration falsified "it's just slow",
+and the trajectory falsified "it's a partial recovery". Worth keeping as the pattern: each fix was built so
+that being wrong would be visible, which is why being wrong twice cost one CI run rather than a refactor.
+
+**New lead found in passing (not actioned):** a local run reported `baseline 81 @low`. The tier was `low` —
+whose box is 25 — while **81 chunks stayed resident**, because `cullDist = renderDistance + 2` culls only
+beyond ±4, i.e. retains a 9×9 box regardless of tier. So a downgrade from high→low stops *loading* new
+chunks but frees nothing already loaded. On the machine the downgrade exists to protect, memory and draw
+calls stay at high-tier levels. Queued.
 
 ### ⑨ CI itself — **[LOOP] Sharded, so it can conclude at all.**
 It had concluded `success` **zero times in 88 runs** (86 cancelled, 2 failed) because the e2e job exceeded

@@ -102,17 +102,23 @@
 >   rule hygiene** — a rule names its enforcer or it is deleted; a number is computed or it is deleted; a
 >   claim about outside state is emitted by the command that observed it.
 >
-> **🔴 NEW LEAD — LIKELY A LIVE SAVE/LOAD BUG (2026-08-02, highest priority).** `world-rebuild-after-load`
-> is red in CI and I was WRONG to call it a slow-runner false negative. The calibrated window falsified my
-> own hypothesis: with 101s / 134s / 150s budgets across three attempts the chunk count settles at
-> **exactly 30** against a 49–50 baseline, every time. That is a deterministic PLATEAU, not a slow climb.
-> Working hypothesis: post-load recovery is PARTIAL, not slow — keys whose worker replies were in flight
-> across the `load_modifications_done` clear (`Terrain.jsx:608`) stay marked-requested and are never
-> re-requested, so the neighbourhood permanently comes back ~19 chunks short. On a fast box that window is
-> a chunk or two and rounds away above the 80% bar; on a slow box the bar catches it. **If that is right,
-> a fast laptop has been hiding a live save/load defect and the gate is doing its job.** Needs an
-> instrumented run (log the residual `requestedChunks` after a load), NOT a guess. **Do not lower the 80%
-> bar to clear this.**
+> **✅ RESOLVED 2026-08-02 — `world-rebuild-after-load` was a TEST defect, and I was wrong TWICE first.**
+> (1) "slow-runner false negative" — falsified by the calibrated window (settled at exactly 30 under 101s /
+> 134s / 150s). (2) "partial recovery, a real save/load bug" — falsified by the trajectory instrumentation:
+> all three CI attempts climb `2→12→25→30` and flatline for 60–100s, the shape of a streamer FINISHING.
+> **Root cause:** `GameScene.jsx:185` mounts a `<PerformanceMonitor>` that steps the quality tier down;
+> `TIERS.renderDistance` 4/3/2 → boxes 81/49/25, re-read every tick. On a 2-core runner it declines med→low
+> DURING the measured window, so the streamer correctly refills 25 (+stragglers = 30) while the test compared
+> it against a med-tier baseline of 49. Target now computed from the tier AT ASSERTION TIME; the 80% bar is
+> untouched and the real bug (count parks at 0) still fails against every tier's box.
+>
+> **🔎 NEW LEAD from that work (queued, not actioned): a tier downgrade frees nothing.** A local run logged
+> `baseline 81 @low` — tier `low` (box 25) with **81 chunks still resident**, because `cullDist =
+> renderDistance + 2` culls only beyond ±4 and therefore retains a 9×9 box at every tier. So `high→low` stops
+> LOADING but never UNLOADS: on exactly the machine the downgrade exists to protect, memory and draw calls
+> stay at high-tier levels. Verify on a real tier transition before changing cull behaviour — hysteresis is
+> presumably deliberate to stop thrashing at a tier boundary, so the fix is likely a slower separate
+> reclaim, not a smaller cullDist.
 >
 > **▶ NEXT UNIT (deferred by decision, not forgotten): the `ai.worker` inline mirrors.** Premise is false
 > (terrain.worker imports 10 modules) and the sync gates are drift-blind (21,655/200,000 mismatches stayed

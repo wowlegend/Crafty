@@ -171,26 +171,25 @@ jobs:
 #
 #   If this workflow goes red again, that is real. Read it.
 #
-# ⚠️ OPEN — `world-rebuild-after-load` is red, and it is probably a REAL BUG, not the runner.
-#   I first called it a slow-runner false negative: the runner recovered 30 of 50 chunks in a fixed 60s
-#   window and I assumed it was still climbing. So I replaced the fixed window with one CALIBRATED from
-#   the machine's own measured initial-stream throughput — and that calibration falsified my own
-#   hypothesis, which is what it was for.
+# RESOLVED 2026-08-02 (second correction) — `world-rebuild-after-load` was a TEST defect, not a game bug.
+#   Diagnosed in three steps, and the first two were wrong, which is worth keeping:
+#     1. "Slow-runner false negative." Replaced the fixed 60s recovery window with one calibrated from the
+#        machine's own measured stream throughput — and that calibration falsified the hypothesis it was
+#        built on: with 101s/134s/150s budgets the count settled at EXACTLY 30 every time. Not slow.
+#     2. "Probably a real save/load bug — partial recovery." Plausible, and wrong. Reading the source
+#        showed `load_modifications_done` really does clear the whole requestedChunks set (Terrain.jsx:608).
+#     3. Instrumented the recovery TRAJECTORY and let CI answer it. All three attempts climb steadily
+#        (2->12->25->30) and flatline at 30 for 60-100s. That is the shape of a streamer FINISHING, not one
+#        stalling.
 #
-#   With 101s, 134s and 150s budgets across three attempts, the count settles at EXACTLY 30 every time
-#   while the pre-load baseline is 49-50. It does not creep. A slow machine produces a slow climb; this
-#   is a PLATEAU, and a deterministic one.
+#   Root cause: GameScene mounts a drei <PerformanceMonitor> (GameScene.jsx:185) whose onDecline steps the
+#   quality tier down, and TIERS.renderDistance is 4/3/2 -> boxes of 81/49/25 chunks, read fresh by the
+#   streamer every tick. Re-streaming a world right after a load is the heaviest thing this game does, so on
+#   a 2-core runner the monitor declines med->low DURING the measured window. The streamer then correctly
+#   refills the 5x5=25 box; 30 is that plus the stragglers `cullDist = renderDistance + 2` deliberately keeps.
+#   The test was comparing a med-tier baseline against a low-tier recovery — two different worlds — and
+#   calling the difference a defect.
 #
-#   Working hypothesis for whoever picks this up: the post-load recovery is partial, not slow. The
-#   original bug (`requestedChunks` never drained after a load -> nothing re-requested, world gone) was
-#   fixed by clearing the set in the `load_modifications_done` handler, Terrain.jsx:608. A deficit of
-#   ~19 chunks that reproduces exactly suggests some keys are still marked-requested after the clear —
-#   plausibly ones whose worker replies were in flight across the clear — so they are never re-requested
-#   and the neighbourhood permanently comes back short. On a fast machine the in-flight window is a
-#   chunk or two and the deficit rounds away above the 80% bar; on a slow one it is ~20 and the bar
-#   catches it. If that is right, the gate is doing its job and this is a live save/load defect that a
-#   fast laptop has been hiding all along.
-#
-#   NOT actioned here on purpose: diagnosing it properly needs an instrumented run, not a guess at the
-#   end of a long session. Do not lower the 80% bar to clear this. Queued as the loop's work with this
-#   evidence attached.
+#   Fix: the target is now computed from the tier AS IT STANDS AT ASSERTION TIME, not from the pre-load
+#   count. The 80% bar is untouched and the real bug is still caught: it parks the count at ZERO, which
+#   fails against every tier's box.
