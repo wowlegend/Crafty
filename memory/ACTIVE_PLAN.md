@@ -136,6 +136,16 @@
 > heapGrowth 0.** The eslint crash-class gate caught an undefined local mid-refactor, which is exactly
 > what it was built for.
 >
+> **▶ 2026-08-02 — i18n sweep STARTED (`b864703`): 109 → 74, but the two halves are DIFFERENT.**
+> `109→84` is METHODOLOGY, not progress — the detector had two defects that inflated the ledger:
+> comparison operators produced fake "text nodes" (`if (diff > 0) return <span` was reported as the string
+> `0) return`), and DEV-only `DebugOverlay` (12 hits, `import.meta.env.DEV`, tree-shaken out) was counted as
+> product copy. `84→74` is REAL work: GamePanels' four attribute labels, three panel headers and three
+> allocation aria-labels, keyed under the existing `stat.*` namespace with zh-CN matching the shipped
+> ATK/DEF/SPD/CRIT register. GearInspector had no `useT()` at all, which is why those four were hardcoded.
+> **Remaining: 74 across 17 files** — next largest are GamePanels (23 left), SpellUpgradePanel (9),
+> WorldManager / ChestInventoryPanel / MenuSystem (6 each).
+>
 > **✅ 2026-08-02 — cull-hysteresis RESOLVED (`842c423`), RED-first on a real tier transition.**
 > Measured, not inferred: before `high=81 → low=72` flat for 45s (freed 11% against a box of 25); after
 > `high=81 → low=42` (`81→49→45→42`). Fix is a THROTTLED reclaim past a 1.5× overshoot, capped 4/tick —
