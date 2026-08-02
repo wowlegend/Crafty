@@ -76,7 +76,39 @@
 > whole file, so the *comment* explaining why the import is kept already satisfied it and deleting the import still
 > passed. Strengthened to match the import SPECIFIER, mutation-proven RED. **Generalizable:** any whole-file
 > substring gate is satisfiable by a comment; anchor structural gates to the syntactic form, not a bare token.
-> **▶ NEW 2026-07-27 — GOVERNING-DOC SOTA PASS (Kevin-requested). PLAN OF RECORD:
+> **✅ 2026-08-02 — THE AUDIT BATCH IS DECIDED AND SHIPPED (Kevin: *"do all you decide to be best"*).**
+> All nine awaiting-decision items dispositioned; every decision + reasoning recorded in the new
+> **`docs/superpowers/DECISIONS.md`** (the outbox KEVIN-REVIEW-BATCH never had — it had ~146 entries and 6
+> marked resolved). Shipped `32625c0`..`d85fb23`:
+> · **deps** — rapier3d-compat DECLARED (devDeps, exact 0.19.2 to match what @react-three/rapier pins, so the
+>   integration test keeps driving the same WASM the app ships) + the knip `ignoreDependencies` that hid it
+>   DELETED; `npm audit fix` → **0 vulnerabilities, 0 open dependabot alerts** (was "2 highs needing a human
+>   decision" for weeks — package.json is byte-identical, it was a lockfile refresh).
+> · **CI CONCLUDES AND IS GREEN-ABLE** — perf-siege tagged `@local-only` and excluded in the workflow (it is a
+>   perf probe; ci.yml's own policy always excluded those), world-rebuild's recovery window now CALIBRATED
+>   from the machine's own measured stream throughput (the 80% assertion untouched). No threshold lowered.
+> · **visual** — all 7 ungated states promoted; 31/31 now assert. **That immediately caught a real
+>   determinism bug:** `WeatherSystem` cycles clear↔storm every 90s and a capture takes >4min, so every
+>   outdoor frame has been a coin flip against its baseline for as long as the gate existed. Gated — and the
+>   check must be INSIDE the interval callback, because `isCaptureMode()` is flipped by the harness AFTER
+>   mount (a setup-time guard reads false and silently does nothing; I shipped that version first).
+> · **gate-shape.mjs** — the mechanical kill for the comment-satisfied-assertion class, in pre-push + CI.
+>   Found a real one on its first run (place-puff), and got three wrong (ocean-coastline) which hand-checking
+>   caught — the fix was to stop treating a gate's IMPORT path as the file under test.
+> · **pre-push certifies the PUSHED REFS** via a detached worktree, not the working tree; the docs-only skip
+>   path is gone. Mutation-proven in the exact `a72bffd` shape.
+> · **i18n ratchet** — 109 hardcoded strings frozen per-file; may shrink, never grow.
+> · **kernel ORIENT step 0 reads CI** (`gh run list`, green ≡ the literal string `success`); **charter §8
+>   rule hygiene** — a rule names its enforcer or it is deleted; a number is computed or it is deleted; a
+>   claim about outside state is emitted by the command that observed it.
+>
+> **▶ NEXT UNIT (deferred by decision, not forgotten): the `ai.worker` inline mirrors.** Premise is false
+> (terrain.worker imports 10 modules) and the sync gates are drift-blind (21,655/200,000 mismatches stayed
+> green). Deferred because it is the only item that changes MOB BEHAVIOUR at runtime — Rule 3 wants a lived
+> pathing probe, and it must not ride along in a harness tranche where a regression is hard to attribute.
+> Then: the 11 remaining doc-SOTA edits, the 109-string i18n sweep, the docs REORG.
+>
+> **▶ 2026-07-27 — GOVERNING-DOC SOTA PASS (Kevin-requested). PLAN OF RECORD:
 > `docs/superpowers/LOOP-DOC-SOTA-PLAN-2026-07-27.md` — 14 edits, 3 SHIPPED, 11 REMAIN, with exact
 > paste-ready text + the adversarial critic's standing rejections.** Principle: *a rule names its
 > enforcer or it is deleted; a number is computed or it is deleted; a claim about state outside the

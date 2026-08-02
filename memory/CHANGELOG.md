@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-08-02 — the awaiting-decision batch, decided and shipped (`32625c0`..`d85fb23`)
+
+Kevin delegated all nine punted items (*"do all you decide to be best"*). Every decision and its reasoning
+is in the new `docs/superpowers/DECISIONS.md` — the outbox `KEVIN-REVIEW-BATCH.md` never had. That file had
+reached ~146 entries with 6 marked resolved, none in six weeks, so there was no way to tell what had been
+decided from what had merely not been read.
+
+**Dependencies — closed, and the escalation was overstated.** `@dimforge/rapier3d-compat` was imported by a
+bench script and an integration test but never declared, and the knip `ignoreDependencies` line added by
+`d3e86cf` — the same commit whose message ends "npx knip now reports ZERO issues" — is what hid it. Declared
+in devDependencies at **exact** 0.19.2 (matching what `@react-three/rapier` pins, so the integration test
+keeps driving the same WASM the app ships; a caret would let npm hoist a second copy), ignore deleted.
+`npm audit fix` → **0 vulnerabilities and 0 open dependabot alerts**, with `package.json` byte-identical
+before and after: it was a lockfile refresh, not the dependency decision it had been escalated as.
+
+**CI can now conclude, and neither red test was weakened.** `perf-siege` is a perf probe, and ci.yml's
+policy note has excluded perf probes since CI shipped — it was inside the e2e job in violation of that.
+Tagged `@local-only`, excluded via `--grep-invert` **in the workflow** where it is visible; frame floor
+untouched, still full strength locally. `world-rebuild-after-load` is a correctness test for a critical bug,
+so it stays in CI — its fixed 60s recovery window encoded one machine, and is now derived from that
+machine's own measured stream throughput. The 80%-recovery assertion is unchanged.
+
+**The visual gate was never deterministic, and promoting the ungated frames is what proved it.** Seven of
+31 captured states asserted nothing; all are now in `STATES`. `landmark` — already gated — then failed at
+6.29% and 6.27% with zero `src/` changes, which read exactly like the dependency bump having shifted the
+renderer. Opening the two PNGs showed the truth: the capture had caught a **dynamic rain storm**, toast and
+all. `WeatherSystem` cycles clear↔storm every 90 seconds and a capture runs over four minutes, so it fires
+mid-run — every outdoor frame has been a coin flip for as long as this gate has existed. Two keepers: the
+capture check must sit **inside** the interval callback, because `isCaptureMode()` is flipped by the harness
+*after* mount and a setup-time guard silently reads false (I shipped that version first and got a
+byte-identical 6.27% back); and a pixel percentage is not a diagnosis, so the failure now names both frame
+paths and the non-render causes in the order they bite.
+
+**Two gates that cannot be satisfied by prose.** `gate-shape.mjs` runs every `toMatch` pattern against its
+target twice — raw and comment-blanked via the AST — and fails any assertion only the raw copy satisfies.
+It found a real one immediately (`place-puff` asserted `/place puff/i`, matching only a comment) and got
+three wrong (`ocean-coastline`), which hand-checking caught: it had latched onto the gate's *import* path as
+the file under test. A tool that accuses confidently gets checked before it is trusted, including one
+written in the same session as the rule about it. `pre-push` now certifies the **pushed refs** via a
+detached worktree instead of the working tree — mutation-proven in the exact `a72bffd` shape — and the
+docs-only skip path, which let several pushes this week land behind nothing but doc-currency, is gone.
+
+**i18n measures the product now, not the dictionary.** 98 keys at full parity while 109 user-facing strings
+sat hardcoded across 23 files. Per-file counts frozen; they may shrink freely, a growth fails the suite.
+
+**The governing docs got their first mechanism.** The kernel's ORIENT now reads CI *before* any doc, with
+green defined as the literal string `success` and an explicit ban on "not failure" — the ambiguity that let
+88 runs pass unnoticed. Charter §8: a rule names its enforcer or it is deleted; a number is computed or it
+is deleted; a claim about state outside the working tree is emitted by the command that observed it.
+
 ## 2026-07-27 — Holistic review Phase 2: dead-code category COMPLETE + `no-unused-vars` is now a blocking gate (`9387c7d`)
 
 The rule went OFF → `warn` (`0d1b28a`) → **`error`** (`9387c7d`). eslint surfaced **80** dead imports/vars/args —

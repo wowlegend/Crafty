@@ -555,6 +555,16 @@ false-positives, 3 genuinely-weak gates strengthened, ~24 deferred as low-ROI.
 Wave-2 the 4 lint-CRITICAL docs, archive-not-delete) — **not started; `docs/archive/` does not exist yet and
 `docs/superpowers/plans/` still holds 100 files.** Then the deferred test-vacuity tail.
 
+**✅ 2026-08-02 — the awaiting-decision backlog is CLEARED.** All nine items decided under Kevin's explicit
+delegation and recorded in `docs/superpowers/DECISIONS.md` (the decision record this process never had).
+Net effect on this registry: **V6's residual is closed** (pre-push now certifies the pushed refs via a
+detached worktree, and the docs-only skip path is gone); the **dependency debt is closed** (0 vulnerabilities,
+0 open dependabot alerts); **CI can conclude** and both known-red tests are resolved without weakening a
+threshold; the **visual gate went from 24 of 31 states asserting to 31 of 31**, which immediately exposed
+that it had never been deterministic (weather cycles mid-capture — fixed). Two new mechanical gates now
+block a push: `gate-shape.mjs` (no assertion may be satisfied by a comment — the mechanical kill for the
+85%-source-grep vacuity class) and the i18n adoption ratchet (109 hardcoded strings frozen, may only shrink).
+
 **⚠️ Two process facts, recorded honestly:** (1) the loop went **dormant 2026-07-21 → 07-27** (6 days, no
 commits). (2) For the whole campaign it did **not** honour its own "update STATUS each batch" rule — this
 file went untouched for **65 commits** (last edit `03036c6`, 2026-07-20) while ACTIVE_PLAN and CHANGELOG were
