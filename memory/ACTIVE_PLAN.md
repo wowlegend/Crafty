@@ -120,7 +120,29 @@
 > presumably deliberate to stop thrashing at a tier boundary, so the fix is likely a slower separate
 > reclaim, not a smaller cullDist.
 >
-> **▶ NEXT UNIT (deferred by decision, not forgotten): the `ai.worker` inline mirrors.** Premise is false
+> **✅ 2026-08-02 — CI IS GREEN. First `success` conclusion in 96 runs** (`190aac9`, all five jobs:
+> unit·lint·knip·build, doc-currency, e2e shards 1/3 2/3 3/3). Verified per the kernel's definition —
+> the literal string `success` on the newest completed run at a sha that is an ancestor of HEAD.
+>
+> **✅ 2026-08-02 — the `ai.worker` inline mirrors are GONE (`815c007`).** The "classic Worker cannot
+> import" premise was false and is now disproven by construction: the built worker is 3.71 kB with ZERO
+> bare imports because Vite inlines them. AIWorkerSystem switched to the `?worker` form terrain.worker has
+> always used; the worker imports mobLineOfSight/attackTelegraph/mobSteering directly; the telegraph block
+> is the imported state machine rather than a copy of its transitions. The three sync gates were REWRITTEN,
+> not deleted — behavioural halves kept (one gained coverage), mirror-pinning halves replaced with
+> import-specifier anchors that gate-shape verifies cannot be comment-satisfied. Mutation-proven on the
+> real historical regression (re-pointing steerGoalCell at the player turns the kite gate RED). **Rule 3
+> paid: lived night-siege probe — 13 frames over 12.4s of saturated siege, zero fatal runtime errors,
+> heapGrowth 0.** The eslint crash-class gate caught an undefined local mid-refactor, which is exactly
+> what it was built for.
+>
+> **▶ NEXT UNIT: the cull-hysteresis lead** (a tier downgrade frees nothing — `cullDist = renderDistance + 2`
+> retains a 9×9 box at every tier, so `high→low` stops loading but never unloads, on exactly the machine
+> the downgrade exists to protect). Verify on a real tier transition first; the hysteresis is probably
+> deliberate anti-thrash, so the fix is likely a separate slow reclaim rather than a smaller cullDist.
+> Then: the 11 remaining doc-SOTA edits, the 109-string i18n sweep, the docs REORG.
+>
+> — superseded note kept for provenance: the ai.worker unit was originally deferred as follows — Premise is false
 > (terrain.worker imports 10 modules) and the sync gates are drift-blind (21,655/200,000 mismatches stayed
 > green). Deferred because it is the only item that changes MOB BEHAVIOUR at runtime — Rule 3 wants a lived
 > pathing probe, and it must not ride along in a harness tranche where a regression is hard to attribute.

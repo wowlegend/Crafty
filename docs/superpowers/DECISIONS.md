@@ -65,10 +65,29 @@ escalated as for weeks. Now 0 vulnerabilities. Shipped `32625c0`.
 The mirrors' justification ("this classic Worker cannot import") is false — `terrain.worker.js` imports ten
 modules and is a worker — and their sync gates are drift-blind: an injected divergence producing
 21,655/200,000 behavioural mismatches left all four assertions green.
-**Not deferred because it is wrong; deferred because it is the one item here that changes mob behaviour at
-runtime, and Rule 3 says a green headless gate is not a lived result.** It needs a lived probe of mob
-pathing after the change, and it should not be bundled into a tranche of harness fixes where a regression
-would be hard to attribute. Queued as the next unit with the full plan recorded. The false premise is
+**✅ SHIPPED 2026-08-02 (`815c007`), as its own unit with the probe paid.** The premise is now disproven by
+construction rather than argument: the built worker is 3.71 kB with **zero bare imports**, because Vite
+inlines them regardless of the construction form. AIWorkerSystem moved to the `?worker` import that
+`terrain.worker.js` has always used; the three modules are imported directly; the telegraph block became the
+imported `attackPhase` machine instead of a hand-rolled copy of its transitions.
+
+The three sync gates were **rewritten, not deleted** — behavioural halves kept (mob-los gained a case), and
+the mirror-pinning halves replaced with import-specifier anchors plus "no local copy has grown back". Both
+are syntactic, so `gate-shape.mjs` confirms a comment cannot satisfy them. Mutation-proven against the real
+historical bug: re-pointing `steerGoalCell` at `(playerX, playerZ)` — the archer-kite regression — turns the
+gate RED.
+
+**Rule 3 paid in full:** the sustained night-siege probe ran against the refactored worker — 13 frames over
+12.4s of saturated siege, zero fatal runtime errors, heapGrowth 0. Mobs path and attack through that worker
+for the whole window, so an import failure or a throw would have surfaced there.
+
+The eslint crash-class gate also caught an undefined local mid-refactor (removing the mirror left
+`startXGrid`/`startZGrid` dangling downstream). That gate exists because four ReferenceErrors once shipped
+to main; this is the first time it has caught one BEFORE a push rather than after.
+
+*Original deferral rationale, kept for provenance:* it was the one item that changes mob behaviour at
+runtime, and Rule 3 says a green headless gate is not a lived result — so it needed a lived probe and its
+own unit rather than riding in a tranche of harness fixes. The false premise is
 corrected in the source comments now so nobody re-derives it.
 
 ### ⑥ i18n adoption — **[LOOP] Shipped a ratchet, not the full sweep.**
