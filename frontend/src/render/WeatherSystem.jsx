@@ -73,7 +73,7 @@ export const WeatherSystem = () => {
     // long-interval lesson" — so the hazard was known and the fix was applied to one of the two effects
     // this callback has. This closes the other half.
     //
-    // ⚠️ THE CHECK MUST BE INSIDE THE CALLBACK, not at effect setup. `isCaptureMode()` is a RUNTIME flag
+    // NOTE — THE CHECK MUST BE INSIDE THE CALLBACK, not at effect setup. `isCaptureMode()` is a RUNTIME flag
     // flipped by the harness through the `enterCapture` test-bridge hook AFTER the page has loaded and
     // components have mounted — it is not a URL parameter. So an `if (isCaptureMode()) return` guarding
     // the useEffect body always reads false and does nothing at all. I wrote it that way first, re-ran
