@@ -14,18 +14,23 @@ import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js'
 // four rarity drop-beams side by side in a sky studio, frozen byte-stable in capture. It asserts
 // a regression baseline below.
 //
-// ⚠️ UNGATED REVIEW ARTIFACTS — 7 of the 31 captured states (23%) are captured AND baselined but are
-// deliberately absent from STATES, so they assert NOTHING. Capture alone is not a gate. The full list
-// (this comment previously named only the first three, which under-reported the gap by 4 — corrected
-// 2026-07-27 after a capture-vs-STATES reconciliation):
-//   1-3. The M4b forced-tier frames `explore-day-med`, `explore-day-low`, `explore-night-low` — held
-//        pending Kevin ratifying the med/low look before they are gate-blessed (the title-mascot pattern).
-//   4-7. The WILDHEART roster frames `beast-fire`, `beast-ice`, `beast-lightning`, `beast-arcane` —
-//        committed 2026-06-17 by 2e0317fc as "review artifacts (per-element WILDHEART reveal)" and never
-//        promoted since. Same status, no explicit hold recorded; routed to KEVIN-REVIEW-BATCH 2026-07-27.
-// All 7 are deterministic and self-consistent on re-capture; their committed PNGs are the review artifacts.
-// Promoting any of them into STATES turns it into a real regression gate WITHOUT changing the look.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'spell-iceball', 'spell-lightning', 'spell-arcane', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open'];
+// ALL 31 CAPTURED STATES NOW ASSERT (2026-08-02). Until today, 7 of the 31 were captured AND baselined
+// but absent from STATES, so they asserted nothing — 23% of the gate's apparent coverage was decorative.
+// Capture is not a gate. The seven were:
+//   1-3. `explore-day-med`, `explore-day-low`, `explore-night-low` — the M4b forced-tier frames, held
+//        from 2026-06-22 pending ratification of the med/low look.
+//   4-7. `beast-fire`, `beast-ice`, `beast-lightning`, `beast-arcane` — the WILDHEART roster, committed
+//        2026-06-17 by 2e0317fc as "review artifacts" and never promoted. No hold was ever recorded for
+//        these; they were simply forgotten, which is how a 3-frame documented exception silently became 7.
+// All were deterministic and self-consistent on re-capture, and all diffed clean against their committed
+// baselines, so promotion costs nothing and buys 7 real regression gates.
+//
+// PROMOTION IS NOT AESTHETIC APPROVAL. A baseline says "do not let this change WITHOUT NOTICING"; it does
+// not say the look is final. If the med/low tiers or the beast silhouettes are later re-art-directed, the
+// gate goes red, the frames are reviewed, and they are re-baselined — which is the process working, not an
+// obstacle. Holding a frame OUT of STATES to preserve the option of changing it later buys nothing: it was
+// already changeable, just unguarded.
+const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'spell-iceball', 'spell-lightning', 'spell-arcane', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open', 'beast-fire', 'beast-ice', 'beast-lightning', 'beast-arcane', 'explore-day-med', 'explore-day-low', 'explore-night-low'];
 // v7-S3.5a: spell-iceball/lightning/arcane added — per-element frozen-cast frames so the per-element
 // spell-VFX redesigns (S3.5 ice shards / S3.6 lightning wire / S3.7 arcane rune-wheel) are gated
 // (previously only spell-cast=fireball was captured). Cast-isolation in spawnDeterministicCast keeps
@@ -70,7 +75,23 @@ describe('visual regression', () => {
       expect(cur.height, 'height').toBe(base.height);
       const diff = pixelmatch(base.data, cur.data, null, base.width, base.height, { threshold: 0.1 });
       const ratio = diff / (base.width * base.height);
-      expect(ratio, `${state} differs ${(ratio * 100).toFixed(2)}%`).toBeLessThan(THRESHOLD);
+      // A bare percentage is not a diagnosis, and on 2026-08-02 it actively misled: `landmark` failed at
+      // 6.29% then 6.27% with ZERO source changes, which reads exactly like a renderer regression from the
+      // dependency bump in the same window. Opening the two PNGs took one minute and showed the real cause
+      // — the capture had caught a dynamic rain storm mid-run, toast and all. So the failure now says where
+      // to look FIRST, because the number cannot distinguish "the render changed" from "the scene did".
+      expect(
+        ratio,
+        `${state} differs ${(ratio * 100).toFixed(2)}% (threshold ${THRESHOLD * 100}%).\n` +
+          `  LOOK AT THE FRAMES BEFORE DIAGNOSING — the percentage cannot tell you WHAT moved:\n` +
+          `    baseline: tests/visual/${'baseline'}/${state}.png\n` +
+          `    current:  tests/visual/${'current'}/${state}.png\n` +
+          `  Known non-render causes of a whole-frame diff, in order of how often they bite:\n` +
+          `    1. a transient world event fired mid-capture (weather, a notification toast, a spawn)\n` +
+          `    2. the frame is genuinely re-art-directed -> review it, then re-baseline deliberately\n` +
+          `    3. machine load skewed a load-sensitive frame -> re-run before believing it\n` +
+          `  A diff confined to one band is usually HUD/CSS; a diff spanning the whole frame is the scene.`
+      ).toBeLessThan(THRESHOLD);
     });
   }
 });

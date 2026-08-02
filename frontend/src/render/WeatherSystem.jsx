@@ -55,7 +55,32 @@ export const WeatherSystem = () => {
   // The old clear->rain->snow global timer almost never lined the 'snow' phase up with actually standing
   // in a cold biome (and a snow biome during the 'rain' phase rendered nothing) -> "snow never shows".
   useEffect(() => {
+    // CAPTURE DETERMINISM (2026-08-02): never cycle weather during a capture run.
+    //
+    // This interval flips clear<->storm every 90s, and a full capture takes >4 minutes — so it fires
+    // two or three times MID-RUN. Whichever frames happen to be captured after an onset get rain
+    // streaks, a darkened storm sky, and an "Atmospheric shift..." toast; frames captured before it do
+    // not. Every outdoor state was therefore a coin-flip against its baseline depending on where in the
+    // 90s cycle it landed, and the gate had no way to say so — it just reported a pixel percentage.
+    //
+    // That is exactly how `landmark` behaved: green on 2026-07-27, then 6.29% and 6.27% (over the 6%
+    // threshold) on two consecutive runs on 2026-08-02 with ZERO source changes in between. It looked
+    // like a dependency bump had shifted the renderer. It had not — the second run simply caught a storm.
+    // Reading the two PNGs side by side is what settled it; the pixel number alone pointed at the wrong
+    // cause entirely.
+    //
+    // The AUDIO side of this interval was already capture-gated below, with a comment citing "the T8
+    // long-interval lesson" — so the hazard was known and the fix was applied to one of the two effects
+    // this callback has. This closes the other half.
+    //
+    // ⚠️ THE CHECK MUST BE INSIDE THE CALLBACK, not at effect setup. `isCaptureMode()` is a RUNTIME flag
+    // flipped by the harness through the `enterCapture` test-bridge hook AFTER the page has loaded and
+    // components have mounted — it is not a URL parameter. So an `if (isCaptureMode()) return` guarding
+    // the useEffect body always reads false and does nothing at all. I wrote it that way first, re-ran
+    // the gate, and got byte-identical 6.27% with the storm toast still in the frame. That is why the
+    // audio guard below sits inside the callback too, where the flag has had time to be set.
     const interval = setInterval(() => {
+      if (isCaptureMode()) return;
       const states = ['clear', 'storm'];
       const currentIndex = states.indexOf(weatherRef.current);
       // Back-compat: a legacy 'rain'/'snow' value (or any unknown) maps to index -1 -> next = 'storm'.
