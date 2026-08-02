@@ -60,7 +60,13 @@ describe('#52 S2 capture-state modals carry role=dialog (zero-pixel a11y)', () =
 
   it('SpellUpgradePanel motion.div backdrop gains role=dialog + keeps overflow-y-auto (progression-open capture)', () => {
     const src = read('ui/SpellUpgradePanel.jsx');
-    expect(src).toMatch(/role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label="Progression"[\s\S]{0,120}tabIndex=\{-1\}/);
+    // aria-label accepts the TRANSLATED form as well as a bare literal. The i18n adoption sweep replaced
+    // aria-label="Progression" with aria-label={t('a11y.progression')}, and this gate — which pins the
+    // a11y contract, not the English — went red. Requiring an untranslatable literal would have forced a
+    // choice between an accessible dialog and a localisable one; both forms satisfy the actual contract.
+    expect(src).toMatch(
+      /role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label=(?:"Progression"|\{t\('a11y\.progression'\)\})[\s\S]{0,120}tabIndex=\{-1\}/
+    );
     expect(src).toMatch(/role="dialog"[\s\S]{0,200}overflow-y-auto/);
   });
 

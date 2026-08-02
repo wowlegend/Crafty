@@ -1,5 +1,5 @@
 {
-  "_total": 62,
+  "_total": 55,
   "src/App.jsx": 1,
   "src/GameSystems.jsx": 4,
   "src/HUD.jsx": 1,
@@ -11,7 +11,7 @@
   "src/ui/GameHud.jsx": 4,
   "src/ui/GamePanels.jsx": 20,
   "src/ui/QuestLog.jsx": 2,
-  "src/ui/SpellUpgradePanel.jsx": 9,
+  "src/ui/SpellUpgradePanel.jsx": 2,
   "src/ui/TouchControls.jsx": 3,
   "src/ui/TradingInterface.jsx": 2,
   "src/ui/panels/CraftingTable.jsx": 4

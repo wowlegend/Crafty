@@ -34,7 +34,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             exit={{ opacity: 0 }}
             role="dialog"
             aria-modal="true"
-            aria-label="Progression"
+            aria-label={t('a11y.progression')}
             tabIndex={-1}
             className="absolute inset-0 z-50 overflow-y-auto bg-ink/75"
         >
@@ -56,15 +56,15 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                             <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide text-accent">
                                 <Icon name="sparkles" size={28} className="flex-none" /> Progression — Aspects & Spells
                             </h2>
-                            <p className="text-text-muted text-xs mt-1">Four powers, four keys. Each Aspect banks its own meter and spends it on a signature verb — the HOW IT PLAYS card in each column shows the loop.</p>
+                            <p className="text-text-muted text-xs mt-1">{t('talent.intro')}</p>
                         </div>
                         <div className="flex items-center gap-4">
                             <Panel variant="inset" className="px-4 py-2 bg-slot text-center">
-                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Talent Points</div>
+                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">{t('talent.points')}</div>
                                 <div className="font-display text-2xl text-accent tabular-nums">{talentPoints}</div>
                             </Panel>
                             <Panel variant="inset" className="px-4 py-2 bg-slot text-center">
-                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Player Level</div>
+                                <div className="text-xs text-text-muted font-bold uppercase tracking-wider">{t('talent.playerLevel')}</div>
                                 <div className="font-display text-2xl text-spell-arcane tabular-nums">{playerLevel}</div>
                             </Panel>
                             <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
@@ -85,7 +85,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                 {ASPECT_GUIDE[branch.aspect] && (
                                     <Panel variant="inset" className="p-3 bg-panel-inset">
                                         <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">How it plays</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{t('talent.howItPlays')}</span>
                                             <span className={`font-display text-sm px-2 py-0.5 rounded border-chrome border-ink bg-slot ${branch.accent}`}>{ASPECT_GUIDE[branch.aspect].key}</span>
                                         </div>
                                         <div className={`text-[10px] font-bold mb-1.5 ${branch.accent}`}>{ASPECT_GUIDE[branch.aspect].meter}</div>
@@ -164,7 +164,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                             Upgrade
                                                         </Button>
                                                     ) : (
-                                                        <span className="text-[10px] text-danger font-bold">Requires Parent Node</span>
+                                                        <span className="text-[10px] text-danger font-bold">{t('talent.requiresParent')}</span>
                                                     )}
                                                 </div>
                                             </Panel>
@@ -217,7 +217,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                             ) : gated ? (
                                                 <span className="text-[10px] text-danger font-bold flex items-center gap-1"><Icon name="lock" size={12} className="flex-none" /> Requires Lv {requiredLevel}</span>
                                             ) : (
-                                                <Button variant="primary" size="sm" disabled={!canUpgrade} onClick={() => upgradeSpell?.(key)} className="px-3 py-1 text-[10px] tracking-widest">Upgrade</Button>
+                                                <Button variant="primary" size="sm" disabled={!canUpgrade} onClick={() => upgradeSpell?.(key)} className="px-3 py-1 text-[10px] tracking-widest">{t('ui.upgrade')}</Button>
                                             )}
                                         </div>
                                     </Panel>
