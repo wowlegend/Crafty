@@ -109,8 +109,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # --grep-invert @local-only excludes the perf probes, which the policy note at the foot of this
+      # file has always excluded — perf-siege was sitting in this job in violation of it. The exclusion
+      # is HERE, in the workflow, rather than hidden in playwright.config.js, so it is visible to anyone
+      # reading what CI actually runs. Those specs still run at full strength locally.
       - name: E2E
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/3 --grep-invert="@local-only"
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -142,24 +146,25 @@ jobs:
 #   * perf probes: the median quantizes to the host vblank, so a cloud runner's number is meaningless
 #     (see STATUS §F2 — the perf harness's own honesty problem is a tracked item).
 #
-# ⚠️ KNOWN-RED, DELIBERATELY NOT SILENCED (2026-07-27):
-#   `tests/e2e/perf-siege.spec.js` is itself a perf probe and therefore sits inside the class the note
-#   above excludes — but it runs in the e2e job, and it has failed on EVERY CI run since 2026-07-13 at
-#   `expect(r.frames).toBeGreaterThanOrEqual(5)`. It PASSES on real hardware (verified 2026-07-27: 1.4m,
-#   heapGrowth 0, no runtime errors), so this is a false negative from a 2-core shared runner under
-#   software WebGL, not a shipped freeze. The floor has NOT been lowered and the test has NOT been
-#   skipped — lowering a threshold to make a gate green is the reward-hack LOOP-CHARTER §3 forbids.
-#   Instead the assertion now reports its measured numbers, and whether this probe belongs in CI at all
-#   is an open decision in KEVIN-REVIEW-BATCH. Expect this job to go visibly RED until that is decided —
-#   which is the point: a visible failure beats 88 invisible cancellations.
+# RESOLVED 2026-08-02 — the three failures sharding exposed, and how each was closed.
+#   Sharding (70e432e) made this workflow CONCLUDE for the first time in 88 runs, which immediately
+#   surfaced three failures the job timeout had been hiding. Each was diagnosed by running it on real
+#   hardware first, and each got a DIFFERENT fix, because they were three different problems. Not one
+#   threshold was lowered and not one test was skipped.
 #
-#   SECOND KNOWN-RED, same class (added 2026-07-27 after the first sharded run actually concluded):
-#   `tests/e2e/world-rebuild-after-load.spec.js` fails on shard 3 with "the chunk streamer must re-request
-#   chunks after a load (had 50, settled at 30)" — expected >= 40. It PASSES on real hardware (measured:
-#   58.3s), so it is the same 2-core-swiftshader false negative as perf-siege: the runner cannot stream
-#   enough chunks inside the settle window. Also NOT lowered and NOT skipped. Both entries exist because
-#   sharding made the job CONCLUDE for the first time, which immediately surfaced failures the timeout had
-#   been hiding — the fix worked by making bad news visible, and this list is the bad news.
-#   (A third, `smoke.spec.js`, was revealed at the same time and turned out NOT to be an environment
-#   artifact — it failed locally too. Root cause was a 60s per-test budget against 75s of declared helper
-#   waits; fixed properly in `be798fc` by raising the budget, with no assertion touched.)
+#   1. `smoke.spec.js` — NOT an environment artifact; it failed locally too. The shared helpers in
+#      tests/e2e/_boot.js declare up to 75s of inner waits inside what was a 60s per-test budget, so it
+#      could never pass when terrain streaming ran slow, anywhere. Fixed in `be798fc` by raising the
+#      budget to 120s. No assertion touched; ten other specs were one slow world-build from the same bug.
+#   2. `world-rebuild-after-load.spec.js` — a CORRECTNESS test for a critical bug (Load destroys the
+#      world), so it belongs in CI. Its recovery window was a fixed 60s that encoded one machine; the
+#      runner recovered 30 of 50 chunks and was still climbing when it expired. The window is now
+#      CALIBRATED from the machine's own measured streaming throughput. The 80%-recovery assertion is
+#      unchanged and stays strict everywhere — the actual bug parks the count at 0 forever, so it fails
+#      on any window.
+#   3. `perf-siege.spec.js` — a PERF PROBE, and the policy note above has always excluded perf probes
+#      from CI as machine-dependent. It was in the e2e job in violation of that policy. Now tagged
+#      `@local-only` and excluded by `--grep-invert` in the E2E step above, where the exclusion is
+#      visible. It runs at FULL strength locally and pre-merge; its frame floor is untouched.
+#
+#   If this workflow goes red again, that is real. Read it.

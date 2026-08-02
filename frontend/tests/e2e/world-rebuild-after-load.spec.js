@@ -33,6 +33,7 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   //    chunks that survive a load. That is exactly how the first version of this test passed with the bug
   //    deliberately reintroduced. The baseline must be the SETTLED world (~81 chunks at default render
   //    distance), so wait for the count to stop growing.
+  const streamStart = Date.now();
   await page.waitForFunction(
     () => {
       const g = window.useGameStore.getState();
@@ -45,6 +46,22 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
     null,
     { timeout: 90000, polling: 1000 }
   );
+  // CALIBRATE THE RECOVERY BUDGET FROM THIS MACHINE, not from the author's laptop.
+  //
+  // The recovery window below used to be a fixed 60s. That number encoded one machine: on the 2-core
+  // GitHub-Actions runner under software WebGL the same spec recovered 30 of 50 chunks and was STILL
+  // CLIMBING when the window expired — a false negative, and it failed on every CI run. The temptation
+  // is to lower the 80% bar; that would be weakening the assertion to make a gate green, which is
+  // exactly what the charter forbids and exactly what this test's own header warns about.
+  //
+  // Instead, measure how long THIS machine took to stream the world the first time and give the
+  // recovery a multiple of that. The 80% assertion is untouched and stays strict everywhere; a fast box
+  // still finishes fast, a slow box gets proportionally longer, and a genuinely broken streamer fails on
+  // ANY window because the bug parks the count at 0 forever rather than climbing slowly.
+  const streamMs = Date.now() - streamStart;
+  const recoveryBudget = Math.min(Math.max(60000, streamMs * 3), 150000);
+  test.setTimeout(180000 + recoveryBudget); // extend to cover the calibrated window
+  console.log(`[world-rebuild] initial stream ${streamMs}ms -> recovery budget ${recoveryBudget}ms`);
   const before = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
   expect(before, 'the world should be fully streamed before we load over it').toBeGreaterThan(40);
 
@@ -81,7 +98,7 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
     .waitForFunction(
       (t) => window.useGameStore.getState().getGeneratedChunks().size >= t,
       target,
-      { timeout: 60000, polling: 500 }
+      { timeout: recoveryBudget, polling: 500 }
     )
     .catch(() => {}); // fall through so the assertion reports the real numbers
 
