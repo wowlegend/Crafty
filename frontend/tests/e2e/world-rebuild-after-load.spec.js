@@ -94,6 +94,27 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   //    that only a genuinely broken streamer misses it. (Unloaded, the world is back in ~7s; the bug
   //    parks it at 0 forever.) The 80% assertion is unchanged — nothing is loosened to go green.
   const target = Math.ceil(before * 0.8);
+
+  // TRAJECTORY INSTRUMENTATION (2026-08-02). On the CI runner this settles at EXACTLY 30 against a 49-50
+  // baseline, identically across 101s / 134s / 150s budgets — a deterministic PLATEAU, not a slow climb,
+  // which is the opposite of what a slow machine produces. Reading the source did not settle it either:
+  // `load_modifications_done` really does clear the whole requestedChunks set (Terrain.jsx:608), so the
+  // obvious "stale keys block re-requests" story does not survive inspection.
+  //
+  // So stop guessing and record the SHAPE of the recovery. Sampling on failure distinguishes the
+  // hypotheses that reading cannot: a curve that rises and flatlines at 30 means the streamer stopped
+  // asking (a real bug, and the 20-chunk deficit is permanent); a curve still inching up at the deadline
+  // means it is merely slow and the budget is still wrong. Test-side only — no production code is touched
+  // to obtain a diagnostic.
+  const trajectory = [];
+  const t0 = Date.now();
+  const sampler = setInterval(async () => {
+    try {
+      const n = await page.evaluate(() => window.useGameStore.getState().getGeneratedChunks().size);
+      trajectory.push(`${((Date.now() - t0) / 1000).toFixed(1)}s:${n}`);
+    } catch { /* page closed / navigating — sampling is best-effort by design */ }
+  }, 2000);
+
   await page
     .waitForFunction(
       (t) => window.useGameStore.getState().getGeneratedChunks().size >= t,
@@ -101,6 +122,8 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
       { timeout: recoveryBudget, polling: 500 }
     )
     .catch(() => {}); // fall through so the assertion reports the real numbers
+  clearInterval(sampler);
+  console.log(`[world-rebuild] recovery trajectory (target ${target}): ${trajectory.join(' ')}`);
 
   const after = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
   expect(
