@@ -29,7 +29,29 @@ REFERENCED file, force-push, external send, money/accounts/publishing, a NEW dep
 Kevin. Prefer ARCHIVE (reversible) over DELETE.
 
 ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted or reset):
-`cd /Users/kz/Code/Crafty && git fetch && git status -s && git log --oneline -8`
+`cd /Users/kz/Code/Crafty && git fetch && git status -sb && git log --oneline -8`
+(`-sb`, not `-s`: plain `-s` suppresses the `## main...origin/main [behind N]` line, so you cannot see you are stale.)
+
+**0. STATE YOU CANNOT SEE FROM DISK — compute it BEFORE reading any doc.** Run this and print the raw output:
+   `gh run list --workflow=ci.yml --branch main --limit 6 --json headSha,status,conclusion,createdAt`
+   **CI IS PART OF THE TREE. A push that leaves CI non-`success` is a RED TREE and outranks every queue item.**
+   Green means exactly one thing: `"conclusion":"success"` on the newest COMPLETED run at a sha that is an
+   ancestor of local HEAD. **`cancelled` · `timed_out` · `skipped` · `neutral` · `stale` · `action_required` ·
+   "no run found" · a `gh` auth failure are ALL NOT-GREEN.** Never write a check — or a sentence — of the form
+   "not failure" or "no red X": GitHub reports a job that blows its own `timeout-minutes` as `cancelled`,
+   byte-identical to a run superseded by `cancel-in-progress`, and that single ambiguity IS the whole failure.
+   If the newest completed run is not `success`, read it before anything else: `gh run view --log-failed <id>`.
+   *Scar (2026-07-13 → 07-27):* ci.yml concluded `success` **0 times in its first 88 runs across 14 days**
+   (86 cancelled, 2 failure) — the Playwright job exceeded its 25-min budget on every single run — and no
+   document anywhere told anyone to look. In that window the loop wrote "CI green" into CHANGELOG.md on a day
+   the entire CI history was one failure and a pile of cancellations. **Confirm a `success` with your own eyes
+   before believing any claim that CI is fixed, including this one.**
+
+**THE GENERAL RULE THIS IS AN INSTANCE OF:** a claim about any system outside this working tree — CI, the
+deploy, an npm advisory, a GitHub API, an upstream release — is only true if the command that OBSERVED it ran
+in the same turn you assert it. Not remembered, not inferred from a doc, not carried over from earlier in the
+session. No observation, no claim.
+
 Then READ, IN THIS ORDER — do not skip, do not go doc-mining elsewhere for "what's next":
 1. **`memory/ACTIVE_PLAN.md`** — the 🔭 SUPER-CAMPAIGN block (top) is the live cursor + phase.
 2. **`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`** — THE PRIMARY QUEUE: 215 verified findings, priority-laddered,
@@ -40,7 +62,11 @@ Then READ, IN THIS ORDER — do not skip, do not go doc-mining elsewhere for "wh
 3. **`memory/STATUS.md`** — the SECONDARY queue: gameplay/content/UX registry items the CODE review didn't cover
    (R*/C*/X*/D*/E/F/G). VERIFY each is still open before working it — much of the older A-bis/V1 work is DRAINED.
 4. **`docs/superpowers/LOOP-CHARTER.md`** — the constitution (esp. **§0-B SOTA harness layer** + **§3 gates**).
-5. `docs/superpowers/INDEX.md` — the doc map, only if you need a doc. A stale doc is a LIVE TRAP; never mine old
+5. **`docs/superpowers/DECISIONS.md`** — the decision RECORD (the outbox). `KEVIN-REVIEW-BATCH.md` is the
+   INBOX and is append-only, so it cannot tell you what has been settled — it accumulated ~146 entries with 6
+   marked resolved. Before re-raising anything, or reversing anything, check here. A reversal is a NEW dated
+   entry naming the one it supersedes; never a silent edit.
+6. `docs/superpowers/INDEX.md` — the doc map, only if you need a doc. A stale doc is a LIVE TRAP; never mine old
    plans/audits for "what's next" — the work is in the queues above.
 Re-load the coding domain overlay if this is a fresh post-compact session.
 

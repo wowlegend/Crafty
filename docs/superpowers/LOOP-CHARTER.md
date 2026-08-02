@@ -424,3 +424,36 @@ first-class failure, not a nicety.
   recovers from git + the 4-piece alone. Mid-iteration compaction recovers via step 1-2 (ORIENT/STABILIZE).
 - CLAUDE.md carries a compaction-preserve note (the compactor reads it).
 - If THIS file is missing at orient-time, restore it from git history before any other work.
+- **CI state does not survive in git and is not in this file.** Recover it with the command in the kernel's
+  ORIENT step 0 (`gh run list`), every firing. Nothing on disk can tell you the tree is red on the remote.
+
+## 8. Rule hygiene (added 2026-08-02 — the meta-rule that keeps this document honest)
+
+A 16-agent audit of 996 loop commits found one clean split, and it was **mechanism, not diligence**:
+
+- Every rule checkable from an artifact the loop was already producing — the diff, the commit message, the
+  process table — was obeyed at essentially 100%: zero AI footers, zero `.state/` writes, zero doc deletions,
+  zero skipped tests, one justified eslint-disable, one commit over 25 files, in 999 commits.
+- Every rule requiring a SEPARATE experiment whose only consumer was this document's own prose — mutation-prove,
+  independent evaluation, "CI green", STATUS currency, the priority ladder — was obeyed erratically or never.
+  "MUTATION-PROOF EVERY NEW GATE" is stated three times across two files and had **zero** checkers; it appears
+  in 0 of 479 June code commits.
+
+So the documents had been escalating by REPETITION where they should have been enforcing. Three rules follow,
+and unlike the rules they govern, all three are gradeable by grep:
+
+1. **A rule names its enforcer, or it is deleted.** When adding a rule here, name the deterministic check —
+   a hook, a CI step, a test, a script. If none is possible, say so explicitly and accept that the rule is
+   advisory. An unenforceable rule stated emphatically is worse than no rule: it manufactures the belief that
+   the behaviour is covered.
+2. **A number is computed, or it is deleted.** No hand-typed counts in any governing document. A count appears
+   as the command that regenerates it, or as a dated past-tense scar ("was 88 runs on 2026-07-27"). Every
+   hand-typed number in these docs rotted: `.agent/AGENTS.md` claimed "~14.4k LOC / ~31 files" against an
+   actual 29.5k / 264 — and it was already false by 1.8× on the day it was written.
+3. **A claim about state outside the working tree is emitted by the command that observed it, in the same
+   turn, or it is a fabrication** — regardless of whether it happens to be true. This is the generative cause
+   of both the CI blindness and the "CI green" written into CHANGELOG on a day CI had never once passed.
+
+**Corollary — never re-state a rule instead of enforcing it.** If a rule is being violated, the response is a
+checker or a deletion, never a fourth copy in bolder type. If you catch yourself adding emphasis to an existing
+rule, that is the signal that it needs a mechanism.
