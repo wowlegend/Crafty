@@ -66,15 +66,26 @@ pkill -f "ms-playwright/chromium" 2>/dev/null || true
 pkill -f "ms-playwright/webkit" 2>/dev/null || true
 pkill -f "ms-playwright/firefox" 2>/dev/null || true
 
+# (c) PUPPETEER's Chrome — added 2026-08-02. This was a real coverage hole: the header above promises to
+# sweep "Playwright's own cached browsers", but the VISUAL CAPTURE GATE (scripts/visual/capture.mjs, the
+# most load-sensitive thing in this repo and the one the hygiene rules were written for) drives PUPPETEER,
+# not Playwright. Its Chrome lives under ~/.cache/puppeteer/chrome/<build>/ and matched none of the
+# patterns above, so a capture that died on its error path left Chrome running and every subsequent
+# `✓ 0 playwright still alive` was reporting on the wrong process family.
+# The path is puppeteer's OWN cache — it can never match a user-installed Chrome/Brave/Safari, which is
+# the same safety property the ms-playwright patterns rely on.
+pkill -f "cache/puppeteer/chrome" 2>/dev/null || true
+
 sleep 1
 
 vite=$(pgrep -f "Crafty/frontend/node_modules/.bin/vite" 2>/dev/null | wc -l | tr -d ' ')
 pw=$(pgrep -f "ms-playwright/" 2>/dev/null | wc -l | tr -d ' ')
+pup=$(pgrep -f "cache/puppeteer/chrome" 2>/dev/null | wc -l | tr -d ' ')
 
-printf '✓ test-proc cleanup: %s vite / %s playwright still alive\n' "$vite" "$pw"
+printf '✓ test-proc cleanup: %s vite / %s playwright / %s puppeteer still alive\n' "$vite" "$pw" "$pup"
 printf '  load before:%s  after: %s\n' "$before" "$(uptime | sed 's/.*averages*//')"
 
-if [ "$vite" != "0" ] || [ "$pw" != "0" ]; then
+if [ "$vite" != "0" ] || [ "$pw" != "0" ] || [ "$pup" != "0" ]; then
   printf '  NOTE: survivors are likely an ACTIVE run (a workflow agent, a capture, an e2e in flight).\n'
   printf '        Do not force-kill blindly — you may sabotage a live test.\n'
 fi

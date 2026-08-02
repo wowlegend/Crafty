@@ -704,11 +704,45 @@ export const MinecraftWorld = React.memo(() => {
                     if (requestsThisTick >= 2) break;
                 }
 
-                // Cull chunks far outside render distance
+                // Cull chunks far outside render distance.
+                //
+                // The +2 band is deliberate hysteresis: without it, a player pacing back and forth across a
+                // single chunk boundary would unload and re-generate the same chunk repeatedly.
+                //
+                // But the band is anchored to the CURRENT renderDistance, and that is what broke on a tier
+                // DOWNGRADE. TIERS.renderDistance is 4/3/2, so at `low` this band retains a ±4 box — 81
+                // chunks — which is EXACTLY the high-tier load box. Stepping high->low therefore culled
+                // nothing at all: the streamer stopped asking for new chunks while every mesh and every
+                // Rapier collider already resident stayed resident. On precisely the machine the downgrade
+                // exists to protect, draw calls and physics bodies stayed at high-tier levels. Measured on a
+                // real transition before this fix: 81 chunks at high -> 72 at low, flat for 45s, against a
+                // low-tier box of 25. (tests/e2e/tier-downgrade-reclaim.spec.js)
                 const cullDist = renderDistance + 2;
+                const tierBox = (2 * renderDistance + 1) ** 2;
+
+                // RECLAIM (2026-08-02). A second, THROTTLED pass that only engages when the resident set is
+                // far larger than the tier actually wants — which in practice means "a downgrade just
+                // happened". It trims toward one ring of hysteresis instead of two.
+                //
+                // Deliberately NOT implemented by shrinking cullDist to +1: that would tighten the band
+                // during ordinary movement too and reintroduce the thrash the +2 exists to prevent. This
+                // engages only past a 1.5x overshoot, so normal play (resident ≈ box) never triggers it,
+                // and it is capped per tick so reclaiming ~50 chunks cannot stall a frame — the same
+                // reasoning as the 2-per-tick generate throttle above.
+                const RECLAIM_PER_TICK = 4;
+                const reclaimDist = renderDistance + 1;
+                const overshooting = Object.keys(newChunks).length > tierBox * 1.5;
+                let reclaimedThisTick = 0;
+
                 Object.keys(newChunks).forEach(key => {
                     const c = newChunks[key];
-                    if (Math.abs(c.cx - playerCx) > cullDist || Math.abs(c.cz - playerCz) > cullDist) {
+                    const dx = Math.abs(c.cx - playerCx);
+                    const dz = Math.abs(c.cz - playerCz);
+                    const beyondCull = dx > cullDist || dz > cullDist;
+                    const beyondReclaim =
+                        overshooting && reclaimedThisTick < RECLAIM_PER_TICK && (dx > reclaimDist || dz > reclaimDist);
+                    if (beyondCull || beyondReclaim) {
+                        if (!beyondCull) reclaimedThisTick++;
                         worker.postMessage({ type: 'unload', payload: { cx: c.cx, cz: c.cz } });
                         delete newChunks[key];
                         requestedChunks.delete(key);
