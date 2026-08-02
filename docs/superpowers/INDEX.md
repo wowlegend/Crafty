@@ -93,6 +93,24 @@ plan for "what to do next" — that is what `memory/STATUS.md` is for.
 
 ---
 
+## `docs/archive/2026-Q2/plans/` — 62 archived plan docs (2026-08-02)
+
+Wave-1 of the docs reorg. `docs/superpowers/plans/` had grown to **100** files, which made the live plans
+hard to find among finished ones. The 62 moved here were selected mechanically, not by judgement: a
+reverse-dependency scan over every tracked `.md` outside the plans directory found **zero inbound
+references** to them — nothing live, nothing historical, nothing in the map.
+
+**ARCHIVED, NOT DELETED**, and moved with `git mv`, so history follows the file and any of them can be
+restored with a one-line move. They are still the record of how their milestone was built.
+
+**Deliberately left in place:**
+- **4 cited by a CANONICAL doc** (`loot-glow-PARKED`, `ocean-coast`, `world-purpose-sota`, `biome-flora`).
+  Moving one breaks a live backtick path and trips `doc-currency`, so each may only move in a commit that
+  ALSO fixes the citing doc. That is Wave-2.
+- **34 cited only by `memory/CHANGELOG.md`** (and one spec). CHANGELOG is append-only history: moving the
+  file it cites would leave a historical entry pointing at a path that never existed at the time it was
+  written. Not worth the churn for a directory listing.
+
 ## The rule that keeps this map honest
 
 A milestone completing updates **`memory/STATUS.md` + `memory/CHANGELOG.md` + its own plan-doc banner** — and
