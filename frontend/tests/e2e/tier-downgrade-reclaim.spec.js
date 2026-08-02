@@ -42,8 +42,24 @@ test('a high->low tier downgrade actually releases chunks', async ({ page }) => 
       { timeout: 90000, polling: 1000 }
     )
     .catch(() => {});
+  // The reclaim trims to renderDistance + 1 — one ring of hysteresis — so at `low` (rd 2) the design
+  // floor is a ±3 box: 7x7 = 49 chunks. That is an ABSOLUTE, machine-independent target, and it is what
+  // this test must judge against.
+  //
+  // The first version asserted a RELATIVE drop (< 75% of the pre-downgrade count) and CI caught it: on the
+  // runner the world only reaches 56-60 chunks at `high`, so a 25% fall is arithmetically impossible when
+  // the floor is 49 — the reclaim did exactly the right thing and the test still failed. A relative bar
+  // measured the machine's streaming speed, not the code's behaviour.
+  const LOW_RENDER_DISTANCE = 2;
+  const RECLAIM_BOX = (2 * (LOW_RENDER_DISTANCE + 1) + 1) ** 2; // 49
+
   const atHigh = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
-  expect(atHigh, 'need a meaningfully-streamed world before downgrading').toBeGreaterThan(40);
+  expect(
+    atHigh,
+    `this machine only streamed ${atHigh} chunks at "high", which is not above the ${RECLAIM_BOX}-chunk ` +
+      `reclaim floor — there would be nothing to reclaim, so the test could not distinguish a working ` +
+      `reclaim from a broken one. Not a product failure; the box is too slow to exercise this.`
+  ).toBeGreaterThan(RECLAIM_BOX);
 
   // The exact action PerformanceMonitor.onDecline performs.
   await store(page, () => window.useGameStore.getState().setQualityTier('low'));
@@ -53,25 +69,26 @@ test('a high->low tier downgrade actually releases chunks', async ({ page }) => 
   // happens well inside this window.
   const samples = [];
   const deadline = Date.now() + 45000;
-  const LOW_BOX = 25; // (2*2+1)^2
   while (Date.now() < deadline) {
     const n = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
     samples.push(n);
-    if (n <= LOW_BOX * 1.6) break; // comfortably reclaimed — no need to burn the rest of the window
+    if (n <= RECLAIM_BOX) break; // hit the design floor — no need to burn the rest of the window
     await page.waitForTimeout(2000);
   }
   const atLow = samples[samples.length - 1];
 
-  console.log(`[tier-reclaim] high=${atHigh} -> low=${atLow} (low box ${LOW_BOX}) samples: ${samples.join(',')}`);
+  console.log(`[tier-reclaim] high=${atHigh} -> low=${atLow} (reclaim floor ${RECLAIM_BOX}) samples: ${samples.join(',')}`);
 
-  // The bar is deliberately generous: the +2 hysteresis band is legitimate (it stops thrash when the player
-  // walks back and forth over a chunk boundary), so demanding an exact 25 would be wrong. What must NOT
-  // happen is the count sitting at its high-tier value, having freed nothing at all.
+  // Judge against the design floor, not against a percentage of wherever this machine happened to start.
+  // The reclaim trims beyond renderDistance + 1, so everything left must fit the ±3 box. Demanding the
+  // low tier's own 25-chunk box would be wrong — the +2 hysteresis band is legitimate and stops thrash
+  // when the player paces across a chunk boundary.
   expect(
     atLow,
-    `downgrading high->low freed nothing: ${atHigh} chunks before, ${atLow} after.\n` +
-      `  The low tier asks for a ${LOW_BOX}-chunk box. Retaining the high-tier set means the downgrade's\n` +
-      `  main lever delivers no relief on the machine that triggered it.\n` +
+    `downgrading high->low did not reclaim: ${atHigh} chunks before, ${atLow} after.\n` +
+      `  The reclaim trims beyond renderDistance+1, so at "low" everything left must fit a\n` +
+      `  ${RECLAIM_BOX}-chunk box. Sitting above it means the downgrade's main lever delivered no relief\n` +
+      `  on the very machine that triggered it.\n` +
       `  samples: ${samples.join(',')}`
-  ).toBeLessThan(atHigh * 0.75);
+  ).toBeLessThanOrEqual(RECLAIM_BOX);
 });
