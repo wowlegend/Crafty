@@ -81,12 +81,27 @@ Mutation-proven. Shipped `a79677d`. The 109-string sweep itself is now ordinary 
 
 ### ⑦ This file — **[LOOP] Created, with the protocol at the top.**
 
-### ⑧ `world-rebuild-after-load` in CI — **[LOOP] Kept in CI, budget calibrated from the machine.**
+### ⑧ `world-rebuild-after-load` in CI — **[LOOP] Kept in CI. Calibrated — and the calibration proved me wrong.**
 Unlike ①, this is a correctness test for a critical bug (Load World permanently destroys the terrain), so it
-belongs in CI. Its recovery window was a fixed 60s that encoded one machine; the runner recovered 30 of 50
-chunks and was still climbing when it expired. The window is now derived from that machine's own measured
-initial-stream throughput. **The 80%-recovery assertion is unchanged** — the real bug parks the count at 0
-forever, so it fails on any window. Shipped `8ac8d07`.
+belongs in CI. Its recovery window was a fixed 60s that encoded one machine, and I judged the CI red to be a
+slow-runner false negative: 30 of 50 chunks recovered, presumably still climbing. So the window is now derived
+from the machine's own measured initial-stream throughput, and the 80%-recovery assertion is untouched.
+Shipped `8ac8d07`.
+
+**Then the calibration falsified the hypothesis it was built on, which is the useful part.** With 101s, 134s
+and 150s budgets across three attempts, the count settles at **exactly 30** every time against a 49–50
+baseline. It does not creep. A slow machine gives a slow climb; this is a deterministic **plateau**.
+
+**Revised reading: this is probably a real bug the fast laptop has been hiding.** The original defect
+(`requestedChunks` never drained after a load → nothing re-requested → world gone) was fixed by clearing the
+set in the `load_modifications_done` handler. A reproducible ~19-chunk deficit suggests the recovery is
+*partial*, not slow — plausibly keys whose worker replies were in flight across the clear stay marked
+requested and are never re-requested. On a fast box that window is a chunk or two and rounds away above the
+80% bar; on a slow box it is ~20 and the bar catches it.
+
+**Deliberately not fixed here.** Diagnosing it needs an instrumented run, not a guess at the end of a long
+session, and the bar must not be lowered to clear it. Queued with the evidence attached in `ci.yml` and
+ACTIVE_PLAN. Recorded as a correction to my own earlier "false negative" call rather than quietly amended.
 
 ### ⑨ CI itself — **[LOOP] Sharded, so it can conclude at all.**
 It had concluded `success` **zero times in 88 runs** (86 cancelled, 2 failed) because the e2e job exceeded

@@ -102,6 +102,18 @@
 >   rule hygiene** — a rule names its enforcer or it is deleted; a number is computed or it is deleted; a
 >   claim about outside state is emitted by the command that observed it.
 >
+> **🔴 NEW LEAD — LIKELY A LIVE SAVE/LOAD BUG (2026-08-02, highest priority).** `world-rebuild-after-load`
+> is red in CI and I was WRONG to call it a slow-runner false negative. The calibrated window falsified my
+> own hypothesis: with 101s / 134s / 150s budgets across three attempts the chunk count settles at
+> **exactly 30** against a 49–50 baseline, every time. That is a deterministic PLATEAU, not a slow climb.
+> Working hypothesis: post-load recovery is PARTIAL, not slow — keys whose worker replies were in flight
+> across the `load_modifications_done` clear (`Terrain.jsx:608`) stay marked-requested and are never
+> re-requested, so the neighbourhood permanently comes back ~19 chunks short. On a fast box that window is
+> a chunk or two and rounds away above the 80% bar; on a slow box the bar catches it. **If that is right,
+> a fast laptop has been hiding a live save/load defect and the gate is doing its job.** Needs an
+> instrumented run (log the residual `requestedChunks` after a load), NOT a guess. **Do not lower the 80%
+> bar to clear this.**
+>
 > **▶ NEXT UNIT (deferred by decision, not forgotten): the `ai.worker` inline mirrors.** Premise is false
 > (terrain.worker imports 10 modules) and the sync gates are drift-blind (21,655/200,000 mismatches stayed
 > green). Deferred because it is the only item that changes MOB BEHAVIOUR at runtime — Rule 3 wants a lived
