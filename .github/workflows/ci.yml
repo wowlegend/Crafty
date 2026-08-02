@@ -56,6 +56,13 @@ jobs:
       - name: ESLint (includes the crash-class gate — no-undef / react/jsx-no-undef)
         run: npm run lint
 
+      # 85% of tests/gates/ asserts against source TEXT rather than executing the module, and a whole-file
+      # substring match is satisfied by a COMMENT naming the symbol — so the gate stays green when the code
+      # it guards is deleted. This runs every toMatch pattern against the target file twice, once with all
+      # comment ranges blanked, and fails any assertion that only survives the raw copy.
+      - name: Gate shape (no assertion satisfied by a comment)
+        run: node scripts/ci/gate-shape.mjs
+
       - name: Unit + static gates (vitest)
         run: npm run test:unit
 

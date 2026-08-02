@@ -85,6 +85,7 @@ for SHA in $TARGETS; do
 
   printf '\n▶ doc-currency\n';            node scripts/ci/doc-currency.mjs
   printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
+  printf '\n▶ gate-shape (no assertion may be satisfied by a comment)\n'; node scripts/ci/gate-shape.mjs
   printf '\n▶ unit + static gates\n';     npm run --silent test:unit
   printf '\n▶ build\n';                   npm run --silent build
   printf '\n▶ bundle byte budget\n';      node scripts/ci/bundle-budget.mjs
