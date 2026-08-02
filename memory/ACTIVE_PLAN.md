@@ -136,7 +136,15 @@
 > heapGrowth 0.** The eslint crash-class gate caught an undefined local mid-refactor, which is exactly
 > what it was built for.
 >
-> **▶ 2026-08-02 — i18n sweep STARTED (`b864703`): 109 → 74, but the two halves are DIFFERENT.**
+> **✅ 2026-08-02 — DOCS REORG WAVE-1 DONE (`56dd545`).** `docs/superpowers/plans/` 100 → 38; 62 archived to
+> `docs/archive/2026-Q2/plans/` via `git mv` (all 62 tracked as renames, history follows the file).
+> Selection was MECHANICAL — a reverse-dependency scan over every tracked `.md` outside the plans dir:
+> **62 zero inbound refs → archived · 34 cited only by CHANGELOG → left (moving a file history cites
+> falsifies the record) · 4 cited by a CANONICAL doc → left, that IS Wave-2** (loot-glow-PARKED,
+> ocean-coast, world-purpose-sota, biome-flora — each may only move in a commit that also drift-fixes the
+> citing doc, else doc-currency trips). INDEX.md documents what moved and why the other 38 stayed.
+>
+> **▶ 2026-08-02 — i18n sweep: 109 → 62 (`b864703`, `11d93b1`). The halves are DIFFERENT.**
 > `109→84` is METHODOLOGY, not progress — the detector had two defects that inflated the ledger:
 > comparison operators produced fake "text nodes" (`if (diff > 0) return <span` was reported as the string
 > `0) return`), and DEV-only `DebugOverlay` (12 hits, `import.meta.env.DEV`, tree-shaken out) was counted as
