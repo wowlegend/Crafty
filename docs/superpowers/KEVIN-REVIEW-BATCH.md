@@ -1,5 +1,33 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🛑 2026-08-02 — BLOCKER, needs your machine: the VISUAL CAPTURE GATE is down.** Not a flake and not
+> something I can fix from here, so flagging rather than grinding on it.
+>
+> `npm run visual:capture` dies with `ProtocolError: Runtime.callFunctionOn timed out` **before capturing a
+> single frame**. This is the repo's ONLY render-regression net — 31 baselined states — so while it is down,
+> any render change (including the `Terrain.jsx` chunk-reclaim fix I shipped today, `842c423`) has no
+> pixel-level verification behind it.
+>
+> **I isolated it rather than assuming, and it is NOT a code regression:**
+> - reverted my `Terrain.jsx` change, same machine → **same failure**
+> - checked out a worktree at `190aac9`, *before* today's ai.worker refactor → **same failure**
+> - ran at load 2.8, 5.7, 24 and 31 → **same failure at every level**, so it is not load-sensitivity
+> - leaked processes: 0 · port 4178: free · Chrome 147.0.7727.57 present, exactly what puppeteer expects
+> - **`190aac9` passed 32/32 at 10:41 today and fails now** — same commit, same box, three hours apart
+>
+> So something in the machine/browser state changed mid-session. The obvious suspects are all eliminated,
+> which is why it needs you: a reboot, or a Chrome-for-Testing re-fetch
+> (`npx puppeteer browsers install chrome`), is the natural next move and neither is mine to do unattended.
+>
+> **What still works and did verify that commit:** unit (2118), lint across 3 trees, gate-shape, knip,
+> build, the new tier-transition e2e, and the lived perf-siege probe. CI is green. It is specifically the
+> pixel gate that is blind.
+>
+> *Fixed in passing:* `kill-test-procs.sh` never swept puppeteer's Chrome — it matched only
+> `ms-playwright/` and the repo's vite, while the capture gate drives puppeteer. So every
+> `✓ 0 playwright still alive` was reporting on the wrong process family, and a capture that died on its
+> error path left Chrome running unnoticed. Now swept and counted separately.
+
 > **🚨 2026-07-27 — LOOP-ERA AUDIT: 8 items, 5 need a decision from you.** A 16-agent adversarial audit
 > re-derived every claim of the 996-commit loop era against live HEAD. Verdict in one line: *mechanically
 > excellent, epistemically unreliable — the loop is trustworthy about what it did, and not trustworthy about

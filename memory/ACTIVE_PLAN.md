@@ -136,6 +136,23 @@
 > heapGrowth 0.** The eslint crash-class gate caught an undefined local mid-refactor, which is exactly
 > what it was built for.
 >
+> **✅ 2026-08-02 — cull-hysteresis RESOLVED (`842c423`), RED-first on a real tier transition.**
+> Measured, not inferred: before `high=81 → low=72` flat for 45s (freed 11% against a box of 25); after
+> `high=81 → low=42` (`81→49→45→42`). Fix is a THROTTLED reclaim past a 1.5× overshoot, capped 4/tick —
+> deliberately not a smaller `cullDist`, which would tighten the band during ordinary movement and
+> reintroduce the thrash the +2 exists to prevent. New e2e `tier-downgrade-reclaim.spec.js` drives the real
+> transition through the same store action PerformanceMonitor uses.
+>
+> **🛑 BLOCKER — THE VISUAL CAPTURE GATE IS DOWN (Kevin-facing, routed).** `ProtocolError:
+> Runtime.callFunctionOn timed out` before a single frame. **Isolated, NOT a code regression:** reverting
+> Terrain → same failure; worktree at `190aac9` (pre-refactor) → same failure; load 2.8/5.7/24/31 → same
+> failure; 0 leaked procs; port free; Chrome 147 present as puppeteer expects. **`190aac9` passed 32/32 at
+> 10:41 today and fails at 13:30.** Machine state changed mid-session. Needs a reboot or
+> `npx puppeteer browsers install chrome` — neither is an unattended action. **While it is down, no render
+> change has pixel verification.** Fixed in passing: `kill-test-procs.sh` never swept puppeteer's Chrome
+> (only `ms-playwright/`), so every "0 playwright alive" was reporting on the wrong process family.
+>
+> — superseded: the cull-hysteresis lead as originally queued —
 > **▶ NEXT UNIT: the cull-hysteresis lead** (a tier downgrade frees nothing — `cullDist = renderDistance + 2`
 > retains a 9×9 box at every tier, so `high→low` stops loading but never unloads, on exactly the machine
 > the downgrade exists to protect). Verify on a real tier transition first; the hysteresis is probably
