@@ -5,8 +5,31 @@
 # push shipped straight to the live demo and nothing stopped it. CI (.github/workflows/ci.yml) is the
 # backstop; this hook is the fast local one, so you find out in 40s instead of after the deploy.
 #
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# REWRITTEN 2026-08-02 — it now certifies THE COMMITS BEING PUSHED, not the working tree.
+#
+# The original ran `cd frontend && npm run lint / test:unit / build` against whatever happened to be on
+# disk. Git tells a pre-push hook what is actually being pushed, on STDIN, and the old hook never read it.
+# So a dirty working tree could certify a broken commit: the gates saw the fixed files while the pushed
+# commit still contained the break.
+#
+# That is not hypothetical. On 2026-07-21 commit a72bffd removed an import that `input-abstraction-gates`
+# requires. It pushed GREEN, because the fix was already sitting uncommitted in the tree; the break landed
+# on main and was cleaned up afterwards in b443141. The hook reported success on a commit it never tested.
+#
+# Fix: check the pushed sha out into a detached worktree and run the gates THERE. node_modules is symlinked
+# from the main checkout when the lockfile is identical (the common case, and what makes this ~40s instead
+# of minutes); when the push changes the lockfile, the worktree installs its own so the gates run against
+# the dependency set the push actually declares.
+#
+# SECOND HOLE, also closed: the old hook skipped lint, tests, build and the bundle budget entirely for any
+# push touching no `frontend/` path. The whole gate set runs in well under a minute, so the "optimisation"
+# bought nothing and left a docs-only push able to move a symlinked CLAUDE.md, a workflow file, or a hook
+# with zero verification. There is no skip path any more.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+#
 # Runs the FAST, deterministic gates only. Deliberately NOT here:
-#   * the 24-state visual gate (renders the real scene under swiftshader; load-sensitive, would flake)
+#   * the 31-state visual gate (renders the real scene under swiftshader; load-sensitive, would flake)
 #   * e2e (browser boot ~60s)
 # Run those before a milestone: `npm run test:visual` / `npm run test:e2e`.
 #
@@ -16,33 +39,61 @@
 
 set -e
 
+# Hooks run with GIT_DIR (and friends) pointing at the invoking repo; `git worktree add` misbehaves if it
+# inherits them. Clear them so the worktree commands resolve normally.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 APP="$REPO_ROOT/frontend"
+ZERO="0000000000000000000000000000000000000000"
 
-# Docs-only pushes don't need the app gates — but they DO need doc-currency (a stale doc is a live trap).
-CHANGED=$(git diff --name-only "@{push}" HEAD 2>/dev/null || git diff --name-only origin/main HEAD 2>/dev/null || echo "")
-APP_TOUCHED=$(echo "$CHANGED" | grep -c '^frontend/' || true)
+# git feeds pre-push one line per ref: <local_ref> <local_sha> <remote_ref> <remote_sha>
+TARGETS=""
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to certify
+  [ -z "$local_sha" ] && continue
+  TARGETS="$TARGETS $local_sha"
+done
 
-cd "$APP"
-
-printf '\n▶ pre-push: doc-currency\n'
-node scripts/ci/doc-currency.mjs
-
-if [ "$APP_TOUCHED" -eq 0 ] && [ -n "$CHANGED" ]; then
-  printf '\n✓ pre-push: docs-only push — skipping app gates\n\n'
+if [ -z "$TARGETS" ]; then
+  printf '\n✓ pre-push: nothing to certify (deletion, or no refs on stdin)\n\n'
   exit 0
 fi
 
-printf '\n▶ pre-push: eslint (incl. the crash-class gate)\n'
-npm run --silent lint
+for SHA in $TARGETS; do
+  SHORT=$(git rev-parse --short "$SHA")
+  printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"
 
-printf '\n▶ pre-push: unit + static gates\n'
-npm run --silent test:unit
+  WT="$(mktemp -d "${TMPDIR:-/tmp}/crafty-prepush-XXXXXX")"
+  # Always tear the worktree down, on success, failure or interrupt.
+  trap 'cd "$REPO_ROOT" 2>/dev/null; git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"' EXIT INT TERM
 
-printf '\n▶ pre-push: build\n'
-npm run --silent build
+  git worktree add --detach --quiet "$WT" "$SHA"
 
-printf '\n▶ pre-push: bundle byte budget\n'
-node scripts/ci/bundle-budget.mjs
+  # node_modules: symlink when the pushed lockfile matches the installed one, else install in-worktree.
+  LOCK_TMP="$WT/.pushed-lock.json"
+  git show "$SHA:frontend/package-lock.json" > "$LOCK_TMP" 2>/dev/null || : > "$LOCK_TMP"
+  if [ -d "$APP/node_modules" ] && cmp -s "$LOCK_TMP" "$APP/package-lock.json"; then
+    ln -s "$APP/node_modules" "$WT/frontend/node_modules"
+  else
+    printf '  … lockfile differs from the installed tree — installing inside the worktree\n'
+    (cd "$WT/frontend" && npm install --no-audit --no-fund --silent)
+  fi
+  rm -f "$LOCK_TMP"
 
-printf '\n✓ pre-push: all fast gates green — pushing\n\n'
+  cd "$WT/frontend"
+
+  printf '\n▶ doc-currency\n';            node scripts/ci/doc-currency.mjs
+  printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
+  printf '\n▶ unit + static gates\n';     npm run --silent test:unit
+  printf '\n▶ build\n';                   npm run --silent build
+  printf '\n▶ bundle byte budget\n';      node scripts/ci/bundle-budget.mjs
+
+  cd "$REPO_ROOT"
+  git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"
+  trap - EXIT INT TERM
+
+  printf '\n✓ pre-push: %s certified green\n' "$SHORT"
+done
+
+printf '\n✓ pre-push: all pushed commits certified — pushing\n\n'
