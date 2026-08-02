@@ -52,9 +52,9 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Player inventory panel */}
                         <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
-                            <h3 className="flex items-center gap-2 font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="backpack" size={16} className="flex-none" /> Player Backpack Inventory</h3>
+                            <h3 className="flex items-center gap-2 font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="backpack" size={16} className="flex-none" /> {t('chest.backpackTitle')}</h3>
                             {availableItems.length === 0 ? (
-                                <div className="py-8 text-center text-xs text-text-muted">Your backpack is completely empty.</div>
+                                <div className="py-8 text-center text-xs text-text-muted">{t('chest.backpackEmpty')}</div>
                             ) : (
                                 <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
                                     {availableItems.map(([item, qty]) => (
@@ -69,14 +69,14 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-text-muted text-center mt-2">Click on items to transfer them to the chest.</p>
+                            <p className="text-[10px] text-text-muted text-center mt-2">{t('chest.toChest')}</p>
                         </Panel>
 
                         {/* Chest inventory panel */}
                         <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
-                            <h3 className="flex items-center gap-2 font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="chest-open" size={16} className="flex-none" /> Storage Vault Inventory</h3>
+                            <h3 className="flex items-center gap-2 font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="chest-open" size={16} className="flex-none" /> {t('chest.vaultTitle')}</h3>
                             {chestItems.length === 0 ? (
-                                <div className="py-8 text-center text-xs text-text-muted">This chest container is currently empty.</div>
+                                <div className="py-8 text-center text-xs text-text-muted">{t('chest.vaultEmpty')}</div>
                             ) : (
                                 <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1">
                                     {chestItems.map(([item, qty]) => (
@@ -91,7 +91,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-text-muted text-center mt-2">Click on items to retrieve them to your backpack.</p>
+                            <p className="text-[10px] text-text-muted text-center mt-2">{t('chest.toBackpack')}</p>
                         </Panel>
                     </div>
                 </Panel>

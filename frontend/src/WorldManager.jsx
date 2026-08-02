@@ -9,10 +9,12 @@ import {
   Save
 } from 'lucide-react';
 import { useGameStore } from './store/useGameStore';
+import { useT } from './i18n/i18n.js';
 import { buildSaveData } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
+  const t = useT();
   const [worlds, setWorlds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('my-worlds');
@@ -147,7 +149,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">World Manager</h2>
+          <h2 className="text-2xl font-bold text-white">{t('world.manager')}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl"
@@ -206,7 +208,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
         {/* World List */}
         <div className="space-y-3">
           {loading ? (
-            <div className="text-center text-gray-400 py-8">Loading worlds...</div>
+            <div className="text-center text-gray-400 py-8">{t('world.loading')}</div>
           ) : (
             <>
               {activeTab === 'my-worlds' && (
@@ -266,17 +268,17 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
                 exit={{ scale: 0.9 }}
                 className="bg-gray-700 rounded-lg p-6 max-w-md w-full mx-4"
               >
-                <h3 className="text-xl font-bold text-white mb-4">Create New World</h3>
+                <h3 className="text-xl font-bold text-white mb-4">{t('world.createNew')}</h3>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-white font-medium mb-2">World Name</label>
+                    <label className="block text-white font-medium mb-2">{t('world.name')}</label>
                     <input
                       type="text"
                       value={newWorldName}
                       onChange={(e) => setNewWorldName(e.target.value)}
                       className="w-full bg-gray-600 text-white p-2 rounded"
-                      placeholder="Enter world name..."
+                      placeholder={t('world.namePlaceholder')}
                     />
                   </div>
 
@@ -288,7 +290,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
                         onChange={(e) => setNewWorldPublic(e.target.checked)}
                         className="rounded"
                       />
-                      <span className="text-white">Make world public</span>
+                      <span className="text-white">{t('world.makePublic')}</span>
                     </label>
                   </div>
                 </div>
