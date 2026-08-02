@@ -7,6 +7,5 @@
     "scripts/**/*.{js,mjs}"
   ],
   "project": ["src/**/*.{js,jsx}"],
-  "ignoreExportsUsedInFile": true,
-  "ignoreDependencies": ["@dimforge/rapier3d-compat"]
+  "ignoreExportsUsedInFile": true
 }

@@ -39,6 +39,7 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@dimforge/rapier3d-compat": "0.19.2",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
