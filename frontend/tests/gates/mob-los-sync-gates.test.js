@@ -4,29 +4,40 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hasLineOfSight } from '../../src/game/mobLineOfSight.js';
 
-// ai.worker.js is a CLASSIC Worker (new Worker(url), no {type:'module'}), so it CANNOT import — its
-// hasLineOfSight is an inline mirror of game/mobLineOfSight.js. Comparing source is the correct tool
-// here (same structural-gate class as archer-kite-steer-gates). This gate (a) pins the behavioral
-// reference via the imported pure module and (b) pins the worker's inline mirror to CLAMP its endpoints
-// onto the 9x9 window — the fix for the cover-seek OOB read (ai.worker.js:202 passed an unclamped
-// player cell to hasLineOfSight, so an off-grid index read undefined -> NaN -> a false "clear" that
-// left cover unfindable at range).
+// REWRITTEN 2026-08-02. ai.worker.js used to hand-mirror game/mobLineOfSight.js, justified by a comment
+// claiming a classic Worker cannot import. It was false — src/world/terrain.worker.js imports ten modules,
+// and the built ai.worker bundle now contains zero bare imports because Vite inlines them. The worker
+// imports the module directly, so there is no second copy left to pin.
+//
+// The old sync half of this gate could not have detected drift anyway: it asserted that certain regexes
+// were PRESENT in each file, never that the two implementations AGREE. A differential fuzz against a
+// deliberately-drifted copy produced 21,655 mismatches in 200,000 randomized grids with all four
+// assertions green.
+//
+// What remains: the behavioural test on the pure module (the real guard), plus an assertion that the
+// worker still IMPORTS it and has not re-grown a local copy. That second one is anchored to the import
+// SPECIFIER, so scripts/ci/gate-shape.mjs can confirm a comment alone cannot satisfy it.
 const HERE = dirname(fileURLToPath(import.meta.url));
 const worker = readFileSync(resolve(HERE, '../../src/workers/ai.worker.js'), 'utf8');
-const between = (s, a, b) => { const i = s.indexOf(a); const j = s.indexOf(b, i + 1); return i >= 0 && j > i ? s.slice(i, j) : ''; };
 
-describe('mob LOS — off-grid endpoints are clamped (worker inline-mirror sync)', () => {
+describe('mob LOS — off-grid endpoints are clamped', () => {
   it('the pure reference clamps an off-grid endpoint so a wall still blocks (no false clear)', () => {
     const g = new Array(81).fill(0); g[4 + 4 * 9] = 5; // tall column at (4,4)
     expect(hasLineOfSight(g, 0, 0, 15, 15)).toBe(false); // (15,15) off-grid -> clamped to (8,8)
   });
 
-  it("the worker's inline hasLineOfSight clamps its endpoints onto the 9x9 grid", () => {
-    const region = between(worker, 'function hasLineOfSight', 'self.onmessage');
-    expect(region, 'hasLineOfSight region not found — re-anchor this gate').not.toBe('');
-    expect(region).toMatch(/clampCell/);
-    // the sampled heights must come from the CLAMPED endpoints, not the raw args (the bug read x2/z2 directly)
-    expect(region).toMatch(/heightGrid\[bx \+ bz \* cols\]/);
-    expect(region).not.toMatch(/heightGrid\[x2 \+ z2 \* cols\]/);
+  it('a wall between two on-grid endpoints blocks, and open ground does not', () => {
+    const wall = new Array(81).fill(0); wall[4 + 4 * 9] = 5;
+    expect(hasLineOfSight(wall, 0, 4, 8, 4)).toBe(false); // straight through the tall column
+    expect(hasLineOfSight(new Array(81).fill(0), 0, 4, 8, 4)).toBe(true); // flat ground is clear
+  });
+
+  it('the worker IMPORTS the shared module and keeps no local copy of it', () => {
+    expect(worker, 'ai.worker must import hasLineOfSight from game/mobLineOfSight.js').toMatch(
+      /import\s*\{[^}]*\bhasLineOfSight\b[^}]*\}\s*from\s*['"][^'"]*mobLineOfSight\.js['"]/
+    );
+    expect(worker, 'a local hasLineOfSight definition means the mirror has grown back').not.toMatch(
+      /function\s+hasLineOfSight\s*\(/
+    );
   });
 });

@@ -1,4 +1,23 @@
 // Web Worker for AI Pathfinding and Aggro Logic
+//
+// THIS WORKER IMPORTS. It used to hand-maintain inline COPIES of three pure modules, each justified by a
+// comment saying "this classic Worker cannot import", with regex "sync gates" pinning the copies to the
+// originals. The premise was false: src/world/terrain.worker.js imports ten modules and has since the
+// world spec-ladder. The only real difference was the construction site — Terrain used Vite's `?worker`
+// import while AIWorkerSystem used `new Worker(new URL(...))`. Vite bundles the worker either way.
+//
+// Worse than unnecessary, the mirrors were unguarded: the sync gates asserted that certain regexes were
+// PRESENT in each file, never that the two implementations AGREE. A differential fuzz against a
+// deliberately-drifted copy produced 21,655 behavioural mismatches out of 200,000 randomized grids and
+// all four gate assertions stayed green. A mirror whose guard cannot see drift is strictly worse than no
+// mirror: it carries the maintenance cost AND the false assurance.
+//
+// So the copies are gone and the modules are imported directly. The pure modules keep their behavioural
+// tests; the gates now assert the IMPORT (a syntactic anchor gate-shape.mjs can verify is not merely
+// satisfied by a comment) rather than pinning duplicated source text.
+import { hasLineOfSight } from '../game/mobLineOfSight.js';
+import { attackPhase } from '../game/attackTelegraph.js';
+import { steerGoalCell } from '../game/mobSteering.js';
 
 // A* Voxel Pathfinding Solver on a 9x9 Local Grid
 // startX, startZ are the local starting grid coords (typically 4, 4)
@@ -92,37 +111,7 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
 }
 
 // 2D Line-Of-Sight height check on a local 9x9 height grid
-// x1, z1 are starting grid coords (typically 4, 4)
-// x2, z2 are destination grid coords
-// hasLineOfSight — inline mirror of game/mobLineOfSight.js (this classic Worker cannot import; the
-// mob-los-sync gate keeps the two copies in step). Endpoints are clamped onto the 9x9 window so a
-// far-off player/target cell cannot read off-grid: an out-of-bounds index reads undefined, the height
-// comparison goes NaN, and LOS falsely reports "clear" — which makes cover unfindable at range.
-function hasLineOfSight(heightGrid, x1, z1, x2, z2) {
-  const cols = 9;
-  const clampCell = (v) => (v < 0 ? 0 : v > 8 ? 8 : v);
-  const ax = clampCell(x1), az = clampCell(z1), bx = clampCell(x2), bz = clampCell(z2);
-  const startH = heightGrid[ax + az * cols];
-  const endH = heightGrid[bx + bz * cols];
-
-  // Trace cells from (ax, az) to (bx, bz)
-  const steps = Math.max(Math.abs(bx - ax), Math.abs(bz - az));
-  if (steps === 0) return true;
-
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    const px = Math.round(ax + (bx - ax) * t);
-    const pz = Math.round(az + (bz - az) * t);
-    const idx = px + pz * cols;
-    const cellH = heightGrid[idx];
-
-    // An intermediate column is blocking if it rises significantly higher than both ends
-    if (cellH > Math.max(startH, endH) + 1.2) {
-      return false; // Obstruction found!
-    }
-  }
-  return true;
-}
+// hasLineOfSight now IMPORTS game/mobLineOfSight.js (see the header) instead of mirroring it.
 
 self.onmessage = function(e) {
   if (e.data.type === 'TICK') {
@@ -278,39 +267,28 @@ self.onmessage = function(e) {
           }
         }
 
-        // M2 #4 attack telegraph (inline mirror of the unit-tested game/attackTelegraph.js -- this is a
-        // CLASSIC Worker so it can't import; attack-telegraph-gates.test.js pins the two in sync). Defer
-        // the strike behind a ~380ms windup; re-evaluate intent at strike time so dodging out of range
-        // during the windup whiffs the attack (the readability + fairness win).
-        const WINDUP_MS = 380; // Kevin FEEL #50 tunable; readable 300-500ms reaction band
-        if (windupUntil > 0) {
-          if (now >= windupUntil) {
-            windupUntil = 0;
-            if (pendingAttack) { attacks.push(pendingAttack); lastAttackTime = now; } // else: dodged -> whiff
-          }
-        } else if (pendingAttack) {
-          windupUntil = now + WINDUP_MS; // begin the telegraph; the strike lands when it elapses
-        }
+        // M2 #4 attack telegraph — now the IMPORTED game/attackTelegraph.js state machine, not a copy of
+        // it. Defers the strike behind a ~380ms windup and re-evaluates intent at strike time, so dodging
+        // out of range during the windup whiffs the attack (the readability + fairness win).
+        const phase = attackPhase(now, windupUntil, !!pendingAttack);
+        windupUntil = phase.windupUntil;
+        if (phase.action === 'strike') { attacks.push(pendingAttack); lastAttackTime = now; }
+        // 'cancel' = dodged during the windup -> whiff. 'charge'/'windup'/'idle' = nothing to emit.
         
         // --- Step 3: Voxel Height-Aware 3D A* Path Steering ---
         // If we have a local height grid from the main thread, steer around blocks
         if (isMoving && !isCoverSeeking && heightGrid && heightGrid.length === 81) {
-          const mobGridX = Math.round(x);
-          const mobGridZ = Math.round(z);
-          const startXGrid = mobGridX - 4;
-          const startZGrid = mobGridZ - 4;
-          
-          // The TACTICAL target's relative coords in our mob-centered 9x9 grid. This MUST resolve from the
-          // (targetX,targetZ) the mob decided above -- NOT the player -- otherwise Step-3 overrides a
-          // retreating archer's kite target and re-steers it back into melee (the archer never kites). Inline
-          // mirror of game/mobSteering.js steerGoalCell (classic worker can't import; archer-kite-steer-gates
-          // pins them in sync). Chasers are unaffected: their targetX/Z already equal playerX/Z.
-          const relTargetX = Math.round(targetX - startXGrid);
-          const relTargetZ = Math.round(targetZ - startZGrid);
+          // The TACTICAL target's cell in the mob-centered 9x9 grid, via the IMPORTED
+          // game/mobSteering.js. It MUST resolve from the (targetX,targetZ) the mob decided above — NOT
+          // the player — or Step-3 overrides a retreating archer's kite target and re-steers it back into
+          // melee, and the archer never kites. Chasers are unaffected: their targetX/Z equal playerX/Z.
+          const { gx: targetGridX, gz: targetGridZ } = steerGoalCell(targetX, targetZ, x, z);
 
-          // Clamp target grid coordinate to ensure A* target sits on grid bounds
-          const targetGridX = Math.max(0, Math.min(8, relTargetX));
-          const targetGridZ = Math.max(0, Math.min(8, relTargetZ));
+          // The grid origin, needed below to map the chosen path node back into world space. Kept in
+          // step with steerGoalCell's own framing (`Math.round(mobX) - 4`) — it is the same origin, and
+          // if the two ever disagree the mob steers toward a cell offset from the one A* solved for.
+          const startXGrid = Math.round(x) - 4;
+          const startZGrid = Math.round(z) - 4;
           
           // Run 3D A* from center cell (4, 4) to target grid cell
           const path = findAStarPath(heightGrid, 4, 4, targetGridX, targetGridZ);

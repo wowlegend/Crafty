@@ -21,13 +21,20 @@ describe('archer kite — Step-3 steers toward the tactical target (worker inlin
     expect(steerGoalCell(8, 10, 10, 10).gx).toBeLessThan(4);
   });
 
-  it("the worker's Step-3 resolves the A* goal from the tactical target, NOT the player", () => {
+  // REWRITTEN 2026-08-02: the worker no longer mirrors steerGoalCell, it imports it (the "classic Worker
+  // cannot import" premise was false; the built bundle has zero bare imports because Vite inlines them).
+  // So there is no second copy to pin — assert the import and that Step-3 CALLS it with the tactical
+  // target rather than the player. Both anchors are syntactic, which gate-shape.mjs verifies cannot be
+  // satisfied by a comment alone.
+  it('the worker IMPORTS steerGoalCell and calls it with the TACTICAL target, not the player', () => {
+    expect(worker, 'ai.worker must import steerGoalCell from game/mobSteering.js').toMatch(
+      /import\s*\{[^}]*\bsteerGoalCell\b[^}]*\}\s*from\s*['"][^'"]*mobSteering\.js['"]/
+    );
     const step3 = between(worker, 'Step 3: Voxel Height-Aware', 'if (path && path.length');
     expect(step3, 'Step-3 region not found — re-anchor this gate').not.toBe('');
-    expect(step3).toMatch(/Math\.round\(targetX - startXGrid\)/); // grid goal from the tactical target
-    expect(step3).toMatch(/Math\.round\(targetZ - startZGrid\)/);
-    // and NOT from the player (the bug): resolving the goal from playerX/playerZ re-steers a kiter into melee.
-    expect(step3).not.toMatch(/Math\.round\(playerX - startXGrid\)/);
-    expect(step3).not.toMatch(/Math\.round\(playerZ - startZGrid\)/);
+    // the goal comes from (targetX, targetZ) — the mob's tactical decision, which points AWAY for a
+    // retreating archer — and never from (playerX, playerZ), which is the kite regression.
+    expect(step3).toMatch(/steerGoalCell\(\s*targetX\s*,\s*targetZ\s*,/);
+    expect(step3).not.toMatch(/steerGoalCell\(\s*playerX/);
   });
 });

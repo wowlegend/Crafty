@@ -5,6 +5,12 @@ import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { routinePosition } from '../game/npcRoutine.js';
 import { spellSlowFactor } from '../game/freeze.js';
+// `?worker` — Vite's worker import, the SAME construction src/world/Terrain.jsx has always used for
+// terrain.worker.js (which imports ten modules). This replaced `new Worker(new URL(...))`, whose only
+// practical consequence here was that ai.worker.js was hand-maintaining inline COPIES of three pure
+// modules because a comment claimed a "classic Worker cannot import". Vite bundles the worker either
+// way; the copies were never necessary. See ai.worker.js's header.
+import AIWorker from '../workers/ai.worker.js?worker';
 
 // AIWorkerSystem -- bridges mob AI to a Web Worker at 15Hz (movement/attacks/aggro), processes
 // knockback main-thread, and runs the ambient hub-NPC routine. Extracted VERBATIM from
@@ -24,7 +30,7 @@ export const AIWorkerSystem = () => {
   const workerRef = useRef();
 
   useEffect(() => {
-    workerRef.current = new Worker(new URL('../workers/ai.worker.js', import.meta.url));
+    workerRef.current = new AIWorker();
 
     workerRef.current.onmessage = (e) => {
       const { type, updates, attacks } = e.data;

@@ -16,12 +16,22 @@ describe('attack-telegraph gates (M2 #4)', () => {
   const worker = read('workers/ai.worker.js');
   const npc = read('SimplifiedNPCSystem.jsx') + read('systems/AIWorkerSystem.jsx'); // A1.4: worker tick moved to AIWorkerSystem
 
-  it('the worker mirror uses the same WINDUP_MS as the canonical pure module', () => {
-    // sanity: the pure machine is the source of truth and is sane
+  // REWRITTEN 2026-08-02: the worker no longer inlines a WINDUP_MS constant or a copy of the state
+  // machine — it imports attackPhase, so the constant is shared by construction and there is nothing left
+  // to keep "in sync by hand". Assert the import (a syntactic anchor gate-shape.mjs can verify) and that
+  // the pure module's own value is still in the readable reaction band.
+  it('the worker IMPORTS the shared telegraph machine, and WINDUP_MS is in the readable band', () => {
     expect(WINDUP_MS).toBeGreaterThanOrEqual(300);
     expect(WINDUP_MS).toBeLessThanOrEqual(500);
-    // the inlined worker constant matches it (kept in sync by hand -> this gate)
-    expect(worker).toMatch(new RegExp(`const WINDUP_MS = ${WINDUP_MS}\\b`));
+    expect(worker, 'ai.worker must import attackPhase from game/attackTelegraph.js').toMatch(
+      /import\s*\{[^}]*\battackPhase\b[^}]*\}\s*from\s*['"][^'"]*attackTelegraph\.js['"]/
+    );
+    expect(worker, 'a local WINDUP_MS means the constant has been duplicated again').not.toMatch(
+      /const\s+WINDUP_MS\s*=/
+    );
+    // and the strike is driven by the imported machine's verdict, not a hand-rolled comparison
+    expect(worker).toMatch(/attackPhase\(\s*now\s*,\s*windupUntil\s*,/);
+    expect(worker).toMatch(/action === 'strike'/);
   });
 
   it('the worker DEFERS the strike behind a windup (no instant push at the old attack sites)', () => {
@@ -38,11 +48,22 @@ describe('attack-telegraph gates (M2 #4)', () => {
     expect(worker.includes("attacks.push({ id, type: 'leap'")).toBe(false);
   });
 
-  it('the windup gate strikes only when it elapses, and whiffs if intent dropped (dodgeable)', () => {
-    // begin-windup transition
-    expect(worker).toMatch(/windupUntil = now \+ WINDUP_MS/);
-    // strike only on elapse, gated on the pending intent still holding
-    expect(/now >= windupUntil[\s\S]{0,140}if \(pendingAttack\) \{ attacks\.push\(pendingAttack\); lastAttackTime = now;/.test(worker)).toBe(true);
+  it('the worker delegates the windup decision to the pure machine and acts only on its verdict', () => {
+    // REWRITTEN 2026-08-02. This used to pin the worker's INLINE copy of the state machine — the
+    // begin-windup assignment and the strike-on-elapse branch — because the worker mirrored the module.
+    // It imports it now, so the transitions live in ONE place and are behaviourally tested there
+    // (see 'the pure machine itself is dodgeable' below, and attackTelegraph's own test file).
+    // What is worth pinning at this seam is the WIRING: intent in, verdict out, and the worker acting
+    // on 'strike' alone — pushing on any other action would make the telegraph undodgeable again.
+    expect(worker, 'intent must be the pendingAttack, passed into the machine').toMatch(
+      /attackPhase\(\s*now\s*,\s*windupUntil\s*,\s*!!pendingAttack\s*\)/
+    );
+    expect(worker, 'the machine owns windupUntil; the worker must adopt its value').toMatch(
+      /windupUntil\s*=\s*phase\.windupUntil/
+    );
+    expect(worker, "the strike must be gated on action === 'strike'").toMatch(
+      /phase\.action === 'strike'\s*\)\s*\{\s*attacks\.push\(pendingAttack\)/
+    );
   });
 
   it('windupUntil round-trips: worker destructures + outputs it, SNS sends + reads it back', () => {
