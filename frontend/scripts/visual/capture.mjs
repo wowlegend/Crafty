@@ -32,10 +32,68 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // settled scene (shadow map + mesh uploads) before a screenshot is taken. Deterministic
 // frame-count wait rather than a wall-clock guess.
 async function flushFrames(page, n = 8) {
+  // DO NOT "FIX" A HANG HERE BY RACING THIS AGAINST A setTimeout. If rAF is not firing, the renderer is
+  // not presenting anything, so a wall-clock fallback would let the run continue and screenshot blank or
+  // stale frames — a GREEN visual gate over pictures of nothing, which is worse than the hang. The bounded
+  // check is assertBrowserProducesFrames() below, which aborts the run instead of degrading it.
   await page.evaluate(async (count) => {
     const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
     for (let i = 0; i < count; i++) await raf();
   }, n);
+}
+
+/**
+ * PREFLIGHT: can this browser produce a frame at all?
+ *
+ * On 2026-08-02 the gate failed for hours with `ProtocolError: Runtime.callFunctionOn timed out` and no
+ * other output, and was misdiagnosed three times — as machine load, then as a code regression, then as a
+ * broken Chrome install. It was none of those. Chrome launched, ran JS, and created a WebGL 2.0 context
+ * happily; what was dead was FRAME PRODUCTION. requestAnimationFrame fired 0 times in 2s, and
+ * Page.captureScreenshot hung on a two-line data: URL with no app involved, under every combination of
+ * --use-angle=swiftshader / --disable-gpu / --disable-gpu-compositing / --in-process-gpu / --single-process
+ * / old headless. An OS-level compositor problem, cured by a reboot, not by anything in this repo.
+ *
+ * The cost was never the outage — it was that the failure was ILLEGIBLE. flushFrames() awaits rAF inside a
+ * page.evaluate, so a dead rAF means that evaluate never returns and puppeteer's DEFAULT 180s
+ * protocolTimeout eventually reports a generic CDP timeout, pointing at nothing. Three minutes of silence
+ * then a stack trace into puppeteer internals.
+ *
+ * This asks the question directly, in under two seconds, before any state is captured. It cannot itself
+ * hang: the in-page promise carries a setTimeout escape hatch, and setTimeout keeps working when rAF does
+ * not (that asymmetry is exactly what made the diagnosis possible).
+ *
+ * The bar is deliberately the weakest one that still detects total death — ONE frame. Anything stricter
+ * would risk blocking a capture on a merely slow machine, which is the failure mode this file has already
+ * been bitten by twice.
+ */
+export async function assertBrowserProducesFrames(page) {
+  const frames = await page.evaluate(
+    () =>
+      new Promise((res) => {
+        let n = 0;
+        const stop = Date.now() + 1200;
+        const tick = () => {
+          n++;
+          if (Date.now() < stop) requestAnimationFrame(tick);
+          else res(n);
+        };
+        requestAnimationFrame(tick);
+        setTimeout(() => res(n), 1800); // ALWAYS resolves, even if rAF never fires
+      })
+  );
+  if (frames === 0) {
+    throw new Error(
+      'CAPTURE ABORTED — this browser is not producing frames.\n' +
+        '    requestAnimationFrame fired 0 times in 1.2s, so nothing renders and every screenshot would be\n' +
+        '    blank or stale. This is an ENVIRONMENT fault, not a code regression: it reproduces on a bare\n' +
+        '    data: URL with no app loaded.\n' +
+        '    Confirm with:  node -e "import(\'puppeteer\').then(async p=>{const b=await p.launch({headless:\'new\'});' +
+        'const g=await b.newPage();await g.goto(\'data:text/html,hi\');console.log(await g.screenshot({encoding:\'base64\'}).then(s=>s.length).catch(e=>\'HANG\'));await b.close()})"\n' +
+        '    A REBOOT is the known fix. Reinstalling Chrome for Testing does not help — the binary runs JS\n' +
+        '    and creates WebGL contexts fine; it is the compositor that is wedged.'
+    );
+  }
+  return frames;
 }
 
 async function waitForServer(url, tries = 60) {
@@ -110,6 +168,11 @@ async function main() {
       }
     });
     await page.setViewport({ width: 1280, height: 800 });
+    // Before anything else: prove the browser can present a frame. Cheap (<2s), and it converts a silent
+    // 180s CDP timeout into a named cause. Runs on the default about:blank, so a failure here is provably
+    // about the BROWSER and not about this app.
+    const preflightFrames = await assertBrowserProducesFrames(page);
+    console.log(`preflight: browser produced ${preflightFrames} frames in 1.2s`);
     await waitForServer(URL);
     await page.goto(URL, { waitUntil: 'networkidle2' });
     await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
@@ -519,4 +582,10 @@ async function main() {
     writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0 }));
   }
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+// RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns
+// a vite server as a side effect of loading it — the same defect found in scripts/ci/i18n-adoption.mjs
+// earlier today, where it killed a vitest worker during collection and made a test file report
+// "1 failed | no tests" while every assertion in it silently skipped.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
