@@ -86,7 +86,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                     <div className="flex items-center gap-3">
                         <Icon name="pickaxe" size={26} className="text-accent" />
                         <span className="font-display text-xxl tracking-wide">{t('ui.craft')}</span>
-                        <span className="text-xs font-bold tracking-[2px] uppercase text-accent">Pattern Matcher</span>
+                        <span className="text-xs font-bold tracking-[2px] uppercase text-accent">{t('panel.patternMatcher')}</span>
                     </div>
                     <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
                         <Icon name="close" size={18} />
@@ -156,7 +156,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
 
                     {/* Mini Inventory for Selection */}
                     <div className="border-t-chrome border-ink pt-4">
-                        <h3 className="font-display text-sm font-bold tracking-[2px] uppercase text-text-muted mb-2.5">Select Item to Craft With</h3>
+                        <h3 className="font-display text-sm font-bold tracking-[2px] uppercase text-text-muted mb-2.5">{t('panel.selectItemToCraft')}</h3>
                         <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
                             {Object.entries(gameState.inventory?.blocks || {}).map(([type, count]) => {
                                 if (count <= 0) return null;
@@ -190,10 +190,10 @@ export const CraftingTable = React.memo(({ onClose }) => {
 
                     {/* Quick Info */}
                     <Panel variant="base" className="bg-slot px-4 py-3">
-                        <h3 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">Inventory Tip</h3>
+                        <h3 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">{t('panel.inventoryTip')}</h3>
                         <div className="text-sm text-text-muted flex items-center gap-2">
                             <span className="w-6 h-6 flex-none rounded-sm grid place-items-center text-accent text-xs font-bold border-chrome border-ink bg-panel-inset">i</span>
-                            <span>Select an item in your hotbar, then click a slot to place it. Click placed items to remove them.</span>
+                            <span>{t('panel.craftPlaceHint')}</span>
                         </div>
                     </Panel>
                 </div>

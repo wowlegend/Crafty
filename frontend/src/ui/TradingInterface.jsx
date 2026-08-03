@@ -6,8 +6,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
 import { wandManaMultiplier } from '../game/wandFocus';
+import { useT } from '../i18n/i18n.js';
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
+  const t = useT();
   const gameState = useGameStore(useShallow(state => ({
     inventory: state.inventory,
     coins: state.coins,
@@ -136,7 +138,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                 <span className="font-display text-text">{blocks.gold || 0}</span>
               </div>
               <div className="col-span-2 border-t-chrome border-ink pt-2 mt-2">
-                <span className="text-accent block font-bold uppercase tracking-wider">Crystals</span>
+                <span className="text-accent block font-bold uppercase tracking-wider">{t('ui.crystals')}</span>
                 <span className="font-display text-text text-sm">{getCrystals(gameState.inventory)}</span>
               </div>
               <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
@@ -172,11 +174,11 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
             {/* Trades Scroll Area */}
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {trades.map((t, idx) => {
-                const currentStock = t.type === 'block' ? (blocks[t.costItem] || 0)
-                  : t.type === 'coin' ? coins
-                  : (blocks[t.costItem] || 0); // B3b: crystal-cost trades spend from the canonical `blocks` bucket
-                const canTrade = currentStock >= t.cost;
+              {trades.map((trade, idx) => {
+                const currentStock = trade.type === 'block' ? (blocks[trade.costItem] || 0)
+                  : trade.type === 'coin' ? coins
+                  : (blocks[trade.costItem] || 0); // B3b: crystal-cost trades spend from the canonical `blocks` bucket
+                const canTrade = currentStock >= trade.cost;
 
                 return (
                   <Panel
@@ -185,28 +187,28 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                     className="flex items-center justify-between p-3"
                   >
                     <div className="flex flex-col">
-                      <span className="text-sm font-display tracking-wide text-text uppercase">{t.name}</span>
+                      <span className="text-sm font-display tracking-wide text-text uppercase">{trade.name}</span>
                       <span className="text-xs text-text-muted mt-0.5">
-                        Cost: <span className="font-bold text-text">{t.cost} {t.costItem}</span> (Have: {currentStock})
+                        Cost: <span className="font-bold text-text">{trade.cost} {trade.costItem}</span> (Have: {currentStock})
                       </span>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <div className="text-right flex flex-col">
-                        <span className="text-xs text-text-muted uppercase tracking-wider">Receive</span>
-                        <span className="text-sm font-display tracking-wide text-accent">+{t.get} {t.getItem}</span>
+                        <span className="text-xs text-text-muted uppercase tracking-wider">{t('ui.receive')}</span>
+                        <span className="text-sm font-display tracking-wide text-accent">+{trade.get} {trade.getItem}</span>
                       </div>
                       <Button
                         variant="primary"
                         size="sm"
                         disabled={!canTrade}
                         onClick={() => {
-                          if (t.type === 'block') {
-                            executeBlockTrade(t.costItem, t.cost, t.getItem, t.get);
-                          } else if (t.type === 'coin') {
-                            executeCoinTrade(t.getItem, t.cost, t.get);
+                          if (trade.type === 'block') {
+                            executeBlockTrade(trade.costItem, trade.cost, trade.getItem, trade.get);
+                          } else if (trade.type === 'coin') {
+                            executeCoinTrade(trade.getItem, trade.cost, trade.get);
                           } else {
-                            executeCrystalTrade(t.getItem, t.cost, t.get);
+                            executeCrystalTrade(trade.getItem, trade.cost, trade.get);
                           }
                         }}
                       >
