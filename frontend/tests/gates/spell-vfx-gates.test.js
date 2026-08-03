@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { ENERGY_PROFILE } from '../../src/game/spellVisualProfiles.js';
 
 // S1-D-M1: Spell-VFX SPINE static gates.
 //
@@ -205,15 +206,44 @@ describe('S1-D-polish premium-energy spell read', () => {
 
   // The per-element ENERGY identity is encoded as a config the core reads (hot inner +
   // saturated outer + intensities), keeping fire/ice/lightning/arcane readable + distinct.
+  // WAS FOUR HARDCODED SPEC-§4 HEX PINS, AND THREE OF THEM WERE HELD UP BY A COMMENT.
+  //
+  // The assertions read `expect(magic() + profiles()).toMatch(/#6FC8FF|#BFefff|#9FE4FF/i)`. None of those
+  // three ice hexes is in the code any more — v7-S3.2 deliberately desaturated ice from #3FB7FF to
+  // #9FD4E8, because "cold reads desaturated", and said so in the commit and in the source comment. What
+  // kept the assertion green was EnhancedMagicSystem.jsx:494, a comment reciting the original spec
+  // palette: "Hues are anchored to the spec §4 magic palette (fire #FF7A3C / ice #6FC8FF / ...)". Fire
+  // and arcane were the same story. Only lightning still matched real code, by luck.
+  //
+  // So the gate had inverted: it passed BECAUSE the palette was documented, and would have kept passing if
+  // every spell colour were deleted. Pinning literal hexes was the wrong instrument anyway — the art
+  // direction has retuned these twice on purpose, and a gate that goes red on an intended retune teaches
+  // people to edit the gate.
+  //
+  // What is actually load-bearing is the CONTRACT the surrounding comment states: four elements, each with
+  // a hot inner core and a saturated outer glow, mutually distinct so they stay readable. That is a
+  // property of the data, so it is asserted against the data. Found by gate-shape.mjs once it could resolve
+  // this file's targets.
   it('per-element energy profiles exist (hot inner core + saturated outer glow)', () => {
     const src = magic() + profiles(); // S3-M2: the table moved; the union preserves the intent
     expect(src, 'a per-element energy/core profile table must exist')
       .toMatch(/ENERGY_PROFILE|CORE_PROFILE|coreColor/);
-    // Spec §4 magic palette anchors (saturated, emissive bloom sources).
-    expect(src, 'fire energy hue present').toMatch(/#FF7A3C|#FFB347|#FFE08A|#FF6A1A/i);
-    expect(src, 'ice energy hue present').toMatch(/#6FC8FF|#BFefff|#9FE4FF/i);
-    expect(src, 'lightning energy hue present').toMatch(/#FFE066|#FFF6C0|#CFE6FF/i);
-    expect(src, 'arcane energy hue present').toMatch(/#B36BFF|#E0B0FF|#D98AFF/i);
+
+    const HEX = /^#[0-9A-Fa-f]{6}$/;
+    const els = ['fireball', 'iceball', 'lightning', 'arcane'];
+    for (const e of els) {
+      expect(ENERGY_PROFILE[e].coreColor, `${e} coreColor`).toMatch(HEX);
+      expect(ENERGY_PROFILE[e].glowColor, `${e} glowColor`).toMatch(HEX);
+    }
+    // Readable + distinct: no two elements may share an outer glow.
+    expect(new Set(els.map((e) => ENERGY_PROFILE[e].glowColor)).size, 'the four glows must be distinct').toBe(4);
+    // "Hot inner core": the core is the lighter of the two, per element.
+    const lum = (h) => parseInt(h.slice(1, 3), 16) + parseInt(h.slice(3, 5), 16) + parseInt(h.slice(5, 7), 16);
+    for (const e of els) {
+      expect(lum(ENERGY_PROFILE[e].coreColor), `${e} core must be hotter than its glow`).toBeGreaterThan(
+        lum(ENERGY_PROFILE[e].glowColor)
+      );
+    }
   });
 
   // (P2) The core's scale-flicker / turbulence is gated on capture: animated in gameplay,
