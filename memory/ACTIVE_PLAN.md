@@ -185,6 +185,24 @@
 > reintroduce the thrash the +2 exists to prevent. New e2e `tier-downgrade-reclaim.spec.js` drives the real
 > transition through the same store action PerformanceMonitor uses.
 >
+> **✅✅ 2026-08-02 ~19:10 — THE VISUAL GATE IS BACK (`f9a6989`).** Machine recovered; capture printed
+> `preflight: browser produced 72 frames in 1.2s` and ran all 31 states clean. `test:visual` = **31/32**.
+> The one failure (`explore-day-low`, 6.55% vs 6%) is INTENDED and attributable — opened both frames:
+> missing mid-distance terrain = `842c423` tier reclaim (81→42 chunks), relocated health bar = `7e0f004`.
+> **⚠️ ALL 31 BASELINES ARE 2026-06-22..06-30 — 293 commits stale**; they pass because 6% is generous.
+> **RE-BASELINE IS KEVIN'S CALL** (charter) → routed to KEVIN-REVIEW-BATCH with the taste question (no
+> distance fade masks the low-tier horizon cut). **Do NOT re-baseline unilaterally.** All render work
+> shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
+> (`inventory-open`/`achievements-open`/`progression-open` all pass).
+>
+> **▶ i18n 25 → 19** (`6dfdc16`: crafting table + villager trading). ⚠️ **NEXT i18n UNIT IS BLOCKED ON A
+> DECOUPLING:** the remaining `GameHud` (4) / `TouchControls` (3) / `index.jsx` (3) strings are aria-labels
+> and error text that **4 probes + an e2e spec use as RUNTIME SELECTORS** (`button[aria-label="Settings"]`,
+> `[aria-label="Action"]`, `[aria-label="Tap to play"]`, `innerText.includes('Something went wrong')`).
+> Wrapping is safe today (en renders identically) but couples the harness to English. Add `data-testid` +
+> repoint the probes FIRST, then wrap. Remaining after that: MenuSystem (5), QuestSystem (2), App (1), HUD (1).
+>
+> — superseded —
 > **✅ 2026-08-02 — CAPTURE-GATE ROOT CAUSE FOUND (`82a6cc1`, `c26367f`). Still blocked, but the ask is
 > now just A REBOOT — and "reinstall Chrome" was WRONG.** `requestAnimationFrame` fires **0 times in 2s**
 > in this box's headless Chrome, so `flushFrames()` (which awaits 10 rAF callbacks inside a

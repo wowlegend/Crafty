@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-02 — the visual gate came back, and every baseline turned out to be stale (`f9a6989`, `6dfdc16`)
+
+The machine recovered. `npm run visual:capture` printed **`preflight: browser produced 72 frames in 1.2s`**
+— the message shipped hours earlier for exactly this moment — and ran all 31 states to a clean end with no
+render crashes. That also verified the preflight's *passing* branch, which could not be exercised while the
+compositor was wedged.
+
+**`test:visual`: 31 of 32 pass, and the one failure is intended.** `explore-day-low` differs 6.55% against a
+6% threshold. Opened both frames rather than trusting the number; two differences, both attributable:
+the missing mid-distance terrain and far mountains are `842c423` (*a tier downgrade now actually frees
+chunks*, 81 → 42) doing its job, and the relocated health bar is `7e0f004` — the stray blue fragment poking
+out from behind the quest panel in the old baseline is literally the bug that fix removed.
+
+**The finding worth more than the failure: 27 of 31 baselines date to 2026-06-22, the rest to 06-29/30 —
+293 commits ago.** The set passes because 6% is generous, not because the frames match; `explore-day-med`
+and `explore-night-low` carry the same fixed-HUD staleness and squeak under the bar. Re-baselining is
+Kevin's call per the charter, so it is routed, not taken — along with the one real taste question: at low
+tier the terrain now stops abruptly with no distance fade to mask the cut.
+
+**Everything shipped blind now has pixel verification.** The Terrain reclaim, the ai.worker refactor, the
+weather capture-determinism fix and the whole i18n sweep are collectively 31/32 within threshold — and
+`inventory-open`, `achievements-open` and `progression-open` passing means the GamePanels sweep is
+pixel-clean.
+
+**i18n 25 → 19** (crafting table, villager trading). `TradingInterface` already bound `t` as its trade-map
+parameter, so the first attempt aliased around it with `tr = useTranslate()` — and `key-resolution` went
+red, because its scanner matches `t('...')` and cannot see `tr('...')`. Those two call sites were wrapped
+but no longer *validated*. Fixed by deleting the alias and renaming the parameter to `trade`, not by
+teaching the scanner about aliases — that road has no end, and each new alias silently opts its call sites
+out of validation. The gate caught it within a minute; the failure it prevented was invisible.
+
+**Deferred with reason:** the remaining `GameHud` / `TouchControls` / `index.jsx` strings are aria-labels and
+error text that **four probes and an e2e spec use as runtime selectors** (`button[aria-label="Settings"]`,
+`[aria-label="Action"]`, `[aria-label="Tap to play"]`, `innerText.includes('Something went wrong')`).
+Wrapping them is safe today because en renders identically, but it couples the test harness to English.
+They need `data-testid` decoupling first — its own unit.
+
 ## 2026-08-02 — the capture gate's root cause, after three wrong diagnoses (`82a6cc1`..`d188fc0`)
 
 **`requestAnimationFrame` fires ZERO times in 2 seconds in this machine's headless Chrome.** `capture.mjs`
