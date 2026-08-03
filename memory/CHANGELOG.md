@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-03 — the boss fight survives a reload, not just the win (`2de54da`)
+
+**A-bis B2g, closing B2 at 8 of 8.** The Shadow Dragon encounter lived entirely in `useBossSystem`'s React
+state, seeded from `useState(BOSS_CONFIG.health)`. Nothing about the fight reached the save, so a refresh at
+5% HP handed the player back a full 700 HP dragon — the run's climactic multi-phase boss, silently reset by
+a page reload. The one persisted piece was `gameWon` (S9c), which stops a *slain* dragon respawning and says
+nothing about a fight in progress.
+
+Health/active/defeated now ride the store — joining the `bossActive` mirror already there, rather than
+inventing a pattern — into `saveSchema`, restored through a pure `game/bossPersistence.js` whose hydrate
+**enforces invariants instead of spreading**: a won game can never re-arm the dragon, a defeated one stays
+defeated, health clamps into `[0, max]`, junk can never become HP, and a save with no boss block reads as
+"not started" (which is every save on disk today).
+
+**Phase is deliberately not persisted** — it derives from health, and a second copy of one fact is free to
+drift. `phaseForHealth` is now the single derivation the hook's effect and the rehydrate both call.
+
+Two defects surfaced only by wiring it, neither visible in the diff: rehydrating mid-fight would have fired
+the `PHASE 3: ENRAGED!` banner on load, announcing a transition the player passed before quitting; and the
+encounter mirror needed its **own** effect — folded into the existing callback-registration effect, health
+would have reached the store only when `bossActive` *flipped*, staying stale through the whole fight. That
+is the same bug wearing a fix.
+
+Mutation-proof worth recording: reverting the hook seed turns the **hook** gate red while the **store** gate
+stays green. The store round-trip alone would have shipped this — which is precisely why both gates exist.
+
 ## 2026-08-03 — an exporting script may not run its CLI on import (`6817df3`)
 
 **The ninth pre-push gate: `scripts/ci/cli-guard.mjs`.** A module that runs its CLI at module scope means a
