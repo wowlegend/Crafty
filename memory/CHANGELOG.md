@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-08-03 — the four Aspects are reachable on touch at last (`23f6cfa`)
+
+**X1, the highest-priority build item in the registry.** `grep -cE "roar|grab|snare|imbue"` across every
+touch file returned **0**: Wildheart roar, Voidhand grab, Soulbind snare and Elemancer imbue were bound to
+R/V/X/Z and nothing else, so **the entire signature identity of the game was desktop-only** — breaking P1
+(four Aspects, the signature) and P4 (the touch/iPad envelope, one of only two HARD vetoes) simultaneously.
+
+**No new downstream path**, exactly as STATUS predicted. The verbs were already in `INTENT_KEYS`; the ring
+writes the same booleans the keyboard writes, pulsed, so every transform state-machine is untouched. The
+registry is **derived from KEY_MAP, never retyped** — `aspectHints.js` already does this, because a
+hand-copied verb/talent table drifts the moment either moves.
+
+It **mirrors the M3a panel tray** rather than inventing an interaction language, and both the glyph layer
+and the hit layer call the same `ringLayout()` with the same radius so they cannot drift apart. **Only
+unlocked verbs get a sector**: the desktop path lets a locked verb through and toasts "denied", which is
+fair for a key you might hit by accident, but a thumb-sized target that can only refuse is a worse trade
+than no target.
+
+**The gate is BEHAVIOURAL, not a source-grep** — it renders the overlay and drives it. That matters here
+specifically: 85% of this repo's gate corpus asserts source text, which is how a dead mouse-look, a dead iOS
+cold-start and a permanently 0/100 health bar all shipped "green". 6 render tests + 11 pure-geometry tests,
+mutation-proven both ways (unwire `setIntent` -> RED; drop the unlock gate -> RED).
+
+**NOT lived-verified, and not claimed to be.** The compositor fault was active again (rAF 0 firings/1.2s),
+so `touch-probe.mjs` could not drive a real browser. Ring radius and thumb-reach are guesswork; the layout
+taste call and a real-device pass are routed to Kevin, along with two other reversible judgement calls
+(tap-to-open instead of press-and-hold; locked Aspects hidden rather than shown-and-refused).
+
+2173 tests green; build, eslint, knip, gate-shape, i18n and doc-currency all clean.
+
 ## 2026-08-03 — a comment claimed a fix that was never written (`76e8ebf`..`c3622ea`)
 
 Moved to the STATUS registry now the doc-SOTA plan is closed. Verified E-bis's three items are all still
