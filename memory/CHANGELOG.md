@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-03 — charter §5/§6, and the plan was wrong about both (`87f803c`, `23279da`)
+
+Plan item #14 said "delete charter §5 and §6 outright". Checked both before deleting; only half was right.
+
+**§6 went.** It had declared itself SUPERSEDED in its own first line since 2026-06-15, and a backlog living
+in the constitution is the wrong shape when `memory/STATUS.md` §2 owns the registry — two copies of a work
+list mean one is quietly wrong. Now a pointer to STATUS §2 (D Art · E Gameplay depth · F Perf + polish). Its
+one item not already represented there MOVED rather than died: the ANTI-REDO warning that ToneMapping is
+already NEUTRAL and `MOOD_GRADE` already ships, now in STATUS §5, because re-tuning either is a day spent
+undoing someone's fix.
+
+**§5 stayed, compressed.** It carries the rule that replaced Kevin's pre-loop HARD GATE with the loop's
+self-gate, and `SOTA-INITIATIVE.md:111` cites it by name. Deleting it would have dropped a governing rule
+and orphaned a cross-doc reference `doc-currency` structurally cannot catch — the lint checks file PATHS,
+not section anchors. Its Kevin-backlog bullet still pointed at KEVIN-REVIEW-BATCH as the place a decision is
+logged, which is the append-only INBOX; it now names DECISIONS.md, the outbox created for exactly that
+defect. §6.4 (browser hygiene) and §6.5 (session-close) are separate sections and were verified intact after
+the edit, since a naive "delete §6" takes both.
+
+**That is the third plan prescription this session that was wrong on inspection** — after archiving
+`world-purpose-sota` (a live design source) and the claim that moving a plan doc trips `doc-currency` (it
+did not; the lint was blind to bare paths). The plan came from a 7-agent review. Its specifics rot like
+anything else's, and the useful discipline is to check each one against live files before executing it.
+
+Plan: **11 of 14 shipped, 3 remain** (#6 Rule-5 self-adjudication, #8 AGENTS tail, #10 charter §3).
+
 ## 2026-08-03 — the constitution's own numbers were 12× wrong (`03807b2`, `f32a30e`)
 
 `.agent/AGENTS.md` is auto-loaded on every task and re-injected after every compaction. Its architecture

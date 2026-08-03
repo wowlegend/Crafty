@@ -195,6 +195,13 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅ 2026-08-03 — DOC-SOTA now 11 of 14 SHIPPED, 3 REMAIN** (#6 Rule-5 self-adjudication · #8 AGENTS tail ·
+> #10 charter §3). Shipped since: **#5+#11** `measure.mjs` + the MEASURED block (AGENTS size numbers were 12x
+> wrong on files, 2.5x on LOC, and claimed ONE >=900-LOC file when there are FIVE; now generated, with a
+> ±10% drift check mutation-proven 3 ways). **#14 (amended)** — charter §6 → pointer to STATUS §2; §5
+> COMPRESSED **not deleted**, because it holds the self-gate rule `SOTA-INITIATIVE.md:111` cites and
+> doc-currency cannot see section-anchor references.
+>
 > **✅ 2026-08-02 — DOC-SOTA PLAN RE-VERIFIED (`96d20f8`): 8 of 14 SHIPPED, 6 REMAIN.** The header had
 > said "3 shipped / 11 remain" since 07-27 while six landed during the loop era — the kernel carried the
 > stale count for days. Per-row evidence table now in the plan. **OPEN: #5 measure.mjs, #6 Rule-5
