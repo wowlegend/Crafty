@@ -76,28 +76,40 @@ const isProse = (s) => {
 // translating strings that do not ship. `devtest/` is the same case by construction.
 const DEV_ONLY = [/^src\/ui\/DebugOverlay\.jsx$/, /^src\/devtest\//];
 
+// The DETECTOR, as a pure function of source text. Extracted as a seam because the accuracy of this
+// function is the whole gate: it has already shipped two distinct false-positive classes (a comparison
+// operator read as a text node, then an arrow function read as one), and while `scan()` walked the real
+// `src/` tree there was nothing a test could pin either fix to. Now the tree walk and the judgement are
+// separate, and the judgement is testable against fixture strings that never change under it.
+export function scanSource(src) {
+  const found = [];
+  src.split('\n').forEach((line, i) => {
+    // Skip comment lines outright — a comment is not shipped copy.
+    const bare = line.trim();
+    if (bare.startsWith('//') || bare.startsWith('*') || bare.startsWith('/*')) return;
+
+    for (const a of ATTRS) {
+      const m = line.match(new RegExp(`${a}\\s*=\\s*"([^"{}]+)"`));
+      if (m && isProse(m[1])) found.push({ line: i + 1, kind: a, text: m[1].trim() });
+    }
+    // JSX text node: >text< on one line, no braces or tags inside.
+    // The `>` must not be an ARROW's. `.filter(p => time - p.time < 0.14)` has a `>` (from `=>`) and a
+    // `<` (a comparison) bracketing ` time - p.time `, which starts with a letter and carries none of the
+    // punctuation the isProse filter rejects — so it read as shipped copy. Same class as the `0) return`
+    // false positive that filter was written for: the regex found a text node where there is no element.
+    const tx = line.match(/(?<!=)>([^<>{}\n]{6,})</);
+    if (tx && isProse(tx[1])) found.push({ line: i + 1, kind: 'text', text: tx[1].trim() });
+  });
+  return found;
+}
+
 export function scan() {
   const files = globSync('src/**/*.jsx', { cwd: APP })
     .filter((rel) => !DEV_ONLY.some((re) => re.test(rel)))
     .sort();
   const hits = {};
   for (const rel of files) {
-    const src = readFileSync(resolve(APP, rel), 'utf8');
-    const lines = src.split('\n');
-    const found = [];
-    lines.forEach((line, i) => {
-      // Skip comment lines outright — a comment is not shipped copy.
-      const bare = line.trim();
-      if (bare.startsWith('//') || bare.startsWith('*') || bare.startsWith('/*')) return;
-
-      for (const a of ATTRS) {
-        const m = line.match(new RegExp(`${a}\\s*=\\s*"([^"{}]+)"`));
-        if (m && isProse(m[1])) found.push({ line: i + 1, kind: a, text: m[1].trim() });
-      }
-      // JSX text node: >text< on one line, no braces or tags inside.
-      const tx = line.match(/>([^<>{}\n]{6,})</);
-      if (tx && isProse(tx[1])) found.push({ line: i + 1, kind: 'text', text: tx[1].trim() });
-    });
+    const found = scanSource(readFileSync(resolve(APP, rel), 'utf8'));
     if (found.length) hits[rel] = found;
   }
   return hits;
@@ -105,6 +117,19 @@ export function scan() {
 
 const counts = (hits) => Object.fromEntries(Object.entries(hits).map(([f, v]) => [f, v.length]));
 
+// RUN THE CLI ONLY WHEN INVOKED AS ONE. Without this guard the whole body below executed on `import`, so
+// `tests/i18n/adoption.test.js` — which imports `scan` — ran the full ratchet check as a side effect of
+// loading. When the ratchet was broken that `process.exit(1)` killed the vitest worker DURING COLLECTION:
+// the file reported "1 failed / no tests", every assertion in it silently skipped. A red that reports zero
+// tests is the worst kind, because it looks like the tests caught something and they never ran at all.
+// Found while mutation-proving the detector: the mutation went red, but at import, not at an assertion —
+// so it proved nothing about the test it was meant to prove.
+const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (!isCli) {
+  // Imported as a module: export the seams, run nothing.
+} else runCli();
+
+function runCli() {
 const hits = scan();
 const now = counts(hits);
 const total = Object.values(now).reduce((a, b) => a + b, 0);
@@ -149,4 +174,5 @@ if (shrank.length || gone.length) {
   console.log(`✓ i18n-adoption: ${total} occurrences (was ${frozenTotal}) — improved, re-freeze with --write`);
 } else {
   console.log(`✓ i18n-adoption: ${total} occurrences across ${Object.keys(now).length} files, none new`);
+}
 }
