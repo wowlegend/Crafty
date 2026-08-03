@@ -6,6 +6,7 @@ import { StatBar } from './ui/primitives/StatBar.jsx';
 import { Panel } from './ui/primitives/Panel.jsx';
 import { Button } from './ui/primitives/Button.jsx';
 import { MAGIC } from './theme/tokens.js';
+import { useT } from './i18n/i18n.js';
 
 
 const GameSystemsContext = createContext();
@@ -189,6 +190,7 @@ const RunStat = ({ label, value }) => (
 // Death Screen Component -- M2 #7 S2: rebuilt on the Panel + Button primitives + theme tokens (was raw
 // Tailwind) with a run summary. Capture-safe (only mounts on player death, never in a fresh-L1 capture).
 export const DeathScreen = ({ onRespawn }) => {
+    const t = useT();
     const level = useGameStore.getState().level;
     const nights = useGameStore.getState().nightCount;
     return (
@@ -202,12 +204,12 @@ export const DeathScreen = ({ onRespawn }) => {
                     <h1 className="font-display text-5xl font-bold text-danger mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
                         YOU DIED
                     </h1>
-                    <p className="text-text-muted mb-6">The frontier claims another wanderer.</p>
+                    <p className="text-text-muted mb-6">{t('overlay.deathLine')}</p>
                     <div className="flex justify-center gap-8 mb-7">
                         <RunStat label="Level" value={level} />
                         <RunStat label="Nights survived" value={nights} />
                     </div>
-                    <Button variant="primary" size="lg" onClick={onRespawn}>Respawn</Button>
+                    <Button variant="primary" size="lg" onClick={onRespawn}>{t('ui.respawn')}</Button>
                 </Panel>
             </motion.div>
         </motion.div>
@@ -219,6 +221,7 @@ export const DeathScreen = ({ onRespawn }) => {
 // the sandbox continues (post-climax endless handoff: mobs/shrines remain). Only renders post-defeat, which
 // can never be true in capture (a fresh level-1 game), so it stays out of the visual baselines.
 export const VictoryOverlay = ({ onDismiss }) => {
+    const t = useT();
     // The climax payoff: fire the triumphant victory sting once when the win screen appears (the boss-defeat
     // beat was silent). window.playVictory is bridged from App's useGameSounds; no-op in capture (no ctx).
     useEffect(() => {
@@ -237,12 +240,12 @@ export const VictoryOverlay = ({ onDismiss }) => {
                     <h1 className="font-display text-5xl font-bold text-warn mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
                         VICTORY
                     </h1>
-                    <p className="text-text-muted mb-6 max-w-sm mx-auto">The Blight Heart is shattered. The frontier is yours.</p>
+                    <p className="text-text-muted mb-6 max-w-sm mx-auto">{t('overlay.victoryLine')}</p>
                     <div className="flex justify-center gap-8 mb-7">
                         <RunStat label="Level" value={level} />
                         <RunStat label="Nights survived" value={nights} />
                     </div>
-                    <Button variant="primary" size="lg" onClick={onDismiss}>Keep exploring</Button>
+                    <Button variant="primary" size="lg" onClick={onDismiss}>{t('ui.keepExploring')}</Button>
                 </Panel>
             </motion.div>
         </motion.div>

@@ -1,18 +1,21 @@
 import React from 'react';
 import { Panel } from './primitives/index.js';
 import { KEY_MAP, KEY_GROUPS } from '../game/keyMap.js';
+import { useT } from '../i18n/i18n.js';
 
 // The controls panel renders from the keyMap single-source-of-truth (UX-legibility interleave,
 // 2026-06-13): grouped Move / Combat / Aspects / Panels, each key a keycap chip (the same
 // border-chrome bg-slot vocabulary as the talent panel's ASPECT_GUIDE), so the controls legend and
 // the talent legend read as ONE system. Teaches the four signature Aspect verbs (R/V/X/Z) the player
 // could not previously discover. Static React.memo — no useFrame, zero per-frame cost.
-export const CombatInstructions = React.memo(() => (
+export const CombatInstructions = React.memo(() => {
+  const t = useT();
+  return (
   <Panel
     variant="base"
     className="absolute top-4 right-4 p-2.5 text-text pointer-events-none z-hud w-52"
   >
-    <div className="font-display uppercase text-[11px] tracking-wider text-accent mb-1.5">Controls</div>
+    <div className="font-display uppercase text-[11px] tracking-wider text-accent mb-1.5">{t('panel.controls')}</div>
     <div className="flex flex-col gap-1.5">
       {KEY_GROUPS.map((group) => (
         <div key={group}>
@@ -29,4 +32,5 @@ export const CombatInstructions = React.memo(() => (
       ))}
     </div>
   </Panel>
-));
+  );
+});

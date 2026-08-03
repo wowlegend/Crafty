@@ -1,14 +1,11 @@
 {
-  "_total": 32,
+  "_total": 25,
   "src/App.jsx": 1,
-  "src/GameSystems.jsx": 4,
   "src/HUD.jsx": 1,
   "src/MenuSystem.jsx": 5,
   "src/QuestSystem.jsx": 2,
   "src/index.jsx": 3,
-  "src/ui/CombatInstructions.jsx": 1,
   "src/ui/GameHud.jsx": 4,
-  "src/ui/QuestLog.jsx": 2,
   "src/ui/TouchControls.jsx": 3,
   "src/ui/TradingInterface.jsx": 2,
   "src/ui/panels/CraftingTable.jsx": 4

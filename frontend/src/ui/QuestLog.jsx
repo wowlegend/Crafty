@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Panel, Icon, Button } from './primitives/index.js';
+import { useT } from '../i18n/i18n.js';
 
 // The full quest LOG panel (L). Reuses the AchievementsPanel Modal grammar (bold-flat,
 // Escape/backdrop close via the Modal primitive). Each active quest shows its giver + lore
@@ -7,6 +8,7 @@ import { Modal, Panel, Icon, Button } from './primitives/index.js';
 // Read-only narrative surface — claiming still happens via Q in the QuestTracker. Mounted in
 // MenuSystem's panel AnimatePresence; capture-irrelevant (a modal, never in the world baselines).
 export const QuestLog = React.memo(({ quests = [], onClose }) => {
+    const t = useT();
     return (
         <Modal
             testId="quest-log-panel"
@@ -23,9 +25,9 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
                 <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink flex-none">
                     <div className="flex items-center gap-3">
                         <Icon name="scroll" size={26} className="text-accent" />
-                        <span className="font-display text-xxl tracking-wide">Quest Log</span>
+                        <span className="font-display text-xxl tracking-wide">{t('panel.questLog')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -56,7 +58,7 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
                         );
                     })}
                     {quests.length === 0 && (
-                        <div className="text-text-muted text-sm text-center py-6">No active quests. Speak to the warden at the gate.</div>
+                        <div className="text-text-muted text-sm text-center py-6">{t('quest.none')}</div>
                     )}
                 </div>
 
