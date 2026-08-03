@@ -1,5 +1,21 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🔔 2026-08-03 — PROCESS CHANGE, VETOABLE: commits that ADD a gate now need a `Mutation-Proof:` trailer.**
+> Not blocking you today — it only fires when a commit adds a NEW file under `frontend/tests/gates/` or
+> `frontend/scripts/ci/`, which is rare outside loop work. Editing an existing gate is unaffected.
+>
+> **Why:** LOOP-CHARTER §3 has said "⛔ MUTATION-PROOF EVERY NEW GATE" since 2026-07-13, repeated it in §0-B
+> and in AGENTS.md, and had **zero checkers**. That is why 84 of 136 gate files still grep source text
+> without importing the module they guard. The doc audit's finding was that rules checkable from the diff or
+> the commit message got obeyed ~100% across 999 commits, and rules living only in prose did not.
+>
+> **What it asks for:** one line — `Mutation-Proof: deleted X -> gate went RED ("message")`. It cannot verify
+> the sentence is true; it forces the claim somewhere a reviewer can see it.
+>
+> **To veto:** delete the `mutation-proof-trailer` block from `.githooks/pre-push` — the script and its tests
+> can stay harmlessly. Shipped `8e2539b`.
+
+
 > **✅ 2026-08-02 ~19:10 — THE VISUAL GATE IS BACK, and it immediately earned its keep. One decision for
 > you: RE-BASELINE.** (Not blocking — I've carried on with other work.)
 >

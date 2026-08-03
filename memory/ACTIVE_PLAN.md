@@ -195,6 +195,15 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅ 2026-08-03 — DOC-SOTA now 13 of 14 SHIPPED, 1 REMAINS (#6 Rule-5 self-adjudication).**
+> **#8** (`6412bb6`): AGENTS.md named STATUS.md ZERO times — fixed with the charter §0-A ladder copied, not
+> invented; and its compaction instruction told the compactor to PRESERVE GATE RESULTS, which is how "CI
+> green" got written on a day CI had never passed. Now preserves the COMMAND, not the number.
+> **#10** (`8e2539b`): `mutation-proof-trailer.mjs` — a commit ADDING a gate needs a `Mutation-Proof:`
+> trailer; runs FIRST in pre-push. Scoped to NEW gates (a trailer per edit is noise, and noise disables
+> checks). ⚠️ flagged to Kevin as VETOABLE in KEVIN-REVIEW-BATCH — it changes the contract for his commits.
+>
+> — superseded —
 > **✅ 2026-08-03 — DOC-SOTA now 11 of 14 SHIPPED, 3 REMAIN** (#6 Rule-5 self-adjudication · #8 AGENTS tail ·
 > #10 charter §3). Shipped since: **#5+#11** `measure.mjs` + the MEASURED block (AGENTS size numbers were 12x
 > wrong on files, 2.5x on LOC, and claimed ONE >=900-LOC file when there are FIVE; now generated, with a

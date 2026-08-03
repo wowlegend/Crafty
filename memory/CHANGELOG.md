@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-03 — the constitution names STATUS.md, and mutation-proof gets an enforcer (`6412bb6`, `8e2539b`)
+
+**`.agent/AGENTS.md` never mentioned `memory/STATUS.md`. Not once.** It is the only auto-loaded file and the
+only surface re-injected after a `/compact`, so a freshly-compacted agent was pointed at ACTIVE_PLAN (the
+cursor — one unit) and at `plans/*.md` (a directory INDEX explicitly warns against mining), and never at the
+registry the charter calls THE source of truth. Added a "Where state lives" ladder **copied from charter
+§0-A rather than invented**, so the two documents cannot drift; it also names DECISIONS.md, since
+KEVIN-REVIEW-BATCH is the append-only inbox and cannot say what is settled.
+
+**The same file told the compactor to preserve gate RESULTS.** Item (2) read "ALWAYS preserve verbatim … the
+latest test/build/visual gate counts and whether they were green". That instruction manufactures the exact
+failure this repo has already paid for: a gate result is true only in the turn it ran, and carrying one into
+a fresh context turns a measurement into an unverified claim. It is the mechanism that put "CI green" into
+this changelog on a day the workflow had concluded `success` zero times in 88 runs. Now it preserves the
+COMMAND, never the number.
+
+**Mutation-proof finally has an enforcer.** The charter opens §3 with "⛔ MUTATION-PROOF EVERY NEW GATE",
+repeats it in §0-B and in AGENTS.md, and had **zero checkers** — which is why 84 of 136 gate files still
+grep source text without importing the module they guard. A commit that ADDS a file under `tests/gates/` or
+`scripts/ci/` now needs a `Mutation-Proof:` trailer, checked first in pre-push so a miss costs milliseconds
+rather than a full build. Scoped to NEW gates on purpose: a trailer per edit during a sweep is noise, and
+noise is how a check gets switched off. It cannot verify the sentence is true — it forces the claim
+somewhere a reviewer can read it. Dogfooded: this commit adds a checker and carries its own trailer, and the
+push exercised the hook live. Flagged to Kevin as vetoable, since it changes the contract for his commits too.
+
+Plan: **13 of 14 shipped**, one remains (#6, Rule-5 self-adjudication).
+
 ## 2026-08-03 — charter §5/§6, and the plan was wrong about both (`87f803c`, `23279da`)
 
 Plan item #14 said "delete charter §5 and §6 outright". Checked both before deleting; only half was right.

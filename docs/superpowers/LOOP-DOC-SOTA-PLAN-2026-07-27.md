@@ -1,7 +1,7 @@
 # Loop governing-document SOTA plan — 2026-07-27
 
-> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 11 of 14 SHIPPED, 3 REMAIN — #5 + #11 landed in `03807b2`, #14 (amended) in `87f803c`.**
-> Still open: **#6** Rule-5 self-adjudication · **#8** AGENTS tail · **#10** charter §3.
+> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 13 of 14 SHIPPED, 1 REMAINS — #8 in `6412bb6`, #10 in `8e2539b`.**
+> Still open: **#6** Rule-5 self-adjudication (the worker may not adjudicate its own dismissals; a category is not done until every item carries a marker).
 > Six edits landed during the loop era after this plan was written, and nothing updated the header, so the
 > queue kept re-listing finished work. Checked against live files rather than against this document:
 >
@@ -14,9 +14,9 @@
 > | 5 | `measure.mjs` — one authority for every number | ✅ SHIPPED | `03807b2` — + drift check in `doc-currency`, mutation-proven 3 ways |
 > | 6 | Rule 5: no self-adjudicated dismissals + category markers | ⬜ OPEN | charter has "may not judge its own completion" only |
 > | 7 | AGENTS: full gate table | ✅ SHIPPED | `3555db5` — 9 gates, transcribed from pre-push + ci.yml |
-> | 8 | AGENTS tail: STATUS-first read order + post-compaction checklist | ⬜ OPEN | no "Where state lives" section |
+> | 8 | AGENTS tail: STATUS-first read order + post-compaction checklist | ✅ SHIPPED | `6412bb6` — AGENTS named STATUS.md ZERO times before this |
 > | 9 | charter §0-A/0-B/0-C rewrite | ✅ SHIPPED | `## 0-A. READ ORDER` present |
-> | 10 | charter §3: CI as the FIRST gate + mutation-proof trailer | ⬜ OPEN | §3 still opens on MUTATION-PROOF |
+> | 10 | charter §3: mutation-proof trailer | ✅ SHIPPED | `8e2539b` — enforcer + 9 scope tests + pre-push, runs first. (CI-as-first-gate is already the KERNEL's ORIENT step 0.) |
 > | 11 | delete hand-typed numbers from Tech Stack; MEASURED block | ✅ SHIPPED | `03807b2` — was 12× wrong on files, 2.5× on LOC, and "one large file" vs five |
 > | 12 | split perf-siege out of the e2e job | ✅ SHIPPED | `8ac8d07`, `@local-only` + `--grep-invert` |
 > | 13 | new §8 RULE HYGIENE | ✅ SHIPPED | charter `## 8. Rule hygiene (added 2026-08-02)` |
