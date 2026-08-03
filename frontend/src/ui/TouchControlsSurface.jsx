@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
 import { unlockedAspectVerbs, ringLayout, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
+import { SPELL_ORDER, spellLabelKey, spellAccent } from '../input/spellPicker';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { isCaptureMode } from '../devtest/captureMode';
@@ -35,11 +36,13 @@ const BTN = (extra) => ({
  * overlay layers interactivity on top; the capture-view renders this alone for the mobile.png
  * baseline. `nub` = optional {x,y} px offset for the dynamic knob (live path).
  */
-export default function TouchControlsSurface({ nub = null, trayOpen = false, wheelOpen = false }) {
+export default function TouchControlsSurface({ nub = null, trayOpen = false, wheelOpen = false, spellOpen = false }) {
   const t = useT();
   // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
   const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
+  const spellPositions = ringLayout(SPELL_ORDER.length, 78);
+  const activeSpell = useGameStore((st) => st.activeSpell);
 
   // X2 — COOLDOWN SWEEPS ON THE RING. Touch had no cooldown feedback at all: HUD.jsx:590 gates
   // <AbilityBar> behind !isTouchUIMode() because its bottom-4 anchor sits inside the touch
@@ -110,6 +113,25 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false, whe
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>
             <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
                  style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
+          </div>
+        );
+      })}
+      {/* X2b SPELL PICKER glyphs. Each button is tinted with the spell's OWN roster colour
+          (spellAccent -> SPELL_TYPES[id].color), so the picker cannot drift from the projectile the player
+          will actually see. The closed toggle carries the currently-active spell's tint, which is the only
+          way a touch player could previously have known what they were about to cast: not at all. */}
+      <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 182px)', width: 52, height: 52 })}>
+        <Sparkles size={24} strokeWidth={2.4} color={spellAccent(activeSpell) || GLYPH} />
+      </div>
+      {spellOpen && SPELL_ORDER.map((id, i) => {
+        const q = spellPositions[i] || { x: 0, y: 0 };
+        const accent = spellAccent(id) || GLYPH;
+        return (
+          <div key={id} aria-label={t(spellLabelKey(id))} data-testid={`spell-glyph-${id}`}
+               style={BTN({ right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
+                            bottom: `calc(11% + ${182 - q.y}px)`, width: 52, height: 52,
+                            borderColor: id === activeSpell ? accent : undefined })}>
+            <Sparkles size={22} strokeWidth={2.4} color={accent} />
           </div>
         );
       })}

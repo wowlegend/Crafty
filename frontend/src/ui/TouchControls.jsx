@@ -6,6 +6,7 @@ import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
 import { unlockedAspectVerbs, ringLayout, TAP_HOLD_MS } from '../input/aspectWheel';
+import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
 import { TRAY_PANELS, togglePanel } from './touchTray';
@@ -40,6 +41,7 @@ function TouchControlsLive({ isWorldBuilt }) {
   const isAlive = useGameStore((s) => s.isAlive);
   const [trayOpen, setTrayOpen] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
+  const [spellOpen, setSpellOpen] = useState(false);
   const nubRafRef = useRef(0);                  // W4-T11: rAF throttle for the imperative knob-follow (no React state -> GLI trap-6)
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
@@ -114,6 +116,7 @@ function TouchControlsLive({ isWorldBuilt }) {
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
   const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
+  const spellPositions = ringLayout(SPELL_ORDER.length, 78);
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0 };
   return (
     <div
@@ -121,7 +124,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       style={{ position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
                WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
     >
-      {active && <TouchControlsSurface trayOpen={trayOpen} wheelOpen={wheelOpen} />}
+      {active && <TouchControlsSurface trayOpen={trayOpen} wheelOpen={wheelOpen} spellOpen={spellOpen} />}
 
       {showTapToPlay && (
         <button data-touch-btn onPointerUp={() => setActive(true)} aria-label={t('a11y.tapToPlay')} data-testid="touch-tap-to-play"
@@ -191,6 +194,25 @@ function TouchControlsLive({ isWorldBuilt }) {
             }}
             style={{ ...hit, right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
                      bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 }} />
+        );
+      })}
+
+      {/* X2b SPELL PICKER — `setActiveSpell` was reachable ONLY from Digit1-4, so a touch player cast
+          the store default (fireball) forever and 3 of 4 spells were unreachable on iPad. Same ring
+          mechanism as the Aspect wheel, one row higher on the same thumb. UNGATED, matching the keyboard:
+          gating touch when Digit1-4 is ungated would make touch stricter than desktop, which is the
+          opposite of the bug. Writes the EXISTING `setActiveSpell` seam — no new downstream path. */}
+      {active && (
+        <button data-touch-btn onPointerUp={() => setSpellOpen((o) => !o)} aria-label={t('a11y.selectSpell')} data-testid="touch-spells"
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 182px)', width: 52, height: 52 }} />
+      )}
+      {active && spellOpen && SPELL_ORDER.map((id, i) => {
+        const q = spellPositions[i] || { x: 0, y: 0 };
+        return (
+          <button key={id} data-touch-btn aria-label={t(spellLabelKey(id))} data-testid={`touch-spell-${id}`}
+            onPointerUp={() => { useGameStore.getState().setActiveSpell(id); setSpellOpen(false); }}
+            style={{ ...hit, right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
+                     bottom: `calc(11% + ${182 - q.y}px)`, width: 52, height: 52 }} />
         );
       })}
     </div>

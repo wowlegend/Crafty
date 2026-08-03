@@ -5,6 +5,7 @@ import '@testing-library/jest-dom/vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { setActive, getInput, setIntent } from '../../src/input/inputState.js';
 import { ASPECT_VERBS } from '../../src/input/aspectWheel.js';
+import { SPELL_ORDER } from '../../src/input/spellPicker.js';
 import TouchControls from '../../src/ui/TouchControls.jsx';
 import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 
@@ -121,5 +122,60 @@ describe('X2 — the ring shows cooldown, so touch is not firing blind', () => {
     render(<TouchControlsSurface wheelOpen />);
     expect(screen.getByTestId(`aspect-sweep-${first.verb}`)).toBeInTheDocument();
     expect(screen.queryByTestId(`aspect-sweep-${second.verb}`)).toBeNull();
+  });
+});
+
+// X2b — TOUCH WAS LOCKED TO ONE SPELL.
+//
+// `setActiveSpell` was called from exactly one place in the codebase — InputManager.jsx:131-134, on
+// Digit1-4. A tablet has no keyboard, so a touch player cast the store default (`fireball`) forever and
+// three of four spells were unreachable on the stated iPad target. Behavioural, like X1: the assertion is
+// that a tap actually CHANGES the store, not that the markup mentions a spell.
+describe('X2b — every spell is reachable on touch', () => {
+  beforeEach(() => {
+    useGameStore.setState({ activeSpell: 'fireball' });
+    setActive(true);
+  });
+
+  it('offers a picker toggle whenever the touch overlay is live', () => {
+    render(<TouchControls isWorldBuilt />);
+    expect(screen.getByTestId('touch-spells')).toBeInTheDocument();
+  });
+
+  it('offers EVERY spell in the roster — not a subset', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerUp(screen.getByTestId('touch-spells'));
+    for (const id of SPELL_ORDER) expect(screen.getByTestId(`touch-spell-${id}`)).toBeInTheDocument();
+  });
+
+  it('TAPPING A SPELL CHANGES THE ACTIVE SPELL — the whole defect', () => {
+    const target = SPELL_ORDER.find((id) => id !== 'fireball');
+    render(<TouchControls isWorldBuilt />);
+    expect(useGameStore.getState().activeSpell).toBe('fireball');
+    fireEvent.pointerUp(screen.getByTestId('touch-spells'));
+    fireEvent.pointerUp(screen.getByTestId(`touch-spell-${target}`));
+    // The same store seam Digit1-4 writes — no new downstream path.
+    expect(useGameStore.getState().activeSpell).toBe(target);
+  });
+
+  it('reaches spells beyond the second — the default made only fireball castable', () => {
+    render(<TouchControls isWorldBuilt />);
+    for (const id of SPELL_ORDER.slice(1)) {
+      fireEvent.pointerUp(screen.getByTestId('touch-spells'));
+      fireEvent.pointerUp(screen.getByTestId(`touch-spell-${id}`));
+      expect(useGameStore.getState().activeSpell).toBe(id);
+    }
+  });
+
+  it('closes after a selection so it cannot eat the next tap', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerUp(screen.getByTestId('touch-spells'));
+    fireEvent.pointerUp(screen.getByTestId(`touch-spell-${SPELL_ORDER[1]}`));
+    expect(screen.queryByTestId(`touch-spell-${SPELL_ORDER[1]}`)).toBeNull();
+  });
+
+  it('draws a glyph per spell, tinted from the roster', () => {
+    render(<TouchControlsSurface spellOpen />);
+    for (const id of SPELL_ORDER) expect(screen.getByTestId(`spell-glyph-${id}`)).toBeInTheDocument();
   });
 });
