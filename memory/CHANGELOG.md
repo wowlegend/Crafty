@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-08-02 — the capture gate's root cause, after three wrong diagnoses (`82a6cc1`..`d188fc0`)
+
+**`requestAnimationFrame` fires ZERO times in 2 seconds in this machine's headless Chrome.** `capture.mjs`
+awaits 10 rAF callbacks inside a `page.evaluate`, so that call can never return, and puppeteer's default
+180s protocolTimeout eventually surfaces as `ProtocolError: Runtime.callFunctionOn timed out` — pointing at
+nothing.
+
+**The browser is not broken, which is why the fix I had routed to Kevin was wrong.** Chrome launches,
+reports 147.0.7727.57, evaluates JS and creates a WebGL 2.0 context. `Page.captureScreenshot` *also* hangs,
+on a two-line `data:` URL with no app loaded, under every flag combination tried (swiftshader, none,
+`--disable-gpu`, `--disable-gpu-compositing`, `--in-process-gpu`, `--single-process`,
+`--enable-software-rasterizer`, `--deterministic-mode`, old headless). Crafty is healthy too: boots in 2.7s,
+the test bridge answers, `enterCapture` and `start` return, the title diorama mounts instantly. It is
+OS-level compositor state; a reboot is the fix, and `npx puppeteer browsers install chrome` is not.
+
+**The outage was cheap; the illegibility was expensive.** Three minutes of silence and a generic CDP error
+got this misdiagnosed three times across several iterations — machine load, then a code regression (two
+controlled reverts and a worktree at `190aac9` spent on that), then a broken browser install. `capture.mjs`
+now asks the question directly on about:blank before capturing anything: **3.5s to a named cause with a
+reproduction command.** It cannot hang itself — the in-page promise carries a `setTimeout` escape hatch,
+and setTimeout keeps working when rAF does not, which is the asymmetry that made the diagnosis possible.
+
+**No fallback, deliberately.** Racing `flushFrames` against a wall-clock timer would let the run proceed —
+and with rAF dead nothing renders, so it would screenshot blank frames and turn the visual gate green over
+pictures of nothing. A comment says so, because the next person to hit a hang here will be tempted by it.
+
+Two more defects fixed in passing: `capture.mjs` ran `main()` at import (spawning a browser and a vite
+server as a side effect of loading it — the same defect found in `i18n-adoption.mjs` hours earlier), and the
+new test was first written into `tests/visual/`, which **vitest excludes** — it would never have run.
+
+**i18n 32 → 25.** The death and victory overlays, the quest log and the controls panel, none of which had
+`useT()` at all. The two most emotionally loaded strings in the game were English-only behind a gate
+reporting full dictionary parity.
+
 ## 2026-08-02 — the i18n sweep kept finding the gates were the real defect (`75474da`..`138b1fe`)
 
 Three commits. The translation work is the smallest part of what they contain.

@@ -160,8 +160,10 @@
 > since the prefix lives in a `read()` helper. **49 of 116 gates were never opened**; 97 → **399**
 > assertions verified. Its own findings then forced three more fixes (composed paths, `.not.toMatch`
 > polarity, multi-target attribution) before they stopped being false accusations.
-> **Remaining: 32 across 12 files** — largest are CraftingTable (4), MenuSystem (5), GameHud (4),
-> TouchControls (3), QuestSystem/QuestLog/TradingInterface/GameSystems (2–3 each).
+> **Remaining: 25 across 9 files** (`d188fc0` took the death/victory overlays, quest log and controls
+> panel to zero — none of those three had `useT()` at all): MenuSystem (5), CraftingTable (4),
+> GameHud (4 aria-labels), index.jsx (3), TouchControls (3 aria-labels), QuestSystem (2),
+> TradingInterface (2), App (1), HUD (1).
 > ⚠️ **Blind spot recorded, not closed:** interpolated copy (`Requires Lv {n}`) is invisible to the
 > detector, and closing it needs `t()` to take parameters first — a real API change, its own unit.
 >
@@ -183,6 +185,22 @@
 > reintroduce the thrash the +2 exists to prevent. New e2e `tier-downgrade-reclaim.spec.js` drives the real
 > transition through the same store action PerformanceMonitor uses.
 >
+> **✅ 2026-08-02 — CAPTURE-GATE ROOT CAUSE FOUND (`82a6cc1`, `c26367f`). Still blocked, but the ask is
+> now just A REBOOT — and "reinstall Chrome" was WRONG.** `requestAnimationFrame` fires **0 times in 2s**
+> in this box's headless Chrome, so `flushFrames()` (which awaits 10 rAF callbacks inside a
+> `page.evaluate`) can never return, and puppeteer's default 180s protocolTimeout surfaces as the generic
+> `Runtime.callFunctionOn timed out`. **The browser is fine** — launches, runs JS, makes a WebGL 2.0
+> context; **`Page.captureScreenshot` also hangs on a bare `data:` URL with no app**, under swiftshader /
+> no-flag / `--disable-gpu` / `--disable-gpu-compositing` / `--in-process-gpu` / `--single-process` /
+> `--enable-software-rasterizer` / old headless. **Crafty itself boots in 2.7s**, bridge answers,
+> `enterCapture`+`start` return, diorama canvas mounts instantly. OS-level compositor state.
+> `capture.mjs` now PREFLIGHTS it: **3.5s to a named cause + repro command** instead of 180s of silence.
+> **Deliberately no wall-clock fallback** — with rAF dead nothing renders, so a fallback would green the
+> gate over blank frames. Rather blind than lying.
+> *Also fixed:* `capture.mjs` ran `main()` on import (same defect as `i18n-adoption.mjs`), and the new test
+> was first written to `tests/visual/` — which **vitest excludes**, so it would never have run.
+>
+> — superseded (isolation still valid; only the recommended fix was wrong) —
 > **🛑 BLOCKER — THE VISUAL CAPTURE GATE IS DOWN (Kevin-facing, routed).** `ProtocolError:
 > Runtime.callFunctionOn timed out` before a single frame. **Isolated, NOT a code regression:** reverting
 > Terrain → same failure; worktree at `190aac9` (pre-refactor) → same failure; load 2.8/5.7/24/31 → same
