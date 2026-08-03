@@ -64,15 +64,15 @@ try {
     for (let i = 0; i < 12 && !playable; i++) {
       await delay(250);
       const st = await page.evaluate(() => ({
-        action: !!document.querySelector('button[aria-label="Action"]'),
-        tap: !!document.querySelector('button[aria-label="Tap to play"]'),
+        action: !!document.querySelector('[data-testid="touch-action"]'),
+        tap: !!document.querySelector('[data-testid="touch-tap-to-play"]'),
       }));
       tapToPlay = st.tap;
       if (st.tap) { // explicit Tap-to-Play activation gesture — tap it (the designed touch entry)
-        const r = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Tap to play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; });
+        const r = await page.evaluate(() => { const b = document.querySelector('[data-testid="touch-tap-to-play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; });
         await page.touchscreen.tap(r.x, r.y); await delay(300);
       }
-      playable = st.action || await page.evaluate(() => !!document.querySelector('button[aria-label="Action"]'));
+      playable = st.action || await page.evaluate(() => !!document.querySelector('[data-testid="touch-action"]'));
     }
   }
   check('Start Adventure leads to a PLAYABLE touch game (menu→play bridged)', playable, playable ? (tapToPlay ? 'via Tap-to-Play overlay' : 'menu dismissed straight to play') : 'STUCK on title — touch cold-start is DEAD');
@@ -123,7 +123,7 @@ try {
 
   // 5) VERB — the Action hit-area taps without throwing (performVerb smoke)
   let verbOk = false;
-  const actionBtn = await page.$('button[aria-label="Action"]');
+  const actionBtn = await page.$('[data-testid="touch-action"]');
   if (actionBtn) { try { await actionBtn.tap(); verbOk = true; } catch { verbOk = false; } }
   check('Action verb button taps without error', verbOk, '');
   await page.screenshot({ path: `${OUT}/touch-3-final.png` });

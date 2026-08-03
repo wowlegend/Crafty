@@ -81,7 +81,7 @@ class ErrorBoundary extends React.Component {
       // tokens/Tailwind) since a crash can predate applyThemeVars/CSS. The raw component stack is DEV-only
       // (players see a clean reload prompt, not an internals dump).
       return (
-        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', background: '#0D1320', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div data-testid="error-boundary" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', background: '#0D1320', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
           <div style={{ maxWidth: '560px', width: '100%', background: '#16213A', border: '4px solid #0A0F1A', borderRadius: '12px', boxShadow: '8px 8px 0 #0A0F1A', padding: '28px', color: '#E8EDF4' }}>
             <h1 style={{ margin: '0 0 12px', color: '#C9A86A', fontSize: '28px', fontWeight: 800, letterSpacing: '0.5px' }}>Something went wrong</h1>
             <p style={{ margin: '0 0 16px', color: '#CBD5E1' }}>The game hit an unexpected error. Reload to get back to the frontier.</p>

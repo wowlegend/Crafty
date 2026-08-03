@@ -32,7 +32,7 @@ describe('Inventory attribute allocation (jsdom) — real "+" buttons spend poin
     render(<Inventory onClose={() => {}} />);
     expect(g().attributes.attributePoints).toBe(3);
 
-    fireEvent.click(screen.getByLabelText('Allocate point to Strength'));
+    fireEvent.click(screen.getByTestId('alloc-strength'));
 
     expect(g().attributes.strength).toBe(11);
     expect(g().attributes.attributePoints).toBe(2);
@@ -40,8 +40,8 @@ describe('Inventory attribute allocation (jsdom) — real "+" buttons spend poin
 
   it('allocating across attributes decrements the shared point pool each time', () => {
     render(<Inventory onClose={() => {}} />);
-    fireEvent.click(screen.getByLabelText('Allocate point to Agility'));
-    fireEvent.click(screen.getByLabelText('Allocate point to Intellect'));
+    fireEvent.click(screen.getByTestId('alloc-agility'));
+    fireEvent.click(screen.getByTestId('alloc-intellect'));
 
     const a = g().attributes;
     expect(a.agility).toBe(11);

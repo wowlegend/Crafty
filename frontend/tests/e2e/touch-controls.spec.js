@@ -90,11 +90,11 @@ test.describe('B7 — the touch joystick knob renders a visible fill + border', 
   // (it no longer overlaps its glyph, and it overlaps the Settings gear again).
   test('the Pause hit-target sits under its glyph and clear of the Settings gear', async ({ page }) => {
     test.setTimeout(150000);
-    await enterTouchPlay(page, 'button[aria-label="Pause"]');
+    await enterTouchPlay(page, '[data-testid="touch-pause"]');
 
     const glyph = await rectOf(page, '[data-testid="touch-pause-glyph"]');
-    const hit = await rectOf(page, 'button[aria-label="Pause"]');
-    const gear = await rectOf(page, 'button[aria-label="Settings"]');
+    const hit = await rectOf(page, '[data-testid="touch-pause"]');
+    const gear = await rectOf(page, '[data-testid="hud-settings"]');
     console.log('B7 pause rects:', JSON.stringify({ glyph, hit, gear }));
 
     expect(glyph, 'the pause glyph must render').not.toBeNull();

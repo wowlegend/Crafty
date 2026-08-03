@@ -45,7 +45,7 @@ try {
   console.log('shot soulbind-allies');
   // a crashed Canvas renders the ErrorBoundary fallback ("Something went wrong") — detect it so a
   // teardown can't masquerade as a vacuous "0 red eyes" PASS.
-  const crashed = await page.evaluate(() => document.body.innerText.includes('Something went wrong'));
+  const crashed = await page.evaluate(() => !!document.querySelector('[data-testid="error-boundary"]'));
   if (crashed) { console.error('[soulbind-probe] FAIL: app crashed to ErrorBoundary before render'); done(1); }
   // programmatic ground-truth via the THREE scene graph (window.__threeScene): the fix controls the
   // RENDER, so traverse the live scene and count meshes whose material is named "eye" with the hostile

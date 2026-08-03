@@ -50,9 +50,9 @@ try {
     if (startHandle) { try { await startHandle.tap(); } catch {} }
     for (let i = 0; i < 12 && !playable; i++) {
       await delay(250);
-      const st = await page.evaluate(() => ({ action: !!document.querySelector('button[aria-label="Action"]'), tap: !!document.querySelector('button[aria-label="Tap to play"]') }));
-      if (st.tap) { const r = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Tap to play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; }); await page.touchscreen.tap(r.x, r.y); await delay(300); }
-      playable = st.action || await page.evaluate(() => !!document.querySelector('button[aria-label="Action"]'));
+      const st = await page.evaluate(() => ({ action: !!document.querySelector('[data-testid="touch-action"]'), tap: !!document.querySelector('[data-testid="touch-tap-to-play"]') }));
+      if (st.tap) { const r = await page.evaluate(() => { const b = document.querySelector('[data-testid="touch-tap-to-play"]'); const x = b.getBoundingClientRect(); return { x: Math.round(x.x + x.width / 2), y: Math.round(x.y + x.height / 2) }; }); await page.touchscreen.tap(r.x, r.y); await delay(300); }
+      playable = st.action || await page.evaluate(() => !!document.querySelector('[data-testid="touch-action"]'));
     }
   }
   console.log('playable =', playable);

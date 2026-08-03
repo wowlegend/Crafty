@@ -68,7 +68,7 @@ export const GameUI = ({ gameState }) => {
           <span className="text-sm font-bold text-success">{gameState.gameMode}</span>
         </Panel>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" aria-label="Settings" className="w-[42px] h-[42px] p-0 text-text-muted" onClick={() => gameState.setShowSettings(true)}>
+          <Button variant="ghost" size="sm" aria-label="Settings" data-testid="hud-settings" className="w-[42px] h-[42px] p-0 text-text-muted" onClick={() => gameState.setShowSettings(true)}>
             <Icon name="settings" size={20} />
           </Button>
         </div>
