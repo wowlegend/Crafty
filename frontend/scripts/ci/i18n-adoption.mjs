@@ -22,6 +22,18 @@
  * not: JSX text nodes and the four user-visible attributes. Anything already wrapped in {t(...)} or {`...`}
  * is invisible to it because those are expressions, not literals.
  *
+ * KNOWN BLIND SPOT (found 2026-08-02 while wrapping SpellUpgradePanel, recorded rather than papered over):
+ * INTERPOLATED copy is not detected. `<span>Requires Lv {requiredLevel}</span>` is plainly user-facing
+ * English, but the candidate contains `{` and is rejected by the code-punctuation filter that kills false
+ * positives from comparison operators. So the ledger UNDER-reports: it is a floor on the untranslated
+ * copy, not a complete census.
+ *
+ * Not fixed here because it is not a detector problem. `t(key)` takes no parameters, so there is nowhere
+ * for `{requiredLevel}` to go — flagging these would produce findings nobody can action. Closing it means
+ * first giving t() interpolation (e.g. t('talent.requiresLevel', { level })), which is a real API change
+ * with its own tests and both locales to update. Until then the ratchet governs the literals it can see,
+ * and this comment is the record of what it cannot.
+ *
  *   node scripts/ci/i18n-adoption.mjs           check; exit 1 if any count grew
  *   node scripts/ci/i18n-adoption.mjs --write    re-freeze after reducing (never to raise)
  *   node scripts/ci/i18n-adoption.mjs --list     print every occurrence with file:line

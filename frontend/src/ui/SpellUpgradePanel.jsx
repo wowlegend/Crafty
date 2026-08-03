@@ -152,7 +152,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                         Rank {currentLvl}/{node.limit}
                                                     </span>
                                                     {isMaxed ? (
-                                                        <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">Max Rank <Icon name="star" size={12} className="flex-none" /></span>
+                                                        <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">{t('talent.maxRank')} <Icon name="star" size={12} className="flex-none" /></span>
                                                     ) : isPrereqMet ? (
                                                         <Button
                                                             variant="primary"
@@ -213,7 +213,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                 ))}
                                             </div>
                                             {isMaxed ? (
-                                                <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">Max Rank <Icon name="star" size={12} className="flex-none" /></span>
+                                                <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">{t('talent.maxRank')} <Icon name="star" size={12} className="flex-none" /></span>
                                             ) : gated ? (
                                                 <span className="text-[10px] text-danger font-bold flex items-center gap-1"><Icon name="lock" size={12} className="flex-none" /> Requires Lv {requiredLevel}</span>
                                             ) : (
