@@ -54,10 +54,13 @@ Plans are **per-milestone build contracts**. Once a milestone ships, its plan is
 plan for "what to do next" — that is what `memory/STATUS.md` is for.
 
 - **Most recent / most relevant:** `2026-06-29-crafty-{de-monolith,spell-vfx-redesign}`,
-  `2026-06-20-crafty-biome-flora`, `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps),
-  `2026-06-15-crafty-world-purpose-sota` (+ the S6–S10 gameplay ladder).
+  `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).
+- **`2026-06-15-crafty-world-purpose-sota` is NOT archivable and is not really a plan any more.**
+  `LOOP-CHARTER.md` cites it twice as the live **Source** for current design (tier-by-distance, shrines,
+  the climax; vertex AO / aerial perspective / landmark emissive crowns) and `SOTA-INITIATIVE.md` §3 is its
+  master-plan registration. It functions as a DESIGN OF RECORD — treat it like the specs above, not like a
+  finished build contract.
 - **Everything dated ≤ 2026-06-16** is shipped-and-historical (S1/S2/S2-B/S3/world/touch/interleaves).
-- `2026-06-13-crafty-loot-glow-PARKED.md` — parked by name.
 
 ---
 
@@ -103,10 +106,20 @@ references** to them — nothing live, nothing historical, nothing in the map.
 **ARCHIVED, NOT DELETED**, and moved with `git mv`, so history follows the file and any of them can be
 restored with a one-line move. They are still the record of how their milestone was built.
 
+## Wave-2 (2026-08-02) — 3 of the 4 canonical-cited docs archived; 1 is staying
+
+`ocean-coast` (ARCHITECTURE calls the milestone COMPLETE), `loot-glow-PARKED` (CHANGELOG records it
+SUPERSEDED by the redesign that shipped) and `biome-flora` (shipped 2026-06-20) moved to
+`docs/archive/2026-Q2/plans/`. **`world-purpose-sota` STAYS** — it is a live design source, not history.
+
+**Wave-1's stated reason for deferring these was wrong, and checking it found a real hole.** The claim was
+that moving one "breaks a live backtick path and trips `doc-currency`". Two of the four were cited only by
+BARE FILENAME (no path), and ocean-coast's citation in ARCHITECTURE.md was a BARE PATH — not backticked.
+`doc-currency` only matched markdown links and backticked paths, so moving the file left ARCHITECTURE
+pointing at nothing and the lint still printed "✓ PASSED (9 canonical docs checked)". It now also matches
+bare paths, and is mutation-proven against exactly that case.
+
 **Deliberately left in place:**
-- **4 cited by a CANONICAL doc** (`loot-glow-PARKED`, `ocean-coast`, `world-purpose-sota`, `biome-flora`).
-  Moving one breaks a live backtick path and trips `doc-currency`, so each may only move in a commit that
-  ALSO fixes the citing doc. That is Wave-2.
 - **34 cited only by `memory/CHANGELOG.md`** (and one spec). CHANGELOG is append-only history: moving the
   file it cites would leave a historical entry pointing at a path that never existed at the time it was
   written. Not worth the churn for a directory listing.

@@ -53,6 +53,14 @@ const warnings = [];
 // Match markdown links + inline-code paths that look repo-relative.
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})`/g;
+// BARE paths — not in backticks, not a markdown link. This repo's prose is full of them:
+//   "(plan docs/superpowers/plans/2026-06-14-crafty-ocean-coast.md, 4 slices)"
+// and until 2026-08-02 the lint could not see a single one. Archiving that very file left ARCHITECTURE.md
+// pointing at a path that no longer existed and doc-currency reported "✓ PASSED (9 canonical docs
+// checked)" — a clean bill of health over text it never examined, which is the failure mode this lint
+// exists to prevent in the DOCS. INDEX.md even asserted that moving such a file "trips doc-currency";
+// it did not, and that false confidence is what made the hole worth closing rather than noting.
+const BAREPATH_RE = /(?<![`(\w/.-])((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})/g;
 
 for (const rel of CANONICAL) {
   const abs = join(ROOT, rel);
@@ -95,6 +103,7 @@ for (const rel of CANONICAL) {
   let m;
   while ((m = LINK_RE.exec(src))) check(m[1], 'link', m.index);
   while ((m = CODEPATH_RE.exec(src))) check(m[1], 'path', m.index);
+  while ((m = BAREPATH_RE.exec(src))) check(m[1], 'bare path', m.index);
 }
 
 // --- 2. PACKAGE CLAIMS ------------------------------------------------------
