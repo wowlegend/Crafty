@@ -619,6 +619,13 @@ autonomous deletion. Default-KEEP under uncertainty; tie → DEEPEN.**
    repeatedly and every time Kevin's eyes caught it, not the gates.
 2. **A gate that greps source text is not a gate.** (R1 sat green under a regex gate.)
 3. **Never weaken/delete/skip a test to go green.** The ratchet is non-negotiable.
-4. **Verify-before-assert.** Agent/workflow claims are T3 — this session a subagent fabricated a "RED test
-   suite" crisis (it is green 1936/1936). Grep the cited file:line before acting on any claim, including your own.
+4. **Verify-before-assert.** Agent/workflow claims are T3 — a subagent once fabricated a "RED test suite"
+   crisis (the suite was green: 1936/1936 *as of 2026-07-14; the total moves, read it from
+   `npm run test:unit`*). Grep the cited file:line before acting on any claim, including your own.
 5. **A stale doc is a live trap** — it regenerates dead work verbatim (see G1).
+6. **ANTI-REDO — do NOT "fix" the tone mapping or re-add a mood grade** (verified 2026-06-15, relocated here
+   from LOOP-CHARTER §6 on 2026-08-03). ToneMapping is **already NEUTRAL, not ACES**, and the per-mood
+   `MOOD_GRADE` script **already ships** in `src/render/mood.js`. The world reading "dim/flat" was a
+   three-bug postproc chain, not the grade — re-tuning either is a day spent undoing someone's fix. Related:
+   capture mode used to DISABLE cast shadows and landmark emissive crowns, so every visual baseline reviewed
+   before S3 was the flattest, beacon-less version of the world rather than real play.

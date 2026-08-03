@@ -20,11 +20,21 @@
 > | 11 | delete hand-typed numbers from Tech Stack; MEASURED block | ✅ SHIPPED | `03807b2` — was 12× wrong on files, 2.5× on LOC, and "one large file" vs five |
 > | 12 | split perf-siege out of the e2e job | ✅ SHIPPED | `8ac8d07`, `@local-only` + `--grep-invert` |
 > | 13 | new §8 RULE HYGIENE | ✅ SHIPPED | charter `## 8. Rule hygiene (added 2026-08-02)` |
-> | 14 | delete charter §5 + §6 | ⬜ OPEN | both headings still present |
+> | 14 | delete charter §5 + §6 | 🟡 PARTIAL | §6 done (moved to STATUS §2/§5). **§5 must NOT be deleted outright** — see note below |
 >
 > **#5 and #11 are one unit** — the MEASURED block has nothing to source until `measure.mjs` exists, and
 > AGENTS:40's counts are the plan's own headline example of a number that rots (already 1.8× wrong the day
 > it was committed). Do them together.
+>
+> **#14 CORRECTION (2026-08-03): "delete §5 and §6 outright" is too blunt, and §5 must survive.**
+> §6 was genuinely superseded — it said so in its own first line since 2026-06-15 — and a backlog in the
+> constitution is the wrong shape when STATUS.md §2 owns the registry. It is now a pointer; its one unique
+> item (the ANTI-REDO: ToneMapping already NEUTRAL, `MOOD_GRADE` already ships) moved to STATUS §5.
+> **§5 is different.** It carries the live rule that replaced Kevin's pre-loop HARD GATE with the loop's
+> self-gate, and `SOTA-INITIATIVE.md:111` cites it by name — "self-gate per charter §5". Deleting it drops a
+> governing rule AND orphans a cross-doc reference that `doc-currency` cannot see, because the lint checks
+> file paths, not section anchors. §5 should be COMPRESSED (its Kevin-backlog bullet is superseded by
+> `DECISIONS.md`), with the self-gate rule kept and the citation updated in the same commit.
 >
 > *Method note: two of these were nearly mis-recorded as OPEN because the grep was case-sensitive —
 > charter §8 is `Rule hygiene`, not `RULE HYGIENE`. Verify a heading's absence case-insensitively.*

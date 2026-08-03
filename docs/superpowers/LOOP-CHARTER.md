@@ -329,27 +329,16 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   NOT real play. Treat pre-S3 visual baselines as a floor, not ground truth; world-purpose S3 un-gates beacons+shadows
   in capture so reviewed frames match play. This is WHY the step-5 LIVE-PROBE axis is load-bearing: the diorama lied.
 
-## 6. SOTA-experience backlog
+## 6. SOTA-experience backlog — MOVED, not deleted
 
-**SUPERSEDED (2026-06-15) by two newer, file:line-cited backlogs of record — work THOSE first:** (1) the
-**codebase-reality-audit** (`research/2026-06-15-crafty-codebase-reality-audit.md`): the ranked P0 debt chain
-(postproc 3-bug dim/flat root cause, invisible debris, height drift [✅ S5], audio clipping/no-limiter, palette fork,
-build-verb mis-map, token-SoT) + the SOTA visual-opportunity ranking; (2) the **world-purpose-sota** plan
-(`plans/2026-06-15-crafty-world-purpose-sota.md`): vertex AO, aerial perspective, un-gate landmark emissive crowns +
-cast shadows in capture, ore generation, tier-by-distance, shrines, fixed Blight-Heart climax + win-state.
-**ANTI-REDO (verified — do NOT re-tune):** ToneMapping is ALREADY NEUTRAL (not ACES) + the per-mood MOOD_GRADE
-script ALREADY ships in `render/mood.js`. The original 2026-06-10 seed list below stays a valid INTERLEAVE candidate
-pool where not subsumed:
+**The backlog lives in `memory/STATUS.md` §2 (D Art · E Gameplay depth · F Perf + polish). Go there.**
 
-Audio: per-Aspect motifs + roar/transform/grab/hurl SFX · hit/kill audio split (player vs enemy) · pad LFO
-movement + arpeggiator stingers · ambient day/night/biome beds · UI sounds. Game-feel: hitstop/screenshake
-tuning · per-verb camera kicks · landing/footstep feedback · damage direction cues. Visual: per-element
-projectile GEOMETRY variety · siege/dawn skybox moments · biome landmarks + silhouette landmarks · mob
-bestiary distinctness (post-B3 per plan, pull earlier if cheap) · loot-VFX premium pass (parked branch
-`s2a-loot-vfx-premium` exists) · FPV beast-form interim treatment (#71). UX: controls-panel truth + onboarding
-toasts (#71) · panel matrix (#70) · coin sinks · hotbar honesty. i18n: full zh-CN content pass (#73 — locale
-TOGGLE, English default, natural Simplified Chinese for a broad kids-to-adults audience). Each of
-these follows §4 (reference/spec first for look-bearing ones).
+This section used to carry a candidate pool of audio / game-feel / visual / UX / i18n ideas, and its own
+first line had declared it SUPERSEDED since 2026-06-15. A backlog in the constitution is the wrong shape by
+this charter's own doc-role rule — STATUS.md owns the registry, and two copies of a work list mean one of
+them is quietly wrong. The still-live items were already represented in STATUS §2; the one thing that was
+NOT is the ANTI-REDO warning (ToneMapping is already NEUTRAL, `MOOD_GRADE` already ships), which moved to
+STATUS §5 "Anti-patterns this project has already paid for" — the section for exactly that.
 
 ## 6.4 ⚠️ BROWSER / TEST-PROCESS HYGIENE — anything you launch, you kill (Kevin, 2026-07-13)
 
