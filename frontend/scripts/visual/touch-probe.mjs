@@ -126,6 +126,27 @@ try {
   const actionBtn = await page.$('[data-testid="touch-action"]');
   if (actionBtn) { try { await actionBtn.tap(); verbOk = true; } catch { verbOk = false; } }
   check('Action verb button taps without error', verbOk, '');
+
+  // 6) X3 — does a tap on the HOTBAR reach its onClick, or does the full-screen touch layer swallow it?
+  //    This claim sat UNCONFIRMED in STATUS §E-bis since 2026-07-13 because the first attempt to check it
+  //    re-invented the harness and never got into the game. It is checked HERE, in the probe that already
+  //    solves cold-start, exactly as that note advised. Verdict is behavioural — the store's selectedBlock
+  //    either changes or it does not — so it cannot be satisfied by a code reading.
+  const hb = await page.evaluate(() => {
+    const slots = [...document.querySelectorAll('[data-hotbar-block]')];
+    return { count: slots.length, selected: window.useGameStore.getState().selectedBlock, blocks: slots.map((s) => s.dataset.hotbarBlock) };
+  });
+  const target = hb.blocks.find((b) => b !== hb.selected);
+  let hotbarOk = false, hotbarDetail = 'hotbar not in DOM';
+  if (hb.count && target) {
+    const r = await page.evaluate((b) => { const el = document.querySelector(`[data-hotbar-block="${b}"]`); const q = el.getBoundingClientRect(); return { x: Math.round(q.x + q.width / 2), y: Math.round(q.y + q.height / 2) }; }, target);
+    await page.touchscreen.tap(r.x, r.y);
+    await delay(500);
+    const after = await page.evaluate(() => window.useGameStore.getState().selectedBlock);
+    hotbarOk = after === target;
+    hotbarDetail = `tapped "${target}" (was "${hb.selected}") -> selected "${after}"${hotbarOk ? '' : ' — TAP SWALLOWED by the full-screen touch layer'}`;
+  }
+  check('HOTBAR tap selects that block on touch (X3)', hotbarOk, hotbarDetail);
   await page.screenshot({ path: `${OUT}/touch-3-final.png` });
 
   const allOk = results.every((r) => r.ok);

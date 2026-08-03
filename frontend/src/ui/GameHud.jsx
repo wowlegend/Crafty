@@ -10,11 +10,21 @@ import { Package, Hammer, Wand2, Grid } from 'lucide-react';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
 import { isTouchUIMode } from '../input/touchDevice';
 
-// X3: `data-hud-interactive` marks this as a real UI control surface. The full-screen TOUCH layer
-// (ui/TouchControls.jsx, z-40) sits ABOVE the HUD (z-20) and routed EVERY touch into its move/look zones —
-// so on a touch device a tap here was hit-covered and swallowed, and the block selection could never change:
-// a voxel BUILDING game permanently locked to placing grass, on its own stated iPad target. The touch router
-// now skips touches landing on a [data-hud-interactive] surface, letting the tap reach these onClick handlers.
+// X3: `data-hud-interactive` marks this as a real UI control surface — a SEAM prepared for a fix that has
+// NOT landed. The full-screen TOUCH layer (ui/TouchControls.jsx, z-40) sits ABOVE the HUD (z-20); its
+// `onStart` routes any touch that is not a `button[data-touch-btn]` into the move/look zones AND calls
+// preventDefault(), which suppresses the synthesized click. A hotbar slot is a `<button data-hotbar-block>`,
+// NOT `data-touch-btn` — so on a touch device this tap should never reach the onClick below, leaving a
+// voxel BUILDING game locked to one block on its own stated iPad target.
+//
+// ⚠️ THE PREVIOUS VERSION OF THIS COMMENT CLAIMED THE FIX WAS DONE — "the touch router now skips touches
+// landing on a [data-hud-interactive] surface". It does not: `grep hud-interactive src/ui/TouchControls.jsx`
+// returns nothing. The seam landed; the routing never did. A comment asserting a fix that does not exist is
+// worse than no comment, because the next reader stops looking.
+//
+// STATUS §E-bis X3 keeps this UNCONFIRMED on purpose — the mechanism above is a code READING, and the first
+// attempt to verify it never got into the game. `scripts/visual/touch-probe.mjs` now carries the behavioural
+// check ("HOTBAR tap selects that block on touch"); it decides this from the store, not from an argument.
 const MinecraftHotbar = React.memo(({ gameState }) => {
   if (!gameState) return null;
   // B7 (18-domain review): the 9-slot hotbar (9 × w-[62px] + gaps + padding ≈ 622px) overflowed a phone
