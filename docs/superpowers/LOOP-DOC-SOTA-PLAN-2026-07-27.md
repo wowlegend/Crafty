@@ -1,6 +1,7 @@
 # Loop governing-document SOTA plan — 2026-07-27
 
-> **⚠️ STATUS RE-VERIFIED 2026-08-02: 8 of 14 SHIPPED, 6 REMAIN — the "11 remain" below was stale.**
+> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 10 of 14 SHIPPED, 4 REMAIN — #5 + #11 landed in `03807b2`.**
+> Still open: **#6** Rule-5 self-adjudication · **#8** AGENTS tail · **#10** charter §3 · **#14** delete charter §5/§6.
 > Six edits landed during the loop era after this plan was written, and nothing updated the header, so the
 > queue kept re-listing finished work. Checked against live files rather than against this document:
 >
@@ -10,13 +11,13 @@
 > | 2 | gate-shape lint | ✅ SHIPPED | `frontend/scripts/ci/gate-shape.mjs`, 399 assertions |
 > | 3 | pre-push certifies the PUSHED REFS | ✅ SHIPPED | `.githooks/pre-push` detached-worktree certify |
 > | 4 | no external-state claim without a same-turn observation | ✅ SHIPPED | charter, and kernel's "GENERAL RULE" para |
-> | 5 | `measure.mjs` — one authority for every number | ⬜ OPEN | file absent |
+> | 5 | `measure.mjs` — one authority for every number | ✅ SHIPPED | `03807b2` — + drift check in `doc-currency`, mutation-proven 3 ways |
 > | 6 | Rule 5: no self-adjudicated dismissals + category markers | ⬜ OPEN | charter has "may not judge its own completion" only |
 > | 7 | AGENTS: full gate table | ✅ SHIPPED | `3555db5` — 9 gates, transcribed from pre-push + ci.yml |
 > | 8 | AGENTS tail: STATUS-first read order + post-compaction checklist | ⬜ OPEN | no "Where state lives" section |
 > | 9 | charter §0-A/0-B/0-C rewrite | ✅ SHIPPED | `## 0-A. READ ORDER` present |
 > | 10 | charter §3: CI as the FIRST gate + mutation-proof trailer | ⬜ OPEN | §3 still opens on MUTATION-PROOF |
-> | 11 | delete hand-typed numbers from Tech Stack; MEASURED block | ⬜ OPEN | AGENTS:40 still carries `~14.4k LOC / ~31 files` etc. |
+> | 11 | delete hand-typed numbers from Tech Stack; MEASURED block | ✅ SHIPPED | `03807b2` — was 12× wrong on files, 2.5× on LOC, and "one large file" vs five |
 > | 12 | split perf-siege out of the e2e job | ✅ SHIPPED | `8ac8d07`, `@local-only` + `--grep-invert` |
 > | 13 | new §8 RULE HYGIENE | ✅ SHIPPED | charter `## 8. Rule hygiene (added 2026-08-02)` |
 > | 14 | delete charter §5 + §6 | ⬜ OPEN | both headings still present |
