@@ -1,5 +1,29 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **👀 2026-08-03 — X1 SHIPPED: the four Aspects are reachable on touch (`23f6cfa`). Your eye needed on the
+> LAYOUT, and it is not lived-verified.**
+>
+> Until now `grep -cE "roar|grab|snare|imbue"` across every touch file returned **0** — Wildheart / Voidhand
+> / Soulbind / Elemancer were bound to R/V/X/Z and nothing else, so the game's signature was desktop-only
+> (pillars P1 + P4, and P4 is a HARD veto).
+>
+> **What I built:** a Flame toggle above the cast button (bottom-right thumb cluster) opens a ring of the
+> **unlocked** Aspect verbs; tapping one writes the same boolean intent the keyboard writes, so nothing
+> downstream changed. Mirrors the existing M3a panel tray rather than inventing a new interaction.
+>
+> **Three judgement calls I made, all reversible — say the word on any:**
+> 1. **Tap-to-open, not press-and-hold.** STATUS said press-and-hold. Tap matches the tray you already have,
+>    and a hold competes with the look-drag on the same thumb. Easy to switch.
+> 2. **Locked Aspects get NO sector** (desktop shows a "denied" toast instead). A thumb-sized target that can
+>    only refuse felt like a worse trade than no target. Nothing unlocked = no ring.
+> 3. **Ring radius 78px, anchored at `bottom: calc(11% + 104px)`, right thumb.** Pure guesswork on reach —
+>    **this is the bit I actually need your eye on.** Glyphs are the key letters (R/V/X/Z).
+>
+> **⚠️ NOT LIVED-VERIFIED.** The compositor fault is active again (rAF 0 firings/1.2s), so `touch-probe.mjs`
+> could not drive a real browser. It has 6 behavioural render tests (mutation-proven) + 11 on the pure
+> geometry, but **nobody has yet touched this on a real device.** Worth a minute on your iPad before trusting it.
+
+
 > **⚠️ 2026-08-03 ~12:10 — THE COMPOSITOR FAULT CAME BACK. It is INTERMITTENT, not cured.**
 > `requestAnimationFrame` fires **0 times in 1.2s** again, at **load 5.67** — so it is not load. The touch
 > probe ran fine at 09:38 and the screenshot call hung by 11:35, on the same box, same commit range.

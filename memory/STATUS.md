@@ -450,7 +450,13 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ### E-bis. ⛔ THE HARD COHERENCE VIOLATION (highest-priority build item found in the specs audit)
 
-- ▢ **X1 [LOOP] The four Aspects are UNREACHABLE ON TOUCH.** Verified: `grep "roar|grab|snare|imbue"` across
+- ▣✓ **X1 SHIPPED `23f6cfa` — the Aspect ring.** `src/input/aspectWheel.js` (pure, KEY_MAP-derived) +
+  a toggle/ring in TouchControls mirroring the M3a tray; taps write the SAME `setIntent` booleans the
+  keyboard writes, so no downstream change. Only UNLOCKED verbs get a sector. Gate is BEHAVIOURAL
+  (`tests/gates/aspect-ring-gates.test.jsx`, 6 render tests, mutation-proven) + 11 pure-geometry tests.
+  **NOT lived-verified — the compositor fault blocked touch-probe; layout/thumb-reach routed to Kevin.**
+  *(Original finding kept below for the record.)*
+- ~~▢ **X1 [LOOP] The four Aspects are UNREACHABLE ON TOUCH.**~~ Verified: `grep "roar|grab|snare|imbue"` across
   `ui/TouchControls*.jsx` + `ui/touchTray.js` = **0 hits**. The radial Aspect-verb wheel (touch M3b) was never
   built. So **Wildheart / Voidhand / Soulbind / Elemancer — the entire signature identity of the game — are
   desktop-only.**
