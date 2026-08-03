@@ -1,7 +1,7 @@
 # Loop governing-document SOTA plan — 2026-07-27
 
-> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 10 of 14 SHIPPED, 4 REMAIN — #5 + #11 landed in `03807b2`.**
-> Still open: **#6** Rule-5 self-adjudication · **#8** AGENTS tail · **#10** charter §3 · **#14** delete charter §5/§6.
+> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 11 of 14 SHIPPED, 3 REMAIN — #5 + #11 landed in `03807b2`, #14 (amended) in `87f803c`.**
+> Still open: **#6** Rule-5 self-adjudication · **#8** AGENTS tail · **#10** charter §3.
 > Six edits landed during the loop era after this plan was written, and nothing updated the header, so the
 > queue kept re-listing finished work. Checked against live files rather than against this document:
 >
@@ -20,7 +20,7 @@
 > | 11 | delete hand-typed numbers from Tech Stack; MEASURED block | ✅ SHIPPED | `03807b2` — was 12× wrong on files, 2.5× on LOC, and "one large file" vs five |
 > | 12 | split perf-siege out of the e2e job | ✅ SHIPPED | `8ac8d07`, `@local-only` + `--grep-invert` |
 > | 13 | new §8 RULE HYGIENE | ✅ SHIPPED | charter `## 8. Rule hygiene (added 2026-08-02)` |
-> | 14 | delete charter §5 + §6 | 🟡 PARTIAL | §6 done (moved to STATUS §2/§5). **§5 must NOT be deleted outright** — see note below |
+> | 14 | delete charter §5 + §6 | ✅ SHIPPED (amended) | §6 → pointer; §5 COMPRESSED not deleted — it holds the self-gate rule `SOTA-INITIATIVE.md:111` cites |
 >
 > **#5 and #11 are one unit** — the MEASURED block has nothing to source until `measure.mjs` exists, and
 > AGENTS:40's counts are the plan's own headline example of a number that rots (already 1.8× wrong the day
