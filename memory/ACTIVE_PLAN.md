@@ -195,6 +195,18 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅✅ i18n ADOPTION SWEEP COMPLETE — 109 → 0** (`dd6e3fa` decoupling, `2ece9c9` the sweep). Ledger is
+> 0 across 0 files, so the ratchet is now a ZERO-TARGET: any new hardcoded string fails as a NEW FILE.
+> Pixel-verified 31/32 (only the known `explore-day-low`). Two lessons worth keeping:
+> **(a)** `t(key, vars)` HAS always interpolated — the "t() takes no parameters" claim in
+> `i18n-adoption.mjs` was written without reading `i18n.js` and is corrected; interpolated copy is
+> wrappable today, only the DETECTOR can't see it. **(b)** the HUD objective banner is written
+> IMPERATIVELY (`txt.textContent = label`), so the detector's flagged JSX default was cosmetic — the real
+> player-visible strings were invisible JS literals. Enumerate imperative writes, not just JSX.
+> **User-facing copy is no longer a test selector** — 9 call sites across an e2e spec, 3 probes and an
+> integration test now use `data-testid`; verified live via `touch-probe.mjs` + the 3 touch e2e tests.
+>
+> — superseded —
 > **▶ i18n 25 → 19** (`6dfdc16`: crafting table + villager trading). ⚠️ **NEXT i18n UNIT IS BLOCKED ON A
 > DECOUPLING:** the remaining `GameHud` (4) / `TouchControls` (3) / `index.jsx` (3) strings are aria-labels
 > and error text that **4 probes + an e2e spec use as RUNTIME SELECTORS** (`button[aria-label="Settings"]`,

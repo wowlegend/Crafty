@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-02 — i18n adoption reaches ZERO, and copy stops being a test selector (`dd6e3fa`, `2ece9c9`)
+
+**109 → 0.** Every user-facing string in `src/` now goes through `t()`. The ledger is frozen at zero across
+zero files, so the ratchet became a zero-target: any new hardcoded string fails as a NEW FILE.
+
+**First, the decoupling that unblocked it.** Nine call sites across an e2e spec, three probes and an
+integration test located elements by the English words a player reads — `button[aria-label="Settings"]`,
+`[aria-label="Action"]`, `[aria-label="Tap to play"]`, `innerText.includes('Something went wrong')`,
+`getByLabelText('Allocate point to Strength')`. That made a11y copy a load-bearing test contract; wrapping
+any of it was safe only while the default locale stayed `en`. Enumerating properly found two the queue had
+missed: `aria-label="Pause"`, and the allocation labels — which were **already wrapped in `t()`**, so that
+coupling was a latent break introduced by an earlier commit of mine, passing purely on the en default.
+Every one now carries a `data-testid`. Verified live: `touch-probe.mjs` passes end-to-end in a real browser
+and the 3 touch e2e tests pass with rects proving the selectors resolved; mutation-proven by deleting
+`data-testid="touch-action"` and watching the probe go red.
+
+**Three strings the detector cannot see, wrapped anyway.** `1-4 Spells` (leading digit) and
+`GENERATING WORLD` (no lowercase run) both fail `isProse()`. More seriously, **the HUD objective banner is
+written imperatively** — `txt.textContent = label`, with `'Reach the frontier shrine'` and
+`'Shatter the Blight Heart'` as plain JS literals in the frame loop. The scanner only ever saw the JSX
+default, which that assignment immediately overwrites, so wrapping the flagged occurrence alone would have
+been purely cosmetic: the string a player actually reads lived in code the scanner cannot reach.
+
+**A correction owed to the record.** `i18n-adoption.mjs` carried a comment claiming `t()` takes no
+parameters, so interpolated copy needed a new API before it could be wrapped. Written without reading
+`i18n.js`, and false — `t(key, vars)` has always interpolated, `'ui.level': 'Level {n}'` ships in both
+locales, and `i18n.test.js` asserts `t('ui.level', { n: 7 })`. Corrected in place. The blind spot is real;
+the reason given for it was not.
+
+**eslint earned its keep:** the world-gen splash lives in `GameApp`, not `App`, so the hook landed in the
+wrong component and `no-undef` named both call sites. A build alone would not have caught it — an undefined
+`t` is a runtime ReferenceError, on the loading screen every player sees.
+
+**Pixel-verified:** 31/32 visual states pass, the sole failure being the known `explore-day-low`. One botched
+run along the way was self-inflicted — `test:visual` re-captures, so running it against a background capture
+collided on strict port 4178 and failed `title-mascot`; a clean single run captured it fine.
+
 ## 2026-08-02 — the visual gate came back, and every baseline turned out to be stale (`f9a6989`, `6dfdc16`)
 
 The machine recovered. `npm run visual:capture` printed **`preflight: browser produced 72 frames in 1.2s`**
