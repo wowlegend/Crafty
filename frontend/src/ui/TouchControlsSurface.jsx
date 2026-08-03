@@ -1,5 +1,7 @@
-import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind } from 'lucide-react';
+import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
+import { unlockedAspectVerbs, ringLayout } from '../input/aspectWheel';
+import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
@@ -31,8 +33,11 @@ const BTN = (extra) => ({
  * overlay layers interactivity on top; the capture-view renders this alone for the mobile.png
  * baseline. `nub` = optional {x,y} px offset for the dynamic knob (live path).
  */
-export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
+export default function TouchControlsSurface({ nub = null, trayOpen = false, wheelOpen = false }) {
   const t = useT();
+  // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
+  const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
+  const ringPositions = ringLayout(aspects.length, 78);
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 42, pointerEvents: 'none' }}>
       {/* legibility scrim: faint dark vignette in the two thumb corners so controls pop over bright scenes */}
@@ -50,6 +55,25 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false }) {
           <div key={p.id} aria-label={t(p.labelKey)}
                style={BTN({ top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 })}>
             {Icon && <Icon size={26} strokeWidth={2.4} color={GLYPH} />}
+          </div>
+        );
+      })}
+      {/* X1 ASPECT RING (STATUS §E-bis): the four Aspect verbs had no touch affordance at all, so the
+          game's signature was desktop-only. Toggle sits above the cast button, in thumb reach; the ring
+          fans out from it. Geometry comes from the pure ringLayout() so the glyphs and the hit-targets in
+          TouchControls cannot drift apart — they read the same function with the same radius. */}
+      {aspects.length > 0 && (
+        <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 104px)', width: 52, height: 52 })}>
+          <Flame size={24} strokeWidth={2.4} color={GLYPH} />
+        </div>
+      )}
+      {wheelOpen && aspects.map((a, i) => {
+        const q = ringPositions[i] || { x: 0, y: 0 };
+        return (
+          <div key={a.verb} aria-label={a.aspect}
+               style={BTN({ right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
+                            bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 })}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>
           </div>
         );
       })}

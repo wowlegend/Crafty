@@ -5,6 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
+import { unlockedAspectVerbs, ringLayout, TAP_HOLD_MS } from '../input/aspectWheel';
 import { makeTouchRouter } from '../input/touchMath';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
 import { TRAY_PANELS, togglePanel } from './touchTray';
@@ -38,6 +39,7 @@ function TouchControlsLive({ isWorldBuilt }) {
   const active = useActiveInput();              // SAFE reactive read (transition-state only)
   const isAlive = useGameStore((s) => s.isAlive);
   const [trayOpen, setTrayOpen] = useState(false);
+  const [wheelOpen, setWheelOpen] = useState(false);
   const nubRafRef = useRef(0);                  // W4-T11: rAF throttle for the imperative knob-follow (no React state -> GLI trap-6)
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
@@ -110,6 +112,8 @@ function TouchControlsLive({ isWorldBuilt }) {
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
   const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
+  const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
+  const ringPositions = ringLayout(aspects.length, 78);
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0 };
   return (
     <div
@@ -117,7 +121,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       style={{ position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
                WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
     >
-      {active && <TouchControlsSurface trayOpen={trayOpen} />}
+      {active && <TouchControlsSurface trayOpen={trayOpen} wheelOpen={wheelOpen} />}
 
       {showTapToPlay && (
         <button data-touch-btn onPointerUp={() => setActive(true)} aria-label={t('a11y.tapToPlay')} data-testid="touch-tap-to-play"
@@ -164,6 +168,31 @@ function TouchControlsLive({ isWorldBuilt }) {
           onPointerUp={() => { togglePanel(p, useGameStore.getState()); setTrayOpen(false); setActive(false); }}
           style={{ ...hit, top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 }} />
       ))}
+
+      {/* X1 ASPECT RING — the four Aspect verbs (roar / grab / snare / imbue) had NO touch affordance at
+          all, so the game's signature identity was desktop-only (STATUS §E-bis X1; pillars P1 + P4).
+          Mirrors the M3a tray deliberately: a toggle plus `data-touch-btn` hit-targets, so the router
+          already skips them and TouchControlsSurface draws the glyphs. ONLY UNLOCKED verbs get a sector —
+          a thumb-sized target that can only refuse is a worse trade than no target. Writes the SAME
+          boolean intents the keyboard writes, pulsed, so nothing downstream changes. */}
+      {active && aspects.length > 0 && (
+        <button data-touch-btn onPointerUp={() => setWheelOpen((o) => !o)} aria-label={t('a11y.aspects')} data-testid="touch-aspects"
+          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 104px)', width: 52, height: 52 }} />
+      )}
+      {active && wheelOpen && aspects.map((a, i) => {
+        const q = ringPositions[i] || { x: 0, y: 0 };
+        return (
+          <button key={a.verb} data-touch-btn aria-label={a.aspect} data-testid={`touch-aspect-${a.verb}`}
+            onPointerUp={() => {
+              // Pulse the intent exactly as a key press+release does (Components.jsx keydown/keyup).
+              setIntent(a.verb, true);
+              setTimeout(() => setIntent(a.verb, false), TAP_HOLD_MS);
+              setWheelOpen(false);
+            }}
+            style={{ ...hit, right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
+                     bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 }} />
+        );
+      })}
     </div>
   );
 }
