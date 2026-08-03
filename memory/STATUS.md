@@ -551,6 +551,18 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   refactor; the zh-CN content pass itself stays Kevin's go/no-go.
 
 ### G. Harness / docs
+- ▣✓ **CLI-on-import sweep — DONE 2026-08-03, and it found nothing left to fix.** The defect (a module
+  running its CLI at import, so a test importing it dies mid-collection and vitest reports "no tests" while
+  every assertion silently skips) bit twice: `scripts/ci/i18n-adoption.mjs` and `scripts/visual/capture.mjs`.
+  Swept every file under `scripts/` that has an `export`: **6 total.** Five carry an argv guard
+  (`measure`, `queue-ledger`, `i18n-adoption`, `mutation-proof-trailer`, `capture`). The sixth,
+  `scripts/visual/_serve.mjs`, has **no guard and needs none** — it is a pure helper with zero top-level
+  executable statements, so importing it does nothing. Do not add a guard there; it would be cargo-cult.
+- ▢ **[LOOP] No enforcer stops the NEXT script shipping without a guard.** The class recurred twice before
+  anyone noticed, and the sweep above is a snapshot, not a ratchet. Mechanically checkable with the
+  `@babel/parser` `gate-shape.mjs` already depends on: a file under `scripts/` that has an `export` AND
+  top-level executable statements must also have an `import.meta.url`/`process.argv[1]` guard. Small, and
+  it closes the class rather than the instances — "a rule names its enforcer or it is deleted".
 - ▢ **G1 [LOOP]** Doc-truth: `LOOP-CHARTER.md:225` still advertises `@react-three/test-renderer` as
   *"approved + landed (0f8cad9)"* — commit `8b6e3a44` **REMOVED** it (verified: not in package.json, imported
   nowhere). **That one stale line regenerated a week-sized proposal.** Also: the CHANGELOG "no per-frame allocs
