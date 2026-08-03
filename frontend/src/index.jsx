@@ -46,6 +46,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   });
 }
 
+import { t } from './i18n/i18n.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -83,10 +84,10 @@ class ErrorBoundary extends React.Component {
       return (
         <div data-testid="error-boundary" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px', background: '#0D1320', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
           <div style={{ maxWidth: '560px', width: '100%', background: '#16213A', border: '4px solid #0A0F1A', borderRadius: '12px', boxShadow: '8px 8px 0 #0A0F1A', padding: '28px', color: '#E8EDF4' }}>
-            <h1 style={{ margin: '0 0 12px', color: '#C9A86A', fontSize: '28px', fontWeight: 800, letterSpacing: '0.5px' }}>Something went wrong</h1>
-            <p style={{ margin: '0 0 16px', color: '#CBD5E1' }}>The game hit an unexpected error. Reload to get back to the frontier.</p>
+            <h1 style={{ margin: '0 0 12px', color: '#C9A86A', fontSize: '28px', fontWeight: 800, letterSpacing: '0.5px' }}>{t('error.title')}</h1>
+            <p style={{ margin: '0 0 16px', color: '#CBD5E1' }}>{t('error.body')}</p>
             <p style={{ margin: '0 0 18px', fontWeight: 700, color: '#F2B33D', fontSize: '14px', wordBreak: 'break-word' }}>{this.state.error && this.state.error.toString()}</p>
-            <button onClick={() => window.location.reload()} style={{ background: '#C9A86A', color: '#0A0F1A', border: '3px solid #0A0F1A', borderRadius: '8px', boxShadow: '3px 3px 0 #0A0F1A', padding: '10px 18px', fontWeight: 800, fontSize: '15px', cursor: 'pointer' }}>Reload</button>
+            <button onClick={() => window.location.reload()} style={{ background: '#C9A86A', color: '#0A0F1A', border: '3px solid #0A0F1A', borderRadius: '8px', boxShadow: '3px 3px 0 #0A0F1A', padding: '10px 18px', fontWeight: 800, fontSize: '15px', cursor: 'pointer' }}>{t('ui.reload')}</button>
             {import.meta.env.DEV && this.state.errorInfo && (
               <pre style={{ whiteSpace: 'pre-wrap', fontSize: '11px', color: '#8A97AB', marginTop: '18px', maxHeight: '40vh', overflow: 'auto' }}>
                 {this.state.errorInfo.componentStack}

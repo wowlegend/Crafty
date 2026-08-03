@@ -1,4 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
+import { useT } from './i18n/i18n.js';
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import './App.css';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
@@ -70,6 +71,7 @@ function GameAppWrapper() {
 }
 
 function GameApp({ experienceSystem }) {
+  const t = useT();
   const gameState = useGameStore(useShallow(state => ({
         isSpawnChunkLoaded: state.isSpawnChunkLoaded,
         isDay: state.isDay,
@@ -759,9 +761,9 @@ function GameApp({ experienceSystem }) {
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mb-6 shadow-lg shadow-green-500/50"></div>
           <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8)' }}>
-            GENERATING WORLD
+            {t('world.generating')}
           </h2>
-          <p className="text-green-400 font-mono text-sm animate-pulse">Building Terrain and Physics Colliders...</p>
+          <p className="text-green-400 font-mono text-sm animate-pulse">{t('world.buildingTerrain')}</p>
         </div>
       )}
 

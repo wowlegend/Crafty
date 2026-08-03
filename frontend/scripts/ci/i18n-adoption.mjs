@@ -28,11 +28,17 @@
  * positives from comparison operators. So the ledger UNDER-reports: it is a floor on the untranslated
  * copy, not a complete census.
  *
- * Not fixed here because it is not a detector problem. `t(key)` takes no parameters, so there is nowhere
- * for `{requiredLevel}` to go — flagging these would produce findings nobody can action. Closing it means
- * first giving t() interpolation (e.g. t('talent.requiresLevel', { level })), which is a real API change
- * with its own tests and both locales to update. Until then the ratchet governs the literals it can see,
- * and this comment is the record of what it cannot.
+ * CORRECTION (2026-08-02): an earlier version of this comment claimed t() takes no parameters, so there
+ * was "nowhere for {requiredLevel} to go" and closing the gap needed a new API. That was wrong, and it was
+ * written without reading i18n.js. `t(key, vars)` has ALWAYS interpolated — `interpolate()` replaces {k}
+ * placeholders, `'ui.level': 'Level {n}'` ships in both locales, and i18n.test.js asserts
+ * t('ui.level', { n: 7 }). So interpolated copy is wrappable TODAY as
+ * t('talent.requiresLevel', { level: requiredLevel }); only the DETECTOR cannot see it.
+ *
+ * Left unfixed here regardless, because widening the filter to admit `{` re-opens the false-positive class
+ * it exists to block (JSX expressions, ternaries, template literals). The honest statement is that the
+ * ledger is a floor on untranslated copy, not a census — and that the work it hides is ordinary wrapping,
+ * not an API change.
  *
  *   node scripts/ci/i18n-adoption.mjs           check; exit 1 if any count grew
  *   node scripts/ci/i18n-adoption.mjs --write    re-freeze after reducing (never to raise)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { isCaptureMode, getCaptureOpts } from '../devtest/captureMode';
 import { isTouchDevice } from '../input/touchDevice';
 import { useGameStore } from '../store/useGameStore';
+import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
 import { makeTouchRouter } from '../input/touchMath';
@@ -31,6 +32,7 @@ export default function TouchControls({ isWorldBuilt }) {
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
 function TouchControlsLive({ isWorldBuilt }) {
+  const t = useT();
   const rootRef = useRef(null);
   const routerRef = useRef(makeTouchRouter());
   const active = useActiveInput();              // SAFE reactive read (transition-state only)
@@ -118,7 +120,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       {active && <TouchControlsSurface trayOpen={trayOpen} />}
 
       {showTapToPlay && (
-        <button data-touch-btn onPointerUp={() => setActive(true)} aria-label="Tap to play" data-testid="touch-tap-to-play"
+        <button data-touch-btn onPointerUp={() => setActive(true)} aria-label={t('a11y.tapToPlay')} data-testid="touch-tap-to-play"
           style={{ ...hit, inset: 0, width: '100%', height: '100%' }} />
       )}
 
@@ -126,11 +128,11 @@ function TouchControlsLive({ isWorldBuilt }) {
         // B7: the hit-target MUST mirror the visible Pause glyph (TouchControlsSurface `right: 64, 46x46`).
         // It used to sit at `right: 8` -- disjoint from its glyph AND on top of the GameHud Settings gear
         // (right-4), so tapping the glyph did nothing and tapping Settings paused the game.
-        <button data-touch-btn onPointerUp={() => setActive(false)} aria-label="Pause" data-testid="touch-pause"
+        <button data-touch-btn onPointerUp={() => setActive(false)} aria-label={t('a11y.pause')} data-testid="touch-pause"
           style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 }} />
       )}
       {active && (
-        <button data-touch-btn onPointerUp={() => dispatch(0)} aria-label="Action" data-testid="touch-action"
+        <button data-touch-btn onPointerUp={() => dispatch(0)} aria-label={t('a11y.action')} data-testid="touch-action"
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}
       {active && (
@@ -154,7 +156,7 @@ function TouchControlsLive({ isWorldBuilt }) {
 
       {/* M3a panel-access tray: grid icon toggles the column; each opener toggles its panel + yields control */}
       {active && (
-        <button data-touch-btn onPointerUp={() => setTrayOpen((o) => !o)} aria-label="Panels" data-testid="touch-panels"
+        <button data-touch-btn onPointerUp={() => setTrayOpen((o) => !o)} aria-label={t('a11y.panels')} data-testid="touch-panels"
           style={{ ...hit, top: 'calc(50% - 140px)', left: 'calc(env(safe-area-inset-left,0px) + 10px)', width: 46, height: 46 }} />
       )}
       {active && trayOpen && TRAY_PANELS.map((p, i) => (

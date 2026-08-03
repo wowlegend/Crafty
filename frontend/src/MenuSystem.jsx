@@ -17,6 +17,7 @@ import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu } from './ui/panelState.js';
 import { isTouchDevice } from './input/touchDevice';
+import { useT } from './i18n/i18n.js';
 import { useGameStore } from './store/useGameStore';
 
 // The full-bleed live 3D Hearth diorama VISTA — the title screen's hero face (W2). It REPLACES
@@ -40,6 +41,7 @@ export function MenuSystem({
   setShowStats,
   questSystem
 }) {
+  const t = useT();
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
@@ -270,17 +272,17 @@ export function MenuSystem({
                   className="mt-8 flex justify-center gap-5 text-xs text-text-inverse/75"
                   style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
                 >
-                  <span>WASD Move</span>
+                  <span>{t('hint.wasdMove')}</span>
                   <span>•</span>
-                  <span>Space Jump</span>
+                  <span>{t('hint.spaceJump')}</span>
                   <span>•</span>
-                  <span>F Cast</span>
+                  <span>{t('hint.fCast')}</span>
                   <span>•</span>
-                  <span>1-4 Spells</span>
+                  <span>{t('hint.spells14')}</span>
                   <span>•</span>
-                  <span>T Melee</span>
+                  <span>{t('hint.tMelee')}</span>
                   <span>•</span>
-                  <span>Q Claim Quest</span>
+                  <span>{t('hint.qClaimQuest')}</span>
                 </motion.div>
               </div>
             </motion.div>

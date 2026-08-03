@@ -877,6 +877,7 @@ export const useTreasureChests = () => {
 };
 
 export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
+    const t = useT();
     const [nearbyChest, setNearbyChest] = useState(null);
 
     useEffect(() => {
@@ -914,8 +915,8 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
             <Panel variant="base" className="bg-accent text-text-inverse px-4 py-2 text-center flex items-center gap-2">
                 <Icon name="chest" size={22} className="text-text-inverse flex-none" />
                 <div className="text-left">
-                    <div className="font-display uppercase tracking-wide text-sm leading-tight">Treasure Chest!</div>
-                    <div className="text-xs font-bold opacity-80">Press G to open</div>
+                    <div className="font-display uppercase tracking-wide text-sm leading-tight">{t('chest.treasure')}</div>
+                    <div className="text-xs font-bold opacity-80">{t('chest.pressG')}</div>
                 </div>
             </Panel>
         </motion.div>

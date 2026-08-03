@@ -4,6 +4,7 @@ import { bearingToMarker, bearingDeg } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
 import { dayPhase } from './game/dayPhase.js';
+import { useT } from './i18n/i18n.js';
 import React, { useRef, useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
@@ -203,6 +204,7 @@ const ControlsSheet = React.memo(() => {
 // + direct ref/DOM writes (no per-frame React state), copied from the Compass pattern. Capture-SUPPRESSED
 // (rAF never starts + returns null in capture) so the deterministic visual baselines stay byte-identical.
 const ObjectiveTracker = React.memo(() => {
+  const t = useT();
   const arrowRef = useRef(null);
   const textRef = useRef(null);
   const distRef = useRef(null);
@@ -234,11 +236,11 @@ const ObjectiveTracker = React.memo(() => {
           shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };
         }
         const s = shrineCache.current.shrine;
-        if (s) { targetX = s.worldX; targetZ = s.worldZ; label = 'Reach the frontier shrine'; color = '#46E0FF'; }
+        if (s) { targetX = s.worldX; targetZ = s.worldZ; label = t('hud.objectiveShrine'); color = '#46E0FF'; }
       }
       if (targetX === undefined) {
         const bh = blightHeartSite();
-        targetX = bh.x; targetZ = bh.z; label = 'Shatter the Blight Heart'; color = '#A24BFF';
+        targetX = bh.x; targetZ = bh.z; label = t('hud.objectiveBlightHeart'); color = '#A24BFF';
       }
 
       // Full-circle bearing -> the arrow points to the objective regardless of which way the player faces.
@@ -258,7 +260,7 @@ const ObjectiveTracker = React.memo(() => {
     <div className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
-        <span ref={textRef} className="text-[11px] font-bold text-text">Reach the frontier shrine</span>
+        <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
         <span ref={distRef} className="text-[11px] text-text-muted tabular-nums">--</span>
       </div>
     </div>
