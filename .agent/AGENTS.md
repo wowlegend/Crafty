@@ -177,13 +177,39 @@ Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance r
 - `debug-physics-Crafty-kz` — Rapier collision / terrain (player falling through, collider misalignment).
 - `fix-movement-Crafty-kz` — WASD / camera / pointer-lock movement.
 
-## Resume after compaction
-Read `memory/ACTIVE_PLAN.md` (the resume pointer) FIRST → then the active `docs/superpowers/plans/*.md`.
-Ground truth = git `main` + `docs/superpowers/`.
+## Where state lives (READ IN THIS ORDER)
+
+This file is the ONLY one auto-loaded, and the only surface re-injected after a `/compact` — so it has to
+name the others. **Until 2026-08-03 it never mentioned `memory/STATUS.md` at all**, which meant a
+freshly-compacted agent was pointed at the cursor and never at the registry. Order matches
+`LOOP-CHARTER.md` §0-A so the two documents cannot disagree:
+
+1. **`git main`** — the code is the only truth that cannot lie.
+2. **`memory/STATUS.md`** — where we are · the open-work REGISTRY · what's next. **THE source of truth.**
+3. **`memory/ACTIVE_PLAN.md`** — the live cursor: the ONE unit in flight.
+4. **`docs/superpowers/LOOP-CHARTER.md`** — how the loop operates (+ `LOOP-KERNEL-PROMPT.md`, the durable
+   copy of the `/loop` prompt and the cold/git-only recovery source).
+5. **`docs/superpowers/DECISIONS.md`** — what has already been decided. Check before re-raising or
+   reversing anything; `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and cannot tell you what is settled.
+6. **`docs/superpowers/INDEX.md`** — the doc map. A stale doc is a live trap; never mine old plans for
+   "what's next".
+
+## Post-compaction re-orientation (BLOCKING — before the first edit)
+
+1. Re-read this file's read order above, then **STATUS.md**.
+2. **Re-run the gates you are about to rely on. Do NOT trust a remembered result** — see the compaction
+   note below for why.
+3. `git status -sb` (the `-b` matters: plain `-s` hides `[behind N]`, so you cannot see you are stale).
+4. If a `/loop` is running, re-read `LOOP-CHARTER.md` + `LOOP-KERNEL-PROMPT.md`; the kernel owns the
+   orientation sequence.
 
 ## Compaction instructions (the compactor reads this section — keep it)
 When compacting this session, ALWAYS preserve verbatim: (1) the current milestone + its plan-doc path;
-(2) the latest test/build/visual gate counts and whether they were green; (3) the exact resume pointer
+(2) **that the gates must be RE-RUN — never their outcomes.** This used to read "preserve the latest
+test/build/visual gate counts and whether they were green", which is actively harmful: a gate result is true
+only in the turn it ran, and carrying one across a compaction converts a measurement into an unverified
+claim. That is the exact mechanism that put "CI green" into CHANGELOG.md on a day the workflow had concluded
+`success` zero times in 88 runs. Preserve the COMMAND, not the number; (3) the exact resume pointer
 (next unit of work); (4) any uncommitted-work state (which files, which task); (5) Kevin's standing
 directives in force (autonomous-build authority, TDD, gates, no-AI-footer); (6) if an autonomous loop is
 running: `docs/superpowers/LOOP-CHARTER.md` is the loop's constitution AND `docs/superpowers/LOOP-KERNEL-PROMPT.md`
