@@ -195,6 +195,13 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅ 2026-08-02 — DOCS REORG WAVE-2 DONE (`2d788f2`).** Archived ocean-coast + loot-glow-PARKED +
+> biome-flora (plans/ now 35). **world-purpose-sota STAYS** — LOOP-CHARTER cites it twice as the live
+> `Source:` for current design; it is a DESIGN OF RECORD, not history. Wave-1s deferral premise was wrong:
+> `doc-currency` matched only backticked paths, so moving a bare-path-cited doc left ARCHITECTURE dangling
+> and the lint still printed PASS. Bare-path matching added + mutation-proven.
+> **▶ NEXT: the 11 remaining edits in `docs/superpowers/LOOP-DOC-SOTA-PLAN-2026-07-27.md`.**
+>
 > **✅✅ i18n ADOPTION SWEEP COMPLETE — 109 → 0** (`dd6e3fa` decoupling, `2ece9c9` the sweep). Ledger is
 > 0 across 0 files, so the ratchet is now a ZERO-TARGET: any new hardcoded string fails as a NEW FILE.
 > Pixel-verified 31/32 (only the known `explore-day-low`). Two lessons worth keeping:

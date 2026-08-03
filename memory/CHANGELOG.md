@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-02 — docs Wave-2, and doc-currency was blind to bare paths (`2d788f2`)
+
+Three of the four canonical-cited plan docs archived via `git mv`: `ocean-coast` (ARCHITECTURE calls the
+milestone COMPLETE), `loot-glow-PARKED` (CHANGELOG records it SUPERSEDED by the redesign that shipped) and
+`biome-flora` (shipped 06-20). `docs/superpowers/plans/` is down to 35.
+
+**`world-purpose-sota` stays, against the plan.** LOOP-CHARTER cites it twice as the live "Source:" for
+current design — tier-by-distance, shrines, the climax, vertex AO, aerial perspective, landmark emissive
+crowns — and SOTA-INITIATIVE §3 is its master-plan registration. It stopped being a build contract and
+became a design of record; archiving it would have filed a governing document under history.
+
+**The stated reason for deferring these was wrong, and checking it found a real hole.** Wave-1 recorded that
+they could only move alongside a citation fix because moving one "breaks a live backtick path and trips
+doc-currency". None of that held: two are cited by bare FILENAME with no path, ocean-coast's citation is a
+BARE PATH (`(plan docs/superpowers/plans/…md, 4 slices)` — no backticks), and the CHANGELOG / ROADMAP /
+KEVIN-REVIEW-BATCH citations are not in the lint's CANONICAL list at all.
+
+`doc-currency` matched only markdown links and backticked paths. Moving the file and leaving ARCHITECTURE
+pointing at nothing still produced **"✓ doc-currency PASSED (9 canonical docs checked)"** — a clean bill of
+health over text it never examined. Same shape as the gate-shape blind spot earlier today: the pass COUNT
+was the thing to audit, not the pass. Bare paths are now matched, mutation-proven both directions, and no
+other dangling bare path exists in the 9 canonical docs.
+
 ## 2026-08-02 — i18n adoption reaches ZERO, and copy stops being a test selector (`dd6e3fa`, `2ece9c9`)
 
 **109 → 0.** Every user-facing string in `src/` now goes through `t()`. The ledger is frozen at zero across
