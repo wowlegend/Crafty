@@ -1,5 +1,46 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **✅ 2026-08-02 ~19:10 — THE VISUAL GATE IS BACK, and it immediately earned its keep. One decision for
+> you: RE-BASELINE.** (Not blocking — I've carried on with other work.)
+>
+> The machine recovered. `npm run visual:capture` printed **`preflight: browser produced 72 frames in
+> 1.2s`** and ran all 31 states to a clean end, no render crashes. That also confirms the preflight I
+> shipped works in the passing direction, which I could not test while the compositor was wedged.
+>
+> **`npm run test:visual`: 31 of 32 pass. The one failure is real, explained, and INTENDED.**
+> `explore-day-low` differs **6.55%** (threshold 6%). I opened both frames rather than trusting the number,
+> and there are exactly two differences, both attributable to shipped fixes:
+> 1. **The mid-distance terrain band and far mountains are gone at LOW tier** — that is `842c423`
+>    (*"a quality-tier downgrade now actually frees chunks"*) doing precisely what it was built to do.
+>    Before the fix a downgrade freed nothing; measured 81 → 42 chunks after. A nearer horizon at low tier
+>    *is* the feature.
+> 2. **Health/mana bars now sit bottom-left reading 100/100** — that is `7e0f004`
+>    (*"the health bar was buried under the quest panel and ribboned"*). The stray blue fragment poking out
+>    from behind the quest panel in the OLD baseline is literally the bug that fix removed.
+>
+> **THE REAL FINDING: every baseline is stale.** 27 of 31 were captured **2026-06-22**, the rest 06-29/30 —
+> **293 commits ago.** They pass only because 6% is a generous threshold; `explore-day-med` and
+> `explore-night-low` carry the same fixed-HUD staleness and squeak under it. The gate has been comparing
+> against a world that no longer exists. This is decision ③ (promoting the 3 forced-tier frames into
+> `STATES`) paying its second dividend — it caught the weather non-determinism earlier today, and now this.
+>
+> **❓ YOUR CALL — I have NOT re-baselined; the charter reserves that for you:**
+> - **(a)** Re-baseline all 31 from this clean run (my recommendation — the frames reflect HEAD, capture was
+>   crash-free, weather is frozen now so they are finally deterministic), or
+> - **(b)** re-baseline only `explore-day-low` and leave the rest, or
+> - **(c)** treat the abrupt low-tier horizon as a defect first.
+>
+> **The one genuine taste question inside (c):** at low tier the terrain now just *stops* and sky begins,
+> with no distance fog or fade to mask the cut. It reads acceptably here (the edge happens to fall along a
+> coastline) but it will not always. Want a distance fade at low tier before we bless the frame?
+>
+> Frames to look at: `frontend/tests/visual/baseline/explore-day-low.png` vs
+> `frontend/tests/visual/current/explore-day-low.png`.
+>
+> **What this unblocks:** all the render work shipped during the outage now HAS pixel verification —
+> the Terrain reclaim, the ai.worker refactor, the weather capture-determinism fix and the i18n sweep are
+> collectively 31/32 within threshold of a six-week-old reference, with the single deviation explained.
+
 > **🛑 2026-08-02 (UPDATED, ~18:20) — ROOT CAUSE FOUND. THE ASK IS NOW JUST: REBOOT.**
 > **Do NOT bother with `npx puppeteer browsers install chrome` — I told you that earlier and it was wrong.**
 >
