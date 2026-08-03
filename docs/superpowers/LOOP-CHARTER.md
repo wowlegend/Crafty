@@ -319,15 +319,15 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
 - The "Kevin HARD GATE before implementation" in older specs/CLAUDE.md is **replaced by the self-gate**: a
   grounded design workflow (seam-map vs LIVE code + research + adversarial critique) whose output spec is
   committed BEFORE building, + the §4 discipline. Kevin reviews ASYNC via KEVIN-REVIEW-BATCH + CHANGELOG.
-- Kevin-decision backlog items in old docs (e.g. #74 music policy, loot-beam punchiness, named regions,
-  hotbar honesty): the loop decides them on the recorded evidence, logs the decision + reversal-path in
-  KEVIN-REVIEW-BATCH, and proceeds. Exceptions: the §4 genuinely-Kevin list.
+- Kevin-decision backlog items in old docs: the loop decides them on the recorded evidence and proceeds.
+  **The decision goes in `docs/superpowers/DECISIONS.md`** (the OUTBOX), not only in KEVIN-REVIEW-BATCH —
+  the batch is append-only and cannot say what has been settled; it reached ~146 entries with 6 marked
+  resolved, none in six weeks. Exceptions: the §4 genuinely-Kevin list.
 - The master plan itself may be edited (status banners, re-sequencing, adding named passes) — keep §1–§2
   vision intact, log every edit in CHANGELOG.
-- **CAPTURE-MODE HID REAL LIGHTING (verified 2026-06-15):** capture mode was DISABLING both cast shadows AND the
-  landmark emissive crowns — so every reviewed visual baseline was the FLATTEST, beacon-less version of the world,
-  NOT real play. Treat pre-S3 visual baselines as a floor, not ground truth; world-purpose S3 un-gates beacons+shadows
-  in capture so reviewed frames match play. This is WHY the step-5 LIVE-PROBE axis is load-bearing: the diorama lied.
+
+*(The capture-mode-hid-real-lighting scar moved to `memory/STATUS.md` §5 with the ANTI-REDO it belongs
+with. It is a do-not-repeat, not a process delta.)*
 
 ## 6. SOTA-experience backlog — MOVED, not deleted
 
