@@ -17,7 +17,7 @@ import { isTouchUIMode } from '../input/touchDevice';
 // NOT `data-touch-btn` — so on a touch device this tap should never reach the onClick below, leaving a
 // voxel BUILDING game locked to one block on its own stated iPad target.
 //
-// ⚠️ THE PREVIOUS VERSION OF THIS COMMENT CLAIMED THE FIX WAS DONE — "the touch router now skips touches
+// NOTE — THE PREVIOUS VERSION OF THIS COMMENT CLAIMED THE FIX WAS DONE — "the touch router now skips touches
 // landing on a [data-hud-interactive] surface". It does not: `grep hud-interactive src/ui/TouchControls.jsx`
 // returns nothing. The seam landed; the routing never did. A comment asserting a fix that does not exist is
 // worse than no comment, because the next reader stops looking.
