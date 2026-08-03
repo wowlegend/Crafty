@@ -1,5 +1,21 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **⚠️ 2026-08-03 ~12:10 — THE COMPOSITOR FAULT CAME BACK. It is INTERMITTENT, not cured.**
+> `requestAnimationFrame` fires **0 times in 1.2s** again, at **load 5.67** — so it is not load. The touch
+> probe ran fine at 09:38 and the screenshot call hung by 11:35, on the same box, same commit range.
+>
+> **What this costs:** any check that needs a rendered frame (the 31-state visual gate, `touch-probe`, the
+> X3 hotbar verdict) is blind while it is in this state. Everything static — 2,139 unit tests, build, lint,
+> gate-shape, doc-currency, queue-ledger, mutation-proof — is unaffected and still gating every push.
+>
+> **The 3-second check, any time you wonder:** `cd frontend && npm run visual:capture`. It preflights frame
+> production and either prints `preflight: browser produced N frames in 1.2s` and proceeds, or aborts with
+> the named cause. No more 180-second silences.
+>
+> **No action needed from you unless you want the pixel gate back today** — a reboot restored it last time,
+> for about two and a half hours. Worth knowing it recurs before trusting a clean visual run as permanent.
+
+
 > **🔔 2026-08-03 — PROCESS CHANGE, VETOABLE: commits that ADD a gate now need a `Mutation-Proof:` trailer.**
 > Not blocking you today — it only fires when a commit adds a NEW file under `frontend/tests/gates/` or
 > `frontend/scripts/ci/`, which is rare outside loop work. Editing an existing gate is unaffected.

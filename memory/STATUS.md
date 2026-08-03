@@ -462,7 +462,15 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   `talent` field) → `setIntent(verb, true)`. **Reuses the entire existing intent path — zero downstream change.**
   Gate: pure sector-hit math (unit, like `input/touchMath.js`) + unlock-gating test + a wheel-open state added to
   the `mobile.png` fixture (`getCaptureOpts().showTouch` already exists). Thumb-reach/ring layout → Kevin's eye.
-- ▢ **X3 [LOOP] TOUCH HOTBAR — ⚠️ UNCONFIRMED. DO NOT "FIX" IT ON THE READING ALONE.**
+- ▢ **X3 [LOOP] TOUCH HOTBAR — ⚠️ STILL UNCONFIRMED, but now SELF-ANSWERING.**
+  > **2026-08-03:** the behavioural check now lives in `scripts/visual/touch-probe.mjs` ("HOTBAR tap selects
+  > that block on touch") — it taps a slot and compares the store's `selectedBlock`. It could not return a
+  > verdict yet because the machine's compositor fault recurred (rAF 0/1.2s), but it answers itself on the
+  > next clean run. **Also fixed a comment-lie in `GameHud.jsx` (`76e8ebf`)**: it claimed the touch router
+  > "now skips [data-hud-interactive]" — it does not; the SEAM landed, the ROUTING never did.
+  > *(Harness note: extending touch-probe is the instruction and it is right. A standalone probe fails to
+  > enter play — touch-probe deletes `requestPointerLock` so cold-start cannot take the desktop path, and in
+  > PUPPETEER `KnownDevices` is viewport+UA only; the webkit-switch trap below is a PLAYWRIGHT trap.)*
   > **Status 2026-07-13: I tried to reproduce this and FAILED. Recording that honestly, because a
   > code-reading is a HYPOTHESIS (LOOP-CHARTER §0-B) and this campaign exists precisely to distrust them.**
 
