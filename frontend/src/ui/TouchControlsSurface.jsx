@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react';
 import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
-import { unlockedAspectVerbs, ringLayout } from '../input/aspectWheel';
+import { unlockedAspectVerbs, ringLayout, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
+import { isCaptureMode } from '../devtest/captureMode';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
@@ -38,6 +40,36 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false, whe
   // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
   const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
+
+  // X2 — COOLDOWN SWEEPS ON THE RING. Touch had no cooldown feedback at all: HUD.jsx:590 gates
+  // <AbilityBar> behind !isTouchUIMode() because its bottom-4 anchor sits inside the touch
+  // joystick/action band. Rather than invent a new screen region for touch (which would have to dodge the
+  // joystick, the action cluster, the tray AND this ring), the sweep goes ON the control that fires the
+  // verb. Same conic-gradient technique AbilityBar already proves, same Game-Loop-Isolation contract:
+  // a self-contained rAF reads getState() transiently and writes to DOM refs -- no per-frame React state.
+  const sweepRefs = useRef({});
+  const toggleRef = useRef(null);
+  useEffect(() => {
+    if (isCaptureMode()) return undefined; // capture frames must stay byte-identical
+    let raf;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const cds = useGameStore.getState().abilityCooldowns || {};
+      for (const a of aspects) {
+        const el = sweepRefs.current[a.verb];
+        if (!el) continue;
+        const frac = cooldownFraction(cds[a.verb]);
+        if (frac === null) { el.style.opacity = '0'; continue; }
+        el.style.opacity = '1';
+        el.style.background = `conic-gradient(from 0deg, rgba(0,0,0,0.62) ${frac * 360}deg, transparent ${frac * 360}deg)`;
+      }
+      // The ring is SHUT most of the time, so the closed toggle carries the aggregate or the feedback is
+      // invisible exactly when the player needs it.
+      if (toggleRef.current) toggleRef.current.style.opacity = anyOnCooldown(cds, aspects) ? '1' : '0';
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [aspects]);
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 42, pointerEvents: 'none' }}>
       {/* legibility scrim: faint dark vignette in the two thumb corners so controls pop over bright scenes */}
@@ -65,6 +97,8 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false, whe
       {aspects.length > 0 && (
         <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 104px)', width: 52, height: 52 })}>
           <Flame size={24} strokeWidth={2.4} color={GLYPH} />
+          <div ref={toggleRef} data-testid="aspect-cooling" style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8,
+                        borderRadius: '50%', background: GOLD, border: `2px solid ${INK}`, opacity: 0 }} />
         </div>
       )}
       {wheelOpen && aspects.map((a, i) => {
@@ -74,6 +108,8 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false, whe
                style={BTN({ right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
                             bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 })}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>
+            <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
+                 style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
           </div>
         );
       })}

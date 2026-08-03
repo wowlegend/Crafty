@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_VERBS, unlockedAspectVerbs, ringLayout, TAP_HOLD_MS } from './aspectWheel.js';
+import { ASPECT_VERBS, unlockedAspectVerbs, ringLayout, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
 import { KEY_MAP } from '../game/keyMap.js';
 import { INTENT_KEYS } from './inputState.js';
 
@@ -78,5 +78,36 @@ describe('aspectWheel — tap hold', () => {
   it('holds long enough that a once-per-frame state machine cannot miss the rising edge', () => {
     expect(TAP_HOLD_MS).toBeGreaterThan(1000 / 30); // > one frame at 30fps
     expect(TAP_HOLD_MS).toBeLessThan(400); // still reads as a tap, not a hold
+  });
+});
+
+describe('aspectWheel — cooldown fraction (X2)', () => {
+  it('returns null when there is nothing to draw', () => {
+    // Each of these renders a wedge if mishandled; a NaN one covers the glyph with a full black disc.
+    expect(cooldownFraction(null)).toBeNull();
+    expect(cooldownFraction(undefined)).toBeNull();
+    expect(cooldownFraction({ ready: true, remaining: 0, duration: 2 })).toBeNull();
+    expect(cooldownFraction({ remaining: 1 })).toBeNull(); // no duration -> would divide by zero
+    expect(cooldownFraction({ remaining: 1, duration: 0 })).toBeNull();
+    expect(cooldownFraction({ remaining: NaN, duration: 2 })).toBeNull();
+    expect(cooldownFraction({ remaining: 0, duration: 2 })).toBeNull(); // elapsed
+  });
+
+  it('returns the share of the cooldown still to burn', () => {
+    expect(cooldownFraction({ remaining: 1, duration: 2 })).toBe(0.5);
+    expect(cooldownFraction({ remaining: 2, duration: 2 })).toBe(1);
+  });
+
+  it('clamps a remaining that exceeds its duration instead of over-sweeping', () => {
+    expect(cooldownFraction({ remaining: 9, duration: 2 })).toBe(1);
+  });
+
+  it('anyOnCooldown answers for the CLOSED ring, which is its whole job', () => {
+    const [a, b] = ASPECT_VERBS;
+    expect(anyOnCooldown({}, ASPECT_VERBS)).toBe(false);
+    expect(anyOnCooldown({ [a.verb]: { ready: true, duration: 2 } }, ASPECT_VERBS)).toBe(false);
+    expect(anyOnCooldown({ [a.verb]: { remaining: 1, duration: 2 } }, ASPECT_VERBS)).toBe(true);
+    // only the verbs actually offered count — a locked Aspect cooling down is not the player's business
+    expect(anyOnCooldown({ [b.verb]: { remaining: 1, duration: 2 } }, [a])).toBe(false);
   });
 });

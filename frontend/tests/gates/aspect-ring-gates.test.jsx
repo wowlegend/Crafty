@@ -6,6 +6,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { setActive, getInput, setIntent } from '../../src/input/inputState.js';
 import { ASPECT_VERBS } from '../../src/input/aspectWheel.js';
 import TouchControls from '../../src/ui/TouchControls.jsx';
+import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 
 // X1 — BEHAVIOURAL, not a source-grep.
 //
@@ -87,5 +88,38 @@ describe('X1 — the Aspect ring makes the four verbs reachable on touch', () =>
     render(<TouchControls isWorldBuilt />);
     fireEvent.pointerUp(screen.getByTestId('touch-aspects'));
     for (const a of ASPECT_VERBS) expect(screen.getByTestId(`touch-aspect-${a.verb}`)).toBeInTheDocument();
+  });
+});
+
+// X2 — COOLDOWN FEEDBACK ON TOUCH.
+//
+// Touch had none at all: HUD.jsx:590 gates <AbilityBar> behind !isTouchUIMode() because its bottom-4
+// anchor lands inside the touch joystick/action band. That was survivable while the Aspect verbs were
+// unreachable on touch (X1); once the ring made them tappable, firing blind became the gap.
+//
+// The sweep is written by a rAF into a DOM ref (Game-Loop-Isolation — no per-frame React state), so what
+// is asserted here is the WIRING: the elements exist, are keyed per verb, and the closed toggle carries an
+// aggregate. The arithmetic itself is covered purely in src/input/aspectWheel.test.js, where it can be.
+describe('X2 — the ring shows cooldown, so touch is not firing blind', () => {
+  beforeEach(() => useGameStore.setState({ unlockedTalents: {}, abilityCooldowns: {} }));
+
+  it('gives the CLOSED toggle an aggregate indicator — the ring is shut most of the time', () => {
+    withAspects({ [ASPECT_VERBS[0].talent]: 1 });
+    render(<TouchControlsSurface wheelOpen={false} />);
+    expect(screen.getByTestId('aspect-cooling')).toBeInTheDocument();
+  });
+
+  it('gives every OPEN sector its own sweep element, keyed to its verb', () => {
+    withAspects(Object.fromEntries(ASPECT_VERBS.map((a) => [a.talent, 1])));
+    render(<TouchControlsSurface wheelOpen />);
+    for (const a of ASPECT_VERBS) expect(screen.getByTestId(`aspect-sweep-${a.verb}`)).toBeInTheDocument();
+  });
+
+  it('draws NO sweep for a locked Aspect — it has no sector to draw on', () => {
+    const [first, second] = ASPECT_VERBS;
+    withAspects({ [first.talent]: 1 });
+    render(<TouchControlsSurface wheelOpen />);
+    expect(screen.getByTestId(`aspect-sweep-${first.verb}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`aspect-sweep-${second.verb}`)).toBeNull();
   });
 });

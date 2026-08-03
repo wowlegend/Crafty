@@ -66,6 +66,36 @@ export function unlockedAspectVerbs(unlockedTalents) {
  *
  * @returns {{x:number,y:number}[]} one entry per item, in input order
  */
+/**
+ * How far through a cooldown an ability is, as 0..1 of its wedge still to burn — or null when there is
+ * nothing to draw (ready, absent, or a zero/º duration that would divide by zero).
+ *
+ * X2: touch had NO cooldown feedback of any kind. `HUD.jsx:590` gates `<AbilityBar>` behind
+ * `!isTouchUIMode()` because its bottom-4 anchor lands inside the touch joystick/action band — so a touch
+ * player could see nothing. That mattered less while the verbs were unreachable on touch at all (X1); the
+ * moment the ring made them tappable, firing blind became the obvious next gap.
+ *
+ * Extracted rather than inlined because the caller writes it into a conic-gradient inside a rAF, where it
+ * is untestable — this is the arithmetic that decides whether a player sees a wedge, and it can be wrong
+ * (a NaN wedge renders as a full black disc over the glyph).
+ *
+ * @param {{ready?:boolean, remaining?:number, duration?:number}|null|undefined} cd
+ * @returns {number|null}
+ */
+export function cooldownFraction(cd) {
+  if (!cd || cd.ready || !(cd.duration > 0)) return null;
+  const remaining = Number(cd.remaining);
+  if (!Number.isFinite(remaining) || remaining <= 0) return null;
+  return Math.min(1, Math.max(0, remaining / cd.duration));
+}
+
+/** True when ANY of `verbs` is mid-cooldown — the ring is shut most of the time, so the closed toggle
+ *  has to carry the signal or the feedback is invisible exactly when it is needed. */
+export function anyOnCooldown(abilityCooldowns, verbs) {
+  const cds = abilityCooldowns || {};
+  return (verbs || []).some((a) => cooldownFraction(cds[a.verb]) !== null);
+}
+
 export function ringLayout(count, radius) {
   if (!(count > 0) || !(radius > 0)) return [];
   return Array.from({ length: count }, (_, i) => {
