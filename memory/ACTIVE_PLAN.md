@@ -144,6 +144,28 @@
 > ocean-coast, world-purpose-sota, biome-flora — each may only move in a commit that also drift-fixes the
 > citing doc, else doc-currency trips). INDEX.md documents what moved and why the other 38 stayed.
 >
+> **▶ 2026-08-02 — i18n sweep: 109 → 32 (`75474da`, `711f472`, `138b1fe`). GamePanels is at ZERO.**
+> Each of the three commits was mostly a GATE defect the translation happened to expose.
+> **(a)** The detector read an arrow function as UI text — `.filter(p => time - p.time < 0.14)` brackets
+> ` time - p.time ` between a `=>`'s `>` and a comparison's `<`. Second instance of that class, and the
+> first fix pinned nothing, so `scanSource()` is now a pure seam with six fixtures. Found while
+> mutation-proving it that the module ran its **CLI on import** — `process.exit(1)` killed the vitest
+> worker during collection ("1 failed | no tests"), so the first proof proved nothing.
+> **(b)** `settings-a11y-gates` asserted `/Feedback Intensity/` and stayed GREEN after the literal left the
+> code, held up by the comment above the slider. Five gates re-anchored to the `t()` form — NOT an
+> `(?:English|t\(...\))` alternation, which would keep matching those comments forever.
+> **(c)** Nothing checked that a `t()` key EXISTS; `t()` returns the key on a miss, so a typo ships as UI
+> text with everything green. `tests/i18n/key-resolution.test.js` closes it.
+> **(d)** `gate-shape` recognised a target only if the literal contained `src/` — which gates never write,
+> since the prefix lives in a `read()` helper. **49 of 116 gates were never opened**; 97 → **399**
+> assertions verified. Its own findings then forced three more fixes (composed paths, `.not.toMatch`
+> polarity, multi-target attribution) before they stopped being false accusations.
+> **Remaining: 32 across 12 files** — largest are CraftingTable (4), MenuSystem (5), GameHud (4),
+> TouchControls (3), QuestSystem/QuestLog/TradingInterface/GameSystems (2–3 each).
+> ⚠️ **Blind spot recorded, not closed:** interpolated copy (`Requires Lv {n}`) is invisible to the
+> detector, and closing it needs `t()` to take parameters first — a real API change, its own unit.
+>
+> — superseded —
 > **▶ 2026-08-02 — i18n sweep: 109 → 62 (`b864703`, `11d93b1`). The halves are DIFFERENT.**
 > `109→84` is METHODOLOGY, not progress — the detector had two defects that inflated the ledger:
 > comparison operators produced fake "text nodes" (`if (diff > 0) return <span` was reported as the string

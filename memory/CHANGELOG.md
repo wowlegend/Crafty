@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-08-02 — the i18n sweep kept finding the gates were the real defect (`75474da`..`138b1fe`)
+
+Three commits. The translation work is the smallest part of what they contain.
+
+**GamePanels swept to zero (52 → 32 remaining).** 26 call sites, 25 keys in both locales: the character
+sheet's combat rows, the magic and building panels, the whole settings panel. Also the three strings the
+detector cannot see (`Music`, the `ON`/`OFF` toggle states, a parenthesised aria-label) — below its
+6-character floor, and a panel whose labels translate while its switches read ON/OFF is the half-English
+result the ratchet exists to prevent.
+
+**A gate went vacuous mid-commit and stayed green.** `settings-a11y-gates` asserted `/Feedback Intensity/`
+against all of GamePanels.jsx. Wrapping the label removed the literal from the code and the test kept
+passing, because the comment above the slider begins "Feedback Intensity (M3 #3: ...". Four siblings went
+honestly red. All five are now anchored to the `t()` form rather than an `(?:English|t\(...\))` alternation
+— the alternation is the obvious move and it is wrong here, since every one of these labels is also spelled
+out in a nearby comment, so the English branch would match forever and each gate would survive deletion of
+the control it guards.
+
+**Nothing validated that a `t()` key exists.** `t()` falls back to returning the key, which is right for a
+translation layer and silent for a typo: `t('panel.gearhint')` against a dictionary holding `panel.gearHint`
+puts the literal text "panel.gearhint" on screen with the full suite green. `tests/i18n/key-resolution.test.js`
+now resolves every static call site against the real dictionary in both locales.
+
+**`gate-shape` was checking 97 assertions and skipping 42% of the gates.** It recognised a target only if the
+string literal contained `src/`, and almost no gate writes that — they define the prefix once in a `read()`
+helper. So it resolved nothing, skipped the file, and reported a clean pass over 49 of 116 gates it had never
+opened. Now 399 assertions verified. Three more fixes were forced by it accusing something innocent along the
+way: composed paths (`resolve(SRC, 'render', 'spellVfx.jsx')`), assertion polarity (`.not.toMatch` read as
+positive), and multi-target attribution.
+
+**What it then found:** three assertions in `spell-vfx-gates` pinning spec-§4 hexes the art direction retuned
+on purpose (v7-S3.2 desaturated ice #3FB7FF → #9FD4E8, "cold reads desaturated"). They survived only via a
+comment reciting the original palette — the gate passed *because* the palette was documented, and would have
+kept passing with every spell colour deleted. Replaced with the contract the comment states, asserted against
+the imported data.
+
+**Two of my own diagnoses were wrong and the tooling said so.** The multi-target theory did not catch the bug
+it was built for — the mutation proof came back green. And the first mutation proof of the detector test was
+worthless: the module ran its CLI on import, so `process.exit(1)` killed the vitest worker during collection
+("1 failed | no tests") and no assertion ever ran. Both were caught only because each change was built so
+that being wrong would be visible.
+
+331 files / 2128 tests green; build + eslint clean. Still no pixel verification — the capture gate remains
+down on machine state.
+
 ## 2026-08-02 — the awaiting-decision batch, decided and shipped (`32625c0`..`d85fb23`)
 
 Kevin delegated all nine punted items (*"do all you decide to be best"*). Every decision and its reasoning
