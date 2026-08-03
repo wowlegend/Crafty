@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-03 — an exporting script may not run its CLI on import (`6817df3`)
+
+**The ninth pre-push gate: `scripts/ci/cli-guard.mjs`.** A module that runs its CLI at module scope means a
+test importing a seam from it *executes the tool*. When that happened to `scripts/ci/i18n-adoption.mjs`, its
+`process.exit(1)` killed the vitest worker **during collection** and the run reported `1 failed | no tests`
+while every assertion silently skipped. A red that reports ZERO tests is the worst kind — it reads as a
+caught failure rather than a suite that never ran. `scripts/visual/capture.mjs` was worse in kind: `import`
+spawned a browser and a vite server.
+
+Both instances were already fixed, and STATUS §G recorded the sweep as complete. **A snapshot is not a
+ratchet** — nothing stopped the next script shipping unguarded, and the class had already recurred once
+before anyone noticed. Flags only when all three hold: an `export`, top-level *executable* statements
+(declarations are inert), and no guard. `_serve.mjs` stays correctly silent. Runs **before** `test:unit`,
+because the unit run is exactly what the defect corrupts.
+
+**Mutation-proofing found a false negative inside the new checker.** `hasGuard` began as a source-wide regex
+for `import.meta.url` — but `dirname(fileURLToPath(import.meta.url))` is the ordinary way a script resolves
+its own directory, and `i18n-adoption.mjs` carries it on line 52 quite apart from its real guard on line 133.
+A script with an export, top-level work and only that path line scored as **guarded**. A guard must now
+compare, tested line-scoped; all six real guards still pass. *A false negative in the exact shape a checker
+exists to catch is worse than no checker, because it also silences the reviewer.*
+
+Same commit: `.agent/AGENTS.md` opened with *"Six gates authorize a push"* while the table directly beneath
+it already showed eight ticks — a headline contradicting its own table, inside the paragraph written to fix
+an undercount. Now nine, carrying the command to recount it from the hook.
+
+**Still blocked:** `visual:capture` aborted for an eighth consecutive iteration (`requestAnimationFrame`
+fired 0 times in 1.2s, reproducing on a bare `data:` URL). X1/X2a/X2b remain unseen by any human.
+
 ## 2026-08-03 — every spell is reachable on touch (`667ea0d`)
 
 **X2b.** `setActiveSpell` was called from exactly one place in the codebase — `InputManager.jsx:131-134`,

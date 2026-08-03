@@ -558,11 +558,22 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   (`measure`, `queue-ledger`, `i18n-adoption`, `mutation-proof-trailer`, `capture`). The sixth,
   `scripts/visual/_serve.mjs`, has **no guard and needs none** — it is a pure helper with zero top-level
   executable statements, so importing it does nothing. Do not add a guard there; it would be cargo-cult.
-- ▢ **[LOOP] No enforcer stops the NEXT script shipping without a guard.** The class recurred twice before
-  anyone noticed, and the sweep above is a snapshot, not a ratchet. Mechanically checkable with the
-  `@babel/parser` `gate-shape.mjs` already depends on: a file under `scripts/` that has an `export` AND
-  top-level executable statements must also have an `import.meta.url`/`process.argv[1]` guard. Small, and
-  it closes the class rather than the instances — "a rule names its enforcer or it is deleted".
+- ▣✓ `6817df3` **The enforcer now exists: `scripts/ci/cli-guard.mjs`, ninth pre-push gate.** Flags a file
+  under `scripts/` only when all three hold — it has an `export`, it has top-level EXECUTABLE statements (a
+  bare expression, a branch, a loop, or a `const` initialised by a call; declarations are inert), and it has
+  no guard. Deliberately narrow: anything looser flags harmless module setup, and noise is how a check gets
+  switched off. Runs BEFORE `test:unit`, because the unit run is exactly what this defect corrupts — that
+  ordering converts "1 failed | no tests" into a named cause. It re-derives the sweep above independently:
+  **34 scripts scanned, 6 pre-existing exporters, zero offenders**, with `_serve.mjs` correctly silent.
+  **Mutation-proofing found a false negative that reading the code did not:** `hasGuard` began as a
+  source-wide regex for `import.meta.url`, but `dirname(fileURLToPath(import.meta.url))` is the ordinary
+  self-directory idiom — `i18n-adoption.mjs` carries it on line 52 quite apart from its real guard on line
+  133 — so a script with an export, top-level work and only that path line scored as GUARDED. A guard must
+  now COMPARE, tested line-scoped. *A false negative in the exact shape a checker exists to catch is worse
+  than no checker, because it also silences the reviewer.*
+- ▣✓ `6817df3` **`.agent/AGENTS.md` said "Six gates authorize a push" above a table already showing eight**
+  — a headline contradicting its own table, inside the paragraph written to fix an undercount. Now NINE,
+  and it carries the command to recount from the hook instead of from memory.
 - ▢ **G1 [LOOP]** Doc-truth: `LOOP-CHARTER.md:225` still advertises `@react-three/test-renderer` as
   *"approved + landed (0f8cad9)"* — commit `8b6e3a44` **REMOVED** it (verified: not in package.json, imported
   nowhere). **That one stale line regenerated a week-sized proposal.** Also: the CHANGELOG "no per-frame allocs
@@ -584,6 +595,25 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 ---
 
 ## 3. What's next (the cursor)
+
+**⛔ 2026-08-03 — THE BINDING CONSTRAINT IS THE COMPOSITOR, NOT THE QUEUE.** `npm run visual:capture` has
+aborted on **eight consecutive iterations** with the same named cause: `requestAnimationFrame fired 0 times
+in 1.2s`. It reproduces on a bare `data:` URL with no app loaded, at machine loads from 5.7 to 60, so it is
+neither load nor code. **Everything render-bearing is blocked behind it**, including the only lived check
+that X1 / X2a / X2b have — three touch features that are shipped, gated and green, and that **no human has
+ever seen**. Kevin: a REBOOT is the routed fix (an earlier "reinstall Chrome" reading was wrong — Chrome is
+healthy; `Page.captureScreenshot` hangs on a blank page). Deliberately NOT worked around: a wall-clock
+fallback would green the gate over blank frames, which is this project's signature defect.
+
+**Harness ratchets are now closed as a class.** `mutation-proof-trailer` (a new gate must state its proof),
+`queue-ledger` (a finding must carry its own marker), `gate-shape` (no assertion satisfiable by a comment),
+the i18n ratchet, `measure.mjs` (one authority for repo counts) and now `cli-guard` (§G) each convert a
+one-off sweep into something that cannot silently regress. Nine gates authorize a push.
+
+**Next code work, in order:** A-bis (18-domain review, 91 confirmed bugs — the biggest block) · D Art
+(Kevin DE-GATED) · E gameplay levers · E-ter · F perf. **Verify each is still open before working it** —
+much of the older A-bis/V1 work is DRAINED, and X3 (hotbar tap possibly swallowed) answers itself from
+`touch-probe.mjs` on the first clean compositor run rather than from a code reading.
 
 **Current campaign: v9 — "HOLISTIC SOTA" (2026-07-20 → ).** A 3-workflow adversarial self-review produced
 **215 verified findings** (`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the queue of record), worked
