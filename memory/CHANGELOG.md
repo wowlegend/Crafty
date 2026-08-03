@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-08-03 — a comment claimed a fix that was never written (`76e8ebf`..`c3622ea`)
+
+Moved to the STATUS registry now the doc-SOTA plan is closed. Verified E-bis's three items are all still
+open before starting: **X1 is real** — `grep "roar|grab|snare|imbue"` across every touch file returns **0
+hits**, so all four Aspect verbs (the game's signature identity) are desktop-only.
+
+Worked X3 (touch hotbar, UNCONFIRMED since 07-13) and found a **comment-lie** instead. `GameHud.jsx` said
+the touch router "now skips touches landing on a [data-hud-interactive] surface, letting the tap reach these
+onClick handlers." It does not — `grep hud-interactive src/ui/TouchControls.jsx` returns nothing. The SEAM
+landed; the ROUTING never did. TouchControls' `onStart` still routes any touch that is not a
+`button[data-touch-btn]` into move/look AND calls preventDefault(), suppressing the synthesized click.
+
+X3 stays UNCONFIRMED on purpose: that is a code READING, and this project's own note says a reading is a
+hypothesis. The behavioural check now lives in `touch-probe.mjs` — tap a slot, compare the store's
+`selectedBlock` — so it answers itself on the next clean run.
+
+**I repeated the documented mistake first.** Wrote a standalone probe, could not enter play, and only then
+read why touch-probe succeeds: it deletes `requestPointerLock` so cold-start cannot take the desktop path,
+and in PUPPETEER `KnownDevices` is viewport+UA only (the webkit-switch trap in that note is a PLAYWRIGHT
+trap I over-applied). "Extend the existing harness" was the instruction and it was right.
+
+**The compositor fault RECURRED** — rAF 0 firings in 1.2s at load 5.67, having worked at 09:38. Intermittent,
+not cured by the reboot. Recorded for Kevin; static gates are unaffected.
+
+**And I read truncated output as success, twice.** `npm run test:unit | tail -3` cuts off vitest's
+"Tests N failed" line, and a grepped `git push` printed a gate's success while the push itself failed — two
+commits sat unpushed while I reported them shipped. The pre-push hook caught the actual defect: an emoji I
+had put in a `src/` comment, violating the zero-emoji hard gate. Never filter the output you are using as
+evidence that something worked.
+
 ## 2026-08-03 — a dismissal is a claim; the doc-SOTA plan closes at 14 of 14 (`34f8319`)
 
 **Rule 5 carried the clause that licensed self-dismissal.** It ended "The 215-finding queue is itself
