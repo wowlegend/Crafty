@@ -179,12 +179,25 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   mob** (`checkMobCollision` returns *first-in-ECS*, not nearest).
   **Seam:** one targeting module — `hostilesQuery` + a nearest-in-cone selector — consumed by melee, chain, and
   aimed casts. `CombatSystem.jsx:160-174`, `EnhancedMagicSystem.jsx:331`, `game/chainLightning.js:10-46`.
-- ▣ **B2 — 7 of 8 FIXED (`…`, `f98d3c4`, `9200986`, 2026-07-14).** ✓ B2a-e ✓ **B2f** night-ratchet ✓ **B2h**
-  the kill block ran inside a setState updater (one throw voided the win) — extracted to `game/bossKill.js`
-  (pure `applyBossDamage` + a post-commit isolated `runBossKillEffects`, win latch LAST). **Still open:
-  B2g** — the boss fight is React-local (`world/bossSystem.js:11-18`), so a reload resets it to full HP;
-  persist it through saveSchema + rehydrate (do NOT re-arm a defeated boss). *(Split from B2h; the boss-state
-  rewrite is the bigger, riskier half — land it as its own verified unit.)*
+- ▣✓ **B2 — 8 of 8 FIXED.** (`…`, `f98d3c4`, `9200986`, 2026-07-14; B2g 2026-08-03.) ✓ B2a-e ✓ **B2f**
+  night-ratchet ✓ **B2h** the kill block ran inside a setState updater (one throw voided the win) —
+  extracted to `game/bossKill.js` (pure `applyBossDamage` + a post-commit isolated `runBossKillEffects`,
+  win latch LAST).
+  - **B2g ✓** the boss FIGHT survives a reload, not just the win. It was hook-local React state seeded from
+    `BOSS_CONFIG.health`, so a refresh at 5% HP handed the player back all 700. Health/active/defeated now
+    ride the store (joining the `bossActive` mirror that already existed) into `saveSchema`, restored
+    through a pure `game/bossPersistence.js` whose hydrate ENFORCES the invariants rather than spreading:
+    a won game can never re-arm the dragon, a defeated one stays defeated, health clamps into `[0, max]`,
+    and a save with no boss block reads as "not started". **Phase is deliberately NOT persisted** — it is
+    derived from health, and a second copy of one fact is free to drift; `phaseForHealth` is now the single
+    derivation the hook's phase effect AND the rehydrate both call. **Two findings while wiring it:**
+    (1) rehydrating mid-fight would have fired the `PHASE 3: ENRAGED!` banner on load, announcing a
+    transition the player passed before quitting — the hook now seeds the phase from restored HP;
+    (2) the encounter mirror needed its OWN effect: folded into the existing callback-registration effect
+    (keyed on `[damageBoss, bossPositionRef, bossActive]`) health would have reached the store only when
+    active FLIPPED — stale through the whole fight, i.e. the same bug wearing a fix.
+    **Mutation-proven 3 ways.** Reverting the hook seed turns the hook gate RED while the store gate stays
+    GREEN — which is why both files exist: the store round-trip alone would have shipped this.
   - **B2a ✓** the autosave no longer destroys your world. `_sessionWorldId` (in-memory, never persisted): an
     autosave may only write to a slot THIS SESSION opened or created; unowned → mint. Also stopped renaming
     "Marcus's Castle" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within

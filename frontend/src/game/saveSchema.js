@@ -5,6 +5,7 @@
  * JSON-safe object (Maps -> entry arrays). No store/React/axios imports.
  */
 import { normalizeInventoryKeys } from './invNormalize.js';
+import { serializeBossState } from './bossPersistence.js';
 
 export const SAVE_VERSION = 2; // 1 = pre-A3 (no progression); 2 = A3 progression slice
 
@@ -53,6 +54,10 @@ export function buildSaveData(state, { position } = {}) {
       gameTime: state.gameTime,
       achievements: state.achievements,
       gameWon: state.gameWon, // S9c: the win-state survives a reload
+      // A-bis B2g: the boss FIGHT survives a reload too, not just the win. gameWon alone only stopped a
+      // slain dragon respawning; a fight in progress was hook-local React state, so a refresh at 5% HP
+      // restored the dragon to all 700. Phase is not stored — it re-derives from health on load.
+      bossState: serializeBossState(state),
     },
   };
 }

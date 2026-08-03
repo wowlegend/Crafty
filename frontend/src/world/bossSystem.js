@@ -7,15 +7,23 @@ import { BOSS_CONFIG, BOSS_LOOT } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
+import { phaseForHealth } from '../game/bossPersistence.js';
 import { makeNotifClearTracker } from './bossNotifTimers.js';
 
 export const useBossSystem = (playerLevel) => {
-    const [bossActive, setBossActive] = useState(false);
-    const [bossHealth, setBossHealth] = useState(BOSS_CONFIG.health);
+    // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.
+    // These were plain `useState(BOSS_CONFIG.health)` / `useState(false)`, so a reload mid-fight handed the
+    // dragon back all 700 HP. Lazy initialisers: read once at mount, after loadGame has hydrated the store.
+    const [bossActive, setBossActive] = useState(() => useGameStore.getState().bossActive);
+    const [bossHealth, setBossHealth] = useState(() => useGameStore.getState().bossHealth);
     const [bossMaxHealth] = useState(BOSS_CONFIG.health);
     const bossPositionRef = useRef(null);
-    const [bossDefeated, setBossDefeated] = useState(false);
-    const [bossPhase, setBossPhase] = useState(0);
+    const [bossDefeated, setBossDefeated] = useState(() => useGameStore.getState().bossDefeated);
+    // Seeded from the restored HP, NOT 0. The effect below announces every phase change, so mounting at
+    // 17% HP with phase 0 would fire "PHASE 3: ENRAGED!" on load — announcing a transition the player
+    // passed before they quit. Same derivation the effect uses, so mount produces no change to announce.
+    const [bossPhase, setBossPhase] = useState(() =>
+        phaseForHealth(useGameStore.getState().bossHealth, BOSS_CONFIG.health));
     const [bossNotification, setBossNotification] = useState(null);
     const bossSpawned = useRef(false);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
@@ -57,26 +65,24 @@ export const useBossSystem = (playerLevel) => {
     }, [playerLevel, bossDefeated]);
 
     useEffect(() => {
-        const hpPercent = bossHealth / bossMaxHealth;
-        for (let i = BOSS_CONFIG.phases.length - 1; i >= 0; i--) {
-            if (hpPercent <= BOSS_CONFIG.phases[i].hpPercent) {
-                if (bossPhase !== i) {
-                    setBossPhase(i);
-                    let alertMsg = '';
-                    if (i === 1) {
-                        alertMsg = 'PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
-                    } else if (i === 2) {
-                        alertMsg = 'PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
-                    }
-                    if (alertMsg) {
-                        setBossNotification(alertMsg);
-                        scheduleNotifClear(5000);
-                    }
-                }
-                break;
+        // The threshold walk moved to game/bossPersistence.phaseForHealth so the rehydrate seeds the phase
+        // with the SAME function that advances it here. Two copies of one derivation is how a restored
+        // fight ends up in a phase its health does not justify.
+        const i = phaseForHealth(bossHealth, bossMaxHealth);
+        if (bossPhase !== i) {
+            setBossPhase(i);
+            let alertMsg = '';
+            if (i === 1) {
+                alertMsg = 'PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
+            } else if (i === 2) {
+                alertMsg = 'PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
+            }
+            if (alertMsg) {
+                setBossNotification(alertMsg);
+                scheduleNotifClear(5000);
             }
         }
-    }, [bossHealth, bossMaxHealth, bossPhase]);
+    }, [bossHealth, bossMaxHealth, bossPhase, scheduleNotifClear]);
 
     // B2h: the updater is now PURE — it only computes the new health. The kill's ~8 side effects moved to
     // the post-commit effect below, so a throwing reward can no longer void the win (they used to run inside
@@ -129,6 +135,16 @@ export const useBossSystem = (playerLevel) => {
             } });
         }
     }, [damageBoss, bossPositionRef, bossActive]);
+
+    // A-bis B2g: mirror the ENCOUNTER to the store, which is what saveSchema serializes. Its own effect,
+    // keyed on all three values, deliberately NOT folded into the callback-registration effect above:
+    // that one is keyed on [damageBoss, bossPositionRef, bossActive], so health mirrored there would only
+    // reach the store when active FLIPPED — stale through the entire fight, which is the bug this fixes.
+    // Adding health to those deps instead would re-register damageBoss/getBossPosition on every damage
+    // tick. This effect runs on state transitions, not per frame, so Game-Loop-Isolation holds.
+    useEffect(() => {
+        useGameStore.getState().setBossEncounter({ health: bossHealth, active: bossActive, defeated: bossDefeated });
+    }, [bossHealth, bossActive, bossDefeated]);
 
     // A5 dangerLevel bridge: an ACTIVE Shadow Dragon drives the obsidian danger mood
     // (dangerLevel=2 -> moodTarget=2 -> the obsidian atmosphere/grade), cleared to 0 on

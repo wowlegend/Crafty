@@ -8,6 +8,8 @@ import { resolvePlacement } from '../world/placementEconomy.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
+import { BOSS_CONFIG } from '../game/bossConfig.js';
+import { hydrateBossState } from '../game/bossPersistence.js';
 import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
 import { hitDirection } from '../game/damageDirection.js';
@@ -405,6 +407,16 @@ export const useGameStore = create((set, get) => ({
     bossActive: false,
     setBossActive: (v) => set({ bossActive: !!v }),
     isBossActive: () => get().bossActive,
+    // A-bis B2g: health + defeated join bossActive as the PERSISTED mirror of the encounter. `useBossSystem`
+    // stays the live owner (its React state drives the fight and the HUD); these are what reaches the save,
+    // written through the one effect that already mirrors bossActive, so there is a single writer. Before
+    // this, the whole fight was hook-local — a reload mid-boss handed the dragon back every point of health
+    // the player had taken off it. Phase is deliberately absent: it is DERIVED from health
+    // (`game/bossPersistence.phaseForHealth`), and persisting a derived value invites it to drift.
+    bossHealth: BOSS_CONFIG.health,
+    bossDefeated: false,
+    setBossEncounter: ({ health, active, defeated }) =>
+      set({ bossHealth: health, bossActive: !!active, bossDefeated: !!defeated }),
     // S2-B1 WILDHEART -- single-writer beast-form authority (mirrors bossActive above). TRANSIENT:
     // never serialized (absent from saveSchema), so load/respawn ALWAYS returns to human -- this IS
     // the no-permanent-beast invariant. Components.jsx subscribes to `activeBeastForm` (a rare
@@ -910,6 +922,11 @@ export const useGameStore = create((set, get) => ({
             const isDay = isDayAtUnit(gameTime);
             const achievements = saveData.game_state?.achievements || state.achievements;
             const gameWon = saveData.game_state?.gameWon ?? state.gameWon; // S9c: the win persists across reload
+            // A-bis B2g: restore the ENCOUNTER, not just the win. Hydration is invariant-enforcing, not a
+            // spread: a won game can never re-arm the dragon, a defeated one stays defeated, health is
+            // clamped into [0, max], and a save with no boss block (written before this existed) reads as
+            // "not started". Absent-block tolerance is the same forward-compat contract as `prog` below.
+            const boss = hydrateBossState(saveData.game_state?.bossState, { maxHealth: BOSS_CONFIG.health, gameWon });
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
             const prog = saveData.progression;
@@ -973,6 +990,9 @@ export const useGameStore = create((set, get) => ({
                 gameTime,
                 achievements,
                 gameWon,
+                bossHealth: boss.health,
+                bossActive: boss.active,
+                bossDefeated: boss.defeated,
                 level,
                 currentXP,
                 totalXP,
