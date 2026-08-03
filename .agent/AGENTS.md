@@ -123,6 +123,7 @@ would block its push, and learned only by being rejected. The list below is tran
 
 | Gate | Command | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|---|
+| mutation-proof | `node scripts/ci/mutation-proof-trailer.mjs <range>` | ✅ (first) | — | a commit that ADDS a gate (`tests/gates/`, `scripts/ci/`) without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
 | doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. BARE, non-backticked paths) |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population |

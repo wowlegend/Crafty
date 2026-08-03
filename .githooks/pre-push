@@ -49,16 +49,29 @@ ZERO="0000000000000000000000000000000000000000"
 
 # git feeds pre-push one line per ref: <local_ref> <local_sha> <remote_ref> <remote_sha>
 TARGETS=""
+RANGES=""
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to certify
   [ -z "$local_sha" ] && continue
   TARGETS="$TARGETS $local_sha"
+  # The commits actually being introduced. A brand-new branch sends the zero-sha as the remote side, in
+  # which case there is no meaningful range and the trailer check simply skips rather than scanning history.
+  if [ "$_remote_sha" != "$ZERO" ] && [ -n "$_remote_sha" ]; then
+    RANGES="$RANGES $_remote_sha..$local_sha"
+  fi
 done
 
 if [ -z "$TARGETS" ]; then
   printf '\n✓ pre-push: nothing to certify (deletion, or no refs on stdin)\n\n'
   exit 0
 fi
+
+# ── mutation-proof trailer ──────────────────────────────────────────────────────
+# Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail should be
+# rejected in milliseconds, not after a full worktree build. LOOP-CHARTER §3's rule finally has an enforcer.
+for RANGE in $RANGES; do
+  node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
+done
 
 for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")

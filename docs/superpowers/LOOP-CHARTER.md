@@ -250,6 +250,14 @@ philosophy — each maps to a rule this project has already been burned by.
 ## 3. Quality gates + the ratchet (non-negotiable)
 
 - **⛔ MUTATION-PROOF EVERY NEW GATE (added 2026-07-13 — the hardest lesson this project has learned).**
+  **[MECH: `frontend/scripts/ci/mutation-proof-trailer.mjs`, run first in `.githooks/pre-push`]** — a commit
+  that ADDS a file under `tests/gates/` or `scripts/ci/` must carry a trailer stating the proof:
+  `Mutation-Proof: <what you broke> -> <gate> went RED (<message>)`. Until 2026-08-03 this rule was stated
+  three times across two documents with **zero checkers**, which is precisely why 84 of 136 gate files still
+  read source text without importing the module they guard. Scoped to NEW gates on purpose: demanding a
+  trailer for every edit during a sweep is noise, and noise is how a check gets switched off. The trailer
+  cannot be verified true by machine — it forces the claim into a place a reviewer can read, which is the
+  only thing that has ever worked here.
   A gate that greps SOURCE TEXT is **not a gate**. Before a gate counts: **break the behavior it claims to
   guard and watch it go RED**, then revert. If you cannot make it go red, it is decoration — delete it or
   replace it. A gate that is **green on day one** against unfixed code is a **rubber stamp**, and the slice that
