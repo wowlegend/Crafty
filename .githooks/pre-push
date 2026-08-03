@@ -100,6 +100,11 @@ for SHA in $TARGETS; do
   printf '\n▶ queue-ledger (every finding carries its own marker)\n'; node scripts/ci/queue-ledger.mjs
   printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
   printf '\n▶ gate-shape (no assertion may be satisfied by a comment)\n'; node scripts/ci/gate-shape.mjs
+  # BEFORE test:unit, deliberately. The defect this catches manifests AS a corrupted unit run: importing a
+  # seam from an unguarded script executes it, and i18n-adoption.mjs's process.exit(1) killed the vitest
+  # worker during collection so the suite reported "1 failed | no tests" while every assertion skipped.
+  # Running it first turns that into a named cause instead of a mystery.
+  printf '\n▶ cli-guard (an exporting script must not run its CLI on import)\n'; node scripts/ci/cli-guard.mjs
   printf '\n▶ unit + static gates\n';     npm run --silent test:unit
   printf '\n▶ build\n';                   npm run --silent build
   printf '\n▶ bundle byte budget\n';      node scripts/ci/bundle-budget.mjs

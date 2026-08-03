@@ -115,11 +115,17 @@ self-inflicted.
 
 ## Build / Test / Gates (from `frontend/`)
 
-**Six gates authorize a push, and this doc used to name only three of them.** Until 2026-08-02 this section
+**NINE gates authorize a push, and this doc used to name only three of them.** Until 2026-08-02 this section
 listed `build` / `test:unit` / `test:visual` and never mentioned `lint`, `knip`, `gate-shape`,
 `doc-currency` or `bundle-budget` — so an agent reading the project's own constitution could not know what
 would block its push, and learned only by being rejected. The list below is transcribed from
 `.githooks/pre-push` and `.github/workflows/ci.yml`; when they change, change this.
+
+*This sentence read "Six" until 2026-08-03, while the table directly beneath it already showed EIGHT ✅ in
+the pre-push column — a headline contradicting its own table, in the very paragraph written to fix an
+undercount. Count it from the hook, never from memory:*
+`grep -cE "printf '\\\\n▶" .githooks/pre-push` *(7 → 8 with cli-guard) plus `mutation-proof-trailer`, which
+runs earlier and outside that pattern.*
 
 | Gate | Command | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|---|
@@ -128,6 +134,7 @@ would block its push, and learned only by being rejected. The list below is tran
 | doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. BARE, non-backticked paths) |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population |
+| cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
 | unit suite | `npm run test:unit` | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
 | build | `npm run build` | ✅ | ✅ | broken JSX/imports |
 | bundle-budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | a chunk growing past its byte ceiling |
