@@ -21,6 +21,7 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..'); // frontend/scripts/ci -> repo root
@@ -148,6 +149,52 @@ if (existsSync(statusAbs)) {
   const ageDays = (Date.now() - statSync(statusAbs).mtimeMs) / 86_400_000;
   if (ageDays > 14) {
     warnings.push(`STATUS.md has not been touched in ${ageDays.toFixed(0)} days — is the registry still true?`);
+  }
+}
+
+// --- 4. MEASURED BLOCK CURRENCY ---------------------------------------------
+// `.agent/AGENTS.md` carries a generated size block. A number in a doc that is re-read every iteration is a
+// CLAIM, and this one rotted badly before it was generated: the hand-typed version said "~14.4k LOC / ~31
+// JS(X) files" against a real 30,022 / 264, and asserted a single large file when five are >= 900 LOC.
+//
+// THE COUNTS GET A TOLERANCE BAND ON PURPOSE. LOC moves on nearly every commit, so an exact-match check
+// would redden the push constantly and be switched off within a day — the same reasoning that made the i18n
+// gate a ratchet rather than a zero-target. What this defends against is MATERIAL drift, and being 12x wrong
+// clears a 10% band by a mile.
+//
+// The large-file LIST is checked EXACTLY, not by tolerance: it is short, slow-moving, was the most-wrong
+// claim of the three, and its membership is precisely what de-monolith decisions get made from.
+{
+  const agentsRel = '.agent/AGENTS.md';
+  const md = readFileSync(join(ROOT, agentsRel), 'utf8');
+  const claimed = parseBlock(md);
+  const regen = 'node frontend/scripts/ci/measure.mjs --write';
+  if (!claimed) {
+    errors.push(`${agentsRel}: MEASURED block missing or unparseable — regenerate: ${regen}`);
+  } else {
+    const actual = measure();
+    const drift = (a, b) => Math.abs(a - b) / Math.max(b, 1);
+    for (const [label, got, want] of [
+      ['source files', claimed.srcFiles, actual.srcFiles],
+      ['source LOC', claimed.srcLoc, actual.srcLoc],
+    ]) {
+      if (drift(got, want) > TOLERANCE) {
+        errors.push(
+          `${agentsRel}: MEASURED ${label} says ${got.toLocaleString('en-US')}, actual ` +
+            `${want.toLocaleString('en-US')} (${(drift(got, want) * 100).toFixed(0)}% drift, band ` +
+            `${Math.round(TOLERANCE * 100)}%) — regenerate: ${regen}`,
+        );
+      }
+    }
+    const key = (l) => l.map((f) => f.file).sort().join(', ');
+    if (key(claimed.largeFiles) !== key(actual.largeFiles)) {
+      errors.push(
+        `${agentsRel}: the >=${LARGE_FILE_LOC}-LOC file list is wrong.\n` +
+          `    doc says: ${key(claimed.largeFiles) || '(none)'}\n` +
+          `    actual:   ${key(actual.largeFiles) || '(none)'}\n` +
+          `    regenerate: ${regen}`,
+      );
+    }
   }
 }
 

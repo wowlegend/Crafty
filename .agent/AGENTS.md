@@ -37,7 +37,33 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
 
 ## Tech Stack & Architecture
 - React 19, Three 0.172 (R3F 9.5 + Drei 10.7 + @react-three/postprocessing), Vite 6, Rapier 2.2 (WASM KCC), zustand 5, framer-motion 12, TailwindCSS (v3, `.cjs` config), simplex-noise, lucide-react 0.439. JavaScript (JSX). npm (`package-lock.json`).
-- **Architecture reality (per the 2026-05-30 S0 audit — do NOT trust older "clean ECS" claims):** the codebase is **MONOLITHIC** (~14.4k LOC / ~31 JS(X) files; originally 5 god-files >900 LOC, now (post-S3 + v6 de-monolith) **Components ~1330 is the LAST single large file — a documented IRREDUCIBLE residual, NOT an accidental god-file (verified 2026-06-29):** it is one component, the `Player` useFrame imperative controller, which already delegates ALL pure logic to 32 imported `game/*` modules; the remainder is the imperative loop + input wiring that MUST NOT be split (Game-Loop-Isolation / ordering, decision-of-record). PositionTracker → src/systems/ was the one cleanly-separable piece (A3.1). GameScene 933→304 (v6 Phase A2 DONE: 6 drivers [Sun/MoodGrade/BloomSpike/PointerLook/SpatialAudio/Weather] + scratch seam → `src/render/`, now a thin Canvas shell). SimplifiedNPCSystem 934→183 (A1 DONE: 7 systems + `_npcShared` → `src/systems/`) (v6 Phase A1 DONE: 7 ECS systems [MinimapSync/EnemyProjectile/Spawner/AIWorker/XPOrb/Loot/Combat] + the `_npcShared` seam → `src/systems/`; now a thin NPCSystem orchestrator), ui/GamePanels 1094→739 @ iter 148 (CraftingTable+itemUi → ui/panels/), EnhancedMagicSystem 904→474 @ iter 152 (spellVfx render group → render/spellVfx.jsx), SoundManager dropped under, AdvancedGameFeatures deleted @ S3-M4). `miniplex` ECS is a **NARROW** slice — real + load-bearing for **mobs/loot/XP only**, NOT the whole architecture. De-monolithing the god-files + ECS hardening is an **S3** goal, not the current state.
+- **Architecture reality — the SIZE NUMBERS BELOW ARE GENERATED, NOT TYPED.** This bullet used to hand-type
+  "~14.4k LOC / ~31 JS(X) files" and assert "Components ~1330 is the LAST single large file". Measured
+  2026-08-02: **12× wrong on files, 2.5× on LOC, and five files — not one — are ≥900 LOC.** An agent that
+  believes this is a ~31-file project reasons about it as a small one, and "Components is the last god-file"
+  actively misdirects de-monolith work away from the other four. Regenerate with
+  `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
+
+<!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
+- **Size (measured):** **264 source files / 30,022 LOC** in
+  `frontend/src`, plus 109 colocated `*.test.js(x)` files (counted separately —
+  tests are not the architecture).
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1313 · `src/store/useGameStore.jsx` 1067 · `src/world/Terrain.jsx` 992 · `src/world/terrain.worker.js` 936 · `src/QuestSystem.jsx` 926.
+  This list is checked EXACTLY by `doc-currency`; the counts above carry a ±10% band so
+  ordinary churn does not redden the push.
+<!-- END MEASURED -->
+
+- **What is still true qualitatively:** the codebase is **MONOLITHIC in shape** — a handful of large
+  imperative files carry the game loop, and de-monolithing is an **S3** goal, not the current state.
+  `Components.jsx` is a documented IRREDUCIBLE residual rather than an accidental god-file (verified
+  2026-06-29): it is the `Player` useFrame imperative controller, already delegating all pure logic to
+  imported `game/*` modules, and the remainder is the loop + input wiring that MUST NOT be split
+  (Game-Loop-Isolation / ordering, decision-of-record). **The other four ≥900-LOC files carry no such
+  finding** — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
+  load-bearing for **mobs/loot/XP only**, NOT the whole architecture. Do NOT trust older "clean ECS" claims.
+  *(De-monolith history — GameScene 933→304, SimplifiedNPCSystem 934→183, GamePanels 1094→739,
+  EnhancedMagicSystem 904→474, AdvancedGameFeatures deleted @ S3-M4 — lives in `memory/CHANGELOG.md`. It is
+  history, not current state, which is why it no longer sits in the constitution.)*
 - Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, deterministic `scripts/visual/touch-probe.mjs` gate; only real-device feel is Kevin-gated. The real test surface is the vitest unit suite (~1660 tests) + the 21-state puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates.
 
 ## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
