@@ -502,8 +502,17 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   `[data-hud-interactive]`). If not → close this and delete the claim.
   *(Seams already landed for whichever way it goes: `data-hud-interactive` on the hotbar container +
   `data-hotbar-block={type}` per slot.)*
-- ▢ **X2 [LOOP]** Touch has **no cooldown display at all** — `HUD.jsx:590` gates `<AbilityBar>` behind
-  `!isTouchUIMode()`. Touch also lacks spell-select (1-4).
+- ▣✓ **X2a SHIPPED `f04d79b` — cooldown feedback on touch.** The sweep went ON the ring sectors rather
+  than porting `<AbilityBar>` to a new region: a touch placement would have to dodge the joystick, the
+  action cluster, the tray AND the ring — four constraints, decided blind. Closed toggle carries an
+  aggregate dot (the ring is shut most of the time). `cooldownFraction()` is pure + 6-case tested; wiring
+  is behaviourally gated + mutation-proven. **Look not yet verified — compositor fault; queued for Kevin.**
+- ▢ **X2b [LOOP] TOUCH IS LOCKED TO ONE SPELL — verified 2026-08-03, and it is worse than "no picker".**
+  `setActiveSpell` is called from **exactly one place**: `InputManager.jsx:131-134` on Digit1-4. There is no
+  touch path, so a touch player casts `fireball` (the store default, `useGameStore.jsx:561`) **forever** —
+  three of the four spells are unreachable on the stated iPad target, the same shape of defect as X1.
+  Build: the X1 ring is the template (`src/input/aspectWheel.js` + `tests/gates/aspect-ring-gates.test.jsx`
+  are the worked example) — a second ring or a spell row writing `setActiveSpell`, gated behaviourally.
 
 ### E-ter. Other spec'd-but-unbuilt (from the full specs audit)
 

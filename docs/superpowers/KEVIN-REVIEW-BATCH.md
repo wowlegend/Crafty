@@ -1,5 +1,15 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **👀 2026-08-03 — X2a SHIPPED too (`f04d79b`): touch now shows cooldowns.** Same caveat as X1 — the
+> WIRING is gated and mutation-proven, but the LOOK is unverified (compositor fault). One design call:
+> the cooldown sweep sits **on the Aspect ring sectors**, not in a ported AbilityBar, because a touch
+> placement for the bar would have to dodge the joystick, the action cluster, the tray and the ring all at
+> once. The closed toggle gets a small gold dot when anything is cooling.
+>
+> **Found while verifying: a touch player is locked to ONE SPELL, permanently.** `setActiveSpell` is called
+> from exactly one place — `InputManager.jsx:131-134`, Digit1-4. No touch path exists, so touch casts
+> `fireball` forever and three of the four spells are unreachable on iPad. Same shape as X1; queued as X2b.
+>
 > **👀 2026-08-03 — X1 SHIPPED: the four Aspects are reachable on touch (`23f6cfa`). Your eye needed on the
 > LAYOUT, and it is not lived-verified.**
 >

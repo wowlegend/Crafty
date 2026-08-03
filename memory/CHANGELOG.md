@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-08-03 — touch stops firing blind, and a bigger touch gap surfaces (`f04d79b`)
+
+**X2a — cooldown feedback on touch.** Touch had none: `HUD.jsx:590` gates `<AbilityBar>` behind
+`!isTouchUIMode()` because its bottom-4 anchor lands inside the joystick/action band. Survivable while the
+Aspect verbs were unreachable on touch at all; the moment X1 made them tappable, "can fire it, cannot see
+whether it is ready" became the gap — and AbilityBar's slots are exactly the four verbs the ring offers.
+
+**The sweep went ON the ring rather than porting the bar.** A touch-placed AbilityBar would need a region
+dodging the joystick, the action cluster, the panel tray AND the new ring — four collision constraints,
+decided blind on a machine whose compositor is dead. Putting the sweep on the sector that fires the verb
+needs no new region and puts the feedback where the thumb already is. Same conic-gradient technique
+AbilityBar proves, same Game-Loop-Isolation contract (rAF + DOM refs, never per-frame React state),
+capture-suppressed so baselines stay byte-identical. The closed toggle carries an aggregate dot, since a
+sweep only visible after you have opened the menu arrives after the decision it should inform.
+
+`cooldownFraction()` is extracted because its caller writes it into a conic-gradient inside a rAF where it
+cannot be tested, and its failure mode is loud: a NaN fraction draws a full black disc over the glyph. Six
+cases pinned, every one of which would render something if mishandled.
+
+**Then verifying X2's second half found something worse.** `setActiveSpell` is called from **exactly one
+place** — `InputManager.jsx:131-134`, on Digit1-4. There is no touch path at all, so **a touch player casts
+`fireball` forever** and three of the four spells are unreachable on the stated iPad target. That is the
+same shape of defect as X1, not a missing convenience. Split out as X2b with the evidence rather than
+folded into a "done" mark.
+
+**Not lived-verified.** The compositor fault was active again (rAF 0 firings/1.2s at load 25), so
+touch-probe could not drive a real browser. Wiring is behaviourally gated and mutation-proven; the look
+joins the X1 ring layout in Kevin's queue.
+
+2180 tests green; build, eslint, knip, gate-shape, i18n, queue-ledger and doc-currency clean.
+
 ## 2026-08-03 — the four Aspects are reachable on touch at last (`23f6cfa`)
 
 **X1, the highest-priority build item in the registry.** `grep -cE "roar|grab|snare|imbue"` across every
