@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-08-03 — the constitution's own numbers were 12× wrong (`03807b2`, `f32a30e`)
+
+`.agent/AGENTS.md` is auto-loaded on every task and re-injected after every compaction. Its architecture
+bullet hand-typed the codebase's size: **~31 source files against a real 264, ~14.4k LOC against 30,022, and
+"Components is the LAST single large file" when five files are ≥900 LOC** (useGameStore 1067, Terrain 992,
+terrain.worker 936, QuestSystem 926 — none of which carries the irreducibility finding Components does, so
+the claim actively misdirected de-monolith work).
+
+`scripts/ci/measure.mjs` is now the single authority. The block is GENERATED between markers and
+`doc-currency` re-measures on every push. **The tolerance is the design, not a concession:** counts carry a
+±10% band because LOC moves on nearly every commit and an exact check would redden the push constantly and
+be switched off within a day — the same reasoning that made the i18n gate a ratchet. Being 12× wrong clears
+10% by a mile. The ≥900-LOC LIST is checked exactly: short, slow-moving, most-wrong, and the thing
+de-monolith decisions get made from.
+
+Mutation-proven three ways, because a check that only ever passes is this session's recurring defect:
+restoring the original lie fails at 88%/52% drift; dropping QuestSystem from the list fails printing both
+lists; +5% churn still passes, so the band is real rather than inert. The render/parse round trip is pinned
+separately (7 tests) — two regexes on one format with nothing else keeping them in agreement, including the
+thousands-separator case where a parser that forgets the comma reads "30,022" as 30.
+
+**Then the same defect turned up one line below.** AGENTS:67 claimed "~1660 tests" and a "21-state" visual
+gate; actual 2,139 and 31. Fixed line 40 and walked straight past line 67 — the incomplete-sweep failure the
+enumerate-all-forms rule exists for. Not replaced with fresh numbers, which would rot too, but with the
+commands that compute them.
+
 ## 2026-08-02 — docs Wave-2, and doc-currency was blind to bare paths (`2d788f2`)
 
 Three of the four canonical-cited plan docs archived via `git mv`: `ocean-coast` (ARCHITECTURE calls the
