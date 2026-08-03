@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-08-03 — every spell is reachable on touch (`667ea0d`)
+
+**X2b.** `setActiveSpell` was called from exactly one place in the codebase — `InputManager.jsx:131-134`,
+Digit1-4. A tablet has no keyboard, so a touch player cast `fireball` **forever** and three of four spells
+were unreachable on the stated iPad target. A magic system three-quarters inaccessible on half its platforms.
+
+Found only by verifying the SECOND clause of a registry line. X2 read "no cooldown display; touch also lacks
+spell-select" — stopping after the cooldown work would have buried this under a green checkmark.
+
+Derived from `SPELL_TYPES` so a fifth spell appears automatically. **Ungated deliberately** — Digit1-4 has
+no unlock check, and gating the touch path would make touch stricter than keyboard, the opposite of the bug.
+The roster/i18n id mismatch (`fireball` vs `spell.fire`) is MAPPED rather than string-transformed, with a
+test asserting every entry resolves in both locales — a `.replace('ball','')` would ship a blank button on
+the first rename.
+
+**Fourth consecutive iteration with no lived verification** — the compositor fault (rAF 0 firings/1.2s)
+again. X1, X2a and X2b are all built, gated and mutation-proven, and **none has been seen by anyone.**
+
+2192 tests green; build, eslint, knip and every gate clean.
+
 ## 2026-08-03 — touch stops firing blind, and a bigger touch gap surfaces (`f04d79b`)
 
 **X2a — cooldown feedback on touch.** Touch had none: `HUD.jsx:590` gates `<AbilityBar>` behind

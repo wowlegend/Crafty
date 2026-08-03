@@ -507,7 +507,13 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   action cluster, the tray AND the ring — four constraints, decided blind. Closed toggle carries an
   aggregate dot (the ring is shut most of the time). `cooldownFraction()` is pure + 6-case tested; wiring
   is behaviourally gated + mutation-proven. **Look not yet verified — compositor fault; queued for Kevin.**
-- ▢ **X2b [LOOP] TOUCH IS LOCKED TO ONE SPELL — verified 2026-08-03, and it is worse than "no picker".**
+- ▣✓ **X2b SHIPPED `667ea0d` — every spell reachable on touch.** `src/input/spellPicker.js` (pure,
+  DERIVED from `SPELL_TYPES`) + a second ring one row above the Aspect ring, writing the EXISTING
+  `setActiveSpell` seam. UNGATED, matching Digit1-4 (gating touch would make it stricter than keyboard).
+  Buttons tinted from each spell's own roster colour. Behavioural gate (6 render tests, mutation-proven
+  both ways) + 6 pure tests incl. both-locale label resolution. **NOT lived-verified — compositor fault.**
+  *(Original finding kept below.)*
+- ~~▢ **X2b [LOOP] TOUCH IS LOCKED TO ONE SPELL — verified 2026-08-03, and it is worse than "no picker".**
   `setActiveSpell` is called from **exactly one place**: `InputManager.jsx:131-134` on Digit1-4. There is no
   touch path, so a touch player casts `fireball` (the store default, `useGameStore.jsx:561`) **forever** —
   three of the four spells are unreachable on the stated iPad target, the same shape of defect as X1.
