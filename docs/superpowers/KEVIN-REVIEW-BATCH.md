@@ -807,3 +807,40 @@ decision you own (dependency vuln handling). Fix is ready for each — say the w
   easy, BUT it would immediately FAIL CI on those 2 existing highs — so it needs your call on how to handle
   them first (fix/upgrade the deps, or add the audit as non-blocking / with an allowlist). Your decision on
   the deps + the 2 highs, then I wire the step.
+
+## 🔴 The compositor is dead — root-caused, and it needs a REBOOT (2026-08-03)
+
+**This is now the binding constraint on the whole loop, and it is the only item here I'd ask you to action
+today.** `npm run visual:capture` has aborted on **eight consecutive iterations**, always the same:
+
+```
+Error: CAPTURE ABORTED — this browser is not producing frames.
+    requestAnimationFrame fired 0 times in 1.2s
+```
+
+**It is not Chrome, not load, and not our code.** It reproduces on a bare `data:` URL with no app loaded, at
+machine loads from 5.7 through 60, under eight different Chrome flag combinations. I earlier routed this to
+you as "reinstall Chrome" — **that was wrong, disregard it.** A live `top -l 2` sample today:
+
+| process | %CPU | CPU time | |
+|---|---:|---:|---|
+| `launchservicesd` | 80.4 | 21h15m | |
+| `cmux` | 64.7 | **44h57m** | likely the trigger |
+| `logd` | 35.6 | 25h42m | |
+| `mds` | 25.5 | 91m | |
+| `WindowServer` | 7.2 | 8h52m | can't drive frames |
+
+Load average **43.27**, box up **7 days**. **None of it is mine** — `kill-test-procs.sh` reports 0 vite / 0
+playwright / 0 puppeteer alive and there are zero preview husks, so the loop has leaked nothing. The
+`launchservicesd` + `logd` + `mds` triad spinning together is the textbook wedged-system-services signature,
+and a 45-hour-CPU `cmux` is the plausible trigger (log flooding → `logd`; surface re-registration →
+`launchservicesd`). **A reboot is the fix.**
+
+**What it is holding up:** X1 (Aspect ring), X2a (cooldown sweep) and X2b (spell picker) are all shipped,
+gated, and green — and **no human has ever seen any of them.** `scripts/visual/touch-probe.mjs` is their only
+lived check and also carries the outstanding X3 hotbar verdict; it answers all four the first time the
+compositor works. The 31-state visual re-baseline is behind the same door.
+
+**I have deliberately NOT worked around it.** A wall-clock fallback would let the visual gate go green over
+blank frames — the exact "reports pass over what it never examined" defect this project keeps paying for. So
+it stays hard-failing with a named cause until the box is healthy.
