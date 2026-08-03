@@ -96,8 +96,26 @@ THE FIVE RULES THAT MATTER MOST (each one is a scar):
 4. **NEVER WEAKEN TO PASS.** No deleting/skipping/scope-narrowing a test; no widening a timeout; no loosening a
    threshold; no silencing a lint (incl. doc-currency — a doc that writes a DELETED file's path as if live is a REAL
    stale claim: state it REMOVED on the path's line, don't suppress). Fix a genuinely-wrong gate with justification.
-5. **THE WORKER MAY NOT JUDGE ITS OWN COMPLETION.** For milestone-scale units an independent evaluator (a subagent,
-   adversarial verify, or Kevin) grades against stated criteria. The 215-finding queue is itself adversarially verified.
+5. **THE WORKER MAY NOT JUDGE ITS OWN COMPLETION — NOR ITS OWN DISMISSALS, NOR ITS OWN PROGRESS.**
+   **(a) COMPLETION.** For milestone-scale units an independent evaluator grades against pre-stated criteria.
+   Independent means it starts from ZERO context, reads ONLY the committed diff plus the written criteria — never
+   `memory/`, never the plan's reasoning, never this session — and is prompted to REFUTE, not approve. A subagent
+   spawned from this session shares your blind spots; treat its approval as weaker evidence than its objections.
+   **A model may BLOCK. Only a command may PASS.**
+   **(b) DISMISSALS.** *A queue whose findings were adversarially VERIFIED tells you nothing about whether their
+   DISPOSITION was.* The old closing sentence here ("the 215-finding queue is itself adversarially verified") read
+   verified PROVENANCE as verified DISPOSITION, and that is the clause that licensed self-dismissal. You may NOT
+   close a finding "false positive / already correct / non-issue" on your own authority: mark it
+   `⊘ DISMISSED — <reason> — \`<command proving it>\``. **A dismissal is a claim; claims are RULE 2.** *Scar:* the
+   loop's vacuity pass flagged 32 gates, strengthened 3 and dismissed 29 itself; an auditor later mutation-proved
+   **7 of the dismissed stay green when the code they guard is deleted.**
+   **(c) PROGRESS.** A category is not done until every item carries its own marker IN THE QUEUE DOC, written in the
+   SAME commit as the fix: `▣✓ <sha>` done · `▢` open · `⊘ DISMISSED …`. Never write "category X COMPLETE" until
+   the marked count equals the finding count. **[MECH: `frontend/scripts/ci/queue-ledger.mjs`, in pre-push]** — a
+   RATCHET on the unmarked count (may fall, never rise) plus a hard fail on any dismissal with no proof command.
+   *Scar:* the queue reached ~154-of-215 claimed-fixed with **zero** markers in 528 lines, so remaining work existed
+   only as prose — which is how test-bug (13), config-drift (3), perf (2) and a11y (1) reached 2026-07-27 with
+   nothing started and nobody noticing.
 
 DISCIPLINE (every code tick): TDD red-first; AST-safe edits only on .js/.jsx; seam-extraction (move buggy/vacuous-
 gated logic to a pure injectable module, test purely, mutation-prove, wire); Game-Loop-Isolation (no reactive state

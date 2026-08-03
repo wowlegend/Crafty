@@ -97,6 +97,7 @@ for SHA in $TARGETS; do
   cd "$WT/frontend"
 
   printf '\n▶ doc-currency\n';            node scripts/ci/doc-currency.mjs
+  printf '\n▶ queue-ledger (every finding carries its own marker)\n'; node scripts/ci/queue-ledger.mjs
   printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
   printf '\n▶ gate-shape (no assertion may be satisfied by a comment)\n'; node scripts/ci/gate-shape.mjs
   printf '\n▶ unit + static gates\n';     npm run --silent test:unit
