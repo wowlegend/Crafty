@@ -10,6 +10,17 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 
 // SOTA M3 #3 (settings/a11y): the M1 juiceIntensity dial (screenshake + hitstop strength) is now
 // player-tunable from the SettingsPanel -- the audit's "no feedback-intensity toggle" gap.
+//
+// LABELS ARE PINNED IN THEIR t() FORM, NOT AS ENGLISH LITERALS. The i18n adoption sweep routed this
+// panel's copy through t(), and these gates held the English. The contract they exist for is that the
+// CONTROL is present and wired to its store setter -- not that the product ships in English.
+//
+// Pinned to the translated form specifically, rather than an `(?:English|t\(...\))` alternation, because
+// this panel's comments spell out every one of these labels ("Feedback Intensity (M3 #3: ...", "Reduced
+// Motion toggle (M3 #3): ..."). An alternation keeps matching those comments forever, so the assertion
+// would survive the deletion of the control it guards -- the exact setActive shape gate-shape.mjs exists
+// to catch. `Feedback Intensity` below was ALREADY in that state for the length of this commit: the
+// literal vanished from the code and the test stayed green on the comment alone.
 describe('settings a11y gates (M3 #3 S1 -- feedback-intensity slider)', () => {
   const panels = read('ui/GamePanels.jsx');
   const store = read('store/useGameStore.jsx');
@@ -20,7 +31,7 @@ describe('settings a11y gates (M3 #3 S1 -- feedback-intensity slider)', () => {
   });
 
   it('SettingsPanel has a Feedback Intensity slider', () => {
-    expect(panels).toMatch(/Feedback Intensity/);
+    expect(panels).toMatch(/\{t\('panel\.feedbackIntensity'\)\}/);
     // a bold-flat Slider primitive bound to the dial (M6 #2: was a raw <input type=range>)
     expect(/<Slider[\s\S]{0,220}value=\{gameState\.juiceIntensity/.test(panels)).toBe(true);
   });
@@ -48,8 +59,8 @@ describe('settings a11y gates (M3 #3 S2 -- reduced motion)', () => {
   });
 
   it('SettingsPanel has an explicit Reduced Motion toggle wired to the dial', () => {
-    expect(panels).toMatch(/Reduced Motion/);
-    expect(/Reduced Motion[\s\S]{0,260}setJuiceIntensity\(\(gameState\.juiceIntensity \?\? 1\) === 0 \? 1 : 0\)/.test(panels)).toBe(true);
+    expect(panels).toMatch(/\{t\('panel\.reducedMotion'\)\}/);
+    expect(/\{t\('panel\.reducedMotion'\)\}[\s\S]{0,300}setJuiceIntensity\(\(gameState\.juiceIntensity \?\? 1\) === 0 \? 1 : 0\)/.test(panels)).toBe(true);
   });
 });
 
@@ -64,7 +75,7 @@ describe('settings a11y gates (M3 #3 S3a -- SFX volume)', () => {
     expect(store).toMatch(/setSfxVolume:/);
   });
   it('SettingsPanel has a Sound Effects slider bound to sfxVolume', () => {
-    expect(panels).toMatch(/Sound Effects/);
+    expect(panels).toMatch(/\{t\('panel\.soundEffects'\)\}/);
     expect(/<Slider[\s\S]{0,220}value=\{gameState\.sfxVolume/.test(panels)).toBe(true);
     expect(panels).toMatch(/gameState\.setSfxVolume\(parseFloat\(e\.target\.value\)\)/);
   });
@@ -93,9 +104,9 @@ describe('settings a11y gates (M3 #3 S3b -- music volume + master mute)', () => 
     expect(music).toMatch(/musicVolume, masterMuted\]/); // added to the effect deps
   });
   it('SettingsPanel has a Music slider + a Mute All toggle', () => {
-    expect(/Music<\/span>[\s\S]{0,500}value=\{gameState\.musicVolume/.test(panels)).toBe(true);
+    expect(/\{t\('ui\.music'\)\}<\/span>[\s\S]{0,500}value=\{gameState\.musicVolume/.test(panels)).toBe(true);
     expect(panels).toMatch(/gameState\.setMusicVolume\(parseFloat/);
-    expect(panels).toMatch(/Mute All/);
+    expect(panels).toMatch(/\{t\('panel\.muteAll'\)\}/);
     expect(panels).toMatch(/gameState\.setMasterMuted\(!gameState\.masterMuted\)/);
   });
 });

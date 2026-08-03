@@ -27,7 +27,7 @@ describe('#52 S1 modals use the shared Modal primitive', () => {
 
   it('MagicSystem (GamePanels, M-key) is a <Modal label="Magic Spells"> (was the last raw-div backdrop)', () => {
     const src = read('ui/GamePanels.jsx');
-    expect(src).toMatch(/<Modal[\s\S]{0,180}label="Magic Spells"/);
+    expect(src).toMatch(/<Modal[\s\S]{0,180}label=\{t\('panel\.magicSpells'\)\}/);
   });
 
   it('the Modal primitive renders a role=dialog with aria-modal + capture-gated focus', () => {

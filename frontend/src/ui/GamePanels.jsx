@@ -343,7 +343,7 @@ export const Inventory = ({ onClose }) => {
                             ) : (
                                 <Panel variant="inset" className="text-center p-4">
                                     <div className="grid place-items-center mb-2 text-text-muted opacity-40"><Icon name="upgrade" size={32} /></div>
-                                    <div className="text-xs text-text-muted font-semibold">Hover any item or equipment slot to inspect gear stats</div>
+                                    <div className="text-xs text-text-muted font-semibold">{t('panel.gearHint')}</div>
                                 </Panel>
                             )}
                         </div>
@@ -352,11 +352,11 @@ export const Inventory = ({ onClose }) => {
                         <Panel variant="base" className="bg-slot px-4 py-3 flex-none">
                             <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">{t('panel.combatStats')}</h4>
                             <div className="space-y-1.5 text-xs">
-                                <div className="flex items-center gap-2"><Icon name="sword" size={16} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Physical Hit</span><span className="font-bold tabular-nums">{meleeDmg} DMG</span></div>
-                                <div className="flex items-center gap-2"><Icon name="force" size={16} className="text-stat-crit flex-none" /><span className="flex-1 text-text-muted">Crit Strike</span><span className="font-bold tabular-nums">{critChance}%</span></div>
-                                <div className="flex items-center gap-2"><Icon name="shield" size={16} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">Mitigation</span><span className="font-bold tabular-nums">-{armorMitigation}%</span></div>
-                                <div className="flex items-center gap-2"><Icon name="magic" size={16} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Spell Power</span><span className="font-bold tabular-nums">{spellDmg} DMG</span></div>
-                                <div className="flex items-center gap-2"><Icon name="run" size={16} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Move Velocity</span><span className="font-bold tabular-nums">+{speedBonus}%</span></div>
+                                <div className="flex items-center gap-2"><Icon name="sword" size={16} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">{t('stat.physicalHit')}</span><span className="font-bold tabular-nums">{meleeDmg} DMG</span></div>
+                                <div className="flex items-center gap-2"><Icon name="force" size={16} className="text-stat-crit flex-none" /><span className="flex-1 text-text-muted">{t('stat.critStrike')}</span><span className="font-bold tabular-nums">{critChance}%</span></div>
+                                <div className="flex items-center gap-2"><Icon name="shield" size={16} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">{t('stat.mitigation')}</span><span className="font-bold tabular-nums">-{armorMitigation}%</span></div>
+                                <div className="flex items-center gap-2"><Icon name="magic" size={16} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">{t('stat.spellPower')}</span><span className="font-bold tabular-nums">{spellDmg} DMG</span></div>
+                                <div className="flex items-center gap-2"><Icon name="run" size={16} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">{t('stat.moveVelocity')}</span><span className="font-bold tabular-nums">+{speedBonus}%</span></div>
                             </div>
                         </Panel>
                     </div>
@@ -455,7 +455,7 @@ export const MagicSystem = ({ onClose }) => {
     ];
 
     return (
-        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Magic Spells" onClose={onClose}>
+        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('panel.magicSpells')} onClose={onClose}>
             <Panel
                 variant="raise"
                 className="w-[440px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
@@ -465,7 +465,7 @@ export const MagicSystem = ({ onClose }) => {
                 <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
                     <div className="flex items-center gap-3">
                         <Icon name="magic" size={26} className="text-spell-arcane" />
-                        <span className="font-display text-xxl tracking-wide">Magic Spells</span>
+                        <span className="font-display text-xxl tracking-wide">{t('panel.magicSpells')}</span>
                     </div>
                     <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
                         <Icon name="close" size={18} />
@@ -539,7 +539,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                 <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
                     <div className="flex items-center gap-3">
                         <Grid width={26} height={26} strokeWidth={2.5} className="text-accent" aria-hidden />
-                        <span className="font-display text-xxl tracking-wide">Building Tools</span>
+                        <span className="font-display text-xxl tracking-wide">{t('panel.buildingTools')}</span>
                     </div>
                     <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
                         <Icon name="close" size={18} />
@@ -551,7 +551,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                     {/* Size Slider */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Build Size</span>
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.buildSize')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{buildSize}</span>
                         </div>
                         <Slider
@@ -560,7 +560,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                             value={buildSize}
                             onChange={(e) => setBuildSize(parseInt(e.target.value))}
                             className="w-full"
-                            aria-label="Build size"
+                            aria-label={t('a11y.buildSize')}
                         />
                     </Panel>
 
@@ -597,7 +597,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                             style={{ backgroundColor: BLOCK_TYPES[gameState.selectedBlock]?.color || '#567C35' }}
                         />
                         <div>
-                            <div className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px]">Selected Block</div>
+                            <div className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px]">{t('panel.selectedBlock')}</div>
                             <div className="font-bold text-text">{BLOCK_TYPES[gameState.selectedBlock]?.name || gameState.selectedBlock}</div>
                         </div>
                     </Panel>
@@ -652,14 +652,14 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             onClick={() => setShowStats(!showStats)}
                             className="min-w-[64px]"
                         >
-                            {showStats ? 'ON' : 'OFF'}
+                            {showStats ? t('ui.on') : t('ui.off')}
                         </Button>
                     </Panel>
 
                     {/* Look Sensitivity (mouse pointerSpeed + touch drag-look) */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Look Sensitivity</span>
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.lookSensitivity')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{(gameState.lookSensitivity ?? 1).toFixed(1)}</span>
                         </div>
                         <Slider
@@ -669,7 +669,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             value={gameState.lookSensitivity ?? 1}
                             onChange={(e) => gameState.setLookSensitivity(parseFloat(e.target.value))}
                             className="w-full"
-                            aria-label="Look sensitivity"
+                            aria-label={t('a11y.lookSensitivity')}
                         />
                     </Panel>
 
@@ -677,7 +677,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         strength; 0 = calm / reduced-motion, 100% = full punch. The a11y win the audit flagged). */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Feedback Intensity</span>
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.feedbackIntensity')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.juiceIntensity ?? 1) * 100)}%</span>
                         </div>
                         <Slider
@@ -687,7 +687,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             value={gameState.juiceIntensity ?? 1}
                             onChange={(e) => gameState.setJuiceIntensity(parseFloat(e.target.value))}
                             className="w-full"
-                            aria-label="Feedback intensity (screenshake and hitstop)"
+                            aria-label={t('a11y.feedbackIntensity')}
                         />
                     </Panel>
 
@@ -695,14 +695,14 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         to 0 (no shake/hitstop), OFF restores full. The OS prefers-reduced-motion default is
                         auto-applied at mount (App); this is the discoverable in-game override. */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
-                        <span className="font-bold text-text">Reduced Motion</span>
+                        <span className="font-bold text-text">{t('panel.reducedMotion')}</span>
                         <Button
                             variant={(gameState.juiceIntensity ?? 1) === 0 ? 'primary' : 'secondary'}
                             size="sm"
                             onClick={() => gameState.setJuiceIntensity((gameState.juiceIntensity ?? 1) === 0 ? 1 : 0)}
                             className="min-w-[64px]"
                         >
-                            {(gameState.juiceIntensity ?? 1) === 0 ? 'ON' : 'OFF'}
+                            {(gameState.juiceIntensity ?? 1) === 0 ? t('ui.on') : t('ui.off')}
                         </Button>
                     </Panel>
 
@@ -710,7 +710,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         volume + master mute are the sibling panels below (both shipped). */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Sound Effects</span>
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.soundEffects')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.sfxVolume ?? 1) * 100)}%</span>
                         </div>
                         <Slider
@@ -720,14 +720,14 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             value={gameState.sfxVolume ?? 1}
                             onChange={(e) => gameState.setSfxVolume(parseFloat(e.target.value))}
                             className="w-full"
-                            aria-label="Sound effects volume"
+                            aria-label={t('a11y.soundEffects')}
                         />
                     </Panel>
 
                     {/* Music Volume (M3 #3 S3b: scales the ElevenLabs music crossfade target). */}
                     <Panel variant="inset" className="bg-slot p-3">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">Music</span>
+                            <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('ui.music')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.musicVolume ?? 1) * 100)}%</span>
                         </div>
                         <Slider
@@ -737,26 +737,26 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             value={gameState.musicVolume ?? 1}
                             onChange={(e) => gameState.setMusicVolume(parseFloat(e.target.value))}
                             className="w-full"
-                            aria-label="Music volume"
+                            aria-label={t('a11y.musicVolume')}
                         />
                     </Panel>
 
                     {/* Master Mute (M3 #3 S3b): one switch silences BOTH the SFX bus AND the music. */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
-                        <span className="font-bold text-text">Mute All</span>
+                        <span className="font-bold text-text">{t('panel.muteAll')}</span>
                         <Button
                             variant={gameState.masterMuted ? 'primary' : 'secondary'}
                             size="sm"
                             onClick={() => gameState.setMasterMuted(!gameState.masterMuted)}
                             className="min-w-[64px]"
                         >
-                            {gameState.masterMuted ? 'ON' : 'OFF'}
+                            {gameState.masterMuted ? t('ui.on') : t('ui.off')}
                         </Button>
                     </Panel>
 
                     {/* Game Mode toggle */}
                     <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
-                        <span className="font-bold text-text">Game Mode</span>
+                        <span className="font-bold text-text">{t('panel.gameMode')}</span>
                         <Button
                             variant="secondary"
                             size="sm"
