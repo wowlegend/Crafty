@@ -1,5 +1,39 @@
 # Kevin — Review / Decide Batch (Crafty SOTA master-plan autonomous run)
 
+> **🛑 2026-08-02 (UPDATED, ~18:20) — ROOT CAUSE FOUND. THE ASK IS NOW JUST: REBOOT.**
+> **Do NOT bother with `npx puppeteer browsers install chrome` — I told you that earlier and it was wrong.**
+>
+> **`requestAnimationFrame` fires ZERO times in 2 seconds in this box's headless Chrome.** `capture.mjs`
+> waits on 10 rAF callbacks inside a `page.evaluate`, so that call can never return and puppeteer's default
+> 180s protocol timeout eventually surfaces as the generic `Runtime.callFunctionOn timed out`. The error
+> named nothing, which is why this got misdiagnosed three times.
+>
+> **Why a Chrome re-fetch will not help — the binary is fine:**
+> - Chrome launches, reports `147.0.7727.57`, evaluates JS, and creates a **WebGL 2.0 context** happily.
+> - **`Page.captureScreenshot` also hangs — on a two-line `data:text/html` URL with no app loaded at all.**
+> - rAF = 0 under *every* configuration tried: `--use-angle=swiftshader`, no flag, `--disable-gpu`,
+>   `--disable-gpu-compositing`, `--in-process-gpu`, `--single-process`, `--enable-software-rasterizer`,
+>   `--deterministic-mode`, and old headless.
+> - Crafty itself is healthy: boots in **2.7s**, test bridge answers, `enterCapture` and `start` both
+>   return, title diorama canvas mounts instantly.
+>
+> So it is OS-level compositor / WindowServer state, not this repo and not the browser install. **A reboot
+> is the indicated fix.** After rebooting, this one-liner tells you in ~3s whether it worked:
+>
+> ```
+> cd /Users/kz/Code/Crafty/frontend && npm run visual:capture
+> ```
+>
+> It now runs a **preflight** (shipped `82a6cc1`) that asks "can this browser present a frame?" on
+> about:blank before capturing anything: **3.5s to a named cause** instead of 180s to a puppeteer stack
+> trace. If the reboot worked it prints `preflight: browser produced N frames in 1.2s` and proceeds.
+>
+> I deliberately did NOT add a wall-clock fallback so the run could continue — with rAF dead nothing
+> renders, so that would screenshot blank frames and turn the visual gate **green over pictures of
+> nothing**. Rather blind than lying.
+>
+> — superseded, kept for provenance (the isolation work still stands; only the recommended fix was wrong) —
+>
 > **🛑 2026-08-02 — BLOCKER, needs your machine: the VISUAL CAPTURE GATE is down.** Not a flake and not
 > something I can fix from here, so flagging rather than grinding on it.
 >
