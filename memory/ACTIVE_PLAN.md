@@ -195,6 +195,16 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅ 2026-08-02 — DOC-SOTA PLAN RE-VERIFIED (`96d20f8`): 8 of 14 SHIPPED, 6 REMAIN.** The header had
+> said "3 shipped / 11 remain" since 07-27 while six landed during the loop era — the kernel carried the
+> stale count for days. Per-row evidence table now in the plan. **OPEN: #5 measure.mjs, #6 Rule-5
+> self-adjudication, #8 AGENTS tail, #10 charter §3, #11 MEASURED block, #14 delete charter §5/§6.**
+> **▶ NEXT UNIT: #5 + #11 TOGETHER** — the MEASURED block has nothing to source until `measure.mjs` exists,
+> and AGENTS:40 still carries `~14.4k LOC / ~31 JS(X) files` + the whole de-monolith narrative, which the
+> plan itself cites as the headline example of a rotting number (already 1.8x wrong the day it shipped).
+> **✅ Also shipped (`3555db5`): AGENTS gate table** — it named 2 of the 7 push-authorizing gates; now all 9,
+> transcribed from pre-push + ci.yml, incl. that `test:visual` is run by NEITHER (manual only).
+>
 > **✅ 2026-08-02 — DOCS REORG WAVE-2 DONE (`2d788f2`).** Archived ocean-coast + loot-glow-PARKED +
 > biome-flora (plans/ now 35). **world-purpose-sota STAYS** — LOOP-CHARTER cites it twice as the live
 > `Source:` for current design; it is a DESIGN OF RECORD, not history. Wave-1s deferral premise was wrong:
