@@ -1,7 +1,7 @@
 # Loop governing-document SOTA plan — 2026-07-27
 
-> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): 13 of 14 SHIPPED, 1 REMAINS — #8 in `6412bb6`, #10 in `8e2539b`.**
-> Still open: **#6** Rule-5 self-adjudication (the worker may not adjudicate its own dismissals; a category is not done until every item carries a marker).
+> **⚠️ STATUS RE-VERIFIED 2026-08-02 (updated 08-03): **14 of 14 SHIPPED — THE PLAN IS DONE (#6 in `34f8319`).** Work-of-record returns to `memory/STATUS.md` §2.**
+> Nothing open. Five rules now name an enforcer: gate-shape, doc-currency (+bare paths, +MEASURED drift), mutation-proof-trailer, queue-ledger, and the pushed-ref pre-push certification.
 > Six edits landed during the loop era after this plan was written, and nothing updated the header, so the
 > queue kept re-listing finished work. Checked against live files rather than against this document:
 >
@@ -12,7 +12,7 @@
 > | 3 | pre-push certifies the PUSHED REFS | ✅ SHIPPED | `.githooks/pre-push` detached-worktree certify |
 > | 4 | no external-state claim without a same-turn observation | ✅ SHIPPED | charter, and kernel's "GENERAL RULE" para |
 > | 5 | `measure.mjs` — one authority for every number | ✅ SHIPPED | `03807b2` — + drift check in `doc-currency`, mutation-proven 3 ways |
-> | 6 | Rule 5: no self-adjudicated dismissals + category markers | ⬜ OPEN | charter has "may not judge its own completion" only |
+> | 6 | Rule 5: no self-adjudicated dismissals + category markers | ✅ SHIPPED | `34f8319` — kernel Rule 5 (a)(b)(c) + `queue-ledger.mjs` ratchet + dismissal proof check |
 > | 7 | AGENTS: full gate table | ✅ SHIPPED | `3555db5` — 9 gates, transcribed from pre-push + ci.yml |
 > | 8 | AGENTS tail: STATUS-first read order + post-compaction checklist | ✅ SHIPPED | `6412bb6` — AGENTS named STATUS.md ZERO times before this |
 > | 9 | charter §0-A/0-B/0-C rewrite | ✅ SHIPPED | `## 0-A. READ ORDER` present |

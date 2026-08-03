@@ -195,6 +195,13 @@
 > shipped during the outage is now pixel-verified, incl. the GamePanels i18n sweep
 > (`inventory-open`/`achievements-open`/`progression-open` all pass).
 >
+> **✅✅ 2026-08-03 — DOC-SOTA PLAN COMPLETE, 14 of 14 (`34f8319`).** #6 shipped: Rule 5 split into
+> (a) completion / (b) dismissals / (c) progress, and its licensing clause ("the 215-finding queue is itself
+> adversarially verified" — verified PROVENANCE read as verified DISPOSITION) is gone. `queue-ledger.mjs`
+> ratchets the UNMARKED count in the queue-of-record (215, may fall never rise) and hard-fails any
+> `⊘ DISMISSED` lacking a backticked proof command. **▶ WORK-OF-RECORD RETURNS TO `memory/STATUS.md` §2.**
+>
+> — superseded —
 > **✅ 2026-08-03 — DOC-SOTA now 13 of 14 SHIPPED, 1 REMAINS (#6 Rule-5 self-adjudication).**
 > **#8** (`6412bb6`): AGENTS.md named STATUS.md ZERO times — fixed with the charter §0-A ladder copied, not
 > invented; and its compaction instruction told the compactor to PRESERVE GATE RESULTS, which is how "CI

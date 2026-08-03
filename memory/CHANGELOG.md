@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-08-03 — a dismissal is a claim; the doc-SOTA plan closes at 14 of 14 (`34f8319`)
+
+**Rule 5 carried the clause that licensed self-dismissal.** It ended "The 215-finding queue is itself
+adversarially verified" — reading verified PROVENANCE as verified DISPOSITION. That a finding was confirmed
+real says nothing about whether the decision to CLOSE it was checked. Under that sentence the loop's own
+vacuity pass flagged 32 gates, strengthened 3, and dismissed 29 on its own authority; an auditor later
+mutation-proved that **7 of the dismissed stay green when the code they guard is deleted.** Rule 5 now splits
+into (a) completion, (b) dismissals, (c) progress — and the last two have a checker rather than a third
+restatement.
+
+**The queue of record had zero markers.** `HOLISTIC-REVIEW-2026-07-21.md` is 528 lines the kernel calls THE
+PRIMARY QUEUE, holding 215 confirmed findings and not one ✅, [x] or ▣. "~154 of 215 fixed" existed only as
+prose, uncheckable by anyone including its author — which is how test-bug (13), config-drift (3), perf (2)
+and a11y (1) reached the 07-27 audit with nothing started and nobody noticing. `queue-ledger.mjs` ratchets
+the UNMARKED count (may fall, never rise), so marking converges incrementally instead of demanding 215
+annotations in one commit.
+
+**Dismissals are checked harder than fixes, deliberately.** A fix has an artifact — code compiles, a test
+goes green. A dismissal has nothing, which is exactly where self-adjudication hides. Every `⊘ DISMISSED`
+must cite a backticked command.
+
+**And the denominator caught me again.** The first version scanned the whole document and froze **243
+against a stated 215** — 13% too large, because the tail re-lists the same findings grouped by file. Noticed
+only because the doc states its own total. There is now a test asserting the parser agrees with the header's
+own number.
+
+Not retro-marking the 215: the loop fixed many, but *which* is a per-finding claim, and asserting it
+wholesale would be the same self-adjudication Rule 5(b) now forbids.
+
+**The doc-SOTA plan is DONE, 14 of 14.** Five rules now name an enforcer — `gate-shape`, `doc-currency`
+(bare paths + MEASURED drift), `mutation-proof-trailer`, `queue-ledger`, and pushed-ref certification.
+Work-of-record returns to `memory/STATUS.md` §2.
+
 ## 2026-08-03 — the constitution names STATUS.md, and mutation-proof gets an enforcer (`6412bb6`, `8e2539b`)
 
 **`.agent/AGENTS.md` never mentioned `memory/STATUS.md`. Not once.** It is the only auto-loaded file and the
