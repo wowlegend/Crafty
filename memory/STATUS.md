@@ -682,18 +682,19 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 - ▣ **G2 — doc-currency now also checks cross-doc SECTION citations (2026-08-05).** It only ever verified
   PATHS; docs point at each other by section too (`charter §6.4`, `STATUS §2`) and those rot identically —
   §G1 below records that ONE stale charter line "regenerated a week-sized proposal". Pure
-  `scripts/ci/doc-anchors.mjs` parses heading ids and resolves citations; a RATCHET (frozen 5, may fall
-  never rise) rather than a hard zero, matching i18n/queue-ledger. Mutation-proven: a new dangling citation
-  fails the push and is named.
-  - ▢ **THE FIVE IT FOUND, all genuinely stale — recorded, NOT fixed** (renumbering someone else's pointers
-    is a separate reviewable change from adding the check): `memory/ACTIVE_PLAN.md` cites `V1` ·
-    `docs/superpowers/LOOP-CHARTER.md` cites `V2` · `docs/superpowers/INDEX.md` cites `C1` and `V2` (all
-    four aimed at this file) · `SOTA-INITIATIVE.md` aims `2.5` at the charter. This file has no V1/V2/C1
-    sections and the charter has a section 2 but no 2.5. Each wants a judgement — renumber, delete, or
-    write the section — and `ANCHOR_FROZEN` drops as they go.
-    *(Written WITHOUT the `\u00a7` sigil on purpose: the first draft of this entry spelled the five out as
-    real citations and the new check counted them, failing the push. A lint whose own documentation trips
-    it is a real hazard — noting the workaround here so the next person does not rediscover it.)*
+  `scripts/ci/doc-anchors.mjs` parses heading ids and resolves citations; a ZERO-TARGET (frozen 0)
+  after the correction below. Mutation-proven: a genuinely dangling citation fails the push and is named.
+  - ▣✓ **RETRACTION — the five it first "found" were FALSE POSITIVES, and the checker was wrong, not the
+    docs.** The first version modelled only ATX headings. These docs anchor three ways: headings
+    (`## 6.4`), ITEM ids inside a section (`- ▢ **V1 [LOOP] …` living under `### B. Verification truth`),
+    and COMPOUND refs (`charter` section 2 item 5, which really is the interleave rule cited). Once
+    `doc-anchors.mjs` learned all three the live count went to **zero**, so the freeze is **0** — any
+    dangling citation now fails the push outright.
+    **I wrote those five into this file as "genuinely stale" before checking a single one by hand.** A lint
+    that manufactures dead work for the next reader is worse than the rot it hunts, and freezing at 5 would
+    have permanently licensed five phantom findings and taught the next reader to distrust the lint. The
+    guard for this exact failure was already in `unresolved` for unloaded aliases; it arrived through a
+    door I had not modelled.
   - *(`kernel` is deliberately NOT an alias: LOOP-KERNEL-PROMPT.md has no numbered headings, so resolving
     against it would flag every `kernel §N` on the strength of the checker's own parse failure.)*
 - ▢ **G3 [LOOP]** **Session-close ritual at the context watermark** — refresh the GitHub remote surfaces

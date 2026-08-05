@@ -23,7 +23,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 
-import { DOC_ALIASES, sectionIds, unresolved } from './doc-anchors.mjs';
+import { DOC_ALIASES, sectionIds, itemIds, unresolved } from './doc-anchors.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..'); // frontend/scripts/ci -> repo root
@@ -205,20 +205,24 @@ if (existsSync(statusAbs)) {
 // same way: a section is renumbered or removed and the pointer aims at nothing. STATUS §G1 records that ONE
 // stale line in the charter "regenerated a week-sized proposal"; a dangling § is that failure, smaller.
 //
-// RATCHET, not a hard zero — the first full run surfaced FIVE already-dangling pointers, and deciding
-// whether each wants renumbering, deleting, or a section actually written is a documentation judgement,
-// not a push blocker. Blocking on it is the kind of pressure that gets a lint switched off. The count may
-// FALL, never RISE, exactly like the i18n adoption ratchet (frozen 109) and queue-ledger (frozen 215).
+// A ZERO-TARGET, not a ratchet-with-slack. The first version of this check reported FIVE dangling
+// pointers and I recorded them in STATUS as "genuinely stale". They were FALSE POSITIVES: it modelled only
+// ATX headings, while these docs also anchor on ITEM ids (`- ▢ **V1 …` under `### B.`) and on COMPOUND
+// refs (`charter §2.5` = section 2, list item 5). Once doc-anchors learned both, the count went to zero.
 //
-// The five, all genuinely stale (STATUS has no V1/V2/C1; the charter has §2 but no §2.5):
-//   memory/ACTIVE_PLAN.md -> STATUS §V1        docs/superpowers/INDEX.md -> STATUS §C1, §V2
-//   docs/superpowers/LOOP-CHARTER.md -> §V2    SOTA-INITIATIVE.md -> charter §2.5
-// They are recorded in STATUS §G rather than fixed here: renumbering someone else's section pointers is a
-// separate, reviewable change from adding the check that finds them.
-const ANCHOR_FROZEN = 5;
+// So the freeze is 0 and any dangling citation fails the push outright. That is only defensible BECAUSE
+// the checker was corrected first — freezing at 5 would have permanently licensed five phantom findings
+// and taught the next reader to distrust the lint. A ratchet that ratchets in rot it invented is worse
+// than no ratchet.
+const ANCHOR_FROZEN = 0;
 const sectionsByAlias = {};
 for (const [alias, rel] of Object.entries(DOC_ALIASES)) {
-  try { sectionsByAlias[alias] = sectionIds(readFileSync(join(ROOT, rel), 'utf8')); } catch { /* absent: unresolved() skips it */ }
+  try {
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    // Headings AND item ids: these docs cite both `STATUS §2` (a heading) and `STATUS §V1` (an item inside
+    // one). Reading headings alone reported five valid citations as dangling.
+    sectionsByAlias[alias] = new Set([...sectionIds(src), ...itemIds(src)]);
+  } catch { /* absent: unresolved() skips it */ }
 }
 const dangling = [];
 for (const rel of CANONICAL) {

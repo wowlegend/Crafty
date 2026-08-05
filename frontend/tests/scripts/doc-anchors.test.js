@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sectionIds, citations, unresolved, DOC_ALIASES } from '../../scripts/ci/doc-anchors.mjs';
+import { sectionIds, itemIds, citations, unresolved, DOC_ALIASES } from '../../scripts/ci/doc-anchors.mjs';
 
 // Cross-doc `§` citations rot exactly like file paths, and doc-currency only ever checked paths. STATUS §G1
 // records that ONE stale line in the charter "regenerated a week-sized proposal"; a dangling § pointer is
@@ -102,5 +102,53 @@ describe('against the REAL canonical docs', () => {
   it('finds a non-trivial number of citations across the canonical set', () => {
     const all = Object.values(DOC_ALIASES).map(read).join('\n');
     expect(citations(all).length).toBeGreaterThan(5);
+  });
+});
+
+describe('itemIds — the anchor form the first version missed entirely', () => {
+  // Reading headings alone reported five VALID citations as dangling, and those five were written into
+  // STATUS as real findings before one was checked by hand. Items are anchors too.
+  it('reads the item ids these docs really use', () => {
+    const ids = itemIds([
+      '- ▢ **V1 [LOOP] Vacuous-gate audit**',
+      '- ▣✓ **B4 — BOTH HALVES FIXED**',
+      '  - ▢ **B2g** the boss fight is React-local',
+      '- ▢ **X3 [LOOP] TOUCH HOTBAR**',
+      '- a plain bullet with **bold** text',
+      '## 2. A heading, not an item',
+    ].join('\n'));
+    expect(ids).toEqual(new Set(['v1', 'b4', 'b2g', 'x3']));
+  });
+
+  it('does not claim ordinary bold prose as an anchor', () => {
+    expect(itemIds('- **Important** note about things')).toEqual(new Set());
+  });
+});
+
+describe('compound refs — `charter §2.5` means section 2, item 5', () => {
+  const sections = { charter: new Set(['2', '3']), status: new Set(['b', 'v1']) };
+
+  it('resolves when the leading part is a real section', () => {
+    expect(unresolved('per charter §2.5', sections)).toEqual([]);
+  });
+
+  it('still flags a compound whose leading part does not exist', () => {
+    expect(unresolved('per charter §99.5', sections).map((c) => c.section)).toEqual(['99.5']);
+  });
+
+  it('resolves an ITEM citation now that items are anchors', () => {
+    expect(unresolved('see STATUS §V1', sections)).toEqual([]);
+  });
+});
+
+describe('the live docs have ZERO dangling citations', () => {
+  it('every § citation in the canonical set resolves', () => {
+    const sections = {};
+    for (const [alias, rel] of Object.entries(DOC_ALIASES)) {
+      const src = read(rel);
+      sections[alias] = new Set([...sectionIds(src), ...itemIds(src)]);
+    }
+    const all = Object.values(DOC_ALIASES).map(read).join('\n');
+    expect(unresolved(all, sections)).toEqual([]);
   });
 });
