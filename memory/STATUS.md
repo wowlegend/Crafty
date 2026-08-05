@@ -434,6 +434,12 @@ different scene each run.
 Measured, not inferred: captured twice with **identical code**, diffed the two runs against each other.
 **15 of 31 frames differ**, and the four `beast-*` frames differ by **69–72%**.
 
+> **COMPOSITOR STATUS — intermittent, re-confirmed 2026-08-05.** It produced 63 rAF frames/1.2s earlier
+> this session (the window that made all the lived verification possible) and **0 frames/1.2s later the
+> same session**, dying mid-investigation and timing out `Page.captureScreenshot`. It is not "fixed" and
+> it is not permanently dead. Check it (`rAF` count, ~3s) before planning any browser work, and expect
+> to lose it mid-run.
+
 Opening the two frames settles what it is: one run renders the beast in close-up, the other renders a
 distant snow mountain with **no beast anywhere**. The showcase camera/spawn is a coin-flip. That also
 explains the standing note that "the 4 `beast-*` baselines contain NO BEAST" — those baselines were
@@ -449,7 +455,29 @@ directly it would have read "the UV fix transformed the beast frames", which is 
 same code, twice — is what separated signal from harness noise. **A before/after diff means nothing until
 you know the floor.** Same shape as asserting an absence without a baseline.
 
-- ▢ **[LOOP] the beast-showcase race — ROOT CAUSE MEASURED 2026-08-05, and it is NOT the camera.**
+- ▢ **[LOOP] 2026-08-05 SECOND MEASUREMENT — THE PLAYER NEVER MOUNTS DURING CAPTURE.** This supersedes the
+  framing below (which was itself a correction of the framing before it — each pass got closer).
+  Probed the EXACT `capture.mjs` sequence (`enterCapture` → wait spawn chunk → `start` → `setTimeOfDay` →
+  `spawnBeastTransform`), sampling at every stage, twice. Stable in both runs, at every stage:
+  `playerRigidBodyRef` **absent from the store** (the ref object itself, not just `.current`),
+  `performVerb` **absent**, `gameCamera` **null**, `playerPosition` still `{0,0,0}`.
+  Those are three independent writes owned by `Components.jsx` (the Player) — `playerRigidBodyRef` and
+  `performVerb` are set in its effects, and all three are missing together. **The Player component does
+  not mount, or never runs its effects, during visual capture.**
+  **Consequence for the beast frames:** the beast IS the player's rendered form (`Components.jsx:215`,
+  `:794`). If the player is not there, `beast-*` can never reliably show a beast — this was never a race
+  inside the beast code. `spawnBeastTransform` flips `beastFormActive:true` and `form:'fire'` correctly
+  (measured), and there is nothing to apply it to.
+  **⚠️ THE OPEN QUESTION, AND IT IS BIGGER THAN THE BEAST FRAMES — UNVERIFIED, DO NOT ACT ON IT YET.**
+  `getCaptureOpts().camera` is consumed in exactly ONE place: `Components.jsx:509`, inside the Player's
+  `useFrame`. If the Player never mounts, that pinned pose is never applied — which would mean the
+  "pinned camera" every visual baseline depends on is not pinning anything. **BUT** the captured frames
+  plainly differ per stage (explore-day, hearth, landmark all show their intended subjects), so
+  *something* is positioning the camera. Those two facts are in TENSION and I could not resolve it: the
+  decisive A/B test (request two wildly different poses, screenshot both, diff) was written and then
+  **blocked when the compositor died mid-run** (`Page.captureScreenshot` timed out). Resolve this first
+  next iteration — it decides whether the harness's determinism problem is four frames or all of them.
+- ▢ **[LOOP] the beast-showcase race — first root-cause pass 2026-08-05 (superseded above, kept for the trail).**
   `App.jsx:351-352` frames the beast camera off `store.playerRigidBodyRef?.current`, read *before*
   `enterCaptureMode` pauses physics — which looks like the obvious culprit. **It is not.** Probed the live
   capture path twice, sampling at 0/1/2/4/8s: `playerRigidBodyRef.current` is **null at every sample in
