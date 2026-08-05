@@ -19,6 +19,12 @@ export const KICK_PROFILES = {
   cast: [0, 0.03, 0.10],    // up + forward push
   slam: [0, -0.16, 0.06],   // hard down + slight forward
   land: [0, -0.12, 0],      // straight down
+  // E-ter: being HIT. Down + BACK, and deliberately the largest profile here: it is the only one the player
+  // does not choose, so it has to register as something happening TO them rather than by them. Reads as a
+  // flinch away from the blow. (A DIRECTIONAL flinch — biased by the store's `lastHitDir` angle, the way
+  // trauma.js already biases shake — is the obvious refinement and is NOT done here; it is a feel change
+  // that wants a human eye on a real hit, and the compositor has been intermittent.)
+  hurt: [0, -0.10, -0.14],
 };
 
 /**

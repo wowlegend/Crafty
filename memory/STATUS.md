@@ -594,8 +594,22 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ### E-ter. Other spec'd-but-unbuilt (from the full specs audit)
 
-- ▢ **Incoming-hit hitstop** — `damagePlayer` sets `damageFlash` + `screenShake` but **never `hitstopUntil`**,
-  and `cameraKick.js` has no `hurt` profile. Hitstop exists only for *outgoing* hits → enemies don't feel dangerous.
+- ▣✓ **Incoming-hit hitstop — SHIPPED 2026-08-05.** Both clauses were verified on live HEAD before the fix:
+  `damagePlayer` set `damageFlash`/`screenShake`/`lastHitDir` and no `hitstopUntil`, and `KICK_PROFILES` had
+  melee/cast/slam/land and no `hurt`. So the player's own swings had weight and the enemies' did not — a
+  moss brute's 25 landed exactly like a skitterling's 5, which mattered more once B4 let mobs actually reach
+  you and E3 made them behave differently. Pure `game/hurtFeel.js`: `hurtStopMs` grades the freeze on a
+  FRACTION of max health (so the same blow reads devastating at L1 and survivable at L20) reusing the same
+  light/heavy/crit vocabulary as outgoing hits, and returns **0 for a fully-mitigated hit** so armour never
+  makes the screen stutter more as it absorbs more. `isNewHit` is the edge detector the per-frame camera
+  controller polls — a reactive subscription there is the GLI trap, and without the edge one hit would kick
+  every frame. `lastHitDir` is now stamped on EVERY accepted hit (it previously only updated when an
+  attacker position was supplied), because that stamp doubles as the kick signal.
+  Gated through the real `damagePlayer` (i-frames, damage-cooldown and death must NOT freeze) and
+  mutation-proven. **The FEEL is Kevin's** — surfaced as FYI.
+  - ▢ **Next slice:** a DIRECTIONAL flinch. `hurt` is currently undirected (`right = 0`) though the store
+    already computes `lastHitDir.angle` and `trauma.js` already biases shake by direction. Deliberately not
+    done blind: it is a feel change that wants a human eye on a real hit.
 - ▢ **Boss entrance has no beat** — `bossSystem.js:44-55` sets a **text notification** and nothing else: no shake,
   no roar, no bloom spike, no mood snap. For the climax of the run. (= E4.)
 - ▢ Voidhand **multi-phantom pool** (cap-4) · Soulbind **v2 faction protocol** (mob-vs-mob) · Elemancer **v2

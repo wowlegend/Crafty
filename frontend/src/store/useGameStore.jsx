@@ -13,6 +13,7 @@ import { hydrateBossState } from '../game/bossPersistence.js';
 import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
 import { hitDirection } from '../game/damageDirection.js';
+import { hurtStopMs } from '../game/hurtFeel.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
@@ -807,11 +808,19 @@ export const useGameStore = create((set, get) => ({
         // Combat-legibility: when the caller supplies the attacker position, record the screen-relative
         // hit direction (read the live camera yaw + player pos) so the HUD can point you at the threat.
         const dir = sourcePos ? hitDirection(state.playerPosition, sourcePos, state.gameCamera?.rotation?.y) : null;
+        // E-ter: incoming hits now FREEZE, tiered by what the blow actually cost you. Hitstop existed only
+        // for outgoing damage, so the player's swings had weight and the enemies' did not — a moss brute's
+        // 25 landed exactly like a skitterling's 5. `hurtStopMs` returns 0 for a fully-mitigated hit, so
+        // armour never makes the screen stutter more as it absorbs more.
+        const stopMs = hurtStopMs(finalDamage, state.maxHealth);
         set({
             lastDamageTime: now,
             damageFlash: true,
             screenShake: finalDamage / 10,
-            lastHitDir: dir != null ? { angle: dir, t: now } : state.lastHitDir
+            // The stamp is also the HIT SIGNAL the per-frame camera controller edge-detects for its kick,
+            // so it is set on every accepted hit, not only when an attacker position was supplied.
+            lastHitDir: dir != null ? { angle: dir, t: now } : { angle: state.lastHitDir?.angle ?? null, t: now },
+            ...(stopMs > 0 ? { hitstopUntil: performance.now() + stopMs } : {}),
         });
 
         setTimeout(() => {

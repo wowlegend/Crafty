@@ -18,6 +18,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
+import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset } from './game/trauma.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
@@ -77,6 +78,7 @@ export const Player = ({ isWorldBuilt }) => {
   const lastStepRef = useRef(0);        // locomotion-audio: stride throttle (footstep cadence)
   const prevGroundedRef = useRef(true); // locomotion-audio: landing-edge detection
   const kickRef = useRef(makeKick());   // game-feel: per-verb camera-kick impulse (decays in the follow-cam)
+  const seenHitRef = useRef(0);         // E-ter: last consumed `lastHitDir.t`, so one hit = one hurt-kick
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
   // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
@@ -1102,6 +1104,16 @@ export const Player = ({ isWorldBuilt }) => {
     // store read; 0 = inactive. Capture mode never reaches here (early return above).
     const hitstopUntil = useGameStore.getState().hitstopUntil || 0;
     const hitstopScale = performance.now() < hitstopUntil ? 0 : 1;
+
+    // E-ter: kick the camera when the PLAYER is hit. Every other kick fires from the verb that caused it;
+    // this one originates in the store (damagePlayer), which has no camera, so the controller polls the hit
+    // stamp instead of subscribing — a reactive subscription here is exactly the Game-Loop-Isolation trap.
+    // `isNewHit` is the edge detector: without it one hit would kick every frame until the next one.
+    if (isNewHit(seenHitRef.current, useGameStore.getState().lastHitDir)) {
+      seenHitRef.current = useGameStore.getState().lastHitDir.t;
+      const _hf = new THREE.Vector3(); camera.getWorldDirection(_hf);
+      addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, KICK_PROFILES.hurt));
+    }
 
     // Calculate displacement vector
     const displacement = new THREE.Vector3(
