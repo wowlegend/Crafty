@@ -3,11 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './store/useGameStore';
 import { ecs } from './ecs/world';
-import { isCaptureMode, captureRandom } from './devtest/captureMode';
+import { isCaptureMode } from './devtest/captureMode';
 
 // Custom materials with GPU-based wind swaying & player displacement
-// reused scratch transform for the per-frame particle instancing (avoid a new Object3D each frame)
-const _grassDummy = new THREE.Object3D();
 const grassMaterial = new THREE.MeshBasicMaterial({
   color: '#4a7c59',
   transparent: true,
@@ -67,17 +65,12 @@ grassMaterial.onBeforeCompile = (shader) => {
   grassMaterial.userData.shader = shader;
 };
 
-// Particles use CPU updates since there are only 8, but they are instanced
-const particleMaterial = new THREE.MeshBasicMaterial({
-  color: '#7FB347',
-  transparent: true,
-  opacity: 0.6,
-  side: THREE.DoubleSide
-});
-
-export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) => {
+// NOTE: Terrain.jsx still passes chunkX/chunkZ (grass-revival-gates asserts that call shape) and this
+// component no longer reads them — they existed only to seed the deleted motes. Left vestigial rather
+// than changing the mount site, so a gate is not edited in a commit that is about deleting dead render
+// work. Cleaning both together is a follow-up.
+export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
   const grassMeshRef = useRef();
-  const particleMeshRef = useRef();
 
   // M4 #5: blockPositions are the worker's pre-filtered grass-top [x,y,z] tuples (world/grassField.js
   // grassTops) -- already grass-only + capped, so just take them (the instancing forEach uses [x,y,z]).
@@ -85,25 +78,31 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
 
   const grassCount = grassBlocks.length;
   
-  const grassParticles = useMemo(() => {
-    const particles = [];
-    for (let i = 0; i < 8; i++) {
-      // Per-instance seeded RNG in capture mode (chunk+index keyed -> order-independent
-      // across terrain-stream runs); native Math.random in gameplay. Mirrors the
-      // weather-particle seeding pattern in GameScene.jsx.
-      const r = captureRandom(`grass-particle-${chunkX}-${chunkZ}-${i}`);
-      particles.push({
-        x: (r() - 0.5) * 30,
-        y: 12 + r() * 8,
-        z: (r() - 0.5) * 30,
-        scale: 0.4 + r() * 0.4,
-        offset: i * 0.5
-      });
-    }
-    return particles;
-  }, [chunkX, chunkZ]);
-
-  const particleCount = grassParticles.length;
+  // REMOVED 2026-08-05 — the 8 "floating mote" instances per chunk rendered in the wrong place
+  // entirely, in every chunk, since they were written.
+  //
+  // They were seeded at x/z = (r()-0.5)*30 and y = 12 + r()*8 with NO chunk offset, and this
+  // component's wrapping <group> carries no `position` — so EVERY chunk placed its motes in WORLD
+  // space around the origin, at y 12-22, stacked on top of each other. They never followed the grass
+  // they were meant to decorate.
+  //
+  // Where that lands, checked rather than assumed:
+  //   - On land they were buried and invisible. Measured `computeHeight().baseHeight` over 16,641
+  //     samples spanning 1024x1024 world units: surface ranges 39.2 to 63.1, never below y=22. With a
+  //     depth-tested MeshBasicMaterial that is at least 17 blocks of opaque ground overhead.
+  //   - In deep OCEAN they were visible. `oceanProfile.DEEP_FLOOR = 6` puts the seabed at y 6-10 with
+  //     water to SEA_LEVEL 28, and that file calls the ocean "a DIVABLE place" — so a diving player
+  //     swam through a clump of green specks hanging in open water at the world origin.
+  // (The first draft of this note claimed they were provably invisible everywhere. That was wrong:
+  //  it reasoned from the land heightmap and never opened the ocean profile.)
+  //
+  // The cost was constant regardless: one extra instancedMesh (draw call) per loaded chunk, plus a
+  // per-frame position/scale/rotation/matrix rebuild for all 8, per chunk, forever.
+  //
+  // Deleted rather than repaired because "ambient motes above the grass" is a LOOK decision, and the
+  // honest version (chunk-offset, above the surface, tuned in-world) is a feature to design
+  // deliberately, not a bug to resurrect by moving a constant. Routed to KEVIN-REVIEW as veto-able.
+  // The grass TUFTS are untouched — they use the worker's real world coordinates and are correct.
 
   useEffect(() => {
     if (!grassMeshRef.current) return;
@@ -156,31 +155,7 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
       }
     }
 
-    // 2. Update CPU particles (only 8 elements, minimal overhead)
-    if (particleMeshRef.current) {
-      const dummy = _grassDummy;
-      grassParticles.forEach((p, i) => {
-        // In capture mode hold the seeded base pose: skip the per-frame drift
-        // accumulation (otherwise p.x creeps each frame and run-to-run frame counts
-        // differ -> jitter) and skip the unseeded Math.random reset branch entirely.
-        if (!capture) {
-          p.y = 15 + Math.sin(time * 0.4 + p.offset) * 1.8;
-          p.x += Math.sin(time * 0.3 + p.offset) * 0.01;
-
-          if (p.y > 22 || Math.abs(p.x) > 35) {
-            p.y = 12;
-            p.x = (Math.random() - 0.5) * 30;
-          }
-        }
-
-        dummy.position.set(p.x, p.y, p.z);
-        dummy.scale.setScalar(p.scale);
-        dummy.rotation.z = Math.sin(time * 0.5 + p.offset) * 0.3;
-        dummy.updateMatrix();
-        particleMeshRef.current.setMatrixAt(i, dummy.matrix);
-      });
-      particleMeshRef.current.instanceMatrix.needsUpdate = true;
-    }
+    // (the per-frame mote matrix rebuild that used to live here went with them — see the note above)
   });
 
   return (
@@ -190,11 +165,6 @@ export const OptimizedGrassSystem = ({ chunkX, chunkZ, blockPositions = [] }) =>
           {/* M4 #5: a READABLE stylized tuft (was 0.1x0.18 -- sub-perceptual specks). 0.4 wide x 0.7 tall
               billboard, DoubleSide, wind-swayed at the top by the shader. Bold-flat (flat blade, locked palette). */}
           <planeGeometry args={[0.4, 0.7]} />
-        </instancedMesh>
-      )}
-      {particleCount > 0 && (
-        <instancedMesh ref={particleMeshRef} args={[null, particleMaterial, particleCount]}>
-          <planeGeometry args={[0.08, 0.16]} />
         </instancedMesh>
       )}
     </group>

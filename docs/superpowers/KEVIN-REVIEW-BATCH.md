@@ -1017,3 +1017,31 @@ the other**, because two overlapping radial menus under one thumb is a poor trad
 That changes how the Aspect ring *feels* in the hand, which is why I have not built it. Say the word and
 it is a contained change; the invariant to gate it with is cheap and pure: no two simultaneously-visible
 touch targets overlap, and every one is fully inside a 390x844 viewport.
+
+---
+
+## 2026-08-05 — I deleted the grass "motes". Veto if you want them.
+
+Each chunk spawned 8 small green particles as ambient drifting motes. They were seeded at
+`(r()-0.5)*30` for x/z and `12 + r()*8` for y with **no chunk offset**, and the component's wrapping
+group has no position — so every chunk put its motes in world space around the **origin**, stacked on
+each other, at y 12-22. They never followed the grass they were decorating.
+
+On land that means buried: I measured the terrain surface over 16,641 samples across a 1024x1024 area
+and it ranges 39.2 to 63.1, never below 22, so they sat under at least 17 blocks of opaque ground. In
+deep ocean it means the opposite — the seabed is y 6-10 and water reaches 28, and that file calls the
+ocean "a DIVABLE place", so diving near spawn took you through a clump of green specks hanging in open
+water.
+
+Either way it cost a draw call per loaded chunk plus a per-frame matrix rebuild for all 8, forever.
+
+**I deleted them rather than moving the constant**, because "ambient motes above the grass" is a look
+decision and the honest version — chunk-offset, above the surface, sized and tuned against the real
+grade — is a small feature to design, not a bug to resurrect. If you want that atmosphere, say so and
+it is maybe twenty minutes; the seam is exactly where the old one was. The grass tufts themselves are
+untouched and were always correct.
+
+*(Worth flagging on method: my first write-up of this said they were "provably invisible everywhere".
+That was wrong — I had reasoned from the land heightmap and never opened the ocean profile. Caught it
+before committing, but it is the same shape as the other near-misses this session: a confident claim
+resting on a branch I had not looked at.)*
