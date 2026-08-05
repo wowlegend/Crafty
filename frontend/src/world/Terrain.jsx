@@ -7,7 +7,7 @@ import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
-import { OptimizedGrassSystem } from '../OptimizedGrassSystem';
+import { OptimizedGrassSystem, GrassWindDriver } from '../OptimizedGrassSystem';
 import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
@@ -979,6 +979,11 @@ export const MinecraftWorld = React.memo(() => {
                     )}
                 </React.Fragment>
             ))}
+            {/* S7: the ONE driver for the shared grass-shader uniforms. This used to run inside EVERY
+                chunk's useFrame — 81 chunks at high tier (renderDistance 4, so -4..4 on both axes),
+                each walking the whole ECS to write the same 8 shared slots, 80 of them thrown away by
+                last-write-wins. Must stay OUTSIDE the chunk map: one mount, one walk. */}
+            <GrassWindDriver />
             <TargetOutline />
             <BlockParticleSystem worker={worker} />
             <TreasureChestsRender />

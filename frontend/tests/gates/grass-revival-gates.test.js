@@ -36,9 +36,36 @@ describe('grass revival 1b -- mounted + visible', () => {
   const grass = read('OptimizedGrassSystem.jsx');
 
   it('Terrain imports + mounts OptimizedGrassSystem from the chunk grass-tops', () => {
-    expect(terrain).toMatch(/import \{ OptimizedGrassSystem \} from '\.\.\/OptimizedGrassSystem'/);
+    // the import now also carries GrassWindDriver (S7) — match the SPECIFIER, not the whole clause,
+    // so adding a sibling export does not red a gate that is about the grass being mounted at all
+    expect(terrain).toMatch(/import \{[^}]*\bOptimizedGrassSystem\b[^}]*\} from '\.\.\/OptimizedGrassSystem'/);
     expect(terrain).toMatch(/chunk\.meshData\.grassTops && chunk\.meshData\.grassTops\.length > 0/);
     expect(terrain).toMatch(/<OptimizedGrassSystem chunkX=\{chunk\.cx\} chunkZ=\{chunk\.cz\} blockPositions=\{chunk\.meshData\.grassTops\}/);
+  });
+
+  // S7. The wind/bend uniforms are written by ONE driver now, not by every chunk. Nothing in the suite
+  // could see that the driver was unmounted — the whole suite stayed green with the grass frozen and
+  // no uniform writer at all, which is exactly the silent-failure shape this repo keeps paying for.
+  it('Terrain mounts EXACTLY ONE GrassWindDriver, and it is outside the per-chunk map', () => {
+    const mounts = terrain.match(/<GrassWindDriver\s*\/>/g) || [];
+    expect(mounts).toHaveLength(1);
+    // the chunk map ends before the driver — if the driver ever moves inside it, this flips
+    const mapIdx = terrain.indexOf('<OptimizedGrassSystem chunkX=');
+    const driverIdx = terrain.indexOf('<GrassWindDriver />');
+    expect(driverIdx).toBeGreaterThan(mapIdx);
+    expect(terrain).toMatch(/import \{[^}]*\bGrassWindDriver\b[^}]*\} from '\.\.\/OptimizedGrassSystem'/);
+  });
+
+  it('the per-chunk grass component no longer drives shared uniforms (that is the driver’s job)', () => {
+    // exactly one useFrame in the module, and it belongs to GrassWindDriver
+    expect((grass.match(/useFrame\(/g) || [])).toHaveLength(1);
+    expect(grass).toMatch(/GrassWindDriver[\s\S]{0,400}useFrame\(/);
+  });
+
+  it('bend sources come from the tested seam, not an inline ECS walk', () => {
+    expect(grass).toMatch(/collectBendSources\(/);
+    // the original bug: indexing a Vector3. It must not come back in this file.
+    expect(grass).not.toMatch(/entity\.position\[0\]/);
   });
   it('the grass renderer takes the pre-filtered grass-tops directly (no blockType re-filter)', () => {
     expect(grass).toMatch(/blockPositions\.slice\(0, 50\)/);

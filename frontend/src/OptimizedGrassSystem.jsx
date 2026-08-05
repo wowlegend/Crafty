@@ -2,8 +2,9 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './store/useGameStore';
-import { ecs } from './ecs/world';
+import { mobsQuery } from './ecs/world';
 import { isCaptureMode } from './devtest/captureMode';
+import { collectBendSources } from './game/grassBend.js';
 
 // Custom materials with GPU-based wind swaying & player displacement
 const grassMaterial = new THREE.MeshBasicMaterial({
@@ -65,6 +66,38 @@ grassMaterial.onBeforeCompile = (shader) => {
   grassMaterial.userData.shader = shader;
 };
 
+/**
+ * The ONE driver for the grass shader's shared uniforms. Mount it exactly once (Terrain.jsx), NOT
+ * per chunk.
+ *
+ * `grassMaterial` above is a module-level singleton shared by every chunk's instancedMesh, but the
+ * uniform write used to live in each chunk's own `useFrame`. At high tier `renderDistance` is 4, so
+ * the chunk loop runs -4..4 on both axes = **81 chunks**, i.e. 81 identical full-ECS walks per frame
+ * writing the same 8 slots, 80 of them discarded by last-write-wins. One mount does the same work
+ * once.
+ *
+ * Reads the player transiently via `getState()` and mobs via `mobsQuery` — no reactive subscription,
+ * so Game-Loop Isolation holds (this runs inside useFrame).
+ */
+export const GrassWindDriver = React.memo(() => {
+  useFrame((state) => {
+    const shader = grassMaterial.userData.shader;
+    if (!shader) return; // material not compiled yet (no grass on screen)
+
+    // Dev capture-determinism: pin the wind-sway clock so the grass holds a frozen pose across
+    // capture runs (wall-clock elapsedTime differs run-to-run -> frame jitter, once the dominant
+    // ~3-4% self-diff on explore-night). Inert in normal gameplay.
+    shader.uniforms.time.value = isCaptureMode() ? 0 : state.clock.elapsedTime;
+
+    const slots = collectBendSources(useGameStore.getState().playerPosition, mobsQuery);
+    const positions = shader.uniforms.entityPositions.value;
+    for (let i = 0; i < slots.length; i++) {
+      positions[i].set(slots[i][0], slots[i][1], slots[i][2]);
+    }
+  });
+  return null;
+});
+
 // NOTE: Terrain.jsx still passes chunkX/chunkZ (grass-revival-gates asserts that call shape) and this
 // component no longer reads them — they existed only to seed the deleted motes. Left vestigial rather
 // than changing the mount site, so a gate is not edited in a commit that is about deleting dead render
@@ -115,48 +148,6 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
     });
     grassMeshRef.current.instanceMatrix.needsUpdate = true;
   }, [grassBlocks]);
-
-  useFrame((state) => {
-    // Dev capture-determinism: pin the wind-sway clock to a fixed value so the
-    // grass holds a frozen pose across capture runs (wall-clock elapsedTime differs
-    // run-to-run -> frame jitter, dominant ~3-4% self-diff on explore-night). Inert in
-    // normal gameplay — falls through to the live clock so wind animates as before.
-    const capture = isCaptureMode();
-    const time = capture ? 0 : state.clock.elapsedTime;
-
-    // 1. Update GPU shader time and entityPositions uniforms for grass
-    if (grassMaterial.userData.shader) {
-      grassMaterial.userData.shader.uniforms.time.value = time;
-      const uniforms = grassMaterial.userData.shader.uniforms;
-      const positions = uniforms.entityPositions.value;
-
-      // Reset all slots to inactive coordinate sentinels
-      for (let k = 0; k < 8; k++) {
-        positions[k].set(9999, 9999, 9999);
-      }
-
-      let index = 0;
-
-      // Slot 0: Player Position coordinates
-      const playerPos = useGameStore.getState().playerPosition;
-      if (playerPos) {
-        positions[index].set(playerPos.x, playerPos.y, playerPos.z);
-        index++;
-      }
-
-      // Slots 1-7: Active mobs from the ECS world
-      if (ecs && ecs.entities) {
-        ecs.entities.forEach(entity => {
-          if (entity.isMob && entity.position && index < 8) {
-            positions[index].set(entity.position[0], entity.position[1], entity.position[2]);
-            index++;
-          }
-        });
-      }
-    }
-
-    // (the per-frame mote matrix rebuild that used to live here went with them — see the note above)
-  });
 
   return (
     <group>
