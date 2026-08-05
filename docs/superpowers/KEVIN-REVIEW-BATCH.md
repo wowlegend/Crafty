@@ -985,3 +985,35 @@ you next take a moss brute hit, that is what to feel for. Say the word and I'll 
 **One thing I deliberately did NOT do:** the flinch is *undirected*. The store already computes the hit
 angle and `trauma.js` already biases shake by direction, so a directional flinch is a small change — but it
 is a feel decision I'd rather you saw first, and the compositor has been down for most of the session.
+
+---
+
+## 2026-08-05 — the ESC freeze is fixed; the touch ring needs an ergonomics call
+
+**Your ESC bug is fixed and shipped (`8e68425`), verified in a real browser, not just in tests.**
+
+It was not a race. ESC *is* the browser's default unlock gesture, and per MDN a `requestPointerLock()`
+issued immediately after that gesture "will fail, even if a transient activation is available". Every panel
+relocks optimistically when it closes, so on the ESC path that relock is *always* refused — and the failure
+handler set a flag that was already set, so nothing changed, nothing re-rendered, and you were left with no
+panel, no input, and no menu. Only a reload got out of it. No retry could have fixed it; the browser
+demands a fresh click by design, so the fix is a **PAUSED / RESUME overlay derived from state**, which no
+close path can bypass.
+
+**Now the part I want you to decide.** The compositor came back today after nine dead iterations, so the
+touch probe ran, and it turned out the two touch failures I had recorded were one geometry defect:
+
+Both radial menus use radius 78, and their toggles sit exactly 78px apart on the right edge. So each ring's
+top sector lands **precisely on the other ring's toggle**, and each ring's right-hand sector lands **52px
+off the right edge** of a 390px screen. My probe's "the ring does not close" was my instrument tapping the
+spell toggle and reporting success — it checks that an element has size, never that the point it taps is
+occupied by the element it named. Two registry lines were wrong the same way.
+
+**The question is a taste one, so it is yours:** a ring of radius 78 hung off a 26px-from-the-edge anchor
+simply cannot fit on an iPhone-class screen. My recommendation is to fan both menus into a **left-facing
+arc** — nothing sits right of its anchor, so nothing can leave the screen — and to make **opening one close
+the other**, because two overlapping radial menus under one thumb is a poor trade even when they fit.
+
+That changes how the Aspect ring *feels* in the hand, which is why I have not built it. Say the word and
+it is a contained change; the invariant to gate it with is cheap and pure: no two simultaneously-visible
+touch targets overlap, and every one is fully inside a 390x844 viewport.

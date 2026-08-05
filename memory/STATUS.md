@@ -595,6 +595,31 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
     dispatched tap) so it eats the next tap. **`aspect-ring-gates.test.jsx` asserts this and PASSES in
     jsdom** — the house defect again: green over behaviour that does not happen. NOT root-caused; stopped
     rather than guess.
+  - **▣ ROOT CAUSE FOUND 2026-08-05 — ONE geometry defect produces all of it, and it is NOT "the ring
+    fails to close".** Both radial menus use `ringLayout(n, 78)` and their anchors are **exactly 78px
+    apart** (`TouchControls.jsx:219` aspect toggle at `bottom: calc(11% + 104)`, `:243` spell toggle at
+    `calc(11% + 182)`; sectors render at `right: 26 - x`, `bottom: anchor - y`). `ringLayout` puts index 0
+    at `{x:0, y:-78}` and index 1 at `{x:78, y:0}`. Therefore, by arithmetic:
+    - aspect sector 0 lands at `right 26, bottom 182` = **exactly the spell toggle's box** (both 52x52 at
+      the same anchor). The spell toggle renders LATER in the DOM, so with equal z it takes the tap.
+    - spell option 2 lands at `bottom 104` = **exactly the aspect toggle's box** — the same collision,
+      mirrored.
+    - aspect sector 1 and spell option 1 land at `right 26 - 78 = -52`, i.e. **entirely off the right
+      edge** (that is the `touch-aspect-grab@390,595` report, and it is not specific to grab).
+    **So the probe's "ring does not close" is a MISREADING — of my own instrument.** It taps the first
+    `touch-aspect-*` in DOM order (roar, index 0), whose centre is the spell toggle; the tap opens the
+    SPELL PICKER, the ring is never told anything, and it stays open. Then X2b's step taps `touch-spells`
+    again, which now CLOSES the picker it just opened — hence "0 spell options". `tapTestId` returns
+    `dispatched=true` because it only checks the element has non-zero size, never that the point it taps
+    is occupied by the element it named. **Two registry lines were wrong in the same way: an unverified
+    reading of a probe that reported success over something it never actually hit.**
+  - **▢ [KEVIN — ergonomics] the fix is a LAYOUT decision, not a bug fix.** A ring of radius 78 hung off a
+    26px-from-the-right-edge anchor cannot fit on a 390px screen, and two such rings stacked 78 apart
+    necessarily collide. Recommendation: fan both menus into a LEFT-FACING ARC (nothing right of its
+    anchor, so nothing can leave the screen), and make opening one CLOSE the other — two overlapping
+    radial menus under one thumb is a bad trade even when they fit. Needs a taste call before building;
+    the invariant to gate it with is pure and cheap: *no two simultaneously-visible touch targets overlap,
+    and every one is fully inside a 390x844 viewport.*
   - **▢ `touch-spells` cannot be tapped while the ring is open.** *Claim CORRECTED 2026-08-05 on a re-run
     (the compositor came back): it does NOT leave the DOM.* It is present and fully on-screen —
     `52x52 @312,517` in a `390x844` viewport — and the tap is refused because the four still-open ring
