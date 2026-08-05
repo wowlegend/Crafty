@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-08-05 — B4: mobs could hit you through 200 blocks of rock (`db9b483`, `b5fab6b`)
+
+`ai.worker.js` destructured the player as `const [playerX, , playerZ] = playerPos` under a comment reading
+*"Y is elided: the mob brain reasons on the XZ plane only"*. The Y was always being sent from the main
+thread and thrown away, so this needed no plumbing — only the decision to use it. One number,
+`distToPlayer2D`, drove aggro, the de-aggro leash, archery, the leap and the melee strike, so **a zombie
+200 blocks below you and one block away horizontally was inside MELEE_RANGE and swung**. Pillaring up,
+walling in and going underground gave zero protection: in a game whose loop is build-by-day /
+survive-the-night, building was strategically pointless.
+
+Seam-extracted to pure `game/mobSenses.js`, splitting the two questions that were being conflated —
+**sensing** (aggro, leash, archery) is 3D, **reaching** (melee, leap) additionally needs vertical
+proximity, and **movement is untouched** (mobs still steer by the player's XZ; 3D pathing is a much larger
+change and was not attempted). eslint proved the migration complete rather than my reading it: once every
+call site moved, `distToPlayer2D` became unused and the build failed until it was deleted.
+
+`VERTICAL_REACH = 2.5` is a taste call, veto-able: a 2-block ledge stays hittable, a 3-block wall keeps
+melee out, and a spider's leap may cover as much height as ground so a low wall is not an auto-win.
+
+**B4b, same seam:** a mob could BANK a windup across de-aggro. `attackPhase()` runs only inside
+`if (isAggro)`, so a mob that lost aggro mid-windup froze `windupUntil` in the past and struck instantly on
+re-engagement — no telegraph, no dodge window. **My first fix was wrong and the gate caught it:** clearing
+on de-aggro misses a mob that arrives already carrying a stale windup, since those are `else if` arms. The
+reset moved to the rising edge of aggro.
+
+Both gates EXECUTE the worker — shimming `self`, importing it, dispatching real TICK messages and reading
+the emitted attacks — because `gate-shape` rejected the grep-shaped first draft outright ("a new gate
+should EXECUTE the module it guards"). It was right, and executing turned out to be easy. Counter-cases sit
+in the same files: mobs must STILL reach a player on level ground and on a 2-block step, must still aggro a
+player on a wall they cannot hit, and a normal windup must still land — otherwise "mobs can never touch
+you" would satisfy every other assertion and ruin the game.
+
 ## 2026-08-05 — X3: the hotbar was unclickable on touch AND threw on desktop (`5b64f69`)
 
 The compositor recovered after nine dead iterations (the machine was never rebooted — the fault cleared on
