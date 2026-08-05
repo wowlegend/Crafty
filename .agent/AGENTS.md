@@ -39,16 +39,19 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
 - React 19, Three 0.172 (R3F 9.5 + Drei 10.7 + @react-three/postprocessing), Vite 6, Rapier 2.2 (WASM KCC), zustand 5, framer-motion 12, TailwindCSS (v3, `.cjs` config), simplex-noise, lucide-react 0.439. JavaScript (JSX). npm (`package-lock.json`).
 - **Architecture reality — the SIZE NUMBERS BELOW ARE GENERATED, NOT TYPED.** This bullet used to hand-type
   "~14.4k LOC / ~31 JS(X) files" and assert "Components ~1330 is the LAST single large file". Measured
-  2026-08-02: **12× wrong on files, 2.5× on LOC, and five files — not one — are ≥900 LOC.** An agent that
+  2026-08-02: **12× wrong on files, 2.5× on LOC, and several files — not one — are ≥900 LOC.** An agent that
   believes this is a ~31-file project reasons about it as a small one, and "Components is the last god-file"
-  actively misdirects de-monolith work away from the other four. Regenerate with
+  actively misdirects de-monolith work away from the others. **Read the COUNT from the generated block
+  below, never from this sentence** — it said "five" until 2026-08-05, when extracting the mesher dropped
+  `terrain.worker.js` from 936 to 694 LOC and made it four, i.e. a headline contradicting the table directly
+  beneath it, in the very paragraph written to stop exactly that. Regenerate with
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **274 source files / 30,953 LOC** in
+- **Size (measured):** **275 source files / 31,032 LOC** in
   `frontend/src`, plus 117 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1325 · `src/store/useGameStore.jsx` 1096 · `src/world/Terrain.jsx` 992 · `src/world/terrain.worker.js` 936 · `src/QuestSystem.jsx` 931.
+- **Files ≥ 900 LOC (4):** `src/Components.jsx` 1325 · `src/store/useGameStore.jsx` 1096 · `src/world/Terrain.jsx` 992 · `src/QuestSystem.jsx` 931.
   This list is checked EXACTLY by `doc-currency`; the counts above carry a ±10% band so
   ordinary churn does not redden the push.
 <!-- END MEASURED -->
@@ -58,8 +61,8 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `Components.jsx` is a documented IRREDUCIBLE residual rather than an accidental god-file (verified
   2026-06-29): it is the `Player` useFrame imperative controller, already delegating all pure logic to
   imported `game/*` modules, and the remainder is the loop + input wiring that MUST NOT be split
-  (Game-Loop-Isolation / ordering, decision-of-record). **The other four ≥900-LOC files carry no such
-  finding** — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
+  (Game-Loop-Isolation / ordering, decision-of-record). **The other ≥900-LOC files carry no such finding**
+  — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
   load-bearing for **mobs/loot/XP only**, NOT the whole architecture. Do NOT trust older "clean ECS" claims.
   *(De-monolith history — GameScene 933→304, SimplifiedNPCSystem 934→183, GamePanels 1094→739,
   EnhancedMagicSystem 904→474, AdvancedGameFeatures deleted @ S3-M4 — lives in `memory/CHANGELOG.md`. It is

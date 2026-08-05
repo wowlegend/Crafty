@@ -50,7 +50,35 @@
 >
 > **✅ PHASE 1.5 DONE (`262665b`):** loop kernel + charter updated to v9 "Holistic SOTA" (queue-repointed, expanded
 > authority, new probe-hygiene scars). Capture-harness hang FIXED (`75191ef`) — visual re-baseline unblocked.
-> **▶ PHASE 2 IN PROGRESS (2026-07-21 → 27) — ~154 findings fixed / 215.** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
+> > ## ⚖️ PHASE 2, MEASURED (2026-08-05) — the prose below overstated it by 35 findings
+> The queue-of-record is now marked per-finding (`▣✓ <sha>` / `▢`), backfilled by 27 adjudicators reading
+> LIVE code with an adversarial refutation pass over every claimed fix; anything unverified was forced to
+> `▢`. **The real count is 119 done / 96 open, not ~154.** Spot-checked by hand afterwards.
+>
+> | kind | done | open | | kind | done | open |
+> |---|---:|---:|---|---|---:|---:|
+> | security | 2 | 0 | | comment-lie | 30 | **4** |
+> | bug | 8 | 10 | | doc-drift | 19 | **2** |
+> | test-bug | **0** | **13** | | test-vacuity | 4 | **28** |
+> | hygiene | 24 | 1 | | coverage-gap | 7 | **1** |
+> | config-drift | 1 | 2 | | perf | **0** | **2** |
+> | dead-code | **13** | **25** | | a11y | **0** | **1** |
+> | inconsistency | 7 | **4** | | enhancement | 4 | **3** |
+>
+> **SIX categories the text below calls ✅ COMPLETE are not:** comment-lie, doc-drift, coverage-gap,
+> inconsistency, enhancement and — worst — **dead-code at 13 of 38**. That last one is a conflation worth
+> naming: the campaign really did clear 80 eslint `no-unused-vars` items and promote the rule to blocking,
+> but that is a DIFFERENT SET from the review's 38 dead-code findings, which include dead files, dead
+> exports, dead prop-chains and unreachable branches eslint never flags. "The lint is green" was read as
+> "the findings are closed".
+>
+> **test-vacuity 4/32** is the self-dismissal scar showing up as a number: 29 were dismissed by the loop on
+> its own authority, and an auditor later mutation-proved 7 of those stay green when the code they guard is
+> deleted. They are `▢` again until each carries its own proof.
+>
+> The claims below are kept verbatim as the historical record of what was believed.
+
+**▶ PHASE 2 IN PROGRESS (2026-07-21 → 27) — ~154 findings fixed / 215 (SUPERSEDED — see the measured block above).** ✅ COMMENT-LIE (34) + ✅ DOC-DRIFT (21) +
 > ✅ COVERAGE-GAPS (8/8) + ✅ INCONSISTENCY (11) + ✅ ENHANCEMENT (7) + ✅ DEAD-CODE (38 → 80 actual) COMPLETE;
 > test-vacuity TRIAGED (3
 > strengthened, rest FP/legit). Inconsistency finale (`d539b0b`): GearInspector consumable-registry fallback,
