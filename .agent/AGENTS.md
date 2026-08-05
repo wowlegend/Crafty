@@ -131,7 +131,7 @@ runs earlier and outside that pattern.*
 |---|---|:--:|:--:|---|
 | mutation-proof | `node scripts/ci/mutation-proof-trailer.mjs <range>` | ✅ (first) | — | a commit that ADDS a gate (`tests/gates/`, `scripts/ci/`) without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | ✅ | — | a finding added to the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
-| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. BARE, non-backticked paths) |
+| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. BARE, non-backticked paths), **and** a cross-doc SECTION citation aimed at a section that does not exist (ratchet, frozen 5 — may fall, never rise) |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
