@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-08-05 — being hit now lands (`3715b62`)
+
+Hitstop — the brief freeze that makes a blow read as an impact — existed only for OUTGOING damage.
+`trauma.js` ships a whole weight-tiered HITSTOP table; the incoming path never touched it, and
+`cameraKick.js` had profiles for melee/cast/slam/land but none for being hurt. The player's own swings had
+weight and the enemies' did not.
+
+That mattered more after this week's other work: B4 stopped mobs hitting you through 200 blocks of rock so
+they now actually reach you, and E3 made a moss brute behave like a siege engine — but its 25-damage blow
+still landed with the same feedback as a skitterling's 5.
+
+`game/hurtFeel.js` grades the freeze on a FRACTION of max health, so the same blow reads as devastating at
+level 1 and survivable at level 20, reusing the light/heavy/crit vocabulary so the language of impact is
+the same in both directions. It returns 0 for a fully-mitigated hit — otherwise armour would paradoxically
+make the screen stutter more as it absorbed more. A second pure function is an edge detector: the camera
+lives in the per-frame controller, which polls rather than subscribing (GLI), so without it one hit would
+kick the camera every frame until the next.
+
+Also fixed on the way: `lastHitDir` was only stamped when an attacker position was supplied, and that stamp
+is the kick signal — so a hit with no sourcePos would have been felt as damage but not as impact.
+
+Not done, recorded: the flinch is undirected. A directional one is the obvious next slice and wants a human
+eye on a real hit rather than a blind guess.
+
 ## 2026-08-05 — E3 first slice: mob behaviour is per-type data (`298eb0c`)
 
 Of the seven hostiles, five — zombie, skitterling, duskhound, moss_brute, emberhusk — were the same

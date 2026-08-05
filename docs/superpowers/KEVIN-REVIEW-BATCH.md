@@ -960,3 +960,28 @@ through, a hound that flanks — is the next slice and a bigger design question 
 
 **These are felt, not seen**, so the visual gate cannot judge them and neither can I from a static frame.
 Whenever you next play a night siege, the three above are what to feel for.
+
+## 📋 2026-08-05 — FYI, not a block: incoming hits now freeze (E-ter)
+
+Hitstop existed only for your OUTGOING hits — `trauma.js` has a full weight-tiered table and the incoming
+damage path never touched it, so enemies' blows had no weight. Now they do, graded by what the hit cost:
+
+| hit as a fraction of max HP | freeze | matches the outgoing tier |
+|---|---|---|
+| under 12% | 45ms | `light` |
+| 12–25% | 90ms | `heavy` |
+| 25%+ | 130ms | `crit` |
+
+Graded on a **fraction of max health**, not absolute damage, so a blow reads as devastating at level 1 and
+survivable at level 20. A fully-mitigated hit freezes for **0ms** — armour should never make the screen
+stutter more as it absorbs more.
+
+There is also a new `hurt` camera kick (down + back, the largest profile in the file, because it is the only
+one you didn't choose).
+
+**These are felt, not seen** — the visual gate cannot judge them and neither can I from a static frame. When
+you next take a moss brute hit, that is what to feel for. Say the word and I'll re-tune.
+
+**One thing I deliberately did NOT do:** the flinch is *undirected*. The store already computes the hit
+angle and `trauma.js` already biases shake by direction, so a directional flinch is a small change — but it
+is a feel decision I'd rather you saw first, and the compositor has been down for most of the session.
