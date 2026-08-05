@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-05 — E3 first slice: mob behaviour is per-type data (`298eb0c`)
+
+Of the seven hostiles, five — zombie, skitterling, duskhound, moss_brute, emberhusk — were the same
+creature wearing different meshes. `game/mobArchetypes.js` moves aggro radius, de-aggro leash, melee reach,
+attack cooldown and vertical reach into a per-type table the worker resolves inside the mob loop. A data
+table, not a fourth behaviour arm: every value is a lever the worker already read.
+
+The safety property is what makes it shippable — the defaults ARE the former module-scope constants,
+asserted literal-by-literal, so an undesigned type behaves exactly as before and one edit cannot silently
+re-tune every mob in the game. Three archetypes designed from each mob's own stats (relentless brute,
+escapable swarmer, wide-ranging pack hunter); zombie and emberhusk deliberately left at baseline, because
+if every mob is special none of them reads as special.
+
+**Registry correction:** §E3 claimed all ten types shared ONE behaviour tree. Live code has THREE arms, so
+§D2's "3 AI brains" was the accurate line. Verified before working it, and corrected rather than repeated.
+
+Still open, recorded not folded in: the three arms themselves are unchanged, so a moss brute still
+pathfinds like a zombie.
+
 ## 2026-08-05 — A-bis is CLOSED: all 8 seams of the 18-domain review (`fddf7d4`)
 
 The 91-bug block that has been the primary work queue since 2026-07-14 is done for loop-actionable work.

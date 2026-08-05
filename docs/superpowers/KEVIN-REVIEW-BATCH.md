@@ -935,3 +935,28 @@ What this blocked: I could not root-cause the ring-not-closing bug (item above).
 diagnostic died on the dead compositor — `ElementHandle.tap()` hangs in `clickablePoint()` and
 `Page.captureScreenshot` times out, both because nothing is rendering. That work is queued for the next
 open window rather than guessed at.
+
+## 📋 2026-08-05 — FYI, not a block: mob archetypes now differ (E3 first slice)
+
+Per §E ("balance/feel constants ship with sensible defaults + a dial, and surface as FYI"), here are the
+numbers I picked. Five of the seven hostiles were behaviourally identical — the moss brute looked like a
+tank and played like a zombie, which is your §D2 observation exactly. Behaviour is now a per-type table
+(`game/mobArchetypes.js`) rather than a `type ===` ladder.
+
+| mob | change | why |
+|---|---|---|
+| **moss_brute** | leash 1.5x → **4.0x**, reach 2.5 → **3.2**, swing 1500 → **2400ms** | 220hp / speed 1.2 / dmg 25 — the slowest, toughest, hardest-hitting mob. Should read as a siege engine you cannot shake, whose big damage is *dodgeable* rather than a DPS race. |
+| **skitterling** | cooldown **700ms**, reach **1.8**, leash **1.15x**, aggro **16** | 30hp / speed 3.8 / dmg 5 — a chip-damage swarmer. Fast and nippy, but a swarm you can actually break away from. |
+| **duskhound** | aggro 20 → **28**, cooldown **950ms**, leash 2.0x | 70hp / speed 3.2 / quad — a pack hunter. The threat is being *found* and worried at, not raw damage. |
+| **zombie**, **emberhusk** | unchanged, on purpose | A baseline has to exist. If every mob is special, none of them reads as special. |
+
+**The safety property, in case you want to re-tune:** the table's DEFAULTS are the exact former constants,
+asserted literal-by-literal in a test. So changing one archetype touches only that mob, and you cannot
+accidentally re-balance the whole game with a one-line edit.
+
+**Not done, and I did not fold it in silently:** the three behaviour ARMS (archery / leap / beeline) are
+unchanged, so a moss brute still *pathfinds* like a zombie. Distinct movement — a brute that shoulders
+through, a hound that flanks — is the next slice and a bigger design question I would rather show you first.
+
+**These are felt, not seen**, so the visual gate cannot judge them and neither can I from a static frame.
+Whenever you next play a night siege, the three above are what to feel for.
