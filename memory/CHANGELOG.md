@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-05 — the dragon's arrival finally lands (`0f42fa2`)
+
+The entrance to the climax of the run was a text notification and nothing else, while the KILL fires eight
+isolated effects including hitstop and a bloom spike. Now the arrival carries a 220ms freeze, a 650ms bloom
+swell as the lair wakes, and a shake — run through the isolation helper so a cosmetic throw cannot suppress
+the message telling the player what just arrived. Capture-suppressed, because the visual gate has boss
+states and a spawn-time bloom would make those frames non-deterministic.
+
+Tuned against the kill on purpose, since they are different emotions: the kill is an impact (sharp freeze,
+sharp flash, plus XP/loot/fanfare/win), the entrance is dread (a held-breath freeze, a longer softer swell,
+shaking less than being hit). The kill stays the bigger moment because it carries the payoff, not because
+its numbers are larger.
+
+**Registry correction:** the entry listed "no mood snap" among the gaps. `bossSystem.js:156` has driven the
+obsidian danger mood off `bossActive` since the A5 bridge landed — it always worked. A regression test now
+pins it so the correction cannot rot back into a claim.
+
+**Still open, not faked:** no roar. The sound API has defeat/fanfare/victory and nothing dragon-like, so the
+beat ships silent rather than firing `playVictory` at an entrance because it was closest to hand.
+
+The generic isolation helper also moved to `game/isolatedEffects.js`. It was always generic, and calling
+`runBossKillEffects` from a spawn path would be the exact name-lie this codebase keeps paying for.
+
 ## 2026-08-05 — being hit now lands (`3715b62`)
 
 Hitstop — the brief freeze that makes a blow read as an impact — existed only for OUTGOING damage.
