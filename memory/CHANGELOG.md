@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-05 — retraction: the "five stale section pointers" were my own false positives (`8d3dcf8`)
+
+The section-citation lint added earlier the same day reported five dangling cross-doc pointers, froze its
+ratchet at 5, and I recorded the five in STATUS as *genuinely stale* — before checking one of them by hand.
+They were false positives.
+
+These docs anchor three ways and the checker modelled one. Headings (`## 6.4`) it knew. **Item ids** it did
+not: `- ▢ **V1 [LOOP] Vacuous-gate audit` lives under `### B. Verification truth`, so `STATUS §V1` was
+always valid. Nor **compound refs**: `charter §2.5` means section 2, list item 5, and that item really is
+the interleave rule the citation was pointing at.
+
+With all three modelled the count is zero, so the freeze drops 5 → 0 and any dangling citation now fails
+the push. The tightening is only defensible because the checker was fixed first — freezing at 5 would have
+licensed five phantom findings forever and taught the next reader to distrust the lint.
+
+The irony is exact: `unresolved()` already carried a guard against this failure, with a comment citing the
+gate-shape scar about concluding from "matched nowhere". Being able to name a failure class is not the same
+as having covered it.
+
 ## 2026-08-05 — the dragon's arrival finally lands (`0f42fa2`)
 
 The entrance to the climax of the run was a text notification and nothing else, while the KILL fires eight
