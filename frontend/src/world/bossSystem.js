@@ -7,6 +7,8 @@ import { BOSS_CONFIG, BOSS_LOOT } from '../game/bossConfig.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
+import { runIsolatedEffects } from '../game/isolatedEffects.js';
+import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { makeNotifClearTracker } from './bossNotifTimers.js';
 
@@ -50,8 +52,20 @@ export const useBossSystem = (playerLevel) => {
             if (!playerPos) return;
             if (Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) > 24) return; // not at the lair yet
             bossSpawned.current = true;
-            setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]');
-            scheduleNotifClear(6000);
+            // E-ter/E4: the ARRIVAL is the climax of the run and used to be this notification and nothing
+            // else, while the KILL fires eight isolated effects. Freeze + swell + shake now land with it.
+            // Capture-SUPPRESSED: the visual gate has a boss state, and a bloom spike or shake at spawn
+            // would make those frames non-deterministic (same guard the A5 dangerLevel bridge uses).
+            const bStore = useGameStore.getState();
+            runIsolatedEffects(bossEntranceBeat({
+                notify: () => { setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]'); scheduleNotifClear(6000); },
+                shake: bStore.isCaptureMode ? null : () => {
+                    bStore.setScreenShake?.(ENTRANCE.shake);
+                    setTimeout(() => useGameStore.getState().setScreenShake?.(0), ENTRANCE.shakeClearMs);
+                },
+                bloom: bStore.isCaptureMode ? null : () => bStore.triggerBloomSpike?.(ENTRANCE.bloomMs),
+                hitstop: bStore.isCaptureMode ? null : () => useGameStore.setState({ hitstopUntil: performance.now() + ENTRANCE.hitstopMs }),
+            }));
             let y = 35; // spawn high up over the lair
             const getGy = useGameStore.getState().getMobGroundLevel;
             if (getGy) {

@@ -610,8 +610,23 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   - ▢ **Next slice:** a DIRECTIONAL flinch. `hurt` is currently undirected (`right = 0`) though the store
     already computes `lastHitDir.angle` and `trauma.js` already biases shake by direction. Deliberately not
     done blind: it is a feel change that wants a human eye on a real hit.
-- ▢ **Boss entrance has no beat** — `bossSystem.js:44-55` sets a **text notification** and nothing else: no shake,
-  no roar, no bloom spike, no mood snap. For the climax of the run. (= E4.)
+- ▣ **Boss entrance beat — SHIPPED 2026-08-05 (= E4).** The arrival was a text notification and nothing
+  else, while the KILL fires eight isolated effects. Now freeze (220ms) + bloom swell (650ms) + shake (1.4)
+  via pure `game/bossEntrance.js`, run through the isolation helper so a cosmetic throw cannot suppress the
+  message. **Capture-SUPPRESSED** — the visual gate has boss states and a spawn-time bloom/shake would make
+  those frames non-deterministic (same guard the A5 bridge uses). Tuned AGAINST the kill deliberately: the
+  entrance freezes slightly longer and swells longer (dread), the kill snaps shorter but carries the payoff.
+  Gated by driving the REAL hook to the REAL spawn condition; mutation-proven both ways (beat removed → 3
+  RED; capture guard removed → 1 RED).
+  *(Registry correction: this line listed **"no mood snap"** among the gaps. `bossSystem.js:156` has driven
+  `setDangerLevel(bossActive ? 2 : 0)` since the A5 bridge landed — the mood snap always worked. There is
+  now a regression test pinning it so the correction stays true.)*
+  - ▢ **STILL OPEN: no ROAR.** The sound API exposes only `defeat`/`fanfare`/`victory`; nothing reads as a
+    dragon, and inventing an audio asset is outside a loop slice. The beat ships SILENT rather than firing
+    `playVictory` at an entrance because it was the closest thing to hand. Needs an asset decision.
+- ▣✓ **The generic isolation helper moved to `game/isolatedEffects.js`** (`runIsolatedEffects`). It was
+  always generic; calling `runBossKillEffects` from a SPAWN path would have been a name-lie. `bossKill.js`
+  re-exports the old name, so existing callers and their gates are untouched.
 - ▢ Voidhand **multi-phantom pool** (cap-4) · Soulbind **v2 faction protocol** (mob-vs-mob) · Elemancer **v2
   terrain chemistry** (⚠️ *parked behind the P4 no-mid-combat-re-mesh HARD VETO* — do not unpark without a
   measured trimesh re-cook budget).

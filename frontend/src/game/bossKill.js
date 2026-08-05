@@ -20,15 +20,9 @@ export function applyBossDamage(prev, amount) {
 }
 
 /**
- * Run an ordered list of `[name, fn]` kill effects, each in ISOLATION — a throw in one does NOT stop the
- * rest (crucially, a throwing reward cannot prevent the win latch, which the caller orders LAST). Returns
- * the effects that threw, as `[{ name, error }]`, so the caller can log without the player losing the win.
+ * The kill beat runs its effects in ISOLATION — a throwing reward cannot prevent the win latch, which the
+ * caller orders LAST. That guarantee now lives in `game/isolatedEffects.js`, because the boss ENTRANCE beat
+ * needs it too and calling `runBossKillEffects` from a spawn path would be a name-lie. Re-exported under
+ * its original name so existing callers and their gates keep working unchanged.
  */
-export function runBossKillEffects(effects) {
-  const failed = [];
-  const isolate = (name, fn) => {
-    try { fn?.(); } catch (error) { failed.push({ name, error }); }
-  };
-  for (const [name, fn] of effects || []) isolate(name, fn);
-  return failed;
-}
+export { runIsolatedEffects as runBossKillEffects } from './isolatedEffects.js';
