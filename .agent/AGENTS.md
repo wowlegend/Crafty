@@ -149,9 +149,15 @@ runs earlier and outside that pattern.*
 - Visual gate is deterministic (forced `high` tier); re-baseline + human-review per intended look change.
   Capture-determinism is load-bearing (gate anims on `isCaptureMode()`; seed RNG; freeze clocks) — and the
   check must be INSIDE the interval callback, since the harness flips capture mode after mount.
-- **A gate's PASS is worth nothing without its DENOMINATOR.** Three gates here have shipped a clean report
-  over input they never examined (`gate-shape` skipping 42% of gates, `doc-currency` blind to bare paths, a
-  test written into `tests/visual/` which vitest EXCLUDES so it never ran). Read the count, not the tick.
+- **A gate's PASS is worth nothing without its DENOMINATOR.** Seven things here have now shipped a clean
+  report over input they never examined (`gate-shape` skipping 42% of gates, `doc-currency` blind to bare
+  paths, a test written into `tests/visual/` which vitest EXCLUDES so it never ran, `esc-pause-probe` never
+  pressing ESC twice, `tapTestId` never checking WHERE its tap landed, …). Read the count, not the tick.
+  **This paragraph was already here when the last two happened** — being read at orientation is not the same
+  as being salient while you write the gate, so the full checklist now lives in
+  `.claude/rules/gates-and-probes.md`, which auto-loads on any edit under `frontend/tests/**` or
+  `frontend/scripts/**`. Keep the two in sync; this line is the always-loaded baseline, that file is the
+  moment-of-use activation.
 
 ## Execution & Workflow Protocols
 - **Anti-Execution Tunneling:** don't chain many distinct fixes into a monolith. >3 logical systems OR >5 sequential code-altering calls → PAUSE, `git commit`, checkpoint via `session-archivist-kz`.

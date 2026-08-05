@@ -8,6 +8,7 @@
 import { mkdirSync } from 'node:fs';
 import puppeteer, { KnownDevices } from 'puppeteer';
 import { serveVite } from './_serve.mjs';
+import { tapTestId as honestTap } from './_probe.mjs';
 
 const PORT = 4194;
 const OUT = '/tmp/crafty-touch';
@@ -165,18 +166,19 @@ try {
   // puppeteer's clickablePoint() heuristic rejects them ("Node is either not clickable or not an Element"),
   // which is a property of the harness, not of the control — a real thumb lands on them fine. The hotbar
   // check above already uses this pattern for the same reason.
+  // 2026-08-05: this used to check only that the element had non-zero SIZE, then tap its centre and return
+  // true. Size is not reachability. It tapped an Aspect sector whose centre is the SPELL TOGGLE's box and
+  // reported success, and two registry lines were written from that reading ("the ring does not close",
+  // "touch-spells leaves the DOM") — neither true. The shared helper now verifies the tap point is actually
+  // occupied by the named element and is on screen, and returns WHY when it is not. `lastTapWhy` carries
+  // that reason into the check messages, because a probe that cannot say why a tap did not happen is how a
+  // LAYOUT defect gets recorded as a BEHAVIOURAL one.
+  let lastTapWhy = '';
   const tapTestId = async (id) => {
-    const r = await page.evaluate((sel) => {
-      const el = document.querySelector(`[data-testid="${sel}"]`);
-      if (!el) return null;
-      const q = el.getBoundingClientRect();
-      if (q.width === 0 || q.height === 0) return null;
-      return { x: Math.round(q.x + q.width / 2), y: Math.round(q.y + q.height / 2) };
-    }, id);
-    if (!r) return false;
-    await page.touchscreen.tap(r.x, r.y);
-    await delay(350);
-    return true;
+    const v = await honestTap(page, id);
+    lastTapWhy = v.ok ? '' : v.why;
+    if (!v.ok) console.log(`   [tap refused] ${v.why}`);
+    return v.ok;
   };
   const countTestIdPrefix = (prefix) =>
     page.evaluate((p) => document.querySelectorAll(`[data-testid^="${p}"]`).length, prefix);
@@ -216,7 +218,11 @@ try {
     const tapped = await tapTestId(first);
     const still = await countTestIdPrefix('touch-aspect-');
     ringClosed = still === 0;
-    closeDetail = ringClosed ? `tapped ${first}` : `tapped ${first} (dispatched=${tapped}) but ${still} sector(s) still open — it will eat the next tap`;
+    // If the tap never landed, this says NOTHING about whether the ring closes — do not let an unreachable
+    // control be reported as a broken behaviour. That conflation is exactly what happened on 2026-08-05.
+    closeDetail = ringClosed ? `tapped ${first}`
+      : tapped ? `tapped ${first} but ${still} sector(s) still open — it will eat the next tap`
+        : `INCONCLUSIVE — the tap never reached ${first}, so ring-close was never exercised. ${lastTapWhy}`;
   }
   check('ASPECT RING closes after a selection (X1)', ringClosed, closeDetail);
 
@@ -230,8 +236,11 @@ try {
     const el = document.querySelector('[data-testid="touch-spells"]');
     if (!el) return 'no touch-spells element in the DOM at all';
     const q = el.getBoundingClientRect();
-    return `touch-spells present but untappable: ${Math.round(q.width)}x${Math.round(q.height)} @${Math.round(q.left)},${Math.round(q.top)} (viewport ${innerWidth}x${innerHeight})`;
+    return `touch-spells at ${Math.round(q.width)}x${Math.round(q.height)} @${Math.round(q.left)},${Math.round(q.top)} (viewport ${innerWidth}x${innerHeight})`;
   });
+  // Carry the REFUSAL REASON into the verdict. Without it this reported "present but untappable", which
+  // reads as a defect in the control when the real cause was another control sitting on top of it.
+  if (!spellToggled && lastTapWhy) spellDetail = `${spellDetail} — ${lastTapWhy}`;
   if (spellCount > 0) {
     const targetSpell = await page.evaluate((was) => {
       const ids = [...document.querySelectorAll('[data-testid^="touch-spell-"]')].map((e) => e.dataset.testid.replace('touch-spell-', ''));
