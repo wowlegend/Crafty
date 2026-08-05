@@ -76,10 +76,18 @@ REPO (two-level): ROOT `/Users/kz/Code/Crafty` (docs + memory + master plan) · 
 MISSION: drive the **HOLISTIC-REVIEW-2026-07-21.md** queue to zero in its priority ladder —
 **security → bugs → test-bugs → script/probe hygiene → config-drift → dead-code → comment-lies → doc-drift →
 test-vacuity (seam-extract) → coverage-gaps → perf → a11y → inconsistency → enhancements** — preferring the by-file
-BATCHES (fix every finding in a file together = one commit). Then execute the **docs reorg** (Wave-1 ~83 autonomous
-plan-archives via `git mv` → `docs/archive/2026-Q2/…`; Wave-2 ~24 owner-gated — the 4 lint-CRITICAL move ONLY in a
-commit that also drift-fixes the citing LIVE doc; ARCHIVE-not-delete). Then the STATUS §2 secondary queue. Ship ONE
-verified unit per iteration; keep `docs/superpowers/LOOP-PROGRESS.html` current (the progress dashboard). Route pure
+BATCHES (fix every finding in a file together = one commit). ~~Then execute the **docs reorg**~~ **(DONE — `docs/archive/` exists and
+`plans/` went 100 → 35 files. Do NOT re-run it. This line sent cold-start agents at finished work, which is
+exactly the "a stale doc is a LIVE TRAP" failure warned about below.)** Then the STATUS §2 secondary queue —
+note **A-bis (all 8 seams) CLOSED 2026-08-05**; verify any registry line against live code before working
+OR repeating it (two were found describing code that did not exist). Ship ONE
+verified unit per iteration; **keep `docs/superpowers/LOOP-PROGRESS.html` current — a SESSION-CLOSE
+obligation, not a nicety.** It went 25 commits stale in Aug 2026 while STATUS and CHANGELOG stayed
+immaculate, and the published era-review artifact went 9 days / 99 commits stale still leading with
+"CI 0/88" — false for two days. Kevin had to ask. **The surface he READS is part of the deliverable**; a
+dashboard asserting a state it no longer has is the same defect as a gate reporting PASS over input it never
+examined. Update an artifact IN PLACE by passing its URL, or a fresh publish mints a new URL and strands the
+bookmarked one. Route pure
 taste / recorded-decision reversals to `KEVIN-REVIEW-BATCH.md`. Never end the loop yourself.
 
 THE FIVE RULES THAT MATTER MOST (each one is a scar):
