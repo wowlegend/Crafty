@@ -632,7 +632,10 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   measured trimesh re-cook budget).
 - ▢ World **M4b biome palette / M4c topography / M5b seabed / M7 landmarks** (the "deferred refinements").
 - ▢ Item **sets / set-bonuses** (affixes exist; sets never built) · `aspect-underbanked` denied-reason ·
-  title-screen hint should read from `keyMap` · **WebGPU/TSL migration** (specced, never done — huge blast radius).
+  ~~title-screen hint should read from `keyMap`~~ **(2026-08-05: investigated, and the real defect was the
+  OPPOSITE direction — see §G below. The title hints are deliberately abbreviated copy; rewriting them to
+  render from KEY_MAP would change visible title-screen text, which the `menu` baseline covers and the
+  compositor cannot currently verify. The discoverability bug it was pointing at is fixed.)** · **WebGPU/TSL migration** (specced, never done — huge blast radius).
 - ▢ The **coherence CUT-gate** stays **PARKED by design** (its own bound #1: inadmissible until a blind
   calibration scores 100% on must-NOT-cut negatives). **⇒ The pillars govern what to BUILD; they may NOT be used
   to authorize deletions.**
@@ -652,6 +655,17 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   refactor; the zh-CN content pass itself stays Kevin's go/no-go.
 
 ### G. Harness / docs
+- ▣✓ **KEY_MAP's anti-drift gate only ever ran ONE WAY, and two real bindings had fallen through
+  (2026-08-05).** The file exists so "the HUD can never again advertise a key with no handler" (the
+  `M - Magic` lie) and its gate asserts exactly that. Nothing asserted the converse. **`L` (quest log,
+  M-NARRATIVE.3) and `Q` (claim completed quests) were handled live in `InputManager.jsx` and advertised
+  NOWHERE** — so the controls panel never taught either. Q at least appeared on the title screen; **L was
+  invisible entirely**, sitting beside the E/M/C/B/U toggles that ARE listed. An advertised key with no
+  handler is a lie; a handler with no advertisement is a feature the player never finds. Both rows added;
+  the gate now runs BOTH directions, with the `1–4` compound row exempted explicitly and a second test
+  asserting the exemption list can only name codes a real row actually covers (or it becomes a place to
+  hide orphans). Mutation-proven per row. Visually safe: `showControls` defaults false, so no baseline
+  captures the controls panel.
 - ▣✓ **CLI-on-import sweep — DONE 2026-08-03, and it found nothing left to fix.** The defect (a module
   running its CLI at import, so a test importing it dies mid-collection and vitest reports "no tests" while
   every assertion silently skips) bit twice: `scripts/ci/i18n-adoption.mjs` and `scripts/visual/capture.mjs`.

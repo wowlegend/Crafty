@@ -47,3 +47,47 @@ describe('KEY_MAP — the binding single-source-of-truth (anti-drift)', () => {
     expect(read('InputManager.jsx').includes("'KeyM'")).toBe(true); // wired in T2
   });
 });
+
+describe('KEY_MAP — the REVERSE direction, which was never guarded', () => {
+  // The gate above proves every ADVERTISED key has a handler. Nothing proved the converse, and two real
+  // bindings had fallen through the gap: L (quest log) and Q (claim completed quests) were handled live in
+  // InputManager and advertised nowhere, so the controls panel never taught either. Q at least appeared on
+  // the title screen; L was invisible entirely, sitting right beside the E/M/C/B/U toggles that ARE listed.
+  //
+  // An advertised key with no handler is a LIE. A handler with no advertisement is a feature the player
+  // never finds. Both are drift; only one had a gate.
+
+  /** Codes covered by an informational row that names them collectively rather than by `code`. */
+  const COVERED_BY_COMPOUND_ROW = {
+    // KEY_MAP row `{ key: '1–4', label: 'Select spell' }` carries no `code` because it stands for four.
+    Digit1: '1–4', Digit2: '1–4', Digit3: '1–4', Digit4: '1–4',
+  };
+
+  it('every LIVE keydown handler is advertised in KEY_MAP', () => {
+    const handled = [...new Set([...handlers.matchAll(/event\.code\s*===\s*'([A-Za-z0-9]+)'/g)].map((m) => m[1]))];
+    expect(handled.length, 'no handlers parsed — the regex or the files moved').toBeGreaterThan(8);
+
+    const advertised = new Set(KEY_MAP.filter((r) => r.code).map((r) => r.code));
+    const orphans = handled.filter((c) => !advertised.has(c) && !COVERED_BY_COMPOUND_ROW[c]);
+    expect(
+      orphans,
+      `handled but advertised NOWHERE — the player cannot discover these: ${orphans.join(', ')}`,
+    ).toEqual([]);
+  });
+
+  it('the compound-row exemption names only codes that a real KEY_MAP row covers', () => {
+    // Otherwise the exemption list becomes a place to hide orphans, which is the same defect wearing a
+    // different hat.
+    const keys = new Set(KEY_MAP.map((r) => r.key));
+    for (const [code, row] of Object.entries(COVERED_BY_COMPOUND_ROW)) {
+      expect(keys, `${code} claims coverage by a "${row}" row that does not exist`).toContain(row);
+    }
+  });
+
+  it('teaches both quest bindings, which is the gap that motivated this gate', () => {
+    const byCode = Object.fromEntries(KEY_MAP.filter((r) => r.code).map((r) => [r.code, r]));
+    expect(byCode.KeyL, 'L (quest log) must be advertised').toBeDefined();
+    expect(byCode.KeyQ, 'Q (claim completed quests) must be advertised').toBeDefined();
+    for (const c of ['KeyL', 'KeyQ']) expect(KEY_GROUPS).toContain(byCode[c].group);
+  });
+});
