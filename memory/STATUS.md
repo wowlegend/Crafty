@@ -94,6 +94,32 @@ source text is not a gate.
 Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` open · `▣` in flight · `▣✓` done
 
 ### A. Confirmed live bugs
+- ▣✓ **R9 — ESC out of the pause menu FROZE THE PLAYER. FIXED + SHIPPED `8e68425` (2026-08-05).**
+  Kevin, playing: *"whenever I press ESC to bring up the menus, and then press ESC to quit it, I'm unable
+  to navigate / move — the character remains frozen, and dies from a mob hitting."*
+  **Root cause is a documented browser refusal, not a race.** ESC is the browser's DEFAULT UNLOCK GESTURE,
+  and per MDN (`Element.requestPointerLock`, accessed 2026-08-05) a `requestPointerLock()` issued
+  immediately after that gesture **"will fail, even if a transient activation is available."** Every panel
+  `onClose` in `MenuSystem.jsx` relocks optimistically (KEVIN-FIX C4), so on the ESC path the relock is
+  **always** refused. `pointerlockerror` then called `setActive(false)` — already false — so no state
+  changed, nothing re-rendered, no transition ran. The player held: no panel, `active=false` (all movement
+  gates on it, `Components.jsx:861`) and no title menu (suppressed once `gameStarted`, `panelState.js:49`).
+  **No surface, no input, and mobs gate on neither.** Only a reload escaped.
+  **Fix:** `shouldShowResumeOverlay()` — a recovery surface DERIVED FROM STATE, not opened by a handler,
+  so no close path (present or future) can strand a player. No retry can work: the browser demands a fresh
+  user gesture by design, so only a clickable surface recovers. App's pause-open moved to `useLayoutEffect`
+  so the one intermediate render never paints.
+  **Gate:** exhaustive over lock × gameStarted × isAlive × every panel (252 states, denominator asserted) —
+  input-dead-and-alive must imply a way back. Mutation-proven RED against the old behaviour, where it names
+  the two stranded states exactly.
+  **Two defects only the FRAME showed:** the first draft used `text-text-inverse` (`#231708`, *"text on gold
+  fills"*) on a near-black scrim — every jsdom assertion passed and it rendered dark-brown-on-black; and the
+  S1-C design-language gate correctly rejected a frosted-glass backdrop.
+  **⚠️ Why no gate caught this for months:** `scripts/visual/esc-pause-probe.mjs` presses ESC **once**, and at
+  its line 54 substitutes `document.exitPointerLock()` for the native ESC — the one path MDN says does *not*
+  trigger the refusal. It is green over exactly the half of the flow the bug lives in. New
+  `scripts/visual/pause-resume-probe.mjs` covers the second press and asserts a working movement BASELINE
+  before asserting the freeze (without that denominator, "did not move" proves nothing).
 - ▣✓ **R1 — FIXED + SHIPPED `926751e` (2026-07-13).** RED-first: 3 behavioral tests reproduced it exactly
   (`expected [30] to equal [30,120]` = the 2nd reward swallowed · `expected ['zombie_slayer'] to equal
   ['first_blood','zombie_slayer']` = the save corrupted · first_blood re-offered at progress 0). Fixed with a
@@ -569,8 +595,11 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
     dispatched tap) so it eats the next tap. **`aspect-ring-gates.test.jsx` asserts this and PASSES in
     jsdom** — the house defect again: green over behaviour that does not happen. NOT root-caused; stopped
     rather than guess.
-  - **▢ `touch-spells` leaves the DOM while the ring is open** — probably downstream of the above, so X2b
-    has no lived verdict yet.
+  - **▢ `touch-spells` cannot be tapped while the ring is open.** *Claim CORRECTED 2026-08-05 on a re-run
+    (the compositor came back): it does NOT leave the DOM.* It is present and fully on-screen —
+    `52x52 @312,517` in a `390x844` viewport — and the tap is refused because the four still-open ring
+    sectors sit over it. That is bullet 2's *"it will eat the next tap"* happening, measured. **So X2b has
+    no independent defect of its own yet: fix ring-close first and re-run before treating it as one.**
   - **▣✓ FIXED in passing:** both `TouchControls` and `TouchControlsSurface` read `unlockedTalents` via a
     non-reactive `getState()` during render, so unlocking an Aspect did not surface its sector until an
     unrelated re-render (closing a panel) happened to fire. 0 sectors before the fix, 4 after.

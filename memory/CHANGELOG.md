@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-08-05 — ESC out of the pause menu froze the player to death (`8e68425`)
+
+Kevin, playing: *"whenever I press ESC to bring up the menus, and then press ESC to quit it, I'm unable to
+navigate / move — the character remains frozen, and dies from a mob hitting."*
+
+The cause is a **documented browser refusal**, not a race. ESC is the browser's default unlock gesture, and
+per MDN a `requestPointerLock()` issued right after that gesture *"will fail, even if a transient activation
+is available."* Every panel's `onClose` relocks optimistically (KEVIN-FIX C4) — so on the ESC path that
+relock is **always** refused. `pointerlockerror` then set `active` to false, which it already was, so nothing
+changed, nothing re-rendered, and no transition ran. The player was left with no panel, no input (movement
+gates on `active`) and no title menu (suppressed once `gameStarted`). Mobs gate on none of it. Only a reload
+got out.
+
+No retry can fix that — the browser demands a fresh user gesture by design, precisely so a page cannot
+silently re-trap the cursor. Only a **clickable** surface recovers. So `shouldShowResumeOverlay()` is derived
+from state rather than opened by a handler: the defect was never in one branch, it was that no branch owned
+the refusal case, and a predicate over state cannot be bypassed by a path nobody thought of.
+
+The gate is exhaustive rather than sampled — over lock × gameStarted × isAlive × every panel, with the
+denominator asserted. Run against the old behaviour it names the two stranded states exactly.
+
+**Two defects only the rendered frame revealed.** The first draft used `text-text-inverse` — `#231708`,
+documented in `tokens.js` as *"text on gold fills"* — on a near-black scrim. Every jsdom assertion passed;
+the word PAUSED rendered dark-brown-on-black. And the S1-C gate correctly rejected a frosted-glass backdrop.
+
+**Why nothing caught it:** `esc-pause-probe.mjs` presses ESC once and substitutes `document.exitPointerLock()`
+for the native ESC — the one path MDN says does *not* trigger the refusal. It was green over exactly the half
+of the flow the bug lived in.
+
 ## 2026-08-05 — two live bindings the player could never discover (`8a5e008`)
 
 `keyMap.js` is the binding single-source-of-truth, created so "the HUD can never again advertise a key with
