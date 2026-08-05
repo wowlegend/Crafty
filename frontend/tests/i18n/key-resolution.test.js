@@ -68,7 +68,12 @@ describe('i18n key resolution', () => {
   it('caps the keys no STATIC call site reaches', () => {
     // NOT a dead-copy count, and it must not be read as one. `PrimitivesShowcase.jsx:206` does
     // t(`spell.${s.spell}`), so all four spell.* keys are live while being invisible here — the regex
-    // above only sees quoted literals. Several of the 22 are that case.
+    // above only sees quoted literals. Several of the 10 are that case.
+    //
+    // 2026-08-05: lowered 22 -> 10. Eleven keys were measured GENUINELY dead (no t() literal, no bare key in a
+    // data table, no dynamic prefix) and deleted from BOTH locales — 22 lines two translators maintained for
+    // nothing. `ui.level` LOOKED dead by the same measure and was KEPT: it is the fixture i18n.test.js uses to
+    // prove interpolation works. Unreferenced-by-src is not the same as dead.
     //
     // It is still worth a ceiling: a key that no call site reaches statically OR dynamically is dead
     // weight two translators have to maintain, and the number has no business drifting upward without
@@ -76,6 +81,6 @@ describe('i18n key resolution', () => {
     // set above the real count is a gate that permits exactly what it claims to prevent.
     const used = new Set(sites.map((s) => s.key));
     const unused = Object.keys(STRINGS.en).filter((k) => !used.has(k));
-    expect(unused.length, `keys unreachable by static analysis:\n  ${unused.join('\n  ')}`).toBeLessThanOrEqual(22);
+    expect(unused.length, `keys unreachable by static analysis:\n  ${unused.join('\n  ')}`).toBeLessThanOrEqual(10);
   });
 });

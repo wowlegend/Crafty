@@ -655,18 +655,17 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   refactor; the zh-CN content pass itself stays Kevin's go/no-go.
 
 ### G. Harness / docs
-- ▢ **[LOOP] i18n DEAD COPY: 12 keys are genuinely unreferenced (measured 2026-08-05).** The open lead was
-  right that `tests/i18n/key-resolution.test.js` caps *statically-unreachable* keys at 22 — "a ceiling, not
-  a dead-copy count". Classified: of 21 unreachable, 7 are reached as BARE keys in data tables
-  (`touchTray.js` holds `ui.build`; `stat.*`), 2 via the one dynamic call site
-  (`PrimitivesShowcase.jsx:206` does ``t(`spell.${s.spell}`)``), and **12 are dead**: `ui.level`,
-  `ui.health`, `ui.mana`, `ui.hunger`, the four `rarity.*`, and the four `showcase.*`. That is 24 lines two
-  translators maintain for nothing. **Fix = delete from BOTH locales, then lower the cap from 22.**
-  ⚠️ **VERIFY EACH ONE WITH A WHOLE-TOKEN CHECK BEFORE DELETING — I got the verification wrong TWICE.**
-  `grep "rarity.common"` matches `rarity-common` (unescaped `.`); `grep -F "ui.level"` matches
-  `t('ui.level_short')` (prefix); and `C.rarity.common` in `theme/cssVars.js` is a colour-token property
-  path, not an i18n key. Three different substring traps in one audit. **A substring check is not an
-  existence check** — anchor on the quoted key including its closing quote.
+- ▣✓ **i18n DEAD COPY DELETED 2026-08-05 — ELEVEN keys, not the twelve first measured.** Of 21 keys
+  unreachable by literal `t()` analysis: 7 are reached as BARE keys in data tables, 2 via the one dynamic
+  call site, and 11 were genuinely dead — `ui.health`, `ui.mana`, `ui.hunger`, the four `rarity.*`, the four
+  `showcase.*`. Removed from BOTH locales (22 lines two translators maintained for nothing); the
+  `key-resolution` cap dropped 22 → 10 and locale parity holds at 128/128.
+  **`ui.level` was in the original list of 12 and is KEPT** — the corrected whole-token check found it in
+  `tests/i18n/i18n.test.js:29` (`t('ui.level', { n: 7 })`, the fixture that proves interpolation works) and
+  cited by name in `scripts/ci/i18n-adoption.mjs`. **Unreferenced-by-`src/` is NOT the same as dead**: a key
+  can be the fixture that proves the machinery works. That was the FOURTH time the verification method
+  changed the answer on this one audit — after an unescaped `.` matched `rarity-common`, a `-F` prefix match
+  hit `ui.level_short`, and a colour-token property path `C.rarity.common` masqueraded as a key.
 - ▣✓ **KEY_MAP's anti-drift gate only ever ran ONE WAY, and two real bindings had fallen through
   (2026-08-05).** The file exists so "the HUD can never again advertise a key with no handler" (the
   `M - Magic` lie) and its gate asserts exactly that. Nothing asserted the converse. **`L` (quest log,
