@@ -406,6 +406,36 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
 **MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
 a root cause; do not open 45 separate tickets.
 
+### B-race. ⛔ THE VISUAL HARNESS IS NON-DETERMINISTIC — found 2026-08-05 by running a CONTROL
+
+**The owed re-baseline is BLOCKED on this.** You cannot freeze a baseline for a state that renders a
+different scene each run.
+
+Measured, not inferred: captured twice with **identical code**, diffed the two runs against each other.
+**15 of 31 frames differ**, and the four `beast-*` frames differ by **69–72%**.
+
+Opening the two frames settles what it is: one run renders the beast in close-up, the other renders a
+distant snow mountain with **no beast anywhere**. The showcase camera/spawn is a coin-flip. That also
+explains the standing note that "the 4 `beast-*` baselines contain NO BEAST" — those baselines were
+frozen on a losing flip, and a future re-baseline can just as easily freeze another one.
+
+Noise floor for the rest: `menu` 2.6%, `explore-day` 1.1%, `biome-snow` 0.7%, `mobile` 0.3%, everything
+else under 0.05%. So the gate's 6% threshold is comfortably above the noise for 27 states and **meaningless
+for the four beast frames**, which pass or fail at random.
+
+**How this was nearly mis-recorded, which is the transferable part.** The S3 UV fix was isolated by
+capturing pre-fix and post-fix and diffing them — and that diff showed `beast-*` changing 70%. Written up
+directly it would have read "the UV fix transformed the beast frames", which is false. The control run —
+same code, twice — is what separated signal from harness noise. **A before/after diff means nothing until
+you know the floor.** Same shape as asserting an absence without a baseline.
+
+- ▢ **[LOOP] root-cause the beast-showcase race** (`spawnBeastTransform` test hook + capture camera). Until
+  it is deterministic, `beast-*` cannot be re-baselined and its gate result carries no information.
+- ▢ **[LOOP] add a determinism CONTROL to the visual harness** — capture twice, diff run-to-run, and fail
+  on any frame above a floor. A regression gate whose own instrument drifts reports noise as signal, and
+  nothing currently measures that.
+- ▢ **[KEVIN] the re-baseline** stays owner-gated and should wait for both of the above.
+
 ### B. Verification truth (the structural gap)
 - ▢ **V1 [LOOP] Vacuous-gate audit — ⚠️ MY OWN HEADLINE WAS OVERSTATED. Corrected below.**
   > **I was saying "114 of 124 gates are source-greps — 92% of the corpus asserts TEXT not behaviour."**
