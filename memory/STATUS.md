@@ -150,7 +150,14 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
   `locator('canvas').first()` races the title→play transition. Bind the game canvas explicitly. **Do not widen
   the 60s timeout.**
 
-### A-bis. ⭐ THE 18-DOMAIN REVIEW — 91 confirmed bugs (2026-07-14). THIS IS NOW THE WORK.
+### A-bis. ✅ THE 18-DOMAIN REVIEW — 91 confirmed bugs — **ALL 8 SEAMS CLOSED 2026-08-05.**
+
+> **Loop-actionable work in this block is DONE.** B1-B8 are all `▣✓`. What remains inside it is
+> KEVIN-gated, not code: the two owed visual re-baselines (B5's HUD, B7's `mobile.png`) and B8's 3 taste
+> items. Verify before re-opening anything here — B3 was already closed when a queue told me to start on it.
+> Last two seams: **B4/B4b** (mobs hit you through 200 blocks of rock; windups bankable across de-aggro) and
+> **B6c** (2 of 12 achievements dead on arrival — `updateLevel` had zero callers).
+
 
 **Full report + every executed-probe transcript: `docs/superpowers/audits/2026-07-13-18-domain-review.md`.**
 18 domain agents drove the real code (187 probes: vitest, node, Playwright, puppeteer). 135 raw findings, each
@@ -669,8 +676,8 @@ out of that one hour. What it bought:
 the i18n ratchet, `measure.mjs` (one authority for repo counts) and now `cli-guard` (§G) each convert a
 one-off sweep into something that cannot silently regress. Nine gates authorize a push.
 
-**Next code work, in order:** A-bis (18-domain review, 91 confirmed bugs — the biggest block) · D Art
-(Kevin DE-GATED) · E gameplay levers · E-ter · F perf. **Verify each is still open before working it** —
+**Next code work, in order:** ~~A-bis~~ **(CLOSED 2026-08-05 — all 8 seams)** · D Art (Kevin DE-GATED) ·
+E gameplay levers · E-ter · F perf. **Verify each is still open before working it** —
 much of the older A-bis/V1 work is DRAINED, and X3 (hotbar tap possibly swallowed) answers itself from
 `touch-probe.mjs` on the first clean compositor run rather than from a code reading.
 

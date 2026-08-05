@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-05 — A-bis is CLOSED: all 8 seams of the 18-domain review (`fddf7d4`)
+
+The 91-bug block that has been the primary work queue since 2026-07-14 is done for loop-actionable work.
+B1-B8 all carry `▣✓`. What remains inside it is Kevin-gated rather than code: the two owed visual
+re-baselines (B5's HUD, B7's `mobile.png`) and B8's three taste items.
+
+The last two seams landed today. **B4/B4b** — mobs could hit you through 200 blocks of rock, and could bank
+an attack windup across de-aggro and cash it as an undodgeable hit. **B6c** — two of the twelve achievements
+were dead on arrival: 'Rising Star' and 'Shining Star' key off `stats.level`, written only by `updateLevel`,
+which was returned from the quest hook and published nowhere. Every sibling event is put on the store for
+its emitter to call; this one was left off the list, so nothing ever called it and the level never moved
+off 1.
+
+Worth recording about the last one: the bug was a missing WIRE, not wrong logic, so a gate that drove only
+the receiver would have stayed green with the emitter deleted. Both ends are mounted and driven, and the
+mutation counts differ accordingly — deleting the publish reddens 6, deleting the call reddens 2.
+
+Also corrected B4's parent marker, which still read partial after B4b landed.
+
 ## 2026-08-05 — B4: mobs could hit you through 200 blocks of rock (`db9b483`, `b5fab6b`)
 
 `ai.worker.js` destructured the player as `const [playerX, , playerZ] = playerPos` under a comment reading
