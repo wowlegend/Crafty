@@ -46,8 +46,13 @@ export function generateMesh(cx, cz, blocks) {
 
     // Slice boundary q between voxel coordinate q and q+1 along axis d
     for (let q = -1; q < sizeD; q++) {
-      // 1. Reset our reusable mask
-      mask.fill(0);
+      // 1. Reset our reusable mask — only the part this axis actually uses.
+      // The buffer is sized for the worst axis (4096 = 256*16) but every access is
+      // mask[cu + cv*sizeU] with cu < sizeU and cv < sizeV, so the live region is exactly
+      // sizeU*sizeV. On the Y sweep that is 16*16 = 256 of 4096, repeated over 257 slices:
+      // clearing the whole buffer there costs ~987k redundant writes per chunk, per mesh.
+      // X and Z already use the full 4096, where this is a no-op.
+      mask.fill(0, 0, sizeU * sizeV);
 
       // Populate mask for this slice boundary
       for (let cv = 0; cv < sizeV; cv++) {

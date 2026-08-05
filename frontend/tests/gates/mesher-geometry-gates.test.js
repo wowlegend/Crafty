@@ -127,6 +127,38 @@ describe('greedy mesher — geometry contract', () => {
     expect(bad).toEqual([]);
   });
 
+  it('is STATELESS across calls — a previous chunk cannot leak into the next one', () => {
+    // The mesher carries hidden module state: one reusable `mask` buffer shared by every call, cleared
+    // per slice. That clear is the only thing standing between chunk N and chunk N+1, so the invariant
+    // worth pinning is not "the clear is called" but "meshing B after A equals meshing B alone".
+    //
+    // Worth knowing why this gate exists in this shape: the per-slice clear turns out to be REDUNDANT —
+    // the greedy pass zeroes every cell it consumes before emitting, so the mask is already all-zero when
+    // the next slice starts. Removing the clear entirely changes no output at all, which means any test
+    // that pokes at the clear directly cannot fail and proves nothing. This one tests the property the
+    // clear is there to protect, so it still goes red if a future change breaks the self-clearing.
+    const terrain = (() => {
+      const b = new Uint8Array(CHUNK * CHUNK * HEIGHT);
+      let s = 12345;
+      const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+      for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++) {
+        const hh = 40 + Math.floor(r() * 12);
+        for (let y = 0; y < hh; y++) b[idx(x, y, z)] = y > hh - 3 ? 1 : 2;
+      }
+      return b;
+    })();
+
+    const alone = generateMesh(1, -3, terrain);
+    generateMesh(0, 0, slab(5));       // a DIFFERENT chunk in between, on all three axes
+    generateMesh(2, 9, new Uint8Array(CHUNK * CHUNK * HEIGHT));
+    const after = generateMesh(1, -3, terrain);
+
+    expect(alone.positions.length).toBeGreaterThan(0); // denominator: an empty mesh would match trivially
+    expect(Array.from(after.positions)).toEqual(Array.from(alone.positions));
+    expect(Array.from(after.indices)).toEqual(Array.from(alone.indices));
+    expect(Array.from(after.ao)).toEqual(Array.from(alone.ao));
+  });
+
   it('is deterministic — the same input yields byte-identical output', () => {
     // Capture-determinism is load-bearing for the visual gate; a mesher that varies run to run would
     // make every baseline flaky in a way that reads as a rendering bug.
