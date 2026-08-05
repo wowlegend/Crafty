@@ -406,6 +406,26 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
 **MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
 a root cause; do not open 45 separate tickets.
 
+### B-terrain. Terrain/grass SOTA queue — `docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`
+
+▣✓ S1 `71c24ca` mesher extracted + behavioural geometry gate · ▣✓ S3 `d676069` UV transposition (five of
+six face directions) · ▣✓ S5 `03c4297` scoped mask clear. Next: S6 (grass motes seeded at origin with no
+chunk offset), then S7-S15.
+
+- ⊘ **S4 DEFERRED — the plan's flip condition is probably inverted, and I could not settle it.** —
+  `node -e "…"` *(reasoning below; no command settles a taste question)*
+  S4 wants the greedy quad's triangulation diagonal chosen by AO so gradients stop creasing along one
+  fixed diagonal. The plan says flip "when the current diagonal is the brighter one". Working the concrete
+  case of one dark corner and three light: `a0+a2 = 3` vs `a1+a3 = 6`, and flipping is what confines the
+  darkness to the corner that is actually occluded — i.e. flip when the current diagonal is the DARKER
+  pair, the opposite of what the plan says. The canonical voxel formulation appears to read the other way
+  again, so all three readings disagree.
+  **Why it is deferred rather than guessed:** S4 is purely aesthetic. No behavioural test distinguishes
+  correct from inverted — both windings stay CCW, both pass every gate — so the ONLY verification is
+  looking at the render, and the visual harness is exactly what is broken (§B-race). Shipping a coin-flip
+  into a blind harness would produce a green push and an unverifiable result.
+  **Unblocks when §B-race does.** Then: implement, capture, and LOOK at a face with strong AO contrast.
+
 ### B-race. ⛔ THE VISUAL HARNESS IS NON-DETERMINISTIC — found 2026-08-05 by running a CONTROL
 
 **The owed re-baseline is BLOCKED on this.** You cannot freeze a baseline for a state that renders a
@@ -429,8 +449,23 @@ directly it would have read "the UV fix transformed the beast frames", which is 
 same code, twice — is what separated signal from harness noise. **A before/after diff means nothing until
 you know the floor.** Same shape as asserting an absence without a baseline.
 
-- ▢ **[LOOP] root-cause the beast-showcase race** (`spawnBeastTransform` test hook + capture camera). Until
-  it is deterministic, `beast-*` cannot be re-baselined and its gate result carries no information.
+- ▢ **[LOOP] the beast-showcase race — ROOT CAUSE MEASURED 2026-08-05, and it is NOT the camera.**
+  `App.jsx:351-352` frames the beast camera off `store.playerRigidBodyRef?.current`, read *before*
+  `enterCaptureMode` pauses physics — which looks like the obvious culprit. **It is not.** Probed the live
+  capture path twice, sampling at 0/1/2/4/8s: `playerRigidBodyRef.current` is **null at every sample in
+  both runs**. So the hook always takes its `{x:0, y:55, z:0}` fallback and the camera is *deterministic*.
+  What varies is whether the BEAST is rendered at that spot at all — one capture shows it in close-up,
+  the next shows empty landscape from the same camera. **A mount/spawn race, not a framing race.**
+  Next step is to determine what positions the beast when there is no player rigid body, and why it
+  sometimes is not present by capture time. `spawnCharacterCloseup` (`:318`) is the pattern to copy — it
+  places its subject at FIXED constants and documents why ("capture pauses physics → the ground raycast
+  is null, so place the subject at a FIXED elevated Y"). `spawnBeastTransform` is the only showcase hook
+  that depends on live physics state.
+  **Success criterion, so the next attempt is checkable:** two consecutive `visual:capture` runs must
+  produce byte-stable `beast-*` frames (currently 69-72% different). That is measurable without judging
+  the aesthetics, which matters because the harness being fixed is the same one that would judge them.
+  *Deliberately NOT fixed on a guess — shipping a speculative change into a blind harness is the exact
+  pattern the rest of this file exists to stop.*
 - ▢ **[LOOP] add a determinism CONTROL to the visual harness** — capture twice, diff run-to-run, and fail
   on any frame above a floor. A regression gate whose own instrument drifts reports noise as signal, and
   nothing currently measures that.
