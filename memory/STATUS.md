@@ -614,9 +614,12 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ## 3. What's next (the cursor)
 
-**✅ 2026-08-05 — THE COMPOSITOR CAME BACK, and it settled three things in one window.** After nine dead
-iterations the fault cleared ON ITS OWN — the machine was never rebooted (uptime 8d 23h, load 47). It may
-recur; the preflight still aborts loudly with a named cause. What the window bought:
+**⚠️ 2026-08-05 — THE COMPOSITOR IS INTERMITTENT.** It came back on its own after nine dead iterations (no
+reboot, uptime 8d 23h), stayed up for roughly ONE HOUR (~03:11-04:00), and was dead again by ~04:20 with
+the identical signature — rAF 0 firings/1.2s on a bare `data:` URL, `Page.captureScreenshot` timing out —
+at load 7.7, so not load. **It cycles.** Corrects the earlier reading that it had simply "cleared".
+**Operational rule: when the window is open, do BROWSER work first** — everything this session found came
+out of that one hour. What it bought:
 - **X3 confirmed AND fixed** (`5b64f69`) — two bugs stacked, the second of which was breaking the hotbar
   click on DESKTOP as well. See §E-bis X3.
 - **X1 / X2a / X2b have now been SEEN.** They render and are reachable. Two touch-HUD layout defects are

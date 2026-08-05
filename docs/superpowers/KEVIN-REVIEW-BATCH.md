@@ -917,3 +917,21 @@ green over something that does not happen in a browser. Not yet root-caused; I s
 its sector appear** until some unrelated re-render happened. The probe found it immediately (0 sectors after
 unlocking all four; 4 after the fix). It usually self-corrected when a panel closed, which is why it was
 never noticed.
+
+## ⚠️ 2026-08-05 (correction) — the compositor is INTERMITTENT, not "cleared"
+
+**Correcting what I told you two entries above.** I said the fault "cleared on its own" and that the REBOOT
+item was no longer blocking. That was true when I wrote it and wrong as a conclusion: the compositor worked
+for roughly one hour (~03:11–04:00), and by ~04:20 it was dead again with the identical signature —
+`requestAnimationFrame fired 0 times in 1.2s`, reproducing on a bare `data:` URL, plus
+`Page.captureScreenshot timed out` in puppeteer. Machine load was 7.7 at the time, so it is **not** load.
+
+So: **it cycles.** It did not need a reboot to recover once, but it also did not stay recovered. A reboot is
+back on the table as the durable fix — I simply can't claim it is *required*, only that the fault returns on
+its own schedule. **Practical consequence: when the window is open, browser work is the scarce thing and
+should be done first.** Both of this session's real touch findings came out of one good hour.
+
+What this blocked: I could not root-cause the ring-not-closing bug (item above). Two attempts to build a
+diagnostic died on the dead compositor — `ElementHandle.tap()` hangs in `clickablePoint()` and
+`Page.captureScreenshot` times out, both because nothing is rendering. That work is queued for the next
+open window rather than guessed at.
