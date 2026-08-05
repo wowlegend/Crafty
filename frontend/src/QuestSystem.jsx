@@ -410,7 +410,12 @@ export const useQuestSystem = () => {
         useGameStore.setState({ onPlayerDeath: onDeath });
         useGameStore.setState({ onNightSurvived: onNightSurvived });
         useGameStore.setState({ addNotification: addNotification });
-    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification]);
+        // B6c: `updateLevel` was returned from this hook and published NOWHERE, so nothing ever called it.
+        // `stats.level` therefore never moved off 1, and the two level achievements ('Rising Star' at 5,
+        // 'Shining Star' at 10) could never unlock — 2 of the 12 were dead on arrival. Every sibling event
+        // above is published here for its emitter to call; this one was simply left out of the list.
+        useGameStore.setState({ onLevelChanged: updateLevel });
+    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification, updateLevel]);
 
     // S2-B1-M3.5: mob kills now flow through the fan-out bus (was a single store.onMobKill slot a 2nd
     // consumer like ferocity would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.

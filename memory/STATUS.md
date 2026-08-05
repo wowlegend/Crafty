@@ -240,7 +240,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   diamonds in seconds. **CraftingTable permanently destroys every material left in the grid when you close it.**
   `TradingInterface.jsx:24-75`, `data/recipes.js:9-28`, `ui/panels/CraftingTable.jsx:22/27-54/75`,
   `world/Terrain.jsx:819-848`.
-- ▣ **B4 — THE 3D HALF FIXED 2026-08-05. `distToPlayer2D` is gone from the worker entirely.**
+- ▣✓ **B4 — BOTH HALVES FIXED 2026-08-05. `distToPlayer2D` is gone from the worker entirely.**
   `ai.worker.js:119` destructured the player as `const [playerX, , playerZ] = playerPos` under a comment
   reading *"Y is elided: the mob brain reasons on the XZ plane only"* — **the Y was always being sent and
   thrown away**, so no message plumbing was needed, only the decision to use it. Consequence: a zombie 200
@@ -295,7 +295,19 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   verified stale). **+ VISUAL
   RE-BASELINE OWED** — the gameplay HUD baselines still show the OLD buried position; a re-capture is owed
   once machine load < ~10 (was ~24; the capture harness times out above that). Intended change → KEVIN-REVIEW.
-- ▣ **B6 — B6a+B6b FIXED (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
+- ▣✓ **B6 — ALL THREE FIXED.** (B6a+B6b `df90131` 2026-07-14; B6c 2026-08-05.)
+  - **B6c ✓ 2 of the 12 achievements were DEAD ON ARRIVAL.** 'Rising Star' (level 5) and 'Shining Star'
+    (level 10) key off `stats.level`, which is written by exactly one function — `updateLevel` in
+    `QuestSystem.jsx`. It was returned from the hook and **published nowhere**: every sibling event
+    (`onSpellCast`, `onBlockPlace`, `onChestOpen`, `onNightSurvived`…) is put on the store for its emitter
+    to call, and this one was simply left off that list, so nothing ever called it and `stats.level` never
+    moved off 1. Published as `onLevelChanged` and called from the XP system's level effect — deliberately
+    OUTSIDE its increase-only branch, so a save loaded at level 7 retroactively unlocks Rising Star.
+    Gated behaviourally at BOTH ends (mount the real quest hook and drive the real unlock set; mount the
+    real XP hook and move the store's level) and mutation-proven both ways: deleting the publish reddens 6,
+    deleting the call reddens 2. *An earlier draft asserted the emitter with a source-grep; replaced with a
+    mount before `gate-shape` had to reject it.*
+  - ▣✓ **B6a+B6b (`df90131`, 2026-07-14).** ✓ **B6a** double-count + ✓ **B6b** dead mobType filter —
   one pure `game/questMatch.js` seam replaced the buggy inline matcher: a 'kill' quest advances only on the
   'kill' dispatch (not the kill_type echo), a 'kill_type' quest only for its own mob. RED-first e2e through the
   real hook + emitMobKill; mutation-proven both ways. **Still open (separate, LOW): the 2 unlockable

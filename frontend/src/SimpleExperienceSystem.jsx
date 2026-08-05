@@ -38,6 +38,12 @@ export const useSimpleExperience = () => {
     } else {
       prevLevel.current = level;
     }
+    // B6c: tell the quest system the level, so the two level achievements can unlock. Deliberately OUTSIDE
+    // the increase-only branch: a save loaded at level 7 arrives as a 1 -> 7 change and must retroactively
+    // unlock 'Rising Star', which an increase-only VFX gate would also catch, but a future refactor of that
+    // branch must not silently take the achievement with it. Rare transition, so no Game-Loop-Isolation
+    // concern. Optional-call because QuestSystem may not have mounted yet on the very first tick.
+    useGameStore.getState().onLevelChanged?.(level);
   }, [level]);
 
   // Legacy bridge: consumers that call GameMethods.grantXP route to the store action.
