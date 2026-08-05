@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-08-05 — X3: the hotbar was unclickable on touch AND threw on desktop (`5b64f69`)
+
+The compositor recovered after nine dead iterations (the machine was never rebooted — the fault cleared on
+its own), and `touch-probe.mjs` answered X3 in a single run: `tapped "dirt" (was "grass") -> selected
+"grass"`. Confirmed by the running thing, not by an argument. **It was two bugs stacked.**
+
+**Layer 1 — the overlay swallowed the tap.** `TouchControls`' root is `fixed; inset:0; z-40` and was
+hit-testable, making it the topmost element over the entire viewport; the `data-touch-btn` controls only
+ever worked because they are its *children*. A live `elementsFromPoint` probe settled in one run what two
+code readings had not: at a hotbar slot's centre it returned that bare div, with the hotbar three entries
+below. So the router's ownership test was being handed the overlay — which is why the first attempt,
+widening the selector, changed nothing at all. Fixed exactly as STATUS had predicted six weeks earlier:
+`pointerEvents:'none'` on the root, `'auto'` on the hit-targets, ownership in a pure tested module, and the
+listeners moved to `window` (a `pointer-events:none` root is no longer an ancestor of the touch target, so
+listeners bound to it would never fire and move/look would die).
+
+**Layer 2 — the handler then threw, on desktop too.** With the tap landing, the probe surfaced
+`PAGEERROR: gameState.setSelectedBlock is not a function`. The HUD slice carried `selectedBlock` but not
+its setter, so **every mouse click on a hotbar slot had been throwing** — invisible because the keyboard
+and scroll paths call the store directly, so selection looked fine and only the click was dead. The slice
+was an anonymous literal inside a component, which is why no test could reach the contract; extracted to
+`src/store/hudState.js` and gated behaviourally against the real store.
+
+**A regression I caused, caught by the probe:** moving the listeners to `window` made `onEnd`'s
+unconditional `preventDefault()` fire for menu taps, killing touch cold-start outright. Now gated on the
+focus state and on the touch not being UI-owned; cleanup still runs unconditionally.
+
+Also found, and left for Kevin: **the four `beast-*` visual baselines contain no beast.** The fixture exists
+to show the beast silhouettes; the baselines are empty landscapes, blessed on 2026-06-22 without anyone
+looking. The current captures are correct. The gate failing on them is the gate working.
+
 ## 2026-08-03 — the boss fight survives a reload, not just the win (`2de54da`)
 
 **A-bis B2g, closing B2 at 8 of 8.** The Shadow Dragon encounter lived entirely in `useBossSystem`'s React

@@ -844,3 +844,49 @@ compositor works. The 31-state visual re-baseline is behind the same door.
 **I have deliberately NOT worked around it.** A wall-clock fallback would let the visual gate go green over
 blank frames — the exact "reports pass over what it never examined" defect this project keeps paying for. So
 it stays hard-failing with a named cause until the box is healthy.
+
+## ✅ 2026-08-05 — the compositor came back, and it answered three open items at once
+
+**The machine was NOT rebooted** (uptime 8d 23h, load 47) — the fault cleared on its own. Everything below
+came out of that window, so the earlier "REBOOT" item is no longer blocking. It may well recur; the
+preflight still fails loudly with a named cause if it does.
+
+### 1. X3 is CONFIRMED and FIXED — and it was hiding a DESKTOP bug
+`touch-probe.mjs` answered in one run: `tapped "dirt" (was "grass") -> selected "grass"`. Two bugs stacked.
+- The `z-40` touch overlay was hit-testable across the whole viewport, so it was the topmost element
+  everywhere and swallowed the tap. (A live `elementsFromPoint` probe showed this; two code readings had
+  not. My first fix — widening a selector — changed nothing, because the ownership test was being handed
+  the overlay, never the hotbar.)
+- With the tap finally landing, the handler **threw**: `gameState.setSelectedBlock is not a function`. The
+  HUD slice carried the value but not its setter, so **every mouse click on a hotbar slot had been throwing
+  on desktop too.** It hid because the keyboard/scroll path calls the store directly, so selection *looked*
+  fine — only the click was dead.
+All 7 touch checks now pass, exit 0. Shipped `5b64f69`.
+
+### 2. ⚠️ THE 4 `beast-*` BASELINES ARE BROKEN — they contain no beast
+This is the one I'd like your call on. The fixture exists to show *"the 4-beast ROSTER (distinct
+silhouettes: fire=winged warrior, ice=horned quadruped brute, lightning=avian raptor, arcane=blocky
+construct) — IN-WORLD third-person reveals for review."*
+
+**`baseline/beast-fire.png` is an empty sunset mountain. There is no beast in the frame.** The CURRENT
+capture shows the winged warrior correctly. Same for ice/lightning/arcane (15–18% diffs). No commit has
+touched beast rendering since the baselines were taken on 2026-06-22 — the baselines were simply blessed
+without anyone looking at them, and the gate has been comparing against a broken reference for six weeks.
+**The gate failing here is the gate working.** I have NOT re-baselined; that is your call, but the evidence
+says these four must be replaced.
+
+### 3. The visual gate: 26 of 32 pass
+- `mobile` 6.11% — **expected**: the baseline is from 2026-06-22 and predates the X1/X2a/X2b ring toggles.
+- `beast-fire` 18.48% · `beast-ice` 18.35% · `beast-lightning` 15.65% · `beast-arcane` 17.69% — item 2.
+- `explore-day-low` 6.55% — the previously-recorded intended diff.
+Today's X3 change is provably non-visual (pointer-events, listener binding, a store key), so none of these
+are from it.
+
+### 4. X1 / X2a / X2b have now been SEEN — and the touch HUD has real layout problems
+The ring toggles render and are reachable. But looking at the frames at 390×844, two defects stand out that
+are worth your eye before any polish pass:
+- **the health/mana bars overlap the hotbar's left slots** — the bars sit on top of roughly the first four
+  slots, so those blocks are visually buried;
+- **the top-right controls collide and clip** — the pause pill overlaps a neighbouring element and one runs
+  off the right edge entirely.
+The rings themselves are still only seen CLOSED. Say the word and I will capture them open.

@@ -599,14 +599,21 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 
 ## 3. What's next (the cursor)
 
-**⛔ 2026-08-03 — THE BINDING CONSTRAINT IS THE COMPOSITOR, NOT THE QUEUE.** `npm run visual:capture` has
-aborted on **eight consecutive iterations** with the same named cause: `requestAnimationFrame fired 0 times
-in 1.2s`. It reproduces on a bare `data:` URL with no app loaded, at machine loads from 5.7 to 60, so it is
-neither load nor code. **Everything render-bearing is blocked behind it**, including the only lived check
-that X1 / X2a / X2b have — three touch features that are shipped, gated and green, and that **no human has
-ever seen**. Kevin: a REBOOT is the routed fix (an earlier "reinstall Chrome" reading was wrong — Chrome is
-healthy; `Page.captureScreenshot` hangs on a blank page). Deliberately NOT worked around: a wall-clock
-fallback would green the gate over blank frames, which is this project's signature defect.
+**✅ 2026-08-05 — THE COMPOSITOR CAME BACK, and it settled three things in one window.** After nine dead
+iterations the fault cleared ON ITS OWN — the machine was never rebooted (uptime 8d 23h, load 47). It may
+recur; the preflight still aborts loudly with a named cause. What the window bought:
+- **X3 confirmed AND fixed** (`5b64f69`) — two bugs stacked, the second of which was breaking the hotbar
+  click on DESKTOP as well. See §E-bis X3.
+- **X1 / X2a / X2b have now been SEEN.** They render and are reachable. Two touch-HUD layout defects are
+  visible at 390x844 and are routed to Kevin: the health/mana bars OVERLAP the hotbar's left slots, and the
+  top-right controls collide with one clipping off the right edge. The rings are still only seen CLOSED.
+- **The visual gate ran: 26 of 32 pass.** `mobile` 6.11% is expected (baseline predates the ring toggles);
+  `explore-day-low` 6.55% is the known intended diff; and **the four `beast-*` baselines are BROKEN — they
+  contain no beast at all.** The fixture exists to show the four silhouettes; the baselines are empty
+  landscapes blessed 2026-06-22 without anyone looking, so the gate has compared against a broken reference
+  for six weeks. The current captures are correct. **Not re-baselined — Kevin's call**, but the evidence
+  says those four must be replaced. *A baseline nobody looked at is the same defect as a gate that reports
+  PASS over input it never examined.*
 
 **Harness ratchets are now closed as a class.** `mutation-proof-trailer` (a new gate must state its proof),
 `queue-ledger` (a finding must carry its own marker), `gate-shape` (no assertion satisfiable by a comment),
