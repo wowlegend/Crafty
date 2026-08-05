@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-05 — two live bindings the player could never discover (`8a5e008`)
+
+`keyMap.js` is the binding single-source-of-truth, created so "the HUD can never again advertise a key with
+no handler" — the `M - Magic` lie. Its gate asserts exactly that, and nothing ever asserted the converse.
+Two real bindings had fallen through the gap:
+
+**`L` — the quest log** (lore, giver, objective). Handled live, advertised nowhere at all, sitting directly
+beside the E/M/C/B/U panel toggles that are listed. A player reading the controls panel learns five panels
+and never discovers the sixth.
+
+**`Q` — claim completed quests.** Handled live, on the title screen only, absent from the SSOT and so from
+the in-game controls panel.
+
+An advertised key with no handler is a lie; a handler with no advertisement is a feature the player never
+finds. Both are drift, and only one had a gate. Both rows added, and the gate now runs both directions —
+with the `1–4` compound row exempted explicitly, plus a test asserting the exemption list can only name
+codes a real row covers, or it becomes somewhere to hide orphans.
+
+This began as the registry's "title-screen hint should read from keyMap". The defect turned out to point
+the other way, and that item is struck with the reasoning rather than dropped: the title hints are
+deliberately abbreviated copy, and re-rendering them from KEY_MAP would change visible text the `menu`
+baseline covers and the compositor cannot currently verify.
+
 ## 2026-08-05 — retraction: the "five stale section pointers" were my own false positives (`8d3dcf8`)
 
 The section-citation lint added earlier the same day reported five dangling cross-doc pointers, froze its
