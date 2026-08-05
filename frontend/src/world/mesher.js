@@ -232,13 +232,18 @@ export function generateMesh(cx, cz, blocks) {
             blockType, 0, 0
           );
 
-          // Tiled repeats UV coordinates mapping matching CCW corners
-          uvs.push(
-            0, 0,
-            0, h,
-            w, h,
-            w, 0
-          );
+          // Tiled UVs. The rect must match the quad's WORLD edges in the SAME orientation or the texture
+          // stretches by w/h across every merged face.
+          //
+          // Only +Y builds its corners so that c0->c1 spans `h` (it walks x by h); the other FIVE
+          // directions walk their first edge by `w`. A single shared rect therefore fed `u` the h-edge and
+          // `v` the w-edge on five of six faces — invisible whenever a merge is square, and stretching up
+          // to 30:1 on the 16x1 strips that side faces actually merge into.
+          if (d === 1 && dirFlag === 1) {
+            uvs.push(0, 0, 0, h, w, h, w, 0); // +Y: c0->c1 spans h, c0->c3 spans w
+          } else {
+            uvs.push(0, 0, w, 0, w, h, 0, h); // the rest: c0->c1 spans w, c0->c3 spans h
+          }
 
           indices.push(
             indexOffset, indexOffset + 1, indexOffset + 2,

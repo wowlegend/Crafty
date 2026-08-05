@@ -87,6 +87,46 @@ describe('greedy mesher — geometry contract', () => {
     expect(withWater.positions.length).toBe(withAir.positions.length);
   });
 
+  it('UV distance equals WORLD distance on every quad edge — the texture tiles 1:1 per block', () => {
+    // A greedy quad covers w x h blocks, so its UV rect must be w x h in the SAME orientation, or the
+    // texture stretches by w/h. The mesher emitted one rectangle for all six face directions while only
+    // +Y has its c0->c1 edge spanning `h` — the other five span `w`, so u took the h-edge and v took the
+    // w-edge. Invisible on a square merge (w === h) and increasingly wrong as a merge gets longer, which
+    // is why reading the code never settled it: the constant looks symmetric.
+    //
+    // TWO fixtures, because one is not enough and finding that out is the point. A full 16x16 slab
+    // exercises the four side faces (16 wide x 1 tall — maximally asymmetric) but its top and bottom
+    // merge to 16x16, and on a SQUARE merge a transposed UV rect is identical to a correct one. The
+    // half-footprint slab makes the top/bottom merge 8x16 so -Y is covered too. With only the first
+    // fixture this gate caught 4 of the 5 broken directions and looked complete.
+    const full = generateMesh(0, 0, slab(1));
+    const half = (() => {
+      const b = new Uint8Array(CHUNK * CHUNK * HEIGHT);
+      for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK / 2; x++) b[idx(x, 0, z)] = 1;
+      return generateMesh(0, 0, b);
+    })();
+    const P = new Float32Array([...full.positions, ...half.positions]);
+    const U = new Float32Array([...full.uvs, ...half.uvs]);
+    const quads = P.length / 12;
+    const len3 = (i, j) => Math.hypot(P[j * 3] - P[i * 3], P[j * 3 + 1] - P[i * 3 + 1], P[j * 3 + 2] - P[i * 3 + 2]);
+    const len2 = (i, j) => Math.hypot(U[j * 2] - U[i * 2], U[j * 2 + 1] - U[i * 2 + 1]);
+    const bad = [];
+    let checked = 0;
+    for (let q = 0; q < quads; q++) {
+      const [c0, c1, c3] = [q * 4, q * 4 + 1, q * 4 + 3];
+      const wa = len3(c0, c1), ua = len2(c0, c1); // first edge
+      const wb = len3(c0, c3), ub = len2(c0, c3); // second edge
+      checked++;
+      if (Math.abs(wa - ua) > 1e-6 || Math.abs(wb - ub) > 1e-6) {
+        bad.push({ quad: q, world: [wa, wb], uv: [ua, ub] });
+      }
+    }
+    // Denominator: a fixture that merged to nothing would report a clean pass.
+    expect(checked).toBe(quads);
+    expect(quads).toBeGreaterThan(0);
+    expect(bad).toEqual([]);
+  });
+
   it('is deterministic — the same input yields byte-identical output', () => {
     // Capture-determinism is load-bearing for the visual gate; a mesher that varies run to run would
     // make every baseline flaky in a way that reads as a rendering bug.
