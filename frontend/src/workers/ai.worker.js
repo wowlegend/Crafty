@@ -18,6 +18,7 @@
 import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
+import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 
 // A* Voxel Pathfinding Solver on a 9x9 Local Grid
 // startX, startZ are the local starting grid coords (typically 4, 4)
@@ -116,7 +117,10 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
 self.onmessage = function(e) {
   if (e.data.type === 'TICK') {
     const { playerPos, now, delta, mobs } = e.data;
-    const [playerX, , playerZ] = playerPos; // Y is elided: the mob brain reasons on the XZ plane only
+    // B4: the Y is no longer elided. It was always being SENT and thrown away here, under a comment saying
+    // "the mob brain reasons on the XZ plane only" — which is exactly why pillaring up, walling in or going
+    // underground gave zero protection and building was strategically pointless.
+    const [playerX, playerY, playerZ] = playerPos;
     
     const AGGRO_RANGE = 20;
     const MELEE_RANGE = 2.5;
@@ -157,14 +161,20 @@ self.onmessage = function(e) {
       let pendingAttack = null; // M2 #4: what this mob WOULD strike this tick (gated through the windup below)
       
       const dx = playerX - x;
+      const dy = playerY - y;
       const dz = playerZ - z;
-      const distToPlayer2D = Math.sqrt(dx * dx + dz * dz);
+      // B4: SENSING is 3D and REACHING adds a vertical clamp (game/mobSenses.js). Every decision that used
+      // the old XZ-only distance now asks one of those two questions instead, so the flat number is gone
+      // entirely — eslint's no-unused-vars confirmed no site still wants it. MOVEMENT is unaffected: mobs
+      // steer by setting targetX/targetZ to the player's XZ, which never consulted this value.
+      const distToPlayer3D = dist3D(dx, dy, dz);
       
       // Aggro transition (+ de-aggro leash): a chased mob drops aggro once the player gets past
       // 1.5x aggro range, so it stops pursuing across the whole map and falls back to wandering below.
-      if (!passive && distToPlayer2D < AGGRO_RANGE) {
+      // B4: SENSING is 3D. A mob forty blocks underground should not notice a player on the surface.
+      if (!passive && withinSense(dx, dy, dz, AGGRO_RANGE)) {
         isAggro = true;
-      } else if (isAggro && distToPlayer2D > AGGRO_RANGE * 1.5) {
+      } else if (isAggro && distToPlayer3D > AGGRO_RANGE * 1.5) {
         isAggro = false;
       }
       
@@ -229,13 +239,15 @@ self.onmessage = function(e) {
         if (isCoverSeeking) {
           // If seeking cover, steer towards target cover point
         } else if (type === 'skeleton') {
-          // Archery Logic: Maintain tactical range
-          if (distToPlayer2D < 8) {
+          // Archery Logic: Maintain tactical range. B4: engagement distance is 3D — an archer forty blocks
+          // below you is not "in range", and kiting away from a player it cannot reach is pointless.
+          // Shooting UP or DOWN within range stays legal; that is a fair ranged threat against a wall.
+          if (distToPlayer3D < 8) {
             // Retreat: Walk away from player
             targetX = x - dx;
             targetZ = z - dz;
             isMoving = true;
-          } else if (distToPlayer2D > ARCHERY_RANGE) {
+          } else if (distToPlayer3D > ARCHERY_RANGE) {
             // Close in
             targetX = playerX;
             targetZ = playerZ;
@@ -252,17 +264,20 @@ self.onmessage = function(e) {
           isMoving = true;
           targetX = playerX;
           targetZ = playerZ;
-          if (distToPlayer2D < LEAP_RANGE && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
+          // B4: a leap may cover as much height as it does ground — a spider springing up a 6-block face is
+          // a fair threat and keeps a low wall from being an auto-win. A swing may not.
+          if (canReach(dx, dy, dz, LEAP_RANGE, LEAP_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
             pendingAttack = { id, type: 'leap', damage: 8, position: [x, y, z] };
-          } else if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
+          } else if (canReach(dx, dy, dz, MELEE_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         } else {
-          // Standard Melee (Zombie & Bosses)
+          // Standard Melee (Zombie & Bosses). B4: this is THE line that made building pointless — a zombie
+          // 200 blocks below you, one block away horizontally, was inside MELEE_RANGE and swung.
           isMoving = true;
           targetX = playerX;
           targetZ = playerZ;
-          if (distToPlayer2D < MELEE_RANGE && now - lastAttackTime > ATTACK_COOLDOWN) {
+          if (canReach(dx, dy, dz, MELEE_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         }

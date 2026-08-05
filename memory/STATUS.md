@@ -240,11 +240,25 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   diamonds in seconds. **CraftingTable permanently destroys every material left in the grid when you close it.**
   `TradingInterface.jsx:24-75`, `data/recipes.js:9-28`, `ui/panels/CraftingTable.jsx:22/27-54/75`,
   `world/Terrain.jsx:819-848`.
-- ▢ **B4 [LOOP] MOB AI IS 2D — the Y axis does not exist.** `ai.worker.js:166` uses `distToPlayer2D`. Pillaring
-  up, walling in, or going underground gives **ZERO** protection — mobs melee you through 200 blocks of vertical
-  separation. In a voxel game with a night-siege loop, **building is strategically pointless.** This is the one
-  that most damages the core fantasy. Also here: the attack telegraph is bypassable (a stale `windupUntil`
-  survives de-aggro → instant undodgeable hit on re-aggro, `ai.worker.js:280-287`).
+- ▣ **B4 — THE 3D HALF FIXED 2026-08-05. `distToPlayer2D` is gone from the worker entirely.**
+  `ai.worker.js:119` destructured the player as `const [playerX, , playerZ] = playerPos` under a comment
+  reading *"Y is elided: the mob brain reasons on the XZ plane only"* — **the Y was always being sent and
+  thrown away**, so no message plumbing was needed, only the decision to use it. Consequence: a zombie 200
+  blocks below you and one block away horizontally was inside `MELEE_RANGE` and swung, so pillaring up,
+  walling in and going underground gave ZERO protection and building was strategically pointless.
+  Seam-extracted to pure `src/game/mobSenses.js`: **SENSING** (aggro, de-aggro leash, archery engagement)
+  is now 3D, **REACHING** (melee, leap) additionally requires vertical proximity, and **MOVEMENT is
+  untouched** — mobs still steer by setting `targetX/targetZ` to the player's XZ. eslint's
+  `no-unused-vars` is what proved every call site had migrated: the old flat variable became dead.
+  `VERTICAL_REACH = 2.5` is a **TASTE CALL, veto-able** — a 2-block ledge is still hittable, a 3-block wall
+  is not; a spider's LEAP may cover as much height as ground so a low wall is not an auto-win. Both
+  directions gated (14 pure + 11 scenario assertions incl. the counter-case that mobs must STILL reach a
+  player on level ground) and mutation-proven: reverting the melee line to the XZ comparison reddens 2.
+  - ▢ **B4b STILL OPEN — the attack telegraph is bankable.** VERIFIED on live HEAD, not inherited: the
+    `attackPhase()` call sits INSIDE `if (isAggro)`, so on de-aggro it stops being called and `windupUntil`
+    keeps its stale value. On re-aggro `now >= windupUntil` is already true, so `attackPhase` returns
+    `strike` immediately — **a hit with no windup to read or dodge**. Fix is to clear `windupUntil` on the
+    de-aggro transition; it is small, but it is a distinct unit from the 3D work above.
 - ▣✓ **B5 [LOOP] THE HUD LIES — DONE, 2026-07-14: dial (`712ea78`) + stat-stack layout (`7e0f004`) + progression-modal (`690b070`) FIXED; inventory-"+" verified STALE. Only the owed visual re-baseline remains (capture harness unhealthy).**
   ✓ **The day/night dial is now synced to the real clock.** It was a quarter-cycle (90°) out of phase —
   the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
