@@ -6,6 +6,7 @@ import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
+import { selectHudState } from './store/hudState.js';
 import { motionIntensity } from './game/a11y.js';
 import { makeAttackSoundPlayer } from './game/attackSounds.js';
 import { isCaptureMode } from './devtest/captureMode';
@@ -72,37 +73,7 @@ function GameAppWrapper() {
 
 function GameApp({ experienceSystem }) {
   const t = useT();
-  const gameState = useGameStore(useShallow(state => ({
-        isSpawnChunkLoaded: state.isSpawnChunkLoaded,
-        isDay: state.isDay,
-        isAlive: state.isAlive,
-        gameStarted: state.gameStarted,
-        inventory: state.inventory,
-        addToInventory: state.addToInventory,
-        removeFromInventory: state.removeFromInventory,
-        setShowInventory: state.setShowInventory,
-        setShowCrafting: state.setShowCrafting,
-        setShowMagic: state.setShowMagic,
-        setShowBuildingTools: state.setShowBuildingTools,
-        setShowSettings: state.setShowSettings,
-        setShowTradingInterface: state.setShowTradingInterface,
-        setShowQuestLog: state.setShowQuestLog,
-        showInventory: state.showInventory,
-        showCrafting: state.showCrafting,
-        showMagic: state.showMagic,
-        showBuildingTools: state.showBuildingTools,
-        showSettings: state.showSettings,
-        showTradingInterface: state.showTradingInterface,
-        showQuestLog: state.showQuestLog,
-        showWorldManager: state.showWorldManager,
-        setShowWorldManager: state.setShowWorldManager,
-        selectedVillager: state.selectedVillager,
-        loadWorldData: state.loadWorldData,
-        selectedBlock: state.selectedBlock,
-        gameMode: state.gameMode,
-        activeSpell: state.activeSpell,
-        setActiveSpell: state.setActiveSpell
-    })));
+  const gameState = useGameStore(useShallow(selectHudState));
   // Capture-only HUD suppression (character-studio shots). Default false in gameplay.
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);

@@ -481,40 +481,30 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   `talent` field) → `setIntent(verb, true)`. **Reuses the entire existing intent path — zero downstream change.**
   Gate: pure sector-hit math (unit, like `input/touchMath.js`) + unlock-gating test + a wheel-open state added to
   the `mobile.png` fixture (`getCaptureOpts().showTouch` already exists). Thumb-reach/ring layout → Kevin's eye.
-- ▢ **X3 [LOOP] TOUCH HOTBAR — ⚠️ STILL UNCONFIRMED, but now SELF-ANSWERING.**
-  > **2026-08-03:** the behavioural check now lives in `scripts/visual/touch-probe.mjs` ("HOTBAR tap selects
-  > that block on touch") — it taps a slot and compares the store's `selectedBlock`. It could not return a
-  > verdict yet because the machine's compositor fault recurred (rAF 0/1.2s), but it answers itself on the
-  > next clean run. **Also fixed a comment-lie in `GameHud.jsx` (`76e8ebf`)**: it claimed the touch router
-  > "now skips [data-hud-interactive]" — it does not; the SEAM landed, the ROUTING never did.
-  > *(Harness note: extending touch-probe is the instruction and it is right. A standalone probe fails to
-  > enter play — touch-probe deletes `requestPointerLock` so cold-start cannot take the desktop path, and in
-  > PUPPETEER `KnownDevices` is viewport+UA only; the webkit-switch trap below is a PLAYWRIGHT trap.)*
-  > **Status 2026-07-13: I tried to reproduce this and FAILED. Recording that honestly, because a
-  > code-reading is a HYPOTHESIS (LOOP-CHARTER §0-B) and this campaign exists precisely to distrust them.**
-
-  **The hypothesis (from reading, unproven):** `ui/TouchControls.jsx:113-117` renders its root as
-  `position:fixed; inset:0; zIndex:40` with **no `pointerEvents:'none'`**, above the HUD/hotbar (`z-20`), and
-  its handlers `preventDefault()`. That *would* hit-cover the onClick-wired hotbar and swallow the tap.
-  (`TouchControlsSurface` does set `pointerEvents:none`; the ROOT does not.)
-
-  **What I actually OBSERVED when I drove it** (chromium, 390×844, `hasTouch`): I never got into the game, so
-  the hotbar was never even in the DOM (`[data-hud-interactive]` = 0, `gameStarted` = false). Two traps, both
-  MINE, both worth knowing:
-  1. `devices['iPhone 13']` carries `defaultBrowserType:'webkit'` → it silently switches browser, and the
-     project's WebGL flags (`--use-angle=swiftshader`) are **chromium-only**, so the game never boots. Emulate
-     touch explicitly (`browserName:'chromium'`, `hasTouch:true`) instead.
-  2. A **dev-only** `z-50` FAB (`ui/DebugOverlay.jsx:167`, `fixed bottom-4 left-4`) intercepts taps on the
-     phone viewport. **It is NOT in production** — do not report it as a bug (I nearly did).
-
-  **The right harness already exists:** `scripts/visual/touch-probe.mjs` drives the real cold-start (taps
-  "Start Adventure" via a live handle) and its own comments warn that a naive fixed-coordinate tap *"caused a
-  false 'cold-start dead' alarm"* — the exact trap I fell into. **Extend THAT**, don't re-invent it.
-  **Next step:** drive a hotbar tap through touch-probe's entry path and see what actually happens. If the tap
-  is swallowed → fix (`pointerEvents:'none'` on the root, `'auto'` on the hit-targets, and skip routing for
-  `[data-hud-interactive]`). If not → close this and delete the claim.
-  *(Seams already landed for whichever way it goes: `data-hud-interactive` on the hotbar container +
-  `data-hotbar-block={type}` per slot.)*
+- ▣✓ **X3 CONFIRMED then FIXED 2026-08-05 — and it was TWO bugs stacked, not one.** The compositor came
+  back after nine dead iterations; `touch-probe.mjs` answered immediately and unambiguously:
+  `tapped "dirt" (was "grass") -> selected "grass"` — the tap WAS being swallowed. Now:
+  `tapped "dirt" (was "grass") -> selected "dirt"`, all 7 checks PASS, exit 0.
+  - **Layer 1 — the overlay swallowed the tap.** `ui/TouchControls.jsx`'s root is `fixed; inset:0; z-40`
+    and was hit-testable, so it was the TOPMOST element over the entire viewport; `data-touch-btn` buttons
+    only ever worked because they are its CHILDREN. Fix is exactly what the old hypothesis below predicted:
+    `pointerEvents:'none'` on the root, `'auto'` on the hit-targets, ownership routing via the new pure
+    `src/input/touchOwnership.js`, and the touch listeners moved to `window` (a `pointer-events:none` root
+    stops being an ancestor of the target, so listeners bound to it would never fire and move/look would die).
+  - **Layer 2 — the handler then THREW, on DESKTOP too.** With the tap finally landing, the probe reported
+    `PAGEERROR: gameState.setSelectedBlock is not a function`. The HUD slice in `App.jsx` carried
+    `selectedBlock` but not its setter, so **every mouse click on a hotbar slot had been throwing** — hidden
+    because the keyboard/scroll path calls the store directly, so selection LOOKED fine. Slice extracted to
+    `src/store/hudState.js` so the producer/consumer contract is testable at all; gated behaviourally.
+  - **A regression I caused and the probe caught:** moving the listeners to `window` made `onEnd`'s
+    UNCONDITIONAL `preventDefault()` fire for menu taps, killing touch cold-start outright
+    (`STUCK on title`). It is now gated on `getInput().active` AND on the touch not being UI-owned.
+    Cleanup still runs unconditionally, or a touch ending after the gate closes leaves the player walking.
+  - **Process note worth keeping:** the hypothesis recorded below was RIGHT, including the exact remedy, and
+    my first attempt ignored it and merely widened a selector — which changed nothing, because the
+    ownership test was being handed the overlay rather than the hotbar. A live DOM probe
+    (`elementsFromPoint` at the slot centre) settled in one run what two readings had not. **Verify against
+    the running thing, not against the source.**
 - ▣✓ **X2a SHIPPED `f04d79b` — cooldown feedback on touch.** The sweep went ON the ring sectors rather
   than porting `<AbilityBar>` to a new region: a touch placement would have to dodge the joystick, the
   action cluster, the tray AND the ring — four constraints, decided blind. Closed toggle carries an

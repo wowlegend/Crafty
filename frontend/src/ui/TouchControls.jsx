@@ -8,6 +8,7 @@ import { setIntent, setActive, getInput } from '../input/inputState';
 import { unlockedAspectVerbs, ringLayout, TAP_HOLD_MS } from '../input/aspectWheel';
 import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
+import { ownsTouch } from '../input/touchOwnership';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
 import { TRAY_PANELS, togglePanel } from './touchTray';
 import TouchControlsSurface from './TouchControlsSurface';
@@ -54,12 +55,20 @@ function TouchControlsLive({ isWorldBuilt }) {
     const router = routerRef.current;
     const camera = () => useGameStore.getState().gameCamera;
 
-    // Touches that start on a <button> (tap-to-play / pause / action) are owned by that button's
-    // onPointerUp -- skip them here so a tap never also starts a move/look zone (no camera jump).
-    const isButton = (t) => {
-      const node = document.elementFromPoint?.(t.clientX, t.clientY);
-      return !!(node && node.closest && node.closest('button[data-touch-btn]'));
-    };
+    // Touches that start on a UI control are owned by that control's own handler -- skip them here so a tap
+    // never also starts a move/look zone (no camera jump) and preventDefault() never eats its click.
+    //
+    // X3: this used to match ONLY `button[data-touch-btn]`, so a hotbar slot -- a `<button
+    // data-hotbar-block>` inside `[data-hud-interactive]` -- was treated as scenery, routed into a look-drag,
+    // and had its synthesized click suppressed. A voxel BUILDING game was locked to one block on iPad.
+    //
+    // Widening the selector alone did NOT fix it, which a live DOM probe showed and a code reading did not:
+    // this root is `inset:0` with default `pointer-events:auto`, so it was the TOPMOST element everywhere.
+    // `elementFromPoint` at a hotbar slot returned THIS DIV, never the hotbar, and the `data-touch-btn`
+    // buttons only ever worked because they are its CHILDREN. The ownership test was asking the wrong
+    // element. The root is now transparent to hit-testing (see the style below) so the real target is the
+    // HUD control itself; `t.target` is then exactly the element the touch began on.
+    const isButton = (t) => ownsTouch(t.target);
 
     const onStart = (e) => {
       if (!getInput().active) return; // focus gate: no move/look routing when paused / in a panel (M3a)
@@ -87,23 +96,34 @@ function TouchControlsLive({ isWorldBuilt }) {
       }
     };
     const onEnd = (e) => {
+      // Cleanup runs UNCONDITIONALLY and before any gate: a touch that ends after the gate closed (a panel
+      // opened mid-drag) must still clear its intents, or the player keeps walking with no finger down.
       handleTouchEnd(router, e.changedTouches, { setIntent });
-      e.preventDefault();
+      // preventDefault, however, is ONLY for touches we actually own. This handler used to be bound to the
+      // root layer, which never saw a menu touch, so an unconditional preventDefault here was harmless.
+      // Bound to `window` (X3) it sees every touchend in the app — and it suppressed the synthesized click
+      // on the title screen's "Start Adventure", killing touch cold-start outright. Caught by touch-probe,
+      // not by review: the change that moved these listeners looked local.
+      if (getInput().active && [...e.changedTouches].some((t) => !ownsTouch(t.target))) e.preventDefault();
       // recenter the knob on release (imperative DOM write -> GLI-safe)
       const knob = rootRef.current && rootRef.current.querySelector('[data-touch-knob]');
       if (knob) knob.style.transform = 'translate(-50%, -50%)';
     };
 
+    // X3: these listen on WINDOW, not on this root. The root is now `pointer-events:none` so a tap reaches
+    // the HUD control underneath it; that also means the root stops being an ancestor of the touch target,
+    // so a listener bound to it would never fire and move/look would die entirely. Window sees every touch
+    // regardless of which element it landed on, which is what a global input router actually wants.
     // passive:false so preventDefault() actually cancels scroll/zoom/pull-to-refresh (spec section 4).
-    el.addEventListener('touchstart', onStart, { passive: false });
-    el.addEventListener('touchmove', onMove, { passive: false });
-    el.addEventListener('touchend', onEnd, { passive: false });
-    el.addEventListener('touchcancel', onEnd, { passive: false });
+    window.addEventListener('touchstart', onStart, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd, { passive: false });
+    window.addEventListener('touchcancel', onEnd, { passive: false });
     return () => {
-      el.removeEventListener('touchstart', onStart);
-      el.removeEventListener('touchmove', onMove);
-      el.removeEventListener('touchend', onEnd);
-      el.removeEventListener('touchcancel', onEnd);
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchcancel', onEnd);
       cancelAnimationFrame(nubRafRef.current); // W4-T11: drop any pending knob-render frame
       for (const k of MOVE_KEYS) setIntent(k, false); // clear on unmount
       setActive(false); // relinquish the active gate so it never stays stuck with no touch surface
@@ -117,12 +137,21 @@ function TouchControlsLive({ isWorldBuilt }) {
   const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
   const spellPositions = ringLayout(SPELL_ORDER.length, 78);
-  const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0 };
+  // pointerEvents 'auto' re-enables hit-testing on each control, since the root below is now 'none' (X3).
+  const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0, pointerEvents: 'auto' };
   return (
     <div
       ref={rootRef}
-      style={{ position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
-               WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
+        // X3: pointerEvents 'none' is LOAD-BEARING, not cosmetic. This layer is inset:0 over the whole
+        // viewport, so while it was hit-testable it was the topmost element EVERYWHERE and swallowed every
+        // tap aimed at the HUD beneath it — the hotbar could not be clicked at all on touch. Its own
+        // controls opt back in via `hit` above, and the touch listeners moved to `window` so routing still
+        // sees everything. Do not "tidy" this back to auto.
+        pointerEvents: 'none',
+        WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none',
+      }}
     >
       {active && <TouchControlsSurface trayOpen={trayOpen} wheelOpen={wheelOpen} spellOpen={spellOpen} />}
 
