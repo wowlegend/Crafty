@@ -494,8 +494,24 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   The project's own backlog calls this *"the single highest retention lever."*
 - ▢ **E2 [LOOP]** **Build-identity talents** — no capstones, no mutually-exclusive picks, **no respec**;
   ~20 flat +stat nodes drain by L18 → no reason for a 2nd run.
-- ▢ **E3 [LOOP]** **Mob archetypes** — telegraphs ARE built (380ms windup + gate), but all 10 mob types still
-  share **one** behavior tree (beeline+bonk).
+- ▣ **E3 — FIRST SLICE SHIPPED 2026-08-05: behaviour is now per-type DATA, not a `type ===` ladder.**
+  *(Registry correction: this line said all 10 types share **one** behaviour tree. Verified against live
+  code — there are **three** arms (`skeleton` archery, `spider` leap, everything else beeline+bonk), so
+  §D2's "3 AI brains" was the accurate line. Of the 7 hostiles, **five** were undifferentiated.)*
+  `game/mobArchetypes.js` moves aggro radius / de-aggro leash / melee reach / attack cooldown / vertical
+  reach into a per-type table the worker resolves inside the mob loop. **Safety property: the defaults ARE
+  the former module-scope constants**, asserted literal-by-literal, so an undesigned type plays exactly as
+  before and a one-line edit cannot silently re-tune every mob in the game.
+  Three archetypes designed from each mob's OWN stats, veto-able (feel = FYI, not a block, per §E):
+  **moss_brute** relentless (leash 1.5→4.0, reach 2.5→3.2, swing 1500→2400ms so the big damage is
+  dodgeable) · **skitterling** swarmer (cooldown 700ms, reach 1.8, leash 1.15 so a swarm is escapable) ·
+  **duskhound** pack hunter (aggro 20→28, cooldown 950ms). **zombie and emberhusk deliberately LEFT AT
+  BASELINE** — if every mob is special, none reads as special.
+  Gated by EXECUTING the worker (identical input, opposite outcome purely from the archetype) plus a
+  regression guard that the undesigned mobs are untouched; mutation-proven: replacing the lookup with fixed
+  constants reddens the 5 differentiation cases while the 4 baseline guards correctly stay green.
+  - ▢ **STILL OPEN:** the three arms themselves are unchanged — a moss_brute still *pathfinds* like a
+    zombie. Distinct MOVEMENT (a brute that shoulders through, a hound that flanks) is the next slice.
 - ▢ **E4 [LOOP]** **Cinematic beats** — boss-entrance mood SNAP, dawn/dusk payoff spike.
 - Balance/feel constants ship with sensible defaults + a dial, and surface to KEVIN-REVIEW as **FYI, not a block**.
 

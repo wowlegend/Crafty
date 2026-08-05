@@ -19,6 +19,7 @@ import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
+import { archetypeFor } from '../game/mobArchetypes.js';
 
 // A* Voxel Pathfinding Solver on a 9x9 Local Grid
 // startX, startZ are the local starting grid coords (typically 4, 4)
@@ -122,11 +123,11 @@ self.onmessage = function(e) {
     // underground gave zero protection and building was strategically pointless.
     const [playerX, playerY, playerZ] = playerPos;
     
-    const AGGRO_RANGE = 20;
-    const MELEE_RANGE = 2.5;
+    // E3: aggro / melee / cooldown / leash are now PER-TYPE (game/mobArchetypes.js), resolved inside the
+    // mob loop below. The defaults in that table are these exact numbers, so an undesigned type plays
+    // byte-identically to before and only moss_brute / skitterling / duskhound change.
     const ARCHERY_RANGE = 12;
     const LEAP_RANGE = 6;
-    const ATTACK_COOLDOWN = 1500;
     const PACK_ALERT_RADIUS_SQ = 144; // 12 units squared
     
     const updates = [];
@@ -168,6 +169,11 @@ self.onmessage = function(e) {
       // entirely — eslint's no-unused-vars confirmed no site still wants it. MOVEMENT is unaffected: mobs
       // steer by setting targetX/targetZ to the player's XZ, which never consulted this value.
       const distToPlayer3D = dist3D(dx, dy, dz);
+      // E3: this mob's behaviour profile. Ten silhouettes shared three behaviour arms, so five hostiles
+      // were the same creature in different meshes — the moss brute looked like a tank and played like a
+      // zombie. Undesigned types resolve to the former module-scope constants exactly.
+      const { aggroRange: AGGRO_RANGE, leashMult: LEASH_MULT, meleeRange: MELEE_RANGE,
+              attackCooldown: ATTACK_COOLDOWN, verticalReach: VERTICAL_REACH_T } = archetypeFor(type);
       
       // Aggro transition (+ de-aggro leash): a chased mob drops aggro once the player gets past
       // 1.5x aggro range, so it stops pursuing across the whole map and falls back to wandering below.
@@ -187,7 +193,7 @@ self.onmessage = function(e) {
       const wasAggro = isAggro;
       if (!passive && withinSense(dx, dy, dz, AGGRO_RANGE)) {
         isAggro = true;
-      } else if (isAggro && distToPlayer3D > AGGRO_RANGE * 1.5) {
+      } else if (isAggro && distToPlayer3D > AGGRO_RANGE * LEASH_MULT) {
         isAggro = false;
         windupUntil = 0; // drop the half-charged swing on the way out, so nothing idles mid-coil
       }
@@ -283,7 +289,7 @@ self.onmessage = function(e) {
           // a fair threat and keeps a low wall from being an auto-win. A swing may not.
           if (canReach(dx, dy, dz, LEAP_RANGE, LEAP_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN + 1000) {
             pendingAttack = { id, type: 'leap', damage: 8, position: [x, y, z] };
-          } else if (canReach(dx, dy, dz, MELEE_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN) {
+          } else if (canReach(dx, dy, dz, MELEE_RANGE, VERTICAL_REACH_T) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         } else {
@@ -292,7 +298,7 @@ self.onmessage = function(e) {
           isMoving = true;
           targetX = playerX;
           targetZ = playerZ;
-          if (canReach(dx, dy, dz, MELEE_RANGE) && now - lastAttackTime > ATTACK_COOLDOWN) {
+          if (canReach(dx, dy, dz, MELEE_RANGE, VERTICAL_REACH_T) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         }
