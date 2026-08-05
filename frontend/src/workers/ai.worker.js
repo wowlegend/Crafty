@@ -172,11 +172,26 @@ self.onmessage = function(e) {
       // Aggro transition (+ de-aggro leash): a chased mob drops aggro once the player gets past
       // 1.5x aggro range, so it stops pursuing across the whole map and falls back to wandering below.
       // B4: SENSING is 3D. A mob forty blocks underground should not notice a player on the surface.
+      // B4b: a windup must never be BANKED across an engagement. attackPhase() is only called inside the
+      // `if (isAggro)` block below, so a mob that de-aggros mid-windup freezes `windupUntil` at a past
+      // timestamp; when it re-engages, `now >= windupUntil` is already true and the very first tick returns
+      // 'strike' — an instant blow with no telegraph to read and no window to dodge. The ~380ms windup IS
+      // the fairness contract of the attack, so a banked one is worse than no telegraph at all.
+      //
+      // Cleared on the RISING EDGE, not only on de-aggro. Clearing on de-aggro alone was my first fix and
+      // the gate caught it: these are `else if` branches, so a mob that arrives already carrying a stale
+      // windup (state restored, or it left and returned without this tick ever running the de-aggro arm)
+      // never passes through that branch and cashes the banked swing anyway. Resetting when aggro goes
+      // false -> true is the state-machine-correct place: a fresh engagement gets a fresh telegraph,
+      // however the mob got here.
+      const wasAggro = isAggro;
       if (!passive && withinSense(dx, dy, dz, AGGRO_RANGE)) {
         isAggro = true;
       } else if (isAggro && distToPlayer3D > AGGRO_RANGE * 1.5) {
         isAggro = false;
+        windupUntil = 0; // drop the half-charged swing on the way out, so nothing idles mid-coil
       }
+      if (!wasAggro && isAggro) windupUntil = 0;
       
       let isCoverSeeking = false;
       if (isAggro) {

@@ -254,11 +254,16 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   is not; a spider's LEAP may cover as much height as ground so a low wall is not an auto-win. Both
   directions gated (14 pure + 11 scenario assertions incl. the counter-case that mobs must STILL reach a
   player on level ground) and mutation-proven: reverting the melee line to the XZ comparison reddens 2.
-  - ▢ **B4b STILL OPEN — the attack telegraph is bankable.** VERIFIED on live HEAD, not inherited: the
-    `attackPhase()` call sits INSIDE `if (isAggro)`, so on de-aggro it stops being called and `windupUntil`
-    keeps its stale value. On re-aggro `now >= windupUntil` is already true, so `attackPhase` returns
-    `strike` immediately — **a hit with no windup to read or dodge**. Fix is to clear `windupUntil` on the
-    de-aggro transition; it is small, but it is a distinct unit from the 3D work above.
+  - ▣✓ **B4b FIXED 2026-08-05 — the attack telegraph can no longer be BANKED.** `attackPhase()` is called
+    only inside `if (isAggro)`, so a mob that de-aggroed mid-windup froze `windupUntil` at a past
+    timestamp; on re-engagement `now >= windupUntil` was already true and the first tick returned `strike`
+    — an instant hit with no telegraph to read and no window to dodge. The ~380ms windup IS the fairness
+    contract, so a banked one is worse than none. **My first fix (clear on de-aggro) was WRONG and the gate
+    caught it:** those are `else if` arms, so a mob arriving already carrying a stale windup never passes
+    through the de-aggro branch and cashed the swing anyway. Now cleared on the **rising edge** of aggro —
+    a fresh engagement gets a fresh telegraph however the mob got there. Counter-cases gated in the same
+    file (a normal windup must still land, and a mob that stays aggro must keep its charge counting down),
+    and mutation-proven: deleting the rising-edge reset reddens the re-aggro case.
 - ▣✓ **B5 [LOOP] THE HUD LIES — DONE, 2026-07-14: dial (`712ea78`) + stat-stack layout (`7e0f004`) + progression-modal (`690b070`) FIXED; inventory-"+" verified STALE. Only the owed visual re-baseline remains (capture harness unhealthy).**
   ✓ **The day/night dial is now synced to the real clock.** It was a quarter-cycle (90°) out of phase —
   the inline `angleDeg - 180` assumed `cf=0` was MIDNIGHT, but the game's authoritative phase
