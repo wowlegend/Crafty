@@ -36,6 +36,34 @@ export function isAnyPanelOpen(flags) {
  * so WITHOUT the panel check the menu wrongly renders OVER the panel (the 2026-06-07 U-key bug). Pure +
  * unit-tested so the exact gate — not just the panel list — is locked. `state` = { isPointerLocked, ...panelFlags }.
  */
+/**
+ * shouldShowResumeOverlay(state) -> whether the "input is dead, here is the way back" overlay renders.
+ *
+ * THE BUG IT EXISTS FOR (Kevin, 2026-08-05): ESC opened the pause menu, ESC closed it, and the player
+ * was left frozen and was killed by a mob. ESC is the browser's DEFAULT UNLOCK GESTURE, and MDN is
+ * explicit that calling requestPointerLock() immediately after that gesture "will fail, even if a
+ * transient activation is available". So the relock-on-close every panel performs (KEVIN-FIX C4) is
+ * GUARANTEED to be refused on the ESC path — not racily, always. On refusal the player held:
+ * no panel, active=false (Components.jsx:861 gates all movement on it), and no title menu (it is
+ * suppressed once gameStarted). No surface, no input, and mobs that do not care.
+ *
+ * Retrying cannot fix this: the browser requires a fresh user gesture, by design, to stop a page
+ * trapping the cursor. Only a CLICKABLE surface can recover — hence this overlay.
+ *
+ * It is deliberately DERIVED FROM STATE rather than opened by an event handler. The defect was never
+ * in one branch; it was that no branch owned the refusal case. A predicate over state cannot be
+ * bypassed by a path nobody thought of — including focus loss, a browser-initiated exit, or the next
+ * panel someone adds with an optimistic relock in its onClose.
+ *
+ * @param {object} state { isPointerLocked, gameStarted, isAlive, ...panelFlags }
+ */
+export function shouldShowResumeOverlay(state) {
+  if (!state) return false;
+  if (state.isAlive === false) return false; // the DeathScreen owns that moment (as with the title menu)
+  if (!state.gameStarted) return false; // pre-game unlock is the title/click-to-play screen's job
+  return !state.isPointerLocked && !isAnyPanelOpen(state);
+}
+
 export function shouldShowTitleMenu(state) {
   if (!state) return false;
   // KEVIN-FIX C5: dying exits pointer lock, and without this gate the z-9999 title menu

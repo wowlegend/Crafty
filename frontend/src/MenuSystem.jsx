@@ -15,7 +15,8 @@ import { AchievementsPanel } from './QuestSystem';
 import { QuestLog } from './ui/QuestLog';
 import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
 import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
-import { shouldShowTitleMenu } from './ui/panelState.js';
+import { shouldShowTitleMenu, shouldShowResumeOverlay } from './ui/panelState.js';
+import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice } from './input/touchDevice';
 import { useT } from './i18n/i18n.js';
 import { useGameStore } from './store/useGameStore';
@@ -46,6 +47,13 @@ export function MenuSystem({
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
   const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
+  // The pointer-lock RECOVERY surface (Kevin, 2026-08-05: "ESC to open the menu, ESC to quit it, and
+  // the character is frozen and dies"). The browser refuses to re-lock the mouse immediately after the
+  // player's own ESC, so the optimistic relock every panel's onClose performs is guaranteed to fail on
+  // that path and the player was left with no input and no UI. Derived from state, so no close path —
+  // present or future — can strand a player again. Capture-suppressed: the visual gate must never see it.
+  const resumeOverlayVisible = !isCaptureMode() &&
+    shouldShowResumeOverlay({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
 
   // Enter (or re-enter) play = open the active gate. On desktop the active SoT is Pointer Lock
   // (Components.jsx's pointerlockchange -> setActive). iPad/iPhone have NO Pointer Lock, and the title
@@ -288,6 +296,38 @@ export function MenuSystem({
             </motion.div>
           )}
       </AnimatePresence>
+
+      {/* PAUSED / click-to-resume. Deliberately NOT animated and NOT lazy: this is the surface a
+          player sees when they have already lost control, so it must paint on the first frame it is
+          true. The whole overlay is the click target (a fresh user gesture is the ONE thing that can
+          restore pointer lock), with an explicit button for keyboard/screen-reader users. */}
+      {resumeOverlayVisible && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('ui.paused')}
+          data-testid="resume-overlay"
+          onClick={enterPlay}
+          // Bold-flat scrim — the S1-C locked language bans frosted-glass blur on shipped in-game UI, and
+          // the design-language gate caught the first draft doing it. Same tokens the panels already use.
+          className="fixed inset-0 z-modal flex flex-col items-center justify-center gap-5 bg-ink/75 cursor-pointer"
+        >
+          {/* `text-text` (#ECECEF), NOT `text-text-inverse` — the inverse token is '#231708', documented in
+              tokens.js as "text on gold fills". The first draft used it on a near-black scrim and the word
+              PAUSED came out dark-brown-on-black: legible in a jsdom assertion, unreadable in the frame. */}
+          <h2 className="text-3xl font-bold tracking-wide text-text" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.9)' }}>
+            {t('ui.paused')}
+          </h2>
+          <p className="max-w-sm px-6 text-center text-sm text-text/85" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
+            {t('ui.resume_hint')}
+          </p>
+          {/* No onClick of its own: a click here — including one synthesized by keyboard activation —
+              bubbles to the overlay handler, so the gesture is handled exactly once. */}
+          <Button variant="primary" size="lg" data-testid="resume-button">
+            <Icon name="sword" size={20} className="flex-none" /> {t('ui.resume')}
+          </Button>
+        </div>
+      )}
     </>
   );
 }

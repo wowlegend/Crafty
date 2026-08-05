@@ -11,6 +11,11 @@ export const STRINGS = {
     'ui.magic': 'Magic',
     'ui.settings': 'Settings',
     'ui.close': 'Close',
+    // The pointer-lock recovery surface. The browser refuses to re-lock the mouse right after the
+    // player presses ESC, so the game cannot silently take control back — it has to ASK.
+    'ui.paused': 'Paused',
+    'ui.resume': 'Resume',
+    'ui.resume_hint': 'Your browser released the mouse. Click to take control again.',
     'ui.level': 'Level {n}',
     'ui.gold': 'Gold',
     'ui.locale': '中文',
@@ -158,6 +163,9 @@ export const STRINGS = {
     'ui.magic': '魔法',
     'ui.settings': '设置',
     'ui.close': '关闭',
+    'ui.paused': '已暂停',
+    'ui.resume': '继续游戏',
+    'ui.resume_hint': '浏览器已释放鼠标控制，点击画面重新接管角色。',
     'ui.level': '等级 {n}',
     'ui.gold': '金币',
     'ui.locale': 'EN',

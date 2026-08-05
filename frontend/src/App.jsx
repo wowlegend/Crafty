@@ -1,6 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useT } from './i18n/i18n.js';
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense } from 'react';
 import './App.css';
 import { SoundProvider, useSounds, useGameSounds } from './SoundManager';
 import { useSimpleExperience } from './SimpleExperienceSystem';
@@ -175,8 +175,13 @@ function GameApp({ experienceSystem }) {
   // The isAnyPanelOpen check below reads the SINGLE canonical panel set (panelState.js) — it replaced a
   // 4th hand-kept list (that was missing showCredits/showStats); the click-to-play overlay + title menu
   // + key handlers all gate on the same set.
+  // useLayoutEffect, NOT useEffect: between the unlock and this opening the pause panel there is one
+  // committed render where the game has started, nothing is locked and no panel is open — which is
+  // exactly the state the resume overlay is derived from, so with a post-paint effect the overlay
+  // FLASHES for a frame before the pause menu replaces it. A layout effect runs before the browser
+  // paints, so that intermediate state is never visible. (Same class as the C5 title-menu flash.)
   const prevLockedRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const was = prevLockedRef.current;
     prevLockedRef.current = isPointerLocked;
     if (was && !isPointerLocked) {
