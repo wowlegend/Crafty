@@ -134,7 +134,14 @@ function TouchControlsLive({ isWorldBuilt }) {
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
   const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
-  const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
+  // REACTIVE, not getState(): this was a non-reactive read during render, so unlocking an Aspect did not
+  // re-render the ring — the new sector appeared only when something ELSE happened to re-render this
+  // component (closing a panel flips `anyPanel`, which is why it usually self-corrected and stayed hidden).
+  // A talent unlock is a RARE transition, so subscribing here is Game-Loop-Isolation-safe: the store blesses
+  // exactly this pattern for `activeBeastForm`. Found by the touch probe, which reported "no touch-aspects
+  // toggle in the DOM" after unlocking all four Aspects.
+  const unlockedTalents = useGameStore((s) => s.unlockedTalents);
+  const aspects = unlockedAspectVerbs(unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
   const spellPositions = ringLayout(SPELL_ORDER.length, 78);
   // pointerEvents 'auto' re-enables hit-testing on each control, since the root below is now 'none' (X3).

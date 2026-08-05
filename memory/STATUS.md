@@ -505,6 +505,21 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
     ownership test was being handed the overlay rather than the hotbar. A live DOM probe
     (`elementsFromPoint` at the slot centre) settled in one run what two readings had not. **Verify against
     the running thing, not against the source.**
+- ▢ **X1-bis [LOOP/KEVIN] THE ASPECT RING HAS THUMB-LEVEL DEFECTS — found 2026-08-05 by DRIVING it.**
+  `touch-probe.mjs` now exercises X1/X2a/X2b (it never did — the loop called it "the only lived check they
+  have" for nine iterations while it checked only joystick/camera/action/hotbar; that claim was false).
+  - **▢ `touch-aspect-grab` is OFF-SCREEN**: laid out at `x=390` on a 390px viewport, so the entire 52x52
+    target sits past the right edge and VOIDHAND cannot be tapped at all on an iPhone-class screen. The ring
+    is centred on a toggle at the right thumb edge with radius 78. **KEVIN — layout/ergonomics call.**
+  - **▢ the ring does NOT close after a selection in a real browser** (4 sectors still open after a
+    dispatched tap) so it eats the next tap. **`aspect-ring-gates.test.jsx` asserts this and PASSES in
+    jsdom** — the house defect again: green over behaviour that does not happen. NOT root-caused; stopped
+    rather than guess.
+  - **▢ `touch-spells` leaves the DOM while the ring is open** — probably downstream of the above, so X2b
+    has no lived verdict yet.
+  - **▣✓ FIXED in passing:** both `TouchControls` and `TouchControlsSurface` read `unlockedTalents` via a
+    non-reactive `getState()` during render, so unlocking an Aspect did not surface its sector until an
+    unrelated re-render (closing a panel) happened to fire. 0 sectors before the fix, 4 after.
 - ▣✓ **X2a SHIPPED `f04d79b` — cooldown feedback on touch.** The sweep went ON the ring sectors rather
   than porting `<AbilityBar>` to a new region: a touch placement would have to dodge the joystick, the
   action cluster, the tray AND the ring — four constraints, decided blind. Closed toggle carries an

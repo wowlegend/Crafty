@@ -890,3 +890,30 @@ are worth your eye before any polish pass:
 - **the top-right controls collide and clip** — the pause pill overlaps a neighbouring element and one runs
   off the right edge entirely.
 The rings themselves are still only seen CLOSED. Say the word and I will capture them open.
+
+## 🔴 2026-08-05 (later) — X1's Aspect ring has real, thumb-level problems. Found by DRIVING it.
+
+I extended `touch-probe.mjs` to actually exercise X1/X2a/X2b — it never did, despite the loop calling it
+"the only lived check they have" for nine iterations. That claim was false; it checked joystick, camera,
+action and hotbar only. Now it drives the rings, and three things fell out.
+
+**1. One Aspect is UNREACHABLE.** `touch-aspect-grab` (VOIDHAND) lays out at `x=390` on a **390px-wide**
+viewport — its left edge starts exactly at the screen edge, so the whole 52x52 target is off-screen. On an
+iPhone-class device the grab Aspect cannot be tapped at all. The ring is centred on a toggle sitting at the
+right thumb edge with radius 78, so it simply runs off. **This needs a layout decision from you** (shrink
+the radius, sweep the arc leftward/upward, or move the toggle inboard) — it is a taste call about thumb
+ergonomics, not a mechanical fix, and I would rather not pick your hand position for you.
+
+**2. The ring does not CLOSE after a selection — in a real browser.** Tap dispatches, the sector is hit,
+and all four stay open, so it will eat the next tap. Note carefully: **`aspect-ring-gates.test.jsx`
+asserts exactly this behaviour and PASSES in jsdom.** Another instance of the house defect — the gate is
+green over something that does not happen in a browser. Not yet root-caused; I stopped rather than guess.
+
+**3. `touch-spells` vanishes from the DOM while the ring is open**, which is very likely a consequence of
+(2) rather than an independent bug, so X2b could not be driven to a verdict this run.
+
+**Also fixed on the way (`REACTIVE read`):** `TouchControls` and `TouchControlsSurface` both read
+`unlockedTalents` through a non-reactive `getState()` during render, so **unlocking an Aspect did not make
+its sector appear** until some unrelated re-render happened. The probe found it immediately (0 sectors after
+unlocking all four; 4 after the fix). It usually self-corrected when a panel closed, which is why it was
+never noticed.

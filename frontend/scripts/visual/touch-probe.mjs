@@ -149,6 +149,103 @@ try {
   check('HOTBAR tap selects that block on touch (X3)', hotbarOk, hotbarDetail);
   await page.screenshot({ path: `${OUT}/touch-3-final.png` });
 
+  // 7) X1 / X2a / X2b — the three touch features shipped 2026-08-03 that NO HUMAN AND NO PROBE had ever
+  //    driven. They carry jsdom render gates, but jsdom proves markup, not that a thumb can reach a control
+  //    in a real browser at 390x844 — and the loop spent nine iterations calling this probe "the only lived
+  //    check X1/X2a/X2b have" when it did not check them at all. It does now.
+  //
+  //    The Aspect ring HIDES locked verbs (correct, and unit-gated), so with a fresh save there is no toggle
+  //    to tap. Unlock all four first — this is setup, not the assertion.
+  await page.evaluate(() => window.useGameStore.setState({
+    unlockedTalents: { wildheart_roar: 1, voidhand_grasp: 1, soulbind_snare: 1, elemancer_imbue: 1 },
+  }));
+  await delay(400);
+
+  // Tap by COORDINATES, not handle.tap(). These hit-targets are transparent (opacity:0) overlays and
+  // puppeteer's clickablePoint() heuristic rejects them ("Node is either not clickable or not an Element"),
+  // which is a property of the harness, not of the control — a real thumb lands on them fine. The hotbar
+  // check above already uses this pattern for the same reason.
+  const tapTestId = async (id) => {
+    const r = await page.evaluate((sel) => {
+      const el = document.querySelector(`[data-testid="${sel}"]`);
+      if (!el) return null;
+      const q = el.getBoundingClientRect();
+      if (q.width === 0 || q.height === 0) return null;
+      return { x: Math.round(q.x + q.width / 2), y: Math.round(q.y + q.height / 2) };
+    }, id);
+    if (!r) return false;
+    await page.touchscreen.tap(r.x, r.y);
+    await delay(350);
+    return true;
+  };
+  const countTestIdPrefix = (prefix) =>
+    page.evaluate((p) => document.querySelectorAll(`[data-testid^="${p}"]`).length, prefix);
+
+  // X1 — the ring must OPEN and offer one sector per unlocked Aspect.
+  const ringToggled = await tapTestId('touch-aspects');
+  const sectors = ringToggled ? await countTestIdPrefix('touch-aspect-') : 0;
+  check('ASPECT RING opens and offers every unlocked verb (X1)', ringToggled && sectors === 4,
+    ringToggled ? `${sectors} sector(s) rendered, expected 4` : 'no touch-aspects toggle in the DOM');
+
+  // X2a — each open sector carries its own cooldown sweep. The arithmetic is unit-tested; what could only
+  // be checked here is that the elements actually exist in a real render.
+  const sweeps = await countTestIdPrefix('aspect-sweep-');
+  check('COOLDOWN sweep renders per sector (X2a)', sweeps === 4, `${sweeps} sweep element(s), expected 4`);
+  if (ringToggled) await page.screenshot({ path: `${OUT}/touch-4-aspect-ring-open.png` });
+
+  // Every sector must be ON SCREEN. A ring laid out around a toggle near the right edge can place a sector
+  // partly or wholly outside a 390px viewport, where no thumb can reach it — the control would look
+  // present in the DOM and be unreachable in the hand.
+  const offscreen = await page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('[data-testid^="touch-aspect-"], [data-testid^="touch-spell-"]')) {
+      const q = el.getBoundingClientRect();
+      if (q.left < 0 || q.top < 0 || q.right > innerWidth || q.bottom > innerHeight) {
+        out.push(`${el.dataset.testid}@${Math.round(q.left)},${Math.round(q.top)} ${Math.round(q.width)}x${Math.round(q.height)}`);
+      }
+    }
+    return out;
+  });
+  check('every ring sector is reachable on a 390x844 screen', offscreen.length === 0,
+    offscreen.length ? `OFF-SCREEN: ${offscreen.join(' | ')} (viewport 390x844)` : 'all sectors within the viewport');
+
+  // Tapping a sector must CLOSE the ring, or it eats the next tap.
+  let ringClosed = false, closeDetail = 'no sectors to tap';
+  if (sectors > 0) {
+    const first = await page.evaluate(() => document.querySelector('[data-testid^="touch-aspect-"]').dataset.testid);
+    const tapped = await tapTestId(first);
+    const still = await countTestIdPrefix('touch-aspect-');
+    ringClosed = still === 0;
+    closeDetail = ringClosed ? `tapped ${first}` : `tapped ${first} (dispatched=${tapped}) but ${still} sector(s) still open — it will eat the next tap`;
+  }
+  check('ASPECT RING closes after a selection (X1)', ringClosed, closeDetail);
+
+  // X2b — the STRONGEST of the three: a spell tap must change the store, exactly like Digit1-4 does.
+  const spellBefore = await page.evaluate(() => window.useGameStore.getState().activeSpell);
+  const spellToggled = await tapTestId('touch-spells');
+  const spellCount = spellToggled ? await countTestIdPrefix('touch-spell-') : 0;
+  if (spellToggled) await page.screenshot({ path: `${OUT}/touch-5-spell-picker-open.png` });
+  let spellOk = false;
+  let spellDetail = await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="touch-spells"]');
+    if (!el) return 'no touch-spells element in the DOM at all';
+    const q = el.getBoundingClientRect();
+    return `touch-spells present but untappable: ${Math.round(q.width)}x${Math.round(q.height)} @${Math.round(q.left)},${Math.round(q.top)} (viewport ${innerWidth}x${innerHeight})`;
+  });
+  if (spellCount > 0) {
+    const targetSpell = await page.evaluate((was) => {
+      const ids = [...document.querySelectorAll('[data-testid^="touch-spell-"]')].map((e) => e.dataset.testid.replace('touch-spell-', ''));
+      return ids.find((i) => i !== was) ?? null;
+    }, spellBefore);
+    if (targetSpell) {
+      await tapTestId(`touch-spell-${targetSpell}`);
+      const after = await page.evaluate(() => window.useGameStore.getState().activeSpell);
+      spellOk = after === targetSpell;
+      spellDetail = `${spellCount} spell(s) offered; tapped "${targetSpell}" (was "${spellBefore}") -> active "${after}"`;
+    }
+  }
+  check('SPELL PICKER tap changes the active spell (X2b)', spellOk, spellDetail);
+
   const allOk = results.every((r) => r.ok);
   console.log(`\n${allOk ? 'ALL TOUCH CHECKS PASS' : 'TOUCH CHECKS FAILED'} — screenshots in ${OUT}`);
   done(allOk ? 0 : 2);

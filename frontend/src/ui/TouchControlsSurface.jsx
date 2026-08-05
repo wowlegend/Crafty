@@ -39,7 +39,10 @@ const BTN = (extra) => ({
 export default function TouchControlsSurface({ nub = null, trayOpen = false, wheelOpen = false, spellOpen = false }) {
   const t = useT();
   // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
-  const aspects = unlockedAspectVerbs(useGameStore.getState().unlockedTalents);
+  // REACTIVE, mirroring TouchControls: a non-reactive read here left the GLYPHS a frame behind the
+  // hit-targets after a talent unlock — the tappable sector existed with nothing drawn on it.
+  const unlockedTalents = useGameStore((s) => s.unlockedTalents);
+  const aspects = unlockedAspectVerbs(unlockedTalents);
   const ringPositions = ringLayout(aspects.length, 78);
   const spellPositions = ringLayout(SPELL_ORDER.length, 78);
   const activeSpell = useGameStore((st) => st.activeSpell);
