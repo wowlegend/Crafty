@@ -455,7 +455,30 @@ directly it would have read "the UV fix transformed the beast frames", which is 
 same code, twice — is what separated signal from harness noise. **A before/after diff means nothing until
 you know the floor.** Same shape as asserting an absence without a baseline.
 
-- ▢ **[LOOP] 2026-08-05 SECOND MEASUREMENT — THE PLAYER NEVER MOUNTS DURING CAPTURE.** This supersedes the
+- ⊘ **DISPROVEN 2026-08-05 (pass 4) — "the Player never mounts during capture" is FALSE.** —
+  `node -e` diff of `hearth.png` vs `landmark.png` from the SAME capture run
+  **The disproof needed no browser**, which is why it was worth trying while the compositor was dead.
+  Stages that request DIFFERENT pinned camera poses, compared *within one run*: hearth vs landmark
+  **79.7%**, hearth vs biome-snow **73.9%**, landmark vs ocean-depth **80.3%**, explore-day vs hearth
+  **78.3%**. If the pinned pose were never applied every stage would render the same default view of the
+  same world and these would be ~0%. So the pose IS applied — and it is consumed in exactly one place,
+  `Components.jsx:509`, inside the Player's `useFrame`. **The Player mounts and its frame loop runs.**
+  **What that leaves.** The store measurement was not wrong — `playerRigidBodyRef`, `performVerb` and
+  `gameCamera` really do read absent from `window.useGameStore` during capture, twice, at every stage.
+  But `Components.jsx:145-147` and `:150-162` are plain unconditional `useEffect`s, so a mounted Player
+  must set them. Both facts stand and cannot both mean what they appear to, so **one of them is measuring
+  the wrong object** — the likeliest unexamined branch is that `window.useGameStore` (exposed at
+  `index.jsx:61`) is not the instance the R3F tree writes to. RULED OUT already: `enterCaptureMode` does
+  not reset the store (it only sets module-level `_captureMode`/`_opts`).
+  **Next, and it needs the compositor:** evaluate INSIDE the page whether the Player is in the R3F tree,
+  and compare the identity of `window.useGameStore` against the store the components import.
+  *This is the fourth pass and the third wrong conclusion. Each was a correct measurement paired with an
+  inference that outran it. The pattern is not carelessness about data — it is treating "the only
+  explanation I can see" as "the only explanation".*
+- ⊘ **SUPERSEDED — 2026-08-05 second measurement, "the Player never mounts during capture"** (disproven
+  directly above; kept for the trail). —
+  `node -e` diff of hearth/landmark within one run
+  This supersedes the
   framing below (which was itself a correction of the framing before it — each pass got closer).
   Probed the EXACT `capture.mjs` sequence (`enterCapture` → wait spawn chunk → `start` → `setTimeOfDay` →
   `spawnBeastTransform`), sampling at every stage, twice. Stable in both runs, at every stage:
