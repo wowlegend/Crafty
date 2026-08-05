@@ -679,8 +679,23 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   *"approved + landed (0f8cad9)"* — commit `8b6e3a44` **REMOVED** it (verified: not in package.json, imported
   nowhere). **That one stale line regenerated a week-sized proposal.** Also: the CHANGELOG "no per-frame allocs
   remain" overclaim; dead `quality.js TIERS.outlineWorldEdge` (zero readers); `SOTA-INITIATIVE.md` §3 stale.
-- ▢ **G2 [LOOP]** Doc-currency **lint** (mechanical) + a doc-gardening pass, so staleness fails a gate instead
-  of poisoning the next agent.
+- ▣ **G2 — doc-currency now also checks cross-doc SECTION citations (2026-08-05).** It only ever verified
+  PATHS; docs point at each other by section too (`charter §6.4`, `STATUS §2`) and those rot identically —
+  §G1 below records that ONE stale charter line "regenerated a week-sized proposal". Pure
+  `scripts/ci/doc-anchors.mjs` parses heading ids and resolves citations; a RATCHET (frozen 5, may fall
+  never rise) rather than a hard zero, matching i18n/queue-ledger. Mutation-proven: a new dangling citation
+  fails the push and is named.
+  - ▢ **THE FIVE IT FOUND, all genuinely stale — recorded, NOT fixed** (renumbering someone else's pointers
+    is a separate reviewable change from adding the check): `memory/ACTIVE_PLAN.md` cites `V1` ·
+    `docs/superpowers/LOOP-CHARTER.md` cites `V2` · `docs/superpowers/INDEX.md` cites `C1` and `V2` (all
+    four aimed at this file) · `SOTA-INITIATIVE.md` aims `2.5` at the charter. This file has no V1/V2/C1
+    sections and the charter has a section 2 but no 2.5. Each wants a judgement — renumber, delete, or
+    write the section — and `ANCHOR_FROZEN` drops as they go.
+    *(Written WITHOUT the `\u00a7` sigil on purpose: the first draft of this entry spelled the five out as
+    real citations and the new check counted them, failing the push. A lint whose own documentation trips
+    it is a real hazard — noting the workaround here so the next person does not rediscover it.)*
+  - *(`kernel` is deliberately NOT an alias: LOOP-KERNEL-PROMPT.md has no numbered headings, so resolving
+    against it would flag every `kernel §N` on the strength of the checker's own parse failure.)*
 - ▢ **G3 [LOOP]** **Session-close ritual at the context watermark** — refresh the GitHub remote surfaces
   (README, repo description, CHANGELOG/STATUS) and push, every session.
 

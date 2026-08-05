@@ -23,6 +23,8 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 
+import { DOC_ALIASES, sectionIds, unresolved } from './doc-anchors.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..'); // frontend/scripts/ci -> repo root
 const PKG = JSON.parse(readFileSync(join(ROOT, 'frontend/package.json'), 'utf8'));
@@ -198,6 +200,42 @@ if (existsSync(statusAbs)) {
   }
 }
 
+// --- cross-doc SECTION citations (`charter §6.4`, `STATUS §2`) ---------------
+// Paths were the only thing this lint checked. Docs also point at each other by SECTION, and those rot the
+// same way: a section is renumbered or removed and the pointer aims at nothing. STATUS §G1 records that ONE
+// stale line in the charter "regenerated a week-sized proposal"; a dangling § is that failure, smaller.
+//
+// RATCHET, not a hard zero — the first full run surfaced FIVE already-dangling pointers, and deciding
+// whether each wants renumbering, deleting, or a section actually written is a documentation judgement,
+// not a push blocker. Blocking on it is the kind of pressure that gets a lint switched off. The count may
+// FALL, never RISE, exactly like the i18n adoption ratchet (frozen 109) and queue-ledger (frozen 215).
+//
+// The five, all genuinely stale (STATUS has no V1/V2/C1; the charter has §2 but no §2.5):
+//   memory/ACTIVE_PLAN.md -> STATUS §V1        docs/superpowers/INDEX.md -> STATUS §C1, §V2
+//   docs/superpowers/LOOP-CHARTER.md -> §V2    SOTA-INITIATIVE.md -> charter §2.5
+// They are recorded in STATUS §G rather than fixed here: renumbering someone else's section pointers is a
+// separate, reviewable change from adding the check that finds them.
+const ANCHOR_FROZEN = 5;
+const sectionsByAlias = {};
+for (const [alias, rel] of Object.entries(DOC_ALIASES)) {
+  try { sectionsByAlias[alias] = sectionIds(readFileSync(join(ROOT, rel), 'utf8')); } catch { /* absent: unresolved() skips it */ }
+}
+const dangling = [];
+for (const rel of CANONICAL) {
+  let src;
+  try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
+  for (const c of unresolved(src, sectionsByAlias)) dangling.push(`${rel}: ${c.alias} §${c.section}`);
+}
+if (dangling.length > ANCHOR_FROZEN) {
+  errors.push(
+    `SECTION-CITATION RATCHET: ${dangling.length} dangling cross-doc citations, frozen at ${ANCHOR_FROZEN}.\n` +
+      dangling.map((d) => `      - ${d}`).join('\n') +
+      `\n    A \u00a7 pointer to a section that does not exist sends the next reader looking for a rule that isn't there.`,
+  );
+} else if (dangling.length < ANCHOR_FROZEN) {
+  warnings.push(`section-citation ratchet can tighten: ${dangling.length} dangling (frozen ${ANCHOR_FROZEN}) — lower ANCHOR_FROZEN in doc-currency.mjs`);
+}
+
 // --- report -----------------------------------------------------------------
 for (const w of warnings) console.warn(`⚠ ${w}`);
 
@@ -211,4 +249,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked)`);
+console.log(`✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${dangling.length} dangling \u00a7 citation(s), ratchet ${ANCHOR_FROZEN})`);
