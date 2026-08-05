@@ -655,6 +655,15 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   refactor; the zh-CN content pass itself stays Kevin's go/no-go.
 
 ### G. Harness / docs
+- ▢ **[LOOP] NAME THE ENFORCER for dead-copy classification — the analysis that authorized a delete was
+  ungated.** Every gate here is RED-first + mutation-proven; the bash pipeline that decided which 22 lines of
+  i18n copy to delete had no test, no mutation proof, no denominator guard. It was wrong FOUR times (regex
+  dot matched `rarity-common`; `-F` prefix matched `ui.level_short`; `C.rarity.common` was a colour-token
+  property path; and `ui.level` is the FIXTURE proving interpolation). **Build it:** extend
+  `tests/i18n/key-resolution.test.js` into a pure classifier that reports reachability by KIND — literal
+  `t()` / bare key in a data table / dynamic prefix / TEST-FIXTURE-only / dead — with those four near-misses
+  as regression fixtures, and emit the dead set from a command so a future deletion consumes THAT, not a
+  human's grep. Small, and it closes the class rather than the instance.
 - ▣✓ **i18n DEAD COPY DELETED 2026-08-05 — ELEVEN keys, not the twelve first measured.** Of 21 keys
   unreachable by literal `t()` analysis: 7 are reached as BARE keys in data tables, 2 via the one dynamic
   call site, and 11 were genuinely dead — `ui.health`, `ui.mana`, `ui.hunger`, the four `rarity.*`, the four
