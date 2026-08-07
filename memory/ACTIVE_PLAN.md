@@ -17,6 +17,34 @@
 
 ---
 
+## 📍 THE CURSOR — 2026-08-07 (E11 · governance pass COMPLETE)
+
+**Tree:** `main` clean, CI **`success`** observed at `cf744e3`. Queue **121 done / 94 open**, 0 unmarked.
+**Both published surfaces are current and now BOTH gated** — `era-review.html` (artifact, republished in
+place at the same URL) and `LOOP-PROGRESS.html` (was 22 commits stale with no gate; A4 gave it one).
+
+**DONE this session** — `docs/superpowers/GOVERNANCE-REVIEW-2026-08-07.md` carries the SHIPPED LEDGER
+(update the row in the same commit as the fix): C1-C21 all closed · COMPRESSIONS (charter 43,273 -> 40,384 B)
+· A1 · A3 · A4 · A5(i) · A6 · A7 (charter only).
+
+**NEXT UNIT — pick ONE, in this order:**
+1. **`npm audit` / dependabot: 8 OPEN alerts** (2 high, 6 moderate — `ip-address`, `undici`). The dashboard
+   claimed "0 vulnerabilities" for weeks and nothing re-measured it. NOT fixed on purpose: transitive
+   dev-dep upgrades with real blast radius, outside the governance scope. **Decide, then do it deliberately.**
+2. **A5(ii)** — the `commit-msg` hook (the free slot; `core.hooksPath=.githooks`, no `settings.json`), so the
+   mutation-proof trailer is demanded where the message can still be cheaply edited rather than at push.
+3. **A2 remainder + A7 remainder** — the counts are commands now, not generated blocks; `.agent/AGENTS.md` and
+   the kernel still lack their `[MECH:]` / `[ADVISORY]` tags.
+4. Then back to the **HOLISTIC-REVIEW queue** (94 open): test-vacuity 27 · dead-code 25 · test-bug 13 · bug 10.
+
+**STILL BLOCKED / AWAITING KEVIN (do not "fix" these):** the visual re-baseline (identical code differs on 15
+of 31 frames; `beast-*` 69-72%) · the terrain AO flip (DEFERRED — only the render can judge it, and the render
+is unreliable) · touch-ring ergonomics · grass motes (deleted, veto-able) · MEMORY.md compaction.
+
+**Everything below this block is OLDER cursor history.** It accreted despite this file's own "owns THE CURSOR
+ONLY" rule — read it as history, not as work.
+
+
 ## 🔭 SUPER-CAMPAIGN (2026-07-20, Kevin): HOLISTIC REPO REVIEW → SOTA — every line/word, fix+enhance
 > **Expanded authority (Kevin, verbatim intent):** *"enumerate and review every line/word of code (incl comments/
 > descriptions) in the entire repo, fix/enhance everything holistically... be AGGRESSIVE on unilateral enhancement,
