@@ -48,6 +48,32 @@ export function readState() {
 }
 
 /**
+ * PURE: normalize the state file into a list of surfaces, so a second one costs a JSON entry.
+ *
+ * There are TWO kinds, and conflating them would manufacture a false failure:
+ *
+ *   kind 'artifact' — published to a URL. Drift is measured from the sha that was PUBLISHED, which git
+ *                     cannot know, so it lives in the state file. `validateSource` applies: the committed
+ *                     file must be the AUTHORED page, not a fetched copy of the publish wrapper.
+ *   kind 'page'     — a committed page nobody publishes (`LOOP-PROGRESS.html`). Drift is measured from the
+ *                     file's OWN last commit, which git knows, so it needs no recorded sha and cannot lie.
+ *                     `validateSource` must NOT run on it — it rejects a doctype, because the Artifact shell
+ *                     adds one at publish time, and a standalone page legitimately has its own.
+ *
+ * Accepts the old single-object shape so an existing state file keeps working.
+ */
+export function surfaces(state) {
+  if (!state) return [];
+  const list = Array.isArray(state.surfaces) ? state.surfaces : [state];
+  return list
+    .filter((s) => s && s.source)
+    // Spread FIRST, then the computed fields with an explicit `s.x ||` fallback. The reverse order works
+    // by accident — a trailing `...s` silently overrides whatever was computed above it — and reads exactly
+    // backwards from what it does.
+    .map((s) => ({ ...s, id: s.id || s.source, kind: s.kind || (s.url ? 'artifact' : 'page') }));
+}
+
+/**
  * PURE: is the committed page a usable SOURCE, or a saved copy of the published wrapper?
  *
  * The page was unrecoverable once because it lived only in a session-scoped tmp scratchpad and was
@@ -66,59 +92,100 @@ export function validateSource(html) {
 function main() {
   const head = git('rev-parse', '--short', 'HEAD');
   const state = readState();
+  const all = surfaces(state);
 
   if (process.argv.includes('--sync')) {
-    const next = { ...(state || {}), syncedSha: head, syncedAt: new Date().toISOString().slice(0, 10) };
-    writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
-    console.log(`artifact-currency: recorded ${head} as published`);
-    return;
-  }
-
-  if (!state || !state.syncedSha) {
-    console.log('artifact-currency: no sync state — run with --sync after publishing');
-    return;
-  }
-
-  // Guard this script's own input before trusting the drift number.
-  const src = state.source && join(ROOT, state.source);
-  if (src && existsSync(src)) {
-    const bad = validateSource(readFileSync(src, 'utf8'));
-    if (bad) {
-      console.error(`\n✘ artifact-currency: ${state.source} is ${bad}`);
-      console.error('  A drift count over an unusable source would be a number about nothing.\n');
+    // `--sync [id]` — only 'artifact' surfaces carry a recorded sha; a 'page' is tracked by its own commit.
+    const which = process.argv[process.argv.indexOf('--sync') + 1];
+    const targets = all.filter((s) => s.kind === 'artifact' && (!which || which.startsWith('-') || s.id === which));
+    if (!targets.length) {
+      console.error(`artifact-currency: no artifact surface matching ${which || '(any)'} — nothing to sync`);
       process.exit(1);
     }
-  } else if (src) {
-    console.error(`\n✘ artifact-currency: ${state.source} is missing — the page source must be COMMITTED,`);
-    console.error('  not left in a session scratchpad (that is how it was lost the first time).\n');
-    process.exit(1);
-  }
-
-  let behind;
-  try {
-    behind = Number(git('rev-list', '--count', `${state.syncedSha}..HEAD`));
-  } catch {
-    console.log(`artifact-currency: recorded sha ${state.syncedSha} is not in this history — skipping`);
+    const next = JSON.parse(JSON.stringify(state));
+    const list = Array.isArray(next.surfaces) ? next.surfaces : [next];
+    for (const t of targets) {
+      const row = list.find((r) => (r.id || r.source) === t.id);
+      if (row) { row.syncedSha = head; row.syncedAt = new Date().toISOString().slice(0, 10); }
+    }
+    writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
+    console.log(`artifact-currency: recorded ${head} as published for ${targets.map((t) => t.id).join(', ')}`);
     return;
   }
 
-  const { level, ok } = classify(behind);
-  if (level === 'current') {
-    console.log(`✓ artifact-currency: published page is at HEAD (${head})`);
+  if (!all.length) {
+    console.log('artifact-currency: no surfaces configured — nothing to check');
     return;
   }
-  const line = `artifact-currency: the published page is ${behind} commit(s) behind (published ${state.syncedSha}, HEAD ${head})`;
-  if (ok) {
-    console.log(`· ${line} — refresh it at session close: ${state.url || 'see docs/superpowers/.artifact-sync.json'}`);
-    return;
+
+  let failed = false;
+  // Report the DENOMINATOR: a clean tick over a list that silently shrank to zero is the defect this
+  // project keeps shipping.
+  console.log(`artifact-currency: ${all.length} surface(s) tracked`);
+
+  for (const s of all) {
+    const src = join(ROOT, s.source);
+    if (!existsSync(src)) {
+      console.error(`\n✘ artifact-currency: ${s.source} is missing — the page source must be COMMITTED,`);
+      console.error('  not left in a session scratchpad (that is how it was lost the first time).\n');
+      failed = true;
+      continue;
+    }
+    // Guard this script's own input before trusting the drift number — artifact sources only.
+    if (s.kind === 'artifact') {
+      const bad = validateSource(readFileSync(src, 'utf8'));
+      if (bad) {
+        console.error(`\n✘ artifact-currency: ${s.source} is ${bad}`);
+        console.error('  A drift count over an unusable source would be a number about nothing.\n');
+        failed = true;
+        continue;
+      }
+    }
+
+    // 'artifact' drifts from the sha that was PUBLISHED; 'page' from its own last commit.
+    let from = s.syncedSha;
+    if (s.kind === 'page') {
+      from = git('log', '-1', '--format=%h', '--', s.source);
+      if (!from) { console.log(`· ${s.id}: never committed — skipping`); continue; }
+    }
+    if (!from) {
+      console.log(`· ${s.id}: no sync state — run with --sync ${s.id} after publishing`);
+      continue;
+    }
+
+    let behind;
+    try {
+      behind = Number(git('rev-list', '--count', `${from}..HEAD`));
+    } catch {
+      console.log(`· ${s.id}: recorded sha ${from} is not in this history — skipping`);
+      continue;
+    }
+
+    const { level, ok } = classify(behind);
+    if (level === 'current') {
+      console.log(`  ✓ ${s.id}: at HEAD (${head})`);
+      continue;
+    }
+    const what = s.kind === 'artifact' ? 'the published page' : 'this page';
+    const line = `${s.id}: ${what} is ${behind} commit(s) behind (${s.kind === 'artifact' ? `published ${from}` : `last touched ${from}`}, HEAD ${head})`;
+    if (ok) {
+      console.log(`  · ${line} — refresh it at session close${s.url ? `: ${s.url}` : ''}`);
+      continue;
+    }
+    console.error(`\n✘ ${line}`);
+    console.error(`  Over the ${HARD_LIMIT}-commit limit. The operator reads this page; at this drift it is`);
+    console.error('  reporting a state the project no longer has, which is the same defect as a gate');
+    console.error('  passing over input it never examined.');
+    if (s.kind === 'artifact') {
+      console.error(`  Fix: update ${s.source}, republish to the SAME url, then`);
+      console.error(`  \`node scripts/ci/artifact-currency.mjs --sync ${s.id}\`. Do NOT just bump the sha.\n`);
+    } else {
+      console.error(`  Fix: regenerate ${s.source} and commit it.\n`);
+    }
+    failed = true;
   }
-  console.error(`\n✘ ${line}`);
-  console.error(`  Over the ${HARD_LIMIT}-commit limit. The operator reads this page; at this drift it is`);
-  console.error('  reporting a state the project no longer has, which is the same defect as a gate');
-  console.error('  passing over input it never examined.');
-  console.error('  Fix: update docs/superpowers/era-review.html, republish to the SAME url, then');
-  console.error('  `node scripts/ci/artifact-currency.mjs --sync`. Do NOT just bump the sha.\n');
-  process.exit(1);
+
+  if (failed) process.exit(1);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

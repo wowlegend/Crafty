@@ -1,7 +1,19 @@
 {
-  "url": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
-  "source": "docs/superpowers/era-review.html",
-  "syncedSha": "fd447fa",
-  "syncedAt": "2026-08-07",
-  "note": "Update the source, republish to the SAME url, then run scripts/ci/artifact-currency.mjs --sync. Bumping the sha without republishing makes the check lie."
+  "surfaces": [
+    {
+      "id": "era-review",
+      "kind": "artifact",
+      "url": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
+      "source": "docs/superpowers/era-review.html",
+      "syncedSha": "fd447fa",
+      "syncedAt": "2026-08-07",
+      "note": "Update the source, republish to the SAME url, then run scripts/ci/artifact-currency.mjs --sync era-review. Bumping the sha without republishing makes the check lie."
+    },
+    {
+      "id": "loop-progress",
+      "kind": "page",
+      "source": "docs/superpowers/LOOP-PROGRESS.html",
+      "note": "Not published to a URL, so there is no sha to record — drift is measured from this file's OWN last commit, which git knows and nobody can mistype. The kernel calls keeping it current a session-close obligation; it had gone 17 commits stale with no gate while STATUS and CHANGELOG stayed immaculate. Regenerate and commit it."
+    }
+  ]
 }

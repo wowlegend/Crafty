@@ -20,6 +20,7 @@ row in the SAME commit as the fix.
 | COMPRESSIONS (charter over byte ceiling) | ▣ | **44,921 → 37,431 B**, under the ~40,000 ceiling |
 | **C6–C20** (~15 corrections) | ▣ | all applied; each re-verified against live HEAD first |
 | **A5(i)** mutation-proof add-only hole | ▣ | widened to assertion REWRITES; caught 5 more over the prior 120 commits |
+| **A4** artifact-currency → 2nd surface | ▣ | `LOOP-PROGRESS.html` now tracked (19 commits behind); artifact-vs-page split keeps the shell validator off standalone pages |
 | C20 · seven SETTLED items absent from `DECISIONS.md` | ▣ | closed by the §0-C migration + the world-design HYBRID backfill |
 
 **The compression target in the plan was wrong, and measuring first is what caught it.** The plan named §0-B
