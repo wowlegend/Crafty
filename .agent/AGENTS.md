@@ -14,7 +14,7 @@ directory`; a wrong ".superpowers is gone"; and a wrong `memory/SOTA-INITIATIVE.
 ```
 REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-plan + mockups live HERE
   ├─ .git/   CLAUDE.md (symlink -> .agent/AGENTS.md)
-  ├─ SOTA-INITIATIVE.md                          ← the MASTER PLAN v2 (LIVING; S2-B Aspect spine -> S3 -> S4)
+  ├─ SOTA-INITIATIVE.md                          ← MASTER PLAN v2, DIRECTION ONLY (§3 status FROZEN 06-18; S0-S3 DONE, S4 Kevin-gated)
   ├─ SOTA-KICKOFF-PROMPT.md
   ├─ .agent/  AGENTS.md (this file) + workflows/ (debug-physics, fix-movement)
   ├─ docs/superpowers/                           ← plans/, specs/, KEVIN-REVIEW-BATCH.md
@@ -43,17 +43,18 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   believes this is a ~31-file project reasons about it as a small one, and "Components is the last god-file"
   actively misdirects de-monolith work away from the others. **Read the COUNT from the generated block
   below, never from this sentence** — it said "five" until 2026-08-05, when extracting the mesher dropped
-  `terrain.worker.js` from 936 to 694 LOC and made it four, i.e. a headline contradicting the table directly
+  `terrain.worker.js` to 692 LOC and made it four, i.e. a headline contradicting the table directly
   beneath it, in the very paragraph written to stop exactly that. Regenerate with
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **275 source files / 31,032 LOC** in
-  `frontend/src`, plus 117 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **276 source files / 31,071 LOC** in
+  `frontend/src`, plus 118 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (4):** `src/Components.jsx` 1325 · `src/store/useGameStore.jsx` 1096 · `src/world/Terrain.jsx` 992 · `src/QuestSystem.jsx` 931.
-  This list is checked EXACTLY by `doc-currency`; the counts above carry a ±10% band so
-  ordinary churn does not redden the push.
+- **Files ≥ 900 LOC (4):** `src/Components.jsx` 1325 · `src/store/useGameStore.jsx` 1096 · `src/world/Terrain.jsx` 997 · `src/QuestSystem.jsx` 931.
+  Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
+  sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
+  can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
 <!-- END MEASURED -->
 
 - **What is still true qualitatively:** the codebase is **MONOLITHIC in shape** — a handful of large
@@ -63,11 +64,11 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   imported `game/*` modules, and the remainder is the loop + input wiring that MUST NOT be split
   (Game-Loop-Isolation / ordering, decision-of-record). **The other ≥900-LOC files carry no such finding**
   — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
-  load-bearing for **mobs/loot/XP only**, NOT the whole architecture. Do NOT trust older "clean ECS" claims.
-  *(De-monolith history — GameScene 933→304, SimplifiedNPCSystem 934→183, GamePanels 1094→739,
+  load-bearing well beyond the "mobs/loot/XP only" this line used to claim — `grep -rln "ecs/world" frontend/src/ | grep -v "\.test\."` returns 15 files incl. grass, minimap sync, nametags, element zones, hurl and squad AI — but still NOT the whole architecture. Do NOT trust older "clean ECS" claims.
+  *(De-monolith history — GameScene 933→299, SimplifiedNPCSystem 934→183, GamePanels 1094→739,
   EnhancedMagicSystem 904→474, AdvancedGameFeatures deleted @ S3-M4 — lives in `memory/CHANGELOG.md`. It is
   history, not current state, which is why it no longer sits in the constitution.)*
-- Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, deterministic `scripts/visual/touch-probe.mjs` gate; only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted:** this sentence said "~1660 tests" and a "21-state" visual gate; both were stale (2,139 and 31 when checked 2026-08-02), sitting one line below the size numbers that were 12× wrong. A number nobody recomputes rots, so read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
+- Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted:** this sentence said "~1660 tests" and a "21-state" visual gate; both were stale (2,139 and 31 when checked 2026-08-02), sitting one line below the size numbers that were 12× wrong. A number nobody recomputes rots, so read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
 
 ## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
 
@@ -163,9 +164,10 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   pressing ESC twice, `tapTestId` never checking WHERE its tap landed, …). Read the count, not the tick.
   **This paragraph was already here when the last two happened** — being read at orientation is not the same
   as being salient while you write the gate, so the full checklist now lives in
-  `.claude/rules/gates-and-probes.md`, which auto-loads on any edit under `frontend/tests/**` or
-  `frontend/scripts/**`. Keep the two in sync; this line is the always-loaded baseline, that file is the
-  moment-of-use activation.
+  `.claude/rules/gates-and-probes.md`, which auto-loads on any edit under `frontend/tests/**`,
+  `frontend/scripts/**`, `frontend/src/**/*.test.js` or `frontend/src/**/*.test.jsx` — **all four** globs;
+  this line named two, silently omitting the ~118 colocated `src` tests, which are most of the corpus. Keep
+  the two in sync; this line is the always-loaded baseline, that file is the moment-of-use activation.
 
 ## Execution & Workflow Protocols
 - **Anti-Execution Tunneling:** don't chain many distinct fixes into a monolith. >3 logical systems OR >5 sequential code-altering calls → PAUSE, `git commit`, checkpoint via `session-archivist-kz`.
@@ -175,7 +177,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 - **AST-Safe Edits:** never `sed`/`cat`-rewrite `.js/.jsx` (AST-safe tools/Edit only; `sed` OK for markdown). Verify behavior, not implementation. No `// ... rest of code`.
 
 ## Design Language (LOCKED — S1-C)
-ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.js` (`--ui-*` vars + `applyThemeVars()`) → `tailwind.config.cjs`. **Filled 2-tone game-icons** (`src/ui/primitives/gameIcons.js`, baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT (items/spells/mobs/achievements); **lucide outline** for app-chrome. The 7 primitives live in `src/ui/primitives/`. i18n in `src/i18n/` (en default + lazy-CJK zh-CN). **NO emoji in `src/`** (zero-emoji hard gate). game-icons.net attribution is owed → a Credits screen.
+ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.js` (`--ui-*` vars + `applyThemeVars()`) → `tailwind.config.cjs`. **Filled 2-tone game-icons** (`src/ui/primitives/gameIcons.js`, baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT (items/spells/mobs/achievements); **lucide outline** for app-chrome. The UI primitives live in `src/ui/primitives/` (read the set from its `index.js`; this said "7" and was wrong). i18n in `src/i18n/` (en default + lazy-CJK zh-CN). **NO emoji in `src/`** (zero-emoji hard gate). game-icons.net attribution is DISCHARGED by `src/ui/CreditsScreen.jsx` (Settings → Credits).
 
 ## Commit Conventions
 - NO "Generated with" / "Co-Authored-By: Claude" footer. Subagent fix-ups = NEW commits (never `git commit --amend` / `reset`).

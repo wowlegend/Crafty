@@ -190,6 +190,16 @@ The narrative is history and lives in `memory/CHANGELOG.md` + git; the decisions
 file is their designed home. **Nothing here is reversed, weakened, or reworded to change meaning** — the
 charter now names them and points here.
 
+- **World-design direction = HYBRID (option C)** (Kevin 2026-06-13, `KEVIN-REVIEW-BATCH.md:610` item 11).
+  Infinite procedural wilds for the survival/explore loop, PLUS a crafted "home" anchor, a handful of signature
+  silhouette landmarks, genuine biome distinctness, and oceans that are a *place* (depth, beaches, something out
+  there) rather than blue blocks. Rejected: (A) endless wilds alone — weak memorability; (B) finite crafted
+  island — caps the explore loop. Spec `specs/2026-06-13-crafty-world-design-hybrid.md`. Two loop-chosen
+  defaults inside it, reversible: the home anchor is a quiet solo **"Hearth"** (lodge + brazier + pier, NO NPCs)
+  rather than an inhabited hamlet, and **deep oceans stay friendly-explorable — no drowning/oxygen timer**
+  (matches the broad-audience pillar).
+  *This is the item the kernel's SETTLED list named and this file did not have: it was recorded only in the
+  append-only INBOX, which structurally cannot say whether something was settled.*
 - **World/game direction — "The Ember Frontier, gated toward a Blight Heart climax"** (Kevin-confirmed
   2026-06-15). Outward *see-it-go-to-it* exploration on the built landmark + compass rails; the Shadow Dragon
   moved from its ~25-block ambush to a single fixed, foreshadowed far-edge lair = a real WIN-STATE plus endless

@@ -69,6 +69,12 @@ hand-kept copies drifted three different ways while one of them claimed they "ca
 8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
 <!-- END READ-ORDER -->
 
+**⚠️ A QUEUE CITE IS A HYPOTHESIS, NOT AN ADDRESS.** The mesher extraction (`71c24ca`) invalidated an entire
+file's worth of `file:line` cites in one commit — `terrain.worker.js:912` sat `▢` in the PRIMARY queue while
+that file had shrunk to 692 lines and held ZERO winding coords, the code having moved to `mesher.js` and the
+bug having been fixed at `d676069`. **Resolve every finding's `file:line` against live HEAD before working it;
+if the fix already shipped, mark it `▣✓ <sha>` in the same commit** rather than re-doing it.
+
 Re-load the coding domain overlay if this is a fresh post-compact session.
 
 REPO (two-level): ROOT `/Users/kz/Code/Crafty` (docs + memory + master plan) · APP `/Users/kz/Code/Crafty/frontend`
@@ -131,7 +137,7 @@ gated logic to a pure injectable module, test purely, mutation-prove, wire); Gam
 in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in capture — seeded
 + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4 veto)**; bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
-`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + knip + pre-push each push.
+`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push runs TEN checks — count them, never recall them). `knip` is CI-only, NOT at push.
 BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
 (`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
 `close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
@@ -140,7 +146,7 @@ rots and this file is re-injected verbatim on every firing). Check the composito
 planning browser work, expect to lose it mid-run, and do browser work FIRST while the window is open.
 **Read the frame with your own eyes.** Re-baseline → Kevin sign-off.
 
-TASTE BOUNDS: the coherence pillars **P0–P5** (`specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **The
+TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **The
 only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
 Accessibility never vetoes depth. Reference-lock before any look-bearing work; judge IN-WORLD on the real grade.
 
@@ -148,7 +154,7 @@ Accessibility never vetoes depth. Reference-lock before any look-bearing work; j
 vite from capture/e2e/probes do NOT die on a throw. Every ad-hoc probe closes its browser in a `finally`; **spawn
 vite `detached` and SIGKILL the whole process GROUP (`process.kill(-server.pid)`) — a plain `server.kill()` only reaps
 the npx wrapper and ORPHANS the forked vite child holding the port** (the repo-wide probe-hygiene bug class; ocean-probe
-+ capture fixed, ~25 more in the queue). Guard `browser.close()` with a timeout + force-kill (a GPU-context-lost Chrome
++ capture fixed). The probe-hygiene class is CLOSED: every probe now goes through the managed `_serve.mjs` lifecycle, and the one fixed ad-hoc port left (`spawn-legibility-probe.mjs`, 4197) is the sanctioned pattern, not a leak. Guard `browser.close()` with a timeout + force-kill (a GPU-context-lost Chrome
 hangs close() forever — the old "capture title-mascot hang"). Use ONE managed port (E2E 4179, capture 4178); never
 hand-start vite on an ad-hoc one-off port. Sweep `sh frontend/scripts/dev/kill-test-procs.sh` after; when the box is
 slow, check for leaks BEFORE blaming a gate. cmux opens a preview tab per localhost port that OUTLIVES the killed
@@ -168,6 +174,6 @@ design calls (chest-mining, damage-lockout, camera-shake feel, 3D mob AI).
 SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
 Blight-Heart · audience is BROAD (Marcus is a user, not a ceiling) · world-design HYBRID · CPU-ocean fork.
 
-CONTINUE: while committable units remain (the 215-finding queue is DEEP — this is an ACTIVE build queue, not a hold).
+CONTINUE: while committable units remain — read the depth, never recall it: `node frontend/scripts/ci/queue-ledger.mjs`. This is an ACTIVE build queue, not a hold.
 AWAIT + INTEGRATE any in-flight background Workflow instead of idle-spinning. ~20–30min heartbeat ONLY if genuinely
 blocked on Kevin. Never end the loop yourself.

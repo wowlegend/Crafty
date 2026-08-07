@@ -86,8 +86,9 @@ export function renderBlock(m) {
     `  \`frontend/src\`, plus ${m.colocatedTestFiles} colocated \`*.test.js(x)\` files (counted separately —`,
     `  tests are not the architecture).`,
     `- **Files ≥ ${LARGE_FILE_LOC} LOC (${m.largeFiles.length}):** ${large || '_none_'}.`,
-    `  This list is checked EXACTLY by \`doc-currency\`; the counts above carry a ±${Math.round(TOLERANCE * 100)}% band so`,
-    `  ordinary churn does not redden the push.`,
+    `  Its MEMBERSHIP is checked exactly by \`doc-currency\`; the LOC beside each name, and the counts above,`,
+    `  sit under a ±${Math.round(TOLERANCE * 100)}% band so ordinary churn does not redden the push — so a specific number here`,
+    `  can be mildly stale and still green. Regenerate before trusting one: \`node frontend/scripts/ci/measure.mjs --write\`.`,
     END,
   ].join('\n');
 }

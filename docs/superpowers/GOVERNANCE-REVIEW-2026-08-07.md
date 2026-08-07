@@ -18,7 +18,8 @@ row in the SAME commit as the fix.
 | **A3** read-order parity checker | ▣ | `read-order.mjs` renders ONE order into all 3 surfaces; doc-currency checks it |
 | **A2** generated counts | ◐ partial | per-file LOC values now checked (banded). Remaining: visual states, e2e specs, gate-file count, queue split |
 | COMPRESSIONS (charter over byte ceiling) | ▣ | **44,921 → 37,431 B**, under the ~40,000 ceiling |
-| C6–C20 (~15 corrections) | ▢ | next |
+| **C6–C20** (~15 corrections) | ▣ | all applied; each re-verified against live HEAD first |
+| C20 · seven SETTLED items absent from `DECISIONS.md` | ▣ | closed by the §0-C migration + the world-design HYBRID backfill |
 
 **The compression target in the plan was wrong, and measuring first is what caught it.** The plan named §0-B
 ("deleting/compressing §0-B alone would remove roughly 3.5KB"). A per-section byte profile showed §0-B is

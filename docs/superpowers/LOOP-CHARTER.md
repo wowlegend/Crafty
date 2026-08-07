@@ -105,7 +105,10 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
 ## 1. Per-iteration procedure (the only loop shape)
 
 1. **ORIENT (assume amnesia — context may have just compacted):**
-   `git -C /Users/kz/Code/Crafty status --short && git log --oneline -8` → read `memory/ACTIVE_PLAN.md`
+   `git -C /Users/kz/Code/Crafty fetch && git -C /Users/kz/Code/Crafty status -sb && git log --oneline -8`
+   (**`-sb`, never `-s`**: plain `-s` suppresses the `## main...origin/main [behind N]` line, so you cannot
+   see you are stale — the other two docs already mandate `-sb`, and this step is read EVERY iteration)
+   → read `memory/ACTIVE_PLAN.md`
    (resume pointer) → this charter → the open task list. TWO-LEVEL repo: docs/memory at ROOT
    `/Users/kz/Code/Crafty/`, app in `frontend/` (npm/tests run THERE). Absolute paths always; never assert
    file-absence from a relative path.
@@ -134,7 +137,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    (commit the doc) as the tick's PERSIST step.
 5. **VERIFY before declaring (evidence, not belief):** from `frontend/` — `npx vitest run` (count must HOLD
    OR GROW — see §3 ratchet; a workflow/doc-only tick may hold the count FLAT, say so) · `npm run build` clean · the
-   N-state visual gate (read N LIVE from ACTIVE_PLAN — 20 as of 2026-06-15; do NOT hardcode it here, counts drift),
+   N-state visual gate (`ls frontend/tests/visual/baseline/*.png | wc -l` — never hardcode it; this said 20),
    or a DELIBERATE re-baseline per §4 with rationale + self-eyeball. **⚠️ VISUAL-GATE HAZARD (the iter-159 lesson — a crash hid on main for 5
    iters):** `npx vitest run --config vitest.visual.config.js` ALONE only DIFFS the pre-existing `current/`
    PNGs against `baseline/` — it does NOT re-render. So it reports "18/18" on STALE frames + silently MISSES
@@ -186,7 +189,9 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    S5–S10 ladder + `codebase-reality-audit` P0 chain are SUPERSEDED as the spine — their shipped parts are
    subsumed by the 2026-06-17 11-agent audit; any remaining items are folded into W1–W4. The four-Aspect spine
    (WILDHEART · VOIDHAND · SOULBIND · ELEMANCER) completed 2026-06-11; S3 de-monolith is now LARGELY DONE (4-of-5
-   god-files dissolved; only Components ~1297 + GameScene ~914 remain, formally PARKED iter-175 — risky
+   god-files dissolved; `GameScene.jsx` is DONE — 299 LOC as of 2026-08-07, not the "~914" this line claimed.
+   Read the live ≥900-LOC set from the generated MEASURED block in `.agent/AGENTS.md`; there are more than the
+   one this sentence implies, and `Components.jsx` is PARKED iter-175 — risky
    imperative-loop extraction, not actively blocking) → de-monolith is now a DEBT LANE behind the mega-directive,
    not the spine. B4-v1.5 + the v2 voxel-mutation seam (iPad-gated) + S4 stay Kevin-gated/later.
 5. **SOTA experience enhancements** (the explicit Kevin mandate — interleave at least one every 2–3
@@ -208,7 +213,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   **[MECH: `frontend/scripts/ci/mutation-proof-trailer.mjs`, run first in `.githooks/pre-push`]** — a commit
   that ADDS a file under `tests/gates/` or `scripts/ci/` must carry a trailer stating the proof:
   `Mutation-Proof: <what you broke> -> <gate> went RED (<message>)`. Until 2026-08-03 this rule was stated
-  three times across two documents with **zero checkers**, which is precisely why 84 of 136 gate files still
+  repeatedly across two documents with **zero checkers**, which is precisely why so many gate files still
   read source text without importing the module they guard. Scoped to NEW gates on purpose: demanding a
   trailer for every edit during a sweep is noise, and noise is how a check gets switched off. The trailer
   cannot be verified true by machine — it forces the claim into a place a reviewer can read, which is the
@@ -217,11 +222,13 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   guard and watch it go RED**, then revert. If you cannot make it go red, it is decoration — delete it or
   replace it. A gate that is **green on day one** against unfixed code is a **rubber stamp**, and the slice that
   shipped it is VOID.
-  *Empirical:* `quest-rewards-gates.test.js` asserts `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)` — it
-  proved the line EXISTED while the line never RAN on a 2nd claim, so it sat green through a live bug that stole
-  quest rewards and corrupted the save. `bundle-split-gates.test.js` greps `vite.config.js` for `manualChunks`
-  and asserts **zero bytes** against a ~4.5MB bundle. **Both are typical, not exceptional — assume a gate is
-  vacuous until you have seen it fail.**
+  *Empirical (past tense — do not read this as the current state of the file):* `quest-rewards-gates.test.**jsx**`
+  ONCE asserted `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)`; it proved the line EXISTED while the line
+  never RAN on a 2nd claim, so it sat green through a live bug that stole quest rewards and corrupted the save.
+  **It was rewritten at `926751e` (2026-07-13) and is now mutation-proven** — the `addCoins` strings left in it
+  are COMMENTS quoting its dead self, which is exactly the shape that makes a grep-based re-audit misfire.
+  Still-live example: `bundle-split-gates.test.js` greps `vite.config.js` for `manualChunks` and asserts **zero
+  bytes** against a ~4.5MB bundle. **Assume a gate is vacuous until you have seen it fail.**
 - **Never weaken to pass.** No widening a timeout, loosening a threshold, narrowing a test's scope, or
   `.skip`-ing to get green. If a gate is genuinely wrong, change it **deliberately, with written justification
   in the commit body** — never silently. (This is the classic reward-hack: *delete the failing test to turn CI
@@ -273,7 +280,7 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   > "approved + landed (`0f8cad9`)". **It was REMOVED as unused by `8b6e3a44`** — verified: absent from
   > `package.json`, imported nowhere. That single stale sentence caused an agent to propose a week-sized
   > "wire the installed E2E substrates" campaign for a package that does not exist. **Current truth:**
-  > `@playwright/test` **IS** installed and wired (`playwright.config.js`, `npm run test:e2e`, 11 specs) — but
+  > `@playwright/test` **IS** installed and wired (`playwright.config.js`, `npm run test:e2e`; count them with `ls frontend/tests/e2e/*.spec.js | wc -l`) — but
   > those specs drive the **store**, not real input (see STATUS §V2). The zero-dep input-driven E2E + state-hash
   > work needs **no ask** and is full loop authority.
 
@@ -357,11 +364,20 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
 2. **Local surfaces:** `memory/STATUS.md` (registry ticked: what closed, what opened) → `memory/ACTIVE_PLAN.md`
    (the NEXT unit, so a cold session resumes in one read) → `memory/CHANGELOG.md` (what shipped) →
    plan-doc banners (`✅ SHIPPED`).
+2b. **PUBLISHED surfaces — the two that drift silently, because nothing rendered locally shows their staleness:**
+   - `docs/superpowers/LOOP-PROGRESS.html` — the kernel calls this a session-close obligation and it had gone
+     **17 commits stale** by 2026-08-07 (last touched `1b776ca`). It has NO gate. Refresh it here or it rots.
+   - `docs/superpowers/era-review.html` → its published Artifact. This one DOES have a gate
+     (`node frontend/scripts/ci/artifact-currency.mjs`, informational under 30 commits, hard fail above).
+     **Update IN PLACE via the URL in `.artifact-sync.json`, then `--sync`.** A fresh publish mints a new URL
+     and strands the bookmark Kevin already has.
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:
    - **README.md** — is it still TRUE? (It went ~6 weeks stale once, with a **`localhost:3000` "Live Demo"
      link** shipped to the public.) Features, controls, and the demo URL must match reality.
    - **Repo description + topics** (`gh repo edit`) — must describe the game as it *is*.
-   - **CI badge** green (once CI exists — §V6).
+   - **CI `success`** — confirmed with `gh run list --workflow=ci.yml --branch main`, NEVER from the README
+     badge. CI has existed since 2026-07-13, and a job that blows its own `timeout-minutes` renders as
+     `cancelled`, which the badge does not show as failure. Read the conclusion string, not the image.
    - `git push` — **the tree must be pushed, not just committed.** Vercel auto-deploys from `main`.
 4. **Durable memory:** mark-truth any operator-state change; snapshot the native-memory dir.
 5. **Re-arm** the loop with the kernel (`LOOP-KERNEL-PROMPT.md`) so the next firing orients from disk.
@@ -381,15 +397,26 @@ first-class failure, not a nicety.
 
 ## 8. Rule hygiene (added 2026-08-02 — the meta-rule that keeps this document honest)
 
-A 16-agent audit of 996 loop commits found one clean split, and it was **mechanism, not diligence**:
+A 16-agent audit of the loop's commits found one clean split, and it was **mechanism, not diligence**.
+(Denominator: `git rev-list --count --since=2026-06-10 --until=2026-08-03 HEAD`. This paragraph used to say
+"996 loop commits" and, four lines later, "in 999 commits" — one denominator, two numbers, neither
+reconstructible, sitting directly above rule 2 below.)
 
 - Every rule checkable from an artifact the loop was already producing — the diff, the commit message, the
-  process table — was obeyed at essentially 100%: zero AI footers, zero `.state/` writes, zero doc deletions,
-  zero skipped tests, one justified eslint-disable, one commit over 25 files, in 999 commits.
+  process table — was obeyed at essentially 100%: zero AI footers, zero doc deletions, zero skipped tests,
+  one justified eslint-disable, one commit over 25 files.
 - Every rule requiring a SEPARATE experiment whose only consumer was this document's own prose — mutation-prove,
   independent evaluation, "CI green", STATUS currency, the priority ladder — was obeyed erratically or never.
-  "MUTATION-PROOF EVERY NEW GATE" is stated three times across two files and had **zero** checkers; it appears
-  in 0 of 479 June code commits.
+  "MUTATION-PROOF EVERY NEW GATE" was stated repeatedly across two files with **zero** checkers, and appeared
+  in 0 of 479 June code commits. **It has an enforcer now** — `.githooks/pre-push:73`,
+  `mutation-proof-trailer.mjs`, run FIRST, with the `[MECH:]` pointer in §3. Count the proofs, do not recall
+  them: `git log --format=%b | grep -c '^Mutation-Proof:'` (28 on 2026-08-07).
+- **⚠️ The counterexample this section used to hide, because it is evidence AGAINST the thesis above:**
+  "zero `.state/` writes" was filed under mechanically-checkable. **There is no mechanism** — `.state/` is not
+  in `.gitignore`, no hook or CI step touches it, and it is tracked (a `git status -sb` right now shows
+  `.state/` files modified and untracked). That rule is obeyed by DILIGENCE alone, and six reviewers missed it.
+  Keep it visible: the split is real but it is not clean, and a thesis that quietly drops its counterexample is
+  the same failure as a gate that skips its hard inputs.
 
 So the documents had been escalating by REPETITION where they should have been enforcing. Three rules follow,
 and unlike the rules they govern, all three are gradeable by grep:
@@ -401,7 +428,7 @@ and unlike the rules they govern, all three are gradeable by grep:
 2. **A number is computed, or it is deleted.** No hand-typed counts in any governing document. A count appears
    as the command that regenerates it, or as a dated past-tense scar ("was 88 runs on 2026-07-27"). Every
    hand-typed number in these docs rotted: `.agent/AGENTS.md` claimed "~14.4k LOC / ~31 files" against an
-   actual 29.5k / 264 — and it was already false by 1.8× on the day it was written.
+   actual 29.5k / 264 (measured 2026-08-02) — already false by 1.8x the day it was written. That block is GENERATED now.
 3. **A claim about state outside the working tree is emitted by the command that observed it, in the same
    turn, or it is a fabrication** — regardless of whether it happens to be true. This is the generative cause
    of both the CI blindness and the "CI green" written into CHANGELOG on a day CI had never once passed.
