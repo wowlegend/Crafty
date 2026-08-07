@@ -234,33 +234,33 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   are COMMENTS quoting its dead self, which is exactly the shape that makes a grep-based re-audit misfire.
   Still-live example: `bundle-split-gates.test.js` greps `vite.config.js` for `manualChunks` and asserts **zero
   bytes** against a ~4.5MB bundle. **Assume a gate is vacuous until you have seen it fail.**
-- **Never weaken to pass.** No widening a timeout, loosening a threshold, narrowing a test's scope, or
+- **Never weaken to pass.** **[ADVISORY — no mechanism; the ratchets below are the closest thing]** No widening a timeout, loosening a threshold, narrowing a test's scope, or
   `.skip`-ing to get green. If a gate is genuinely wrong, change it **deliberately, with written justification
   in the commit body** — never silently. (This is the classic reward-hack: *delete the failing test to turn CI
   green.*)
-- **Test ratchet:** NEVER delete, weaken, skip, or edit-to-pass an existing test or static gate to make work
+- **Test ratchet:** **[MECH: partial — `gate-shape.mjs` ratchets the source-grep population and `queue-ledger.mjs` the unmarked count; the "never delete a test" half is ADVISORY]** NEVER delete, weaken, skip, or edit-to-pass an existing test or static gate to make work
   green (the canonical long-running-agent failure). A genuinely wrong test may be CHANGED only with a
   written justification in the commit body + an ACTIVE_PLAN note. Unit count holds-or-grows every iteration —
   EXCEPT a Workflow-LAUNCH or Workflow-ARTIFACT-INTEGRATION tick (§1 step 4), whose deliverable is a committed
   design/audit/research doc not code; such a tick holds the count flat + says so in the report. The destructive
   ratchet (never delete/weaken/skip/edit-to-pass a test or static gate) stays in FULL force for every CODE tick.
-- **Static gates are seam-allowlists** — when adding a gated-class feature, extend the gate FIRST (red) then
+- **Static gates are seam-allowlists** **[MECH: `frontend/scripts/ci/gate-shape.mjs`]** — when adding a gated-class feature, extend the gate FIRST (red) then
   build (green). New invariants of CLAUDE.md-critical class get their own gate.
-- **Perf envelope:** every new render/physics feature states its frame-cost story (pooled? capped? tier-gated?
+- **Perf envelope:** **[MECH: partial — `bundle-budget.mjs` caps chunk BYTES only; the frame-cost story is ADVISORY]** every new render/physics feature states its frame-cost story (pooled? capped? tier-gated?
   zero-alloc hot path?). When in doubt, measure delta-from-baseline like the M2 FPS-gate pattern.
-- **No new floating "TODO later"** — every deferral lands in a task or plan doc.
+- **No new floating "TODO later"** **[ADVISORY — no mechanism]** — every deferral lands in a task or plan doc.
 
 ## 4. Design/taste discipline (how the loop self-gates what Kevin used to gate)
 
 Kevin delegated taste authority — the loop replaces his gate with this discipline, NOT with vibes:
-- **Reference-lock before building any look** (the locked VFX rule): pick/produce a concrete visual reference
+- **Reference-lock before building any look** **[ADVISORY — no mechanism]** (the locked VFX rule): pick/produce a concrete visual reference
   (existing locked refs in `.superpowers/`, or a generated mockup committed for the record), THEN build to it.
   Judge IN-WORLD (real context, the grade ON), never on a sky-studio card.
-- **Coherence pillars** (`docs/superpowers/specs/crafty-coherence-pillars.md` P0–P5) bound every addition:
+- **Coherence pillars** **[ADVISORY — no mechanism]** (`docs/superpowers/specs/crafty-coherence-pillars.md` P0–P5) bound every addition:
   one readable art direction (S1-C bold-flat + the locked render recipe), no kitchen-sink drift. The
   destructive-CUT gate stays PARKED (its own bound #1) — the loop may ADD/REFINE freely but large deletions
   of shipped player-facing features need a KEVIN-REVIEW-BATCH entry first (deleting dead code/scaffold is free).
-- **Player-experience lens** on everything: builder-plays-before-done (drive the real app when behavior
+- **Player-experience lens** **[ADVISORY — no mechanism; this is the "green gate is not a lived result" axis]** on everything: builder-plays-before-done (drive the real app when behavior
   changed); content-variety + signature-fires checks; legibility (a fresh player must be able to FIND the
   feature — key taught, HUD honest, denied-actions give feedback).
 - **Visual re-baselines are allowed and expected** (the look is MEANT to improve): re-baseline = render →
@@ -273,7 +273,7 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   slice-ladder close (a contact-sheet of N frames + one taste ask), NOT slice-by-slice. Each individual re-baseline
   still gets its HD self-eyeball + commit + one-line rationale at the tick it ships; only the Kevin-facing TASTE
   sign-off batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
-- **Audio is a first-class axis** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
+- **Audio is a first-class axis** **[ADVISORY — no mechanism]** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
   WILDHEART roar-set backfill is owed (#74 — the loop now OWNS this decision: do it).
 - **Genuinely-Kevin items** (park + batch, never block the loop): real-device iPad/phone runs, anything
   spending money / creating accounts / publishing externally, big direction REVERSALS of his recorded decisions
@@ -317,40 +317,30 @@ STATUS §5 "Anti-patterns this project has already paid for" — the section for
 
 ## 6.4 ⚠️ BROWSER / TEST-PROCESS HYGIENE — anything you launch, you kill (Kevin, 2026-07-13)
 
-**This degrades Kevin's actual machine. Treat it as a hard rule, not housekeeping.**
+**This degrades Kevin's actual machine. Treat it as a hard rule, not housekeeping.** One session leaked 7 vite
+servers + a headless Chromium at 622% CPU, drove load average to 25, and timed out the capture gate — which
+presented as a *"flaky gate"* and burned a real debugging cycle.
 
-Headless Chromium and vite dev servers spawned by capture / e2e / ad-hoc probes **do NOT die when the script
-throws or the run is interrupted.** On 2026-07-13 one session leaked **7 vite servers + a headless Chromium
-spinning at 622% CPU (six cores)** → machine load average **25** → the visual-capture gate timed out. That
-presented as a *"flaky gate"*. It was **self-inflicted**, and it wasted a real debugging cycle.
+**COMPRESSED 2026-08-07: this section was the FOURTH copy of these rules** (charter · `.agent/AGENTS.md` ·
+`.claude/rules/gates-and-probes.md` · the kernel), which is the exact disease §8 names. The full narrative —
+the cmux preview-tab half, the `close-surface` footgun, the managed ports — lives in **`.agent/AGENTS.md`**,
+which is loaded unconditionally at every session start, and the moment-of-use checklist in
+**`.claude/rules/gates-and-probes.md`**, which fires when you are actually editing a probe. Read them there.
 
-- Every ad-hoc Playwright/Puppeteer probe closes its browser in a **`finally`** (a throw must still close it).
-- **Spawn vite `detached` and SIGKILL the whole process GROUP (`process.kill(-server.pid, 'SIGKILL')`) in the
-  finally — a plain `server.kill()` only reaps the `npx` wrapper and ORPHANS the forked vite child holding the
-  port (2026-07-20; the repo-wide probe-hygiene bug class — ocean-probe + capture fixed, ~25 more flagged in the
-  holistic-review queue as `hygiene`).**
-- **Guard `browser.close()` with a timeout + a force-kill of the browser process** (race `close()` against ~8s,
-  cleared on settle, then `browser.process().kill('SIGKILL')`). A GPU-context-lost / crashed headless Chrome
-  leaves `close()` hanging on an unanswered CDP command forever — this WAS the long-blamed "capture hangs at the
-  title-mascot step" (it was `close()`, not the render; the fix at `75191ef` also made the ungated title-mascot
-  state NON-FATAL, so the harness runs to a clean end and the visual re-baseline is unblocked).
-- Never leave a hand-started dev server running — prefer Playwright's `webServer` (self-managing). If you start
-  one by hand, kill it in the same turn.
-- Delete throwaway probe scripts (`rm -f frontend/dbg-*.mjs`); never commit them.
-- **Sweep with `sh frontend/scripts/dev/kill-test-procs.sh`** — it only kills THIS repo's vite + Playwright's
-  own cached browsers, never a user browser.
-- **When the box is slow, check for leaks BEFORE blaming a gate.** `uptime` + `ps aux | grep ms-playwright`.
-  A leaked browser is the most common cause of a "mystery" capture timeout, and the capture harness is
-  load-sensitive by design.
-- **cmux PREVIEW TABS are the OTHER half of the leak (Kevin, 2026-07-14).** cmux opens a browser preview
-  surface per localhost port; **the tab outlives the process you kill**, so `kill-test-procs.sh` alone leaves
-  husks (30+ `localhost:*` tabs piled up across sessions). Prevention: E2E uses ONE managed port (4179
-  `--strictPort`); capture uses 4178; **never hand-start vite on an ad-hoc port** for a probe. Clear husks
-  with `sh frontend/scripts/dev/close-preview-tabs.sh` (LISTS by default). **⚠️ FOOTGUN: never touch
-  `cmux close-surface` by hand — an unresolved `--surface` falls back to closing `$CMUX_SURFACE_ID`, YOUR OWN
-  tab. A loop iteration self-decapitated its session this way.** The helper is the only sanctioned path
-  (SELF-excluded by UUID + fallback overridden + aborts if SELF vanishes). **The loop must NEVER auto-run
-  `--close`** — session-close may run the LIST (report only); a human runs `--close`.
+What this section uniquely carries, because it is a MECHANISM and not a reminder:
+
+- **[MECH: `frontend/scripts/visual/_serve.mjs`]** — it owns the vite lifecycle. **Use it rather than
+  re-implementing the kill.** It spawns `detached` and SIGKILLs the whole process GROUP
+  (`process.kill(-server.pid, 'SIGKILL')`): a plain `server.kill()` reaps only the `npx` wrapper and ORPHANS
+  the forked vite child still holding the port. That was a repo-wide bug class (2026-07-20), and putting the
+  fix in the shared helper is what ended it — a paragraph is read before the mistake, a helper at it.
+- **Guard `browser.close()` with a timeout + force-kill** (race `close()` against ~8s, cleared on settle, then
+  `browser.process().kill('SIGKILL')`). A GPU-context-lost headless Chrome leaves `close()` hanging on an
+  unanswered CDP command forever. This WAS the long-blamed "capture hangs at the title-mascot step" — it was
+  `close()`, not the render (`75191ef`).
+- **[ADVISORY]** `sh frontend/scripts/dev/kill-test-procs.sh` at session close, and check `uptime` for leaks
+  BEFORE blaming a gate. **The loop must NEVER auto-run `close-preview-tabs.sh --close`** — its fallback
+  target is the caller's own session, and an iteration once used it to terminate itself.
 
 ## 6.5 SESSION-CLOSE RITUAL — fire at the CONTEXT WATERMARK (Kevin, 2026-07-13)
 
@@ -397,7 +387,7 @@ first-class failure, not a nicety.
   recovers from git + the 4-piece alone. Mid-iteration compaction recovers via step 1-2 (ORIENT/STABILIZE).
 - CLAUDE.md carries a compaction-preserve note (the compactor reads it).
 - If THIS file is missing at orient-time, restore it from git history before any other work.
-- **CI state does not survive in git and is not in this file.** Recover it with the command in the kernel's
+- **CI state does not survive in git and is not in this file.** **[ADVISORY — by construction: no hook can see the remote]** Recover it with the command in the kernel's
   ORIENT step 0 (`gh run list`), every firing. Nothing on disk can tell you the tree is red on the remote.
 
 ## 8. Rule hygiene (added 2026-08-02 — the meta-rule that keeps this document honest)
