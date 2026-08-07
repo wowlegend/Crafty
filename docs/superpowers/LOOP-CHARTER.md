@@ -39,38 +39,37 @@ hand-kept copies drifted three different ways while one of them claimed they "ca
 ## 0-B. THE SOTA HARNESS LAYER (added 2026-07-13 — researched live, A1 sources)
 
 Sources: Anthropic *Effective harnesses for long-running agents* + *Harness design for long-running application
-development*; OpenAI *Harness engineering*; arXiv **2606.26300** *The Verification Horizon*. These are not
-philosophy — each maps to a rule this project has already been burned by.
+development*; OpenAI *Harness engineering*; arXiv **2606.26300** *The Verification Horizon*.
 
-1. **⛔ A GATE THAT GREPS SOURCE TEXT IS NOT A GATE.** *(Our own hardest-won lesson — now a hard rule.)*
-   `quest-rewards-gates.test.js` asserts `expect(qs).toMatch(/store\.addCoins\(r\.coins\)/)` — it proves the
-   **line exists**, not that it **runs**. It sat green while a live bug stole every 2nd quest reward and
-   corrupted the save. **Every gate must be MUTATION-PROVEN: break the behavior → the gate must go RED.** If you
-   cannot make it go red, it is not a gate; it is decoration. A new gate that is green on day one is a rubber
-   stamp and the slice is VOID.
-2. **The worker may not judge its own completion.** (arXiv 2606.26300: unit-test-as-verifier is exploitable —
-   agents tamper with tests or retrieve artifacts. Adding a **judge that is not the worker** + trajectory
-   monitoring dropped the hacked-solve rate **28.6% → 0.6%** *while raising* the clean solve rate **40% → 61%**.)
-   ⇒ For any milestone-scale unit: an **independent evaluator** (a subagent, or Kevin) grades against the
-   sprint's own stated criteria. The evaluator judges **surfaced evidence**, and **hard thresholds fail the
-   sprint** — a self-reported "done" is not evidence.
-3. **Sprint contract BEFORE code.** State what "done" looks like and *how it will be proven* before writing the
-   implementation. (This is already the plan-doc discipline — now it must name the GATE, not just the steps.)
-4. **Drive the product surface, not the implementation.** (Anthropic: Claude marked features complete after
-   shallow checks; forcing **browser automation — test as a human user would** — measurably improved results.)
-   ⇒ **E2E that fires real input outranks unit tests for "does it work".** Unit tests are too close to the code.
-   This is exactly why `memory/STATUS.md §V2` (input-driven E2E) is the campaign's spine.
-5. **Context RESET > compaction for long work.** (Anthropic: compaction preserves continuity but not a clean
-   slate, so "context anxiety" — premature wrap-up — persists.) ⇒ The loop's durable artifacts (STATUS +
-   ACTIVE_PLAN + CHANGELOG + git) ARE the handoff. **Prefer a fresh session with a clean read of STATUS over
-   grinding a deeply-compacted one.**
-6. **Give the agent a MAP, not a manual.** (OpenAI.) → `docs/superpowers/INDEX.md`. 142 docs / 44k lines cannot
-   all be read; a **stale doc is a live trap** (a stale charter line regenerated a week-sized dead proposal on
-   2026-07-13). ⇒ **doc-gardening is a first-class loop duty**, and doc-currency should fail a lint, not a human.
-7. **Reward-hacking watch.** The classic failure is *"delete the failing test to turn CI green."* The test
-   ratchet (§3) is absolute. Additionally: **never widen a timeout, loosen a threshold, or narrow a test's scope
-   to pass.** If a gate is wrong, fix it deliberately WITH written justification in the commit body — never
-   silently.
+**COMPRESSED 2026-08-07 under this file's own §8.** Items 1 and 7 were a second, weaker, enforcer-less copy of
+rules that live in §3 WITH mechanisms — exactly the "escalating by REPETITION where they should have been
+enforcing" disease §8 diagnoses, sitting 400 lines above the rule that forbids it. They are now pointers; a
+pointer is not a restatement. **The numbering is preserved deliberately** — `§0-B.2` and `§0-B.6` are cited
+elsewhere, and `doc-anchors.mjs` resolves compound cites permissively, so renumbering would have redirected
+them silently while the push stayed green. What remains is the part §3 does NOT carry: rules with no
+deterministic enforcer, which §8 rule 1 requires be marked advisory rather than stated emphatically.
+
+1. **Mutation-prove every new gate → §3**, which states it with its enforcer (`mutation-proof-trailer.mjs`,
+   first in `.githooks/pre-push`) and the `quest-rewards-gates` scar. ENFORCED.
+2. **[ADVISORY — no mechanism] The worker may not judge its own completion.** (arXiv 2606.26300: an agent that
+   verifies itself tampers with the verifier; a judge that is not the worker cut hacked solves 28.6% → 0.6%
+   while *raising* clean solves 40% → 61%.) ⇒ milestone-scale units get an independent evaluator (a subagent,
+   or Kevin) grading SURFACED EVIDENCE against the sprint's stated criteria. A self-reported "done" is not
+   evidence. *No checker can exist for this — a loop cannot enforce its own recusal, which is the point.*
+3. **Sprint contract BEFORE code** — "done" and *how it will be proven* stated first, naming the GATE and not
+   just the steps. Enforced in practice by the per-milestone plan-doc discipline (`.agent/AGENTS.md` Method).
+4. **[ADVISORY] Drive the product surface, not the implementation.** Real-input E2E outranks unit tests for
+   "does it work"; unit tests sit too close to the code. `memory/STATUS.md §V2` is the campaign's spine.
+5. **[ADVISORY] Context RESET > compaction for long work** — compaction preserves continuity but not a clean
+   slate, so premature wrap-up persists. The durable artifacts (STATUS + ACTIVE_PLAN + CHANGELOG + git) ARE the
+   handoff: prefer a fresh session with a clean read over grinding a deeply-compacted one.
+6. **A MAP, not a manual** → `docs/superpowers/INDEX.md`. The corpus cannot all be read and a **stale doc is a
+   live trap** (a stale charter line regenerated a week-sized dead proposal on 2026-07-13). Doc-gardening is a
+   first-class loop duty. ENFORCED by `doc-currency.mjs`. *(The "142 docs / 44k lines" here was hand-typed,
+   wrong, and had already propagated into two other files — deleted per §8 rule 2: a number is computed or it
+   is deleted.)*
+7. **Never weaken a gate to pass → §3** ("Never weaken to pass" + the test ratchet), which holds the full rule.
+   ENFORCED.
 
 ## 0-C. Mission + hard frame (never overridden by taste)
 
@@ -89,69 +88,18 @@ philosophy — each maps to a rule this project has already been burned by.
 - **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
   envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
-- **AUDIENCE IS BROAD (Kevin decision 2026-06-04, recorded in coherence-pillars P5 + project memory; the
-  master plan v2 (2026-06-10) now states this natively — this clause guards against v1-era docs):** kids → young adults → adults, "blur the
-  lines", to maximise appeal + later monetisation. Marcus (8) is A user, NOT a depth-lowering floor —
-  intensity / real-stakes / hard modes are allowed; age-8 legibility stays a design virtue, never a ceiling.
-- **Chinese (zh-CN) = a locale TOGGLE with ENGLISH as the default** (the shipped i18n design: en default +
-  lazy-loaded zh-CN). Full game-content translation is owed (#73) but the game is EN-first; design copy in
-  English, then route through t() so the toggle stays complete.
-- **Game-design direction (Kevin-CONFIRMED 2026-06-15, decision-of-record — do NOT relitigate):** "The Ember
-  Frontier, gated toward a Blight Heart climax" — outward *see-it-go-to-it* exploration on the already-built
-  landmark + compass rails, the Shadow Dragon relocated from its ~25-block ambush to a single fixed, foreshadowed
-  far-edge "Blight Heart" lair = a real WIN-STATE + endless post-climax handoff. North star for the gameplay layer
-  (tier-by-distance, shrines, climax). Source: `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`.
-  REVERSING this is §4-genuinely-Kevin; AFFIRMING a sub-direction within it is loop authority.
-- **2026-06-17 COMPREHENSIVE REBUILD (Kevin redirection — the ACTIVE spine; supersedes the 2026-06-15 Phase-2
-  S5–S10 ladder as the work-of-record):** Kevin reviewed the LIVE game; the prior "SOTA" work was largely
-  INVISIBLE (green gates measured code-PRESENCE, not lived result — only the grass visibly changed across ~21
-  frames). Re-run via the FULL superpowers flow → an 11-agent every-element audit (`docs/superpowers/audits/2026-06-17-*`)
-  + a Kevin-APPROVED design spec (`specs/2026-06-17-crafty-sota-rebuild-design.md`) + 4 trust-first plans
-  (`plans/2026-06-17-crafty-W{1,2,3,4}-*.md`), executed **subagent-driven in batches with a controller LIVE-LOOK
-  + gate checkpoint between batches** (a green pinned-capture gate is necessary NOT sufficient — that blind spot
-  is the whole reason for the rebuild; the §1.5 LIVE-PROBE axis is now load-bearing on EVERY visible slice).
-  **LOCK REVERSAL (Kevin 2026-06-17):** the restrained-NEUTRAL grade lock is REVERSED — glowier/warmer is
-  AUTHORIZED (ocean = toon Caribbean water-plane; title = Cinematic 3D vista; W3 = Living-frontier MAX; spells =
-  4 distinct silhouettes). The Ember-Frontier game DIRECTION (above) still stands — the rebuild fixes LOOK +
-  dead-code + content fidelity on top of it.
-- **2026-06-20 MANDATE EXPANSION (Kevin verbatim: "fix everything. and then build out everything too" + "keep going autonomously"):**
-  the loop now runs a FULL two-phase drive. **(A) FIX EVERYTHING:** drive the exhaustive-review backlog
-  (`docs/superpowers/CODE-REVIEW-2026-06-20.md` — 5 HIGH all fixed; ~36 mechanical autonomousFixQueue items; the 17
-  kevinDecisions are now LOOP-DECIDED with best judgment, NOT deferred — Kevin said "i'm too lazy to spell them out
-  one by one") + the knip dead-export backlog + impact-ring dedup → to ZERO, in small gated batches.
-  **(B) THEN BUILD OUT EVERYTHING:** the deferred KEVIN-REVIEW game features (biome-flora render-wiring, spell-color
-  unify, distinct shrine model, quest gear/coin rewards, mob/boss art, starting-inventory rebalance, …) + the
-  master-plan remaining work, each as a proper milestone (brainstorm→spec→plan→build). Arsenal now: knip (dead-code
-  gate), ast-grep `sg` (codemods), serena LSP / native `LSP` tool (prove-dead-before-delete, symbol nav).
-  **ONE carve-out still genuinely-Kevin:** S4 multiplayer + monetization is a product/business decision (servers,
-  accounts, real money, legal) → the loop SURFACES a scope-confirm before standing up netcode or payments; ALL other
-  single-player / content / polish / quality work is full loop authority. Taste calls the loop makes go to
-  KEVIN-REVIEW as FYI, not as blocking questions.
-- **2026-06-28 MANDATE = POST-AUDIT EXHAUSTIVE FIX/IMPLEMENT (Kevin verbatim: "keep going autonomously to fix/implement all, dont miss anything"; "keep going"):**
-  the W1–W4 rebuild + Phase B are COMPLETE. An exhaustive multi-agent status audit ran 2026-06-28
-  (`docs/superpowers/AUDIT-2026-06-28-full-status.md`) — answers: completion NO (~70%; 159 items: 109 verified / 18 partial /
-  9 not-done / 16 parked / 7 superseded), code-review MOSTLY (fresh all-file pass; 3 HIGH all fixed), E2E/visual NO (the
-  weakest axis — now being closed). The loop's job: drive the audit's gap list + the tracked task queue (recorded in
-  ACTIVE_PLAN "2026-06-28 CAMPAIGN QUEUE") to completion, then continue the master plan. **⚠️ THE AUDIT IS PARTLY STALE —
-  VERIFY-BEFORE-ASSERT EVERY task against LIVE code (grep/Read the cited file:line) BEFORE fixing.** Empirical: task #1
-  ("boss reward = junk") was a FALSE ALARM — the items were registered + rarity resolved; a blind "fix" would have been
-  wrong. The audit also wrongly claimed @playwright/test was installed. Treat every audit finding as a T3 hypothesis.
-  **NEW DECISIONS OF RECORD (Kevin 2026-06-28, do NOT relitigate):** (1) control scheme = **Option A** with **F = cast spell**
-  (magic is the marquee feature), **T = melee** (shipped `74fd858`); the A enhancements (verb-telegraph reticle, hold-Alt
-  force-build, persistent control legend, full key-rebinding) are AUTHORIZED loop work; the touch Aspect-verb radial wheel is
-  DEFERRED to a Kevin playtest. (2) **bloom luminanceThreshold 0.65 (glowier) is INTENDED** — it supersedes the old ≥0.85
-  spec; do NOT "fix" it; reconcile the stale spec note instead. (3) **grantXP full-heal on level-up is INTENDED** — leave it.
-  (4) **E2E = `@playwright/test` gameplay-flow specs (`npm run test:e2e`, tests/e2e/) on the dev test-bridge + the headless-safe
-  `forcePlay` hook**, kept SEPARATE from the puppeteer visual gate; design-of-record `specs/2026-06-28-crafty-control-scheme-design.md`.
-  Execution posture: CONTROLLER-SEQUENTIAL (TDD→gate→commit→push per item) for code — NOT fan-out code-editors (shared god-files
-  rate-limit + conflict, the logged M-HUD lesson); use background Workflows for read-only analysis / adversarial verification.
-- **2026-06-29 MANDATE = v6 TECH-DEBT → DE-MONOLITH (Kevin verbatim: "do all the autonomous-doable tech-debt first. and then the de-monolith. get the loop / charter updated first and invoke the loop. keep going autonomously"):**
-  the post-audit campaign closed all safe veins; Kevin RE-ARMED the loop with a strict two-phase order. **PHASE C (autonomous tech-debt — do ALL first, to zero):** (1) visual-gate FAIL-LOUD hardening (item #12 — capture already non-zero-exits on a render-crash; the residual hole is `diff.test.js` passing on STALE `current/` when run isolated after a crashed/timed-out capture → a run-sentinel + a pure `captureFreshness` predicate + a freshness assertion); (2) E2E perf coverage (frame-rate + memory via the existing `devtest/perfProbe` harness, wired into a Playwright spec); (3) coherence-gate calibration-verify. **PHASE A (de-monolith — after C is zero):** Components ~1345 / SimplifiedNPCSystem ~934 / GameScene ~933 LOC → plan-doc-first (`superpowers:writing-plans`), then extract-pure-module + thin-wiring slices, each INDIVIDUALLY gated (characterization test before extraction; capture-verify any render-touching slice). **DE-MONOLITH IS NOW FULL LOOP AUTHORITY** — it was parked as Kevin-gated scope/taste (iter-175); Kevin has now explicitly DIRECTED it, so it is no longer a §4-genuinely-Kevin item. STILL Kevin-gated: zh-CN i18n #73, S4, control-scheme #9, compass #6, touch radial wheel, mob/boss art, W4 weather, clip/photo-mode, live-eye taste, affixes full wiring. Live cursor + per-item detail in `memory/ACTIVE_PLAN.md` (the v6 block).
-- **Ground truth precedence (REPLACED 2026-07-13 — see §0-A):** git `main` → **`memory/STATUS.md`** (the single
-  source of truth: registry + what's next) → `memory/ACTIVE_PLAN.md` (the live cursor) → **this charter** →
-  `docs/superpowers/INDEX.md` (the map: what to read, what to IGNORE) → the specific spec/plan for the unit in
-  hand → `SOTA-INITIATIVE.md` (DIRECTION only — **its §3 status block is FROZEN and superseded by STATUS.md**).
-  **Do not go mining old plans/audits for "what's next" — that scatter is what STATUS.md exists to end.**
+- **Kevin's decisions-of-record — do NOT relitigate or silently reverse.** Stated in full in
+  `docs/superpowers/DECISIONS.md` (read-order #6), NAMED here so the loop cannot forget one exists:
+  **Ember-Frontier / Blight-Heart** world direction · the **grade LOCK REVERSAL** (glowier/warmer authorized) ·
+  **control scheme Option A, F=cast / T=melee** · **bloom 0.65 is INTENDED** (supersedes the ≥0.85 spec) ·
+  **grantXP full-heal is INTENDED** · **E2E = `@playwright/test`, separate from the visual gate** · **audience
+  is BROAD** (Marcus is a user, not a ceiling) · **zh-CN is a toggle, EN default** · **controller-SEQUENTIAL
+  for code** · **de-monolith is full loop authority**. Reversing one is genuinely-Kevin; affirming a
+  sub-direction inside one is loop authority.
+  *(Migrated 2026-08-07. They had been embedded in ~5.5 KB of mandate narrative — 06-17 rebuild, 06-20 "fix
+  everything then build everything", 06-28 post-audit, 06-29 tech-debt — that §0-A already declares HISTORY.
+  A file read EVERY iteration was carrying superseded process instructions as packaging for ten decisions.
+  The narrative is in `memory/CHANGELOG.md` + git; nothing was reversed or reworded.)*
 - The loop has **no terminal state** — SOTA is a direction. It runs until Kevin stops it.
 
 ## 1. Per-iteration procedure (the only loop shape)

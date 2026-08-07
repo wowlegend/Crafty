@@ -180,6 +180,52 @@ Two things worth keeping:
 
 ---
 
+## 2026-06-15 → 06-29 — **[KEVIN]** decisions-of-record, MIGRATED here 2026-08-07 from `LOOP-CHARTER.md` §0-C
+
+**Why they moved.** They were embedded inside ~5.5 KB of *superseded mandate narrative* in the charter —
+06-17 rebuild, 06-20 "fix everything then build everything", 06-28 post-audit, 06-29 tech-debt/de-monolith —
+which charter §0-A already declares "now HISTORY", promising their decisions-of-record survive. So the charter
+was carrying dead process instructions in a file read EVERY iteration, purely as packaging for these lines.
+The narrative is history and lives in `memory/CHANGELOG.md` + git; the decisions are the durable part and this
+file is their designed home. **Nothing here is reversed, weakened, or reworded to change meaning** — the
+charter now names them and points here.
+
+- **World/game direction — "The Ember Frontier, gated toward a Blight Heart climax"** (Kevin-confirmed
+  2026-06-15). Outward *see-it-go-to-it* exploration on the built landmark + compass rails; the Shadow Dragon
+  moved from its ~25-block ambush to a single fixed, foreshadowed far-edge lair = a real WIN-STATE plus endless
+  post-climax handoff. Source `plans/2026-06-15-crafty-world-purpose-sota.md`. **Reversing this is genuinely
+  Kevin; affirming a sub-direction inside it is loop authority.**
+- **Grade LOCK REVERSAL** (Kevin 2026-06-17). The restrained-NEUTRAL grade lock is **reversed** —
+  glowier/warmer is AUTHORIZED (ocean = toon Caribbean water-plane; title = cinematic 3D vista; W3 =
+  living-frontier MAX; spells = 4 distinct silhouettes). The Ember-Frontier direction above still stands; the
+  rebuild changed LOOK, not direction.
+- **Control scheme = Option A, `F` = cast spell, `T` = melee** (Kevin 2026-06-28, shipped `74fd858`). Magic is
+  the marquee feature, so it gets the primary verb. The Option-A enhancements (verb-telegraph reticle,
+  hold-Alt force-build, persistent control legend, full key-rebinding) are authorized loop work. The touch
+  Aspect-verb radial wheel is DEFERRED to a Kevin playtest.
+- **Bloom `luminanceThreshold` 0.65 (glowier) is INTENDED** (Kevin 2026-06-28). It SUPERSEDES the older ≥0.85
+  spec. **Do not "fix" it** — reconcile the stale spec note instead.
+- **`grantXP` full-heal on level-up is INTENDED** (Kevin 2026-06-28). Leave it.
+- **E2E = `@playwright/test` gameplay-flow specs** (`npm run test:e2e`, `tests/e2e/`) on the dev test-bridge +
+  the headless-safe `forcePlay` hook, kept SEPARATE from the puppeteer visual gate (Kevin 2026-06-28).
+  Design-of-record `specs/2026-06-28-crafty-control-scheme-design.md`.
+- **Audience is BROAD** (Kevin 2026-06-04, also in coherence-pillars P5): kids → young adults → adults, "blur
+  the lines". Marcus (8) is A user, **not a depth-lowering floor** — intensity, real stakes and hard modes are
+  allowed; age-8 legibility is a design virtue, never a ceiling.
+- **Chinese (zh-CN) is a locale TOGGLE with ENGLISH as default** — design copy in English, then routed through
+  `t()` so the toggle stays complete. Full content translation is owed (#73) but the game is EN-first.
+- **Execution posture: CONTROLLER-SEQUENTIAL for code** (2026-06-28) — TDD → gate → commit → push per item,
+  NOT fan-out code-editors: shared god-files rate-limit and conflict (the logged M-HUD lesson). Background
+  Workflows are for read-only analysis and adversarial verification.
+- **De-monolith is FULL LOOP AUTHORITY** (Kevin 2026-06-29) — it had been parked as Kevin-gated scope/taste at
+  iter-175; Kevin explicitly directed it, so it is no longer a genuinely-Kevin item.
+- **Still Kevin-gated as of 2026-06-29** (verify against live STATUS before treating any as still gated): zh-CN
+  i18n #73, S4 multiplayer/monetization, control-scheme #9, compass #6, touch radial wheel, mob/boss art, W4
+  weather, clip/photo-mode, live-eye taste, affixes full wiring. *(Later partly superseded: 2026-07-13 de-gated
+  mob/boss art and confirmed the Option-A enhancements — the `[KEVIN-GATED]` tag on them was stale.)*
+
+---
+
 ## Older open items, dispositioned
 
 - **Ocean water aesthetic** — **[KEVIN]** Genuinely pure taste, and the coast is lived-verified clean. No

@@ -17,8 +17,24 @@ row in the SAME commit as the fix.
 | **C4** false claims + 3-way read-order divergence | ▣ | with **A3** below — the fix is one mechanism, not two |
 | **A3** read-order parity checker | ▣ | `read-order.mjs` renders ONE order into all 3 surfaces; doc-currency checks it |
 | **A2** generated counts | ◐ partial | per-file LOC values now checked (banded). Remaining: visual states, e2e specs, gate-file count, queue split |
+| COMPRESSIONS (charter over byte ceiling) | ▣ | **44,921 → 37,431 B**, under the ~40,000 ceiling |
 | C6–C20 (~15 corrections) | ▢ | next |
-| COMPRESSIONS (charter over byte ceiling) | ▢ | **regressed to 44,921 B by the C4/A3 commit** — net must go DOWN |
+
+**The compression target in the plan was wrong, and measuring first is what caught it.** The plan named §0-B
+("deleting/compressing §0-B alone would remove roughly 3.5KB"). A per-section byte profile showed §0-B is
+3,088 B while **§0-C is 10,302 B — 23% of the file.** Compressing §0-B as specified saved **146 bytes**; the
+real bulk was §0-C's superseded mandate narrative (06-17 / 06-20 / 06-28 / 06-29), which §0-A already declares
+HISTORY. §0-B could not be deleted anyway: it is cited live from `ACTIVE_PLAN.md:434` and `CHANGELOG.md:1252`,
+and its **item numbering had to be preserved** because `§0-B.2`/`§0-B.6` are compound cites that
+`doc-anchors.mjs` resolves permissively — renumbering would have redirected them silently while the push
+stayed green. A fourth read-order copy was also found and removed (old §0-C "Ground truth precedence",
+already marked superseded by §0-A).
+
+**Ten Kevin decisions-of-record were migrated, not deleted** → `DECISIONS.md`, their designed home; the charter
+now NAMES all ten and points there. Verified by term-sweep over the removed text (21 load-bearing terms, every
+one resolving in `DECISIONS.md` or the charter) and by confirming all four mandate narratives survive in
+`memory/CHANGELOG.md`. `DECISIONS.md` held **nothing** older than 2026-08-02 before this, so the charter had
+been the sole home for every one of them.
 
 **C4's own prose is now stale:** it cites `.claude/rules/r3f-pointer-lock-voxel-meshing.md` as unscoped
 evidence, but `9d2fb7a` deleted that file. Every remaining `.claude/rules/*.md` carries `paths:` frontmatter,
