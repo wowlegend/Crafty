@@ -150,7 +150,11 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   both bind port 4178 with `--strictPort` and the collision fakes a failure.
 - `npm run visual:capture` regenerates frames only. It preflights that the browser can present a frame and
   aborts in ~3s with a named cause if not, rather than hanging on a dead compositor.
-- Visual gate is deterministic (forced `high` tier); re-baseline + human-review per intended look change.
+- Visual gate: capture-determinism is the **DESIGN** (forced `high` tier), **not currently the ACHIEVED
+  state** — measured 2026-08-05, identical code twice differs on 15 of 31 frames, `beast-*` by 69–72%.
+  `memory/STATUS.md` §B-race is the live measurement; re-read it rather than trusting this sentence's
+  summary, and note the compositor is INTERMITTENT (64 rAF frames one hour, 0 the next). Re-baseline +
+  human review per intended look change.
   Capture-determinism is load-bearing (gate anims on `isCaptureMode()`; seed RNG; freeze clocks) — and the
   check must be INSIDE the interval callback, since the harness flips capture mode after mount.
 - **A gate's PASS is worth nothing without its DENOMINATOR.** Seven things here have now shipped a clean
@@ -177,7 +181,7 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
 - NO "Generated with" / "Co-Authored-By: Claude" footer. Subagent fix-ups = NEW commits (never `git commit --amend` / `reset`).
 
 ## Method
-Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; HARD GATE — an approved design/spec before implementation; superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
+Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
 - **EVERY milestone uses the `superpowers:writing-plans` discipline (Kevin, 2026-06-10):** before building ANY milestone (M0..Mn of any Aspect/stream), author its own plan doc in `docs/superpowers/plans/YYYY-MM-DD-crafty-<stream>-<milestone>.md` (TDD red-first steps + verification gates), THEN build. **No "build directly from the spec" shortcuts**, even for small/foundational milestones — the VOIDHAND-M1 skip (built from the spec's milestone breakdown without a plan doc) is the anti-pattern this rule forbids. The design SPEC is the HARD-GATE approval; the per-milestone PLAN is the build contract.
 
 ## Core Agent Skills (evaluate per task)

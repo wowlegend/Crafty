@@ -131,9 +131,13 @@ in useFrame — transient refs / `.getState()` / seeded); capture-determinism (N
 + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4 veto)**; bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
 `git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + knip + pre-push each push.
-BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice (`npm run visual:capture` — the
-harness is FIXED as of `75191ef`, runs ~5min to a clean end; **Read the frame with your own eyes**), re-baseline
-output → Kevin sign-off.
+BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
+(`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
+`close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
+read it before trusting any diff, and do NOT transcribe its numbers here** (a number copied into this file
+rots and this file is re-injected verbatim on every firing). Check the compositor (rAF count, ~3s) BEFORE
+planning browser work, expect to lose it mid-run, and do browser work FIRST while the window is open.
+**Read the frame with your own eyes.** Re-baseline → Kevin sign-off.
 
 TASTE BOUNDS: the coherence pillars **P0–P5** (`specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **The
 only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
