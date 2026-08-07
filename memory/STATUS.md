@@ -455,6 +455,33 @@ directly it would have read "the UV fix transformed the beast frames", which is 
 same code, twice — is what separated signal from harness noise. **A before/after diff means nothing until
 you know the floor.** Same shape as asserting an absence without a baseline.
 
+- ⊘ **PASS 5 (2026-08-07) — THE "ABSENT STORE FIELDS" MEASUREMENT DOES NOT REPRODUCE. The contradiction
+  was mine, not the app's.** — `window.__trace` poller over the live capture sequence
+  Installed an in-page recorder sampling every 200ms across the whole sequence (`enterCapture` → wait
+  chunk → `start` → `setTimeOfDay` → `spawnBeastTransform`). **103 samples, denominator asserted.**
+  `playerRigidBodyRef`, `playerRigidBodyRef.current`, `performVerb` and `gameCamera` are **ALL present
+  continuously from t=202ms to the last sample** — including the exact stage where two earlier probes
+  reported them absent. Polling was chosen specifically to catch a brief mount/unmount window; there
+  isn't one, they simply never go false.
+  So: the Player mounts, its effects run, the store reflects it, and the camera is applied. **Every
+  measured fact is now consistent and no app-level contradiction remains.** Passes 3 and 4 were arguing
+  about an artefact of my own probes; I could not reproduce the "absent" reading and am not going to
+  invent a mechanism for it.
+  **Store identity is settled too** (it was the leading hypothesis): the same probes read
+  `isSpawnChunkLoaded` and watched `beastFormActive` flip through `window.useGameStore`, so the exposed
+  store is unambiguously the one the app writes to.
+- ▢ **[LOOP] SO THE ORIGINAL QUESTION IS STILL OPEN, AND IT IS NARROWER NOW.** With the compositor alive,
+  fired `spawnBeastTransform` twice in the SAME page and screenshotted both: **0.00% difference,
+  byte-identical.** The beast render is not racy in itself.
+  **⚠️ Caveat, stated because this is exactly how pass 2 went wrong:** that probe went `start` → beast
+  directly, skipping the ~10 intermediate stages `capture.mjs` runs before it (menu, explore-day, hearth,
+  landmark, ocean-*, biome-snow, each calling `enterCapture` with new options plus hooks like `spawnMob`
+  and `setDangerLevel`). **It is a SHORTER PATH than the real one**, so this narrows the cause without
+  proving it. What it does establish: the 69-72% between-run variance is **not** in the beast hook, and
+  the next suspect is accumulated state across the preceding stages, or page-load-to-page-load variation.
+  **Next experiment:** run the FULL capture twice and diff `beast-*` against each other while also
+  diffing the stage BEFORE it — if the preceding stage is stable and the beast one is not, the drift
+  enters between them.
 - ⊘ **DISPROVEN 2026-08-05 (pass 4) — "the Player never mounts during capture" is FALSE.** —
   `node -e` diff of `hearth.png` vs `landmark.png` from the SAME capture run
   **The disproof needed no browser**, which is why it was worth trying while the compositor was dead.
