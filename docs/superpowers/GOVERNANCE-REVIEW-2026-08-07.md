@@ -3,6 +3,30 @@ Verified at `HEAD = 7d30ee2` (2026-08-07). Every line/number below re-checked li
 
 **Governing discovery that reorders everything:** `.githooks/pre-push` now runs **TEN** gates — `grep -cE "printf '\\\\n▶" .githooks/pre-push` = **9**, plus `mutation-proof-trailer` at `:73`. The tenth, `artifact-currency` (`:101`), landed in HEAD and appears **zero times** in `.agent/AGENTS.md`, `LOOP-CHARTER.md`, and `LOOP-KERNEL-PROMPT.md` (`grep -c` = 0/0/0). Five of six reviewers certified the old count; R1 certified the gate table "FULLY ACCURATE — all 36 cells" while its headline was already wrong. Only R2's arithmetic matches live.
 
+## SHIPPED LEDGER — what is closed, and by which commit
+
+Kept here because the first four items shipped with **no completion marks anywhere**, so this plan could not
+answer "what is left" — the same defect the queue-ledger gate exists to stop in the PRIMARY queue. Update the
+row in the SAME commit as the fix.
+
+| Item | State | Commit / note |
+|---|---|---|
+| C1 gate table → generated | ▣ | `b2ce889` — `gate-table.mjs`, doc-currency fails on drift |
+| C2 · C3 · C5 · C21 · R1 rule split | ▣ | `9d2fb7a` — retired the unscoped rule → `voxel-mesher.md` + `input-and-pointer-lock.md` |
+| artifact staleness → mechanized | ▣ | `7d30ee2` — `artifact-currency.mjs` |
+| **C4** false claims + 3-way read-order divergence | ▣ | with **A3** below — the fix is one mechanism, not two |
+| **A3** read-order parity checker | ▣ | `read-order.mjs` renders ONE order into all 3 surfaces; doc-currency checks it |
+| **A2** generated counts | ◐ partial | per-file LOC values now checked (banded). Remaining: visual states, e2e specs, gate-file count, queue split |
+| C6–C20 (~15 corrections) | ▢ | next |
+| COMPRESSIONS (charter over byte ceiling) | ▢ | **regressed to 44,921 B by the C4/A3 commit** — net must go DOWN |
+
+**C4's own prose is now stale:** it cites `.claude/rules/r3f-pointer-lock-voxel-meshing.md` as unscoped
+evidence, but `9d2fb7a` deleted that file. Every remaining `.claude/rules/*.md` carries `paths:` frontmatter,
+so the accurate correction is *conditional* auto-load, not *no* auto-load — which is what shipped. A plan is a
+hypothesis too; re-verify each item against live HEAD before executing it.
+
+---
+
 **Second governing discovery:** `frontend/scripts/ci/doc-anchors.mjs:120-125` resolves compound citations (`charter §2.5` = §2, list item 5) **permissively** — it passes if the leading `§2` exists. Renumbering or dropping a numbered list item is therefore a **silent** breakage. Live inbound compound cites: `SOTA-INITIATIVE.md:112` and `memory/CHANGELOG.md:63` → `charter §2.5`; `memory/ROADMAP.md:15` → `charter §2.4`. Plus bare-anchor cites that pin headings: `§0-A` `§0-B` `§1.5`(×2) `§3` `§4` `§5`(×6) `§6`(×2) `§6.4`(×3) `§8`(×2). **Precondition for any §-renumbering commit:** `grep -rnoE '(charter|kernel|CHARTER|AGENTS)[^.§]{0,20}§ ?[0-9A-Za-z.-]+' --include='*.md' . | grep -v node_modules | grep -v /archive/`. A green push is not evidence.
 
 ---

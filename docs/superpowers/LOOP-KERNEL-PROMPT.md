@@ -53,21 +53,22 @@ in the same turn you assert it. Not remembered, not inferred from a doc, not car
 session. No observation, no claim.
 
 Then READ, IN THIS ORDER — do not skip, do not go doc-mining elsewhere for "what's next":
-1. **`memory/ACTIVE_PLAN.md`** — the 🔭 SUPER-CAMPAIGN block (top) is the live cursor + phase.
-2. **`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`** — THE PRIMARY QUEUE: 215 verified findings, priority-laddered,
-   each tagged `[AUTO]` (safe mechanical) / `[KEVIN]` (owner-judgment) + the by-file execution batches.
-   ⚠️ **This markdown is now the ONLY copy.** The machine JSON `scratchpad/findings.json` and the three
-   `scratchpad/*-result.json` it was regenerable from all lived in a SESSION-SCOPED tmp scratchpad and are
-   GONE (verified absent 2026-07-27). Do not go looking for them; do not treat their absence as a blocker.
-3. **`memory/STATUS.md`** — the SECONDARY queue: gameplay/content/UX registry items the CODE review didn't cover
-   (R*/C*/X*/D*/E/F/G). VERIFY each is still open before working it — much of the older A-bis/V1 work is DRAINED.
-4. **`docs/superpowers/LOOP-CHARTER.md`** — the constitution (esp. **§0-B SOTA harness layer** + **§3 gates**).
-5. **`docs/superpowers/DECISIONS.md`** — the decision RECORD (the outbox). `KEVIN-REVIEW-BATCH.md` is the
-   INBOX and is append-only, so it cannot tell you what has been settled — it accumulated ~146 entries with 6
-   marked resolved. Before re-raising anything, or reversing anything, check here. A reversal is a NEW dated
-   entry naming the one it supersedes; never a silent edit.
-6. `docs/superpowers/INDEX.md` — the doc map, only if you need a doc. A stale doc is a LIVE TRAP; never mine old
-   plans/audits for "what's next" — the work is in the queues above.
+
+<!-- BEGIN READ-ORDER (regenerate: node frontend/scripts/ci/read-order.mjs --write) -->
+**Orientation read order — GENERATED. Do not edit here.** It lives in
+`frontend/scripts/ci/read-order.mjs` and is rendered into every surface that states it, because three
+hand-kept copies drifted three different ways while one of them claimed they "cannot disagree".
+
+1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
+2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
+3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the PRIMARY work queue — 215 verified findings, priority-laddered, each tagged `[AUTO]`/`[KEVIN]` and marked `▣✓ <sha>` / `▢` / `⊘`. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
+5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
+6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
+7. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
+8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
+<!-- END READ-ORDER -->
+
 Re-load the coding domain overlay if this is a fresh post-compact session.
 
 REPO (two-level): ROOT `/Users/kz/Code/Crafty` (docs + memory + master plan) · APP `/Users/kz/Code/Crafty/frontend`

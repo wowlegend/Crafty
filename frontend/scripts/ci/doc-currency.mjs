@@ -23,6 +23,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 import { checkBlock as checkGateBlock } from './gate-table.mjs';
+import { checkAll as checkReadOrder } from './read-order.mjs';
 
 import { DOC_ALIASES, sectionIds, itemIds, unresolved } from './doc-anchors.mjs';
 
@@ -211,6 +212,37 @@ if (existsSync(statusAbs)) {
           `    actual:   ${key(actual.largeFiles) || '(none)'}\n` +
           `    regenerate: ${regen}`,
       );
+    }
+    // ...and the per-file LOC VALUES, which membership alone never looked at: the block prints
+    // `Components.jsx 1325`, and that number could rot to any value without changing who is on the list.
+    // Banded, NOT exact — every one of these files changes LOC on ordinary commits, so an exact check would
+    // redden nearly every push and get switched off within a day (the same reasoning as the counts above).
+    // The band still catches the drift that misleads: a file read as ~1300 that is really ~900.
+    const actualLoc = new Map(actual.largeFiles.map((f) => [f.file, f.loc]));
+    for (const f of claimed.largeFiles) {
+      const want = actualLoc.get(f.file);
+      if (want === undefined) continue; // membership drift — already reported above
+      if (drift(f.loc, want) > TOLERANCE) {
+        errors.push(
+          `${agentsRel}: MEASURED says ${f.file} is ${f.loc} LOC, actual ${want} ` +
+            `(${(drift(f.loc, want) * 100).toFixed(0)}% drift, band ${Math.round(TOLERANCE * 100)}%) — ` +
+            `regenerate: ${regen}`,
+        );
+      }
+    }
+  }
+}
+
+// --- 4b. READ-ORDER BLOCK PARITY ---------------------------------------------
+// Three documents each carried their own hand-kept copy of the orientation read order, and all three
+// disagreed — while `.agent/AGENTS.md` asserted "Order matches LOOP-CHARTER.md §0-A so the two documents
+// cannot disagree". §0-A omitted DECISIONS.md entirely; only the kernel named the PRIMARY work queue or put
+// CI in the orientation. A cold-start agent's first act is to follow one of these, so which copy it happened
+// to read determined what it believed the work was. Generated from one source now; drift fails the push.
+{
+  for (const r of checkReadOrder()) {
+    if (!r.ok) {
+      errors.push(`${r.rel}: ${r.reason} — regenerate: node frontend/scripts/ci/read-order.mjs --write`);
     }
   }
 }

@@ -10,14 +10,21 @@
 
 ## 0-A. READ ORDER (this replaces the old accreted mandate-ladder)
 
-> **The loop's ground truth, in strict order:**
-> 1. `git main` (the code is the only truth that cannot lie)
-> 2. **`memory/STATUS.md`** — **where we are · the open-work REGISTRY · what's next.** THE source of truth.
-> 3. `memory/ACTIVE_PLAN.md` — the live cursor (the ONE unit in flight)
-> 4. **this charter** — how the loop operates
-> 5. `docs/superpowers/INDEX.md` — the map of all 142 docs (what to read, what to IGNORE)
-> 6. `SOTA-INITIATIVE.md` — DIRECTION only (its §3 status is FROZEN/superseded)
->
+<!-- BEGIN READ-ORDER (regenerate: node frontend/scripts/ci/read-order.mjs --write) -->
+**Orientation read order — GENERATED. Do not edit here.** It lives in
+`frontend/scripts/ci/read-order.mjs` and is rendered into every surface that states it, because three
+hand-kept copies drifted three different ways while one of them claimed they "cannot disagree".
+
+1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
+2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
+3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the PRIMARY work queue — 215 verified findings, priority-laddered, each tagged `[AUTO]`/`[KEVIN]` and marked `▣✓ <sha>` / `▢` / `⊘`. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
+5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
+6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
+7. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
+8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
+<!-- END READ-ORDER -->
+
 > **Every historical mandate (2026-06-10 authority grant · 06-17 rebuild · 06-20 "fix everything then build
 > everything" · 06-28 post-audit · 06-29 tech-debt/de-monolith · v7) is now HISTORY. Their decisions-of-record
 > are preserved in §0-C below. Do not re-read the old ladder to find work — the work is in STATUS.md.**

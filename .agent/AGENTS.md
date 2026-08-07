@@ -202,20 +202,28 @@ Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance r
 
 ## Where state lives (READ IN THIS ORDER)
 
-This file is the ONLY one auto-loaded, and the only surface re-injected after a `/compact` — so it has to
-name the others. **Until 2026-08-03 it never mentioned `memory/STATUS.md` at all**, which meant a
-freshly-compacted agent was pointed at the cursor and never at the registry. Order matches
-`LOOP-CHARTER.md` §0-A so the two documents cannot disagree:
+This file is the only surface loaded **UNCONDITIONALLY** at session start and re-injected after a
+`/compact` — so it has to name the others. It used to claim it was "the ONLY one auto-loaded", which is
+false: every `.claude/rules/*.md` carrying `paths:` frontmatter also auto-loads, but **only when you touch a
+file it matches**. That difference is the whole point — a conditional rule fires at the moment of the
+mistake and cannot be relied on to orient you, so orientation must live here and enforcement should live
+there. **Until 2026-08-03 this file never mentioned `memory/STATUS.md` at all**, which pointed a
+freshly-compacted agent at the cursor and never at the registry.
 
-1. **`git main`** — the code is the only truth that cannot lie.
-2. **`memory/STATUS.md`** — where we are · the open-work REGISTRY · what's next. **THE source of truth.**
-3. **`memory/ACTIVE_PLAN.md`** — the live cursor: the ONE unit in flight.
-4. **`docs/superpowers/LOOP-CHARTER.md`** — how the loop operates (+ `LOOP-KERNEL-PROMPT.md`, the durable
-   copy of the `/loop` prompt and the cold/git-only recovery source).
-5. **`docs/superpowers/DECISIONS.md`** — what has already been decided. Check before re-raising or
-   reversing anything; `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and cannot tell you what is settled.
-6. **`docs/superpowers/INDEX.md`** — the doc map. A stale doc is a live trap; never mine old plans for
-   "what's next".
+<!-- BEGIN READ-ORDER (regenerate: node frontend/scripts/ci/read-order.mjs --write) -->
+**Orientation read order — GENERATED. Do not edit here.** It lives in
+`frontend/scripts/ci/read-order.mjs` and is rendered into every surface that states it, because three
+hand-kept copies drifted three different ways while one of them claimed they "cannot disagree".
+
+1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
+2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
+3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the PRIMARY work queue — 215 verified findings, priority-laddered, each tagged `[AUTO]`/`[KEVIN]` and marked `▣✓ <sha>` / `▢` / `⊘`. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
+5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
+6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
+7. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
+8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
+<!-- END READ-ORDER -->
 
 ## Post-compaction re-orientation (BLOCKING — before the first edit)
 
