@@ -118,29 +118,30 @@ self-inflicted.
 
 ## Build / Test / Gates (from `frontend/`)
 
-**NINE gates authorize a push, and this doc used to name only three of them.** Until 2026-08-02 this section
-listed `build` / `test:unit` / `test:visual` and never mentioned `lint`, `knip`, `gate-shape`,
-`doc-currency` or `bundle-budget` — so an agent reading the project's own constitution could not know what
-would block its push, and learned only by being rejected. The list below is transcribed from
-`.githooks/pre-push` and `.github/workflows/ci.yml`; when they change, change this.
-
-*This sentence read "Six" until 2026-08-03, while the table directly beneath it already showed EIGHT ✅ in
-the pre-push column — a headline contradicting its own table, in the very paragraph written to fix an
-undercount. Count it from the hook, never from memory:*
-`grep -cE "printf '\\\\n▶" .githooks/pre-push` *(7 → 8 with cli-guard) plus `mutation-proof-trailer`, which
-runs earlier and outside that pattern.*
+<!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
+**10 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
+paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),
+the last time one commit after the gate landed. Do not edit the table by hand; add the description to
+`DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
 | Gate | Command | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|---|
-| mutation-proof | `node scripts/ci/mutation-proof-trailer.mjs <range>` | ✅ (first) | — | a commit that ADDS a gate (`tests/gates/`, `scripts/ci/`) without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
-| queue-ledger | `node scripts/ci/queue-ledger.mjs` | ✅ | — | a finding added to the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
-| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. BARE, non-backticked paths), **and** a cross-doc SECTION citation aimed at a section that does not exist (zero-target; resolves headings, item ids and compound refs) |
+| mutation-proof-trailer | `node scripts/ci/mutation-proof-trailer.mjs <range>` | ✅ | — | a commit that ADDS a gate (`tests/gates/`, `scripts/ci/`) without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
+| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks |
+| queue-ledger | `node scripts/ci/queue-ledger.mjs` | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
+| artifact-currency | `node scripts/ci/artifact-currency.mjs` | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper) |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
-| gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population |
+| gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
-| unit suite | `npm run test:unit` | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
+| unit + static gates | `npm run test:unit` | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
 | build | `npm run build` | ✅ | ✅ | broken JSX/imports |
-| bundle-budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | a chunk growing past its byte ceiling |
+| bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | a chunk growing past its byte ceiling |
+<!-- END GATES -->
+
+**Not pre-push gates**, kept by hand because they are not in the hook:
+
+| Gate | Command | pre-push | CI | What it actually stops |
+|---|---|:--:|:--:|---|
 | knip | `npm run knip` | — | ✅ | unused files/exports/deps |
 | e2e | `npm run test:e2e` (playwright, **sharded 3×** in CI) | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow |
 | visual | `npm run test:visual` | — | — | **neither hook nor CI runs it.** Manual, before a milestone or any render change |

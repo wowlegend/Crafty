@@ -22,6 +22,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
+import { checkBlock as checkGateBlock } from './gate-table.mjs';
 
 import { DOC_ALIASES, sectionIds, itemIds, unresolved } from './doc-anchors.mjs';
 
@@ -151,6 +152,20 @@ if (existsSync(statusAbs)) {
   const ageDays = (Date.now() - statSync(statusAbs).mtimeMs) / 86_400_000;
   if (ageDays > 14) {
     warnings.push(`STATUS.md has not been touched in ${ageDays.toFixed(0)} days — is the registry still true?`);
+  }
+}
+
+// --- 3b. GATES BLOCK CURRENCY ------------------------------------------------
+// The gate table is DERIVED from .githooks/pre-push. Hand-maintained, it undercounted itself three times
+// ("three" -> "Six" -> "NINE"), the last time ONE COMMIT after artifact-currency landed — and a six-agent
+// review read the paragraph closely with five of six certifying the stale number. A mirror of a
+// machine-readable file drifts the moment that file changes, so this fails the push instead.
+{
+  const agentsRel = '.agent/AGENTS.md';
+  const md = readFileSync(join(ROOT, agentsRel), 'utf8');
+  const r = checkGateBlock(md);
+  if (!r.ok) {
+    errors.push(`${agentsRel}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
   }
 }
 
