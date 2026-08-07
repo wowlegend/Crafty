@@ -40,7 +40,7 @@ export const END = '<!-- END GATES -->';
  * Keyed by the gate name as it appears in the hook.
  */
 export const DESCRIPTIONS = {
-  'mutation-proof-trailer': 'a commit that ADDS a gate (`tests/gates/`, `scripts/ci/`) without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
+  'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
   'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks',
   'queue-ledger': 'a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command',
   'artifact-currency': 'the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper)',

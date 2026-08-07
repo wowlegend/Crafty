@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { offenders, GATE_PATHS, TRAILER } from '../../scripts/ci/mutation-proof-trailer.mjs';
+import { offenders, GATE_PATHS, TRAILER, touchesAssertions } from '../../scripts/ci/mutation-proof-trailer.mjs';
 
 // The decision is a pure function so it can be tested without a repo, and so the SCOPE is pinned.
 // Scope is the whole design here: too wide and the check becomes noise during a sweep, which is how a gate
@@ -69,5 +69,56 @@ describe('mutation-proof trailer — scope', () => {
     expect(hits('frontend/scripts/ci/a.mjs')).toBe(true);
     expect(hits('frontend/tests/gates/README.md')).toBe(false);
     expect(hits('frontend/scripts/dev/a.mjs')).toBe(false);
+  });
+});
+
+describe('mutation-proof trailer — assertion REWRITES (the hole, closed 2026-08-07)', () => {
+  // `--diff-filter=A` alone meant that replacing a vacuous gate with another vacuous one demanded NO proof —
+  // which is exactly where this rule failed twice (`91530be`, `03c4297`, both edits). These pin the widened
+  // scope AND its limit: too wide and a rename sweep turns the check into noise, which is how gates die.
+  const diff = (...lines) => lines.join('\n');
+
+  it('flags a commit that REWRITES an existing gate\'s assertions with no trailer', () => {
+    const bad = offenders([c({ rewrote: ['frontend/tests/gates/existing.test.js'] })]);
+    expect(bad).toHaveLength(1);
+    expect(bad[0].gates).toEqual(['frontend/tests/gates/existing.test.js']);
+  });
+
+  it('passes a rewrite once the trailer is present', () => {
+    const message = 'subject\n\nMutation-Proof: broke X -> RED\n';
+    expect(offenders([c({ rewrote: ['frontend/tests/gates/existing.test.js'], message })])).toEqual([]);
+  });
+
+  it('still ignores a rewrite of a NON-gate file', () => {
+    expect(offenders([c({ rewrote: ['frontend/src/thing.js'] })])).toEqual([]);
+  });
+
+  it('treats a missing `rewrote` as empty, so an old-shaped commit object cannot throw', () => {
+    const commit = { sha: 'a', subject: 's', message: 's\n', added: [] };
+    expect(offenders([commit])).toEqual([]);
+  });
+
+  it('touchesAssertions: TRUE when an expect/assert line is added or removed', () => {
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+  expect(x).toBe(3);'))).toBe(true);
+    expect(touchesAssertions(diff('@@ -1 +0 @@', '-  expect(checked).toBeGreaterThan(0);'))).toBe(true);
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+  errors.push(`stale`);'))).toBe(true);
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+  process.exit(1);'))).toBe(true);
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+  throw new Error("no");'))).toBe(true);
+  });
+
+  it('touchesAssertions: FALSE for the churn that must stay silent', () => {
+    // A comment, an import reorder and a rename change nothing about what the gate can catch. If these fired,
+    // every sweep would demand a trailer per file and the check would be switched off inside a day.
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+// explain the import', '-// old comment'))).toBe(false);
+    expect(touchesAssertions(diff('@@ -1 +1 @@', "+import { a } from './a.js';"))).toBe(false);
+    expect(touchesAssertions(diff('@@ -1 +1 @@', '+  const renamed = buildFixture();'))).toBe(false);
+    expect(touchesAssertions('')).toBe(false);
+  });
+
+  it('touchesAssertions: ignores the +++/--- file headers, which contain the path not the code', () => {
+    // A file literally named `.../expect-something.test.js` appears in the header lines; counting those would
+    // make the check fire on every rename of such a file.
+    const header = diff('--- a/frontend/tests/gates/expect-toBe.test.js', '+++ b/frontend/tests/gates/expect-toBe.test.js');
+    expect(touchesAssertions(header)).toBe(false);
   });
 });
