@@ -98,6 +98,7 @@ for SHA in $TARGETS; do
 
   printf '\n▶ doc-currency\n';            node scripts/ci/doc-currency.mjs
   printf '\n▶ queue-ledger (every finding carries its own marker)\n'; node scripts/ci/queue-ledger.mjs
+  printf '\n▶ artifact-currency (the published page the owner reads)\n'; node scripts/ci/artifact-currency.mjs
   printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
   printf '\n▶ gate-shape (no assertion may be satisfied by a comment)\n'; node scripts/ci/gate-shape.mjs
   # BEFORE test:unit, deliberately. The defect this catches manifests AS a corrupted unit run: importing a

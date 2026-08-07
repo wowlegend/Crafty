@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+/**
+ * ARTIFACT CURRENCY — the published page the operator READS is a deliverable, and it has now gone
+ * stale THREE times with him having to ask.
+ *
+ * Each time the response was a promise to remember, and each time that failed:
+ *   2026-08-05  9 days / 99 commits stale, headline stat "CI 0/88" — false for two days
+ *   2026-08-05  4 commits stale again, hours after I said it was current
+ *   2026-08-07  18 commits stale, still claiming "~154 closed · 19 untouched" against a measured 120/95
+ *
+ * A rule that has failed three times does not get better by being written a fourth. So this makes the
+ * drift VISIBLE on every push, and a hard failure once it is indefensible.
+ *
+ * It deliberately does NOT try to publish anything — a hook cannot, and a check that pretends to do the
+ * work it is only observing is exactly the class of defect this repo keeps finding.
+ *
+ * Also note WHY the source went missing: it lived only in a session-scoped tmp scratchpad and was wiped,
+ * the same way scratchpad/findings.json was lost. The HTML is committed now
+ * (docs/superpowers/era-review.html) so a cold start can rebuild the page instead of re-deriving it.
+ *
+ *   node scripts/ci/artifact-currency.mjs          check (informational under the limit, fails over it)
+ *   node scripts/ci/artifact-currency.mjs --sync   record HEAD as the published sha (run AFTER publishing)
+ */
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(HERE, '../../..');
+const STATE = join(ROOT, 'docs/superpowers/.artifact-sync.json');
+
+/** Commits behind before this stops being a nudge and starts being a defect. */
+export const HARD_LIMIT = 30;
+
+const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
+
+/** Pure: classify the drift so the threshold is testable without a repo. */
+export function classify(behind, limit = HARD_LIMIT) {
+  if (behind === 0) return { level: 'current', ok: true };
+  if (behind <= limit) return { level: 'drifting', ok: true };
+  return { level: 'stale', ok: false };
+}
+
+export function readState() {
+  if (!existsSync(STATE)) return null;
+  try { return JSON.parse(readFileSync(STATE, 'utf8')); } catch { return null; }
+}
+
+/**
+ * PURE: is the committed page a usable SOURCE, or a saved copy of the published wrapper?
+ *
+ * The page was unrecoverable once because it lived only in a session-scoped tmp scratchpad and was
+ * wiped — the same way scratchpad/findings.json was lost. Committing it fixes that only if what is
+ * committed is the AUTHORED content: re-committing a fetched copy would republish the publish shell
+ * inside itself. This check runs on every push rather than only in the test suite, because it guards
+ * the input this script depends on.
+ */
+export function validateSource(html) {
+  if (!html || !html.includes('<title>')) return 'missing a <title> — not the authored page';
+  if (html.includes('__FRAME_PREAMBLE')) return 'contains the publish-shell runtime — this is a fetched copy, not the source';
+  if (/<!doctype html>/i.test(html)) return 'contains a doctype — the shell adds that at publish time';
+  return null;
+}
+
+function main() {
+  const head = git('rev-parse', '--short', 'HEAD');
+  const state = readState();
+
+  if (process.argv.includes('--sync')) {
+    const next = { ...(state || {}), syncedSha: head, syncedAt: new Date().toISOString().slice(0, 10) };
+    writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
+    console.log(`artifact-currency: recorded ${head} as published`);
+    return;
+  }
+
+  if (!state || !state.syncedSha) {
+    console.log('artifact-currency: no sync state — run with --sync after publishing');
+    return;
+  }
+
+  // Guard this script's own input before trusting the drift number.
+  const src = state.source && join(ROOT, state.source);
+  if (src && existsSync(src)) {
+    const bad = validateSource(readFileSync(src, 'utf8'));
+    if (bad) {
+      console.error(`\n✘ artifact-currency: ${state.source} is ${bad}`);
+      console.error('  A drift count over an unusable source would be a number about nothing.\n');
+      process.exit(1);
+    }
+  } else if (src) {
+    console.error(`\n✘ artifact-currency: ${state.source} is missing — the page source must be COMMITTED,`);
+    console.error('  not left in a session scratchpad (that is how it was lost the first time).\n');
+    process.exit(1);
+  }
+
+  let behind;
+  try {
+    behind = Number(git('rev-list', '--count', `${state.syncedSha}..HEAD`));
+  } catch {
+    console.log(`artifact-currency: recorded sha ${state.syncedSha} is not in this history — skipping`);
+    return;
+  }
+
+  const { level, ok } = classify(behind);
+  if (level === 'current') {
+    console.log(`✓ artifact-currency: published page is at HEAD (${head})`);
+    return;
+  }
+  const line = `artifact-currency: the published page is ${behind} commit(s) behind (published ${state.syncedSha}, HEAD ${head})`;
+  if (ok) {
+    console.log(`· ${line} — refresh it at session close: ${state.url || 'see docs/superpowers/.artifact-sync.json'}`);
+    return;
+  }
+  console.error(`\n✘ ${line}`);
+  console.error(`  Over the ${HARD_LIMIT}-commit limit. The operator reads this page; at this drift it is`);
+  console.error('  reporting a state the project no longer has, which is the same defect as a gate');
+  console.error('  passing over input it never examined.');
+  console.error('  Fix: update docs/superpowers/era-review.html, republish to the SAME url, then');
+  console.error('  `node scripts/ci/artifact-currency.mjs --sync`. Do NOT just bump the sha.\n');
+  process.exit(1);
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

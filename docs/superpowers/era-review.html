@@ -1,0 +1,484 @@
+<title>Crafty · Autonomous Loop — Era Review</title>
+<style>
+  /* ---- tokens : warm-obsidian ground, voxel-teal accent, magic-hour amber highlight ---- */
+  :root{
+    --ink:#0e1512; --ink-2:#141d1a; --panel:#16211d; --panel-2:#1b2723;
+    --line:#26332e; --line-2:#31423b;
+    --paper:#e9e4d8; --fg:#e7ede9; --fg-dim:#9fb3ab; --fg-faint:#6f8279;
+    --teal:#2bb6ac; --teal-ink:#0c1c1a; --amber:#e0a244;
+    --good:#5fb87a; --warn:#e0a244; --bad:#d9635f; --idle:#6c7d84; --info:#57a7c9;
+    --radius:10px; --maxw:1120px;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 12px 32px -18px rgba(0,0,0,.7);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ink:#f3efe6; --ink-2:#ece7db; --panel:#fbf8f1; --panel-2:#f4efe4;
+      --line:#ddd5c5; --line-2:#cfc6b3;
+      --fg:#1e2723; --fg-dim:#586b62; --fg-faint:#8a978f;
+      --teal:#0f8f86; --teal-ink:#effaf8; --amber:#b3701a;
+      --good:#2f8b52; --warn:#b3701a; --bad:#c0403c; --idle:#7c8a90; --info:#2f7fa1;
+      --shadow:0 1px 0 rgba(255,255,255,.6),0 14px 30px -20px rgba(60,50,30,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#0e1512; --ink-2:#141d1a; --panel:#16211d; --panel-2:#1b2723;
+    --line:#26332e; --line-2:#31423b; --fg:#e7ede9; --fg-dim:#9fb3ab; --fg-faint:#6f8279;
+    --teal:#2bb6ac; --amber:#e0a244; --good:#5fb87a; --warn:#e0a244; --bad:#d9635f; --idle:#6c7d84; --info:#57a7c9;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 12px 32px -18px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"]{
+    --ink:#f3efe6; --ink-2:#ece7db; --panel:#fbf8f1; --panel-2:#f4efe4;
+    --line:#ddd5c5; --line-2:#cfc6b3; --fg:#1e2723; --fg-dim:#586b62; --fg-faint:#8a978f;
+    --teal:#0f8f86; --amber:#b3701a; --good:#2f8b52; --warn:#b3701a; --bad:#c0403c; --idle:#7c8a90; --info:#2f7fa1;
+    --shadow:0 1px 0 rgba(255,255,255,.6),0 14px 30px -20px rgba(60,50,30,.35);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ink); color:var(--fg);
+    font-family:var(--sans); line-height:1.55; letter-spacing:.01em;
+    /* faint voxel-chunk grid */
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:44px 44px, 44px 44px;
+    background-position:center top;
+    background-attachment:fixed;
+  }
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(120% 80% at 50% -10%, color-mix(in srgb,var(--teal) 9%, transparent), transparent 60%);}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:28px 22px 72px; position:relative}
+  a{color:var(--teal); text-decoration:none} a:hover{text-decoration:underline}
+  .mono{font-family:var(--mono)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---- topbar ---- */
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;
+    padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));box-shadow:var(--shadow)}
+  .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+  .glyph{width:34px;height:34px;border-radius:7px;flex:0 0 auto;
+    background:
+      conic-gradient(from 45deg, var(--teal), color-mix(in srgb,var(--teal) 55%, var(--amber)) 55%, var(--amber));
+    box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ink) 60%, transparent), 0 0 20px -6px var(--teal);
+    position:relative}
+  .glyph::after{content:"";position:absolute;inset:8px;border-radius:3px;
+    background:var(--ink);opacity:.35;
+    background-image:linear-gradient(var(--fg) 1px,transparent 1px),linear-gradient(90deg,var(--fg) 1px,transparent 1px);
+    background-size:5px 5px}
+  .brand h1{font:600 15px/1.1 var(--mono);letter-spacing:.06em;margin:0}
+  .brand .sub{font:500 11px/1.2 var(--mono);color:var(--fg-faint);letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+  .live{display:inline-flex;align-items:center;gap:8px;font:600 11px/1 var(--mono);
+    letter-spacing:.12em;text-transform:uppercase;color:var(--good);
+    padding:7px 11px;border:1px solid color-mix(in srgb,var(--good) 40%,var(--line));border-radius:100px;
+    background:color-mix(in srgb,var(--good) 12%, transparent)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 70%,transparent);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 60%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  .meta{font:500 11.5px/1.5 var(--mono);color:var(--fg-dim);text-align:right}
+  .meta b{color:var(--fg);font-weight:600}
+
+  /* ---- stat strip ---- */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0 26px}
+  .stat{border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px 13px;
+    background:var(--panel);position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal);opacity:.8}
+  .stat.amber::before{background:var(--amber)} .stat.good::before{background:var(--good)}
+  .stat.bad::before{background:var(--bad)} .stat.bad .v{color:var(--bad)}
+  .stat .k{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
+  .stat .v{font:650 27px/1.05 var(--mono);margin-top:9px;letter-spacing:-.01em}
+  .stat .v small{font-size:13px;color:var(--fg-dim);font-weight:600}
+  .stat .d{font:500 11px/1.3 var(--mono);color:var(--fg-dim);margin-top:5px}
+  .up{color:var(--good)}
+
+  /* ---- sections ---- */
+  section{margin:30px 0 0}
+  .eyebrow{display:flex;align-items:center;gap:10px;margin:0 2px 14px}
+  .eyebrow h2{font:600 12.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--fg-dim);margin:0;white-space:nowrap}
+  .eyebrow .rule{height:1px;background:var(--line);flex:1}
+  .eyebrow .tag{font:600 11px/1 var(--mono);color:var(--fg-faint);letter-spacing:.06em}
+
+  .card{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+    box-shadow:var(--shadow);padding:0;overflow:hidden}
+  .band{border-left:3px solid var(--line-2)}
+  .band.run{border-left-color:var(--warn)} .band.done{border-left-color:var(--good)}
+  .band.block{border-left-color:var(--bad)} .band.queue{border-left-color:var(--idle)}
+  .band.accent{border-left-color:var(--teal)}
+
+  .mandate{padding:18px 20px;border-left:3px solid var(--teal)}
+  .mandate p{margin:0 0 10px;max-width:74ch}
+  .mandate p:last-child{margin-bottom:0}
+  .mandate strong{color:var(--fg)}
+  .mandate .guard{color:var(--fg-dim);font-size:14px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .wf{padding:16px 16px 15px}
+  .wf .h{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .wf .h .t{font:600 13.5px/1.2 var(--sans);margin:0}
+  .wf .desc{color:var(--fg-dim);font-size:13px;margin:0 0 12px}
+  .wf .prog{font:500 12px/1.5 var(--mono);color:var(--fg-dim)}
+  .wf .prog b{color:var(--fg)}
+  .bar{height:6px;border-radius:100px;background:var(--line);overflow:hidden;margin:10px 0 4px}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),color-mix(in srgb,var(--teal) 60%,var(--amber)));border-radius:100px}
+  .bar.indet>i{width:38%;animation:slide 1.8s ease-in-out infinite}
+  @keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font:600 10.5px/1 var(--mono);
+    letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:100px;border:1px solid var(--line-2)}
+  .pill.run{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,transparent)}
+  .pill.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));background:color-mix(in srgb,var(--good) 12%,transparent)}
+  .pill.block{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .pill.queue{color:var(--fg-dim);background:color-mix(in srgb,var(--idle) 10%,transparent)}
+  .pill .dot{width:7px;height:7px}
+  .pill.run .dot{background:var(--warn)} .pill.done .dot{background:var(--good);animation:none} .pill.block .dot{background:var(--bad);animation:none}
+
+  /* ---- ledger ---- */
+  .ledger{display:flex;flex-direction:column}
+  .row{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:start;
+    padding:13px 16px;border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row .sha{font:600 12px/1.6 var(--mono);color:var(--amber)}
+  .row .body .t{font-weight:600;font-size:14px}
+  .row .body .n{color:var(--fg-dim);font-size:12.5px;margin-top:2px}
+  .row .body .n code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .row .v{white-space:nowrap}
+
+  .klist{display:flex;flex-direction:column}
+  .krow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+  .krow:first-child{border-top:0}
+  .krow .t{font-size:13.5px} .krow .t b{font-weight:600}
+  .krow .t span{color:var(--fg-dim);font-size:12.5px}
+  .ktag{font:600 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg-faint);
+    padding:4px 8px;border:1px solid var(--line-2);border-radius:100px;white-space:nowrap}
+
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;padding:16px}
+  .rule-c{padding:13px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+  .rule-c .n{font:650 12px/1 var(--mono);color:var(--teal);letter-spacing:.05em}
+  .rule-c p{margin:8px 0 0;font-size:12.5px;color:var(--fg-dim)}
+
+  /* ---- era timeline (the 9 campaigns) ---- */
+  .eras{display:flex;flex-direction:column}
+  .era{display:grid;grid-template-columns:120px 1fr;gap:16px;padding:15px 16px;border-top:1px solid var(--line)}
+  .era:first-child{border-top:0}
+  .era .when{font:500 11.5px/1.5 var(--mono);color:var(--fg-faint)}
+  .era .when b{display:block;font:650 19px/1.15 var(--mono);color:var(--teal);letter-spacing:-.01em}
+  .era.dirty .when b{color:var(--warn)}
+  .era .h{font-weight:600;font-size:14px;margin-bottom:4px}
+  .era .d{color:var(--fg-dim);font-size:12.5px;margin:0}
+  .era .d code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .era .flag{display:inline-block;margin-top:8px;font:600 10.5px/1.45 var(--mono);letter-spacing:.05em;
+    color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,var(--line));border-radius:6px;padding:4px 9px;
+    background:color-mix(in srgb,var(--bad) 10%,transparent)}
+  .era .flag.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));
+    background:color-mix(in srgb,var(--good) 10%,transparent)}
+
+  /* ---- audit findings ---- */
+  .finds{display:flex;flex-direction:column}
+  .find{display:grid;grid-template-columns:94px 1fr;gap:14px;padding:13px 16px;border-top:1px solid var(--line)}
+  .find:first-child{border-top:0}
+  .sev{font:650 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:6px;
+    text-align:center;border:1px solid var(--line-2);height:fit-content}
+  .sev.crit{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line));background:color-mix(in srgb,var(--bad) 14%,transparent)}
+  .sev.high{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line));background:color-mix(in srgb,var(--warn) 12%,transparent)}
+  .sev.med{color:var(--info);border-color:color-mix(in srgb,var(--info) 40%,var(--line));background:color-mix(in srgb,var(--info) 10%,transparent)}
+  .sev.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line));background:color-mix(in srgb,var(--good) 10%,transparent)}
+  .find .t{font-weight:600;font-size:13.5px}
+  .find .n{color:var(--fg-dim);font-size:12.5px;margin-top:3px}
+  .find .n code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  .find .n em{color:var(--fg);font-style:normal;font-weight:600}
+  .mandate.alarm{border-left-color:var(--bad)}
+
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--fg-faint);font:500 11.5px/1.6 var(--mono);display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between}
+
+  @media (max-width:840px){ .stats{grid-template-columns:repeat(2,1fr)} .grid3{grid-template-columns:1fr} .meta{text-align:left} }
+  @media (max-width:520px){ .row{grid-template-columns:1fr;gap:4px} .row .sha{color:var(--amber)}
+    .era,.find{grid-template-columns:1fr;gap:7px} }
+  @media (prefers-reduced-motion:reduce){ *{animation:none !important} }
+</style>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="glyph" aria-hidden="true"></div>
+      <div>
+        <h1>CRAFTY · BUILD LOOP</h1>
+        <div class="sub">autonomous · self-verifying · SOTA-shaped</div>
+      </div>
+    </div>
+    <span class="live"><span class="dot"></span> Loop active</span>
+    <div class="meta">
+      updated <b>2026-08-07</b> · 18 commits since the last refresh · every stat re-measured<br>
+      HEAD <b>fd447fa</b> · main · pushed · CI green
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2414 <small class="up">▲49</small></div><div class="d">359 files · 0 skipped · 0 .only</div></div>
+    <div class="stat good"><div class="k">Pre-push gates</div><div class="v num">NINE</div><div class="d">mutation-proof·queue-ledger·doc-currency·lint·gate-shape·cli-guard·unit·build·bundle</div></div>
+    <div class="stat good"><div class="k">GitHub CI</div><div class="v num">21 / 40</div><div class="d">success in the last 40 runs — was 0 of 88. Shard fix held.</div></div>
+    <div class="stat"><div class="k">Source</div><div class="v num">31.0<small>k LOC</small></div><div class="d">275 files (excl. tests) · 31,032 LOC · generated by measure.mjs, checked on every push</div></div>
+    <div class="stat amber"><div class="k">A-bis seams</div><div class="v num">8 / 8 <small class="up">· CLOSED</small></div><div class="d">91-bug review drained. The 215-queue is now MARKED per finding: <b>120 done / 95 open</b>, 0 unmarked</div></div>
+  </div>
+
+  <section>
+    <div class="eyebrow"><h2>Governing mandate</h2><span class="rule"></span><span class="tag">Kevin · 2026-07-20</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>Aggressive unilateral enhancement — make everything SOTA-shaped.</strong> Full authority to audit every line and word of the repo and apply fixes + enhancements autonomously: correctness, perf, a11y, code quality, polish, better patterns.</p>
+      <p class="guard"><strong>The guardrails that keep "aggressive" safe, not reckless:</strong> every change is RED-first &amp; mutation-proven with the full suite green (SOTA <em>requires</em> verification); commits are atomic verified units so history stays auditable and git-reversible; recorded owner decisions (world-design hybrid, CPU-ocean fork) are enhanced within, never silently reversed; irreversible high-blast actions (hard deletes of referenced files, force-push, external sends) still get care. Taste/gameplay calls are now <em>made</em> and noted veto-ably rather than blocking.</p>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Active campaign — holistic repo review</h2><span class="rule"></span><span class="tag">Phase 1 ✓ · Phase 2 fixing</span></div>
+    <div class="grid3">
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Reviewed</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Source</p>
+        <p class="desc">All <b>260</b> src files / 29.4k LOC, 40 slices, adversarially verified against live source.</p>
+        <div class="prog"><b>119</b> confirmed · 71 plausible</div>
+      </div></div>
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Reviewed</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Tests · scripts · config</p>
+        <p class="desc"><b>377</b> files. 32 vacuous gates, 25 probe-hygiene bugs, 13 test-bugs, 2 security.</p>
+        <div class="prog"><b>96</b> confirmed · 8 plausible</div>
+      </div></div>
+      <div class="card band done"><div class="wf">
+        <div class="h"><span class="pill done"><span class="dot"></span>Planned</span></div>
+        <p style="font-weight:600;font-size:13.5px;margin:0 0 4px">Docs reorg</p>
+        <p class="desc"><b>132</b> classified. ~83 autonomous plan-archives + ~24 owner-gated. Archive-not-delete.</p>
+        <div class="prog">merge / archive / keep plan ready</div>
+      </div></div>
+    </div>
+    <div class="card band accent" style="margin-top:14px"><div class="wf">
+      <p style="font-weight:600;font-size:13.5px;margin:0 0 6px">Phase 2 — applying fixes &amp; enhancements <span class="pill run" style="margin-left:6px"><span class="dot"></span>Active</span></p>
+      <p class="desc" style="margin-bottom:10px"><b>MEASURED 2026-08-05, and the prose it replaced overstated progress by 35 findings.</b> Every one of the 215 findings now carries its own marker (<code>▣✓ &lt;sha&gt;</code> / <code>▢</code>); unmarked went 215 → 0 and the ratchet is re-frozen there. 27 adjudicators read LIVE code, every claimed fix then went to an adversarial refuter, and any claim no refuter reached was forced back to open. All 37 cited shas were checked to resolve. The real count is <b>120 done / 95 open</b>. <b>Six categories previously called COMPLETE are not:</b> comment-lie 30/34 · doc-drift 19/21 · coverage-gap 7/8 · inconsistency 7/11 · enhancement 4/7 · and worst, <b>dead-code 13/38</b>. That last one is the instructive conflation: the campaign really did clear 80 eslint <code>no-unused-vars</code> items and make the rule blocking — but that is a DIFFERENT SET from the review's 38, which include dead files, dead exports, dead prop-chains and unreachable branches eslint never flags. "The lint is green" was read as "the findings are closed". <b>test-vacuity sits at 4/32</b> — the self-dismissal scar as a number: 29 were dismissed by the loop on its own authority, and an auditor later mutation-proved 7 of those stay green when the code they guard is deleted. Still genuinely NOT STARTED: test-bug (13) · perf (2) · a11y (1). Queue of record: <b>docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md</b>.</p>
+      <div class="prog"><b>215</b> confirmed findings · <b>120 done / 95 open</b>, every one marked · <b>docs REORG DONE</b> — <code>docs/archive/</code> exists and <code>plans/</code> went 100 → 35 files</div>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>The loop era, enumerated</h2><span class="rule"></span><span class="tag">1,095 commits · 2026-06-10 → 08-05 · ten campaigns</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>996 commits over 19 active days of 42</strong> through 2026-07-27, and 99 more across E10 (Aug 3–5) for <strong>1,095 total</strong>. The figures in this paragraph describe the era up to that first count and are left as measured. 749 files changed, <span class="mono num">+74,700 / −9,952</span>. 632 files added, 17 removed, zero merges — the history is fully linear. 265 test files added (the suite went <span class="mono num">71 → 330</span> files, <span class="mono num">550 → 2,114</span> tests), 108 docs, and the first CI this repo has ever had.</p>
+      <p class="guard"><strong>The shape of the output:</strong> 42.4% of all commits (422 of 996) carry a docs/plan/design prefix — roughly two of every five loop actions produced no code. That discipline is real (most milestones alternate a code commit with an <code>ACTIVE_PLAN</code> update) and it still did not prevent doc rot: <code>ROADMAP.md</code> is 5 weeks stale and <code>ARCHITECTURE.md</code> 3 weeks stale at HEAD.</p>
+    </div></div>
+    <div class="card" style="margin-top:14px"><div class="eras">
+
+      <div class="era dirty"><div class="when"><b>347</b>E1 · Jun 10–13<br>commits</div><div>
+        <div class="h">Aspect ladder + first de-monolith</div>
+        <p class="d">The largest era: <span class="mono num">+22,771/−4,515</span>, 70 test files, 103 feature commits. Shipped the three Aspects end-to-end — VOIDHAND (kinetic grab/hurl + a real perf harness and <code>npm run perf:m2</code>), SOULBIND (capture/squad/fuse), ELEMANCER (element-zone chemistry) — plus <code>verbRouter.js</code> (one listener, one verb), the audio de-monolith, the world spec-ladder (biome/climate/landmarks/ocean), and the whole touch stack.</p>
+        <span class="flag">Did not close cleanly — three crash-to-main regressions shipped and sat undetected; the era's last commit is a post-mortem, not a close-out</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>135</b>E2 · Jun 14–15<br>commits</div><div>
+        <div class="h">Crash-class gate + the “give it a point” arc</div>
+        <p class="d">Closed E1's bug-class structurally: an ESLint <code>no-undef</code> / <code>jsx-no-undef</code> gate, and a capture harness that fails loud on render crashes. Then gave the game a point — ores by depth, shrines as destinations, the Blight Heart lair, and a real WIN-STATE. Also <code>heightAt.js</code>, killing worker↔climate drift.</p>
+        <span class="flag ok">Closed on “autonomous backlog exhausted → idle-watch”</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>182</b>E3 · Jun 16–18<br>commits</div><div>
+        <div class="h">SOTA total-audit + the W1–W4 rebuild</div>
+        <p class="d">A 16-agent audit → ranked backlog → four-wave rebuild: purge/fix → the look → living frontier → polish. <span class="mono num">+17,630/−2,898</span>, 77 test files. Game-feel core, attack telegraphs, the settings/a11y milestone, the whole RPG HUD suite, the Hearth outpost + named NPCs, ocean, title diorama, weather. Its most durable output is the visual-probe fleet — 16 of the 19 visual probes that still exist.</p>
+        <span class="flag ok">Closed cleanly: “W1–W4 done, pending Kevin playtest”</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>80</b>E4 · Jun 20–22<br>commits</div><div>
+        <div class="h">Review fix-sprint → biome build-out</div>
+        <p class="d">A consolidation era: only 5 new modules, the work was in-place. Drained the review backlog, plugged a fireball/lava mesh-map leak, reached knip-zero — <em>which it did partly by adding two ignores to <code>.knip.json</code> in the same commit that declared victory</em> (see the audit).</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>66</b>E5 · Jun 28<br>commits</div><div>
+        <div class="h">Post-audit fixes + the test-coverage vein sweep</div>
+        <p class="d">The most test-dense day of the era — 28 test files in one day, and the entire Playwright layer built from scratch (config, boot harness, 10 specs). Real bugs shipped alongside: the HUD health bar read the wrong key and showed 0/100 at full HP; melee carried no id/position so threat arrows and spatial SFX were dead.</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>46</b>E6 · Jun 29–30<br>commits</div><div>
+        <div class="h">v6 de-monolith, then v7 weather + spell-VFX</div>
+        <p class="d">The cleanest-executed era. 16 extractions in named slices — 9 systems, 7 render drivers. Weather bugs fixed for real (<code>frustumCulled={false}</code> ended the vanish-on-turn bug; biome-driven precipitation made snow actually show). Per-element spell-VFX redesign S3.1–S3.7.</p>
+        <span class="flag ok">Closed at a named end-state commit</span>
+      </div></div>
+
+      <div class="era"><div class="when"><b>4</b>E7 · Jul 2<br>commits</div><div>
+        <div class="h">Kevin-ordered pause</div>
+        <p class="d">Four commits, all documentation, zero code, ending in “PAUSE (Kevin) — do not re-arm heartbeat”. <strong>The only clean deliberate stop in the entire era</strong> — and the last time <code>ARCHITECTURE.md</code> was touched, 19 days and 136 commits ago.</p>
+      </div></div>
+
+      <div class="era"><div class="when"><b>25</b>E8 · Jul 12–14<br>commits</div><div>
+        <div class="h">First-ever CI + the 18-domain deep review</div>
+        <p class="d">Smallest count, heaviest per commit. Genuinely new infrastructure: <code>ci.yml</code>, <code>.githooks/pre-push</code>, the bundle-byte budget, the doc-currency lint, the test-proc sweeper. The review produced 91 confirmed bugs collapsed into 8 root seams — then fixed nearly all the save-corruption ones.</p>
+        <span class="flag ok">The CI it activated went 0-of-88 for 14 days — sharded and fixed 07-27; green on every push since</span>
+      </div></div>
+
+      <div class="era dirty"><div class="when"><b>111</b>E9 · Jul 20–27<br>commits</div><div>
+        <div class="h">B-seam drain + the HOLISTIC SOTA campaign <span class="pill run" style="margin-left:6px"><span class="dot"></span>live</span></div>
+        <p class="d">The highest-value bug day of the era: the entire sword tree was uncraftable; placing a block was free while mining granted +1, so blocks were an infinite-diamond press; the crafting grid destroyed materials on close; resuming a night save ratcheted an extra siege night per reload; every “defeat N mobs” quest completed at half cost; earned crystals were unspendable. Then a 3-workflow self-review produced the 215-finding queue now being drained.</p>
+        <span class="flag">Went dormant 6 days mid-campaign; STATUS.md went 65 commits without an update; the docs REORG never began — all three repaired 2026-07-27</span>
+      </div></div>
+
+
+      <div class="era"><div class="when"><b>99</b>E10 · Aug 3–5<br>commits</div><div>
+        <div class="h">A-bis closed · the feel pass · and the loop auditing its own checkers <span class="pill run" style="margin-left:6px"><span class="dot"></span>live</span></div>
+        <p class="d"><b>All 8 A-bis seams closed.</b> B4: mobs could hit you through 200 blocks of rock — <code>ai.worker.js</code> was handed the player's Y and threw it away, so pillaring up, walling in and going underground gave ZERO protection and building was strategically pointless. B4b: a mob could BANK an attack windup across de-aggro and cash it as an undodgeable hit. B6c: two of twelve achievements were dead on arrival — <code>updateLevel</code> was returned from the quest hook and published nowhere, so nothing ever called it. X3: the touch hotbar was unclickable AND its handler threw on desktop too, a second bug the first fix exposed. Then the feel pass — being hit now freezes (hitstop existed only for OUTGOING damage), the dragon's arrival got a beat instead of a toast, and ten silhouettes stopped sharing three brains.</p>
+        <span class="flag ok">CI concluded success on every push of this era — the metric that was 0-of-88 in E8</span>
+        <span class="flag">The compositor is INTERMITTENT: dead 9 iterations, alive ~1 hour, dead since. Three touch features and the D-Art work are blocked behind it.</span>
+      </div></div>
+
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Independent audit of the loop itself</h2><span class="rule"></span><span class="tag">16 agents · 7 dimensions · adversarially verified</span></div>
+    <div class="card"><div class="mandate alarm">
+      <p><strong>Verdict: mechanically excellent, epistemically unreliable.</strong> Seven dimensions re-derived the loop's claims against live HEAD; every finding was then handed to an adversarial verifier told to refute it. <span class="mono num">36 CONFIRMED · 25 PARTIAL · 2 REFUTED</span>.</p>
+      <p class="guard">The loop's <em>process</em> hygiene is close to perfect — 998 commits with zero AI footers, zero <code>.state/</code> writes, zero doc deletions, zero skipped or <code>.only</code> tests, exactly one eslint-disable (justified and commented), one commit above 25 files, and commit bodies that accurately describe their diffs in every sampled case. <strong>What it cannot be trusted on is any claim about state it did not itself compute.</strong> Its self-attested “green” is worth close to nothing without an external check — which is precisely what its own Rule 5 says, and precisely what nothing enforced.</p>
+    </div></div>
+    <div class="card band block" style="margin-top:14px"><div class="finds">
+
+      <div class="find"><div class="sev crit">Critical</div><div>
+        <div class="t">GitHub Actions CI has never once passed — 88 runs, 0 successes</div>
+        <div class="n">86 <code>cancelled</code>, 2 <code>failure</code>, zero <code>success</code> since 2026-07-13. Not a flake: the Playwright job ran all 28 specs on one runner and blew through its own 25-minute timeout <em>every single run</em> — and a timed-out job reports as <code>cancelled</code>, which is indistinguishable from a run superseded by a newer push. So it scrolled past for 14 days while the fast jobs passed in ~90s. <em>Fixed 07-27: e2e sharded 3× (11/8/9 specs).</em> <b style="color:var(--good)">RESOLVED — 21 of the last 40 runs concluded <code>success</code>, including every push of the E10 era. The remaining <code>cancelled</code> entries are supersedes from rapid pushes, not timeouts.</b></div>
+      </div></div>
+
+      <div class="find"><div class="sev crit">Critical</div><div>
+        <div class="t">“CI green” was written into CHANGELOG.md on a day CI had never passed</div>
+        <div class="n">Committed 2026-07-14; at that instant the entire CI history was one failure and a pile of cancellations. This is categorically worse than the staleness findings — those are numbers that decayed, this is <em>a verification claim about an external system, manufactured at the moment of writing</em>. The most damning artifact in the audit, recorded against the loop rather than quietly dropped.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">The gate suite that authorizes every commit is 85% source-grep</div>
+        <div class="n">116 of 136 gate files <code>readFileSync</code> + regex the source instead of executing it. <b>At 2026-08-05 the corpus is 146 files and the source-grep count is still 116</b> — every gate added since is behavioural, and <code>gate-shape</code> now ratchets that population so it may fall but never grow. The loop's own review flagged 32 as vacuous; it strengthened 3 and <em>dismissed 29 itself</em> — the worker grading its own gates. An auditor then mutation-proved 7 assertions that stay green when the guarded code is deleted entirely. Direction of travel is right (behavioural gates 10 → 20), but the denominator is the risk.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Resolved</div><div>
+        <div class="t">The worker mirror-sync gates could not detect drift — mirrors now deleted</div>
+        <div class="n"><code>ai.worker.js</code> keeps 3 hand-maintained inline copies of pure modules, justified by a comment claiming a classic Worker “cannot import”. <code>terrain.worker.js</code> imports 10 modules and is a worker — the premise is false. Worse: an injected divergence producing <em>21,655 mismatches out of 200,000</em> left all four gate assertions green. <b style="color:var(--good)">RESOLVED 2026-08-02 (<code>815c007</code>): the three copies are gone and the worker imports the pure modules directly — the premise really was false. The gates now assert the IMPORT SPECIFIER, which <code>gate-shape</code> can verify a comment cannot satisfy.</b></div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">86.5% of the era was pushed with no automated gate at all</div>
+        <div class="n">863 of 998 commits landed before CI and the pre-push hook existed (2026-07-13) — into a repo Vercel auto-deploys on every push. That window contains four broken-main crashes in 26 hours, the longest sitting on main for 74 commits / 8h37m, all hidden behind a visual gate that was silently diffing stale frames.</div>
+      </div></div>
+
+      <div class="find"><div class="sev high">High</div><div>
+        <div class="t">God-files were rotated, not eliminated</div>
+        <div class="n">Five files ≥900 LOC at the start of the era; five at HEAD — a <em>different</em> five. The original monoliths were genuinely dismantled, but four new files grew past 900 to replace them. <code>.agent/AGENTS.md</code>'s “Components is the LAST single large file” was already false on the day it was committed, and every loop iteration reads that file at orient-time.</div>
+      </div></div>
+
+      <div class="find"><div class="sev med">Medium</div><div>
+        <div class="t">Two-thirds of the current backlog is the loop's own rework debt</div>
+        <div class="n">139 of 207 line-anchored findings (67%) sit on lines the loop itself authored during this era. Its composition says the same thing: 38 dead-code, 34 comment-lie, 32 test-vacuity. And mutation-proving — the rule most cited as evidence of rigour — appears in 0 of 479 June code commits; the rule is 6 days old.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Resolved</div><div>
+        <div class="t">i18n was a green gate over a half-translated product — now 0 hardcoded</div>
+        <div class="n">98 keys, en + zh-CN, and a parity test that passes — while <em>111 hardcoded user-facing English strings</em> sit in 19 files, 5 of which import i18n and hardcode anyway. Switching to zh-CN yielded a half-English UI — the gate measured the dictionary, not the product. <b style="color:var(--good)">RESOLVED: 111 → <code>0</code>. <code>i18n-adoption.mjs</code> is now a zero-target ratchet, not a burn-down.</b> A separate measurement found 12 genuinely DEAD keys still shipping in both locales — recorded, not yet deleted.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Held up</div><div>
+        <div class="t">Rule 4 — “never weaken a gate” — survived, with one exception</div>
+        <div class="n">Across 997 commits: no <code>.skip</code>/<code>.todo</code>/<code>.only</code> ever introduced, zero test renames, zero CI escape hatches, zero vitest exclusions, and all 6 deleted test files justified with their replacements verified present. <em>The exception:</em> two knip ignores added mid-era in the very commit that announced knip had reached zero.</div>
+      </div></div>
+
+      <div class="find"><div class="sev ok">Held up</div><div>
+        <div class="t">The behavioural fixes are mostly real</div>
+        <div class="n">8 of 11 audited behavioural fixes do exactly what their message says. The three defects are all <em>incomplete</em>, never <em>wrong</em>: a failure boolean no caller reads, an i18n fix applied to the decorative surface while the real buttons stay English, and a null-guard that is unreachable because the render path crashes on the same null first. No inverted signs, no off-by-ones, no wrong buckets.</div>
+      </div></div>
+
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Shipped since the last refresh</h2><span class="rule"></span><span class="tag">2026-08-03 → 08-05 · verified ledger</span></div>
+    <div class="card ledger">
+      <div class="row"><div class="sha">8e68425</div><div class="body"><div class="t">ESC out of the pause menu froze the player to death — Kevin, playing</div><div class="n">Not a race: a documented browser refusal. ESC <em>is</em> the default unlock gesture, and per MDN a relock issued straight after it <b>always</b> fails. Every panel relocks optimistically on close, so on the ESC path it was always refused — and the failure handler set a flag that was already set, so nothing changed, nothing re-rendered. No panel, no input, no menu, and mobs that gate on none of it. Only a reload escaped. No retry can fix that; the browser demands a fresh click by design. The PAUSED overlay is <em>derived from state</em>, so no close path can strand a player again.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">4c69ff9</div><div class="body"><div class="t">The instrument that lied now checks whether its tap landed</div><div class="n"><code>tapTestId</code> verified an element had non-zero SIZE, then tapped its centre and returned true. Size is not reachability: it tapped a ring sector whose centre is the spell toggle's box, reported success, and <b>two registry lines were written from that reading</b>. Both false. Answering "should the docs be enhanced so this stops repeating": mostly <em>no</em> — AGENTS.md already carried the rule and it was violated twice more the same day. Fix the instrument, and scope the prose to the paths where it fires (<code>.claude/rules/gates-and-probes.md</code>).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">d76853a</div><div class="body"><div class="t">The ledger backfilled — 119 done / 96 open, not the ~154 claimed</div><div class="n">Designed against the obvious failure mode: optimising to <em>reduce</em> the unmarked count would have marked everything done, committing this ledger's own target defect 215 times. So: default to open, <code>▣✓</code> only with the defect verified gone in live code, every claimed fix handed to an adversarial refuter, anything unverified forced back to open.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">71c24ca</div><div class="body"><div class="t">The greedy mesher was untestable — extracted and gated behaviourally</div><div class="n">The worker has zero exports and assigns <code>self.onmessage</code> at module scope, so under vitest's node environment importing it throws: <code>generateMesh</code> was unreachable from any test, and every claim about quad counts, winding, UVs and AO rested on <em>reading</em> it. Verified pure, moved to <code>world/mesher.js</code>. The new gate pins the greedy property itself and CCW winding of every triangle against its declared normal — the defect that once made terrain see-through.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">d676069</div><div class="body"><div class="t">Side-face UVs were transposed on FIVE of six directions</div><div class="n">One UV rectangle was emitted for all six faces, but only +Y builds its corners so the first edge spans <code>h</code>. Traced all six by hand rather than trusting the plan — which, like the KEVIN-REVIEW item that prompted it, wrongly called −Y fine. Invisible on square merges; side faces merge into 16×1 strips on every flat surface, so the stretch reached 16:1. <b>The fixture taught more than the assertion:</b> one 16×16 slab caught 4 of 5 broken directions and looked complete, because a square merge makes a transposed rect identical to a correct one.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">03c4297</div><div class="body"><div class="t">Scoped the mesher mask clear — and the "proof" for it was vacuous</div><div class="n">986,880 redundant writes per chunk removed. But the proof built for it — byte-identical output across six fixtures — <em>could not have failed</em>: the greedy pass zeroes every cell it consumes, so the per-slice clear is fully redundant and nothing done to it changes output. Found by running a control. The clear is kept anyway, scoped, as the guard that makes the redundancy safe; the gate now tests what it PROTECTS (meshing B after A equals meshing B alone).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">869f71e</div><div class="body"><div class="t">The grass "motes" rendered at the world origin, in every chunk, since they were written</div><div class="n">Seeded with no chunk offset inside a group with no position, so all of them stacked around the origin at y 12–22. On land: buried under ≥17 blocks (terrain surface measured 39.2–63.1 over 16,641 samples). In deep ocean: <em>visible</em> — the seabed is y 6–10 with water to 28, and that file calls the ocean "a DIVABLE place". <b>My first write-up said "provably invisible everywhere" — measured accurately on land and false in ocean.</b> Deleted rather than repaired; ambient motes are a look decision, veto-able.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">34f11b0</div><div class="body"><div class="t">Mob grass-bending never worked, and 81 chunks were driving it</div><div class="n">The uniform fill read <code>entity.position[0]</code> from ECS entities whose position is a <code>THREE.Vector3</code> — indexing gives undefined → NaN, and the shader's <code>pos.y &gt; 9990.0</code> skip is FALSE for NaN, so dead slots were burned and nothing bent. Silent. Not careless either: the store mirror really does hold <code>[x,y,z]</code>, so array-indexing is correct <em>there</em>. Meanwhile the write ran in every chunk's useFrame — 81 identical full-ECS walks per frame at high tier, 80 discarded. <b>Mid-refactor the driver sat unmounted, the grass frozen with no uniform writer, and all 2404 tests stayed green</b> — that gap is now pinned.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">91530be</div><div class="body"><div class="t">A vacuous gate replaced — and my first replacement was vacuous too</div><div class="n">The old gate asserted three literal substrings in the store. Proved vacuous rather than assumed: a mutation that breaks rank progression outright leaves all three strings byte-identical (checked by running the old regexes against the mutated file). <b>Then my replacement guarded its key assertion behind <code>if (limit &gt; 1)</code> — every hint-producing talent has limit 1, so that block never ran</b> and the new test passed the same mutation. A conditional assertion is an assertion that might not exist. Source-grep gates: 116 → 115.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">fd447fa</div><div class="body"><div class="t">Five passes at the capture-harness race — four of my conclusions were wrong</div><div class="n">Pass 1 blamed the showcase camera. Pass 2 disproved it by probing, but probed a sequence that skipped <code>enterCapture</code> and so measured a different system. Pass 3 concluded "the Player never mounts" from three absent store fields. Pass 4 disproved that with a frame diff needing no browser (stages requesting different poses differ 73–80%, so the pinned camera IS applied). Pass 5 polled 103 samples across the real sequence: <b>all three fields are present continuously — the earlier reading does not reproduce.</b> The app was consistent the whole time; the contradiction was in my measurements. The beast render is byte-identical on re-fire in one session, so the between-run variance is upstream.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">d90a6b1</div><div class="body"><div class="t">Gate the analysis that authorizes a delete, not just the code that performs it</div><div class="n">Every gate here is RED-first and mutation-proven — and the bash pipeline that decided which 22 lines of copy to delete had no test, no mutation proof, no denominator guard. The discipline was applied to the code and skipped for the <em>decision</em>, which is the irreversible half. Queued as an enforcer unit: extend the key-resolution gate into a classifier reporting reachability by KIND, with the four near-misses as regression fixtures, emitting the dead set as a command so the next deletion consumes THAT rather than a human's grep.</div></div><div class="v"><span class="pill queue"><span class="dot"></span>Queued</span></div></div>
+      <div class="row"><div class="sha">ade1d1e</div><div class="body"><div class="t">11 dead i18n keys deleted — not the 12 first measured</div><div class="n">The verification was wrong <b>four times</b>: an unescaped regex <code>.</code> matched <code>rarity-common</code>; a fixed-string search matched <code>ui.level_short</code> by prefix; <code>C.rarity.common</code> was a colour-token property path; and the last survivor, <code>ui.level</code>, is the <em>fixture proving <code>t()</code> interpolation works</em>. Two traps made a dead key look live, two the reverse. <b>Unreferenced by <code>src/</code> is not the same as dead.</b> 22 lines gone from both locales, parity 128/128, cap tightened 22 → 10.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">5981ebf</div><div class="body"><div class="t">The constitution itself had drifted</div><div class="n">Auditing outward from this page found the same rot in the docs the loop reads at every cold start. <code>AGENTS.md</code>'s MEASURED block said 264 files/30,022 LOC against a live 274/30,953 — passing <code>doc-currency</code> only on its ±10% band. And <code>LOOP-KERNEL-PROMPT.md</code> still ordered the docs REORG as upcoming work when it was done, so a cold-start agent would have re-run finished work: the exact "a stale doc is a LIVE TRAP" failure that same document warns about two paragraphs later.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8a5e008</div><div class="body"><div class="t">Two live bindings the player could never discover</div><div class="n"><code>keyMap.js</code> exists so "the HUD can never again advertise a key with no handler". Its gate asserted exactly that — and <b>never the converse</b>. <code>L</code> (quest log) and <code>Q</code> (claim completed quests) were handled live and advertised NOWHERE, so the controls panel taught five panels and never the sixth. An advertised key with no handler is a LIE; a handler with no advertisement is a feature the player never finds. Gate now runs both directions, with the <code>1–4</code> compound row exempted and a second test asserting the exemption list can only name codes a real row covers.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8d3dcf8</div><div class="body"><div class="t">RETRACTION — five "stale" doc pointers were my own false positives</div><div class="n">The §-citation lint added hours earlier reported 5 dangling cross-doc pointers; I froze the ratchet at 5 and wrote all five into STATUS as <em>genuinely stale</em> — before hand-checking one. <b>Every one was a false positive.</b> These docs anchor three ways and the checker modelled one: headings, ITEM ids (<code>- ▢ **V1</code> under <code>### B.</code>), and compound refs (<code>§2.5</code> = section 2 item 5). Count is now ZERO and the freeze dropped 5→0. The module already carried a guard for that class — naming a failure class is not covering it.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">0f42fa2</div><div class="body"><div class="t">E4 — the dragon's arrival was a toast</div><div class="n">The entrance to the climax of the run set a text notification and nothing else, while the KILL fires eight isolated effects. Now a 220ms freeze, a 650ms bloom swell and a shake, run through the isolation helper so a cosmetic throw cannot suppress the message. Capture-suppressed. Tuned <em>against</em> the kill: entrance is dread (held breath, longer swell), the kill is impact and stays the bigger moment because it carries the payoff. <b>No roar</b> — the sound API has nothing dragon-like and firing <code>playVictory</code> at an entrance would be faking it.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">3715b62</div><div class="body"><div class="t">E-ter — being hit now lands</div><div class="n">Hitstop existed only for OUTGOING damage: <code>trauma.js</code> ships a weight-tiered table the incoming path never touched, and <code>cameraKick</code> had melee/cast/slam/land but no <code>hurt</code>. So your swings had weight and the enemies' did not. Freeze now grades on a FRACTION of max health (devastating at L1, survivable at L20) and returns <b>zero for a fully-mitigated hit</b> — armour must never make the screen stutter more as it absorbs more. Found on the way: <code>lastHitDir</code> only stamped when an attacker position was supplied, and that stamp IS the camera's kick signal.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">298eb0c</div><div class="body"><div class="t">E3 — the tank stopped playing like a zombie</div><div class="n">Five of seven hostiles were the same creature in different meshes. Behaviour is now a per-type table (aggro radius, leash, reach, cooldown, vertical reach) instead of a <code>type ===</code> ladder. <b>The defaults ARE the former constants, asserted literal-by-literal</b>, so an undesigned type is byte-identical and one edit cannot silently re-tune the whole game. moss_brute relentless · skitterling escapable swarmer · duskhound pack hunter; zombie and emberhusk deliberately baseline — if every mob is special, none reads as special. <em>Registry correction: §E3 claimed all ten shared ONE tree; live code had three.</em></div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">db9b483</div><div class="body"><div class="t">B4 — mobs hit you through 200 blocks of rock</div><div class="n"><code>ai.worker.js</code> destructured the player as <code>[playerX, , playerZ]</code> under a comment saying the Y was elided. It was always being SENT and thrown away. One number drove aggro, leash, archery, leap and melee — so a zombie 200 blocks below and one block away horizontally was inside MELEE_RANGE and swung. <b>Building was strategically pointless</b> in a build-by-day/survive-the-night game. Split into SENSING (3D) and REACHING (3D + vertical clamp); movement untouched. eslint proved the migration complete — the old variable became unused.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">5b64f69</div><div class="body"><div class="t">X3 — the hotbar was unclickable on touch AND threw on desktop</div><div class="n">Two bugs stacked. The z-40 touch overlay was hit-testable across the whole viewport, so it was the topmost element everywhere; <code>data-touch-btn</code> controls only ever worked because they are its <em>children</em>. A live <code>elementsFromPoint</code> probe settled in one run what two code readings had not — my first fix widened a selector and changed nothing. With the tap finally landing, the handler threw: <code>gameState.setSelectedBlock is not a function</code>, so <b>every mouse click on a hotbar slot had been throwing</b>, hidden because the keyboard path calls the store directly.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">70e432e</div><div class="body"><div class="t">CI sharded 3× — after 88 runs that never concluded success</div><div class="n">The e2e job ran all 28 specs on one runner and hit its own 25-min timeout every time; a timed-out job renders as <code>cancelled</code>, so 14 days of failure looked like routine churn. Now a 3-runner matrix (11/8/9 specs verified locally), <code>fail-fast: false</code>, per-shard artifacts. <b>perf-siege was NOT silenced:</b> it is red in CI and <b>passes on real hardware</b> (ran it — 1.4m, heapGrowth 0, no runtime errors), so the floor stays untouched; the assertion now reports its measured numbers instead of a bare "too few frames". Expect visible RED until Kevin rules on whether a perf probe belongs in CI at all.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">503e07c</div><div class="body"><div class="t">3 doc-truth defects the audit confirmed</div><div class="n">STATUS's V6 claimed "VERIFIED: no <code>.github/workflows</code>, no <code>core.hooksPath</code>" — both had existed for 14 days. The kernel pointed every cold start at <code>scratchpad/findings.json</code>, which is gone along with its documented fallback. And <code>diff.test.js</code> documented 3 ungated capture states when there are 7 — the 4 beast-roster frames were never mentioned. <b>Also ran the OWED visual re-baseline</b> (unpaid for 65 commits): 31 states, no render crashes, 25/25 diffs green.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">39c101a</div><div class="body"><div class="t">STATUS drift repaired — 65 commits of it</div><div class="n">The file that declares itself canonical, and says any file disagreeing with it is stale, was the stalest in the repo. Re-measured rather than copied forward: source 224→264 files, gate corpus 124/114 (92%) → 136/116 (85%), behavioural gates 10→20. The "ZERO e2e fire a real key" claim re-verified — the one new grep hit is a comment, so it still holds.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">9387c7d</div><div class="body"><div class="t">Dead-code COMPLETE — <code>no-unused-vars</code> flipped to <code>error</code></div><div class="n">All 80 eslint-surfaced items cleared across 6 batches (the review estimated 38). The last 15 were mostly dead PROP-CHAINS traced end to end — showStats/setShowStats was dead at all four levels from App through HUD to GameUI. <b>A gate was strengthened, not silenced:</b> the <code>setActive</code> gate matched <code>/\bsetActive\b/</code> against the whole file, so the comment explaining why the import is kept already satisfied it — deleting the import still passed. Now matches the import specifier; mutation-proven RED.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">d539b0b</div><div class="body"><div class="t">Phase 2i · inconsistency + enhancement categories COMPLETE</div><div class="n">Inconsistency finale: GearInspector consumable-registry fallback (raw meats/XP gems no longer "building material"), CreditsScreen + touchTray i18n (font_puhuiti, aria-label keys). Enhancements: combat redundant-round dropped, ORE_TILES hoisted out of the per-pixel loop, run-scenarios perf-gate now exits non-zero on FAIL. Routed to KEVIN: ai.worker A* octile heuristic (mob feel) + ci.yml dep-scan (the 2 dependabot highs). Verify-before-assert caught several skips (synthVoices false-premise, Components already-fixed, test-scoped emoji).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">18a210d</div><div class="body"><div class="t">Phase 2h · inconsistency 5/11 — mutation-checked</div><div class="n">targeting damageableInCone position guard (matches nearestDamageable; new pure test, mutation-proven) · pierce switch-case braces · dead regenerateMana context key removed · TW_COLORS realigned with tailwind (+4 Aspect colors) · spellUpgrades required-level ladder DRY'd into one shared requiredLevelForUpgrade (was duplicated in store + panel). Skipped synthVoices [1] — false premise (no voice floors frameCount; uniform).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">a4845ca</div><div class="body"><div class="t">Phase 2g · coverage-gaps COMPLETE (8/8)</div><div class="n">settingsPersist injectable-storage seam + hydrate/persist behavioral tests; pointerLook jsdom attachPointerLook (locked/unlocked/cleanup) — both mutation-proven.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">4b06940</div><div class="body"><div class="t">Phase 2f · coverage-gaps 5/8 — all mutation-checked</div><div class="n">chainArc near-vertical branch (cp-backup mutation-proven), lootJuice rgba→rgb channel preservation, touchDevice ontouchstart fallback, worldSaves mintWorldId collision-avoidance (frozen clock), + a seam-extraction: bossReward now couples to a shared BOSS_LOOT constant that bossSystem's kill handler consumes (drop can't decouple from the ITEMS registry). Remaining: settingsPersist glue + pointerLook (jsdom).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">3f327b3</div><div class="body"><div class="t">Phase 2e · test-vacuity triaged — 3 strengthened</div><div class="n">High false-positive rate confirmed: most flagged gate files are deliberate STRUCTURAL complements whose behavior is covered in a sibling test (siege↔siegeParams.test, element-impact↔mobHitFx.test, quest-lore↔questLore.test — verified). Strengthened the 3 genuinely-weak ones (hub-render per-Emissive count [mutation-proven via cp-backup], input-abstraction getInput().active anchor, hud-declutter survival gate). Remaining ~24 = legit/sibling-covered, deferred as low-ROI.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">88010a9</div><div class="body"><div class="t">Phase 2d · doc-drift category COMPLETE — 19 fixes</div><div class="n">All 21 doc-drift findings dispositioned (2 already-fixed false-positives). numLayers 14→16 + block-id space; grimhound 'runner'; nightSiege→siegeParams; rarityBeam 5-field return; dropped stale baseline counts (HUD/AspectHintToast) &amp; brittle moved-code line refs (cone/ribbonIndices/homeAnchor/allegiance/touchMath/touchTray/GameScene); voxelKit 3-primitives; inputState Aspect-verb JSDoc; ore-drop recipe name; + the r3f winding-rule doc's Bottom/Front/Back corrected to the shipped gate-verified mesher.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">5740c9e</div><div class="body"><div class="t">Phase 2c · comment-lie category COMPLETE (batches 3+4)</div><div class="n">All 34 comment-lie findings dispositioned. Batch 3: App.jsx ×3 fixture comments (stranded boss block, false "can't clear zombie", panelState note). Batch 4: the last 10 incl. 2 dead-value removals (AIWorkerSystem leap-vertical never applied, GPUSparkSystem shader <code>coord</code> discarded) + accrualHooks/spellCast/BlockParticleSystem/spellUpgradeCost/run-scenarios/bundle-budget/drive-mobs. Strengthened the vacuous spawn-legibility far-beacon gate (now asserts the capture null-return; mutation-proven).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">4ae60bc</div><div class="body"><div class="t">Phase 2c · comment-lie sweep batch 1 — 11 fixes</div><div class="n">Verified each on live HEAD (2 claimed lies were already fixed → skipped). spellVfx renderer count + bloom 0.65 + telegraph geometry · setLocale CJK-load already done · items.js T3 done · captureMode MurmurHash2 (not xmur3) · dayNight cap 48 (tier term) · music/mute shipped · EMS bloom 0.65 · hybrids Y=max · mobHitFx warm-gold burst. <code>edd0cec</code> routed 7 visual/taste items to KEVIN-REVIEW.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">c41d693</div><div class="body"><div class="t">Phase 2b · correctness batch — 7 verified bug fixes</div><div class="n">test-cleanup ×3 (afterEach) · worldSaves index-write failure surfaced · spawner loop-bound (seam <code>spawnPlacement.js</code>) · <b>ai.worker LOS clamp</b> (off-grid cover false-clear; seam <code>mobLineOfSight.js</code> + sync-gate) · cameraKick right-axis sign · questClaim null-guard (+ the promised pure test) · magic burn-ticker unmount leak (seam <code>burnManager.js</code>). All RED-first + mutation-proven.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">75da3a2</div><div class="body"><div class="t">Phase 2 · probe-hygiene COMPLETE — all 22 scripts</div><div class="n">Every probe/perf script now uses <code>_serve.mjs</code> (detached vite + process-group kill + timeout-guarded browser close). ~25 orphan-vite findings closed; 0 leaks across the grass/pov/mobdeath/soulbind/run-scenarios lifecycle checks.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">b3ea100</div><div class="body"><div class="t">Phase 2 · batch 3 — probe hygiene helper</div><div class="n">Shared <code>_serve.mjs</code> (detached vite + process-group kill + browser close-guard) — the repo-wide orphan-vite fix; 5 probes converted, both lifecycle patterns proven end-to-end (grass + pov ran with 0 leaks). ~16 probes remain.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">b5be02f</div><div class="body"><div class="t">Phase 2 · batch 2 — archer kite + terrain</div><div class="n"><b>HIGH</b> ai.worker archer-kite bug (steered from the player, overriding retreat → never kited; pure seam + worker sync-gate) · Terrain stale comments + dead raycast branch.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">93bf3d3</div><div class="body"><div class="t">Phase 2 · batch 1 — 5 verified fixes</div><div class="n"><b>HIGH</b> trade bug (crystals/wands read the dead bucket) · ci least-privilege permissions · look-e2e orphan-vite · Player dead-imports + stale comments. Each RED-first, gated.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">262665b</div><div class="body"><div class="t">Loop kernel + charter → v9 "Holistic SOTA"</div><div class="n">Repointed the loop's constitution at the 215-finding queue + expanded authority + the new probe-hygiene scars (orphan-vite, close-hang).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">0630708</div><div class="body"><div class="t">Phase-1 synthesis → 215-finding work queue</div><div class="n">3 adversarially-verified review workflows merged + deduped + priority-laddered into <code>HOLISTIC-REVIEW-2026-07-21.md</code>.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">75191ef</div><div class="body"><div class="t">Capture-harness title-mascot hang fixed</div><div class="n">Was <code>browser.close()</code> blocking on a GPU-context-lost Chrome (not env). Non-fatal ungated state + close timeout-guard + orphan-vite fix. Unblocks the visual re-baseline.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">03036c6</div><div class="body"><div class="t">Ocean lived-probe paid + probe hardened</div><div class="n">RULE-3 debt on <code>05082fa</code>: coast lived-verified clean (4 shots). Fixed a real orphan-vite leak (<code>detached</code> + process-group kill).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">cbc9f40</div><div class="body"><div class="t">survival-quests gate → behavioral</div><div class="n">Seam <code>resolveDawn</code>: survive-night credited once per grant. RULE-2 catch — gate was 4/5 legit, seam-replaced only the source-grep.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8a1da93</div><div class="body"><div class="t">melee-swing-audio gate → behavioral</div><div class="n">Seam <code>makeAttackSoundPlayer</code>: swing whoosh fires on every committed swing. Mutation-proven (drop playSwing → 3 RED).</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">8ab8938</div><div class="body"><div class="t">boss-notif-timer gate → behavioral</div><div class="n">Seam <code>makeNotifClearTracker</code>: clearAll cancels pending timers → no setState-after-unmount leak.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">e78bd1c</div><div class="body"><div class="t">B8 — spatial audio was dead until first hostile</div><div class="n">Stale-ref-in-context: one re-render after audio init propagates the populated refs. jsdom Web-Audio mock test.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+      <div class="row"><div class="sha">05082fa</div><div class="body"><div class="t">B8 — ocean rendered inside caves &amp; 1.1km inland</div><div class="n">Pure <code>oceanVisibleNear</code> gates render + recompute (~14% frame budget reclaimed). Mutation-proven.</div></div><div class="v"><span class="pill done"><span class="dot"></span>Done</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>Awaiting Kevin</h2><span class="rule"></span><span class="tag">veto / taste / irreversible</span></div>
+    <div class="card band queue"><div class="klist">
+      <div class="krow"><div class="t"><b>① Where does <code>perf-siege</code> live?</b> <span>— red in CI, green on real hardware. Exclude it from CI as a local pre-merge gate (consistent with ci.yml's own policy note, my recommendation) / keep it red as a standing signal / re-scope the window. Floor deliberately NOT lowered.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>② knip ignores + the phantom rapier dep</b> <span>— <code>@dimforge/rapier3d-compat</code> is imported but undeclared, and the <code>ignoreDependencies</code> line is what hides it. Declare the dep + drop the ignore (closes the open security finding), or keep the suppression deliberately.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>③ 4 beast-roster visual states assert nothing</b> <span>— captured + baselined 2026-06-17 as "review artifacts", never promoted. Promoting them makes them real regression gates <b>without changing the look</b>. Same question for the 3 forced-tier frames, waiting since 06-22.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>④ 3 HIGH advisories — all dev-only</b> <span>— <code>npm audit --production</code> reports 0; all three are build-time and fixable inside the already-approved semver ranges, so <code>npm audit fix</code> is a lockfile refresh, not a new dependency. You gated deps, so: go?</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>⑤ Delete the ai.worker inline mirrors?</b> <span>— their "classic Worker cannot import" premise is false, and their sync gates are drift-blind (21,655/200,000 mismatches stayed green). Import directly, or keep them and replace the regex gates with a differential fuzz.</span></div><span class="ktag">decide</span></div>
+      <div class="krow"><div class="t"><b>⑥ i18n adoption sweep</b> <span>— 111 hardcoded strings behind a green 98-key parity gate. Want it as a campaign item?</span></div><span class="ktag">scope</span></div>
+      <div class="krow"><div class="t"><b>⑦ This queue has no resolution protocol</b> <span>— ~146 entries over 8 weeks, 6 marked resolved, none in the last 6. Proposal: reply with item numbers + verdicts, I keep a DECISIONS.md record and close them here.</span></div><span class="ktag">process</span></div>
+      <div class="krow"><div class="t"><b>Ocean water aesthetic</b> <span>— coast verified clean; want it more tropical / moodier, foam stronger? (one-liners in Terrain.jsx)</span></div><span class="ktag">taste</span></div>
+      <div class="krow"><div class="t"><b>Chest LMB mines it</b> <span>— stored inventory lost; (a) LMB opens / (b) drops first / (c) leave. Recommend (a).</span></div><span class="ktag">design</span></div>
+      <div class="krow"><div class="t"><b>500 ms global damage-lockout</b> <span>— a pack hits like one mob; per-attacker i-frames instead?</span></div><span class="ktag">balance</span></div>
+      <div class="krow"><div class="t"><b>Camera-shake decays per frame</b> <span>— 4× longer on a slow box; fps-independent decay pending a target feel</span></div><span class="ktag">feel</span></div>
+      <div class="krow"><div class="t"><b>Mob AI pathfinds in 2D</b> <span>— can't climb terrain to reach you; invest in 3D A*?</span></div><span class="ktag">design</span></div>
+      <div class="krow"><div class="t"><b>B5/B7 visual re-baseline</b> <span>— <b>no longer blocked, and now paid.</b> The harness hang was fixed 2026-07-20 (<code>75191ef</code>) but the run stayed owed for 65 commits; ran it 2026-07-27 — 31 states captured, no render crashes, 25/25 diffs green against the committed baselines. Nothing to re-baseline.</span></div><span class="ktag">done</span></div>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>The five rules</h2><span class="rule"></span><span class="tag">every scar, encoded</span></div>
+    <div class="card"><div class="rules">
+      <div class="rule-c"><div class="n">01 · MUTATION-PROVE</div><p>Break the behaviour → it must go RED → revert via cp-backup, never <code>git checkout</code>. A gate never seen red is a rubber stamp.</p></div>
+      <div class="rule-c"><div class="n">02 · VERIFY THEN ASSERT</div><p>Every external/absence/root-cause claim gets a live check the same turn. The registry is a hypothesis.</p></div>
+      <div class="rule-c"><div class="n">03 · GREEN ≠ LIVED</div><p>A green headless gate isn't a lived result. Audio / render / feel → a lived probe or Kevin. Pure logic → a pure unit.</p></div>
+      <div class="rule-c"><div class="n">04 · NEVER WEAKEN TO PASS</div><p>A gate green on day one against unfixed code proves nothing. Assume vacuous until seen red.</p></div>
+      <div class="rule-c"><div class="n">05 · NOT SELF-JUDGED</div><p>The worker may not certify its own completion. Findings are adversarially verified before they count.</p></div>
+    </div></div>
+  </section>
+
+  <footer>
+    <span>Crafty · autonomous build loop · refreshed 2026-08-05 — <b>NOT auto-regenerating</b>: it went 9 days and 99 commits stale before anyone asked</span>
+    <span>source of truth → git log · memory/STATUS.md · KEVIN-REVIEW-BATCH.md</span>
+  </footer>
+</div>
+
+<script>
+  // reflect the viewer's toggle if the host stamps data-theme; harmless standalone.
+  (function(){ try{ var t=document.documentElement.getAttribute('data-theme'); if(t){document.documentElement.setAttribute('data-theme',t);} }catch(e){} })();
+</script>
