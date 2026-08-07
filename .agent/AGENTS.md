@@ -168,6 +168,14 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   `frontend/scripts/**`, `frontend/src/**/*.test.js` or `frontend/src/**/*.test.jsx` — **all four** globs;
   this line named two, silently omitting the ~118 colocated `src` tests, which are most of the corpus. Keep
   the two in sync; this line is the always-loaded baseline, that file is the moment-of-use activation.
+- **A GREEN GATE IS NOT A LIVED RESULT — prove the entry point is REACHED in the running app.** The most
+  common defect in the recent log, and nothing catches it: `fddf7d4` (two achievements dead on arrival —
+  nothing ever called `updateLevel`), `34f11b0` (mob grass-bending never worked; 81 chunks drove it),
+  `869f71e` (the mote layer rendered at the world origin, not with its chunk), `8a5e008` (two live keybinds
+  advertised nowhere) — four in ONE day. knip sees the export used, a source-grep gate sees the line exist,
+  `build` sees it compile; none sees whether it RUNS. Real-input E2E, a live probe, or a log line you watched
+  fire — not a compiling call site. **Ask what would still pass if the feature were simply deleted.** The
+  worked checklist is in `.claude/rules/gates-and-probes.md`.
 
 ## Execution & Workflow Protocols
 - **Anti-Execution Tunneling:** don't chain many distinct fixes into a monolith. >3 logical systems OR >5 sequential code-altering calls → PAUSE, `git commit`, checkpoint via `session-archivist-kz`.
