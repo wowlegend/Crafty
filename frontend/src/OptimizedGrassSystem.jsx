@@ -24,12 +24,24 @@ import { bladeTransform, bladeTint } from './game/grassVariation.js';
 // the capture camera sees the +Z faces -> N.L <= 0 for the whole field. Shipping this first would have
 // made the grass DARKER and FLATTER and looked like the lighting was wrong.
 //
-// The COLOUR is deliberately unchanged here: '#4a7c59' is a blue-green sitting on yellow-green ground
-// and that mismatch is real, but picking the replacement is an owner call with a 3-swatch ladder, not
-// something to slip into the commit that changes the lighting model. S8's per-blade tint is a
-// multiplier centred on 1.0, so it rides along and does not pre-empt the choice either.
+// COLOUR: '#5E8A3E' -- swatch B of the ladder in docs/superpowers/assets/. The old '#4a7c59' was a
+// BLUE-green sitting on ground whose base is '#567C35', a yellow-green, so the tufts read as a different
+// plant from the turf they grow in. That mismatch is the thing S9's success criterion was written
+// against, and it is now closed.
+//
+// Ruled out by measurement: A ('#4a7c59') leaves 13,213 blue-leaning pixels in the ground crop against
+// 11,258 for both B and C, so A is the measurable outlier. B vs C the measurement CANNOT separate --
+// identical median (G-B) of 46 and an identical count -- so that half is a taste call decided on stated
+// reasoning rather than on a number invented to look objective.
+//
+// B over C: B is +8/+14/+9 on the ground base, a modest lift that keeps tuft and turf in one family,
+// which is exactly what S9 set out to achieve. C ('#6F9C4A') is +25/+32/+21 and starts to separate
+// again -- that is the pale-card read the unlit material had, and removing it was the point of S8/S9b.
+// S8's per-blade tint is a multiplier centred on 1.0 (+/-7% value), so B still varies blade to blade.
+//
+// VETO-ABLE: C is a one-word change on the line below if the field should pop harder.
 const grassMaterial = new THREE.MeshLambertMaterial({
-  color: '#4a7c59',
+  color: '#5E8A3E',
   side: THREE.DoubleSide
 });
 
