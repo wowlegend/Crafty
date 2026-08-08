@@ -23,6 +23,7 @@ row in the SAME commit as the fix.
 | **A4** artifact-currency → 2nd surface | ▣ | `LOOP-PROGRESS.html` now tracked (19 commits behind); artifact-vs-page split keeps the shell validator off standalone pages |
 | **A6** green-gate ≠ lived result | ▣ | into `AGENTS.md` + `.claude/rules/gates-and-probes.md`; four cited commits re-verified |
 | **A7** `[MECH:]`/`[ADVISORY]` tag pass | ◐ | charter tagged (17 tags). `AGENTS.md` + kernel NOT yet tagged |
+| **A5(ii)** `commit-msg` hook | ▣ | claims the free slot; imports the pre-push seams so the two cannot drift |
 | COMPRESSIONS (round 2) | ▣ | §6.4 was the FOURTH copy of browser hygiene → collapsed to its unique mechanism. Charter 43,273 → 40,384 B net across the whole pass |
 | C20 · seven SETTLED items absent from `DECISIONS.md` | ▣ | closed by the §0-C migration + the world-design HYBRID backfill |
 
