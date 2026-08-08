@@ -33,7 +33,7 @@ vi.mock('@react-three/fiber', async (orig) => ({
 }));
 vi.mock('../../src/devtest/captureMode', () => ({ isCaptureMode: () => captureOn }));
 
-const { TitleDiorama } = await import('../../src/render/TitleDiorama.jsx');
+const { TitleDiorama, CAPTURE_CAM, titleCameraPose } = await import('../../src/render/TitleDiorama.jsx');
 
 describe('capture determinism: the title diorama pins dpr under capture', () => {
   beforeEach(() => {
@@ -54,5 +54,32 @@ describe('capture determinism: the title diorama pins dpr under capture', () => 
     render(<TitleDiorama />);
     expect(seen).toHaveLength(1);
     expect(Array.isArray(seen[0])).toBe(true);
+  });
+});
+
+describe('capture determinism: the title camera RESETS to a canonical pose, it does not merely stop', () => {
+  // DriftCamera used to `return` under isCaptureMode, which freezes the camera WHEREVER THE DRIFT LEFT
+  // IT. The harness enables capture only after the page has booted and this diorama has been animating,
+  // and boot takes a different length of time every process — so the pose was run-dependent and capture
+  // locked it in. A sub-pixel camera difference re-rasterises every edge: hairline outlines over the
+  // whole tower, motes appearing as pairs a fraction of a pixel apart.
+  //
+  // Proof it was cross-run and not the renderer: three shots from ONE page are byte-identical (0 px)
+  // while two separate processes differed by 0.359-0.557%.
+  it('returns the canonical pose in capture, whatever the clock says', () => {
+    expect(titleCameraPose(true, 0)).toEqual([...CAPTURE_CAM]);
+    expect(titleCameraPose(true, 12.5)).toEqual([...CAPTURE_CAM]);
+    expect(titleCameraPose(true, 987.6)).toEqual([...CAPTURE_CAM]);
+  });
+
+  it('still drifts in normal play — the fix must not freeze the title for real players', () => {
+    expect(titleCameraPose(false, 12.5)[0]).not.toBe(CAPTURE_CAM[0]);
+    expect(titleCameraPose(false, 12.5)).not.toEqual(titleCameraPose(false, 30.0));
+  });
+
+  it('the canonical pose is the drift CENTRE, so capture is not a visual jump', () => {
+    // a = 0 puts the drift exactly at CAPTURE_CAM; if these ever diverge, entering capture would move
+    // the camera and every menu baseline would shift for a reason nobody wrote down.
+    expect(titleCameraPose(false, 0)).toEqual([...CAPTURE_CAM]);
   });
 });

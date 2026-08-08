@@ -43,12 +43,53 @@ function DioramaMotes() {
 // the wordmark + tagline + CTA + controls lockup (MenuSystem anchors the text stack to the bottom).
 const LOOK_Y = 2.15;
 
+// The canonical capture pose, shared with the <Canvas camera> prop below so the two cannot drift apart.
+// It is also the drift's own centre (a = 0), so freezing here is the pose the animation orbits.
+export const CAPTURE_CAM = Object.freeze([2.6, 4.0, 10.8]);
+
+/**
+ * PURE. Where the title camera belongs on this frame. Split out from the useFrame so the rule that
+ * actually matters — capture RESETS to a canonical pose rather than freezing wherever the drift got to —
+ * is testable without mounting a Canvas (R3F hooks refuse to run outside one).
+ *
+ * @param {boolean} capture  isCaptureMode()
+ * @param {number} elapsed   clock.elapsedTime
+ * @returns {[number, number, number]} camera position
+ */
+export function titleCameraPose(capture, elapsed) {
+  if (capture) return [...CAPTURE_CAM];
+  const a = elapsed * 0.06;
+  return [Math.sin(a) * 0.7 + 2.6, 4.0 + Math.sin(a * 0.7) * 0.15, CAPTURE_CAM[2]];
+}
+
 function DriftCamera() {
   useFrame((s) => {
-    if (isCaptureMode()) return; // frozen pose for the byte-stable menu baseline
-    const a = s.clock.elapsedTime * 0.06;
-    s.camera.position.x = Math.sin(a) * 0.7 + 2.6;
-    s.camera.position.y = 4.0 + Math.sin(a * 0.7) * 0.15;
+    if (isCaptureMode()) {
+      // RESET to the canonical pose — do NOT merely stop.
+      //
+      // This used to `return`, which freezes the camera WHEREVER THE DRIFT LEFT IT. Capture mode is
+      // enabled by the harness AFTER the page has booted and this diorama has been animating
+      // (capture.mjs calls enterCapture only once __craftyTest.ready() resolves), and boot takes a
+      // different length of time in every process. So the camera settled on a RUN-DEPENDENT pose and
+      // capture faithfully locked it there.
+      //
+      // A sub-pixel camera difference re-rasterises every edge in the frame. That is precisely the
+      // diff signature this cost us: hairline outlines tracing the whole tower, and motes appearing
+      // as PAIRS — the same mote a fraction of a pixel apart — while nothing had actually moved.
+      //
+      // Proof it is cross-run and not the renderer: three shots from ONE page are byte-identical
+      // (0 px), while two separate processes differ by 0.359-0.557%.
+      //
+      // AGENTS.md already says the capture check must live INSIDE the callback because the harness
+      // flips the flag after mount. It did. The gap is that "stop animating" is not the same as
+      // "return to a known pose" — freezing an animation still leaves you wherever it had got to.
+      s.camera.position.set(...titleCameraPose(true, 0));
+      s.camera.lookAt(0, LOOK_Y, 0);
+      return;
+    }
+    const [px, py] = titleCameraPose(false, s.clock.elapsedTime);
+    s.camera.position.x = px;
+    s.camera.position.y = py;
     s.camera.lookAt(0, LOOK_Y, 0);
   });
   return null;
@@ -79,7 +120,7 @@ export function TitleDiorama() {
         // not the render-scheduling mode. Do not retry this without a new reason.
         frameloop={isCaptureMode() ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        camera={{ fov: 34, near: 0.1, far: 100, position: [2.6, 4.0, 10.8] }}
+        camera={{ fov: 34, near: 0.1, far: 100, position: CAPTURE_CAM }}
         onCreated={({ camera }) => camera.lookAt(0, LOOK_Y, 0)}
       >
         <DriftCamera />
