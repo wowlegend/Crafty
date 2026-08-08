@@ -392,8 +392,15 @@ function GameApp({ experienceSystem }) {
       if (store.worldBlocks && store.worldBlocks.size > 0) {
         for (let y = 150; y > 0; y--) if (store.worldBlocks.has(`0_${y}_0`)) { blockGroundY = y; break; }
       }
+      // DO NOT consult the physics probe here. `getMobGroundLevel` is a rapier `castRay` that needs
+      // streamed ORIGIN COLLIDERS, so whether it answers is a TIMING race — measured across runs it
+      // resolved sometimes and not others, and the settle landed at 53.2 / 61.2 / 50.2 on identical code.
+      // Different ground source -> different Y -> different BACKDROP -> the frames cannot be baselined.
+      // Capture wants DETERMINISM over gameplay-accuracy, so take the pure path every time: it is always
+      // available, needs zero physics steps, and cannot vary with machine load. The probe stays the right
+      // answer for real gameplay; it is simply the wrong tool for a fixture.
       const probeAvailable = !!store.getMobGroundLevel;
-      const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
+      const physicsY = null; // deliberately unused — see above
       // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
       // SPAWN_FALLBACK_Y branch instead of asking to retry — the same landing the Player reaches after
       // SPAWN_PROBE_MAX_FAILS frames. Without it this hook passed 0 every call, so the retry budget could
@@ -410,7 +417,7 @@ function GameApp({ experienceSystem }) {
       // same seeded noise (lcg 12345) and the same shared `computeHeight` as terrain.worker.js, so it is
       // the generator's own answer — pure, deterministic, and available with zero physics steps. Far
       // better than SPAWN_FALLBACK_Y=60, which left the beast hovering ~8 units above real ground (~52).
-      if (blockGroundY === null && (physicsY == null || Number.isNaN(physicsY))) {
+      if (blockGroundY === null) {
         // The settle always places at the ORIGIN, and the origin is the Hearth. `surfaceBlockAt` is the
         // generator's raw grade and its own comment says it IGNORES the Hearth stamp — using it put the
         // player 2 blocks UNDER the stone cap and the capture came back with the dragon buried in terrain,

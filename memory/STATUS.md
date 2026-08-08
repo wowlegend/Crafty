@@ -784,6 +784,24 @@ never fires · 0 of 31 frames >1% run-to-run (worst `menu` 0.51%, measured at lo
 the fallback — different sources could mean different Y and a different backdrop). Only when two runs agree
 on both source AND y should the 31 baselines be frozen.
 
+**PASS 16 (2026-08-08) — SOURCE VARIANCE REMOVED BY CONSTRUCTION, NOT BY HOPING TWO RUNS AGREE.**
+
+The settle had resolved through three different ground sources on identical code — `physics-probe` 53.2,
+`fallback` 61.2, `terrain-formula+hearth` 50.2 -> 52.2. **Different source means different Y means a
+different BACKDROP, so the frames could never be baselined.** Rather than re-run and hope two runs matched,
+the variance is now gone by construction: **the settle no longer consults the physics probe at all.**
+
+`getMobGroundLevel` is a rapier `castRay` that needs streamed ORIGIN COLLIDERS, so whether it answers is a
+TIMING race. The pure path — `max(surfaceBlockAt(0,0).surfaceY, HEARTH_Y)` — is always available, needs
+zero physics steps, and cannot vary with machine load. **Capture wants determinism over gameplay-accuracy.**
+The probe remains the right answer for real gameplay; it is simply the wrong tool for a fixture.
+
+*(The zero-emoji gate caught three `⇒` characters in the comment I wrote for this change. Fixed the comment,
+never the gate — same shape as the `backdrop-blur` incident.)*
+
+▶ **NEXT, and it is now short:** run the capture TWICE, confirm both log the SAME `source` and `y`, diff all
+31 frames (expect ≤~0.5%), then freeze with `--baseline` and OPEN several images before committing.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
