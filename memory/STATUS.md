@@ -509,6 +509,37 @@ and re-shoot, or compare against a shot taken after an additional flush), and on
 the backup is byte-identical to HEAD before trusting it, and never run two capture jobs at once (both bind
 port 4178).**
 
+**PASS 8 (2026-08-08) — TWO MORE CANDIDATES DEAD, AND PASS 7'S KEY EVIDENCE WAS OVER-ATTRIBUTED (mine).**
+
+- **DEAD: "the store camera is not the render camera."** There is exactly **ONE** camera in the whole scene
+  graph, and it **IS** `st.gameCamera`, at `(1.7, 121.45, 2.8)` — so everything measured in pass 7 was
+  measured on the camera that renders. (`__r3f` was unreachable so identity could not be read from R3F's
+  own store, but a single-camera graph settles it.)
+- **DEAD: render-freshness via demand-mode.** `GameScene.jsx:120` `<Canvas>` sets **no `frameloop` prop**, so
+  R3F defaults to `"always"` and re-renders every frame. rAF is alive (preflight 70 frames/1.2s), and
+  `flushFrames` awaits 8 real rAF ticks and returns.
+- **How the pinned pose actually works** (`Components.jsx:502-517`): the capture branch hard-sets
+  **`state.camera`** — the render camera — every frame from `getCaptureOpts().camera`, which is a **STATIC**
+  pose stored in module-level `_opts` (`devtest/captureMode.js:18,39`) at the last `enterCaptureMode` call.
+  `spawnBeastTransform` computes that pose from `rb.translation()` at HOOK-FIRE time. Since the body drifts
+  upward during the stage, hook-time `t` and screenshot-time `t` need not agree — worth keeping in mind, but
+  in the measured run camera (121.45) and body (120) DID agree, so this is not yet shown to be the fault.
+
+**⚠️ SELF-CORRECTION — PASS 7'S "THE BEAST IS MOUNTED" IS NOT ESTABLISHED.** I reported "21 meshes within
+0.64 units of the body, therefore the beast is mounted and visible". That inference is unsound: **five other
+systems mount at the SAME RigidBody** — `PhantomBlockSystem`, `HurlSystem`, `SnareTetherSystem`,
+`SquadAISystem`, `ElementZoneSystem` (`Components.jsx:1310-1315`). The geometry I saw (BoxGeometry +
+MeshToonMaterial, SphereGeometry + MeshBasicMaterial) is CONSISTENT with `beastAvatarParts` (boxes + core +
+aura) but is NOT SPECIFIC to it — PhantomBlock renders boxes at that mount too. Proximity is not identity.
+**So "is the beast rendering at all?" is OPEN again**, and it is the question to answer next.
+
+**THE DECISIVE NEXT PROBE (do this one, not another proximity scan):** identify the beast's own meshes by
+**material COLOR** against `ELEMENT_COLOR[element]` in `src/render/beastAvatarParts.js`, and by the box COUNT
+in `FORM_PARTS[element].boxes`. Report, for those meshes specifically: world position, world SCALE (the entry
+animation has a scale overshoot and the file claims capture "FREEZES to the SETTLED beast" — an unfrozen
+entry would leave scale 0), material opacity, and NDC projection. That distinguishes "not mounted" from
+"mounted at scale 0" from "mounted and on-screen", which proximity never could.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
