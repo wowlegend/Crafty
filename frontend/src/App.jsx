@@ -39,6 +39,8 @@ import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
 import { useDayNightClock } from './game/useDayNightClock';
 import { isAnyPanelOpen } from './ui/panelState.js';
+import { PLAYER_SPAWN } from './game/playerSpawn.js';
+import { beastRevealCamera } from './game/beastRevealCamera.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -349,16 +351,13 @@ function GameApp({ experienceSystem }) {
       store.setDangerLevel(0);
       store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the glow; the beast's true ctx
       store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
-      const rb = store.playerRigidBodyRef?.current;
-      const t = rb ? rb.translation() : { x: 0, y: 55, z: 0 };
-      // per-beast 3/4-side reveal framing (the big DRAGON gets a CLOSER, looming angle).
-      const CAMS = {
-        fire:      { position: [t.x + 1.7, t.y + 1.45, t.z + 2.8], lookAt: [t.x, t.y + 0.55, t.z] }, // DRAGON — close + looming
-        ice:       { position: [t.x + 2.1, t.y + 0.8, t.z + 3.0], lookAt: [t.x, t.y - 0.15, t.z] },  // low wide bull
-        lightning: { position: [t.x + 2.1, t.y + 1.1, t.z + 3.2], lookAt: [t.x, t.y + 0.2, t.z] },   // tall raptor
-        arcane:    { position: [t.x + 2.1, t.y + 1.2, t.z + 3.2], lookAt: [t.x, t.y + 0.3, t.z] },    // tall golem
-      };
-      enterCaptureMode({ camera: CAMS[element] || CAMS.fire });
+      // Frame from where the avatar RENDERS (PLAYER_SPAWN), NOT from rb.translation().
+      // This used to read `rb.translation()`, which is a different point under capture: physics is paused,
+      // so rapier never syncs the RigidBody's visual transform from the body. Measured 2026-08-08 — beast
+      // meshes at worldY 100.0-101.6 (ndc.y ~= -3, i.e. off the bottom of the screen) while the body
+      // reported y=120 and the camera sat at 121.45. All four beast-* baselines were a distant mountain
+      // with no beast in them, and the visual gate compared one empty mountain to another and passed.
+      enterCaptureMode({ camera: beastRevealCamera(element, PLAYER_SPAWN) });
     });
 
     // Boss-render fixture: a deterministic close-up of the (frozen) Shadow Dragon against a bright sky

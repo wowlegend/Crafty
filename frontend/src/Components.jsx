@@ -51,6 +51,7 @@ import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
 import { notifyDenied } from './ui/denyToast';
+import { PLAYER_SPAWN } from './game/playerSpawn.js';
 
 // PositionTracker extracted -> src/systems/PositionTracker.jsx (v6 de-monolith A3).
 
@@ -1301,7 +1302,7 @@ export const Player = ({ isWorldBuilt }) => {
         ref={rigidBodyRef}
         colliders={false}
         type="kinematicPosition"
-        position={[0, 100, 0]}
+        position={PLAYER_SPAWN}
         enabledRotations={[false, false, false]}
       >
         <CapsuleCollider args={[0.5, 0.4]} />

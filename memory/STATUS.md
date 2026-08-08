@@ -540,6 +540,39 @@ animation has a scale overshoot and the file claims capture "FREEZES to the SETT
 entry would leave scale 0), material opacity, and NDC projection. That distinguishes "not mounted" from
 "mounted at scale 0" from "mounted and on-screen", which proximity never could.
 
+**PASS 9 (2026-08-08) — THE BEAST IS FOUND. IT RENDERS ~20 UNITS BELOW THE FRAME. FIX IS PARTIAL.**
+
+Identified the avatar's OWN meshes by material colour (`#3a1206` body ink / `#ff6a2c` glow / `#ffe3c0` core
+from `ELEMENT_COLOR`), not by proximity — which is what pass 7 got wrong. **16 beast meshes found, 13 of the
+14 fire boxes**, and they are unambiguous:
+
+```
+part=body  BoxGeometry  visible=TRUE  scale=[1,1,1]  opacity=1  wpos.y=100.0..101.6  ndc.y = -2.87..-3.19
+```
+
+- **The beast is mounted, visible, at full scale, fully opaque.** "Not mounted" and "scale 0" are both DEAD.
+- **`ndc.y ≈ -3`** — the valid range is -1..1, so every beast mesh is off the BOTTOM of the screen.
+- **The two sources of truth diverge:** the avatar RENDERS at y≈100-101.6 (the RigidBody's declared
+  `position={[0,100,0]}` + `FEET_OFFSET -0.9` + box offsets — an exact arithmetic match), while
+  `rb.translation()` reports y=**120** and the camera was framed from THAT. Physics is `paused` in capture,
+  so rapier never syncs the visual transform from the physics body.
+
+**SHIPPED:** `spawnBeastTransform` no longer frames off `rb.translation()`. The framing is extracted to a
+pure, tested module (`src/game/beastRevealCamera.js`) and anchored to a shared `PLAYER_SPAWN`
+(`src/game/playerSpawn.js`, now also used by `Components.jsx` so the two literals cannot drift). Gated by
+`tests/gates/beast-reveal-camera-gates.test.js` — 13 assertions on *distance from the avatar origin*, which
+is precisely what a 20-unit divergence breaks; mutation-proved (framed fire 20 units high → 3 RED).
+
+**⚠️ BUT THE LIVED FRAME STILL HAS NO BEAST — DO NOT RECORD THIS AS FIXED.** Re-captured and opened the
+image: still a mountain. The fix DID take effect (before-vs-after diff **15.66%**, so the camera moved; 0%
+would have meant nothing changed). So framing from `rb.translation()` was **necessary but not sufficient**.
+
+**THE NARROWED NEXT STEP.** A constant is still an assumption: the avatar renders at the RigidBody GROUP's
+world transform, which is not guaranteed to equal `PLAYER_SPAWN` on every run (rb itself read 100 in one run
+and 120 in another). **Frame from the avatar's ACTUAL RENDERED WORLD POSITION** — e.g. expose the
+`BeastAvatar` group (or the RigidBody's object3D) and read `getWorldPosition()` at hook time — then re-capture
+and OPEN THE IMAGE. Measure the group's world position first; do not assume it is `PLAYER_SPAWN`.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
