@@ -4,6 +4,7 @@ import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { globSync } from 'node:fs';
 import { STRINGS } from '../../src/i18n/strings.js';
+import { classifyKeys, tallyKinds, deadKeys } from '../../src/i18n/keyReachability.js';
 
 // EVERY t() CALL SITE RESOLVES TO A REAL KEY.
 //
@@ -22,13 +23,22 @@ import { STRINGS } from '../../src/i18n/strings.js';
 // regex requires a quoted literal — so this is a floor, not a proof of total coverage.
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = resolve(HERE, '../..');
+const ALL_SRC = globSync('src/**/*.{js,jsx}', { cwd: APP }).sort();
+const IS_TEST = (p) => /\.test\.jsx?$/.test(p);
+// A colocated *.test.js under src/ is TEST corpus, not source — counting it as source would mark every
+// test-only fixture reachable and hide the exact case near-miss #4 exists for.
+const SRC_FILES = ALL_SRC.filter((p) => !IS_TEST(p));
+const TEST_FILES = globSync('tests/**/*.{js,jsx}', { cwd: APP }).sort().concat(ALL_SRC.filter(IS_TEST));
 
 // `t('key')` / `t("key")`, with a preceding non-identifier char so `someOtherT('x')` cannot match.
 const CALL = /(?<![A-Za-z0-9_$])t\(\s*['"]([^'"]+)['"]/g;
 
 function callSites() {
   const out = [];
-  for (const rel of globSync('src/**/*.{js,jsx}', { cwd: APP }).sort()) {
+  // SRC_FILES excludes colocated *.test.js. A fixture like t('ui.level_short') inside a test is not a
+  // UI call site, and counting it as one made this assertion fail the moment a test about key
+  // resolution existed — the gate was reading its own fixtures as production usage.
+  for (const rel of SRC_FILES) {
     const src = readFileSync(resolve(APP, rel), 'utf8');
     src.split('\n').forEach((line, i) => {
       const bare = line.trim();
@@ -65,22 +75,35 @@ describe('i18n key resolution', () => {
     expect(missing, 'a key reachable from the UI is English-only').toEqual([]);
   });
 
-  it('caps the keys no STATIC call site reaches', () => {
-    // NOT a dead-copy count, and it must not be read as one. `PrimitivesShowcase.jsx:206` does
-    // t(`spell.${s.spell}`), so all four spell.* keys are live while being invisible here — the regex
-    // above only sees quoted literals. Several of the 10 are that case.
-    //
-    // 2026-08-05: lowered 22 -> 10. Eleven keys were measured GENUINELY dead (no t() literal, no bare key in a
-    // data table, no dynamic prefix) and deleted from BOTH locales — 22 lines two translators maintained for
-    // nothing. `ui.level` LOOKED dead by the same measure and was KEPT: it is the fixture i18n.test.js uses to
-    // prove interpolation works. Unreferenced-by-src is not the same as dead.
-    //
-    // It is still worth a ceiling: a key that no call site reaches statically OR dynamically is dead
-    // weight two translators have to maintain, and the number has no business drifting upward without
-    // someone noticing. Frozen at the measured value rather than a comfortable round one — a ceiling
-    // set above the real count is a gate that permits exactly what it claims to prevent.
-    const used = new Set(sites.map((s) => s.key));
-    const unused = Object.keys(STRINGS.en).filter((k) => !used.has(k));
-    expect(unused.length, `keys unreachable by static analysis:\n  ${unused.join('\n  ')}`).toBeLessThanOrEqual(10);
+  it('classifies every key by HOW it is reached — no bare unreachable COUNT', () => {
+    // REPLACED the "<= 10 unreachable" ceiling 2026-08-08. That cap was the last trace of the ungated
+    // analysis: it collapsed five genuinely different states into one number, so the only way to read it
+    // was "10 keys are suspicious, go grep". Reachability now comes from the pure classifier in
+    // src/i18n/keyReachability.js, which carries all five near-misses of the original bash pipeline as
+    // regression fixtures — including the one this classifier itself shipped with, where every key
+    // matched its own dictionary definition and `dead` was unreachable.
+    const src = SRC_FILES.map((f) => readFileSync(resolve(APP, f), 'utf8'));
+    const tests = TEST_FILES.map((f) => readFileSync(resolve(APP, f), 'utf8'));
+    const verdicts = classifyKeys(Object.keys(STRINGS.en), src, tests);
+    const tally = tallyKinds(verdicts);
+
+    // DENOMINATOR: the kinds must account for every key, or the verdicts describe a different corpus.
+    expect(Object.values(tally).reduce((a, b) => a + b, 0)).toBe(Object.keys(STRINGS.en).length);
+    expect(src.length, 'the classifier saw no source files').toBeGreaterThan(200);
+
+    // The gate is that NOTHING is dead. A dead key is copy two translators maintain for no one, and it
+    // is now safe to delete BY CONSTRUCTION: `node scripts/ci/i18n-dead-keys.mjs` prints the set.
+    expect(
+      deadKeys(verdicts),
+      'unreachable copy — confirm with `node scripts/ci/i18n-dead-keys.mjs`, then remove from BOTH locales'
+    ).toEqual([]);
+  });
+
+  it('the classifier can still SEE a dead key (a gate that cannot fail is not a gate)', () => {
+    // The exact defect this file shipped with for one commit: with the dictionary in the corpus every
+    // key matched its own definition, the dead set was permanently empty, and the assertion above would
+    // have passed over any amount of dead copy.
+    const v = classifyKeys(['totally.unused'], ["export const x = 1;"], []);
+    expect(deadKeys(v)).toEqual(['totally.unused']);
   });
 });
