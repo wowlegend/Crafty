@@ -169,8 +169,11 @@ remote step has left the project's public face lying about it.
 STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): the holistic PLAYTEST (his eye + ear —
 spell look, movement feel, storm, audio mix, real-device touch) · S4 multiplayer + monetization scope (the loop will
 NOT start netcode or payments) · final taste sign-offs incl. visual re-baselines + water aesthetic · real-device runs ·
-anything spending money / creating accounts / publishing externally · adding any NEW dev dependency · the recorded
-design calls (chest-mining, damage-lockout, camera-shake feel, 3D mob AI).
+anything spending money / creating accounts / publishing externally · adding any NEW dev dependency.
+**NOT the four this line used to name** (chest-mining, damage-lockout, camera-shake feel, 3D mob AI): `DECISIONS.md`
+assigned all four **[LOOP]** and the charter says the RECORD, not this prompt, is what settles ownership. Reading the
+stale list here is what put twelve non-Kevin items in front of Kevin. The only taste row still **[KEVIN]** is the
+ocean water aesthetic.
 SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
 Blight-Heart · audience is BROAD (Marcus is a user, not a ceiling) · world-design HYBRID · CPU-ocean fork.
 

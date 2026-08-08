@@ -249,3 +249,30 @@ charter now names them and points here.
 - **Preview-tab husks** — resolved; `close-preview-tabs.sh` reports none. The loop will never run `--close`
   itself: its default target is the caller's own session, and an autonomous iteration once used it to
   terminate its own session.
+
+## 2026-08-08 — Kevin removed twelve items from his own desk
+
+**Kevin:** *"is there really a bunch of decisions you need me to make? or can you autonomously decide? and
+only leave really important / non-reversible / critical ones for me to decide later."* Then, on the grass
+colour specifically: *"decide the grass colour too."*
+
+- **Grass colour** — **[LOOP] Decided: swatch B `#5E8A3E`** (`83054c1`), replacing the blue-green `#4a7c59`
+  that read as a different plant from the `#567C35` ground. Measurement ruled A out (13,213 blue-leaning
+  pixels vs 11,258) and could **not** separate B from C, so that half was decided on stated reasoning: B is
+  +8/+14/+9 on the ground base and keeps tuft and turf in one family, which is what S9 was for; C is
+  +25/+32/+21 and re-opens the separation S8/S9b closed. Veto-able, one word.
+
+- **The "Awaiting Kevin" queue was a false ask.** Audited against this file: of thirteen rows, **eight were
+  already resolved** and left rendered as questions, and four had already been assigned **[LOOP]** here.
+  Exactly one — the ocean water aesthetic — is genuinely Kevin's.
+
+- **`LOOP-KERNEL-PROMPT.md` was the cause and is corrected.** Its "STILL GENUINELY KEVIN" line named
+  chest-mining, damage-lockout, camera-shake feel and 3D mob AI as recorded design calls. This file had
+  already reassigned all four to **[LOOP]**. The charter states that this record — not the kernel, and not
+  the append-only inbox — is what settles ownership, so the kernel line was stale and reading it is what put
+  twelve non-Kevin items in front of Kevin. Corrected in the same commit.
+
+- **Standing rule going forward:** a reversible call gets **made** and noted veto-ably. A row survives in an
+  Awaiting-Kevin surface only if it is on this file's `[KEVIN]` list, or is irreversible, spends money,
+  publishes externally, or adds a new dependency. Any row whose subject is verifiable at HEAD gets verified
+  and deleted at session close rather than re-rendered.
