@@ -63,13 +63,16 @@ so a chunk landing in *that* gap is unguarded. `capture.mjs` has **31 individual
 and no shared helper.** Fix = a `shot(name)` wrapper that runs the stability check immediately before each
 frame is written, then re-measure, then re-baseline S9 in one commit.
 
-**ALSO OPEN — S9 grass is BACKLIT and reads darker than the ground (measured, 4:1).** With
-`side: DoubleSide` three flips the normal to the rasterizer-facing side, so the lit face follows the
-CAMERA, not the yaw — and the explore sun `[-55,48,-52]` is behind the capture camera. S8's yaw variation
-cannot reach this, which means the plan's S8-before-S9 ordering rule was necessary but NOT sufficient.
-Fix = the standard foliage-card treatment: bend the blade vertex normal toward world-up so a tuft shades
-like the ground it grows from. **The 3-swatch colour ladder is rendered but deliberately NOT put to Kevin
-yet** — all three render dark, and a colour chosen under wrong lighting gets chosen twice.
+**S9b LANDED (`01e8156`) — the backlit grass is FIXED.** Tuft:ground dark skew 4.11:1 -> 2.60:1 and the
+dark-holes look is gone. Cause was NOT the yaw: with `side: DoubleSide` three rebuilds the normal per
+FRAGMENT from `gl_FrontFacing`, so the lit face follows the RASTERIZER, and the explore sun sits behind the
+capture camera. The plan's S8-before-S9 ordering rule was necessary but NOT sufficient. Fix = bend the
+shading normal toward world-up (standard foliage-card treatment). Two tidier explanations measured DEAD:
+more world-up is worse (2.95:1); matching the terrain's `MeshStandardMaterial` is identical (2.61:1). The
+residual is HUE, not brightness -> that is Kevin's colour call, now live.
+
+**COLOUR LADDER IS WITH KEVIN** — `docs/superpowers/assets/grass-colour-ladder-2026-08-08.png`. My read: B
+`#5E8A3E` or C `#6F9C4A`; A `#4a7c59` (today's) is the one that looks wrong. **Do not decide it yourself.**
 
 Then: HOLISTIC-REVIEW queue (88 open). **S4 stays DEFERRED.**
 2. **HOLISTIC-REVIEW queue** — 127 done / 88 open (`aa4cfb4` triage). Every open finding carries a LIVE

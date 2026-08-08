@@ -1117,3 +1117,42 @@ decision on a frame I already know is wrong.
 `transparent + DoubleSide` twice, at `WebGLRenderer.js:922` and `:1619` — every grass draw-call number in
 our docs was 2x low), and the grass is now *in* the lighting equation, which is the prerequisite for
 fixing it properly rather than a thing to undo.
+
+---
+
+## 2026-08-08 (supersedes the entry above) — the grass is fixed; the colour ladder is now yours to call
+
+The entry immediately above said *don't pick a colour yet* because S9 had left the grass backlit and all
+three swatches rendered dark. **That is fixed (`01e8156`) and the ladder is now a real choice.**
+
+**Ladder:** `docs/superpowers/assets/grass-colour-ladder-2026-08-08.png` — rows A/B/C top to bottom,
+columns day | night, 3x on the tuft patch. Regenerate any time with
+`node frontend/scripts/visual/grass-swatch-probe.mjs`.
+
+| | | |
+|---|---|---|
+| **A** | `#4a7c59` | CURRENT. Reads distinctly **teal** against the yellow-green ground — it looks like a different plant from the turf it grows in. |
+| **B** | `#5E8A3E` | Sits in the ground's hue family. The tufts read as the same plant, still clearly separate objects. |
+| **C** | `#6F9C4A` | B one step brighter and warmer; the tufts pop more. |
+
+My read, offered as a read and not a decision: **B or C**. A is the one that looks wrong, and it is what
+ships today. C if you want the grass to be a visible texture in the landscape, B if you want it quieter.
+
+**What changed to make this decidable.** S9 lit the grass and made it *darker than its own turf* —
+measured at a 4:1 skew of tuft pixels below the ground's median luminance; it read as holes punched in the
+grass. The plan predicted that failure and prescribed ordering as the cure (ship S8's per-blade yaw
+first), so S8 shipped first — **and it was still dark**. The prescription was necessary but not
+sufficient: with `side: DoubleSide` three rebuilds the normal per *fragment* from `gl_FrontFacing`, so the
+lit face is whichever faces the **rasterizer**, and the explore sun sits behind the capture camera.
+Rotating a card cannot fix a normal that follows the viewer. Bending the shading normal toward world-up —
+the standard foliage-card treatment — took it to 2.6:1 and the dark-holes look is gone.
+
+Two tidier explanations I had for the remainder, both measured dead rather than argued: more world-up is
+*worse* (2.95:1), and matching the terrain's own `MeshStandardMaterial` is identical (2.61:1). What is
+left is **hue**, not brightness — which is exactly the decision above.
+
+**One honest note on the instrument.** The first ladder I built was unusable and I nearly sent it: composed
+at full frame, the three swatches differed by 294 pixels — 0.027% — at night. A decision aid that cannot
+separate its own options is not one. It is now composed on the tuft crop, and after the lighting fix the
+night column separates at 3.14% (was 0.10%), which is itself the cleanest confirmation the fix reached the
+render.
