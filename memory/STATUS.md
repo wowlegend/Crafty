@@ -686,6 +686,42 @@ captured world the world the game actually produces — but it touches the frame
 and re-check every other baseline.
 **Do NOT re-litigate:** the beast is correctly framed in all of these runs; only the BACKDROP varies.
 
+**PASS 13 (2026-08-08) — ALL 31 FRAMES ARE NOW WITHIN THE NOISE FLOOR. BUT THE STABILITY RESTS ON A
+FAILING SETTLE, SO DO NOT BASELINE ON IT YET.**
+
+**Measured, two full runs, identical code:** **0 of 31 frames differ by >1%** (gate threshold is 6%). Worst
+is `menu` **0.13%**; the four beast frames are **0.01-0.03%**, down from 44-56%. The harness is
+byte-stable — *including* the beast states that could never be baselined.
+
+**SHIPPED — the visual side moves too.** `Components.jsx` mounts a marker `<group ref={playerVisualAnchorRef} />`
+as a RigidBody child, so `.parent` IS the RigidBody's own Object3D — reachable from mount, unlike the beast
+avatar. `settlePlayerToGround` now sets BOTH the physics body (`setTranslation`) and that Object3D
+(`position.set` + `updateMatrixWorld`), because paused physics never syncs one from the other. The harness
+reports both sides and warns if the visual anchor is missing.
+
+**⚠️ AND THE STABILITY IS FOR THE WRONG REASON — caught by reading the warning instead of the diff.** Both
+runs logged `settlePlayerToGround never resolved a ground`: the hook returned false through all 10 retries
+(5s), and both runs therefore fell back to the SAME state — the declared `PLAYER_SPAWN` y=100. That is
+determinism by CONSISTENT FAILURE, not by the fix working. An hour earlier the settle DID resolve (y=53.2),
+and the frames DID move. **A baseline frozen now would encode the beast-floating-in-sky shot and would break
+the first time the ground probe happens to resolve.** This is the same "a 0.00% diff is not good news" trap
+in a new costume, and it nearly got reported as a win.
+
+**WHY THE PROBE FAILS is not yet established.** `resolveSpawnGround` returns `retry` when the physics
+raycast is null/NaN/`<= PROBE_MIN_Y`, and the hook returns a bare `false` that cannot say WHICH branch — so
+the harness log cannot distinguish "no probe available" from "probe returned garbage" from "no placed
+blocks". **First change next pass: make the hook return the REASON, not `false`.** A diagnostic that cannot
+name its own failure is why this took an extra pass.
+
+▶ **THEN A GENUINE DESIGN FORK — SURFACE IT, DO NOT PICK IT:**
+**(A) always settle** → the intended in-world Hearth reveal; needs a robust ground probe (and the probe
+depends on streamed origin chunks, which is itself timing-dependent).
+**(B) never settle in capture** → pin the player to a KNOWN position by construction; deterministic with no
+probe at all, and closest to "capture-determinism is the DESIGN". But the beast then floats in sky rather
+than standing in-world, which is a visibly worse review frame and touches the recorded decision that this
+fixture is IN-WORLD on purpose.
+Both are defensible; the choice changes what Kevin SEES in four review frames, so it is his.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines

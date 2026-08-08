@@ -397,7 +397,17 @@ function GameApp({ experienceSystem }) {
       const y = spawnTargetY(spawn.groundY);
       rb.setTranslation({ x: 0, y, z: 0 }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      return +y.toFixed(2);
+      // ...and the VISUAL side, which does NOT follow. Physics is paused during capture, so rapier never
+      // syncs the RigidBody's Object3D from the body: moving only the physics side left the avatar (and
+      // therefore the whole backdrop) at its declared transform. Two runs after a "successful" settle
+      // still framed the beast at y=120 and y=100, never the settled value — measured 2026-08-08.
+      // A fix that moves one representation and leaves its twin behind is not a fix.
+      const visual = useGameStore.getState().playerVisualAnchorRef?.current?.parent;
+      if (visual) {
+        visual.position.set(0, y, 0);
+        visual.updateMatrixWorld(true);
+      }
+      return { y: +y.toFixed(2), visual: !!visual };
     });
 
     // Re-frame the reveal from WHERE THE AVATAR ACTUALLY RENDERED. Must be called AFTER spawnBeastTransform

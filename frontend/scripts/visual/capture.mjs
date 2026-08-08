@@ -223,7 +223,8 @@ async function main() {
       settledY = await page.evaluate(() => window.__craftyTest.call('settlePlayerToGround'));
     }
     if (settledY === false) console.warn('WARN: settlePlayerToGround never resolved a ground -> player position is NON-DETERMINISTIC for this run');
-    else console.log(`player settled at y=${settledY} (deterministic)`);
+    else if (!settledY.visual) console.warn(`WARN: player physics settled at y=${settledY.y} but the VISUAL anchor was missing -> the backdrop is NOT deterministic`);
+    else console.log(`player settled at y=${settledY.y} (physics + visual)`);
     await flushFrames(page, 4);
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
     await delay(1500);

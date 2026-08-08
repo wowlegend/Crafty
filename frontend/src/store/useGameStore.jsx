@@ -131,6 +131,7 @@ export const useGameStore = create((set, get) => ({
 
     playerRigidBodyRef: null,
     beastGroupRef: null, // the RENDERED beast avatar group (transient ref; see BeastAvatar)
+    playerVisualAnchorRef: null, // .parent === the player RigidBody's Object3D (the VISUAL side)
     setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
     playerPosition: { x: 0, y: 0, z: 0 },

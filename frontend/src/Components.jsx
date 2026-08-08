@@ -69,6 +69,7 @@ export const Player = ({ isWorldBuilt }) => {
   const [attackType, setAttackType] = useState(null); // 'melee' | 'spell' | null
   const attackStartTime = useRef(0);
   const rigidBodyRef = useRef();
+  const playerVisualAnchorRef = useRef(); // .parent === the RigidBody's Object3D (see settlePlayerToGround)
   const { rapier, world } = useRapier();
 
   const velocityY = useRef(0);
@@ -156,9 +157,9 @@ export const Player = ({ isWorldBuilt }) => {
         knockbackVelocity.current.z += impulse.z;
       };
     }
-    useGameStore.setState({ playerRigidBodyRef: rigidBodyRef });
+    useGameStore.setState({ playerRigidBodyRef: rigidBodyRef, playerVisualAnchorRef });
     return () => {
-      useGameStore.setState({ playerRigidBodyRef: null });
+      useGameStore.setState({ playerRigidBodyRef: null, playerVisualAnchorRef: null });
     };
   }, []);
 
@@ -1306,6 +1307,12 @@ export const Player = ({ isWorldBuilt }) => {
         enabledRotations={[false, false, false]}
       >
         <CapsuleCollider args={[0.5, 0.4]} />
+        {/* Anchor whose PARENT is the RigidBody's own Object3D. Physics is paused during capture, so
+            rapier never syncs that Object3D from the body — `setTranslation` moves the physics side only
+            and the VISUAL side stays at its declared transform. `settlePlayerToGround` needs a handle on
+            the visual side to move BOTH, so the captured world is deterministic. A marker child is the
+            stable way to reach it: it exists from mount, unlike the beast avatar. */}
+        <group ref={playerVisualAnchorRef} />
         {/* S2-B1-M7b: the visible beast (self-gates on beastFormActive -> nothing as human). At the
             player (RigidBody child); revealed by the M7a transform-cam. */}
         <BeastAvatar />
