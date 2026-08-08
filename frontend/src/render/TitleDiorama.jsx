@@ -70,6 +70,13 @@ export function TitleDiorama() {
         // and it was satisfied in both runs. A frame can settle at a DIFFERENT state each time.
         // Stable is not deterministic.
         dpr={isCaptureMode() ? 1 : [1, 2]}
+        // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was
+        // tried on 2026-08-08 as a determinism fix -- the theory being that a timing-dependent
+        // invalidation count left the frame on an arbitrary pose -- and it did NOT work: menu.png's
+        // run-to-run self-diff went 0.359% -> 0.557%. Reverted. Note the honest limit: menu has measured
+        // 0.984 / 0.359 / 0.557 across three rounds, so the metric is itself noisy and one A/B cannot
+        // rank the two modes. What IS established is that `always` does not fix it, so the residual is
+        // not the render-scheduling mode. Do not retry this without a new reason.
         frameloop={isCaptureMode() ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ fov: 34, near: 0.1, far: 100, position: [2.6, 4.0, 10.8] }}
