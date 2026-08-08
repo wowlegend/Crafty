@@ -216,18 +216,28 @@
     </div>
     <span class="live"><span class="dot"></span> Loop active</span>
     <div class="meta">
-      updated <b>2026-08-07</b> · A-bis CLOSED (8/8) · <b>TEN</b> pre-push gates · CI <b>success</b> at HEAD (observed — a <code>cancelled</code> run is NOT green)<br>
-      HEAD <b>cf744e3</b> · main · pushed · <i>this page was 22 commits stale before this refresh — it now has a GATE (artifact-currency), which is why you are reading a current one</i>
+      updated <b>2026-08-08</b> · A-bis CLOSED (8/8) · <b>ELEVEN</b> pre-push gates · CI <b>success</b> at HEAD (observed — a <code>cancelled</code> run is NOT green)<br>
+      HEAD <b>7a20d85</b> · main · pushed · <i>gate count said TEN here until this refresh; <code>commit-msg</code> joined at <code>191af24</code> and nobody recounted. The page is gated for staleness (artifact-currency), the number inside it was not.</i>
     </div>
   </header>
 
   <div class="stats">
-    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2436 <small class="up">▲319</small></div><div class="d">360 files · 0 skipped · 0 .only</div></div>
-    <div class="stat good"><div class="k">Visual gate</div><div class="v num">31 / 31</div><div class="d">was 24/31 asserting — the other 7 were decoration</div></div>
+    <div class="stat good"><div class="k">Unit tests</div><div class="v num">2487 <small class="up">▲51</small></div><div class="d">365 files · 0 skipped · 0 .only</div></div>
+    <div class="stat amber"><div class="k">Capture determinism</div><div class="v num">0.083<small>%</small></div><div class="d">worst run-to-run self-diff over 31 frames, 22 byte-identical. <b>It read 1.646% four hours ago</b> and the 6% gate called that green. Determinism is a property of (harness × code state): S8 broke it with one shader permutation, and the fixed <code>delay(2500)</code> it broke is now a condition. Re-measure it on any commit that changes frame cost — never inherit it.</div></div>
     <div class="stat amber"><div class="k">Dependencies</div><div class="v num">8 <small>open</small></div><div class="d"><b>This stat said "0 vulnerabilities · 0 open dependabot alerts" and that was FALSE</b> — but "8 open" alone overstates it, so both numbers: dependabot reports <b>8 open</b> (2 high, 6 moderate) in <code>ip-address</code> and <code>undici</code>, and <b><code>npm audit --omit=dev</code> reports 0</b>. Every one is a DEV-only transitive (<code>jsdom→undici</code>, <code>puppeteer→…→ip-address</code>): test and capture tooling, <b>nothing in the shipped bundle</b>. A routine bump, not an exposure. Not suppressed — unnoticed, because nothing re-measured it.</div></div>
     <div class="stat good"><div class="k">GitHub CI</div><div class="v num">25 / 40</div><div class="d">success in the last 40 runs, and <code>success</code> at HEAD. The <code>cancelled</code> runs above it are cancel-in-progress supersession — verified from job timings, not assumed.</div></div>
     <div class="stat amber"><div class="k">Review findings</div><div class="v num">215 <small class="up">· 121 closed</small></div><div class="d">MEASURED per-finding, not claimed — was "~154 closed · dead-code COMPLETE", which was wrong on both counts (dead-code is 13/38)</div></div>
   </div>
+
+  <section>
+    <div class="eyebrow"><h2>Latest — the grass, and what it exposed</h2><span class="rule"></span><span class="tag">2026-08-08 · S8</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>S8 shipped per-instance grass variation</strong> <code>947748f</code> — every blade in the world had been the same 0.4&times;0.7 rectangle at the same yaw on a bare 2m lattice, swaying in lockstep because the shader phase was <code>x*0.5 + z*0.5</code>, constant along every diagonal. Yaw, scale, sub-cell offset and tint are now hashed from the world (x,z): deterministic, so the capture gate still byte-compares.</p>
+      <p class="guard"><strong>Two defects were in the spec, not the code.</strong> Scale un-anchors the blade — the quad is centre-origin, so the fixed <code>+0.35</code> lift that stands it on the surface is correct only at scale 1; at 1.28 the blade sinks 10cm into opaque terrain. And <code>instanceColor</code> <em>multiplies</em> (<code>diffuseColor.rgb *= vColor</code>), so the spec's "add <code>setColorAt()</code> hue jitter" beside a <code>#4a7c59</code> material reads naturally as <code>setColorAt(#4a7c59)</code> — which squares the base to near-black <em>while passing every gate in this repo</em>: the call is present, the flag is set, it compiles.</p>
+      <p class="guard"><strong>Then S8 broke capture determinism, and that is the part worth reading.</strong> <code>explore-day</code>'s run-to-run self-diff went <b>0.075% &rarr; 1.646%</b>, and the pixels that moved were the distant <em>treeline</em>, not the grass. The first reading — "pre-existing chunk streaming, not S8" — was stated with confidence and was wrong; a ten-minute pre-S8 control reversed it. Root cause: <code>capture.mjs</code> polled the chunk count, then slept a fixed <code>delay(2500)</code> for a mesh swap-in it admitted the count could not see. A sleep encodes an assumption about frame cost that any commit can invalidate. It is now a condition — <code>waitForStableFrame</code> polls until the frame stops changing, refuses a blank frame, and WARNs rather than screenshotting anyway. Back to <b>0.083%</b>, 22 of 31 byte-identical.</p>
+      <p class="guard"><strong>The correction that outlives the feature:</strong> B-race was closed three days ago as "the harness is TRUSTWORTHY", on three agreeing runs. Determinism is a claim about a <em>code state</em>, so it expires when the code does. Three agreeing runs is not determinism, for the same reason one is not — and the whole 1.646% sat under the 6% threshold, so the gate reported green throughout. <b>The 31 gated cameras also sit 20–30m above the ground, where a 0.7m tuft is a few pixels: they are structurally unable to judge grass at all.</b> The ground-level probe is the only instrument here with standing.</p>
+    </div></div>
+  </section>
 
   <section>
     <div class="eyebrow"><h2>Governing mandate</h2><span class="rule"></span><span class="tag">Kevin · 2026-07-20</span></div>
