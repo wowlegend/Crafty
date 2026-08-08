@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-08-08 — S9: the grass is lit, and was being drawn twice (`17964b8`)
+
+`MeshBasicMaterial` is unlit by definition, so the grass ignored every light in `Atmosphere`, the
+per-mood grade, and the aerial haze the ground beneath it receives — a field that does not change
+between noon and dusk while its own ground does reads as a decal. Now Lambert, `receiveShadow` on,
+`castShadow` off, with a pinned `customProgramCacheKey` (three otherwise stringifies the
+`onBeforeCompile` closure on every program lookup).
+
+**Dropping transparency is the perf half, and it is bigger than the spec said.** three splits a material
+that is `transparent && side === DoubleSide && !forceSinglePass` into TWO passes, BackSide then
+FrontSide — at `WebGLRenderer.js:922` **and** again at `:1619`; the spec cited only `:1619`. Every grass
+draw call was silently two, so every grass draw-call estimate written in this repo before now was 2x low.
+
+Order mattered, which is why S8 came first: with `DoubleSide` three flips the normal per face, so a
+Lambert blade is lit by whichever side faces the rasterizer. Before S8 every blade shared one yaw and one
+±Z normal, and the explore sun is `[-55,48,-52]` while the capture camera sees the +Z faces — `N·L ≤ 0`
+for the entire field. Shipping this first would have made the grass darker and flatter and read as a
+lighting bug.
+
+**Colour deliberately untouched**, and the ladder for choosing it is rendered by the new
+`scripts/visual/grass-swatch-probe.mjs` (3 swatches x day/night, ground-level camera, patching source per
+swatch rather than poking the material through the scene graph — reaching in to mutate `.color` would
+render a path the game never takes). S8's tint being a multiplier centred on 1.0 is what kept this
+decision available to make.
+
+**One gate corrected while writing it.** `not.toMatch(/MeshBasicMaterial/)` went red against a TRUE
+sentence — the S6 note explaining the deleted motes were buried under opaque ground *because* they were
+depth-tested and unlit. A gate that forbids a WORD rather than a syntactic form punishes accurate history
+and teaches the next author to delete the explanation instead of the code; it now anchors to
+`new THREE.MeshBasicMaterial(`.
+
+**Baselines NOT re-frozen, and that is the honest result.** Re-measuring determinism (which S9's own plan
+made blocking, because S9 changes frame cost three ways) gave **worst 0.201%** against the **< 0.15%**
+that plan set. 0 of 31 over 1%, 19 byte-identical — far better than S8's 1.646%, still over my own bar,
+so the bar stands rather than moving. Cropping the diff identified it: run 1 carries a distant tree canopy
+run 2 lacks. Same late-chunk mechanism as before, ~8x smaller (1,936 diff px vs 16,851). The residual is
+structural: `waitForStableFrame` runs inside `waitForStableTerrain`, but each state then does camera moves
+and a `delay(900)` before its screenshot, and a chunk arriving in *that* gap is unguarded. `capture.mjs`
+has **31 individual `page.screenshot` calls and no shared helper** — so the fix is a `shot()` wrapper that
+checks stability immediately before every frame is written. Next unit.
+
+S9 vs the current baselines is worst 1.034%, 0 of 31 over the 6% gate — the gate cannot see this change
+either, for the same reason it could not see S8.
+
+**And the look is currently a REGRESSION, which the swatch probe caught.** Tuft pixels against the
+ground's median luminance, same camera/colour/time-of-day: S8 (unlit, 0.7 alpha) was 3,657 below /
+3,151 above — balanced; S9 (Lambert, opaque) is **5,524 below / 1,344 above**, a 4:1 skew dark. The grass
+reads as holes punched in the turf.
+
+**The plan's own ordering rule did not prevent this, and that is the interesting part.** S9's entry says
+shipping before S8 would make the grass darker because every blade shared one yaw and `N·L <= 0`. S8
+shipped first and it is *still* dark, so the premise was incomplete: with `side: DoubleSide` three flips
+the normal to the rasterizer-facing side, so the lit face always follows the CAMERA, not the yaw — and the
+explore sun `[-55,48,-52]` is behind the scene from the capture camera. Yaw variation cannot reach this.
+Fix (next unit) is the standard foliage-card treatment: bend the vertex normal toward world-up so a tuft
+shades like the ground rather than like a vertical card.
+
+S9 is kept rather than reverted: the double-draw fix is real, and being in the lighting equation is the
+prerequisite for fixing the lighting. The colour ladder is rendered but explicitly NOT put to Kevin as a
+decision — all three swatches are dark, and a colour chosen under wrong lighting gets chosen twice.
+
 ## 2026-08-08 — capture waited a fixed 2500ms for a thing it could have just watched (`c472533`, `0b18ffe`)
 
 S8 broke capture determinism, and the way it broke is worth more than the feature.

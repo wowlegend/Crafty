@@ -1078,3 +1078,42 @@ a doc as fact. If it holds, S8 fixed effective grass density, not just the look,
 constant may want re-tuning downward afterward.
 
 If the field now reads too busy, that is the knob to turn and it is one number.
+
+---
+
+## 2026-08-08 — S9 lit the grass and it came out DARKER. Do not pick a colour yet.
+
+I built you the 3-swatch colour ladder S9 promised (`/tmp/crafty-grass-swatch/ladder-zoom.png`, rows
+A/B/C, columns day/night). **Then I measured it and I don't think you should use it yet**, so here is
+what happened instead of a decision request.
+
+**The measurement.** Same camera, same colour, same time of day, tuft pixels against the ground's median
+luminance:
+
+| | well BELOW ground | well ABOVE |
+|---|---|---|
+| S8 — unlit, 0.7 alpha | 3,657 | 3,151 (balanced) |
+| S9 — Lambert, opaque | **5,524** | 1,344 (**4:1 dark**) |
+
+The tufts now read as dark patches punched into the turf rather than plants catching light.
+
+**Why, and why the plan did not prevent it.** The plan's S9 entry says shipping S9 before S8 would make
+the grass darker, because every blade shared one yaw and `N·L <= 0`. That is why S8 went first. **S8 went
+first and it is still dark**, so the premise was incomplete. With `side: DoubleSide` three flips the normal
+to whichever side faces the rasterizer, so the lit side is always the camera-facing one — and the explore
+sun `[-55,48,-52]` sits roughly behind the scene from the capture camera. The blades are backlit, and no
+amount of yaw variation changes that, because the flip follows the viewer, not the yaw.
+
+**The fix is the standard foliage-card one** and it is the next unit: bend the blade's vertex normal
+toward world-up (a spherical/flattened normal) so a tuft shades like the ground it grows from instead of
+like a vertical card. Grass cards in shipped games almost universally do this for exactly this reason.
+
+**So the colour ladder is premature.** All three swatches render dark; a colour picked under wrong lighting
+is a colour you would pick again the moment the lighting is right. Look at it if you're curious — the day
+column does separate the three — but I'd rather bring it back after the normals are fixed than spend your
+decision on a frame I already know is wrong.
+
+**What S9 keeps regardless:** dropping transparency halved the grass draw calls (three renders
+`transparent + DoubleSide` twice, at `WebGLRenderer.js:922` and `:1619` — every grass draw-call number in
+our docs was 2x low), and the grass is now *in* the lighting equation, which is the prerequisite for
+fixing it properly rather than a thing to undo.

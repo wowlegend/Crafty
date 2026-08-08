@@ -46,12 +46,32 @@ baseline. 4 mutations proven red.
 6% gate — so the tree is green and honest, and re-baselining a frame carrying 1.6% noise would freeze the
 noise. Re-baseline only once the frame-stability wait is verified to bring the self-diff back down.
 
-**NEXT UNIT:**
-0. **Verify the frame-stability wait** (capture x2, self-diff must return toward ~0.1%), then re-baseline
-   and commit. Then **S9**.
-1. **S9 grass lighting** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — S8's prerequisite is now met.
-   S9 owes Kevin a 3-swatch colour ladder; S8's tint is a multiplier centred on 1.0 (asserted), so that
-   decision is still unspent. **S4 stays DEFERRED** (its AO flip is purely aesthetic).
+**S9 IS COMMITTED** (`17964b8`) — Lambert, transparency dropped (halves grass draw calls; three splits
+transparent+DoubleSide at `WebGLRenderer.js:922` AND `:1619`, not just `:1619` as the spec said),
+`receiveShadow`, pinned cache key. 3 mutations red, 2490 tests green.
+
+**NEXT UNIT — the capture residual. Baselines are NOT re-frozen and must not be until this lands.**
+Re-measuring determinism after S9 (blocking, per S9's own plan, because S9 changes frame cost three ways)
+gave **worst 0.201%** against the **< 0.15%** that plan set. 0 of 31 over 1%, 19 byte-identical. **The bar
+stands; do not move it to pass.** Diagnosed by cropping the diff rather than guessing: run 1 carries a
+distant tree canopy run 2 lacks — the same late-chunk mechanism as S8, ~8x smaller (1,936 diff px vs
+16,851).
+
+**The residual is structural, and the fix is known:** `waitForStableFrame` runs inside
+`waitForStableTerrain`, but every state then does camera moves and a `delay(900)` before its screenshot,
+so a chunk landing in *that* gap is unguarded. `capture.mjs` has **31 individual `page.screenshot` calls
+and no shared helper.** Fix = a `shot(name)` wrapper that runs the stability check immediately before each
+frame is written, then re-measure, then re-baseline S9 in one commit.
+
+**ALSO OPEN — S9 grass is BACKLIT and reads darker than the ground (measured, 4:1).** With
+`side: DoubleSide` three flips the normal to the rasterizer-facing side, so the lit face follows the
+CAMERA, not the yaw — and the explore sun `[-55,48,-52]` is behind the capture camera. S8's yaw variation
+cannot reach this, which means the plan's S8-before-S9 ordering rule was necessary but NOT sufficient.
+Fix = the standard foliage-card treatment: bend the blade vertex normal toward world-up so a tuft shades
+like the ground it grows from. **The 3-swatch colour ladder is rendered but deliberately NOT put to Kevin
+yet** — all three render dark, and a colour chosen under wrong lighting gets chosen twice.
+
+Then: HOLISTIC-REVIEW queue (88 open). **S4 stays DEFERRED.**
 2. **HOLISTIC-REVIEW queue** — 127 done / 88 open (`aa4cfb4` triage). Every open finding carries a LIVE
    quote proving the defect; work from that, not the original text. Flip `▢`->`▣✓ <sha>` in the SAME commit.
 3. A2/A7 remainders (counts are commands not generated blocks; `AGENTS.md` + kernel untagged).
