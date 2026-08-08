@@ -10,6 +10,7 @@
 // deterministic, and it keeps the implementation strictly inside the mascot files + App.jsx
 // (no gameplay-scene edits). Direction B was picked; A/C mockups were pruned (S1-D-M4).
 import { Canvas } from '@react-three/fiber';
+import { isCaptureMode } from '../../devtest/captureMode';
 import { SMAA, EffectComposer, Bloom, HueSaturation, BrightnessContrast, Vignette, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { MascotCraftyHero } from './MascotCraftyHero';
@@ -74,7 +75,17 @@ export function MascotStudio() {
     >
       <Canvas
         shadows={false}
-        dpr={[1, 2]}
+        // PIN THE DEVICE PIXEL RATIO IN CAPTURE. `[1, 2]` is an adaptive RANGE, so the canvas can
+        // rasterise at a different ratio between runs and every edge in the frame re-antialiases --
+        // which is precisely what title-mascot.png's 0.984% run-to-run diff looked like: outlines tracing
+        // every edge of the geometry plus the borders of motes that never moved. The main canvas
+        // already does this (GameScene.jsx disables AdaptiveDpr under isCaptureMode and pins
+        // PROBE_DPR for the perf probe); this canvas never got the same treatment.
+        //
+        // Note what this is NOT: waitForStableFrame already guarantees the frame stopped changing,
+        // and it was satisfied in both runs. A frame can settle at a DIFFERENT state each time.
+        // Stable is not deterministic.
+        dpr={isCaptureMode() ? 1 : [1, 2]}
         gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
         // FIXED diorama camera, framed to fit the WHOLE hero — boots to the leaning hat tip
         // (~4 units tall) — with headroom so the iconic stepped-hat silhouette never crops.

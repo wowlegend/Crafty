@@ -59,7 +59,17 @@ export function TitleDiorama() {
     <div data-testid="title-diorama" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <Canvas
         shadows={false}
-        dpr={[1, 2]}
+        // PIN THE DEVICE PIXEL RATIO IN CAPTURE. `[1, 2]` is an adaptive RANGE, so the canvas can
+        // rasterise at a different ratio between runs and every edge in the frame re-antialiases --
+        // which is precisely what menu.png's 0.984% run-to-run diff looked like: outlines tracing
+        // every edge of the geometry plus the borders of motes that never moved. The main canvas
+        // already does this (GameScene.jsx disables AdaptiveDpr under isCaptureMode and pins
+        // PROBE_DPR for the perf probe); this canvas never got the same treatment.
+        //
+        // Note what this is NOT: waitForStableFrame already guarantees the frame stopped changing,
+        // and it was satisfied in both runs. A frame can settle at a DIFFERENT state each time.
+        // Stable is not deterministic.
+        dpr={isCaptureMode() ? 1 : [1, 2]}
         frameloop={isCaptureMode() ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ fov: 34, near: 0.1, far: 100, position: [2.6, 4.0, 10.8] }}
