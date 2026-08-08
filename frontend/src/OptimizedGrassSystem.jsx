@@ -7,13 +7,35 @@ import { isCaptureMode } from './devtest/captureMode';
 import { collectBendSources } from './game/grassBend.js';
 import { bladeTransform, bladeTint } from './game/grassVariation.js';
 
-// Custom materials with GPU-based wind swaying & player displacement
-const grassMaterial = new THREE.MeshBasicMaterial({
+// S9. LIT grass, with GPU wind sway + player displacement.
+//
+// Was an unlit basic material -- unlit by definition, so the grass ignored every light in Atmosphere, the
+// per-mood grade, and the aerial haze the ground beneath it receives. A field that does not change
+// between noon and dusk while the ground does reads as a decal, not as plants.
+//
+// TRANSPARENCY IS GONE, AND THAT IS A PERF FIX AS MUCH AS A LOOK ONE. three splits a material that is
+// `transparent && side === DoubleSide && !forceSinglePass` into TWO passes, BackSide then FrontSide —
+// at WebGLRenderer.js:922 AND again at :1619 — so every grass draw call was silently two. Every
+// grass draw-call estimate written in this repo before now was 2x low.
+//
+// WHY THIS HAD TO FOLLOW S8, NOT LEAD IT. With DoubleSide three flips the normal per face
+// (normal_fragment_begin.glsl.js), so a Lambert blade is lit by whichever side faces the rasterizer.
+// Before S8 every blade shared ONE yaw and one +/-Z normal, and the explore sun is [-55,48,-52] while
+// the capture camera sees the +Z faces -> N.L <= 0 for the whole field. Shipping this first would have
+// made the grass DARKER and FLATTER and looked like the lighting was wrong.
+//
+// The COLOUR is deliberately unchanged here: '#4a7c59' is a blue-green sitting on yellow-green ground
+// and that mismatch is real, but picking the replacement is an owner call with a 3-swatch ladder, not
+// something to slip into the commit that changes the lighting model. S8's per-blade tint is a
+// multiplier centred on 1.0, so it rides along and does not pre-empt the choice either.
+const grassMaterial = new THREE.MeshLambertMaterial({
   color: '#4a7c59',
-  transparent: true,
-  opacity: 0.7,
   side: THREE.DoubleSide
 });
+
+// three stringifies onBeforeCompile on EVERY program lookup unless the key is pinned. Only
+// render/characterStyle.js:66 does this today.
+grassMaterial.customProgramCacheKey = () => 'grassWind';
 
 grassMaterial.onBeforeCompile = (shader) => {
   shader.uniforms.time = { value: 0 };
@@ -178,7 +200,7 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
   return (
     <group>
       {grassCount > 0 && (
-        <instancedMesh ref={grassMeshRef} args={[null, grassMaterial, grassCount]}>
+        <instancedMesh ref={grassMeshRef} args={[null, grassMaterial, grassCount]} receiveShadow>
           {/* M4 #5: a READABLE stylized tuft (was 0.1x0.18 -- sub-perceptual specks). 0.4 wide x 0.7 tall
               billboard, DoubleSide, wind-swayed at the top by the shader. Bold-flat (flat blade, locked palette). */}
           <planeGeometry args={[0.4, 0.7]} />

@@ -91,6 +91,32 @@ describe('grass revival 1b -- mounted + visible', () => {
     expect(grass).toMatch(/float offset = fract\(sin\(/);
   });
 
+  // S9. The grass is in the lighting equation now. Source-grep again, so PRESENCE not lived result --
+  // what these buy is that the slice cannot be silently unpicked, which is the failure this file exists
+  // to catch (the unmounted GrassWindDriver, the position-only set).
+  it('the grass material is LIT, not an unlit basic one', () => {
+    // Anchored to the CONSTRUCTION, not the bare token. The first draft asserted the token was absent
+    // anywhere in the file and went red on a true sentence — the S6 note explaining that the deleted
+    // motes were buried under opaque ground *because* they were depth-tested and unlit. A gate that
+    // forbids a word rather than a syntactic form punishes accurate history and pushes the next author
+    // to delete the explanation instead of the code.
+    expect(grass).not.toMatch(/new THREE\.MeshBasicMaterial\(/);
+    expect(grass).toMatch(/new THREE\.MeshLambertMaterial\(/);
+  });
+
+  it('the material is OPAQUE — transparent+DoubleSide is a silent DOUBLE DRAW', () => {
+    // three splits transparent+DoubleSide into BackSide-then-FrontSide passes at BOTH
+    // WebGLRenderer.js:922 and :1619, so every grass draw was two. This assertion is what stops the
+    // perf half of S9 being reverted by someone reaching for translucency as a look knob.
+    expect(grass).not.toMatch(/transparent: true/);
+    expect(grass).not.toMatch(/opacity: 0\.7/);
+  });
+
+  it('the wind shader has a stable program cache key', () => {
+    // without it three stringifies the onBeforeCompile closure on every program lookup
+    expect(grass).toMatch(/customProgramCacheKey/);
+  });
+
   it('the grass renderer takes the pre-filtered grass-tops directly (no blockType re-filter)', () => {
     expect(grass).toMatch(/blockPositions\.slice\(0, 50\)/);
     expect(grass.includes("blockType === 'grass'")).toBe(false);
