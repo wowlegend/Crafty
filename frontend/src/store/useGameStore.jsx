@@ -130,6 +130,7 @@ export const useGameStore = create((set, get) => ({
     setGetMobGroundLevel: (fn) => set({ getMobGroundLevel: fn }),
 
     playerRigidBodyRef: null,
+    beastGroupRef: null, // the RENDERED beast avatar group (transient ref; see BeastAvatar)
     setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
     playerPosition: { x: 0, y: 0, z: 0 },

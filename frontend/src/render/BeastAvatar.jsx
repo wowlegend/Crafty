@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -24,7 +24,7 @@ import { isCaptureMode } from '../devtest/captureMode';
  * states unaffected). Mounted as a RigidBody child (at the player). Capture FREEZES to the SETTLED beast
  * (no entrance, no burst, no charge) -> byte-stable frame. Transient clock refs (Game-Loop-Isolation).
  */
-const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop the feet to the base
+export const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop the feet to the base
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
 // (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
@@ -44,6 +44,17 @@ export function BeastAvatar() {
   const { camera } = useThree();
 
   const parts = active ? beastAvatarParts(element) : null;
+
+  // Publish the avatar's own group so a capture fixture can frame from WHERE IT RENDERS.
+  // Same idiom as `playerRigidBodyRef` (transient ref in the store, read via getState — never a reactive
+  // subscription, per Game-Loop-Isolation). This exists because framing off `rb.translation()` — and then
+  // off a CONSTANT — both produced beast-less frames: under paused physics the RigidBody's visual transform
+  // and its physics body diverge, and the visual one is what the camera must aim at. Measured 2026-08-08.
+  useEffect(() => {
+    if (!parts) return undefined;
+    useGameStore.setState({ beastGroupRef: groupRef });
+    return () => useGameStore.setState({ beastGroupRef: null });
+  }, [!!parts]);
   const chargeEl = charging && !active ? elementForSpell(activeSpell) : null;
   const chargeColor = chargeEl ? beastAvatarParts(chargeEl)?.glowColor : null;
 

@@ -431,6 +431,13 @@ async function main() {
       await page.evaluate((element) => window.__craftyTest.call('spawnBeastTransform', element), el);
       await flushFrames(page, 8);
       await delay(1000); // beast re-mounts + the camera settles into the frozen reveal pose
+      // RE-FRAME from where the avatar ACTUALLY rendered, now that it exists. spawnBeastTransform could
+      // only guess: it triggers the mount and frames in the same synchronous block, before React has run.
+      // Framing off the guess passed at load ~5 and failed at load ~17 with no source change.
+      const framedAt = await page.evaluate((element) => window.__craftyTest.call('frameBeastReveal', element), el);
+      if (framedAt === false) console.warn(`WARN: beast-${el} — the avatar group never mounted; keeping the provisional framing`);
+      else console.log(`  beast-${el} framed at ${JSON.stringify(framedAt)}`);
+      await flushFrames(page, 4);
       // REFUSE to write a beast frame with no beast in it. A fixed delay cannot express "the subject is
       // actually there": at load ~30 this exact code produced a beast-less frame, and the byte-comparison
       // gate blessed four such baselines for weeks. Palette comes from beastAvatarParts, not re-typed here.

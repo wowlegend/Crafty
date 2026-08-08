@@ -41,6 +41,7 @@ import { useDayNightClock } from './game/useDayNightClock';
 import { isAnyPanelOpen } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 import { beastRevealCamera } from './game/beastRevealCamera.js';
+import { FEET_OFFSET } from './render/BeastAvatar.jsx';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -357,7 +358,33 @@ function GameApp({ experienceSystem }) {
       // meshes at worldY 100.0-101.6 (ndc.y ~= -3, i.e. off the bottom of the screen) while the body
       // reported y=120 and the camera sat at 121.45. All four beast-* baselines were a distant mountain
       // with no beast in them, and the visual gate compared one empty mountain to another and passed.
+      // PROVISIONAL framing off the declared spawn. It is only a first guess: the avatar has not mounted
+      // yet (setBeastFormActive above triggers the mount, React has not run it), so its group does not
+      // exist to measure. `frameBeastReveal` below re-derives the shot once it does.
       enterCaptureMode({ camera: beastRevealCamera(element, PLAYER_SPAWN) });
+    });
+
+    // Re-frame the reveal from WHERE THE AVATAR ACTUALLY RENDERED. Must be called AFTER spawnBeastTransform
+    // and after a frame flush, because that is the earliest the group exists.
+    //
+    // Three framings were tried and two were wrong, so the ordering matters more than it looks:
+    //   rb.translation() -> the PHYSICS body. Physics is paused in capture, so rapier never syncs it to the
+    //                       visual transform; they measured 120 vs ~100 and the beast sat below frame.
+    //   PLAYER_SPAWN     -> the DECLARED transform. Correct only when the group happens to land there; it
+    //                       did at load ~5 and did not at load ~17, so beast frames passed and failed with
+    //                       no source change at all.
+    //   getWorldPosition -> where it IS. The only one that cannot disagree with the render.
+    registerTestHook('frameBeastReveal', (element) => {
+      const g = useGameStore.getState().beastGroupRef?.current;
+      if (!g) return false; // caller decides — a silent fallback here is what hid this for weeks
+      const w = g.getWorldPosition(new (Object.getPrototypeOf(g.position).constructor)());
+      // The published group sits at FEET_OFFSET below the capsule CENTRE, and the reveal offsets were
+      // authored against the CENTRE (ice looks at -0.15, i.e. BELOW its origin — only meaningful from a
+      // centre, never from feet). Framing straight off the group put the dragon's head out of frame.
+      // Subtracting the offset re-derives the centre WITHOUT re-typing 0.9 anywhere.
+      const origin = { x: w.x, y: w.y - FEET_OFFSET, z: w.z };
+      enterCaptureMode({ camera: beastRevealCamera(element, origin) });
+      return { x: +origin.x.toFixed(2), y: +origin.y.toFixed(2), z: +origin.z.toFixed(2), feet: +w.y.toFixed(2) };
     });
 
     // Boss-render fixture: a deterministic close-up of the (frozen) Shadow Dragon against a bright sky

@@ -611,6 +611,45 @@ branch → 3 RED).
 is most runs until the position fix lands. **That is the harness working.** It is the difference between a
 red run and four baselines of a mountain.
 
+**PASS 11 (2026-08-08) — THE BEAST IS FIXED AND VISIBLE IN EVERY RUN. THE BACKDROP IS NOT DETERMINISTIC.**
+
+**SHIPPED — the fixture now frames from where the avatar ACTUALLY RENDERED.** `BeastAvatar` publishes its
+group to the store (same transient-ref idiom as `playerRigidBodyRef`), and a second hook
+`frameBeastReveal(element)` re-derives the shot from `getWorldPosition()` AFTER the mount.
+`spawnBeastTransform` can only guess, because it triggers the mount and frames in the SAME synchronous
+block — React has not run yet, so the group does not exist. The capture calls spawn → flush → **re-frame**
+→ flush → assert → shoot. The feet-offset is compensated from the exported `FEET_OFFSET` (the published
+group sits at the FEET; the reveal offsets were authored against the capsule CENTRE — ice looks at −0.15,
+i.e. BELOW its origin, which is only meaningful from a centre. Framing straight off the group cut the
+dragon's head off, and the image is what showed it).
+
+**VERIFIED BY OPENING THE IMAGES, at three different machine loads:** the fire dragon (horns, spread
+bat-wings, glowing core) and the ice brute (horned quadruped, distinct silhouette) both render, framed, in
+every run. `capture exit=0`; `assertSubjectOnScreen` never fires.
+
+**⚠️ AND THE DETERMINISM CHECK — my own rule, and it paid — FOUND THE LAST DEFECT.** Re-ran the same code:
+the avatar framed at **y=53.2** where the previous two runs framed at **y=100**. The camera tracked it
+correctly (beast in frame both times, which is the fix working across a 47-unit swing), but the frames
+differ **44-56%** between runs because the WORLD BEHIND the beast is completely different — at y≈53 the
+player has settled onto terrain and the shot is the intended in-world Hearth reveal; at y≈100 it is still
+at spawn altitude and the beast floats in empty sky.
+
+**SO: the 4 beast states render correctly but STILL CANNOT BE BASELINED.** Not because the beast is
+missing — that is fixed — but because the gate's 6% threshold cannot survive a 44-56% backdrop swing.
+
+**THE LAST DEFECT, precisely stated:** the PLAYER'S capture-time position is a race — sometimes settled on
+terrain (~53), sometimes still at spawn (~100), and `rb.translation()` has also read 120. Physics is
+`paused={isCaptureMode}`, so something other than gravity is moving that kinematic body, and whether it has
+finished by the beast stage varies. **Fix that and the beast states become baselineable; it is also the
+same root cause behind the earlier 100-vs-120 readings.** Note this is a CAPTURE-DETERMINISM defect that
+happens to be visible here — it may affect any stage whose content depends on player position.
+
+**KEVIN-GATED, do NOT decide unilaterally:** if the player position cannot be made deterministic cheaply,
+the alternative is making the beast reveal a STUDIO card like `boss-closeup` (fixed SX/SY/SZ, clean sky
+backdrop). That would REVERSE a recorded design decision — the fixture is IN-WORLD on purpose, so the
+silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Surface
+it; do not just do it.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
