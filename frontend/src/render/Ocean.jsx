@@ -6,7 +6,7 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SEA_LEVEL, gerstnerHeight, gerstnerNormal } from '../world/oceanProfile.js';
+import { SEA_LEVEL, gerstnerDisplace, gerstnerNormal } from '../world/oceanProfile.js';
 import { isCaptureMode } from '../devtest/captureMode.js';
 import { oceanVisibleNear } from '../world/oceanVisibility.js';
 import { surfaceBlockAt } from '../world/climate.js';
@@ -22,19 +22,32 @@ export function Ocean() {
   const meshRef = useRef();
   const { camera } = useThree();
   const geo = useMemo(() => new THREE.PlaneGeometry(PLANE, PLANE, SEG, SEG), []);
-  // toon turquoise->teal + foam material (vertexColors carry per-vertex foam factor in r)
+  // Tropical water. NOTE WHAT CHANGED AND WHY IT MATTERS: this used to set `vertexColors: true` and
+  // write the foam factor into the vertex COLOUR as (crest, crest, crest). three's standard chain does
+  // `diffuseColor.rgb *= vColor` (color_fragment.glsl.js), so away from a crest that colour is (0,0,0)
+  // and the entire diffuse term was being multiplied to BLACK. What reached the screen was almost
+  // purely `emissive`, which is not multiplied by vColor — which is exactly why the old comment could
+  // say the surface "reads vivid teal at ANY lighting angle". It was not toon shading. The ocean simply
+  // was not lit, so no lighting angle could change it.
+  //
+  // Foam now rides its own attribute, the vertex colour is gone, and the diffuse survives — so the sea
+  // takes the sun, the mood grade and the time of day like everything else in the world does.
   const mat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#0E8FB0', roughness: 0.30, metalness: 0.0, flatShading: false,
-    // Toon water self-illuminates toward bright Caribbean turquoise so the surface reads vivid teal at
-    // ANY lighting angle (physical PBR diffuse alone left it slate-grey from the top-down). The emissive
-    // is the toon palette lift; the diffuse + Fresnel + foam layer on top.
-    emissive: '#16C8C2', emissiveIntensity: 0.55,
-    transparent: true, opacity: 0.95, vertexColors: true,
+    color: '#12A6C4', roughness: 0.22, metalness: 0.0, flatShading: false,
+    // A much smaller lift than before: it is a tropical shallow-water glow, no longer load-bearing for
+    // the surface being visible at all.
+    emissive: '#0E7E93', emissiveIntensity: 0.22,
+    transparent: true, opacity: 0.93,
   }), []);
-  // attach a foam attribute (per-vertex, recomputed each frame)
-  useMemo(() => {
-    const n = geo.attributes.position.count;
-    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+  // Per-vertex foam on its OWN attribute, plus the undisplaced grid. The grid matters: Gerstner moves a
+  // vertex in x/z, so reading last frame's position back as this frame's sample point would compound the
+  // displacement every frame and tear the sheet apart within seconds.
+  const base = useMemo(() => {
+    const c = geo.attributes.position.count;
+    geo.setAttribute('aFoam', new THREE.BufferAttribute(new Float32Array(c), 1));
+    const g = new Float32Array(c * 2);
+    for (let i = 0; i < c; i++) { g[i * 2] = geo.attributes.position.getX(i); g[i * 2 + 1] = geo.attributes.position.getY(i); }
+    return g;
   }, [geo]);
 
   // prop-attached geometry + material are not auto-disposed by R3F -> dispose on unmount
@@ -53,27 +66,34 @@ export function Ocean() {
     const t = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;
     // snap the plane centre to the camera's XZ (so it always covers the view); keep it at SEA_LEVEL.
     mesh.position.set(cx, SEA_LEVEL, cz);
-    const pos = geo.attributes.position, nrm = geo.attributes.normal, col = geo.attributes.color;
+    const pos = geo.attributes.position, nrm = geo.attributes.normal, foam = geo.attributes.aFoam;
     for (let i = 0; i < pos.count; i++) {
-      // plane local (x,y) -> world (x,z); plane is rotated -90deg about X so local-y maps to world-z
-      const lx = pos.getX(i), ly = pos.getY(i);
+      // Sample from the UNDISPLACED grid, never from the vertex we wrote last frame.
+      const lx = base[i * 2], ly = base[i * 2 + 1];
       const wx = cx + lx, wz = cz - ly;
-      const h = gerstnerHeight(wx, wz, t);
-      pos.setZ(i, h - SEA_LEVEL); // local-z displacement (before the -90deg rotation lifts it to world-Y)
+      const d = gerstnerDisplace(wx, wz, t);
+      // plane local (x,y) -> world (x,z); rotated -90deg about X, so world z maps to NEGATIVE local y
+      pos.setXYZ(i, lx + (d.x - wx), ly - (d.z - wz), d.y - SEA_LEVEL);
       const nv = gerstnerNormal(wx, wz, t);
-      nrm.setXYZ(i, nv[0], -nv[2], nv[1]); // remap world normal into plane-local (rotation -90deg X: world nv -> local (x,-z,y))
-      // continuous toon foam at the crest (smoothstep on height) — a soft white cap on ONLY the highest
-      // crests (the summed amplitude reaches ~+2.1, so a low threshold whitewashes the whole sea; keep
-      // foam to the top swell so the turquoise base reads). Continuous band, not a binary 1x1 cell.
-      const crest = THREE.MathUtils.smoothstep(h, SEA_LEVEL + 1.45, SEA_LEVEL + 2.05);
-      col.setXYZ(i, crest, crest, crest); // r carries the foam blend; material color is the base teal
+      nrm.setXYZ(i, nv[0], -nv[2], nv[1]); // world normal -> plane-local under the -90deg X rotation
+      // Foam where real foam is: on the crests AND on the steep faces. Height alone caps only the very
+      // top of the swell; with Gerstner sharpening the crests, the steep leading face is where water
+      // actually breaks, and a slope term is what stops the foam reading as a painted-on stripe.
+      const crest = THREE.MathUtils.smoothstep(d.y, SEA_LEVEL + 0.85, SEA_LEVEL + 1.75);
+      const slope = THREE.MathUtils.smoothstep(1 - nv[1], 0.05, 0.22);
+      foam.setX(i, Math.min(1, crest * 0.85 + slope * 0.5));
     }
-    pos.needsUpdate = true; nrm.needsUpdate = true; col.needsUpdate = true;
+    pos.needsUpdate = true; nrm.needsUpdate = true; foam.needsUpdate = true;
   });
 
   // Fresnel + glossy band tint injected post-lighting (reads off the recomputed normal).
   const onBeforeCompile = useMemo(() => (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
+    // foam travels on its own attribute now, so it cannot multiply the diffuse to black
+    shader.vertexShader = `attribute float aFoam;\nvarying float vFoam;\n${shader.vertexShader}`.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vFoam = aFoam;'
+    );
+    shader.fragmentShader = `varying float vFoam;\n${shader.fragmentShader}`.replace(
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
        vec3 V = normalize(vViewPosition);
@@ -81,7 +101,7 @@ export function Ocean() {
        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.45, 0.86, 0.92), fres * 0.38); // sky-teal Fresnel (kept light so the base teal reads)
        float band = smoothstep(0.90, 0.99, dot(normalize(geometryNormal), normalize(vec3(0.4,1.0,0.3))));
        gl_FragColor.rgb += vec3(0.16, 0.26, 0.27) * band; // glossy highlight band off the real normal (tighter + dimmer)
-       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.99, 1.0), clamp(vColor.r, 0.0, 1.0) * 0.85); // crest foam (thin cap)`
+       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.99, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85); // crest + breaking-face foam`
     );
   }, []);
   mat.onBeforeCompile = onBeforeCompile;

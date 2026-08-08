@@ -43,24 +43,78 @@ export function oceanSurfaceY(baseHeight, n, continent) {
 // component FREEZES it to a fixed phase in capture mode for byte-stable frames. Pure (no THREE/state)
 // -> unit-testable without GL. REPLACES the old voxel-water foam/depth bake (the mesher no longer
 // emits water faces; this animated plane owns the whole ocean surface read).
-export const WAVES = [
-  // [dirX, dirZ, wavelength, amplitude, speed]
-  [1.0, 0.35, 18.0, 0.85, 0.55],
-  [-0.6, 1.0, 11.0, 0.45, 0.80],
-  [0.3, -1.0, 6.5, 0.28, 1.15],
-  [1.0, -0.2, 27.0, 0.55, 0.40],
-];
-const _norm = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
+// --- REAL-OCEAN SURFACE (true Gerstner, deep-water dispersion) ---
+//
+// Kevin, 2026-08-08: "make it more tropical and dynamic looking, its waves should be moving like real
+// ocean." Two things were wrong, and the second one is why it never read as water.
+//
+// (1) IT WAS NOT GERSTNER. It was a sum of four sines with the name attached. A sine sum gives round
+// symmetric swell; real water piles up toward the crest, so crests are SHARP and troughs are BROAD.
+// That asymmetry is the single strongest "that is the sea" cue and it comes from HORIZONTAL
+// displacement, which a height-only field cannot express at any amplitude.
+//
+// (2) THE DISPERSION WAS INVERTED. Deep-water waves travel at c = sqrt(g/k), so a long swell OUTRUNS
+// short chop. The old table ran the other way -- 6.5m chop at 0.55, a 27m swell at 0.40 -- so the
+// small stuff raced across the big stuff. Real seas never look like that, and no amount of colour
+// tuning fixes it, because the eye reads relative motion before it reads hue. Speed is now DERIVED
+// from wavelength rather than typed, so the relation cannot be broken by editing one row.
+//
+// Six components on a spread of headings: a dominant swell plus wind chop at an angle to it, which is
+// what stops the surface reading as a repeating corduroy. World-space phase keeps it cross-chunk
+// coherent so the plane can slide under the camera without a seam, and `time` is frozen by Ocean.jsx
+// in capture mode, so every frame stays byte-stable.
+export const GRAVITY = 9.81;
+/** Scales real m/s into game-plausible motion. The DISPERSION RATIO between waves is preserved. */
+export const WAVE_TIME_SCALE = 0.14;
+/** Gerstner steepness Q. Sum of Q*k*A must stay <= 1 or the surface folds through itself. */
+export const STEEPNESS = 1.0;
 
-// Per-wave DERIVED constants, precomputed ONCE — the normalized direction (nx,nz) + wave number k
-// depend only on the fixed WAVES table, yet gerstnerHeight/Normal used to recompute _norm() (a fresh
-// array) + k for every wave on EVERY ocean vertex EVERY frame (Ocean.jsx sweeps all plane verts each
-// frame). Precomputing is byte-identical (same values) and removes that per-vertex-per-frame garbage +
-// redundant trig from the hot loop. Index-based iteration also avoids the per-wave array-destructure alloc.
+const _dispersion = (wl) => Math.sqrt(GRAVITY / ((Math.PI * 2) / wl)) * WAVE_TIME_SCALE;
+
+// [dirX, dirZ, wavelength, amplitude] -- speed is DERIVED, never typed.
+const _SPEC = [
+  [1.0, 0.18, 34.0, 0.75],
+  [0.82, -0.55, 21.0, 0.5],
+  [0.45, 0.95, 13.0, 0.32],
+  [-0.35, 0.9, 8.5, 0.2],
+  [0.95, -0.3, 5.5, 0.12],
+  [-0.7, -0.65, 3.5, 0.07]
+];
+
+/** [dirX, dirZ, wavelength, amplitude, speed] -- speed derived from the deep-water relation. */
+export const WAVES = _SPEC.map(([dx, dz, wl, amp]) => [dx, dz, wl, amp, _dispersion(wl)]);
+
+const _norm = (x, z) => {
+  const l = Math.hypot(x, z) || 1;
+  return [x / l, z / l];
+};
+
+// Per-wave derived constants, precomputed ONCE. gerstnerHeight/Normal/Displace run per-vertex per-frame
+// over the whole plane, so a fresh array or a re-derived wave number in that loop is pure garbage.
 const _WAVES_D = WAVES.map(([dx, dz, wl, amp, spd]) => {
   const [nx, nz] = _norm(dx, dz);
-  return { nx, nz, k: (Math.PI * 2) / wl, amp, spd };
+  const k = (Math.PI * 2) / wl;
+  return { nx, nz, k, amp, spd, wa: k * amp };
 });
+
+/**
+ * Full Gerstner vertex: where this parcel of water actually sits, horizontal displacement included.
+ * Returns world (x, y, z). The x/z shift is what sharpens the crests -- see note (1) above.
+ */
+export function gerstnerDisplace(x, z, time) {
+  let dx = 0;
+  let dz = 0;
+  let h = 0;
+  for (let i = 0; i < _WAVES_D.length; i++) {
+    const w = _WAVES_D[i];
+    const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
+    const c = Math.cos(phase);
+    dx += STEEPNESS * w.amp * w.nx * c;
+    dz += STEEPNESS * w.amp * w.nz * c;
+    h += w.amp * Math.sin(phase);
+  }
+  return { x: x + dx, y: SEA_LEVEL + h, z: z + dz };
+}
 
 export function gerstnerHeight(x, z, time) {
   let h = 0;
@@ -72,17 +126,27 @@ export function gerstnerHeight(x, z, time) {
   return SEA_LEVEL + h;
 }
 
-// Analytic normal from the partial derivatives of the summed height field (recomputed, not the flat
-// plane normal -- this is what makes Fresnel + glossy bands read off the REAL surface).
+/**
+ * Analytic normal of the DISPLACED surface -- this is what Fresnel, the glossy bands and the foam all
+ * read off, so it has to describe the surface that is actually drawn.
+ *
+ * It is NOT the height-field gradient. That form is only correct when the sample point does not move,
+ * and Gerstner moves it: the y term picks up a `1 - sum(Q*k*A*sin)` factor because the parcel is being
+ * dragged toward the crest as it rises. Keeping the old gradient here would have left the lighting
+ * reading a rounder surface than the one on screen -- subtly wrong everywhere and hardest to spot
+ * exactly where the new crests are sharpest.
+ */
 export function gerstnerNormal(x, z, time) {
-  let dHdx = 0, dHdz = 0;
+  let nx = 0;
+  let nz = 0;
+  let ny = 1;
   for (let i = 0; i < _WAVES_D.length; i++) {
     const w = _WAVES_D[i];
     const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
-    const c = w.amp * w.k * Math.cos(phase);
-    dHdx += c * w.nx;
-    dHdz += c * w.nz;
+    nx -= w.nx * w.wa * Math.cos(phase);
+    nz -= w.nz * w.wa * Math.cos(phase);
+    ny -= STEEPNESS * w.wa * Math.sin(phase);
   }
-  const len = Math.hypot(-dHdx, 1, -dHdz) || 1;
-  return [-dHdx / len, 1 / len, -dHdz / len];
+  const len = Math.hypot(nx, ny, nz) || 1;
+  return [nx / len, ny / len, nz / len];
 }
