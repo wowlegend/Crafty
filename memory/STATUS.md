@@ -1267,7 +1267,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   refactor; the zh-CN content pass itself stays Kevin's go/no-go.
 
 ### G. Harness / docs
-- ▣✓ `d5f0e2c` **[LOOP] NAME THE ENFORCER for dead-copy classification — DONE 2026-08-08.** `src/i18n/keyReachability.js` is the pure classifier (literal / dynamic / table / fixture / dead) with all five near-misses as regression fixtures; `node frontend/scripts/ci/i18n-dead-keys.mjs` emits the dead set as a command; `tests/i18n/key-resolution.test.js` now gates on it instead of a bare `<= 10 unreachable` count. Measured at HEAD: 131 keys — 121 literal, 4 dynamic, 5 table, 1 fixture (`ui.level`, exactly as documented), **0 dead**. Original text below.
+- ▣✓ `2e2da50` **[LOOP] NAME THE ENFORCER for dead-copy classification — DONE 2026-08-08.** `src/i18n/keyReachability.js` is the pure classifier (literal / dynamic / table / fixture / dead) with all five near-misses as regression fixtures; `node frontend/scripts/ci/i18n-dead-keys.mjs` emits the dead set as a command; `tests/i18n/key-resolution.test.js` now gates on it instead of a bare `<= 10 unreachable` count. Measured at HEAD: 131 keys — 121 literal, 4 dynamic, 5 table, 1 fixture (`ui.level`, exactly as documented), **0 dead**. Original text below.
 - ▢ **[SUPERSEDED by the line above] NAME THE ENFORCER for dead-copy classification — the analysis that authorized a delete was
   ungated.** Every gate here is RED-first + mutation-proven; the bash pipeline that decided which 22 lines of
   i18n copy to delete had no test, no mutation proof, no denominator guard. It was wrong FOUR times (regex
