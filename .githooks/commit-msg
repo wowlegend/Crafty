@@ -1,0 +1,21 @@
+#!/bin/sh
+# COMMIT-MSG — demand the mutation proof while the message is still open.
+#
+# The pre-push gate already refuses a commit that adds or rewrites a GATE without a `Mutation-Proof:`
+# trailer. But at push time the only fix is `git commit --amend`, which this project forbids for fix-ups,
+# so the check lands where you cannot cheaply obey it. Here the message has not been recorded yet.
+#
+# Same rule, one definition: the logic is imported from scripts/ci/mutation-proof-trailer.mjs, so this and
+# pre-push cannot drift apart.
+#
+# Not a replacement for pre-push — a local hook is skippable (--no-verify, a clone with no core.hooksPath),
+# so the push-time check remains the backstop.
+set -e
+
+# node may be absent in a GUI git client; never block a commit because of that.
+if ! command -v node >/dev/null 2>&1; then
+  echo "commit-msg: node not found — skipping the mutation-proof check (pre-push still enforces it)"
+  exit 0
+fi
+
+exec node "$(dirname "$0")/../frontend/scripts/ci/commit-msg-gate.mjs" "$1"
