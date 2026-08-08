@@ -650,6 +650,42 @@ backdrop). That would REVERSE a recorded design decision — the fixture is IN-W
 silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Surface
 it; do not just do it.
 
+**PASS 12 (2026-08-08) — THE THREE POSITIONS ARE NAMED CONSTANTS. THE PHYSICS BODY IS DETERMINISTIC NOW.
+THE VISUAL GROUP IS NOT — AND THAT IS THE LAST LINK.**
+
+**Every observed player position is now identified, not guessed** (`src/game/spawnPlacement.js`):
+| observed | constant | meaning |
+|---|---|---|
+| **100** | `PLAYER_SPAWN` | the RigidBody's DECLARED transform — the settle never ran |
+| **120** | `SPAWN_FREEZE_Y` | "hold in the sky until the world builds" |
+| **~53.2** | `spawnTargetY(groundY)` | settled on terrain — the INTENDED in-world state |
+
+**WHY IT RACED.** `capture.mjs` calls `enterCapture` at `:187`, BEFORE the world builds. The Player's
+spawn-settle (`Components.jsx:793-843`) lives BELOW the capture early-return in the same `useFrame`, so once
+capture mode is on the settle can NEVER finish — the body freezes at whatever stage it had reached.
+Counter-intuitively the LOADED machine settled and the fast one did not: a slow box takes longer to
+round-trip the `enterCapture` evaluate, giving the app more frames first.
+
+**SHIPPED:** test hook `settlePlayerToGround` runs the SAME pure decision the Player uses
+(`resolveSpawnGround` + `spawnTargetY`) on demand, and the harness calls it after `waitForStableTerrain`,
+bounded-retry, loud on failure. **It works: `player settled at y=53.2` on every run.**
+
+**⚠️ AND IT IS NOT ENOUGH — the last link, measured.** Two full runs after the settle: the beast framed at
+**y=120** in one and **y=100** in the other, neither at the settled 53.2. **`setTranslation` moves the
+PHYSICS body; the VISUAL group does not follow, because paused physics never syncs them** — the same
+desync that started this whole investigation, now biting the settle. `frameBeastReveal` correctly reads the
+VISUAL group (which is why the beast is always in frame), but that group sits at its declared 100, or 120
+when a sync happens to have occurred.
+
+▶ **NEXT — make the VISUAL transform deterministic, not just the physics body.** The RigidBody's own
+Object3D is the thing that must move (or be synced) under capture. Options to evaluate, cheapest first:
+(a) publish the RigidBody's Object3D the way `beastGroupRef` is published and set its position in the settle
+hook; (b) let rapier run ONE step at settle time so it syncs, then re-pause; (c) run the spawn-settle ABOVE
+the capture early-return so it completes normally under capture. **(c) is the most honest** — it makes the
+captured world the world the game actually produces — but it touches the frame loop, so gate it carefully
+and re-check every other baseline.
+**Do NOT re-litigate:** the beast is correctly framed in all of these runs; only the BACKDROP varies.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines

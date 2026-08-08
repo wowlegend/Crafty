@@ -212,6 +212,19 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('start'));
     await waitForStableTerrain(page);
     await delay(800);
+    // Place the player DETERMINISTICALLY before anything is shot. Without this the body freezes wherever
+    // its spawn-settle happened to be when `enterCapture` landed — 100 (never ran) / 120 (SPAWN_FREEZE_Y)
+    // / ~53 (settled) were all observed on the SAME code, and every position-dependent state inherited
+    // that. Retry a few times: the ground probe needs origin chunks, and the hook says so rather than
+    // guessing. Loud on failure — a silent skip here re-creates the exact class of bug this fixes.
+    let settledY = false;
+    for (let i = 0; i < 10 && settledY === false; i++) {
+      if (i) await delay(500);
+      settledY = await page.evaluate(() => window.__craftyTest.call('settlePlayerToGround'));
+    }
+    if (settledY === false) console.warn('WARN: settlePlayerToGround never resolved a ground -> player position is NON-DETERMINISTIC for this run');
+    else console.log(`player settled at y=${settledY} (deterministic)`);
+    await flushFrames(page, 4);
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
     await delay(1500);
     await page.screenshot({ path: resolve(OUT, 'explore-day.png') });

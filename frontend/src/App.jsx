@@ -41,6 +41,7 @@ import { useDayNightClock } from './game/useDayNightClock';
 import { isAnyPanelOpen } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 import { beastRevealCamera } from './game/beastRevealCamera.js';
+import { resolveSpawnGround, spawnTargetY } from './game/spawnPlacement.js';
 import { FEET_OFFSET } from './render/BeastAvatar.jsx';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
@@ -362,6 +363,41 @@ function GameApp({ experienceSystem }) {
       // yet (setBeastFormActive above triggers the mount, React has not run it), so its group does not
       // exist to measure. `frameBeastReveal` below re-derives the shot once it does.
       enterCaptureMode({ camera: beastRevealCamera(element, PLAYER_SPAWN) });
+    });
+
+    // Place the player DETERMINISTICALLY on the settled ground — the capture harness calls this once,
+    // after terrain is stable, before any state is shot.
+    //
+    // WHY. `enterCapture` runs BEFORE the world builds, and the Player's spawn-settle lives BELOW the
+    // capture early-return in its useFrame — so once capture mode is on, the settle can never finish. The
+    // body freezes at whichever stage it had reached, and which stage that is depends on how many frames
+    // slipped through before `enterCapture` landed. Measured 2026-08-08, all three observed:
+    //     100 = the declared RigidBody position (settle never ran)
+    //     120 = SPAWN_FREEZE_Y  ("hold in the sky until the world builds")
+    //    ~53 = spawnTargetY(groundY) (settled — the INTENDED in-world state)
+    // Counter-intuitively the SLOW machine settled and the fast one did not: a loaded box takes longer to
+    // round-trip the `enterCapture` evaluate, giving the app more frames first. That made every
+    // position-dependent state non-deterministic, and the four beast frames differed 44-56% between runs purely
+    // from the backdrop.
+    //
+    // This runs the SAME pure decision the Player uses (`resolveSpawnGround` + `spawnTargetY`), so it
+    // cannot drift from real spawn behaviour — it just runs it ON DEMAND instead of racing a frame loop.
+    registerTestHook('settlePlayerToGround', () => {
+      const store = useGameStore.getState();
+      const rb = store.playerRigidBodyRef?.current;
+      if (!rb) return false; // caller decides; a silent fallback here is what hid the original bug
+      let blockGroundY = null;
+      if (store.worldBlocks && store.worldBlocks.size > 0) {
+        for (let y = 150; y > 0; y--) if (store.worldBlocks.has(`0_${y}_0`)) { blockGroundY = y; break; }
+      }
+      const probeAvailable = !!store.getMobGroundLevel;
+      const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
+      const spawn = resolveSpawnGround(blockGroundY, physicsY, 0, probeAvailable);
+      if (spawn.retry || spawn.groundY == null) return false; // ground not resolvable yet — caller retries
+      const y = spawnTargetY(spawn.groundY);
+      rb.setTranslation({ x: 0, y, z: 0 }, true);
+      rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      return +y.toFixed(2);
     });
 
     // Re-frame the reveal from WHERE THE AVATAR ACTUALLY RENDERED. Must be called AFTER spawnBeastTransform
