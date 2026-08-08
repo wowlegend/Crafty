@@ -33,7 +33,7 @@ export function Ocean() {
   // Foam now rides its own attribute, the vertex colour is gone, and the diffuse survives — so the sea
   // takes the sun, the mood grade and the time of day like everything else in the world does.
   const mat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#12A6C4', roughness: 0.22, metalness: 0.0, flatShading: false,
+    color: '#10BCC6', roughness: 0.22, metalness: 0.0, flatShading: false,
     // A much smaller lift than before: it is a tropical shallow-water glow, no longer load-bearing for
     // the surface being visible at all.
     emissive: '#0E7E93', emissiveIntensity: 0.22,
@@ -98,7 +98,7 @@ export function Ocean() {
       `#include <dithering_fragment>
        vec3 V = normalize(vViewPosition);
        float fres = pow(1.0 - max(dot(normalize(geometryNormal), V), 0.0), 3.0);
-       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.45, 0.86, 0.92), fres * 0.38); // sky-teal Fresnel (kept light so the base teal reads)
+       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.45, 0.86, 0.92), fres * 0.20); // sky-teal Fresnel -- HALVED from 0.38: a surface-skimming camera sees almost the whole sheet at grazing incidence, where this term saturates and washed the sea to pale ice
        float band = smoothstep(0.90, 0.99, dot(normalize(geometryNormal), normalize(vec3(0.4,1.0,0.3))));
        gl_FragColor.rgb += vec3(0.16, 0.26, 0.27) * band; // glossy highlight band off the real normal (tighter + dimmer)
        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.99, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85); // crest + breaking-face foam`
