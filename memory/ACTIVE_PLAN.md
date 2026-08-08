@@ -63,6 +63,29 @@ so a chunk landing in *that* gap is unguarded. `capture.mjs` has **31 individual
 and no shared helper.** Fix = a `shot(name)` wrapper that runs the stability check immediately before each
 frame is written, then re-measure, then re-baseline S9 in one commit.
 
+**CAPTURE DETERMINISM — the one open item. Two hypotheses tested, one confirmed, one dead.**
+Measured three times on quiet boxes (load 11, 11, 2.7), same protocol, menu.png run-to-run:
+`0.984%` -> `0.359%` (dpr pinned, `46fdeb9`) -> `0.557%` (frameloop=always, REFUTED and reverted at
+`099c803`). Bar is **< 0.15%** and has NOT been moved.
+· **CONFIRMED + KEPT:** `dpr={[1,2]}` is an adaptive RANGE; a different ratio between runs
+  re-antialiases every edge. Pinned under capture in TitleDiorama + MascotStudio. Real 2.7x.
+· **DEAD:** `frameloop='demand'` is NOT the cause — `always` did not fix it. Do not retry without a
+  new reason.
+· **HONEST LIMIT:** 0.984 / 0.359 / 0.557 means the METRIC is noisy at this magnitude; a single A/B
+  cannot rank two options here. Treat one-round deltas as weak evidence.
+
+**NEXT — the discriminator, not another tweak** (two consecutive failures on this frame; the pivot
+rule applies). Shoot `menu` 2-3 times from ONE page/process:
+· they DIFFER -> FRAME-level nondeterminism (swiftshader AA). Not fixable in app code; the honest
+  response is an explicit per-frame tolerance, re-derived and justified in its own commit — never a
+  quiet relaxation of the bar.
+· they are IDENTICAL -> CROSS-RUN state; search the lazy/Suspense mount.
+The probe must live under `frontend/` — one in `/private/tmp` fails `ERR_MODULE_NOT_FOUND`.
+
+**BASELINES STILL FROZEN**, and genuinely owed: `ocean-coast` is **8.332%** against them, over the 6%
+gate. They trail S9 lighting, S9b foliage normal, grass colour B and the whole ocean rewrite. ONE
+re-baseline covers all of it, the moment determinism holds.
+
 **S9b LANDED (`01e8156`) — the backlit grass is FIXED.** Tuft:ground dark skew 4.11:1 -> 2.60:1 and the
 dark-holes look is gone. Cause was NOT the yaw: with `side: DoubleSide` three rebuilds the normal per
 FRAGMENT from `gl_FrontFacing`, so the lit face follows the RASTERIZER, and the explore sun sits behind the
