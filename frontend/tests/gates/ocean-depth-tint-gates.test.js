@@ -27,6 +27,11 @@ describe('Ocean voxel-water render path is retired (W2-T2)', () => {
   });
   it('Ocean.jsx is the surviving water surface owner', () => {
     const ocean = read('render/Ocean.jsx');
-    expect(ocean).toMatch(/gerstnerHeight/);
+    // Re-anchored 2026-08-08: this asserted /gerstnerHeight/, which the real-Gerstner rewrite left
+    // present only in a COMMENT once the surface moved to gerstnerDisplace -- gate-shape caught that the
+    // assertion had gone vacuous, which is the whole reason that checker exists. Anchored to the IMPORT
+    // SPECIFIER and the CALL, so deleting the code cannot leave it green.
+    expect(ocean).toMatch(/import \{[^}]*\bgerstnerDisplace\b[^}]*\} from '\.\.\/world\/oceanProfile\.js'/);
+    expect(ocean).toMatch(/gerstnerDisplace\(wx, wz, t\)/);
   });
 });
