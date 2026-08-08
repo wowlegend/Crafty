@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assertBrowserProducesFrames } from '../../scripts/visual/capture.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // THE PREFLIGHT THAT TURNS A THREE-MINUTE SILENCE INTO A NAMED CAUSE.
 //
@@ -35,5 +40,34 @@ describe('capture preflight — browser frame production', () => {
 
   it('passes on a healthy frame rate', async () => {
     await expect(assertBrowserProducesFrames(stubPage(72))).resolves.toBe(72);
+  });
+});
+
+// Added 2026-08-08 with the shot() wrapper. The stability check that makes the visual gate
+// deterministic used to live in waitForStableTerrain, but every state then moves the camera and sleeps
+// before its screenshot -- and a chunk landing in THAT gap was unguarded, which is where explore-day's
+// residual 0.201% self-diff came from. The fix only holds if EVERY frame goes through the one door, and
+// there were 27 call sites and no helper. This asserts the door stays the only way through.
+describe('capture: every gated frame goes through shot(), which waits for a stable frame', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+
+  it('has exactly one bare page.screenshot, and it is inside shot()', () => {
+    const bare = cap.match(/await page\.screenshot\(/g) || [];
+    expect(bare).toHaveLength(1);
+    // ...and it sits within the shot() body, not loose in main()
+    const shotIdx = cap.indexOf('async function shot(page, name)');
+    const bareIdx = cap.indexOf('await page.screenshot(');
+    expect(shotIdx).toBeGreaterThan(-1);
+    expect(bareIdx).toBeGreaterThan(shotIdx);
+    expect(bareIdx - shotIdx).toBeLessThan(400);
+  });
+
+  it('shot() actually waits on the frame before writing it', () => {
+    expect(cap).toMatch(/async function shot\(page, name\)[\s\S]{0,300}await waitForStableFrame\(/);
+  });
+
+  it('the states are captured through it -- with the denominator asserted, not assumed', () => {
+    const routed = cap.match(/await shot\(page, /g) || [];
+    expect(routed.length).toBeGreaterThanOrEqual(26);
   });
 });

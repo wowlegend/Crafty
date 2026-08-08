@@ -115,6 +115,27 @@ async function waitForServer(url, tries = 60) {
 // against the sky can still differ run-to-run (~0.4% self-diff). We therefore require a
 // LONGER count-stable streak (stableFor=6) and then WAIT ON THE FRAME ITSELF (below).
 
+/**
+ * Take a gated frame — but only once the frame has actually stopped changing.
+ *
+ * WHY EVERY SHOT AND NOT JUST AFTER THE TERRAIN WAIT. `c472533` replaced a fixed `delay(2500)` with a
+ * condition and took `explore-day`'s run-to-run self-diff from 1.646% to 0.083%. A RESIDUAL stayed at
+ * 0.201% after S9, above the < 0.15% that slice's plan set, and cropping the diff found the same
+ * mechanism one layer down: run 1 carried a distant tree canopy run 2 lacked. The stability check lived
+ * inside `waitForStableTerrain`, but every state then moves the camera and sleeps ~900ms before its
+ * screenshot — and a chunk landing in THAT gap is unguarded. The wait was in the right shape and the
+ * wrong place.
+ *
+ * There were 27 individual `page.screenshot` call sites (producing 31 gated frames -- two of them loop
+ * over the elements) and no shared helper, which is why the guard could
+ * be in the file and still not cover the moment that matters. One door now, so a new state cannot be
+ * added that silently skips it (asserted by tests/scripts/capture-preflight.test.js).
+ */
+async function shot(page, name) {
+  await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
+  await page.screenshot({ path: resolve(OUT, name) });
+}
+
 async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max = 60, settle = 2500 } = {}) {
   let last = -1;
   let stable = 0;
@@ -204,7 +225,7 @@ async function main() {
     if (menuMascotOk) {
       await flushFrames(page, 10);
       await delay(900);
-      await page.screenshot({ path: resolve(OUT, 'menu.png') });
+      await shot(page, 'menu.png');
       console.log('captured menu');
     }
 
@@ -238,7 +259,7 @@ async function main() {
     await flushFrames(page, 4);
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
     await delay(1500);
-    await page.screenshot({ path: resolve(OUT, 'explore-day.png') });
+    await shot(page, 'explore-day.png');
     console.log('captured explore-day');
 
     // hearth: the World-M1 Home Anchor (the crafted origin plinth + lodge + brazier). The
@@ -249,7 +270,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [13, 81, 13], lookAt: [0, 51, 0] } }));
     await flushFrames(page, 10);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'hearth.png') });
+    await shot(page, 'hearth.png');
     console.log('captured hearth');
 
     // biome-snow: the World-M4a snow PINES. A solid snowfield sits ~40 blocks toward -z from origin
@@ -258,7 +279,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [20, 82, -20], lookAt: [0, 54, -40] } }));
     await flushFrames(page, 10);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'biome-snow.png') });
+    await shot(page, 'biome-snow.png');
     console.log('captured biome-snow');
 
     // ocean-depth: the World-M5a water depth-tint. The tint shades water by world-Y, so it's
@@ -271,7 +292,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-100, 26, 20], lookAt: [-128, 10, -10] } }));
     await flushFrames(page, 10);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'ocean-depth.png') });
+    await shot(page, 'ocean-depth.png');
     console.log('captured ocean-depth');
 
     // ocean-coast: pixel-gates the ocean S1-S3 SURFACE work (shore FOAM + the shallow-teal -> deep-navy
@@ -283,7 +304,7 @@ async function main() {
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 10);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'ocean-coast.png') });
+    await shot(page, 'ocean-coast.png');
     console.log('captured ocean-coast');
 
     // landmark: the World-M6 signature silhouettes. Probed nearest LAND landmark = a Sky-arch at
@@ -293,7 +314,7 @@ async function main() {
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 10);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'landmark.png') });
+    await shot(page, 'landmark.png');
     console.log('captured landmark');
     // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
@@ -307,7 +328,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: true }));
     await flushFrames(page, 8);
     await delay(400);
-    await page.screenshot({ path: resolve(OUT, 'mobile.png') });
+    await shot(page, 'mobile.png');
     console.log('captured mobile');
     await page.setViewport({ width: 1280, height: 800 });
     await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: false, camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
@@ -330,7 +351,7 @@ async function main() {
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 8);
     await delay(800);
-    await page.screenshot({ path: resolve(OUT, 'explore-day-med.png') });
+    await shot(page, 'explore-day-med.png');
     console.log('captured explore-day-med');
 
     // explore-day-low: renderDistance 2 (cullDist 4), godRays OFF, shadowMap 512, sparse motes.
@@ -338,7 +359,7 @@ async function main() {
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 8);
     await delay(800);
-    await page.screenshot({ path: resolve(OUT, 'explore-day-low.png') });
+    await shot(page, 'explore-day-low.png');
     console.log('captured explore-day-low');
 
     // explore-night-low: the low tier under the dusk/night lighting -- proves the tier levers
@@ -347,7 +368,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.0));
     await delay(2500);
     await flushFrames(page, 8);
-    await page.screenshot({ path: resolve(OUT, 'explore-night-low.png') });
+    await shot(page, 'explore-night-low.png');
     console.log('captured explore-night-low');
 
     // RESTORE the forced `high` tier + midday + re-settle the full (re-streamed) chunk set so the
@@ -366,14 +387,14 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.0));
     await delay(2500);
     await flushFrames(page, 8);
-    await page.screenshot({ path: resolve(OUT, 'explore-night.png') });
+    await shot(page, 'explore-night.png');
     console.log('captured explore-night');
 
     // boss-obsidian: the obsidian danger mood (spec §4 Tier 2 — boss). <Atmosphere>
     // snaps the mood in capture mode, so the frame settles within the delay.
     await page.evaluate(() => window.__craftyTest.call('setDangerLevel', 2));
     await delay(1500);
-    await page.screenshot({ path: resolve(OUT, 'boss-obsidian.png') });
+    await shot(page, 'boss-obsidian.png');
     console.log('captured boss-obsidian');
 
     // loot-showcase (S2-A-M4b / closes the M3c eyeball gap): FOUR loot drops (one per rarity) in a
@@ -391,7 +412,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('lootShowcase'));
     await flushFrames(page, 8);
     await delay(1200); // drops inject into the frozen world + settle into their pinned pose
-    await page.screenshot({ path: resolve(OUT, 'loot-showcase.png') });
+    await shot(page, 'loot-showcase.png');
     console.log('captured loot-showcase');
 
     // mob-bestiary (mob-distinctness milestone): the featured mob types in a studio row, the
@@ -400,7 +421,7 @@ async function main() {
     captureStage = 'mob-bestiary';
     await page.evaluate(() => window.__craftyTest.call('mobBestiary'));
     await delay(1800); // mobs mount + spawn-pop settles + the capture freeze pins the pose
-    await page.screenshot({ path: resolve(OUT, 'mob-bestiary.png') });
+    await shot(page, 'mob-bestiary.png');
     console.log('captured mob-bestiary');
 
     // character-closeup: deterministic single-zombie + chest close-up that gates the
@@ -408,7 +429,7 @@ async function main() {
     captureStage = 'character-closeup';
     await page.evaluate(() => window.__craftyTest.call('spawnCharacterCloseup'));
     await delay(1800); // mob mounts + spawn-pop settles + mood/lighting lerp completes
-    await page.screenshot({ path: resolve(OUT, 'character-closeup.png') });
+    await shot(page, 'character-closeup.png');
     console.log('captured character-closeup');
 
     // boss-closeup: deterministic frozen Shadow Dragon close-up that gates the boss
@@ -417,7 +438,7 @@ async function main() {
     captureStage = 'boss-closeup';
     await page.evaluate(() => window.__craftyTest.call('spawnBossCloseup'));
     await delay(1800); // boss mounts + freezes + mood/lighting lerp completes
-    await page.screenshot({ path: resolve(OUT, 'boss-closeup.png') });
+    await shot(page, 'boss-closeup.png');
     console.log('captured boss-closeup');
 
     // spell-cast (S1-D-M2): a deterministic FROZEN fireball cast in the sky studio that
@@ -429,7 +450,7 @@ async function main() {
     await page.evaluate(() => window.__craftyTest.call('spawnSpellCast'));
     await flushFrames(page, 8);
     await delay(1200); // cast injects + telegraph/projectile/sparks settle into the frozen pose
-    await page.screenshot({ path: resolve(OUT, 'spell-cast.png') });
+    await shot(page, 'spell-cast.png');
     console.log('captured spell-cast');
 
     // v7-S3.5a: the OTHER 3 elements each get their own frozen cast frame so the per-element
@@ -441,7 +462,7 @@ async function main() {
       await page.evaluate((s) => window.__craftyTest.call('spawnSpellCast', s), el);
       await flushFrames(page, 8);
       await delay(1200);
-      await page.screenshot({ path: resolve(OUT, `spell-${el}.png`) });
+      await shot(page, `spell-${el}.png`);
       console.log(`captured spell-${el}`);
     }
 
@@ -477,7 +498,7 @@ async function main() {
         minOnScreen: 4,
       }).catch((e) => { beastOk = false; subjectFailures.push(String(e.message).split('\n')[0]); console.warn(`WARN: ${e.message}`); });
       if (!beastOk) { console.warn(`  -> SKIPPING beast-${el}.png (kept last-good) and continuing`); continue; }
-      await page.screenshot({ path: resolve(OUT, `beast-${el}.png`) });
+      await shot(page, `beast-${el}.png`);
       console.log(`captured beast-${el}`);
     }
 
@@ -488,7 +509,7 @@ async function main() {
     await page.waitForFunction(() => !!document.querySelector('[data-testid="showcase-root"]'), { timeout: 8000 });
     await page.evaluate(() => document.fonts.ready);
     await delay(700);
-    await page.screenshot({ path: resolve(OUT, 'primitives-showcase-en.png') });
+    await shot(page, 'primitives-showcase-en.png');
     console.log('captured primitives-showcase-en');
 
     // primitives-showcase (zh-CN): proves the i18n swap + lazy CJK render. Loading
@@ -497,7 +518,7 @@ async function main() {
     await page.waitForFunction(() => !!document.querySelector('[data-testid="showcase-root"]'), { timeout: 8000 });
     await page.evaluate(() => document.fonts.ready);
     await delay(1200);
-    await page.screenshot({ path: resolve(OUT, 'primitives-showcase-zh.png') });
+    await shot(page, 'primitives-showcase-zh.png');
     console.log('captured primitives-showcase-zh');
 
     // inventory-open: the migrated bold-flat Inventory modal over the world. The world
@@ -532,7 +553,7 @@ async function main() {
     // coins) is unaffected (it's not in the canvas). Restored after progression-open below.
     await page.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.style.visibility = 'hidden'; });
     await flushFrames(page, 2);
-    await page.screenshot({ path: resolve(OUT, 'inventory-open.png') });
+    await shot(page, 'inventory-open.png');
     console.log('captured inventory-open');
 
     // achievements-open: the migrated bold-flat Achievements panel over the world.
@@ -546,7 +567,7 @@ async function main() {
     await page.waitForFunction(() => !!document.querySelector('[data-testid="achievements-panel"]'), { timeout: 8000 });
     await flushFrames(page, 8);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'achievements-open.png') });
+    await shot(page, 'achievements-open.png');
     console.log('captured achievements-open');
 
     // progression-open (#51): the talents + Spell Mastery progression panel (the U key). The openModal
@@ -559,7 +580,7 @@ async function main() {
     await page.evaluate(() => { const p = document.querySelector('[data-testid="progression-panel"]'); const sc = p && p.closest('.overflow-y-auto'); if (sc) sc.scrollTop = sc.scrollHeight; });
     await flushFrames(page, 8);
     await delay(900);
-    await page.screenshot({ path: resolve(OUT, 'progression-open.png') });
+    await shot(page, 'progression-open.png');
     console.log('captured progression-open');
     // restore the 3D canvas for the subsequent world-dependent fixtures (title-mascot et al.).
     await page.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.style.visibility = 'visible'; });
@@ -585,7 +606,7 @@ async function main() {
       await page.waitForFunction(() => !!document.querySelector('[data-testid="mascot-studio"] canvas'), { timeout: 20000 });
       await flushFrames(page, 10);
       await delay(900);
-      await page.screenshot({ path: resolve(OUT, 'title-mascot.png') });
+      await shot(page, 'title-mascot.png');
       console.log('captured title-mascot');
     } catch (e) {
       console.warn(`WARN: title-mascot capture failed (${e && e.message || e}) -> skipping title-mascot.png (ungated), continuing to clean end`);
