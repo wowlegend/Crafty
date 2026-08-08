@@ -59,7 +59,7 @@
   - _fix:_ Derive age from git history, e.g. `git log -1 --format=%ct -- memory/STATUS.md`, so the signal is meaningful on a fresh checkout.
 - ▣✓ c41d693 **`frontend/src/EnhancedMagicSystem.jsx:43`** [low·KEVIN·src] applyBurnEffect's setInterval is never tracked or cleared on unmount — a burn active when the magic system unmounts keeps ticking damage into the global GameMethods.
   - _fix:_ Track active intervals in a ref (Set), clear them all in a useEffect cleanup on unmount; add id on creation, remove on self-clear.
-- ▢ **`frontend/src/OptimizedGrassSystem.jsx:96`** [low·KEVIN·src] Per-chunk ambient grass particles are positioned with no chunk world-offset, so every chunk's 8 particles cluster near world origin instead of over the chunk.
+- ▣✓ 869f71e **`frontend/src/OptimizedGrassSystem.jsx:96`** [low·KEVIN·src] Per-chunk ambient grass particles are positioned with no chunk world-offset, so every chunk's 8 particles cluster near world origin instead of over the chunk.
   - _fix:_ Add the chunk's world origin to the particle x/z (derive world offset from chunkX/chunkZ × CHUNK_SIZE, matching how blades use world-space grassTops), or move the particle instancedMesh under a group positioned at the chunk origin.
 - ▢ **`frontend/src/SoundManager.jsx:111`** [low·AUTO·src] stopSynthPad's deferred disconnect reads pad.filter / pad.lfoGain through the same ref object it nulls synchronously, so those two nodes are never actually disconnected (and a fast restart disconnects the NEW pad's nodes).
   - _fix:_ Capture the two nodes before the setTimeout, mirroring the sibling captures: `const filterToDisconnect = pad.filter; const lfoGainToDisconnect = pad.lfoGain;` and call disconnect on those locals inside the timeout.
@@ -137,7 +137,7 @@
   - _fix:_ detached spawn + `process.kill(-server.pid,'SIGKILL')` in the finally; hoist `let browser = null` and launch inside the try.
 - ▣✓ 75da3a2 **`frontend/scripts/visual/soulbind-eyes-probe.mjs:15`** [medium·AUTO·test] Non-detached vite + server.kill('SIGKILL') orphans the vite child; browser closed only on happy/fail branches, not the top-level catch.
   - _fix:_ detached spawn + `let browser = null` + finally-close + `process.kill(-server.pid,'SIGKILL')`.
-- ▢ **`frontend/scripts/visual/spawn-legibility-probe.mjs:13`** [medium·AUTO·test] Non-detached vite + server.kill('SIGKILL') orphans the vite child; browser closed only on the happy path, not the top-level catch. Uses port 4197 — the ad-hoc port CLAUDE.md names as the worst husk-minter.
+- ▣✓ f48546e **`frontend/scripts/visual/spawn-legibility-probe.mjs:13`** [medium·AUTO·test] Non-detached vite + server.kill('SIGKILL') orphans the vite child; browser closed only on the happy path, not the top-level catch. Uses port 4197 — the ad-hoc port CLAUDE.md names as the worst husk-minter. *(the orphan-vite defect is fixed via `_serve.mjs`; its fixed port 4197 is a SEPARATE open item, see the port cluster — not closed here.)*
   - _fix:_ detached spawn + `let browser = null` + finally-close + `process.kill(-server.pid,'SIGKILL')`.
 - ▣✓ f48546e **`frontend/scripts/visual/spell-elements-probe.mjs:26`** [medium·AUTO·test] Non-detached vite + server.kill('SIGKILL') orphans the vite child; browser closed only on the happy path, not the top-level catch.
   - _fix:_ detached spawn + `let browser = null` + finally-close + `process.kill(-server.pid,'SIGKILL')`.
@@ -229,7 +229,7 @@
   - _fix:_ Remove the unused `BLOCK_TYPE_KEYS` declaration (or export it if a consumer is intended).
 - ▣✓ b5be02f **`frontend/src/world/Terrain.jsx:641`** [low·AUTO·src] getMobGroundLevel does `hit.toi !== undefined ? hit.toi : hit.timeOfImpact`, but this file's own #72 fixes establish hit.toi is always undefined in this Rapier build.
   - _fix:_ Simplify to `return 255 - hit.timeOfImpact;`.
-- ▢ **`frontend/src/world/terrain.worker.js:891`** [low·AUTO·src] The `if (blockType === 9)` water-AO branch in the corner loop is unreachable: water (code 9) is never written into the mesh mask, so blockType is never 9 at this point.
+- ▢ **`frontend/src/world/mesher.js:220`** [low·AUTO·src] The `if (blockType === 9)` water-AO branch in the corner loop is unreachable: water (code 9) is never written into the mesh mask, so blockType is never 9 at this point. ⟵ **CITE CORRECTED 2026-08-08** (filed as `terrain.worker.js:891`; that file is 692 lines and the greedy mesher moved to `mesher.js` at `71c24ca`). Defect intact at the new home; stale comment clause at `mesher.js:208`.
   - _fix:_ Remove the `blockType === 9` guard (and the 'Water faces carry AO 3' clause in the comment), or add an assert documenting that water never reaches the mask.
 - ▢ **`frontend/src/world/terrain.worker.js:260`** [low·KEVIN·src] The cx+-1 neighbor loop in stampStructures never writes cross-chunk: a dungeon footprint (halfW=6, centered at chunk*16+8) always fits inside its own chunk, so only dcx==cx,dcz==cz can stamp.
   - _fix:_ Either drop the neighbor loop (stamp self-chunk only) for clarity/perf, or add a comment that it's defensive for future dungeons wider than one chunk (halfW>7).
@@ -237,7 +237,7 @@
   - _fix:_ Delete the two local consts (module-level ones suffice), or actually use them in getBlock/the sweep to replace the 16/256 magic numbers.
 - ▢ **`frontend/tests/world/heightAt.test.js:25`** [low·AUTO·test] Test declares helper `mk` then abandons it in favor of `baseAt`, leaving an unused declaration.
   - _fix:_ Delete the unused `mk` declaration; `baseAt` is the only helper the test body uses.
-- ▢ **`src/world/spellUpgrades.js:51`** [low·KEVIN·src] `statsFor` and `levelOf` are exported but never imported anywhere — they are used only internally within spellUpgrades.js.
+- ▢ **`frontend/src/world/spellUpgrades.js:48`** [low·KEVIN·src] `statsFor` and `levelOf` are exported but never imported anywhere — they are used only internally within spellUpgrades.js. ⟵ **CITE CORRECTED 2026-08-08** (filed as `:51`, now JSDoc for `requiredLevelForUpgrade`). Live: `levelOf` at :48, `statsFor` at :62.
   - _fix:_ Drop the `export` on `levelOf`/`statsFor` (keep them module-local), or add a test that pins them if they are meant as public pure API.
 
 ### comment-lie (34)
@@ -246,7 +246,7 @@
   - _fix:_ Slice the FarBeacon body and assert it includes 'isCaptureMode()' before the beam mesh (mirror shrine-marker-gates.test.js), or extract the capture-suppress decision so a behavioral test can mount FarBeacon under isCaptureMode()=true and assert null render.
 - ▣✓ d2684fd **`frontend/src/App.jsx:361`** [medium·AUTO·src] The 'Boss-render fixture … Shadow Dragon' comment block is stranded directly above the spawnBeastTransform hook, not the boss hook it describes.
   - _fix:_ Move the boss-fixture comment block (lines 361-364) down to immediately above registerTestHook('spawnBossCloseup', …) (line 387); leave only the WILDHEART comment (365-367) above spawnBeastTransform.
-- ▢ **`frontend/src/App.jsx:422`** [medium·AUTO·src] spawnSpellCast claims the closeup zombie 'CANNOT be cleared from a hook (same constraint boss-closeup documents)', but boss-closeup documents the OPPOSITE and clears mobs via ecs.remove.
+- ▣✓ d2684fd **`frontend/src/App.jsx:422`** [medium·AUTO·src] spawnSpellCast claims the closeup zombie 'CANNOT be cleared from a hook (same constraint boss-closeup documents)', but boss-closeup documents the OPPOSITE and clears mobs via ecs.remove.
   - _fix:_ Rewrite the spawnSpellCast comment (422-425) to drop the false 'CANNOT be cleared' claim; either add the same ecs.remove mob-clear the sibling fixtures use, or state 'staged far on +X so any stray mob falls off-frame'.
 - ▢ **`frontend/src/EnhancedMagicSystem.jsx:497`** [medium·AUTO·src] The trailing design comment cites two mutually-contradictory bloom thresholds (0.85 and 1.0), both wrong — the real composer luminanceThreshold is 0.65.
   - _fix:_ Reconcile both mentions to the actual value: '§3 bloom pass (luminanceThreshold 0.65)'.
@@ -339,9 +339,9 @@
   - _fix:_ Update to 'the three render primitives the mascot reuses' and drop 'all three directions' / reword to the single surviving Direction-B mascot.
 - ▣✓ 88010a9 **`frontend/src/render/pickupVfx.jsx:41`** [low·AUTO·src] Comment describes rarityBeam's return as '{ color, height, intensity }' but it actually returns five fields, two of which (auraRadius, auraOpacity) this component consumes.
   - _fix:_ Update the listed shape to '{ color, height, intensity, auraRadius, auraOpacity }' or drop the explicit field list.
-- ▢ **`frontend/src/ui/AspectHintToast.jsx:11`** [low·AUTO·src] Sibling capture-safety comments disagree on the baseline count (18 vs 20) and both are stale.
+- ▣✓ 88010a9 **`frontend/src/ui/AspectHintToast.jsx:11`** [low·AUTO·src] Sibling capture-safety comments disagree on the baseline count (18 vs 20) and both are stale.
   - _fix:_ Drop the hardcoded count from these comments (say 'the captured visual baselines') or update all four to the real number so they stop drifting independently.
-- ▢ **`frontend/src/ui/touchTray.js:5`** [low·AUTO·src] JSDoc cites `InputManager:117-120` and a `<TouchTray>` component, both stale — the actual toggles are at 119-122 and no `<TouchTray>` component exists.
+- ▣✓ 88010a9 **`frontend/src/ui/touchTray.js:5`** [low·AUTO·src] JSDoc cites `InputManager:117-120` and a `<TouchTray>` component, both stale — the actual toggles are at 119-122 and no `<TouchTray>` component exists.
   - _fix:_ Update the line reference to InputManager:119-122 (or drop the brittle line number) and rename `<TouchTray>` to `<TouchControls>`/`<TouchControlsSurface>`.
 - ▣✓ b5be02f **`frontend/src/world/Terrain.jsx:462`** [low·AUTO·src] FarBeacon comment states the Blight-Heart 'sits at ~1280 blocks', but the radius was pulled in to 1024 (~1025 blocks radial).
   - _fix:_ Update '~1280 blocks' to '~1025 blocks' (radius 1024).
@@ -427,7 +427,7 @@
 
 - ▣✓ a4845ca **`frontend/src/game/settingsPersist.test.js:89`** [medium·KEVIN·test] The hydrate-on-boot + persist-on-change glue in initSettingsPersistence is never exercised — the two tests only hit the two early-return no-op guards.
   - _fix:_ Seam extraction: add an injectable storage param — initSettingsPersistence(store, isCapture, storage = (typeof localStorage !== 'undefined' ? localStorage : null)) — used at both the loadSettings hydrate site and the saveSettings subscribe-write site (also update the App.jsx:685 call site or rely on the default). Then behavioral tests with a fake store {getState/setState/subscribe} + the existing fakeStorage: (a) boot hydrates the sanitized stored blob; (b) a dial change writes sanitized; (c) an unchanged dial does NOT write (sameSettings dedup); (d) the returned cleanup unsubscribes.
-- ▢ **`frontend/src/game/worldSaves.test.js:3`** [medium·AUTO·test] mintWorldId() — the collision-avoidance fn the module says 'this whole slice exists to kill' — is never imported or tested, and every guarded failure path (quota, corrupt-JSON, delete-active) is untested.
+- ▣✓ 4b06940 **`frontend/src/game/worldSaves.test.js:3`** [medium·AUTO·test] mintWorldId() — the collision-avoidance fn the module says 'this whole slice exists to kill' — is never imported or tested, and every guarded failure path (quota, corrupt-JSON, delete-active) is untested. *(`mintWorldId` + the quota path are behavioural now. The corrupt-JSON catches and the delete-active branch remain uncovered — that is a NEW, smaller coverage-gap, deliberately NOT folded into this closure.)*
   - _fix:_ Import mintWorldId and add: (1) freeze Date.now, seed index/blob with the base id, assert next mint gets `_2` then `_3`; (2) monkeypatch localStorage.setItem to throw, assert writeWorld returns false AND listWorlds() stays empty (no dangling index); (3) seed a corrupt blob, assert readWorld returns null (not a throw); (4) setActiveWorldId('local_1'); writeWorld+deleteWorld('local_1'); assert getActiveWorldId() is null.
 - ▣✓ a4845ca **`frontend/src/input/pointerLook.test.js:2`** [medium·AUTO·test] attachPointerLook() — the lenient pointer-lock gate the module exists to replace drei's silently-broken PLC — has ZERO behavioral tests; only the pure applyMouseLook math is covered.
   - _fix:_ Add a @vitest-environment jsdom block: stub document.pointerLockElement truthy, dispatch mousemove with movementX/Y, assert camera.rotation changed; set it falsy, dispatch again, assert NO rotation (the lock gate); assert getSensitivity() is re-read each move; call the returned cleanup and assert a later mousemove is ignored; assert attachPointerLook({}) returns a no-op fn when camera is absent.
@@ -472,7 +472,7 @@
   - _fix:_ Add `e.position &&` to the filter predicate: `(e) => canPlayerDamage(e) && e.position && isPointInCone(...)`, matching nearestDamageable's defensive guard.
 - ▣✓ d539b0b **`frontend/src/ui/GamePanels.jsx:95`** [low·KEVIN·src] GearInspector fallback description mislabels non-cooked consumables (raw meats, XP tokens) as building material, contradicting the fact that the same tile shows a working 'Use' consume button.
   - _fix:_ Drive the fallback desc off the consumables registry (e.g. `if (isConsumable(itemName)) desc = 'Consumable: ...'`) instead of a hardcoded two-item food list.
-- ▢ **`frontend/src/ui/touchTray.js:10`** [low·KEVIN·src] Touch-tray labels are hardcoded English, bypassing the i18n `t()` layer that GamePanels uses — untranslated for zh-CN.
+- ▢ **`frontend/src/ui/TouchControls.jsx:206`** [low·KEVIN·src] Touch-tray labels are hardcoded English, bypassing the i18n `t()` layer that GamePanels uses — untranslated for zh-CN. ⟵ **CITE CORRECTED 2026-08-08** — the filed line in `touchTray.js` WAS fixed (`labelKey` added at `d539b0b`); the untranslated fallback now lives here (`aria-label={p.label}`).
   - _fix:_ Store an i18n key (e.g. `labelKey: 'ui.inventory'`) instead of a literal, and resolve via `t()` at the consumer, so the touch tray aria-labels localize like the desktop panels.
 - ▢ **`frontend/tests/data/loot-characterization.test.js:94`** [low·AUTO·test] This file embeds literal emoji as test fixtures while sibling items.test.js deliberately uses \u{...} escapes to stay emoji-free per the same M3 emoji-hygiene rationale.
   - _fix:_ For consistency with items.test.js, hoist/import a shared codepoint map (E) and build the emoji-prefixed fixtures via \u escapes; behaviour-preserving. Or, if literal emoji in tests is accepted, drop the emoji-free scaffolding in items.test.js so the convention is uniform.
@@ -491,7 +491,7 @@
   - _fix:_ Delete the inner `const store = useGameStore.getState();` at line 110 and reuse the outer `store`.
 - ▣✓ d539b0b **`frontend/src/utils/combat.js:30`** [low·AUTO·src] Redundant outer Math.round in solveSpellDamage's non-crit branch — finalDmg is already rounded at line 20.
   - _fix:_ Rewrite as `damage: isCrit ? Math.round(finalDmg * 1.8) : finalDmg,` — behaviorally identical, all existing tests still pass.
-- ▢ **`frontend/src/workers/ai.worker.js:81`** [low·KEVIN·src] A* uses a Manhattan heuristic while movement allows diagonal moves at cost 1.414, making the heuristic inadmissible (it overestimates diagonal distance), which can yield slightly suboptimal paths.
+- ▢ **`frontend/src/workers/ai.worker.js:96`** [low·KEVIN·src] A* uses a Manhattan heuristic while movement allows diagonal moves at cost 1.414, making the heuristic inadmissible (it overestimates diagonal distance), which can yield slightly suboptimal paths. ⟵ **CITE CORRECTED 2026-08-08** (filed as `:81`, now a plain neighbour coord). Live `stepCost` at :96, 8-way neighbours at :74-77.
   - _fix:_ Use an octile/Chebyshev-consistent heuristic, e.g. h = (dx+dz) + (1.414-2)*min(dx,dz) with dx=|nx-endX|, dz=|nz-endZ|, to keep it admissible for diagonal movement. Impact is minor on a 9x9 grid where only the next node is used, so this is a correctness/clarity nicety, not a hot-path fix.
 - ▣✓ d539b0b **`src/world/proceduralTextures.js:147`** [low·AUTO·src] The constant `ORES` array (4 objects) is re-allocated inside the per-pixel double loop, so it is rebuilt 1024 times during texture generation instead of once.
   - _fix:_ Hoist the `ORES` array declaration above the `for (y)`/`for (x)` loops (module scope or top of the function).
