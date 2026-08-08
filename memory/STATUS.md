@@ -426,10 +426,64 @@ chunk offset), then S7-S15.
   into a blind harness would produce a green push and an unverifiable result.
   **Unblocks when §B-race does.** Then: implement, capture, and LOOK at a face with strong AO contrast.
 
-### B-race. ⛔ THE VISUAL HARNESS IS NON-DETERMINISTIC — found 2026-08-05 by running a CONTROL
+### B-race. ✅ RESOLVED 2026-08-08 (pass 6) — THE HARNESS IS DETERMINISTIC. THE BEAST FIXTURE IS BROKEN.
 
-**The owed re-baseline is BLOCKED on this.** You cannot freeze a baseline for a state that renders a
-different scene each run.
+> **⚠️ EVERYTHING BELOW THIS BLOCK IS THE 2026-08-05 INVESTIGATION AND ITS PREMISE IS SUPERSEDED.**
+> Kept because passes 1-5 are a record of how the wrong conclusion was reached five times. Read the header
+> as: *the "non-determinism" was never the disease.*
+
+**PASS 6 (2026-08-08) — ran the prescribed experiment: FULL capture twice, identical code, every frame
+diffed between runs.** Result: **0 of 31 frames differ by more than 1%.** Worst is `explore-night` at
+**0.08%**; the four `beast-*` frames are **0.00%**. The 2026-08-05 reading — *"15 of 31 differ, beast-* by
+69-72%"* — **does not reproduce.**
+
+- **The load/environment hypothesis is DISCONFIRMED, and it was mine.** I predicted the variance was
+  machine-load-driven (the box was at load 22.49, `AGENTS.md` says the capture harness is load-sensitive,
+  and the compositor is intermittent). Run B executed at load **18.06** — high — and still produced 0.00%.
+  High load does not produce the variance. Recorded because it was the stated reason for running this.
+- **Compositor ALIVE** at 62-65 rAF/1.2s across three separate checks. Also intermittent-by-history, so
+  re-check it, but it did not gate this work.
+
+**WHAT IS ACTUALLY WRONG — and 0.00% is what exposed it.** Determinism is not correctness: the two runs
+agree because they are consistently producing the SAME WRONG FRAME. **Open `beast-fire.png`: it is a
+distant snow mountain against an orange sky, with no beast anywhere.** The committed BASELINE is the same
+beast-less mountain. So the visual gate has been comparing one empty mountain against another and passing
+— **4 of 31 gated states assert nothing about the subject they are named for.** This is the project's own
+vacuous-gate defect, in the visual harness.
+
+**ROOT CAUSE, measured in the REAL capture sequence (not a shortcut — that was pass 2's error).**
+Instrumented the beast stage in place and read the state at hook-fire time, all four elements identical:
+
+```
+[DBG-B6] fire: rbPresent=true t={"x":0,"y":100,"z":0} beastFormActive=true studio=false
+```
+
+- `rbPresent=true`, so the silent `{x:0,y:55,z:0}` fallback at `App.jsx:353` **never fires** — that
+  candidate is dead too.
+- The player rigid body is at **(0, 100, 0) — the spawn position** (`Components.jsx:1304`), never fallen.
+- `GameScene.jsx:231` is `<Physics gravity={[0,-30,0]} paused={isCaptureMode}>` — **physics is frozen in
+  capture mode BY DESIGN, for determinism.** So the player can NEVER settle during a capture.
+- `spawnBeastTransform` (`App.jsx:352-361`) is the **only** fixture that frames its camera relative to the
+  player's physics position. Its comment says *"Player is settled on terrain by now."* That is not stale —
+  it is **structurally impossible**. The camera is therefore placed ~101 units above the world origin,
+  looking at empty sky with the terrain far below. That is exactly the frame.
+- Corroboration: the four beast baselines differ from each other by only 5.6-6.4%, and lightning-vs-arcane
+  by **0.06%** — precisely what the per-element `CAMS` offsets predict (their entries differ by 0.1 in y
+  alone). So the camera IS applied per element; it is applied around a point where there is nothing.
+
+**⚠️ DO NOT "FIX" THIS BY WAITING FOR THE PLAYER TO SETTLE — it would hang forever.** Physics is paused
+deliberately. The fix must make the fixture independent of the frozen body: position the beast + camera at
+a known deterministic point, or drive the fixture from terrain height rather than `rb.translation()`.
+
+**STILL OPEN (stated, not inferred):** the camera looks at (0, 100.55, 0) from 3 units away, and the beast
+is player-attached, so it arguably SHOULD be in frame even at spawn altitude — yet nothing is visible.
+Whether the beast mesh fails to mount in capture mode, or mounts somewhere other than the rigid body, is
+**unresolved**. Do not assume; measure it before fixing.
+
+**WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
+**27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
+FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
+got there.
 
 Measured, not inferred: captured twice with **identical code**, diffed the two runs against each other.
 **15 of 31 frames differ**, and the four `beast-*` frames differ by **69–72%**.
