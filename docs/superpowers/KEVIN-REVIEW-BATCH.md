@@ -1045,3 +1045,36 @@ untouched and were always correct.
 That was wrong — I had reasoned from the land heightmap and never opened the ocean profile. Caught it
 before committing, but it is the same shape as the other near-misses this session: a confident claim
 resting on a branch I had not looked at.)*
+
+---
+
+## 2026-08-08 — S8 grass variation shipped. Two taste calls, and one number I want you to look at.
+
+`947748f`. Every blade in the world used to be the same 0.4x0.7 rectangle at the same yaw on the bare
+2m lattice, swaying in lockstep along the world diagonal. Now yaw, scale, sub-cell offset and a tint
+multiplier are all hashed from the world (x,z) — deterministic, so the capture gate still byte-compares.
+
+**The taste calls — both deferred to you, neither blocking:**
+
+1. **Blade silhouette.** The plan floats a 3-segment tapered curved blade. That forks the locked
+   bold-flat language (the code literally calls the flat quad "locked palette"), and it needs a baked
+   vertex gradient to look like anything. **I shipped variation on the existing flat quad and stopped
+   there** — look at the frames first, then decide whether the geometry is worth the exception. This is
+   reversible either way.
+2. **Grass colour is NOT in this commit, deliberately.** The tufts are `#4a7c59`, a blue-green, sitting
+   on ground whose base is `(86,124,53)`, a yellow-green — they do not read as the same plant. Fixing
+   that is S9, and S9 is where you get a 3-swatch ladder at `explore-day` + `explore-night` to pick
+   from. I kept S8's tint a **multiplier centred on 1.0** precisely so it does not spend that decision
+   early; the unit test asserts the channel means stay at 1.0.
+
+**The number.** In the ground-level probe, S8 did not just rearrange the tufts — it made **more of them
+visible**: 8,109 pixels got brighter against 1,542 darker over ~284k pixels of ground. That is the
+opposite of what the geometry predicts (spreading yaw over a half-turn should *shrink* mean projected
+width to about 2/pi of face-on). My leading explanation is that at a shared yaw on an exact 2m lattice,
+blades in the same depth column projected onto nearly the same screen pixels and hid behind each other,
+so the field was drawing ~50 tufts per chunk and showing a fraction of them. **I have not proven that**
+— it is a hypothesis with a measurement pointing at it, and I am flagging it rather than writing it into
+a doc as fact. If it holds, S8 fixed effective grass density, not just the look, and the density
+constant may want re-tuning downward afterward.
+
+If the field now reads too busy, that is the knob to turn and it is one number.

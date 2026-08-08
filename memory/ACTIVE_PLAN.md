@@ -17,19 +17,41 @@
 
 ---
 
-## 📍 THE CURSOR — 2026-08-08 (visual harness CLOSED; re-baseline DONE)
+## 📍 THE CURSOR — 2026-08-08 (S8 shipped; the harness's determinism claim was NARROWER than recorded)
 
-**Tree:** `main` clean, CI `success`. **§B-race is CLOSED (`2876903`)** — 31 baselines re-frozen, three runs
-at loads 5.5/25.9/14.7 all `y=52.2 via terrain-formula+hearth`, worst frame diff **0.045%**, 0 of 31 >1%.
-The four `beast-*` states contain their subjects for the first time; `assertSubjectOnScreen` refuses to
-write them if that ever stops.
+**Tree:** `main` at `947748f`, CI `success` observed at `b9fbcce`. **S8 grass variation is committed**
+(yaw / scale / sub-cell jitter / tint, all hashed from world x,z; 6 mutations proven red).
 
-**The visual harness is TRUSTWORTHY again — that is what unblocks everything below.**
+**⚠️ RE-READ BEFORE TRUSTING ANY VISUAL DIFF.** §B-race was closed at `2876903` as "the harness is
+TRUSTWORTHY", on three runs that agreed. That conclusion was **too broad**, and S8 falsified it within a
+day. Measured this session, same box, same two-run protocol:
+
+| | `explore-day` run-to-run self-diff |
+|---|---|
+| pre-S8 control | **0.075%** |
+| S8 | **1.646%** (22x) |
+
+The pixels that moved were the **distant treeline**, not the grass. S8 added a per-chunk `instanceColor`
+buffer and one shader permutation; that alone pushed the last mesh swaps past `capture.mjs`'s fixed
+`delay(2500)` settle. **So capture determinism was a property of (harness x code state), not of the
+harness** — it cannot be established once and carried forward, and it had been. Being under the 6% gate
+the whole time, the gate reported GREEN over it.
+
+Fix in flight: `waitForStableFrame` in `scripts/visual/_probe.mjs` replaces the fixed sleep with a
+condition (poll until the frame stops changing), with a blank-frame guard, a returned poll count, and a
+loud WARN on failure to settle — because a blank screenshot is perfectly stable and would be written as a
+baseline. 4 mutations proven red.
+
+**Baselines deliberately NOT re-frozen yet.** S8 vs committed baseline is worst 3.119%, 0 of 31 over the
+6% gate — so the tree is green and honest, and re-baselining a frame carrying 1.6% noise would freeze the
+noise. Re-baseline only once the frame-stability wait is verified to bring the self-diff back down.
 
 **NEXT UNIT:**
-1. **S8/S9 grass/terrain LOOK work** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — blocked for the whole
-   campaign on an unreliable instrument, now executable. Re-baseline per intended look change. **S4 stays
-   DEFERRED** (its AO flip is purely aesthetic and only the render can judge it).
+0. **Verify the frame-stability wait** (capture x2, self-diff must return toward ~0.1%), then re-baseline
+   and commit. Then **S9**.
+1. **S9 grass lighting** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — S8's prerequisite is now met.
+   S9 owes Kevin a 3-swatch colour ladder; S8's tint is a multiplier centred on 1.0 (asserted), so that
+   decision is still unspent. **S4 stays DEFERRED** (its AO flip is purely aesthetic).
 2. **HOLISTIC-REVIEW queue** — 127 done / 88 open (`aa4cfb4` triage). Every open finding carries a LIVE
    quote proving the defect; work from that, not the original text. Flip `▢`->`▣✓ <sha>` in the SAME commit.
 3. A2/A7 remainders (counts are commands not generated blocks; `AGENTS.md` + kernel untagged).

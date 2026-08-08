@@ -11,7 +11,18 @@
 > S5's framing implied the mask fill was load-bearing (it is fully redundant), and S4's flip condition
 > (see the STATUS note).
 >
-> **STATUS:** S1 `71c24ca` DONE - S3 `d676069` DONE - S5 `03c4297` DONE - S4 DEFERRED - S6 next.
+> **STATUS:** S1 `71c24ca` DONE - S3 `d676069` DONE - S5 `03c4297` DONE - S6 `869f71e` DONE -
+> S7 `34f11b0` DONE - S8 `947748f` DONE - S4 DEFERRED - **S9 next**.
+> This line read "S6 next" while S6 and S7 had both already shipped, which is the failure the whole
+> repo keeps paying for: a status sentence nobody recomputes. Read the shas, not the adjective.
+>
+> **S9 carries two things S8 deliberately did not spend.** (a) The grass COLOUR — S8's tint is a
+> multiplier centred on 1.0 (asserted), so the palette decision is still open and S9 owes Kevin a
+> 3-swatch ladder at `explore-day` + `explore-night`. (b) S8's ground-probe control measured
+> **8,109 pixels brighter to 1,542 darker**, i.e. per-instance variation made MORE tufts visible, not
+> fewer — the opposite of what spreading yaw predicts. If the leading explanation (self-occlusion at a
+> shared yaw on an exact lattice) holds, effective density rose and the `cap = 50` in
+> `world/grassField.js` may want re-tuning DOWN once S9's lighting lands. Hypothesis, not a finding.
 
 ---
 

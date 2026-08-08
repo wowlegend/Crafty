@@ -1,5 +1,87 @@
 # Changelog
 
+## 2026-08-08 — capture waited a fixed 2500ms for a thing it could have just watched (`c472533`, `0b18ffe`)
+
+S8 broke capture determinism, and the way it broke is worth more than the feature.
+
+`capture.mjs` polled the chunk COUNT until stable, then slept `delay(2500)` — carrying a comment that
+conceded the count was *"necessary but NOT sufficient"* because the last chunk meshes keep swapping in
+afterwards. That sleep was a timeout standing in for a condition, and it silently encoded an assumption
+about how long a frame costs. Adding one per-chunk `instanceColor` buffer and one shader permutation was
+enough to invalidate it:
+
+| `explore-day` run-to-run self-diff | |
+|---|---|
+| pre-S8 control | 0.075% |
+| S8 + the fixed sleep | **1.646%** (22x) |
+| S8 + `waitForStableFrame` | **0.083%** |
+
+Same box, same two-run protocol. **The control is the only reason this was attributed correctly**: the
+pixels that differed were the distant TREELINE, not the grass, so the first reading of the diff image was
+"pre-existing chunk streaming, not S8" — stated with some confidence, and wrong. Running the pre-S8
+control took ten minutes and reversed the conclusion.
+
+**The finding is not about grass.** Capture determinism was a property of *(harness x code state)*, not of
+the harness — so it could not be established once and carried forward. It had been: `STATUS.md` §B-race
+was closed on 2026-08-05 as "the harness is TRUSTWORTHY" on the strength of three agreeing runs. That was
+true of that code state. Three agreeing runs is still not determinism. And every bit of this sat under the
+6% threshold, so the visual gate reported GREEN over a frame carrying 1.6% of noise.
+
+The fix replaces the sleep with the condition it was proxying, and lives in `_probe.mjs` rather than
+`capture.mjs` per the meta-rule in `.claude/rules/gates-and-probes.md`: when an error class recurs despite
+being documented, put the fix in the shared instrument. It is also faster — a settled world exits after 3
+polls instead of always paying the worst case. Result: 22 of 31 frames byte-identical, worst 0.083%, and
+every state settled on the condition.
+
+**The guard that matters is the blank-frame check, not the comparator canary.** The first draft only
+proved `Buffer.equals` could see a flipped byte — defending a case that essentially cannot happen, while
+missing the one that can: if `screenshot()` starts returning an empty or failed frame, every comparison
+matches, the loop exits on its first look, and capture writes that frame as a baseline. A dead camera and
+a settled world read identically. The unit test written to confirm the canary worked is what exposed that
+it was aimed at the wrong target.
+
+## 2026-08-08 — S8: every blade in the world was the same rectangle at the same yaw (`947748f`)
+
+`OptimizedGrassSystem` set position and nothing else, so the whole field was one 0.4x0.7 quad repeated
+on the bare 2m lattice `grassField.js` emits, at a single shared yaw, swaying in lockstep — the shader
+phase was `x*0.5 + z*0.5`, which is constant along every x+z diagonal. New pure seam
+`src/game/grassVariation.js` hashes yaw, scale, sub-cell offset and a tint multiplier from the world
+(x,z): no RNG and no clock, so the capture gate still byte-compares.
+
+**Two defects in the spec, both found by reading three's source instead of trusting the cite.**
+
+*Scale un-anchors the blade.* The quad is centre-origin, so the fixed `+0.35` lift that stands it on the
+surface is correct only at scale 1. At 1.28 the blade sinks 10cm into opaque terrain; at 0.82 it floats
+7cm above the dirt it grows from. Neither throws and neither reds anything. So the seam returns the whole
+placement with the lift already scaled, and base-anchoring is the load-bearing unit test — the caller
+cannot forget what it is never asked to remember.
+
+*`instanceColor` multiplies.* `color_fragment` is `diffuseColor.rgb *= vColor`. The spec says "add
+`setColorAt()` hue jitter" beside a `#4a7c59` material, and the natural reading — `setColorAt(#4a7c59)` —
+**squares the base and renders the grass near-black**, while passing every gate here: the call is present,
+the flag is set, it compiles. The tint is a multiplier centred on 1.0 and the channel means are asserted,
+which also keeps S9's palette decision unspent.
+
+Related, and the reason the first two readings disagreed: the spec's "no `vertexColors` flag needed" is
+TRUE but not for the reason given. The ShaderChunks are asymmetric — `color_pars_fragment` declares
+`vColor` only under `USE_COLOR` — so read from the chunks alone the answer is "the tint is a no-op". It is
+`WebGLProgram.js:796`, in the *prefix*, that ORs `instancingColor` into the fragment-side define. Neither
+the spec's evidence nor the chunk sources settle it; only that line does.
+
+**What the frames showed, which no assertion could.** The 31 gated states cannot judge this at all — every
+diorama camera sits 20-30m above ground, where a 0.7m tuft is a few pixels, so a green visual gate there
+proves nothing about S8. The ground-level `grass-probe` is the only instrument with standing, and against
+a pre-S8 control it showed **8,109 pixels brighter to 1,542 darker** over ~284k pixels of ground: S8 did
+not merely rearrange the tufts, it made more of them *visible*. That is the opposite of what the geometry
+predicts, since spreading yaw over a half-turn should shrink mean projected width to about 2/pi of
+face-on. Leading explanation — **not proven, and flagged as a hypothesis rather than written down as
+fact** — is that at a shared yaw on an exact lattice, blades in the same depth column projected onto
+nearly the same pixels and hid behind one another. If it holds, the field was drawing ~50 tufts per chunk
+and showing a fraction of them, and the density constant wants re-tuning downward. Routed to Kevin.
+
+Blade silhouette (tapered 3-segment) deliberately NOT taken: it forks the locked bold-flat language.
+Grass colour stays S9's owner call.
+
 ## 2026-08-05 — ESC out of the pause menu froze the player to death (`8e68425`)
 
 Kevin, playing: *"whenever I press ESC to bring up the menus, and then press ESC to quit it, I'm unable to

@@ -426,7 +426,32 @@ chunk offset), then S7-S15.
   into a blind harness would produce a green push and an unverifiable result.
   **Unblocks when §B-race does.** Then: implement, capture, and LOOK at a face with strong AO contrast.
 
-### B-race. ✅ CLOSED 2026-08-08 (pass 17) — HARNESS DETERMINISTIC, BEAST FIXTURE FIXED, 31 BASELINES FROZEN.
+### B-race. ✅ CLOSED — but the closing claim was TOO BROAD, and S8 falsified it the next day.
+
+> **⚠️ AMENDED 2026-08-08 (`c472533`). Read this before trusting any visual diff.**
+> The block below closes B-race with "HARNESS DETERMINISTIC". **Determinism was never a property of the
+> harness.** It was a property of *(harness x the code state it was measured against)*, and this section
+> recorded it as if it were general. S8 (`947748f`) — one per-chunk `instanceColor` buffer and one shader
+> permutation — was enough to break it:
+>
+> | `explore-day` run-to-run self-diff | |
+> |---|---|
+> | pre-S8 control | 0.075% |
+> | S8, on the harness this section blessed | **1.646%** (22x) |
+> | S8, after `c472533` | **0.083%** |
+>
+> Root cause: `capture.mjs` polled the chunk COUNT and then slept a fixed `delay(2500)` for the mesh
+> swap-in it admitted the count could not see. A sleep encodes an assumption about frame cost that any
+> commit can invalidate. It is now a CONDITION — `waitForStableFrame` in `scripts/visual/_probe.mjs`
+> polls until the frame stops changing, refuses a blank frame, and WARNs loudly rather than
+> screenshotting anyway. Current state: worst **0.083%**, 0 of 31 above 1%, **22 of 31 byte-identical**,
+> zero never-stabilized warnings.
+>
+> **The lesson is the one the pass-13 note already carried, one level up.** "Three runs agreed" is not
+> determinism, in the same way one run is not. Determinism is a claim about a code state, so it expires
+> when the code does — **re-measure it on any commit that changes frame cost, and never inherit it from
+> this document.** Also note the whole 1.646% sat under the 6% gate: the visual gate reported GREEN
+> throughout.
 
 **THE RE-BASELINE IS DONE.** Three consecutive runs at loads ~5.5 / ~25.9 / ~14.7 all logged
 `player settled at y=52.2 via terrain-formula+hearth (physics + visual)` — same source, same value, three
