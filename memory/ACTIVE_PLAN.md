@@ -674,3 +674,25 @@ damage-lockout, camera-shake decays per-frame-not-per-second, **B4** mob-AI-2D�
 boss-persistence stays DEFERRED (needs lived/Kevin verification of the store-owns boss-state rewrite).
 **Then:** the campaign's next spine per STATUS — V1 gate-triage / V2·V3 input-driven E2E.
 
+**OCEAN DONE (`3ecf8c1`, `112b7ce`, `5a05f33`)** — Kevin: "more tropical and dynamic looking, its waves
+should be moving like real ocean." Three faults, none of them colour: (1) it was a SUM OF SINES named
+Gerstner — no horizontal displacement, so crests could never sharpen; (2) DISPERSION RAN BACKWARDS
+(6.5m chop at 1.15, 27m swell at 0.40) when deep water is `c = sqrt(g/k)` and long swell outruns chop —
+speed is now DERIVED from wavelength so a row edit cannot break it; (3) **the sea was not lit at all** —
+`vertexColors: true` with foam written as `(crest,crest,crest)` meant `diffuseColor.rgb *= vColor`
+multiplied the diffuse to BLACK away from crests, so only `emissive` reached the screen. That is why the
+old comment could claim it "reads vivid teal at ANY lighting angle". Foam moved to its own attribute.
+
+**NEXT UNIT — `d90a6b1`, the last genuinely-open row on the era page.** [LOOP]. Extend
+`tests/i18n/key-resolution.test.js` into a classifier reporting reachability by KIND (literal `t()` /
+bare key in a data table / dynamic prefix / TEST-FIXTURE-only / dead), with the four near-misses as
+regression fixtures, emitting the dead set as a COMMAND so the next deletion consumes that rather than a
+human's grep. It is the enforcer for the one place this repo skipped its own discipline: the bash
+pipeline that chose which 22 lines of copy to delete had no test, no mutation proof, no denominator
+guard, and was wrong four times.
+
+**STILL OWED: determinism re-measure + re-baseline.** `5055b30` routed all 27 screenshot call sites
+through one waiting door; the measurement has NOT run because the box has been at load 35-118 all
+session and a capture there measures the contention. Baselines remain frozen at the pre-S9 look and now
+also trail S9b, the grass colour and the whole ocean rewrite — ONE re-baseline covers all of it.
+
