@@ -31,7 +31,13 @@ is **DETERMINISTIC** (2 full captures, identical code: 0 of 31 frames differ >1%
 18). The 2026-08-05 "non-determinism" does not reproduce, and the load hypothesis was DISCONFIRMED.
 
 **▶ NEXT UNIT — the beast fixture is deterministically WRONG, and that is now the blocker:**
-1. **Fix `spawnBeastTransform` (`src/App.jsx:352-361`).** `beast-*.png` contains NO BEAST — a distant snow
+0. **⚠️ READ `memory/STATUS.md` §B-race PASS 7 FIRST.** The mount/camera explanations below are MEASURED
+   DEAD: the beast IS mounted (21 meshes within 0.64 units, visible), and the camera IS aimed at it (8.5°
+   off-axis, inside a 37.5° half-FOV). The body also MOVES during the stage (y=100 at hook-fire → y=120 at
+   screenshot), so "physics is paused so the player never leaves spawn" — which I wrote in pass 6 — is
+   WRONG. The live contradiction is that the scene state is correct at screenshot time and the PIXELS are a
+   mountain, which points at frame freshness, not geometry. **Do not re-litigate mount/camera/position.**
+1. **Fix `spawnBeastTransform` (`src/App.jsx:352-361`) — ONLY after the above is resolved.** `beast-*.png` contains NO BEAST — a distant snow
    mountain — in both runs AND in the committed baseline, so 4 of 31 gated states assert nothing about
    their subject. Measured cause: physics is `paused={isCaptureMode}` (`GameScene.jsx:231`) BY DESIGN, so
    the player never leaves spawn `(0,100,0)`; this is the ONLY fixture framing its camera off

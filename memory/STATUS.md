@@ -480,6 +480,35 @@ is player-attached, so it arguably SHOULD be in frame even at spawn altitude —
 Whether the beast mesh fails to mount in capture mode, or mounts somewhere other than the rigid body, is
 **unresolved**. Do not assume; measure it before fixing.
 
+**PASS 7 (2026-08-08) — FOUR MORE CANDIDATES KILLED, AND MY OWN PASS-6 EXPLANATION IS PARTLY WRONG.**
+All measured in the REAL capture sequence (instrumented in place, restored from a verified-clean cp-backup).
+
+- **The beast IS mounted, positioned and visible.** 21 meshes within **0.64 units** of the body at
+  worldY≈120 — `MeshToonMaterial` body parts plus `MeshBasicMaterial` glow spheres — several `visible:true`.
+  So "the mesh fails to mount" and "the mesh mounts somewhere else" are both DEAD.
+- **The camera is correctly placed AND correctly aimed.** pos `(1.7, 121.45, 2.8)`, rotation applied
+  (`-15.4°, 31.3°` — so the `lookAt` is NOT being dropped), **angle to the beast 8.5°** against a 37.5°
+  half-FOV, `beastInFrustum: true`, distance 3.4, near 0.1 / far 500. So "camera mis-aimed" is DEAD.
+- **⚠️ CORRECTION TO PASS 6:** I wrote that physics being `paused={isCaptureMode}` means "the player never
+  leaves spawn (0,100,0)". **That is wrong.** The body reads y=**100** at hook-fire and y=**120** one second
+  later at screenshot time — it is being driven upward (~20 units/s) during the stage. The camera tracks it
+  (121.45 = 120 + 1.45), so the two stay aligned, but the fixture is NOT static and the pause does NOT
+  freeze this body. The y=100 reading was real; the mechanism I attached to it was not.
+
+**SO THE CONTRADICTION IS NOW SHARP AND SMALL.** At screenshot time every piece of scene state is correct —
+beast present, visible, 3.4 units away, 8.5° off the camera axis, inside the frustum — **and the written PNG
+is a distant mountain.** The state and the pixels disagree. That points at the COMPOSITED FRAME not
+reflecting the state (a render-freshness problem, consistent with this repo's documented intermittent
+compositor), not at the fixture's geometry. **Do not re-litigate mount/camera/position — they are measured
+and correct.** Next: prove whether a fresh frame is composited after the state change (e.g. force rAF ticks
+and re-shoot, or compare against a shot taken after an additional flush), and only then design the fix.
+
+**METHOD NOTE — cost this bought.** Each probe is a ~6-minute full capture. Two runs were wasted: one to a
+`setInterval` that survived into a detached frame, one to two background jobs racing on the same file so a
+"clean" cp-backup captured the other job's instrumentation. **Instrument, run, and restore in ONE job, verify
+the backup is byte-identical to HEAD before trusting it, and never run two capture jobs at once (both bind
+port 4178).**
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
