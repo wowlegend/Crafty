@@ -22,7 +22,7 @@
 // orange; a brighter element rim re-asserts the cool hue (the grade only saturates, it doesn't hue-shift,
 // so a brighter cyan edge stays cyan). fire/arcane already read true (warm-on-warm / purple-on-orange),
 // so they stay at 1.0. The grade-resistant additive core/halo are unchanged.
-const ELEMENT_COLOR = {
+export const ELEMENT_COLOR = {
   fire:      { body: '#3A1206', glow: '#FF6A2C', core: '#FFE3C0', rim: 1.0 },
   ice:       { body: '#0E2233', glow: '#6FC8FF', core: '#DCF3FF', rim: 1.7 },
   lightning: { body: '#2A2408', glow: '#FFE066', core: '#FFFBDC', rim: 1.5 },

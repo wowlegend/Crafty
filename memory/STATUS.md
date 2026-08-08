@@ -573,6 +573,44 @@ and 120 in another). **Frame from the avatar's ACTUAL RENDERED WORLD POSITION** 
 `BeastAvatar` group (or the RigidBody's object3D) and read `getWorldPosition()` at hook time — then re-capture
 and OPEN THE IMAGE. Measure the group's world position first; do not assume it is `PLAYER_SPAWN`.
 
+**PASS 10 (2026-08-08) — THE BEAST RENDERED, THEN DIDN'T. THE POSITION IS NON-DETERMINISTIC. THE HARNESS
+CAN NO LONGER LIE ABOUT IT.**
+
+- **The framing fix WORKS — verified by opening the image.** At load ~5, with `bfc1528` in place: 16 beast
+  meshes, **16 of 16 ON SCREEN**, first sample `ndc [0, -0.15, 0.95]` (dead centre), camera `[1.7, 101.45,
+  2.8]`, beast worldY 99.4-101.6. `beast-fire.png` shows the reared dragon — horns, spread bat-wings,
+  glowing core. **The first correct beast frame this project has ever captured.**
+- **⚠️ AND THEN THE SAME CODE FAILED.** A later run, no source change, load ~17: `16 mesh(es) in the scene
+  but only 0 project on screen`. Earlier the same day, load ~30 produced a beast-less frame too.
+  **So the avatar's RENDERED position is NOT deterministic across runs** — `rb.translation()` has read 100
+  and 120 on different runs, and the visual group evidently varies with it. Framing from the constant
+  `PLAYER_SPAWN` matches only when the group happens to land at 100. **A constant was still an assumption,
+  and it is now falsified.** Do NOT treat the beast fixture as fixed.
+- **THE REAL REMAINING FIX** is the one the loop prompt already named and I short-cut: frame from the
+  avatar's ACTUAL RENDERED WORLD POSITION (`getWorldPosition()` on the mounted group), not from `rb`, and
+  not from a constant. Note the ordering trap: `spawnBeastTransform` sets `beastFormActive` and calls
+  `enterCaptureMode` in the SAME synchronous block, BEFORE React mounts `BeastAvatar` — so the group does
+  not exist yet at hook time. The camera must therefore be re-derived AFTER the mount (or the fixture split
+  into mount-then-frame).
+
+**SHIPPED — the capture can no longer write a picture of the wrong thing.**
+`scripts/visual/_probe.mjs` gains `subjectVerdict` (pure) + `assertSubjectOnScreen`, and the beast stage
+uses it. It identifies the subject **by material colour** derived from `ELEMENT_COLOR` (now exported, so the
+palette is never re-typed), and **separates the two failure shapes** — NOT MOUNTED vs MOUNTED-BUT-OUT-OF-FRAME
+— because they need different fixes. Non-fatal by design (same graceful-degradation shape as the menu
+diorama): it SKIPS the bad frame, keeps the last-good one, continues so the other 27 states and any
+re-baseline still capture, and **exits the run NON-ZERO at the end**.
+
+*Live mutation proof, twice:* framed fire 20 units high → the run refused with `"beast-ice": 11 mesh(es) in
+the scene but only 0 project on screen`; and the unmutated run refused `beast-fire` under load. Both times
+the harness declined to write a beast-less PNG that a byte-comparison would have blessed forever. Unit-level:
+`tests/gates/subject-on-screen-gates.test.js`, 8 assertions, mutation-proved (disabling the out-of-frame
+branch → 3 RED).
+
+**CONSEQUENCE TO EXPECT:** `visual:capture` now exits non-zero whenever a beast state has no beast — which
+is most runs until the position fix lands. **That is the harness working.** It is the difference between a
+red run and four baselines of a mountain.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines

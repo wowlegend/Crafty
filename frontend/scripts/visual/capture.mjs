@@ -15,6 +15,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { assertSubjectOnScreen } from './_probe.mjs';
+import { ELEMENT_COLOR } from '../../src/render/beastAvatarParts.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..'); // frontend/
@@ -98,7 +100,7 @@ export async function assertBrowserProducesFrames(page) {
 
 async function waitForServer(url, tries = 60) {
   for (let i = 0; i < tries; i++) {
-    try { const r = await fetch(url); if (r.ok) return; } catch {}
+  try { const r = await fetch(url); if (r.ok) return; } catch {}
     await delay(250);
   }
   throw new Error('dev server did not start');
@@ -135,6 +137,9 @@ async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max =
 }
 
 async function main() {
+  // states whose SUBJECT was absent -> skipped frames. Collected so the run can fail at the END
+  // without aborting the other 27 states or a re-baseline mid-flight.
+  const subjectFailures = [];
   mkdirSync(OUT, { recursive: true });
   // Invalidate the freshness sentinel up front: if this run crashes / times out / is aborted, the
   // sentinel stays complete:false so an isolated `diff.test.js` run FAILS LOUD on the stale frames
@@ -426,6 +431,21 @@ async function main() {
       await page.evaluate((element) => window.__craftyTest.call('spawnBeastTransform', element), el);
       await flushFrames(page, 8);
       await delay(1000); // beast re-mounts + the camera settles into the frozen reveal pose
+      // REFUSE to write a beast frame with no beast in it. A fixed delay cannot express "the subject is
+      // actually there": at load ~30 this exact code produced a beast-less frame, and the byte-comparison
+      // gate blessed four such baselines for weeks. Palette comes from beastAvatarParts, not re-typed here.
+      // NON-FATAL, same graceful-degradation shape as the menu diorama above: SKIP the frame (keep the
+      // last-good one) and CONTINUE, so one broken subject cannot block the other 27 states or a
+      // re-baseline. The run still exits NON-ZERO at the end — silence is what shipped four empty
+      // baselines, so this must be loud and it must fail the run; it just must not abort it.
+      const pal = ELEMENT_COLOR[el];
+      let beastOk = true;
+      await assertSubjectOnScreen(page, {
+        palette: [pal.body.slice(1).toLowerCase(), pal.glow.slice(1).toLowerCase(), pal.core.slice(1).toLowerCase()],
+        label: `beast-${el}`,
+        minOnScreen: 4,
+      }).catch((e) => { beastOk = false; subjectFailures.push(String(e.message).split('\n')[0]); console.warn(`WARN: ${e.message}`); });
+      if (!beastOk) { console.warn(`  -> SKIPPING beast-${el}.png (kept last-good) and continuing`); continue; }
       await page.screenshot({ path: resolve(OUT, `beast-${el}.png`) });
       console.log(`captured beast-${el}`);
     }
@@ -578,6 +598,12 @@ async function main() {
     writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length }));
   } else {
     console.log('\nNo render crashes during capture.');
+    if (subjectFailures.length) {
+      console.error(`\n\u2718 capture: ${subjectFailures.length} state(s) had NO SUBJECT and were SKIPPED:`);
+      for (const f of subjectFailures) console.error(`    ${f}`);
+      console.error('  Those PNGs are the previous run\'s. A byte-comparison would pass them forever.\n');
+      process.exitCode = 1;
+    }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
     writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0 }));
   }

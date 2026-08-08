@@ -117,3 +117,69 @@ export async function assertBaseline(measure, { label, min = 0.5, attempts = 4, 
       `reports below is UNINTERPRETABLE — fix the baseline before believing the result.`,
   };
 }
+
+/**
+ * PURE. Given how many of a subject's meshes are in the scene and how many project ON SCREEN, decide
+ * whether a capture of that subject is honest.
+ *
+ * WHY THIS EXISTS. The four `beast-*.png` states shipped for weeks as pictures of a distant mountain with
+ * no beast in them, and the visual gate compared one empty mountain against another and passed. Two
+ * independent causes, both invisible to the gate:
+ *   1. the reveal camera was framed off `rb.translation()` while the avatar renders at the RigidBody's
+ *      declared transform — under paused physics those diverge, and the subject sat ~20 units below frame;
+ *   2. even correctly framed, the stage waited a FIXED `delay(1000)` for the avatar to mount. At machine
+ *      load ~30 that is not enough: the same code that produced a correct frame at load 5 produced a
+ *      beast-less one at load 30 (observed 2026-08-08, both frames opened).
+ *
+ * A fixed sleep cannot express "the subject is actually there". This can, so the capture FAILS LOUDLY
+ * instead of writing a lie that a byte-comparison will happily bless forever.
+ *
+ * @param {{inScene:number, onScreen:number}} counts
+ * @param {{label:string, minOnScreen?:number}} opts
+ */
+export function subjectVerdict({ inScene, onScreen }, { label, minOnScreen = 1 }) {
+  if (inScene === 0) {
+    return { ok: false, why: `"${label}": NOT ONE of its meshes is in the scene — the subject never mounted. Capturing now would write a picture of whatever happened to be behind it.` };
+  }
+  if (onScreen < minOnScreen) {
+    return { ok: false, why: `"${label}": ${inScene} mesh(es) are in the scene but only ${onScreen} project on screen (need ${minOnScreen}). The subject is mounted and OUT OF FRAME — this is the defect that shipped four beast baselines with no beast in them.` };
+  }
+  return { ok: true, why: '' };
+}
+
+/**
+ * Wait, bounded, until a subject identified BY MATERIAL COLOUR is genuinely on screen — then let the caller
+ * screenshot. Throws otherwise.
+ *
+ * Colour, not proximity: five systems mount at the player's RigidBody, so "a mesh near the player" matched
+ * the wrong things and cost a whole investigation pass. A palette from the subject's own data module is
+ * specific to it.
+ *
+ * @param {import('puppeteer').Page} page
+ * @param {{palette:string[], label:string, minOnScreen?:number, attempts?:number, gapMs?:number}} opts
+ */
+export async function assertSubjectOnScreen(page, { palette, label, minOnScreen = 1, attempts = 8, gapMs = 400 }) {
+  let counts = { inScene: 0, onScreen: 0 };
+  for (let i = 0; i < attempts; i++) {
+    if (i) await new Promise((r) => setTimeout(r, gapMs));
+    counts = await page.evaluate((pal) => {
+      const st = window.useGameStore.getState();
+      const cam = st.gameCamera;
+      if (!cam) return { inScene: 0, onScreen: 0 };
+      let scene = cam; while (scene && scene.parent) scene = scene.parent;
+      let inScene = 0, onScreen = 0;
+      scene.traverse((o) => {
+        if (!o.isMesh) return;
+        const c = o.material?.color?.getHexString?.();
+        if (!c || !pal.includes(c)) return;
+        inScene++;
+        const p = o.getWorldPosition(new (Object.getPrototypeOf(cam.position).constructor)()).project(cam);
+        if (Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 && p.z > -1 && p.z < 1) onScreen++;
+      });
+      return { inScene, onScreen };
+    }, palette);
+    if (subjectVerdict(counts, { label, minOnScreen }).ok) return counts;
+  }
+  const v = subjectVerdict(counts, { label, minOnScreen });
+  throw new Error(`${v.why}\n  (polled ${attempts}x over ${attempts * gapMs}ms — a fixed sleep is why this went unnoticed.)`);
+}
