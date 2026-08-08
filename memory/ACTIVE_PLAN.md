@@ -17,54 +17,26 @@
 
 ---
 
-## 📍 THE CURSOR — 2026-08-08 (E11 · governance pass + B-race RESOLVED)
+## 📍 THE CURSOR — 2026-08-08 (visual harness CLOSED; re-baseline DONE)
 
-**Tree:** `main` clean, CI `success` observed at `cf744e3`/`21f9aa3`. Queue **121 done / 94 open**, 0 unmarked.
-Both published surfaces gated and current. **11 pre-push gates** now (`commit-msg` joined at `191af24`).
+**Tree:** `main` clean, CI `success`. **§B-race is CLOSED (`2876903`)** — 31 baselines re-frozen, three runs
+at loads 5.5/25.9/14.7 all `y=52.2 via terrain-formula+hearth`, worst frame diff **0.045%**, 0 of 31 >1%.
+The four `beast-*` states contain their subjects for the first time; `assertSubjectOnScreen` refuses to
+write them if that ever stops.
 
-**DONE** — ledger in `docs/superpowers/GOVERNANCE-REVIEW-2026-08-07.md`: C1-C21 · COMPRESSIONS (charter
-43,273 → 40,384 B) · A1 · A3 · A4 · A5(i) · A5(ii) · A6 · A7(charter). Plus `npm audit` 3 high → **0**
-(undici 7.29.0, ip-address 10.4.0 — lock-only, puppeteer re-verified by launching it).
+**The visual harness is TRUSTWORTHY again — that is what unblocks everything below.**
 
-**§B-race is RESOLVED — read `memory/STATUS.md` §B-race before touching the visual harness.** The harness
-is **DETERMINISTIC** (2 full captures, identical code: 0 of 31 frames differ >1%, `beast-*` 0.00%, at load
-18). The 2026-08-05 "non-determinism" does not reproduce, and the load hypothesis was DISCONFIRMED.
+**NEXT UNIT:**
+1. **S8/S9 grass/terrain LOOK work** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — blocked for the whole
+   campaign on an unreliable instrument, now executable. Re-baseline per intended look change. **S4 stays
+   DEFERRED** (its AO flip is purely aesthetic and only the render can judge it).
+2. **HOLISTIC-REVIEW queue** — 127 done / 88 open (`aa4cfb4` triage). Every open finding carries a LIVE
+   quote proving the defect; work from that, not the original text. Flip `▢`->`▣✓ <sha>` in the SAME commit.
+3. A2/A7 remainders (counts are commands not generated blocks; `AGENTS.md` + kernel untagged).
 
-**▶ NEXT UNIT — the beast fixture is deterministically WRONG, and that is now the blocker:**
-0. **⚠️ READ `memory/STATUS.md` §B-race PASS 7 FIRST.** The mount/camera explanations below are MEASURED
-   DEAD: the beast IS mounted (21 meshes within 0.64 units, visible), and the camera IS aimed at it (8.5°
-   off-axis, inside a 37.5° half-FOV). The body also MOVES during the stage (y=100 at hook-fire → y=120 at
-   screenshot), so "physics is paused so the player never leaves spawn" — which I wrote in pass 6 — is
-   WRONG. The live contradiction is that the scene state is correct at screenshot time and the PIXELS are a
-   mountain, which points at frame freshness, not geometry. **Do not re-litigate mount/camera/position.**
-1. **Fix `spawnBeastTransform` (`src/App.jsx:352-361`) — ONLY after the above is resolved.** `beast-*.png` contains NO BEAST — a distant snow
-   mountain — in both runs AND in the committed baseline, so 4 of 31 gated states assert nothing about
-   their subject. Measured cause: physics is `paused={isCaptureMode}` (`GameScene.jsx:231`) BY DESIGN, so
-   the player never leaves spawn `(0,100,0)`; this is the ONLY fixture framing its camera off
-   `rb.translation()`, and its comment "Player is settled on terrain by now" is structurally impossible.
-   ⚠️ **Do NOT fix by waiting for a settle — it would hang forever.** Make the fixture independent of the
-   frozen body (deterministic beast+camera placement, or drive it from terrain height).
-   ⚠️ **STILL OPEN, do not assume:** the camera looks 3 units at the player and the beast is
-   player-attached, so it arguably should be in frame even at spawn altitude — it is not. Whether the mesh
-   fails to mount or mounts elsewhere is UNRESOLVED. Measure first.
-   **Then add the precondition the stage lacks:** refuse to write `beast-*.png` when no beast is present.
-   A capture that screenshots whatever is on screen is the vacuous-gate defect in harness form.
-2. **Re-baseline the 27 NON-beast states** — unblocked, noise floor ≤0.08%. Do NOT re-baseline the 4 beast
-   states until (1) lands; that would re-freeze the empty mountain, which is how the current ones got there.
-3. **S8/S9 grass/terrain LOOK work** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — the instrument is
-   trustworthy now, so these are executable. S4 stays DEFERRED.
-4. **The queue is TRIAGED (2026-08-08, `aa4cfb4`) — 127 done / 88 open, and all 88 carry LIVE evidence.**
-   A 13-agent read-only fan-out verified every open finding against current code and I re-verified each
-   actionable claim before touching the ledger. 6 closed as already-fixed, 4 cites corrected (incl. the
-   mesher-extraction case, `terrain.worker.js:891` → `mesher.js:220`). **The 84 STILL_OPEN verdicts each
-   quote the live line that proves the defect — treat that as the work list, not the original text.**
-   Two residuals were deliberately NOT swallowed into closures: the probe's fixed port 4197 (belongs to the
-   port cluster) and worldSaves' corrupt-JSON/delete-active branches (a new, smaller coverage-gap).
-5. **A2/A7 remainders** (counts are commands not generated blocks; `AGENTS.md` + kernel untagged), then the
-   **HOLISTIC-REVIEW queue** (94 open): test-vacuity 27 · dead-code 25 · test-bug 13 · bug 10.
-
-**AWAITING KEVIN (do not "fix"):** touch-ring ergonomics · grass motes (deleted, veto-able) · `MEMORY.md`
-compaction (**explicitly deferred to a sister session, 2026-08-08 — do not touch it here**).
+**AWAITING KEVIN (taste, not bugs):** the ice beast's rim reads salmon rather than cyan under the warm
+magic-hour grade — the code anticipates this and boosts cool rims; his call whether it is enough. Also the
+touch-ring left-facing-arc ergonomics, and the grass motes (deleted, veto-able).
 
 **Everything below this block is OLDER cursor history.** It accreted despite this file's own "owns THE CURSOR
 ONLY" rule — read it as history, not as work.
