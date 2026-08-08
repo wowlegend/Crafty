@@ -53,7 +53,14 @@ is **DETERMINISTIC** (2 full captures, identical code: 0 of 31 frames differ >1%
    states until (1) lands; that would re-freeze the empty mountain, which is how the current ones got there.
 3. **S8/S9 grass/terrain LOOK work** (`docs/superpowers/TERRAIN-GRASS-SOTA-PLAN.md`) — the instrument is
    trustworthy now, so these are executable. S4 stays DEFERRED.
-4. **A2/A7 remainders** (counts are commands not generated blocks; `AGENTS.md` + kernel untagged), then the
+4. **The queue is TRIAGED (2026-08-08, `aa4cfb4`) — 127 done / 88 open, and all 88 carry LIVE evidence.**
+   A 13-agent read-only fan-out verified every open finding against current code and I re-verified each
+   actionable claim before touching the ledger. 6 closed as already-fixed, 4 cites corrected (incl. the
+   mesher-extraction case, `terrain.worker.js:891` → `mesher.js:220`). **The 84 STILL_OPEN verdicts each
+   quote the live line that proves the defect — treat that as the work list, not the original text.**
+   Two residuals were deliberately NOT swallowed into closures: the probe's fixed port 4197 (belongs to the
+   port cluster) and worldSaves' corrupt-JSON/delete-active branches (a new, smaller coverage-gap).
+5. **A2/A7 remainders** (counts are commands not generated blocks; `AGENTS.md` + kernel untagged), then the
    **HOLISTIC-REVIEW queue** (94 open): test-vacuity 27 · dead-code 25 · test-bug 13 · bug 10.
 
 **AWAITING KEVIN (do not "fix"):** touch-ring ergonomics · grass motes (deleted, veto-able) · `MEMORY.md`
