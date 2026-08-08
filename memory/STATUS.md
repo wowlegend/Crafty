@@ -426,7 +426,21 @@ chunk offset), then S7-S15.
   into a blind harness would produce a green push and an unverifiable result.
   **Unblocks when §B-race does.** Then: implement, capture, and LOOK at a face with strong AO contrast.
 
-### B-race. ✅ RESOLVED 2026-08-08 (pass 6) — THE HARNESS IS DETERMINISTIC. THE BEAST FIXTURE IS BROKEN.
+### B-race. ✅ CLOSED 2026-08-08 (pass 17) — HARNESS DETERMINISTIC, BEAST FIXTURE FIXED, 31 BASELINES FROZEN.
+
+**THE RE-BASELINE IS DONE.** Three consecutive runs at loads ~5.5 / ~25.9 / ~14.7 all logged
+`player settled at y=52.2 via terrain-formula+hearth (physics + visual)` — same source, same value, three
+different machine loads. Run-to-run diff across all 31 frames: **worst 0.045%** (`hearth`), **0 of 31 above
+1%**, against a 6% gate threshold. The only warning is `title-mascot`, which is UNGATED and non-fatal by
+design — so this is determinism by SUCCESS, not the shared-failure trap of pass 13.
+
+**27 baselines re-frozen** (4 unchanged). Opened `beast-fire` (dragon planted on the Hearth pad, lodge
+behind, ground glow, sunset) and `explore-day` (HUD, quests, compass, hotbar, landscape) before committing —
+a green diff is not a lived result, and opening images is what caught the cut-off head and the buried dragon
+earlier in this campaign.
+
+*(Passes 6-16 below are the investigation that got here. ~16 hypotheses were measured dead; the header they
+carried — "THE VISUAL HARNESS IS NON-DETERMINISTIC" — was itself the first thing disproved.)*
 
 > **⚠️ EVERYTHING BELOW THIS BLOCK IS THE 2026-08-05 INVESTIGATION AND ITS PREMISE IS SUPERSEDED.**
 > Kept because passes 1-5 are a record of how the wrong conclusion was reached five times. Read the header
