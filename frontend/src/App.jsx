@@ -42,6 +42,8 @@ import { isAnyPanelOpen } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 import { beastRevealCamera } from './game/beastRevealCamera.js';
 import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_FAILS } from './game/spawnPlacement.js';
+import { surfaceBlockAt } from './world/climate.js';
+import { HEARTH_Y } from './world/homeAnchor.js';
 import { FEET_OFFSET } from './render/BeastAvatar.jsx';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
@@ -398,6 +400,36 @@ function GameApp({ experienceSystem }) {
       // never be exhausted and it returned false forever: THAT is why two runs logged "never resolved a
       // ground" and then silently agreed on the declared y=100. A retry counter that never counts is not
       // a retry counter.
+      // The physics probe CANNOT work under capture, and this is why the settle never resolved:
+      // `getMobGroundLevel` is a rapier `world.castRay` (Terrain.jsx), and physics is
+      // `paused={isCaptureMode}` — a world that never steps never updates its query pipeline, so the ray
+      // hits nothing and returns null forever. That is also why the settle DID resolve before
+      // `enterCapture` landed (physics was still live) and never after.
+      //
+      // So under capture, ask the TERRAIN FORMULA instead of the physics engine: `surfaceBlockAt` uses the
+      // same seeded noise (lcg 12345) and the same shared `computeHeight` as terrain.worker.js, so it is
+      // the generator's own answer — pure, deterministic, and available with zero physics steps. Far
+      // better than SPAWN_FALLBACK_Y=60, which left the beast hovering ~8 units above real ground (~52).
+      if (blockGroundY === null && (physicsY == null || Number.isNaN(physicsY))) {
+        // The settle always places at the ORIGIN, and the origin is the Hearth. `surfaceBlockAt` is the
+        // generator's raw grade and its own comment says it IGNORES the Hearth stamp — using it put the
+        // player 2 blocks UNDER the stone cap and the capture came back with the dragon buried in terrain,
+        // walls either side, lodge roof overhead. (Predicted from the 49-vs-52 gap, then confirmed by
+        // opening the image — the formula was right and the ground was not where it said.)
+        // `stampHomeAnchor` caps the footprint at HEARTH_Y and clears everything above, so at (0,0) the
+        // real walkable surface IS HEARTH_Y. Take the higher of the two so this stays correct if the
+        // fixture ever moves off the pad.
+        const surf = surfaceBlockAt(0, 0);
+        if (surf && Number.isFinite(surf.surfaceY)) {
+          const groundY = Math.max(surf.surfaceY, HEARTH_Y);
+          const yT = spawnTargetY(groundY);
+          rb.setTranslation({ x: 0, y: yT, z: 0 }, true);
+          rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          const vis0 = useGameStore.getState().playerVisualAnchorRef?.current?.parent;
+          if (vis0) { vis0.position.set(0, yT, 0); vis0.updateMatrixWorld(true); }
+          return { y: +yT.toFixed(2), visual: !!vis0, source: 'terrain-formula+hearth', surfaceY: surf.surfaceY, hearthY: HEARTH_Y };
+        }
+      }
       const spawn = resolveSpawnGround(blockGroundY, physicsY, force ? SPAWN_PROBE_MAX_FAILS : 0, probeAvailable);
       if (spawn.retry || spawn.groundY == null) {
         // Name the BRANCH. A diagnostic that cannot say which precondition failed cost a whole pass.

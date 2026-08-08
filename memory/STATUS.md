@@ -753,6 +753,37 @@ as a slight hover over the Hearth. The next pass should log the last non-forced 
 currently swallows it) to learn WHY `getMobGroundLevel` never returns a valid Y under capture. **Baselining
 should wait for that**: freezing now would encode the hover.
 
+**PASS 15 (2026-08-08) — THE BEAST STANDS ON THE HEARTH. TWO OF MY OWN CLAIMS CORRECTED.**
+
+**Opened the image: the dragon is standing ON the Hearth pad** — feet on the stone cap, lodge behind,
+grass and trees to the side, sunset sky. No hover, no burial. This is the in-world reveal the fixture was
+designed for, and the best frame the project has produced for this state.
+
+**CORRECTION 1 — "the probe cannot work under paused physics" was TOO STRONG (I wrote it this pass).**
+`getMobGroundLevel` is a rapier `world.castRay`, and I inferred a paused world can never answer it. This
+run resolved `via physics-probe` at y=53.2. The colliders exist whether or not the world steps; what the
+probe actually needs is **streamed ORIGIN COLLIDERS**, and my earlier 12×500ms retry window simply expired
+before they arrived. The mechanism is a TIMING race, not a hard incapacity. Recorded because the wrong
+version was one inference away from becoming settled fact.
+
+**CORRECTION 2 — `surfaceBlockAt` is the WRONG ground at the origin, and the image proved it.** Using the
+generator's raw grade landed the player at y=50.2 and the capture came back with the dragon **buried in
+terrain** — voxel walls either side, lodge roof overhead, camera underground. Its own comment says it
+ignores the Hearth stamp; `stampHomeAnchor` caps the footprint at **`HEARTH_Y = 51`** and clears above, so
+the real walkable surface at (0,0) is 51, not the raw grade 49. **Predicted from the 49-vs-52 gap, then
+CONFIRMED by opening the image** — the formula was right about terrain and wrong about ground.
+
+**SHIPPED:** the settle's physics-free path uses `Math.max(surfaceBlockAt(0,0).surfaceY, HEARTH_Y)` — the
+higher of the generator grade and the Hearth cap, so it stays correct if the fixture ever moves off the pad
+— and reports its `source` (`physics-probe` / `terrain-formula+hearth` / `fallback`). Three named ground
+sources, each deterministic, in preference order.
+
+**STATE:** physics + visual both move · beast framed at the settle every run · `assertSubjectOnScreen`
+never fires · 0 of 31 frames >1% run-to-run (worst `menu` 0.51%, measured at loads 3.8 and 33.8).
+▶ **NEXT: re-run twice to confirm the SOURCE is stable** (this run took `physics-probe`, earlier ones took
+the fallback — different sources could mean different Y and a different backdrop). Only when two runs agree
+on both source AND y should the 31 baselines be frozen.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines
