@@ -183,3 +183,96 @@ export async function assertSubjectOnScreen(page, { palette, label, minOnScreen 
   const v = subjectVerdict(counts, { label, minOnScreen });
   throw new Error(`${v.why}\n  (polled ${attempts}x over ${attempts * gapMs}ms — a fixed sleep is why this went unnoticed.)`);
 }
+
+/**
+ * Wait until the rendered frame STOPS CHANGING, instead of sleeping a fixed number of milliseconds and
+ * hoping whatever was still building finished inside it.
+ *
+ * WHY THIS EXISTS. `capture.mjs` used a fixed `delay(2500)` after the chunk COUNT stabilised, with a
+ * comment conceding that the count was "necessary but NOT sufficient" because the last chunk meshes keep
+ * swapping in afterwards. That sleep was a timeout standing in for a condition, and it silently encoded
+ * an assumption about how long a frame costs — an assumption no longer true the moment frame cost
+ * changes. S8 (`947748f`) added a per-chunk `instanceColor` buffer and one new shader permutation, and
+ * that alone pushed the final mesh swaps past the window: `explore-day`'s run-to-run self-diff went from
+ * **0.075% to 1.646%**, measured against a pre-S8 control on the same box with the same two-run protocol.
+ * The pixels that differed were the distant TREELINE, not the grass that had changed.
+ *
+ * So nothing was wrong with S8. Capture determinism was a property of (harness x code state) rather than
+ * of the harness, which means it could not be established once and carried forward — and it had been.
+ * A fixed sleep cannot be re-tuned every commit, so the sleep becomes a condition.
+ *
+ * It is also FASTER in the common case: a settled world exits after `needStable` polls instead of always
+ * paying the worst-case wait.
+ *
+ * DENOMINATOR + PRESENCE (`.claude/rules/gates-and-probes.md`): a comparator that can never say
+ * "different" would pronounce every frame stable on first look, and a dead instrument reads exactly like
+ * a settled world. So it is proven able to see a one-byte difference BEFORE its silence is trusted; the
+ * poll count is returned rather than discarded; and failing to stabilise is a loud WARN, never a silent
+ * fall-through into a screenshot.
+ *
+ * @param {{screenshot: function}} page  puppeteer page (or any object with a screenshot())
+ * @returns {Promise<{polls:number, settled:boolean, sawChange:boolean}>}
+ */
+export async function waitForStableFrame(
+  page,
+  {
+    interval = 250,
+    needStable = 3,
+    max = 40,
+    floor = 300,
+    minBytes = 1024,
+    sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  } = {}
+) {
+  await sleep(floor);
+
+  // A BLANK OR FAILED SCREENSHOT IS PERFECTLY STABLE. That is the realistic dead-instrument case here,
+  // and it is the one worth spending a check on: if `screenshot()` starts handing back an empty or
+  // error frame, every comparison matches, the loop exits on its first look, and the capture proceeds
+  // to write that frame as a baseline. It reads identically to a settled world.
+  //
+  // (The first draft of this guarded a different failure — a `Buffer.equals` that cannot report
+  // "different" — by comparing a byte-flipped canary. That check is nearly free so it stays below, but
+  // it defends a case that essentially cannot happen while missing the one that can.)
+  const shoot = async () => {
+    const b = Buffer.from(await page.screenshot());
+    if (b.length < minBytes) {
+      throw new Error(
+        `waitForStableFrame: screenshot is ${b.length}B (< ${minBytes}) — a blank or failed capture is ` +
+          `perfectly "stable" and would be written as a baseline`
+      );
+    }
+    return b;
+  };
+  let prev = await shoot();
+
+  const canary = Buffer.from(prev);
+  canary[canary.length - 1] ^= 0xff;
+  if (canary.equals(prev)) {
+    throw new Error('waitForStableFrame: the frame comparator cannot see a 1-byte difference — it is dead');
+  }
+
+  let stable = 0;
+  let polls = 0;
+  let sawChange = false;
+  for (; polls < max; polls++) {
+    await sleep(interval);
+    const shot = await shoot();
+    if (shot.equals(prev)) {
+      if (++stable >= needStable) break;
+    } else {
+      stable = 0;
+      sawChange = true;
+      prev = shot;
+    }
+  }
+
+  const settled = stable >= needStable;
+  if (!settled) {
+    console.warn(
+      `WARN: frame never stabilized after ${polls} polls (${((polls * interval) / 1000).toFixed(1)}s) ` +
+        `-> THIS FRAME IS NOT DETERMINISTIC and re-baselining it would freeze noise`
+    );
+  }
+  return { polls, settled, sawChange };
+}

@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { assertSubjectOnScreen } from './_probe.mjs';
+import { assertSubjectOnScreen, waitForStableFrame } from './_probe.mjs';
 import { ELEMENT_COLOR } from '../../src/render/beastAvatarParts.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -113,8 +113,8 @@ async function waitForServer(url, tries = 60) {
 // NOTE: chunk COUNT stabilizing is necessary but NOT sufficient — the meshes for the last
 // chunks keep building/swapping in for a beat after the count freezes, so a ridge silhouette
 // against the sky can still differ run-to-run (~0.4% self-diff). We therefore require a
-// LONGER count-stable streak (stableFor=6) and a generous post-stable settle so every run
-// screenshots the identical fully-settled mesh.
+// LONGER count-stable streak (stableFor=6) and then WAIT ON THE FRAME ITSELF (below).
+
 async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max = 60, settle = 2500 } = {}) {
   let last = -1;
   let stable = 0;
@@ -131,9 +131,10 @@ async function waitForStableTerrain(page, { interval = 300, stableFor = 6, max =
     }
     await delay(interval);
   }
-  // Post-stable settle: let the final chunk meshes finish uploading/swapping so the
-  // silhouette is identical across runs before any screenshot is taken.
-  await delay(settle);
+  // Post-stable settle: let the final chunk meshes finish uploading/swapping so the silhouette is
+  // identical across runs. `settle` is now a CEILING on how long that is allowed to take, not the
+  // duration itself — the frame comparator decides when it is actually done.
+  await waitForStableFrame(page, { max: Math.ceil(settle / 250) + 24 });
 }
 
 async function main() {

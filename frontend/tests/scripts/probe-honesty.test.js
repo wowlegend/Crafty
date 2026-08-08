@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tapVerdict, assertBaseline } from '../../scripts/visual/_probe.mjs';
+import { tapVerdict, assertBaseline, waitForStableFrame } from '../../scripts/visual/_probe.mjs';
 
 // The regression fixtures below are the ACTUAL measurements from 2026-08-05, when touch-probe.mjs reported
 // success over taps it never landed and two registry lines were written from the result. Every near-miss
@@ -73,5 +73,62 @@ describe('assertBaseline — an absence means nothing until the instrument has s
   it('treats a null measurement as a failure, not as a zero it can reason about', async () => {
     const r = await assertBaseline(async () => null, { label: 'camera', gapMs: 0, attempts: 1 });
     expect(r.ok).toBe(false);
+  });
+});
+
+// waitForStableFrame — the fix for capture's fixed `delay(2500)`. It replaced a timeout that stood in for
+// a condition, after S8 (947748f) proved the timeout was tuned to a frame cost that any commit can change:
+// explore-day's run-to-run self-diff went 0.075% -> 1.646% against a pre-S8 control, and the pixels that
+// moved were the distant treeline, not the grass. `sleep` is injected so these run in microseconds.
+describe('waitForStableFrame — waits on the frame, and proves it can see a difference first', () => {
+  const noSleep = () => Promise.resolve();
+  // frames: an array of buffers handed out in order; the last one repeats forever
+  const pageOf = (frames) => {
+    let i = 0;
+    return { screenshot: async () => frames[Math.min(i++, frames.length - 1)] };
+  };
+  const F = (byte) => Buffer.alloc(4096, byte); // above minBytes, so the blank-frame guard does not fire
+
+  it('returns as soon as the frame has held still for needStable polls', async () => {
+    const r = await waitForStableFrame(pageOf([F(1)]), { sleep: noSleep, needStable: 3 });
+    expect(r.settled).toBe(true);
+    expect(r.polls).toBe(2); // 3rd identical read breaks the loop
+  });
+
+  it('keeps waiting while the frame is still changing, then settles', async () => {
+    // four distinct frames (a mesh still swapping in), then stable
+    const p = pageOf([F(1), F(2), F(3), F(4), F(9)]);
+    const r = await waitForStableFrame(p, { sleep: noSleep, needStable: 3 });
+    expect(r.settled).toBe(true);
+    expect(r.sawChange).toBe(true);
+    expect(r.polls).toBeGreaterThan(3); // it did NOT return during the churn
+  });
+
+  it('reports NOT settled when the frame never stops moving, instead of screenshotting anyway', async () => {
+    // every read differs -> nothing is ever stable
+    let n = 0;
+    const page = { screenshot: async () => Buffer.alloc(4096, n++ % 251) };
+    const r = await waitForStableFrame(page, { sleep: noSleep, max: 12 });
+    expect(r.settled).toBe(false);
+    expect(r.polls).toBe(12); // denominator: it really did look 12 times
+  });
+
+  it('THROWS on a blank/failed screenshot — the realistic dead instrument, which is perfectly stable', async () => {
+    // This is the case that can actually happen: screenshot() starts returning an empty or error frame.
+    // Every comparison then matches, the loop exits on its first look, and capture writes that frame as
+    // a baseline. A settled world and a dead camera produce the same reading, so size is checked first.
+    const page = { screenshot: async () => Buffer.alloc(10, 0) };
+    await expect(waitForStableFrame(page, { sleep: noSleep })).rejects.toThrow(/blank or failed|screenshot is/i);
+  });
+
+  it('THROWS if the byte comparator itself cannot discriminate', async () => {
+    const realEquals = Buffer.prototype.equals;
+    Buffer.prototype.equals = () => true; // a comparator that can only ever say "identical"
+    try {
+      const page = { screenshot: async () => Buffer.alloc(4096, 7) };
+      await expect(waitForStableFrame(page, { sleep: noSleep })).rejects.toThrow(/dead/i);
+    } finally {
+      Buffer.prototype.equals = realEquals;
+    }
   });
 });
