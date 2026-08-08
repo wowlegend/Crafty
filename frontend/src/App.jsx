@@ -41,7 +41,7 @@ import { useDayNightClock } from './game/useDayNightClock';
 import { isAnyPanelOpen } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 import { beastRevealCamera } from './game/beastRevealCamera.js';
-import { resolveSpawnGround, spawnTargetY } from './game/spawnPlacement.js';
+import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_FAILS } from './game/spawnPlacement.js';
 import { FEET_OFFSET } from './render/BeastAvatar.jsx';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
@@ -382,7 +382,7 @@ function GameApp({ experienceSystem }) {
     //
     // This runs the SAME pure decision the Player uses (`resolveSpawnGround` + `spawnTargetY`), so it
     // cannot drift from real spawn behaviour — it just runs it ON DEMAND instead of racing a frame loop.
-    registerTestHook('settlePlayerToGround', () => {
+    registerTestHook('settlePlayerToGround', ({ force = false } = {}) => {
       const store = useGameStore.getState();
       const rb = store.playerRigidBodyRef?.current;
       if (!rb) return false; // caller decides; a silent fallback here is what hid the original bug
@@ -392,8 +392,27 @@ function GameApp({ experienceSystem }) {
       }
       const probeAvailable = !!store.getMobGroundLevel;
       const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
-      const spawn = resolveSpawnGround(blockGroundY, physicsY, 0, probeAvailable);
-      if (spawn.retry || spawn.groundY == null) return false; // ground not resolvable yet — caller retries
+      // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
+      // SPAWN_FALLBACK_Y branch instead of asking to retry — the same landing the Player reaches after
+      // SPAWN_PROBE_MAX_FAILS frames. Without it this hook passed 0 every call, so the retry budget could
+      // never be exhausted and it returned false forever: THAT is why two runs logged "never resolved a
+      // ground" and then silently agreed on the declared y=100. A retry counter that never counts is not
+      // a retry counter.
+      const spawn = resolveSpawnGround(blockGroundY, physicsY, force ? SPAWN_PROBE_MAX_FAILS : 0, probeAvailable);
+      if (spawn.retry || spawn.groundY == null) {
+        // Name the BRANCH. A diagnostic that cannot say which precondition failed cost a whole pass.
+        return {
+          retry: true,
+          reason: !probeAvailable ? 'getMobGroundLevel absent from the store'
+            : physicsY == null ? 'ground probe returned null (origin chunks not streamed yet)'
+            : Number.isNaN(physicsY) ? 'ground probe returned NaN'
+            : `ground probe returned ${physicsY}, at or below PROBE_MIN_Y`,
+          physicsY: physicsY == null ? null : +Number(physicsY).toFixed(2),
+          probeAvailable,
+          blocks: store.worldBlocks ? store.worldBlocks.size : 0,
+        };
+      }
+      const source = blockGroundY != null ? 'placed-blocks' : (probeAvailable && !force ? 'physics-probe' : 'fallback');
       const y = spawnTargetY(spawn.groundY);
       rb.setTranslation({ x: 0, y, z: 0 }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -407,7 +426,7 @@ function GameApp({ experienceSystem }) {
         visual.position.set(0, y, 0);
         visual.updateMatrixWorld(true);
       }
-      return { y: +y.toFixed(2), visual: !!visual };
+      return { y: +y.toFixed(2), visual: !!visual, source };
     });
 
     // Re-frame the reveal from WHERE THE AVATAR ACTUALLY RENDERED. Must be called AFTER spawnBeastTransform

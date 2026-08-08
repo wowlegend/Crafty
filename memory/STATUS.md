@@ -722,6 +722,37 @@ than standing in-world, which is a visibly worse review frame and touches the re
 fixture is IN-WORLD on purpose.
 Both are defensible; the choice changes what Kevin SEES in four review frames, so it is his.
 
+**PASS 14 (2026-08-08) — DETERMINISTIC BY CONSTRUCTION NOW, NOT BY SHARED FAILURE. THE SHOT IS THE
+INTENDED IN-WORLD HEARTH REVEAL.**
+
+**Root cause of pass 13's "never resolved a ground": my own hook.** It passed `probeFails = 0` on EVERY
+call, so `resolveSpawnGround` could never exhaust its retry budget and reach the documented
+`SPAWN_FALLBACK_Y` branch — it returned `retry` forever. **A retry counter that never counts is not a retry
+counter.** The harness then gave up, both runs kept whatever transform they happened to hold, and they
+agreed by accident.
+
+**FIXED:** the hook takes `{ force }` and passes `SPAWN_PROBE_MAX_FAILS` on the harness's last attempt, so
+it takes the SAME landing the Player itself reaches after 120 failed frames. It also returns the FAILURE
+BRANCH by name (`getMobGroundLevel absent` / `probe returned null (origin chunks not streamed)` /
+`returned NaN` / `at or below PROBE_MIN_Y`) plus `physicsY`, `probeAvailable`, `blocks` — a diagnostic that
+could not name its own branch is what cost pass 13.
+
+**MEASURED, two runs at loads 3.8 and 33.8:** both log
+`player settled at y=61.2 via fallback (physics + visual)`, the beast frames at 61.2 in both, and the
+run-to-run diff is **0 of 31 frames >1%** (worst `menu` 0.51%). Same landing, same source, same frames —
+**deterministic because the fallback is deliberately TAKEN**, not because two runs failed the same way.
+
+**Opened the image:** the dragon stands at the Hearth — lodge roof, table, grass, trees, sunset sky. This
+is the in-world reveal the fixture was designed for, so the earlier (A)-vs-(B) fork is effectively RESOLVED
+AS (A) *without* reversing the recorded in-world decision: the fallback is the game's own documented
+behaviour, not a studio card.
+
+**⚠️ STILL OPEN, and it is now small:** the physics ground PROBE still never resolves, so the landing is
+`SPAWN_FALLBACK_Y = 60` rather than true terrain (~52) — the beast sits ~8 units high, visible in the frame
+as a slight hover over the Hearth. The next pass should log the last non-forced retry's `reason` (the loop
+currently swallows it) to learn WHY `getMobGroundLevel` never returns a valid Y under capture. **Baselining
+should wait for that**: freezing now would encode the hover.
+
 **WHAT THIS UNBLOCKS.** The re-baseline was blocked on "the harness is non-deterministic". It is not. The
 **27 non-beast states are re-baselineable now** (noise floor ≤0.08%). The **4 beast states must be FIXED
 FIRST** — re-baselining them today would re-freeze an empty mountain, which is how the current baselines

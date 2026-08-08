@@ -217,14 +217,23 @@ async function main() {
     // / ~53 (settled) were all observed on the SAME code, and every position-dependent state inherited
     // that. Retry a few times: the ground probe needs origin chunks, and the hook says so rather than
     // guessing. Loud on failure — a silent skip here re-creates the exact class of bug this fixes.
-    let settledY = false;
-    for (let i = 0; i < 10 && settledY === false; i++) {
+    // Retry while the ground probe warms up (it needs streamed origin chunks), then FORCE the documented
+    // SPAWN_FALLBACK_Y landing on the last attempt. Forcing matters: giving up left the player at whatever
+    // transform it happened to hold, and two runs then agreed on it by accident — determinism by shared
+    // failure, which reads exactly like success in the diff. A fallback that is TAKEN is deterministic; a
+    // fallback that is never reached is a coin toss.
+    let settled = null;
+    for (let i = 0; i < 12; i++) {
       if (i) await delay(500);
-      settledY = await page.evaluate(() => window.__craftyTest.call('settlePlayerToGround'));
+      const force = i === 11; // last attempt: take the fallback rather than give up
+      settled = await page.evaluate((f) => window.__craftyTest.call('settlePlayerToGround', { force: f }), force);
+      if (settled && settled.retry) continue;
+      break;
     }
-    if (settledY === false) console.warn('WARN: settlePlayerToGround never resolved a ground -> player position is NON-DETERMINISTIC for this run');
-    else if (!settledY.visual) console.warn(`WARN: player physics settled at y=${settledY.y} but the VISUAL anchor was missing -> the backdrop is NOT deterministic`);
-    else console.log(`player settled at y=${settledY.y} (physics + visual)`);
+    if (!settled || settled === false) console.warn('WARN: settlePlayerToGround could not run (no player body) -> position NON-DETERMINISTIC this run');
+    else if (settled.retry) console.warn(`WARN: settle still unresolved after 12 tries -> ${settled.reason} (physicsY=${settled.physicsY}, probe=${settled.probeAvailable}, blocks=${settled.blocks}) -> position NON-DETERMINISTIC`);
+    else if (!settled.visual) console.warn(`WARN: physics settled at y=${settled.y} but the VISUAL anchor was missing -> backdrop NOT deterministic`);
+    else console.log(`player settled at y=${settled.y} via ${settled.source} (physics + visual)`);
     await flushFrames(page, 4);
     await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5));
     await delay(1500);
