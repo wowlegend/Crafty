@@ -67,6 +67,30 @@ describe('grass revival 1b -- mounted + visible', () => {
     // the original bug: indexing a Vector3. It must not come back in this file.
     expect(grass).not.toMatch(/entity\.position\[0\]/);
   });
+  // S8. These are SOURCE-GREP assertions and prove code PRESENCE, not a lived result -- they cannot
+  // see whether the field stopped looking like a grid. The real proof is the capture frames, opened.
+  // What they DO buy is that the wiring cannot be silently unpicked by a later refactor, which is the
+  // failure this file already exists to catch once (the unmounted GrassWindDriver).
+  it('placement comes from the tested variation seam, not an inline position-only set', () => {
+    expect(grass).toMatch(/import \{[^}]*\bbladeTransform\b[^}]*\} from '\.\/game\/grassVariation\.js'/);
+    expect(grass).toMatch(/dummy\.rotation\.y = /);
+    expect(grass).toMatch(/dummy\.scale\.setScalar\(/);
+    // the pre-S8 hardcoded half-height lift -- correct only while every blade is scale 1
+    expect(grass).not.toMatch(/dummy\.position\.set\(x, y \+ 0\.35, z\)/);
+  });
+
+  it('the per-blade tint is uploaded, not just written', () => {
+    expect(grass).toMatch(/setColorAt\(/);
+    // setColorAt allocates instanceColor lazily; forget the flag and the tint never reaches the GPU
+    // while every other assertion in this block still passes.
+    expect(grass).toMatch(/instanceColor\.needsUpdate/);
+  });
+
+  it('the wind phase no longer correlates every blade along the world diagonal', () => {
+    expect(grass).not.toMatch(/instanceMatrix\[3\]\[0\] \* 0\.5 \+ instanceMatrix\[3\]\[2\] \* 0\.5/);
+    expect(grass).toMatch(/float offset = fract\(sin\(/);
+  });
+
   it('the grass renderer takes the pre-filtered grass-tops directly (no blockType re-filter)', () => {
     expect(grass).toMatch(/blockPositions\.slice\(0, 50\)/);
     expect(grass.includes("blockType === 'grass'")).toBe(false);

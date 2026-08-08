@@ -5,6 +5,7 @@ import { useGameStore } from './store/useGameStore';
 import { mobsQuery } from './ecs/world';
 import { isCaptureMode } from './devtest/captureMode';
 import { collectBendSources } from './game/grassBend.js';
+import { bladeTransform, bladeTint } from './game/grassVariation.js';
 
 // Custom materials with GPU-based wind swaying & player displacement
 const grassMaterial = new THREE.MeshBasicMaterial({
@@ -30,7 +31,13 @@ grassMaterial.onBeforeCompile = (shader) => {
     `#include <begin_vertex>`,
     `
     #include <begin_vertex>
-    float offset = instanceMatrix[3][0] * 0.5 + instanceMatrix[3][2] * 0.5;
+    // S8: a two-term hash of the instance translation, NOT x*0.5 + z*0.5. The old form is constant
+    // along every x+z diagonal, so the whole field used to sway in diagonal bands marching across the
+    // world -- the single most legible tell that the grass is instanced. Wrapping first keeps the sin
+    // argument small enough that float32 does not quantise the hash at world distances (~1000m).
+    // (No backticks in here: this GLSL lives inside a JS template literal and one would close it.)
+    vec2 ipos = mod(vec2(instanceMatrix[3][0], instanceMatrix[3][2]), 128.0);
+    float offset = fract(sin(ipos.x * 12.9898 + ipos.y * 78.233) * 43758.5453) * 6.2831853;
     // Apply sway and bending only to the top vertices of grass blades
     if (position.y > 0.0) {
        // Premium multi-frequency wind sway
@@ -141,12 +148,31 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
     if (!grassMeshRef.current) return;
     const dummy = new THREE.Object3D();
     
+    const tint = new THREE.Color();
+
     grassBlocks.forEach(([x, y, z], i) => {
-      dummy.position.set(x, y + 0.35, z); // root the 0.7-tall tuft base at the grass surface (grassTop y)
+      // S8: yaw / scale / sub-cell offset, all hashed from the world (x,z) -- deterministic, RNG-free
+      // and clock-free, so the capture gate still byte-compares. `py` arrives base-anchored: the quad
+      // is centre-origin, so the lift that stands it on the surface scales WITH the blade (a fixed
+      // +0.35 sinks a scaled-up blade into the terrain). See game/grassVariation.js note 1.
+      const t = bladeTransform(x, y, z);
+      dummy.position.set(t.px, t.py, t.pz);
+      dummy.rotation.y = t.yaw;
+      dummy.scale.setScalar(t.scale);
       dummy.updateMatrix();
       grassMeshRef.current.setMatrixAt(i, dummy.matrix);
+
+      // instanceColor MULTIPLIES the material colour (color_fragment: `diffuseColor.rgb *= vColor`),
+      // so this is a multiplier centred on 1.0, never a colour. Recolouring the grass toward its
+      // yellow-green substrate is S9's owner call; S8 only adds spread around whatever it becomes.
+      const c = bladeTint(x, z);
+      tint.setRGB(c.r, c.g, c.b);
+      grassMeshRef.current.setColorAt(i, tint);
     });
     grassMeshRef.current.instanceMatrix.needsUpdate = true;
+    // setColorAt allocates instanceColor on first call; without this flag the buffer never uploads and
+    // the tint is silently a no-op that every source-grep gate would still call present.
+    if (grassMeshRef.current.instanceColor) grassMeshRef.current.instanceColor.needsUpdate = true;
   }, [grassBlocks]);
 
   return (
