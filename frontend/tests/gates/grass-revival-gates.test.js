@@ -112,6 +112,19 @@ describe('grass revival 1b -- mounted + visible', () => {
     expect(grass).not.toMatch(/opacity: 0\.7/);
   });
 
+  // S9b. The blades were LIT but backlit: with side:DoubleSide three flips the normal to the
+  // rasterizer-facing side (normal_fragment_begin, via gl_FrontFacing), so the lit face follows the
+  // CAMERA rather than the blade's yaw -- and the explore sun sits behind the capture camera. Measured
+  // result was a 4:1 skew of tuft pixels DARKER than the ground they grow from. S8's yaw variation
+  // cannot reach this, which is why the plan's S8-before-S9 rule was necessary but not sufficient.
+  it('blades shade like the ground they grow from, not like vertical cards', () => {
+    expect(grass).toMatch(/shader\.fragmentShader = shader\.fragmentShader\.replace\(/);
+    expect(grass).toMatch(/#include <normal_fragment_begin>/);
+    // world-up carried into VIEW space, which is the space `normal` is in at that point
+    expect(grass).toMatch(/viewMatrix \* vec4\(0\.0, 1\.0, 0\.0, 0\.0\)/);
+    expect(grass).toMatch(/mix\(normal, grassUp/);
+  });
+
   it('the wind shader has a stable program cache key', () => {
     // without it three stringifies the onBeforeCompile closure on every program lookup
     expect(grass).toMatch(/customProgramCacheKey/);

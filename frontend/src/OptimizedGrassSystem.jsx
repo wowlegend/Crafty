@@ -92,6 +92,34 @@ grassMaterial.onBeforeCompile = (shader) => {
     }
     `
   );
+  // S9b: FOLIAGE-CARD NORMAL. Shade a blade like the ground it grows from, not like the vertical
+  // rectangle it actually is.
+  //
+  // S9 put the grass in the lighting equation and it came out DARKER than its own turf -- measured at
+  // a 4:1 skew of tuft pixels below the ground's median luminance. The plan predicted that exact
+  // failure and prescribed ordering (S8's per-blade yaw first) as the cure, so S8 shipped first and it
+  // was still dark. The prescription was necessary but not sufficient, because the mechanism is not
+  // the yaw: with side DoubleSide, three rebuilds the normal per FRAGMENT from gl_FrontFacing
+  // (normal_fragment_begin), so the lit face is always the one facing the RASTERIZER. The explore sun
+  // sits behind the capture camera, so the camera-facing side is the unlit side no matter which way
+  // the blade is turned. Rotating a card cannot fix a normal that follows the viewer.
+  //
+  // Bending the shading normal toward world-up is the standard treatment for foliage cards, and it is
+  // not a cheat: a tuft of grass is a volume being approximated by a quad, and the volume's average
+  // normal points up, not at the camera. `normal` is in VIEW space here, so world-up has to be carried
+  // through viewMatrix (declared in the fragment prefix, WebGLProgram.js:824).
+  //
+  // Kept at a mix rather than a replace so blades still catch some directional variation instead of
+  // becoming a flat sheet of ground colour.
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <normal_fragment_begin>',
+    `
+    #include <normal_fragment_begin>
+    vec3 grassUp = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+    normal = normalize(mix(normal, grassUp, 0.8));
+    `
+  );
+
   grassMaterial.userData.shader = shader;
 };
 
