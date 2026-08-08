@@ -28,9 +28,9 @@ place at the same URL) and `LOOP-PROGRESS.html` (was 22 commits stale with no ga
 · A1 · A3 · A4 · A5(i) · A6 · A7 (charter only).
 
 **NEXT UNIT — pick ONE, in this order:**
-1. **`npm audit` / dependabot: 8 OPEN alerts** (2 high, 6 moderate — `ip-address`, `undici`). The dashboard
-   claimed "0 vulnerabilities" for weeks and nothing re-measured it. NOT fixed on purpose: transitive
-   dev-dep upgrades with real blast radius, outside the governance scope. **Decide, then do it deliberately.**
+1. **dependabot: 8 open, ALL dev-only** (`jsdom→undici`, `puppeteer→…→ip-address`). `npm audit --omit=dev`
+   = **0** — nothing in the shipped bundle. A routine bump gated by the full suite, NOT a security
+   exposure; do not let the "2 high" label inflate its priority above the visual harness below.
 2. **A5(ii)** — the `commit-msg` hook (the free slot; `core.hooksPath=.githooks`, no `settings.json`), so the
    mutation-proof trailer is demanded where the message can still be cheaply edited rather than at push.
 3. **A2 remainder + A7 remainder** — the counts are commands now, not generated blocks; `.agent/AGENTS.md` and
