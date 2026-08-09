@@ -413,3 +413,46 @@ cannot be reasoned across to a local one — and why the proposed TAU of 0.10 wo
 near-zero bound, the trace-noise set a small one, and any frame with genuine 3D motion its own. Rule 4
 permits fixing a genuinely-wrong gate WITH justification; it forbids relaxing one quietly, which is why
 this is written down before it is done.
+
+---
+
+## 2026-08-09 (evening) — `failOnFlakyTests` DEFERRED on n=1, and instrumented rather than hoped
+
+### The situation. **[LOOP]**
+`10a3cca` fixed the two flaky e2e specs (`panel-overflow` — a wait bound tight relative to its own file;
+`tier-downgrade-reclaim` — a threshold judged against this machine rather than its design floor). The
+obvious follow-through is Playwright's `failOnFlakyTests`, which turns a retry-then-pass into a hard
+failure so `retries: 2` can no longer mask a degrading spec.
+
+**Not yet.** Since that fix there has been exactly **one** completed clean CI run on `main` (`2222b22`,
+28 specs across 3 shards, 0 flaky; the run at `6af95b7` was `cancelled` by supersession and carries no
+signal). Flipping a gate on a single observation is precisely the error corrected four commits earlier in
+`03e61d4`, where an n=1 tab sighting had been written up as a mechanism. Doing it again in the same hour,
+to a gate that reds the tree, would be worse.
+
+There is also a real cost the other way. The retries are not decoration: these specs drive software-WebGL
+Chromium on a shared runner, and `failOnFlakyTests` converts machine weather into a red tree. That is the
+self-decaying-gate shape — a gate that goes red from conditions rather than defects teaches everyone to
+ignore it, and then it protects nothing.
+
+### The decision. **[LOOP] Instrument the flakiness, flip on the record.**
+`scripts/ci/flaky-report.mjs` runs after every e2e shard under `if: always()` and prints, per shard, how
+many specs it walked and which ones passed only on a retry — REPORT-ONLY, exit 0, same posture as
+`coverage-zero.mjs`. The observation window now accumulates *in the run log*, where anyone can count it,
+instead of depending on a future session remembering to grep five runs by hand — which is how these two
+were found in the first place.
+
+**The flip criterion, so this is a decision and not an intention:** set `failOnFlakyTests: !!process.env.CI`
+once **10 consecutive completed CI runs on `main` report 0 flaky across all three shards**. `cancelled`
+runs do not count — they carry no signal, and mistaking one for a result is the exact confusion that hid
+88 runs' worth of failure in July. If a spec does appear, fix the spec; do not restart the count by
+loosening it.
+
+### One thing worth recording about the instrument itself.
+Its recursive descent into nested suites is load-bearing, not defensive polish: three e2e files use
+`test.describe`, **including `panel-overflow.spec.js`** — one of the two specs this exists to watch. Proven
+against a real Playwright artifact rather than a fixture: on a genuine depth-2 report the shipped walker
+reports `walked 1`, and the non-recursive mutant reports `walked 0` while still printing "no flaky specs".
+A top-level-only walk would have been blind to exactly the spec it was built for, and would have said so in
+the language of a clean run. The `walked` denominator and the cross-check against Playwright's own
+`stats.flaky` are what make that failure loud instead of reassuring.

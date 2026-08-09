@@ -131,6 +131,17 @@ jobs:
       - name: E2E
         run: npm run test:e2e -- --shard=${{ matrix.shard }}/3 --grep-invert="@local-only"
 
+      # `if: always()` because a shard that FAILED is exactly when you want to know which specs were
+      # merely flaky and which actually broke. REPORT-ONLY, exits 0 — `retries: 2` means a retry-then-pass
+      # concludes the run `success`, so flakiness is invisible in the only thing anyone reads, and two
+      # specs stayed flaky for weeks under that cover. This prints the count every run so the observation
+      # window accumulates in the log instead of depending on someone remembering to grep five runs.
+      # It also prints its own DENOMINATOR: "walked 0 specs" is a broken report, not a clean one.
+      # The `failOnFlakyTests` flip criterion is recorded in docs/superpowers/DECISIONS.md.
+      - name: Flaky-spec report
+        if: always()
+        run: node scripts/ci/flaky-report.mjs
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

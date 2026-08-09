@@ -14,7 +14,14 @@ export default defineConfig({
   fullyParallel: false, // one vite dev + shared in-page game state -> serialize
   workers: 1,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [['github'], ['list']] : 'list',
+  // The `json` reporter exists so `scripts/ci/flaky-report.mjs` can NAME the specs that only passed on a
+  // retry. `retries: 2` above means a retry-then-pass concludes the run as `success`, and the conclusion
+  // is the only thing anyone reads — which is how two specs stayed flaky for weeks. The github/list
+  // reporters print a flaky COUNT but nothing machine-readable, and grepping run logs by hand is what
+  // this replaces.
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['json', { outputFile: 'test-results/results.json' }]]
+    : 'list',
   // 120s, not 60s. The shared helpers in tests/e2e/_boot.js declare inner waits of up to 30s
   // (bootDev: store + test bridge) plus 45s (startPlay: isSpawnChunkLoaded) = 75s of legal waiting
   // INSIDE a test — so a 60s per-test budget was structurally impossible to satisfy whenever terrain
