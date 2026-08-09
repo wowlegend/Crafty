@@ -108,15 +108,15 @@ self-inflicted.
    is what minted the worst husks). If you truly must, reuse a fixed dedicated port and close its surface
    after. To clear husks: `sh frontend/scripts/dev/close-preview-tabs.sh` (LISTS by default; `--close` to
    close).
-   **⚠️ THE FOOTGUN — do not touch `cmux close-surface` by hand.** With an UNRESOLVED `--surface` it falls
-   back to closing `$CMUX_SURFACE_ID` — **your own Claude Code tab.** An autonomous loop iteration
-   self-decapitated its own session this way (exit 0, "OK", session gone). The helper above is the ONLY
-   sanctioned path: it excludes SELF by UUID (marker-shift-proof), matches preview titles with globs (an
-   awk `\|` regex de-escapes and matches an agent tab titled "Crafty game" — the first version's bug),
-   overrides `$CMUX_SURFACE_ID` to the dead target so a fall-through cannot hit you, and aborts if SELF
-   ever vanishes. **The autonomous loop must NEVER auto-run `--close`** — a destructive CLI whose default
-   target is the caller is not fired unattended. Loop session-close may RUN THE LIST (report only); Kevin
-   or an attended agent runs `--close`.
+   **⚠️ `cmux close-surface` IS NOW DENIED BY `.claude/settings.json`, not by this paragraph.** With an
+   unresolved `--surface` it falls back to closing `$CMUX_SURFACE_ID` — your own tab — and an autonomous
+   iteration once self-decapitated that way (exit 0, "OK", session gone). `permissions.deny` blocks it
+   regardless of what the model decides, and `--close` on the helper is `ask`, so attended-only is
+   structural rather than aspirational. **Honest limits:** a compound invocation (`cd x && cmux …`) may
+   not match the pattern, and in `bypassPermissions` mode `ask` does not prompt — the deny is a
+   first-line block, not a seal. The helper stays the only sanctioned path (excludes SELF by UUID,
+   overrides `$CMUX_SURFACE_ID` to the dead target, aborts if SELF vanishes); the loop may RUN THE LIST,
+   never `--close`.
 
 ## Build / Test / Gates (from `frontend/`)
 

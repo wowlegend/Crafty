@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "permissions": {
+    "deny": [
+      "Bash(cmux close-surface)",
+      "Bash(cmux close-surface *)"
+    ],
+    "ask": [
+      "Bash(*close-preview-tabs.sh --close*)",
+      "Bash(sh frontend/scripts/dev/close-preview-tabs.sh --close*)"
+    ]
+  },
+  "hooks": {
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/hooks/post-compact-rules.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
