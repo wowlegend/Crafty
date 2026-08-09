@@ -83,9 +83,7 @@ REPO (two-level): ROOT `/Users/kz/Code/Crafty` (docs + memory + master plan) · 
 MISSION: drive the **HOLISTIC-REVIEW-2026-07-21.md** queue to zero in its priority ladder —
 **security → bugs → test-bugs → script/probe hygiene → config-drift → dead-code → comment-lies → doc-drift →
 test-vacuity (seam-extract) → coverage-gaps → perf → a11y → inconsistency → enhancements** — preferring the by-file
-BATCHES (fix every finding in a file together = one commit). ~~Then execute the **docs reorg**~~ **(DONE — `docs/archive/` exists and
-`plans/` went 100 → 35 files. Do NOT re-run it. This line sent cold-start agents at finished work, which is
-exactly the "a stale doc is a LIVE TRAP" failure warned about below.)** Then the STATUS §2 secondary queue —
+BATCHES (fix every finding in a file together = one commit).  Then the STATUS §2 secondary queue —
 note **A-bis (all 8 seams) CLOSED 2026-08-05**; verify any registry line against live code before working
 OR repeating it (two were found describing code that did not exist). Ship ONE
 verified unit per iteration; **keep `docs/superpowers/LOOP-PROGRESS.html` current — a SESSION-CLOSE
@@ -137,7 +135,7 @@ gated logic to a pure injectable module, test purely, mutation-prove, wire); Gam
 in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in capture — seeded
 + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4 veto)**; bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
-`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push runs TEN checks — count them, never recall them). `knip` is CI-only, NOT at push.
+`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `.agent/AGENTS.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
 BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
 (`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
 `close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
@@ -150,16 +148,7 @@ TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-
 only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
 Accessibility never vetoes depth. Reference-lock before any look-bearing work; judge IN-WORLD on the real grade.
 
-⚠️ BROWSER / TEST-PROCESS HYGIENE (charter §6.4 — hard rule): **anything you launch, you kill.** Headless Chromium +
-vite from capture/e2e/probes do NOT die on a throw. Every ad-hoc probe closes its browser in a `finally`; **spawn
-vite `detached` and SIGKILL the whole process GROUP (`process.kill(-server.pid)`) — a plain `server.kill()` only reaps
-the npx wrapper and ORPHANS the forked vite child holding the port** (the repo-wide probe-hygiene bug class; ocean-probe
-+ capture fixed). The probe-hygiene class is CLOSED: every probe now goes through the managed `_serve.mjs` lifecycle, and the one fixed ad-hoc port left (`spawn-legibility-probe.mjs`, 4197) is the sanctioned pattern, not a leak. Guard `browser.close()` with a timeout + force-kill (a GPU-context-lost Chrome
-hangs close() forever — the old "capture title-mascot hang"). Use ONE managed port (E2E 4179, capture 4178); never
-hand-start vite on an ad-hoc one-off port. Sweep `sh frontend/scripts/dev/kill-test-procs.sh` after; when the box is
-slow, check for leaks BEFORE blaming a gate. cmux opens a preview tab per localhost port that OUTLIVES the killed
-process → `sh frontend/scripts/dev/close-preview-tabs.sh` LISTS husks; **NEVER hand-run `cmux close-surface` or
-`--close` in the loop** (an unresolved `--surface` closes YOUR OWN tab — a loop self-decapitated this way). List only.
+⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `.agent/AGENTS.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs → LIST
 husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + LOOP-PROGRESS.html → **refresh the REMOTE GitHub

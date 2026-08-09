@@ -289,31 +289,23 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   > those specs drive the **store**, not real input (see STATUS §V2). The zero-dep input-driven E2E + state-hash
   > work needs **no ask** and is full loop authority.
 
-## 5. Process deltas vs the pre-loop era (so old docs don't confuse the loop)
+## 5. Process deltas vs the pre-loop era
 
-- The "Kevin HARD GATE before implementation" in older specs/CLAUDE.md is **replaced by the self-gate**: a
-  grounded design workflow (seam-map vs LIVE code + research + adversarial critique) whose output spec is
-  committed BEFORE building, + the §4 discipline. Kevin reviews ASYNC via KEVIN-REVIEW-BATCH + CHANGELOG.
-- Kevin-decision backlog items in old docs: the loop decides them on the recorded evidence and proceeds.
-  **The decision goes in `docs/superpowers/DECISIONS.md`** (the OUTBOX), not only in KEVIN-REVIEW-BATCH —
-  the batch is append-only and cannot say what has been settled; it reached ~146 entries with 6 marked
-  resolved, none in six weeks. Exceptions: the §4 genuinely-Kevin list.
-- The master plan itself may be edited (status banners, re-sequencing, adding named passes) — keep §1–§2
-  vision intact, log every edit in CHANGELOG.
+The pre-loop era ended 2026-06-10, so this no longer needs restating in full. What still binds:
+- The "Kevin HARD GATE before implementation" in older specs is REPLACED by the self-gate — a committed
+  design spec before building, plus the §4 discipline. Kevin reviews async via KEVIN-REVIEW-BATCH.
+- **A Kevin-decision item in an old doc: decide it on the recorded evidence and write the decision into
+  `docs/superpowers/DECISIONS.md`** — the OUTBOX. KEVIN-REVIEW-BATCH is append-only and structurally
+  cannot say what is settled; it reached ~146 entries with 6 resolved, none in six weeks. Exceptions are
+  the §4 genuinely-Kevin list.
+- The master plan may be edited (status, re-sequencing, named passes); keep §1–§2 vision intact and log
+  every edit in CHANGELOG.
 
-*(The capture-mode-hid-real-lighting scar moved to `memory/STATUS.md` §5 with the ANTI-REDO it belongs
-with. It is a do-not-repeat, not a process delta.)*
+## 6. SOTA-experience backlog — MOVED
 
-## 6. SOTA-experience backlog — MOVED, not deleted
-
-**The backlog lives in `memory/STATUS.md` §2 (D Art · E Gameplay depth · F Perf + polish). Go there.**
-
-This section used to carry a candidate pool of audio / game-feel / visual / UX / i18n ideas, and its own
-first line had declared it SUPERSEDED since 2026-06-15. A backlog in the constitution is the wrong shape by
-this charter's own doc-role rule — STATUS.md owns the registry, and two copies of a work list mean one of
-them is quietly wrong. The still-live items were already represented in STATUS §2; the one thing that was
-NOT is the ANTI-REDO warning (ToneMapping is already NEUTRAL, `MOOD_GRADE` already ships), which moved to
-STATUS §5 "Anti-patterns this project has already paid for" — the section for exactly that.
+**It lives in `memory/STATUS.md` §2 (D Art · E Gameplay · F Perf/polish). Go there.** A backlog in the
+constitution is the wrong shape by this charter's own doc-role rule: two copies of a work list means one
+is quietly wrong.
 
 ## 6.4 ⚠️ BROWSER / TEST-PROCESS HYGIENE — anything you launch, you kill (Kevin, 2026-07-13)
 

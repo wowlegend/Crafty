@@ -2,6 +2,9 @@
 tests/visual/current/
 tests/visual/diff/
 
+# Coverage output — an instrument, regenerated on demand; never committed
+coverage/
+
 # Playwright E2E artifacts (transient)
 test-results/
 playwright-report/
