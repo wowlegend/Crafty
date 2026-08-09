@@ -85,15 +85,19 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 - Prefer Playwright's `webServer` config over a hand-started dev server — it owns its own lifecycle, so
   there is nothing to forget to kill. Hand-started means hand-killed, in the same turn.
 - One managed port per harness (capture 4178, e2e 4179, prod-smoke 4180). Never an ad-hoc port.
-- **ANY listening localhost port mints a browser tab you cannot clean up.** cmux surfaces every port it
-  detects, and on 2026-08-09 a `vite preview` on 4180 opened a Crafty tab in Kevin's OWN Chrome — where it
+- **A listening localhost port CAN mint a browser tab that outlives the process — but you cannot tell.**
+  OBSERVED ONCE, 2026-08-09: a `vite preview` on 4180 opened a Crafty tab in Kevin's OWN Chrome, which
   kept running the R3F render loop and the Rapier physics step at **75% of a core** long after the server
-  was killed. `close-preview-tabs.sh` cannot help: it only enumerates cmux SURFACES, so it reported "no
-  orphan preview tabs found" while the tab sat there. That report was true about cmux and false about the
-  machine — its denominator excludes the real browser, and it must, because a sweeper that reaches into
-  Kevin's Chrome is far worse. **So killing the server is NOT the end of the cleanup.** After any local run
-  that binds a port, say so, and let Kevin close the tab. Prefer running these in CI, where there is no
-  cmux and no tab to leave behind.
+  was correctly killed. Three later capture runs on 4178 the same day minted NOTHING. So the mechanism is
+  NOT "any port always surfaces" — that was a generalisation from n=1, written here as if it were
+  measured, and Kevin caught it.
+- **You have no instrument for this, and THAT is the rule.** `close-preview-tabs.sh` enumerates cmux
+  SURFACES only; it reported "no orphan preview tabs found" both when a tab existed and when none did. Its
+  denominator excludes the real browser BY DESIGN, because a sweeper that reaches into Kevin's Chrome would
+  be far worse than a tab left open. **So killing the server is not provably the end of the cleanup, and
+  you cannot assert either way.** Say "a local run bound port N; I cannot see whether a tab was left" —
+  never "close the tab" (an unverified instruction) and never "all clean" (an unverified all-clear).
+  Prefer running these in CI, where there is no cmux and no browser at all.
 
 ## The meta-rule
 

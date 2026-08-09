@@ -77,9 +77,11 @@ render loop and physics step at 75% of a core in Kevin's OWN Chrome, long after 
 
 - Sweep after every browser batch: `sh frontend/scripts/dev/kill-test-procs.sh` (touches only this repo's
   vite and Playwright's cached browsers — never Kevin's Chrome/Brave/Safari).
-- A local run that binds a port MINTS A TAB nobody can sweep for you. `close-preview-tabs.sh` enumerates
-  cmux SURFACES only, so "no orphan preview tabs found" is true about cmux and says nothing about the real
-  browser. SAY that a tab was left; let Kevin close it. Prefer running these in CI, where there is none.
+- A local run that binds a port CAN mint a tab nobody can sweep for you — observed once (4180), while three
+  later runs on 4178 minted nothing, so it is not a law. `close-preview-tabs.sh` enumerates cmux SURFACES
+  only, so "no orphan preview tabs found" is true about cmux and silent about the real browser. You have no
+  instrument either way: say "a local run bound port N; I cannot see whether a tab was left" — never "close
+  the tab" and never "all clean". Prefer running these in CI, where there is no browser at all.
 - `cmux close-surface` is DENIED in `.claude/settings.json` — its fall-through target is your own session,
   and an autonomous iteration once ended itself that way. `--close` on the helper is `ask`. Honest limits:
   a compound `cd x && cmux …` may not match, and `ask` does not prompt under `bypassPermissions`.
