@@ -109,8 +109,13 @@ _On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace th
    npm install
    npm run dev
    ```
-3. Open your browser and navigate to **[http://localhost:5173](http://localhost:5173)** (Vite's default port —
-   the README said `3000` for months, which is a server nothing in this repo has ever started).
+3. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)** — set explicitly by
+   `server.port` in `frontend/vite.config.js`, which also sets `open: true`, so it launches on its own.
+
+   > This line previously read `5173` and mocked the correct value: *"the README said 3000 for months, which
+   > is a server nothing in this repo has ever started."* The correction was the error — 5173 is Vite's
+   > default, but this repo overrides it. Written confidently, in a canonical doc, about a fact one line of
+   > config away.
 
 ---
 
