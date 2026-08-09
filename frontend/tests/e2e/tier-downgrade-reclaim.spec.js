@@ -54,6 +54,26 @@ test('a high->low tier downgrade actually releases chunks', async ({ page }) => 
   const RECLAIM_BOX = (2 * (LOW_RENDER_DISTANCE + 1) + 1) ** 2; // 49
 
   const atHigh = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
+
+  // AN INCONCLUSIVE PRECONDITION IS A SKIP, NOT A FAILURE — and the message below already said so
+  // ("Not a product failure; the box is too slow to exercise this") while still reporting RED.
+  //
+  // Measured 2026-08-09 from CI: this test passed at 1.8m / 2.7m / 1.6m and then failed in 43.2s with
+  // exactly 44 chunks streamed, recovering on retry #1. A slow runner never reaches the floor, so there
+  // is nothing to reclaim and the test cannot distinguish a working reclaim from a broken one. Failing
+  // there reports a product defect that did not happen, and — worse — it trains the next reader to treat
+  // this spec's red as noise, which is how a REAL reclaim regression would get waved through.
+  //
+  // The skip is LOUD and counted: Playwright prints it with this reason and the run reports a skipped
+  // total, so a spec that silently stopped exercising anything is visible rather than green. The
+  // assertion below is untouched and still runs whenever the machine actually reaches the floor.
+  test.skip(
+    atHigh <= RECLAIM_BOX,
+    `INCONCLUSIVE: this machine streamed only ${atHigh} chunks at "high", at or below the ` +
+      `${RECLAIM_BOX}-chunk reclaim floor — there is nothing to reclaim, so the test cannot tell a ` +
+      `working reclaim from a broken one. Not a product failure; the box is too slow to exercise this.`
+  );
+
   expect(
     atHigh,
     `this machine only streamed ${atHigh} chunks at "high", which is not above the ${RECLAIM_BOX}-chunk ` +

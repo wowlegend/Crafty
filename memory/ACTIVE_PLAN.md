@@ -114,6 +114,20 @@ Measured full distribution (preserved identical-code pair, all 31 frames) is THR
 So the 6% global threshold is ~1000x too loose for the 13 exact frames — the live defect is FALSE
 NEGATIVES on the static frames, not the false positives the determinism hunt was chasing.
 
+**STATUS 2026-08-09 (later the same day) — steps 0/1/3/4 ARE DONE AND PUSHED.** Remaining: the
+re-baseline itself, then tolerances. Landed: `a5f1be4` phase reset (mascot idle + mote ring reset to
+DECLARED values, 9/9 RED first, 3 mutations) · `cbe1cf9` diff image on failure · `b201e14` GL fatals +
+context loss + headless contract · `f127aa6` frame denominator + intra-page invariant as standing gates ·
+`227b95b` BASELINE GOVERNANCE (trailer gate + contact sheet — the oracle now has a gate) · `78fcc69`
+doc-currency covers DECISIONS.md · `b600b41` AI-worker RNG seeded + the false determinism claims corrected ·
+`8a2b7f7` capture provenance + windowed density (report-only) · `d73c2a2` `.claude/settings.json` — the
+first agent-boundary enforcement this repo has ever had · `c2d96cb` prod-bundle smoke in CI.
+
+**MOUNT ORDER SETTLED (step 0):** the diorama canvas exists BEFORE `enterCapture` in 3/3 runs, so the phase
+fix and `04148c8` are both LIVE, not inert. Un-frozen window varies 1682–10431 ms; pairwise frame diff
+TRACKS that window, Pearson r = 0.842 over 10 pairs; floor 0.155% at a 40 ms gap. So the freeze phase was
+the residual and the old 0.36–0.98% range was a SAMPLE, not a ceiling.
+
 **THE CORRECTED PLAN, IN ORDER. ONE re-baseline, not eight** (8 separate findings each demand one;
 adopted piecemeal that is 8 bulk oracle rewrites, each blessing whatever drift arrived alongside — the
 exact mechanism that produced the beast-less baselines):

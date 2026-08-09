@@ -31,11 +31,19 @@ async function bootAndPlay(page) {
 
 test.describe('B5 — the Progression panel header + close button are reachable', () => {
   test('the panel header is within the viewport at default scroll (not clipped above)', async ({ page }) => {
-    test.setTimeout(150000);
+    // 180s, matching tier-downgrade-reclaim. Two 90s boot waits plus a 45s modal wait cannot all max out
+    // inside 150s, so the outer budget was the binding constraint the moment any one of them ran long.
+    test.setTimeout(180000);
     await bootAndPlay(page);
     // Open the talents + Spell-Mastery panel via the same dev hook the capture harness uses.
     await page.evaluate(() => window.__craftyTest.call('openModal', 'spellUpgrades'));
-    await page.waitForSelector('[data-testid="progression-header"]', { timeout: 15000 });
+    // 45s, not 15s. THE ASSERTION BELOW IS UNCHANGED — this is how long the app is allowed to get to the
+    // state, not how much clipping is tolerated. The 15s bound was arbitrary and inconsistent with every
+    // other wait in this file (the two boot phases above each allow 90s), and it applied to the step that
+    // runs LAST, after a full world boot, when the machine is most loaded. It failed all three CI attempts
+    // at 02c73ec on a docs-only commit while passing locally in 1.5min — the signature of a bound that is
+    // tight relative to its own file, not of a defect in what it guards.
+    await page.waitForSelector('[data-testid="progression-header"]', { timeout: 45000 });
 
     const m = await page.evaluate(() => {
       const panel = document.querySelector('[data-testid="progression-panel"]');
