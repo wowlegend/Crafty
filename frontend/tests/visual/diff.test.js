@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
@@ -67,6 +67,53 @@ describe('visual capture freshness (item #12 fail-loud)', () => {
   });
 });
 
+// THE CONTACT SHEET — old / new / diff, side by side, for every frame that went red.
+//
+// A re-baseline is a rewrite of the SPECIFICATION, and until now there was no artifact to review it
+// against: the terminal printed a percentage, `current/` is gitignored, and the reviewer's only option was
+// to open PNGs one pair at a time from three directories. Measured consequence — 79 of 1,603 commits
+// rewrite baselines and 10 of the last 12 bundled the src change that moved the pixels, so nothing
+// distinguished an intended look change from a regression the oracle was updated to match.
+//
+// Written only when something is red, so a green run leaves no litter. Relative <img> paths, because
+// diff/ is a sibling of baseline/ and current/ and the sheet must open straight off disk with no server.
+const redFrames = [];
+
+afterAll(() => {
+  if (!redFrames.length) return;
+  const rows = redFrames
+    .sort((a, b) => b.ratio - a.ratio)
+    .map(
+      ({ state, ratio }) => `
+  <section>
+    <h2>${state} <small>${(ratio * 100).toFixed(3)}% of pixels differ</small></h2>
+    <div class="row">
+      <figure><img src="../baseline/${state}.png" alt="baseline"><figcaption>baseline (the oracle)</figcaption></figure>
+      <figure><img src="../current/${state}.png" alt="current"><figcaption>current (this run)</figcaption></figure>
+      <figure><img src="./${state}.png" alt="diff"><figcaption>diff — red: current LIGHTER · green: DARKER · yellow: anti-aliased</figcaption></figure>
+    </div>
+  </section>`
+    )
+    .join('\n');
+  const html = `<!doctype html><meta charset="utf-8"><title>Crafty visual diff — ${redFrames.length} frame(s) red</title>
+<style>
+  body{margin:0;padding:2rem;background:#14151a;color:#e8e6e2;font:14px/1.5 ui-sans-serif,system-ui,sans-serif}
+  h1{font-size:1.3rem;margin:0 0 .35rem} p.lede{margin:0 0 2rem;color:#a5a29d;max-width:60ch}
+  h2{font-size:1rem;margin:2.5rem 0 .6rem;font-weight:600} h2 small{color:#ff6257;font-weight:400;margin-left:.5rem}
+  .row{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+  figure{margin:0} img{width:100%;display:block;border:1px solid #2e3037;border-radius:3px;background:#000}
+  figcaption{color:#83817d;font-size:.75rem;margin-top:.35rem}
+</style>
+<h1>${redFrames.length} frame(s) differ from the oracle</h1>
+<p class="lede">Look before you re-baseline. A baseline says &ldquo;do not let this change without noticing&rdquo; &mdash;
+rewriting one is rewriting the specification, so it belongs in its own commit with a
+<code>Baseline-Review:</code> trailer saying what changed and that you opened these.</p>
+${rows}
+`;
+  writeFileSync(resolve(DIFF_DIR, 'index.html'), html);
+  console.error(`\n  CONTACT SHEET: tests/visual/diff/index.html (${redFrames.length} frame(s), worst first)`);
+});
+
 describe('visual regression', () => {
   for (const state of STATES) {
     it(`${state} matches baseline within ${THRESHOLD * 100}%`, () => {
@@ -110,6 +157,7 @@ describe('visual regression', () => {
         expect(again, 'the diff image does not match the ratio that failed').toBe(diff);
         diffPath = resolve(DIFF_DIR, `${state}.png`);
         writeFileSync(diffPath, PNG.sync.write(out));
+        redFrames.push({ state, ratio });
       }
       // A bare percentage is not a diagnosis, and on 2026-08-02 it actively misled: `landmark` failed at
       // 6.29% then 6.27% with ZERO source changes, which reads exactly like a renderer regression from the

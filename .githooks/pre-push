@@ -73,6 +73,16 @@ for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
 done
 
+# ── baseline trailer ────────────────────────────────────────────────────────────
+# Same shape, same position, for the ORACLE. The visual gate judges every frame against the committed
+# PNGs, so those PNGs ARE the specification — and until 2026-08-09 not one of the ten gates looked at
+# them. Measured: 79 of 1,603 commits rewrite baselines and 10 of the last 12 bundled a src/ change into
+# the same commit, which makes an intended look change indistinguishable from a regression the oracle was
+# updated to match.
+for RANGE in $RANGES; do
+  node "$REPO_ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE" || exit 1
+done
+
 for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")
   printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"

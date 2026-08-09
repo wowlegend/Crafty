@@ -41,6 +41,7 @@ export const END = '<!-- END GATES -->';
  */
 export const DESCRIPTIONS = {
   'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
+  'baseline-trailer': 'a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match',
   'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks',
   'queue-ledger': 'a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command',
   'artifact-currency': 'the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper)',
@@ -57,10 +58,16 @@ export function parseHook(src) {
   const gates = [];
   const lines = src.split('\n');
   lines.forEach((line, i) => {
-    // the pre-pattern invocation: mutation-proof-trailer runs before the printf-banner block
-    if (/mutation-proof-trailer\.mjs/.test(line) && !/^\s*#/.test(line)) {
-      if (!gates.some((g) => g.name === 'mutation-proof-trailer')) {
-        gates.push({ name: 'mutation-proof-trailer', cmd: 'node scripts/ci/mutation-proof-trailer.mjs <range>', line: i + 1 });
+    // PRE-BANNER INVOCATIONS. A couple of gates take a commit RANGE and run before the printf-banner
+    // block, so they never match the pattern below. This used to hardcode `mutation-proof-trailer` by
+    // name, which meant the second such gate would have been silently absent from the generated table —
+    // the same self-undercount this file exists to stop (the hand-kept version said "three", "Six" and
+    // "NINE" in turn, each time wrong). Matched structurally now, so the next one needs no edit here.
+    const preBanner = line.match(/scripts\/ci\/([a-z0-9-]+)\.mjs" "\$RANGE"/);
+    if (preBanner && !/^\s*#/.test(line)) {
+      const name = preBanner[1];
+      if (!gates.some((g) => g.name === name)) {
+        gates.push({ name, cmd: `node scripts/ci/${name}.mjs <range>`, line: i + 1 });
       }
       return;
     }

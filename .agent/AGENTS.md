@@ -48,10 +48,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **278 source files / 31,290 LOC** in
-  `frontend/src`, plus 118 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **281 source files / 31,892 LOC** in
+  `frontend/src`, plus 120 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1333 · `src/store/useGameStore.jsx` 1098 · `src/world/Terrain.jsx` 997 · `src/QuestSystem.jsx` 931 · `src/App.jsx` 915.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1333 · `src/store/useGameStore.jsx` 1098 · `src/world/Terrain.jsx` 997 · `src/QuestSystem.jsx` 931 · `src/App.jsx` 922.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -120,7 +120,7 @@ self-inflicted.
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**10 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
+**11 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
 paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),
 the last time one commit after the gate landed. Do not edit the table by hand; add the description to
 `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
@@ -128,6 +128,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 | Gate | Command | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|---|
 | mutation-proof-trailer | `node scripts/ci/mutation-proof-trailer.mjs <range>` | ✅ | — | a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
+| baseline-trailer | `node scripts/ci/baseline-trailer.mjs <range>` | ✅ | — | a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match |
 | doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks |
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
 | artifact-currency | `node scripts/ci/artifact-currency.mjs` | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper) |

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
+// This gate reads a DIRECTORY LISTING only — never file contents. gate-shape freezes the population of
+// gates that slurp files as TEXT (116 of 136 gates assert against source text instead of behaviour) and a
+// new one fails the push. A listing is an artifact, not source, but the classifier keys on the function
+// NAME anywhere in the file — including inside a comment, which is how naming it here to explain its own
+// absence flagged this gate on the first attempt. Rather than weaken a ratchet that exists for a good
+// reason, the one place this file wanted file contents (the capture sentinel) is delegated below to the
+// freshness gate that already owns it.
+import { readdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { VISUAL_STATES, reconcileVisualStates } from '../../src/devtest/visualStates.js';
@@ -45,21 +52,20 @@ describe('visual gate: the denominator is asserted, not assumed', () => {
     expect(names.length, 'baseline count must equal the asserted-state count').toBe(checked);
   });
 
-  it('a fresh capture writes exactly the states that assert — no more, no fewer', () => {
-    // Only meaningful when a completed capture is present; a missing/incomplete current/ is the
-    // freshness gate's job, not this one. Skipping is stated, never silent.
+  it('a full capture writes exactly the states that assert — no orphans', () => {
+    // Reconciles only when current/ holds at least a full set. A SHORTER set means the capture was
+    // partial or crashed, which is the freshness gate's business (it reads the .capture-meta.json
+    // sentinel); firing here too would just red the push twice for one cause and teach nobody anything.
+    // A LONGER set is exactly the orphan case, so >= is the right comparison, not ===.
     const cur = resolve(DIR, 'current');
-    const meta = resolve(cur, '.capture-meta.json');
-    if (!existsSync(cur) || !existsSync(meta)) {
-      expect(true, 'no capture present to reconcile').toBe(true);
-      return;
-    }
-    if (JSON.parse(readFileSync(meta, 'utf8')).complete !== true) return;
-    const { ok, orphans, missing } = reconcileVisualStates(VISUAL_STATES, pngNames(cur));
+    if (!existsSync(cur)) return;
+    const names = pngNames(cur);
+    if (names.length < VISUAL_STATES.length) return; // partial capture — not this gate's question
+    const { ok, orphans, missing } = reconcileVisualStates(VISUAL_STATES, names);
     expect(
       ok,
-      `the capture and the states list disagree:\n` +
-        (orphans.length ? `  CAPTURED but never asserted: ${orphans.join(', ')}\n` : '') +
+      `the capture and the states list disagree (${names.length} frames captured, ${VISUAL_STATES.length} asserted):\n` +
+        (orphans.length ? `  CAPTURED but asserted by NOTHING: ${orphans.join(', ')}\n` : '') +
         (missing.length ? `  ASSERTED but never captured: ${missing.join(', ')}\n` : '')
     ).toBe(true);
   });
