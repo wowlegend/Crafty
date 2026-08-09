@@ -48,6 +48,30 @@ export const selectHudState = (state) => ({
   showWorldManager: state.showWorldManager,
   setShowWorldManager: state.setShowWorldManager,
   selectedVillager: state.selectedVillager,
+  // 2026-08-09 AUDIT — this setter's absence was the single most self-indicting finding of the 108.
+  // The header four lines above says "keep VALUE and SETTER together"; selectedVillager was selected
+  // without it, so MenuSystem.jsx:203's onClose threw a TypeError AFTER unmounting the panel, and the
+  // pointer-lock relock on the next line never ran. HUD_CALLABLE_KEYS omitted the same key, so the
+  // guard written to catch this class never examined it.
+  setSelectedVillager: state.setSelectedVillager,
+  // Chest interface: gate + payload + setter. MenuSystem.jsx:100 mounts ChestInventoryPanel on
+  // showChestInterface, which was never selected, so the panel could not render at all — while
+  // Terrain.jsx's open(h) faithfully set the flag. A live write path feeding a dead read.
+  showChestInterface: state.showChestInterface,
+  activeChestCoords: state.activeChestCoords,
+  setShowChestInterface: state.setShowChestInterface,
+  // Credits: unreachable twice over — the gate key was missing AND the Settings button's handler called
+  // an undefined setter. This is where the game-icons.net CC BY 3.0 attribution is discharged, per the
+  // Design Language section of AGENTS.md, so the licence obligation rode on a path that could not run.
+  showCredits: state.showCredits,
+  setShowCredits: state.setShowCredits,
+  // WorldManager "Create World" called an undefined function inside a try, so the failure was swallowed
+  // and the button did nothing at all.
+  startNewWorld: state.startNewWorld,
+  // NOT in the store literal: GameScene.jsx:98 installs it via setState on mount and nulls it on
+  // unmount. The KEY must still be selected or useShallow never propagates it, and every
+  // `if (gameState.requestPointerLock)` takes its false branch forever.
+  requestPointerLock: state.requestPointerLock,
   loadWorldData: state.loadWorldData,
   selectedBlock: state.selectedBlock,
   setSelectedBlock: state.setSelectedBlock, // X3: absent until 2026-08-05 — the hotbar click threw
@@ -75,4 +99,13 @@ export const HUD_CALLABLE_KEYS = [
   'loadWorldData',
   'setSelectedBlock',
   'setActiveSpell',
+  'setSelectedVillager',
+  'setShowChestInterface',
+  'setShowCredits',
+  'startNewWorld',
+  // requestPointerLock is deliberately NOT here. This list means "called UNCONDITIONALLY, so it must be
+  // a function"; GameScene installs requestPointerLock on mount and every caller guards with
+  // `if (gameState.requestPointerLock)`, so undefined is a supported state. Adding it made the existing
+  // hud-hotbar gate red — correctly. It still has to be SELECTED (see the slice above) or useShallow
+  // never propagates it once GameScene installs it.
 ];
