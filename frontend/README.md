@@ -30,19 +30,16 @@ npm run preview  # preview production build
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| WASD | Move |
-| Space | Jump |
-| Mouse | Look |
-| F | Cast spell |
-| 1-4 | Select spell |
-| Q | Claim quest |
-| E | Inventory |
-| M | Magic |
-| C | Crafting |
-| B | Building |
-| ESC | Settings |
+**Read them from `src/game/keyMap.js`, which is the single source of truth**, or from the in-game controls
+panel, which a gate checks against that file in both directions.
+
+This section used to hand-copy the table, and by 2026-08-09 it listed 11 bindings against 17 live ones —
+silently omitting `G H L R T U V X Z`. That is the same defect `8a5e008` fixed inside the game: an
+advertised key with no handler is a lie, and a handler advertised nowhere is a feature the player never
+finds. `keyMap.js` exists precisely so the two can never disagree, and a second hand-maintained copy out
+here — governed by no gate, referenced by no doc — reintroduces the drift the SoT was built to end.
+
+Movement is WASD + Space to jump + mouse to look; everything else, read from the file.
 
 ## Documentation & Architecture
 

@@ -72,6 +72,12 @@ plan for "what to do next" — that is what `memory/STATUS.md` is for.
   state-hash replay gate) is **not built at all**. See STATUS §V2/§V5.
 - `2026-06-15-crafty-codebase-reality-audit.md` — the ranked file:line P0 debt chain (mostly harvested).
 - `2026-06-15-crafty-loop-machinery-review.md` — its 12 charter edits were APPLIED. Historical.
+- `../PERF-PROTOCOL.md` (note the path — it sits in `docs/`, NOT in `docs/superpowers/`) — the real-device
+  frame-rate acceptance protocol. **LIVE and unexecuted:** its "Runs" section is still an empty comment, so
+  no device measurement has ever been recorded. That is the point of it — the headless/SwiftShader FPS
+  number is meaningless, so frame-rate is Kevin-gated on real hardware only. It was missing from this map
+  entirely until 2026-08-09 while being cited from `CHANGELOG.md` and the S1-A plan: cited but unmapped is
+  the state in which a doc quietly stops being read.
 
 ---
 
