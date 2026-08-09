@@ -1,5 +1,6 @@
 # Visual-regression run artifacts (transient; baselines under tests/visual/baseline/ ARE committed)
 tests/visual/current/
+tests/visual/diff/
 
 # Playwright E2E artifacts (transient)
 test-results/

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
@@ -40,6 +40,7 @@ const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'charac
 // cheatsheet / left tool-column) is hidden on touch via isTouchUIMode. Joystick-ring crispness is a
 // minor M2b refinement. The 17 desktop frames stay byte-identical (the touch gates are isTouchUIMode-off there).
 const DIR = resolve(process.cwd(), 'tests/visual');
+const DIFF_DIR = resolve(DIR, 'diff'); // transient failure artifacts; gitignored alongside current/
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 
 // FAIL-LOUD freshness gate (KEVIN-REVIEW-BATCH item #12): refuse to diff a STALE/partial/crashed
@@ -75,6 +76,37 @@ describe('visual regression', () => {
       expect(cur.height, 'height').toBe(base.height);
       const diff = pixelmatch(base.data, cur.data, null, base.width, base.height, { threshold: 0.1 });
       const ratio = diff / (base.width * base.height);
+
+      // WRITE THE DIFF IMAGE WHEN — AND ONLY WHEN — THE FRAME IS RED.
+      //
+      // Every diagnosis in the 2026-08 determinism investigation required cropping the two PNGs by hand
+      // in an out-of-band script, because a bare percentage cannot say WHAT moved. The one time it was
+      // guessed instead of cropped, the guess was wrong three times running. This makes the artifact a
+      // by-product of the failure rather than a thing someone has to think to produce.
+      //
+      // TWO-PASS on purpose: pass 1 passes `null` for the output buffer, so the ordinary green path
+      // allocates nothing (31 frames x 1MP x 4 bytes is not free). Only a red frame pays for a buffer.
+      //
+      // mkdirSync FIRST: writeFileSync does NOT create parent directories. Without this the write
+      // ENOENTs and REPLACES the failure it exists to explain with a filesystem error — the diagnostic
+      // would destroy the diagnosis.
+      let diffPath = null;
+      if (ratio >= THRESHOLD) {
+        mkdirSync(DIFF_DIR, { recursive: true });
+        const out = new PNG({ width: base.width, height: base.height });
+        const again = pixelmatch(base.data, cur.data, out.data, base.width, base.height, {
+          threshold: 0.1,      // identical to pass 1 — the artifact must describe the number that failed
+          alpha: 0.35,         // faded original underneath, so the diff is readable in context
+          diffMask: false,
+          diffColorAlt: [0, 255, 0], // green where CURRENT is darker than baseline; red where lighter
+        });
+        // pixelmatch increments its counter outside every `if (output)` guard, so the two passes cannot
+        // legitimately disagree. If they ever do, the image is not describing the failure and is worse
+        // than no image at all.
+        expect(again, 'the diff image does not match the ratio that failed').toBe(diff);
+        diffPath = resolve(DIFF_DIR, `${state}.png`);
+        writeFileSync(diffPath, PNG.sync.write(out));
+      }
       // A bare percentage is not a diagnosis, and on 2026-08-02 it actively misled: `landmark` failed at
       // 6.29% then 6.27% with ZERO source changes, which reads exactly like a renderer regression from the
       // dependency bump in the same window. Opening the two PNGs took one minute and showed the real cause
@@ -86,6 +118,8 @@ describe('visual regression', () => {
           `  LOOK AT THE FRAMES BEFORE DIAGNOSING — the percentage cannot tell you WHAT moved:\n` +
           `    baseline: tests/visual/${'baseline'}/${state}.png\n` +
           `    current:  tests/visual/${'current'}/${state}.png\n` +
+          `    DIFF:     tests/visual/diff/${state}.png   <- open this one first\n` +
+          `              red = current is LIGHTER than baseline, green = DARKER, yellow = anti-aliased\n` +
           `  Known non-render causes of a whole-frame diff, in order of how often they bite:\n` +
           `    1. a transient world event fired mid-capture (weather, a notification toast, a spawn)\n` +
           `    2. the frame is genuinely re-art-directed -> review it, then re-baseline deliberately\n` +
