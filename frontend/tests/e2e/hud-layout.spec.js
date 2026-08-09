@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev } from './_boot.js';
 
 // B5 (18-domain review, "the HUD lies"): the player health/mana stat bars had two layout defects that

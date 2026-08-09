@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { PNG } from 'pngjs';
 import { bootDev, startPlay } from './_boot.js';
 

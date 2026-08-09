@@ -142,6 +142,17 @@ jobs:
         if: always()
         run: node scripts/ci/flaky-report.mjs
 
+      # RUNTIME REACHABILITY — which src modules the RUNNING GAME executed, from V8 coverage collected
+      # inside the browser while Playwright drove a real booted session. This is the only instrument here
+      # that can see the dominant defect class: four features on 2026-08-05 that shipped, compiled, gated
+      # green and never ran. knip sees the export used, a grep gate sees the line exist, build sees it
+      # compile, coverage-zero sees whether a TEST ran it — none sees whether the GAME reaches it.
+      # REPORT-ONLY: the unreached list legitimately contains subsystems the 28-spec suite never visits,
+      # and failing on that would be failing on E2E breadth in a reachability costume.
+      - name: Runtime reachability report
+        if: always()
+        run: node scripts/ci/runtime-reach.mjs
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

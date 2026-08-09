@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 
 // E2E PERF coverage -- the audit's #1-gap residual (frame-rate-under-load). The existing dev-only
 // perf-probe harness (src/devtest/perfProbe + PerfProbeRunner) drives the REAL game through a

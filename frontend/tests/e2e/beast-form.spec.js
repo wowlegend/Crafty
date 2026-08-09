@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // The WILDHEART beast-form transform — a signature Aspect feature — driven end-to-end through the REAL

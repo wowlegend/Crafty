@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // Gameplay-LOGIC flows driven through the REAL booted game store (not a mocked unit). These close

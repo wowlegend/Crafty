@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // The audit flagged "live world LOAD/resume never probed". This drives the REAL save path

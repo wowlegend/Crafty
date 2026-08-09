@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // B2d — "LOAD WORLD" PERMANENTLY DESTROYS THE TERRAIN. (18-domain review, CRITICAL.)

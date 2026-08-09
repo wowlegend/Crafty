@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // The hunger -> starvation loop, driven end-to-end through the REAL booted store. consumeHunger drains

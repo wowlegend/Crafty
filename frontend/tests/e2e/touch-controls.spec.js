@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev } from './_boot.js';
 
 // B7 (18-domain review, "touch is visually broken"): the on-screen touch controls used the theme color

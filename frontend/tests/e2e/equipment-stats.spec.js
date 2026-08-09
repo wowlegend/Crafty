@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
 // Equipping gear must flow through to the DERIVED combat stats (not just set the slot). The loot->equip

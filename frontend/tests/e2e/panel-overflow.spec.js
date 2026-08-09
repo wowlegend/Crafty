@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 
 // B5 (18-domain review, "HUD lies"): the Progression panel (SpellUpgradePanel) put flex-centering AND
 // `overflow-y-auto` on the SAME element (`absolute inset-0 flex items-center justify-center overflow-y-auto`).
