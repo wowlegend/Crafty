@@ -8,8 +8,7 @@
 This repo is **TWO-LEVEL**. The Bash cwd drifts between tool calls and **resets after every
 compaction**. ALWAYS use absolute paths or an explicit `cd`. **NEVER** assert a file is
 "missing / gone / deleted" from a relative `ls`/`find`/`grep` without re-checking the **absolute**
-path — that is the false-absence trap (it bit twice on 2026-06-01: `ls: src: No such file or
-directory`; a wrong ".superpowers is gone"; and a wrong `memory/SOTA-INITIATIVE.md` — it's at root).
+path — that is the false-absence trap.
 
 ```
 REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-plan + mockups live HERE
@@ -66,57 +65,32 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   (Game-Loop-Isolation / ordering, decision-of-record). **The other ≥900-LOC files carry no such finding**
   — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
   load-bearing well beyond the "mobs/loot/XP only" this line used to claim — `grep -rln "ecs/world" frontend/src/ | grep -v "\.test\."` returns 15 files incl. grass, minimap sync, nametags, element zones, hurl and squad AI — but still NOT the whole architecture. Do NOT trust older "clean ECS" claims.
-  *(De-monolith history — GameScene 933→299, SimplifiedNPCSystem 934→183, GamePanels 1094→739,
-  EnhancedMagicSystem 904→474, AdvancedGameFeatures deleted @ S3-M4 — lives in `memory/CHANGELOG.md`. It is
-  history, not current state, which is why it no longer sits in the constitution.)*
-- Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted:** this sentence said "~1660 tests" and a "21-state" visual gate; both were stale (2,139 and 31 when checked 2026-08-02), sitting one line below the size numbers that were 12× wrong. A number nobody recomputes rots, so read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
+- Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted** — read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
 
 ## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
 
-**Anything you launch, you kill. Every time. This is not optional politeness — it degrades Kevin's machine.**
+**Anything you launch, you kill — and the SURFACE outlives the process.** Headless Chromium and vite
+servers do not die when a script throws. One session leaked 7 vite servers plus a headless Chromium at
+622% CPU, drove the machine to load 25, and timed out the capture gate — which read as a flaky gate and
+was self-inflicted. Separately, on 2026-08-09 a `vite preview` on 4180 left a Crafty tab running the
+render loop and physics step at 75% of a core in Kevin's OWN Chrome, long after the server was killed.
 
-Browser/E2E/capture/probe work spawns **headless Chromium** and **vite dev servers**. They do **NOT** die when
-your script throws or a run is interrupted — they linger, burning CPU and RAM. On 2026-07-13 a single session
-leaked **7 vite servers + a headless Chromium spinning at 622% CPU (six cores)**, which drove the machine to
-**load average 25** and made the visual-capture gate time out. That looked like a "flaky gate". It was
-self-inflicted.
+- Sweep after every browser batch: `sh frontend/scripts/dev/kill-test-procs.sh` (touches only this repo's
+  vite and Playwright's cached browsers — never Kevin's Chrome/Brave/Safari).
+- A local run that binds a port MINTS A TAB nobody can sweep for you. `close-preview-tabs.sh` enumerates
+  cmux SURFACES only, so "no orphan preview tabs found" is true about cmux and says nothing about the real
+  browser. SAY that a tab was left; let Kevin close it. Prefer running these in CI, where there is none.
+- `cmux close-surface` is DENIED in `.claude/settings.json` — its fall-through target is your own session,
+  and an autonomous iteration once ended itself that way. `--close` on the helper is `ask`. Honest limits:
+  a compound `cd x && cmux …` may not match, and `ask` does not prompt under `bypassPermissions`.
+- **If the machine is slow, MEASURE before blaming a gate.** `uptime`, then count R-state against cores;
+  high load with low CPU is I/O or another process, not your browsers. Verified absence of your own
+  processes does NOT license a story about someone else's — that error was made here on 2026-08-09.
 
-**The rules:**
-1. **Every ad-hoc Playwright/Puppeteer probe MUST close the browser in a `finally`** — not on the happy path:
-   ```js
-   const b = await chromium.launch(...);
-   try { /* probe */ } finally { await b.close(); }   // a throw must STILL close it
-   ```
-2. **Never leave a hand-started dev server running.** Prefer Playwright's `webServer` config (it manages its
-   own lifecycle). If you start one by hand (`npx vite --port …`), **kill it in the same turn.**
-3. **Delete throwaway probe scripts** when done (`rm -f frontend/dbg-*.mjs`). Do not commit them.
-4. **Sweep before you finish a session** (and any time the box feels slow):
-   ```
-   sh frontend/scripts/dev/kill-test-procs.sh
-   ```
-   It only kills THIS repo's vite + Playwright's own cached browsers. It can never touch Kevin's
-   Chrome/Brave/Safari.
-5. **If the machine load is high, check for leaks BEFORE blaming a flaky gate** — `uptime`, then
-   `ps aux | grep -E "ms-playwright|Crafty/frontend/node_modules/.bin/vite"`. The capture harness is
-   load-sensitive, and a leaked browser is the most common cause of a "mystery" timeout.
-6. **cmux PREVIEW TABS are a SECOND kind of leak — the process is only half of it (Kevin, 2026-07-14).**
-   cmux opens a **browser preview surface for every localhost port it detects.** Every E2E / capture /
-   ad-hoc probe server spawns one, and **the tab OUTLIVES the process you kill** — `kill-test-procs.sh`
-   never touched surfaces, so 30+ dead `localhost:*` / "Crafty | Magical" husks piled up across sessions.
-   **Prevention is the real fix:** E2E uses ONE managed port (Playwright `webServer`, 4179 `--strictPort`);
-   capture uses 4178. **Do NOT hand-start vite on an ad-hoc port** (`vite --port 4197` for a one-off probe
-   is what minted the worst husks). If you truly must, reuse a fixed dedicated port and close its surface
-   after. To clear husks: `sh frontend/scripts/dev/close-preview-tabs.sh` (LISTS by default; `--close` to
-   close).
-   **⚠️ `cmux close-surface` IS NOW DENIED BY `.claude/settings.json`, not by this paragraph.** With an
-   unresolved `--surface` it falls back to closing `$CMUX_SURFACE_ID` — your own tab — and an autonomous
-   iteration once self-decapitated that way (exit 0, "OK", session gone). `permissions.deny` blocks it
-   regardless of what the model decides, and `--close` on the helper is `ask`, so attended-only is
-   structural rather than aspirational. **Honest limits:** a compound invocation (`cd x && cmux …`) may
-   not match the pattern, and in `bypassPermissions` mode `ask` does not prompt — the deny is a
-   first-line block, not a seal. The helper stays the only sanctioned path (excludes SELF by UUID,
-   overrides `$CMUX_SURFACE_ID` to the dead target, aborts if SELF vanishes); the loop may RUN THE LIST,
-   never `--close`.
+Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deleting throwaway probes — lives in
+`.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or
+`frontend/tests/**`. That is where it belongs: at the moment of the mistake, not at orientation.
+
 
 ## Build / Test / Gates (from `frontend/`)
 
@@ -193,6 +167,14 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 
 ## Execution & Workflow Protocols
 - **Anti-Execution Tunneling:** don't chain many distinct fixes into a monolith. >3 logical systems OR >5 sequential code-altering calls → PAUSE, `git commit`, checkpoint via `session-archivist-kz`.
+  **When a rule here gets ignored, the first hypothesis is SESSION LENGTH, not weak wording.** This corpus's
+  reflex has been to answer a violated rule with more prose about it, and the record shows that does not
+  work — the gate-count paragraph undercounted itself three times while warning about undercounting, and
+  the architecture bullet contradicted its own table inside the paragraph written to stop that. Adherence
+  decays as a session gets long; a paragraph cannot fix that. So the response to a violation is a
+  CHECKPOINT (commit, `/clear`, or a fresh session), or escalation to a deterministic layer — a gate, a
+  hook, a `permissions.deny`, or a shared helper used at the moment of the mistake. Rewriting the sentence
+  is the weakest available move and usually the one that feels most productive.
 - **Read-Before-Write:** establish exact coordinates (grep/line-range) + verify target state before editing.
 - **Initialization:** on turn 1, silently orient — `pwd`, git branch, `package.json` scripts, framework state — before proposing.
 - **Game Loop Isolation (CRITICAL):** NEVER bind declarative React to high-frequency imperative systems (R3F `useFrame`, Rapier) via reactive state (`useState`/zustand subscriptions). Use transient reads (`refs`, `.getState()`, miniplex queries).
@@ -205,12 +187,17 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
 - NO "Generated with" / "Co-Authored-By: Claude" footer. Subagent fix-ups = NEW commits (never `git commit --amend` / `reset`).
 
 ## Method
+- **A SUBAGENT DOES NOT INHERIT YOUR CONTEXT — including this file.** `Explore` and `Plan` are the two
+  most-used delegates and they start blank, so the agent doing the most file-hunting is precisely the one
+  that has never read the TWO-LEVEL layout block above — the repo's own #1 recurring mistake. Restate
+  `ROOT = /Users/kz/Code/Crafty` / `APP = frontend/` in every delegation prompt, plus any path rule the
+  task touches. A subagent that reports a file "missing" from a relative path is usually reporting that
+  you did not tell it where it was.
 Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
 - **EVERY milestone uses the `superpowers:writing-plans` discipline (Kevin, 2026-06-10):** before building ANY milestone (M0..Mn of any Aspect/stream), author its own plan doc in `docs/superpowers/plans/YYYY-MM-DD-crafty-<stream>-<milestone>.md` (TDD red-first steps + verification gates), THEN build. **No "build directly from the spec" shortcuts**, even for small/foundational milestones — the VOIDHAND-M1 skip (built from the spec's milestone breakdown without a plan doc) is the anti-pattern this rule forbids. The design SPEC is the HARD-GATE approval; the per-milestone PLAN is the build contract.
 
 ## Core Agent Skills (evaluate per task)
 - `brainstorming` — before new game features / UI.
-- `react-perf-audit-kz` — frame rates, re-renders, stale closures in the R3F/React bridge.
 - `ruthless-cleaner-kz` (via `cleanup-kz`) — auditing/refactoring/dead-code in ECS systems.
 - `pre-commit-kz` — BEFORE any git commit (debug commands, broken builds, secrets).
 - `session-archivist-kz` — the 4-piece doc update after major tasks.
@@ -225,6 +212,14 @@ Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance r
 - `fix-movement-Crafty-kz` — WASD / camera / pointer-lock movement.
 
 ## Where state lives (READ IN THIS ORDER)
+
+> **A FOURTH INSTRUCTION CHANNEL EXISTS AND NOTHING IN THIS REPO GOVERNS IT.** Claude Code's auto-memory
+> (`~/.claude/projects/<cwd>/memory/`) is on by default, is re-injected after every compaction, and is
+> MACHINE-LOCAL: not in git, not read by `doc-currency`, not visible to any gate or reviewer here. It can
+> therefore contradict this file with no mechanism to notice. Rank it BELOW `memory/STATUS.md` when they
+> disagree — this file and the repo docs are the versioned, gated truth — and treat anything it asserts
+> about repo state as a hypothesis to re-verify, exactly like a recalled measurement.
+
 
 This file is the only surface loaded **UNCONDITIONALLY** at session start and re-injected after a
 `/compact` — so it has to name the others. It used to claim it was "the ONLY one auto-loaded", which is

@@ -82,6 +82,8 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 - Probes go in `scripts/visual/`, use `_serve.mjs` for the vite+browser lifecycle and `_probe.mjs` for
   honest taps and baselines. **Anything you launch, you kill** — close the browser in a `finally`, kill the
   vite process GROUP, then sweep `scripts/dev/kill-test-procs.sh`.
+- Prefer Playwright's `webServer` config over a hand-started dev server — it owns its own lifecycle, so
+  there is nothing to forget to kill. Hand-started means hand-killed, in the same turn.
 - One managed port per harness (capture 4178, e2e 4179, prod-smoke 4180). Never an ad-hoc port.
 - **ANY listening localhost port mints a browser tab you cannot clean up.** cmux surfaces every port it
   detects, and on 2026-08-09 a `vite preview` on 4180 opened a Crafty tab in Kevin's OWN Chrome — where it

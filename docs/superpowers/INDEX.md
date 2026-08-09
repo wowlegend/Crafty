@@ -1,6 +1,7 @@
 # docs/superpowers — THE MAP
 
-> **Purpose:** this repo has **142 docs / ~44K lines**. An agent that tries to read them all burns its context
+> **Purpose:** this repo carries more docs than any one context can hold (count them: `git ls-files '*.md' | wc -l`
+> — hand-typed here as "142" until 2026-08-09, when the real number was 172). An agent that tries to read them all burns its context
 > and still gets a stale picture. This is the map. **Read the CANONICAL five. Consult the rest on demand.
 > Never treat a HISTORICAL doc as current — several are live traps** (a stale line in the charter regenerated a
 > week-sized dead proposal on 2026-07-13).
@@ -48,7 +49,7 @@ superseded by STATUS.md**), and **`CLAUDE.md` → `.agent/AGENTS.md`** = the pro
 
 ---
 
-## 🔨 PLANS — build contracts (~90 files)
+## 🔨 PLANS — build contracts (`ls docs/superpowers/plans/*.md | wc -l`)
 
 Plans are **per-milestone build contracts**. Once a milestone ships, its plan is **history**. Do not mine an old
 plan for "what to do next" — that is what `memory/STATUS.md` is for.
@@ -96,7 +97,7 @@ plan for "what to do next" — that is what `memory/STATUS.md` is for.
 
 ---
 
-## `docs/archive/2026-Q2/plans/` — 62 archived plan docs (2026-08-02)
+## `docs/archive/2026-Q2/plans/` — archived plan docs (`find docs -path '*archive*' -name '*.md' | wc -l`)
 
 Wave-1 of the docs reorg. `docs/superpowers/plans/` had grown to **100** files, which made the live plans
 hard to find among finished ones. The 62 moved here were selected mechanically, not by judgement: a
