@@ -72,40 +72,92 @@ be different."* #23654 asks the same-machine question exactly; answer is INTENDE
 long-standing bugs (crbug 919955). **So my `< 0.15%` bar demanded a property the browser does not
 promise.** Full evidence: `~/.claude/projects/-Users-kz-Code/memory/reference_chromium_render_determinism.md`.
 
-**THE PLAN, IN ORDER — a real fix beats a tolerance:**
-1. **Try the two untried Chromium flags first** (from `headless/public/switches.h`, not a blog):
-   `--deterministic-mode` (meta flag; begin-frames over DevToolsProtocol, experimental) and
-   `--font-render-hinting=none` (default is `full`; affects Skia glyph subpixel positioning). Add to the
-   puppeteer launch args in `frontend/scripts/visual/capture.mjs`, then re-run
-   `zsh /private/tmp/claude-501/-Users-kz-Code/c7297111-afb7-46c9-83b3-6edc09ed7f41/scratchpad/final-baseline.sh`.
-2. **Then per-frame tolerances**, documented with the evidence above and re-derived IN ITS OWN COMMIT
-   (rule 4 permits fixing a genuinely-wrong gate WITH justification; it forbids quiet relaxation).
-   Tiering per mapvisualregression.org: deterministic raster **< 0.1%**, sub-pixel-prone/3D **0.5-1.5%**,
-   dynamic overlays masked. Practically: keep the 30 static frames tight, give `menu` (live 3D diorama)
-   an honest ~1%.
-3. **Then the owed re-baseline** — ONE commit covering S9 lighting, S9b foliage normal, grass colour B
-   and the whole ocean rewrite. `ocean-coast` is **8.357%** vs baseline, over the 6% gate.
+> ⚠️ **THE PLAN THAT USED TO BE HERE IS DEAD, AND SO IS ONE OF ITS PREMISES.** A 42-agent SOTA audit
+> (2026-08-09) killed both. Superseded content is NOT silently deleted — it is stated below with the
+> evidence, because the next window would otherwise re-derive it.
 
-**MEASUREMENT HISTORY (menu.png run-to-run, all on quiet boxes, same protocol):**
-`0.984%` -> `0.359%` (dpr pinned `46fdeb9`, CONFIRMED real) -> `0.557%` (frameloop=always, REFUTED,
-reverted `099c803`) -> `0.455%` (camera reset `04148c8`, no detectable effect). The spread means the
-metric is itself noisy at this magnitude; a single A/B cannot rank two options.
-**Both shipped fixes were genuine bugs regardless of the bar:** an adaptive `dpr={[1,2]}` range reaching
-capture, and a camera frozen mid-drift (capture flips AFTER mount, so `return` froze a run-dependent pose
-— "stop animating" is not "return to a known pose").
-**Three shots from ONE page are BYTE-IDENTICAL (0 px)** while separate processes differ — that is the
-cross-process nondeterminism the research describes, not a bug in our code.
+**KILLED #1 — the Chromium determinism flags do not exist in the binary we launch.** Step 1 used to be
+"try `--deterministic-mode` and `--font-render-hinting=none`". Both were read out of Chromium's
+`headless/public/switches.h`, and neither survives into the shipped Chrome. **Measured 2026-08-09** with
+`strings -a` over the actual framework
+(`~/.cache/puppeteer/chrome/mac_arm-147.0.7727.57/…/Google Chrome for Testing Framework`, 215 MB),
+exact-line matches, WITH a presence control so the instrument had to prove it can say YES:
 
-**CAPTURE DETERMINISM — the one open item. Two hypotheses tested, one confirmed, one dead.**
-Measured three times on quiet boxes (load 11, 11, 2.7), same protocol, menu.png run-to-run:
-`0.984%` -> `0.359%` (dpr pinned, `46fdeb9`) -> `0.557%` (frameloop=always, REFUTED and reverted at
-`099c803`). Bar is **< 0.15%** and has NOT been moved.
-· **CONFIRMED + KEPT:** `dpr={[1,2]}` is an adaptive RANGE; a different ratio between runs
-  re-antialiases every edge. Pinned under capture in TitleDiorama + MascotStudio. Real 2.7x.
-· **DEAD:** `frameloop='demand'` is NOT the cause — `always` did not fix it. Do not retry without a
-  new reason.
-· **HONEST LIMIT:** 0.984 / 0.359 / 0.557 means the METRIC is noisy at this magnitude; a single A/B
-  cannot rank two options here. Treat one-round deltas as weak evidence.
+| flag | hits | |
+|---|---:|---|
+| `use-angle` / `disable-gpu` / `headless` | 1 / 1 / 4 | CONTROL — instrument works |
+| `deterministic-mode` | **0** | absent |
+| `font-render-hinting` | **0** | absent |
+| `enable-begin-frame-control` | **0** | absent |
+| `run-all-compositor-stages-before-draw` / `disable-partial-raster` / `disable-skia-runtime-opts` | 1 / 1 / 1 | present but INERT here |
+
+They live only in `chrome-headless-shell` (single consumer `headless/lib/browser/command_line_handler.cc`),
+which left the Chrome binary at M132. **That step would have measured nothing and reported "no effect" for
+the wrong reason.** The three that ARE present are Skia/DOM-raster levers; our variance is WebGL-canvas
+pixels, and in-process output is already byte-identical so there is no intra-run race to serialise.
+Do not re-propose any of this. Lesson: a flag in the source tree is not a flag in the binary — grep the
+artifact you actually run.
+
+**KILLED #2 — the dpr pin was arithmetically INERT, not a 2.7x fix.** `calculateDpr([1,2])` in the
+installed R3F 9.5.0 is `Math.min(Math.max(dpr[0], window.devicePixelRatio), dpr[1])`. `capture.mjs:197`
+sets viewport 1280x800 with **no** `deviceScaleFactor`, and puppeteer defaults it to 1 — so `[1,2]` and `1`
+both resolve to **1**. `tests/gates/capture-dpr-gates.test.jsx` therefore gates a no-op. The
+`0.984 -> 0.359` move sits inside the metric's own spread (0.359–0.557 measured WITH the fix in place).
+**Never cite "2.7x" as a magnitude anchor.** The change is harmless and can stay; the CLAIM was wrong.
+
+**THE REFRAME THAT MATTERS.** Every defect this harness has actually shipped was COVERAGE or CONTENT —
+the four beast-less baselines, 7 of 31 frames baselined but absent from `STATES`, motes at the world
+origin. **Not one was a tolerance failure.** `menu.png` needs 61,440 changed pixels to fail the 6% gate
+and produces ~10,000 at worst: it CANNOT go red. `ocean-coast` at **8.34%** is the only thing that is red.
+Measured full distribution (preserved identical-code pair, all 31 frames) is THREE TIERS, not a continuum:
+**13 byte-identical (0.0000%)** · 16 at 0.002–0.089% · then `explore-day` 0.210% and `menu` 0.455%.
+So the 6% global threshold is ~1000x too loose for the 13 exact frames — the live defect is FALSE
+NEGATIVES on the static frames, not the false positives the determinism hunt was chasing.
+
+**THE CORRECTED PLAN, IN ORDER. ONE re-baseline, not eight** (8 separate findings each demand one;
+adopted piecemeal that is 8 bulk oracle rewrites, each blessing whatever drift arrived alongside — the
+exact mechanism that produced the beast-less baselines):
+0. **One-line mount-order check FIRST.** Log whether `[data-testid="title-diorama"] canvas` exists at the
+   moment `enterCapture` fires (`capture.mjs:209`). TitleDiorama is `React.lazy` and `capture.mjs:223`
+   waits for that canvas AFTER the flip. If it mounts after, the hero never animated and BOTH the phase
+   fix below AND the already-landed camera fix `04148c8` are inert. Also retroactively judges `04148c8`.
+1. **Write the pixelmatch diff PNG on failure** (two-pass: `null` for the ratio, allocate only when red;
+   `mkdirSync(recursive)` first — `writeFileSync` does NOT create parents). Every diagnosis in this whole
+   investigation needed an out-of-band manual crop. Unblocks everything below.
+2. **The owed re-baseline** — ONE commit: S9 lighting, S9b foliage normal, grass colour B, Gerstner ocean.
+3. **Baseline governance — the largest hole.** NO gate covers `frontend/tests/visual/baseline/**`
+   (`mutation-proof-trailer.mjs:40` scopes `GATE_PATHS` to `tests/gates/` + `scripts/ci/`). 79 of 1,603
+   commits rewrite baselines; **10 of the last 12 baseline commits also touch `src/` in the same commit**;
+   `current/` is gitignored so a failed run leaves ZERO durable evidence. Add a trailer requirement + an
+   HTML contact sheet (old/new/diff, 31 rows).
+4. **Reset the two remaining animated-phase sites to their DECLARED values under capture** (not `t=0`):
+   `MascotCraftyHero.jsx:37` and `TitleDiorama.jsx:23` still use the un-reset early-return form. Same
+   defect class already fixed for the CAMERA ONLY. This is the only live, unfixed mechanism for the menu
+   residual, and it matches the measured diff signature exactly (mascot edge outlines + motes as PAIRS).
+5. **Only then per-frame tolerances**, from a distribution of **n>=10 separate-process captures** — never
+   a max-of-three. Rule 4 permits fixing a genuinely-wrong gate WITH justification; not quiet relaxation.
+
+**MEASUREMENT HISTORY (menu.png run-to-run, quiet boxes, same protocol):**
+`0.984%` -> `0.359%` (dpr pin `46fdeb9` — now known INERT) -> `0.557%` (frameloop=always, REFUTED,
+reverted `099c803`) -> `0.455%` (camera reset `04148c8`, no detectable effect). Four samples across three
+code states is not a controlled series. **The metric's own spread is ~0.6pp; a single A/B cannot rank two
+options at this magnitude.** Written down before, then repeatedly violated — treat one-round deltas as
+weak evidence.
+· **DEAD:** `frameloop` is not the axis — `always` did not fix it. The problem is CROSS-PROCESS STATE.
+· **Three shots from ONE page are BYTE-IDENTICAL (0 px)** while separate processes differ. Promote this
+  to a standing gate: needs no baseline, cannot rot, never needs re-approval.
+· **Tolerance is the legitimate terminus** — but only after steps 0 and 4, measured honestly.
+
+**ASSUMPTIONS THE AUDIT BROKE (do not repeat them):** "RNG is seeded" — `captureRandom` has exactly ONE
+consumer file; 73 raw `Math.random()` sites remain across 18 files; determinism comes from SUPPRESSION
+(58 guards vs 11 substitutions), so the gated frames depict a build with weather/AI/particles/spawning
+OFF — a version nobody plays. "Clocks are frozen" — no global freeze, 7 scattered substitutions against
+68 time-reads + 52 timers. And **3 of the 31 frames are dev-only components** that cannot exist in the
+bundle Vercel auto-deploys on every push.
+
+**Full audit (42 agents, 8 lanes, 32 adversarial verifications, 0 errors):**
+`https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4`
+Synthesis + critic saved at `scratchpad/harness-audit-synthesis.md` / `-critic.md` (session-scoped tmp).
 
 **NEXT — the discriminator, not another tweak** (two consecutive failures on this frame; the pivot
 rule applies). Shoot `menu` 2-3 times from ONE page/process:

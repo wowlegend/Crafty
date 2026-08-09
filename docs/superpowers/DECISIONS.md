@@ -304,3 +304,72 @@ Order of execution, deliberately fix-before-tolerance:
 reaching capture, and a camera frozen mid-drift. Both were real bugs and both stay.
 
 Full sourcing: `~/.claude/projects/-Users-kz-Code/memory/reference_chromium_render_determinism.md`.
+
+## 2026-08-09 — SOTA audit: step 1 of the 2026-08-08 plan is dead, and the dpr pin was inert
+
+**[LOOP] Supersedes the execution order in "2026-08-08 — the capture determinism bar was the wrong
+instrument".** That entry's *finding* stands unchanged — Chromium does not guarantee deterministic
+rendering, and the `< 0.15%` bar demanded a property the browser does not promise. Its *plan* does not.
+
+A 42-agent audit (8 research lanes, 32 adversarial verifications, 0 errors) killed two things I had
+recorded as settled.
+
+**1. `--deterministic-mode` and `--font-render-hinting=none` do not exist in the binary we launch.**
+Step 1 above sourced them from Chromium's `headless/public/switches.h`. They never survive into shipped
+Chrome. Verified 2026-08-09 by `strings -a` over the actual framework Puppeteer resolves
+(`~/.cache/puppeteer/chrome/mac_arm-147.0.7727.57/…/Google Chrome for Testing Framework`), exact-line
+match, **with a presence control** so the instrument had to prove it can return YES:
+
+| flag | exact-line hits | |
+|---|---:|---|
+| `use-angle` / `disable-gpu` / `headless` | 1 / 1 / 4 | CONTROL — instrument works |
+| `deterministic-mode` | 0 | ABSENT |
+| `font-render-hinting` | 0 | ABSENT |
+| `enable-begin-frame-control` | 0 | ABSENT |
+| `run-all-compositor-stages-before-draw` / `disable-partial-raster` / `disable-skia-runtime-opts` | 1 / 1 / 1 | present, INERT here |
+
+They ship only in `chrome-headless-shell`, which left the Chrome binary at M132. Executing step 1 would
+have measured nothing and reported "no effect" for the wrong reason — the most expensive kind of null
+result, because it looks like evidence. The three present sub-flags are Skia/DOM-raster levers; our
+variance is WebGL-canvas pixels, and in-process output is already byte-identical so there is no intra-run
+race for them to serialise. **Generalised lesson: a switch in the source tree is not a switch in the
+binary. Grep the artifact you actually run.**
+
+**2. The dpr pin was arithmetically inert.** `calculateDpr([1,2])` in installed R3F 9.5.0 is
+`Math.min(Math.max(dpr[0], window.devicePixelRatio), dpr[1])`; `capture.mjs:197` sets the viewport with no
+`deviceScaleFactor` and Puppeteer defaults it to 1, so `[1,2]` and `1` both resolve to 1.
+`tests/gates/capture-dpr-gates.test.jsx` gates a no-op. The prior entry's "both were real bugs and both
+stay" is **half-corrected**: the camera fix addressed a real freeze-vs-reset defect; the dpr change is
+harmless and may stay, but the CLAIM that it bought 2.7x was wrong — that delta sits inside the metric's
+own ~0.6pp spread. Do not cite it as a magnitude anchor.
+
+**The reframe.** Every defect this harness has actually shipped was coverage or content, never tolerance:
+four beast-less baselines, 7 of 31 frames baselined but absent from `STATES`, motes at the world origin.
+`menu.png` needs 61,440 changed pixels to fail the 6% gate and produces ~10,000 at worst — it cannot go
+red. `ocean-coast` at 8.34% is the only red thing. Measured full distribution over a preserved
+identical-code pair is three tiers: **13 frames byte-identical**, 16 at 0.002–0.089%, then `explore-day`
+0.210% and `menu` 0.455%. The 6% global threshold is therefore ~1000x too loose for the 13 exact frames,
+and the gate's live defect is FALSE NEGATIVES on the static frames.
+
+**Largest hole, previously unexamined by anyone: the oracle is ungoverned.** No gate covers
+`frontend/tests/visual/baseline/**` — `mutation-proof-trailer.mjs:40` scopes `GATE_PATHS` to
+`tests/gates/` and `scripts/ci/`. 79 of 1,603 commits rewrite baselines; **10 of the last 12
+baseline-rewriting commits also touch `src/` in the same commit**; no diff artifact exists and `current/`
+is gitignored, so a failed run leaves no durable evidence once the terminal scrolls.
+
+**Superseding order of execution:** (0) one-line check of whether the diorama canvas exists when
+`enterCapture` fires — `React.lazy` mount order decides whether the phase fix AND `04148c8` are inert;
+(1) write the pixelmatch diff PNG on failure; (2) the owed re-baseline in ONE commit; (3) baseline
+governance — trailer gate + contact sheet; (4) reset the two remaining animated-phase sites
+(`MascotCraftyHero.jsx:37`, `TitleDiorama.jsx:23`) to their declared values; (5) per-frame tolerances,
+from n>=10 separate-process captures, never a max-of-three. **One re-baseline, not eight** — eight
+findings each independently demand one, and piecemeal that is eight bulk oracle rewrites, which is the
+exact mechanism that produced the beast-less baselines.
+
+Also settled and not to be re-proposed: no new browser engine is a viable deterministic WebGL capture
+backend (17 candidates, 16 ruled out — Cloudflare's Kitesurf cannot render WebGL and explicitly trades
+away pixel fidelity; Firefox hard-disables headless WebGL in source; Servo and Ladybird publish no
+determinism claim either way). `pixelmatch`'s `windowSize` is documented on main and exists in NO
+published version. Do not migrate capture to Playwright, and do not move the visual gate to CI.
+
+Full audit: `https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4`
