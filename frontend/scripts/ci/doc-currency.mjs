@@ -41,6 +41,12 @@ const CANONICAL = [
   'docs/superpowers/LOOP-CHARTER.md',
   'docs/superpowers/LOOP-KERNEL-PROMPT.md',
   'docs/superpowers/INDEX.md',
+  // Added 2026-08-09. DECISIONS.md is read-order #6 and the ONLY thing that settles who owns a decision,
+  // yet it was the one canonical surface this gate did not check — found while running the gate on an
+  // edit to it. A decision record citing a path that no longer exists is worse than a stale plan: plans
+  // are expected to age, a RECORD is cited as ground truth. Superseding entries name the entry they
+  // supersede and are append-only, so the corpus only grows and un-checked citations only accumulate.
+  'docs/superpowers/DECISIONS.md',
   'SOTA-INITIATIVE.md',
   'README.md',
   '.agent/AGENTS.md',
