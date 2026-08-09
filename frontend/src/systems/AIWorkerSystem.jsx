@@ -20,6 +20,10 @@ import AIWorker from '../workers/ai.worker.js?worker';
 // S2-B2-pre-M2 perf: the AI worker bridge ticks at this rate, not render rate (see AIWorkerSystem).
 const AI_TICK_SEC = 1 / 15;
 
+// A fixed, documented seed for capture runs. Named rather than inline so it cannot quietly differ
+// between the two places that would otherwise have to agree.
+const CAPTURE_AI_SEED = 'crafty-capture-ai-v1';
+
 // Enemy-presence audio: a single global cooldown so a whole siege turning aggro snarls ONCE, not 20x.
 const AGGRO_GROWL_COOLDOWN_SEC = 2.5;
 let _lastAggroGrowl = -Infinity;
@@ -214,7 +218,14 @@ export const AIWorkerSystem = () => {
       playerPos: [camera.position.x, camera.position.y, camera.position.z],
       now,
       delta: tickDelta,
-      mobs: mobsData
+      mobs: mobsData,
+      // DECLARE determinism to the worker rather than letting it infer. A worker is its own module
+      // realm, so isCaptureMode() is structurally unreachable inside ai.worker.js — its wander logic was
+      // deterministic only because the early return above means this post never happens under capture.
+      // That is an accident, not a guarantee: move that return and the nondeterminism returns silently,
+      // inside a worker, where the visual harness would show it as an unexplained flapping frame. Null in
+      // normal play, so mobs wander freely for real players.
+      captureSeed: isCaptureMode() ? CAPTURE_AI_SEED : null
     });
   });
 

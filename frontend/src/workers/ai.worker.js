@@ -20,6 +20,9 @@ import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
+// PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
+// its own module realm, so isCaptureMode() would read a separate binding that is permanently false.
+import { makeSeededRandom } from '../devtest/captureMode';
 
 // A* Voxel Pathfinding Solver on a 9x9 Local Grid
 // startX, startZ are the local starting grid coords (typically 4, 4)
@@ -118,6 +121,18 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
 self.onmessage = function(e) {
   if (e.data.type === 'TICK') {
     const { playerPos, now, delta, mobs } = e.data;
+    // DETERMINISM IS DECLARED BY THE CALLER, NOT INFERRED HERE.
+    //
+    // A worker is a separate module realm: importing `isCaptureMode` would give this file its OWN
+    // `_captureMode` binding, permanently false, so the flag is structurally unreachable from in here.
+    // Until now the wander logic below simply called Math.random() and was saved only by an ACCIDENT —
+    // AIWorkerSystem returns before posting under capture, so this code never ran during a gated frame.
+    // An accident is not a guarantee: move that early return and the nondeterminism comes back silently,
+    // in a worker, where nothing in the visual harness would name it.
+    //
+    // Same defect and same fix as world/terrain.worker.js, whose header records that raw Math.random()
+    // "made the world layout DIFFERENT on every load ... that broke visual-regression baselines".
+    const captureSeed = e.data.captureSeed ?? null;
     // B4: the Y is no longer elided. It was always being SENT and thrown away here, under a comment saying
     // "the mob brain reasons on the XZ plane only" — which is exactly why pillaring up, walling in or going
     // underground gave zero protection and building was strategically pointless.
@@ -345,11 +360,16 @@ self.onmessage = function(e) {
         isAggro = false;
         moveTimer -= delta;
         if (moveTimer <= 0) {
-          moveTimer = 2 + Math.random() * 4;
-          isMoving = Math.random() > 0.3;
+          // PER-MOB stream, not a single shared one: mobs are processed in an order that can change
+          // between runs, and a shared sequence would desync the moment it did. Keying by id makes each
+          // mob's draw independent of when its turn came — the same reason captureMode uses per-key
+          // streams rather than one global seed.
+          const rnd = captureSeed == null ? Math.random : makeSeededRandom(`${captureSeed}:mob:${id}`);
+          moveTimer = 2 + rnd() * 4;
+          isMoving = rnd() > 0.3;
           if (isMoving) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 3 + Math.random() * 5;
+            const angle = rnd() * Math.PI * 2;
+            const distance = 3 + rnd() * 5;
             targetX = x + Math.cos(angle) * distance;
             targetZ = z + Math.sin(angle) * distance;
           }

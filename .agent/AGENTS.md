@@ -41,10 +41,11 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   "~14.4k LOC / ~31 JS(X) files" and assert "Components ~1330 is the LAST single large file". Measured
   2026-08-02: **12× wrong on files, 2.5× on LOC, and several files — not one — are ≥900 LOC.** An agent that
   believes this is a ~31-file project reasons about it as a small one, and "Components is the last god-file"
-  actively misdirects de-monolith work away from the others. **Read the COUNT from the generated block
-  below, never from this sentence** — it said "five" until 2026-08-05, when extracting the mesher dropped
-  `terrain.worker.js` to 692 LOC and made it four, i.e. a headline contradicting the table directly
-  beneath it, in the very paragraph written to stop exactly that. Regenerate with
+  actively misdirects de-monolith work away from the others. **Read every COUNT from the generated block
+  below; this paragraph deliberately states none.** It used to narrate the running total, and by
+  2026-08-09 that narration disagreed with the table four lines beneath it — a headline contradicting its
+  own data, inside the very paragraph written to stop exactly that, twice over. A number in prose rots no
+  matter how emphatically the prose warns about rot; the only fix is to not write one. Regenerate with
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
@@ -152,13 +153,25 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   both bind port 4178 with `--strictPort` and the collision fakes a failure.
 - `npm run visual:capture` regenerates frames only. It preflights that the browser can present a frame and
   aborts in ~3s with a named cause if not, rather than hanging on a dead compositor.
-- Visual gate: capture-determinism is the **DESIGN** (forced `high` tier), **not currently the ACHIEVED
-  state** — measured 2026-08-05, identical code twice differs on 15 of 31 frames, `beast-*` by 69–72%.
-  `memory/STATUS.md` §B-race is the live measurement; re-read it rather than trusting this sentence's
-  summary, and note the compositor is INTERMITTENT (64 rAF frames one hour, 0 the next). Re-baseline +
-  human review per intended look change.
-  Capture-determinism is load-bearing (gate anims on `isCaptureMode()`; seed RNG; freeze clocks) — and the
-  check must be INSIDE the interval callback, since the harness flips capture mode after mount.
+- Visual gate: capture-determinism is the **DESIGN** (forced `high` tier), **not the ACHIEVED state**.
+  Measured 2026-08-09 over an identical-code pair, all 31 frames: **13 byte-identical**, 16 at
+  0.002–0.089%, then `explore-day` 0.210% and `menu` 0.455%. Chromium does not guarantee deterministic
+  rendering (playwright#22620, crbug 919955), so exact equality is not a property you can demand —
+  `docs/superpowers/DECISIONS.md` (2026-08-09) carries the evidence and the ordered plan.
+- **HOW determinism is actually achieved — by SUPPRESSION, not by seeding.** The old wording here said
+  "seed RNG; freeze clocks", and an agent who believes that will misdiagnose a flapping frame. Measured:
+  `captureRandom` has **one** consumer (`render/WeatherSystem.jsx`) against **73 raw `Math.random()` in
+  19 files**; there is no global clock freeze, just scattered substitutions against 68 clock reads and 52
+  timers. What actually happens is that ~112 `isCaptureMode()` guards TURN THINGS OFF. **So the gated
+  frames depict a build with weather, mob AI, NPC routines, particles and spawning disabled — a version
+  nobody plays, and one structurally incapable of regressing anything that only manifests in motion.**
+- **A capture guard must RESET to a declared value, never early-`return`.** Stopping an animation leaves
+  it wherever it got to, and capture is enabled AFTER boot, whose length varies per process (measured
+  1.68–10.43 s across five runs) — so a freeze is itself run-dependent. Pairwise frame diff tracks that
+  window, r = 0.842. The check must also live INSIDE the callback, since the flag flips after mount.
+- The gate runs against the **DEV server**, so 3 of its 31 frames (`primitives-showcase-*`,
+  `title-mascot`) are dev-only components that cannot exist in the bundle Vercel deploys on every push —
+  and **no harness loads that bundle at all**.
 - **A gate's PASS is worth nothing without its DENOMINATOR.** Seven things here have now shipped a clean
   report over input they never examined (`gate-shape` skipping 42% of gates, `doc-currency` blind to bare
   paths, a test written into `tests/visual/` which vitest EXCLUDES so it never ran, `esc-pause-probe` never
