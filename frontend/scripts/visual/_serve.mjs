@@ -27,10 +27,15 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  * @returns {{ server: import('node:child_process').ChildProcess, url: string,
  *            waitReady: (tries?: number) => Promise<void>, shutdown: (browser?: any) => Promise<void> }}
  */
-export function serveVite(port, { cwd } = {}) {
+export function serveVite(port, { cwd, preview = false } = {}) {
   const url = `http://localhost:${port}`;
-  const server = spawn('npx', ['vite', '--port', String(port), '--strictPort', '--no-open'],
-    { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
+  // `preview: true` serves the BUILT bundle from build/ instead of the dev server. Same lifecycle, same
+  // process-group kill — the whole point of this helper is that there is one correct way to do that, and
+  // a fourth hand-rolled spawn would be a fourth chance to orphan vite on the port.
+  const argv = preview
+    ? ['vite', 'preview', '--port', String(port), '--strictPort']
+    : ['vite', '--port', String(port), '--strictPort', '--no-open'];
+  const server = spawn('npx', argv, { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
 
   const waitReady = async (tries = 60) => {
     for (let i = 0; i < tries; i++) {

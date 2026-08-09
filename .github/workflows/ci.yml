@@ -78,6 +78,14 @@ jobs:
       - name: Bundle byte budget
         run: node scripts/ci/bundle-budget.mjs
 
+      # ...and assert it RUNS, not merely that it compiled to the right size. Until 2026-08-09 nothing in
+      # this repo ever LOADED the production bundle: every harness drives the dev server, so 100% of visual
+      # and e2e coverage tested a build that never ships and 0% tested the one Vercel auto-deploys on every
+      # push. Three of the 31 gated visual frames are dev-only components that cannot exist in production.
+      # Boots / renders a frame / no console errors / GL context alive. No baselines, so it cannot rot.
+      - name: Production bundle smoke
+        run: node scripts/ci/prod-smoke.mjs
+
   # ---------------------------------------------------------------------------
   # E2E. Separate job so a slow browser run can't stall the fast gates.
   # ---------------------------------------------------------------------------
