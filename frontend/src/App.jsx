@@ -29,7 +29,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
-import { resetCaptureClock } from './devtest/captureClock.js';
+import { resetCaptureClock, stepCaptureFrames } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
 import { applyFusion } from './game/hybrids';
@@ -294,6 +294,15 @@ function GameApp({ experienceSystem }) {
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded
     // decorative RNG, paused physics, pinned follow-cam, suppressed mob spawns. Optional
     // { timeOfDay } pins the lighting in the same call. No-op in prod (bridge tree-shaken).
+    // STEP-THEN-SHOOT. Advance the deterministic capture clock to a DECLARED frame index, then shoot.
+    // Needed because a frame-indexed clock alone gives determinism without motion: measured live, two
+    // seconds of wall time under capture advanced the world by two frames (SwiftShader ~1fps), so an
+    // un-suppressed animation would be captured at its start pose. Stepping makes the captured phase an
+    // explicit constant a reviewer can read, rather than whatever the machine's frame rate produced.
+    registerTestHook('stepCaptureFrames', (n) => {
+      stepCaptureFrames(n);
+      return useGameStore.getState().isCaptureMode ? n : 0;
+    });
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
       // Frame 0. The harness captures ~31 states in ONE browser session, so without this each state's

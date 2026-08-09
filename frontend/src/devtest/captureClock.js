@@ -61,6 +61,32 @@ export function resetCaptureClock() {
   _lastTick = null; // else the first advance after a reset is swallowed as a duplicate
 }
 
+/**
+ * STEP-THEN-SHOOT: drive the clock to a declared phase, then capture.
+ *
+ * A frame-indexed clock buys determinism but NOT motion. Probed live in headless Chromium: two SECONDS
+ * of wall time under capture advanced the world by two frames (SwiftShader renders at ~1 fps), i.e. 33 ms
+ * of virtual time. An un-suppressed animation captured that way sits at its start pose — reproducible,
+ * and exactly as uninformative as the suppression it replaced.
+ *
+ * Stepping makes the captured phase an explicit, reviewable constant instead of an emergent property of
+ * how fast the machine happened to render. The SOTA audit predicted this from the other direction: it
+ * found `frameloop='never'` + `advance()` inert precisely BECAUSE the guards skip rather than substitute,
+ * so stepping 120 frames produced the same scene graph as stepping one. Stepping only means something
+ * once something reads the clock.
+ *
+ * Rejects a negative or non-finite n rather than corrupting the counter: time running backwards would
+ * make a "declared phase" unreproducible in the worst way — silently, and only for the frames captured
+ * after whichever call passed the bad value.
+ *
+ * @param {number} n  whole frames to advance
+ */
+export function stepCaptureFrames(n) {
+  if (!isCaptureMode()) return;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return;
+  _frame += Math.floor(n);
+}
+
 /** Frames rendered since the last reset. 0 outside capture. */
 export function captureFrameIndex() {
   return isCaptureMode() ? _frame : 0;

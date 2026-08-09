@@ -7,6 +7,7 @@ import {
   captureNow,
   captureElapsed,
   captureFrameIndex,
+  stepCaptureFrames,
 } from '../../src/devtest/captureClock.js';
 
 // PHASE C — the missing half of capture determinism.
@@ -141,4 +142,62 @@ describe('captureClock — one tick per ANIMATION FRAME, not per canvas', () => 
     advanceCaptureFrame();
     expect(captureFrameIndex()).toBe(2);
   });
+});
+
+// STEP-THEN-SHOOT. A frame-indexed clock gives determinism but NOT motion: probed live, 2 seconds of
+// wall time under capture advanced the world by 2 frames (SwiftShader renders at ~1 fps), i.e. 33 ms of
+// virtual time. An un-suppressed animation captured that way sits at its start pose — reproducible, and
+// exactly as uninformative as the suppression it replaced.
+//
+// So the harness must DRIVE the clock to a declared frame index and then shoot. That makes the captured
+// phase an explicit reviewable constant instead of an emergent property of how fast the machine rendered.
+// It is also what the SOTA audit predicted: it found frameloop='never' + advance() inert precisely
+// BECAUSE the guards skip rather than substitute, so stepping 120 frames yielded the same scene graph as
+// stepping one. Stepping only becomes meaningful once something reads the clock.
+describe('stepCaptureFrames — drive the clock to a declared phase', () => {
+  beforeEach(() => {
+    exitCaptureMode();
+    resetCaptureClock();
+  });
+
+  it('advances the virtual clock by exactly N frames', () => {
+    enterCaptureMode();
+    stepCaptureFrames(90);
+    expect(captureFrameIndex()).toBe(90);
+    expect(captureElapsed()).toBeCloseTo(90 / 60, 10);
+  });
+
+  it('is ADDITIVE, so two steps compose into a declared total', () => {
+    enterCaptureMode();
+    stepCaptureFrames(30);
+    stepCaptureFrames(30);
+    expect(captureFrameIndex()).toBe(60);
+  });
+
+  it('is a NO-OP outside capture — it must never move a real session forward', () => {
+    // Re-enter capture before READING. captureFrameIndex() returns 0 outside capture regardless of the
+    // underlying counter, so asserting it while still outside is satisfied by construction — this test
+    // passed with the guard deleted until a mutation exposed it. A vacuous assertion is the defect this
+    // repo keeps shipping, and writing one inside the gate that guards against it is worth the comment.
+    stepCaptureFrames(500);
+    enterCaptureMode();
+    expect(captureFrameIndex()).toBe(0);
+  });
+
+  it('rejects a negative or non-finite step instead of corrupting the counter', () => {
+    // Time running backwards would make a "declared phase" unreproducible in the worst way: silently,
+    // and only for the frames captured after whichever call passed the bad value.
+    enterCaptureMode();
+    stepCaptureFrames(10);
+    for (const bad of [-5, NaN, Infinity, undefined, null, '30']) stepCaptureFrames(bad);
+    expect(captureFrameIndex()).toBe(10);
+  });
+
+  // A test asserting that stepCaptureFrames clears the dedupe token used to live here. It was deleted
+  // along with the line it guarded: a mutation removing that line left this GREEN, and no real failure
+  // path exists — a stale token only swallows a tick when the next animation frame reports an IDENTICAL
+  // currentTime, which cannot follow a step. Keeping an assertion that cannot fail, next to a line that
+  // cannot matter, is two decorations pretending to be a guard. resetCaptureClock's clear is different
+  // and stays: reset runs mid-session from enterCapture, so the very next tick genuinely can carry the
+  // token from before it.
 });
