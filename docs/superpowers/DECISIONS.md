@@ -456,3 +456,59 @@ reports `walked 1`, and the non-recursive mutant reports `walked 0` while still 
 A top-level-only walk would have been blind to exactly the spec it was built for, and would have said so in
 the language of a clean run. The `walked` denominator and the cross-check against Playwright's own
 `stats.flaky` are what make that failure loud instead of reassuring.
+
+---
+
+## 2026-08-09 (late) — the SOTA audit's four "explicitly not checked" items, now checked
+
+The audit closed with an honest limit: *"Explicitly not checked, because no execution was permitted:
+whether the gate is ever actually run; whether antialiasing is granted under the software rasteriser; the
+diorama's mount order relative to capture-mode entry; any post-fix measurement of the menu residual. Every
+'this will help' claim above is mechanism-verified, not outcome-verified."* Kevin asked what to do about
+them. Execution is permitted now, so they were measured rather than reasoned about. **[LOOP]**
+
+### ① Is the visual gate ever actually run? — **No, not automatically, and that stays true by decision.**
+It is in neither `.githooks/pre-push` nor `ci.yml`; the hook contains only a comment reminding a human to
+run it. Measured 733 s (37 s of which is literal sleeps), and every baseline is macOS arm64 against Ubuntu
+x86-64 runners, so CI would compare across a published cross-platform pixel-parity problem.
+
+What was *unanswerable* before is answerable now: `tests/visual/baseline/.capture-meta.json` (landed with
+the provenance work) stamps `startedAt`/`finishedAt` on every capture. Last run **2026-08-09 04:52:11 ->
+05:07:36, 925 s, `complete: true`, `crashes: 0`**, on ANGLE/SwiftShader Vulkan 1.3.0, darwin-arm64. Before
+that file existed, "when was this oracle last exercised" had no answer at all — which is the more important
+half of the audit's question. The instrument now exists; the scheduling stays manual.
+
+### ② Is antialiasing granted under `--use-angle=swiftshader`? — **Yes: 4x MSAA, and it is honoured.**
+Probed with the capture's exact launch flags (throwaway probe, deleted; no port bound): requesting
+`antialias: true` returns `granted: true` with `SAMPLES 4`, `MAX_SAMPLES 4`; requesting `false` returns
+`SAMPLES 0`. The software rasteriser is not silently ignoring the request in either direction.
+
+**What that explains — and, carefully, what it does not.** Only ONE surface asks for it:
+`TitleDiorama.jsx:143` (`antialias: true`), which is the `menu` frame. `GameScene.jsx:125` sets
+`antialias: false` because post-processing handles AA. So the single frame with MSAA enabled was the single
+noisiest frame, and its diff signature was *"hairline outlines tracing every edge of the mascot"* — exactly
+what an MSAA resolve does to a small geometric difference. **AA was the AMPLIFIER, not the cause.** MSAA is
+deterministic given identical geometry, and the residual went to 0.0000% once the animated-phase reset
+landed with no AA change at all. Recording this so nobody later reads "AA was on" as the diagnosis and
+disables it: that would blur the frame without removing a single source of variance.
+
+It also confirms the comparator is configured correctly. `pixelmatch`'s `includeAA` default of `false` is
+the antialiasing-AWARE setting (the name reads backwards), and the gate leaves it at the default. Against a
+frame that genuinely carries 4x MSAA, that default is the right one and is now measured, not assumed.
+
+### ③ Diorama mount order relative to capture-mode entry — **checked earlier this session**, at Kevin's
+explicit instruction, and recorded in the preceding entry's order of execution as step (0). The canvas is
+present when `enterCapture` fires, so neither the phase fix nor `04148c8` is inert.
+
+### ④ Post-fix measurement of the menu residual — **done: 0.0000%, byte-identical across separate
+processes**, from 0.984/0.455/0.359/0.557%. Evidence in the "capture determinism SOLVED" entry above.
+
+### And one recommendation the audit made that was never separately decided.
+Under "Declined on purpose -> Moving the visual gate to CI", the audit kept a carve-out: *"Worth doing
+cheaply: a Linux self-consistency job that captures twice and diffs run A against run B, touching no
+baseline."* The preceding entry says "do not move the visual gate to CI", which settles the MIGRATION but
+not this. Deciding it explicitly rather than letting it evaporate: **[LOOP] declined.** Its signal —
+does capture reproduce itself — is now covered twice at a fraction of the cost, by
+`assertIntraPageDeterminism` (a standing gate, no baseline, cannot rot) and by the measured 0.0000%
+cross-process result. A second ~15-minute Ubuntu job per push, on a platform we ship no baselines for,
+would buy a third reading of a question already answered exactly.

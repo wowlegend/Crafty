@@ -1,0 +1,393 @@
+<title>Crafty Visual-Test Harness — SOTA Audit</title>
+<style>
+  :root {
+    --ink: #16171B;
+    --ink-2: #43454E;
+    --ink-3: #74767F;
+    --ground: #F4F2EF;
+    --panel: #FFFFFF;
+    --rule: #DEDAD4;
+    --diff: #D8342A;
+    --aa: #C08A00;
+    --ok: #2F7A4A;
+    --sky: #1B2340;
+    --accent: var(--diff);
+    --code-bg: #EDEAE5;
+    --shadow: 0 1px 2px rgba(22,23,27,.05), 0 8px 24px rgba(22,23,27,.05);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #EDEBE7;
+      --ink-2: #B4B2AE;
+      --ink-3: #83817D;
+      --ground: #121317;
+      --panel: #1A1B20;
+      --rule: #2E3037;
+      --diff: #FF6257;
+      --aa: #E5B02E;
+      --ok: #57BC83;
+      --sky: #C3CCE8;
+      --code-bg: #23252B;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #EDEBE7;
+    --ink-2: #B4B2AE;
+    --ink-3: #83817D;
+    --ground: #121317;
+    --panel: #1A1B20;
+    --rule: #2E3037;
+    --diff: #FF6257;
+    --aa: #E5B02E;
+    --ok: #57BC83;
+    --sky: #C3CCE8;
+    --code-bg: #23252B;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 2.75rem; }
+
+  header { display: flex; flex-direction: column; gap: .75rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-3); display: flex; flex-wrap: wrap; gap: .5rem 1.25rem;
+  }
+  h1 { font-size: clamp(1.9rem, 4.4vw, 2.9rem); line-height: 1.12; margin: 0; letter-spacing: -.022em; text-wrap: balance; font-weight: 660; }
+  .standfirst { font-size: 1.09rem; color: var(--ink-2); margin: 0; max-width: 46rem; }
+
+  h2 {
+    font-size: 1.32rem; margin: 0 0 .2rem; letter-spacing: -.014em; font-weight: 640;
+    display: flex; align-items: baseline; gap: .7rem;
+  }
+  h2 .num { font-family: var(--mono); font-size: .78rem; color: var(--diff); font-weight: 500; letter-spacing: .06em; }
+  h3 { font-size: 1.02rem; margin: 1.6rem 0 .5rem; font-weight: 640; letter-spacing: -.008em; }
+  section { display: flex; flex-direction: column; gap: .5rem; }
+  p { margin: 0 0 .85rem; max-width: 46rem; }
+  section > p:last-child { margin-bottom: 0; }
+
+  code { font-family: var(--mono); font-size: .855em; background: var(--code-bg); padding: .1em .34em; border-radius: 3px; }
+
+  .verdict {
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--diff);
+    border-radius: 4px; padding: 1.4rem 1.5rem; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: .9rem;
+  }
+  .verdict p { margin: 0; }
+  .verdict .lead { font-size: 1.12rem; font-weight: 600; letter-spacing: -.011em; }
+  .verdict.settled { border-left-color: var(--ok); }
+
+  .layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem; margin: .3rem 0 0; }
+  .layer { background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: .95rem 1.05rem; display: flex; flex-direction: column; gap: .3rem; }
+  .layer .name { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .layer .grade { font-size: 1rem; font-weight: 640; letter-spacing: -.01em; }
+  .layer.good { border-left: 3px solid var(--ok); }
+  .layer.mid  { border-left: 3px solid var(--aa); }
+  .layer.bad  { border-left: 3px solid var(--diff); }
+  .layer.good .grade { color: var(--ok); }
+  .layer.mid .grade  { color: var(--aa); }
+  .layer.bad .grade  { color: var(--diff); }
+  .layer p { font-size: .875rem; color: var(--ink-2); margin: 0; }
+  .layer .then { font-size: .78rem; color: var(--ink-3); font-family: var(--mono); }
+
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; min-width: 40rem; }
+  th, td { text-align: left; padding: .62rem .8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; white-space: nowrap; background: var(--ground); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.rank { font-family: var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .tag { font-family: var(--mono); font-size: .68rem; letter-spacing: .05em; padding: .1em .42em; border-radius: 3px; white-space: nowrap; font-weight: 500; }
+  .tag.v { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .tag.u { color: var(--aa); background: color-mix(in srgb, var(--aa) 15%, transparent); }
+  .tag.r { color: var(--diff); background: color-mix(in srgb, var(--diff) 13%, transparent); }
+  .tag.done { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+  .tag.defer { color: var(--aa); background: color-mix(in srgb, var(--aa) 15%, transparent); }
+  .hot { color: var(--diff); font-weight: 600; }
+  .zero { color: var(--ok); font-weight: 600; }
+  .was { color: var(--ink-3); text-decoration: line-through; }
+
+  ul, ol { margin: 0 0 .85rem; padding-left: 1.25rem; max-width: 46rem; }
+  li { margin-bottom: .45rem; }
+  li:last-child { margin-bottom: 0; }
+
+  .callout {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .callout.warn { border-left: 3px solid var(--aa); }
+  .callout.kill { border-left: 3px solid var(--diff); }
+  .callout.ok { border-left: 3px solid var(--ok); }
+  .callout .hd { font-family: var(--mono); font-size: .69rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .callout p { margin: 0; font-size: .93rem; }
+
+  .tiers { display: flex; flex-direction: column; gap: .45rem; margin: .2rem 0 .9rem; }
+  .tier { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: .8rem; align-items: center; font-size: .875rem; }
+  .tier .bar { height: .55rem; border-radius: 2px; background: var(--rule); position: relative; overflow: hidden; }
+  .tier .bar span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+  .tier .cnt { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: .8rem; white-space: nowrap; }
+  .tier .lbl { font-family: var(--mono); font-size: .78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 1.4rem; color: var(--ink-3); font-size: .84rem; }
+  footer p { max-width: none; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: .4rem 0 0; }
+  a { color: var(--diff); text-underline-offset: 2px; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">
+    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-09 late</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
+  </div>
+  <h1>The visual-test harness is not failing at the thing we&nbsp;were fixing</h1>
+  <p class="standfirst">A SOTA audit of the capture, comparison and baseline layers. The capture layer is above industry standard. The comparator is behind. The oracle — the committed baselines themselves — is ungoverned, and had never been audited by anyone.</p>
+</header>
+
+<section>
+  <h2><span class="num">00</span> Status — every recommendation is now disposed of</h2>
+  <div class="verdict settled">
+    <p class="lead">All 10 ranked changes are landed. The one below the line and the one re-sequenced item are deferred by recorded decision, with criteria — not by silence. The four items this audit could not check have now been checked.</p>
+    <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase.</p>
+    <p><strong>The audit's central claim held up.</strong> It argued the harness was not failing at tolerance, and that the real holes were coverage, content and an ungoverned oracle. The re-baseline (#2) and baseline governance (#3) closed the oracle hole; per-frame tolerances — the thing the investigation had been aimed at — remain correctly below the line, still waiting on n≥10.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th class="num">#</th><th>Recommendation</th><th>Disposition</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td class="rank">1</td><td>Write the pixelmatch diff PNG on failure</td><td><span class="tag done">LANDED</span></td><td>Two-pass; second pass asserts its count equals the first, so a mismatch means the writer is lying</td></tr>
+        <tr><td class="rank">2</td><td>Land the owed re-baseline in one commit</td><td><span class="tag done">LANDED</span></td><td><code>6af95b7</code> — 19 frames, images opened, gate re-run after promotion 32/32</td></tr>
+        <tr><td class="rank">3</td><td>Baseline governance — trailer gate + contact sheet</td><td><span class="tag done">LANDED</span></td><td><code>baseline-trailer.mjs</code> is now the 11th pre-push gate; also forbids bundling a baseline rewrite with <code>src/</code></td></tr>
+        <tr><td class="rank">4</td><td>Reset the two animated-phase sites to declared values</td><td><span class="tag done">LANDED</span></td><td>The fix that produced 0.0000%. <code>MASCOT_REST</code> is frozen and the JSX reads from it, so markup and seam cannot drift</td></tr>
+        <tr><td class="rank">5</td><td>Fail the capture on shader-link errors and context loss</td><td><span class="tag done">LANDED</span></td><td>Its own narrowed filter later caught a real message the loose version would have swallowed</td></tr>
+        <tr><td class="rank">6</td><td>Delete the <code>title-mascot</code> crash-filter exclusion</td><td><span class="tag done">LANDED</span></td><td>Plus its three stale comments</td></tr>
+        <tr><td class="rank">7</td><td>Assert the gate's own denominator</td><td><span class="tag done">LANDED</span></td><td>Anchored to the test file's own path, not <code>process.cwd()</code></td></tr>
+        <tr><td class="rank">8</td><td>Promote the in-process invariant to a standing gate</td><td><span class="tag done">LANDED</span></td><td><code>assertIntraPageDeterminism</code> — no baseline, cannot rot</td></tr>
+        <tr><td class="rank">9</td><td>Windowed diff-density, report-only</td><td><span class="tag done">LANDED</span></td><td>Report-only as specified; it is the running calibration mechanism for the deferred tolerances</td></tr>
+        <tr><td class="rank">10</td><td>Fail on flaky E2E in CI, after fixing the two specs</td><td><span class="tag done">SPECS FIXED</span> <span class="tag defer">FLIP DEFERRED</span></td><td>Both fixed in <code>10a3cca</code>, for two different reasons. The flip waits on 10 consecutive clean runs — there has been <strong>one</strong>. A per-shard flaky reporter now accumulates that record in the CI log</td></tr>
+        <tr><td class="rank">—</td><td>Per-frame tolerances (below the line)</td><td><span class="tag defer">DEFERRED, n=3</span></td><td>Correctly still below the line: the audit demanded n≥10 separate-process captures and there are 3. Protocol recorded before the fact</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The four items marked “explicitly not checked”</h3>
+  <p>The audit ended honestly: nothing below the mechanism level had been executed. All four are now measured.</p>
+
+  <div class="callout ok">
+    <span class="hd">① Is the gate ever actually run?</span>
+    <p><strong>No — not automatically, and that stays true by decision.</strong> It is in neither the pre-push hook nor CI; the hook holds only a comment reminding a human. 733 s to run, and every baseline is macOS arm64 against Ubuntu x86-64 runners. But the question <em>“when was this oracle last exercised”</em> had no answer at all before, and now does: <code>.capture-meta.json</code> stamps every run. Last one <strong>2026-08-09 04:52:11 → 05:07:36, 925 s, complete, 0 crashes</strong>, on ANGLE/SwiftShader Vulkan 1.3.0. The instrument now exists; the scheduling stays manual.</p>
+  </div>
+
+  <div class="callout ok">
+    <span class="hd">② Is antialiasing granted under the software rasteriser?</span>
+    <p><strong>Yes — 4× MSAA, and the request is honoured in both directions</strong> (<code>antialias:true</code> → <code>granted:true</code>, <code>SAMPLES 4</code>; <code>false</code> → <code>SAMPLES 0</code>). Probed with the capture's exact launch flags. And it explains a signature: <strong>exactly one surface asks for AA</strong> — <code>TitleDiorama</code>, which is the <code>menu</code> frame — while <code>GameScene</code> sets <code>antialias:false</code>. So the single MSAA frame was the single noisiest frame, and its diff showed “hairline outlines tracing every edge”, which is what an MSAA resolve does to a small geometric difference. <strong>AA was the amplifier, not the cause:</strong> MSAA is deterministic given identical geometry, and the residual reached 0.0000% with no AA change at all. Anyone reading “AA was on” as the diagnosis would blur the frame and remove no variance. It also confirms <code>includeAA:false</code> — the antialiasing-<em>aware</em> default, whose name reads backwards — is the correct setting here, now measured rather than assumed.</p>
+  </div>
+
+  <div class="callout ok">
+    <span class="hd">③ Diorama mount order · ④ post-fix menu residual</span>
+    <p><strong>③ Checked.</strong> The canvas is present when <code>enterCapture</code> fires, so neither the phase fix nor the earlier camera commit is inert — the precondition this audit insisted on doing first. <strong>④ Measured: 0.0000%</strong>, byte-identical across separate processes.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">One carve-out that was nearly lost</span>
+    <p>Under “Declined on purpose → Moving the visual gate to CI” this page kept a recommendation: <em>a Linux self-consistency job that captures twice and diffs run A against run B, touching no baseline.</em> The decision record said “do not move the visual gate to CI”, which settles the migration and not this. <strong>Now decided explicitly: declined.</strong> Its signal is covered twice over at a fraction of the cost — by the standing in-process determinism gate, and by the measured 0.0000% cross-process result. A recommendation that is neither done nor declined is the failure mode this project keeps finding; it gets a verdict, not silence.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">01</span> Verdict</h2>
+  <div class="verdict">
+    <p class="lead">Every defect this harness has actually shipped was a coverage or content failure. Not one was a tolerance failure.</p>
+    <p>Four <code>beast-*</code> baselines that were pictures of an empty mountain. Seven of 31 frames captured, baselined, and absent from the <code>STATES</code> array for weeks — 23% of the gate's apparent coverage was decorative. Grass motes rendered at the world origin. Mob grass-bending that never ran.</p>
+    <p>Meanwhile <code>menu.png</code>, the frame that consumed the entire determinism investigation, sits at 0.36–0.98% run-to-run. It has never failed the 6% gate and <em>mathematically cannot</em> — it needs 61,440 changed pixels to fail and produces about 10,000 at worst. <code>ocean-coast</code> at <span class="hot">8.36%</span> is red right now, and has been throughout.</p>
+    <p><em>Since updated: <code>menu</code> is now 0.0000%, and <code>ocean-coast</code>'s red was cleared by the re-baseline at <code>6af95b7</code>. The reasoning above is preserved as it was written — this is the audit, not a status board.</em></p>
+  </div>
+
+  <div class="layers">
+    <div class="layer good">
+      <span class="name">Capture layer</span>
+      <span class="grade">Above standard</span>
+      <p>The completeness sentinel, subject-on-screen palette probing, the byte-flip dead-comparator canary, the browser-presents-a-frame preflight, and the single-door <code>shot()</code> invariant are things no surveyed off-the-shelf tool ships. Defend it; don't rebuild it.</p>
+    </div>
+    <div class="layer mid">
+      <span class="name">Comparator layer</span>
+      <span class="grade">Behind → closing</span>
+      <p>One global 6% threshold over 31 frames, no diff image written on failure, no windowed density. Every diagnosis in this investigation required an out-of-band manual crop.</p>
+      <span class="then">Since: diff PNG + contact sheet + windowed density landed; per-frame tolerances still owed.</span>
+    </div>
+    <div class="layer bad">
+      <span class="name">Oracle layer</span>
+      <span class="grade">Ungoverned → gated</span>
+      <p>No gate covers <code>tests/visual/baseline/**</code>. 10 of the last 12 baseline-rewriting commits also touch <code>src/</code> in the same commit. No diff artifact, no contact sheet, no baseline changelog.</p>
+      <span class="then">Since: <code>baseline-trailer</code> is the 11th pre-push gate; bundling with <code>src/</code> is now rejected.</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">02</span> The measured distribution</h2>
+  <p>Computed from a preserved identical-code capture pair, comparing all 31 frames. Not a continuum — three tiers with a clean gap between them.</p>
+
+  <div class="tiers">
+    <div class="tier">
+      <span class="lbl">0.0000%</span>
+      <span class="bar"><span style="width:2px;background:var(--ok)"></span></span>
+      <span class="cnt">13 frames · byte-identical</span>
+    </div>
+    <div class="tier">
+      <span class="lbl">≤0.089%</span>
+      <span class="bar"><span style="width:9%;background:var(--aa)"></span></span>
+      <span class="cnt">16 frames · trace noise</span>
+    </div>
+    <div class="tier">
+      <span class="lbl">0.210%</span>
+      <span class="bar"><span style="width:22%;background:var(--diff)"></span></span>
+      <span class="cnt">explore-day</span>
+    </div>
+    <div class="tier">
+      <span class="lbl">0.455%</span>
+      <span class="bar"><span style="width:48%;background:var(--diff)"></span></span>
+      <span class="cnt">menu · 2.2× the next worst</span>
+    </div>
+  </div>
+
+  <p>Thirteen frames reproduce <strong>byte-identically</strong> and are gated at a tolerance that would let a 248×248 block change completely and still report PASS. The gate's live defect is <strong>false negatives on the static frames</strong> — not the false positives that the determinism hunt was aimed at.</p>
+
+  <p><em>Re-measured after the phase-reset fix: byte-identical frames <strong>13 → 23 of 30</strong>, and <code>menu</code> moved from the worst frame to exact. The worst remaining is <code>explore-day</code> at 0.1899%, a different mechanism — genuine 3D motion, not a frozen-phase artifact.</em></p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Frame</th><th class="num">Run-to-run</th><th class="num">vs baseline</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>ocean-coast</code></td><td class="num">0.045%</td><td class="num hot">8.340%</td><td>Over the 6% gate — the owed re-baseline <em>(since landed)</em></td></tr>
+        <tr><td><code>explore-night-low</code></td><td class="num">0.013%</td><td class="num">1.997%</td><td>Accumulated intended look change</td></tr>
+        <tr><td><code>ocean-depth</code></td><td class="num">0.010%</td><td class="num">1.576%</td><td>Gerstner ocean rewrite</td></tr>
+        <tr><td><code>explore-day-low</code></td><td class="num">0.020%</td><td class="num">1.359%</td><td>S9 lighting + grass colour</td></tr>
+        <tr><td><code>menu</code></td><td class="num hot">0.455%</td><td class="num">0.367%</td><td>The investigated frame — noisiest, never red <em>(since: <span class="zero">0.0000%</span>)</em></td></tr>
+        <tr><td><code>explore-day</code></td><td class="num">0.210%</td><td class="num">0.520%</td><td>Second noisiest <em>(since: 0.1899%, now the worst)</em></td></tr>
+        <tr><td>13 UI / studio frames</td><td class="num zero">0.0000%</td><td class="num">0.000–0.45%</td><td>Provably exact; gated 1000× too loosely</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">03</span> Two recorded conclusions that were wrong</h2>
+
+  <div class="callout kill">
+    <span class="hd">Killed — the recorded next step</span>
+    <p><code>--deterministic-mode</code> and <code>--font-render-hinting=none</code> are <strong>absent from the Chrome binary Puppeteer actually launches.</strong> Verified by running <code>strings</code> on the installed Chrome for Testing 147.0.7727.57 — both exist only in <code>chrome-headless-shell</code>, whose single consumer is <code>headless/lib/browser/command_line_handler.cc</code>, and which left the Chrome binary at M132.</p>
+    <p>They were step 1 of the plan written into <code>ACTIVE_PLAN.md</code> and <code>DECISIONS.md</code>. That step would have measured nothing and reported "no effect" for the wrong reason. It must be deleted from both documents with the evidence attached.</p>
+  </div>
+
+  <div class="callout kill">
+    <span class="hd">Killed — the "confirmed 2.7× fix"</span>
+    <p>The device-pixel-ratio pin was recorded as a confirmed fix worth 2.7×. <code>calculateDpr([1,2])</code> in the installed R3F 9.5.0 is <code>Math.min(Math.max(dpr[0], window.devicePixelRatio), dpr[1])</code>. The capture sets viewport 1280×800 with <strong>no</strong> <code>deviceScaleFactor</code>, and Puppeteer defaults it to 1. So <code>[1,2]</code> and <code>1</code> both resolve to <strong>1</strong> — the pin was arithmetically inert for this frame, and the behavioural gate written to guard it gates a no-op.</p>
+    <p>The 0.984 → 0.359 improvement sits inside the metric's own spread: 0.359–0.557 was measured <em>with</em> the fix in place. Two lanes disagreed here; the arithmetic favours "inert". <strong>Do not cite 2.7× as a magnitude anchor.</strong></p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span> Ranked changes</h2>
+  <p>By value over effort, not by topic. <span class="tag v">V</span> adversarially confirmed · <span class="tag u">U</span> surfaced by the completeness critic, mechanism measured but design unverified. <strong>Disposition for all of these is in §00.</strong></p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th class="num">#</th><th>Change</th><th>Effort</th><th>What it buys</th><th>Conf</th></tr></thead>
+      <tbody>
+        <tr><td class="rank">1</td><td><strong>Write the pixelmatch diff PNG on failure.</strong> Two-pass — <code>null</code> buffer for the ratio, re-run with an allocated buffer only when the frame is red. <code>mkdirSync(recursive)</code> first.</td><td>trivial</td><td>Every diagnosis in this investigation needed a manual out-of-band crop. Unblocks everything below.</td><td><span class="tag v">V ×2</span></td></tr>
+        <tr><td class="rank">2</td><td><strong>Land the owed re-baseline</strong> — S9 lighting, S9b foliage normals, grass colour B, Gerstner ocean — in <em>one</em> commit, images opened.</td><td>small</td><td>The only currently-red item. Eight separate recommendations each demand a re-baseline; done piecemeal that is eight bulk oracle rewrites.</td><td><span class="tag v">V</span></td></tr>
+        <tr><td class="rank">3</td><td><strong>Baseline governance.</strong> Extend the mutation-proof trailer gate to cover <code>tests/visual/baseline/**</code>; emit a 31-row HTML contact sheet (old / new / diff) on failure.</td><td>small</td><td>The single largest hole. 79 of 1,603 commits rewrite baselines; no gate sees any of them.</td><td><span class="tag u">U</span></td></tr>
+        <tr><td class="rank">4</td><td><strong>Reset the two remaining animated-phase sites to their declared values</strong> under capture — the mascot's hat-tip and gem pulse, and the mote ring's rotation. Not <code>t=0</code>; the declared value.</td><td>trivial</td><td>The only live, unfixed mechanism for the menu residual. Same defect class already fixed for the camera alone.</td><td><span class="tag v">V ×2</span></td></tr>
+        <tr><td class="rank">5</td><td><strong>Fail the capture on shader-link errors and context loss</strong>, filtered by neither the <code>boot</code> nor <code>title-mascot</code> exclusion.</td><td>small</td><td>A failed shader link renders nothing for that object — far under 6%, so today it is a green gate plus a printed warning.</td><td><span class="tag v">V</span></td></tr>
+        <tr><td class="rank">6</td><td><strong>Delete the <code>title-mascot</code> crash-filter exclusion.</strong> Its stated premise was false the day it was written — the frame entered <code>STATES</code> six weeks earlier.</td><td>trivial</td><td>A page error during that stage is discarded today, and the sentinel still writes <code>crashes: 0</code>.</td><td><span class="tag v">V</span></td></tr>
+        <tr><td class="rank">7</td><td><strong>Assert the gate's own denominator</strong> — reconcile shot frame names against the hand-maintained <code>STATES</code> literal.</td><td>trivial</td><td>The "23% decorative" defect was fixed by hand and left ungated. It can recur silently.</td><td><span class="tag u">U</span></td></tr>
+        <tr><td class="rank">8</td><td><strong>Promote the in-process invariant to a standing gate</strong> — two shots from one page must be byte-identical.</td><td>trivial</td><td>Already measured true, then discarded as a one-off probe. Needs no baseline, cannot rot, never needs re-approval.</td><td><span class="tag u">U</span></td></tr>
+        <tr><td class="rank">9</td><td><strong>Windowed diff-density, report-only first.</strong> Print max diff density in any N×N window for all 31 frames; assert nothing yet.</td><td>small</td><td>A 248×248 block can go completely wrong today and pass. But the proposed constant turns 8 of 31 frames red — 7 of which pass today. Report-only produces the calibration data that does not exist.</td><td><span class="tag v">V</span> / constant corrected</td></tr>
+        <tr><td class="rank">10</td><td><strong>Fail on flaky E2E in CI</strong> — <em>after</em> fixing the two specs that are already flaky.</td><td>small</td><td>3 of the last 6 green CI runs carried a recovered-on-retry flake. Annotated but unenforced.</td><td><span class="tag v">V</span> / re-sequenced</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Deliberately below the line — per-frame tolerances.</strong> The direction is right and it is the repo's own recorded step 2, but the specific proposal was refuted: its default was 10× looser than the repo's own bar, it marketed a relaxation as a tightening, and its example map shipped red on arrival. Do it after the re-baseline, from a distribution of n≥10 separate-process captures — not from a max-of-three.</p>
+</section>
+
+<section>
+  <h2><span class="num">05</span> The menu frame</h2>
+  <p>The problem is <strong>cross-process state</strong>, not renderer nondeterminism and not a settle-condition failure. Three shots from one page are byte-identical; separate processes differ by 0.36–0.98%. Every proposal that attacked frame <em>scheduling</em> was attacking the wrong axis — which is exactly why <code>frameloop='always'</code> could not have helped, and did not.</p>
+
+  <p>Cropping the diff shows two signatures: hairline outlines tracing every edge of the mascot, and background motes appearing as <em>pairs</em> of bars — the left edge from one frame, the right from the other. The channel-delta histogram is bimodal: 18,092 deltas of exactly 1 (subpixel), with a tail reaching 240 (something moved).</p>
+
+  <div class="callout ok">
+    <span class="hd">Resolved — and this section's diagnosis was right</span>
+    <p>Both signatures are now explained and both are gone. The tail-reaching-240 half was the animated phase: capture guards that early-<code>return</code>ed left the mascot's hat-tip, gem pulse and the mote ring wherever the run happened to have got to, and boot length varies 1.68–10.43 s per process. The delta-of-1 half was <strong>4× MSAA on this frame alone</strong> resolving those small geometric differences into hairline edges — the amplifier, not the source. Resetting to declared values took the frame to <span class="zero">0.0000%</span> with no AA change whatsoever.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">Precondition — one cheap line, do it first</span>
+    <p>Log whether the diorama canvas exists at the moment capture mode is switched on. The component is <code>React.lazy</code>, and the harness waits for that canvas <em>after</em> the flip. If it mounts after, the hero never animated, and both the proposed fix <strong>and the already-landed camera fix</strong> are inert. That single reading retroactively validates or refutes the camera commit. <em>(Checked: the canvas is present. Neither is inert.)</em></p>
+  </div>
+
+  <h3>Did anything found here make it actually reproducible?</h3>
+  <p>No. Honest inventory of what was killed: <strong>BeginFrameControl</strong> — the one true render-exactly-N-frames primitive — is a target-creation parameter Puppeteer never sends, and macOS is hard-refused in <code>target_handler.cc</code>. <strong>The determinism flags</strong> are absent from the binary. <strong><code>frameloop='never'</code> + <code>advance()</code></strong> is inert, because the capture guards <em>skip</em> rather than substitute — 58 suppression guards against 11 substitutions — so nothing in that canvas reads the clock under capture and stepping 120 frames yields the same scene graph as stepping one.</p>
+  <p><strong>Tolerance is the terminus, and it is legitimate.</strong> Sequence: verify mount order, land the phase reset, measure with n≥5 paired captures, then set an honest per-frame tolerance with a comment naming the measurement it came from.</p>
+  <p><em>Update — the sequence was followed and the terminus moved. Mount order verified, phase reset landed, and the measurement came back at exact equality, so there is no residual left for a tolerance to accommodate on this frame. Tolerances are still owed for the others, still on n≥10.</em></p>
+</section>
+
+<section>
+  <h2><span class="num">06</span> Refuted — so they are not re-proposed</h2>
+  <ul>
+    <li><strong><code>pixelmatch</code> <code>windowSize</code></strong> — the highest-value-looking lead in the whole audit. The main-branch README documents it with a rationale that reads as if written for this project. It <strong>does not exist in any published version</strong>. Adopting it would have produced a silently non-functional gate.</li>
+    <li><strong><code>includeAA: true</code></strong> — the name reads backwards. The default <code>false</code> is the antialiasing-<em>aware</em> setting. <em>(Since confirmed to matter: this frame really does carry 4× MSAA, so the default is not merely safe here, it is load-bearing.)</em></li>
+    <li><strong>Perceptual hashing</strong> — engineered to be invariant to brightness and contrast shifts, which <em>is</em> a lighting regression. Useless as a pre-filter too, since 13–20 frames are already byte-identical and a buffer compare is free.</li>
+    <li><strong>SSIM as a blanket replacement</strong> — ~3× slower, and it tolerates signal as well as noise. Epic's renderer suite: <em>"they may hide the existence of real errors just because a human couldn't see them."</em></li>
+    <li><strong>LLM/VLM-as-judge</strong> — disqualified on non-reproducibility, not accuracy. Legitimate only as post-red triage.</li>
+    <li><strong>Tolerant settle-condition</strong> — the proposed tolerance sits <em>above</em> the 0.189% signature of the late-chunk regression the function exists to catch. It would blind the guard to its founding defect.</li>
+    <li><strong>Threshold auto-calibration</strong> (tier = 4× measured self-diff) — self-relaxing. Run against a noisy day's data it mints &gt;100% tolerances: permanently unfailable gates, committed and printed as "calibrated".</li>
+    <li><strong>Stryker mutation testing</strong> as scoped — aborts in the dry run three ways; 113 of 131 gate tests read source as text, which instrumentation destroys.</li>
+    <li><strong>Scene-graph invariant sweep</strong> and <strong>draw-call budget</strong> as specified — both blind to the defects they were sold on. Mote placement lives in an instance matrix that <code>traverse</code> never visits; the post-frame counter read returns the last fullscreen pass, green on day one.</li>
+    <li><strong>New browser engines.</strong> 17 candidates evaluated, 16 ruled out. Cloudflare's Kitesurf cannot render WebGL at all and explicitly trades away pixel fidelity. Firefox hard-disables WebGL in headless in source. Servo and Ladybird publish no determinism claim in either direction.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">07</span> Declined on purpose</h2>
+  <ul>
+    <li><strong>Hosted visual-review SaaS.</strong> All derive signal from run volume and multi-reviewer workflows; several scope themselves to teams of 20+. Plus cloud upload of unreleased game art. <em>But keep the idea</em> — Argos's product thesis <em>is</em> recommendation 3, and rejecting the vendor threw out the governance concept with it.</li>
+    <li><strong>Migrating capture to Playwright.</strong> The orchestration has almost nothing to do with the browser driver, and every piece of it encodes a specific past failure. Playwright also pins its own Chromium per version, making baseline churn worse. Take the ideas; leave the migration.</li>
+    <li><strong>Moving the visual gate to CI.</strong> All baselines are macOS arm64; runners are Ubuntu x86-64. Cross-platform WebGL pixel parity is a published research problem. <em>Worth doing cheaply:</em> a Linux <strong>self-consistency</strong> job that captures twice and diffs run A against run B, touching no baseline. <em>(Since decided explicitly: declined — see §00. The signal is covered twice over by the in-process determinism gate and the 0.0000% cross-process result.)</em></li>
+    <li><strong>Visual gate in pre-push.</strong> Measured 733 s, including 37 s of literal sleeps. The fix is making the gate trustworthy, not mandatory.</li>
+    <li><strong>Coverage threshold gates.</strong> A coverage gate rewards execution, while the existing gate-shape gate exists to reject assertions satisfied without verification. <em>(Since: a zero-coverage REPORT landed — which modules no test executes at all — with no threshold, deliberately.)</em></li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">08</span> Assumptions the audit broke</h2>
+  <ol>
+    <li><strong>"RNG is seeded."</strong> The per-key seeded generator exists and is sound — and has <strong>exactly one consumer file</strong>. 73 raw <code>Math.random()</code> sites remain across 18 files. Determinism is achieved by <em>suppression</em>, not seeding.</li>
+    <li><strong>Consequence nobody had stated:</strong> the gated frames depict a build with weather, mob AI, NPC routines, particles, spawning and VFX <em>turned off</em>. The gate validates a version of the game nobody plays, and is structurally incapable of regressing anything that only manifests in motion.</li>
+    <li><strong>"Clocks are frozen."</strong> No global freeze — seven scattered per-consumer substitutions against 68 time-reading sites and 52 timers. Nobody enumerated which run under capture.</li>
+    <li><strong>Three of the 31 gated frames cannot exist in the shipped bundle.</strong> They are dev-only components behind a DEV guard, and the capture runs against the dev server. So ~10% of the gate tests surfaces that never ship, and 0% tests the artifact that auto-deploys on every push. Raised by zero research lanes.</li>
+    <li><strong>The baseline sentinel is written but read nowhere</strong> — the comparator hardcodes the current directory.</li>
+  </ol>
+  <p><em>All five were acted on: 1 and 3 are corrected in the project's own instructions (which had claimed the opposite), 4 produced a production-bundle smoke job, and 5 is wired — the comparator now attributes each frame to the capture that produced it.</em></p>
+</section>
+
+<footer>
+  <p><strong>Denominator.</strong> 8 research lanes × ~3 rounds × 5 search backends ≈ 120 lane-queries, all 5 lanes live on every round after retry. Primary sources opened, not merely cited: 15 Chromium source files at three revisions, the CDP domain docs, MDN, the Khronos WebGL spec, three.js's own e2e suite, Blender's render-test handbook, Unity's graphics test framework. Installed-version reads settled most refutations — including <code>strings</code> on the actual Chrome binary. Repo measurement: all 31 baselines decoded and profiled, historical baseline blobs extracted and visually opened, the proposed density metric executed offline against a real capture pair, six CI logs read, guard populations counted across 60 files.</p>
+  <hr>
+  <p><strong>Explicitly not checked</strong>, because no execution was permitted at audit time: whether the gate is ever actually run; whether antialiasing is granted under the software rasteriser; the diorama's mount order relative to capture-mode entry; any post-fix measurement of the menu residual. Every "this will help" claim was mechanism-verified, not outcome-verified. <strong>All four have since been executed and are answered in §00</strong> — the AA probe overturned nothing but explained the delta-of-1 half of the menu signature, and the post-fix measurement came back at exact equality. The distinction that produced this paragraph is worth keeping: a mechanism-verified claim is a hypothesis with good reasoning attached, and this page was careful to say so rather than let the reasoning pass for a result.</p>
+</footer>
+
+</div>
