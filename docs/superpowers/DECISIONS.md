@@ -373,3 +373,43 @@ determinism claim either way). `pixelmatch`'s `windowSize` is documented on main
 published version. Do not migrate capture to Playwright, and do not move the visual gate to CI.
 
 Full audit: `https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4`
+
+## 2026-08-09 (evening) — capture determinism SOLVED; per-frame tolerances DEFERRED on insufficient n
+
+**[LOOP] Executed.** Closes the plan recorded this morning.
+
+**menu.png is byte-identical across separate processes — 0.0000%.** Pre-fix, same protocol:
+0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13/31 -> 23/30; worst frame 0.4553% ->
+0.1899%. The cause was the freeze-vs-reset class: `if (isCaptureMode()) return;` leaves an animation
+wherever it got to, and capture is enabled after a boot whose length varies 1.68-10.43 s per process, so
+the frozen phase was run-dependent. Fixed for the camera in `04148c8`; the mascot idle and the mote ring
+were the two remaining sites (`a5f1be4`), reset to their DECLARED values rather than to t=0 — the gems
+decide that, since their pulse PEAKS at the declared intensity.
+
+**CORRECTION to my own morning claim.** I recorded a ~0.155% "floor" that the fix would approach but not
+reach. That figure was measured at a 40 ms window gap, so it was itself residual phase difference, not a
+floor. Fully reset, the residual is zero. `explore-day` at 0.19% is now the worst frame and it is a
+DIFFERENT mechanism — the late-chunk treeline — not this one.
+
+**Re-baseline landed at `6af95b7`**: 19 frames, reviewed in a generated old/new/diff sheet before
+promotion, gate re-run AFTER promotion (32/32, 21 frames with no changed pixel). First commit in this
+repo's history to pass through `baseline-trailer.mjs`. Baselines now carry provenance.
+
+**PER-FRAME TOLERANCES ARE DEFERRED, and this is a decision rather than a punt.** The audit set the bar at
+**n>=10 separate-process captures, explicitly NOT a max-of-three**, and refuted a proposal whose default
+was 10x looser than this repo's own bar. I have n=3. Deriving tolerances from three runs would commit
+exactly the error that was refuted, and it would do it while the case has WEAKENED: with menu at 0.0000%
+and 21 of 31 frames showing no changed pixel, the frames that most need a tight bound are now provably
+exact, so the global 6% is wrong by a wider margin than before but the correct replacement is less
+obvious, not more.
+
+The calibration mechanism is already in place and running: the windowed diff-density report (`8a2b7f7`)
+prints max local density for all 31 frames on every run, asserting nothing. Its first readings show
+local/global amplification of **7.3x-62.5x**, which is precisely why a bound derived from the global ratio
+cannot be reasoned across to a local one — and why the proposed TAU of 0.10 would have reddened 8 frames,
+7 of which pass today. Collect that data over the next ~10 capture runs, then derive.
+
+**Protocol when the data exists:** tier by measured behaviour, not by guess — the byte-identical set gets a
+near-zero bound, the trace-noise set a small one, and any frame with genuine 3D motion its own. Rule 4
+permits fixing a genuinely-wrong gate WITH justification; it forbids relaxing one quietly, which is why
+this is written down before it is done.
