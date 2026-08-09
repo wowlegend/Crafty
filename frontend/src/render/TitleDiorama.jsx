@@ -17,10 +17,31 @@ import { isCaptureMode } from '../devtest/captureMode';
 
 const SUN = '#FFE9C2', SKY = '#7FC9E0', GROUND = '#4A7A4A'; // warm magic-hour bounce
 
+const MOTE_SPIN_RATE = 0.02; // rad/s
+
+/**
+ * PURE. The mote ring's Y rotation on this frame.
+ *
+ * Under capture this is 0 — the spin ORIGIN — not "whatever the spin had reached". The old form was
+ * `if (!isCaptureMode()) ref.rotation.y = elapsed * RATE`, which stops ASSIGNING and therefore freezes
+ * the last assigned value. Capture is enabled after boot, boot length varies per process, so that value
+ * was run-dependent: 28 motes each landing a different fraction of their own width apart between runs.
+ * That is the "motes appear as PAIRS" signature in the menu diff.
+ *
+ * @param {boolean} capture  isCaptureMode()
+ * @param {number} elapsed   clock.elapsedTime
+ * @returns {number} rotation.y in radians
+ */
+export function dioramaMoteSpin(capture, elapsed) {
+  return capture ? 0 : elapsed * MOTE_SPIN_RATE;
+}
+
 function DioramaMotes() {
-  // a small additive mote field (the light-motes signature) — capture-frozen via a fixed phase.
+  // a small additive mote field (the light-motes signature) — RESET to zero rotation under capture.
   const ref = useRef();
-  useFrame((s) => { if (ref.current && !isCaptureMode()) ref.current.rotation.y = s.clock.elapsedTime * 0.02; });
+  useFrame((s) => {
+    if (ref.current) ref.current.rotation.y = dioramaMoteSpin(isCaptureMode(), s.clock.elapsedTime);
+  });
   const motes = Array.from({ length: 28 }, (_, i) => [Math.sin(i * 2.4) * 6, 1 + (i % 7) * 0.7, Math.cos(i * 1.7) * 6]);
   return (
     <group ref={ref}>

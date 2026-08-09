@@ -26,6 +26,51 @@ const STAFF_HI = '#A87242';   // staff highlight wrap
 const ARCANE = MAGIC.arcane;  // arcane gem emissive — canonical MAGIC.arcane (B2 unify; ties to the spell-VFX signature)
 const ARCANE_HOT = '#E0C2FF'; // hot inner gem core
 
+/**
+ * The DECLARED rest pose. Shared by the JSX below AND by `mascotIdlePose`, so the markup and the seam
+ * cannot drift apart — the same reason `CAPTURE_CAM` is shared with the `<Canvas camera>` prop instead
+ * of being written out twice. `capture-phase-reset-gates` renders the mascot and asserts the coupling.
+ */
+export const MASCOT_REST = Object.freeze({
+  bodyY: -0.1,
+  hatTipZ: 0,
+  gemIntensity: 8.5,
+  gemCoreIntensity: 11,
+});
+
+const BOB_HZ = 1.6, BOB_AMP = 0.045;      // body bob
+const SWAY_HZ = 1.2, SWAY_AMP = 0.05;     // hat-tip sway
+const PULSE_HZ = 2.4, PULSE_AMP = 0.18;   // gem twinkle; pulse peaks at exactly 1.0 -> the declared intensity
+
+/**
+ * PURE. The mascot's idle pose on this frame.
+ *
+ * Split out of the useFrame so the rule that actually matters is testable without mounting a Canvas:
+ * under capture this RESETS to the declared rest pose rather than freezing wherever the idle got to.
+ * "Stop animating" is not "return to a known pose" — a freeze reached at a run-dependent moment is
+ * itself run-dependent, and the capture harness enables capture only AFTER boot, which takes a
+ * different length of time every process (measured: a 1682-10431ms spread across five runs).
+ *
+ * Note the gems: `pulse` peaks at 1.0, so the DECLARED intensity is the pulse PEAK, not the t=0 value
+ * (0.82 -> 6.97/9.02). Resetting to t=0 would dim both gems and drag `title-mascot` into the
+ * re-baseline; resetting to the declared values leaves it byte-identical.
+ *
+ * @param {boolean} capture  isCaptureMode()
+ * @param {number} elapsed   clock.elapsedTime
+ * @returns {{bodyY:number, hatTipZ:number, gemIntensity:number, gemCoreIntensity:number}}
+ */
+export function mascotIdlePose(capture, elapsed) {
+  if (capture) return { ...MASCOT_REST };
+  const t = elapsed;
+  const pulse = (1 - PULSE_AMP) + Math.sin(t * PULSE_HZ) * PULSE_AMP;
+  return {
+    bodyY: MASCOT_REST.bodyY + Math.sin(t * BOB_HZ) * BOB_AMP,
+    hatTipZ: MASCOT_REST.hatTipZ + Math.sin(t * SWAY_HZ) * SWAY_AMP,
+    gemIntensity: MASCOT_REST.gemIntensity * pulse,
+    gemCoreIntensity: MASCOT_REST.gemCoreIntensity * pulse,
+  };
+}
+
 export function MascotCraftyHero() {
   const root = useRef(null);
   const hatTip = useRef(null);
@@ -33,21 +78,20 @@ export function MascotCraftyHero() {
   const gemCore = useRef(null);
 
   // Subtle idle: a gentle body bob, a soft hat-tip sway, and a gem/staff-glow pulse.
-  // FROZEN in capture mode so the studio + title frames are byte-stable across runs.
+  // In capture the pose is RESET to MASCOT_REST every frame — deliberately not an early `return`,
+  // which would freeze a run-dependent phase and re-rasterise every edge in the frame.
   useFrame((state) => {
-    if (isCaptureMode()) return;
-    const t = state.clock.elapsedTime;
-    if (root.current) root.current.position.y = -0.1 + Math.sin(t * 1.6) * 0.045;
-    if (hatTip.current) hatTip.current.rotation.z = Math.sin(t * 1.2) * 0.05;
-    const pulse = 0.82 + Math.sin(t * 2.4) * 0.18;
-    if (gem.current) gem.current.material.emissiveIntensity = 8.5 * pulse;
-    if (gemCore.current) gemCore.current.material.emissiveIntensity = 11 * pulse;
+    const p = mascotIdlePose(isCaptureMode(), state.clock.elapsedTime);
+    if (root.current) root.current.position.y = p.bodyY;
+    if (hatTip.current) hatTip.current.rotation.z = p.hatTipZ;
+    if (gem.current) gem.current.material.emissiveIntensity = p.gemIntensity;
+    if (gemCore.current) gemCore.current.material.emissiveIntensity = p.gemCoreIntensity;
   });
 
   // Centered at origin; ~2.7 tall incl. hat tip. Short/bulky: wide squat robe, stubby
   // limbs, a round head, topped by a stepped hat TALLER than the head (the iconic read).
   return (
-    <group ref={root} position={[0, -0.1, 0]}>
+    <group ref={root} position={[0, MASCOT_REST.bodyY, 0]}>
       {/* ------------------------------------------------------------------ */}
       {/* Bulky robed body — a clean conical mass (wide hem, narrower chest)  */}
       {/* so the lower silhouette reads as one solid wizard-robe triangle.    */}
@@ -106,7 +150,7 @@ export function MascotCraftyHero() {
       <Cube position={[0.06, 2.14, -0.06]} size={[0.42, 0.32, 0.4]} color={ROBE} />{/* step 3 */}
 
       {/* Leaning hat-tip (animated sway) — pivot near the upper steps so the sway reads */}
-      <group ref={hatTip} position={[0.1, 2.3, -0.08]}>
+      <group ref={hatTip} position={[0.1, 2.3, -0.08]} rotation={[0, 0, MASCOT_REST.hatTipZ]}>
         <Cube position={[0.04, 0.16, -0.02]} size={[0.28, 0.3, 0.26]} color={ROBE_HI} />{/* step 4 */}
         <Cube position={[0.1, 0.42, -0.04]} size={[0.16, 0.28, 0.15]} color={ROBE} />{/* tip */}
         <Emissive position={[0.14, 0.6, -0.04]} size={[0.12, 0.12, 0.12]} color={ARCANE} intensity={4.0} />{/* tip glow bauble */}
@@ -121,8 +165,8 @@ export function MascotCraftyHero() {
       <Cube position={[1.02, 0.34, 0.34]} size={[0.19, 0.14, 0.19]} color={STAFF_HI} outline={0} />{/* upper wrap */}
       {/* Gem cradle (4 little prongs) + the glowing gem + a hot inner core */}
       <Cube position={[1.02, 1.5, 0.34]} size={[0.3, 0.16, 0.3]} color={STAFF_HI} />
-      <Emissive ref={gem} position={[1.02, 1.66, 0.34]} size={[0.4, 0.44, 0.4]} color={ARCANE} intensity={8.5} />
-      <Emissive ref={gemCore} position={[1.02, 1.66, 0.34]} size={[0.18, 0.2, 0.18]} color={ARCANE_HOT} intensity={11} />
+      <Emissive ref={gem} position={[1.02, 1.66, 0.34]} size={[0.4, 0.44, 0.4]} color={ARCANE} intensity={MASCOT_REST.gemIntensity} />
+      <Emissive ref={gemCore} position={[1.02, 1.66, 0.34]} size={[0.18, 0.2, 0.18]} color={ARCANE_HOT} intensity={MASCOT_REST.gemCoreIntensity} />
       {/* Localized arcane glow spill — stronger gem glow without lowering the shared studio bloom threshold (keeps eyes/body un-bloomed). Static -> capture-deterministic. */}
       <pointLight position={[1.02, 1.66, 0.34]} color={ARCANE} intensity={2.8} distance={2.6} decay={2} />
     </group>
