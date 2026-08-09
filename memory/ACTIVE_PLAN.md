@@ -805,16 +805,21 @@ speed is now DERIVED from wavelength so a row edit cannot break it; (3) **the se
 multiplied the diffuse to BLACK away from crests, so only `emissive` reached the screen. That is why the
 old comment could claim it "reads vivid teal at ANY lighting angle". Foam moved to its own attribute.
 
-**NEXT UNIT — `d90a6b1`, the last genuinely-open row on the era page.** [LOOP]. Extend
-`tests/i18n/key-resolution.test.js` into a classifier reporting reachability by KIND (literal `t()` /
-bare key in a data table / dynamic prefix / TEST-FIXTURE-only / dead), with the four near-misses as
-regression fixtures, emitting the dead set as a COMMAND so the next deletion consumes that rather than a
-human's grep. It is the enforcer for the one place this repo skipped its own discipline: the bash
-pipeline that chose which 22 lines of copy to delete had no test, no mutation proof, no denominator
-guard, and was wrong four times.
+**DONE `2e2da50` (2026-08-08) — the dead-copy enforcer, formerly "NEXT UNIT `d90a6b1`".**
+`src/i18n/keyReachability.js` is the pure classifier (literal / dynamic / table / fixture / dead) with all
+five near-misses as regression fixtures; `scripts/ci/i18n-dead-keys.mjs` emits the dead set as a command;
+`tests/i18n/key-resolution.test.js` gates on the classification rather than a bare `<= 10 unreachable`
+count. Live at HEAD: 131 keys over 282 src + 391 test files — 121 literal, 4 dynamic, 5 table, 1 fixture,
+**0 dead**. It was the enforcer for the one place this repo skipped its own discipline: the bash pipeline
+that chose which 22 lines of copy to delete had no test, no mutation proof, no denominator guard, and was
+wrong four times. **This block sat here saying "NEXT UNIT" for a day after it shipped**, and the era page
+said "Queued" alongside it — Kevin caught both on 2026-08-09. A cursor that is not retired when its unit
+lands is the "stale doc is a LIVE TRAP" failure, aimed at the one file a cold-start agent reads FIRST.
 
-**STILL OWED: determinism re-measure + re-baseline.** `5055b30` routed all 27 screenshot call sites
-through one waiting door; the measurement has NOT run because the box has been at load 35-118 all
-session and a capture there measures the contention. Baselines remain frozen at the pre-S9 look and now
-also trail S9b, the grass colour and the whole ocean rewrite — ONE re-baseline covers all of it.
+**DONE `6af95b7` (2026-08-09) — determinism re-measure + the owed re-baseline, together.** The measurement
+that "had NOT run because the box was at load 35-118" has since run: `menu` went 0.984/0.455/0.359/0.557%
+to **0.0000% — byte-identical across separate processes** — after the capture guards were changed to RESET
+to a declared value instead of early-`return`ing at a run-dependent phase. 19 frames re-baselined in one
+reviewed commit, gate re-run after promotion at 32/32. Evidence and the deferred per-frame-tolerance
+protocol are in `docs/superpowers/DECISIONS.md` (2026-08-09 evening).
 

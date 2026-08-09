@@ -89,6 +89,54 @@ export function validateSource(html) {
   return null;
 }
 
+/**
+ * PURE: extract every row on a review page that claims to be QUEUED, with the artifact it says is absent.
+ *
+ * WHY. A "Queued" pill is a claim about the world — that this work has not shipped — and nothing checked
+ * it. `d90a6b1` sat marked Queued for a day after shipping as `2e2da50`, and survived a republish whose
+ * message promised "every stat re-measured". That was true and beside the point: the STATS were in the
+ * denominator, the STATUS PILLS were not. Kevin caught it, having raised the general problem before.
+ *
+ * A rule that has failed repeatedly does not get better by being restated (AGENTS.md says exactly this).
+ * So a queued row must declare `data-absent="<repo-relative path>"` — the artifact whose ABSENCE is the
+ * reason it is still open. The moment that path exists, the claim is false. That turns a status pill from
+ * narrative into something a machine can falsify, which is the only kind of claim this repo trusts.
+ *
+ * @param {string} html
+ * @returns {{sha: string, path: string|null}[]}
+ */
+export function queuedClaims(html) {
+  const out = [];
+  // Anchored to the row's syntactic form — sha, then body, then the verdict pill — so it cannot be
+  // satisfied by the word "queue" appearing in prose or a CSS rule elsewhere in the file.
+  const ROW = /<div class="row"><div class="sha">([^<]+)<\/div><div class="body"([^>]*)>[\s\S]*?<span class="pill (\w+)"/g;
+  for (const [, sha, attrs, pill] of html.matchAll(ROW)) {
+    if (pill !== 'queue') continue;
+    const m = /data-absent="([^"]+)"/.exec(attrs);
+    out.push({ sha: sha.trim(), path: m ? m[1] : null });
+  }
+  return out;
+}
+
+/**
+ * PURE: check each queued claim against the filesystem, via an injected `exists` so it is testable.
+ *
+ * Two ways to fail, deliberately. A claim whose artifact EXISTS is STALE — the work shipped and the page
+ * still says otherwise. A claim that declares NOTHING is UNDECLARED — an unfalsifiable pill, which is the
+ * original defect and would make this gate opt-in if it were allowed.
+ *
+ * `checked` is returned so the caller can print a denominator, including an honest zero.
+ */
+export function verifyQueued(claims, exists) {
+  const stale = [];
+  const undeclared = [];
+  for (const c of claims) {
+    if (!c.path) { undeclared.push(c.sha); continue; }
+    if (exists(c.path)) stale.push({ sha: c.sha, path: c.path });
+  }
+  return { ok: stale.length === 0 && undeclared.length === 0, stale, undeclared, checked: claims.length };
+}
+
 function main() {
   const head = git('rev-parse', '--short', 'HEAD');
   const state = readState();
@@ -140,6 +188,23 @@ function main() {
         failed = true;
         continue;
       }
+    }
+
+    // Verdict pills are checked BEFORE the drift number, because a page at HEAD that says "Queued" about
+    // finished work is wrong in the way that actually reaches the operator — and a zero-drift page would
+    // otherwise print `✓ at HEAD` and stop, which is how this was missed.
+    const claims = queuedClaims(readFileSync(src, 'utf8'));
+    const q = verifyQueued(claims, (p) => existsSync(join(ROOT, p)));
+    console.log(`  · ${s.id}: ${q.checked} queued row(s) claiming unfinished work`);
+    for (const { sha, path } of q.stale) {
+      console.error(`\n✘ ${s.id}: row ${sha} is marked Queued, but ${path} EXISTS — the work shipped.`);
+      console.error('  Mark it Done with what actually landed, or correct data-absent if it points at the wrong thing.');
+      failed = true;
+    }
+    for (const sha of q.undeclared) {
+      console.error(`\n✘ ${s.id}: row ${sha} is marked Queued but declares no data-absent="<path>".`);
+      console.error('  A status pill nothing can falsify is the defect this check exists for.');
+      failed = true;
     }
 
     // 'artifact' drifts from the sha that was PUBLISHED; 'page' from its own last commit.
