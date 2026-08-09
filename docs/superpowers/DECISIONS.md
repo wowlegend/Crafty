@@ -276,3 +276,31 @@ colour specifically: *"decide the grass colour too."*
   Awaiting-Kevin surface only if it is on this file's `[KEVIN]` list, or is irreversible, spends money,
   publishes externally, or adds a new dependency. Any row whose subject is verifiable at HEAD gets verified
   and deleted at session close rather than re-rendered.
+
+## 2026-08-08 — the capture determinism bar was the wrong instrument (research-settled)
+
+**[LOOP] Pending execution, evidence recorded.** Kevin asked for research rather than another fix
+attempt, and it settled the question.
+
+Chromium does **not** guarantee deterministic rendering. Playwright maintainer, microsoft/playwright#22620:
+*"In general, Chromium does not guarantee consistent rendering for the same inputs, so you should be
+prepared that some pixels might be different."* #23654 asks the same-machine/same-driver question
+precisely; the answer is that determinism is *intended* and has long-standing bugs (crbug 919955).
+
+**So the `< 0.15%` run-to-run bar demanded a property the browser does not promise.** It was my own
+estimate (~2x a then-observed 0.083%), never a derived requirement, and it blocked a genuinely-owed
+re-baseline for a day. No production visual-regression suite gates on exact equality — Playwright, Percy,
+BrowserStack and reg-suit all expose `maxDiffPixels`/`maxDiffPixelRatio`, and the consistent guidance is
+**do not use one threshold for everything**.
+
+Order of execution, deliberately fix-before-tolerance:
+1. `--deterministic-mode` + `--font-render-hinting=none` (Chromium `headless/public/switches.h`), measured.
+2. Per-frame tolerances re-derived in their own commit with this evidence — tight for the 30 static
+   frames, ~1% for `menu`'s live 3D diorama. Rule 4 permits fixing a genuinely-wrong gate WITH
+   justification; it forbids relaxing one quietly, which is why this is written down before it is done.
+3. The owed re-baseline (S9, S9b, grass B, ocean) in one commit.
+
+**Not to be read as "the fixes were unnecessary."** Both shipped: an adaptive `dpr={[1,2]}` range
+reaching capture, and a camera frozen mid-drift. Both were real bugs and both stay.
+
+Full sourcing: `~/.claude/projects/-Users-kz-Code/memory/reference_chromium_render_determinism.md`.

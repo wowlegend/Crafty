@@ -63,6 +63,39 @@ so a chunk landing in *that* gap is unguarded. `capture.mjs` has **31 individual
 and no shared helper.** Fix = a `shot(name)` wrapper that runs the stability check immediately before each
 frame is written, then re-measure, then re-baseline S9 in one commit.
 
+## RESUME HERE AFTER COMPACTION — capture determinism is SOLVED IN PRINCIPLE, execute the plan
+
+**THE RESEARCH SETTLED IT (2026-08-08, multi-search, A1/A2 sources).** Chromium does NOT guarantee
+deterministic rendering. Playwright maintainer, microsoft/playwright#22620: *"In general, Chromium does
+not guarantee consistent rendering for the same inputs, so you should be prepared that some pixels might
+be different."* #23654 asks the same-machine question exactly; answer is INTENDED deterministic, has
+long-standing bugs (crbug 919955). **So my `< 0.15%` bar demanded a property the browser does not
+promise.** Full evidence: `~/.claude/projects/-Users-kz-Code/memory/reference_chromium_render_determinism.md`.
+
+**THE PLAN, IN ORDER — a real fix beats a tolerance:**
+1. **Try the two untried Chromium flags first** (from `headless/public/switches.h`, not a blog):
+   `--deterministic-mode` (meta flag; begin-frames over DevToolsProtocol, experimental) and
+   `--font-render-hinting=none` (default is `full`; affects Skia glyph subpixel positioning). Add to the
+   puppeteer launch args in `frontend/scripts/visual/capture.mjs`, then re-run
+   `zsh /private/tmp/claude-501/-Users-kz-Code/c7297111-afb7-46c9-83b3-6edc09ed7f41/scratchpad/final-baseline.sh`.
+2. **Then per-frame tolerances**, documented with the evidence above and re-derived IN ITS OWN COMMIT
+   (rule 4 permits fixing a genuinely-wrong gate WITH justification; it forbids quiet relaxation).
+   Tiering per mapvisualregression.org: deterministic raster **< 0.1%**, sub-pixel-prone/3D **0.5-1.5%**,
+   dynamic overlays masked. Practically: keep the 30 static frames tight, give `menu` (live 3D diorama)
+   an honest ~1%.
+3. **Then the owed re-baseline** — ONE commit covering S9 lighting, S9b foliage normal, grass colour B
+   and the whole ocean rewrite. `ocean-coast` is **8.357%** vs baseline, over the 6% gate.
+
+**MEASUREMENT HISTORY (menu.png run-to-run, all on quiet boxes, same protocol):**
+`0.984%` -> `0.359%` (dpr pinned `46fdeb9`, CONFIRMED real) -> `0.557%` (frameloop=always, REFUTED,
+reverted `099c803`) -> `0.455%` (camera reset `04148c8`, no detectable effect). The spread means the
+metric is itself noisy at this magnitude; a single A/B cannot rank two options.
+**Both shipped fixes were genuine bugs regardless of the bar:** an adaptive `dpr={[1,2]}` range reaching
+capture, and a camera frozen mid-drift (capture flips AFTER mount, so `return` froze a run-dependent pose
+— "stop animating" is not "return to a known pose").
+**Three shots from ONE page are BYTE-IDENTICAL (0 px)** while separate processes differ — that is the
+cross-process nondeterminism the research describes, not a bug in our code.
+
 **CAPTURE DETERMINISM — the one open item. Two hypotheses tested, one confirmed, one dead.**
 Measured three times on quiet boxes (load 11, 11, 2.7), same protocol, menu.png run-to-run:
 `0.984%` -> `0.359%` (dpr pinned, `46fdeb9`) -> `0.557%` (frameloop=always, REFUTED and reverted at
