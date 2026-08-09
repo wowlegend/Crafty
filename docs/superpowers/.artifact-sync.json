@@ -5,8 +5,8 @@
       "kind": "artifact",
       "url": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
       "source": "docs/superpowers/era-review.html",
-      "syncedSha": "1321a94",
-      "syncedAt": "2026-08-08",
+      "syncedSha": "915c4e3",
+      "syncedAt": "2026-08-09",
       "note": "Update the source, republish to the SAME url, then run scripts/ci/artifact-currency.mjs --sync era-review. Bumping the sha without republishing makes the check lie."
     },
     {
