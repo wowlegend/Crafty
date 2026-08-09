@@ -512,3 +512,51 @@ does capture reproduce itself — is now covered twice at a fraction of the cost
 `assertIntraPageDeterminism` (a standing gate, no baseline, cannot rot) and by the measured 0.0000%
 cross-process result. A second ~15-minute Ubuntu job per push, on a platform we ship no baselines for,
 would buy a third reading of a question already answered exactly.
+
+---
+
+## 2026-08-09 (late) — Phase C step 1: the deterministic capture CLOCK, and what probing it revealed
+
+### Why suppression was ever the design. **[LOOP]**
+Substituting for reality needs two primitives and this repo only ever had one. `captureMode.js` shipped
+seeded per-key PRNG streams in `captureRandom`; **nothing ever substituted TIME.** So against 72 clock
+reads, any system left running under capture advances by WALL TIME — and boot length varies 1.68-10.43 s
+per process, so the frame samples a run-dependent phase. Turning systems OFF was the only way to get a
+stable frame, and that is why 116 `isCaptureMode()` sites across 61 files exist, 31 of them early-returns.
+
+`src/devtest/captureClock.js` supplies the missing half: under capture, time is a pure function of HOW
+MANY FRAMES HAVE BEEN RENDERED. Two processes reaching frame 90 by different routes read the same clock.
+`CAPTURE_DT` is a fixed 1/60 and deliberately NOT the display's refresh rate — reading the monitor would
+make Kevin's 120 Hz ProMotion screen and a CI runner render different frames from identical code.
+
+### The non-obvious bug, found before it shipped.
+This app mounts **three** `<Canvas>` elements (GameScene, TitleDiorama, MascotStudio), each with its own
+render loop. Had each advanced the counter, a frame would cost three ticks — and because the diorama is
+`React.lazy`, the RATE would change the instant its chunk resolved. Elapsed time would then depend on when
+a network-ish event landed: **the same run-dependent phase the clock exists to remove, reintroduced by its
+own fix.** Ticks are deduped on `document.timeline.currentTime`, which by spec advances once per animation
+frame and reads identically for every callback within it.
+
+### What probing the running app changed about the plan.
+The clock was probed in a real headless browser rather than assumed to work. It ticks — and after **2
+seconds of wall time under capture, only 2 frames had elapsed**, i.e. 33 ms of virtual time. That is
+SwiftShader's ~1 fps, and it is correct behaviour, but it has a consequence for the rest of Phase C that
+was not in the plan:
+
+**A frame-indexed clock alone does not put motion into the frame.** Waiting wall-clock time before a shot
+now advances the world by almost nothing, so an un-suppressed system would be captured at its start pose —
+deterministic, and just as uninformative as suppression. So the remaining work needs a HARNESS change as
+well as per-subsystem edits: **step the clock to a declared frame index, then shoot** (`advance N frames`
+→ `shot()`), which makes the captured phase an explicit, reviewable constant instead of an emergent
+property of how fast the machine happened to render.
+
+That ordering matters and is recorded before the work rather than discovered during it: converting a
+subsystem from suppression to substitution WITHOUT step-then-shoot would produce frames that are stable,
+still, and no more informative than today's.
+
+### Also recorded: a leak I caused, and the guard that half-caught it.
+The probe called `srv.kill()`; `_serve.mjs` returns `{ server, url, waitReady, shutdown }`. The `finally`
+threw and vite was orphaned on port 4181. `kill-test-procs.sh` then REFUSED to sweep — correctly, by
+design, because the process was under 3 minutes old and could have been a live run. Killed by PID, port
+verified clear, probe deleted. The standing rule earns its place again: hand-started means hand-killed,
+and a throwaway probe must use the helper's actual contract rather than a plausible-looking method name.

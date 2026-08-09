@@ -14,6 +14,7 @@ import { isCaptureMode } from '../../devtest/captureMode';
 import { SMAA, EffectComposer, Bloom, HueSaturation, BrightnessContrast, Vignette, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { MascotCraftyHero } from './MascotCraftyHero';
+import { CaptureClockTicker } from '../../devtest/CaptureClockTicker.jsx';
 
 // Explore-day palette (from src/theme/tokens.js -> mood.js) so the studio light/sky reads
 // like the in-game daytime look the mascots will live in.
@@ -93,6 +94,7 @@ export function MascotStudio() {
         camera={{ fov: 34, near: 0.1, far: 100, position: [3.6, 3.0, 7.6] }}
         onCreated={({ camera }) => { camera.lookAt(0, 0.85, 0); }}
       >
+        <CaptureClockTicker />
         <StudioBackdrop />
 
         {/* Lighting mirrors explore-day (mood.js explore scalars): a strong warm key from

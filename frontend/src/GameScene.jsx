@@ -27,6 +27,7 @@ import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
+import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -162,6 +163,7 @@ export function GameScene({
           canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
         }}
       >
+        <CaptureClockTicker />
         {!isCaptureMode && !isPerfProbe() && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:

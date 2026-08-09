@@ -29,6 +29,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
+import { resetCaptureClock } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
 import { applyFusion } from './game/hybrids';
@@ -295,6 +296,10 @@ function GameApp({ experienceSystem }) {
     // { timeOfDay } pins the lighting in the same call. No-op in prod (bridge tree-shaken).
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
+      // Frame 0. The harness captures ~31 states in ONE browser session, so without this each state's
+      // phase would depend on how many frames the previous states happened to take — run-dependent
+      // phase at a coarser grain, which is the defect the whole clock exists to remove.
+      resetCaptureClock();
       useGameStore.getState().setCaptureMode(true);
       // Force a deterministic tier so visual baselines never depend on the
       // capture machine's deviceMemory/cores.

@@ -14,6 +14,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MascotCraftyHero } from './mascots/MascotCraftyHero';
 import { isCaptureMode } from '../devtest/captureMode';
+import { CaptureClockTicker } from '../devtest/CaptureClockTicker.jsx';
 
 const SUN = '#FFE9C2', SKY = '#7FC9E0', GROUND = '#4A7A4A'; // warm magic-hour bounce
 
@@ -144,6 +145,7 @@ export function TitleDiorama() {
         camera={{ fov: 34, near: 0.1, far: 100, position: CAPTURE_CAM }}
         onCreated={({ camera }) => camera.lookAt(0, LOOK_Y, 0)}
       >
+        <CaptureClockTicker />
         <DriftCamera />
         <hemisphereLight color={SKY} groundColor={GROUND} intensity={0.65} />
         <ambientLight color={SKY} intensity={0.5} />
