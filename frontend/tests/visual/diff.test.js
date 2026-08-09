@@ -5,6 +5,7 @@ import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js';
 import { VISUAL_STATES } from '../../src/devtest/visualStates.js';
+import { maxWindowDensity } from '../../src/devtest/diffDensity.js';
 
 // S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
 // cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
@@ -45,6 +46,34 @@ const STATES = VISUAL_STATES;
 // minor M2b refinement. The 17 desktop frames stay byte-identical (the touch gates are isTouchUIMode-off there).
 const DIR = resolve(process.cwd(), 'tests/visual');
 const DIFF_DIR = resolve(DIR, 'diff'); // transient failure artifacts; gitignored alongside current/
+
+// PROVENANCE ATTRIBUTION — and the first thing that has ever READ baseline/.capture-meta.json.
+//
+// A `--baseline` capture has always written a sentinel next to the oracle, and nothing consumed it: the
+// comparator hardcodes current/. So the single most useful question after a mass diff — "were these two
+// sets of pixels even produced by the same rasteriser?" — had no answer on disk, and a renderer change
+// was indistinguishable from a source regression. Both arrive as "31 frames moved".
+//
+// Reported as ATTRIBUTION, never asserted. A renderer change with all 31 frames still green is evidence
+// of ROBUSTNESS; hard-failing on it would mandate a reflexive 31-PNG re-baseline that blesses whatever
+// real drift arrived alongside it.
+const readMeta = (which) => {
+  const p = resolve(DIR, which, '.capture-meta.json');
+  if (!existsSync(p)) return null;
+  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
+};
+const provLine = () => {
+  const b = readMeta('baseline')?.provenance;
+  const c = readMeta('current')?.provenance;
+  if (!b && !c) return '';
+  const fmt = (p) => (p ? `${p.renderer || '?'} · ${p.platform || '?'}` : 'not recorded (captured before provenance was tracked)');
+  const same = b && c && b.renderer === c.renderer && b.platform === c.platform;
+  return (
+    `\n  PROVENANCE${same ? ' (matched — the rasteriser is not the cause)' : ' — MISMATCH, read this before diagnosing the code'}:\n` +
+    `    baseline captured on: ${fmt(b)}\n` +
+    `    this run:             ${fmt(c)}\n`
+  );
+};
 const THRESHOLD = 0.06; // max 6% of pixels may differ before a state is flagged
 
 // FAIL-LOUD freshness gate (KEVIN-REVIEW-BATCH item #12): refuse to diff a STALE/partial/crashed
@@ -78,8 +107,25 @@ describe('visual capture freshness (item #12 fail-loud)', () => {
 // Written only when something is red, so a green run leaves no litter. Relative <img> paths, because
 // diff/ is a sibling of baseline/ and current/ and the sheet must open straight off disk with no server.
 const redFrames = [];
+const density = [];
 
 afterAll(() => {
+  // The density table prints on EVERY run, green or red — it is calibration data, and data only collected
+  // when something is already broken is collected too late to set a threshold from.
+  if (density.length) {
+    const rows = [...density].sort((a, b) => b.density - a.density);
+    const amp = rows.filter((r) => r.ratio > 0).map((r) => r.density / r.ratio);
+    console.log(`\n  WINDOWED DIFF DENSITY (128px window, 32px stride) — REPORT ONLY, asserts nothing`);
+    console.log(`  ${'state'.padEnd(24)}${'global'.padStart(10)}${'local max'.padStart(12)}   worst window`);
+    for (const r of rows.slice(0, 8)) {
+      console.log(
+        `  ${r.state.padEnd(24)}${(r.ratio * 100).toFixed(3).padStart(9)}%${(r.density * 100).toFixed(2).padStart(11)}%   at ${r.x},${r.y}`
+      );
+    }
+    const zero = rows.filter((r) => r.density === 0).length;
+    console.log(`  ${rows.length} frames measured; ${zero} with no changed pixel anywhere` +
+      (amp.length ? `; local/global amplification ${Math.min(...amp).toFixed(1)}x-${Math.max(...amp).toFixed(1)}x` : ''));
+  }
   if (!redFrames.length) return;
   const rows = redFrames
     .sort((a, b) => b.ratio - a.ratio)
@@ -141,6 +187,13 @@ describe('visual regression', () => {
       // mkdirSync FIRST: writeFileSync does NOT create parent directories. Without this the write
       // ENOENTs and REPLACES the failure it exists to explain with a filesystem error — the diagnostic
       // would destroy the diagnosis.
+      // REPORT-ONLY windowed density. Asserts nothing — see src/devtest/diffDensity.js for why a
+      // threshold cannot yet be derived from this corpus (global-to-local amplification is 12x-62x).
+      const mask = new PNG({ width: base.width, height: base.height });
+      pixelmatch(base.data, cur.data, mask.data, base.width, base.height, { threshold: 0.1, diffMask: true });
+      const dens = maxWindowDensity(mask.data, base.width, base.height, 128, 32);
+      density.push({ state, ratio, density: dens.density, x: dens.x, y: dens.y });
+
       let diffPath = null;
       if (ratio >= THRESHOLD) {
         mkdirSync(DIFF_DIR, { recursive: true });
@@ -176,7 +229,8 @@ describe('visual regression', () => {
           `    1. a transient world event fired mid-capture (weather, a notification toast, a spawn)\n` +
           `    2. the frame is genuinely re-art-directed -> review it, then re-baseline deliberately\n` +
           `    3. machine load skewed a load-sensitive frame -> re-run before believing it\n` +
-          `  A diff confined to one band is usually HUD/CSS; a diff spanning the whole frame is the scene.`
+          `  A diff confined to one band is usually HUD/CSS; a diff spanning the whole frame is the scene.` +
+          provLine()
       ).toBeLessThan(THRESHOLD);
     });
   }

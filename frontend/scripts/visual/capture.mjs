@@ -196,6 +196,7 @@ async function main() {
   // plus a printed warning nobody reads. These are fatal by definition: the frame does not depict the scene.
   fatalGl.length = 0;
   captureStage = 'boot';
+  let provenance = null;
   // detached: the vite child runs in its OWN process group so the finally can SIGKILL the whole group
   // (process.kill(-pid)). A plain server.kill() only reaps the `npx` wrapper and ORPHANS the vite child.
   const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--no-open'], { cwd: ROOT, stdio: 'ignore', detached: true });
@@ -233,6 +234,27 @@ async function main() {
       }
     });
     await page.setViewport({ width: 1280, height: 800 });
+    // PROVENANCE. `--use-angle=swiftshader` is asserted in the launch args and never verified, so a
+    // rasteriser change today is indistinguishable from a source regression: both arrive as "31 frames
+    // moved". Recorded into the sentinel and surfaced as ATTRIBUTION in the failure message.
+    //
+    // Recorded, NOT asserted. A renderer change with all 31 frames still passing is EVIDENCE OF
+    // ROBUSTNESS, and hard-failing on it would mandate a reflexive 31-PNG re-baseline that blesses
+    // whatever real drift arrived alongside — the exact mechanism baseline-trailer.mjs exists to stop.
+    //
+    // Probed on about:blank, before navigation, on a throwaway canvas: this must describe the BROWSER,
+    // not the app, and must not touch the canvases the capture will later screenshot.
+    provenance = await page.evaluate(() => {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        renderer: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'unknown',
+        vendor: ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : 'unknown',
+        ua: navigator.userAgent,
+      };
+    }).catch(() => null);
+    provenance = { ...(provenance || {}), platform: `${process.platform}-${process.arch}` };
+    console.log(`  renderer: ${provenance.renderer} | ${provenance.platform}`);
     // Before anything else: prove the browser can present a frame. Cheap (<2s), and it converts a silent
     // 180s CDP timeout into a named cause. Runs on the default about:blank, so a failure here is provably
     // about the BROWSER and not about this app.
@@ -714,7 +736,7 @@ async function main() {
     console.error('  green gate over frames that do not depict the scene.');
     for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, provenance }));
     return;
   }
   if (realCrashes.length) {
@@ -722,7 +744,7 @@ async function main() {
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
     // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, provenance }));
   } else {
     console.log('\nNo render crashes during capture.');
     if (subjectFailures.length) {
@@ -732,7 +754,7 @@ async function main() {
       process.exitCode = 1;
     }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0 }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, provenance }));
   }
 }
 // RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns
