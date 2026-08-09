@@ -53,7 +53,7 @@ async function moveDistance(page, ms = 700) {
 try {
   await waitReady();
   browser = await puppeteer.launch({
-    headless: 'new',
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'],
   });
   const page = await browser.newPage();

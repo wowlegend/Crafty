@@ -22,7 +22,7 @@ const { waitReady, shutdown } = serveVite(PORT);
 let browser = null, code = 0;
 try {
   await waitReady(180); // 45s -- vite needs ~20s to listen on a loaded box, and quiet failure here is what misled the last three runs
-  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   await page.setViewport({ width: 1280, height: 800 });

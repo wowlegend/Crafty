@@ -1,4 +1,4 @@
-// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADLESS Chrome (headless:'new')
+// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADLESS Chrome (headless: true)
 // (real GPU — SwiftShader numbers would be meaningless) and collect window.__craftyPerfResult
 // per scenario. Writes the report JSON to <repo-root>/memory/perf/ (committed evidence) and
 // prints the C−B gate verdict using the same tested budget module the app uses.
@@ -33,7 +33,7 @@ try {
   // (overstates render cost -> conservative gate), and the report says so honestly. The C−B
   // DELTA methodology holds either way (both sides of every delta use the same renderer).
   browser = await puppeteer.launch({
-    headless: 'new',
+    headless: true,
     protocolTimeout: 300000, // a 60s rAF sample must never trip the default CDP timeout
     args: ['--window-size=1380,1100', '--enable-gpu', '--use-angle=metal'],
     defaultViewport: { width: 1366, height: 1024 }, // iPad-ish canvas aspect

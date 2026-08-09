@@ -51,19 +51,51 @@ describe('capture preflight — browser frame production', () => {
 describe('capture: every gated frame goes through shot(), which waits for a stable frame', () => {
   const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
 
-  it('has exactly one bare page.screenshot, and it is inside shot()', () => {
+  // Both assertions below used to be CHARACTER-DISTANCE proxies ("the bare screenshot is within 400
+  // chars of `shot(`", "waitForStableFrame within 300 chars"). That is not the invariant — it is a
+  // correlate of it, and it fails for the wrong reason the moment anyone adds a comment inside shot().
+  // It did exactly that on 2026-08-09 when a WebGL context-loss check was added to the function, at
+  // which point the only ways to go green were to shrink a comment or to raise the number. Raising it
+  // would have been relaxing a gate to pass. Brace-matching the real body is strictly STRONGER: it
+  // cannot be satisfied by proximity, and it is indifferent to how much prose the function carries.
+  const bodyOf = (src, signature) => {
+    const at = src.indexOf(signature);
+    if (at === -1) return null;
+    const open = src.indexOf('{', at);
+    if (open === -1) return null;
+    let depth = 0;
+    for (let i = open; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') {
+        depth--;
+        if (depth === 0) return { start: open, end: i, text: src.slice(open, i + 1) };
+      }
+    }
+    return null;
+  };
+
+  it('has exactly one bare page.screenshot, and it is INSIDE the shot() body', () => {
     const bare = cap.match(/await page\.screenshot\(/g) || [];
-    expect(bare).toHaveLength(1);
-    // ...and it sits within the shot() body, not loose in main()
-    const shotIdx = cap.indexOf('async function shot(page, name)');
+    expect(bare, 'a second bare page.screenshot means a frame can bypass the stability wait')
+      .toHaveLength(1);
+    const body = bodyOf(cap, 'async function shot(page, name)');
+    expect(body, 'shot(page, name) not found — the single door was renamed or removed').not.toBeNull();
     const bareIdx = cap.indexOf('await page.screenshot(');
-    expect(shotIdx).toBeGreaterThan(-1);
-    expect(bareIdx).toBeGreaterThan(shotIdx);
-    expect(bareIdx - shotIdx).toBeLessThan(400);
+    expect(bareIdx, 'the only screenshot is OUTSIDE shot() — it bypasses the stability wait')
+      .toBeGreaterThan(body.start);
+    expect(bareIdx, 'the only screenshot is AFTER shot() ends — it bypasses the stability wait')
+      .toBeLessThan(body.end);
   });
 
-  it('shot() actually waits on the frame before writing it', () => {
-    expect(cap).toMatch(/async function shot\(page, name\)[\s\S]{0,300}await waitForStableFrame\(/);
+  it('shot() waits on the frame BEFORE writing it, in that order', () => {
+    const body = bodyOf(cap, 'async function shot(page, name)');
+    expect(body).not.toBeNull();
+    const waitAt = body.text.indexOf('await waitForStableFrame(');
+    const shotAt = body.text.indexOf('await page.screenshot(');
+    expect(waitAt, 'shot() does not wait for a stable frame at all').toBeGreaterThan(-1);
+    expect(shotAt, 'shot() does not take a screenshot').toBeGreaterThan(-1);
+    expect(waitAt, 'shot() screenshots BEFORE waiting — the wait is decorative')
+      .toBeLessThan(shotAt);
   });
 
   it('the states are captured through it -- with the denominator asserted, not assumed', () => {

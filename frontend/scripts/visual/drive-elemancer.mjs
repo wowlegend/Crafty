@@ -10,7 +10,7 @@ const { url, waitReady, shutdown } = serveVite(PORT);
 let browser = null, code = 0;
 try {
   await waitReady(120);
-  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 960 });
   await page.goto(url, { waitUntil: 'networkidle2' });

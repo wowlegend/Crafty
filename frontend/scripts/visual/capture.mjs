@@ -89,7 +89,7 @@ export async function assertBrowserProducesFrames(page) {
         '    requestAnimationFrame fired 0 times in 1.2s, so nothing renders and every screenshot would be\n' +
         '    blank or stale. This is an ENVIRONMENT fault, not a code regression: it reproduces on a bare\n' +
         '    data: URL with no app loaded.\n' +
-        '    Confirm with:  node -e "import(\'puppeteer\').then(async p=>{const b=await p.launch({headless:\'new\'});' +
+        '    Confirm with:  node -e "import(\'puppeteer\').then(async p=>{const b=await p.launch({headless:true});' +
         'const g=await b.newPage();await g.goto(\'data:text/html,hi\');console.log(await g.screenshot({encoding:\'base64\'}).then(s=>s.length).catch(e=>\'HANG\'));await b.close()})"\n' +
         '    A REBOOT is the known fix. Reinstalling Chrome for Testing does not help — the binary runs JS\n' +
         '    and creates WebGL contexts fine; it is the compositor that is wedged.'
@@ -131,8 +131,22 @@ async function waitForServer(url, tries = 60) {
  * be in the file and still not cover the moment that matters. One door now, so a new state cannot be
  * added that silently skips it (asserted by tests/scripts/capture-preflight.test.js).
  */
+// Module scope so `shot` can reach them: a per-shot GL check has to record into the same bucket the
+// end-of-run summary reads, and `shot` is the one door every gated frame goes through.
+const fatalGl = [];
+const FATAL_GL_RE = /THREE\.WebGLProgram: Shader Error|WebGL context lost|CONTEXT_LOST_WEBGL|Error linking program|shader compilation/i;
+let captureStage = 'boot';
+
 async function shot(page, name) {
   await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
+  // A LOST CONTEXT IS A BLANK OBJECT, NOT A BLANK FRAME — so it can sit far under the 6% gate and pass.
+  // Checked at the one door every gated frame passes through, immediately before the pixels are written,
+  // because a context lost after the previous shot and before this one belongs to THIS frame.
+  const lost = await page.evaluate(() => (window.__glLost || []).slice()).catch(() => []);
+  if (lost.length) {
+    fatalGl.push({ stage: captureStage, msg: `WebGL context lost on [${lost.join(', ')}] before ${name}` });
+    await page.evaluate(() => { window.__glLost = []; }).catch(() => {});
+  }
   await page.screenshot({ path: resolve(OUT, name) });
 }
 
@@ -176,13 +190,36 @@ async function main() {
   // Declared out here (not in the try) so the post-finally summary can read them.
   const crashes = [];
   const consoleErrs = [];
-  let captureStage = 'boot';
+  // `fatalGl` / `FATAL_GL_RE` / `captureStage` live at module scope (above `shot`) — a THIRD bucket, and
+  // the one nothing caught. A shader that fails to LINK renders nothing for that object; a lost context
+  // renders nothing at all. Either sits far under the 6% gate on most frames, so today it is a green gate
+  // plus a printed warning nobody reads. These are fatal by definition: the frame does not depict the scene.
+  fatalGl.length = 0;
+  captureStage = 'boot';
   // detached: the vite child runs in its OWN process group so the finally can SIGKILL the whole group
   // (process.kill(-pid)). A plain server.kill() only reaps the `npx` wrapper and ORPHANS the vite child.
   const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--no-open'], { cwd: ROOT, stdio: 'ignore', detached: true });
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  // `headless: true` — NOT the legacy `'new'`. The installed puppeteer types declare
+  // `headless?: boolean | 'shell'`; `'new'` is off-contract and survives only via an internal
+  // `headless === 'shell' ? ... : '--headless=new'` ternary. If that is ever tightened to
+  // `headless === true ? ...`, `'new'` silently routes to OLD headless — a real pixel-shifting change
+  // that would land as a mass baseline break with no error to explain it.
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   try {
     const page = await browser.newPage();
+    // Catch context loss WITHOUT touching getContext(). Probing a canvas with getContext() would CREATE
+    // a context on any canvas that lacks one, perturbing the very thing being measured. `webglcontextlost`
+    // does not bubble, but the CAPTURE phase runs window -> document -> target, so a capture-phase
+    // listener on document sees it. Installed before navigation so nothing is missed during boot.
+    await page.evaluateOnNewDocument(() => {
+      window.__glLost = [];
+      document.addEventListener('webglcontextlost', (e) => {
+        const el = e.target;
+        window.__glLost.push(
+          (el && (el.getAttribute?.('data-testid') || el.id || el.className)) || 'canvas'
+        );
+      }, true);
+    });
     page.on('pageerror', (err) => {
       crashes.push({ stage: captureStage, msg: String(err && err.message || err) });
       console.error(`PAGEERROR [@${captureStage}]: ${err && err.stack ? err.stack : err}`);
@@ -191,6 +228,7 @@ async function main() {
       if (msg.type() === 'error') {
         const t = msg.text();
         consoleErrs.push({ stage: captureStage, msg: t });
+        if (FATAL_GL_RE.test(t)) fatalGl.push({ stage: captureStage, msg: t });
         console.error(`CONSOLE.ERROR [@${captureStage}]: ${t}`);
       }
     });
@@ -586,19 +624,22 @@ async function main() {
     await page.evaluate(() => { const c = document.querySelector('canvas'); if (c) c.style.visibility = 'visible'; });
     await flushFrames(page, 2);
 
-    // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the
-    // standalone studio overlay (fixed camera + explore-day lighting + post-stack) with its
-    // idle animation FROZEN by capture mode, so the frame is deterministic. This is the
-    // human-eyeball + baseline gate for the mascot look (controller baselines it after
-    // Kevin's review) — until then it is INTENTIONALLY omitted from diff.test.js STATES, so
-    // it does not assert a regression baseline. The studio is its own R3F Canvas mounted over
-    // the (mob-free, capture-mode) world; we dismiss the achievements panel first for a clean mount.
-    // NON-FATAL (graceful degradation, mirrors the menu diorama): title-mascot is INTENTIONALLY not a
-    // diff.test.js STATE, and it mounts a FRESH R3F Canvas at the very end of a long software-GL session
-    // where the renderer is most context-pressured — the one spot that historically threw a puppeteer
-    // ProtocolError and hung the whole run. Longer mount wait (8s -> 20s, matching the late-session
-    // slowness), and if the canvas doesn't mount or the shot throws, SKIP title-mascot.png (keep last-good)
-    // and fall through to the CLEAN end so all 23 GATED frames still land + the freshness sentinel validates.
+    // title-mascot (S1-D-M4): the chosen "Crafty Hero" brand face, rendered in the standalone studio
+    // overlay (fixed camera + explore-day lighting + post-stack). Its idle is RESET to MASCOT_REST under
+    // capture rather than frozen — and because the studio mounts the mascot with capture ALREADY on, its
+    // useFrame returns the rest pose on frame 1 and the declared JSX values stand. That is why this frame
+    // measures 0.0000% run-to-run while `menu`, whose diorama mounts BEFORE capture, does not.
+    //
+    // IT IS A GATED FRAME. Three comments here used to claim it was "INTENTIONALLY omitted from
+    // diff.test.js STATES"; it entered STATES in 63dda2b8 (2026-06-02), before those words were written.
+    //
+    // NON-FATAL (graceful degradation, mirrors the menu diorama): it mounts a FRESH R3F Canvas at the very
+    // end of a long software-GL session where the renderer is most context-pressured — the one spot that
+    // historically threw a puppeteer ProtocolError and hung the whole run. Longer mount wait (8s -> 20s,
+    // matching the late-session slowness), and if the canvas doesn't mount or the shot throws, SKIP
+    // title-mascot.png (keeping the last-good copy) and fall through to the CLEAN end so the remaining
+    // gated frames still land and the freshness sentinel validates. The SKIP is deliberate and visible;
+    // what is no longer swallowed is the crash EVIDENCE (see the realCrashes filter below).
     captureStage = 'title-mascot';
     try {
       await page.evaluate(() => window.useGameStore.getState().setShowInventory(false));
@@ -609,7 +650,7 @@ async function main() {
       await shot(page, 'title-mascot.png');
       console.log('captured title-mascot');
     } catch (e) {
-      console.warn(`WARN: title-mascot capture failed (${e && e.message || e}) -> skipping title-mascot.png (ungated), continuing to clean end`);
+      console.warn(`WARN: title-mascot capture failed (${e && e.message || e}) -> skipping title-mascot.png (a GATED frame; its last-good copy is kept), continuing to clean end`);
     }
   } finally {
     // A GPU-context-lost / crashed headless Chrome can leave browser.close() hanging on an unanswered CDP
@@ -633,14 +674,41 @@ async function main() {
     for (const e of arr) { const k = `${e.stage}::${e.msg}`; if (!seen.has(k)) { seen.add(k); out.push(e); } }
     return out;
   };
-  // Exclude 'title-mascot': it's the ungated final state (not a diff.test.js STATE) and mounts a fresh
-  // canvas at peak software-GL pressure, so a context-loss THERE is expected and cannot corrupt the 23
-  // gated frames already captured before it. Its failure is a WARN (skips its png), never a gate fail.
-  const realCrashes = dedupe(crashes.filter((e) => e.stage !== 'boot' && e.stage !== 'title-mascot'));
+  // THE 'title-mascot' EXCLUSION IS GONE, AND ITS PREMISE WAS FALSE THE DAY IT WAS WRITTEN.
+  //
+  // It read: "it's the ungated final state (not a diff.test.js STATE) ... cannot corrupt the 23 gated
+  // frames". Both halves were wrong. `title-mascot` entered diff.test.js STATES in 63dda2b8 (2026-06-02);
+  // this comment was authored in 75191ef (2026-07-20), seven weeks LATER. And there are 31 gated frames,
+  // not 23. So a pageerror during that stage was discarded, the sentinel still wrote complete:true /
+  // crashes:0, and a gated frame produced by a crashed render loop was diffed as clean.
+  //
+  // The graceful-degradation behaviour it was reaching for still exists and is the right shape: the
+  // try/catch around the title-mascot shot SKIPS the png and continues to a clean end. That is a
+  // deliberate, visible skip. Silently swallowing the crash EVIDENCE is a different thing, and it is the
+  // repo's signature defect — a report of PASS over input the instrument never examined.
+  const realCrashes = dedupe(crashes.filter((e) => e.stage !== 'boot'));
   const realWarns = dedupe(consoleErrs.filter((e) => e.stage !== 'boot'));
+  // GL FATALS ARE FILTERED BY NEITHER EXCLUSION — not by 'boot', not by 'title-mascot'.
+  //
+  // The boot exclusion exists for favicon 404s and pre-server connection refusals, which are noise. A
+  // shader that fails to link at boot is not noise: `captureStage` is still 'boot' for the FIRST 13 of
+  // the 31 gated frames (it is only reassigned at 9 points, and every `shot()` call before the first
+  // reassignment runs under 'boot'). Excluding 'boot' here would make this check dead in exactly the
+  // window where most gated frames are taken.
+  const realFatalGl = dedupe(fatalGl);
   if (realWarns.length) {
     console.warn(`\n=== ${realWarns.length} console warning(s) during capture (non-fatal) ===`);
     for (const e of realWarns) console.warn(`  [@${e.stage}] ${e.msg}`);
+  }
+  if (realFatalGl.length) {
+    console.error(`\n=== ${realFatalGl.length} FATAL GL ERROR(S) DURING CAPTURE — gate FAILS ===`);
+    console.error('  A failed shader link renders NOTHING for that object and a lost context renders');
+    console.error('  nothing at all. Both sit far under the 6% threshold, so without this the run is a');
+    console.error('  green gate over frames that do not depict the scene.');
+    for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
+    process.exitCode = 1;
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length }));
+    return;
   }
   if (realCrashes.length) {
     console.error(`\n=== ${realCrashes.length} RENDER CRASH(ES) DURING CAPTURE — gate FAILS ===`);

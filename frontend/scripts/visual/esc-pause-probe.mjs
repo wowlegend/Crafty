@@ -15,7 +15,7 @@ let browser = null;
 const done = async (c) => { await shutdown(browser); process.exit(c); };
 try {
   await waitReady();
-  browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
+  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
   // W1 Task 4: the deleted auth subsystem booted the app behind an axios.get(localhost:8001/api/auth/me).
