@@ -276,3 +276,60 @@ export async function waitForStableFrame(
   }
   return { polls, settled, sawChange };
 }
+
+/**
+ * PURE. Decide whether two shots of the SAME page, taken back to back with nothing changed between
+ * them, agree.
+ *
+ * Split from the browser call so both verdicts are unit-testable with no browser: a dead comparator
+ * that always says "identical" reads exactly like a deterministic harness, and that is the failure this
+ * check exists to rule out.
+ *
+ * @param {Buffer|Uint8Array} a
+ * @param {Buffer|Uint8Array} b
+ * @returns {{ok: boolean, why: string, bytes: number}}
+ */
+export function intraPageVerdict(a, b) {
+  if (!a || !b || !a.length || !b.length) {
+    return { ok: false, why: 'one of the two shots was empty — the screenshot failed', bytes: 0 };
+  }
+  if (a.length !== b.length) {
+    return { ok: false, why: `encoded sizes differ (${a.length} vs ${b.length} bytes)`, bytes: a.length };
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return { ok: false, why: `first byte difference at offset ${i}`, bytes: a.length };
+  }
+  return { ok: true, why: 'byte-identical', bytes: a.length };
+}
+
+/**
+ * THE METAMORPHIC INVARIANT: shooting the same settled page twice must produce the same bytes.
+ *
+ * This needs no baseline, so it cannot rot and never needs re-approval — and it is the DISCRIMINATOR
+ * that localises any future nondeterminism. Measured 2026-08-08: three shots from ONE page are
+ * byte-identical while two separate PROCESSES differ by 0.36-0.98%. That single fact is what ruled out
+ * renderer nondeterminism and pointed at cross-process state, and it was recorded as a one-off probe
+ * result rather than a standing check. If it ever stops holding, every frame in that run is suspect and
+ * no amount of tolerance-tuning on the baselines will mean anything.
+ *
+ * @param {import('puppeteer').Page} page
+ * @param {string} label  the capture stage this is vouching for
+ * @returns {Promise<{ok: boolean, why: string, bytes: number}>}
+ */
+export async function assertIntraPageDeterminism(page, label) {
+  await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
+  const a = await page.screenshot();
+  const b = await page.screenshot();
+  const v = intraPageVerdict(a, b);
+  if (v.ok) {
+    console.log(`  intra-page determinism OK @${label} (two shots byte-identical, ${v.bytes} bytes)`);
+  } else {
+    console.error(
+      `\n=== INTRA-PAGE DETERMINISM FAILED @${label}: ${v.why} ===\n` +
+      '  The same settled page shot twice produced different bytes. This is NOT the known cross-process\n' +
+      '  variance — it means the harness itself is nondeterministic, so every frame in this run is\n' +
+      '  suspect and re-baselining any of them would freeze noise.'
+    );
+  }
+  return v;
+}

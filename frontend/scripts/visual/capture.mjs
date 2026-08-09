@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { assertSubjectOnScreen, waitForStableFrame } from './_probe.mjs';
+import { assertSubjectOnScreen, waitForStableFrame, assertIntraPageDeterminism } from './_probe.mjs';
 import { ELEMENT_COLOR } from '../../src/render/beastAvatarParts.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -265,6 +265,13 @@ async function main() {
       await delay(900);
       await shot(page, 'menu.png');
       console.log('captured menu');
+      // THE METAMORPHIC INVARIANT, checked on the frame that motivated it. `menu` is the noisiest frame
+      // ACROSS processes (0.36-0.98%) and byte-identical WITHIN one, and that contrast is the whole
+      // diagnosis: it ruled out renderer nondeterminism and pointed at cross-process state. Standing
+      // check now rather than a probe result someone has to remember — it needs no baseline, so it
+      // cannot rot, and if it ever breaks every frame in the run is suspect.
+      const intra = await assertIntraPageDeterminism(page, 'menu');
+      if (!intra.ok) fatalGl.push({ stage: captureStage, msg: `intra-page determinism FAILED @menu: ${intra.why}` });
     }
 
     // explore-day: start (locks pointer, dismisses menu), wait for terrain to fully

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tapVerdict, assertBaseline, waitForStableFrame } from '../../scripts/visual/_probe.mjs';
+import { tapVerdict, assertBaseline, waitForStableFrame, intraPageVerdict } from '../../scripts/visual/_probe.mjs';
 
 // The regression fixtures below are the ACTUAL measurements from 2026-08-05, when touch-probe.mjs reported
 // success over taps it never landed and two registry lines were written from the result. Every near-miss
@@ -130,5 +130,42 @@ describe('waitForStableFrame — waits on the frame, and proves it can see a dif
     } finally {
       Buffer.prototype.equals = realEquals;
     }
+  });
+});
+
+describe('intraPageVerdict — the metamorphic invariant, and proof it can say NO', () => {
+  // Two shots of the SAME settled page must be byte-identical. Measured 2026-08-08: three shots from one
+  // page agree exactly while two separate PROCESSES differ by 0.36-0.98%. That contrast is what ruled out
+  // renderer nondeterminism and pointed the whole investigation at cross-process state.
+  //
+  // A comparator that always answers "identical" is indistinguishable from a deterministic harness, which
+  // is precisely the vacuity that made the i18n classifier report 0 dead keys. So every NEGATIVE shape is
+  // asserted reachable before the positive verdict is trusted.
+  const buf = (...bytes) => Uint8Array.from(bytes);
+
+  it('accepts two byte-identical shots', () => {
+    const v = intraPageVerdict(buf(1, 2, 3, 4), buf(1, 2, 3, 4));
+    expect(v.ok).toBe(true);
+    expect(v.bytes).toBe(4);
+  });
+
+  it('rejects a single differing byte, and says where', () => {
+    const v = intraPageVerdict(buf(1, 2, 3, 4), buf(1, 2, 9, 4));
+    expect(v.ok).toBe(false);
+    expect(v.why).toMatch(/offset 2/);
+  });
+
+  it('rejects shots of different encoded size', () => {
+    const v = intraPageVerdict(buf(1, 2, 3), buf(1, 2, 3, 4));
+    expect(v.ok).toBe(false);
+    expect(v.why).toMatch(/sizes differ/);
+  });
+
+  it('rejects an EMPTY shot rather than calling it a match', () => {
+    // A failed screenshot returns nothing, and nothing equals nothing. Without this the invariant would
+    // report its strongest possible PASS at the exact moment the instrument stopped working.
+    expect(intraPageVerdict(buf(), buf()).ok).toBe(false);
+    expect(intraPageVerdict(null, buf(1)).ok).toBe(false);
+    expect(intraPageVerdict(buf(1), undefined).ok).toBe(false);
   });
 });

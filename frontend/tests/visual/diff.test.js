@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js';
+import { VISUAL_STATES } from '../../src/devtest/visualStates.js';
 
 // S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
 // cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
@@ -30,7 +31,10 @@ import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js'
 // gate goes red, the frames are reviewed, and they are re-baselined — which is the process working, not an
 // obstacle. Holding a frame OUT of STATES to preserve the option of changing it later buys nothing: it was
 // already changeable, just unguarded.
-const STATES = ['menu', 'explore-day', 'explore-night', 'boss-obsidian', 'character-closeup', 'boss-closeup', 'primitives-showcase-en', 'primitives-showcase-zh', 'inventory-open', 'achievements-open', 'spell-cast', 'spell-iceball', 'spell-lightning', 'spell-arcane', 'title-mascot', 'loot-showcase', 'hearth', 'biome-snow', 'ocean-depth', 'ocean-coast', 'landmark', 'mobile', 'mob-bestiary', 'progression-open', 'beast-fire', 'beast-ice', 'beast-lightning', 'beast-arcane', 'explore-day-med', 'explore-day-low', 'explore-night-low'];
+// The list now lives in src/devtest/visualStates.js so a GATE can reconcile it against the baselines
+// that actually exist on disk. As a literal in this file nothing could compare it against reality, which
+// is how seven baselined frames sat outside it for weeks asserting nothing.
+const STATES = VISUAL_STATES;
 // v7-S3.5a: spell-iceball/lightning/arcane added — per-element frozen-cast frames so the per-element
 // spell-VFX redesigns (S3.5 ice shards / S3.6 lightning wire / S3.7 arcane rune-wheel) are gated
 // (previously only spell-cast=fireball was captured). Cast-isolation in spawnDeterministicCast keeps
