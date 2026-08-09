@@ -31,11 +31,23 @@ describe('E-ter — an incoming hit freezes, graded by what it cost', () => {
   });
 
   it('freezes LONGER for a heavier blow', () => {
+    // Each duration is anchored to a clock sample taken IMMEDIATELY BEFORE its own damagePlayer call.
+    //
+    // This previously sampled performance.now() AFTER each call, which measures
+    // `duration + (elapsed since the store wrote hitstopUntil)`. The two samples sat on either side of a
+    // reset() and a pile of store churn, so the wall-clock gap between the measurement blocks leaked
+    // straight into the comparison. It passes on a quiet machine and fails under load — observed
+    // 2026-08-09 at load 231, "expected 91 to be close to 85", while passing 3/3 in isolation.
+    //
+    // The tolerance is NOT relaxed. The measurement is corrected to mean what the assertion says: the
+    // residual error is now only the time spent INSIDE damagePlayer, not the time between two tests.
+    const t0light = performance.now();
     useGameStore.getState().damagePlayer(5, 'light');
-    const light = useGameStore.getState().hitstopUntil - performance.now();
+    const light = useGameStore.getState().hitstopUntil - t0light;
     reset();
+    const t0crit = performance.now();
     useGameStore.getState().damagePlayer(40, 'crit');
-    const crit = useGameStore.getState().hitstopUntil - performance.now();
+    const crit = useGameStore.getState().hitstopUntil - t0crit;
     expect(crit).toBeGreaterThan(light);
     expect(Math.round(crit - light)).toBeCloseTo(HITSTOP.crit - HITSTOP.light, -1);
   });
