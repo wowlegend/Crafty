@@ -82,7 +82,16 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 - Probes go in `scripts/visual/`, use `_serve.mjs` for the vite+browser lifecycle and `_probe.mjs` for
   honest taps and baselines. **Anything you launch, you kill** — close the browser in a `finally`, kill the
   vite process GROUP, then sweep `scripts/dev/kill-test-procs.sh`.
-- One managed port per harness (capture 4178, e2e 4179). Never hand-start vite on an ad-hoc port.
+- One managed port per harness (capture 4178, e2e 4179, prod-smoke 4180). Never an ad-hoc port.
+- **ANY listening localhost port mints a browser tab you cannot clean up.** cmux surfaces every port it
+  detects, and on 2026-08-09 a `vite preview` on 4180 opened a Crafty tab in Kevin's OWN Chrome — where it
+  kept running the R3F render loop and the Rapier physics step at **75% of a core** long after the server
+  was killed. `close-preview-tabs.sh` cannot help: it only enumerates cmux SURFACES, so it reported "no
+  orphan preview tabs found" while the tab sat there. That report was true about cmux and false about the
+  machine — its denominator excludes the real browser, and it must, because a sweeper that reaches into
+  Kevin's Chrome is far worse. **So killing the server is NOT the end of the cleanup.** After any local run
+  that binds a port, say so, and let Kevin close the tab. Prefer running these in CI, where there is no
+  cmux and no tab to leave behind.
 
 ## The meta-rule
 
