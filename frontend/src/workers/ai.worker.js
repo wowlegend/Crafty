@@ -19,8 +19,10 @@ import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
+import { NEIGHBOR_OFFSETS } from '../game/aStarNeighbors.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
+
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
 // its own module realm, so isCaptureMode() would read a separate binding that is permanently false.
 
@@ -73,13 +75,11 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
     const cz = currNode.z;
     const ch = heightGrid[currentIdx];
     
-    // Check 8-way neighbors for diagonal traversal
-    const neighbors = [
-      [0, 1], [0, -1], [1, 0], [-1, 0],
-      [1, 1], [1, -1], [-1, 1], [-1, -1]
-    ];
-    
-    for (const [dx, dz] of neighbors) {
+    // The neighbour table is MODULE-LEVEL (NEIGHBOR_OFFSETS). It used to be built here, inside the A*
+    // expansion loop: nine fresh arrays -- the outer literal plus eight pairs -- per expanded node, per
+    // aggro mob, at 15 Hz. The values are constant, so every one of those was allocated to hold the same
+    // eight numbers it held last time.
+    for (const [dx, dz] of NEIGHBOR_OFFSETS) {
       const nx = cx + dx;
       const nz = cz + dz;
       if (nx < 0 || nx >= cols || nz < 0 || nz >= rows) continue;

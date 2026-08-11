@@ -150,3 +150,50 @@ export function gerstnerNormal(x, z, time) {
   const len = Math.hypot(nx, ny, nz) || 1;
   return [nx / len, ny / len, nz / len];
 }
+
+// ALLOCATION-FREE VARIANTS, for the per-vertex loop.
+//
+// Ocean's useFrame calls gerstnerDisplace and gerstnerNormal once per vertex per frame. On a 96x96 plane
+// that is ~9,400 object literals and ~9,400 arrays EVERY FRAME -- roughly 18,800 short-lived allocations
+// at display refresh, which is a GC sawtooth in the one loop that must not stutter. The object-returning
+// forms stay, because they read better at the dozen call sites that run once; these exist for the loop.
+//
+// The caller owns the target, so there is no shared module scratch to leak between callers.
+
+/** @param {{x:number,y:number,z:number}} out */
+export function gerstnerDisplaceInto(out, x, z, time) {
+  let dx = 0;
+  let dz = 0;
+  let h = 0;
+  for (let i = 0; i < _WAVES_D.length; i++) {
+    const w = _WAVES_D[i];
+    const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
+    const c = Math.cos(phase);
+    dx += STEEPNESS * w.amp * w.nx * c;
+    dz += STEEPNESS * w.amp * w.nz * c;
+    h += w.amp * Math.sin(phase);
+  }
+  out.x = x + dx;
+  out.y = SEA_LEVEL + h;
+  out.z = z + dz;
+  return out;
+}
+
+/** @param {{x:number,y:number,z:number}} out — the normal, normalised, in the same convention as gerstnerNormal */
+export function gerstnerNormalInto(out, x, z, time) {
+  let nx = 0;
+  let nz = 0;
+  let ny = 1;
+  for (let i = 0; i < _WAVES_D.length; i++) {
+    const w = _WAVES_D[i];
+    const phase = w.k * (w.nx * x + w.nz * z) + time * w.spd * w.k;
+    nx -= w.nx * w.wa * Math.cos(phase);
+    nz -= w.nz * w.wa * Math.cos(phase);
+    ny -= STEEPNESS * w.wa * Math.sin(phase);
+  }
+  const len = Math.hypot(nx, ny, nz) || 1;
+  out.x = nx / len;
+  out.y = ny / len;
+  out.z = nz / len;
+  return out;
+}

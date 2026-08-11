@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { InstancedRigidBodies } from '@react-three/rapier';
 import * as THREE from 'three';
+import { parkDeadDebris } from '../game/debrisPark.js';
 
 const MAX_PARTICLES = 200;
 
@@ -88,8 +89,16 @@ export const BlockParticleSystem = ({ worker }) => {
                 ages.current[i] += delta;
                 
                 if (ages.current[i] >= 2.0) {
-                    // Teleport dead particle far away
-                    api.current.at(i).setTranslation(hidePosition, true);
+                    // PARK IT, do not just move it. `setTranslation(pos, true)` with wakeUp=true teleported
+                    // the body to y=-1000 and WOKE IT, while leaving its velocity untouched -- so every
+                    // dead debris chunk kept free-falling forever, accumulating speed, and could never
+                    // sleep. Rapier steps an awake body every tick whether or not anyone can see it, so
+                    // the cost of a mining session persisted for the rest of the run.
+                    //
+                    // Zero the velocities first, then move it with wakeUp=FALSE so the solver is allowed
+                    // to put it to sleep. The order matters: waking it to move it and then zeroing would
+                    // leave it awake until the sleep threshold elapsed again.
+                    parkDeadDebris(api.current.at(i), hidePosition);
                 }
             }
         }

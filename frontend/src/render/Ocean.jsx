@@ -6,7 +6,14 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SEA_LEVEL, gerstnerDisplace, gerstnerNormal } from '../world/oceanProfile.js';
+import { SEA_LEVEL, gerstnerDisplaceInto, gerstnerNormalInto } from '../world/oceanProfile.js';
+
+// Per-vertex scratch for the useFrame below. The loop runs once per vertex per FRAME -- ~9,400 on a 96x96
+// plane -- and the object-returning gerstner helpers allocated a literal and an array each time, roughly
+// 18,800 short-lived allocations per frame at display refresh. Module scope, because this component is a
+// singleton and the values never outlive one iteration.
+const _d = { x: 0, y: 0, z: 0 };
+const _n = { x: 0, y: 0, z: 0 };
 import { isCaptureMode } from '../devtest/captureMode.js';
 import { oceanVisibleNear } from '../world/oceanVisibility.js';
 import { surfaceBlockAt } from '../world/climate.js';
@@ -71,16 +78,16 @@ export function Ocean() {
       // Sample from the UNDISPLACED grid, never from the vertex we wrote last frame.
       const lx = base[i * 2], ly = base[i * 2 + 1];
       const wx = cx + lx, wz = cz - ly;
-      const d = gerstnerDisplace(wx, wz, t);
+      gerstnerDisplaceInto(_d, wx, wz, t);
       // plane local (x,y) -> world (x,z); rotated -90deg about X, so world z maps to NEGATIVE local y
-      pos.setXYZ(i, lx + (d.x - wx), ly - (d.z - wz), d.y - SEA_LEVEL);
-      const nv = gerstnerNormal(wx, wz, t);
-      nrm.setXYZ(i, nv[0], -nv[2], nv[1]); // world normal -> plane-local under the -90deg X rotation
+      pos.setXYZ(i, lx + (_d.x - wx), ly - (_d.z - wz), _d.y - SEA_LEVEL);
+      gerstnerNormalInto(_n, wx, wz, t);
+      nrm.setXYZ(i, _n.x, -_n.z, _n.y); // world normal -> plane-local under the -90deg X rotation
       // Foam where real foam is: on the crests AND on the steep faces. Height alone caps only the very
       // top of the swell; with Gerstner sharpening the crests, the steep leading face is where water
       // actually breaks, and a slope term is what stops the foam reading as a painted-on stripe.
-      const crest = THREE.MathUtils.smoothstep(d.y, SEA_LEVEL + 0.85, SEA_LEVEL + 1.75);
-      const slope = THREE.MathUtils.smoothstep(1 - nv[1], 0.05, 0.22);
+      const crest = THREE.MathUtils.smoothstep(_d.y, SEA_LEVEL + 0.85, SEA_LEVEL + 1.75);
+      const slope = THREE.MathUtils.smoothstep(1 - _n.y, 0.05, 0.22);
       foam.setX(i, Math.min(1, crest * 0.85 + slope * 0.5));
     }
     pos.needsUpdate = true; nrm.needsUpdate = true; foam.needsUpdate = true;

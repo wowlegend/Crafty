@@ -23,6 +23,10 @@ import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
 export { MagicWand } from './render/spellVfx';
 
+// Per-frame scratch for the boss proximity test below. See its call site: it held three numbers for
+// one comparison and was allocated once per projectile per frame.
+const _bossVec = new THREE.Vector3();
+
 export const EnhancedMagicSystem = React.memo(() => {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
@@ -402,9 +406,12 @@ export const EnhancedMagicSystem = React.memo(() => {
           if (isBossActive && store.getBossPosition) {
             const bossPos = store.getBossPosition();
             if (bossPos) {
-              const bVec = new THREE.Vector3(bossPos[0], bossPos[1], bossPos[2]);
+              // MODULE SCRATCH, not a fresh Vector3. This ran once per in-flight projectile per FRAME
+              // purely to hold three numbers for one distance comparison -- an allocation in the hottest
+              // loop in the file, for a value that never outlives the `if` below.
+              _bossVec.set(bossPos[0], bossPos[1], bossPos[2]);
               // Satisfying 3D hit registration for flying Shadow Dragon
-              if (projectile.position.distanceTo(bVec) < 6.0) {
+              if (projectile.position.distanceTo(_bossVec) < 6.0) {
                 if (store.damageBoss) {
                   store.damageBoss(projectile.damage);
                 }
