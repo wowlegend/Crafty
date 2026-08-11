@@ -98,7 +98,6 @@ export const Player = ({ isWorldBuilt }) => {
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
   const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
-  const castFiredRef = useRef(false); // stamped by the #72 cast branch; consumed by the latch
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
@@ -305,6 +304,33 @@ export const Player = ({ isWorldBuilt }) => {
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.cast)); } // game-feel: cast push
 
     const store = useGameStore.getState();
+
+    // ELEMANCER (S2-B4-M5): the imbue latch resolves HERE, before the spawn below, because the thing it
+    // decides -- which element this projectile carries -- is read AT spawn. It used to resolve in useFrame
+    // one frame later, so the cast that PAID got imbueKind:null and the kind sat parked for the next cast
+    // to take for free (an off-by-one, not a missing feature). The consume also used to depend on the
+    // mouse branch stamping a ref, which the F key -- the advertised prime cast key -- never did, so on
+    // that path the stance idled armed forever. Both routes call this function, so owning the consume
+    // here closes both. The reducer stays the single decision authority; only the timing of its
+    // `castFired` input moved from "next frame" to "this instant".
+    {
+      const { sm, action } = decideImbue(imbueSMRef.current, {
+        imbueEdge: false,          // arming is the frame loop's job; this call is only ever a cast
+        castFired: true,
+        active: getInput().active,
+        alive: store.isAlive,
+        canIgnite: rCanIgnite(store.resonanceBanked) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
+      });
+      imbueSMRef.current = sm;
+      if (action === 'consume') {
+        store.setImbueArmed(false);
+        store.accrueResonance(-ZONE_COST); // canIgnite vetted the bank at arm-time; spend at cast
+        armImbueCast(KIND_BY_SPELL[store.activeSpell] || 'burning');
+      } else if (action === 'disarm') {
+        store.setImbueArmed(false); // cast while dead or with input released -- drop the stance, charge nothing
+      }
+    }
+
     if (store.castSpell) {
       const currentSpell = store.activeSpell || 'fireball';
       store.castSpell(currentSpell);
@@ -459,7 +485,7 @@ export const Player = ({ isWorldBuilt }) => {
         else triggerMeleeAttack();
       } else if (verb === 'cast') {
         if (store.voidhandHeld) voidhandVerbRef.current.cast = true;   // M3: HELD re-skin -> SM 'slam'
-        else { triggerSpellCast(); castFiredRef.current = true; } // S2-B4-M5: the latch consumes this
+        else triggerSpellCast(); // S2-B4-M5: the latch resolves INSIDE this call, before the spawn
       } else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
       else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
@@ -753,29 +779,25 @@ export const Player = ({ isWorldBuilt }) => {
         });
       }
 
-      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (bank- and talent-gated);
-      // the #72 cast branch stamps castFiredRef when a real spell cast routes. On 'consume'
-      // the cast is already in flight: spend the bank + hand the element kind to the
-      // projectile spawn via the cast-arm slot.
+      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (bank- and talent-gated), and
+      // death or released input drops the stance. The CONSUME is not decided here: it belongs to
+      // triggerSpellCast, which is the call that spawns the projectile that reads the element. Deciding
+      // it here meant deciding it one frame after the projectile had already been built. `castFired` is
+      // therefore always false on this path — the frame loop cannot observe a cast that has, by
+      // construction, already resolved its own latch.
       const imbueIn = vin.imbue;
       const imbueEdge = imbueIn && !prevImbueRef.current;
       prevImbueRef.current = imbueIn;
       const { sm: ism, action: iaction } = decideImbue(imbueSMRef.current, {
         imbueEdge,
-        castFired: castFiredRef.current,
+        castFired: false,
         active: vin.active,
         alive: stv.isAlive,
         canIgnite: rCanIgnite(stv.resonanceBanked) && (stv.unlockedTalents?.['elemancer_imbue'] > 0),
       });
       imbueSMRef.current = ism;
-      castFiredRef.current = false;
       if (iaction === 'arm') stv.setImbueArmed(true);
       else if (iaction === 'disarm') stv.setImbueArmed(false);
-      else if (iaction === 'consume') {
-        stv.setImbueArmed(false);
-        stv.accrueResonance(-ZONE_COST); // canIgnite vetted the bank at arm-time; spend at cast
-        armImbueCast(KIND_BY_SPELL[stv.activeSpell] || 'burning');
-      }
     }
 
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
