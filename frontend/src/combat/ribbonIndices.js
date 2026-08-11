@@ -37,3 +37,30 @@ export function buildRibbonIndices(N) {
 
   return indices;
 }
+
+/**
+ * ALLOCATION-FREE variant. Fill `out` and report how many indices are live.
+ *
+ * The ribbon rebuilt its index buffer, both vertex buffers and three BufferAttributes EVERY FRAME of
+ * every swing. Swapping a BufferAttribute also forces a full GPU re-upload, where updating in place with
+ * `needsUpdate` re-uploads the same bytes without the churn -- so the allocation was buying nothing.
+ *
+ * The caller sizes `out` once at the ring's capacity and calls setDrawRange with the returned count,
+ * which is what lets a fixed buffer draw a variable-length ribbon.
+ *
+ * @param {Uint16Array} out
+ * @param {number} N  captured point-pairs currently live
+ * @returns {number} live index count (6 * (N-1)), clamped to `out`
+ */
+export function fillRibbonIndices(out, N) {
+  const quads = Math.max(0, Math.min(N - 1, Math.floor(out.length / 6)));
+  for (let i = 0; i < quads; i++) {
+    out[i * 6 + 0] = 2 * i;
+    out[i * 6 + 1] = 2 * i + 1;
+    out[i * 6 + 2] = 2 * i + 2;
+    out[i * 6 + 3] = 2 * i + 1;
+    out[i * 6 + 4] = 2 * i + 3;
+    out[i * 6 + 5] = 2 * i + 2;
+  }
+  return quads * 6;
+}

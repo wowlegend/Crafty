@@ -8,11 +8,24 @@ import { useFrame } from '@react-three/fiber';
 import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
 import { SPELL_COLORS } from '../GameSystems';
-import { buildRibbonIndices } from '../combat/ribbonIndices.js';
+import { fillRibbonIndices } from '../combat/ribbonIndices.js';
+import { makeTrailRing, pushTrailPoint, dropExpiredTrailPoints, TRAIL_LIFE_SEC, TRAIL_CAPACITY } from '../combat/ribbonRing.js';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
+
+// Swing-ribbon scratch, allocated ONCE at the ring's capacity. The trail used to build a Float32Array
+// pair, a Uint16Array and three BufferAttributes every frame of every swing, plus two bounding-volume
+// recomputes -- and swapping a BufferAttribute forces a full GPU re-upload, so the allocation bought
+// nothing that needsUpdate does not.
+const TRAIL_TIP_LOCAL = Object.freeze({ x: 0.12, y: 1.3, z: -0.15 });
+const TRAIL_BASE_LOCAL = Object.freeze({ x: 0.08, y: 0.22, z: -0.05 });
+const _ribbonTip = new THREE.Vector3();
+const _ribbonBase = new THREE.Vector3();
+const _ribbonPositions = new Float32Array(TRAIL_CAPACITY * 2 * 3);
+const _ribbonUvs = new Float32Array(TRAIL_CAPACITY * 2 * 2);
+const _ribbonIndices = new Uint16Array(Math.max(0, TRAIL_CAPACITY - 1) * 6);
 
 // FPV gloved-hand tokens — match the character render language (dark ink glove base +
 // inverted-hull <Outlines> at screen-px thickness like mobs) with a white-gold accent cuff.
@@ -167,7 +180,7 @@ const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0]
 const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
   const meshRef = useRef(null);
   const geomRef = useRef(null);
-  const trailPoints = useRef([]); // point history: { tip, base, time }
+  const trailPoints = useRef(makeTrailRing()); // fixed-capacity ring of plain numbers, not objects
 
   const uColor = useMemo(() => {
     switch (weaponType) {
@@ -221,37 +234,40 @@ const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
     const time = state.clock.getElapsedTime();
 
     if (isSwinging) {
-      // Capture sword tip and hilt base in local coordinates relative to the rightHandRef group
-      const swordTipLocal = new THREE.Vector3(0.12, 1.3, -0.15);
-      const swordBaseLocal = new THREE.Vector3(0.08, 0.22, -0.05);
-
-      const tip = swordTipLocal.clone().applyMatrix4(rightHandRef.current.matrix);
-      const base = swordBaseLocal.clone().applyMatrix4(rightHandRef.current.matrix);
-
-      trailPoints.current.push({ tip, base, time });
+      // The two local anchors are CONSTANTS -- they were allocated as fresh Vector3s every frame, then
+      // cloned, for four allocations before any work happened.
+      _ribbonTip.copy(TRAIL_TIP_LOCAL).applyMatrix4(rightHandRef.current.matrix);
+      _ribbonBase.copy(TRAIL_BASE_LOCAL).applyMatrix4(rightHandRef.current.matrix);
+      // The RING holds plain numbers, not Vector3s: one entry per swing frame, reused forever.
+      pushTrailPoint(trailPoints.current, _ribbonTip, _ribbonBase, time);
     }
 
-    // Evict point pairs older than 0.14 seconds to enforce a sharp trailing effect
-    trailPoints.current = trailPoints.current.filter(p => time - p.time < 0.14);
+    // Evict point pairs older than 0.14 seconds to enforce a sharp trailing effect. In place -- `filter`
+    // built a new array every frame whether or not anything had expired, including on the frames where
+    // nothing is swinging at all.
+    dropExpiredTrailPoints(trailPoints.current, time, TRAIL_LIFE_SEC);
 
-    const N = trailPoints.current.length;
+    const N = trailPoints.current.count;
 
     if (N >= 2) {
-      const positions = new Float32Array(N * 2 * 3);
-      const uvs = new Float32Array(N * 2 * 2);
+      // The vertex buffers are allocated ONCE at the ring's capacity and re-filled. This built a fresh
+      // Float32Array pair, a Uint16Array and three BufferAttributes EVERY FRAME of every swing, plus two
+      // bounding-volume recomputes -- and a BufferAttribute swap forces a GPU re-upload of the whole
+      // buffer, where updating in place with needsUpdate re-uploads the same bytes without the churn.
+      const positions = _ribbonPositions;
+      const uvs = _ribbonUvs;
 
+      const ring = trailPoints.current;
       for (let i = 0; i < N; i++) {
-        const p = trailPoints.current[i];
-        
         // Base vertex
-        positions[i * 6 + 0] = p.base.x;
-        positions[i * 6 + 1] = p.base.y;
-        positions[i * 6 + 2] = p.base.z;
+        positions[i * 6 + 0] = ring.base[i * 3];
+        positions[i * 6 + 1] = ring.base[i * 3 + 1];
+        positions[i * 6 + 2] = ring.base[i * 3 + 2];
 
         // Tip vertex
-        positions[i * 6 + 3] = p.tip.x;
-        positions[i * 6 + 4] = p.tip.y;
-        positions[i * 6 + 5] = p.tip.z;
+        positions[i * 6 + 3] = ring.tip[i * 3];
+        positions[i * 6 + 4] = ring.tip[i * 3 + 1];
+        positions[i * 6 + 5] = ring.tip[i * 3 + 2];
 
         // UV coordinates
         const u = i / (N - 1);
@@ -262,18 +278,23 @@ const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
         uvs[i * 4 + 3] = 1;
       }
 
-      const indices = buildRibbonIndices(N);
+      // The attributes are created once and then only their contents change. setDrawRange is what makes
+      // a fixed-capacity buffer render a variable-length ribbon.
+      if (!geomRef.current.attributes.position) {
+        geomRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geomRef.current.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geomRef.current.setIndex(new THREE.BufferAttribute(_ribbonIndices, 1));
+      }
+      const indexCount = fillRibbonIndices(_ribbonIndices, N);
+      geomRef.current.setDrawRange(0, indexCount);
 
-      geomRef.current.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geomRef.current.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-      geomRef.current.setIndex(new THREE.BufferAttribute(indices, 1));
-      
       geomRef.current.attributes.position.needsUpdate = true;
       geomRef.current.attributes.uv.needsUpdate = true;
       if (geomRef.current.index) geomRef.current.index.needsUpdate = true;
 
+      // A sphere is enough for frustum culling here, and it is the cheaper of the two. The box was
+      // recomputed every frame and nothing reads it.
       geomRef.current.computeBoundingSphere();
-      geomRef.current.computeBoundingBox();
 
       meshRef.current.visible = true;
     } else {
