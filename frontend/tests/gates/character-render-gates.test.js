@@ -8,13 +8,17 @@ const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 describe('M2b static gates', () => {
   it('mob AI worker tick is capture-gated (deterministic closeup)', () => {
     const src = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/AIWorkerSystem.jsx'); // A1.4: worker tick moved
-    // The worker-tick useFrame must early-return in capture mode BEFORE it posts the
-    // AI TICK to the worker, so a spawned closeup mob never moves. Asserted as two
-    // length-independent facts (guard exists + precedes the post) rather than a
-    // brittle length-bounded span. Both anchors are unique in the file: the only
-    // brace-less `if (isCaptureMode()) return;` is the worker-tick guard (the spawn
-    // guard at ~line 556 is braced), and there is exactly one `postMessage`.
-    const guardIdx = src.indexOf('if (isCaptureMode()) return;');
+    // The worker-tick useFrame must stop in capture mode BEFORE it posts the AI TICK to the worker, so a
+    // spawned closeup mob never moves.
+    //
+    // RE-ANCHORED 2026-08-11. This used to search for the only BRACE-LESS `if (isCaptureMode()) return;`
+    // and claimed that was the worker-tick guard. It was not: the worker tick's guard is a BRACED block
+    // that drains knockback before returning, and the brace-less one this found belonged to the ambient
+    // hub-NPC routine in a different useFrame entirely. So the gate was asserting "some capture guard
+    // appears before the postMessage", which an unrelated guard satisfied — and it went red the moment
+    // that unrelated guard was correctly replaced by a snap-to-declared-value. It now anchors to the
+    // worker tick's own guard.
+    const guardIdx = src.indexOf('if (isCaptureMode()) {');
     const postIdx = src.indexOf('workerRef.current.postMessage');
     expect(guardIdx).toBeGreaterThan(-1);
     expect(postIdx).toBeGreaterThan(-1);

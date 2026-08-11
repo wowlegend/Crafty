@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { routinePosition, nextEmote } from './npcRoutine.js';
+import { routinePosition, nextEmote, routinePositionInto } from './npcRoutine.js';
 
 // Pure ambient-routine math for hub NPCs: a small day patrol circle around a home anchor, retreat-home
 // at night, and a cycling emote. Deterministic from (home, time) so the render layer just reads it in a
@@ -47,5 +47,46 @@ describe('nextEmote', () => {
   it('floors fractional and abs-folds negative sequence values', () => {
     expect(nextEmote(1.9)).toBe(nextEmote(1)); // floor
     expect(nextEmote(-1)).toBe(nextEmote(1)); // Math.abs
+  });
+});
+
+// TWO ALLOCATIONS PER NPC PER FRAME, FOR A LERP THAT MOVES CENTIMETRES.
+//
+// The ambient hub-NPC routine called routinePosition once per NPC per RENDER frame — a fresh `home`
+// literal in and a fresh result out — alongside a Rapier castRay per NPC per frame. At a 0.04 lerp an NPC
+// moves a few centimetres a frame, so a 60Hz ground ray answers the same question sixty times a second.
+describe('routinePositionInto — the allocation-free variant', () => {
+  const CASES = [[10, -4, 0, true], [10, -4, 137.5, true], [0, 0, 50, false], [-33, 21, 999, true]];
+
+  it('matches routinePosition exactly', () => {
+    const out = { x: 0, z: 0 };
+    for (const [hx, hz, t, isDay] of CASES) {
+      const ref = routinePosition({ x: hx, z: hz }, t, isDay);
+      routinePositionInto(out, hx, hz, t, isDay);
+      expect(out.x).toBe(ref.x);
+      expect(out.z).toBe(ref.z);
+    }
+  });
+
+  it('WRITES the target and returns it — otherwise nothing is saved', () => {
+    const out = { x: 9, z: 9 };
+    expect(routinePositionInto(out, 1, 2, 3, true)).toBe(out);
+    expect(out.x).not.toBe(9);
+  });
+
+  it('retreats home at night, patrols by day — the behaviour, not just the shape', () => {
+    const night = routinePositionInto({ x: 0, z: 0 }, 10, -4, 500, false);
+    expect(night).toEqual({ x: 10, z: -4 });
+    const day = routinePositionInto({ x: 0, z: 0 }, 10, -4, 500, true);
+    expect(day.x === 10 && day.z === -4, 'the daytime patrol never leaves the post').toBe(false);
+  });
+
+  it('carries no state between calls', () => {
+    const a = { x: 0, z: 0 };
+    const b = { x: 0, z: 0 };
+    routinePositionInto(a, 99, 99, 12, true);
+    routinePositionInto(a, 0, 0, 0, true);
+    routinePositionInto(b, 0, 0, 0, true);
+    expect(a).toEqual(b);
   });
 });

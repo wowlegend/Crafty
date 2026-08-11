@@ -3,7 +3,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
-import { routinePosition } from '../game/npcRoutine.js';
+import { routinePositionInto } from '../game/npcRoutine.js';
+
+// Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
+// castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
+// moves each NPC a few centimetres.
+const _npcTarget = { x: 0, z: 0 };
+const NPC_GROUND_PROBE_EVERY = 10; // ~6Hz at 60fps, staggered per NPC
 import { spellSlowFactor } from '../game/freeze.js';
 // `?worker` — Vite's worker import, the SAME construction src/world/Terrain.jsx has always used for
 // terrain.worker.js (which imports ten modules). This replaced `new Worker(new URL(...))`, whose only
@@ -127,20 +133,40 @@ export const AIWorkerSystem = () => {
   // Each isNPC lerps toward routinePosition (a slow daytime patrol around its post; retreat home at
   // night) and re-raycasts ground Y so it stays FLUSH even at the patrol extremes (the M-HUB float
   // class). Capture-suppressed -> NPCs freeze + don't even spawn in capture, so baselines are byte-stable.
+  const npcProbeFrame = useRef(0);
   useFrame(() => {
-    if (isCaptureMode()) return;
     const store = useGameStore.getState();
     const isDay = store.isDay;
     const gameTime = store.gameTime || 0;
+    const capture = isCaptureMode();
+    // SNAP, do not stop. Under capture this used to `return` before the lerp, which freezes each NPC
+    // wherever it happened to be -- and capture is entered after a boot of run-dependent length, so the
+    // frozen pose is itself run-dependent. A capture guard must RESET TO A DECLARED VALUE. This is a
+    // no-op today (SpawnerSystem never spawns the hub NPCs under capture, so the query is empty), which
+    // is exactly why it was safe to leave wrong and why fixing it costs no baseline.
+    const frame = npcProbeFrame.current++;
+    let i = 0;
     for (const e of mobsQuery.entities) {
       if (!e || !e.isNPC) continue;
-      const target = routinePosition({ x: e.homeX, z: e.homeZ }, gameTime, isDay);
-      e.position.x += (target.x - e.position.x) * 0.04;
-      e.position.z += (target.z - e.position.z) * 0.04;
-      if (store.getMobGroundLevel) {
-        const gy = store.getMobGroundLevel(e.position.x, e.position.z);
-        if (gy != null && !isNaN(gy)) e.position.y += ((gy + 0.5) - e.position.y) * 0.1;
+      routinePositionInto(_npcTarget, e.homeX, e.homeZ, gameTime, isDay);
+      if (capture) {
+        e.position.x = _npcTarget.x;
+        e.position.z = _npcTarget.z;
+      } else {
+        e.position.x += (_npcTarget.x - e.position.x) * 0.04;
+        e.position.z += (_npcTarget.z - e.position.z) * 0.04;
       }
+      // The ground probe is a Rapier castRay, and it ran PER NPC PER RENDER FRAME. At a 0.04 lerp an NPC
+      // moves a few centimetres a frame, so a 60Hz ray answers the same question sixty times a second.
+      // Staggered by index so the four hub NPCs do not all probe on the same frame.
+      if (store.getMobGroundLevel && (capture || (frame + i) % NPC_GROUND_PROBE_EVERY === 0)) {
+        const gy = store.getMobGroundLevel(e.position.x, e.position.z);
+        if (gy != null && !isNaN(gy)) {
+          // Under capture, SNAP to the ground too -- a lerp toward it is another run-dependent pose.
+          e.position.y = capture ? gy + 0.5 : e.position.y + ((gy + 0.5) - e.position.y) * 0.1;
+        }
+      }
+      i++;
     }
   });
 

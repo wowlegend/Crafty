@@ -15,4 +15,21 @@ export function routinePosition(home, t, isDay) {
   return { x: home.x + Math.cos(a) * PATROL_R, z: home.z + Math.sin(a) * PATROL_R };
 }
 
+/**
+ * ALLOCATION-FREE variant, for the per-frame ambient loop.
+ *
+ * routinePosition returns a fresh object and takes a fresh one for `home`, and the hub-NPC routine called
+ * it once per NPC per RENDER frame -- two literals per NPC per frame for a value that never outlives the
+ * lerp two lines later. The object-returning form stays for the callers that run once.
+ *
+ * @param {{x:number,z:number}} out
+ */
+export function routinePositionInto(out, homeX, homeZ, t, isDay) {
+  if (!isDay) { out.x = homeX; out.z = homeZ; return out; }
+  const a = (t * 0.25) % (Math.PI * 2);
+  out.x = homeX + Math.cos(a) * PATROL_R;
+  out.z = homeZ + Math.sin(a) * PATROL_R;
+  return out;
+}
+
 export function nextEmote(seq) { return EMOTES[Math.floor(Math.abs(seq)) % EMOTES.length]; }
