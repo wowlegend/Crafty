@@ -11,6 +11,7 @@ import { OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { windupRamp } from '../game/attackTelegraph.js';
+import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
 // M2 #4 Slice 3: boss lava-AoE telegraph. The lava ring (already a ground decal) now appears + grows as
 // a HARMLESS warning for this window before it arms (starts dealing damage), so the player can read it
@@ -181,13 +182,14 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         // ALL movement / attacks / fireballs / wing-flap so the boss-closeup fixture is
         // byte-stable. No-op in gameplay (isCaptureMode() is always false there).
         if (isCaptureMode()) {
-            if (leftWingRef.current && rightWingRef.current) {
-                leftWingRef.current.rotation.z = 0.2;   // rest pose
-                rightWingRef.current.rotation.z = -0.2;
-            }
-            if (meshRef.current && bossPositionRef.current) {
-                meshRef.current.position.set(...bossPositionRef.current);
-            }
+            // Declared rest pose, via the shared seam. The old inline version reset the wings and the
+            // position and left ROTATION alone — while the flight loop below writes rotation.y (turn) and
+            // rotation.x (pitch) every frame — so the captured dragon faced a different way each run,
+            // from the very guard that existed to stop that.
+            bossCaptureReset(
+                { mesh: meshRef.current, leftWing: leftWingRef.current, rightWing: rightWingRef.current },
+                bossPositionRef.current
+            );
             return;
         }
 
@@ -472,7 +474,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     return (
         <group>
             {/* --- Dragon Core 3D Mesh Representation --- */}
-            <group ref={meshRef} position={bossPositionRef.current}>
+            <group ref={meshRef} position={bossPositionRef.current} rotation={BOSS_REST.rotation}>
                 {/* Torso */}
                 <mesh castShadow receiveShadow>
                     <boxGeometry args={[3, 2, 4]} />

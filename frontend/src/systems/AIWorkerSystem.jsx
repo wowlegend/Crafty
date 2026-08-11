@@ -11,6 +11,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 // modules because a comment claimed a "classic Worker cannot import". Vite bundles the worker either
 // way; the copies were never necessary. See ai.worker.js's header.
 import AIWorker from '../workers/ai.worker.js?worker';
+import { drainKnockback } from '../game/captureRest.js';
 
 // AIWorkerSystem -- bridges mob AI to a Web Worker at 15Hz (movement/attacks/aggro), processes
 // knockback main-thread, and runs the ambient hub-NPC routine. Extracted VERBATIM from
@@ -144,20 +145,17 @@ export const AIWorkerSystem = () => {
 
   useFrame((state, delta) => {
     if (!camera || !workerRef.current) return;
-    if (isCaptureMode()) return; // freeze mob AI/movement so capture frames are byte-stable
+    if (isCaptureMode()) {
+      // CLEAR without displacing — that IS the declared reset. Returning past the drain left any impulse
+      // stamped in the instant before the flag flipped sitting on the entity for the whole capture (this
+      // loop is its only reader) to fire on the way out. Whether a mob carries one at capture time is a
+      // race, i.e. exactly the run-dependence the guard exists to remove.
+      drainKnockback(mobsQuery.entities, delta, true);
+      return; // AI/movement stays frozen so capture frames are byte-stable
+    }
     const now = performance.now();
 
-    // Process knockback in main thread
-    for (const entity of mobsQuery.entities) {
-      if (entity.health <= 0) continue;
-      if (entity.isStatic) continue; // static hub NPCs hold their post — never worker-moved (filtered) nor knockback-shoved
-      if (entity.knockback) {
-        entity.position.x += entity.knockback[0] * delta * 4;
-        entity.position.z += entity.knockback[2] * delta * 4;
-        entity.knockback = null;
-        entity.snapSync = true; // MobModel exact-copies this frame so the shove reads instant (not damped)
-      }
-    }
+    drainKnockback(mobsQuery.entities, delta, false);
 
     // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
     // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the
