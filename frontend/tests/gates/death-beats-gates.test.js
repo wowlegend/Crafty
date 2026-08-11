@@ -29,8 +29,18 @@ describe('death-weight dissolve gates (M2 #7 S1)', () => {
     expect(npc).toMatch(/emitMobKill\(entity\.type/);
   });
 
-  it('a dying corpse is swept (removed) only after the dissolve elapses', () => {
-    expect(/if \(entity\.dyingUntil\) \{[\s\S]{0,140}performance\.now\(\) >= entity\.dyingUntil\) ecs\.remove/.test(npc)).toBe(true);
+  it('a dying corpse is swept (removed) only after the dissolve elapses, EVERY FRAME', () => {
+    // The sweep moved out of SpawnerSystem's 1000ms spawn-check throttle, where the 320ms dissolve became
+    // a 320-1320ms corpse lifetime. This gate pinned the inline `if (entity.dyingUntil)` block that lived
+    // inside the throttle, so it went red at the fix; the deadline semantics it protects are now unit-
+    // tested against wall-clock latency in systems/corpseSweep.test.js, and what remains here is the
+    // WIRING: the sweep is called, and it is called from OUTSIDE the throttle.
+    expect(npc).toMatch(/sweepExpiredCorpses\(mobsQuery\.entities, now, \(e\) => ecs\.remove\(e\)\)/);
+    const call = npc.indexOf('sweepExpiredCorpses(mobsQuery.entities');
+    const throttle = npc.indexOf('now - lastSpawnCheck.current >= 1000');
+    expect(call, 'the sweep call is missing').toBeGreaterThan(-1);
+    expect(throttle, 'the spawn throttle is missing').toBeGreaterThan(-1);
+    expect(call, 'the corpse sweep is back inside the 1000ms spawn throttle').toBeLessThan(throttle);
   });
 
   it('a dissolving corpse keeps RENDERING (the filter includes dyingUntil)', () => {

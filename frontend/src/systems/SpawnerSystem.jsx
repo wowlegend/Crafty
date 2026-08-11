@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { ecs, mobsQuery } from '../ecs/world';
+import { sweepExpiredCorpses } from './corpseSweep.js';
 import { HUB_NPCS, makeNpcEntity } from '../world/npcSpawn.js';
 import { HEARTH_Y } from '../world/homeAnchor.js';
 import { isCaptureMode } from '../devtest/captureMode';
@@ -125,6 +126,12 @@ export const SpawnerSystem = () => {
     const store = useGameStore.getState();
     const now = performance.now();
 
+    // EVERY FRAME, outside the throttle below. This sweep used to live inside it, so the 320ms death
+    // dissolve became a 320-1320ms corpse lifetime -- an invisible entity (scaled to 0.001) still sitting
+    // in mobsQuery, holding one of grass-bending's 8 bend slots and answering every targeter that walks
+    // that query. Cheap and time-critical has no business sharing a throttle with expensive and periodic.
+    sweepExpiredCorpses(mobsQuery.entities, now, (e) => ecs.remove(e));
+
     if (now - lastSpawnCheck.current >= 1000) {
       lastSpawnCheck.current = now;
       const playerX = camera.position.x;
@@ -178,11 +185,8 @@ export const SpawnerSystem = () => {
 
       const maxDistance = 100;
       for (const entity of [...mobsQuery.entities]) {
-        // M2 #7: a dissolving corpse -- remove it only AFTER the death dissolve has played out.
-        if (entity.dyingUntil) {
-          if (performance.now() >= entity.dyingUntil) ecs.remove(entity);
-          continue;
-        }
+        // A dissolving corpse belongs to the per-frame sweep above, not to this 1Hz pass.
+        if (entity.dyingUntil) continue;
         if (entity.health <= 0) continue;
         if (entity.isStatic) continue; // hub NPCs hold their post — never distance-culled (no respawn path; mirrors the AI-tick + serializer isStatic skips)
         const dist = Math.sqrt((entity.position.x - playerX)**2 + (entity.position.z - playerZ)**2);
