@@ -1156,3 +1156,28 @@ at full frame, the three swatches differed by 294 pixels — 0.027% — at night
 separate its own options is not one. It is now composed on the tuft crop, and after the lighting fix the
 night column separates at 3.14% (was 0.10%), which is itself the cleanest confirmation the fix reached the
 render.
+
+---
+
+## 2026-08-11 — three crafting recipes deleted; do you want them BUILT? [KEVIN]
+
+`Bow -> Arrow x5`, `Torch -> torch x4` and `Planks -> planks x4` were removed in the audit follow-up
+(`recipe-output-usable` gate). All three output keys resolved on NO path anywhere in the frontend — no
+block id, no icon, no consumable effect, no equipment stat, not an ingredient, not a currency — so
+crafting them debited the ingredients and produced an item that could not be placed, used or seen.
+Planks was the sharpest: `[['wood']]` against a starting loadout of `wood:16`, i.e. the cheapest and
+most obvious first craft in a voxel game silently ate the player's stack.
+
+**Deleted rather than wired up, deliberately.** Making them real is not a bug fix:
+
+- **Torch** — needs a block type, a voxel id, an emissive material and a light contribution. It also
+  interacts with the day/night cycle and the existing light budget, so it is a lighting design call.
+- **Planks** — needs a block type, an icon and a texture, plus a decision about whether it is purely
+  decorative or a structural tier above wood.
+- **Bow / Arrow** — needs an entire ranged-combat loop: an ammo counter, a draw/release input verb, a
+  projectile, and a balance pass against the four existing Aspects. The recipe was also misnamed — it
+  was called Bow and produced arrows, and no bow item exists.
+
+**The question for you:** are any of these on the roadmap? A torch is the most defensible (a voxel game
+without placeable light is a real gap, and the night loop is already the core survival beat). Ranged
+combat is the biggest and the one most likely to disturb the Aspect balance you have already tuned.

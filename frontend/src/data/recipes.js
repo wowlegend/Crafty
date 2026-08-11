@@ -101,25 +101,21 @@ export const RECIPES = [
         pattern: [['cobblestone', 'cobblestone', 'cobblestone'], [null, 'wood', null], [null, 'wood', null]],
         output: { pickaxe: 1 }
     },
-    {
-        name: 'Bow',
-        pattern: [['wood', 'String', null], ['wood', null, 'String'], ['wood', 'String', null]],
-        output: { 'Arrow': 5 }
-    },
-    {
-        name: 'Torch',
-        pattern: [['coal'], ['wood']],
-        output: { torch: 4 }
-    },
+    // REMOVED 2026-08-09 — Bow -> Arrow x5, Torch -> torch x4, Planks -> planks x4. All three output keys
+    // resolved on NO path in the whole frontend: no BLOCK_ID, no alias, no icon, no consumable effect, no
+    // equipment stat, not an ingredient, not a currency. addToInventory writes any key blindly, so the item
+    // appeared in the inventory and then did nothing — placement hit idForBlock() -> null and Terrain
+    // silently no-opped, while the ingredients were already debited and doCraft had cleared the grid before
+    // the unmount escrow-return could refund them. Planks was the worst: [['wood']] against a starting
+    // loadout of wood:16, so the cheapest and most obvious first craft in a voxel game ate the player's
+    // stack. Bow was odder still — it was named for an item it never produced, and nothing consumes ammo.
+    // Deleted rather than wired up: real torches, planks and a ranged-ammo loop are new block types, icons
+    // and a combat system — a design unit, not a bug fix. Filed in KEVIN-REVIEW-BATCH.md.
+    // tests/gates/recipe-output-usable.test.js now blocks any recipe whose output resolves nowhere.
     {
         name: 'Glass',
         pattern: [['sand']],
         output: { glass: 1 }
-    },
-    {
-        name: 'Planks',
-        pattern: [['wood']],
-        output: { planks: 4 }
     },
     {
         name: 'Magic Crystal',
