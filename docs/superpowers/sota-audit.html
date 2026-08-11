@@ -181,6 +181,32 @@
     has its own queue; this page stays scoped to the harness.</p>
   </div>
 
+  <div class="callout warn">
+    <span class="hd">2026-08-11 — what fixing 53 of those 108 said about the gates themselves</span>
+    <p><strong>Six source-grep gates went RED at the FIX rather than at a defect.</strong> One asserted the juice
+    dial appeared within 400 characters before a call — it failed because a COMMENT was added above that call, so
+    it was reporting on formatting. One pinned a parameter's NAME, and went red when the argument was correctly
+    renamed from <code>intensity</code> to <code>weight</code>. One pinned the exact inline text of a block that
+    had to move out of a throttle. Every one was re-anchored to the behaviour it existed to protect and
+    mutation-proven afterwards; none was relaxed. That is a finding about how this repo writes gates, and it is
+    the same shape as this audit's central one: an instrument that reports on the wrong thing looks healthy
+    right up until you need it.</p>
+    <p><strong>Two of the fixes were caught by a green mutation, not by review.</strong> A recipe gate written to
+    forbid a recipe named after something it does not produce sailed straight through the historical Bow → Arrow
+    case, because its rule asked whether the recipe NAME was a registered item — 'Bow' is not, and 'Arrow' is
+    perfectly real, so both halves looked fine. A green mutation IS the finding; the rule became a stem match
+    between title and output, which every legitimate divergence satisfies and Bow → Arrow does not. The other:
+    a HUD contract check whose key list had drifted into being exactly the selector's own keys, so it could only
+    confirm that the selector agreed with itself. Deriving that list from the CALL SITES found a live TypeError
+    on its first run — a setter called unconditionally on the chest-close path and never selected, four lines
+    below the comment describing the identical defect.</p>
+    <p><strong>The suppression finding advanced.</strong> The first E2E in this repo's history to place a block
+    now exists, and the first to assert an ordering INSIDE a single <code>page.evaluate</code> — because the
+    ELEMANCER latch bug reached the same end state one frame late, so any assertion taken after a frame boundary
+    reads identically in the broken and fixed builds. That is the liveness gap this page named, closed one verb
+    at a time rather than by a coverage number.</p>
+  </div>
+
   <div class="verdict settled">
     <p class="lead">All 10 ranked changes are landed. The one below the line and the one re-sequenced item are deferred by recorded decision, with criteria — not by silence. The four items this audit could not check have now been checked.</p>
     <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase.</p>
