@@ -357,13 +357,13 @@ REFUTATION FAILED — the mechanism holds on every axis I attacked. (a) I checke
 
 REFUTATION FAILED. (1) The consume really is unconditional — game/hurlChannel.js:10 `consumeHurlRequest()` nulls the slot on read, and HurlSystem.jsx:70-74 calls it before testing `!flightRef.current`, so the request is destroyed whether or not it is used. The channel is single-consumer: the only other `consumeHurlRequest` references are the module itself, its own unit test, and tests/gates/element-impact-gates.test.js. (2) The producer commits first — Components.jsx:621 `stv.accrueKinetic(-GRAB_COST)` on the 'grab' action (GRAB_COST = 25, game/kinetic.js:11), then on the later 'hurl' action :634 requestHurl, :635 the 'hurl' whoosh, :636-637 setVoidhandHeld(false)/setHeldPhantom(null). So by the time the consumer drops the request the bank is already down 25 and the phantom is gone. (3) The timing window survives scrutiny. game/voidhand.js: GRAB_COOLDOWN_SEC=0.6 is stamped on the hurl branch (`out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC`, :59), the IDLE branch (:78) refuses a new grab until then, and the CHARGING branch (:69) needs GRAB_CHARGE_SEC=0.35 more — minimum 0.95s between hurls. game/hurl.js HURL_TTL_SEC=1.5, and stepHurl (:29-53) tests proximity to MOBS ONLY — there is no terrain collision at all, so a miss (or a throw straight into a wall or the ground) stays airborne the full 1.5s. That leaves a ~0.55s window per miss. I could not find any UI or audio that reports the drop. Preconditions that narrow it: the thrower needs the `voidhand_grasp` talent (Components.jsx:614) and 50 banked Kinetic for two grabs, so 'medium' is the right ceiling — but the failure mode itself is real and silent.
 
-### ▢ `src/world/bossSystem.js:63` — dead-on-arrival
+### ▣✓ 55df4c8 `src/world/bossSystem.js:63` — dead-on-arrival
 
 **The boss-entrance 'shake' writes store.screenShake, which no camera path reads.**
 
 REFUTATION FAILED. I tried three routes and all closed. (1) Complete reader set — `grep -rn screenShake src/` returns 10 hits and only ONE is a read that reaches render: GameSystems.jsx:165 `DamageOverlay`, whose next statement is `if (!active) return null;` with `active = state.damageFlash`. GameSystems.jsx:43/65/115 are the pass-through of the same value into a `gameState` object; store/useGameStore.jsx:770/780/821/829 are the declaration, setter, and the damagePlayer write/clear. Nothing in render/, postprocessing, or Components.jsx reads it. (2) Prop route — HUD.jsx:632 renders `<DamageOverlay active={gameSystems.damageFlash} intensity={gameSystems.screenShake} />`, which LOOKS like a second path, but GameSystems.jsx:164 declares `export const DamageOverlay = () => {` with NO parameter list: the props are discarded and it re-reads the store. So the prop route is also gated on damageFlash. (3) damageFlash reachability at entrance — set true only inside damagePlayer (useGameStore.jsx:820) and cleared 200ms later (:829). Boss arrival is a proximity poll (bossSystem.js:49-77), not a hit, so damageFlash is false and DamageOverlay returns null. The camera shake path is separate and real: Components.jsx:1219-1236 reads `cameraShakeIntensity` and applies `shakeOffset` — driven by `triggerCameraShake`, which the siblings at render/BossEntity.jsx:296 and :385 use, each with a comment naming this exact defect ('the old setScreenShake fed the DamageOverlay RED VIGNETTE, not the camera'). bossSystem.js:63 is the un-migrated caller. The secondary corruption claim also holds: `setScreenShake(0)` at :64 would zero a concurrent hit's vignette early. One correction to the finding's framing, not its substance: tests/gates/boss-entrance-gates.test.jsx:52 asserts `screenShake` equals ENTRANCE.shake, so this is not merely dead — it is dead code held in place by a gate that measures the store value rather than anything on screen (the repo's own 'a green gate is not a lived result' class). Severity is nearer medium than high: three of the four entrance effects (notify/bloom/hitstop) do land.
 
-### ▢ `src/world/detile.js:6` — dead-on-arrival
+### ▣✓ 55df4c8 `src/world/detile.js:6` — dead-on-arrival
 
 **`tileValueOffset` has no non-test importer; the terrain shader hand-duplicates the formula, so the module's single-source invariant is unenforced.**
 
@@ -401,25 +401,25 @@ REFUTATION FAILED. I traced the whole path. Multi-kill-per-task is reachable: em
 
 ## LOW (52)
 
-### ▢ `src/App.jsx:304` — silent-failure
+### ▣✓ f70f084 `src/App.jsx:304` — silent-failure
 
 **The stepCaptureFrames hook reports success from a different flag than the one gating the step, and returns `n` for inputs the clock silently rejected.**
 
 REFUTATION FAILED — the two flags provably diverge, and the divergence runs in exactly the direction that produces a false negative. captureClock.js:84-88 gates on the MODULE flag (`if (!isCaptureMode()) return;`) and drops non-numeric/non-finite/negative n on line 86; App.jsx:304 returns off the STORE mirror `useGameStore.getState().isCaptureMode` and echoes n unvalidated. Writers confirmed distinct: `grep -n 'enterCaptureMode(|setCaptureMode('  src/App.jsx` shows eleven fixture sites calling enterCaptureMode ONLY (360 spawnCharacterCloseup, 381 spawnBeastTransform, 504 frameBeastReveal, 530 spawnBossCloseup, 562/601/635/663/681/701/755 the spell/mob/loot/bestiary/elemancer/soulbind showcases), against just two that also set the store mirror (312 enterCapture, 776 showMascot). So after any of those eleven, the clock steps while the hook reports 0, and after enterCapture, `call('stepCaptureFrames', -5)` returns -5 though captureClock.js:86 discarded it. Dormant today — per finding #6 nothing calls it — but the code is wrong as written, and this is precisely the hook the in-flight Phase C substitution work will call, at which point the return value becomes evidence a reviewer trusts.
 
-### ▢ `src/App.jsx:460` — dead-on-arrival
+### ▣✓ f70f084 `src/App.jsx:460` — dead-on-arrival
 
 **`const physicsY = null` makes two diagnostic branches and the 'physics-probe' source label unreachable, and the reason actually returned names a probe that was never run.**
 
 REFUTATION FAILED on the facts; impact is genuinely small. Line 417 is literally `const physicsY = null; // deliberately unused` and is never reassigned, so `physicsY == null` at 460 is a tautology and 461/462 are unreachable — confirmed by reading 401-483. I then exhausted the paths to the `source` expression at 468 using game/spawnPlacement.js:22-29: blockGroundY != null → resolveSpawnGround returns immediately → 'placed-blocks'; blockGroundY == null → either the terrain-formula early return at 451, or !probeAvailable → SPAWN_FALLBACK_Y → source 'fallback' (probeAvailable false), or probeAvailable && !force → probeFails+1=1 < 120 → retry → returns at 457, or force → probeFails=120 → fallback with `!force` false → 'fallback'. 'physics-probe' is emitted by no path. It is a leftover of the probe branch memory/STATUS.md PASS 16 removed ('SOURCE VARIANCE REMOVED BY CONSTRUCTION'), while PASS 15 had established the three-named-source report as the reviewer's instrument — a source that can never be reported is a broken instrument. The misleading reason string is operator-facing: capture.mjs prints `settled.reason` in its 'settle still unresolved after 12 tries' WARN. Mitigating: the retry branch is now nearly unreachable itself, since surfaceBlockAt(0,0) is pure seeded noise and returns a finite surfaceY at the origin, so the wrong string rarely surfaces. Real, but bottom-of-the-ladder.
 
-### ▢ `src/App.jsx:869` — dead-on-arrival
+### ▣✓ f70f084 `src/App.jsx:869` — dead-on-arrival
 
 **Three props are passed to <GameScene> that its signature never destructures: gameState, showAchievements, showSpellUpgrades.**
 
 REFUTATION FAILED — verified by reading GameScene.jsx end to end (301 lines). Its signature at 77-81 is `export function GameScene({ isWorldBuilt, bossSystem, showStats })`: no rest element, no `props` object, no spread onto a child, and no other identifier in the file reads any of the three names. App.jsx:868-875 passes six. So gameState, showAchievements and showSpellUpgrades are written and never read; deleting lines 869, 873, 874 changes nothing (GameScene is not memoized, so the extra props do not even affect re-render behaviour). I checked the obvious escape hatches — no defaultProps, no propTypes, no HOC wrapper — and none exists. eslint's no-unused-vars genuinely cannot see it because the unused values live in the parent's JSX. Correctly categorised: dead code with no behavioural symptom, and the misleading intent (that the 3D scene reacts to an open panel) is the only real cost.
 
-### ▢ `src/Components.jsx:851` — dead-on-arrival
+### ▣✓ f70f084 `src/Components.jsx:851` — dead-on-arrival
 
 **Per-frame 'defensive' rebind of applyImpulse is unreachable because rapier's RigidBody always defines applyImpulse on its prototype**
 
@@ -437,13 +437,13 @@ REFUTATION FAILED on the facts. Line 405 sits inside the projectile loop (line 2
 
 REFUTATION FAILED, though the auditor already bounds the impact honestly. The Promise return in the targeted browser is established from inside this repo, not from memory: App.jsx:143 is `document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e))` and MenuSystem.jsx:65 is `document.body.requestPointerLock().catch(e => console.warn(e))` — both would TypeError on `undefined` if the call returned nothing. GameScene.jsx:99 is the only one of the three with no `.catch()`, so a denial rejects asynchronously and cannot enter the synchronous catch; the console.warn('pointer lock denied') is dead for the case it names. The path is exercised: `.claude/rules/input-and-pointer-lock.md` states a relock right after the user's own ESC is GUARANTEED refused, and MenuSystem.jsx:183 (WorldManager onClose) and :205 (TradingInterface onClose) both call `gameState.requestPointerLock()` — which IS this store closure, installed by the effect at GameScene.jsx:97-101. Attempted refutation via the error channel also fails: App.jsx:822's listener is 'error', not 'unhandledrejection', and the E2E collectors (tests/e2e/_boot.js:11-13) filter to 'fatal' matches, so nothing catches or reports it. Correctly scoped as console noise plus a dead branch — Components.jsx's pointerlockerror listener owns the real recovery.
 
-### ▢ `src/GameSystems.jsx:75` — dead-on-arrival
+### ▣✓ f70f084 `src/GameSystems.jsx:75` — dead-on-arrival
 
 **getSpellDamageMultiplier / getMaxHealthBonus are computed, put on the GameSystems context, and never read by any consumer.**
 
 REFUTATION FAILED on the mechanical claim. Exhaustive grep over src/ + tests/ + scripts/ returns only the six in-file hits (30, 31, 70, 75, 122, 123). The only consumer of the context is App.jsx:150 (`const gameSystems = useGameSystems()`), which forwards the whole object to useInputManager (App.jsx:168) and to <HUD gameSystems={gameSystems}> (App.jsx:895); neither names either key, and there is no dynamic access anywhere (`grep -rn 'gameSystems\['` -> empty). solveSpellDamage (utils/combat.js:16-34) takes only attackerStats, and resolveCastBaseDamage (utils/spellCast.js:8-11) reads only the upgrade table, so no level term reaches spell damage. WHAT I DID KNOCK DOWN is the framing/severity. (a) Nothing player-facing 'advertises' +10%/level -- grep over src/i18n/ and src/ui/ for 'spell damage'/'damage per level' returns nothing; the only advertisement is the inline comment. (b) It is not an unimplemented feature but the RESIDUE of a deliberate, documented replacement: memory/CHANGELOG.md:2704 records that EnhancedMagicSystem's old `window.getSpellDamageMultiplier` global was replaced by intellect-based solveSpellDamage scaling. (c) Level still scales spell damage indirectly -- useGameStore.jsx:361 grants +5 attributePoints per level, and intellect feeds solveSpellDamage's 1.0 + intellect*0.02. (d) getMaxHealthBonus is an exact duplicate of the (lv-1)*10 term already live in game/progression.js:36. Contributing cause worth noting: docs/superpowers/plans/2026-06-03-...-progression-save-core.md:409 instructed 'keep getSpellDamageMultiplier ... IF any consumer reads them -- grep first; getSpellDamageMultiplier is referenced by spell code, so keep it' -- that premise was already false, so the plan's own grep-first instruction was skipped. Verdict: genuine dead code that eslint (it IS 'used' -- placed in the context literal) and knip cannot see, but cosmetic. Severity medium -> low.
 
-### ▢ `src/HUD.jsx:607` — dead-on-arrival
+### ▣✓ f70f084 `src/HUD.jsx:607` — dead-on-arrival
 
 **AnimatePresence around SurvivalWarning can never fire an exit animation because its direct child element is always present; SurvivalWarning self-nulls internally.**
 
@@ -461,7 +461,7 @@ REFUTATION FAILED on the mechanical claim. `pad` is `synthPadRef.current` (line 
 
 CONFIRMED VERBATIM AND I COULD NOT MAKE IT MATTER. Lines 26-28 read exactly `const active = isPerfProbe() && SCENARIOS[perfScenarioId()] && SCENARIOS[perfScenarioId()].hurl;` / `if (!active) return null;` / `return null;` — identical arms, so the block reduces to `return null;` and `active` is computed for nothing. The useFrame hurl adapter above it is registered on every mount, and the mount at GameScene.jsx:234 is gated on `import.meta.env.DEV` only, NOT on isPerfProbe — so the finding is right that the scenario gate is not achieved. What I could not sustain is any harm: the adapter's first statement is `if (!consumeHurl()) return;`, and the only producer of hurl requests is perfProbe.requestHurl(), called solely from PerfProbeRunner's scenario-E event loop (PerfProbeRunner.jsx:85), which itself no-ops unless `?perf=` is present. Outside scenario E the callback costs one counter read per frame in DEV and is tree-shaken from prod. So: real dead code, correctly located, with zero behavioural consequence — a cleanup, not a bug.
 
-### ▢ `src/devtest/perfProbe.js:10` — dead-on-arrival
+### ▣✓ 55df4c8 `src/devtest/perfProbe.js:10` — dead-on-arrival
 
 **_phase is a four-state machine written by setProbePhase from three call sites and read by nothing.**
 
@@ -505,7 +505,7 @@ CORE SURVIVES, TWO SUB-CLAIMS REFUTED. Confirmed: `nextEmote` and `shouldRetreat
 
 Refuted sub-claims: (1) 'the module header advertises' the emote feature is FALSE — npcRoutine.js:1-5 mentions only patrol and night-retreat, never emotes. The advertisement is in the PLAN doc, docs/archive/2026-Q2/plans/2026-06-17-crafty-W3-living-frontier.md:27 ('patrol/emote schedule math ... + emote timer'), which happens to support the finding better than the artifact it cited. (2) 'ships in the bundle' is UNVERIFIED and probably false — these are unreferenced ESM exports that rollup should tree-shake, and there is no frontend/dist present to check (I am read-only, so I did not build). What survives is a genuine but minor unfinished-feature/dead-export finding: no NPC ever emotes.
 
-### ▢ `src/game/questLore.js:5` — dead-on-arrival
+### ▣✓ 55df4c8 `src/game/questLore.js:5` — dead-on-arrival
 
 **CHAIN_ORDER declares the narrative quest spine but nothing reads it; quest offering follows QUEST_LIST authoring order.**
 
