@@ -26,13 +26,13 @@ finding rather than simply endorsing it.
 
 REFUTATION FAILED — every escape route is closed. (1) Line placement is exactly as claimed: the effect opens at App.jsx:271 with `if (!import.meta.env.DEV) return;` at 272, and 810 is its last statement, after installTestBridge() at 807. (2) Call-site uniqueness confirmed by full-tree grep (`grep -rn initSettingsPersistence src tests scripts`): App.jsx:29 import, App.jsx:810 call, then only src/game/settingsPersist.test.js (6 direct invocations with a fake store) — no other production route. (3) I looked for an alternate persistence path and found none: useGameStore.jsx uses NO zustand `persist` middleware (grep for 'persist' returns only prose comments), and `grep -rn localStorage src` (non-test) shows exactly three writers — worldSaves.js (world slots), App.jsx:115-116 (`crafty_onboarded` flag) and settingsPersist.js itself. `crafty_settings` appears at exactly one place in the whole tree: settingsPersist.js:6. So no prod build ever reads or writes it. (4) The five dials (juiceIntensity/sfxVolume/musicVolume/masterMuted/lookSensitivity) are all real, player-editable store fields (useGameStore.jsx:310-311; the Settings UI drives them at ui/GamePanels.jsx:618-705), so the deleted behaviour is user-visible. Deletion test passes cleanly: remove settingsPersist.js and the deployed game is unchanged.
 
-### ▢ `src/Components.jsx:366` — dead-on-arrival
+### ▣✓ 45a5a8c `src/Components.jsx:366` — dead-on-arrival
 
 **The F key (advertised prime cast key) calls triggerSpellCast() without stamping castFiredRef, so the latch's 'consume' branch is unreachable on that path.**
 
 REFUTATION ATTEMPTED AND FAILED, with one scope correction. Line 366 reads exactly as quoted: `if (e.code === 'KeyF') { if (getInput().active && useGameStore.getState().isAlive) triggerSpellCast(); }` — no stamp, unlike line 462. grep for castFiredRef across Components.jsx returns 101 (useRef declaration), 462 (the only `= true`), 765 (the read into decideImbue) and 771 (the unconditional per-frame reset) — so the auditor's 'exactly one writer' claim is verified, not asserted. I checked for a hidden second route: the touch overlay does NOT bypass this, because Components.jsx:468 publishes the very same `performVerb` into the store, so a touch cast goes through line 462 and DOES stamp. triggerSpellCast itself (301-316) never touches the ref. decideImbue (elemancer.js:16-31) can only leave `armed` via castFired/imbueEdge/!alive/!active, so with F the latch idles armed forever — no spend, no armImbueCast, no zone. F is genuinely advertised: keyMap.js:23 `{ key: 'F', code: 'KeyF', label: 'Cast spell', group: 'Combat' }`. SCOPE CORRECTION to the summary: 'ELEMANCER imbue never fires at all' is true only of the F path; RMB does reach the latch (verbRouter.js:30-36 returns 'cast' for button 2 whenever a mob is aimed at or nothing is in range), where finding #1's off-by-one applies instead. The failureScenario text scopes itself correctly ('Via the F key'), so the defect is real; only the headline over-generalises. Note the two findings compound: the mouse path mis-times the imbue, the keyboard path drops it entirely, so there is no route on which imbue works as documented.
 
-### ▢ `src/combat/targeting.js:80` — correctness
+### ▣✓ b544bb9 `src/combat/targeting.js:80` — correctness
 
 **nearestDamageable / damageableInCone do not exclude dead-or-dying entities, so an invisible corpse stays the nearest projectile target and eats the shot.**
 
@@ -50,7 +50,7 @@ REFUTATION FAILED. Every link verified independently. (1) Line numbers are exact
 
 REFUTATION FAILED — same verified chain as the Torch row, and this one is WORSE than the finding states. Lines exact: recipes.js:120 name 'Planks', :121 pattern [['wood']], :122 output { planks: 4 }. Case-insensitive grep over src+tests+scripts+public: only :120 and :122. idForBlock('planks') -> null (planks absent from BLOCK_ID/BLOCK_ALIAS, blockIds.js:26-43,93-99) -> Terrain.jsx:874-875 silently refuses. Not in BLOCK_TYPES (blank swatch via itemUi.jsx:11-15), not in CONSUMABLE_EFFECTS (consumables.js:8-19), not in EQUIPMENT_STATS (useGameStore.jsx:20-44), not an ingredient of any other recipe. Attempted refutation via pattern shadowing — could a different recipe intercept a lone `wood`? No: Glass is [['sand']] and tests/gates/recipes-gates.test.js:40 locks pattern uniqueness, so matchRecipe returns Planks for a single wood. Escalating detail the finding understates: the starting loadout ships wood:16 (useGameStore.jsx:604), so ONE grid click on the cheapest, most obvious first craft in a voxel game destroys a wood and hands back 4 inert items with a 'Crafted Planks!' success toast (:70) and +10 XP (:74). Worse, GamePanels' bag click-handler sets a non-equippable item as selectedBlock and closes the panel, so clicking the new planks silently poisons the build cursor until the player re-selects from the hotbar. DUPLICATE of docs/superpowers/audits/2026-07-13-18-domain-review.md:1050-1063, unfixed at HEAD.
 
-### ▢ `src/game/elemancer.js:21` — dead-on-arrival
+### ▣✓ 45a5a8c `src/game/elemancer.js:21` — dead-on-arrival
 
 **The IMBUE latch arms the cast-element slot AFTER the projectile has already read it, so the paying cast fizzles and the NEXT cast steals the zone (off-by-one).**
 
@@ -87,7 +87,7 @@ PIXEL PROOF from tests/visual/baseline/mob-bestiary.png (fixture App.jsx:672-684
 
 The capture branch at line 102 only changes the position sync as claimed; the traverse is not capture-guarded. So the T3 tone system is dead in gameplay and in the gate frames alike.
 
-### ▢ `src/render/WeatherSystem.jsx:278` — correctness
+### ▣✓ c69a643 `src/render/WeatherSystem.jsx:278` — correctness
 
 **Shared _weatherDummy: only the snow loop writes rotation, so rain/firefly instances inherit the last snowflake's arbitrary Euler forever.**
 
@@ -129,7 +129,7 @@ REFUTATION FAILED — same mechanism as the Credits finding, and the write path 
 
 REFUTATION FAILED — every escape route checked and closed. (1) `selectHudState` (src/store/hudState.js:26-57) read in full: 30 keys, and neither `showCredits` nor `setShowCredits` is among them. (2) `grep -n gameState src/App.jsx` returns exactly ONE assignment — line 83 `useGameStore(useShallow(selectHudState))` — with no merge/spread/Object.assign before it is passed to MenuSystem at line 912, so the prop IS the slice. (3) `grep -rn 'showCredits|CreditsScreen' src tests`: the only mount is MenuSystem.jsx:187-194; the store really does define `showCredits`/`setShowCredits` (useGameStore.jsx:668-669), which is precisely why the flag is set-able by the DEV bridge yet unreadable by the gate. (4) Checked whether the Credits button is even rendered — GamePanels.jsx:808-817 gates on `onOpenCredits &&`, and MenuSystem.jsx:168 passes it, so it renders and its onClick reaches the undefined `setShowCredits`. Note ordering: line 169 `setShowSettings(false)` succeeds BEFORE the throw, so Settings closes and, with the pointer already unlocked, `shouldShowResumeOverlay` fires — the player lands on the PAUSED overlay, not on Credits. (5) Checked whether the visual gate would have caught it: `ls tests/visual/baseline/` has 31 frames and no `credits` frame, and `grep openModal scripts/visual/capture.mjs` shows only 'inventory' and 'spellUpgrades' are ever called — so the `openModal('credits')` branch (App.jsx:793) is never exercised. The CLAUDE.md claim that game-icons.net CC BY 3.0 attribution is 'DISCHARGED by src/ui/CreditsScreen.jsx (Settings → Credits)' is not true of the running app.
 
-### ▢ `src/ui/GamePanels.jsx:528` — dead-on-arrival
+### ▣✓ 35278bd `src/ui/GamePanels.jsx:528` — dead-on-arrival
 
 **The whole Building Tools panel is inert: it writes `buildingMode` / `buildSize` / `selectedBuildBlock` into the store and nothing anywhere reads them.**
 
@@ -141,7 +141,7 @@ REFUTATION FAILED. I re-ran the grep across `src tests scripts` for all six iden
 
 Refutation attempts all failed, and the mechanism is actually stronger than stated. (1) `grep -rn 'setActive(' src/` returns exactly five production writers: Components.jsx:474 (pointerlockchange), :483 (pointerlockerror), App.jsx:277/:290 (dev test bridge only), TouchControls.jsx:129 (unmount) and :207 (tray opener). Terrain.jsx:918-926 `open()` sets showChestInterface and calls `document.exitPointerLock()` only — and a touch player never HELD a lock (they entered play via tap-to-play -> setActive(true)), so exitPointerLock is a no-op and NO pointerlockchange fires. `active` stays true. This holds regardless of whether iOS implements Pointer Lock, which is a stronger argument than the auditor's. (2) The panel really is unowned: `grep -rn 'data-hud-interactive' src/` has ONE production site, GameHud.jsx:37 (the hotbar). ChestInventoryPanel renders Panel/Button/Slot; Button (primitives/Button.jsx:29-30) is a native <button {...props}> with onClick and Slot (primitives/Slot.jsx:44) a <div {...props}> with onClick — both depend on the synthesized click, and ownsTouch() (touchOwnership.js:46) returns false for every node in the panel, so onStart routes them and preventDefaults at line 78, and onEnd preventDefaults again at line 107 under the identical `getInput().active && !ownsTouch` condition — the exact condition whose lived regression is documented at lines 102-106 (it killed 'Start Adventure' on touch). (3) I checked whether the touch Pause button is an escape hatch: it is not. TouchControls mounts at App.jsx:905 (root z-40) and MenuSystem at App.jsx:911; the chest panel is `absolute inset-0 z-50` (ChestInventoryPanel.jsx:29), so it covers the whole viewport above the z-40 hit-layer — `t.target` is the panel, never the pause button. shouldShowResumeOverlay (panelState.js:60-65) returns false while a panel is open. Reload is the only exit. One factual slip in the finding, which cuts AGAINST it: ChestInventoryPanel does NOT use primitives/Modal, so there is no backdrop onClick at all — one fewer escape than the auditor credited. The anyPanel drift (TouchControls.jsx:50, 4 flags vs the 13 in panelState.js:12-18) is also accurate, though anyPanel only feeds showTapToPlay.
 
-### ▢ `src/ui/TouchControls.jsx:250` — correctness
+### ▣✓ 03442b1 `src/ui/TouchControls.jsx:250` — correctness
 
 **Spell-picker ring item index 1 (iceball) resolves to right:-52px at width 52, placing it entirely outside the viewport — permanently unreachable on touch.**
 
@@ -375,7 +375,7 @@ REFUTATION FAILED. I looked specifically for the routes that usually rescue a 'd
 
 My refutation was that the HUD might not render under capture at all, making the component's own guard irrelevant. It failed. App.jsx:173 defines `isPointerLocked = useActiveInput()` — the `active` flag, not the browser lock — and capture.mjs:301 calls the `start` hook, which does setActive(true), so HUD.jsx's `isPointerLocked && isAlive && isWorldBuilt` gate at line 529 is SATISFIED under capture. I confirmed this by opening tests/visual/baseline/explore-day.png: the quest tracker, compass, XP bar, hotbar, health orb, settings gear and tray are all present, and the bottom-right — RadialMinimap's desktop anchor (HUD.jsx:587, 'bottom-20 right-4') — is empty. So the guard, not the HUD gate, is what removes it, and it is removed from roughly a dozen HUD-visible frames. Unlike TargetFrame, this component draws unconditional content (rim, N tick, player dot, clamped HOME/shrine/blight arrows) that does not depend on any suppressed entity, so a declared resting render would add real oracle coverage. Also squarely against the repo's own stated rule (CLAUDE.md: 'A capture guard must RESET to a declared value, never early-return'), and the in-flight task #21 is exactly this conversion.
 
-### ▢ `src/ui/TouchControls.jsx:231` — correctness
+### ▣✓ 03442b1 `src/ui/TouchControls.jsx:231` — correctness
 
 **The Aspect ring uses the same right-anchored geometry, so at 3 or 4 unlocked Aspects the index-1 sector is pushed off-screen.**
 
