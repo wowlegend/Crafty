@@ -381,7 +381,7 @@ My refutation was that the HUD might not render under capture at all, making the
 
 Same geometry, verified the same way. KEY_MAP (game/keyMap.js:28-31) orders the Aspects roar/grab/snare/imbue, so index 1 is VOIDHAND grab exactly as claimed. Measured in Chromium: 4 unlocked -> ringLayout(4,78)[1]={x:78,y:0} -> right:-52px -> left edge at viewport width, 0 tappable px; 3 unlocked -> ringLayout(3,78)[1]={x:68,y:39} -> right:-42px -> left=1718 in a 1728px viewport, a 10px sliver of a 52px target. Refutation attempted and failed: the ring is gated by unlockedAspectVerbs (TouchControls.jsx:144), so I checked whether 3-or-4 unlocked is actually reachable — aspect-ring-gates.test.jsx:88 ('offers all four sectors when every Aspect is unlocked') proves the 4-unlocked state is a supported, tested configuration. The glyph at TouchControlsSurface.jsx:114-115 uses the byte-identical expression, so the sector is invisible as well as untappable. Severity is correctly below finding 2: it needs 3+ unlocks, whereas the spell picker is ungated from turn one.
 
-### ▢ `src/world/terrain.worker.js:289` — correctness
+### ▣✓ 2f62756 `src/world/terrain.worker.js:289` — correctness
 
 **The cave cellular automaton treats every out-of-chunk neighbour as SOLID, adding 9 phantom solid neighbours to each border column and biasing the CA into sealing caves at every 16-block seam below y=20.**
 
