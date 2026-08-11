@@ -5,11 +5,17 @@ import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../../world/Blocks';
 import { useT } from '../../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, Modal } from '../primitives/index.js';
-import { getItemRarity } from '../../data/items.js';
+import { getItemRarity, getItemName } from '../../data/items.js';
 import { ItemIcon } from './itemUi';
 import { RECIPES } from '../../data/recipes';
+
 import { matchRecipe } from '../../game/crafting';
 import { returnGridToInventory } from '../../game/craftingGrid';
+
+// A recipe's NAME is its title; its OUTPUT KEY is the item the inventory receives. They diverge -- and
+// every identity the result slot draws (icon, rarity, toast) has to come from the key, not the title.
+const outKey = (r) => Object.keys(r.output)[0];
+const outCount = (r) => Object.values(r.output)[0];
 
 export const CraftingTable = React.memo(({ onClose }) => {
     const gameState = useGameStore(useShallow(state => ({
@@ -67,7 +73,11 @@ export const CraftingTable = React.memo(({ onClose }) => {
 
         setGrid(Array(9).fill(null));
         setResult(null);
-        setCraftMessage({ type: 'success', text: `Crafted ${result.name}!` });
+        // Name what the player RECEIVED. The recipe name and the output key are not the same string:
+        // 'Stone Pickaxe' grants 'pickaxe', 'Iron Sword (Nuggets)' grants 'Iron Sword'. A toast built from
+        // the recipe name is a claim about the inventory that the inventory does not have to honour.
+        const [craftedKey, craftedCount] = Object.entries(result.output)[0];
+        setCraftMessage({ type: 'success', text: `Crafted ${craftedCount}× ${getItemName(craftedKey)}!` });
         setTimeout(() => setCraftMessage(null), 2000);
 
         if (window.playCraft) window.playCraft(); // craft was silent (dead voice) -> a connected craft beat
@@ -136,14 +146,19 @@ export const CraftingTable = React.memo(({ onClose }) => {
                             <div
                                 onClick={doCraft}
                                 className={result ? 'cursor-pointer transition-transform hover:scale-105' : 'cursor-not-allowed'}
-                                title={result ? `${Object.values(result.output)[0]} ${result.name}` : undefined}
+                                title={result ? `${outCount(result)}× ${getItemName(outKey(result))} — ${result.name}` : undefined}
                             >
-                                <Slot rarity={result ? getItemRarity(result.name) : undefined} className="w-24 h-24">
+                                {/* Rarity and icon come from the OUTPUT KEY, never the recipe name. The name is a
+                                    recipe TITLE -- 'Stone Pickaxe', 'Iron Sword (Nuggets)' -- and looking an item up
+                                    by it either hit the substring fallback ('Stone' -> rare) for an item the registry
+                                    calls common, or resolved to nothing and drew a blank swatch for an item with a
+                                    perfectly good icon. */}
+                                <Slot rarity={result ? getItemRarity(outKey(result)) : undefined} className="w-24 h-24">
                                     {result ? (
                                         <div className="flex flex-col items-center justify-center gap-1 px-1">
-                                            <ItemIcon itemName={result.name} size={36} />
+                                            <ItemIcon itemName={outKey(result)} size={36} />
                                             <span className="text-[10px] font-bold text-center text-text leading-tight">
-                                                {Object.values(result.output)[0]}{'×'} {result.name}
+                                                {outCount(result)}{'×'} {result.name}
                                             </span>
                                         </div>
                                     ) : (

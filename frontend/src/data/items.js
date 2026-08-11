@@ -107,3 +107,30 @@ export function getItemIcon(idOrName) {
 export function getItemName(id) {
   return ITEMS[id]?.name ?? id;
 }
+
+/**
+ * Inventory keys that are neither a registered ITEM nor a placeable BLOCK, and are still real.
+ *
+ * The inventory is a bare string->count map: `addToInventory` writes ANY key blindly. That is how Bow ->
+ * Arrow x5, Torch -> torch x4 and Planks -> planks x4 shipped and survived (removed 2026-08-09) -- three
+ * recipe outputs whose keys resolved on no path in the entire frontend, so the item appeared in the bag
+ * and then did nothing, while the ingredients had already been debited.
+ *
+ * These three are the genuine exceptions: CURRENCIES with real consumers, not placeable and not
+ * equippable. Each entry names its consumer, because an unjustified entry here turns a gate that catches
+ * that class into an allowlist that hides it.
+ *
+ *   crystals — spent 15-for-1 on the wand trade, and minted by four ore trades (ui/TradingInterface.jsx)
+ *   wand     — bought with crystals; read by the spell-damage focus (EnhancedMagicSystem applyWandFocus)
+ *   coins    — the shop currency (ui/TradingInterface.jsx)
+ */
+export const CURRENCY_KEYS = Object.freeze(['crystals', 'wand', 'coins']);
+
+/**
+ * Can the game actually DELIVER this inventory key -- is there any path on which it means something?
+ * A key that answers false here is one the player receives and can never use.
+ */
+export function isDeliverableKey(key) {
+  if (!key || typeof key !== 'string') return false;
+  return !!(ITEMS[key] || NAME_TO_ID[key] || CURRENCY_KEYS.includes(key));
+}
