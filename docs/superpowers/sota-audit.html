@@ -150,7 +150,7 @@
 
 <header>
   <div class="eyebrow">
-    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-09 late</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
+    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-11</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
   </div>
   <h1>The visual-test harness is not failing at the thing we&nbsp;were fixing</h1>
   <p class="standfirst">A SOTA audit of the capture, comparison and baseline layers. The capture layer is above industry standard. The comparator is behind. The oracle — the committed baselines themselves — is ungoverned, and had never been audited by anyone.</p>
@@ -158,6 +158,29 @@
 
 <section>
   <h2><span class="num">00</span> Status — every recommendation is now disposed of</h2>
+  <div class="callout ok">
+    <span class="hd">Updated 2026-08-11 — what this audit's follow-through became</span>
+    <p><strong>The two deferred items are still deferred, on purpose, and the reasons have not changed.</strong>
+    Per-frame tolerances still want n&ge;10 separate-process captures. <code>failOnFlakyTests</code> still wants
+    10 consecutive clean CI runs; a per-shard flaky reporter now accumulates that record in the run log, so the
+    count is a thing anyone can read rather than something a future session has to remember to grep.</p>
+    <p><strong>The liveness gap this page identified has an instrument now.</strong> V8 coverage collected while
+    Playwright drives a real booted session answers the one question <code>coverage-zero</code>'s own header
+    admits it never could — did the GAME reach this module, not did a test. First run: <b>262 of 282 src modules
+    executed</b>. Building it caught the instrument lying about itself: <code>page.coverage</code> cannot see Web
+    Workers, so ten modules including the greedy mesher were about to be reported as code the game never reaches.</p>
+    <p><strong>And the suppression finding — "the gated frames depict a build nobody plays" — is being worked, not
+    just recorded.</strong> The missing half of capture determinism was a deterministic CLOCK: seeded RNG shipped
+    long ago, nothing ever substituted time, which is <em>why</em> 116 guards turn systems off instead of
+    substituting. That clock now exists, ticks once per animation frame across all three Canvases, and can be
+    driven to a declared frame index before a shot. Probing it in a real browser rewrote the plan: two seconds of
+    wall time under capture advanced the world by <b>two frames</b>, so a clock alone gives determinism without
+    motion, and step-then-shoot is required rather than optional.</p>
+    <p><strong>Separately, a full-source audit followed this one</strong> — 287 files, 32,012 lines, 108 confirmed
+    findings against 35 refuted. Its largest cluster was six dead features behind one store selector. That work
+    has its own queue; this page stays scoped to the harness.</p>
+  </div>
+
   <div class="verdict settled">
     <p class="lead">All 10 ranked changes are landed. The one below the line and the one re-sequenced item are deferred by recorded decision, with criteria — not by silence. The four items this audit could not check have now been checked.</p>
     <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase.</p>
