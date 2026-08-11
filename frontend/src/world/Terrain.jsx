@@ -300,7 +300,9 @@ const TargetOutline = () => {
 
 // --- 3D TREASURE CHEST RENDERER ---
 const TreasureChestsRender = () => {
-    const chests = useGameStore(state => state.treasureChestsList || []);
+    // Fallback OUTSIDE the selector: inside it, `|| []` allocates a fresh array on every evaluation and
+    // the reference-equality check can never hold. The key is declared in the store, so this is belt only.
+    const chests = useGameStore(state => state.treasureChestsList) || [];
     const qualityTier = useGameStore(state => state.qualityTier) || 'low';
     const charOutline = (TIERS[qualityTier] || TIERS.low).charOutline;
 

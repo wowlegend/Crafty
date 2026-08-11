@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { BOSS_REST, bossCaptureReset, drainKnockback } from '../../src/game/captureRest.js';
+import { BOSS_REST, bossCaptureReset, drainKnockback, resolveChestHeights } from '../../src/game/captureRest.js';
 
 // A CAPTURE GUARD MUST RESET TO A DECLARED VALUE, NEVER EARLY-RETURN.
 //
@@ -104,5 +104,56 @@ describe('drainKnockback — under capture the impulse is CLEARED, not left pend
     expect(drainKnockback([], 1 / 60, true)).toBe(0);
     expect(drainKnockback(null, 1 / 60, true)).toBe(0);
     expect(drainKnockback([null, undefined], 1 / 60, false)).toBe(0);
+  });
+});
+
+describe('resolveChestHeights — a no-op tick must not allocate a new array', () => {
+  const chest = (y, resolved = false) => ({ id: 1, position: [4, y, 8], resolved });
+
+  it('returns the SAME reference when nothing resolved — the whole point', () => {
+    // `prev.map(...)` on a 3s interval always allocates, so every tick produced a new React state value
+    // and re-rendered every consumer, forever, whether or not a chest had moved.
+    const list = [chest(60, true), chest(61, true)];
+    const r = resolveChestHeights(list, () => 64);
+    expect(r.changed).toBe(0);
+    expect(r.chests, 'allocated a new array for a tick that changed nothing').toBe(list);
+  });
+
+  it('resolves an unresolved chest onto the ground, and says how many — the positive control', () => {
+    const list = [chest(15), chest(60, true)];
+    const r = resolveChestHeights(list, () => 64);
+    expect(r.changed, 'nothing resolved — every "same reference" assertion above is then vacuous').toBe(1);
+    expect(r.chests).not.toBe(list);
+    expect(r.chests[0].position).toEqual([4, 65, 8]);
+    expect(r.chests[0].resolved).toBe(true);
+    expect(r.chests[1], 'rebuilt an untouched chest').toBe(list[1]);
+  });
+
+  it('treats a null, NaN or non-positive ground level as unresolved rather than teleporting the chest', () => {
+    for (const bad of [null, NaN, 0, -3, undefined, '64']) {
+      const list = [chest(15)];
+      const r = resolveChestHeights(list, () => bad);
+      expect(r.changed, `accepted ${String(bad)} as a ground level`).toBe(0);
+      expect(r.chests).toBe(list);
+    }
+  });
+
+  it('survives a missing list or resolver instead of throwing', () => {
+    expect(resolveChestHeights(null, () => 64).changed).toBe(0);
+    expect(resolveChestHeights([chest(15)], null).changed).toBe(0);
+    expect(resolveChestHeights([null, chest(15)], () => 64).changed).toBe(1);
+  });
+});
+
+describe('treasureChestsList is DECLARED in the store', () => {
+  it('exists as an array from the start, so no selector needs an allocating fallback', async () => {
+    // Terrain read it as `state => state.treasureChestsList || []`. The key was never declared, so on
+    // every evaluation before QuestSystem first wrote it, the selector returned a BRAND NEW array —
+    // a new reference each time, which defeats zustand's reference equality and re-renders the chest
+    // renderer on every unrelated store change.
+    const { useGameStore } = await import('../../src/store/useGameStore.jsx');
+    const s = useGameStore.getState();
+    expect(s, 'treasureChestsList is undeclared — the reader must invent a fallback').toHaveProperty('treasureChestsList');
+    expect(Array.isArray(s.treasureChestsList)).toBe(true);
   });
 });

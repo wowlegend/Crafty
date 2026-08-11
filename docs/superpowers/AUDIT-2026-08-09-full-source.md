@@ -695,7 +695,7 @@ Refutation attempted via the usual escape hatches in this repo — a Web Worker,
 
 Could not refute. Confirmed the exact structure: MenuSystem.jsx:197 renders `{gameState.showTradingInterface && (<TradingInterface .../>)}` in the gap between the AnimatePresence that closes at :195 and the titleMenuVisible one that opens at :209. TradingInterface's own root is `Modal` (TradingInterface.jsx:99, closing :225), and primitives/Modal.jsx:38-53 is a plain <div> with no framer-motion involvement. My strongest refutation was an AnimatePresence higher in the tree — `grep -n 'AnimatePresence' src/App.jsx` returns NOTHING, and MenuSystem's own root is a bare fragment (MenuSystem.jsx:72-73), so there is no ancestor anywhere on the path. framer-motion only defers unmount under an AnimatePresence ancestor, so the exit tween at line 103 is discarded on close. The asymmetry claim also holds: ChestInventoryPanel (MenuSystem.jsx:98-108) and the other panels ARE wrapped, so the merchant panel is the one that pops rather than fades. Cosmetic, correctly rated low.
 
-### ▢ `src/world/Terrain.jsx:303` — silent-failure
+### ▣✓ PENDING `src/world/Terrain.jsx:303` — silent-failure
 
 **The TreasureChestsRender selector returns a freshly allocated array when treasureChestsList is absent, violating useSyncExternalStore's cached-snapshot contract.**
 
@@ -725,7 +725,7 @@ MECHANISM SURVIVES, IMPACT REFUTED — severity drops from high to low. The setu
 
 REFUTATION FAILED on the mechanism, but the exploit is narrower than claimed. The dep array really is [chests.length] and the transition 1 -> 0 really does re-arm it: openChest's setTimeout at lines 831-838 filters the chest out after 5s, and the effect body's own condition is `playerPos && chests.length === 0`, so it re-spawns at radius 15 with a fresh Math.random angle, no cooldown, and no consultation of the 5-cap at line 674 (which lives in the other effect) — the comment 'Spawn initial chest near player' confirms respawn is not the stated intent. Each chest is guaranteed >= 1 item (lines 799-801) plus spawnLootDrop XP. WHERE IT NARROWS: the trigger is `length === 0`, not 'below cap', so the farm only runs while the board is completely empty. The 30s spawner (line 669) tops the board up to 5 independently, so after the first couple of minutes of a session chests.length rarely returns to 0 and the loop stops re-arming. Real early-game loot/XP farm, not the unbounded one described.
 
-### ▢ `src/QuestSystem.jsx:849` — perf-hot-path
+### ▣✓ PENDING `src/QuestSystem.jsx:849` — perf-hot-path
 
 **Chest ground-resolve interval calls setChests(prev => prev.map(...)) unconditionally, minting a new array every 3s even when nothing changed.**
 

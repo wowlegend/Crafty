@@ -16,6 +16,7 @@ import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
 import { questRewards } from './game/questRewards.js';
 import { reduceClaim } from './game/questClaim.js';
+import { resolveChestHeights } from './game/captureRest.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -863,19 +864,9 @@ export const useTreasureChests = () => {
             const getLevel = useGameStore.getState().getMobGroundLevel;
             if (!getLevel) return;
             
-            setChests(prev => prev.map(chest => {
-                if (!chest.resolved) {
-                    const h = getLevel(chest.position[0], chest.position[2]);
-                    if (typeof h === 'number' && !isNaN(h) && h > 0) {
-                        return {
-                            ...chest,
-                            position: [chest.position[0], h + 1, chest.position[2]],
-                            resolved: true
-                        };
-                    }
-                }
-                return chest;
-            }));
+            // Identity-preserving: returns the SAME array when nothing resolved, so a no-op tick does
+            // not mint a new React state value and re-render every consumer once every 3 seconds forever.
+            setChests(prev => resolveChestHeights(prev, getLevel).chests);
         }, 3000);
         return () => clearInterval(interval);
     }, []);

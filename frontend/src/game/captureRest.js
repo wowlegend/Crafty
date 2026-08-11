@@ -76,3 +76,30 @@ export function drainKnockback(entities, delta, capture) {
   }
   return drained;
 }
+
+/**
+ * PURE. Resolve chest heights against live ground, returning the SAME array reference when nothing
+ * changed.
+ *
+ * The identity matters more than the work. The original was `prev.map(...)` running on a 3s interval, and
+ * `map` always allocates — so every tick produced a new array, a new React state value and a re-render of
+ * every consumer, forever, whether or not a single chest had moved. A no-op tick was indistinguishable
+ * from a real one because nothing in the function distinguished "I resolved a chest" from "I looked and
+ * there was nothing to do".
+ *
+ * @param {Array<{resolved?: boolean, position: number[]}>} chests
+ * @param {(x: number, z: number) => number|null} getLevel
+ * @returns {{chests: Array, changed: number}} the same array when changed === 0
+ */
+export function resolveChestHeights(chests, getLevel) {
+  if (!Array.isArray(chests) || typeof getLevel !== 'function') return { chests: chests, changed: 0 };
+  let changed = 0;
+  const next = chests.map((chest) => {
+    if (!chest || chest.resolved) return chest;
+    const h = getLevel(chest.position[0], chest.position[2]);
+    if (typeof h !== 'number' || isNaN(h) || h <= 0) return chest;
+    changed++;
+    return { ...chest, position: [chest.position[0], h + 1, chest.position[2]], resolved: true };
+  });
+  return { chests: changed ? next : chests, changed };
+}

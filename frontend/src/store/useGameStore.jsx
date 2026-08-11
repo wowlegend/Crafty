@@ -134,6 +134,11 @@ export const useGameStore = create((set, get) => ({
     playerVisualAnchorRef: null, // .parent === the player RigidBody's Object3D (the VISUAL side)
     setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
+    // Declared so no reader needs an allocating fallback. Terrain read it as
+    // `state => state.treasureChestsList || []`; undeclared, that selector returned a BRAND NEW array on
+    // every evaluation, which defeats zustand's reference equality and re-rendered the chest renderer on
+    // every unrelated store change. Written by QuestSystem; rendered by Terrain.
+    treasureChestsList: [],
     playerPosition: { x: 0, y: 0, z: 0 },
     setPlayerPosition: (pos) => set({ playerPosition: pos }),
 
