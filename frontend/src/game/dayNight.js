@@ -203,3 +203,20 @@ export function dawnReward(nightNumber) {
     lootItem: DAWN_LOOT_BY_RARITY[lootRarity],
   };
 }
+
+/**
+ * A 24h TIME OF DAY fraction (0 = midnight, 0.25 = dawn, 0.5 = noon, 0.75 = dusk) -> a `gameTime` on the
+ * clock's own DAWN-origin scale, where [0, 600) is day.
+ *
+ * The two origins are the whole reason this exists. setTimeOfDay carried its own day window of
+ * [0.25, 0.75) -- correct for a midnight origin -- while isDayAtUnit says [0, 0.5) on a dawn origin. Both
+ * were internally coherent and they disagreed by a quarter cycle, so setTimeOfDay(0.5) wrote gameTime 600
+ * with isDay TRUE while every other reader of 600 says night. Converting once here leaves exactly one
+ * opinion about which half is day: isDayAtUnit's.
+ */
+export function gameTimeForTimeOfDay(t) {
+  const n = Number(t);
+  const frac = Number.isFinite(n) ? ((n % 1) + 1) % 1 : 0;
+  const fromDawn = ((frac - 0.25) + 1) % 1; // midnight-origin -> dawn-origin
+  return Math.round(fromDawn * CYCLE_UNITS) % CYCLE_UNITS;
+}

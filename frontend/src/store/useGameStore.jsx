@@ -7,7 +7,7 @@ import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { addTrauma, traumaFromWeight, decayTrauma } from '../game/trauma.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
-import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward } from '../game/dayNight.js';
+import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { hydrateBossState } from '../game/bossPersistence.js';
@@ -751,13 +751,23 @@ export const useGameStore = create((set, get) => ({
         return { gameTime: newTime };
     }),
 
-    // Force the day/night cycle to a normalized time-of-day fraction in [0, 1).
-    // The sky/lighting reads `isDay`; daytime spans [0.25, 0.75), night otherwise.
-    // Used by the dev test bridge to drive the world into known lighting states.
+    // Force the clock to a normalized TIME OF DAY in [0, 1), 0 = midnight, 0.5 = noon.
+    //
+    // isDay is now DERIVED from the gameTime being written, through the same isDayAtUnit the clock,
+    // loadWorldData and the compass dial use. It used to carry a SECOND window of its own -- day spanning
+    // [0.25, 0.75) here against isDayAtUnit's [0, 0.5) -- so setTimeOfDay(0.5) wrote gameTime 600 with
+    // isDay TRUE while every other reader of that same 600 says night. Both windows were internally
+    // coherent; they disagreed about the ORIGIN, midnight here versus dawn in the clock. The consequences
+    // were real even though only the DEV bridge and the visual probes reach this: a save taken in that
+    // state reloaded inverted (loadWorldData re-derives isDay from gameTime), the compass dial drew
+    // sunset beside a daytime readout, and nightCount desynced.
+    //
+    // The midnight origin is kept because it is what every caller already means (`setTimeOfDay(0.5) //
+    // midday`) and what "time of day" reads as; the conversion to the clock's dawn origin happens once,
+    // in gameTimeForTimeOfDay, instead of being a second opinion about which half is day.
     setTimeOfDay: (t) => set(() => {
-        const frac = ((Number(t) % 1) + 1) % 1; // wrap into [0, 1)
-        const isDay = frac >= 0.25 && frac < 0.75;
-        return { gameTime: Math.round(frac * 1200), isDay };
+        const gameTime = gameTimeForTimeOfDay(t);
+        return { gameTime, isDay: isDayAtUnit(gameTime) };
     }),
 
     achievements: [],

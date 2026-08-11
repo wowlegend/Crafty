@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  HALF_CYCLE_UNITS,
-  CYCLE_UNITS,
-  GAME_UNITS_PER_SECOND,
-  crossedHalfCycle,
-  isDayAtUnit,
-  shouldAdvanceClock,
-} from './dayNight.js';
+import { HALF_CYCLE_UNITS, CYCLE_UNITS, GAME_UNITS_PER_SECOND, crossedHalfCycle, isDayAtUnit, shouldAdvanceClock, gameTimeForTimeOfDay } from './dayNight.js';
 
 describe('dayNight pure module', () => {
   describe('constants', () => {
@@ -113,5 +106,59 @@ describe('dayNight pure module', () => {
       expect(shouldAdvanceClock()).toBe(false);
       expect(shouldAdvanceClock({})).toBe(false);
     });
+  });
+});
+
+// TWO CLOCKS THAT DISAGREED BY A QUARTER CYCLE.
+//
+// setTimeOfDay carried its own day window, [0.25, 0.75) -- correct for a MIDNIGHT origin -- while
+// isDayAtUnit says [0, 0.5) on a DAWN origin. Both internally coherent, and they disagreed: setTimeOfDay(0.5)
+// wrote gameTime 600 with isDay TRUE while every other reader of 600 says night. A save taken there reloaded
+// inverted (loadWorldData re-derives isDay from gameTime), and the compass dial drew SUNSET beside a daytime
+// readout. Converting once leaves exactly one opinion about which half is day.
+describe('gameTimeForTimeOfDay — one origin, not two', () => {
+  it('noon is DAY and midnight is NIGHT — what every caller already meant', () => {
+    // Every probe in scripts/visual reads `setTimeOfDay(0.5) // midday`. It has to be day.
+    expect(isDayAtUnit(gameTimeForTimeOfDay(0.5)), 'noon came out as night').toBe(true);
+    expect(isDayAtUnit(gameTimeForTimeOfDay(0.0)), 'midnight came out as day').toBe(false);
+  });
+
+  it('dawn opens the day half and dusk opens the night half', () => {
+    expect(gameTimeForTimeOfDay(0.25)).toBe(0);              // dawn = the top of the clock's day half
+    expect(gameTimeForTimeOfDay(0.75)).toBe(HALF_CYCLE_UNITS); // dusk = the top of the night half
+    expect(isDayAtUnit(gameTimeForTimeOfDay(0.25))).toBe(true);
+    expect(isDayAtUnit(gameTimeForTimeOfDay(0.75))).toBe(false);
+  });
+
+  it('the day half is exactly half the cycle — no quarter-cycle gap between the two conventions', () => {
+    // The assertion that would have caught the original defect: walk the whole dial and count.
+    let day = 0;
+    const N = 1200;
+    for (let i = 0; i < N; i++) if (isDayAtUnit(gameTimeForTimeOfDay(i / N))) day++;
+    expect(day).toBe(N / 2);
+  });
+
+  it('daylight is a CONTIGUOUS arc centred on noon, not two disjoint pieces', () => {
+    // A half-cycle offset would also satisfy the count above while putting daylight around midnight.
+    const isDayAt = (f) => isDayAtUnit(gameTimeForTimeOfDay(f));
+    expect(isDayAt(0.3) && isDayAt(0.5) && isDayAt(0.7)).toBe(true);
+    expect(isDayAt(0.05) || isDayAt(0.95)).toBe(false);
+  });
+
+  it('wraps instead of running off the end, and refuses to emit NaN', () => {
+    expect(gameTimeForTimeOfDay(1)).toBe(gameTimeForTimeOfDay(0));
+    expect(gameTimeForTimeOfDay(2.5)).toBe(gameTimeForTimeOfDay(0.5));
+    expect(gameTimeForTimeOfDay(-0.25)).toBe(gameTimeForTimeOfDay(0.75));
+    for (const bad of [undefined, null, NaN, 'noon']) {
+      expect(Number.isFinite(gameTimeForTimeOfDay(bad)), `${bad} produced a non-finite gameTime`).toBe(true);
+    }
+  });
+
+  it('always lands inside the cycle', () => {
+    for (let i = 0; i <= 100; i++) {
+      const g = gameTimeForTimeOfDay(i / 100);
+      expect(g).toBeGreaterThanOrEqual(0);
+      expect(g).toBeLessThan(CYCLE_UNITS);
+    }
   });
 });
