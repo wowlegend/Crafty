@@ -231,7 +231,7 @@ Consumer verified: OptimizedGrassSystem.jsx:43 builds `new THREE.MeshLambertMate
 
 Correction: the "hilltop at world y=90" example is outside the world's range. heightAt.js gives baseHeight = 40 + n*18 + highland^2*90 with HIGHLAND_AMP capped at +12.8 relief, i.e. a practical max around y~72. So the real worst case is terrain heightMul 0.79 vs grass 1.0 (~27% relative), not 0.55 vs 1.0, and the effect only exists above FOG_SEA_LEVEL=56 (roughly the top decile of columns). The defect and its direction are exactly as described; only the magnitude example is inflated.
 
-### ▢ `src/render/BossEntity.jsx:466` — dead-on-arrival
+### ▣✓ 8472036 `src/render/BossEntity.jsx:466` — dead-on-arrival
 
 **Boss damage flash is computed during render from a ref written in an effect that schedules no re-render, so it is one render late and effectively invisible**
 
@@ -255,7 +255,7 @@ Could not refute via: the visibility gate (line 63-65) is a real qualifier the f
 
 Overstatement to flag: "This is the GC-pressure source behind the ~14% frame-budget figure" is not supported. The B8 comment at Ocean.jsx:59-62 attributes ~14% to the whole buried-plane cost (render + 9.4k-vertex wave recompute) when deep inland, and never isolates GC. Treat this as a code-quality/allocation-discipline finding, not a measured 14% recovery.
 
-### ▢ `src/render/playerRender.jsx:363` — dead-on-arrival
+### ▣✓ 8472036 `src/render/playerRender.jsx:363` — dead-on-arrival
 
 **Idle branch hardcodes the wand rest pose onto wandRef, overwriting the JSX rotation/position of both the wand group and the weapon group.**
 
@@ -297,7 +297,7 @@ REFUTATION FAILED on both legs. (1) useGameStore.jsx:487 initial `questState: nu
 
 REFUTATION FAILED on the mechanism. The useFrame at 128-143 has no accumulator, no delta gate and no throttle — unlike the second useFrame, which gates on AI_TICK_SEC at 169-172. store.getMobGroundLevel is confirmed to be a Rapier ray: Terrain.jsx:632-644 `world.castRay(probeRay, 300, true, ..., probeFilter)`, and its own comment calls it 'the hottest physics call in the game'. HUB_NPCS has exactly 4 entries (npcSpawn.js:10-15). routinePosition (npcRoutine.js:12-16) returns a fresh `{x, z}` and the call site allocates a fresh `{x: e.homeX, z: e.homeZ}` — 2 objects x 4 NPCs per frame. The npcRoutine.js:5 'throttled tick' comment is contradicted by this call site, as claimed. MAGNITUDE CAVEAT (does not refute, but 'medium' is generous): 4 casts/frame is 480/s at 120Hz — roughly what ONE aggro mob's 81-cell heightGrid costs at 15Hz (81 x 15 = 1215/s), and ~0.2% of the ~2k-casts/frame worst case Terrain.jsx:622 documents. It is a real unthrottled physics query in a file that documents throttling; it is not a frame-killer.
 
-### ▢ `src/systems/AIWorkerSystem.jsx:228` — dead-on-arrival
+### ▣✓ 8472036 `src/systems/AIWorkerSystem.jsx:228` — dead-on-arrival
 
 **captureSeed can never be anything but null: the same useFrame early-returns on isCaptureMode() 69 lines above the postMessage, so ai.worker.js's seeded-RNG branch never executes.**
 
@@ -345,7 +345,7 @@ REFUTATION FAILED. I enumerated every writer of `hoveredItem` in the Inventory c
 
 REFUTATION FAILED — every link in the chain verified on live source. (1) The debit at CraftingTable.jsx:55 goes through useGameStore.jsx:629 `removeFromInventory`, which spreads a NEW `inventory` object every call, so the identity check fires. (2) App.jsx:244 is literally `s.inventory !== prevS.inventory ||` inside the autosave subscribe, calling `autosave.schedule()` (5000ms debounce, autosave.js). (3) saveSchema.js:22 is exactly `inventory: state.inventory,` — the already-debited object. (4) The grid lives ONLY in React-local `useState` (line 23); grep for `beforeunload|pagehide` across src/ returns exactly TWO hits, both App.jsx:260/264 registering `autosave.flush()` — there is no unload-time escrow return anywhere, and React does not run effect cleanups on page teardown. (5) The load path does restore it: useGameStore.jsx:917 `const inventory = saveData.player_data?.inventory || state.inventory;`. (6) I checked whether this was a documented accepted decision: docs/superpowers/audits/2026-07-14-b-seams-drafts.json shows B3d explicitly CHOSE 'return the grid on unmount' over 'defer removal until craft' on blast-radius grounds — the persistence path was never considered, so this is an unclosed residual, not an accepted tradeoff. TWO CAVEATS that soften the finding's framing without refuting it: (a) the finding's 'reload → both iron permanently gone' is overstated — per the B2a comment at useGameStore.jsx:1070-1079, NOTHING resumes a save at boot (`loadWorldData` has one caller, the World Manager Load button), so a plain reload starts fresh and the loss only materialises when the player later loads that slot; (b) severity is bounded by grid capacity (max 9 items), which reads closer to low-medium than medium. Mechanism confirmed regardless.
 
-### ▢ `src/workers/ai.worker.js:367` — correctness
+### ▣✓ 55c5415 `src/workers/ai.worker.js:367` — correctness
 
 **The capture-seeded wander stream is re-created from the same key on every re-roll, so each mob draws an identical constant sequence forever instead of wandering.**
 
