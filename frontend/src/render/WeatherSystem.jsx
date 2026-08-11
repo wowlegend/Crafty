@@ -9,7 +9,7 @@ import { stormMoodBoost, allowedPrecip, precipFor } from '../game/weatherGate.js
 import { createStormBed } from '../audio/stormBed.js';
 import { getAudioBridge } from '../audio/audioBridge.js';
 import { surfaceBlockAt } from '../world/climate.js';
-import { _weatherDummy } from './_sceneScratch';
+import { weatherDummy } from './_sceneScratch';
 
 // WeatherSystem -- volumetric rain/snow/firefly instanced-particle cycles + the storm sky-darken mood
 // boost + the storm ambience bed. Extracted VERBATIM from GameScene.jsx (v6 de-monolith A2.5 -- the last
@@ -223,7 +223,7 @@ export const WeatherSystem = () => {
 
     // 1. Instanced Rain Particle displacement
     if (rainMeshRef.current) {
-      const dummy = _weatherDummy;
+      const dummy = weatherDummy(); // declared state, not whatever the previous loop left
       rainData.forEach((r, i) => {
         if (isRaining) {
           r.y -= r.speed * delta;
@@ -254,7 +254,7 @@ export const WeatherSystem = () => {
 
     // 2. Instanced Snow Particle drift
     if (snowMeshRef.current) {
-      const dummy = _weatherDummy;
+      const dummy = weatherDummy(); // declared state, not whatever the previous loop left
       snowData.forEach((s, i) => {
         if (isSnowing) {
           s.y -= s.speed * delta;
@@ -287,7 +287,7 @@ export const WeatherSystem = () => {
 
     // 3. Glowing Firefly drift (Night cycles only)
     if (firefliesMeshRef.current) {
-      const dummy = _weatherDummy;
+      const dummy = weatherDummy(); // declared state, not whatever the previous loop left
       fireflyData.forEach((f, i) => {
         if (!isDay) {
           const wobbleX = Math.sin(time * 0.5 + f.seed) * 0.05;
