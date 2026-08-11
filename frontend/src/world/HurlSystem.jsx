@@ -6,7 +6,7 @@ import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
-import { makeHurl, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
+import { adoptHurlRequest, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
 import { warnIfNotWorldSpace } from './sceneSpace.js';
 
 /**
@@ -71,9 +71,15 @@ export function HurlSystem() {
       }
     }
 
-    const req = consumeHurlRequest();
-    if (req && !flightRef.current) {
-      flightRef.current = { h: makeHurl(req.origin, req.dir), color: req.color || '#A9966E' };
+    // LAST-THROW-WINS, the family convention already stated on the sibling channel: a second request
+    // arriving mid-flight REPLACES the phantom rather than being dropped. The consume is unconditional
+    // (the slot nulls on read), so the old `&& !flightRef.current` destroyed the request whether or not
+    // it was used -- and by then the producer had already spent 25 Kinetic and cleared the held phantom.
+    // The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at all, so
+    // a miss stays airborne the full 1.5s TTL. Nothing reported the loss. Still exactly one phantom.
+    const adopted = adoptHurlRequest(consumeHurlRequest());
+    if (adopted) {
+      flightRef.current = adopted;
       setInFlight(true); // membership transition only
     }
 

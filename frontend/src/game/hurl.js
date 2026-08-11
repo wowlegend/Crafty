@@ -97,3 +97,21 @@ export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
   }
   return events;
 }
+
+/**
+ * LAST-THROW-WINS. Turn a hurl request into the live flight, unconditionally.
+ *
+ * The consumer used to write `if (req && !flightRef.current)`, and the consume is destructive -- the
+ * channel nulls its slot on read -- so a request arriving mid-flight was DESTROYED whether or not it was
+ * used, after the producer had already spent 25 Kinetic and cleared the held phantom. Nothing reported
+ * the loss. The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at
+ * all, so a miss stays airborne the full 1.5s TTL.
+ *
+ * This function CANNOT refuse -- it takes no current-flight argument, which is the point: the drop is not
+ * a decision the consumer gets to make. Exactly one phantom is still in the air, it is just the newest
+ * one, which is the convention the sibling elemancer channel already states for its own single slot.
+ */
+export function adoptHurlRequest(req) {
+  if (!req || !req.origin || !req.dir) return null;
+  return { h: makeHurl(req.origin, req.dir), color: req.color || '#A9966E' };
+}
