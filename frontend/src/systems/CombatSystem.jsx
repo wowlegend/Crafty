@@ -6,6 +6,7 @@ import { ecs, mobsQuery } from '../ecs/world';
 import { GameMethods } from '../GameMethods';
 import { convertMobToAlly } from '../game/allegiance';
 import { canPlayerDamage, damageableInCone, nearestDamageable } from '../combat/targeting.js';
+import { isPlayerSource, isDirectPlayerHit, attributionSource } from '../combat/damageSource.js';
 import { sparkFor, hitKnockback, deathBurst } from '../game/mobHitFx';
 import { emitMobKill } from '../game/mobKillBus.js';
 import { DEATH_DISSOLVE_MS } from '../game/deathFx.js';
@@ -43,7 +44,9 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // SOTA M1: weight-TIERED hitstop (was a flat 28ms that collapsed the light/heavy/crit hierarchy --
       // the audit's #1 game-feel gap). Tier by the incoming damage (matches the isCrit>=40 proxy below) +
       // scale by the global juiceIntensity dial.
-      if (source === 'player') {
+      // isDirectPlayerHit, not isPlayerSource: a burn TICK is the player's damage but not the player's
+      // input, and clamping their motion four times after the cast is a bug wearing feel's clothes.
+      if (isDirectPlayerHit(source)) {
         const weight = damage >= 40 ? 'crit' : damage >= 30 ? 'heavy' : 'light';
         const ji = useGameStore.getState().juiceIntensity ?? 1;
         useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP[weight] * ji });
@@ -64,7 +67,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // the spray to track the crit ROLL rather than the damage magnitude (combat-differentiation depth).
       const isCrit = damage >= 40;
       // S2-B3-M1: camera shake is PLAYER feel — 3 allies on attack cooldowns would judder it continuously.
-      if (source === 'player' && store.triggerCameraShake) {
+      if (isDirectPlayerHit(source) && store.triggerCameraShake) {
         store.triggerCameraShake(isCrit ? 1.6 : 1.0, hitDir[0], hitDir[2]);
       }
 
@@ -100,7 +103,8 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
 
       // spawnRing=false from spell-projectile hits, which render their own SpellImpactPop ring
       // (EnhancedMagicSystem.createSpellImpact) — avoids the double ImpactShockwave+SpellImpactPop stack.
-      if (spawnRing) setShockwaves(waves => [...waves, {
+      // Also direct-only: a shockwave ring is the visual report of an IMPACT, and a DoT tick is not one.
+      if (spawnRing && isDirectPlayerHit(source)) setShockwaves(waves => [...waves, {
         id: damageId.current++,
         type,
         position: [entity.position.x, entity.position.y + 0.1, entity.position.z]
@@ -112,7 +116,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         // Spawn warm-gold XP motes (recoloured from the old garish green). XP drops only on YOUR kills
         // (S2-B3-M1: ally kills would farm pickups). CAP the COUNT so a high-XP kill is a tasteful few
         // motes, not a confetti storm — and scale each mote's value to totalXP/count so no XP is lost.
-        const totalXP = source === 'player' ? (entity.xp || 10) : 0;
+        const totalXP = isPlayerSource(source) ? (entity.xp || 10) : 0; // attribution: a burn kill is YOUR kill
         const count = totalXP > 0 ? Math.min(6, Math.max(1, Math.round(totalXP / 8))) : 0;
         const orbValue = count > 0 ? Math.ceil(totalXP / count) : 0;
         for (let i = 0; i < count; i++) {
@@ -146,7 +150,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         if (GameMethods.spawnDeathFx) {
           GameMethods.spawnDeathFx([entity.position.x, entity.position.y, entity.position.z], deathPos.y, db.color);
         }
-        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], source); // M3.5 fan-out + B3-M1 attribution
+        emitMobKill(entity.type, [entity.position.x, entity.position.y, entity.position.z], attributionSource(source)); // M3.5 fan-out + B3-M1 attribution
         // M2 #7 death weight: defer removal behind a dissolve so a kill has WEIGHT (XP / spark / kill-bus
         // already fired this frame). The dying-sweep removes the corpse after the dissolve elapses.
         entity.dyingUntil = performance.now() + DEATH_DISSOLVE_MS;

@@ -14,7 +14,10 @@ export function makeBurnManager() {
     const handle = setInterval(() => {
       const damageMob = getDamageMob();
       if (ticksRemaining <= 0 || typeof damageMob !== 'function') { stop(handle); return; }
-      const mob = damageMob(mobId, dps, 'fireball');
+      // 'player-dot': the player's damage for XP and kill attribution, NOT a direct hit for feel. This
+      // omitted the argument and took the 'player' default, so every tick stamped hitstop, shook the
+      // camera and pushed an impact ring -- four times, a second apart, with no input.
+      const mob = damageMob(mobId, dps, 'fireball', 'player-dot');
       if (!mob) { stop(handle); return; } // mob already dead/despawned
       ticksRemaining--;
     }, 1000);
