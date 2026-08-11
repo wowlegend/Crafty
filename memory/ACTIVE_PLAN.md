@@ -34,7 +34,25 @@ file that will not survive. What DID survive, and is authoritative:
 - **26 of 93 proposed gates would have PASSED against the broken code**, caught by the review stage. So
   every gate written here must be shown RED against the live defect before the fix, not merely green after.
 
-**⚠️ IN FLIGHT — HALF A UNIT ON MAIN.** `frontend/src/game/buildFootprint.js` + its gate are committed
+**⚠️ UNCOMMITTED WORK EXISTS — READ THIS FIRST (2026-08-11, flushed at 94% context).**
+Three files are modified and NOT committed. `git status` will show them:
+- `frontend/src/world/Terrain.jsx` — `place()` now expands through `buildFootprint`, debiting
+  `consumeForPlacement` PER CELL (the stop condition when material runs out) and firing sound / sparks /
+  resonance ONCE per action, not per cell. Complete, lint+build+unit green (387 files / 2742 tests).
+- `frontend/src/index.jsx` — exposes `window.GameMethods` in DEV, beside `window.useGameStore`.
+- a NEW e2e spec, `build-placement` (untracked, so not citable as a path here until committed) — it is
+  the reachability proof for the above.
+
+**Its first run FAILED and the cause is known:** `GameMethods` is a plain module export and was never on
+`window`, so `waitForFunction` timed out. That was the TEST being wrong, not the wiring. The index.jsx
+exposure is the fix, and the re-run was still in flight when context ran out.
+
+**DO NOT COMMIT the Terrain wiring until that E2E is green** — it is the only thing proving Terrain
+actually consults the footprint, and committing a wiring whose reachability proof is red is precisely the
+dead-on-arrival class this whole audit is about. Re-run it with `CI=1 npx playwright test --grep 'block placement' --reporter=line --retries=0` from
+`frontend/`.
+
+**⚠️ SUPERSEDED — the seam is now wired (uncommitted).** `frontend/src/game/buildFootprint.js` + its gate are committed
 (`1d1a98f`) but NOT WIRED: Terrain's `place`/`mine` do not consume the footprint yet, so Building Tools
 is still inert. **Finish this first.** The wiring: read `buildingMode`/`buildSize` transiently via
 `useGameStore.getState()` inside the existing `place`/`mine` executors in `frontend/src/world/Terrain.jsx`
