@@ -96,7 +96,16 @@ export function GameScene({
     // click/key gesture). Our own attachPointerLook (lenient gate) then drives the camera while locked.
     useGameStore.setState({
       requestPointerLock: () => {
-        try { canvasRef.current?.requestPointerLock?.(); } catch (e) { console.warn('pointer lock denied', e); }
+        // requestPointerLock reports a DENIAL by rejecting its Promise, not by throwing -- per MDN the
+        // modern signature is Promise-returning, and a denial right after the user's own ESC is
+        // GUARANTEED. So this try/catch could never fire the warn it exists for, and the rejection went
+        // unhandled instead. Both paths are handled now, because older engines still return undefined.
+        try {
+          const p = canvasRef.current?.requestPointerLock?.();
+          if (p && typeof p.catch === 'function') p.catch((e) => console.warn('pointer lock denied', e));
+        } catch (e) {
+          console.warn('pointer lock denied', e);
+        }
       }
     });
     return () => {

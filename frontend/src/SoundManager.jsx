@@ -99,21 +99,26 @@ export const SoundProvider = ({ children }) => {
         pad.timer = null;
       }
 
+      // CAPTURE THE NODES NOW, not in 1600ms. Everything below this block nulls pad.filter, pad.lfoGain
+      // and pad.masterGain synchronously, so the deferred callback used to read `pad.lfoGain.disconnect()`
+      // and `pad.filter.disconnect()` off fields that had been null for a second and a half: both threw
+      // TypeError straight into an empty catch, and those two nodes were NEVER disconnected. masterGain
+      // was already captured this way, which is the tell -- one node was handled correctly and its two
+      // neighbours were not. A leaked filter and LFO gain per pad stop is a slow audio-graph leak that
+      // nothing reports, because the catch that hides it is the same catch that would have shown it.
       const oscsToStop = [...pad.oscillators, pad.lfo].filter(Boolean);
-      const masterToDisconnect = pad.masterGain;
+      const nodesToDisconnect = [pad.lfoGain, pad.filter, pad.masterGain].filter(Boolean);
+      const wbSource = wb.source;
+      const wbNodes = [wb.filter, wb.gain].filter(Boolean);
 
       setTimeout(() => {
         oscsToStop.forEach(osc => {
           try { osc.stop(); } catch {}
           try { osc.disconnect(); } catch {}
         });
-        
-        try { pad.lfoGain.disconnect(); } catch {}
-        try { pad.filter.disconnect(); } catch {}
-        try { masterToDisconnect.disconnect(); } catch {}
-        try { if (wb.source) { wb.source.stop(); wb.source.disconnect(); } } catch {}
-        try { wb.filter && wb.filter.disconnect(); } catch {}
-        try { wb.gain && wb.gain.disconnect(); } catch {}
+        nodesToDisconnect.forEach(node => { try { node.disconnect(); } catch {} });
+        try { if (wbSource) { wbSource.stop(); wbSource.disconnect(); } } catch {}
+        wbNodes.forEach(node => { try { node.disconnect(); } catch {} });
       }, 1600);
     } catch (e) {
       console.warn('Error stopping synth pad:', e);
