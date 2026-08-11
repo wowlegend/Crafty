@@ -591,3 +591,65 @@ was someone's intent; deleting it is a real cost, not a tidy-up. Wiring costs bu
 surface to maintain. I will state which of the two I chose and why, per feature, in the commit that
 does it — and where a feature is genuinely worth having but too large for the current unit, it goes to
 `ROADMAP.md` as a named unit rather than being deleted for convenience or left rotting for honesty.
+
+---
+
+## 2026-08-11 — Phase C step 3: the capture clock becomes a COMMANDED clock
+
+**Supersedes the free-running half of "2026-08-09 (late) — Phase C step 1: the deterministic capture
+CLOCK".** That entry stands on everything else: the clock exists, `CAPTURE_DT` is deliberately not the
+display refresh rate, and the three-canvas dedupe on `document.timeline.currentTime` is correct. What is
+reversed is one sentence — *"under capture, time is a pure function of HOW MANY FRAMES HAVE BEEN
+RENDERED"*. That is exactly what made the phase run-dependent.
+
+### The premise that was wrong, measured rather than argued. **[LOOP]**
+`advanceCaptureFrame` runs from `CaptureClockTicker`, mounted in all three `<Canvas>` elements, so the
+counter climbs once per RENDERED frame. The harness then waits wall-clock time before each shot, on a
+renderer managing about 1 fps. So "frame index at shot time" is a function of how many frames the machine
+drew — which is the machine, not the code. Probed on ONE box, identical code, identical schedule, five
+sample points, two runs:
+
+| | phase samples |
+|---|---|
+| run 1 | 6, 10, 13, 15, 16 |
+| run 2 | 6, 11, 13, 14, 16 |
+
+Two of five diverge without leaving the machine. Across a fast laptop and a CI runner the spread is
+unbounded. **This is the same run-dependent phase the clock was built to remove, reproduced one level up,
+inside the fix.** It was invisible because it is latent: nothing read the clock, so nothing could vary
+because of it. It would have gone live with the first subsystem converted — which is to say, it would
+have been discovered as flapping baselines rather than as a design error.
+
+### And a second reason, which is the one that makes freezing necessary rather than tidy.
+`shot()` photographs only after `waitForStableFrame` reports two consecutive IDENTICAL frames. A world
+animating off a still-ticking clock never produces two identical frames. **A stability wait and a
+free-running clock cannot both be satisfied once anything reads the clock** — the world has to be STILL
+at the declared phase to be photographable twice. This was not visible while every animated system was
+suppressed, because a suppressed world is still by construction.
+
+### The decision. **[LOOP]**
+`setCaptureFrame(n)` sets the phase ABSOLUTELY and freezes the clock; `resetCaptureClock()` thaws, so each
+captured state is free to tick during its own setup and is then pinned before its shot. `shot()` in
+`frontend/scripts/visual/capture.mjs` pins before the stability wait, records what the page actually
+returned, and the run prints the denominator and fails on any frame shot at an undeclared phase.
+`CAPTURE_PHASE_FRAMES = 90` — 1.5 s of virtual time, one constant rather than a per-state parameter,
+because a phase that varies by state is one more thing a baseline diff can disagree about for a reason
+nobody remembers.
+
+### What this constrains, and it is a real limit rather than a caveat.
+Under a commanded clock the world jumps from 0 to the declared phase in ONE step. That is exact for any
+animation which is a closed-form function of absolute time (a shader `time` uniform, a sway, a rotation),
+and WRONG for an integrator that accumulates per-frame deltas — 90 small steps and one large step are not
+the same trajectory. Stepping an integrator honestly would mean rendering 90 frames per shot at ~1 fps,
+i.e. 90 seconds x 31 states, which is not a harness anyone will run.
+
+**So the conversion candidates are closed-form animations, and integrator-driven systems stay
+suppressed.** That residue is a correct stopping point, not unfinished work, and it should be stated that
+way when the suppression census is worked rather than discovered again per subsystem.
+
+### Also recorded: a commit title that outran its diff.
+`7d743d6` is titled "step-then-shoot" and says it wired the hook "so the harness can drive it". It touched
+`App.jsx`, `captureClock.js` and that module's gate. `capture.mjs` had zero references to it. The
+primitive and the bridge hook shipped; the caller never did, and no gate asserted the CALLER — this
+repo's most-repeated defect class, inside the harness built to catch it. `tests/scripts/capture-preflight.test.js`
+now asserts it, and the assertion goes red against exactly the `7d743d6` state.

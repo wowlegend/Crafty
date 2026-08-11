@@ -103,3 +103,69 @@ describe('capture: every gated frame goes through shot(), which waits for a stab
     expect(routed.length).toBeGreaterThanOrEqual(26);
   });
 });
+
+// PHASE C — THE HARNESS MUST DECLARE THE PHASE IT PHOTOGRAPHS.
+//
+// `stepCaptureFrames` and the deterministic clock shipped on 2026-08-09 under a commit titled
+// "step-then-shoot", and its body said it was "wired to the test bridge as a hook so the harness can
+// drive it". It touched three files: App.jsx, captureClock.js, and that module's gate. capture.mjs --
+// 766 lines and 31 screenshot sites -- contained zero references to it. The primitive and the hook
+// existed; nothing called them. That is this repo's own most-repeated defect class (shipped, compiling,
+// gated green, never RUN) sitting inside the harness built to catch it, and it survived because no gate
+// asserted the CALLER.
+//
+// Reading capture.mjs's source is the correct tool here and not a proxy: the thing being asserted is
+// that one particular script calls one particular hook in one particular order. Executing capture.mjs
+// means launching a browser and a vite server, which is the harness itself, not a test of it.
+describe('capture: every gated frame is shot at a DECLARED clock phase', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+  const shotBody = (() => {
+    const at = cap.indexOf('async function shot(page, name)');
+    if (at === -1) return null;
+    const open = cap.indexOf('{', at);
+    let depth = 0;
+    for (let i = open; i < cap.length; i++) {
+      if (cap[i] === '{') depth++;
+      else if (cap[i] === '}' && --depth === 0) return cap.slice(open, i + 1);
+    }
+    return null;
+  })();
+
+  it('shot() pins the phase, and does it BEFORE the frame it will photograph is rendered', () => {
+    expect(shotBody, 'shot(page, name) not found — the single door was renamed').not.toBeNull();
+    const pinAt = shotBody.indexOf("'setCaptureFrame'");
+    const waitAt = shotBody.indexOf('await waitForStableFrame(');
+    const shotAt = shotBody.indexOf('await page.screenshot(');
+    expect(pinAt, 'shot() never pins the capture phase — the clock is free-running and the phase is whatever the machine drew').toBeGreaterThan(-1);
+    expect(pinAt, 'shot() pins the phase AFTER the stability wait, so the wait rendered the OLD phase').toBeLessThan(waitAt);
+    expect(pinAt, 'shot() pins the phase after the screenshot, which is too late to be in the picture').toBeLessThan(shotAt);
+  });
+
+  it('the phase is one named constant, not a literal repeated per call site', () => {
+    // A per-state phase is one more thing a baseline diff can disagree about for a reason nobody
+    // remembers. Anchored to the declaration, not to a number, so retuning the phase does not red this.
+    expect(cap).toMatch(/const CAPTURE_PHASE_FRAMES = \d+;/);
+    expect(shotBody).toContain('CAPTURE_PHASE_FRAMES');
+  });
+
+  it('the run reports the phase DENOMINATOR and fails on an undeclared one', () => {
+    // "Every frame was posed at t=1.5s" is a claim. A claim nothing counts is how this harness once
+    // reported a clean pass over 42% of a corpus it never examined.
+    // AND THE RECORDED PHASE MUST BE WHAT THE PAGE RETURNED, NOT WHAT WE ASKED FOR. Found by a mutation
+    // that stayed GREEN: this test originally asserted only that `phases.push(` existed, so replacing
+    // the recorded value with the constant we requested passed cleanly — a denominator that reports the
+    // request rather than the result, which is the "status pill nothing can falsify" defect wearing a
+    // count. The recorded value has to trace back to the awaited bridge call.
+    const push = shotBody.match(/phases\.push\(([^)]*)\)/);
+    expect(push, 'nothing records which frames were pinned').not.toBeNull();
+    expect(push[1], 'the recorded phase is the value we REQUESTED, not the one the page confirmed')
+      .not.toContain('CAPTURE_PHASE_FRAMES');
+    expect(push[1], 'the recorded phase does not reference the awaited result at all').toMatch(/\bphase\b/);
+    expect(shotBody.indexOf('const phase = await'), 'the recorded phase is not bound from an awaited call')
+      .toBeGreaterThan(-1);
+    expect(cap, 'the summary never prints how many frames were pinned').toMatch(/frames pinned at/);
+    const wrongBlock = cap.indexOf('UNDECLARED phase');
+    expect(wrongBlock, 'a frame shot at an unexpected phase is not reported').toBeGreaterThan(-1);
+    expect(cap.slice(wrongBlock, wrongBlock + 400), 'an undeclared phase is reported but does not fail the run').toContain('process.exitCode = 1');
+  });
+});

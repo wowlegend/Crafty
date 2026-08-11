@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './store/useGameStore';
 import { mobsQuery } from './ecs/world';
-import { isCaptureMode } from './devtest/captureMode';
+import { frameElapsed } from './devtest/captureClock.js';
 import { collectBendSources } from './game/grassBend.js';
 import { bladeTransform, bladeTint } from './game/grassVariation.js';
 
@@ -153,10 +153,16 @@ export const GrassWindDriver = React.memo(() => {
     const shader = grassMaterial.userData.shader;
     if (!shader) return; // material not compiled yet (no grass on screen)
 
-    // Dev capture-determinism: pin the wind-sway clock so the grass holds a frozen pose across
-    // capture runs (wall-clock elapsedTime differs run-to-run -> frame jitter, once the dominant
-    // ~3-4% self-diff on explore-night). Inert in normal gameplay.
-    shader.uniforms.time.value = isCaptureMode() ? 0 : state.clock.elapsedTime;
+    // PHASE C, FIRST CONVERSION: SUPPRESSION -> SUBSTITUTION. This used to pin the wind clock to a hard
+    // 0 under capture, because wall-clock elapsedTime differs run-to-run and the jitter was once the
+    // dominant ~3-4% self-diff on explore-night. That bought determinism by making the field hold a
+    // single pose forever -- and at t=0 the multi-frequency sway collapses to sin(offset)*0.12 +
+    // sin(offset*2)*0.06, so the two TIME frequencies (2.2 and 0.8) were multiplied by zero and every
+    // gated frame was blind to them. A regression in either was structurally uncatchable.
+    //
+    // `frameElapsed` keeps real play byte-identical and substitutes the DECLARED capture phase, so the
+    // baselines depict the wind at a stated 1.5 s instead of at a pose chosen to be cheap to reproduce.
+    shader.uniforms.time.value = frameElapsed(state.clock.elapsedTime);
 
     const slots = collectBendSources(useGameStore.getState().playerPosition, mobsQuery);
     const positions = shader.uniforms.entityPositions.value;

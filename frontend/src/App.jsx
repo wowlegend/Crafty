@@ -28,7 +28,7 @@ import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
-import { resetCaptureClock, stepCaptureFrames } from './devtest/captureClock.js';
+import { resetCaptureClock, stepCaptureFrames, captureFrameIndex, setCaptureFrame } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
 import { applyFusion } from './game/hybrids';
@@ -330,6 +330,15 @@ function GameApp({ experienceSystem }) {
     // eleven fixture hooks here call enterCaptureMode() without setting the mirror, so the clock steps
     // while the mirror says no.
     registerTestHook('stepCaptureFrames', (n) => stepCaptureFrames(n));
+    // READ the clock. A phase you cannot read is a phase you cannot assert, and the harness has to
+    // record the one it captured at -- "the frames depict t=1.5s" is a claim, and a claim nothing can
+    // falsify is how this repo has shipped green gates over frozen worlds.
+    registerTestHook('captureFrameIndex', () => captureFrameIndex());
+    // DECLARE the phase absolutely and hold it there. `stepCaptureFrames` advances by a delta, which is
+    // a declared phase only if you know where the clock already was -- and you do not, because the
+    // ticker climbs once per RENDERED frame. Measured on one machine, same schedule, two runs:
+    // [6,10,13,15,16] against [6,11,13,14,16]. This is the hook the capture harness actually drives.
+    registerTestHook('setCaptureFrame', (n) => setCaptureFrame(n));
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
       // CLEAR THE CHEST BOARD AT CAPTURE ENTRY. The initial-chest effect in useTreasureChests has `[]`

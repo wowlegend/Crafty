@@ -137,7 +137,27 @@ const fatalGl = [];
 const FATAL_GL_RE = /THREE\.WebGLProgram: Shader Error|WebGL context lost|CONTEXT_LOST_WEBGL|Error linking program|shader compilation/i;
 let captureStage = 'boot';
 
+/**
+ * THE DECLARED PHASE EVERY GATED FRAME IS SHOT AT. 90 frames x 1/60 s = 1.5 s of virtual time.
+ *
+ * Far enough in that a periodic animation is somewhere other than its start pose (a sway on a ~2.9 s
+ * period is past its first peak), and a round number a reviewer can hold. It is a CONSTANT and not a
+ * per-state parameter on purpose: a phase that varies by state is one more thing a baseline diff can
+ * disagree about for a reason nobody remembers.
+ */
+const CAPTURE_PHASE_FRAMES = 90;
+// One row per gated frame. This is the DENOMINATOR for the claim "the frames depict t=1.5s" — without
+// it, "step-then-shoot is wired" is exactly the kind of assertion this repo keeps shipping green over.
+const phases = [];
+
 async function shot(page, name) {
+  // PIN THE PHASE BEFORE THE PIXELS, and before the stability wait, because the wait is what renders
+  // the frames that paint the declared phase. Returns the frame actually set, or -1 when capture is off
+  // for this state (the menu shots) — recorded either way rather than assumed.
+  const phase = await page
+    .evaluate((n) => (window.__craftyTest && window.__craftyTest.call('setCaptureFrame', n)) ?? -1, CAPTURE_PHASE_FRAMES)
+    .catch(() => -1);
+  phases.push({ name, phase });
   await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
   // A LOST CONTEXT IS A BLANK OBJECT, NOT A BLANK FRAME — so it can sit far under the 6% gate and pass.
   // Checked at the one door every gated frame passes through, immediately before the pixels are written,
@@ -195,6 +215,7 @@ async function main() {
   // renders nothing at all. Either sits far under the 6% gate on most frames, so today it is a green gate
   // plus a printed warning nobody reads. These are fatal by definition: the frame does not depict the scene.
   fatalGl.length = 0;
+  phases.length = 0;
   captureStage = 'boot';
   let provenance = null;
   // detached: the vite child runs in its OWN process group so the finally can SIGKILL the whole group
@@ -725,6 +746,19 @@ async function main() {
   // reassignment runs under 'boot'). Excluding 'boot' here would make this check dead in exactly the
   // window where most gated frames are taken.
   const realFatalGl = dedupe(fatalGl);
+  // THE PHASE RECORD GOES TO DISK, NOT ONLY TO STDOUT. Learned the hard way on the first run that used
+  // it: `npm run test:visual` chains `capture.mjs && vitest`, npm buffers the first command's stdout,
+  // and the whole phase report vanished — so the one number proving the frames were posed was
+  // unreadable exactly when it was first needed. A denominator that lives only in a log is a
+  // denominator you will one day not have. `.capture-meta.json` is already the durable channel the
+  // freshness gate reads.
+  const phaseRecord = {
+    declared: CAPTURE_PHASE_FRAMES,
+    pinned: phases.filter((p) => p.phase === CAPTURE_PHASE_FRAMES).length,
+    offCapture: phases.filter((p) => p.phase === -1).map((p) => p.name),
+    undeclared: phases.filter((p) => p.phase !== CAPTURE_PHASE_FRAMES && p.phase !== -1),
+    total: phases.length,
+  };
   if (realWarns.length) {
     console.warn(`\n=== ${realWarns.length} console warning(s) during capture (non-fatal) ===`);
     for (const e of realWarns) console.warn(`  [@${e.stage}] ${e.msg}`);
@@ -736,7 +770,7 @@ async function main() {
     console.error('  green gate over frames that do not depict the scene.');
     for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, provenance }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, provenance, phase: phaseRecord }));
     return;
   }
   if (realCrashes.length) {
@@ -744,9 +778,21 @@ async function main() {
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
     // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, provenance }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, provenance, phase: phaseRecord }));
   } else {
     console.log('\nNo render crashes during capture.');
+    // THE PHASE DENOMINATOR. "Every frame was posed at t=1.5s" is a claim, and a claim nothing counts is
+    // how this harness previously reported a clean pass over 42% of a corpus it never examined. Print
+    // what was actually pinned, and fail loud when a frame was shot at a phase nobody declared.
+    console.log(
+      `phase: ${phaseRecord.pinned}/${phaseRecord.total} frames pinned at ${CAPTURE_PHASE_FRAMES} ` +
+      `(${(CAPTURE_PHASE_FRAMES / 60).toFixed(2)}s virtual); ${phaseRecord.offCapture.length} shot outside capture mode`
+    );
+    if (phaseRecord.undeclared.length) {
+      console.error(`\n✘ capture: ${phaseRecord.undeclared.length} frame(s) were shot at an UNDECLARED phase:`);
+      for (const p of phaseRecord.undeclared) console.error(`    ${p.name} -> ${p.phase}`);
+      process.exitCode = 1;
+    }
     if (subjectFailures.length) {
       console.error(`\n\u2718 capture: ${subjectFailures.length} state(s) had NO SUBJECT and were SKIPPED:`);
       for (const f of subjectFailures) console.error(`    ${f}`);
@@ -754,7 +800,7 @@ async function main() {
       process.exitCode = 1;
     }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, provenance }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, provenance, phase: phaseRecord }));
   }
 }
 // RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns

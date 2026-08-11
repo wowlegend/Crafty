@@ -8,6 +8,8 @@ import {
   captureElapsed,
   captureFrameIndex,
   stepCaptureFrames,
+  setCaptureFrame,
+  frameElapsed,
 } from '../../src/devtest/captureClock.js';
 
 // PHASE C — the missing half of capture determinism.
@@ -236,5 +238,119 @@ describe('stepCaptureFrames — reports what it actually did', () => {
     enterCaptureMode();
     expect(stepCaptureFrames(2.9)).toBe(2);
     expect(captureFrameIndex()).toBe(2);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// setCaptureFrame — A COMMANDED CLOCK, because a free-running one does not deliver a declared phase.
+//
+// THE DEFECT THIS FIXES, MEASURED RATHER THAN REASONED. advanceCaptureFrame runs from CaptureClockTicker
+// inside every <Canvas>, so under capture the clock ticks once per RENDERED frame. The harness then waits
+// wall-clock time before each shot, and SwiftShader renders at roughly 1 fps -- so the phase a frame is
+// captured at is however many frames the machine happened to draw, not a number anyone declared. Probed
+// on ONE machine, identical code, identical schedule, five sample points, two runs:
+//
+//     run 1: [6, 10, 13, 15, 16]
+//     run 2: [6, 11, 13, 14, 16]
+//
+// Two of five diverge on the same box; across machines of different speed the spread is unbounded. That
+// is precisely the run-dependent phase the clock was built to remove, reproduced one level up. It is
+// LATENT today only because nothing reads the clock yet -- and it goes live with the first subsystem
+// converted from suppression to substitution, which is the next unit of work.
+//
+// AND THE SECOND REASON, which is the one that makes freezing necessary rather than merely tidy: the
+// harness photographs a frame only after waitForStableFrame reports two consecutive identical frames. A
+// world animating off a free-running clock never produces two identical frames, so a stability wait and
+// a free-running clock cannot both be satisfied. The world must be STILL at the declared phase to be
+// photographable at all.
+describe('setCaptureFrame — the phase is declared, not emergent', () => {
+  beforeEach(() => { exitCaptureMode(); resetCaptureClock(); });
+  afterEach(() => exitCaptureMode());
+
+  it('sets an ABSOLUTE index, not a relative one', () => {
+    enterCaptureMode();
+    stepCaptureFrames(7);
+    expect(setCaptureFrame(90), 'it returned something other than the frame it set').toBe(90);
+    expect(captureFrameIndex(), 'setCaptureFrame ADDED to the clock instead of setting it').toBe(90);
+    // Idempotent by construction: calling it twice must land on the same phase, which a relative
+    // implementation cannot do.
+    setCaptureFrame(90);
+    expect(captureFrameIndex()).toBe(90);
+  });
+
+  it('FREEZES the clock, so the declared phase survives every frame rendered after it', () => {
+    enterCaptureMode();
+    setCaptureFrame(90);
+    for (let i = 0; i < 5; i++) advanceCaptureFrame({ currentTime: 1000 + i });
+    expect(
+      captureFrameIndex(),
+      'the ticker walked the clock off the declared phase -- the shot would be taken somewhere else'
+    ).toBe(90);
+    expect(captureElapsed()).toBeCloseTo(90 * CAPTURE_DT, 10);
+  });
+
+  it('resetCaptureClock THAWS it — a later state must be free to tick again', () => {
+    enterCaptureMode();
+    setCaptureFrame(90);
+    resetCaptureClock();
+    expect(captureFrameIndex(), 'the reset did not return to frame 0').toBe(0);
+    advanceCaptureFrame({ currentTime: 5000 });
+    expect(captureFrameIndex(), 'the clock stayed frozen through a reset — every later state would be stuck').toBe(1);
+  });
+
+  it('rejects a negative or non-finite phase instead of corrupting the counter', () => {
+    enterCaptureMode();
+    setCaptureFrame(40);
+    for (const bad of [-1, NaN, Infinity, undefined, null, '90', {}]) {
+      expect(setCaptureFrame(bad), `${String(bad)} was accepted as a phase`).toBe(-1);
+    }
+    expect(captureFrameIndex(), 'a rejected phase still moved the clock').toBe(40);
+  });
+
+  it('is a NO-OP outside capture, checked from INSIDE capture so the assertion can fail', () => {
+    // The vacuity trap this file has already been bitten by once: captureFrameIndex() returns 0 outside
+    // capture whatever the counter holds, so asserting 0 out here passes with the guard deleted. Re-enter
+    // capture to read the real counter.
+    expect(setCaptureFrame(90)).toBe(-1);
+    enterCaptureMode();
+    expect(captureFrameIndex(), 'it moved the clock while capture was off').toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// frameElapsed — THE SEAM EVERY SUPPRESSION->SUBSTITUTION CONVERSION GOES THROUGH.
+//
+// The conversion is always the same shape: a useFrame reads `state.clock.elapsedTime`, and under capture
+// the site either freezes it to a constant or early-returns. Both make the gated frame depict a world
+// that is not moving. Substituting means reading the DECLARED phase instead — and doing that inline at
+// each site would spread `isCaptureMode() ? ... : ...` across dozens of files, where each copy is one
+// more place to write the ternary backwards.
+//
+// One function, one test, and every converted site inherits both.
+describe('frameElapsed — a drop-in for state.clock.elapsedTime', () => {
+  beforeEach(() => { exitCaptureMode(); resetCaptureClock(); });
+  afterEach(() => exitCaptureMode());
+
+  it('passes real clock time straight through outside capture', () => {
+    // The direction that matters most: a converted site must be EXACTLY as it was during real play.
+    expect(frameElapsed(12.5)).toBe(12.5);
+    expect(frameElapsed(0)).toBe(0);
+  });
+
+  it('returns the DECLARED phase under capture, ignoring the real clock entirely', () => {
+    enterCaptureMode();
+    setCaptureFrame(90);
+    expect(frameElapsed(12.5), 'it let the real clock through under capture').toBeCloseTo(90 * CAPTURE_DT, 10);
+    // And it must not be reading its own argument as a fallback when the phase happens to be 0.
+    resetCaptureClock();
+    expect(frameElapsed(12.5)).toBe(0);
+  });
+
+  it('holds still once the phase is pinned — the property the screenshot depends on', () => {
+    enterCaptureMode();
+    setCaptureFrame(90);
+    const a = frameElapsed(1);
+    for (let i = 0; i < 5; i++) advanceCaptureFrame({ currentTime: 2000 + i });
+    expect(frameElapsed(99), 'the time moved between two rendered frames, so no two frames can match').toBe(a);
   });
 });

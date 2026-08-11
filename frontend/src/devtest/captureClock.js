@@ -27,6 +27,7 @@ export const CAPTURE_DT = 1 / 60;
 
 let _frame = 0;
 let _lastTick = null; // last animation-frame token seen — see advanceCaptureFrame
+let _frozen = false; // set by setCaptureFrame — see the comment on that function
 
 /**
  * Advance one frame. Call EXACTLY ONCE per rendered frame, from the root of the render loop, before any
@@ -34,6 +35,10 @@ let _lastTick = null; // last animation-frame token seen — see advanceCaptureF
  */
 export function advanceCaptureFrame(timeline = typeof document !== 'undefined' ? document.timeline : null) {
   if (!isCaptureMode()) return;
+  // FROZEN MEANS FROZEN. Once the harness has declared the phase it is about to photograph, no further
+  // rendered frame may move the world off it — otherwise the declared phase is a suggestion and the
+  // captured one is still whatever the machine drew. See setCaptureFrame.
+  if (_frozen) return;
   // ONE TICK PER ANIMATION FRAME, NOT PER CANVAS. This app mounts more than one R3F Canvas —
   // TitleDiorama for the `menu` frame, GameScene for the world — each with its own render loop. Letting
   // both advance would cost 2 ticks per frame, and because the diorama is `React.lazy`, the RATE would
@@ -59,6 +64,39 @@ export function advanceCaptureFrame(timeline = typeof document !== 'undefined' ?
 export function resetCaptureClock() {
   _frame = 0;
   _lastTick = null; // else the first advance after a reset is swallowed as a duplicate
+  _frozen = false; // and THAW — a state that inherited the previous state's freeze could never tick
+}
+
+/**
+ * DECLARE the phase, absolutely, and hold it. Returns the frame set, or -1 if it refused.
+ *
+ * `stepCaptureFrames` advances by a delta, which is only a declared phase if you know where the clock
+ * already was — and you do not. `advanceCaptureFrame` runs from `CaptureClockTicker` inside every
+ * <Canvas>, so the counter climbs once per RENDERED frame, and the harness waits wall-clock time before
+ * each shot on a renderer that manages about 1 fps. Measured on ONE machine, identical code, identical
+ * schedule, five sample points: run 1 read [6, 10, 13, 15, 16] and run 2 read [6, 11, 13, 14, 16]. Two
+ * of five diverged without leaving the box. So the phase was never declared; it was whatever got drawn.
+ *
+ * Setting an ABSOLUTE index makes the captured phase a constant a reviewer can read out of the harness,
+ * identical on a 120 Hz laptop and a CI runner.
+ *
+ * AND IT FREEZES, which is not tidiness but a requirement. The harness only photographs a frame after
+ * `waitForStableFrame` sees two consecutive IDENTICAL frames. A world animating off a still-ticking
+ * clock never produces two identical frames, so a stability wait and a free-running clock cannot both be
+ * satisfied — the world has to be still at the declared phase to be photographable twice. `resetCaptureClock`
+ * thaws, so the next captured state is free to tick again before it too is pinned.
+ *
+ * Refuses a negative or non-finite phase rather than corrupting the counter, and returns -1 so a caller
+ * cannot read a rejection as a successful pose — the failure mode `stepCaptureFrames` was already fixed for.
+ *
+ * @param {number} n  the whole frame index to hold
+ */
+export function setCaptureFrame(n) {
+  if (!isCaptureMode()) return -1;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return -1;
+  _frame = Math.floor(n);
+  _frozen = true;
+  return _frame;
 }
 
 /**
@@ -113,4 +151,20 @@ export function captureNow() {
 /** SECONDS, as a drop-in for R3F's `state.clock.elapsedTime`. */
 export function captureElapsed() {
   return isCaptureMode() ? _frame * CAPTURE_DT : performance.now() / 1000;
+}
+
+/**
+ * THE SEAM EVERY SUPPRESSION->SUBSTITUTION CONVERSION GOES THROUGH. Pass a `useFrame` callback's
+ * `state.clock.elapsedTime`; get it back untouched in real play, and the DECLARED capture phase under
+ * capture.
+ *
+ * Every conversion has the same shape — a site reads `state.clock.elapsedTime`, and under capture either
+ * freezes it to a constant or early-returns, so the gated frame depicts a world that is not moving.
+ * Doing the substitution inline would spread `isCaptureMode() ? captureElapsed() : elapsed` across dozens
+ * of files, each copy another chance to write the ternary backwards. This differs from `captureElapsed`
+ * in the branch that matters: `captureElapsed` invents a wall-clock reading outside capture, which is the
+ * wrong number for a site that already has R3F's clock in hand.
+ */
+export function frameElapsed(clockElapsed) {
+  return isCaptureMode() ? _frame * CAPTURE_DT : clockElapsed;
 }
