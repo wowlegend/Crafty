@@ -1033,7 +1033,15 @@ export const useGameStore = create((set, get) => ({
                 // S2a: restore the quest/achievement mirror (tolerate pre-questState
                 // saves by falling back) and bump the resync tick so useQuestSystem
                 // re-seeds its local working state from the loaded snapshot.
-                questState: saveData.questState ?? state.questState,
+                // PRESENCE test, not `??`. The two callers need opposite merge semantics through this
+                // one function: loading an older save must tolerate a MISSING key (forward compat), while
+                // startNewWorld — which is deliberately "load a save built from the INITIAL state" —
+                // must force the reset. buildSaveData writes `questState: state.questState || null`, so a
+                // fresh reset save carries the key PRESENT with value null, and `null ?? state.questState`
+                // kept the OLD world's completed quests and achievements in the new one.
+                questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
+                    ? saveData.questState
+                    : state.questState,
                 questLoadedAt: (state.questLoadedAt || 0) + 1,
             };
         });
