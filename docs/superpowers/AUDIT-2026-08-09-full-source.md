@@ -339,7 +339,7 @@ REFUTATION FAILED, including the one route the auditor did not name. (1) `enterC
 
 REFUTATION FAILED. I enumerated every writer of `hoveredItem` in the Inventory component: the bag-tile div (GamePanels.jsx:381 onMouseEnter / 382 onMouseLeave) and `PaperDollSlot`'s onHover (lines 58-59, wired via `onHover={setHoveredItem}` at 281+). Both null it on leave; there is no sticky/selected mirror (I read lines 184-232 and 360-440 — `hoveredItem` is the sole inspector state, no `selectedItem`). The Equip Button (423-432) is a sibling OUTSIDE both, separated by `mt-3`, so no pointer path is over a tile and over the button at once, and mouseleave→setState commits before the pointer arrives. Checked the keyboard escape hatch: `Button` (src/ui/primitives/Button.jsx:29-30) spreads `...props` onto a native `<button>`, so `disabled` really lands, and its class string includes `disabled:pointer-events-none` (line 14) — a disabled native button is neither clickable nor tab-focusable. Checked whether a test proves it works: `grep -rn 'hoveredItem|handleEquip|ui.equip' src tests` finds no test touching it at all (only PrimitivesShowcase.jsx:301 uses the string), so nothing contradicts this. The defect is silent because the tile's own onClick (383-390) already equips — the CTA is redundant as well as unreachable.
 
-### ▢ `src/ui/panels/CraftingTable.jsx:32` — correctness
+### ▣✓ c832ca5 `src/ui/panels/CraftingTable.jsx:32` — correctness
 
 **Crafting-grid escrow is reconciled only on React unmount, while the place-time material debit is persisted by the autosave path — so a save written mid-crafting records the debit without the escrow.**
 
@@ -467,7 +467,7 @@ CONFIRMED VERBATIM AND I COULD NOT MAKE IT MATTER. Lines 26-28 read exactly `con
 
 THE DEAD-CODE CLAIM SURVIVES, THE STATED CONSEQUENCE DOES NOT. Grep of frontend/src + scripts + tests for `_phase` / `probePhase` / `setProbePhase` returns exactly five lines: the declaration (perfProbe.js:10), the setter (:35), and the three writes in PerfProbeRunner.jsx (:43 'settling', :60 'sampling', :94 'done'). No getter is exported and no reader exists — this is genuinely write-only state that eslint cannot see (module-scope `let` assigned through an exported setter). BUT the failure scenario is refuted: 'the measured frame deltas include whatever that gating was supposed to exclude' is false. PerfProbeRunner sequences the phases IMPERATIVELY, not by consulting the flag — it awaits SETTLE_MS (:57) and only then enters the rAF loop that pushes deltas (:73-92), and then drops the settle-boundary delta with `frameStats(deltas.slice(1))` (:99). No sample is contaminated. So this is a zero-impact leftover variable, correctly identified but cosmetic — 'delete it and nothing observable changes' is the whole of the finding, and that part is true.
 
-### ▢ `src/game/a11y.js:7` — correctness
+### ▣✓ c832ca5 `src/game/a11y.js:7` — correctness
 
 **motionIntensity's userScale seam is never exercised in production — the only caller passes the literal 1, so an OS reduced-motion OFF transition overwrites (and re-persists) the player's Feedback Intensity at 100%.**
 
@@ -641,7 +641,7 @@ REFUTATION FAILED on the mechanism; CONFIRMED LATENT on the impact (which the fi
 
 REFUTATION FAILED on the mechanism and on the paint path; ONE SUB-CLAIM REFUTED. Confirmed: guard at line 21 inside a `[]`-dep useEffect, interval body (22-32) unguarded, contrasted correctly with `useDayNightClock`, which reads `isCaptureMode()` INSIDE its tick. Arithmetic checks out: dayPhase.js:19-23 fires at `halfCycleFraction >= 0.82`, dayNight.js:13 HALF_CYCLE_UNITS = 600 (so 492 units) and line 26 GAME_UNITS_PER_SECOND = 4 (so ~123 s). The paint path is real for the toast: `NotificationStack` (QuestSystem.jsx:540) has NO capture guard, and it is mounted unconditionally in HUD.jsx:596. REFUTED SUB-CLAIM: the CombatLog half is wrong — src/ui/CombatLog.jsx:23 is `if (isCaptureMode()) return null;`, a render-time check that a new notification re-triggers, so the log cannot paint under capture. Latency confirmed independently of the finding's argument: capture.mjs only ever pins the clock via `setTimeOfDay(0.5)` -> gameTime 600 (halfCycleFraction 0) or `setTimeOfDay(0.0)` -> gameTime 0 with isDay false, so no fixture lands in the 492-599 dusk window, and the pre-capture free-run window is 1.7-10.4 s (~7-42 units). Real, latent, low — and the file's stated justification ('the clock is frozen under capture so the edge never occurs anyway') holds only because a different module guards correctly.
 
-### ▢ `src/ui/panels/CraftingTable.jsx:116` — silent-failure
+### ▣✓ c832ca5 `src/ui/panels/CraftingTable.jsx:116` — silent-failure
 
 **Grid cells and the mini-inventory paint a raw BLOCK_TYPES swatch instead of the already-imported ItemIcon, so every item-name recipe token collapses to one generic gray square.**
 
