@@ -114,6 +114,39 @@ if (isCli) {
     if (lost > 0) errors.push(`${lost} canvas/canvases have a LOST WebGL context`);
 
     console.log(`prod-smoke: booted, ${frames} frames in 4s, ${lost} lost context(s)`);
+
+    // SETTINGS PERSISTENCE — a PRODUCTION-ONLY defect, which is why it belongs here and nowhere else.
+    // `initSettingsPersistence` used to be the last statement of the DEV-only test-bridge effect, behind
+    // `if (!import.meta.env.DEV) return;`. So in the build Vercel ships, settings never hydrated and never
+    // persisted — while the dev server, the capture harness and the e2e suite all run with DEV true and
+    // saw it working. No unit test can see this: the difference IS the build.
+    const persistence = await page.evaluate(async () => {
+      const KEY = 'crafty_settings';
+      if (typeof window.useGameStore !== 'function') return { ok: false, why: 'no window.useGameStore in the prod bundle' };
+      try { localStorage.removeItem(KEY); } catch { return { ok: false, why: 'localStorage unavailable' }; }
+      const before = localStorage.getItem(KEY);
+      // Drive a real, player-editable setting through the real store, as the Settings panel does.
+      const start = window.useGameStore.getState().sfxVolume;
+      const next = start === 0.42 ? 0.24 : 0.42;
+      window.useGameStore.getState().setSfxVolume?.(next);
+      await new Promise((r) => setTimeout(r, 400)); // the subscriber writes on change
+      const after = localStorage.getItem(KEY);
+      return { ok: true, before, after, next, wrote: after !== null };
+    });
+
+    if (!persistence.ok) {
+      errors.push(`settings persistence unverifiable: ${persistence.why}`);
+    } else if (persistence.before !== null) {
+      // Instrument check: the key must start absent or the "it appeared" reading is meaningless.
+      errors.push('settings key was already present before the write — the round-trip proves nothing');
+    } else if (!persistence.wrote) {
+      errors.push(
+        'changing a setting wrote NOTHING to localStorage in the production bundle — ' +
+          'settings do not persist for real players'
+      );
+    } else {
+      console.log(`prod-smoke: settings persisted in prod (sfxVolume -> ${persistence.next})`);
+    }
   } catch (e) {
     errors.push(`threw: ${e && e.message ? e.message : e}`);
   } finally {

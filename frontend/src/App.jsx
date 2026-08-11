@@ -205,6 +205,16 @@ function GameApp({ experienceSystem }) {
     useGameStore.getState().setQualityTier(selectTier(readDeviceSignals()));
   }, []);
 
+  // M6 settings-persistence: hydrate audio/feedback/look prefs from localStorage + persist on change.
+  // ITS OWN EFFECT, and that is the fix. This call used to be the last statement of the DEV-only
+  // test-bridge effect, behind `if (!import.meta.env.DEV) return;` — so in the build Vercel actually
+  // ships, settings never hydrated and never persisted. Invisible everywhere the repo looks: the dev
+  // server, the capture harness and the e2e suite all run with DEV true, where it works fine.
+  // Returning the unsubscribe so React uses it as cleanup; it was previously discarded, leaking the
+  // store subscription on unmount. Capture-guarded inside settingsPersist, so the visual harness still
+  // never touches localStorage.
+  useEffect(() => initSettingsPersistence(useGameStore, isCaptureMode), []);
+
   // Local-first autosave: debounce on progression/world TRANSITIONS, flush on tab-hide/close.
   useEffect(() => {
     const autosave = createAutosave({
@@ -805,9 +815,6 @@ function GameApp({ experienceSystem }) {
       setShowAchievements?.(true);
     });
     installTestBridge();
-    // M6 settings-persistence: hydrate audio/feedback/look prefs from localStorage + persist on change.
-    // Capture-guarded inside (the visual harness never touches localStorage -> deterministic baselines).
-    initSettingsPersistence(useGameStore, isCaptureMode);
   }, []);
 
   // Swallow the benign ResizeObserver loop errors some browsers emit (a harmless warning, not a real

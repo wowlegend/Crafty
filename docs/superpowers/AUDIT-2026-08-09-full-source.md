@@ -20,7 +20,7 @@ finding rather than simply endorsing it.
 
 ## HIGH (24)
 
-### ▢ `src/App.jsx:810` — dead-on-arrival
+### ▣✓ PENDING `src/App.jsx:810` — dead-on-arrival
 
 **initSettingsPersistence() is the last statement inside the DEV-only test-bridge effect, so settings persistence never runs in a production build.**
 
