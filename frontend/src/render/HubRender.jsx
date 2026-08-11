@@ -1,13 +1,17 @@
 import React from 'react';
-import { Cube, Emissive } from './mascots/voxelKit';
-import { isCaptureMode } from '../devtest/captureMode';
+import { Cube } from './mascots/voxelKit';
+import { CaptureNullGlow } from './captureGlow.jsx';
 import { HUB_BUILDINGS } from '../world/hubLayout.js';
 import { HEARTH_Y } from '../world/homeAnchor.js';
 
 // W3 M-HUB — the Hearth's frontier-outpost buildings (forge / stall / watchtower / cabin) ringing the
 // raised plinth, built from voxelKit Cube/Emissive so they share the locked toon art direction (NOT
 // PBR). Modelled on HomeAnchorRender (Terrain.jsx) — same HEARTH_TOP base + capture-null glow. The
-// glow (forge fire / lookout lantern) self-nulls under isCaptureMode so the deterministic baselines
+// glow (forge fire / lookout lantern) self-nulls under isCaptureMode via CaptureNullGlow, which writes
+// `visible` every FRAME. It used to be a render-body `{!isCaptureMode() && ...}`, which made the guard a
+// function of when React last rendered these static prop-less buildings — mounted long before the
+// harness flips the flag, so they rendered once with it false and the glow shipped into the baselines
+// the guard existed to keep it out of. So the deterministic baselines
 // only change by the static building geometry (a deliberate `hearth` re-baseline).
 // Render base = HEARTH_Y + 0.5 (the plinth cap surface), imported from homeAnchor.js as the SINGLE
 // source of truth. (W2-T7 flushed the pad HEARTH_Y 56->51 but Terrain.jsx's old hard-coded HEARTH_TOP=56
@@ -22,7 +26,7 @@ function Forge() {
       <Cube position={[0, 0.4, 0]} size={[3.4, 0.8, 3.0]} color={PAL.stone} castShadow={false} />
       <Cube position={[0, 1.4, -0.4]} size={[2.4, 1.6, 1.6]} color={PAL.dark} castShadow={false} />
       <Cube position={[0, 2.6, -0.4]} size={[0.7, 1.0, 0.7]} color={PAL.iron} castShadow={false} />{/* chimney */}
-      {!isCaptureMode() && <Emissive position={[0, 1.0, 0.8]} size={0.4} color="#FF7A1A" intensity={2.6} />}{/* forge fire */}
+      <CaptureNullGlow position={[0, 1.0, 0.8]} size={0.4} color="#FF7A1A" intensity={2.6} />{/* forge fire */}
     </group>
   );
 }
@@ -42,7 +46,7 @@ function Watchtower() {
       <Cube position={[0, 3.0, 0]} size={[2.2, 6.0, 2.2]} color={PAL.wood} castShadow={false} />
       <Cube position={[0, 6.3, 0]} size={[2.8, 0.6, 2.8]} color={PAL.stone} castShadow={false} />{/* platform */}
       <Cube position={[0, 7.0, 0]} size={[2.4, 0.8, 2.4]} color={PAL.roof} castShadow={false} />{/* roof */}
-      {!isCaptureMode() && <Emissive position={[0, 6.8, 0]} size={0.5} color="#F5D76E" intensity={2.2} />}{/* lookout lantern */}
+      <CaptureNullGlow position={[0, 6.8, 0]} size={0.5} color="#F5D76E" intensity={2.2} />{/* lookout lantern */}
     </group>
   );
 }

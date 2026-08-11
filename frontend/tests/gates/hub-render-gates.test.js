@@ -16,15 +16,27 @@ describe('hub render gates', () => {
   it('iterates HUB_BUILDINGS (the deterministic layout)', () => {
     expect(hub).toMatch(/HUB_BUILDINGS/);
   });
-  it('EVERY glow self-nulls under capture (per-Emissive, not just once anywhere)', () => {
-    // HubRender HAS glows (forge fire + lookout lantern); each must be `!isCaptureMode() && <Emissive>`
-    // so none leaks into a deterministic baseline. MUTATION-PROOF: add an UNguarded <Emissive> and the
-    // count-match goes RED (the old `if (includes) toMatch(/!isCaptureMode/)` stayed green — it only
-    // needed the guard string to appear once, and was vacuous if Emissive were removed entirely).
-    const emissives = hub.match(/<Emissive\b/g) || [];
-    expect(emissives.length).toBeGreaterThan(0);
-    const guarded = hub.match(/!isCaptureMode\(\)\s*&&\s*<Emissive\b/g) || [];
-    expect(guarded.length).toBe(emissives.length);
+  it('EVERY glow is frame-driven — no render-body capture guard survives here', () => {
+    // THIS ASSERTION WAS REPLACED 2026-08-11, and the reason is the point.
+    //
+    // It used to require `!isCaptureMode() && <Emissive>` per glow, and it was GREEN for the entire life
+    // of the defect it was written to prevent. `isCaptureMode()` is a mutable module-level flag with no
+    // subscription channel, so a render-body read only re-evaluates when something re-renders that
+    // component — and these buildings are static: no props, nothing above them changing, mounted long
+    // before the harness flips the flag. They rendered once with it false and the forge fire and lookout
+    // lantern shipped straight into the deterministic baselines.
+    //
+    // So the old gate asserted the presence of the exact pattern that does not work. It checked the text
+    // and never the behaviour, which is this repo's signature failure. The replacement requires the
+    // frame-driven component instead, and the BEHAVIOUR is covered by
+    // tests/gates/capture-glow-gates.test.jsx, which drives frames and asserts visibility tracks the flag.
+    const glows = hub.match(/<CaptureNullGlow\b/g) || [];
+    expect(glows.length, 'HubRender has no glows at all — this gate would then be vacuous').toBeGreaterThan(0);
+
+    // No bare Emissive: it would carry no capture behaviour of its own.
+    expect(hub, 'a bare <Emissive> is back in HubRender — it has no capture guard').not.toMatch(/<Emissive\b/);
+    // And no render-body guard, the shape that silently failed.
+    expect(hub, 'a render-body isCaptureMode() guard is back — it does not re-evaluate here').not.toMatch(/!isCaptureMode\(\)\s*&&/);
   });
   it('Terrain.jsx mounts HubRender next to HomeAnchorRender', () => {
     const terrain = read('world/Terrain.jsx');
