@@ -26,6 +26,7 @@ import { HubRender } from '../render/HubRender';
 import { HEARTH_Y } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
 import { idForBlock, blockForId } from './blockIds';
+import { buildFootprint } from '../game/buildFootprint.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -878,7 +879,6 @@ export const MinecraftWorld = React.memo(() => {
             // B3c: placement costs the block in SURVIVAL (creative stays free). consumeForPlacement is the
             // ONE decision point + debit (shared removeFromInventory writer); false = refuse. Placing was
             // free while mining granted +1 -> an infinite-material loop that gutted the economy.
-            if (!store.consumeForPlacement(type)) return;
             // PLACE
             const placeDirection = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().multiplyScalar(-1);
             const placePos = h.hitPoint.clone().add(placeDirection.multiplyScalar(0.01));
@@ -886,13 +886,30 @@ export const MinecraftWorld = React.memo(() => {
             const ty = Math.floor(placePos.y);
             const tz = Math.floor(placePos.z);
 
-            const cx = Math.floor(tx / CHUNK_SIZE);
-            const cz = Math.floor(tz / CHUNK_SIZE);
-            const lx = tx - cx * CHUNK_SIZE;
-            const lz = tz - cz * CHUNK_SIZE;
+            // MULTI-BLOCK BUILD (Building Tools). The panel wrote buildingMode/buildSize into the store and
+            // nothing read them, so every mode placed one block. Transient getState reads — not a
+            // subscription — so Game-Loop-Isolation holds. buildFootprint caps the cell count at 64; see
+            // its header for why the cap is an ECONOMY decision, given the per-block debit below.
+            const cells = buildFootprint(store.buildingMode || 'single', store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
 
-            worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: numericType } });
-            // S2-B4-M2: placing banks MORE than digging (the build-verb economy)
+            const newBlocks = new Map(store.worldBlocks);
+            let placed = 0;
+            for (const c of cells) {
+                // The debit is PER CELL and is the stop condition: run out of material part-way and the
+                // action places what it could afford rather than refusing or going free. Placing was once
+                // free while mining granted +1, which gutted the economy — that must not come back through
+                // a multi-block door.
+                if (!store.consumeForPlacement(type)) break;
+                const cx = Math.floor(c.x / CHUNK_SIZE);
+                const cz = Math.floor(c.z / CHUNK_SIZE);
+                worker.postMessage({ type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: numericType } });
+                newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
+                placed++;
+            }
+            if (placed === 0) return; // could not afford even one cell — no sound, no puff, no bank
+
+            // ONCE PER ACTION, not per cell: sixty-four resonance ticks and sixty-four place sounds from a
+            // single click would be an economy exploit and an audio pile-up.
             if (store.isDay) store.accrueResonance(PLACE_GAIN);
             playBlockPlace(placePos, useGameStore.getState().selectedBlock);
             // next-levers #1b: a gentle PLACE PUFF — colored dust at the placed block (break shatters into
@@ -901,10 +918,7 @@ export const MinecraftWorld = React.memo(() => {
             const puffColor = (BLOCK_TYPES[type] && BLOCK_TYPES[type].color) || '#cccccc';
             store.triggerGPUSparks?.(placePos, puffColor, 6, 'physical');
 
-            // Update worldBlocks in Zustand Map
-            const newBlocks = new Map(store.worldBlocks);
-            newBlocks.set(`${tx}_${ty}_${tz}`, numericType);
-            store.setWorldBlocks(newBlocks);
+            store.setWorldBlocks(newBlocks); // built across the footprint loop above
 
             // Initialize chest in Zustand Map
             if (type === 'chest') {

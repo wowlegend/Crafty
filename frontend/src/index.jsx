@@ -54,11 +54,20 @@ import './theme/fonts.css';
 import { applyThemeVars } from './theme/cssVars.js';
 import App from './App';
 import { useGameStore } from './store/useGameStore';
+import { GameMethods } from './GameMethods';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
 if (typeof window !== 'undefined') {
   window.useGameStore = useGameStore;
+  // DEV-only: the terrain verbs (mine/place/open) and the build raycasts live on GameMethods, a plain
+  // module object Terrain populates on mount. Exposing it here lets an E2E drive the REAL verb closures
+  // the mouse router calls, rather than a re-implementation — the same reason window.useGameStore and
+  // window.__craftyTest exist. Added 2026-08-11 because no E2E had ever placed a block, in a game whose
+  // core loop is build-by-day / survive-by-night, which is how an inert Building Tools panel survived on
+  // four advertised entry surfaces. `import.meta.env.DEV` is statically false in prod, so this is
+  // tree-shaken out of the shipped bundle.
+  if (import.meta.env.DEV) window.GameMethods = GameMethods;
 }
 
 class ErrorBoundary extends React.Component {
