@@ -141,4 +141,10 @@ export const TW_SCALES = {
   ),
   boxShadow: { 'elev-sm': UI.elevation.sm, 'elev-md': UI.elevation.md, 'elev-lg': UI.elevation.lg, 'elev-xl': UI.elevation.xl },
   zIndex: Object.fromEntries(Object.entries(UI.z).map(([k, v]) => [k.replace(/([A-Z])/g, '-$1').toLowerCase(), String(v)])),
+  // WIRED 2026-08-11. UI.motion had no consumer in src at all -- it was read only by a test assertion --
+  // so the duration and easing scale this file declares as the source of truth reached nothing that
+  // renders. Unlike the two groups deleted from tokens.js, motion is worth having centralized: a
+  // transition scale is exactly the kind of value that otherwise gets retyped per component.
+  transitionDuration: Object.fromEntries(Object.entries(UI.motion.duration).map(([k, v]) => [k, `${v}ms`])),
+  transitionTimingFunction: { ...UI.motion.easing },
 };

@@ -90,15 +90,15 @@ export const UI = {
     },
     // stat-row icon tints (comp)
     statIcon: { atk: '#FF8A5C', def: '#46E0FF', spd: '#7FE0A0', crit: '#FFE066' },
-    // neutral ramp (kept)
-    gray: {
-      g950: '#0B0E14', g900: '#11151F', g800: '#1A2030', g700: '#283149',
-      g500: '#5C6478', g300: '#9AA0AD', g100: '#D7DAE0', g50: '#F4F1E8',
-    },
   },
+  // `color.gray` (an 8-value neutral ramp, commented "kept") and `space` (a 5-value spacing scale) were
+  // DELETED 2026-08-11. Neither had a single consumer: gray was not even in COLOR_VARS, so unlike every
+  // sibling colour it was never emitted as a CSS var, and `space` reached neither TW_SCALES nor the
+  // Tailwind config while every component uses Tailwind's own spacing. A token that nothing reads is not
+  // a design system, it is a second opinion nobody consults -- and the whole point of this file is to be
+  // the ONE opinion. The gate in tokens-reach.test.js now fails on a new orphan.
   radius: { sm: 6, md: 10, lg: 14 },          // <=14 cap (§9)
   border: { chrome: 4, hairline: 1.5 },       // 4px ink everywhere; gold hairline accent
-  space:  { xs: 4, sm: 8, md: 14, lg: 22, xl: 36 },
   // hard offset shadows (blur 0, spread 0) — the bold-flat signature. The md value
   // is the locked `5px 5px 0 0 #0b0e14` recolored to the ink var.
   elevation: {

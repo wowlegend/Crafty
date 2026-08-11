@@ -89,6 +89,16 @@ module.exports = {
         'elev-xl': 'var(--ui-elev-xl)',
       },
       zIndex: { 'scene': '1', 'hud': '100', 'panel': '200', 'modal': '300', 'toast': '400', 'tooltip': '500', 'dev-overlay': '9000' },
+      // MIRRORS TW_SCALES.transitionDuration / .transitionTimingFunction (src/theme/cssVars.js), which
+      // this CJS file cannot import. UI.motion had no consumer in src at all before 2026-08-11 -- the
+      // scale existed and nothing rendered with it. The deep-parity test in tests/theme is what keeps
+      // these two copies honest; for colours that test did not exist and the drift had already happened.
+      transitionDuration: { fast: '120ms', base: '200ms', slow: '320ms' },
+      transitionTimingFunction: {
+        standard: 'cubic-bezier(0.2, 0, 0, 1)',
+        emphasized: 'cubic-bezier(0.3, 0, 0, 1)',
+        exit: 'cubic-bezier(0.4, 0, 1, 1)',
+      },
       // M6 #6: `animate-fade-in` was referenced by 8 panels (Credits/Quest/Crafting/GamePanels) but NO
       // keyframe existed -> a silent no-op (panels popped in). A short 150ms opacity fade; it settles well
       // before the visual harness's 900ms capture delay, so the deterministic baselines stay byte-identical.
