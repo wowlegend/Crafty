@@ -18,11 +18,11 @@
 import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
+import { rollWander } from '../game/mobWander.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
 // its own module realm, so isCaptureMode() would read a separate binding that is permanently false.
-import { makeSeededRandom } from '../devtest/captureMode';
 
 // A* Voxel Pathfinding Solver on a 9x9 Local Grid
 // startX, startZ are the local starting grid coords (typically 4, 4)
@@ -172,7 +172,8 @@ self.onmessage = function(e) {
       const entity = mobs[i];
       let {
         id, passive, x, y, z, targetX, targetZ, isMoving, isAggro,
-        lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid
+        lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid,
+        wanderRoll,
       } = entity;
       let pendingAttack = null; // M2 #4: what this mob WOULD strike this tick (gated through the windup below)
       
@@ -360,19 +361,16 @@ self.onmessage = function(e) {
         isAggro = false;
         moveTimer -= delta;
         if (moveTimer <= 0) {
-          // PER-MOB stream, not a single shared one: mobs are processed in an order that can change
-          // between runs, and a shared sequence would desync the moment it did. Keying by id makes each
-          // mob's draw independent of when its turn came — the same reason captureMode uses per-key
-          // streams rather than one global seed.
-          const rnd = captureSeed == null ? Math.random : makeSeededRandom(`${captureSeed}:mob:${id}`);
-          moveTimer = 2 + rnd() * 4;
-          isMoving = rnd() > 0.3;
-          if (isMoving) {
-            const angle = rnd() * Math.PI * 2;
-            const distance = 3 + rnd() * 5;
-            targetX = x + Math.cos(angle) * distance;
-            targetZ = z + Math.sin(angle) * distance;
-          }
+          // The re-roll is a PURE function in game/mobWander.js. It lived here, and this file assigns
+          // self.onmessage at module scope, so importing it under vitest throws -- the logic was
+          // untestable and the bug (an identical sequence on every re-roll, i.e. one heading forever)
+          // survived exactly because every claim about it rested on reading it.
+          const w = rollWander({ id, x, z, wanderRoll, captureSeed });
+          moveTimer = w.moveTimer;
+          isMoving = w.isMoving;
+          targetX = w.targetX;
+          targetZ = w.targetZ;
+          wanderRoll = w.wanderRoll;
         }
       }
       
@@ -398,7 +396,8 @@ self.onmessage = function(e) {
       }
       
       updates.push({
-        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, windupUntil, moveTimer, isCoverSeeking
+        id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, windupUntil, moveTimer, isCoverSeeking,
+        wanderRoll
       });
     }
     

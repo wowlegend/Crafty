@@ -102,6 +102,7 @@ export const AIWorkerSystem = () => {
             entity.lastAttackTime = update.lastAttackTime;
             entity.windupUntil = update.windupUntil; // M2 #4: render reads this for the charge pose (slice 2)
             entity.moveTimer = update.moveTimer;
+            entity.wanderRoll = update.wanderRoll; // round-trips the seeded wander's roll counter
             entity.isCoverSeeking = update.isCoverSeeking;
 
             if (store.getMobGroundLevel) {
