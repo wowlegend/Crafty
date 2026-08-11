@@ -219,7 +219,7 @@ COULD NOT REFUTE. Confirmed: `decayTrauma` appears only in trauma.js:18 and src/
 
 One correction: `decayTrauma` is LINEAR (`trauma - rate*dt`) while the shipped decay is EXPONENTIAL, so dropping it in would change the feel curve, not merely fix the dt dependence — the curve-preserving fix is `trauma * Math.exp(-delta * k)`. 'decayTrauma is exactly the fix' is imprecise, but the defect (refresh-rate-dependent shake duration) stands.
 
-### ▢ `src/render/Atmosphere.jsx:42` — correctness
+### ▣✓ 694576f `src/render/Atmosphere.jsx:42` — correctness
 
 **Height-fog patch derives world Y from modelMatrix*transformed, omitting instanceMatrix, so instanced grass is fogged at full density at every altitude**
 
