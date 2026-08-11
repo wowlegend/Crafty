@@ -19,8 +19,15 @@
 
 ## 📍 THE CURSOR — 2026-08-11 · Phase C: the capture harness stops photographing a frozen world
 
-**THE ONE UNIT IN FLIGHT: wire step-then-shoot into `frontend/scripts/visual/capture.mjs`, then convert
-suppression to substitution subsystem by subsystem.**
+**✅ THE HARNESS HALF IS DONE (`ccebde0`).** The clock is COMMANDED, not free-running: `setCaptureFrame(n)`
+sets the phase absolutely and freezes it, `shot()` pins before the stability wait, and the run now reports
+its own denominator to stdout AND to `.capture-meta.json`. Live proof, not a green gate: a full capture
+reports **`phase: 31/31 frames pinned at 90 (1.50s virtual); 0 shot outside capture mode`**, and a browser
+probe found 74 grass chunk materials all carrying the declared time.
+
+**THE ONE UNIT IN FLIGHT: choose the remaining suppression->substitution conversions by MEASURED PIXEL
+DELTA, not by plausibility.** That instruction comes from the first conversion failing on exactly that
+axis, and it is the finding worth more than the wiring.
 
 **WHERE WE ARE.** The full-source audit queue is DRAINED — `docs/superpowers/AUDIT-2026-08-09-full-source.md`
 is 108 of 108 closed, zero open, every finding mutation-proven. Two findings that surfaced outside the 108
@@ -50,6 +57,16 @@ world is a harness that steps the clock to a declared frame before it shoots.
 it.** Step-then-shoot goes FIRST. SwiftShader renders at roughly 1 fps, so waiting wall-clock time advances
 the virtual world by almost nothing; un-suppressing a subsystem without stepping produces frames that are
 stable, still, and exactly as uninformative as the suppression they replaced.
+
+**WHAT THE FIRST CONVERSION TAUGHT, AND IT GOVERNS THE REST.** Grass wind was converted from a hard `0`
+to the declared phase. It works — 74 materials carry it — and it bought **almost nothing at the gate**:
+full capture against baseline reads explore-day 0.281%, ocean-coast 0.108%, explore-day-med 0.106%,
+everything else lower, against a **6%** threshold and an explore-day self-diff already measured at 0.210%.
+The blades move; the pixels do not move enough for the gate to resolve it, so a total regression of the
+wind model would still pass. **A subsystem is not worth converting because it moves, but because its
+motion moves pixels the threshold can see.** A global 6% threshold cannot resolve a small-amplitude,
+wide-area change — which is a finding about the GATE, and the strongest argument yet for region-scoped
+assertions on the frames that matter.
 
 **BUDGET HONESTLY.** Every conversion changes what a frame DEPICTS, so each owes a baseline re-capture;
 `baseline-trailer` forbids bundling that rewrite with the `src/` change that caused it, so it is two commits
