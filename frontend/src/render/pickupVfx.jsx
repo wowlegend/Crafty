@@ -15,6 +15,15 @@ export const XPOrbRender = React.memo(({ entity }) => {
   useFrame(() => {
     if (!meshRef.current) return;
     meshRef.current.position.copy(entity.position);
+    // A DECLARED RESTING POSE under capture, not an accumulating one. Both siblings in this file are
+    // explicitly capture-frozen and this one was not, so the orb's rotation kept integrating for however
+    // long the run took to reach the shot -- and capture is entered after a boot of run-dependent length,
+    // so the angle in the frame was a function of machine load. Zero rather than "wherever it got to":
+    // an early return would freeze it at a run-dependent angle, which is the same defect with extra steps.
+    if (isCaptureMode()) {
+      meshRef.current.rotation.set(0, 0, 0);
+      return;
+    }
     meshRef.current.rotation.x += 0.02;
     meshRef.current.rotation.y += 0.02;
   });

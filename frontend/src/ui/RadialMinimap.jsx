@@ -56,7 +56,14 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
     const id = setInterval(draw, 250); draw();
     return () => clearInterval(id);
   }, []);
-  if (isCaptureMode()) return null;
+  // NO EARLY RETURN. Returning null removed the minimap from EVERY baseline, so roughly a dozen
+  // HUD-bearing frames could not catch a regression in it at all -- and unlike TargetFrame this component
+  // draws unconditional content (rim, N tick, player dot, clamped HOME/shrine/blight arrows) that depends
+  // on no suppressed entity, so a declared resting render is real oracle coverage rather than noise. The
+  // 250ms redraw interval above is already deterministic under capture: it reads the pinned camera pose.
+  //
+  // This is the repo's own rule -- a capture guard RESETS to a declared value, it does not early-return --
+  // applied to a component that had been opting out of the oracle entirely.
   return (
     <div className={`absolute ${position} z-20 pointer-events-none`}>
       <Panel variant="base" className="overflow-hidden p-0 leading-none rounded-full" style={{ borderRadius: '50%' }}>

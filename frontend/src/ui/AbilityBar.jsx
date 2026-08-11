@@ -19,10 +19,23 @@ const SLOTS = [
 export const AbilityBar = React.memo(() => {
   const sweepRefs = useRef({});
   useEffect(() => {
-    if (isCaptureMode()) return undefined;
+    // THE CHECK IS INSIDE THE CALLBACK. It used to sit here, at mount, with `[]` deps -- and capture is
+    // enabled AFTER boot, by a test-bridge hook that installs in a later effect, so this guard read false
+    // every time and the sweep ran through every capture. Entering capture neither stopped it nor reset
+    // it. The same shape appears wherever a mount-time read stands in for a runtime one; the flag has to
+    // be consulted where the work happens.
     let raf;
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      if (isCaptureMode()) {
+        // A DECLARED RESTING SWEEP: every wedge cleared. Stopping the loop instead would leave each
+        // wedge at whatever fraction the run had reached, and boot length varies per process.
+        for (const s of SLOTS) {
+          const el = sweepRefs.current[s.key];
+          if (el) el.style.opacity = '0';
+        }
+        return;
+      }
       const cds = useGameStore.getState().abilityCooldowns || {};
       for (const s of SLOTS) {
         const el = sweepRefs.current[s.key];

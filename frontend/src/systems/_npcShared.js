@@ -38,6 +38,10 @@ export const spawnLootDrop = (item, xp, pos) => {
     item,
     xp: xp || 0,
     position: spawnPos,
+    // The DECLARED rest height, recorded at birth. Capture settles every drop back to this rather than
+    // stopping its parabola wherever it had got to -- capture is entered after a boot of run-dependent
+    // length, so a stopped arc is a run-dependent pose and the fixture frames varied with machine load.
+    spawnY: spawnPos.y,
     velocity: new THREE.Vector3(vx, vy, vz),
     spawnTime: performance.now(),
     age: 0

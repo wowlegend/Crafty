@@ -18,6 +18,11 @@ export default function MusicPlayer() {
   const fadeRef = useRef(null);
 
   useEffect(() => {
+    // This guard is at MOUNT with `[]` deps, and capture is enabled AFTER boot by a test-bridge hook that
+    // installs in a later effect -- so it has always read false and has never once suppressed anything.
+    // It is kept, because it is correct for the case where capture is entered before this mounts, and
+    // because deleting it would suggest audio construction is unconditionally wanted. What makes the
+    // suppression REAL is the check inside the playback effect below, which runs on every state change.
     if (isCaptureMode()) return undefined;
     const mk = (src) => { const a = new Audio(src); a.loop = true; a.volume = 0; a.preload = 'auto'; return a; };
     refs.current = { day: mk('/music/day.mp3'), night: mk('/music/night.mp3'), boss: mk('/music/boss.mp3') };

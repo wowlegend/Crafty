@@ -18,11 +18,22 @@ export const LootSystem = () => {
 
   useFrame((state, delta) => {
     if (!camera) return;
-    // Capture-determinism: FREEZE the loot physics/magnet/collection loop so spawned
-    // fixture drops hold their exact spawn position (no gravity arc, no camera-magnet
-    // pull, no auto-collect) -> the loot-showcase frame is byte-stable. Mirrors the mob
-    // AI freeze (NPCSystem useFrame early-returns in capture). No-op in gameplay.
-    if (isCaptureMode()) return;
+    // Capture-determinism: SETTLE the loot to its declared resting state rather than stopping the loop.
+    //
+    // The early return froze each drop wherever its parabola had got to, and capture is entered after a
+    // boot of run-dependent length -- so "hold their exact spawn position" was only true if the flag
+    // flipped on the spawn frame. Any later and the frame recorded a mid-arc pose that varied with
+    // machine load, which is the exact class this repo documents: a guard must RESET TO A DECLARED VALUE,
+    // never early-return, because stopping an animation leaves it wherever it happened to be.
+    if (isCaptureMode()) {
+      for (const entity of lootDropsQuery.entities) {
+        if (!entity || !entity.position) continue;
+        if (entity.velocity && entity.velocity.set) entity.velocity.set(0, 0, 0); // no arc
+        entity.magnetized = false;   // no camera pull
+        if (Number.isFinite(entity.spawnY)) entity.position.y = entity.spawnY; // the declared rest height
+      }
+      return;
+    }
     const store = useGameStore.getState();
     const playerPos = camera.position;
 

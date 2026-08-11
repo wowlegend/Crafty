@@ -332,6 +332,15 @@ function GameApp({ experienceSystem }) {
     registerTestHook('stepCaptureFrames', (n) => stepCaptureFrames(n));
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
+      // CLEAR THE CHEST BOARD AT CAPTURE ENTRY. The initial-chest effect in useTreasureChests has `[]`
+      // deps, so it runs at MOUNT -- before this hook exists, let alone before it is called -- and its own
+      // isCaptureMode() guard is therefore provably false every time. A randomly-positioned chest was
+      // spawned on every capture run, at `Math.random() * 2PI` around the player, so the declared resting
+      // state of zero chests was never achieved and the position varied per run. Four fixtures already
+      // cleared this list by hand, one at a time; doing it here makes it true for all of them, at the one
+      // moment the flag actually flips. The publish effect refuses to write while capture is on, so the
+      // clear holds.
+      useGameStore.setState({ treasureChestsList: [] });
       // Frame 0. The harness captures ~31 states in ONE browser session, so without this each state's
       // phase would depend on how many frames the previous states happened to take — run-dependent
       // phase at a coarser grain, which is the defect the whole clock exists to remove.
