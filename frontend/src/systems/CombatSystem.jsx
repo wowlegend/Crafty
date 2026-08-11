@@ -183,7 +183,13 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
     const checkMobsInMeleeCone = (playerPos, lookDir, range = 4.5, angleRad = Math.PI / 2) =>
       damageableInCone(mobsQuery.entities, playerPos, lookDir, range, angleRad);
 
-    useGameStore.setState({ checkMobCollision: checkMobCollision, checkMobsInMeleeCone: checkMobsInMeleeCone });
+    // The zustand MIRROR of these was deleted 2026-08-11: it was write-only. All eleven live consumers
+    // read the GameMethods singleton (Components, EnhancedMagicSystem, App, SquadAISystem, HurlSystem,
+    // ElementZoneSystem), the store's own setDamageMob / setCheckMobCollision had zero call sites, and
+    // checkMobsInMeleeCone was setState'd here without ever being declared in the initial state -- so it
+    // was not even a slot, just a key appearing at runtime. Two publication mechanisms where one is read
+    // is worse than one: the next author has to determine which is authoritative, and the answer was
+    // "the one that looks less official".
     GameMethods.checkMobCollision = checkMobCollision;
     GameMethods.checkMobsInMeleeCone = checkMobsInMeleeCone;
   }, [setDamageNumbers, setShockwaves]);

@@ -400,10 +400,9 @@ export const useGameStore = create((set, get) => ({
     gameCamera: null,
     setGameCamera: (camera) => set({ gameCamera: camera }),
 
-    damageMob: null,
-    setDamageMob: (fn) => set({ damageMob: fn }),
-    checkMobCollision: null,
-    setCheckMobCollision: (fn) => set({ checkMobCollision: fn }),
+    // damageMob / checkMobCollision DELETED 2026-08-11 along with their setters: a write-only mirror of
+    // the GameMethods singleton that all eleven live consumers actually read. Two publication mechanisms
+    // where one is read is worse than one -- the next author has to work out which is authoritative.
     
     castSpell: null,
     setCastSpell: (fn) => set({ castSpell: fn }),

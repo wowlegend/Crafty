@@ -194,18 +194,25 @@ export function MenuSystem({
         )}
       </AnimatePresence>
 
-      {gameState.showTradingInterface && (
-        <TradingInterface
-          villager={gameState.selectedVillager}
-          gameState={gameState}
-          onClose={() => {
-            gameState.setShowTradingInterface(false);
-            gameState.setSelectedVillager(null);
-            // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
-            if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
-          }}
-        />
-      )}
+      {/* WRAPPED 2026-08-11. TradingInterface declares an `exit` variant and sat in the gap between two
+          AnimatePresence blocks with no such ancestor anywhere on the path -- App.jsx has none at all and
+          MenuSystem's own root is a bare fragment -- so framer-motion never deferred its unmount and the
+          exit tween was discarded on every close. Every sibling panel here IS wrapped, so the merchant
+          was the one panel that POPPED out while the rest faded. */}
+      <AnimatePresence>
+        {gameState.showTradingInterface && (
+          <TradingInterface
+            villager={gameState.selectedVillager}
+            gameState={gameState}
+            onClose={() => {
+              gameState.setShowTradingInterface(false);
+              gameState.setSelectedVillager(null);
+              // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
+              if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {titleMenuVisible && (

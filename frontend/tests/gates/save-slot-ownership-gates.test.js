@@ -175,10 +175,17 @@ describe('B2c autosave triggers — everything we persist must be able to schedu
     const app = readFileSync(resolve(HERE, '../../src/App.jsx'), 'utf8');
     const schema = readFileSync(resolve(HERE, '../../src/game/saveSchema.js'), 'utf8');
 
-    // the keys buildSaveData reads out of `state` inside the `progression: { ... }` block
-    const progBlock = schema.match(/progression:\s*\{([\s\S]*?)\n\s{4}\},/)[1];
-    const persisted = [...progBlock.matchAll(/(\w+):\s*state\.(\w+)/g)].map((m) => m[2]);
-    expect(persisted.length).toBeGreaterThan(10);   // the block was actually found
+    // The keys buildSaveData reads out of `state` inside the persisted blocks. This used to read
+    // `progression` ALONE, so every field of `game_state` was outside the denominator -- and that is
+    // exactly where bossState lives, rewritten on every damage tick while none of its inputs could
+    // schedule a save. A gate whose denominator excludes half the schema reports clean over the half it
+    // never examined, which is the defect it exists to catch, one level up.
+    const block = (name) => schema.match(new RegExp(`${name}:\\s*\\{([\\s\\S]*?)\\n\\s{4}\\},`))[1];
+    const progBlock = block('progression');
+    const gameStateBlock = block('game_state');
+    const persisted = [...`${progBlock}\n${gameStateBlock}`.matchAll(/(\w+):\s*state\.(\w+)/g)].map((m) => m[2]);
+    expect(persisted.length).toBeGreaterThan(10);   // the blocks were actually found
+    expect(gameStateBlock, 'the game_state block was not found — half the schema is unchecked').toContain('gameMode');
 
     // the keys the autosave subscription compares
     const triggerBlock = app.match(/const unsub = useGameStore\.subscribe\(\(s, prevS\) => \{([\s\S]*?)\n\s{4}\}\);/)[1];
@@ -187,6 +194,13 @@ describe('B2c autosave triggers — everything we persist must be able to schedu
 
     const missing = persisted.filter((k) => !triggers.has(k));
     expect(missing, `persisted but can never schedule an autosave: ${missing.join(', ')}`).toEqual([]);
+
+    // bossState is serialized through a helper, so its INPUTS are what must be triggers -- the regex
+    // above cannot see them. Named explicitly, because a fight that cannot schedule a save is the
+    // concrete loss this whole gate is about.
+    for (const k of ['bossHealth', 'bossActive', 'bossDefeated']) {
+      expect(triggers.has(k), `${k} feeds bossState and cannot schedule a save`).toBe(true);
+    }
   });
 
   it('gameWon can schedule an autosave — beating the boss and closing the tab must not lose the win', () => {

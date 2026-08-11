@@ -259,7 +259,21 @@ function GameApp({ experienceSystem }) {
         s.ferocityBanked !== prevS.ferocityBanked || // S2-B1-M4: a day-banked roar survives a tab-close
         s.kineticBanked !== prevS.kineticBanked || // S2-B2-M4: a day-banked kinetic charge survives a tab-close
         s.soulBanked !== prevS.soulBanked || // S2-B3-M2: twin
-        s.resonanceBanked !== prevS.resonanceBanked // S2-B4-M2: twin
+        s.resonanceBanked !== prevS.resonanceBanked || // S2-B4-M2: twin
+        // GAME_STATE, not just progression. The gate below derived its expectation from saveSchema's
+        // `progression` block ONLY, so every field of `game_state` sat outside its denominator -- and
+        // bossState is rewritten on every damage tick by bossSystem's mirror effect while none of
+        // bossHealth / bossActive / bossDefeated could schedule a save. A melee-only fight with a few
+        // quiet seconds before the tab closed lost the whole encounter; a spell-using one persisted only
+        // because onSpellCast happens to touch questState. Durability was parasitic on an unrelated
+        // field changing.
+        s.selectedBlock !== prevS.selectedBlock ||
+        s.activeSpell !== prevS.activeSpell ||
+        s.isDay !== prevS.isDay ||
+        s.gameTime !== prevS.gameTime ||
+        s.bossHealth !== prevS.bossHealth ||
+        s.bossActive !== prevS.bossActive ||
+        s.bossDefeated !== prevS.bossDefeated
       ) {
         autosave.schedule();
       }

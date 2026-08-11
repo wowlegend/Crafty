@@ -9,6 +9,10 @@ import { ANTICIPATION_SEC } from '../game/beastTransform.js';
 import { MORPH_SEC, BURST_SEC, morphEntrance, burstFlash, chargeGlow } from '../game/beastMorph.js';
 import { isCaptureMode } from '../devtest/captureMode';
 
+// The authored peak opacity of the anticipation glow. ONE constant, read by the JSX and by the
+// per-frame ramp, so the two cannot disagree about what "full brightness" is.
+const CHARGE_BASE_OPACITY = 0.85;
+
 /**
  * BeastAvatar — S2-B1-M7b/M7c: the visible voxel beast the transform-cam (M7a) reveals, + the 3-beat
  * morph CHOREOGRAPHY (M7c).
@@ -66,7 +70,16 @@ export function BeastAvatar() {
     if (chargeRef.current && chargeColor) {
       if (chargeStartRef.current < 0) chargeStartRef.current = now;
       const cp = capture ? 1 : clamp01((now - chargeStartRef.current) / ANTICIPATION_SEC);
-      chargeRef.current.scale.setScalar(chargeGlow(cp).scale);
+      const glow = chargeGlow(cp);
+      chargeRef.current.scale.setScalar(glow.scale);
+      // ...and the BRIGHTNESS half, which the ramp has always returned and nothing read. The docstring
+      // says the anticipation glow "grows + brightens"; only the growing was wired, and the material's
+      // opacity was a fixed literal. The scale ramp does read brighter through the bloom pass -- tripling
+      // a sphere's screen area will -- but that is the growth doing the brightening's job, and the
+      // declared per-pixel ramp was inert. Floor at the authored 0.85 * 0.35 so a charge that has just
+      // begun is still visible rather than invisible.
+      const mat = chargeRef.current.material;
+      if (mat) mat.opacity = CHARGE_BASE_OPACITY * (0.35 + 0.65 * glow.intensity);
     } else {
       chargeStartRef.current = -1;
     }
@@ -102,7 +115,7 @@ export function BeastAvatar() {
       {chargeColor && (
         <mesh ref={chargeRef} position={[0, FEET_OFFSET + 1.0, 0]} renderOrder={3}>
           <sphereGeometry args={[0.22, 14, 14]} />
-          <meshBasicMaterial color={chargeColor} toneMapped={false} transparent opacity={0.85}
+          <meshBasicMaterial color={chargeColor} toneMapped={false} transparent opacity={CHARGE_BASE_OPACITY}
             blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           <mesh>
             <sphereGeometry args={[0.1, 10, 10]} />
