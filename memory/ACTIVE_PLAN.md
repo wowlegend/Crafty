@@ -34,6 +34,18 @@ file that will not survive. What DID survive, and is authoritative:
 - **26 of 93 proposed gates would have PASSED against the broken code**, caught by the review stage. So
   every gate written here must be shown RED against the live defect before the fix, not merely green after.
 
+**⚠️ IN FLIGHT — HALF A UNIT ON MAIN.** `frontend/src/game/buildFootprint.js` + its gate are committed
+(`1d1a98f`) but NOT WIRED: Terrain's `place`/`mine` do not consume the footprint yet, so Building Tools
+is still inert. **Finish this first.** The wiring: read `buildingMode`/`buildSize` transiently via
+`useGameStore.getState()` inside the existing `place`/`mine` executors in `frontend/src/world/Terrain.jsx`
+(~line 869 for place), iterate `buildFootprint(mode, size, cell, normal)`, and run EACH cell through the
+same `consumeForPlacement` debit so the economy holds. `delete` mode routes to mine, not place.
+
+**⚠️ AUTHORITY CHANGED 2026-08-11.** Kevin granted FULL design authority over every feature, advertised
+or not — see `docs/superpowers/DECISIONS.md`. The 33 findings batched to `KEVIN-REVIEW-BATCH.md` as
+"product decisions" are NO LONGER BLOCKED; decide each on merit and say why in the commit. The bar: the
+question is whether it makes the game better, not whether the code is currently reachable.
+
 **THE NEXT ITEMS** (actionable HIGH, design-questions excluded): `src/render/MobModel.jsx:191` (hit-flash
 traverse stomps every material's authored colour), `src/Components.jsx:366` (the F key does not stamp the
 cast latch, so its consume branch is unreachable), `src/store/hudState.js:64` (missing setter on the chest
