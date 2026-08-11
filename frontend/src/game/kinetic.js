@@ -1,3 +1,4 @@
+import { bankForKill } from './mobBank.js';
 /**
  * kinetic.js — S2-B2-M1: the VOIDHAND Kinetic economy (pure). Structural twin of ferocity.js.
  *
@@ -10,18 +11,11 @@
 export const KINETIC_MAX = 100;   // bar capacity
 export const GRAB_COST = 25;      // one combat grab spends this (~4 grabs per full bank); Kevin-tunable
 
-const PER_KILL_DEFAULT = 12;
 // Per-tier gradient — identical model to ferocity.js (passive < hostile < boss): tougher kills bank more.
-const PER_KILL = {
-  pig: 8, cow: 8, villager: 8,           // passive
-  zombie: 16, skeleton: 16, spider: 16,  // hostile
-  boss: 60,                              // boss-like (regex below; boss-kill wiring is a follow-up)
-};
 
 /** kineticForKill(mobType) -> how much a kill of that type banks. Boss-like types bank a burst. */
 export function kineticForKill(mobType) {
-  if (typeof mobType === 'string' && /boss|dragon/i.test(mobType)) return PER_KILL.boss;
-  return PER_KILL[mobType] ?? PER_KILL_DEFAULT;
+  return bankForKill(mobType);
 }
 
 /** clampKinetic(v) -> rounded + clamped to [0, KINETIC_MAX] (no float-bloat, no overflow). */

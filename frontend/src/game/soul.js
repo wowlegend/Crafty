@@ -1,3 +1,4 @@
+import { bankForKill } from './mobBank.js';
 /**
  * soul.js — S2-B3-M2: the SOULBIND Soul economy (pure). Structural twin of kinetic.js/ferocity.js.
  *
@@ -11,18 +12,11 @@ export const SOUL_MAX = 100;    // bar capacity
 export const SNARE_COST = 35;   // one bind spends this (~2-3 binds per full bank); Kevin-tunable
 export const FUSE_COST = 50;    // fusing two bound allies into a hybrid; Kevin-tunable
 
-const PER_KILL_DEFAULT = 12;
 // Per-tier gradient — identical model to ferocity.js/kinetic.js (passive < hostile < boss).
-const PER_KILL = {
-  pig: 8, cow: 8, villager: 8,           // passive
-  zombie: 16, skeleton: 16, spider: 16,  // hostile
-  boss: 60,                              // boss-like (regex below)
-};
 
 /** soulForKill(mobType) -> how much a kill of that type banks. Boss-like types bank a burst. */
 export function soulForKill(mobType) {
-  if (typeof mobType === 'string' && /boss|dragon/i.test(mobType)) return PER_KILL.boss;
-  return PER_KILL[mobType] ?? PER_KILL_DEFAULT;
+  return bankForKill(mobType);
 }
 
 /** clampSoul(v) -> rounded + clamped to [0, SOUL_MAX] (no float-bloat, no overflow). */

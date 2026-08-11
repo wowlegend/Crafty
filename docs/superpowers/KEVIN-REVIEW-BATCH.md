@@ -1700,3 +1700,30 @@ than an unwired feature — nothing in the UI looks wrong because it is absent, 
 g300 (#9AA0AD) duplicate `ink` and `textMuted` exactly, which is an argument for deletion rather
 than surf…
 
+
+---
+
+## 2026-08-11 — four mobs were banking the wrong amount; is 16 the right number? [KEVIN]
+
+`ferocity.js`, `kinetic.js` and `soul.js` each carried a byte-identical hand-maintained `PER_KILL` table
+with a silent `?? 12` fallback and no link to `MOB_TYPES`. The tables listed six types; `MOB_TYPES` has
+ten. So **skitterling, duskhound, moss_brute and emberhusk — every one `passive: false` — banked 12
+instead of the hostile tier's 16** toward all three Aspect meters.
+
+Sharpest case: **moss_brute** is 220 health, 25 damage, 60 xp — the toughest non-boss in the game — and
+it banked less than a zombie (100 health, 25 xp). The gradient the table exists to express, *fight
+harder, unleash sooner*, ran backwards for every mob added after the tables were written.
+
+**Fixed structurally:** the value now lives on the mob itself (`MOB_TYPES[t].bank`), derived once in
+`mobBank.js`, and a coverage gate fails if any mob type lacks one or if a hostile ever banks less than a
+passive. The duplication was the root cause — a new mob had to be remembered in three places, and the
+silent fallback turned forgetting into a plausible number instead of an error.
+
+**The tuning question, which I did not decide.** I gave all four the hostile tier's **16**, because that
+preserves the existing gradient exactly and changes nothing for the six types that already had values.
+But a flat 16 arguably under-rewards the heavies: by xp, moss_brute (60) is 2.4× a zombie (25) and
+duskhound (28) and emberhusk (32) sit above it too. If you want the bank to track difficulty rather than
+tier, the natural shape is something like moss_brute 30, emberhusk/duskhound 20, skitterling 10 — which
+is a balance change to the transform/grab/bind economy across all three Aspects, so it is yours, not mine.
+
+Answering "leave it at 16" is a perfectly good answer; the defect is fixed either way.
