@@ -727,7 +727,20 @@ export const useTreasureChests = () => {
 
             setChests([{ id: chestId.current++, position: [x, y, z], opened: false, resolved }]);
         }
-    }, [chests.length]);
+        // DEPS ARE [] AND THAT IS THE WHOLE FIX. They used to be [chests.length], which reads as "spawn one
+        // at the start" and actually means "there shall always be at least one chest" — re-evaluated on
+        // every transition to zero. The board hits zero by design (opening a chest schedules its removal
+        // 5s later), so the loop was: open, loot, wait five seconds, a fresh chest appears 15 units away,
+        // repeat. An unbounded loot and XP farm needing no movement and no combat.
+        //
+        // A once-ref was tried alongside this and REMOVED as inert: with [] deps nothing can re-fire the
+        // effect, so no mutation could redden the ref, and a line no mutation can redden is a decoration.
+        // A retry-until-playerPosition-arrives variant was also tried and abandoned — [chests.length] does
+        // not re-fire on 0 -> 0, and subscribing to playerPosition would re-render this hook every frame,
+        // violating Game-Loop-Isolation. The store seeds playerPosition to a truthy default, so the
+        // late-position case cannot arise. Topping the board up afterwards is the 30s spawner's job,
+        // which enforces its own 5-cap.
+    }, []);
 
     // S8c-bis: a guaranteed reward chest at each frontier shrine -- the deferred S8 destination payoff.
     // Lives HERE (the hook that owns setChests) so no cross-hook bridge is needed. Deterministic +
