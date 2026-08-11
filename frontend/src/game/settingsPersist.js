@@ -57,7 +57,10 @@ export function saveSettings(settings, storage) {
 }
 
 const pick = (state) => ({
-  juiceIntensity: state.juiceIntensity,
+  // The CHOICE persists, not the effective value: saving the effective one would write a 0 forced by an
+  // OS preference into the player's own setting, and they would find their juice dial at zero next
+  // session with the OS preference long since turned off.
+  juiceIntensity: state.juiceIntensityChoice,
   sfxVolume: state.sfxVolume,
   musicVolume: state.musicVolume,
   masterMuted: state.masterMuted,

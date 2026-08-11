@@ -5,6 +5,7 @@ import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
+import { motionIntensity } from '../game/a11y.js';
 import { addShake, decayShake } from '../game/cameraShakeChannel.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
@@ -315,8 +316,25 @@ export const useGameStore = create((set, get) => ({
 
     // SOTA M1 game-feel: ONE global feedback/juice dial scaling screenshake + hitstop magnitude.
     // 1 = full, 0 = off. The M3 Settings/accessibility "reduced motion" toggle drives this to 0.
+    // TWO FIELDS, because there are two facts. `juiceIntensityChoice` is what the PLAYER chose and is
+    // what persists; `juiceIntensity` is what is in effect right now, which the OS reduced-motion
+    // preference can force to 0.
+    //
+    // One field could not hold both. The OS listener passed the literal 1 on every `change` event, so
+    // toggling macOS Reduce Motion ON and then OFF again overwrote a player's 40% with 100% -- and
+    // persisted it, with no way to recover the 40% but to re-drag the slider. The obvious fix, reading
+    // the current dial back in, is worse: the ON transition destructively wrote 0 into that very field,
+    // so an ON/OFF cycle would latch at 0 forever. There was no slot to restore FROM. Now there is.
+    juiceIntensityChoice: 1,
     juiceIntensity: 1,
-    setJuiceIntensity: (v) => set({ juiceIntensity: Math.max(0, Math.min(1, v)) }),
+    setJuiceIntensity: (v) => set(() => {
+      const next = Math.max(0, Math.min(1, v));
+      return { juiceIntensityChoice: next, juiceIntensity: next };
+    }),
+    /** The OS preference changed. ON forces 0; OFF restores what the player chose, not a hardcoded 1. */
+    applyReducedMotion: (prefersReduced) => set((st) => ({
+      juiceIntensity: motionIntensity(prefersReduced, st.juiceIntensityChoice ?? 1),
+    })),
 
     // SOTA M3 #3 audio settings: SFX master volume 0..1 (drives the WebAudio master-bus input gain via a
     // SoundManager effect). musicVolume + masterMuted land in S3b. Default 1 (full).

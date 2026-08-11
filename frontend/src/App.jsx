@@ -7,7 +7,6 @@ import { useSimpleExperience } from './SimpleExperienceSystem';
 import { GameSystemsProvider, useGameSystems } from './GameSystems';
 import { useGameStore } from './store/useGameStore';
 import { selectHudState } from './store/hudState.js';
-import { motionIntensity } from './game/a11y.js';
 import { makeAttackSoundPlayer } from './game/attackSounds.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
@@ -887,7 +886,11 @@ function GameApp({ experienceSystem }) {
   useEffect(() => {
     if (isCaptureMode() || typeof window === 'undefined' || !window.matchMedia) return;
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => useGameStore.getState().setJuiceIntensity(motionIntensity(mq.matches, 1));
+    // applyReducedMotion, NOT setJuiceIntensity(motionIntensity(matches, 1)). The literal 1 is what
+    // overwrote a player's chosen 40% with 100% on every OS reduced-motion OFF transition, persisted --
+    // and reading the live dial back in instead would have latched at 0 forever, because the ON
+    // transition had already destroyed it. The store keeps the CHOICE in its own field now.
+    const apply = () => useGameStore.getState().applyReducedMotion(mq.matches);
     if (mq.matches) apply(); // only force on mount when the OS asks for reduced motion
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);

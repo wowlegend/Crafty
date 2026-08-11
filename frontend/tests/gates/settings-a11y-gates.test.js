@@ -53,7 +53,15 @@ describe('settings a11y gates (M3 #3 S2 -- reduced motion)', () => {
 
   it('App mounts a prefers-reduced-motion listener that drives setJuiceIntensity (capture-gated)', () => {
     expect(app).toMatch(/matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
-    expect(app).toMatch(/setJuiceIntensity\(motionIntensity\(mq\.matches/);
+    // Re-anchored 2026-08-11: the listener no longer calls setJuiceIntensity with a LITERAL scale. That
+    // literal is what overwrote a player's chosen 40% with 100% on every OS reduced-motion OFF
+    // transition -- persisted, with no way back but re-dragging the slider. applyReducedMotion restores
+    // the player's own choice from its own field, which is the thing the old shape had nowhere to keep.
+    expect(app).toMatch(/applyReducedMotion\(mq\.matches\)/);
+    expect(
+      /setJuiceIntensity\(motionIntensity\(mq\.matches, 1\)\)/.test(app),
+      'the OS listener passes a hardcoded scale again — an OFF transition clobbers the player choice'
+    ).toBe(false);
     expect(/isCaptureMode\(\)[\s\S]{0,160}matchMedia\('\(prefers-reduced-motion/.test(app)).toBe(true);
     expect(app).toMatch(/addEventListener\('change', apply\)/);
   });

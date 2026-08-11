@@ -2,7 +2,6 @@ import React from 'react';
 import { GameMethods } from '../../GameMethods';
 import { useGameStore } from '../../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
-import { BLOCK_TYPES } from '../../world/Blocks';
 import { useT } from '../../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, Modal } from '../primitives/index.js';
 import { getItemRarity, getItemName } from '../../data/items.js';
@@ -35,6 +34,23 @@ export const CraftingTable = React.memo(({ onClose }) => {
     // clears the grid before teardown, so a successful craft returns nothing (its inputs were consumed).
     const gridRef = React.useRef(grid);
     React.useEffect(() => { gridRef.current = grid; }, [grid]);
+    // AND ON PAGE TEARDOWN. React does not run effect cleanups when the tab closes, while the autosave
+    // DOES flush on pagehide -- and the place-time debit already went through removeFromInventory, which
+    // spreads a new inventory object and therefore schedules a save. So a save written mid-crafting
+    // recorded the debit WITHOUT the escrow: up to nine items paid for and gone, surfacing only when the
+    // player later loads that slot. The B3d decision record chose "return on unmount" over "defer the
+    // removal" on blast-radius grounds and never considered the persistence path, so this is an unclosed
+    // residual rather than an accepted trade.
+    React.useEffect(() => {
+        const returnEscrow = () => {
+            const g = gridRef.current;
+            if (!g || !g.some(Boolean)) return;
+            returnGridToInventory(g, useGameStore.getState().addToInventory);
+            gridRef.current = Array(9).fill(null); // idempotent: pagehide can fire more than once
+        };
+        window.addEventListener('pagehide', returnEscrow);
+        return () => window.removeEventListener('pagehide', returnEscrow);
+    }, []);
     React.useEffect(() => () => {
         returnGridToInventory(gridRef.current, useGameStore.getState().addToInventory);
     }, []);
@@ -110,7 +126,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
                         {/* 3x3 Grid */}
                         <Panel variant="inset" className="grid grid-cols-3 gap-2 p-3 bg-well">
                             {grid.map((item, i) => {
-                                const blockColor = item ? BLOCK_TYPES[item]?.color : null;
                                 return (
                                     <div
                                         key={i}
@@ -121,10 +136,14 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         <Slot className="w-16 h-16">
                                             {item ? (
                                                 <div className="flex flex-col items-center justify-center gap-0.5">
-                                                    <div
-                                                        className="w-8 h-8 rounded-sm border-chrome border-ink"
-                                                        style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                                    />
+                                                    {/* ItemIcon, not a raw BLOCK_TYPES swatch. Every recipe token that
+                                                        names an ITEM rather than a block -- iron_nugget, Iron Sword,
+                                                        every tool -- has no BLOCK_TYPES entry, so `blockColor` was null
+                                                        and the fallback painted the SAME generic square for all of
+                                                        them: a grid of identical grey tiles the player has to read the
+                                                        captions to tell apart. ItemIcon already falls back to the block
+                                                        swatch for real blocks, so this is strictly more information. */}
+                                                    <ItemIcon itemName={item} size={32} />
                                                     <span className="text-[9px] text-text-muted truncate w-14 text-center leading-tight">
                                                         {item}
                                                     </span>
@@ -175,7 +194,6 @@ export const CraftingTable = React.memo(({ onClose }) => {
                         <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto pr-1">
                             {Object.entries(gameState.inventory?.blocks || {}).map(([type, count]) => {
                                 if (count <= 0) return null;
-                                const blockColor = BLOCK_TYPES[type]?.color;
                                 const isSelected = gameState.selectedBlock === type;
                                 return (
                                     <button
@@ -185,10 +203,10 @@ export const CraftingTable = React.memo(({ onClose }) => {
                                         title={type}
                                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md border-chrome transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
                                     >
-                                        <div
-                                            className="w-6 h-6 rounded-sm border-chrome border-ink"
-                                            style={{ backgroundColor: blockColor || 'rgb(var(--ui-slot))' }}
-                                        />
+                                        {/* Same fix as the grid above: the mini-inventory painted a raw
+                                            BLOCK_TYPES swatch, so every ITEM in the bag -- nuggets, tools,
+                                            swords -- collapsed to one identical grey square. */}
+                                        <ItemIcon itemName={type} size={24} />
                                         <span className="text-xs text-text">{type}</span>
                                         <span className="text-[10px] text-text-muted tabular-nums">{'×'}{count}</span>
                                     </button>
