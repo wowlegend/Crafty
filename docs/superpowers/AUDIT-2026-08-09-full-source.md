@@ -285,7 +285,7 @@ REFUTATION FAILED. Arithmetic checks out exactly: setTimeOfDay(0.5) -> isDay tru
 
 REFUTATION FAILED. Case-insensitive grep across src/, tests/ and scripts/ for setPlayerStats returns only the definition at useGameStore.jsx:898-900. `playerStats` is referenced at saveSchema.js:23 (write), useGameStore.jsx:918 + 996 (restore), and nowhere else; the inner keys blocksPlaced/blocksDestroyed/distanceTraveled/timeplayed appear only at useGameStore.jsx:896 and in two test fixtures (saveSchema.test.js:8, tests/store/saveNormalizer.test.js:81) that hand-write the object. I checked the dev test bridge (App.jsx registerTestHook block) and the visual/e2e scripts for a dynamic writer — none. The auditor's cross-reference is also right: the live counters are in useQuestSystem's `stats` (QuestSystem.jsx blocks_placed/blocks_broken), persisted through the separate `questState` path. Since nothing ever writes a non-zero value, the loadWorldData restore at :918 can only ever read zeros back.
 
-### ▣✓ PENDING `src/store/useGameStore.jsx:1031` — correctness
+### ▣✓ 9c89b11 `src/store/useGameStore.jsx:1031` — correctness
 
 **questState `??` against a schema that always writes null makes startNewWorld keep the old world's quest progress; hunger is never reset.**
 
