@@ -10,13 +10,52 @@
 export const HITSTOP = { light: 45, heavy: 90, crit: 130, boss: 160 };
 
 // Add trauma from an event (clamped to [0,1]).
+//
+// This is the model the header describes, and until now nothing called it. Producers wrote an absolute
+// value straight into the store instead, which broke the model twice over: values of 1.4-1.8 went in
+// unclamped and were then SQUARED, putting the camera 1.78 world units off-centre at peak; and because a
+// write REPLACED rather than accumulated, a light tick landing during a heavy shake CUT THE SHAKE SHORT
+// instead of adding to it. Accumulate-and-clamp is what makes trauma^2 mean anything.
 export function addTrauma(trauma, amount) {
   return Math.max(0, Math.min(1, trauma + amount));
 }
 
-// Linear decay; rate = trauma units per second (default 1.5 -> a full-trauma settle in ~0.67s).
-export function decayTrauma(trauma, dt, rate = 1.5) {
-  return Math.max(0, trauma - rate * dt);
+/**
+ * The loudest impact weight any producer passes (BossEntity's phase-1 roar is 1.8).
+ *
+ * Producers do not speak in trauma; they speak in HOW HARD THE HIT WAS -- 0.4 for a spell that missed,
+ * 1.6 for a melee crit. Clamping those to 1.0 at the door would flatten the entire hierarchy the trauma^2
+ * curve exists to express, so the weight is mapped into the model's declared [0,1] range instead. The
+ * consumer scales its intensity by this squared, which makes the conversion EXACTLY feel-preserving at
+ * one hit: mag = (w/2)^2 * (0.55 * 2^2) = w^2 * 0.55, the number that shipped.
+ */
+export const SHAKE_WEIGHT_MAX = 2;
+
+/** Impact weight -> trauma in [0,1]. */
+export function traumaFromWeight(weight) {
+  const w = Number(weight);
+  if (!Number.isFinite(w) || w <= 0) return 0;
+  return Math.min(1, w / SHAKE_WEIGHT_MAX);
+}
+
+/**
+ * Decay constant, per SECOND. Chosen as -ln(0.85) * 60 so the settle curve is identical to the
+ * multiply-by-0.85-per-frame the game shipped -- ON A 60Hz DISPLAY, which was the whole problem: that
+ * decay had no delta term, so shake lasted 0.52s at 60Hz and 0.26s at 120Hz. The same useFrame already
+ * damps knockback with Math.exp(-delta * 8.0), so dt-independence is a pattern this file's caller knows.
+ */
+export const SHAKE_DECAY_K = 9.749;
+
+/**
+ * EXPONENTIAL decay, frame-rate independent. This replaced a LINEAR `trauma - rate*dt`, which was never
+ * called: dropping it in would have changed the feel curve, not merely fixed the dt dependence.
+ * Snaps to 0 below `floor` so the shake ends cleanly instead of asymptoting forever.
+ */
+export function decayTrauma(trauma, dt, k = SHAKE_DECAY_K, floor = 0.01) {
+  if (!(trauma > 0)) return 0;
+  const d = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const next = trauma * Math.exp(-d * k);
+  return next < floor ? 0 : next;
 }
 
 // Seeded value-noise in [-1, 1] (deterministic; replaces Math.random so capture frames + tests are stable).

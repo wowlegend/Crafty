@@ -22,9 +22,11 @@ describe('M1 trauma core is wired', () => {
   });
 
   it('the camera shake is scaled by the juiceIntensity dial', () => {
-    const i = comp.indexOf('shakeOffset(');
-    const block = comp.slice(i - 400, i + 120); // widened: M2 #9 added the dx/dz lines between ji and the call
-    expect(block.includes('juiceIntensity')).toBe(true);
+    // Asserted on the CALL, not on a character window around it: the window version broke the moment a
+    // comment was added above the call, which is a gate reporting on its own formatting rather than on
+    // the wiring it exists to protect.
+    expect(/shakeOffset\(.*\bji\b.*\)/.test(comp), 'the juice dial is not in the shakeOffset args').toBe(true);
+    expect(comp.includes('const ji = store.juiceIntensity')).toBe(true);
   });
 
   it('M2 #9: the camera shake is biased along the hit direction (cameraShakeDir), not direction-less', () => {
@@ -34,7 +36,11 @@ describe('M1 trauma core is wired', () => {
     expect(comp.includes('* 0.05, 0, 0,')).toBe(false);       // the old direction-less call is gone
     // the store carries the dir + a decay-preserving trigger signature
     expect(/cameraShakeDir:\s*\[0,\s*0\]/.test(store)).toBe(true);
-    expect(/triggerCameraShake:\s*\(intensity = 1\.0, dirX, dirZ\)/.test(store)).toBe(true);
+    // The invariant is the BEHAVIOUR -- omitting the dir preserves the one already set, so the bias
+    // survives the multi-frame falloff -- not the parameter's name. Pinning the name made this gate red
+    // when the argument was correctly renamed from `intensity` to `weight`, which is what it now is.
+    expect(/triggerCameraShake:\s*\([a-zA-Z]+ = 1\.0, dirX, dirZ\)/.test(store)).toBe(true);
+    expect(store.includes('dirX === undefined ? s.cameraShakeDir : [dirX, dirZ]')).toBe(true);
   });
 
   it('SimplifiedNPCSystem hitstop is weight-tiered via HITSTOP, not the flat +28', () => {

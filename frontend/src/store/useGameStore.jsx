@@ -5,6 +5,7 @@ import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
+import { addTrauma, traumaFromWeight, decayTrauma } from '../game/trauma.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
@@ -303,12 +304,21 @@ export const useGameStore = create((set, get) => ({
     cameraShakeIntensity: 0,
     // SOTA M2 #9: directional bias unit [x,z] (world) so a hit lurches the camera AWAY from the
     // player along the real hit vector, not a symmetric jitter. Passing a dir sets it; omitting the
-    // dir (the per-frame decay calls) PRESERVES it across the multi-frame falloff.
+    // dir PRESERVES it across the multi-frame falloff.
     cameraShakeDir: [0, 0],
-    triggerCameraShake: (intensity = 1.0, dirX, dirZ) => set((s) => ({
-      cameraShakeIntensity: intensity,
+    // The argument is an impact WEIGHT (0.4 for a spell that missed, 1.8 for the boss's roar), not
+    // trauma. It used to be written straight in: unclamped, so weights of 1.4-1.8 were squared into a
+    // 1.78-world-unit camera offset against a model whose own header declares [0,1]; and REPLACING, so a
+    // light tick during a heavy shake cut the shake short. Now it maps into range and ACCUMULATES, which
+    // is the trauma model this codebase claimed to implement and never called.
+    triggerCameraShake: (weight = 1.0, dirX, dirZ) => set((s) => ({
+      cameraShakeIntensity: addTrauma(s.cameraShakeIntensity, traumaFromWeight(weight)),
       cameraShakeDir: dirX === undefined ? s.cameraShakeDir : [dirX, dirZ],
     })),
+    // Frame-rate-independent falloff, driven by the render delta. The shipped decay was a bare
+    // multiply-by-0.85 with no delta term, so screen-shake lasted 0.52s at 60Hz and 0.26s at 120Hz --
+    // the same duration bug in a game whose knockback in the very same useFrame is already exp(-delta*k).
+    decayCameraShake: (dt) => set((s) => ({ cameraShakeIntensity: decayTrauma(s.cameraShakeIntensity, dt) })),
 
     // SOTA M1 game-feel: ONE global feedback/juice dial scaling screenshake + hitstop magnitude.
     // 1 = full, 0 = off. The M3 Settings/accessibility "reduced motion" toggle drives this to 0.
