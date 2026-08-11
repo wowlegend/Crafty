@@ -33,17 +33,37 @@ export function isProtected(e) {
   return !!(e && e.isNPC);
 }
 
-/** Hostile = a legitimate auto-target. Excludes the protected AND the passive. */
+/** Hostile = a legitimate auto-target. Excludes the protected, the passive AND the already-dead —
+ *  chain lightning spending one of its three hops on an invisible corpse is the same defect as a
+ *  fireball resolving against one. */
 export function isHostile(e) {
-  return !!(e && !isProtected(e) && !e.passive);
+  return !!(e && !isProtected(e) && !e.passive && !isDefeated(e));
+}
+
+/**
+ * Already dead, or mid-death-dissolve. A killed mob is NOT removed from the ECS at the moment it dies:
+ * CombatSystem stamps `dyingUntil` and lets the model dissolve, and the only removal happens inside
+ * SpawnerSystem's 1000ms sweep throttle — so a corpse lingers 320-1320ms. `mobsQuery` is
+ * `ecs.with('isMob','position','type')`, which carries no health component, so corpses stay in the very
+ * list every targeter walks. For most of that window the model is scaled to 0.001, i.e. INVISIBLE.
+ */
+function isDefeated(e) {
+  return !!(e && ((typeof e.health === 'number' && e.health <= 0) || e.dyingUntil));
 }
 
 /**
  * May a player attack land on this entity AT ALL?
- * Livestock: yes (deliberate hunting). Hub NPCs: never.
+ * Livestock: yes (deliberate hunting). Hub NPCs: never. Corpses: never.
+ *
+ * The corpse exclusion is where the nearest-hit test used to lose the fight it had just won: an invisible
+ * body stayed the NEAREST damageable entity and ate the next fireball, so the shot you aimed at the
+ * zombie behind it simply vanished. Every one of the comparable systems -- element zones, squad AI, the
+ * minimap mirror, nametags, the AI worker -- already filtered `health <= 0`; this module was the sole
+ * omission, and it is the one the projectile hit-resolution goes through. Excluding here also stops a
+ * second hit from re-running the whole damage side-effect chain on something already dead.
  */
 export function canPlayerDamage(e) {
-  return !!(e && !isProtected(e));
+  return !!(e && !isProtected(e) && !isDefeated(e));
 }
 
 /**
