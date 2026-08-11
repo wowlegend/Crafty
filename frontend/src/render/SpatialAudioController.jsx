@@ -11,6 +11,10 @@ import { _audioDir, _rayStart } from './_sceneScratch';
 // underground low-pass muffle. Registers store.playSpatialSound. Returns null (NO visual render) ->
 // pixel-irrelevant. Extracted VERBATIM from GameScene.jsx (v6 de-monolith A2.6); behavior unchanged.
 // _audioDir/_rayStart are the shared zero-alloc scratch (./_sceneScratch, A2.0).
+// Module-scope, mirroring _sceneScratch's own shape: the Ray cannot be constructed at import time because
+// `rapier` is only available once the WASM module has loaded, so it is created on first use and reused.
+// Shared across every caller, which is safe because the march is synchronous and single-threaded.
+let _occlusionRay = null;
 const SpatialAudioController = () => {
   const { camera, scene } = useThree();
   const { audioContext, sounds, soundEnabled, volume, getMasterBus } = useSounds();
@@ -42,10 +46,12 @@ const SpatialAudioController = () => {
 
       if (remainingDist <= 0.02) break;
 
-      const ray = new rapier.Ray(
-        { x: rayStart.x, y: rayStart.y, z: rayStart.z },
-        { x: dir.x, y: dir.y, z: dir.z }
-      );
+      // Reused scratch, matching the `_rayStart` hoist two lines up — this loop allocated a Ray per
+      // iteration while the line above it existed specifically to avoid that. Consistency with the
+      // file's own stated discipline; not claimed as a measured frame win.
+      const ray = (_occlusionRay ||= new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }));
+      ray.origin.x = rayStart.x; ray.origin.y = rayStart.y; ray.origin.z = rayStart.z;
+      ray.dir.x = dir.x; ray.dir.y = dir.y; ray.dir.z = dir.z;
 
       const hit = world.castRay(
         ray,

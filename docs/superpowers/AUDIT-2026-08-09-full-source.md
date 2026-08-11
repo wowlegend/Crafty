@@ -497,7 +497,7 @@ REFUTATION ATTEMPTED AND FAILED on the facts; severity should drop. I checked ev
 
 REFUTATION ATTEMPTED AND FAILED, same evidence chain as the ferocity twin. kinetic.js:15-19 is byte-equivalent to ferocity's table; kineticForKill:24 is `PER_KILL[mobType] ?? PER_KILL_DEFAULT` with PER_KILL_DEFAULT = 12; accrualHooks.js:37 feeds it the raw emitMobKill key on player day-kills. The grab arithmetic checks out: GRAB_COST = 25, so 25/12 = 2.08 moss_brute kills vs 25/16 = 1.56 zombie kills. Line 14's comment does claim the gradient it violates. The only defensible reduction is severity — like #3 this is balance, not correctness in the crash/corruption sense, and it is one defect duplicated across three sibling files (ferocity.js, kinetic.js and the soul.js the auditor missed), not two independent findings. Reporting it twice at medium over-weights it in any ranked list; it should be one low-severity item naming all three files.
 
-### ▢ `src/game/npcRoutine.js:17` — dead-on-arrival
+### ▣✓ PENDING `src/game/npcRoutine.js:17` — dead-on-arrival
 
 **nextEmote and the EMOTES table are never called by the game — the planned ambient NPC emote feature was never wired.**
 
@@ -541,7 +541,7 @@ What I refuted: there is no path by which the boss is live before capture. captu
 
 So: a genuine latent robustness defect against a documented project invariant, with zero current effect on any baseline. I have downgraded severity from medium to low accordingly.
 
-### ▢ `src/render/SpatialAudioController.jsx:45` — perf-hot-path
+### ▣✓ PENDING `src/render/SpatialAudioController.jsx:45` — perf-hot-path
 
 **Occlusion ray march allocates a new rapier.Ray plus two vector literals per step, per sound, per frame, beside a deliberately hoisted scratch**
 

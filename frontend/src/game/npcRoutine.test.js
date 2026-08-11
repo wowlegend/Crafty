@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shouldRetreatAtNight, routinePosition, nextEmote } from './npcRoutine.js';
+import { routinePosition, nextEmote } from './npcRoutine.js';
 
 // Pure ambient-routine math for hub NPCs: a small day patrol circle around a home anchor, retreat-home
 // at night, and a cycling emote. Deterministic from (home, time) so the render layer just reads it in a
@@ -7,13 +7,6 @@ import { shouldRetreatAtNight, routinePosition, nextEmote } from './npcRoutine.j
 const PATROL_R = 2.0; // mirrors the module constant
 const home = { x: 10, z: 20 };
 const distFromHome = (p) => Math.hypot(p.x - home.x, p.z - home.z);
-
-describe('shouldRetreatAtNight', () => {
-  it('retreats only at night', () => {
-    expect(shouldRetreatAtNight(true)).toBe(false);
-    expect(shouldRetreatAtNight(false)).toBe(true);
-  });
-});
 
 describe('routinePosition', () => {
   it('sits exactly on the home anchor at night (retreat)', () => {

@@ -6,8 +6,9 @@
 const PATROL_R = 2.0;
 const EMOTES = ['…', '*hums*', '*sweeps*', '*nods*', '*stretches*'];
 
-export function shouldRetreatAtNight(isDay) { return !isDay; }
-
+// `shouldRetreatAtNight(isDay) => !isDay` used to live here. Deleted 2026-08-11: it restated the branch
+// the line below already owns, and nothing outside its own test ever called it. Two expressions of one
+// rule is one that can drift.
 export function routinePosition(home, t, isDay) {
   if (!isDay) return { x: home.x, z: home.z }; // retreat home at night
   const a = (t * 0.25) % (Math.PI * 2);        // slow loop

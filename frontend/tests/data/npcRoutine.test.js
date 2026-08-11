@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { routinePosition, shouldRetreatAtNight, nextEmote } from '../../src/game/npcRoutine.js';
+import { routinePosition, nextEmote } from '../../src/game/npcRoutine.js';
 
 describe('npc ambient routine', () => {
   it('routinePosition follows a small loop around the home anchor over time (day)', () => {
@@ -11,8 +11,6 @@ describe('npc ambient routine', () => {
   });
   it('at night townsfolk retreat to home (stationary at the anchor)', () => {
     const home = { x: 10, z: 8 };
-    expect(shouldRetreatAtNight(true)).toBe(false); // isDay=true -> no retreat
-    expect(shouldRetreatAtNight(false)).toBe(true);
     const night = routinePosition(home, 10, false);
     expect(night.x).toBeCloseTo(home.x);
     expect(night.z).toBeCloseTo(home.z);

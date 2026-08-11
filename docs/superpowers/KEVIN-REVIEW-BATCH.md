@@ -1727,3 +1727,28 @@ tier, the natural shape is something like moss_brute 30, emberhusk/duskhound 20,
 is a balance change to the transform/grab/bind economy across all three Aspects, so it is yours, not mine.
 
 Answering "leave it at 16" is a perfectly good answer; the defect is fixed either way.
+
+---
+
+## 2026-08-11 — NPC emotes: an unbuilt feature sitting in a shipped module [KEVIN]
+
+`src/game/npcRoutine.js` exports `nextEmote(seq)` over a five-entry `EMOTES` table — `'…'`, `'*hums*'`,
+`'*sweeps*'`, `'*nods*'`, `'*stretches*'`. Nothing in `src/` calls it. Its only consumer is its own unit
+test, which asserts the cycling maths works.
+
+That is a **feature that was designed and never wired**, not dead code: the strings are deliberate,
+in-voice, and clearly meant to sit above hub NPCs going about their patrol. The routine maths they belong
+to (`routinePosition`) is live and drives the NPCs' movement today.
+
+**WIRE** would mean: drive it from the throttled ambient tick in `AIWorkerSystem` that already moves these
+NPCs, render it as a small world-space label above the head (the nametag layer already exists), and decide
+a cadence. Cost is a render surface and a cadence tuning pass; it would give the hub the ambient life the
+patrol maths was written for.
+
+**DELETE** would mean removing `nextEmote`, `EMOTES` and their test — about eight lines — and accepting
+that hub NPCs walk their patrol silently.
+
+Not decided here, because the strings are authored content and choosing to bin them is a product call.
+I did delete its sibling `shouldRetreatAtNight` in the same file without asking: that one restated the
+day/night branch `routinePosition` already owns, had no consumer outside its own test, and was duplicated
+logic rather than an unbuilt feature.
