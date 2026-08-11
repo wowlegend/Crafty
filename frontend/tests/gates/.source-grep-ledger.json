@@ -1,12 +1,11 @@
 {
-  "_count": 116,
+  "_count": 115,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
     "tests/gates/allocate-ui-gates.test.js",
     "tests/gates/ally-eyes-gate.test.js",
     "tests/gates/archer-kite-steer-gates.test.js",
-    "tests/gates/aspect-hint-gate.test.js",
     "tests/gates/aspect-sfx-gates.test.js",
     "tests/gates/aspect-trees-gates.test.js",
     "tests/gates/atmosphere-isolation-gates.test.js",

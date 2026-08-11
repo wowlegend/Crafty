@@ -29,6 +29,7 @@
  *        node scripts/ci/gate-shape.mjs --verbose   also list every assertion checked
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { ratchetDiff } from './_gate-ratchet.mjs';
 import { resolve, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from '@babel/parser';
@@ -265,12 +266,27 @@ if (process.argv.includes('--write')) {
 
 if (existsSync(LEDGER)) {
   const { gates: frozen } = JSON.parse(readFileSync(LEDGER, 'utf8'));
-  const added = sourceGrepGates.filter((g) => !frozen.includes(g));
+  const { added, stale } = ratchetDiff(frozen, sourceGrepGates);
   if (added.length) {
     errors.push(
       `NEW source-grep gate(s) — this population may shrink, never grow:\n` +
         added.map((g) => `    ${g}`).join('\n') +
         `\n    A new gate should EXECUTE the module it guards, not regex its text.`
+    );
+  }
+  // A FALL IS GOOD NEWS THAT STILL HAS TO BE RECORDED. Until this existed the check ran in one
+  // direction only, so a frozen entry with no live counterpart was invisible: the ledger listed
+  // `aspect-hint-gate.test.js` long after that gate became behavioural (and was renamed to `.test.jsx`),
+  // and this script printed "115 source-grep gates (ratchet holding)" against a frozen _count of 116.
+  // The miscount is the smaller half. A stale entry is a FREE SLOT — a brand-new source-grep gate at
+  // that exact path passes `frozen.includes()` and is admitted by the gate built to refuse it.
+  if (stale.length) {
+    errors.push(
+      `STALE ledger entry(s) — frozen, but no longer reading source:\n` +
+        stale.map((g) => `    ${g}`).join('\n') +
+        `\n    This is the ratchet WORKING (a gate went behavioural, or was renamed). Record the fall:\n` +
+        `    node scripts/ci/gate-shape.mjs --write\n` +
+        `    Leaving it is not cosmetic: each stale path is a slot a new source-grep gate can occupy unchallenged.`
     );
   }
 } else {

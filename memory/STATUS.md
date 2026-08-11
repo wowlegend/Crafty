@@ -975,8 +975,37 @@ you know the floor.** Same shape as asserting an absence without a baseline.
   |---|---|---|
   | **VACUOUS** | **3** (ALL DONE ✅) | asserts a code line EXISTS as a proxy for behaviour that *could* be tested behaviourally → the dangerous class. `boss-notif-timer` ✅ seam→behavioral (`8ab8938`), `melee-swing-audio` ✅ seam→behavioral (`8a1da93`), `survival-quests` ✅ (2026-07-20) — **RULE-2 correction: it was MIXED, only 1 of its 5 tests was a source-grep; the other 4 are genuine data-driven contract tests. Seam-extracted just the dawn-wiring sub-test.** |
   | **STRUCTURAL (legit)** | ~31 | a cross-file invariant that genuinely CANNOT be behavioural — e.g. the `ai.worker.js` inline-mirror sync gate (a classic worker cannot import, so comparing source IS the correct tool), zero-emoji-in-src, no-raw-hex-outside-theme, capture-determinism (no `Math.random`) |
-  | **NEEDS REVIEW** | ~80 | source-reading, not yet classified — this is the actual work |
+  | **NEEDS REVIEW** | ~~~80~~ **0 — CLASSIFIED 2026-08-11** | see the replacement tally directly below |
   | **BEHAVIOURAL** | 10 | already execute the code |
+
+  **✅ THE CLASSIFICATION IS DONE (2026-08-11).** All 116 ledger entries classified with per-test evidence
+  and two adversarial review lenses each. Plan of record:
+  `docs/superpowers/plans/2026-08-11-crafty-v1-gate-corpus.md`. Post-attack tally over the **115 real
+  files** (the 116th was a ghost — see below): **MIXED 82 · VACUOUS 20 · STRUCTURAL-CORRECT 8 ·
+  BRITTLE 5.**
+
+  **The headline is MIXED at 82 (71%), and it reframes the work.** The FILE is almost never the right
+  unit: nearly every gate in this corpus pairs a real invariant with a proxy assertion sitting beside it.
+  So "convert gate X" is the wrong instruction — the instruction is per-TEST. That also corrects the
+  first pass in both directions at once: `~31 STRUCTURAL-legit` over-counted whole files and badly
+  under-counted structural *tests*.
+
+  **⚠️ The classification is a HYPOTHESIS per file, not a verdict.** The corpus-level facts were verified
+  by hand; the per-gate labels were not. This item's own recorded lesson applies to its successor —
+  `survival-quests` was labelled vacuous and turned out to be 4 of 5 legitimate data-driven tests. Open
+  the gate at the moment of conversion.
+
+  **✅ CLOSED THE SAME DAY — the ratchet was holding against a file that does not exist.** The ledger
+  froze the `.test.js` spelling of `aspect-hint-gate`; the file on disk is
+  `tests/gates/aspect-hint-gate.test.jsx` and contains zero `readFileSync`, having already gone
+  behavioural. (Spelling the dead path out in full here is itself blocked by `doc-currency`, which
+  reddened on this paragraph's first draft — the two gates guard the same class from opposite sides.) `gate-shape` therefore printed *"115
+  source-grep gates (ratchet holding)"* against a frozen `_count` of **116**. The miscount was the
+  smaller half: **a stale entry is a FREE SLOT**, because `added` is computed with `frozen.includes(g)`,
+  so a brand-new source-grep gate created at that exact path would have been waved through by the gate
+  whose only job is to refuse it. Fixed at the mechanism, not the entry —
+  `frontend/scripts/ci/_gate-ratchet.mjs` compares BOTH directions, `gate-shape` now fails on a stale
+  entry with the re-freeze instruction, and the ledger is re-frozen at 115.
 
   **What remains TRUE and is the real finding:** three gates this session were *anti-correlated with
   correctness* — green while the code was broken, RED once it was fixed (`quest-rewards`, `ore-drop`, and the
