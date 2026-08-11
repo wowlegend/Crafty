@@ -431,7 +431,7 @@ Tried to refute two ways and both failed. (1) Maybe @react-three/rapier hands ba
 
 REFUTATION FAILED on the facts. Line 405 sits inside the projectile loop (line 288) inside the useFrame callback opened at line 276, and it is the ONLY `new THREE.Vector3` inside that callback -- the other seven in the file (58, 103, 122, 186, 247-250) are in cast/impact/dev-fixture paths, not the frame loop. The branch is live, not dead: `store.isBossActive` exists at src/store/useGameStore.jsx:412 (`isBossActive: () => get().bossActive`) and `getBossPosition` is installed via setGetBossPosition (:404-405), so with the dragon active every surviving projectile hits line 405 each frame. The suggested fix pattern is genuinely already used elsewhere in the codebase. WHAT I DID KNOCK DOWN is the magnitude. 'Hundreds of allocations per second feeding GC pressure' overstates it by orders of magnitude: a Vector3 is ~56 bytes, so even 10 simultaneous projectiles at 60fps is ~600 objects/s ~= 34 KB/s of pure young-generation garbage, which a scavenger absorbs for free -- and it is dwarfed by the per-frame string/DOM churn elsewhere in the frame (e.g. the Compass rebuilding its innerHTML every rAF). Also note the same loop already calls `useGameStore.getState()` per projectile per frame at lines 307-308 and 400. Verdict: a true, easily-fixed hot-path allocation and a consistency nit; correctly rated low, but it is a tidy-up, not a performance defect.
 
-### ▢ `src/GameScene.jsx:99` — silent-failure
+### ▣✓ 06f3822 `src/GameScene.jsx:99` — silent-failure
 
 **The try/catch around canvas requestPointerLock cannot catch a denied lock — the denial arrives as a rejected Promise, so the intended console.warn never fires and the rejection goes unhandled.**
 
@@ -449,7 +449,7 @@ REFUTATION FAILED on the mechanical claim. Exhaustive grep over src/ + tests/ + 
 
 REFUTATION FAILED. Verified against the installed framer-motion 12.34.3: AnimatePresence computes `presentChildren = useMemo(() => onlyElements(children), [children])` and `presentKeys = presentChildren.map(getChildKey)` (node_modules/framer-motion/dist/es/components/AnimatePresence/index.mjs), where onlyElements keeps every `isValidElement` child (utils.mjs). `<SurvivalWarning message={...} />` at HUD.jsx:608 is rendered unconditionally inside the always-mounted HUD block, so it is always a valid element with a stable key and can never enter the exiting set. The null comes from inside the component (ui/SurvivalWarning.jsx:6 `if (!message) return null;`), which AnimatePresence cannot observe. The clear path is real and leaves the HUD mounted: world/survivalSystem.js:27 and :57 do `setTimeout(() => setSurvivalWarning(null), 4000/3000)`, so the toast blinks out with no exit tween while everything around it stays mounted. The `exit={{ opacity: 0, y: -30, scale: 0.9 }}` at ui/SurvivalWarning.jsx:16 and the wrapper are therefore inert (entry `initial`/`animate` still work, since those run on ordinary mount). ONE SUB-CLAIM IS WRONG: the parenthetical about the outer AnimatePresence at HUD.jsx:528 is incorrect -- `getChildKey = (child) => child.key || ""`, so an unkeyed single Fragment child is still tracked, and `{cond && <>...</>}` collapsing to `false` IS filtered out by onlyElements, i.e. that AnimatePresence does see the removal. Severity: cosmetic, correctly rated low.
 
-### ▢ `src/SoundManager.jsx:111` — silent-failure
+### ▣✓ 06f3822 `src/SoundManager.jsx:111` — silent-failure
 
 **stopSynthPad's deferred disconnect reads pad.lfoGain / pad.filter 1600ms after the same function nulled them, so both disconnects throw into an empty catch.**
 
@@ -523,7 +523,7 @@ MECHANISM CONFIRMED, IMPACT REFUTED. Confirmed: `initSettingsPersistence(useGame
 
 BUT the stated failure scenario cannot occur: (a) capture.mjs:208 is `puppeteer.launch({headless:true, args:[...]})` with NO `userDataDir`, so every run gets a fresh throwaway profile — `localStorage` is empty, `loadSettings` returns `{}`, `store.setState` is never called, and `saveSettings` never fires because the subscription only writes when a dial actually changes (settingsPersist.js:84), which nothing does during capture. (b) The auditor's cited render-affecting path is flatly wrong: Components.jsx:1230 sits BELOW an unconditional `if (isCaptureMode()) { ...; return; }` at Components.jsx:510 — the comment at 1223 says so explicitly — so the shake block can never appear in a baseline frame. (c) The only juiceIntensity path that could reach a pixel is the Settings-panel readout (ui/GamePanels.jsx:681,687,705), and capture.mjs never opens it (`openModal` is called only with 'inventory' at :609 and 'spellUpgrades' at :642). Net: a real dead guard and a false docstring, but zero present-day effect on baselines — latent risk, not active contamination. Severity high -> low.
 
-### ▢ `src/i18n/cjkFonts.js:23` — silent-failure
+### ▣✓ 06f3822 `src/i18n/cjkFonts.js:23` — silent-failure
 
 **_loaded latches to true before the font loads are attempted and each failure is swallowed by a DEV-only warn, so a transient first-toggle failure permanently disables the CJK webfonts for the session with no production signal.**
 
