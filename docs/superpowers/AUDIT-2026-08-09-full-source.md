@@ -719,7 +719,7 @@ REFUTATION FAILED on the logic, but reachability is narrow and I could not const
 
 MECHANISM SURVIVES, IMPACT REFUTED — severity drops from high to low. The setup-time evaluation is real for the reasons established above (mount precedes enterCapture; deps [] at line 704 means never re-evaluated), so the interval is installed and its callback does append chests during the run, violating the comment's own 'Zero chests = deterministic frame'. But the claimed pixel consequence does not occur, because a SECOND, correctly-placed guard catches it: the publish effect at lines 876-878 puts `if (!isCaptureMode())` INSIDE the effect body, and that effect re-runs on every `chests` identity change, so no chest created after the flag flips is ever written to treasureChestsList — Terrain.jsx:303 reads only that store key and therefore renders nothing new. I checked the other three routes a chest could reach a frame and all are closed: HUD.jsx:428 hard-codes `isCaptureMode() ? [] : treasureChests?.chests` for the Compass; ChestIndicator (QuestSystem.jsx:888-905) needs dist < 4.5 while this spawner picks `20 + Math.random()*40`; and RadialMinimap.jsx consumes nearestLandmark/mobEntities/npcEntities, never treasureChestsList (grep for treasureChestsList returns only QuestSystem, App and Terrain). Residue is non-visual: wasted setChests churn and chestId.current drift.
 
-### ▣✓ PENDING `src/QuestSystem.jsx:730` — correctness
+### ▣✓ 2f56b09 `src/QuestSystem.jsx:730` — correctness
 
 **The 'initial chest' effect is keyed on [chests.length], so it re-fires whenever the count returns to zero, respawning a chest 15 blocks away and bypassing the 30s cadence and 5-chest cap.**
 
