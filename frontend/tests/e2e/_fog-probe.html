@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>height-fog instancing probe</title>
+</head>
+<body style="margin:0;background:#000">
+<script type="module">
+// GPU-LEVEL PROOF FOR THE HEIGHT-FOG INSTANCING FIX.
+//
+// The unit gate (tests/gates/height-fog-instancing-gates.test.js) asserts the SHADER SOURCE that
+// installHeightFog() writes into THREE.ShaderChunk. That is a real execution test of the patch, and it
+// still cannot answer the only question that matters: does a GPU, compiling that chunk for a real
+// InstancedMesh, actually fog two instances at different altitudes differently. Nothing in the repo
+// answered that, and the claim was left explicitly unverified rather than asserted.
+//
+// This page answers it by rendering. It imports the REAL module -- installHeightFog() runs at
+// Atmosphere.jsx module scope, so merely importing it is the same wiring the app uses.
+//
+// THE CONTROL THAT MAKES THIS A HEIGHT TEST AND NOT A DEPTH TEST. Both instances sit on the camera's
+// forward axis at the SAME view-space depth: the camera looks down -Z from (0, MID, 60) at (0, MID, 0),
+// so vFogDepth is identical for both boxes no matter their Y. Every difference in the sampled pixel is
+// therefore the height term, which is the term the fix moved.
+//
+// Colours are chosen so the sample reads the fog factor directly: white material, black fog. Brighter
+// pixel = less fog. MeshBasicMaterial is unlit, so no light rig can drift the reading.
+import * as THREE from 'three';
+import { installHeightFog } from '/src/render/Atmosphere.jsx';
+
+// Captured AFTER the module-scope install, so this is what the app actually compiles.
+const PATCHED_FOG_VERTEX = THREE.ShaderChunk.fog_vertex;
+
+// The PRE-FIX chunk, reproduced exactly: world Y from modelMatrix alone. For an InstancedMesh whose
+// object sits at the origin this yields the LOCAL vertex Y for every instance -- which is the whole
+// defect, and why both boxes must come back identical under it. This is the mutation, run on every
+// pass rather than once by hand: if the fix regresses, the two variants stop differing and the first
+// assertion fails; if the mutation stops reproducing the defect, the second assertion fails.
+const PREFIX_FOG_VERTEX = [
+  '#ifdef USE_FOG',
+  '	vFogDepth = - mvPosition.z;',
+  '	vFogWorldY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;',
+  '#endif',
+].join('\n');
+
+// Atmosphere.jsx: full fog at/below Y=56, easing to a 0.55 residual by Y=90.
+// LOW spans 40..48 (entirely below sea level -> heightT 0 -> full fog).
+// HIGH spans 90..98 (entirely past the falloff -> heightT 1 -> residual fog).
+const LOW_Y = 44;
+const HIGH_Y = 94;
+const MID_Y = (LOW_Y + HIGH_Y) / 2;
+const BOX = 8;
+const CAM_Z = 60;
+// 1 - exp(-(0.016^2)(60^2)) = 0.602 base fog: strong enough that the 0.55 residual multiplier is a
+// large pixel delta, far from either saturation end where the two boxes would compress together.
+const FOG_DENSITY = 0.016;
+const W = 256;
+const H = 128;
+
+function sample(ctx, cx, cy) {
+  // Average a 5x5 patch so a single AA-ish pixel on a box edge cannot decide the result.
+  const d = ctx.getImageData(cx - 2, cy - 2, 5, 5).data;
+  let r = 0;
+  for (let i = 0; i < d.length; i += 4) r += d[i];
+  return r / (d.length / 4);
+}
+
+function renderVariant(variant) {
+  THREE.ShaderChunk.fog_vertex = variant === 'prefix' ? PREFIX_FOG_VERTEX : PATCHED_FOG_VERTEX;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  // preserveDrawingBuffer so the frame survives long enough to be drawn into a 2D context, which
+  // flips the row order for us -- gl.readPixels is bottom-left origin and getting that backwards is a
+  // silent way to sample the wrong box.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.FogExp2(0x000000, FOG_DENSITY);
+
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  // WITHOUT THIS THE PROBE WOULD LIE. three keys its program cache on the material PARAMETERS, not on
+  // the contents of THREE.ShaderChunk -- so a second material with identical parameters would reuse
+  // the program built from the FIRST variant's chunk, and both variants would return the same picture
+  // while appearing to test two different shaders. Distinct keys force a real recompile per variant.
+  material.customProgramCacheKey = () => 'fogProbe:' + variant;
+
+  const geo = new THREE.BoxGeometry(BOX, BOX, BOX);
+  const mesh = new THREE.InstancedMesh(geo, material, 2);
+  const m = new THREE.Matrix4();
+  mesh.setMatrixAt(0, m.makeTranslation(0, LOW_Y, 0));
+  mesh.setMatrixAt(1, m.makeTranslation(0, HIGH_Y, 0));
+  mesh.instanceMatrix.needsUpdate = true;
+  scene.add(mesh);
+
+  const camera = new THREE.PerspectiveCamera(70, W / H, 0.1, 1000);
+  camera.position.set(0, MID_Y, CAM_Z);
+  camera.lookAt(0, MID_Y, 0);
+
+  renderer.render(scene, camera);
+
+  const read = document.createElement('canvas');
+  read.width = W;
+  read.height = H;
+  const ctx = read.getContext('2d');
+  ctx.drawImage(canvas, 0, 0);
+
+  const halfExtent = Math.tan((70 * Math.PI) / 360) * CAM_Z;
+  const rowFor = (y) => Math.round(((1 - (y - MID_Y) / halfExtent) / 2) * H);
+  const out = {
+    variant,
+    low: sample(ctx, W / 2, rowFor(LOW_Y)),
+    high: sample(ctx, W / 2, rowFor(HIGH_Y)),
+    background: sample(ctx, 12, 12),
+    // three's WebGLPrograms sets its `instancing` parameter from exactly this flag, and that parameter
+    // is what emits `#define USE_INSTANCING`. So this is the define's actual source, not a proxy for
+    // it -- and if it were somehow false anyway, the patched variant would fall to the #else branch
+    // and return two identical samples, which the first assertion rejects.
+    isInstanced: mesh.isInstancedMesh === true,
+  };
+
+  geo.dispose();
+  material.dispose();
+  renderer.dispose();
+  renderer.forceContextLoss();
+  return out;
+}
+
+window.__fogProbe = () => {
+  const errors = [];
+  let result = null;
+  try {
+    result = { patched: renderVariant('patched'), prefix: renderVariant('prefix') };
+  } catch (err) {
+    errors.push(String((err && err.stack) || err));
+  }
+  return { result, errors, constants: { LOW_Y, HIGH_Y, FOG_DENSITY, RESIDUAL: 0.55 } };
+};
+window.__fogProbeReady = true;
+</script>
+</body>
+</html>
