@@ -917,12 +917,13 @@ export const useGameStore = create((set, get) => ({
         useGameStore.setState({ _spawnTime: Date.now() });
     },
 
-    playerStats: {
-        blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0
-    },
-    setPlayerStats: (statsArg) => set((state) => ({
-        playerStats: typeof statsArg === 'function' ? statsArg(state.playerStats) : statsArg
-    })),
+    // playerStats / setPlayerStats DELETED 2026-08-11. The setter had zero callers anywhere in src, tests
+    // or scripts, so all four counters -- blocksPlaced, blocksDestroyed, distanceTraveled, timeplayed --
+    // were permanently zero, and every save serialized those zeros into player_data.stats while
+    // loadWorldData faithfully restored them. The counters the game ACTUALLY keeps live in the quest
+    // system's own `stats` (blocks_placed / blocks_broken / distance) and persist through questState.
+    // A serialized field nothing writes and nothing reads is worse than absent: the next reader has no
+    // way to tell it is fiction.
 
     loadWorldData: (rawSaveData) => {
         const saveData = migrateSaveData(rawSaveData);
@@ -940,7 +941,6 @@ export const useGameStore = create((set, get) => ({
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys — use directly.
             const inventory = saveData.player_data?.inventory || state.inventory;
-            const playerStats = saveData.player_data?.stats || state.playerStats;
             const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
@@ -1018,7 +1018,6 @@ export const useGameStore = create((set, get) => ({
             return {
                 worldBlocks,
                 inventory,
-                playerStats,
                 gameMode,
                 selectedBlock,
                 activeSpell,

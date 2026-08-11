@@ -20,7 +20,9 @@ export function buildSaveData(state, { position } = {}) {
     player_data: {
       position: position || { x: 0, y: 18, z: 0 },
       inventory: state.inventory,
-      stats: state.playerStats,
+      // `stats` DELETED 2026-08-11: setPlayerStats had zero callers, so this wrote four zeros into every
+      // save. The real counters ride in questState. Old saves keep the key; nothing reads it, and
+      // migrateSaveData does not need to strip it -- an ignored extra key costs nothing.
     },
     // S2a: quest progress + achievements mirror (the gameplay hook keeps Sets in
     // working state and mirrors them to arrays here, so this is already JSON-safe).

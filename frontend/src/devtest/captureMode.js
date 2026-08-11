@@ -25,6 +25,11 @@ let _opts = {
     position: [0, 70, 24],
     lookAt: [0, 64, -66],
   },
+  // Opt-IN per shot, so the other baselines stay unpainted. Declared here rather than left undefined:
+  // an opt that only exists once someone passes it cannot be read as "the resting value is null" — it
+  // reads as "this key was never part of the contract", which is exactly how hitDir went unbuilt.
+  showTouch: false,
+  hitDir: null,
 };
 
 /** True only while the capture harness has explicitly entered capture mode. */
@@ -42,12 +47,22 @@ export function enterCaptureMode(opts = {}) {
   // showTouch (M2): the mobile.png fixture opts IN to render the touch overlay; default-off keeps
   // the 17 other baselines null (the overlay's capture guard reads getCaptureOpts().showTouch).
   if ('showTouch' in opts) _opts = { ..._opts, showTouch: !!opts.showTouch };
+  // hitDir (radians; 0=top, +pi/2=right): the damage-direction cue's fixture opt. DamageDirection has
+  // branched on `getCaptureOpts().hitDir` since it was written, and its docblock describes the opt as
+  // though it worked -- but nothing ever set it: this function merged `camera` and `showTouch` and
+  // SILENTLY DROPPED everything else. So the branch was unreachable, and a fixture author calling
+  // enterCapture({ hitDir: Math.PI / 2 }) got an empty frame with no error at all. The plumbing is
+  // built rather than the branch deleted: the capture render is a real, designed fixture, and the only
+  // thing missing was two lines here.
+  if ('hitDir' in opts) _opts = { ..._opts, hitDir: Number.isFinite(opts.hitDir) ? opts.hitDir : null };
   return _opts;
 }
 
 export function exitCaptureMode() {
   _captureMode = false;
-  _opts = { ..._opts, showTouch: false }; // never leak a showTouch fixture into later frames
+  // Never leak a fixture opt into a later frame. Both of these are opt-IN per shot, so leaving either
+  // set would paint the next 30 baselines with a cue that frame never asked for.
+  _opts = { ..._opts, showTouch: false, hitDir: null };
 }
 
 // MurmurHash2-style string hash -> 32-bit seed (0x5bd1e995 mix constant + a murmur3-style finalizer).
