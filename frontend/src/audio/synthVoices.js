@@ -1,3 +1,4 @@
+import { makePhaseAccumulator, triangleFromPhase } from './phase.js';
 /**
  * synthVoices.js — the all-synth voice bank (#74): EVERY game sound as a pure
  * (ctx) => AudioBuffer factory over a caller-supplied AudioContext. Extracted from
@@ -214,13 +215,19 @@ export const makeFreezeSound = (ctx) => {
     const frameCount = sampleRate * duration;
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
+    // ACCUMULATED phase, not `f * t`. sin(2*pi*f(t)*t) sweeps at DOUBLE the intended rate -- its real
+    // instantaneous frequency is f(t) + t*f'(t) -- so this voice ran 1400 - 2800t: it passed the declared
+    // 700 Hz at the MIDPOINT and hit 0 Hz before the buffer ended. The twin and the sparkle are harmonic
+    // multiples of the fundamental, so they take the same phase scaled: integral(k*f) = k*integral(f).
+    const ph = makePhaseAccumulator(sampleRate);
     for (let i = 0; i < frameCount; i++) {
       const t = i / sampleRate;
       // a descending crystalline shimmer: 1400->700Hz with a detuned twin
       const f = 1400 - 700 * (t / duration);
-      const a = Math.sin(2 * Math.PI * f * t);
-      const b = Math.sin(2 * Math.PI * f * 1.007 * t) * 0.7;
-      const sparkle = Math.sin(2 * Math.PI * f * 3 * t) * 0.15 * Math.exp(-t * 8);
+      const phase = ph(f);
+      const a = Math.sin(phase);
+      const b = Math.sin(phase * 1.007) * 0.7;
+      const sparkle = Math.sin(phase * 3) * 0.15 * Math.exp(-t * 8);
       const env = Math.min(t * 20, 1) * Math.exp(-t * 4);
       d[i] = (a * 0.4 + b * 0.3 + sparkle) * env * 0.42;
     }
@@ -272,11 +279,17 @@ export const makeBindSound = (ctx) => {
     const frameCount = sampleRate * duration;
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
+    // The step from G4 to C5 is why this one MUST accumulate: with phase computed as t*f, changing f
+    // instantaneously jumps the phase, and a phase jump is a click -- on the "binding lands" resolve, the
+    // single moment this sound exists to make feel clean. An accumulator never asks what the phase should
+    // be at time t; it only advances by this sample, so a frequency step is inaudible as a step.
+    const ph = makePhaseAccumulator(sampleRate);
     for (let i = 0; i < frameCount; i++) {
       const t = i / sampleRate;
       const f = t < 0.18 ? 392 : 523.25; // G4 -> C5: the rise RESOLVES (binding lands)
-      const tri = 2 * Math.abs(2 * (t * f - Math.floor(t * f + 0.5))) - 1;
-      const shimmer = Math.sin(2 * Math.PI * f * 2 * t) * 0.2;
+      const phase = ph(f);
+      const tri = triangleFromPhase(phase);
+      const shimmer = Math.sin(phase * 2) * 0.2;
       const env = Math.min(t * 25, 1) * Math.exp(-t * 4.5);
       d[i] = (tri * 0.55 + shimmer) * env * 0.4;
     }
@@ -332,10 +345,13 @@ export const makeDefeatSound = (ctx) => {
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
+    // Accumulated, for the reason above. As written this swept at 200 - 300t, which CROSSES ZERO at
+    // t = 0.667 of a 0.8s buffer and then RISES again -- a descending defeat sting that turns around.
+    const ph = makePhaseAccumulator(sampleRate);
     for (let i = 0; i < frameCount; i++) {
       const t = i / sampleRate;
       const freq = 200 - t * 150; // Descending frequency
-      const sample = Math.sin(2 * Math.PI * freq * t);
+      const sample = Math.sin(ph(freq));
       const envelope = Math.exp(-t * 2);
       channelData[i] = sample * envelope * 0.3;
     }
