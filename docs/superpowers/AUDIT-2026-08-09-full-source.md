@@ -72,7 +72,7 @@ PIXEL PROOF: I projected the forge-fire Emissive world position (10.31, 52.50, -
 
 One correction: the watchtower lantern is a non-issue visually — the Emissive at [0,6.8,0] size 0.5 (y 6.55-7.05) is fully ENCLOSED by the roof Cube at [0,7.0,0] size [2.4,0.8,2.4] (y 6.6-7.4) plus the platform (y 6.0-6.6), so it is invisible in gameplay too. Only the forge fire actually leaks. In hearth.png the forge fire is occluded by a tree canopy, which is why that frame does not show it; explore-night does. Gate claim also verified: hub-render-gates.test.js:20 is a pure source grep and passes regardless.
 
-### ▣✓ PENDING `src/render/MobModel.jsx:191` — correctness
+### ▣✓ 3ed0f8e `src/render/MobModel.jsx:191` — correctness
 
 **The per-frame hit-flash traverse writes the body colour into every toon material, killing featureColor() tones and the villager nose**
 

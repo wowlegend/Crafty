@@ -560,3 +560,34 @@ threw and vite was orphaned on port 4181. `kill-test-procs.sh` then REFUSED to s
 design, because the process was under 3 minutes old and could have been a live run. Killed by PID, port
 verified clear, probe deleted. The standing rule earns its place again: hand-started means hand-killed,
 and a throwaway probe must use the helper's actual contract rather than a plausible-looking method name.
+
+---
+
+## 2026-08-11 — [KEVIN] full design authority over every feature, advertised or not
+
+Kevin, verbatim: *"for any 'advertised' feature (or non-advertised feature), you should deeply and
+holistically evaluate if it's worth keeping / wiring up / or deleting. any feature / characteristic of
+this game is up for enhancement / modification / deletion as you decide best. no need to wait for my
+decision."*
+
+**This supersedes the 2026-08-11 batching decision.** Thirty-three audit findings were filed to
+`KEVIN-REVIEW-BATCH.md` on the grounds that "a feature built, advertised and never wired" is a product
+call rather than a bug. That reasoning was correct under the old authority and is now moot: the call is
+mine. Those entries stay in the batch file as a RECORD of what was decided and why, but they are no
+longer blocked on an answer.
+
+**What the grant does NOT change**, because none of it was about design authority:
+- Irreversible or outward-facing actions still stop for Kevin — force-push, external send, money,
+  accounts, publishing, a NEW dependency, hard-deleting a referenced file.
+- Every deletion still needs the same evidence a fix does: the consumer graph traced, the finding
+  mutation-proven, and ARCHIVE-over-DELETE where the artifact has independent value.
+- Recorded decisions are not silently reversed. A reversal is a new dated entry naming the one it
+  supersedes — this entry being the example.
+
+**The bar I will hold myself to,** since "as you decide best" is the whole instruction and a lazy
+reading of it is "delete everything unwired": the question is not *is this code reachable* but *does
+this make the game better*. A feature reachable by four entry surfaces and localized into two languages
+was someone's intent; deleting it is a real cost, not a tidy-up. Wiring costs build time and adds
+surface to maintain. I will state which of the two I chose and why, per feature, in the commit that
+does it — and where a feature is genuinely worth having but too large for the current unit, it goes to
+`ROADMAP.md` as a named unit rather than being deleted for convenience or left rotting for honesty.
