@@ -73,3 +73,19 @@ export function mobFeatures(type, dims) {
   if (!fn || !dims) return [];
   return fn(dims);
 }
+
+// Moved here from MobModel.jsx 2026-08-11 so it is node-importable and the tone system owns its own
+// colour rule. `dark` needs a Color to scale, so the scratch lives here too.
+const _featTmp = { r: 0, g: 0, b: 0 };
+function _hexScale(hex, k) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const r = Math.round(((n >> 16) & 255) * k), g = Math.round(((n >> 8) & 255) * k), b = Math.round((n & 255) * k);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+
+/** The authored colour for a feature of `tone` on a body of `baseColor`. */
+export function featureColor(tone, baseColor) {
+  if (tone === 'bone') return '#e6dcc4';
+  if (tone === 'dark') return _hexScale(baseColor, 0.55);
+  return baseColor;
+}

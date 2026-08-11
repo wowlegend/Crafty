@@ -13,6 +13,8 @@ import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
 import { TIERS } from './quality';
+import { rememberAuthoredColor, restoreAuthoredColor } from './mobFlash.js';
+import { featureColor } from '../game/mobFeatures.js';
 
 // MobModel + HealthBar — the mob render cluster, extracted BYTE-EXACT from SimplifiedNPCSystem.jsx
 // (S3-M6 NPC de-monolith). OUTLINE_RIM_STRENGTH moved here (its only user). NPCSystem imports MobModel.
@@ -20,12 +22,6 @@ const OUTLINE_RIM_STRENGTH = RIM.strength;
 
 // Mob-distinctness T3: a feature box's shade from its `tone` hint — 'bone' = a pale off-white (horns,
 // ribs), 'dark' = the body color crushed ~55% (shoulder slabs, moss-crown), else the body color.
-const _featTmp = new THREE.Color();
-function featureColor(tone, baseColor) {
-  if (tone === 'bone') return '#e6dcc4';
-  if (tone === 'dark') return '#' + _featTmp.set(baseColor).multiplyScalar(0.55).getHexString();
-  return baseColor;
-}
 
 const MobModel = React.memo(({ entity }) => {
   const groupRef = useRef();
@@ -52,7 +48,6 @@ const MobModel = React.memo(({ entity }) => {
   const q = TIERS[qualityTier] || TIERS.low;
   const rimStrength = q.charRim ? OUTLINE_RIM_STRENGTH : 0;
 
-  const baseColor = useMemo(() => new THREE.Color(entity.color), [entity.color]);
   const hitColor = useMemo(() => new THREE.Color('#ffffff'), []);
   const blackColor = useMemo(() => new THREE.Color('#000000'), []);
   const chargeColor = useMemo(() => new THREE.Color('#ff3a00'), []); // M2 #4: telegraph charge glow (danger red-orange)
@@ -188,7 +183,14 @@ const MobModel = React.memo(({ entity }) => {
       // (BackSide ShaderMaterial, exposes a `.color` uniform) and the basic-material
       // eyes must NOT be mutated, or the outline color would be clobbered each frame.
       if (child.isMesh && flashableMaterial(child.material) && child.material.name !== "eye") {
-         child.material.color.copy(isHit ? hitColor : baseColor);
+         // Record this material's OWN authored colour before the first flash ever touches it, then
+         // restore to THAT. The old line copied `baseColor` — the body colour — into every flashable
+         // material, so feature tones authored by featureColor() ('#e6dcc4' for bone, a 0.55-scaled base
+         // for dark) were stomped flat by the first hit and never came back. Invisible to the visual
+         // baselines, because damage has to be inflicted before it shows.
+         rememberAuthoredColor(child.material);
+         if (isHit) child.material.color.copy(hitColor);
+         else restoreAuthoredColor(child.material);
          if (isHit) {
            child.material.emissive.copy(hitColor);
            child.material.emissiveIntensity = 1.5;
