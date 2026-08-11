@@ -20,8 +20,14 @@ describe('touch-dodge gates (M3 #6 S4)', () => {
     expect(surface).toMatch(/<Wind size=/);
   });
 
-  it('the live touch overlay has a Dodge hit-button dispatching the dodge intent', () => {
-    expect(/aria-label="Dodge"[\s\S]{0,120}onPointerDown=\{\(\) => setIntent\('dodge', true\)\}/.test(controls)).toBe(true);
+  it('the live touch overlay has a Dodge hit-button dispatching the dodge intent, and PULSING it', () => {
+    // The clear is half the assertion. Setting the intent with no release relied on the consumer to clear
+    // it, and the consumer only clears while input is LOCKED — so a tap that landed as a panel opened
+    // stayed queued and spent itself as an unrequested roll on the way back. This gate used to pin the
+    // exact inline arrow, so it went red at the fix rather than at the defect.
+    const el = /aria-label="Dodge"[\s\S]{0,600}?setIntent\('dodge', true\)([\s\S]{0,300}?)setIntent\('dodge', false\)/;
+    expect(el.test(controls), 'the touch Dodge button sets the intent without ever clearing it').toBe(true);
+    expect(/aria-label="Dodge"[\s\S]{0,300}?onPointerDown=/.test(controls)).toBe(true);
   });
 
   it('it routes to the SAME dodge intent the keyboard (Shift) uses (no gameplay fork)', () => {

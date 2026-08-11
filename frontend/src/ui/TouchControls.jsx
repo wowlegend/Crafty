@@ -205,7 +205,14 @@ function TouchControlsLive({ isWorldBuilt }) {
         // M3 #6: touch DODGE -- edge-triggered (the dodge state machine in Components consumes the intent,
         // so one press = one roll); mirrors the Wind glyph above cast in TouchControlsSurface.
         <button data-touch-btn aria-label="Dodge"
-          onPointerDown={() => setIntent('dodge', true)}
+          onPointerDown={() => {
+            // PULSED, like the Aspect sectors: held long enough that a once-per-frame state machine
+            // cannot miss the rising edge, then cleared. Setting it true with no release relied entirely
+            // on the consumer to clear it, and the consumer only clears while input is LOCKED — so a tap
+            // that landed as a panel opened stayed queued and spent itself as a roll on the way back.
+            setIntent('dodge', true);
+            setTimeout(() => setIntent('dodge', false), TAP_HOLD_MS);
+          }}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 124px)', bottom: 'calc(9% + 86px)', width: 60, height: 60 }} />
       )}
 

@@ -355,8 +355,13 @@ export const Player = ({ isWorldBuilt }) => {
         setIntent('jump', true);
       }
 
+      // The ONE consumer (useFrame, ~line 891) only clears this intent when input is LOCKED, and there was
+      // no keyup branch to clear it either — so a Shift pressed with a panel open, or on the title screen
+      // (GameScene mounts this listener before the game starts), latched the intent and spent it as an
+      // unrequested 0.4s roll with i-frames the instant pointer lock came back. blurReset only fires on
+      // window blur, and the window keeps focus while a panel is open.
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        setIntent('dodge', true);
+        if (getInput().active && useGameStore.getState().isAlive) setIntent('dodge', true);
       }
 
       // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
@@ -419,6 +424,12 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (e.code === 'KeyZ') {
         setIntent('imbue', false);
+      }
+
+      // Shift was the ONE held key with no release branch. Releasing it must clear the intent even if the
+      // press was refused above, so a Shift held across a panel open/close cannot arrive as a queued roll.
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        setIntent('dodge', false);
       }
     };
     // #72 VERB ROUTER: ONE listener, one click -> exactly ONE verb (design-of-record:

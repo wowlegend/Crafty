@@ -299,6 +299,10 @@ function GameApp({ experienceSystem }) {
     registerTestHook('forcePlay', () => {
       setActive(true);
     });
+    // Read the live intent map. Held-key intents are the one part of the input path with no store
+    // mirror, so a latched intent — a Shift pressed with a panel open that spends itself as a roll the
+    // moment lock returns — was unobservable from any test. Read-only; DEV-only like the whole bridge.
+    registerTestHook('readIntents', () => ({ ...getInput() }));
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded
