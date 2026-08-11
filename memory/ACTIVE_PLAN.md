@@ -43,7 +43,16 @@ Three files are modified and NOT committed. `git status` will show them:
 - a NEW e2e spec, `build-placement` (untracked, so not citable as a path here until committed) — it is
   the reachability proof for the above.
 
-**Its first run FAILED and the cause is known:** `GameMethods` is a plain module export and was never on
+**THREE RUNS, TWO CAUSES FIXED, ONE OPEN.** Run 1 timed out on `window.GameMethods` — a plain module
+export never placed on window; fixed by the DEV exposure in index.jsx. Run 2 failed "no build ray hit" —
+the player looks at open air at spawn; fixed by aiming `window.__threeCamera` down 60 degrees. Run 3
+STILL returns no hit. Untested hypotheses, cheapest first: **(b) `playerRigidBodyRef.current` is null so
+the ray's filter rejects every hit** — one console read to check; (a) rapier colliders absent for the
+spawn chunk despite `isSpawnChunkLoaded`; (c) the camera Terrain reads via `useThree` is not the object
+exposed on window. Note the pattern: every failure so far has been the TEST, not the wiring, so resist
+"fixing" Terrain to make it green.
+
+**Original note:** `GameMethods` is a plain module export and was never on
 `window`, so `waitForFunction` timed out. That was the TEST being wrong, not the wiring. The index.jsx
 exposure is the fix, and the re-run was still in flight when context ran out.
 
