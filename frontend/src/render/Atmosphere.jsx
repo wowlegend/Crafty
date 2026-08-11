@@ -223,7 +223,23 @@ export function Atmosphere({ shadowConfig }) {
       <ambientLight ref={ambientRef} intensity={0.6} />
       <directionalLight
         ref={sunRef}
-        castShadow={!isCaptureMode()}
+        // PHASE C: THE SUN CASTS SHADOWS IN THE GATED FRAMES NOW.
+        //
+        // This was `castShadow={!isCaptureMode()}`, which is the single largest thing the visual oracle
+        // could not see: every committed baseline depicted a world with NO sun shadows, so the shadow
+        // camera bounds, the map size, the bias, the receiveShadow flags and every future regression in
+        // any of them were invisible to a gate that photographs ten outdoor frames.
+        //
+        // AND IT IS THE ONE CONVERSION THAT THE 6% THRESHOLD CAN ACTUALLY RESOLVE. A 17-agent survey put
+        // 41 suppression sites forward for conversion; the value pass refuted all but this one on the
+        // grounds that their pixels sit under the gate — the entire QUESTS panel is 7.51% of the frame,
+        // the whole spell-cast VFX ensemble 0.64%. Shadows move a large fraction of every outdoor frame,
+        // so a regression that switches them off again goes red on its own, with no new assertion.
+        //
+        // Nothing about it is nondeterministic: the light position is a constant, the shadow config is
+        // derived from the quality tier that `enterCapture` pins to 'high', and the geometry casting
+        // the shadows is the same terrain the frame already had to settle before it could be shot.
+        castShadow
         position={[50, 100, 50]}
         intensity={1.5}
         shadow-mapSize={shadowConfig.mapSize}
