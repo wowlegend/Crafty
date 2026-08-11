@@ -243,7 +243,7 @@ Could not refute via: (a) another re-render source — BossEntity subscribes onl
 
 Overstatement to flag: "Delete lines 119-124 and 448-450 and nothing observable changes" is too strong. setEffects (153/166/175/434/438) does re-render the component from useFrame on fireball/lava spawn and death, so a hit whose 180ms window happens to contain one of those DOES flash. The honest claim is the one the finding also makes: the flash is coincidence-driven, never hit-driven.
 
-### ▢ `src/render/Ocean.jsx:74` — perf-hot-path
+### ▣✓ cdfee3e `src/render/Ocean.jsx:74` — perf-hot-path
 
 **Ocean useFrame allocates an object literal and an array per vertex per frame (~18.8k allocations/frame) via gerstnerDisplace/gerstnerNormal**
 
@@ -425,7 +425,7 @@ REFUTATION FAILED — verified by reading GameScene.jsx end to end (301 lines). 
 
 Tried to refute two ways and both failed. (1) Maybe @react-three/rapier hands back a wrapper API object without applyImpulse: no — node_modules/@react-three/rapier/dist/declarations/src/types.d.ts:2 imports and re-exports `RigidBody as RapierRigidBody` straight from @dimforge/rapier3d-compat, so the ref IS the raw rapier body. (2) Maybe this rapier build lacks the method: no — node_modules/@dimforge/rapier3d-compat/dynamics/rigid_body.d.ts:468 declares `applyImpulse(impulse: Vector, wakeUp: boolean): void` on the prototype. So `!rigidBodyRef.current.applyImpulse` is false whether or not the mount override at 154-158 ran, and the branch at 851-857 can never execute — 60 truthiness tests per second that no state can satisfy. The finding's corollary is also sound: because the check is prototype-satisfied, a genuinely missed mount bind would route boss knockback into rapier's native applyImpulse, which is inert on a type="kinematicPosition" body, and this 'repair' would not notice. Correctly filed as low: deleting the block changes no runtime behavior; nothing here breaks today.
 
-### ▢ `src/EnhancedMagicSystem.jsx:405` — perf-hot-path
+### ▣✓ cdfee3e `src/EnhancedMagicSystem.jsx:405` — perf-hot-path
 
 **A THREE.Vector3 is allocated inside useFrame, per in-flight projectile per frame, for the boss proximity test.**
 
@@ -647,13 +647,13 @@ REFUTATION FAILED on the mechanism and on the paint path; ONE SUB-CLAIM REFUTED.
 
 REFUTATION FAILED — the inconsistency is internal to this file and to a single data source, which makes it hard to argue away. BLOCK_TYPES (world/Blocks.js:1-19) is keyed by lowercase block ids ONLY: grass, dirt, stone, wood, birch_wood, leaves, glass, water, lava, diamond, gold, iron, coal, sand, cobblestone, flower_red, flower_yellow, chest. recipes.js carries display-name tokens — line 21 'Iron Nugget', lines 48/69/85 'Leather', line 133 'Raw Porkchop', plus 'Arrow','Bow','String','Torch','Planks','Glass','Magic Crystal','Emerald','Spider Eye','Health Potion' — so `BLOCK_TYPES[item]?.color` is undefined and both swatches (line 116 grid, line 175 mini-inventory) fall through to the shared `rgb(var(--ui-slot))`. Those tokens genuinely reach inventory.blocks: lootTables.js:13/18/23/29/46/51/58 drop them and systems/LootSystem.jsx:37 calls `store.addToInventory(entity.item, 1)` with the display name. getItemIcon (data/items.js:96-104) resolves them to real icons via ITEMS/NAME_TO_ID — iron_nugget→'ore', leather→'leather', raw_porkchop→'meat'. The decisive control: GamePanels.jsx:395 renders the SAME `inventory.blocks` keys as `<ItemIcon itemName={type} size={34} />`, and CraftingTable's own result slot (line 144) does the same — so the identical key renders correctly two panels over and one div away. ItemIcon is already imported at line 9. I searched HOLISTIC-REVIEW-2026-07-21.md, DECISIONS.md and STATUS.md for a deliberate 'raw swatch in the crafting grid' decision: the only ItemIcon hit is an unrelated orphaned-comment item (HOLISTIC-REVIEW:224). Not a documented choice. Minor imprecision only: the finding calls line 175 'the selection strip' when 175 is the swatch style line within it, and 'Glass' is a capitalized recipe token distinct from the lowercase 'glass' block key — which if anything reinforces the fall-through.
 
-### ▢ `src/workers/ai.worker.js:77` — perf-hot-path
+### ▣✓ cdfee3e `src/workers/ai.worker.js:77` — perf-hot-path
 
 **The 8-neighbour offset table is allocated as 9 fresh arrays inside the A* expansion loop, per aggro mob per 15 Hz tick.**
 
 THE ALLOCATION IS REAL; TWO SUB-CLAIMS ARE NOT. Confirmed: the `neighbors` literal (lines 77-80) sits inside `while (openSet.length > 0 && iterations++ < 120)` (line 53), is never mutated (only destructured at :82), and is a compile-time constant — one outer + eight inner arrays per node expansion, trivially hoistable to module scope. The 15 Hz cadence checks out (AIWorkerSystem.jsx:21 `AI_TICK_SEC = 1/15`, gate at :170), and ~20 aggro mobs is within range (dayNight.js:90/95 cap maxMobs at 16 + 24 = 40 plus a tier term). CORRECTION 1 — 'twice for a cover-seeking mob' is FALSE. The cover-seek call at :266 is nested inside `if (bestCoverX !== -1 && bestCoverZ !== -1)`, the same block that sets `isCoverSeeking = true` (:261), and the Step-3 call at :345 is guarded by `if (isMoving && !isCoverSeeking && ...)` (:331). The two are mutually exclusive: at most ONE findAStarPath per mob per tick, halving the worst case the finding cites. CORRECTION 2 — the GC consequence is asserted, not measured; ~54k tiny young-generation arrays/sec is well inside V8 scavenger noise and no profile is offered. The secondary observations are accurate as written: `openSet.sort(...)` re-sorts on every iteration (:55) and `openSet.includes(nIdx)` is a linear scan per improved neighbour (:110), both O(k) over <= 81 nodes. Net: a correct, cheap, one-line hoist — a genuine micro-optimisation at low severity, not the GC-pressure problem described.
 
-### ▢ `src/world/BlockParticleSystem.jsx:92` — perf-hot-path
+### ▣✓ cdfee3e `src/world/BlockParticleSystem.jsx:92` — perf-hot-path
 
 **Dead debris is teleported to y=-1000 with wakeUp=true and its velocity is never zeroed, so the bodies free-fall forever and never sleep.**
 
