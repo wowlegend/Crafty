@@ -1317,11 +1317,22 @@ export const Player = ({ isWorldBuilt }) => {
             player (RigidBody child); revealed by the M7a transform-cam. */}
         <BeastAvatar />
         <PhantomBlockSystem />
-        <HurlSystem />
-      <SnareTetherSystem />
-      <SquadAISystem />
-      <ElementZoneSystem />
+        {/* SquadAISystem and ElementZoneSystem render null — pure logic, so their parent is irrelevant
+            and moving them would be churn. PhantomBlockSystem must STAY: it orbits the player's origin
+            and reads its own getWorldPosition, so being a body child is the whole mechanism. */}
+        <SquadAISystem />
+        <ElementZoneSystem />
       </RigidBody>
+      {/* WORLD-SPACE effects, mounted at the scene root — NOT inside the RigidBody. 2026-08-09 audit:
+          both were children of the body, which rapier drives to the player's world translation every
+          step, while both assign mesh positions from world data (hurl origin from the camera, which is
+          a sibling of the body; tether endpoints from ECS mob world vectors). A child of a body at world
+          P given world W renders at P + W, and the player spawns at y=100. The tether hid it especially
+          well: length and angle are translation-invariant, so it had the right shape in the wrong place.
+          Each now asserts an untransformed parent at dev time via sceneSpace.js, so re-parenting either
+          of them back under a moving node says so out loud instead of silently offsetting the render. */}
+      <HurlSystem />
+      <SnareTetherSystem />
       <primitive object={camera}>
         {!inCapture && (
           <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />

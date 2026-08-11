@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { readSnareState, consumeBindCeremony } from '../game/snareChannel';
 import { isCaptureMode } from '../devtest/captureMode';
+import { warnIfNotWorldSpace } from './sceneSpace.js';
 
 /**
  * SnareTetherSystem — S2-B3-M4: the soul-ribbon tether drawn while the SNARE channel holds.
@@ -27,6 +28,9 @@ export function SnareTetherSystem() {
   const ceremonyRef = useRef({ t: 0 });
 
   useFrame((_, delta) => {
+    // DEV guard: this component writes WORLD coordinates, so its parent must be untransformed.
+    // It was mounted inside the player's RigidBody until 2026-08-09 and rendered at player+world.
+    if (import.meta.env.DEV) warnIfNotWorldSpace(meshRef.current, 'SnareTetherSystem');
     // the BIND CEREMONY ring — a one-shot expanding jade halo where a creature joins you
     // (fired on bind + fusion; the Aspect's emotional beat made visible). Transient-only.
     const ring = ringRef.current;
