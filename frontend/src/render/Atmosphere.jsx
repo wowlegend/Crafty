@@ -27,7 +27,9 @@ const FOG_SEA_LEVEL = 56.0;        // world Y at/below which fog is at full dens
 const FOG_HEIGHT_FALLOFF = 34.0;   // metres over which fog thins toward the residual floor
 const FOG_RESIDUAL = 0.55;         // min fog multiplier high up (keep subtle, not zero)
 let _heightFogPatched = false;
-function installHeightFog() {
+// EXPORTED for the gate. It mutates THREE.ShaderChunk, which is observable, so the patch can be
+// asserted on what three will COMPILE rather than on what the source file says.
+export function installHeightFog() {
   if (_heightFogPatched) return;
   _heightFogPatched = true;
   // Add a world-Y varying alongside three's view-depth fog varying.
@@ -39,7 +41,20 @@ function installHeightFog() {
   // modelMatrix takes it to world space. We only need the Y for the height profile.
   THREE.ShaderChunk.fog_vertex = `#ifdef USE_FOG
 	vFogDepth = - mvPosition.z;
-	vFogWorldY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;
+	// INSTANCED GEOMETRY NEEDS instanceMatrix. modelMatrix * transformed is the object-space position
+	// taken to world space -- correct for ordinary meshes, and WRONG for every instance of an
+	// InstancedMesh, whose per-instance placement lives in instanceMatrix and not in modelMatrix. The
+	// grass is instanced (one instancedMesh per chunk, ~81 chunks), so every blade reported the y of the
+	// chunk's origin rather than its own: the whole field was fogged at one altitude regardless of the
+	// terrain under it, which reads as fog that ignores the hills it is draped over.
+	//
+	// three defines USE_INSTANCING only when the material is compiled for an InstancedMesh, so the two
+	// branches cannot drift apart -- there is no "instanced but no instanceMatrix" state to get wrong.
+	#ifdef USE_INSTANCING
+		vFogWorldY = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).y;
+	#else
+		vFogWorldY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;
+	#endif
 #endif`;
   THREE.ShaderChunk.fog_pars_fragment = `#ifdef USE_FOG
 	uniform vec3 fogColor;
