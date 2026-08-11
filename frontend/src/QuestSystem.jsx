@@ -93,6 +93,21 @@ const ACHIEVEMENTS = [
 // version-mismatched; coerce to safe shapes so a bad save can't crash the quest system on load (new Set(5) throws).
 const _arrOr = (v, fb) => (Array.isArray(v) ? v : fb);
 const _objOr = (v, fb) => (v && typeof v === 'object' && !Array.isArray(v) ? v : fb);
+// _objOr shape-checks the CONTAINER; these guards then trusted every field inside it. A save whose stats
+// object is missing a key yields `undefined + 1` = NaN on the next increment, and `NaN >= target` is false
+// for every threshold -- so Warrior, Serial Slayer and Centurion become permanently unreachable with no
+// error at all, while the achievements panel renders the string "NaN". Coerce the FIELDS, not just the box.
+export const _numOr = (v, fb = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : fb);
+export const _statsOr = (v) => {
+  const o = _objOr(v, {});
+  return {
+    ...o,
+    kills: _numOr(o.kills), spells: _numOr(o.spells), blocks_placed: _numOr(o.blocks_placed),
+    blocks_broken: _numOr(o.blocks_broken), chests: _numOr(o.chests), distance: _numOr(o.distance),
+    deaths: _numOr(o.deaths), level: _numOr(o.level, 1),
+    kills_by_type: _objOr(o.kills_by_type, {}),
+  };
+};
 
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
@@ -119,7 +134,15 @@ export const useQuestSystem = () => {
         kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
         blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
     }));
+    // The LIVE mirror of `stats`. applyStats reads and writes it, so a batch of kills accumulates
+    // correctly without any state updater doing work a re-render would have to repeat.
+    const statsRef = useRef(stats);
     const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.unlockedAchievements, ['first_step'])));
+    // The LIVE mirror of the set above. Seeded from the same value, written in the same breath as every
+    // setUnlockedAchievements, and read by checkAchievements. Even with the side effects moved out of the
+    // updaters, a BATCH of kills calls applyStats N times before any re-render, so the render closure is
+    // still stale for calls 2..N. The ref is what makes call 2 see call 1's unlock.
+    const unlockedRef = useRef(unlockedAchievements);
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
     // R1: synchronous in-tick mirrors of the claim-relevant state (assigned in the render body below).
@@ -152,8 +175,15 @@ export const useQuestSystem = () => {
         if (!qs) return;
         if (Array.isArray(qs.quests)) setQuests(qs.quests);
         setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
-        if (_objOr(qs.stats, null)) setStats(qs.stats);
-        setUnlockedAchievements(new Set(_arrOr(qs.unlockedAchievements, ['first_step'])));
+        if (_objOr(qs.stats, null)) {
+            const restoredStats = _statsOr(qs.stats);
+            statsRef.current = restoredStats; // or a load would keep counting from the pre-load totals
+            setStats(restoredStats);
+        }
+        const restored = new Set(_arrOr(qs.unlockedAchievements, ['first_step']));
+        unlockedRef.current = restored; // the ref is the live read — a restore that skipped it would
+        // re-fire every already-earned achievement's toast on the first kill after loading a save.
+        setUnlockedAchievements(restored);
     }, [questLoadedAt]);
 
     // Add notification popup
@@ -165,10 +195,19 @@ export const useQuestSystem = () => {
         }, 4000);
     }, []);
 
-    // Check and unlock achievements
+    // Check and unlock achievements.
+    //
+    // THE GUARD READS A REF, not the render closure. checkAchievements is called from INSIDE a setStats
+    // updater, and React 19 batches: a cleave, a chain-lightning arc or an element zone kills several mobs
+    // in one synchronous task, so N updaters run before any re-render. Every one of them saw the SAME
+    // pre-update Set captured at the last render, so `first_kill` fired on updater 1 and fired again on
+    // updater 2 -- two toasts and two fanfares for one achievement, and the same at the 25 and 100
+    // thresholds. setUnlockedAchievements is functional so the Set itself stayed correct; what doubled was
+    // everything the player actually perceives. The ref is written in the same breath as the state, so the
+    // second updater in a batch sees the first one's unlock.
     const checkAchievements = useCallback((currentStats) => {
         ACHIEVEMENTS.forEach(ach => {
-            if (unlockedAchievements.has(ach.id)) return;
+            if (unlockedRef.current.has(ach.id)) return;
             if (ach.auto) return; // Already unlocked on init
 
             const statValue = ach.stat === 'kills' ? currentStats.kills :
@@ -180,12 +219,14 @@ export const useQuestSystem = () => {
                                     ach.stat === 'blocks_placed' ? currentStats.blocks_placed : 0;
 
             if (statValue >= ach.target) {
+                unlockedRef.current = new Set([...unlockedRef.current, ach.id]); // claim it BEFORE the side effects
                 setUnlockedAchievements(prev => new Set([...prev, ach.id]));
                 addNotification(`Achievement Unlocked: ${ach.title}!`, 'achievement');
                 if (window.playFanfare) window.playFanfare(); // reward beat: the unlock is now HEARD, not just seen
             }
         });
-    }, [unlockedAchievements, addNotification]);
+    }, [addNotification]); // no unlockedAchievements dep: the ref is the live read, and depending on
+    // the state would re-create this callback on every unlock without fixing the batching at all.
 
     // Update quest progress
     const updateQuestProgress = useCallback((type, amount = 1, extra = {}) => {
@@ -298,20 +339,38 @@ export const useQuestSystem = () => {
         if (parts.length) addNotification(`Quest reward: ${parts.join(', ')}!`, 'reward');
     }, [addNotification]);
 
+    /**
+     * Apply a stat delta, then check achievements ONCE.
+     *
+     * checkAchievements used to be called from INSIDE the setStats updater, and React dev-mode
+     * DOUBLE-INVOKES updaters to surface impurity -- which is exactly what a toast and a fanfare inside
+     * one are. Measured: a single kill produced TWO fanfares. Batching made it worse, not different: a
+     * cleave, a chain arc or a zone tick runs N updaters before any re-render, and every one of them read
+     * the same pre-update Set from the render closure, so the same achievement announced itself once per
+     * victim. The set itself stayed correct because setUnlockedAchievements is functional; what doubled
+     * was everything the player perceives, which is why nothing downstream noticed.
+     *
+     * So the updater is pure now -- it returns a value and does nothing else -- and the effects run here,
+     * against a REF that is written in the same breath. The ref is also what makes the batch case correct:
+     * updater 2 of a cleave sees updater 1's unlock.
+     */
+    const applyStats = useCallback((mutate) => {
+        const next = mutate(statsRef.current);
+        statsRef.current = next;
+        setStats(next);
+        checkAchievements(next);
+    }, [checkAchievements]);
+
     // Record mob kill and generate loot
     const onMobKill = useCallback((mobType, position, source) => {
         // S2-B3-M1: quest/achievement kill credit = YOUR kills only (ally kills bank nothing)
         if (source !== 'player') return;
         // Update stats
-        setStats(prev => {
-            const newStats = {
-                ...prev,
-                kills: prev.kills + 1,
-                kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
-            };
-            checkAchievements(newStats);
-            return newStats;
-        });
+        applyStats(prev => ({
+            ...prev,
+            kills: prev.kills + 1,
+            kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
+        }));
 
         // Update quest progress
         updateQuestProgress('kill');
@@ -337,56 +396,36 @@ export const useQuestSystem = () => {
             const dropNames = drops.map(d => d.item).join(', ');
             addNotification(`Mob dropped: ${dropNames}`, 'loot');
         }
-    }, [updateQuestProgress, checkAchievements, addNotification]);
+    }, [updateQuestProgress, applyStats, addNotification]);
 
     // Record spell cast
     const onSpellCast = useCallback(() => {
-        setStats(prev => {
-            const newStats = { ...prev, spells: prev.spells + 1 };
-            checkAchievements(newStats);
-            return newStats;
-        });
+        applyStats(prev => ({ ...prev, spells: prev.spells + 1 }));
         updateQuestProgress('spell_cast');
-    }, [updateQuestProgress, checkAchievements]);
+    }, [updateQuestProgress, applyStats]);
 
     // Record block place
     const onBlockPlace = useCallback(() => {
-        setStats(prev => {
-            const newStats = { ...prev, blocks_placed: prev.blocks_placed + 1 };
-            checkAchievements(newStats);
-            return newStats;
-        });
+        applyStats(prev => ({ ...prev, blocks_placed: prev.blocks_placed + 1 }));
         updateQuestProgress('block_place');
-    }, [updateQuestProgress, checkAchievements]);
+    }, [updateQuestProgress, applyStats]);
 
     // Record block break
     const onBlockBreak = useCallback(() => {
-        setStats(prev => {
-            const newStats = { ...prev, blocks_broken: prev.blocks_broken + 1 };
-            checkAchievements(newStats);
-            return newStats;
-        });
+        applyStats(prev => ({ ...prev, blocks_broken: prev.blocks_broken + 1 }));
         updateQuestProgress('block_break');
-    }, [updateQuestProgress, checkAchievements]);
+    }, [updateQuestProgress, applyStats]);
 
     // Record chest open
     const onChestOpen = useCallback(() => {
-        setStats(prev => {
-            const newStats = { ...prev, chests: prev.chests + 1 };
-            checkAchievements(newStats);
-            return newStats;
-        });
+        applyStats(prev => ({ ...prev, chests: prev.chests + 1 }));
         updateQuestProgress('chest_open');
-    }, [updateQuestProgress, checkAchievements]);
+    }, [updateQuestProgress, applyStats]);
 
     // Record death
     const onDeath = useCallback(() => {
-        setStats(prev => {
-            const newStats = { ...prev, deaths: prev.deaths + 1 };
-            checkAchievements(newStats);
-            return newStats;
-        });
-    }, [checkAchievements]);
+        applyStats(prev => ({ ...prev, deaths: prev.deaths + 1 }));
+    }, [applyStats]);
 
     // Record a survived night (fired once per dawn from useSurvivalMode, gated on the dawn reward
     // actually granting -> exactly once per genuinely-survived night). Drives the survive_nights quests.
@@ -396,12 +435,8 @@ export const useQuestSystem = () => {
 
     // Track player level
     const updateLevel = useCallback((level) => {
-        setStats(prev => {
-            const newStats = { ...prev, level };
-            checkAchievements(newStats);
-            return newStats;
-        });
-    }, [checkAchievements]);
+        applyStats(prev => ({ ...prev, level }));
+    }, [applyStats]);
 
     // Expose globally for other systems to call
     useEffect(() => {
