@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 import { StatBar } from './ui/primitives/StatBar.jsx';
@@ -27,8 +27,6 @@ export const useGameSystems = () => {
             consumeHunger: () => { },
             feedPlayer: () => { },
             respawn: () => { },
-            getSpellDamageMultiplier: () => 1,
-            getMaxHealthBonus: () => 0,
         };
     }
     return context;
@@ -67,15 +65,14 @@ export const GameSystemsProvider = ({ children }) => {
     const manaRegenTimer = useRef(null);
     const hungerTimer = useRef(null);
 
-    const getMaxHealthBonus = useCallback(() => {
-        const level = useGameStore.getState().level;
-        return (level - 1) * 10; // +10 health per level
-    }, []);
-
-    const getSpellDamageMultiplier = useCallback(() => {
-        const level = useGameStore.getState().level;
-        return 1 + (level - 1) * 0.1; // +10% damage per level
-    }, []);
+    // getMaxHealthBonus / getSpellDamageMultiplier DELETED 2026-08-11. Both were computed, placed on the
+    // context, and read by NOBODY -- the context's only consumer forwards the whole object to
+    // useInputManager and to <HUD>, and neither names either key. They are residue of a documented
+    // replacement: EnhancedMagicSystem's old window.getSpellDamageMultiplier global gave way to
+    // intellect-based solveSpellDamage scaling, and progression.js already carries the (lv-1)*10 health
+    // term verbatim. Level still scales spell damage, through the +5 attribute points per level that feed
+    // intellect. eslint and knip cannot see this class -- the values ARE "used", by being placed in an
+    // object literal -- which is why it took reading every line to find.
 
     // Initialize spawn time to prevent instant fall damage when chunks generate
     useEffect(() => {
@@ -119,8 +116,6 @@ export const GameSystemsProvider = ({ children }) => {
         consumeHunger: gameState.consumeHunger,
         feedPlayer: gameState.feedPlayer,
         respawn: gameState.respawn,
-        getSpellDamageMultiplier,
-        getMaxHealthBonus,
     };
 
     return (

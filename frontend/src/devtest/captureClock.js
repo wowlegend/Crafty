@@ -82,9 +82,17 @@ export function resetCaptureClock() {
  * @param {number} n  whole frames to advance
  */
 export function stepCaptureFrames(n) {
-  if (!isCaptureMode()) return;
-  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return;
-  _frame += Math.floor(n);
+  if (!isCaptureMode()) return 0;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return 0;
+  const stepped = Math.floor(n);
+  _frame += stepped;
+  // RETURN WHAT WAS ACTUALLY DONE. This used to return undefined and let the caller invent an answer,
+  // and the caller's answer came from a DIFFERENT flag -- the store mirror rather than this module's --
+  // so after any of the eleven fixture hooks that call enterCaptureMode without touching the mirror, the
+  // clock stepped while the bridge reported 0, and `stepCaptureFrames(-5)` echoed -5 though this
+  // function had discarded it. A step count nobody can trust is worse than no step count, because it is
+  // exactly the number a reviewer reads to decide the frame was posed.
+  return stepped;
 }
 
 /** Frames rendered since the last reset. 0 outside capture. */

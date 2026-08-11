@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { enterCaptureMode, exitCaptureMode } from '../../src/devtest/captureMode.js';
 import {
   CAPTURE_DT,
@@ -200,4 +200,41 @@ describe('stepCaptureFrames — drive the clock to a declared phase', () => {
   // cannot matter, is two decorations pretending to be a guard. resetCaptureClock's clear is different
   // and stays: reset runs mid-session from enterCapture, so the very next tick genuinely can carry the
   // token from before it.
+});
+
+// A STEP COUNT NOBODY COULD TRUST.
+//
+// stepCaptureFrames returned undefined, and the test-bridge hook that wraps it invented an answer from a
+// DIFFERENT flag -- the store mirror rather than this module's. Those two provably diverge: eleven fixture
+// hooks in App.jsx call enterCaptureMode() without touching the mirror, so after any of them the clock
+// steps while the bridge reports 0. And `stepCaptureFrames(-5)` echoed -5 although this function had
+// already discarded it. That return value is exactly the number a reviewer reads to decide a frame was
+// posed before it was shot.
+describe('stepCaptureFrames — reports what it actually did', () => {
+  beforeEach(() => { exitCaptureMode(); resetCaptureClock(); });
+  afterEach(() => exitCaptureMode());
+
+  it('returns the frames it advanced', () => {
+    enterCaptureMode();
+    expect(stepCaptureFrames(30)).toBe(30);
+    expect(captureFrameIndex()).toBe(30);
+  });
+
+  it('returns 0 for every input it REJECTS, instead of echoing it back', () => {
+    enterCaptureMode();
+    for (const bad of [-5, NaN, Infinity, undefined, null, '30', {}]) {
+      expect(stepCaptureFrames(bad), `${String(bad)} was echoed back as if it had been applied`).toBe(0);
+    }
+    expect(captureFrameIndex(), 'a rejected input still moved the clock').toBe(0);
+  });
+
+  it('returns 0 outside capture, where it does nothing', () => {
+    expect(stepCaptureFrames(10)).toBe(0);
+  });
+
+  it('floors a fractional step and says so', () => {
+    enterCaptureMode();
+    expect(stepCaptureFrames(2.9)).toBe(2);
+    expect(captureFrameIndex()).toBe(2);
+  });
 });

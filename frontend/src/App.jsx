@@ -313,10 +313,10 @@ function GameApp({ experienceSystem }) {
     // seconds of wall time under capture advanced the world by two frames (SwiftShader ~1fps), so an
     // un-suppressed animation would be captured at its start pose. Stepping makes the captured phase an
     // explicit constant a reviewer can read, rather than whatever the machine's frame rate produced.
-    registerTestHook('stepCaptureFrames', (n) => {
-      stepCaptureFrames(n);
-      return useGameStore.getState().isCaptureMode ? n : 0;
-    });
+    // Returns the clock's OWN count, not a guess from the store mirror. Those two flags provably diverge:
+    // eleven fixture hooks here call enterCaptureMode() without setting the mirror, so the clock steps
+    // while the mirror says no.
+    registerTestHook('stepCaptureFrames', (n) => stepCaptureFrames(n));
     registerTestHook('enterCapture', (opts = {}) => {
       enterCaptureMode(opts);
       // Frame 0. The harness captures ~31 states in ONE browser session, so without this each state's
@@ -428,7 +428,13 @@ function GameApp({ experienceSystem }) {
       // available, needs zero physics steps, and cannot vary with machine load. The probe stays the right
       // answer for real gameplay; it is simply the wrong tool for a fixture.
       const probeAvailable = !!store.getMobGroundLevel;
-      const physicsY = null; // deliberately unused — see above
+      // NO physicsY. There used to be a `const physicsY = null; // deliberately unused` here, and the
+      // diagnostic below then branched on it -- so `physicsY == null` was a tautology, two of its four
+      // reason strings were unreachable, and the one it always returned blamed a probe that was never
+      // run. A diagnostic naming a cause that cannot have occurred is worse than a silent failure: it
+      // sends the next reader to the wrong subsystem, and capture.mjs prints this string in its WARN.
+      // Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
+      // this hook deliberately does NOT consult.
       // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
       // SPAWN_FALLBACK_Y branch instead of asking to retry — the same landing the Player reaches after
       // SPAWN_PROBE_MAX_FAILS frames. Without it this hook passed 0 every call, so the retry budget could
@@ -465,21 +471,23 @@ function GameApp({ experienceSystem }) {
           return { y: +yT.toFixed(2), visual: !!vis0, source: 'terrain-formula+hearth', surfaceY: surf.surfaceY, hearthY: HEARTH_Y };
         }
       }
-      const spawn = resolveSpawnGround(blockGroundY, physicsY, force ? SPAWN_PROBE_MAX_FAILS : 0, probeAvailable);
+      const spawn = resolveSpawnGround(blockGroundY, null, force ? SPAWN_PROBE_MAX_FAILS : 0, probeAvailable);
       if (spawn.retry || spawn.groundY == null) {
-        // Name the BRANCH. A diagnostic that cannot say which precondition failed cost a whole pass.
+        // Name the BRANCH, and name only branches that can happen. This hook never consults the physics
+        // probe, so no reason here may blame it.
         return {
           retry: true,
-          reason: !probeAvailable ? 'getMobGroundLevel absent from the store'
-            : physicsY == null ? 'ground probe returned null (origin chunks not streamed yet)'
-            : Number.isNaN(physicsY) ? 'ground probe returned NaN'
-            : `ground probe returned ${physicsY}, at or below PROBE_MIN_Y`,
-          physicsY: physicsY == null ? null : +Number(physicsY).toFixed(2),
+          reason: blockGroundY == null && !force
+            ? 'no placed block at the origin and the terrain formula gave no finite surface; retrying'
+            : 'no ground could be resolved at the origin (placed blocks, terrain formula and fallback all declined)',
           probeAvailable,
           blocks: store.worldBlocks ? store.worldBlocks.size : 0,
         };
       }
-      const source = blockGroundY != null ? 'placed-blocks' : (probeAvailable && !force ? 'physics-probe' : 'fallback');
+      // 'physics-probe' was a third label here that NO path could emit -- a leftover of the probe branch
+      // removed by design. A source that can never be reported is a broken instrument in a report whose
+      // whole job is to say which source answered.
+      const source = blockGroundY != null ? 'placed-blocks' : 'fallback';
       const y = spawnTargetY(spawn.groundY);
       rb.setTranslation({ x: 0, y, z: 0 }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -876,13 +884,15 @@ function GameApp({ experienceSystem }) {
       className="w-full h-screen bg-gradient-to-b from-blue-400 to-blue-600 overflow-hidden relative"
       style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
     >
+      {/* gameState / showAchievements / showSpellUpgrades were passed here and DELETED 2026-08-11:
+          GameScene's signature destructures exactly isWorldBuilt, bossSystem and showStats, has no rest
+          element and no spread onto a child, and no identifier in the file reads the other three. Nothing
+          broke -- the cost was the implication that the 3D scene reacts to an open panel, which it does
+          not, and which is precisely the kind of thing a reader takes on trust from a prop list. */}
       <GameScene
-        gameState={gameState}
         isWorldBuilt={isWorldBuilt}
         bossSystem={bossSystem}
         showStats={showStats}
-        showAchievements={showAchievements}
-        showSpellUpgrades={showSpellUpgrades}
       />
 
       {/* S2-B2-M2 perf probe (dev-only, self-nulls unless ?perf=A..E) — DOM layer, outside the Canvas */}

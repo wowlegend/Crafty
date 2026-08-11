@@ -604,8 +604,14 @@ export function HUD({
               openedChestIds={treasureChests.openedChestIds}
             />
 
+            {/* The CONDITION has to be here, not inside the component. SurvivalWarning self-nulls on an
+                empty message, and AnimatePresence cannot observe a component's own return value -- it
+                diffs the ELEMENTS it is given, and this one was always a valid element with a stable key.
+                So it could never enter the exiting set, and the toast's `exit` tween never once played:
+                after survivalSystem's setTimeout cleared the message, it just blinked out while
+                everything around it stayed mounted. */}
             <AnimatePresence>
-              <SurvivalWarning message={survivalMode.survivalWarning} />
+              {survivalMode.survivalWarning && <SurvivalWarning message={survivalMode.survivalWarning} />}
             </AnimatePresence>
 
             <BossHealthBar

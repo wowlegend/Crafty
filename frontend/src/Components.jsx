@@ -881,14 +881,13 @@ export const Player = ({ isWorldBuilt }) => {
       console.error('Physics corrupted', velocityY.current, currentTrans);
     }
 
-    // Ensure applyImpulse is bound on the rigid body for boss compatibility
-    if (rigidBodyRef.current && !rigidBodyRef.current.applyImpulse) {
-      rigidBodyRef.current.applyImpulse = (impulse) => {
-        knockbackVelocity.current.x += impulse.x;
-        velocityY.current += impulse.y;
-        knockbackVelocity.current.z += impulse.z;
-      };
-    }
+    // A per-frame "defensive" rebind of applyImpulse stood here and was DELETED 2026-08-11: it could
+    // never run. @react-three/rapier hands back the RAW @dimforge RigidBody, which declares applyImpulse
+    // on its prototype, so `!rigidBodyRef.current.applyImpulse` is false whether or not the mount
+    // override above ran -- 60 truthiness tests a second that no state could satisfy. Worse, being
+    // prototype-satisfied means a genuinely MISSED mount bind would route boss knockback into rapier's
+    // native applyImpulse, which is inert on a kinematicPosition body, and this "repair" would not
+    // notice. A guard that cannot fire is not insurance; it is a claim that something is handled.
 
     // READER: read the live intent object ONCE per frame (transient, alloc-free — Game-Loop
     // Isolation). `input.active` is the centralized gate that replaces the old scattered
