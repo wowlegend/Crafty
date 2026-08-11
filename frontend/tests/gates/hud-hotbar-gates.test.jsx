@@ -6,20 +6,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { selectHudState, HUD_CALLABLE_KEYS } from '../../src/store/hudState.js';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { HOTBAR_BLOCKS } from '../../src/world/Blocks';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../src');
-/** Every non-test source file, walked from disk so the set cannot go stale. */
-function srcFiles(dir = SRC, out = []) {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) srcFiles(full, out);
-    else if (/\.(js|jsx)$/.test(name) && !name.includes('.test.')) out.push(full);
-  }
-  return out;
-}
+import { handlersCalledOnHudSlice } from '../_support/hudCallSites.js';
 
 // X3, SECOND LAYER — the hotbar click threw on DESKTOP too.
 //
@@ -59,27 +46,7 @@ describe('the HUD slice exposes every handler the HUD calls', () => {
   //
   // The list is now derived from the CONSUMERS: every `gameState.X(` call across src. That set extends
   // itself when someone adds a call site, which is precisely when the check needs to grow.
-  const CALL = /gameState\.([A-Za-z_$][\w$]*)\s*\(/g;
-  const OWN_SLICE = /const\s+gameState\s*=/;
-  /**
-   * Handlers called on a `gameState` that ARRIVED AS A PROP — i.e. the HUD slice. Files that build their
-   * own `const gameState = useGameStore(useShallow(...))` are excluded: GamePanels, TradingInterface and
-   * CraftingTable each select their own, so their 20 call sites are a different contract and folding them
-   * in here would be a scan that reports on the wrong object.
-   */
-  const calledOnHudSlice = () => {
-    const names = new Set();
-    const files = [];
-    for (const f of srcFiles()) {
-      if (f.endsWith('hudState.js')) continue; // the producer, not a consumer
-      const text = readFileSync(f, 'utf8');
-      if (OWN_SLICE.test(text)) continue;
-      const found = [...text.matchAll(CALL)].map((m) => m[1]);
-      if (found.length) files.push(f);
-      for (const n of found) names.add(n);
-    }
-    return { names: [...names].sort(), files };
-  };
+  const calledOnHudSlice = handlersCalledOnHudSlice;
 
   it('EVERY handler the HUD components call is SELECTED — derived from the call sites, not the selector', () => {
     // `k in s`, not `typeof s[k] === 'function'`: requestPointerLock is deliberately null at rest and is
