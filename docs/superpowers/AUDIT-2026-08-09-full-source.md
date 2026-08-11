@@ -135,7 +135,7 @@ REFUTATION FAILED — every escape route checked and closed. (1) `selectHudState
 
 REFUTATION FAILED. I re-ran the grep across `src tests scripts` for all six identifiers. `buildingMode` -> GamePanels.jsx:528 (the write) + useGameStore.jsx:550-551 (declaration + setter). `selectedBuildBlock` -> GamePanels.jsx:528 + useGameStore.jsx:558-559. `buildSize` -> GamePanels.jsx:514 (component-local useState), 520-522 (label strings), 528, 555, 560-563 (the slider) + useGameStore.jsx:552-553 + two i18n label keys. ZERO readers outside the panel, in src, tests, or scripts. Checked the obvious hiding places specifically: `src/world/Terrain.jsx`'s `place`/`mine` executors never consult any of them (the placement path reads `store.selectedBlock` only), and `setBuildingMode`/`setBuildSize`/`setSelectedBuildBlock` have zero call sites anywhere. Also checked whether a Web Worker consumes them — the terrain worker receives an explicit `update_block` payload (Terrain.jsx:892) with no build-mode field. The panel renders five tools and a 1-10 size slider that change nothing; only the block-selection readout is live. This is exactly the CLAUDE.md 'green gate, never RUNNING' class.
 
-### ▣✓ PENDING `src/ui/TouchControls.jsx:74` — correctness
+### ▣✓ f7eae45 `src/ui/TouchControls.jsx:74` — correctness
 
 **Touch focus gate keys on getInput().active, which is never lowered when a panel opens from the world (chest interact), so every tap in that panel is preventDefault()-ed and the player is soft-locked.**
 
