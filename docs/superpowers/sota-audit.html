@@ -181,6 +181,28 @@
     has its own queue; this page stays scoped to the harness.</p>
   </div>
 
+  <div class="callout ok">
+    <span class="hd">2026-08-11 — the full-source audit is DRAINED, 108 of 108</span>
+    <p><strong>Every confirmed finding is closed, each with a mutation proof</strong> — 24 high, 32 medium,
+    52 low. Two more that were NOT in the 108 were surfaced by gates written for the findings beside them,
+    which is the argument for writing the class-level gate rather than the instance fix.</p>
+    <p><strong>The last cluster was capture-suppression, and its proof is this page's own subject.</strong>
+    Six guards were breaking the rule this repo wrote down — reset to a declared value, never
+    early-return — in three distinct ways: STOPPED MID-MOTION (loot froze wherever its parabola had got
+    to; the XP orb had no guard at all), CHECKED TOO EARLY (the cooldown sweep, the music, and the initial
+    treasure chest all read the flag at MOUNT with <code>[]</code> deps, before the bridge that flips it
+    even installs), and OPTED OUT ENTIRELY (<code>RadialMinimap</code> returned null, so it sat in ZERO
+    baselines and no regression in it could be caught anywhere). The instrument that proves those is the
+    ORACLE, not a regex — 17 frames re-shot, and the minimap is in them now.</p>
+    <p class="guard"><strong>gate-shape's source-grep ratchet blocked four attempts to add a new grep gate
+    during the drain, and was right every time.</strong> What replaced them is the lesson: make the
+    guarded thing EXECUTABLE. Four modules had never been testable because their host worker assigns
+    <code>self.onmessage</code> at module scope — extracting <code>aStarNeighbors</code>,
+    <code>debrisPark</code>, <code>caveCA</code> and <code>mobWander</code> turned unprovable fixes into
+    behavioural ones, and the cave automaton turned out to be sealing caves at every 16-block chunk seam
+    below y=20 because its neighbour lookup answered SOLID for everything outside the chunk.</p>
+  </div>
+
   <div class="callout warn">
     <span class="hd">2026-08-11 — what fixing 53 of those 108 said about the gates themselves</span>
     <p><strong>Six source-grep gates went RED at the FIX rather than at a defect.</strong> One asserted the juice
