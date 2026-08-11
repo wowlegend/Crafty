@@ -291,7 +291,7 @@ REFUTATION FAILED. Case-insensitive grep across src/, tests/ and scripts/ for se
 
 REFUTATION FAILED on both legs. (1) useGameStore.jsx:487 initial `questState: null`; saveSchema.js:27 emits `state.questState || null`, so buildSaveData(getInitialState()) yields questState: null; loadWorldData:1031 is `saveData.questState ?? state.questState` and `null ?? x === x`, so the CURRENT quest state survives the 'reset'. QuestSystem.jsx:133-140 mirrors quests/completedQuestIds/stats/unlockedAchievements into the store on every change, so during play questState is non-null — the carry-over is real, not theoretical. Line 1032 then bumps questLoadedAt, and QuestSystem.jsx:147-157 re-seeds the hook from that same carried snapshot, and WorldManager.jsx:83 immediately writes it to the new slot. (2) `hunger` (useGameStore.jsx:757, drained by GameSystems.jsx:97-104 at 0.1/5s, starvation damage via consumeHunger:869-876) appears nowhere in saveSchema.js and is not among loadWorldData's returned keys, so startNewWorld cannot reset it. I tried to refute via the 'DRIFT-PROOF' gate at tests/gates/save-slot-ownership-gates.test.js:130-151 — it compares buildSaveData(after) to buildSaveData(pristine), but it never sets questState (null on both sides -> equal) and buildSaveData does not enumerate hunger at all, so the gate is blind to exactly these two. The auditor is also correct that both are currently MASKED by the startNewWorld prop-omission above. Only quibble: 'starts the new world starving' needs ~83 min of play to reach zero hunger.
 
-### ▢ `src/systems/AIWorkerSystem.jsx:138` — perf-hot-path
+### ▣✓ 0a208c6 `src/systems/AIWorkerSystem.jsx:138` — perf-hot-path
 
 **The ambient hub-NPC routine issues a Rapier castRay per NPC per RENDER frame plus a full mobsQuery scan and two allocations per NPC per frame.**
 
@@ -587,7 +587,7 @@ REFUTATION FAILED — confirmed, and independently corroborated by the repo's ow
 
 REFUTATION FAILED. grep for setAchievements returns only the definition (useGameStore.jsx:749-751). `state.achievements` is read only at saveSchema.js:55 and useGameStore.jsx:934 (restore) / :1002 (return). The only other `.achievements` hits are MenuSystem.jsx:77 `achievements={questSystem.achievements}` and tests/gates/level-achievement-gates.test.jsx:73/76 `result.current.achievements` — both the useQuestSystem hook, not the store. The real unlock state is the hook's `unlockedAchievements`, persisted via questState. Nothing writes the store array, so it serializes as [] forever.
 
-### ▢ `src/systems/AIWorkerSystem.jsx:129` — capture-suppression
+### ▣✓ 0a208c6 `src/systems/AIWorkerSystem.jsx:129` — capture-suppression
 
 **The ambient hub-NPC routine STOPS its 0.04 lerp instead of snapping to the declared routine position.**
 
