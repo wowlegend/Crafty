@@ -34,9 +34,9 @@ const BTN = (extra) => ({
  * Pure visual surface for the touch overlay (M2). Joystick base ring (left), bottom-right thumb
  * cluster (jump / primary / cast), center crosshair, Pause. NO listeners, NO state -- the live
  * overlay layers interactivity on top; the capture-view renders this alone for the mobile.png
- * baseline. `nub` = optional {x,y} px offset for the dynamic knob (live path).
+ * baseline. The knob's live position is written imperatively by TouchControls, not passed as a prop.
  */
-export default function TouchControlsSurface({ nub = null, trayOpen = false, wheelOpen = false, spellOpen = false }) {
+export default function TouchControlsSurface({ trayOpen = false, wheelOpen = false, spellOpen = false }) {
   const t = useT();
   // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
   // REACTIVE, mirroring TouchControls: a non-reactive read here left the GLYPHS a frame behind the
@@ -146,7 +146,11 @@ export default function TouchControlsSurface({ nub = null, trayOpen = false, whe
                     width: 148, height: 148, borderRadius: '50%', border: `4px solid ${INK}`,
                     background: 'rgba(10,14,24,0.6)', boxShadow: '0 5px 16px rgba(0,0,0,0.55)' }}>
         <div data-touch-knob style={{ position: 'absolute', left: '50%', top: '50%', width: 64, height: 64,
-                      transform: `translate(calc(-50% + ${nub?.x ?? 0}px), calc(-50% + ${nub?.y ?? 0}px))`,
+                      // Identity, matching what TouchControls recenters to. The knob's position is owned
+                      // IMPERATIVELY (a ref + a direct transform write, throttled to one rAF) because a
+                      // per-move setState would violate Game-Loop-Isolation. The declarative `nub` prop was
+                      // the first implementation and nothing ever passed it, so it rendered 0,0 forever.
+                      transform: 'translate(-50%, -50%)',
                       borderRadius: '50%', background: GOLD, border: `4px solid ${INK}`, boxShadow: '0 3px 10px rgba(0,0,0,0.55)' }} />
       </div>
       {/* bottom-right thumb cluster: primary (attack/mine/interact) + cast + jump */}

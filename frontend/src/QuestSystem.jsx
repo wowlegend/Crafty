@@ -118,7 +118,6 @@ export const useQuestSystem = () => {
         kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
         blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
     }));
-    const [lootDrops] = useState([]);
     const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.unlockedAchievements, ['first_step'])));
     const [notifications, setNotifications] = useState([]);
     const notifId = useRef(0);
@@ -424,7 +423,7 @@ export const useQuestSystem = () => {
     useEffect(() => subscribeMobKill(onMobKill), [onMobKill]);
 
     return {
-        quests, stats, lootDrops, achievements: ACHIEVEMENTS,
+        quests, stats, achievements: ACHIEVEMENTS,
         unlockedAchievements, notifications, claimQuest, updateLevel,
     };
 };

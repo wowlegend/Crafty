@@ -70,7 +70,9 @@ const sameSettings = (a, b) =>
   a.lookSensitivity === b.lookSensitivity;
 
 // Glue (called once at boot): hydrate the store from storage, then persist on any dial change.
-// Capture-guarded: under the visual harness this is a no-op (defaults only) so baselines stay deterministic.
+// Capture-guarded at BOTH ends: once at boot (for a harness that is already in capture) and again inside
+// the subscriber (for the normal case, where capture is entered after boot). This comment used to claim
+// the no-op property while only the boot check existed, which is the situation it could never cover.
 // `store` is the zustand store (getState/setState/subscribe); `isCapture` gates the storage touch; `storage`
 // defaults to localStorage but is INJECTABLE so the hydrate+persist glue is unit-testable with a fake store.
 export function initSettingsPersistence(store, isCapture, storage = (typeof localStorage !== 'undefined' ? localStorage : null)) {
@@ -80,6 +82,16 @@ export function initSettingsPersistence(store, isCapture, storage = (typeof loca
   if (Object.keys(loaded).length) store.setState(loaded);
   let prev = pick(store.getState());
   return store.subscribe((state) => {
+    // The LATE check, and it is the load-bearing one. The guard at the top of this function runs at boot,
+    // and the harness enters capture AFTER boot — so that check can only ever answer "we are not in
+    // capture", the one answer it never needed to give. Without this line the subscriber persisted every
+    // dial change for the whole capture session, while the header six lines up claimed the opposite.
+    //
+    // Placed BEFORE the sameSettings comparison so `prev` does not advance while suppressed. Honest
+    // limit: moving it after the comparison was mutation-tested and NO failing sequence could be
+    // constructed — capture is harness-only, so a dial changed under it is never a value a player wanted
+    // kept. The position is kept for clarity of intent, not because a bug depends on it.
+    if (typeof isCapture === 'function' && isCapture()) return;
     const cur = pick(state);
     if (!sameSettings(prev, cur)) {
       prev = cur;

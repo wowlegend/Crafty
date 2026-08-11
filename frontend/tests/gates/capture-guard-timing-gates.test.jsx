@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, cleanup, act } from '@testing-library/react';
 import { enterCaptureMode, exitCaptureMode } from '../../src/devtest/captureMode.js';
+import { isCaptureMode as capturedFlag } from '../../src/devtest/captureMode.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { HALF_CYCLE_UNITS } from '../../src/game/dayNight.js';
 import { isDuskApproaching } from '../../src/game/dayPhase.js';
@@ -160,3 +161,74 @@ describe('SpawnerSystem — a capture guard must SKIP a tick, never tear the int
     ).toBeGreaterThan(0);
   });
 });
+
+// settingsPersist — the SAME setup-time-guard class, in the file whose own header claims the opposite.
+//
+// `initSettingsPersistence` checks `isCapture()` once, at boot, and returns a no-op if it is true. But the
+// harness enters capture AFTER boot, so that check can only ever answer "we are not in capture" — the one
+// answer it never needed. The subscriber it installs then persists every dial change for the whole capture
+// session, while the file's header states "under the visual harness this is a no-op so baselines stay
+// deterministic". The claim was false in exactly the situation it was written about.
+//
+// This became more load-bearing on 2026-08-11: the call was moved out of the DEV-only effect onto the
+// production boot path, so it now runs everywhere rather than only in DEV builds.
+describe('settingsPersist — the capture check must be inside the subscriber', () => {
+  const fakeStorage = () => {
+    const m = new Map();
+    return {
+      getItem: (k) => (m.has(k) ? m.get(k) : null),
+      setItem: (k, v) => m.set(k, String(v)),
+      removeItem: (k) => m.delete(k),
+      get size() { return m.size; },
+    };
+  };
+
+  beforeEach(() => { exitCaptureMode(); });
+  afterEach(() => { exitCaptureMode(); });
+
+  it('POSITIVE CONTROL — outside capture, a dial change IS persisted', async () => {
+    const { initSettingsPersistence } = await import('../../src/game/settingsPersist.js');
+    const storage = fakeStorage();
+    const unsub = initSettingsPersistence(useGameStore, () => false, storage);
+    act(() => { useGameStore.getState().setSfxVolume(0.33); });
+    expect(storage.size, 'nothing was written outside capture — the control is dead').toBeGreaterThan(0);
+    unsub();
+  });
+
+  it('writes NOTHING once capture is entered after boot', async () => {
+    const { initSettingsPersistence } = await import('../../src/game/settingsPersist.js');
+    const storage = fakeStorage();
+    // Boot outside capture, exactly as the app does.
+    const unsub = initSettingsPersistence(useGameStore, () => require_isCapture(), storage);
+    act(() => { enterCaptureMode(); });
+    act(() => { useGameStore.getState().setSfxVolume(0.77); });
+    expect(
+      storage.size,
+      'the visual harness wrote to storage during capture — the header claims it cannot'
+    ).toBe(0);
+    unsub();
+  });
+
+  it('does not advance its baseline while suppressed, so a post-capture change still persists', async () => {
+    // Asserts the property that matters: suppression must not LATCH. A guard that stopped writes during
+    // capture and never resumed would pass the test above and silently break persistence for the rest of
+    // the session. (This test was originally justified as proving the check must sit BEFORE the
+    // sameSettings comparison — a mutation moving it after stayed green, and no failing sequence could be
+    // constructed, so that claim was withdrawn rather than dressed up with a stronger-looking assertion.)
+    const { initSettingsPersistence } = await import('../../src/game/settingsPersist.js');
+    const storage = fakeStorage();
+    const unsub = initSettingsPersistence(useGameStore, () => require_isCapture(), storage);
+    act(() => { enterCaptureMode(); });
+    act(() => { useGameStore.getState().setSfxVolume(0.61); });
+    expect(storage.size).toBe(0);
+    act(() => { exitCaptureMode(); });
+    act(() => { useGameStore.getState().setSfxVolume(0.62); });
+    expect(storage.size, 'the baseline advanced under capture, so later changes look like no change').toBeGreaterThan(0);
+    unsub();
+  });
+});
+
+// Reads the live capture flag, so the injected predicate matches what the app passes (isCaptureMode itself).
+function require_isCapture() {
+  return capturedFlag();
+}
