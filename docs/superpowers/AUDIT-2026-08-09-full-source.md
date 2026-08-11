@@ -455,7 +455,7 @@ REFUTATION FAILED. Verified against the installed framer-motion 12.34.3: Animate
 
 REFUTATION FAILED on the mechanical claim. `pad` is `synthPadRef.current` (line 78) and that ref is never reassigned (`grep -n 'synthPadRef.current =' src/SoundManager.jsx` -> no match; only windBedRef.current is replaced, at line 129). Lines 124-126 run synchronously and null pad.filter / pad.lfoGain; the setTimeout body at 111-112 dereferences those same fields 1600ms later, so `null.disconnect()` throws into `catch {}`. The author's own cached-local pattern (oscsToStop, masterToDisconnect, and the correctly-captured `wb` at line 90) is exactly what these two lines are missing, which corroborates intent. The pad really does start in normal play: App.jsx:847 -> playBackgroundMusic -> startSynthPad (SoundManager.jsx:553-555), plus the musicEnabled effect at 244-250. WHAT I DID KNOCK DOWN is the stated CONSEQUENCE. (a) The retention/leak story is not established: masterToDisconnect.disconnect() (line 113) severs the cluster from the destination, the oscillators are stopped and disconnected, and every JS reference is nulled -- so {vGains, filter, lfoGain, masterGain} is unreachable from both the destination and JS and is GC-eligible under the WebAudio AudioNode-lifetime rules. Supporting evidence that this is not a leak: the four voice gains in pad.gains are ALSO never disconnected and nobody has reported growth. (b) There is no audible symptom at all, because PROC_MUSIC_GAIN = 0 (line 14) mutes the whole procedural pad by design. (c) The finding MISSED the sharper consequence: if music is toggled back on within 1600ms, startSynthPad repopulates pad.filter/pad.lfoGain on the SAME object, and the stale timeout then disconnects the LIVE new nodes -- again inaudible only because of PROC_MUSIC_GAIN=0. Verdict: real latent-correctness defect, no observable impact today. Severity medium -> low.
 
-### ▣✓ PENDING `src/devtest/PerfProbeSystem.jsx:26` — dead-on-arrival
+### ▣✓ 634dcc1 `src/devtest/PerfProbeSystem.jsx:26` — dead-on-arrival
 
 **The `active` scenario guard is computed and branched on, but both branches return null, so it gates nothing.**
 
@@ -515,7 +515,7 @@ Facts re-verified: CHAIN_ORDER is referenced only at its own definition and test
 
 Partial counterpoint worth recording: questLore.js:1-4 explicitly frames the module as a narrative layer over the existing list 'WITHOUT changing each quest's type/target (so the existing drivers + claim flow are untouched)', so not driving offer order is arguably consistent with its stated design. The defect is narrower than 'the spine is broken' — it is an inert exported constant plus a vacuous test that asserts only on the literal's own contents.
 
-### ▣✓ PENDING `src/game/settingsPersist.js:77` — dead-on-arrival
+### ▣✓ 634dcc1 `src/game/settingsPersist.js:77` — dead-on-arrival
 
 **The capture guard in initSettingsPersistence is evaluated once at mount, strictly before capture mode can be entered, so it is never true.**
 
@@ -683,7 +683,7 @@ REFUTATION FAILED. Line 337 says verbatim what is quoted. I re-derived and re-me
 
 Ordering verified end to end, no refutation found. devtest/captureMode.js:17 initialises `_captureMode = false` and only enterCaptureMode() (line 39) flips it — there is no URL-param or module-load activation, which was my main refutation hypothesis. capture.mjs:265 waits on `window.__craftyTest?.ready?.()`, and window.__craftyTest is only assigned by installTestBridge (testBridge.js:14-22), which App.jsx calls at line 807 INSIDE a []-dep useEffect. React runs child effects before parent effects, so MusicPlayer's []-effect (mounted at HUD.jsx:637, outside the isPointerLocked gate that opens at HUD.jsx:529) has already run — with _captureMode false — before the bridge even exists, let alone before capture.mjs:269 calls enterCapture. So the three Audio objects are constructed and the second effect creates the 60ms crossfade setInterval regardless, falsifying the file header's 'capture-safe (no playback under capture)'. The secondary claim also checks out: after capture flips on, a dep change hits the early return at line 32 before the `clearInterval` at line 38, so an in-flight fade is not cancelled by that path. Real but genuinely low impact — audio produces no pixels; this is a correctness/claim defect in the guard, matching CLAUDE.md's 'the check must also live INSIDE the callback, since the flag flips after mount'.
 
-### ▣✓ PENDING `src/ui/TouchControlsSurface.jsx:39` — dead-on-arrival
+### ▣✓ 634dcc1 `src/ui/TouchControlsSurface.jsx:39` — dead-on-arrival
 
 **The `nub` prop is read by the joystick knob but never passed by any caller — permanently null, so the code path is dead.**
 
@@ -701,7 +701,7 @@ Could not refute. Confirmed the exact structure: MenuSystem.jsx:197 renders `{ga
 
 REFUTATION FAILED on every mechanical route. (1) No store default: grep for treasureChestsList/chestsList in src/store/useGameStore.jsx returns ZERO hits, so the key genuinely starts undefined. (2) Its writers are all effect-time: QuestSystem.jsx:877 inside the useTreasureChests effect owned by App.jsx:156 (and that write is skipped under isCaptureMode, QuestSystem.jsx:876), plus App.jsx:352/522/546/591/623 which are capture fixtures. (3) The zustand path is exactly as claimed — node_modules/zustand is 5.0.11 and esm/react.mjs passes the raw selector into `React.useSyncExternalStore(api.subscribe, React.useCallback(() => selector(api.getState()), [api, selector]), ...)` with NO equality function, so `state.treasureChestsList || []` mints a new array on every getSnapshot while the key is undefined. React 19 warns on precisely this shape ('The result of getSnapshot should be cached to avoid an infinite loop') and its updateStoreInstance/checkIfSnapshotChanged post-commit path calls forceStoreRerender whenever the re-read snapshot differs. (4) The component is unconditionally mounted at Terrain.jsx:989 inside MinecraftWorld, which GameScene.jsx:237 mounts alongside the Player, not behind isWorldBuilt. (5) Line 304 in the same component already demonstrates the correct shape by putting `|| 'low'` OUTSIDE the selector, so the fix is a one-token move with local precedent. WHAT I COULD NOT SETTLE STATICALLY, and the reason this is low and not medium: whether the window is ever non-empty at runtime depends on whether R3F v9 flushes its scene-root render during the Canvas's layout-effect phase (before App's passive effect writes the key) or after it. If it is always after, the extra render never occurs and the defect stays latent. Either way the selector violates the contract and one write ordering change re-arms it, so I could not knock the finding down.
 
-### ▣✓ PENDING `src/QuestSystem.jsx:121` — dead-on-arrival
+### ▣✓ 634dcc1 `src/QuestSystem.jsx:121` — dead-on-arrival
 
 **lootDrops is a frozen empty array with no setter, returned from the hook, and read by nobody.**
 
