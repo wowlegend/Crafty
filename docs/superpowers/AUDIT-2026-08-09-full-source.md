@@ -197,7 +197,7 @@ REFUTATION FAILED on the load-bearing half; one sub-claim knocked down. CONFIRME
 
 Refutation attempted on five routes, all failed. (1) Writer is genuinely ungated: 332-334 calls setIntent('dodge', true) with no `getInput().active` / isAlive check, unlike KeyF/KeyT at 365-370 which do gate. (2) handleKeyUp (372-397) really has no Shift branch — it covers KeyW/S/A/D, Space, KeyR, KeyV, KeyX, KeyZ only. (3) `grep -rn "setIntent..dodge" src` returns exactly two writers (Components.jsx:333, TouchControls.jsx:196 — which also has no clear) and ONE clear, Components.jsx:871, inside `if (isLocked && input.dodge)`. (4) The escape hatches do not cover the menu case: clearHeldIntents fires only from blurReset.js on window 'blur'/visibilitychange=hidden (the window keeps focus with a panel open and pointer lock released), and resetInput runs only on the alive->dead edge (196). (5) The title-screen variant also holds: App.jsx:868 renders <GameScene> unconditionally, so <Player> and its window keydown listener are mounted before the game starts. On relock, dodge.lastDodgeTime is 0 while nowTime is clock elapsed, so the 0.8s cooldown is satisfied and the roll fires immediately. No test or doc defends the latch as intended — tests/gates/touch-dodge-gates.test.js only pins that touch reuses the same intent. Severity: the consequence is one unrequested ~0.4s roll with 0.2s i-frames, so medium is the ceiling, not high.
 
-### ▢ `src/data/recipes.js:105` — correctness
+### ▣✓ 14e2a73 `src/data/recipes.js:105` — correctness
 
 **Recipe named 'Bow' outputs 5 Arrows; the panel labels the result with recipe.name, so the UI promises a Bow and the inventory receives Arrows.**
 
@@ -267,7 +267,7 @@ REFUTATION FAILED on the substance, with one overstatement corrected. Verified: 
 
 REFUTATION FAILED. hudState.js:50 has `selectedVillager` and no setter anywhere in the object; useGameStore.jsx:583 defines setSelectedVillager. MenuSystem.jsx:198-207 is the only <TradingInterface> site, fed the slice; its onClose runs setShowTradingInterface(false) (present in the slice, line 39) then gameState.setSelectedVillager(null) (absent -> TypeError), so the relock line after it never runs. The open path is live — InputManager.jsx:192-197 sets selectedVillager on the G-interact and routes merchants to the trade panel — so the close button is genuinely reachable. I checked for an alternate clear: InputManager.jsx:81 calls state.setSelectedVillager(null) on the ESC path, reading the FULL store, so ESC works; only the panel's own close button is broken. This is verbatim the failure the file's own docstring at lines 21-24 warns about.
 
-### ▢ `src/store/hudState.js:64` — dead-on-arrival
+### ▣✓ 8cef980 `src/store/hudState.js:64` — dead-on-arrival
 
 **HUD_CALLABLE_KEYS equals the selector's own function-valued keys, so the contract check cannot detect an omission.**
 
@@ -333,7 +333,7 @@ REFUTATION FAILED. Checked every route the config could reach cssVars.js: tailwi
 
 REFUTATION FAILED, including the one route the auditor did not name. (1) `enterCaptureMode` (devtest/captureMode.js:39-46) read in full: it merges `opts.camera` and `opts.showTouch` and nothing else; `exitCaptureMode` only clears showTouch. (2) I checked the reference-mutation escape hatch — `getCaptureOpts()` returns the live `_opts` object, so a caller COULD do `getCaptureOpts().hitDir = x`; `grep -rn hitDir src tests scripts` shows no such write. Every `hitDir` hit is unrelated: mobHitFx.js/CombatSystem.jsx (mob knockback vectors) and store `lastHitDir`. (3) I checked the App test-bridge wrapper, which was the likeliest place for extra plumbing: App.jsx:306-331 `enterCapture` does handle one extra opt itself — `opts.timeOfDay` -> `setTimeOfDay` — proving the pattern exists, and it does NOT handle `hitDir`. So `getCaptureOpts().hitDir` is always undefined, line 17 always returns null under capture, and line 25 is unreachable. The file's own docblock ('only when the hitDir capture-opt is set') documents a plumbing that was never built — a fixture author calling `enterCapture({ hitDir: Math.PI/2 })` gets a silent empty frame with no error.
 
-### ▢ `src/ui/GamePanels.jsx:426` — dead-on-arrival
+### ▣✓ 8cef980 `src/ui/GamePanels.jsx:426` — dead-on-arrival
 
 **The Inventory "Equip" CTA is permanently disabled by the time the pointer can reach it — its enable condition is destroyed by the same mouse move that travels to it.**
 
@@ -351,7 +351,7 @@ REFUTATION FAILED — every link in the chain verified on live source. (1) The d
 
 REFUTATION FAILED — the mechanism holds on every axis I attacked. (a) I checked for a per-key stream cache that would let repeated makeSeededRandom(key) calls CONTINUE a sequence: none exists. captureMode.js:83-85 is `export function makeSeededRandom(key) { return mulberry32(hashKey(String(key))); }` — a fresh generator with fresh internal state `a` on every call, so draw #1 for a given key is a fixed constant. (b) `const rnd` is scoped INSIDE the `if (moveTimer <= 0)` branch (ai.worker.js:362-367), so it is rebuilt per re-roll, not per mob. (c) I checked whether re-rolls actually recur: moveTimer is decremented at :361, returned in the update payload at :401, and written back to the entity by the main thread at AIWorkerSystem.jsx:103 — so the branch fires repeatedly for the life of the mob, each time yielding the identical moveTimer / isMoving / angle / distance quadruple. A mob whose second draw is <= 0.3 never moves; every other mob repeats one heading and one hop length forever. (d) The finding's own reachability caveat is exactly right and I confirmed it: AIWorkerSystem.jsx:147 `if (isCaptureMode()) return;` sits in the SAME useFrame as the postMessage at :216, so the ternary at :228 `captureSeed: isCaptureMode() ? CAPTURE_AI_SEED : null` is structurally incapable of yielding non-null — the seeded branch has executed zero times to date. That makes it a latent defect in in-flight Phase C code (TaskList #21, in_progress), not a live one: it goes live the moment that early return is replaced by substitution, which is precisely the open task. Fix as stated — one stream per mob id hoisted outside the re-roll, or fold a re-roll counter into the key.
 
-### ▢ `src/world/HurlSystem.jsx:70` — silent-failure
+### ▣✓ 3b65ecf `src/world/HurlSystem.jsx:70` — silent-failure
 
 **A hurl request arriving while a flight is live is consumed off the single-slot channel and silently discarded.**
 
