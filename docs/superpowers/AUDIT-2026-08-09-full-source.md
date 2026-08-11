@@ -529,7 +529,7 @@ BUT the stated failure scenario cannot occur: (a) capture.mjs:208 is `puppeteer.
 
 REFUTATION FAILED on the mechanism, but the stated impact is wrong and so is the prescribed fix. Mechanism confirmed line-by-line: :18 `if (_loaded) return;` is the only retry gate, :23 `_loaded = true;` executes BEFORE the :24 Promise.all, :29-31 catches each face failure and warns only under import.meta.env.DEV (false in the Vercel build). The only caller is useGameStore.jsx:110 `if (next === 'zh-CN') import('../i18n/cjkFonts.js').then((m) => m.loadCjkFonts())`, so the natural retry — toggle to en and back — re-enters and returns at :18. A failed FontFace stays status 'error' per the CSS Font Loading API; nothing re-attempts. I could not find a second load route. TWO CORRECTIONS the parent should carry: (a) the finding's 'the caller sees a successful load and renders zh-CN copy' is false — the call site is fire-and-forget, awaits nothing and stores nothing, so no render decision was ever gated on the fonts; and 'permanently disables CJK fonts' overstates it — the webfont simply never applies and zh-CN text renders in the system CJK fallback, i.e. degraded typography, not missing or tofu text (theme/fonts.css only declares the two Latin faces; the CJK families exist solely as this JS injection). (b) The finding's recommended fix — 'the correct latch point is after a successful load' — would REGRESS a property the suite locks: latching before the await is what makes two rapid zh-CN toggles idempotent, and tests/i18n/i18n.test.js:41-57 asserts 'injects the faces at most once'. Post-success latching re-opens duplicate FontFace injection; the correct shape is caching the in-flight promise and clearing it on rejection. Net: a real but cosmetic-impact robustness defect whose proposed remedy needs rewriting.
 
-### ▣✓ PENDING `src/render/BossEntity.jsx:183` — capture-suppression
+### ▣✓ 0e69a20 `src/render/BossEntity.jsx:183` — capture-suppression
 
 **Boss capture guard early-returns after resetting only wings+position, leaving meshRef rotation.x/.y and in-flight fireballs/lava at live-loop values**
 
@@ -593,7 +593,7 @@ REFUTATION FAILED. grep for setAchievements returns only the definition (useGame
 
 REFUTATION FAILED. Line 129 is a bare `if (isCaptureMode()) return;` at the top of the useFrame, so an NPC mid-lerp holds whatever fraction it reached, at whatever gameTime the flip landed on. This is a direct violation of the repo's own written standard in CLAUDE.md ('A capture guard must RESET to a declared value, never early-return'), so it is a documented-rule breach, not a matter of taste. The declared value the auditor derives matches npcRoutine.js:13-15 exactly (night = home; day = home + cos/sin(t*0.25) * PATROL_R=2.0). The masking claim also checks out: capture.mjs:269 calls the enterCapture hook BEFORE waiting on isSpawnChunkLoaded, and App.jsx:327 purges mobsQuery, so no NPC survives in a gate run; and I counted the direct enterCaptureMode() call sites in App.jsx — 360, 381, 504, 530, 562, 601, 635, 663, 681, 701, 755, 775 = exactly the twelve claimed, none of which purge. Severity is correctly filed low: today unreachable, structurally real.
 
-### ▣✓ PENDING `src/systems/AIWorkerSystem.jsx:147` — capture-suppression
+### ▣✓ 0e69a20 `src/systems/AIWorkerSystem.jsx:147` — capture-suppression
 
 **The guard sits ABOVE the main-thread knockback drain, so a pending knockback impulse is never cleared and never applied while capture is on.**
 
