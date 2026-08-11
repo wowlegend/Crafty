@@ -18,8 +18,12 @@ export default function DuskWarning() {
   const armed = useRef(true); // ready to warn for the current day; consumed on warn, re-armed at night
 
   useEffect(() => {
-    if (isCaptureMode()) return undefined;
     const id = setInterval(() => {
+      // INSIDE the callback, not at setup. The harness calls enterCapture AFTER boot, so a guard placed
+      // on the line above this effect's setInterval runs once at mount with the flag still false, and the
+      // interval then warns all through the capture session. The guard reads as protection and is a no-op.
+      // Not re-arming on this branch: `armed` is consumed only by an actual warn, which cannot happen here.
+      if (isCaptureMode()) return;
       const s = useGameStore.getState();
       if (isDuskApproaching(s.gameTime, s.isDay)) {
         if (armed.current) {

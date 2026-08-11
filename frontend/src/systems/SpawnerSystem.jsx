@@ -85,7 +85,11 @@ export const SpawnerSystem = () => {
     const checkInterval = setInterval(() => {
       const state = useGameStore.getState();
       // Dev capture mode: suppress mob spawns so frames are byte-stable. No-op in gameplay.
-      if (isCaptureMode()) { clearInterval(checkInterval); return; }
+      // SKIP the tick — do NOT clearInterval. This interval is the sole caller of the one-shot hub-NPC
+      // bootstrap below, and the effect's deps are [], so nothing ever remounts it: tearing it down on the
+      // first capture tick killed the spawner for the rest of the session. Cost of staying armed through a
+      // capture is one getState() read every 500ms; it still self-clears at the end of a successful spawn.
+      if (isCaptureMode()) return;
       if (state.getMobGroundLevel && state.getGeneratedChunks && state.getGeneratedChunks().size > 0 && state.isSpawnChunkLoaded) {
         for (let i = 0; i < 20; i++) {
           const angle = (i / 20) * Math.PI * 2;

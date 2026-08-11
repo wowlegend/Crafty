@@ -216,8 +216,10 @@ export const useQuestSystem = () => {
     // the outward journey a concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
     const reachedShrines = useRef(new Set());
     useEffect(() => {
-        if (isCaptureMode()) return;
         const interval = setInterval(() => {
+            // INSIDE the callback: this effect's deps are [] and the harness flips the capture flag AFTER
+            // mount, so a guard on the setup path is provably false every time and suppresses nothing.
+            if (isCaptureMode()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
@@ -665,8 +667,10 @@ export const useTreasureChests = () => {
         // drifts during the capture settle window, so even a seeded position yields a
         // run-varying Compass distance label + 3D chest screen-position. Zero chests =
         // deterministic frame. No-op in normal gameplay.
-        if (isCaptureMode()) return;
         const interval = setInterval(() => {
+            // INSIDE the callback. Deps are [] and the harness flips the capture flag AFTER mount, so a
+            // guard on the setup path is provably false every time and suppressed nothing.
+            if (isCaptureMode()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
 
@@ -749,8 +753,9 @@ export const useTreasureChests = () => {
     // poll. Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
     const shrineChestsSpawned = useRef(new Set());
     useEffect(() => {
-        if (isCaptureMode()) return;
         const interval = setInterval(() => {
+            // INSIDE the callback — same reason as the two sibling pollers above.
+            if (isCaptureMode()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
