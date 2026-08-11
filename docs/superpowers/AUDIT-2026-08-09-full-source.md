@@ -185,7 +185,7 @@ REFUTATION FAILED on the mechanism, though one consequence clause is overstated.
 
 ## MEDIUM (32)
 
-### ▢ `src/App.jsx:230` — silent-failure
+### ▣✓ 7edfa4e `src/App.jsx:230` — silent-failure
 
 **The autosave trigger predicate covers only saveSchema's `progression` block — every `game_state` field (boss fight) can never schedule a save, and the gate that claims to pin the list is blind to them.**
 
@@ -473,7 +473,7 @@ THE DEAD-CODE CLAIM SURVIVES, THE STATED CONSEQUENCE DOES NOT. Grep of frontend/
 
 REFUTATION ATTEMPTED, PARTLY SUCCEEDED — core behavior claim survives, the prescribed fix does not. Verified: App.jsx:857 is the sole production call site and does pass the literal 1; the `change` listener at 859 is unconditional so it fires on OFF as well as ON; juiceIntensity IS persisted (settingsPersist.js SETTINGS_DEFAULTS + pick() + the subscribe glue), so the clobber is written to localStorage. Three refutation angles: (1) App.jsx:851-853 explicitly documents the reset — 'Applies the OS default on mount + re-applies on change; the Settings slider/toggle remain the manual override BETWEEN CHANGE EVENTS' — the author knew a change event resets the dial; CHANGELOG.md:1758 says the same. This is a documented single-dial design, not an oversight. (2) The finding's prescribed fix is UNSOUND: `motionIntensity(mq.matches, useGameStore.getState().juiceIntensity)` would latch at 0 permanently after an ON->OFF cycle, because the ON transition destructively wrote 0 into that very field — there is no separate 'chosen scale' slot in the store to restore from (useGameStore.jsx:310-311 is the only dial). Passing 1 is the only thing that restores juice at all. (3) The in-app Reduced Motion toggle does exactly the same clobber: GamePanels.jsx:702 `setJuiceIntensity((juiceIntensity ?? 1) === 0 ? 1 : 0)` destroys a 0.4 identically, so the OS listener is CONSISTENT with the app's own model. (4) 'the clamp branch on line 9 is unreachable with any value other than 1' is false as stated — a11y.test.js:12,18,19 and tests/gates/settings-a11y-gates.test.js:51 call it with 0.5/2/-1; it is only production-unreachable. What survives: a player who sets 40% and toggles macOS Reduce Motion on then off really does end up at 100%, persisted, with no way to recover the 40% except re-dragging the slider. Real, but low severity (mid-session OS-setting toggle only), and the fix is 'store the chosen scale in a second field', not the one proposed.
 
-### ▢ `src/game/beastMorph.js:41` — dead-on-arrival
+### ▣✓ 7edfa4e `src/game/beastMorph.js:41` — dead-on-arrival
 
 **chargeGlow() returns an `intensity` ramp that no consumer reads — the beat-1 anticipation glow grows but has no per-pixel brightness input.**
 
@@ -599,7 +599,7 @@ REFUTATION FAILED. Line 129 is a bare `if (isCaptureMode()) return;` at the top 
 
 REFUTATION FAILED structurally. Line 147 returns before the knockback loop at 151-160, which is the only consumer of entity.knockback (CombatSystem.jsx:57 and AIWorkerSystem.jsx:61 are the only writers), so an impulse stamped before the flip survives the whole capture session and is applied on the first post-exit frame. The windup sub-claim is also verified: MobModel.jsx:181-183 reads raw `performance.now()` for `charging` and `Math.sin(performance.now() * 0.025)`, while the same file DOES capture-guard its leg clock at line 220 (`isCaptureMode() ? 0 : performance.now() * 0.01`) — so the asymmetry is real. Two softeners: (1) reachability is near-nil in practice — enterCapture purges mobsQuery, and a headless capture run deals no damage, so no entity carries a pending knockback; (2) 'keeps changing its charge glow across the capture window' is overstated — line 181 gates on `performance.now() < entity.windupUntil`, so the glow animates for at most WINDUP_MS after the flip and then pins at 0.
 
-### ▢ `src/systems/CombatSystem.jsx:164` — dead-on-arrival
+### ▣✓ 7edfa4e `src/systems/CombatSystem.jsx:164` — dead-on-arrival
 
 **The zustand mirror of damageMob / checkMobCollision / checkMobsInMeleeCone is write-only — every consumer reads the GameMethods singleton, and the store's own setters have zero callers.**
 
@@ -689,7 +689,7 @@ Ordering verified end to end, no refutation found. devtest/captureMode.js:17 ini
 
 Refutation attempted via the usual escape hatches in this repo — a Web Worker, the dev test bridge, a lazy import, or a test — and all came back empty. `grep -rn 'TouchControlsSurface' src/ tests/ scripts/` returns every reference: two production render sites (TouchControls.jsx:30 `<TouchControlsSurface trayOpen />` and :163 `trayOpen/wheelOpen/spellOpen`) and four test renders (aspect-ring-gates.test.jsx:109/115/122/178), none of which pass `nub`. So `nub?.x ?? 0` at line 149 is always 0 and the React-rendered knob transform is always identity. The live knob-follow really is imperative (TouchControls.jsx:89-96 writes `knob.style.transform` behind a rAF via the `[data-touch-knob]` query, and TouchControls.jsx:110 recenters it on release), so the JSDoc at line 37 calling `nub` 'the live path' is actively misleading. eslint's no-unused-vars cannot see it (the prop IS referenced) and knip does not analyse props, which is why nothing flags it. Correct as written; severity low.
 
-### ▢ `src/ui/TradingInterface.jsx:103` — dead-on-arrival
+### ▣✓ 7edfa4e `src/ui/TradingInterface.jsx:103` — dead-on-arrival
 
 **The framer-motion `exit` variant can never play: the component is mounted with a bare && and has no AnimatePresence ancestor.**
 
