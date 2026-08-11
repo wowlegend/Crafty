@@ -18,6 +18,31 @@ slice tried to REFUTE each finding — default refuted, `real` only where refuta
 knock it down; that text is the evidence, and several refutations narrow or partly correct their
 finding rather than simply endorsing it.
 
+## STATUS — DRAINED 2026-08-11
+
+**All 108 confirmed findings are closed**, each with a mutation proof, across 24 high / 32 medium / 52
+low. Two findings NOT in this list were surfaced by gates written for the findings beside them and were
+fixed in the same commits: a live `Magic Crystal -> crystals` recipe orphan (resolved as a third
+category, currencies with named consumers), and `setActiveChestCoords` called unconditionally on the HUD
+slice and never selected — the same TypeError class as `selectedVillager`, four lines below the comment
+describing it.
+
+**What the drain taught, beyond the individual fixes:**
+
+- **Nine source-grep gates went RED at the FIX rather than at a defect** — pinning a parameter's name, a
+  400-character window broken by adding a comment, exact inline block text, and one asserting
+  `screenShake` that was green through the entire life of the wrong cue it guarded. All were re-anchored
+  to behaviour and mutation-proven; none was relaxed.
+- **Five mutations stayed GREEN, and each time the finding was the TEST.** A mutation must reproduce the
+  defect's SHAPE, not touch its line.
+- **`gate-shape`'s source-grep ratchet blocked four attempts to add new grep gates and was right each
+  time.** The working resolution is to make the guarded thing EXECUTABLE: four modules had never been
+  testable because their host worker assigns `self.onmessage` at module scope, and extracting them
+  (`aStarNeighbors`, `debrisPark`, `caveCA`, `mobWander`) turned unprovable fixes into behavioural ones.
+- **The last cluster's proof is the re-baseline, not a gate.** Capture-suppression defects are visual, so
+  the instrument is the oracle: `RadialMinimap` had returned null and sat in ZERO baselines, and is now in
+  the 17 frames re-shot at `8eddec1`.
+
 ## HIGH (24)
 
 ### ▣✓ 9f026b2 `src/App.jsx:810` — dead-on-arrival
@@ -177,7 +202,7 @@ REFUTATION FAILED. hudState.js:26-57 contains neither `showCredits` nor `setShow
 
 REFUTATION FAILED, and this is the most self-indicting of the set. hudState.js:50 selects `selectedVillager: state.selectedVillager` and stops — no setter, while useGameStore.jsx:583 defines setSelectedVillager on the store root and InputManager.jsx:81/197 calls it correctly off getState(). That is verbatim the shape hudState.js:22-24 warns about ('Keep VALUE and SETTER together... a value without its setter is precisely the shape of the bug above'), and HUD_CALLABLE_KEYS (lines 64-78) omits setSelectedVillager so the hud-hotbar gate that asserts each callable key resolves to a function never examines it. I checked the ordering claim: line 202 setShowTradingInterface IS in the slice (line 39), so the zustand write lands and the panel unmounts before line 203 throws; React still flushes the already-queued store notification, so the visible outcome is exactly as described — panel gone, TypeError, line 205 relock never runs. The reach claim also holds: InputManager.jsx:197-212 sets selectedVillager then setShowTradingInterface(true) + exitPointerLock for merchant/role-less villagers.
 
-### ▢ `src/QuestSystem.jsx:711` — capture-suppression
+### ▣✓ 330bafa `src/QuestSystem.jsx:711` — capture-suppression
 
 **Initial-chest capture guard sits at the top of a useEffect body, so it always reads false and a randomly-positioned chest is spawned on every capture run.**
 
@@ -369,7 +394,7 @@ REFUTATION FAILED. I tried three routes and all closed. (1) Complete reader set 
 
 REFUTATION FAILED. I looked specifically for the routes that usually rescue a 'dead module' finding in this repo and none exist. (1) Importer set — `grep -rn 'detile\|tileValueOffset' src/ tests/ scripts/` returns exactly four hits: the definition (detile.js:6), tests/world/detile.test.js:2 (the import) and its four assertions, and Terrain.jsx:127, which is a COMMENT ('mirrors world/detile.js tileValueOffset'), not a call. No Web Worker route: terrain.worker.js does not reference it. No lazy import, no dev test-bridge hook, no scripts/ consumer. (2) The GPU really does re-type the constants — Terrain.jsx:131 carries `sin(floor(vWorldPos.x) * 12.989 + floor(vWorldPos.y) * 78.233 + floor(vWorldPos.z) * 37.719) * 43758.5453` and :132 `* (1.0 + (fract(dh) - 0.5) * 0.16)` as literal GLSL text inside the injected shader chunk. (3) No cross-check gate — grepping the magic constants `12.989|78.233|37.719` across src/, tests/ and scripts/ finds them only in those two places plus unrelated hashes (OptimizedGrassSystem.jsx:74, terrain.worker.js:251, trauma.js:24 use 12.9898/12.789, i.e. DIFFERENT constants); nothing compares the JS to the GLSL. So editing the GLSL changes the world and detile.test.js stays green, and deleting detile.js changes nothing on screen. The repo has already adjudicated this exact pattern against itself: heightAt.js:1-9 documents climate.js hand-copying a formula and silently going stale, and concludes 'The mirror+test approach failed; this shared module + the heightat-single-source gate make a re-copy structurally impossible.' detile.js is the mirror+test approach, still standing, with no equivalent gate. The header's claim at :3-4 that 'the JS unit test and the GPU agree on the same numbers' is unfalsifiable as written.
 
-### ▢ `src/ui/RadialMinimap.jsx:59` — capture-suppression
+### ▣✓ 330bafa `src/ui/RadialMinimap.jsx:59` — capture-suppression
 
 **Capture guard returns null for the whole component, so the minimap appears in zero visual baselines and no regression in it can be caught.**
 
@@ -551,7 +576,7 @@ Verified: countVoxelIntersections (23-70) allocates `new rapier.Ray({x,y,z},{x,y
 
 Corrections: (1) "each a WASM-backed object" is FALSE — node_modules/@dimforge/rapier3d-compat/geometry/ray.d.ts declares Ray as a plain JS class holding two `Vector` fields; the WASM crossing happens inside castRay, not in the Ray constructor. (2) The "~8 concurrent SFX voices" figure is assumed, not derived from any cap in the code. The resulting ~7.2k tiny young-generation JS objects/sec is well inside V8 scavenger noise, so this is a code-consistency nit rather than a measurable frame-time problem — 'low' is the right severity, arguably generous. The fix is trivial though: `_rayStart` already satisfies the Vector interface and could be passed as origin directly.
 
-### ▢ `src/render/pickupVfx.jsx:18` — capture-suppression
+### ▣✓ 330bafa `src/render/pickupVfx.jsx:18` — capture-suppression
 
 **XPOrbRender accumulates rotation every frame with no capture guard, while both siblings in the same file are explicitly capture-frozen.**
 
@@ -605,7 +630,7 @@ REFUTATION FAILED structurally. Line 147 returns before the knockback loop at 15
 
 REFUTATION FAILED. A repo-wide grep for damageMob|checkMobCollision|checkMobsInMeleeCone with GameMethods.* lines removed returns only comments, definitions and source-shape tests — no `useGameStore.getState().damageMob`, no destructured store read, nowhere in src/, tests/ or scripts/. The eleven live consumers all go through the singleton and I enumerated them directly: Components.jsx:261, EnhancedMagicSystem.jsx:50/67/343, App.jsx:606, SquadAISystem.jsx:45, HurlSystem.jsx:64/97, ElementZoneSystem.jsx:82 for damageMob; EnhancedMagicSystem.jsx:332 for checkMobCollision; Components.jsx:255/423/433/669/943 for checkMobsInMeleeCone. useGameStore.jsx:394-397 declares `damageMob: null` + setDamageMob and `checkMobCollision: null` + setCheckMobCollision — both setters have zero call sites — and checkMobsInMeleeCone is indeed never declared in initial state despite being setState'd at line 182. Tried 'a gate pins the store write': spell-vfx-gates.test.js:111-112 greps for the bare identifiers, which survive in the GameMethods assignments, so deletion would not redden it.
 
-### ▢ `src/systems/LootSystem.jsx:25` — capture-suppression
+### ▣✓ 330bafa `src/systems/LootSystem.jsx:25` — capture-suppression
 
 **Loot physics STOPS mid-parabola instead of settling, and its sibling XPOrbSystem (identical stepper) has no guard at all.**
 
@@ -629,7 +654,7 @@ REFUTATION FAILED. Same structural close: UI is imported only by src/theme/cssVa
 
 REFUTATION FAILED. Decisive structural check rather than a grep-for-absence: `grep -rn "import { UI" src/` returns exactly one consumer in src/ — src/theme/cssVars.js:7 — so any UI.* key not enumerated in COLOR_VARS (cssVars.js:19-56), SCALAR_VARS (58-67), TW_COLORS (82-125) or TW_SCALES (127-144) is unreachable in production by construction. `motion` appears in none of the four. Read tailwind.config.cjs in full: no transitionDuration and no transitionTimingFunction extend anywhere. Searched for indirect access (`UI['motion']`, destructuring `const { motion } = UI`) — the only `motion`-shaped hits in src/ are framer-motion imports, spellVisualProfiles' unrelated `motion:` personality keys, and a prefers-reduced-motion media query. Only consumer is tests/theme/tokens.test.js:92-93, exactly as stated. The stated numeric disagreement also checks out: tailwind.config.cjs:99 hardcodes 'fadeIn 150ms ease-out', matching neither duration.fast (120) nor duration.base (200). Cited line 122 is verbatim `motion: {`.
 
-### ▢ `src/ui/AbilityBar.jsx:22` — capture-suppression
+### ▣✓ 330bafa `src/ui/AbilityBar.jsx:22` — capture-suppression
 
 **The cooldown-sweep rAF's capture guard sits at mount with `[]` deps, outside the callback, so entering capture after boot neither stops the sweep nor resets it.**
 
@@ -677,7 +702,7 @@ REFUTATION FAILED, and this is the strongest of the three. Lines 277-278 say ver
 
 REFUTATION FAILED. Line 337 says verbatim what is quoted. I re-derived and re-measured independently (own harness, fake ctx, at BOTH 48000 and 44100 Hz; /private/tmp/claude-501/-Users-kz-Code/c7297111-afb7-46c9-83b3-6edc09ed7f41/scratchpad/dsp.mjs). phase = 2*PI*(200t - 150t^2) => f_inst = 200-300t, zero at t=0.6667, buffer is 0.8s. Measured ZCR tracks |200-300t| and NOT 200-150t at every probe: t=0.2 -> 125 Hz meas vs 140 actual vs 170 declared; t=0.4 -> 75 vs 80 vs 140; t=0.6 -> 25 vs 20 vs 110; t=0.6667 -> 12.5 (DC); then BACK UP to 25 Hz at t=0.72 and t=0.78. Peak levels reproduce the auditor's to 4 decimals (0.0685 @ t=0.667, 0.0629 @ t=0.78, bufPeak 0.2993 => 21-23%). Identical at 44100. Reachability confirmed, not dead code: VOICES.defeat (:674) -> SoundManager.jsx:609 playDefeat -> App.jsx:829 registers playDefeatSound -> useGameStore.jsx:842 fires it when playerHealth hits 0. No documented decision blesses this: I grepped docs/ and memory/ and the only synthVoices entries are the S3-M1 extraction plan ('waveform math VERBATIM, byte-identical buffers' -- a refactor invariant, not a DSP blessing) and HOLISTIC-REVIEW-2026-07-21.md:469, which flags a DIFFERENT defect in this file (missing Math.floor on frameCount) and not this one. TWO CORRECTIONS to the finding's wording, neither of which rescues the code: (1) 'the declared endpoint 80 Hz is never produced' is FALSE -- 200-300t = 80 Hz at t=0.4, so 80 Hz IS emitted, just at the midpoint instead of the end; the accurate statement is that the sweep reaches its declared endpoint twice as early and then keeps falling through DC. (2) 'The reversed tail is audible' is NOT established: the reversal occupies 0-34 Hz, below the ~20 Hz pitch floor and below what any laptop/phone/headset reproduces, so a listener hears the cue die into sub-audio rumble rather than hearing it reverse. The level arithmetic (21-23% of peak) is right; the perceptual conclusion drawn from it is not. Core defect stands: comment declares a 200->80 descent, code delivers a 2x-fast sweep that hits DC with 17% of the buffer still to run.
 
-### ▢ `src/ui/MusicPlayer.jsx:21` — capture-suppression
+### ▣✓ 330bafa `src/ui/MusicPlayer.jsx:21` — capture-suppression
 
 **Capture guard sits in a mount-only ([] deps) effect that runs before enterCaptureMode() is ever called, so it can never be true — the guard is dead.**
 
