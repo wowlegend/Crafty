@@ -116,10 +116,19 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const rightWingRef = useRef();
     const prevHealth = useRef(bossHealth);
     const flashTime = useRef(0);
+    // MEMBERSHIP STATE, not a ref. The flash is read DURING RENDER (isFlashing below), and a ref write
+    // schedules nothing -- so writing flashTime in an effect meant the hit's own render had already read
+    // the pre-effect 0, and useFrame decayed the timer back to zero within 180ms with no render in
+    // between. The flash reached the screen only when some unrelated setEffects call happened to
+    // re-render inside that window: coincidence-driven, never hit-driven. This is the same pattern
+    // HurlSystem uses for inFlight -- setState on the rare membership transition, never per frame -- so
+    // Game-Loop-Isolation holds: a boss hit is a rare event, not a per-frame one.
+    const [isFlashing, setIsFlashing] = useState(false);
 
     useEffect(() => {
         if (bossHealth < prevHealth.current) {
             flashTime.current = 0.18; // Flash red for 180ms
+            setIsFlashing(true);
         }
         prevHealth.current = bossHealth;
     }, [bossHealth]);
@@ -446,9 +455,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 4) * 0.08;
         }
 
-        // Damage hit visual flash timer decay
+        // Damage hit visual flash timer decay. The transition OUT is a membership change too: without
+        // it the flash would latch on until the next hit re-rendered it.
         if (flashTime.current > 0) {
             flashTime.current -= delta;
+            if (flashTime.current <= 0) setIsFlashing(false);
         }
 
         // Premium wing flapping motion
@@ -465,7 +476,6 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
     
     // Satisfying damage indicator color values and majestic obsidian styling
-    const isFlashing = flashTime.current > 0;
     const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black
     const bodyEmissive = isFlashing ? "#ef4444" : phase.color; // Emissive phase color highlight
     const emissiveIntensityVal = isFlashing ? 3.0 : (bossPhase === 2 ? 2.2 : (bossPhase === 1 ? 1.5 : 0.8));

@@ -21,6 +21,23 @@ const GLOVE_CUFF = '#E8D9A8';       // white-gold accent cuff at the wrist
 const GLOVE_OUTLINE = '#1A1A1F';    // crisp ink outline (slightly warmer than mob #0b0e14)
 const GLOVE_OUTLINE_T = OUTLINE.prop.thickness; // 3px — props/held-item tier, hands sit close to camera
 
+/**
+ * The AUTHORED rest pose of the held item, by which group is mounted. ONE table, read by the JSX and by
+ * the idle reset in useFrame, because those two used to disagree and the useFrame won every frame.
+ *
+ * The idle branch hardcoded rotation (0.1, 0, 0) and y = 0.4 -- neither group's rest pose. So the wand's
+ * authored yaw 0.2 and roll 0.1 never rendered, and an equipped SWORD (authored y 0.32, rotation zero)
+ * sat 0.08 high and pitched 0.1 rad. Idle is the overwhelming steady state: attackType is set only in
+ * 150-200ms bursts, so the authored transform appeared for a frame after each re-render and was then
+ * clobbered on the next one -- which is why it looked like a subtle model offset rather than a bug.
+ *
+ * Frozen so a caller cannot mutate the table it is resetting to.
+ */
+export const HELD_REST = Object.freeze({
+  weapon: Object.freeze({ position: Object.freeze([0.15, 0.32, -0.16]), rotation: Object.freeze([0, 0, 0]) }),
+  wand: Object.freeze({ position: Object.freeze([0.2, 0.4, -0.1]), rotation: Object.freeze([0.1, 0.2, 0.1]) }),
+});
+
 const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const bladeColor = useMemo(() => {
     switch (type) {
@@ -329,6 +346,9 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         leftHandRef.current.rotation.set(0.12 * Math.sin(t * Math.PI), 0, 0);
 
         if (wandRef.current) {
+          // The swing pose overrides rotation only; position.y is left to the idle reset, which restores
+          // the authored value. It used to restore a hardcoded 0.4 instead, so a sword never came back to
+          // its own rest height after a swing.
           wandRef.current.rotation.set(0, 0, 0);
         }
       } else if (isCastingSpell) {
@@ -360,8 +380,15 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         leftHandRef.current.rotation.set(0, 0, 0);
 
         if (wandRef.current) {
-          wandRef.current.rotation.set(0.1, 0, 0);
-          wandRef.current.position.y = 0.4;
+          // RESET TO THE AUTHORED POSE, and to the pose of the group that is ACTUALLY MOUNTED. This used
+          // to hardcode rotation (0.1, 0, 0) and y = 0.4, which is neither group's rest pose: the wand's
+          // authored yaw 0.2 and roll 0.1 never rendered at all, and an equipped SWORD -- whose authored
+          // pose is y 0.32, rotation zero -- sat 0.08 high and pitched 0.1 rad. Idle is the overwhelming
+          // steady state (attackType is set only in 150-200ms bursts), so the authored transform was
+          // visible for a frame after each re-render and then clobbered.
+          const rest = isWeaponEquipped ? HELD_REST.weapon : HELD_REST.wand;
+          wandRef.current.rotation.set(rest.rotation[0], rest.rotation[1], rest.rotation[2]);
+          wandRef.current.position.y = rest.position[1];
         }
       }
 
@@ -422,13 +449,15 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         {/* White-gold accent cuff at the wrist */}
         <mesh castShadow receiveShadow position={[0, 0.07, 0]}><boxGeometry args={[0.22, 0.06, 0.14]} /><meshStandardMaterial roughness={0.4} metalness={0.5} color={GLOVE_CUFF} emissive={GLOVE_CUFF} emissiveIntensity={0.12} /><Outlines thickness={GLOVE_OUTLINE_T} color={GLOVE_OUTLINE} toneMapped={false} /></mesh>
 
-        {/* Branch weapon model rendering: procedurally modeled 3D sword vs. magic wand */}
+        {/* Branch weapon model rendering: procedurally modeled 3D sword vs. magic wand.
+            The transforms come from HELD_REST so the authored pose and the idle reset in useFrame cannot
+            disagree -- they used to, and the useFrame won. */}
         {isWeaponEquipped ? (
-          <group ref={wandRef} position={[0.15, 0.32, -0.16]} rotation={[0.0, 0.0, 0.0]}>
+          <group ref={wandRef} position={HELD_REST.weapon.position} rotation={HELD_REST.weapon.rotation}>
             <ProceduralWeapon type={equippedWeapon} />
           </group>
         ) : (
-          <group ref={wandRef} position={[0.2, 0.4, -0.1]} rotation={[0.1, 0.2, 0.1]}>
+          <group ref={wandRef} position={HELD_REST.wand.position} rotation={HELD_REST.wand.rotation}>
             <MagicWand wandType={activeSpell} />
           </group>
         )}

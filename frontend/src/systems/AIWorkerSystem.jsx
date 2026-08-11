@@ -224,6 +224,13 @@ export const AIWorkerSystem = () => {
       // That is an accident, not a guarantee: move that return and the nondeterminism returns silently,
       // inside a worker, where the visual harness would show it as an unexplained flapping frame. Null in
       // normal play, so mobs wander freely for real players.
+      // DEAD UNTIL THE SUPPRESSION BECOMES SUBSTITUTION, and deliberately kept. The useFrame this
+      // sits in early-returns on isCaptureMode() ~69 lines above, so this ternary has evaluated its
+      // capture branch exactly zero times and always yields null. It is scaffolding for the
+      // capture-clock work: the moment that early return is replaced by a seeded tick, the seed has
+      // to already be here. Deleting it would mean re-deriving it later; leaving it undocumented
+      // meant the next reader took it for working plumbing, which is how the CONSUMER of this seed
+      // (the wander re-roll) shipped a constant sequence nobody could observe.
       captureSeed: isCaptureMode() ? CAPTURE_AI_SEED : null
     });
   });
