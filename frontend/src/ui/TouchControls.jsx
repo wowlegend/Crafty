@@ -12,6 +12,7 @@ import { ownsTouch } from '../input/touchOwnership';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
 import { TRAY_PANELS, togglePanel } from './touchTray';
 import TouchControlsSurface from './TouchControlsSurface';
+import { isAnyPanelOpen } from './panelState.js';
 
 /**
  * TouchControls (M1 wiring + M2 visible surface) -- the touch overlay. Capture-safe + desktop-inert
@@ -70,15 +71,26 @@ function TouchControlsLive({ isWorldBuilt }) {
     // HUD control itself; `t.target` is then exactly the element the touch began on.
     const isButton = (t) => ownsTouch(t.target);
 
+    // FOCUS GATE. `getInput().active` alone is not the invariant. There are TWO panel openers with
+    // different focus contracts: the tray opener lowers `active` by hand, the WORLD opener (Terrain's
+    // open(h), via the interact verb) does not — it gets away with it on desktop only because exiting
+    // pointer-lock lowers `active` as a side effect. On touch there is no pointer lock, so opening a chest
+    // by walking up to it left `active` true and every tap inside that panel was swallowed by the
+    // look-drag router. Reading PANEL_FLAGS via isAnyPanelOpen instead of lowering `active` in a third
+    // place: two hand-maintained copies of this invariant already drifted once (2026-06-07), which is why
+    // panelState.js exists. Transient getState read at EVENT time — not a subscription, so
+    // Game-Loop-Isolation holds.
+    const touchFocusOpen = () => getInput().active && !isAnyPanelOpen(useGameStore.getState());
+
     const onStart = (e) => {
-      if (!getInput().active) return; // focus gate: no move/look routing when paused / in a panel (M3a)
+      if (!touchFocusOpen()) return; // focus gate: paused, or ANY panel open (see touchFocusOpen)
       const w = window.innerWidth;
       let routed = false;
       for (const t of e.changedTouches) if (!isButton(t)) { router.onStart(t, w); routed = true; }
       if (routed) e.preventDefault(); // skip for pure button taps so iOS does not suppress onPointerUp
     };
     const onMove = (e) => {
-      if (!getInput().active) return; // focus gate: let panel scroll / native touch through when not active
+      if (!touchFocusOpen()) return; // focus gate: let panel scroll / native touch through
       const n = handleTouchMove(router, e.changedTouches, { camera: camera(), setIntent, sensitivity: useGameStore.getState().lookSensitivity ?? 1 });
       e.preventDefault();
       // W4-T11: move the visible joystick knob to follow the thumb -- IMPERATIVELY (a ref + a direct DOM
@@ -104,7 +116,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       // Bound to `window` (X3) it sees every touchend in the app — and it suppressed the synthesized click
       // on the title screen's "Start Adventure", killing touch cold-start outright. Caught by touch-probe,
       // not by review: the change that moved these listeners looked local.
-      if (getInput().active && [...e.changedTouches].some((t) => !ownsTouch(t.target))) e.preventDefault();
+      if (touchFocusOpen() && [...e.changedTouches].some((t) => !ownsTouch(t.target))) e.preventDefault();
       // recenter the knob on release (imperative DOM write -> GLI-safe)
       const knob = rootRef.current && rootRef.current.querySelector('[data-touch-knob]');
       if (knob) knob.style.transform = 'translate(-50%, -50%)';
