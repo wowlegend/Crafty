@@ -19,33 +19,30 @@
 
 ## 📍 THE CURSOR — 2026-08-11 · draining the full-source audit queue
 
-**THE ONE UNIT IN FLIGHT:** working `docs/superpowers/AUDIT-2026-08-09-full-source.md` top-down by
-severity. **56 of 108 closed, 52 open** at `f8dc984`; every HIGH is closed. Re-read that file for the live
-count — `grep -c '^### ▢'` — do not trust this line, which is a snapshot.
+**THE ONE UNIT IN FLIGHT:** the LAST 6 of 108 audit findings, and they are all one cluster.
+`docs/superpowers/AUDIT-2026-08-09-full-source.md` is the queue; **102 closed, 6 open** — every HIGH and
+every MEDIUM outside this cluster is done. Re-read that file for the live count (`grep -c '^### ▢'`).
 
-**Working tree is CLEAN and pushed.** Nothing is half-landed.
+**THE REMAINING SIX ARE ALL CAPTURE-SUPPRESSION, and they are the expensive ones:**
+`QuestSystem.jsx:711` (a randomly-positioned chest spawns on every capture run — the guard sits at the
+top of a useEffect body that runs BEFORE the test bridge installs, so it always reads false) ·
+`RadialMinimap.jsx:59` (returns null for the whole component, so the minimap is in ZERO baselines and no
+regression in it can be caught) · `pickupVfx.jsx:18` (XP orb rotation accumulates unguarded while both
+siblings in the same file are frozen) · `LootSystem.jsx:25` (loot physics STOPS mid-parabola instead of
+settling to a declared value) · `AbilityBar.jsx:22` and `MusicPlayer.jsx:21` (guards in mount-only `[]`
+effects that run before `enterCaptureMode()` is ever called, so they can never be true).
 
-**WHAT THE LAST STRETCH TAUGHT, and it changes how you work the queue:**
+**WHY THEY COST MORE:** each changes what the gated frames DEPICT, so each owes a baseline re-capture.
+`baseline-trailer` FORBIDS bundling that rewrite with the `src/` change that caused it, so it is two
+commits per batch, and `npm run test:visual` is manual and takes ~12 minutes. Do the src fixes as ONE
+commit, then re-capture, OPEN THE IMAGES, and land the baselines in a second commit carrying a
+`Baseline-Review:` trailer.
 
-1. **Six source-grep gates went RED at the FIX, not at a defect** — one pinned a parameter's NAME, one
-   asserted a token appeared within 400 characters of a call (a COMMENT above the call broke it), one
-   pinned the exact inline text of a block that had to move. Expect this. Re-anchor the gate to the
-   BEHAVIOUR it exists to protect and mutation-prove the re-anchoring; never relax it, and never edit the
-   source to keep a brittle gate green.
-2. **Two mutations stayed GREEN and that WAS the finding.** A recipe gate written to forbid "named after
-   something it does not produce" sailed through the historical Bow → Arrow case. Always run the
-   mutation; a gate that cannot go red is not a gate.
-3. **`gate-shape` ratchets source-grep gates at 115 and they may not RISE.** If a new check needs to read
-   source to build a DENOMINATOR, put the scan in `tests/_support/` — see `hudCallSites.js`. The gate file
-   itself must contain no regex over source.
-4. **Fixing findings surfaces new ones.** Two so far, both outside the 108: a live `'Magic Crystal' →
-   'crystals'` orphan, and `setActiveChestCoords` called on the HUD slice and never selected. Stamp them
-   in the queue's own commit message rather than losing them.
+**ALSO OWED, same mechanism:** `ec57fa4` (the clock's two origins) moved the compass dial in every
+HUD-bearing baseline — day frames from 90° (sunset) to 0° (noon), night frames from -90° to 180°. Both
+are corrections. That re-capture has NOT happened, so the visual oracle is stale in exactly that region
+right now. Fold it into the same re-capture.
 
-**NEXT, in order:** `render/BossEntity.jsx:466` (damage flash one render late) · `render/playerRender.jsx:363`
-(idle branch overwrites the JSX pose) · `render/Atmosphere.jsx:42` (instanced grass fogged at full density) ·
-the `AIWorkerSystem.jsx:228` + `ai.worker.js:367` capture-seed pair · `App.jsx:230` (autosave predicate blind
-to every `game_state` field).
 
 **THE CAPTURE-SUPPRESSION CLUSTER IS THE EXPENSIVE ONE — read this before starting it.** `QuestSystem.jsx:711`,
 `RadialMinimap.jsx:59` and five LOWs all change what the gated frames DEPICT, so each one owes a baseline
