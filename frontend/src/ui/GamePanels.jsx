@@ -419,17 +419,15 @@ export const Inventory = ({ onClose }) => {
                             })}
                         </div>
 
-                        {/* Equip CTA — equips the hovered/inspected gear item (mirrors showcase) */}
-                        <Button
-                            variant="primary"
-                            size="lg"
-                            disabled={!hoveredItem || getItemSlot(hoveredItem) === null}
-                            onClick={() => hoveredItem && handleEquip(hoveredItem)}
-                            className="w-full h-[48px] gap-2 mt-3 flex-none"
-                        >
-                            <Icon name="upgrade" size={20} />
-                            {t('ui.equip')}
-                        </Button>
+                        {/* The Equip CTA that used to sit here was DELETED, not repaired. Its enable condition
+                            was `hoveredItem`, which the bag tile nulls on mouseleave -- and the button was a
+                            sibling outside every tile, so the pointer had to leave a tile to reach it and the
+                            mouseleave setState committed before it arrived. There is no pointer path that is over
+                            a tile and over the button at once, so it was permanently disabled: a native disabled
+                            button is neither clickable nor tab-focusable, and on touch onMouseEnter never fires
+                            at all. It was also redundant -- the tile's own onClick equips, which the footer tip
+                            has always told the player. A control that cannot be enabled is worse than no control,
+                            and the action it offered is still there in one fewer step. */}
                     </div>
                 </div>
 

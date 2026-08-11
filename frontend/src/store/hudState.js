@@ -60,6 +60,12 @@ export const selectHudState = (state) => ({
   showChestInterface: state.showChestInterface,
   activeChestCoords: state.activeChestCoords,
   setShowChestInterface: state.setShowChestInterface,
+  // ...and its setter, missing until 2026-08-11 while MenuSystem.jsx:105 called it unconditionally on
+  // the chest-close path -- the SAME defect as selectedVillager four lines above, in the very block
+  // written about that defect. Found by the rewritten contract check on its first run, which is the
+  // point: the old one derived its key list from this selector, so it could only ever confirm that the
+  // selector agreed with itself.
+  setActiveChestCoords: state.setActiveChestCoords,
   // Credits: unreachable twice over — the gate key was missing AND the Settings button's handler called
   // an undefined setter. This is where the game-icons.net CC BY 3.0 attribution is discharged, per the
   // Design Language section of AGENTS.md, so the licence obligation rode on a path that could not run.
@@ -101,6 +107,7 @@ export const HUD_CALLABLE_KEYS = [
   'setActiveSpell',
   'setSelectedVillager',
   'setShowChestInterface',
+  'setActiveChestCoords',
   'setShowCredits',
   'startNewWorld',
   // requestPointerLock is deliberately NOT here. This list means "called UNCONDITIONALLY, so it must be

@@ -6,6 +6,20 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { selectHudState, HUD_CALLABLE_KEYS } from '../../src/store/hudState.js';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { HOTBAR_BLOCKS } from '../../src/world/Blocks';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../src');
+/** Every non-test source file, walked from disk so the set cannot go stale. */
+function srcFiles(dir = SRC, out = []) {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) srcFiles(full, out);
+    else if (/\.(js|jsx)$/.test(name) && !name.includes('.test.')) out.push(full);
+  }
+  return out;
+}
 
 // X3, SECOND LAYER — the hotbar click threw on DESKTOP too.
 //
@@ -33,6 +47,64 @@ describe('the HUD slice exposes every handler the HUD calls', () => {
 
   it('checks a non-trivial number of keys — an empty list would make the above vacuous', () => {
     expect(HUD_CALLABLE_KEYS.length).toBeGreaterThan(10);
+  });
+
+  // THE DENOMINATOR CAME FROM THE WRONG SIDE.
+  //
+  // HUD_CALLABLE_KEYS was hand-maintained beside the selector, and it had drifted into being exactly the
+  // selector's own function-valued keys — 13 of them. So the check asked "is every key I selected a
+  // function", which the selector guarantees, and could not answer the question anyone cares about: "does
+  // every handler the HUD CALLS exist". It had never gone red for any of the six omissions it was written
+  // to catch, and the six are recorded in hudState.js's own comments.
+  //
+  // The list is now derived from the CONSUMERS: every `gameState.X(` call across src. That set extends
+  // itself when someone adds a call site, which is precisely when the check needs to grow.
+  const CALL = /gameState\.([A-Za-z_$][\w$]*)\s*\(/g;
+  const OWN_SLICE = /const\s+gameState\s*=/;
+  /**
+   * Handlers called on a `gameState` that ARRIVED AS A PROP — i.e. the HUD slice. Files that build their
+   * own `const gameState = useGameStore(useShallow(...))` are excluded: GamePanels, TradingInterface and
+   * CraftingTable each select their own, so their 20 call sites are a different contract and folding them
+   * in here would be a scan that reports on the wrong object.
+   */
+  const calledOnHudSlice = () => {
+    const names = new Set();
+    const files = [];
+    for (const f of srcFiles()) {
+      if (f.endsWith('hudState.js')) continue; // the producer, not a consumer
+      const text = readFileSync(f, 'utf8');
+      if (OWN_SLICE.test(text)) continue;
+      const found = [...text.matchAll(CALL)].map((m) => m[1]);
+      if (found.length) files.push(f);
+      for (const n of found) names.add(n);
+    }
+    return { names: [...names].sort(), files };
+  };
+
+  it('EVERY handler the HUD components call is SELECTED — derived from the call sites, not the selector', () => {
+    // `k in s`, not `typeof s[k] === 'function'`: requestPointerLock is deliberately null at rest and is
+    // installed by GameScene on mount. What useShallow propagates is the KEY — an unselected key means
+    // `if (gameState.requestPointerLock)` takes its false branch forever no matter what the store does.
+    const { names, files } = calledOnHudSlice();
+    expect(files.length, 'no HUD-slice consumer files were found — the scan is broken, not the code').toBeGreaterThan(2);
+    expect(names.length, 'no call sites were found').toBeGreaterThan(10);
+    const s = slice();
+    const unselected = names.filter((k) => !(k in s));
+    expect(unselected, 'called on the HUD slice and never selected — the handler is undefined at the call site').toEqual([]);
+    const wrongType = names.filter((k) => k in s && s[k] != null && typeof s[k] !== 'function');
+    expect(wrongType, 'selected but not callable').toEqual([]);
+  });
+
+  it('the hand-kept list COVERS every handler the HUD slice is called with', () => {
+    // The anti-drift direction the sibling gate cannot see. hud-slice-reachability derives its
+    // expectation FROM THE SLICE — every setter-shaped key must be listed — which is the producer side
+    // and is exactly why the list could sit at 13 while 20 handlers were called. This asserts the
+    // consumer side: nothing may be called on the slice without appearing in the list that gets checked.
+    const { names } = calledOnHudSlice();
+    // Same named exception both sibling gates carry: requestPointerLock is null at rest by design and
+    // every caller guards on it, so it must be SELECTED but must not be asserted callable.
+    const uncovered = names.filter((k) => !HUD_CALLABLE_KEYS.includes(k) && k !== 'requestPointerLock');
+    expect(uncovered, 'called on the HUD slice and absent from the list the contract check walks').toEqual([]);
   });
 
   it('keeps selectedBlock and its setter together', () => {
