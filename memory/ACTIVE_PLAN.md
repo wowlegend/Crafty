@@ -17,7 +17,39 @@
 
 ---
 
-## 📍 THE CURSOR — 2026-08-08 (S8 shipped; the harness's determinism claim was NARROWER than recorded)
+## 📍 THE CURSOR — 2026-08-11 · draining the full-source audit queue
+
+**THE ONE UNIT IN FLIGHT:** working `docs/superpowers/AUDIT-2026-08-09-full-source.md` top-down by
+severity. **35 of 108 closed, 73 open** (8 HIGH · ~29 MEDIUM · ~36 LOW). Re-read that file for the live
+count — do not trust this line, which is a snapshot.
+
+**BEFORE PICKING UP AN ITEM, READ THIS:** a fix-design pass already ran over every open finding
+(22 designers + 22 adversarial reviewers). Its output is NOT in the repo — it lived in a workflow result
+file that will not survive. What DID survive, and is authoritative:
+
+- **33 of the open findings are PRODUCT DECISIONS, not bugs**, and are batched in
+  `docs/superpowers/KEVIN-REVIEW-BATCH.md` under the 2026-08-11 headings. **Do not decide them.** They are
+  almost all the same shape: a feature built, advertised on real entry surfaces, and never wired to its
+  executor. Deleting removes an advertised feature; wiring is a real build. Kevin's call, not the fixer's.
+- **26 of 93 proposed gates would have PASSED against the broken code**, caught by the review stage. So
+  every gate written here must be shown RED against the live defect before the fix, not merely green after.
+
+**THE NEXT ITEMS** (actionable HIGH, design-questions excluded): `src/render/MobModel.jsx:191` (hit-flash
+traverse stomps every material's authored colour), `src/Components.jsx:366` (the F key does not stamp the
+cast latch, so its consume branch is unreachable), `src/store/hudState.js:64` (missing setter on the chest
+close path). Then the MEDIUM tier.
+
+**WORKING RULES THAT COST ME TIME THIS SESSION, so they are here rather than relearned:**
+- Anchors must be STRUCTURAL and asserted unique (`s.count(old) == 1`). A non-unique anchor silently
+  edited a different site; a line-based regex deleted an import because the symbol appeared in it.
+- Refresh the three operator pages every ~10 commits. `artifact-currency` BLOCKED two pushes this session
+  because "refresh at session close" let them reach 31 commits behind.
+- In a mutation pass, the GREEN mutations are the findings — a vacuous assertion, an inert line, or an
+  untested half of a condition. Three separate commits this session turned on that.
+
+---
+
+## 📍 PREVIOUS CURSOR — 2026-08-08 (S8 shipped; the harness's determinism claim was NARROWER than recorded)
 
 **Tree:** `main` at `947748f`, CI `success` observed at `b9fbcce`. **S8 grass variation is committed**
 (yaw / scale / sub-cell jitter / tint, all hashed from world x,z; 6 mutations proven red).
