@@ -1181,3 +1181,522 @@ most obvious first craft in a voxel game silently ate the player's stack.
 **The question for you:** are any of these on the roadmap? A torch is the most defensible (a voxel game
 without placeable light is a real gap, and the night loop is already the core survival beat). Ranged
 combat is the biggest and the one most likely to disturb the Aspect balance you have already tuned.
+
+---
+
+## 2026-08-11 — 33 audit findings that are DESIGN DECISIONS, not bugs [KEVIN]
+
+The 108-finding full-source audit was followed by a fix-design pass: 22 agents designing a fix per open
+finding, then 22 adversarial reviewers checking each plan BEFORE anything was applied. Two results worth
+having in front of you:
+
+- **26 of the proposed gates would have passed against the broken code.** The review caught them. That is
+  the failure mode this repo keeps finding, and it now has a stage dedicated to it.
+- **35% of the still-open findings cannot be fixed without a product decision** — almost all the same
+  shape: *a feature was built, advertised on real entry surfaces, and never wired to its executor.*
+
+Deleting the code silently removes an advertised feature; wiring it is a real build with a real envelope.
+Neither is a bug fix, so these are batched rather than decided. **Everything else from the audit is being
+fixed autonomously** — this list is only what needs you.
+
+The four HIGH rows are the ones I would answer first; the rest can ride.
+
+### HIGH · `src/combat/targeting.js:80`
+
+**What is dead:** targeting.js declares itself in its own docstring as "THE allegiance filter. One table, every
+player-damage path" and encodes exactly ONE axis: allegiance (PROTECTED / NEUTRAL / HOSTILE).
+LIVENESS is a second, orthogonal axis that was never added to the table. That was harmless while a
+kill meant an immediate ecs.remove — but the death-dissolve feature (CombatSystem.jsx:152 defers
+removal behind dyingUntil, SpawnerSy…
+
+**Decision needed:** Non-blocking feel call for KEVIN-REVIEW-BATCH, named by the refutation itself: should the corpse
+become untargetable at the INSTANT of death, or only once it is invisible (i.e. after dyingUntil
+elapses)? For the first 320ms the body is still visibly dissolving, so a player who swings at it
+will see their swing pass through something they can see. Recommended default, which this plan
+implements: exclude from the instant of death — the entity has already emitted its kill event, XP
+motes and death burst, so a second hit can produce no gameplay outcome at all, only phantom
+feedback; 'hit a visible corpse' is noise, not a feature. Flagging it rather than deciding it
+silently because it changes fe…
+
+### HIGH · `src/game/elemancer.js:21`
+
+**What is dead:** The latch's 'consume' transition is evaluated on the FRAME clock, while the event that triggers it
+(a mouse/key cast) and the reader that consumes its output (castSpell's projectile construction)
+both live on the INPUT clock. `_castArm` is a module-global written one frame after it is read.
+Underneath that: the `armed` bit is DUPLICATED — a component ref (imbueSMRef) plus a store field
+(imbueArmed) — so the one modul…
+
+**Decision needed:** Should a cast blocked by the CAST_COOLDOWN (Components.jsx:303) or by insufficient mana consume the
+latch and spend 30 resonance? HEAD does (castFiredRef is stamped unconditionally at :462); this fix
+does not, because castSpell is never reached. I believe not-consuming is right — the player sees no
+cast — but it is a behaviour change beyond the reported ordering bug and belongs in DECISIONS.md
+rather than being decided silently.
+
+### HIGH · `src/ui/GamePanels.jsx:528`
+
+**What is dead:** The panel is a WRITE-ONLY feature surface. It has a complete entry ladder — KeyB
+(InputManager.jsx:125), the HUD gear button (GameHud.jsx:100), the touch tray entry (touchTray.js:13
+`build`), i18n labels in both locales, a MenuSystem mount (MenuSystem.jsx:148) — and a store slice
+with three keys and three setters, but the block-placement executor in Terrain.jsx was never taught
+to consult any of them. The mechanism i…
+
+**Decision needed:** WIRE OR DELETE? The Building Tools panel is reachable four ways (KeyB, the HUD grid button, the
+touch tray, the panel registry) and localized into zh-CN, so it is an ADVERTISED feature, not an
+internal leftover. Deleting it silently removes wall/floor/cube/delete building from a voxel
+building game; wiring it is a real gameplay build with a real perf and world-safety envelope (a
+size-10 delete is 1000 blocks, irreversible). This is Kevin's call, not the fixer's.
+
+### HIGH · `src/ui/TouchControls.jsx:250`
+
+**What is dead:** `ringLayout` emits a FULL 360° circle of offsets, and each of the two call sites converts them to
+CSS insets inline (`26 - q.x`) with no bound check. The ring is anchored 26px from the right edge,
+so a full circle of radius 78 needs 104px of right-hand clearance and has 26 — the +x half of the
+circle is geometrically off-screen by construction. Because the anchor arithmetic lives in JSX
+rather than in the pure module…
+
+**Decision needed:** Which way should the ring fan? A full circle cannot fit at a bottom-right anchor, so the sectors
+must open up-and-left into the screen interior, and the exact arc start/span is a visible thumb-
+ergonomics decision (the right-hand column at right 26-192 is already occupied by
+primary/cast/jump/dodge and the two toggles). The geometric invariant — on-screen, non-overlapping —
+is non-negotiable and gated; the aesthetic arc is Kevin's call. A vertical column, matching the
+proven left-edge tray pattern in this same file, is the alternative worth putting in front of him.
+
+### MEDIUM · `src/App.jsx:230`
+
+**What is dead:** The trigger list is a hand-copied second copy of the save schema. Two lists, one truth. The gate
+written to stop them drifting derives from only ONE of the schema's four blocks (`progression`), so
+the other three blocks drifted freely — which is why the boss-fight slice (added later, by A-bis
+B2g) could be persisted and non-triggering at the same time. The audit's own refutation narrows the
+concrete loss (a spell-usi…
+
+**Decision needed:** gameTime is deliberately excluded and that exclusion is a product call, not an engineering one.
+useDayNightClock (src/game/useDayNightClock.js:23-29) ticks gameTime once a SECOND during active
+play, and createAutosave.schedule() clears and restarts the 5s timer on every call — so making
+gameTime a trigger means the debounce never elapses while anyone is playing, and autosave silently
+degrades to 'only on tab-hide/close', losing crash durability. Two options: (1) exclude gameTime, as
+proposed — its loss is bounded to time-of-day rewinding to the last save; or (2) give createAutosave
+a max-wait ceiling (save at least every N seconds while changes keep arriving) and include gameTime,
+which conv…
+
+### MEDIUM · `src/Components.jsx:332`
+
+**What is dead:** The keydown and keyup ladders are two hand-written mirrors of the same table and they drifted by one
+row. Dodge is the only intent whose set has no matching clear. Why that one omission is the one that
+bites: every other verb in this loop is EDGE-triggered against a prev-ref (roarEdge at 537,
+imbueEdge at 761, and the same for grab/snare), so a stale held intent that survives a menu produces
+no edge and no action — t…
+
+**Decision needed:** Should dodge be converted to the EDGE-triggered shape every other verb in this loop uses — a
+`prevDodgeRef` sampled unconditionally each frame, firing on `dodge && !prev && isLocked` — instead
+of level-plus-consume? That would make dodge consistent with roar/grab/snare/imbue, close the
+phantom independently of any keyup, and cover the TouchControls writer too, since prev would already
+be true when active flips. It is the true class fix and it also removes the reason the keyup
+omission was ever dangerous. I did not choose it because it silently changes touch-dodge semantics
+(a held touch button would no longer re-fire the same way) and because a stale prev-ref across a
+Player remount is its o…
+
+### MEDIUM · `src/game/trauma.js:13`
+
+**What is dead:** `triggerCameraShake` is ONE setter doing two semantically opposite jobs — impulse (from hit sites)
+and decay (from the frame loop, Components.jsx:1234) — so it can implement neither of the two things
+the trauma model needs. It cannot clamp, because the decay feeds it a smaller value every frame and
+a clamp there is meaningless; and it cannot ADD, because the decay call would then increase the
+value. That is precisely…
+
+**Decision needed:** YES — the renormalised producer magnitudes are Kevin's tuning call, and a naive clamp WITHOUT
+renormalisation is worse than the bug: CombatSystem.jsx:68's `isCrit ? 1.6 : 1.0` would clamp both
+branches to 1.0 and destroy the crit/normal hierarchy that the weight-tiered HITSTOP table was
+explicitly built to restore. Confirm the proposed mapping and the exactly-feel-preserving 0.55 ->
+1.78 intensity bump before landing.
+
+### MEDIUM · `src/systems/CombatSystem.jsx:46`
+
+**What is dead:** `damageMob`'s `source` parameter carries TWO orthogonal meanings at once: WHO GETS CREDIT (gates XP
+at :115 and `emitMobKill(..., source)` at :149) and WAS THIS A DISCRETE PLAYER INPUT (gates hitstop,
+camera shake, impact ring). For every caller but one those coincide. The fireball DoT is the case
+where they diverge: it is correctly player-ATTRIBUTED but is not player-INITIATED — it is a 1 Hz
+timer. With one paramete…
+
+**Decision needed:** Feel call for Kevin, not a correctness blocker: with hitstop, shake and ring removed, should a burn
+tick keep the full spatial 'hit' sound at :72-76 (4 hit sounds over 4 seconds), or drop to a quieter
+tick? The plan above deliberately changes only the three effects the finding names and leaves the
+sound alone.
+
+### MEDIUM · `src/ui/DamageDirection.jsx:16`
+
+**What is dead:** The capture-opt channel is a SILENT-DROP interface. `enterCaptureMode` merges a hard-coded pair of
+keys and discards everything else without error, so a consumer can be written against an opt that no
+producer can ever deliver and nothing anywhere reports the mismatch — not a lint, not a type, not a
+runtime warning. DamageDirection's docblock (line 10) documents plumbing that was never built, which
+is why it reads as …
+
+**Decision needed:** Should a `damage-direction` visual baseline be ADDED once the opt works? Wiring the channel makes
+the branch reachable; it does not by itself give the cue any oracle. Adding a frame is the only
+thing that would catch a regression in the gradient geometry, and it costs one more baseline plus a
+`Baseline-Review:` commit. That is a coverage-budget call, not a fix decision — the channel fix
+stands either way.
+
+### MEDIUM · `src/ui/RadialMinimap.jsx:59`
+
+**What is dead:** The component obeys 'be deterministic' by disappearing rather than by declaring a pose — a direct
+violation of the invariant CLAUDE.md states in one sentence: 'A capture guard must RESET to a
+declared value, never early-return.' It is the cheapest way to make a canvas deterministic and it
+costs the whole oracle: a HUD element present in roughly a dozen otherwise-gated frames is asserted
+by zero of them, so any regres…
+
+**Decision needed:** Is a dozen frames of minimap coverage worth the added baseline surface and the canvas-text flake
+risk? The audit frames this as in-flight task #21 (converting capture guards to declared resets), so
+the direction is already set — but this specific component paints text on a canvas, which is the
+least deterministic thing in the whole capture suite. If the measured flake is worse than the
+coverage gained, the honest alternative is a declared pose WITHOUT the glyph, and that is a call
+worth making with the measurement in hand rather than in advance.
+
+### MEDIUM · `src/world/HurlSystem.jsx:70`
+
+**What is dead:** The channel is fire-and-forget with a single slot, but the two sides disagree about who owns
+acceptance. The producer commits irreversible state — spent Kinetic, cleared
+voidhandHeld/heldPhantom, launch SFX — before knowing the consumer can take the request, and the
+consumer's only way to say no is to destroy it. There is no liveness signal from consumer back to
+producer, so a refusal is unobservable to everything up…
+
+**Decision needed:** HurlSystem's header declares single-flight as an M1-M3 scoping decision ('Single-flight (one phantom
+in M1-M3)'). The alternative fix is to make refusal impossible by supporting concurrent flights — at
+most 2 can overlap from gameplay given 0.95 s spacing against a 1.5 s TTL — which needs an N-slot
+flight array and N meshes or an instanced mesh. Should two thrown blocks be allowed in the air at
+once? That is a feel decision, not a defect call, so it needs Kevin. The plan above preserves the
+declared design.
+
+### MEDIUM · `src/world/terrain.worker.js:289`
+
+**What is dead:** A chunk-local cellular automaton is run over a field that holds no data outside the chunk, and the
+missing data is imputed as SOLID. Every border column therefore gets up to 9 phantom solid
+neighbours, which pushes it away from the carve rule (<=11) and toward the fill rule (>=16) — a one-
+sided bias, not noise. The abstraction error: the CA's output is a function of (world position,
+CHUNK ORIGIN) when it must be a fu…
+
+**Decision needed:** The carve/fill thresholds (11 and 16 out of 27) were tuned against the BIASED field. Removing the
+phantom solids makes caves measurably more open everywhere, not only at seams. Whether to retune the
+thresholds to preserve the current cave density, or to accept the more-connected caves as the
+intended look, is a taste call for Kevin — the fix should land at the current thresholds first so
+the change is attributable, with retuning as a separate decision.
+
+### LOW · `src/App.jsx:869`
+
+**What is dead:** A plain-JS React codebase has no cross-file prop contract. eslint's no-unused-vars cannot see a
+value whose only write is an attribute in the PARENT's JSX, so a prop can be added, renamed away in
+the child, and left behind with nothing anywhere reporting it.
+
+**Decision needed:** How much gate does a behaviour-neutral deletion deserve? Deleting these props is neutral BY
+CONSTRUCTION — no behavioural test can go RED-to-GREEN across the fix — so per house rule 3 any gate
+aimed at the deletion itself is a decoration, and the gate above is really aimed at the CLASS. Three
+options: (1) accept the deletion ungated, and record that its own neutrality is the safety argument;
+(2) the DEV unknown-prop guard above, scoped to GameScene; (3) gate the class properly with a custom
+ESLint rule (local/no-unknown-jsx-props) that resolves a JSX element to its component module, reads
+the destructured parameter names, and reports unknown attributes — eslint is already a pre-push
+gate, th…
+
+### LOW · `src/Components.jsx:851`
+
+**What is dead:** The guard tests the wrong proposition. It asks 'does this object have an applyImpulse?' when what it
+needs to know is 'is this object's applyImpulse OURS?'. Because the custom binding at 152-159 is an
+own-property that SHADOWS an identically-named prototype method, presence is satisfied by the thing
+the guard exists to detect the absence of — the check is structurally incapable of ever being true.
+The consequence is …
+
+**Decision needed:** Was the per-frame block meant to be a LIVE self-repair, or belt-and-braces the mount bind makes
+unnecessary? Deleting it is right if the latter. If the former, the fix is instead to make the
+predicate discriminate correctly — `if (rigidBodyRef.current &&
+!Object.prototype.hasOwnProperty.call(rigidBodyRef.current, 'applyImpulse')) { …rebind… }` — which
+resurrects a repair that has never run in the game's history, so nobody knows whether the lost-bind
+case actually occurs. That is a genuine choice between deleting an inert safety net and switching
+one on for the first time, with the ownership question (should a per-frame loop be repairing a
+mount-time binding at all, or should a lost bind be a…
+
+### LOW · `src/GameScene.jsx:99`
+
+**What is dead:** The closure treats an asynchronous, promise-returning DOM call as if it were synchronous.
+`Element.requestPointerLock()` in Chromium returns a Promise; a refusal (the guaranteed-refused
+post-ESC relock that .claude/rules/input-and-pointer-lock.md documents, or a no-user-activation
+request) settles that Promise as a REJECTION on a later microtask. A `try/catch` only sees
+exceptions thrown on the synchronous stack, so …
+
+**Decision needed:** Scope decision for a human, not for the sequential pass to settle silently: the other five raw lock
+sites (App.jsx:141, HUD.jsx:654/656, InputManager.jsx:17/19 — the last two inside the helper named
+`requestPointerLockSafely`, which handles nothing) have the same defect and no handler at all. They
+are secondary paths that only execute while `state.requestPointerLock` is null, so this finding does
+not require touching them, and they sit in files other findings in this same pass own. Convert them
+in this commit, or file a separate consolidation item against `requestPointerLockSafely`?
+
+### LOW · `src/audio/synthVoices.js:337`
+
+**What is dead:** Identical construct to :220 — `sin(2*PI*f(t)*t)` makes f(t)*t the phase, so f_inst = f(t) + t*f'(t)
+= 200-300t, twice the declared ramp rate. The cue therefore arrives at its declared 80 Hz endpoint
+at t=0.4 instead of t=0.8, keeps falling, and spends the last 17% of an 0.8 s buffer below 34 Hz.
+The correct framing (per the refutation, which I verified) is NOT 'the endpoint is never produced'
+and NOT 'the reversal is…
+
+**Decision needed:** HOW FAR SHOULD THE CORRECTED CONSTRUCT BE ADOPTED? These three findings cover 3 of ~14 sites in this
+one file that carry `sin(2*PI*f(t)*t)` with a time-varying f, so after the fix the module contains
+BOTH forms and the next voice author has two patterns to copy from. Sites still on the broken form
+afterwards, each verified by reading its own duration at HEAD — roar :72-74 (declares 80->45 Hz over
+0.7 s, actually reaches 10 Hz); aggroGrowl :96-98; grab :117-120 (declares 220->520, reaches 820);
+:140; :157; attack :297-298 (a vibrato, which f(t)*t mis-derives into a growing-depth chirp); swing
+:357-359 (dur 0.3, declares 80->140, reaches 200); magicCast :378-384; magicHit :405-406;
+magicExplos…
+
+### LOW · `src/devtest/perfProbe.js:10`
+
+**What is dead:** Write-only module state: `_phase` is assigned through an exported setter and read by nothing, and
+every instrument this repo owns is structurally blind to that shape. eslint's `no-unused-vars` (an
+error here) sees `_phase` as used because it is assigned and sees `setProbePhase` as used because
+PerfProbeRunner imports it; knip sees the export consumed — commit d3e86cf drove the knip unused-
+export backlog to zero and d…
+
+**Decision needed:** Delete, or WIRE the phase instead? There is one real gap deletion leaves: when the probe stalls
+(e.g. waitStableTerrain never settles), perf-siege.spec.js times out after 130s on
+`!!window.__craftyPerfResult` with no machine-readable indication of WHICH phase hung, and the
+overlay `status` string is only visible to a human watching the screen. Nothing in the repo or its
+docs currently claims a phase-readout capability, so deletion is the default and removes nothing
+observable — but if the perf harness wants a stall diagnostic, the right move is to export
+`probePhase()` and publish it as `window.__craftyPerfPhase` (gate: `setProbePhase('sampling');
+expect(probePhase()).toBe('sampling')`, plus…
+
+### LOW · `src/game/a11y.js:7`
+
+**What is dead:** PREFERENCE and EFFECTIVE VALUE are the same field. `juiceIntensity` is simultaneously 'what the
+player chose' and 'what the renderer should use after the OS override applies', so every OS
+transition is destructive in BOTH directions and the userScale seam has nothing to read from — which
+is exactly why the only caller can get away with passing a literal. The dead parameter is the
+symptom; the missing second field is …
+
+**Decision needed:** YES, and it should be answered before any code moves. App.jsx:851-853 DOCUMENTS the reset as
+intended — 'the Settings slider/toggle remain the manual override between change events' — the
+refutation reports CHANGELOG.md:1758 saying the same, and GamePanels.jsx:702's own Reduced Motion
+toggle clobbers a 0.4 identically, so the single-dial model is consistent rather than accidental.
+Meanwhile deleting the userScale parameter would silently remove a never-wired feature (house rule
+6). Kevin decides: should a player's 40% survive an OS Reduce-Motion on/off toggle, or is the OS the
+authority and the dial genuinely single?
+
+### LOW · `src/game/beastMorph.js:41`
+
+**What is dead:** A pure seam returns two channels — size and brightness — and the render site consumes one. The
+docstring's 'brightens' is delivered only as a side effect of AdditiveBlending plus the global bloom
+pass responding to a tripling screen area, so the effect looks roughly right and nothing ever
+flagged the unconsumed channel. Nothing in the repo enforces that a pure module's returned fields
+are all read; knip sees the modu…
+
+**Decision needed:** YES (house rule 6). `intensity` is dead because the per-pixel brightness half of the beat-1
+anticipation choreography was never wired, so the alternative fix — delete the field and correct the
+docstring — silently removes a feature. The refutation is right that the perceptual 'brightens'
+already arrives via scale plus AdditiveBlending plus bloom, so Kevin may reasonably prefer deletion
+over adding a second driven channel. Wire or delete is a look decision, not an engineering one; I am
+not deciding it.
+
+### LOW · `src/game/ferocity.js:16`
+
+**What is dead:** A hand-maintained per-type table with a silent `?? DEFAULT` fallback, duplicated across three
+sibling modules, with no link to the registry it is supposed to mirror. Adding a mob to MOB_TYPES
+cannot fail — it quietly lands on the default — and it has done so four times. The `??` is the
+mechanism: it converts a missing row from an error into a plausible number.
+
+**Decision needed:** The bank VALUES for skitterling, duskhound, moss_brute and emberhusk are a tuning call Kevin owns.
+Separately: should all three economies share one number at all? Ferocity is all-or-nothing per
+transform (threshold 100), while Kinetic (GRAB_COST 25) and Soul (SNARE_COST 35 / FUSE_COST 50) are
+spent per use, so identical per-kill tables may not be the right model even once they are complete.
+
+### LOW · `src/game/kinetic.js:15`
+
+**What is dead:** Identical to ferocity.js:16 — a hand-maintained per-type table with a silent `?? DEFAULT` fallback,
+copied verbatim into a third module, with no link to MOB_TYPES. The duplication IS the root cause
+here: three copies means a mob added to the registry has to be remembered three times, and it was
+remembered zero.
+
+**Decision needed:** Same as the ferocity.js:16 row. Additionally, this row and that one should be reconciled in the
+queue to a single item naming all three files, so the ledger does not carry one defect three times
+at three severities.
+
+### LOW · `src/game/npcRoutine.js:17`
+
+**What is dead:** Two different things wearing the same 'dead export' label, needing opposite dispositions.
+shouldRetreatAtNight is duplicated logic — routinePosition already owns the day/night branch.
+nextEmote plus EMOTES are an unbuilt FEATURE: the ambient NPC emote timer. Both are invisible to
+knip for the same mechanical reason — two test files import them, so an unused-export scan sees a
+live consumer. That is the general defect…
+
+**Decision needed:** YES (house rule 6). nextEmote and EMOTES are dead because the ambient NPC emote feature was never
+built — the refutation traces the advertisement to
+docs/archive/2026-Q2/plans/2026-06-17-crafty-W3-living-frontier.md:27 ('patrol/emote schedule math
+... + emote timer'), of which only the patrol half shipped. Deleting silently kills a planned
+feature; wiring it is a content decision — do hub NPCs emote at all, and where does the text render:
+nametag, floating world-space, or the quest log? Kevin decides. shouldRetreatAtNight needs no
+decision; it is a duplicate.
+
+### LOW · `src/game/questLore.js:5`
+
+**What is dead:** The narrative layer was deliberately scoped as data-only — questLore.js:1-4 says it re-themes
+'WITHOUT changing each quest's type/target (so the existing drivers + claim flow are untouched)' —
+and offer ORDER is the one thing that layer cannot express without touching a driver. CHAIN_ORDER
+was authored for a step that was then descoped. The test that covers it asserts only on the
+literal's own contents, so it can nev…
+
+**Decision needed:** YES, twice over. (1) House rule 6: CHAIN_ORDER is dead because the 'narrative spine drives offer
+order' step was descoped BY DESIGN — questLore.js:1-4 says so — so deleting it silently removes a
+planned feature and wiring it changes the quest pacing Kevin has been playing. (2) This row
+DUPLICATES an already-open item in docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md:206-207 carrying
+the same two options. It should be closed THERE, once, and this row cross-referenced rather than
+worked independently.
+
+### LOW · `src/i18n/cjkFonts.js:23`
+
+**What is dead:** The cache key means the wrong thing. `_loaded` is set on ENTRY to the load attempt (line 23, before
+the await), so it records 'this function has been called', while every reader of it — the line-18
+early return — treats it as 'the faces are loaded'. Attempted and succeeded are conflated into one
+boolean. Because the per-face `catch` at :29-31 also swallows the throw without recording it
+anywhere, a failure leaves no …
+
+**Decision needed:** Should the retry be unbounded, or capped (e.g. three attempts per family per session) before the
+module gives up for good? Unbounded is what the fix as described does and is my recommendation — a
+zh-CN toggle is a deliberate user action, the browser's HTTP cache absorbs a repeated failing fetch,
+and a cap re-introduces exactly the permanent-dead-end this finding is about, just later. Flagging
+it because it is a product judgement about a user-visible resource, not a mechanical detail, and
+because capping is a one-line change an implementer might make silently. A second, larger question
+this finding surfaces but should NOT decide: the audit's 'no production signal' half is unfixable as
+written…
+
+### LOW · `src/render/pickupVfx.jsx:18`
+
+**What is dead:** The capture invariant is enforced per-component by hand, so a renderer added to a guarded file
+simply misses it, and nothing detects the omission — there is no registry, no shared wrapper, and no
+gate that enumerates animated renderers. The deeper version of the same gap is that the RENDERER and
+the SYSTEM that moves the entity are guarded independently, so guarding one of them produces a scene
+that is still non-repr…
+
+**Decision needed:** Should capture.mjs gain an `xp-orbs` state that calls the existing `killMobShowcase` hook, so this
+determinism work is actually observed by an oracle? The hook is registered at App.jsx:581 and no
+capture state uses it — a feature wired on one side only. Fixing the guards without answering this
+leaves a capture-determinism path whose only consumer is its own unit test, which is the shape this
+repo repeatedly ships and then finds dead. Deciding to add the baseline (or deciding the hook is
+manual-probe-only and saying so in the file header) is a product call, not one to make silently
+inside a bug fix.
+
+### LOW · `src/store/useGameStore.jsx:336`
+
+**What is dead:** A query seam was built and published without a consumer. The store's installed-seam pattern (null
+slot + set<Name> installer, written by the module that owns the resource and read by anyone) has no
+mechanism that notices when the reader half never arrives: knip does not analyse store-object
+properties, no-unused-vars sees a normal assignment, build compiles it, and the e2e runtime-
+reachability harness added in 488589…
+
+**Decision needed:** checkCollision is dead because a consumer was never written, not because the capability is
+worthless: it answers 'is there solid ground within 0.2 units below (x,y,z)?', which its sibling
+getMobGroundLevel (ground HEIGHT from a y=255 downward ray) does not answer cheaply. If any planned
+system needs a fast grounded-check — mob step-up, NPC pathing validation, projectile settling,
+placement validation — this is the seam for it and deleting it discards a working Rapier query
+someone will rewrite. If no such consumer is planned, delete it. That call belongs to whoever owns
+the physics roadmap.
+
+### LOW · `src/store/useGameStore.jsx:749`
+
+**What is dead:** Identical shape to the playerStats finding directly above, and they should be read as one defect
+with two instances: the store holds a second, unwired copy of state the quest hook actually owns.
+`achievements` here is the store's would-be unlock list; the live one is useQuestSystem's
+`unlockedAchievements`, which persists via questState. Nothing in the toolchain can see an object
+property that is never assigned, so t…
+
+**Decision needed:** Same call as playerStats, and it should be answered once for both: does the store own progression
+stats and achievements, or does useQuestSystem? Today both exist and only the hook's copy is wired.
+Deleting the store copies makes questState the single owner, which matches how the code actually
+behaves; keeping them means wiring them and demoting the hook's copies. Answering it per-field is
+how two owners appeared in the first place.
+
+### LOW · `src/store/useGameStore.jsx:898`
+
+**What is dead:** Two owners were created for one concept and only one was wired. The store's playerStats predates
+useQuestSystem's stats, and when the quest hook took over counting nothing removed or redirected the
+store copy. The setter survives because nothing in the toolchain can see it: knip does not analyse
+store-object properties, no-unused-vars does not fire on an object literal member, and build
+compiles it. The save schema t…
+
+**Decision needed:** Delete the store's playerStats, or wire it? Deleting silently removes a capability that was built
+and never connected — specifically `timeplayed`, which has no equivalent anywhere else
+(questState.stats covers blocks_placed, blocks_broken and distance, but not elapsed play time). If a
+session-length or lifetime-stats readout is on the roadmap, the field is a stub for it and deleting
+it erases the intent; if not, it is a second owner for counters the quest hook already keeps and
+should go. This needs a product call, not an engineering one.
+
+### LOW · `src/systems/AIWorkerSystem.jsx:228`
+
+**What is dead:** Half-built scaffolding for a conversion that has not happened. The block comment at :222-227 states
+the intent honestly — it declares determinism to the worker rather than letting the worker infer it,
+precisely so that moving the guard at :147 cannot silently reintroduce nondeterminism inside a
+worker realm. But as written the declaration is inert: the only code path that would set it is
+fenced off 81 lines above by …
+
+**Decision needed:** Does the mob-AI subsystem convert from suppression to substitution in Phase C, or is that conversion
+declined? Answering it decides whether `captureSeed` / `CAPTURE_AI_SEED` and the worker's seeded
+branch are pre-wiring to finish (A) or scaffolding to remove (B). Nothing in src/systems can settle
+this — DECISIONS.md records the direction but not the commitment for this subsystem, and the fix's
+blast radius (visual baselines, a cross-group worker fix) is well outside the finding.
+
+### LOW · `src/systems/LootSystem.jsx:25`
+
+**What is dead:** Two symmetrical systems given asymmetrical treatment, and the one that got a guard got the wrong
+KIND. LootSystem stops mid-parabola, so a drop already in its explosion phase holds a run-dependent
+arc fraction rather than a declared state — the same 'freeze wherever it got to' class as the mascot
+idle. XPOrbSystem, running the identical stepper with identical side effects, has no guard at all,
+so under capture an orb…
+
+**Decision needed:** Should a loot drop that was mid-arc when capture began also SETTLE to its resting position (p.y =
+groundYAt + 0.1), not merely stop with a declared velocity? That is the fuller reading of 'reset to
+a declared value' and would remove the last run-dependent quantity (position). It is NOT taken here
+because the resting write would drag the lootShowcase drops from y~146 to terrain height and force a
+`Baseline-Review:` baseline rewrite. The architecturally consistent alternative is to purge
+lootDropsQuery/xpOrbsQuery in App.jsx's enterCapture hook the same way it already purges mobsQuery
+at :327 — that edit lives outside this finding's file and outside this group's scope, so it is
+flagged, not de…
+
+### LOW · `src/theme/tokens.js:101`
+
+**What is dead:** Same structural cause as the gray finding — a hand-enumerated derivation with no reachability check
+— but the CONSEQUENCE is different in kind. This is not a reserve, it is the design system's
+declared spacing scale, and because it never reached Tailwind every p-*/gap-*/m-* in the UI silently
+resolves to Tailwind's stock 0.25rem ramp (4/8/12/16/24...), which the token values 4/8/14/22/36 do
+not match at md/lg/xl. So …
+
+**Decision needed:** Wire the spacing scale into Tailwind and migrate the UI to it, or delete UI.space and accept
+Tailwind's stock ramp as the real SoT? tokens.js calls itself 'SoT for chrome' and the spacing half
+of that claim is currently false; either choice makes the file honest again. Deleting is cheap and
+truthful; wiring is a multi-panel migration with a full visual review. Kevin's call — a fix commit
+must not smuggle it.
+
+### LOW · `src/theme/tokens.js:122`
+
+**What is dead:** Same hand-enumerated-derivation cause as gray and space. The sharpest evidence that this is an
+unwired FEATURE rather than a reserve is that a real consumer needed these values and did not get
+them: the config's own comment at 92-94 records that `animate-fade-in` was added because 8 panels
+referenced a keyframe that did not exist, and its author typed `150ms ease-out` by hand instead of
+reaching for UI.motion — becau…
+
+**Decision needed:** Wire the motion scale (and reconcile the fade-in animation to it, accepting a 150ms -> 120ms change
+on 8 panels), or delete UI.motion and accept the hardcoded 'fadeIn 150ms ease-out' as the real SoT?
+Same shape as UI.space but materially cheaper, since no call-site migration is required. Either way
+the file's 'SoT for chrome' claim is currently false for motion, and only a decision — not a fix
+commit — can make it true.
+
+### LOW · `src/theme/tokens.js:94`
+
+**What is dead:** A palette reserve committed with a '(kept)' comment and no consumer. The structural cause is that UI
+has exactly one consumer in src/ (cssVars.js) and that consumer enumerates the keys it emits BY
+HAND, so any token not hand-listed is unreachable in production and nothing notices. knip
+structurally cannot notice: .knip.json lists tests/**/*.test.{js,jsx} as entry points, so a token
+touched only by tokens.test.js's ge…
+
+**Decision needed:** Delete the 8-value neutral ramp, or surface it (add --ui-gray-* to COLOR_VARS and a gray scale to
+TW_COLORS)? House rule 6, and it is already a Kevin-gated item at HOLISTIC-REVIEW-2026-07-21.md:220,
+so it must not be decided in a fix commit — follow the 164a84a precedent of deleting/deferring in
+code while filing the 'should this be built instead' half in KEVIN-REVIEW-BATCH.md. One fact for
+that entry, verified from the file: unlike UI.space and UI.motion this is a palette RESERVE rather
+than an unwired feature — nothing in the UI looks wrong because it is absent, and g950 (#0B0E14) and
+g300 (#9AA0AD) duplicate `ink` and `textMuted` exactly, which is an argument for deletion rather
+than surf…
+
