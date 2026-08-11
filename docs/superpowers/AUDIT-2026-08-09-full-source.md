@@ -309,7 +309,7 @@ REFUTATION FAILED. Line 147 `if (isCaptureMode()) return;` and line 228 are in t
 
 REFUTATION FAILED on the behavioural claim; every link verified. burnManager.js:17 is `const mob = damageMob(mobId, dps, 'fireball');` — three args, so `source` takes its 'player' default and `spawnRing` its `true` default. CombatSystem.jsx:46-50 then stamps hitstopUntil (HITSTOP.light = 45, trauma.js:10), :67-68 calls triggerCameraShake(1.0, ...), :72-73 plays spatial 'hit', :103-107 pushes an ImpactShockwave. Fireball's secondary is `{type:'burn', duration:4, ...}` (game/spells.js:27-29) so it is 4 ticks at 1000ms (burnManager.js:20). elementZones.js:124-125 does pass 'hazard' explicitly and SquadAISystem.jsx:45 passes 'ally', as cited. TWO caveats that soften it without refuting it: (1) the 'player' source is load-bearing for attribution — CombatSystem.jsx:115 gates XP on `source === 'player'`, so naively passing 'fireball'/'dot' would silently zero out burn-kill XP and the accrual meters that tests/gates/kill-attribution-gates.test.js pins; the fix needs a separate feel/attribution split, not an added argument. (2) The omission is the file's convention, not an outlier: chain lightning (EnhancedMagicSystem.jsx:67) and hurl (HurlSystem.jsx:64/97) also omit source. The burn is nonetheless the only one that repeats on a timer with zero input, which is the finding's actual point.
 
-### ▣✓ PENDING `src/systems/SpawnerSystem.jsx:88` — capture-suppression
+### ▣✓ 3546707 `src/systems/SpawnerSystem.jsx:88` — capture-suppression
 
 **The capture branch clearInterval()s the only code path that ever spawns the four hub NPCs and never re-arms it, so after an enter/exit capture cycle the merchant, smith, guide and healer are permanently gone.**
 
@@ -635,7 +635,7 @@ REFUTATION FAILED. Decisive structural check rather than a grep-for-absence: `gr
 
 REFUTATION FAILED on the mechanism; CONFIRMED LATENT on the impact (which the finding itself states). Verified: the guard is `if (isCaptureMode()) return undefined;` at line 22, inside a `[]`-dep useEffect, i.e. evaluated once at mount, while capture is entered after boot (capture.mjs:269 calls `enterCapture` only after `ready()`); the tick body (24-36) has no capture check; the second guard (line 52) is a render-time check and the component is `React.memo` with NO props, so a parent re-render bails out and the ONLY re-render trigger is the `ownedKey` store selector (47-50), which changes solely on owned-set change. This is a direct violation of the repo's own documented invariant (CLAUDE.md: 'A capture guard must RESET to a declared value, never early-return… The check must also live INSIDE the callback, since the flag flips after mount') and it is NOT covered by tests/gates/capture-phase-reset-gates.test.jsx, which I read in full — that gate covers only `mascotIdlePose` and `dioramaMoteSpin`. Impact today is nil, exactly as reported: useGameStore.jsx:588 seeds `abilityCooldowns` with grab/snare/roar/imbue = null, so `owned.length <= 1` -> line 54 returns null, no sweep refs are attached (`if (!el) continue`), and no capture fixture unlocks a talent. Real as a latent defect, correctly rated low.
 
-### ▣✓ PENDING `src/ui/DuskWarning.jsx:21` — capture-suppression
+### ▣✓ 3546707 `src/ui/DuskWarning.jsx:21` — capture-suppression
 
 **The dusk-poll's capture guard is outside the interval callback and runs only at mount, so an interval armed before `enterCapture` keeps polling — and can fire a toast — during capture.**
 
@@ -713,7 +713,7 @@ REFUTATION FAILED. `const [lootDrops] = useState([])` destructures only the valu
 
 REFUTATION FAILED on the logic, but reachability is narrow and I could not construct an in-app path to it. The gap is exactly as described: _objOr (line 94) returns any non-array object unchanged, so `{}` passes at line 155 and is installed by setStats, and at line 117 the same predicate guards the initializer. useGameStore.jsx:1031 restores `questState: saveData.questState ?? state.questState` with no field-level validation, so a malformed blob reaches the hook intact. The arithmetic follows: prev.kills + 1 on undefined is NaN, and NaN >= target is false for every threshold, so Warrior/Serial Slayer/Centurion become permanently unreachable with no error, and AchievementsPanel's stat cells (line 570) render the string NaN. What I could NOT establish is a producer: the mirror effect at lines 133-140 writes the full stats shape back on every change, so any save this app has ever written carries all keys — the input has to be hand-edited, tampered, or from a schema version I have no evidence exists. I also checked the plausible partial case and it self-heals: an older save with kills but no kills_by_type spreads `{...undefined}` to `{}` at line 308 without producing NaN. So this is a genuine validation gap in a guard whose own comment (lines 91-92) claims to cover 'corrupt / tampered / version-mismatched' input, correctly diagnosed as shape-checking the container instead of coercing the fields — but with no demonstrated trigger. Low, as filed.
 
-### ▣✓ PENDING `src/QuestSystem.jsx:668` — capture-suppression
+### ▣✓ 3546707 `src/QuestSystem.jsx:668` — capture-suppression
 
 **30s chest-spawner's capture guard is evaluated once at effect setup (deps []), so the interval is installed and keeps spawning chests during capture.**
 
