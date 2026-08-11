@@ -393,7 +393,7 @@ REFUTATION FAILED, and a controlled measurement confirmed it. Code is as cited: 
 
 REFUTATION FAILED. requestPointerLock is published onto the store root by GameScene.jsx:98 (`useGameStore.setState({ requestPointerLock })`, nulled at :103) and every other consumer reads it from the store — App.jsx:136, HUD.jsx:649, InputManager.jsx:12. hudState.js:26-57 does not select it, and MenuSystem is the ONLY site that reads it off the `gameState` prop (grep confirms: MenuSystem.jsx:64/183/205 are prop reads; all other hits are `state.requestPointerLock` or a DOM element method). So lines 183 and 205 are permanently false and line 64 always falls through to line 65. I also tested the auditor's own hedge and it holds: pointerLook.js:32 gates on `!document.pointerLockElement` and Components.jsx:472-473 on `!!document.pointerLockElement`, both element-agnostic, so a body-lock does still drive mouse-look — note this CONTRADICTS .claude/rules/input-and-pointer-lock.md, which claims 'a body-lock leaves the look controller ignoring mouse movement'; that rule text is stale relative to pointerLook.js, whose own header (line 2, line 25) records the move away from exact-element matching. The auditor read the code over the doc, correctly. Same test-blindness as findings 1-3: esc-resume-recovery.test.jsx:49 hand-supplies `requestPointerLock: refusingLock()` into a literal, so the suite exercises a slice the app never produces.
 
-### ▢ `src/QuestSystem.jsx:310` — correctness
+### ▣✓ 214556b `src/QuestSystem.jsx:310` — correctness
 
 **checkAchievements is invoked inside the setStats updater but reads unlockedAchievements from the render closure, so two kills in one tick unlock the same achievement twice.**
 
@@ -479,7 +479,7 @@ REFUTATION ATTEMPTED, PARTLY SUCCEEDED — core behavior claim survives, the pre
 
 REFUTATION FAILED on the literal claim, SUCCEEDED on its framing. Verified by grep across frontend/src, frontend/tests, frontend/scripts: the ONLY production consumer is BeastAvatar.jsx:69 `chargeRef.current.scale.setScalar(chargeGlow(cp).scale)` — `.intensity` is read nowhere outside beastMorph.test.js. Verified the mesh has no brightness input: BeastAvatar.jsx:105-106 is `opacity={0.85}` fixed, the nested hotspot at 109-110 is `opacity={1}` fixed, and there is no pointLight on the charge mesh (the only pointLight, line 151, is on the settled avatar and is gated behind `parts`). So the named field is genuinely dead. BUT the failure scenario overreaches: the material is `AdditiveBlending` + `toneMapped={false}` and the scene runs a global Bloom pass, so scaling 0.3 -> 1.0 tripling the sphere's screen area DOES make the charge read brighter frame-over-frame — the 'brightens' half of the choreography is perceptually delivered by the scale ramp, it just is not driven by this field. Also 'deleting intensity changes nothing' is false: beastMorph.test.js:46,47,49,50 assert on it and would go red. Net: an unused return field + an overstated docstring, not a runtime defect. Cosmetic/doc-level, not the 'has never run' choreography gap claimed.
 
-### ▢ `src/game/enemyProjectiles.js:16` — correctness
+### ▣✓ 214556b `src/game/enemyProjectiles.js:16` — correctness
 
 **stepEnemyProjectiles integrates the whole frame delta in one jump with no substepping, so an arrow can tunnel past the player on a long frame — the defect its sibling hurl.js was rewritten to fix.**
 
@@ -707,7 +707,7 @@ REFUTATION FAILED on every mechanical route. (1) No store default: grep for trea
 
 REFUTATION FAILED. `const [lootDrops] = useState([])` destructures only the value, so it can never change, and it is returned at line 425. Grep for lootDrops across src/ returns exactly two hits in QuestSystem (121, 425); every other hit is the unrelated ECS `lootDropsQuery` (_npcShared.js:13, consumed by SimplifiedNPCSystem.jsx:64/132 and LootSystem.jsx:29) — a different identifier reached through a different module, so the real loot pipeline does not route through this field. No consumer destructures it from useQuestSystem: HUD.jsx uses questSystem.quests/.notifications/.claimQuest, MenuSystem passes .achievements/.unlockedAchievements/.stats/.quests, InputManager uses .quests/.claimQuest. I specifically checked whether eslint's no-unused-vars (an error in this repo) should have caught it — it does not, because the binding IS used, at line 425, which is precisely why a dead field can survive a lint gate.
 
-### ▢ `src/QuestSystem.jsx:155` — silent-failure
+### ▣✓ 214556b `src/QuestSystem.jsx:155` — silent-failure
 
 **The save-data guard validates that stats is an object but not that its numeric fields exist, so a partial save yields NaN stats and permanently unreachable stat achievements.**
 
