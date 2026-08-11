@@ -56,7 +56,7 @@ describe('the entrance is tuned AGAINST the kill, not in isolation', () => {
 
   it('shakes less than a damage hit, which scales as damage/10', () => {
     // A 25-damage moss-brute blow shakes 2.5. The dragon arriving should be felt but not out-punch being hit.
-    expect(ENTRANCE.shake).toBeLessThan(2.5);
+    expect(ENTRANCE.shakeWeight, 'the arrival shakes harder than a melee crit').toBeLessThan(1.6);
   });
 
   it('every magnitude is finite and positive', () => {

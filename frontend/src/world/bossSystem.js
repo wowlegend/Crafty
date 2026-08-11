@@ -59,9 +59,11 @@ export const useBossSystem = (playerLevel) => {
             const bStore = useGameStore.getState();
             runIsolatedEffects(bossEntranceBeat({
                 notify: () => { setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]'); scheduleNotifClear(6000); },
+                // The REAL camera shake, not setScreenShake -- that one drives DamageOverlay's red vignette,
+                // so the arrival used to paint the take-damage cue over the climax. No clear timeout is
+                // needed any more: trauma decays itself, frame-rate independently.
                 shake: bStore.isCaptureMode ? null : () => {
-                    bStore.setScreenShake?.(ENTRANCE.shake);
-                    setTimeout(() => useGameStore.getState().setScreenShake?.(0), ENTRANCE.shakeClearMs);
+                    bStore.triggerCameraShake?.(ENTRANCE.shakeWeight);
                 },
                 bloom: bStore.isCaptureMode ? null : () => bStore.triggerBloomSpike?.(ENTRANCE.bloomMs),
                 hitstop: bStore.isCaptureMode ? null : () => useGameStore.setState({ hitstopUntil: performance.now() + ENTRANCE.hitstopMs }),

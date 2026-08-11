@@ -5,6 +5,7 @@ import { useBossSystem } from '../../src/world/bossSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { ENTRANCE } from '../../src/game/bossEntrance';
+import { shakeTrauma, _resetShake } from '../../src/game/cameraShakeChannel.js';
 
 // E-ter/E4 — the dragon's ARRIVAL is the climax of the run and fired a text notification and nothing else,
 // while the KILL fires eight isolated effects including hitstop and a bloom spike.
@@ -47,9 +48,24 @@ describe('E4 — arriving at the lair lands a beat, not just a toast', () => {
     expect(useGameStore.getState().hitstopUntil).toBeGreaterThan(before);
   });
 
-  it('SHAKES the screen', () => {
+  it('SHAKES THE CAMERA — not the damage vignette, which is what it used to do', () => {
+    // setScreenShake drives DamageOverlay's intensity, i.e. the RED DAMAGE VIGNETTE. The arrival used to
+    // paint the take-damage cue over the climax, so the player read "I am being hurt" at the moment the
+    // beat exists to make them stop. This gate asserted the wrong thing and stayed green through it.
+    _resetShake();
     spawn();
-    expect(useGameStore.getState().screenShake).toBeCloseTo(ENTRANCE.shake, 5);
+    expect(shakeTrauma(), 'the arrival no longer shakes the camera at all').toBeGreaterThan(0);
+    expect(useGameStore.getState().screenShake, 'the arrival is painting the damage vignette again').toBeFalsy();
+  });
+
+  it('shakes LESS than being hit — the beat is dread, not an impact', () => {
+    // The design doc asks for "felt, but below a damage hit". A normal melee hit is weight 1.0.
+    _resetShake();
+    spawn();
+    const arrival = shakeTrauma();
+    _resetShake();
+    useGameStore.getState().triggerCameraShake(1.0);
+    expect(arrival, 'the arrival hits harder than taking a hit').toBeLessThan(shakeTrauma());
   });
 
   it('SPIKES the bloom as the lair wakes', () => {
@@ -65,10 +81,14 @@ describe('E4 — arriving at the lair lands a beat, not just a toast', () => {
     expect(useGameStore.getState().dangerLevel).toBe(2);
   });
 
-  it('clears the shake shortly after, so the world does not judder forever', () => {
+  it('the shake decays on its own, with no timeout to forget', () => {
+    // There used to be a setTimeout clearing setScreenShake after 900ms. Trauma decays itself, frame-rate
+    // independently, so the clear cannot be missed, double-fired, or leak past an unmount.
+    _resetShake();
     spawn();
-    act(() => { vi.advanceTimersByTime(ENTRANCE.shakeClearMs + 50); });
-    expect(useGameStore.getState().screenShake).toBe(0);
+    expect(shakeTrauma()).toBeGreaterThan(0);
+    for (let i = 0; i < 90; i++) useGameStore.getState().decayCameraShake(1 / 60);
+    expect(shakeTrauma(), 'the arrival shake never settles').toBe(0);
   });
 });
 

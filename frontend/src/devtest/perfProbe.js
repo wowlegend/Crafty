@@ -33,6 +33,13 @@ export function perfScenarioId() { return _scenario; }
 /** Resolved sampling-window seconds: the ?perfsec override if present, else the caller's default. */
 export function perfDurationSec(fallback) { return _durationSec != null ? _durationSec : fallback; }
 export function setProbePhase(p) { _phase = p; }
+/**
+ * The probe's current phase. `_phase` was written from three call sites and read by NOTHING -- a
+ * four-state machine that existed only to be assigned. A probe whose result cannot say which phase it
+ * reached is exactly the instrument this project keeps finding: it reports, and the report is silent
+ * about whether the run completed. It is now part of the emitted result.
+ */
+export function probePhase() { return _phase; }
 
 /** Transient hurl channel: the runner schedules, PerfProbeSystem consumes in useFrame (GLI-clean). */
 export function requestHurl() { _hurlRequests += 1; }

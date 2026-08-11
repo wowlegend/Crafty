@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { callTestHook } from './testBridge';
-import { isPerfProbe, perfScenarioId, perfDurationSec, setProbePhase, requestHurl, seedRandom } from './perfProbe';
+import { isPerfProbe, perfScenarioId, perfDurationSec, setProbePhase, probePhase, requestHurl, seedRandom } from './perfProbe';
 import { SCENARIOS, scenarioEvents, SCENARIO_SEC } from './perfScenarios';
 import { frameStats } from './frameStats';
 
@@ -97,7 +97,9 @@ export function PerfProbeRunner() {
       const MB = 1024 * 1024;
       const heapGrowthMB = (heapStart != null && heapEnd != null) ? (heapEnd - heapStart) / MB : null;
       const stats = frameStats(deltas.slice(1)); // drop the settle-boundary delta
-      const out = { scenario: id, label: scn.label, ...stats,
+      // `phase` is in the result so a reader can tell a COMPLETED run from one that stalled in settling
+      // or was cancelled mid-sample. Without it, a truncated run and a clean one are the same object.
+      const out = { scenario: id, label: scn.label, phase: probePhase(), ...stats,
         heapStartMB: heapStart != null ? heapStart / MB : null,
         heapEndMB: heapEnd != null ? heapEnd / MB : null,
         heapGrowthMB };

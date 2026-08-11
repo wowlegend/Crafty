@@ -32,8 +32,16 @@
 export const ENTRANCE = Object.freeze({
   hitstopMs: 220,   // vs the kill's 160 — a held breath, not an impact
   bloomMs: 650,     // the lair flares as the dragon wakes
-  shake: 1.4,       // felt, but below a damage hit (which scales as damage/10)
-  shakeClearMs: 900,
+  // An impact WEIGHT for triggerCameraShake, on the same scale every other producer uses: a normal melee
+  // hit is 1.0 and a crit 1.6, so 0.8 is "felt, but below being hit", which is what this beat is for.
+  //
+  // It used to be 1.4 fed to setScreenShake, and setScreenShake is not a camera shake at all -- HUD wires
+  // it to DamageOverlay's intensity, i.e. the RED DAMAGE VIGNETTE. So the dragon's arrival painted the
+  // screen with the cue for taking damage, and the player read "I am being hurt" at the exact moment the
+  // design doc above asks them to stop and feel dread. A cue that means something else is worse than no
+  // cue. BossEntity's own comments already recorded that setScreenShake feeds the vignette; the entrance
+  // never got the memo.
+  shakeWeight: 0.8,
 });
 
 /**

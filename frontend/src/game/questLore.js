@@ -2,7 +2,21 @@
 // spine. Pure data + helpers (no new quest SYSTEM): lore/giver fields + a re-theming map that turns
 // generic chores ("Defeat 5 mobs") into frontier story beats, WITHOUT changing each quest's type/
 // target (so the existing drivers + claim flow are untouched). The hub NPCs are the givers.
-export const CHAIN_ORDER = ['first_blood', 'hunter', 'pilgrim', 'nightwatch', 'champion'];
+// CHAIN_ORDER DELETED 2026-08-11. It declared a five-quest narrative spine -- first_blood, hunter,
+// pilgrim, nightwatch, champion -- and nothing read it, while quest offering follows QUEST_LIST's own
+// authoring order, which interleaves builder / miner / spellcaster / zombie_slayer / spider_hunter
+// between those beats. So the file declared one story order and the game told another. The LORE map
+// below IS consumed (loreFor / themedDescription), so the narrative survives; what is gone is a second,
+// unread opinion about sequence that contradicted the real one.
+
+/**
+ * Quest ids this module writes lore for. EXPORTED so a gate can walk the map's own keys: the first draft
+ * of that gate iterated a hardcoded list instead, so renaming a key here just made loreFor return null and
+ * the check passed. A denominator that does not come from the thing under test is not a denominator.
+ */
+export function loreQuestIds() {
+  return Object.keys(LORE);
+}
 
 const LORE = {
   first_blood: { giver: 'Old Pike the Warden', lore: 'The Blight pushes monsters to our gate. Draw first blood, and prove you can hold the frontier.' },
