@@ -54,7 +54,8 @@ export function buildSaveData(state, { position } = {}) {
       activeSpell: state.activeSpell,
       isDay: state.isDay,
       gameTime: state.gameTime,
-      achievements: state.achievements,
+      // `achievements` DELETED 2026-08-11: setAchievements had zero callers and the array zero readers,
+      // so this wrote an empty list into every save. QuestSystem's achievements ride in questState.
       gameWon: state.gameWon, // S9c: the win-state survives a reload
       // A-bis B2g: the boss FIGHT survives a reload too, not just the win. gameWon alone only stopped a
       // slain dragon respawning; a fight in progress was hook-local React state, so a refresh at 5% HP

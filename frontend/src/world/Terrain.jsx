@@ -646,25 +646,14 @@ export const MinecraftWorld = React.memo(() => {
             return null;
         });
 
-        // Simplified collision check using physics
-        useGameStore.getState().setCheckCollision((x, y, z) => {
-            const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
-            const playerHandle = playerRigidBody?.handle;
-            const filterPredicate = (collider) => {
-                if (playerHandle === undefined) return true;
-                const parent = collider.parent();
-                return !parent || parent.handle !== playerHandle;
-            };
-
-            const ray = new rapier.Ray({ x, y: y + 0.1, z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(ray, 0.2, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
-            return !!hit;
-        });
+        // The `checkCollision` registration that stood here was DELETED 2026-08-11. It built a filtered
+        // downward Rapier ray and published it to the store, and NOTHING ever read it -- a wire to nowhere
+        // that the next author has to trace before they can rule it out. The live ground probe every
+        // system actually uses is getMobGroundLevel, registered directly above.
 
         return () => {
             useGameStore.getState().setGetGeneratedChunks(null);
             useGameStore.getState().setGetMobGroundLevel(null);
-            useGameStore.getState().setCheckCollision(null);
         };
     }, [rapier, world]);
 

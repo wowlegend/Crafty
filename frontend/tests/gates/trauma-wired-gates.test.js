@@ -13,6 +13,7 @@ describe('M1 trauma core is wired', () => {
   const comp = read('src/Components.jsx');
   const sns = read('src/SimplifiedNPCSystem.jsx') + read('src/systems/CombatSystem.jsx'); // A1.8: hitstop moved to CombatSystem
   const store = read('src/store/useGameStore.jsx');
+  const channel = read('src/game/cameraShakeChannel.js');
 
   it('Components uses shakeOffset (trauma^2) for the camera shake, not flat Math.random jitter', () => {
     expect(comp.includes("from './game/trauma")).toBe(true);
@@ -31,16 +32,16 @@ describe('M1 trauma core is wired', () => {
 
   it('M2 #9: the camera shake is biased along the hit direction (cameraShakeDir), not direction-less', () => {
     // Components reads the stored hit-dir and feeds it into shakeOffset (was a literal 0, 0).
-    expect(comp.includes('store.cameraShakeDir')).toBe(true);
+    expect(comp.includes('const [dx, dz] = shakeDir();'), 'the consumer no longer reads the hit direction at all').toBe(true);
     expect(/,\s*dx,\s*dz,/.test(comp)).toBe(true);            // dir threaded into the shakeOffset args
     expect(comp.includes('* 0.05, 0, 0,')).toBe(false);       // the old direction-less call is gone
-    // the store carries the dir + a decay-preserving trigger signature
-    expect(/cameraShakeDir:\s*\[0,\s*0\]/.test(store)).toBe(true);
-    // The invariant is the BEHAVIOUR -- omitting the dir preserves the one already set, so the bias
-    // survives the multi-frame falloff -- not the parameter's name. Pinning the name made this gate red
-    // when the argument was correctly renamed from `intensity` to `weight`, which is what it now is.
+    // The dir now lives in the transient CHANNEL, not the store: holding trauma in zustand meant a set()
+    // per frame from useFrame. The invariant is unchanged and is asserted where it now lives -- omitting
+    // the dir preserves the one already set, so the bias survives the multi-frame falloff. Pinning the
+    // store's parameter NAME is what made this gate red at two correct refactors in a row.
     expect(/triggerCameraShake:\s*\([a-zA-Z]+ = 1\.0, dirX, dirZ\)/.test(store)).toBe(true);
-    expect(store.includes('dirX === undefined ? s.cameraShakeDir : [dirX, dirZ]')).toBe(true);
+    expect(channel.includes('if (dirX !== undefined)'), 'the dir is overwritten unconditionally').toBe(true);
+    expect(/let _dirX = 0/.test(channel)).toBe(true);
   });
 
   it('SimplifiedNPCSystem hitstop is weight-tiered via HITSTOP, not the flat +28', () => {

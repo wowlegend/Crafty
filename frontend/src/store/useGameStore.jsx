@@ -5,7 +5,7 @@ import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
-import { addTrauma, traumaFromWeight, decayTrauma } from '../game/trauma.js';
+import { addShake, decayShake } from '../game/cameraShakeChannel.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
@@ -300,25 +300,18 @@ export const useGameStore = create((set, get) => ({
         }
     })),
 
-    // Phase 9: Camera Shake
-    cameraShakeIntensity: 0,
-    // SOTA M2 #9: directional bias unit [x,z] (world) so a hit lurches the camera AWAY from the
-    // player along the real hit vector, not a symmetric jitter. Passing a dir sets it; omitting the
-    // dir PRESERVES it across the multi-frame falloff.
-    cameraShakeDir: [0, 0],
-    // The argument is an impact WEIGHT (0.4 for a spell that missed, 1.8 for the boss's roar), not
-    // trauma. It used to be written straight in: unclamped, so weights of 1.4-1.8 were squared into a
-    // 1.78-world-unit camera offset against a model whose own header declares [0,1]; and REPLACING, so a
-    // light tick during a heavy shake cut the shake short. Now it maps into range and ACCUMULATES, which
-    // is the trauma model this codebase claimed to implement and never called.
-    triggerCameraShake: (weight = 1.0, dirX, dirZ) => set((s) => ({
-      cameraShakeIntensity: addTrauma(s.cameraShakeIntensity, traumaFromWeight(weight)),
-      cameraShakeDir: dirX === undefined ? s.cameraShakeDir : [dirX, dirZ],
-    })),
-    // Frame-rate-independent falloff, driven by the render delta. The shipped decay was a bare
-    // multiply-by-0.85 with no delta term, so screen-shake lasted 0.52s at 60Hz and 0.26s at 120Hz --
-    // the same duration bug in a game whose knockback in the very same useFrame is already exp(-delta*k).
-    decayCameraShake: (dt) => set((s) => ({ cameraShakeIntensity: decayTrauma(s.cameraShakeIntensity, dt) })),
+    // Phase 9: Camera Shake — the LIVE VALUE LIVES IN game/cameraShakeChannel.js, not here.
+    //
+    // Trauma decays every frame while a shake runs, so holding it in zustand meant a `set()` per frame
+    // from inside useFrame: ~30 store notifications per hit, each re-running every subscriber's selector
+    // across the whole app. That is the reactive-binding-to-a-high-frequency-system this project's
+    // Game-Loop-Isolation rule exists to forbid, and it bought nothing -- the only reader is the player
+    // controller's useFrame, which already read it transiently, and it was never persisted.
+    //
+    // These two stay as store methods purely so the eight producers keep calling what they called before.
+    // Neither writes state.
+    triggerCameraShake: (weight = 1.0, dirX, dirZ) => { addShake(weight, dirX, dirZ); },
+    decayCameraShake: (dt) => { decayShake(dt); },
 
     // SOTA M1 game-feel: ONE global feedback/juice dial scaling screenshake + hitstop magnitude.
     // 1 = full, 0 = off. The M3 Settings/accessibility "reduced motion" toggle drives this to 0.
@@ -348,8 +341,9 @@ export const useGameStore = create((set, get) => ({
     bloomSpikeUntil: 0,
     triggerBloomSpike: (ms = 80) => set({ bloomSpikeUntil: performance.now() + ms }),
 
-    checkCollision: null,
-    setCheckCollision: (fn) => set({ checkCollision: fn }),
+    // checkCollision / setCheckCollision DELETED 2026-08-11: Terrain registered a function here on
+    // mount and NOTHING ever read it. A registration with no reader is a wire to nowhere that the next
+    // author has to trace before they can rule it out.
 
     mobEntities: [],
     setMobEntities: (entities) => set((state) => ({ mobEntities: typeof entities === 'function' ? entities(state.mobEntities) : entities })),
@@ -770,10 +764,9 @@ export const useGameStore = create((set, get) => ({
         return { gameTime, isDay: isDayAtUnit(gameTime) };
     }),
 
-    achievements: [],
-    setAchievements: (achievementsArg) => set((state) => ({
-        achievements: typeof achievementsArg === 'function' ? achievementsArg(state.achievements) : achievementsArg
-    })),
+    // achievements / setAchievements DELETED 2026-08-11: the setter had zero callers and the array had
+    // zero readers, so this serialized an empty list into every save and restored it. The achievements
+    // the game actually tracks are QuestSystem's ACHIEVEMENTS, persisted through questState.
 
     playerHealth: 100,
     maxHealth: 100,
@@ -956,7 +949,6 @@ export const useGameStore = create((set, get) => ({
             // transient by design). Fixes the edge where a save's stored isDay disagreed
             // with its gameTime and would not self-correct until the next half-cycle crossing.
             const isDay = isDayAtUnit(gameTime);
-            const achievements = saveData.game_state?.achievements || state.achievements;
             const gameWon = saveData.game_state?.gameWon ?? state.gameWon; // S9c: the win persists across reload
             // A-bis B2g: restore the ENCOUNTER, not just the win. Hydration is invariant-enforcing, not a
             // spread: a won game can never re-arm the dragon, a defeated one stays defeated, health is
@@ -1023,7 +1015,6 @@ export const useGameStore = create((set, get) => ({
                 activeSpell,
                 isDay,
                 gameTime,
-                achievements,
                 gameWon,
                 bossHealth: boss.health,
                 bossActive: boss.active,

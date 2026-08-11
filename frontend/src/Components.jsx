@@ -21,6 +21,7 @@ import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset, SHAKE_WEIGHT_MAX } from './game/trauma.js';
+import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
@@ -1249,26 +1250,27 @@ export const Player = ({ isWorldBuilt }) => {
     let shakeY = 0;
     let shakeZ = 0;
     const store = useGameStore.getState();
-    if (store.cameraShakeIntensity > 0.01) {
+    const trauma0 = shakeTrauma(); // module transient, not the store -- see game/cameraShakeChannel.js
+    if (trauma0 > 0.01) {
       // SOTA game-feel: the decaying cameraShakeIntensity IS the "trauma" value -> shake magnitude scales
       // with trauma^2 (a light hit barely shakes, a crit PUNCHES), via seeded value-noise (game/trauma.js)
       // scaled by the global juiceIntensity dial. Seed off the wall clock (this block is below the
       // isCaptureMode early-return -> never in a baseline, so non-determinism here is fine). Quadratic
       // falloff + the dial replace the old flat linear Math.random jitter.
-      const trauma = store.cameraShakeIntensity;
+      const trauma = trauma0;
       const ji = store.juiceIntensity ?? 1;
       // M2 #9: bias the shake along the hit vector (set at trigger, preserved through decay) so a hit
       // lurches the camera away from the player toward the impact, not a direction-less jitter.
-      const [dx, dz] = store.cameraShakeDir || [0, 0];
+      const [dx, dz] = shakeDir();
       // SHAKE_WEIGHT_MAX squared undoes the weight->trauma mapping the store now applies, so a single
       // hit produces the EXACT offset that shipped; what changed is that trauma is bounded and stacks.
       const o = shakeOffset(trauma, performance.now() * 0.05, dx, dz, 0.55 * SHAKE_WEIGHT_MAX * SHAKE_WEIGHT_MAX * ji);
       shakeX = o.x;
       shakeY = o.y;
       shakeZ = o.z;
-      store.decayCameraShake(delta); // dt-driven falloff; snaps to 0 at the floor
-    } else if (store.cameraShakeIntensity > 0) {
-      store.decayCameraShake(delta);
+      decayShake(delta); // dt-driven falloff; snaps to 0 at the floor
+    } else if (trauma0 > 0) {
+      decayShake(delta);
     }
     // game-feel: per-verb camera kick (decaying impulse from the verb triggers), folded into the
     // camera-target offset alongside the shake. Below the isCaptureMode early-return -> never in a baseline.
