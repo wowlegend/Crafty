@@ -2,6 +2,10 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
+import { applyCaveCA } from './caveCA.js';
+// How many y layers the cave CA covers. Caves are a below-y20 feature; smoothing above that would chew
+// at the surface silhouette.
+const CAVE_CA_RANGE_HEIGHT = 20;
 import { pineShape, acaciaShape, swampShape, jungleShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { oreCodeFor } from './oreGen.js';
@@ -282,57 +286,11 @@ function stampStructures(blocks, cx, cz) {
 }
 
 function applyCellularAutomata(blocks) {
-  const caRangeHeight = 20;
-  const tempSlice = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * caRangeHeight);
-
-  function getTempBlockAt(tempArr, bx, by, bz) {
-    if (bx < 0 || bx >= CHUNK_SIZE || bz < 0 || bz >= CHUNK_SIZE) return 3;
-    if (by < 0 || by >= caRangeHeight) return 3;
-    return tempArr[bx + bz * CHUNK_SIZE + by * CHUNK_SIZE * CHUNK_SIZE];
-  }
-
-  for (let pass = 0; pass < 2; pass++) {
-    // Copy active slice
-    for (let y = 0; y < caRangeHeight; y++) {
-      for (let z = 0; z < CHUNK_SIZE; z++) {
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-          tempSlice[x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blocks[x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
-        }
-      }
-    }
-
-    // Run local 3D neighborhood evaluation
-    for (let y = 1; y < caRangeHeight - 1; y++) {
-      for (let z = 0; z < CHUNK_SIZE; z++) {
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-          const index = x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
-          const currentType = tempSlice[index];
-          
-          let solidCount = 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dz = -1; dz <= 1; dz++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                const neighborType = getTempBlockAt(tempSlice, x + dx, y + dy, z + dz);
-                if (neighborType > 0 && neighborType !== 9) {
-                  solidCount++;
-                }
-              }
-            }
-          }
-
-          if (currentType > 0 && currentType !== 9) {
-            if (solidCount <= 11) {
-              blocks[index] = 0; // Carve bottlenecks
-            }
-          } else if (currentType === 0) {
-            if (solidCount >= 16) {
-              blocks[index] = 3; // Consolidate walls
-            }
-          }
-        }
-      }
-    }
-  }
+  // The CA itself lives in world/caveCA.js. It used to be inline here, and this file assigns
+  // self.onmessage at module scope so it cannot be imported under vitest -- which is why nobody had ever
+  // run it: its neighbour lookup answered SOLID for everything outside the chunk, giving every border
+  // column nine phantom solid neighbours and walling caves off at every 16-block seam below y=20.
+  applyCaveCA(blocks, CHUNK_SIZE, CAVE_CA_RANGE_HEIGHT);
 }
 
 function spawnSupportBeams(blocks, cx, cz) {
