@@ -191,7 +191,7 @@ REFUTATION FAILED on the mechanism, though one consequence clause is overstated.
 
 REFUTATION FAILED on the load-bearing half; one sub-claim knocked down. CONFIRMED: saveSchema.js:49-60 persists `game_state.bossState = serializeBossState(state)` reading bossHealth/bossActive/bossDefeated — all real store fields (useGameStore.jsx:410,419,420) rewritten on every damage tick by bossSystem.js:159-161's mirror effect (`setBossEncounter({health, active, defeated})` keyed on [bossHealth, bossActive, bossDefeated]). None of the three appears in the 21-comparison predicate at App.jsx:231-253. There is exactly ONE save path in src (`grep -rn saveActiveWorld src` → App.jsx:216 and the store action at 1080), and createAutosave.flush() (game/autosave.js:9) is `if (timer !== null)`, so a field that never schedules never persists. The gate at tests/gates/save-slot-ownership-gates.test.js:178 really does regex only `/progression:\s*\{([\s\S]*?)\n\s{4}\},/`, so game_state is outside its denominator; no other gate covers it (boss-persistence-gates.test.js tests serialize/hydrate only). KNOCKED DOWN: the achievements half. `store.achievements` has NO runtime writer — `setAchievements` has zero callers outside the store, and real unlocks live in QuestSystem's `unlockedAchievements`, mirrored into `questState` (QuestSystem.jsx:133-140), and questState IS a trigger. WEAKENED: the concrete boss scenario, because onSpellCast (QuestSystem.jsx:340-347) bumps stats.spells → questState → schedule, so a spell-using fight saves incidentally; the loss needs a melee-only fight with >5s of quiet before the tab closes. The structural defect stands regardless: bossState durability is parasitic on an unrelated field changing.
 
-### ▢ `src/Components.jsx:332` — correctness
+### ▣✓ 2ee37c7 `src/Components.jsx:332` — correctness
 
 **'dodge' intent is set on Shift keydown with no keyup handler; it latches while input is inactive and fires an unrequested i-frame dodge on regaining pointer lock**
 
@@ -203,7 +203,7 @@ Refutation attempted on five routes, all failed. (1) Writer is genuinely ungated
 
 REFUTATION FAILED. The UI-identity mismatch is exactly as described and I verified every render site: CraftingTable.jsx:139 title `${Object.values(result.output)[0]} ${result.name}`, :141 `getItemRarity(result.name)`, :144 `<ItemIcon itemName={result.name}>`, :146 label `{count}× {result.name}`, :70 toast `Crafted ${result.name}!` — all five read the RECIPE name; only :64-65 uses the output key. So the slot reads '5× Bow', the toast says 'Crafted Bow!', and addToInventory('Arrow', 5) runs. 'Bow' is in neither ITEMS nor NAME_TO_ID (items.js:13-61), so getItemIcon('Bow') -> null (items.js:96-104) -> blank swatch, and getItemRarity('Bow') falls through the substring ladder to 'common' (items.js:88-91). The two compounding cases check out at the exact cited lines: :20 'Iron Sword (Nuggets)' -> output 'Iron Sword' (blank swatch instead of the real sword icon; rarity coincidentally still epic via the 'Iron' substring fallback), and :100 'Stone Pickaxe' -> output 'pickaxe' (label rarity 'rare' via the 'Stone' substring vs the granted item's registry rarity 'common', items.js:35). One CORRECTION to the finding: it claims Arrow 'is absent from... there is no ranged-weapon code path' and implies Arrow is wholly inert — Arrow IS a real registered item (items.js:23, icon 'arrow') and IS a live skeleton drop (lootTables.js:28), so the Arrows are not phantom; they are simply a dead-end currency, and AIWorkerSystem.jsx:47 spawns an enemy archer arrow that is unrelated to player inventory. That correction lowers the harm but does not touch the defect: the panel still tells the player they made a Bow. DUPLICATE of docs/superpowers/audits/2026-07-13-18-domain-review.md:750 and of docs/superpowers/CODE-REVIEW-2026-06-20.md:83 ('rename to Arrows or add a real Bow item'), i.e. this has been reported twice already and is still open.
 
-### ▢ `src/game/trauma.js:13` — dead-on-arrival
+### ▣✓ b89fbab `src/game/trauma.js:13` — dead-on-arrival
 
 **addTrauma is never called by the game; trauma is written raw into the store unclamped, so shake magnitude exceeds its documented ceiling.**
 
@@ -211,7 +211,7 @@ COULD NOT REFUTE THE DEFECT, but the framing is off and the magnitude is oversta
 
 Corrections: (1) The math is 3.2x, not ~5x — designed max at trauma 1 is 0.55 (0.88 with the 0.6 dir bias); at 1.8 it is 1.78 (2.85 with bias). (2) 'addTrauma is the clamp the model depends on' is a mis-framing: `addTrauma` has ADD semantics while every producer SETS an absolute value, so it was never on this call path by design; the missing clamp belongs in the store setter, not in a resurrected addTrauma. (3) The BossEntity 1.8 call passes no dir, so `cameraShakeDir` keeps whatever was last set (default [0,0], useGameStore.jsx:302) — the 2.85 worst case needs a prior directional hit. (4) Decay is fast (x0.85/frame), so the over-ceiling window is ~4-5 frames. The core defect — unclamped trauma >1 fed into a trauma^2 model whose own doc declares [0,1] — survives. Severity high -> medium.
 
-### ▢ `src/game/trauma.js:18` — correctness
+### ▣✓ b89fbab `src/game/trauma.js:18` — correctness
 
 **decayTrauma is never called; the shipped decay is a per-frame multiply by 0.85, so screen-shake duration scales with refresh rate.**
 
@@ -273,7 +273,7 @@ REFUTATION FAILED. hudState.js:50 has `selectedVillager` and no setter anywhere 
 
 REFUTATION MOSTLY FAILED, one over-statement. I enumerated both sets by hand: the selector's function-valued keys are addToInventory, removeFromInventory, setShowInventory, setShowCrafting, setShowMagic, setShowBuildingTools, setShowSettings, setShowTradingInterface, setShowQuestLog, setShowWorldManager, loadWorldData, setSelectedBlock, setActiveSpell — 13, and HUD_CALLABLE_KEYS is that exact set of 13. The consumer is tests/gates/hud-hotbar-gates.test.jsx:29-31, which asserts `typeof s[key] === 'function'` against selectHudState(store), plus a length > 10 vacuity guard at :35 that passes at 13. So the check is green while six live call sites are broken — empirically confirmed. TWO corrections to the finding's wording: (a) the docstring at hudState.js:60-62 names 'hudState.test.js', and no such file exists (`find` returns nothing); the real consumer is tests/gates/hud-hotbar-gates.test.jsx, so the finding's cited mechanism is right but the file name in the source comment is itself stale. (b) 'structurally incapable' is too strong — the list is a separate hand-maintained artifact, so a developer who adds the key to the list first and forgets the selector WOULD go red. What is true is that it is consumer-derived only by discipline, currently coincides exactly with the producer, and has never gone red for any of the six omissions. The remedy the finding names (derive the denominator by grepping `gameState.<name>(` across the components receiving the prop) is the right one.
 
-### ▢ `src/store/useGameStore.jsx:742` — correctness
+### ▣✓ ec57fa4 `src/store/useGameStore.jsx:742` — correctness
 
 **setTimeOfDay's [0.25,0.75) day window is a quarter-cycle out of phase with isDayAtUnit's [0,0.5).**
 
@@ -303,7 +303,7 @@ REFUTATION FAILED on the mechanism. The useFrame at 128-143 has no accumulator, 
 
 REFUTATION FAILED. Line 147 `if (isCaptureMode()) return;` and line 228 are in the SAME useFrame callback (opened at 145, closed at 230) with nothing between them that could flip the flag — it is a synchronous module-level boolean in devtest/captureMode.js. So line 228's ternary evaluates only in the false branch and always yields null. Tried 'another sender posts TICK': grep for `captureSeed` across src/, tests/ and scripts/ returns exactly four lines — AIWorkerSystem.jsx:228 (sender), ai.worker.js:135 (`?? null`) and :367 (`captureSeed == null ? Math.random : makeSeededRandom(...)`) — no test or harness constructs the worker. Tried 'a gate pins it so deletion regresses': the only makeSeededRandom assertion is spell-vfx-gates.test.js:133-134, which reads GPUSparkSystem, not the worker; nothing greps for captureSeed or CAPTURE_AI_SEED. Tried 'makeSeededRandom is used elsewhere in the worker': ai.worker.js:367 is its sole use. The auditor's 'delete it and nothing observable changes' holds.
 
-### ▢ `src/systems/CombatSystem.jsx:46` — correctness
+### ▣✓ 2a5c552 `src/systems/CombatSystem.jsx:46` — correctness
 
 **damageMob defaults source='player' and burnManager's DoT tick omits the argument, so every fireball burn tick fires player hitstop, camera shake and an ImpactShockwave with no player input.**
 
@@ -315,7 +315,7 @@ REFUTATION FAILED on the behavioural claim; every link verified. burnManager.js:
 
 REFUTATION FAILED, though the practical reach is narrower than filed. Verified: makeNpcEntity has exactly one non-test call site (SpawnerSystem.jsx:104) inside the setInterval body; line 88 clears that interval outright; the effect deps are `[]` (line 117). Tried 'the component remounts on capture exit': NPCSystem is mounted once in GameScene.jsx:242 inside `<Physics paused={isCaptureMode}>` (GameScene.jsx:233) — `paused` is a prop, not a key, so no remount, and App.jsx:780-785 exitCapture only flips flags. Tried 'the NPCs survive because they already spawned': App.jsx:327 `for (const entity of [...mobsQuery.entities]) ecs.remove(entity);` inside enterCapture purges them, and npcSpawn.js:23 sets isMob:true, so they are in the purge set either way — the conclusion survives by a second route. TWO scope caveats: (1) capture is DEV-bridge-only (registerTestHook / testBridge.js, tree-shaken from prod), so no shipped player can hit this; (2) grep across the whole repo shows the `exitCapture` hook has ZERO callers — not capture.mjs, not any e2e spec — so today this requires a human manually calling the bridge in a dev browser. Also note atmosphere-isolation-gates.test.js:59 is a COMMENT saying 'exitCapture restores gameplay'; the assertion at :60-66 only checks setCaptureStudio(false), so the auditor's 'asserts the contract' is loose phrasing.
 
-### ▢ `src/systems/SpawnerSystem.jsx:178` — correctness
+### ▣✓ 4bb0619 `src/systems/SpawnerSystem.jsx:178` — correctness
 
 **The dying-corpse sweep is nested inside the 1000ms spawn-check throttle, so DEATH_DISSOLVE_MS=320 becomes a 320-1320ms corpse lifetime.**
 
