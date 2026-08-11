@@ -16,7 +16,10 @@ describe('tapVerdict — a tap is only honest if it can REACH the thing it names
   });
 
   it('REJECTS the off-screen Aspect sector (touch-aspect-grab @390,595 — the real 2026-08-05 reading)', () => {
-    // ringLayout(4,78)[1] = {x:78,y:0} -> `right: 26 - 78` = -52 -> the whole 52x52 sits past the right edge.
+    // The reading these verdicts were built from: the old ringLayout(4,78)[1] = {x:78,y:0} -> `right:
+    // 26 - 78` = -52, the whole 52x52 past the right edge. That LAYOUT is fixed (fanLayout, which cannot
+    // produce a negative offset); this stays because the PROBE must still refuse to call such a reading a
+    // tap. A fixed layout is not a reason to let the instrument go blind.
     const v = tapVerdict('touch-aspect-grab', { x: 390, y: 595, w: 52, h: 52, hitIsSelf: true, hitLabel: '' }, VIEWPORT);
     expect(v.ok).toBe(false);
     expect(v.why).toContain('outside the 390x844 viewport');
@@ -26,7 +29,8 @@ describe('tapVerdict — a tap is only honest if it can REACH the thing it names
   });
 
   it('REJECTS a sector sitting underneath the spell toggle (THE bug that produced two false findings)', () => {
-    // aspect sector 0 = {x:0,y:-78} -> bottom 104+78 = 182 = touch-spells' own anchor. Same 52x52 box; the
+    // The other half of the same layout bug: aspect sector 0 = {x:0,y:-78} -> bottom 104+78 = 182 =
+    // touch-spells' own anchor. Same 52x52 box; the
     // spell toggle renders later in the DOM, so it takes the tap and the ring never hears about it.
     const v = tapVerdict('touch-aspect-roar',
       { x: 312, y: 517, w: 52, h: 52, hitIsSelf: false, hitLabel: '[data-testid="touch-spells"]' }, VIEWPORT);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_VERBS, unlockedAspectVerbs, ringLayout, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
+import { ASPECT_VERBS, unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
 import { KEY_MAP } from '../game/keyMap.js';
 import { INTENT_KEYS } from './inputState.js';
 
@@ -48,29 +48,66 @@ describe('aspectWheel — unlock gating', () => {
   });
 });
 
-describe('aspectWheel — ring geometry', () => {
-  it('places the first item at TOP and advances clockwise', () => {
-    const p = ringLayout(4, 100);
-    expect(p[0]).toEqual({ x: 0, y: -100 }); // top
-    expect(p[1]).toEqual({ x: 100, y: 0 }); // right (screen +y is DOWN, so clockwise)
-    expect(p[2]).toEqual({ x: 0, y: 100 }); // bottom
-    expect(p[3]).toEqual({ x: -100, y: 0 }); // left
-  });
+describe('aspectWheel — fan geometry, measured in px against the viewport', () => {
+  // THE OLD RING PUT ITEM 1 ENTIRELY OFF-SCREEN.
+  //
+  // ringLayout fanned items around a FULL circle from a control pinned to the bottom-right edge, so the
+  // item at angle 0 landed at `right: 26 - 78 = -52px` — a 52px button beginning exactly at the viewport's
+  // right edge, zero tappable pixels. iceball, the second of four spells, was permanently unreachable on
+  // touch. The gate that was supposed to cover this asserted the glyph was in the jsdom document, and
+  // jsdom has no layout, so it could not have seen the defect under any circumstances.
+  //
+  // These assertions are in PIXELS, against a declared minimum viewport. That is the only form of this
+  // test that could have gone red.
+  const MIN_VIEWPORT_W = 320; // narrowest phone we claim to support
 
-  it('spaces N items evenly on the circle', () => {
-    for (const n of [1, 2, 3, 4]) {
-      const p = ringLayout(n, 80);
-      expect(p).toHaveLength(n);
-      for (const q of p) expect(Math.hypot(q.x, q.y)).toBeCloseTo(80, 0);
+  it('every item of a FULL four-item fan stays inside the narrowest supported viewport', () => {
+    const fan = fanLayout(4);
+    expect(fan).toHaveLength(4);
+    for (const [i, q] of fan.entries()) {
+      const outer = fanItemInnerEdge(q); // distance from the right edge to the item's far side
+      expect(outer, `item ${i} runs past the left of a ${MIN_VIEWPORT_W}px viewport`).toBeLessThanOrEqual(MIN_VIEWPORT_W);
+      expect(FAN_ANCHOR_RIGHT - q.x, `item ${i} sits at a NEGATIVE right offset, i.e. off the screen`).toBeGreaterThanOrEqual(0);
     }
   });
 
-  it('returns nothing for a degenerate ring instead of NaN coordinates', () => {
+  it('adjacent items never overlap — two 52px targets 58px apart', () => {
+    const fan = fanLayout(4);
+    for (let i = 1; i < fan.length; i++) {
+      const gap = Math.abs(fan[i].x - fan[i - 1].x);
+      expect(gap, `items ${i - 1} and ${i} overlap`).toBeGreaterThanOrEqual(TOUCH_BTN);
+    }
+  });
+
+  it('the fan does not climb, so it cannot collide with the opener one row above', () => {
+    // The Aspect row sits 78px below the spell row. ANY upward component at r=78 lands one fan item
+    // exactly on the other opener — which paints later in DOM order and therefore steals the tap.
+    for (const q of fanLayout(4)) expect(q.y).toBe(0);
+    expect(SPELL_ROW_BOTTOM - ASPECT_ROW_BOTTOM).toBeGreaterThanOrEqual(TOUCH_BTN);
+  });
+
+  it('item 0 lands exactly on its opener — the affordance, and the control for the offsets above', () => {
+    expect(fanItemStyle(SPELL_ROW_BOTTOM, fanLayout(4)[0])).toEqual(fanOpenerStyle(SPELL_ROW_BOTTOM));
+  });
+
+  it('emits the CSS the component actually renders, both rows', () => {
+    // The style seam is shared by the hit-target layer and the glyph layer, so this is the string both
+    // draw with — not a reimplementation of it.
+    const s0 = fanItemStyle(SPELL_ROW_BOTTOM, { x: -58, y: 0 });
+    expect(s0.right).toBe('calc(env(safe-area-inset-right,0px) + 84px)');
+    expect(s0.bottom).toBe('calc(11% + 182px)');
+    expect(s0.width).toBe(TOUCH_BTN);
+    const a0 = fanItemStyle(ASPECT_ROW_BOTTOM, { x: -116, y: 0 });
+    expect(a0.right).toBe('calc(env(safe-area-inset-right,0px) + 142px)');
+    expect(a0.bottom).toBe('calc(11% + 104px)');
+  });
+
+  it('returns nothing for a degenerate fan instead of NaN coordinates', () => {
     // A NaN offset renders a button at the top-left corner of the screen, silently, which is far worse
-    // than an absent ring.
-    expect(ringLayout(0, 100)).toEqual([]);
-    expect(ringLayout(4, 0)).toEqual([]);
-    expect(ringLayout(-1, 100)).toEqual([]);
+    // than an absent fan.
+    expect(fanLayout(0)).toEqual([]);
+    expect(fanLayout(4, 0)).toEqual([]);
+    expect(fanLayout(-1)).toEqual([]);
   });
 });
 

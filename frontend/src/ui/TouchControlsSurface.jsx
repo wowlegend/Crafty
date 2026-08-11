@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
-import { unlockedAspectVerbs, ringLayout, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
+import { unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
 import { SPELL_ORDER, spellLabelKey, spellAccent } from '../input/spellPicker';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
@@ -43,8 +43,8 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
   // hit-targets after a talent unlock — the tappable sector existed with nothing drawn on it.
   const unlockedTalents = useGameStore((s) => s.unlockedTalents);
   const aspects = unlockedAspectVerbs(unlockedTalents);
-  const ringPositions = ringLayout(aspects.length, 78);
-  const spellPositions = ringLayout(SPELL_ORDER.length, 78);
+  const ringPositions = fanLayout(aspects.length);
+  const spellPositions = fanLayout(SPELL_ORDER.length);
   const activeSpell = useGameStore((st) => st.activeSpell);
 
   // X2 — COOLDOWN SWEEPS ON THE RING. Touch had no cooldown feedback at all: HUD.jsx:590 gates
@@ -98,10 +98,10 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       })}
       {/* X1 ASPECT RING (STATUS §E-bis): the four Aspect verbs had no touch affordance at all, so the
           game's signature was desktop-only. Toggle sits above the cast button, in thumb reach; the ring
-          fans out from it. Geometry comes from the pure ringLayout() so the glyphs and the hit-targets in
-          TouchControls cannot drift apart — they read the same function with the same radius. */}
+          fans out from it. Geometry comes from the shared fanItemStyle() so the glyphs and the hit-targets in
+          TouchControls cannot drift apart — they read the same function, not two copies of the numbers. */}
       {aspects.length > 0 && (
-        <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 104px)', width: 52, height: 52 })}>
+        <div style={BTN(fanOpenerStyle(ASPECT_ROW_BOTTOM))}>
           <Flame size={24} strokeWidth={2.4} color={GLYPH} />
           <div ref={toggleRef} data-testid="aspect-cooling" style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8,
                         borderRadius: '50%', background: GOLD, border: `2px solid ${INK}`, opacity: 0 }} />
@@ -111,8 +111,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
         const q = ringPositions[i] || { x: 0, y: 0 };
         return (
           <div key={a.verb} aria-label={a.aspect}
-               style={BTN({ right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
-                            bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 })}>
+               style={BTN(fanItemStyle(ASPECT_ROW_BOTTOM, q))}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>
             <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
                  style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
@@ -123,7 +122,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
           (spellAccent -> SPELL_TYPES[id].color), so the picker cannot drift from the projectile the player
           will actually see. The closed toggle carries the currently-active spell's tint, which is the only
           way a touch player could previously have known what they were about to cast: not at all. */}
-      <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 182px)', width: 52, height: 52 })}>
+      <div style={BTN(fanOpenerStyle(SPELL_ROW_BOTTOM))}>
         <Sparkles size={24} strokeWidth={2.4} color={spellAccent(activeSpell) || GLYPH} />
       </div>
       {spellOpen && SPELL_ORDER.map((id, i) => {
@@ -131,9 +130,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
         const accent = spellAccent(id) || GLYPH;
         return (
           <div key={id} aria-label={t(spellLabelKey(id))} data-testid={`spell-glyph-${id}`}
-               style={BTN({ right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
-                            bottom: `calc(11% + ${182 - q.y}px)`, width: 52, height: 52,
-                            borderColor: id === activeSpell ? accent : undefined })}>
+               style={BTN({ ...fanItemStyle(SPELL_ROW_BOTTOM, q), borderColor: id === activeSpell ? accent : undefined })}>
             <Sparkles size={22} strokeWidth={2.4} color={accent} />
           </div>
         );

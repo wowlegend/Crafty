@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
-import { unlockedAspectVerbs, ringLayout, TAP_HOLD_MS } from '../input/aspectWheel';
+import { unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
 import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
 import { ownsTouch } from '../input/touchOwnership';
@@ -154,8 +154,8 @@ function TouchControlsLive({ isWorldBuilt }) {
   // toggle in the DOM" after unlocking all four Aspects.
   const unlockedTalents = useGameStore((s) => s.unlockedTalents);
   const aspects = unlockedAspectVerbs(unlockedTalents);
-  const ringPositions = ringLayout(aspects.length, 78);
-  const spellPositions = ringLayout(SPELL_ORDER.length, 78);
+  const ringPositions = fanLayout(aspects.length);
+  const spellPositions = fanLayout(SPELL_ORDER.length);
   // pointerEvents 'auto' re-enables hit-testing on each control, since the root below is now 'none' (X3).
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0, pointerEvents: 'auto' };
   return (
@@ -228,7 +228,7 @@ function TouchControlsLive({ isWorldBuilt }) {
           boolean intents the keyboard writes, pulsed, so nothing downstream changes. */}
       {active && aspects.length > 0 && (
         <button data-touch-btn onPointerUp={() => setWheelOpen((o) => !o)} aria-label={t('a11y.aspects')} data-testid="touch-aspects"
-          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 104px)', width: 52, height: 52 }} />
+          style={{ ...hit, ...fanOpenerStyle(ASPECT_ROW_BOTTOM) }} />
       )}
       {active && wheelOpen && aspects.map((a, i) => {
         const q = ringPositions[i] || { x: 0, y: 0 };
@@ -240,8 +240,7 @@ function TouchControlsLive({ isWorldBuilt }) {
               setTimeout(() => setIntent(a.verb, false), TAP_HOLD_MS);
               setWheelOpen(false);
             }}
-            style={{ ...hit, right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
-                     bottom: `calc(11% + ${104 - q.y}px)`, width: 52, height: 52 }} />
+            style={{ ...hit, ...fanItemStyle(ASPECT_ROW_BOTTOM, q) }} />
         );
       })}
 
@@ -252,15 +251,14 @@ function TouchControlsLive({ isWorldBuilt }) {
           opposite of the bug. Writes the EXISTING `setActiveSpell` seam — no new downstream path. */}
       {active && (
         <button data-touch-btn onPointerUp={() => setSpellOpen((o) => !o)} aria-label={t('a11y.selectSpell')} data-testid="touch-spells"
-          style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: 'calc(11% + 182px)', width: 52, height: 52 }} />
+          style={{ ...hit, ...fanOpenerStyle(SPELL_ROW_BOTTOM) }} />
       )}
       {active && spellOpen && SPELL_ORDER.map((id, i) => {
         const q = spellPositions[i] || { x: 0, y: 0 };
         return (
           <button key={id} data-touch-btn aria-label={t(spellLabelKey(id))} data-testid={`touch-spell-${id}`}
             onPointerUp={() => { useGameStore.getState().setActiveSpell(id); setSpellOpen(false); }}
-            style={{ ...hit, right: `calc(env(safe-area-inset-right,0px) + ${26 - q.x}px)`,
-                     bottom: `calc(11% + ${182 - q.y}px)`, width: 52, height: 52 }} />
+            style={{ ...hit, ...fanItemStyle(SPELL_ROW_BOTTOM, q) }} />
         );
       })}
     </div>

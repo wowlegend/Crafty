@@ -96,13 +96,69 @@ export function anyOnCooldown(abilityCooldowns, verbs) {
   return (verbs || []).some((a) => cooldownFraction(cds[a.verb]) !== null);
 }
 
-export function ringLayout(count, radius) {
-  if (!(count > 0) || !(radius > 0)) return [];
-  return Array.from({ length: count }, (_, i) => {
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / count; // -90deg = top
-    // `|| 0` normalises NEGATIVE ZERO away: cos(pi) rounds to -0, which is a legal but useless offset that
-    // makes assertions read `-0` and diffs read as changes. -0 is falsy, so this maps it to 0 and leaves
-    // every real value alone.
-    return { x: Math.round(Math.cos(angle) * radius) || 0, y: Math.round(Math.sin(angle) * radius) || 0 };
-  });
+// THE RING WAS THE WRONG SHAPE FOR THE CORNER IT WAS ANCHORED IN.
+//
+// `ringLayout` fanned items around a FULL circle from a control pinned to the bottom-right edge, so the
+// item at angle 0 landed at `right: 26 - 78 = -52px` — a 52px button beginning exactly at the right edge
+// of the viewport, with zero visible or tappable pixels. Measured in Chromium: the calc() is valid CSS,
+// computed right is -52px, and getBoundingClientRect puts left at the viewport width. iceball, the second
+// of four spells, was permanently unreachable on touch. env(safe-area-inset-right) is 0 on iPad and ~44px
+// at most on iPhone landscape, so nothing rescued it.
+//
+// A quarter arc does not fix it either, and that is worth writing down so the next attempt does not go
+// there: four 52px buttons need ~122px of separation at r=78, which is exactly what a FULL circle gives
+// and what any 90deg arc cannot. Growing the radius to compensate pushes the top item off a landscape
+// phone (~390px tall) instead. The corner simply does not have 360 degrees of room.
+//
+// So the geometry is a straight FAN ROW extending inward from the anchor. It cannot leave the viewport on
+// either axis, adjacent items cannot overlap, it does not grow vertically into the other row's opener,
+// and it lands along the natural sweep of the thumb that just tapped the opener.
+export const TOUCH_BTN = 52;               // hit-target edge, px — the whole layout is expressed in these
+export const FAN_STEP = TOUCH_BTN + 6;     // centre-to-centre; the +6 is the visible gutter between two
+export const FAN_ANCHOR_RIGHT = 26;        // the opener's own right offset — item 0 sits directly on it
+export const ASPECT_ROW_BOTTOM = 104;      // the Aspect opener's row
+export const SPELL_ROW_BOTTOM = 182;       // the spell-picker row, one thumb-height above
+
+/**
+ * PURE. Offsets for `count` items fanning INWARD from a bottom-right-anchored opener.
+ *
+ * Consumers place items with `right: anchor - x` and `bottom: row - y`, so x must be NEGATIVE to move
+ * leftward (inward) and y stays 0 — the row does not climb, which is what keeps it clear of the other
+ * opener 78px above and off the top edge of a short landscape viewport.
+ */
+export function fanLayout(count, step = FAN_STEP) {
+  if (!(count > 0) || !(step > 0)) return [];
+  return Array.from({ length: count }, (_, i) => ({ x: -i * step, y: 0 }));
+}
+
+/**
+ * The rendered position of one fan item. ONE definition, used by both touch layers.
+ *
+ * The offsets used to be spelled out eight times across the interactive layer and the glyph layer, which
+ * is how a geometry bug can be true of the hit-target and invisible in the drawing, or the reverse. It is
+ * also why the old gate could only assert that a glyph was in the jsdom document — there was no seam
+ * carrying the number it needed to check. This is that seam.
+ */
+export function fanItemStyle(row, q) {
+  const x = (q && q.x) || 0;
+  const y = (q && q.y) || 0;
+  return {
+    right: `calc(env(safe-area-inset-right,0px) + ${FAN_ANCHOR_RIGHT - x}px)`,
+    bottom: `calc(11% + ${row - y}px)`,
+    width: TOUCH_BTN,
+    height: TOUCH_BTN,
+  };
+}
+
+/** The opener sits at the fan's origin — item 0 lands exactly on it, which is the affordance. */
+export function fanOpenerStyle(row) {
+  return fanItemStyle(row, { x: 0, y: 0 });
+}
+
+/**
+ * The px offset of an item's OUTER (leftmost) edge from the right side of the viewport. The measurement
+ * the whole finding is about: the old ring put this at 0 for item 1, i.e. entirely off-screen.
+ */
+export function fanItemInnerEdge(q) {
+  return FAN_ANCHOR_RIGHT - ((q && q.x) || 0) + TOUCH_BTN;
 }
