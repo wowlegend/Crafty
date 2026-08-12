@@ -59,7 +59,6 @@ export const SoundProvider = ({ children }) => {
 
   const synthPadRef = useRef({
     oscillators: [],
-    gains: [],
     filter: null,
     lfo: null,
     lfoGain: null,
@@ -123,7 +122,6 @@ export const SoundProvider = ({ children }) => {
     }
 
     pad.oscillators = [];
-    pad.gains = [];
     pad.filter = null;
     pad.lfo = null;
     pad.lfoGain = null;
@@ -185,7 +183,6 @@ export const SoundProvider = ({ children }) => {
         vGain.connect(pad.filter);
 
         pad.oscillators.push(osc);
-        pad.gains.push(vGain);
       }
 
       pad.filter.connect(pad.masterGain);

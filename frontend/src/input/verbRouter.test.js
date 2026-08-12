@@ -47,9 +47,27 @@ describe('verbRouter (#72 — the spec §5 edge table)', () => {
     expect(routeMouseVerb(2, base)).toBe('cast');
   });
   // §5-11: terrain beyond reach (Infinity by construction of the 8m ray)
-  it('11: out-of-reach terrain behaves as nothing', () => {
-    expect(routeMouseVerb(0, { ...base })).toBe('attack');
-    expect(routeMouseVerb(2, { ...base })).toBe('cast');
+  //
+  // THIS USED TO BE `{ ...base }` — a shallow copy of base's identical primitives, i.e. byte-for-byte
+  // the inputs of test 10 above. It claimed a distinct §5-11 case and exercised the same branch with the
+  // same values, so the property in its name ("out-of-reach terrain behaves as nothing") was never
+  // tested at all. What §5-11 actually asserts is that an unreachable wall can NEVER produce a
+  // world-destructive or world-building verb, whatever else is in the context.
+  it('11: out-of-reach terrain can never yield mine or place', () => {
+    let checked = 0;
+    for (const held of [false, true]) {
+      for (const meleeHit of [false, true]) {
+        for (const aimedMobDist of [Infinity, 6]) {
+          for (const chestTargeted of [false, true]) {
+            const ctx = { held, meleeHit, aimedMobDist, terrainDist: Infinity, chestTargeted };
+            expect(routeMouseVerb(0, ctx), `b0 mined unreachable terrain: ${JSON.stringify(ctx)}`).not.toBe('mine');
+            expect(routeMouseVerb(2, ctx), `b2 placed onto unreachable terrain: ${JSON.stringify(ctx)}`).not.toBe('place');
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked, 'the sweep enumerated nothing').toBe(16);
   });
   // §5-12: chest with no mob, b0 -> mine (break chest, existing cleanup)
   it('12: b0 on chest -> mine', () => {
