@@ -294,13 +294,6 @@ export const useGameStore = create((set, get) => ({
         };
     }),
 
-    addAttributePoints: (amount) => set((state) => ({
-        attributes: {
-            ...state.attributes,
-            attributePoints: state.attributes.attributePoints + Math.max(0, Math.floor(Number(amount) || 0))
-        }
-    })),
-
     // Phase 9: Camera Shake — the LIVE VALUE LIVES IN game/cameraShakeChannel.js, not here.
     //
     // Trauma decays every frame while a shake runs, so holding it in zustand meant a `set()` per frame
