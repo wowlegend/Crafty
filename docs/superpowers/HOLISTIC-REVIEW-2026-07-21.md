@@ -47,7 +47,7 @@
   - _fix:_ Lower the high-tier threshold to the real API ceiling, e.g. `if (deviceMemory >= 8 && cores >= 8) return 'high';`, or delete the dead branch if a never-init-at-high policy is intended. Owner should confirm intent.
 - ▣✓ 13184e6 **`frontend/src/systems/SpawnerSystem.jsx:172`** [medium·AUTO·src] The spawn while-loop's `attempts++` sits INSIDE the `dist >= 28 && dist <= 85` guard, so out-of-range picks are free retries and maxAttempts=12 fails to bound total iterations.
   - _fix:_ Increment `attempts` once per iteration (move `attempts++` to the top of the while body, before the dist check) so maxAttempts bounds TOTAL picks as intended; keep `spawnedThisTick++` gated on a successful in-range spawn.
-- ▢ **`frontend/src/ui/GamePanels.jsx:133`** [medium·KEVIN·src] GearInspector stat comparison is one-sided: it only renders the INSPECTED item's own stat keys, so any stat you would LOSE by swapping (a key the equipped item has but the inspected item lacks) is silently omitted from the diff.
+- ▣✓ d132ea1 **`frontend/src/ui/GamePanels.jsx:133`** [medium·KEVIN·src] GearInspector stat comparison is one-sided: it only renders the INSPECTED item's own stat keys, so any stat you would LOSE by swapping (a key the equipped item has but the inspected item lacks) is silently omitted from the diff.
   - _fix:_ Union the stat keys of the inspected item and the equipped item (activeStats) before rendering rows, so a stat present only on the equipped item still renders with its negative diff (val 0, diff = -activeVal).
 - ▣✓ f3e87db **`frontend/src/workers/ai.worker.js:202`** [medium·KEVIN·src] Cover-seeking passes an UNCLAMPED player-relative cell to hasLineOfSight, causing out-of-bounds height-grid reads that make LOS always report 'clear' when the player is >4 cells away, so cover is almost never found at range.
   - _fix:_ Clamp relPlayerX/relPlayerZ to [0,8] before the cover scan (mirroring line 302-303), or bail out of cover-seeking when the player cell is off the 9x9 grid, and/or bounds-guard hasLineOfSight so out-of-range endpoints don't read undefined.
@@ -154,7 +154,7 @@
 
 ### config-drift (3)
 
-- ▢ **`frontend/vite.config.js:11`** [medium·AUTO·test] esbuild.drop:['console','debugger'] strips console during `vite dev`, not just the production build, silencing app diagnostics in the dev server the E2E drives.
+- ▣✓ ade81d6 **`frontend/vite.config.js:11`** [medium·AUTO·test] esbuild.drop:['console','debugger'] strips console during `vite dev`, not just the production build, silencing app diagnostics in the dev server the E2E drives.
   - _fix:_ Gate the drop to production: `defineConfig(({ mode }) => ({ ..., esbuild: { drop: mode === 'production' ? ['console','debugger'] : [] } }))` — keeps console+debugger live in dev/E2E, still strips them from the shipped bundle.
 - ▣✓ bee3300 **`frontend/package.json:4`** [low·AUTO·test] No engines.node field and no .nvmrc/.node-version, while CI hard-pins node 24 — the required local runtime is undeclared, inviting silent dev/CI drift.
   - _fix:_ Add `"engines": { "node": ">=24" }` to package.json and a `.nvmrc` containing `24` so local dev matches CI and `npm install` warns on mismatch.
