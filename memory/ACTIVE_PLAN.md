@@ -19,8 +19,8 @@
 
 ## 📍 THE CURSOR — 2026-08-12 · draining the 88-finding holistic-review queue
 
-**THE ONE UNIT IN FLIGHT: `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`, 39 open of 88.**
-49 closed. Re-read the file for the live count: `grep -c '^- ▢'`.
+**THE ONE UNIT IN FLIGHT: `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`, 34 open of 88.**
+54 closed. Re-read the file for the live count: `grep -c '^- ▢'`.
 
 **THE TRIAGE IS DONE AND IS THE EXPENSIVE PART — DO NOT REDO IT.** A 16-agent pass read all 88 against
 live HEAD, each partition asserting its own denominator (8 x 11). Its full output, with the per-finding
@@ -44,6 +44,13 @@ commit that flips `- ▢` to `- ▣✓ <sha>`. `queue-ledger` enforces that ever
   in this drain. When one stays green, the mutation is the finding, not the code.
 - **Trace consumer graphs with QUOTED grep patterns.** An unquoted `--include=*.js` failed under zsh and
   returned zero external refs for every symbol, which would have deleted a live export.
+- **Fixing one half of a paired gate exposes the other half.** The forward keybind gate used a bare
+  substring; anchoring it to `X.code === 'Y'` flagged KeyF, which turned out to be handled as `e.code`
+  — so the REVERSE gate, parsing `event.code`, had been blind to every handler on a differently-named
+  event object. When you tighten one direction of an invariant, re-read the other.
+- **A token grep over a file whose own COMMENTS contain the token is not a gate.** Hit twice here:
+  saveSchema.js explains `questState` in prose, and QuestSystem imports `loreFor`. Strip comments, or
+  move the claim to something that executes.
 - **Never gate verification on a pipeline's exit status.** `npm run lint | tail -2 && ...` shipped a
   commit with lint RED, because `tail` exits 0. Check `$?` of the command itself.
 
