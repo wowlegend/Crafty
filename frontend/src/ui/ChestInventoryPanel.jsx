@@ -11,6 +11,15 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
     const chestsMap = useGameStore(state => state.chests || new Map());
     const transferItem = useGameStore(state => state.transferItem);
 
+    // KEYBOARD OPERABILITY FOR THE TRANSFER TILES. Both grids drive their transfer from onClick on a
+    // <Slot>, which renders a plain div — so the only way to move an item between backpack and chest was a
+    // pointer. Slot spreads ...props onto that div, so role/tabIndex/onKeyDown need no primitive change.
+    const keyActivate = (fn) => (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();   // Space would scroll the grid
+      fn();
+    };
+
     const chestData = chestsMap.get(coords) || { inventory: {}, name: 'Wooden Chest' };
     const chestInventory = chestData.inventory || {};
 
@@ -61,6 +70,10 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                         <Slot
                                             key={item}
                                             onClick={() => transferItem(coords, item, 1, 'to_chest')}
+                                            onKeyDown={keyActivate(() => transferItem(coords, item, 1, 'to_chest'))}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`Move ${qty} ${item} to chest`}
                                             className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
                                         >
                                             <div className="text-text text-xs font-bold truncate max-w-full">{item}</div>
@@ -83,6 +96,10 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                         <Slot
                                             key={item}
                                             onClick={() => transferItem(coords, item, 1, 'from_chest')}
+                                            onKeyDown={keyActivate(() => transferItem(coords, item, 1, 'from_chest'))}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`Move ${qty} ${item} to backpack`}
                                             className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
                                         >
                                             <div className="text-accent text-xs font-bold truncate max-w-full">{item}</div>
