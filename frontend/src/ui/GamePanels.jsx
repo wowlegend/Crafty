@@ -8,6 +8,7 @@ import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitive
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
+import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
 import { ItemIcon } from './panels/itemUi';
@@ -77,6 +78,12 @@ const PaperDollSlot = ({ label, placeholderIcon, equippedItem, onUnequip, onHove
 // Gear Inspector — bold-flat hover-inspect card. Shows the item's 2-tone Icon,
 // name, rarity+slot label, and (for gear) the per-stat diff vs. the currently
 // equipped item in the same slot. Renders inside an `inset` Panel.
+// The glyph + tone per stat, keyed rather than written out four times. These used to be inline on four
+// hardcoded rows, which is exactly what made adding a fifth stat — or showing one the inspected item
+// lacks — require an edit nobody was going to remember to make.
+const STAT_ICON = { strength: 'sword', agility: 'run', intellect: 'magic', armor: 'shield' };
+const STAT_TONE = { strength: 'text-stat-atk', agility: 'text-stat-spd', intellect: 'text-spell-arcane', armor: 'text-stat-def' };
+
 const GearInspector = ({ itemName, equippedGear }) => {
     const t = useT();
     const stats = EQUIPMENT_STATS[itemName];
@@ -107,13 +114,16 @@ const GearInspector = ({ itemName, equippedGear }) => {
     const activeEquippedName = equippedGear[slot];
     const activeStats = activeEquippedName ? EQUIPMENT_STATS[activeEquippedName] : null;
 
-    const renderStatDiff = (key, val) => {
-        const activeVal = activeStats ? (activeStats[key] || 0) : 0;
-        const diff = val - activeVal;
+    // Rows come from the UNION of both stat sets (game/gearCompare.js). Rendering one row per stat the
+    // INSPECTED item carries — which is what this did — silently deletes every stat the swap would COST
+    // you: hovering an Iron Helmet while wearing a Golden Crown showed the armor and strength gains and
+    // said nothing about losing 10 intellect. See gearCompare.js for the rest of the case.
+    const rows = gearStatRows(stats, activeStats);
 
-        if (diff === 0) return <span className="text-text-muted">({val})</span>;
-        if (diff > 0) return <span className="text-success font-bold">+{val} (+{diff} <Icon name="arrow-up" size={10} className="inline align-middle" />)</span>;
-        return <span className="text-danger font-bold">+{val} ({diff} <Icon name="arrow-down" size={10} className="inline align-middle" />)</span>;
+    const renderStatDiff = ({ value, diff }) => {
+        if (diff === 0) return <span className="text-text-muted">({value})</span>;
+        if (diff > 0) return <span className="text-success font-bold">+{value} (+{diff} <Icon name="arrow-up" size={10} className="inline align-middle" />)</span>;
+        return <span className="text-danger font-bold">+{value} ({diff} <Icon name="arrow-down" size={10} className="inline align-middle" />)</span>;
     };
 
     return (
@@ -127,30 +137,14 @@ const GearInspector = ({ itemName, equippedGear }) => {
 
             {/* Attributes List */}
             <div className="space-y-1 mt-1 text-xs">
-                {stats.strength !== undefined && (
-                    <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="sword" size={14} className="text-stat-atk" /> {t('stat.strength')}:</span>
-                        <span className="tabular-nums">{renderStatDiff('strength', stats.strength)}</span>
+                {rows.map(({ key, value, active, diff }) => (
+                    <div key={key} className="flex justify-between" data-testid={`gear-stat-${key}`}>
+                        <span className="text-text-muted flex items-center gap-1">
+                            <Icon name={STAT_ICON[key] || 'sparkles'} size={14} className={STAT_TONE[key] || 'text-text-muted'} /> {t(`stat.${key}`)}:
+                        </span>
+                        <span className="tabular-nums" data-diff={diff} data-active={active}>{renderStatDiff({ value, diff })}</span>
                     </div>
-                )}
-                {stats.agility !== undefined && (
-                    <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="run" size={14} className="text-stat-spd" /> {t('stat.agility')}:</span>
-                        <span className="tabular-nums">{renderStatDiff('agility', stats.agility)}</span>
-                    </div>
-                )}
-                {stats.intellect !== undefined && (
-                    <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="magic" size={14} className="text-spell-arcane" /> {t('stat.intellect')}:</span>
-                        <span className="tabular-nums">{renderStatDiff('intellect', stats.intellect)}</span>
-                    </div>
-                )}
-                {stats.armor !== undefined && (
-                    <div className="flex justify-between">
-                        <span className="text-text-muted flex items-center gap-1"><Icon name="shield" size={14} className="text-stat-def" /> {t('stat.armor')}:</span>
-                        <span className="tabular-nums">{renderStatDiff('armor', stats.armor)}</span>
-                    </div>
-                )}
+                ))}
             </div>
 
             {/* Compare Gear warning */}
