@@ -408,7 +408,19 @@ function Landmark({ type, baseY }) {
             <Cube position={[-legX, baseY + h / 2, 0]} size={[2.2, h, 2.2]} color={LANDMARK_PAL.stone} castShadow={false} />
             <Cube position={[legX, baseY + h / 2, 0]} size={[2.2, h, 2.2]} color={LANDMARK_PAL.stone} castShadow={false} />
             <Cube position={[0, top, 0]} size={[legX * 2 + 2.2, 2.4, 2.2]} color={LANDMARK_PAL.dark} castShadow={false} />
-            {!isCaptureMode() && <Emissive position={[0, top, 0]} size={2.0} color="#F5D76E" intensity={4.5} />}{/* S8d: brighter+bigger beacon (the pov faint-beacon fix); real-play only */}
+            {/* THE SKY-ARCH BEACON HAS NEVER BEEN VISIBLE — not in capture, and not in real play either.
+                It was a 2.0 cube at [0, top, 0]: the IDENTICAL centre as the span above, whose half-extents
+                are (6.1, 1.2, 1.1). Strictly smaller on all three axes means fully enclosed, occluded from
+                every direction, writing no fragment — and <Bloom> is a screen-space pass, so an object that
+                writes nothing contributes no glow. The S8d commit that made it "brighter + bigger" to fix a
+                faint-beacon report was tuning an object sealed inside a rock.
+                Raised to clear the span by 0.2 (span top is `top + 1.2`; the beacon's underside is now
+                `top + 1.4`), which is the same shape the shrine beacon at :400 already uses — offset ABOVE
+                its host rather than centred in it, which is why that one has always worked.
+                The capture guard goes too: Emissive is a static mesh with no useFrame and no RNG, so it was
+                suppression with no determinism to justify it, and it kept the one landmark frame from ever
+                showing the landmark's own beacon. */}
+            <Emissive position={[0, top + 2.4, 0]} size={2.0} color="#F5D76E" intensity={4.5} />
         </group>
     );
 }
