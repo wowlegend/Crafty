@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { TRAY_PANELS, togglePanel } from '../../src/ui/touchTray.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { TRAY_ICON } from '../../src/ui/TouchControlsSurface.jsx';
 
 // EVERY TRAY OPENER IS DRIVEN, NOT GREPPED.
 //
@@ -28,6 +29,29 @@ describe('touch tray openers drive the real store', () => {
       // Put it back, so panel order cannot make one test depend on another.
       togglePanel(p, useGameStore.getState());
       expect(useGameStore.getState()[p.show]).toBe(before);
+    }
+  });
+
+  it('every registry icon NAME resolves to a real glyph the surface can render', () => {
+    // The `icon` field used to be vestigial: TouchControlsSurface kept its own id-keyed component map,
+    // so a panel's glyph was declared in two places free to disagree, and touchTray.js's own field was
+    // read by nothing. The surface now keys on this name, which makes an unmapped or misspelled name
+    // render NO glyph at all — silently, since `{Icon && <Icon/>}` degrades to nothing.
+    for (const p of TRAY_PANELS) {
+      expect(typeof p.icon, `${p.id} has no icon name`).toBe('string');
+      // lucide icons are forwardRef objects, not plain functions — assert what React can actually
+      // RENDER rather than a typeof that happens to hold today.
+      const glyph = TRAY_ICON[p.icon];
+      expect(glyph, `${p.id}: icon "${p.icon}" resolves to no glyph, so the opener renders blank`).toBeTruthy();
+      expect(
+        typeof glyph === 'function' || typeof glyph === 'object',
+        `${p.id}: icon "${p.icon}" is not a renderable component`
+      ).toBe(true);
+    }
+    // And nothing unused sits in the map, which is how the two sources drifted apart before.
+    const declared = new Set(TRAY_PANELS.map((p) => p.icon));
+    for (const name of Object.keys(TRAY_ICON)) {
+      expect(declared.has(name), `the surface maps "${name}" but no panel asks for it`).toBe(true);
     }
   });
 

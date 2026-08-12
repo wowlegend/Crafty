@@ -9,7 +9,11 @@ import { isCaptureMode } from '../devtest/captureMode';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
-const TRAY_ICON = { inventory: Package, craft: Hammer, build: Blocks, magic: Sparkles };
+// KEYED BY THE REGISTRY'S OWN `icon` NAME, not by panel id. This used to be an INDEPENDENT id->component
+// map, which meant touchTray.js's `icon: 'Package'` field was never read by anything and the glyph for a
+// panel was declared in two places that could disagree silently. Explicit imports stay (tree-shaking
+// needs the named bindings); only the key changes, so the registry field is now the single source.
+export const TRAY_ICON = { Package, Hammer, Blocks, Sparkles };
 
 // S1-C: 4px ink chrome, navy fill, GOLD glyph. Touch CONTROLS are app-chrome -> lucide outline icons
 // (they tint via currentColor, unlike the 2-tone game-icons whose baked fills ignored `color` and
@@ -88,7 +92,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
         <LayoutGrid size={22} strokeWidth={2.4} color={GLYPH} />
       </div>
       {trayOpen && TRAY_PANELS.map((p, i) => {
-        const Icon = TRAY_ICON[p.id];
+        const Icon = TRAY_ICON[p.icon];
         return (
           <div key={p.id} aria-label={t(p.labelKey)}
                style={BTN({ top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 })}>
