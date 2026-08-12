@@ -1,5 +1,5 @@
 {
-  "_count": 115,
+  "_count": 113,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -98,13 +98,11 @@
     "tests/gates/spell-vfx-gates.test.js",
     "tests/gates/static-gates.test.js",
     "tests/gates/survival-quests-gates.test.js",
-    "tests/gates/target-frame-gates.test.js",
     "tests/gates/terrain-quest-callback-gates.test.js",
     "tests/gates/title-screen-brand-gates.test.js",
     "tests/gates/touch-dodge-gates.test.js",
     "tests/gates/touch-entry-gate.test.js",
     "tests/gates/touch-purity-gates.test.js",
-    "tests/gates/touch-tray-gate.test.js",
     "tests/gates/touch-wiring-gates.test.js",
     "tests/gates/touch-xp-readout.test.jsx",
     "tests/gates/trade-fresh-prev-gates.test.js",
