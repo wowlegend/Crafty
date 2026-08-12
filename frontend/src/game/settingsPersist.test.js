@@ -50,7 +50,29 @@ describe('sanitizeSettings', () => {
   });
 
   it('drops unknown keys (only the known dials survive)', () => {
-    expect(sanitizeSettings({ hacker: 'evil', __proto__: {}, sfxVolume: 0.5 })).toEqual({ sfxVolume: 0.5 });
+    expect(sanitizeSettings({ hacker: 'evil', sfxVolume: 0.5 })).toEqual({ sfxVolume: 0.5 });
+  });
+
+  // THE `__proto__: {}` TERM THAT USED TO SIT IN THE TEST ABOVE EXERCISED NOTHING.
+  //
+  // In an object literal, a bare `__proto__:` key SETS THE PROTOTYPE — it does not create an own
+  // property. So the input was just `{ hacker, sfxVolume }` with a plain prototype, and the pollution
+  // defense the term was standing in for was never reached. These do reach it.
+  it('does not inherit a dial from the prototype chain', () => {
+    // The real vector: `sanitizeSettings` decided membership with `k in raw`, and `in` walks the
+    // prototype chain. Any object arriving with a polluted prototype — or a globally polluted
+    // Object.prototype, which is what a pollution attack produces — would have had that value read
+    // straight into the sanitized output, which is the opposite of sanitizing.
+    expect(sanitizeSettings(Object.create({ sfxVolume: 0.9 }))).toEqual({});
+    expect(sanitizeSettings(Object.create({ masterMuted: true }))).toEqual({});
+  });
+
+  it('a JSON payload naming __proto__ cannot pollute Object.prototype', () => {
+    // The path loadSettings actually takes. JSON.parse creates an OWN "__proto__" key rather than
+    // setting the prototype, so this is the shape a stored-settings attack would really have.
+    const parsed = JSON.parse('{"__proto__":{"pwned":1},"sfxVolume":0.5}');
+    expect(sanitizeSettings(parsed)).toEqual({ sfxVolume: 0.5 });
+    expect({}.pwned, 'Object.prototype was polluted').toBeUndefined();
   });
 
   it('the defaults are themselves a valid (idempotent) sanitized set', () => {

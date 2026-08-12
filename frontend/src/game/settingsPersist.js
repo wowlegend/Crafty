@@ -25,9 +25,14 @@ const NUM = {
 export function sanitizeSettings(raw) {
   const out = {};
   if (!raw || typeof raw !== 'object') return out;
-  if ('masterMuted' in raw) out.masterMuted = !!raw.masterMuted;
+  // OWN PROPERTIES ONLY. `in` walks the prototype chain, so an object arriving with a polluted
+  // prototype — which is exactly what a prototype-pollution attack produces, globally, on
+  // Object.prototype — would have had that inherited value read straight into the "sanitized" output.
+  // A sanitizer that inherits from the attacker is the opposite of a sanitizer.
+  const has = (k) => Object.prototype.hasOwnProperty.call(raw, k);
+  if (has('masterMuted')) out.masterMuted = !!raw.masterMuted;
   for (const k of Object.keys(NUM)) {
-    if (k in raw) {
+    if (has(k)) {
       const n = Number(raw[k]);
       if (Number.isFinite(n)) out[k] = NUM[k](n);
     }
