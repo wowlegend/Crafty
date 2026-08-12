@@ -25,7 +25,29 @@ its own denominator to stdout AND to `.capture-meta.json`. Live proof, not a gre
 reports **`phase: 31/31 frames pinned at 90 (1.50s virtual); 0 shot outside capture mode`**, and a browser
 probe found 74 grass chunk materials all carrying the declared time.
 
-**THE ONE UNIT IN FLIGHT: choose the remaining suppression->substitution conversions by MEASURED PIXEL
+**⚠️ THE ONE UNIT IN FLIGHT — `explore-day` IS NOT SETTLED WHEN IT IS SHOT, and the number is far worse
+than anyone knew.** The local-density ratchet fired on its FIRST real run: `explore-day` concentrated
+**30.35% of a 128px window** at (448,416) against 9.30% frozen — while the global gate passed it at
+1.625%. Cropped both frames and looked: the baseline carries a dense distant treeline, the current run is
+visibly thinner, several trees simply absent. That is this repo's twice-diagnosed chunk-streaming
+signature ("run 1 carries a distant tree canopy run 2 lacks"), and it has been diagnosed BY HAND both
+times because a global percentage cannot see it.
+
+**Do NOT widen the ratchet to make this green.** The gate is correct and the frame is wrong.
+`waitForStableFrame` runs inside `shot()` and still is not catching a late chunk arrival on this pose.
+Two samples of `explore-day`'s local density now exist — 5.13% and 30.35% — so the variance is not a
+tolerance to be tuned, it is a defect to be fixed. Fix the settle, then re-freeze from two agreeing runs.
+
+**ALSO OWED:** the baseline rewrite for `90ecf44`'s sibling — the sky-arch beacon fix (`landmark.png`
+moved 0.014% / 0.78% local, so the beacon IS now rendering, having never rendered for anyone before).
+That re-baseline is blocked behind the settle fix, because re-baselining from an unsettled run freezes
+the unsettled state.
+
+**AND A GAP THE RATCHET EXPOSED IN ITS OWN REVIEW PATH:** `diff.test.js` writes the contact sheet and the
+diff PNG only when the GLOBAL gate reds. A density-only failure therefore produces no image to look at —
+I had to hand-crop to diagnose this one. Batch 0.1 of the conversion plan is exactly that fix.
+
+**AFTERWARDS: choose the remaining suppression->substitution conversions by MEASURED PIXEL
 DELTA, not by plausibility.** That instruction comes from the first conversion failing on exactly that
 axis, and it is the finding worth more than the wiring.
 
