@@ -72,7 +72,7 @@
 
 ### test-bug (13)
 
-- ▢ **`frontend/src/game/gameFeel.test.js:32`** [medium·AUTO·test] The 'uses ACCEL when reversing direction' test asserts a bound so loose it cannot distinguish ACCEL from DECEL — the exact behavior the test name claims to lock.
+- ▣✓ 52ec590 **`frontend/src/game/gameFeel.test.js:32`** [medium·AUTO·test] The 'uses ACCEL when reversing direction' test asserts a bound so loose it cannot distinguish ACCEL from DECEL — the exact behavior the test name claims to lock.
   - _fix:_ Pin the value: `expect(v).toBeCloseTo(-1, 6);` (ACCEL(60) => -1; DECEL(90) would be -4). This makes the accel-vs-decel branch actually mutation-proof.
 - ▢ **`frontend/tests/gates/spell-shape-gates.test.js:7`** [medium·KEVIN·test] The 'bolt is jagged/forked, not a plain cylinder' assertion uses /fork|jagged|seg/i, which matches the ubiquitous 'segment' substring and passes for ANY bolt geometry.
   - _fix:_ Drop the loose `seg` token (and note fork/jagged also leak from comments + the impact `fork` case); prefer asserting on the ENERGY_PROFILE shape flag / prebuilt geometry seam (as the same file already does for FIRE_TEARDROP/ICE_SHARDS) rather than a whole-file substring.
@@ -90,7 +90,7 @@
   - _fix:_ Import cleanup from '@testing-library/react' and add afterEach(() => cleanup()), mirroring the three sibling jsx gates, so each CombatSystem tree unmounts between tests.
 - ▢ **`frontend/tests/gates/hands-render-gates.test.js:8`** [low·KEVIN·test] The 'white-gold accent is present' assertion uses an alternation so broad (`/#FFF|#F8E|gold|FFD700|E8D9|accent/i`) that the case-insensitive `accent`/`#FFF`/`gold` terms match incidental tokens (including comment words), so the gate can pass without any actual gold accent color.
   - _fix:_ Drop this to the puppeteer visual gate (authoritative for hand appearance) or narrow the regex to the exact accent token the design uses (e.g. `#E8D9A8`/`#FFD700`) rather than an /i alternation containing the generic words 'gold'/'accent'.
-- ▢ **`frontend/tests/gates/save-slot-ownership-gates.test.js:179`** [low·AUTO·test] B2c derives its trigger list by indexing .match(...)[1]; a source reformat makes .match return null and the test throws an opaque TypeError instead of a meaningful failure.
+- ▣✓ 52ec590 **`frontend/tests/gates/save-slot-ownership-gates.test.js:179`** [low·AUTO·test] B2c derives its trigger list by indexing .match(...)[1]; a source reformat makes .match return null and the test throws an opaque TypeError instead of a meaningful failure.
   - _fix:_ Guard each match: const m = schema.match(...); expect(m, 'progression block not found — saveSchema shape changed').not.toBeNull(); before indexing, and loosen `\n\s{4}\}` to `\n\s*\}`. Same for the App subscribe match.
 - ▢ **`frontend/tests/store/beastForm.test.js:111`** [low·AUTO·test] The 'form state is TRANSIENT — never serialized' assertions hold regardless of whether a beast form is active, so they prove the schema omits two key names, not that active transient state is dropped.
   - _fix:_ Assert the precondition before serializing: after `enterBeastForm('arcane')` add `expect(useGameStore.getState().isBeastFormActive()).toBe(true);` then build the save and keep the not.toContain checks — failing if the form never became active or if the key ever leaks into the schema.
@@ -197,7 +197,7 @@
   - _fix:_ Delete the orphaned comment.
 - ▢ **`frontend/src/audio/aspectMotifs.js:41`** [low·AUTO·src] makeArp and the four make*Motif functions are exported but nothing outside this module imports them — only the MOTIFS object is consumed (synthVoices.js:656), and there is no aspectMotifs.test.js exercising them.
   - _fix:_ Drop the `export` keyword from makeArp and the four make*Motif helpers (they are still referenced internally via the MOTIFS map), or add a unit test that justifies the public surface.
-- ▢ **`frontend/src/audio/musicTheory.js:26`** [low·AUTO·src] The `hostileCount >= 1` branch in arpeggiatorBpm returns 110, identical to the default return 110, making it a vestigial branch that never alters behavior.
+- ▣✓ 52ec590 **`frontend/src/audio/musicTheory.js:26`** [low·AUTO·src] The `hostileCount >= 1` branch in arpeggiatorBpm returns 110, identical to the default return 110, making it a vestigial branch that never alters behavior.
   - _fix:_ Delete line 26; the default `return 110;` already covers hostileCount 0-2. (Keep it only if you intend the tiers to diverge later — then add a comment.)
 - ▣✓ 634dcc1 **`frontend/src/devtest/PerfProbeSystem.jsx:26`** [low·AUTO·src] The `active` gate and both return branches are vestigial dead code — both paths return null and the useFrame is unconditional.
   - _fix:_ Delete lines 26-28 and drop the now-unused `isPerfProbe`, `perfScenarioId`, and `SCENARIOS` imports (leaving `consumeHurl` from perfProbe and the THREE/hurlChannel imports). Non-E scenarios are already inert because `consumeHurl()` only returns true when the runner scheduled a hurl.
@@ -215,7 +215,7 @@
   - _fix:_ Remove addTalentPoint, or if kept as public API add the same `Math.max(0, Math.floor(Number(amount) || 0))` guard the sibling point-granters use.
 - ▢ **`frontend/src/store/useGameStore.jsx:285`** [low·KEVIN·src] addAttributePoints store action has zero callers; attribute points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addAttributePoints, or document it as intentional public API if a future feature (e.g. a quest reward) is planned to use it.
-- ▢ **`frontend/src/systems/EnemyProjectileSystem.jsx:1`** [low·AUTO·src] `React` is imported but never referenced; the project uses the automatic JSX runtime (@vitejs/plugin-react default), so the import is vestigial.
+- ▣✓ 52ec590 **`frontend/src/systems/EnemyProjectileSystem.jsx:1`** [low·AUTO·src] `React` is imported but never referenced; the project uses the automatic JSX runtime (@vitejs/plugin-react default), so the import is vestigial.
   - _fix:_ Drop the default `React` from the import: `import { useRef, useState, useEffect } from 'react';`.
 - ▣✓ cd16e76 **`frontend/src/theme/tokens.js:94`** [low·KEVIN·src] UI.color.gray neutral ramp (g950..g50) is never read anywhere — not emitted as a CSS var, not in Tailwind, not imported by any module.
   - _fix:_ Delete UI.color.gray, or if deliberately reserved, keep the '(kept)' note but surface it through the SoT chain (CSS var + Tailwind).
@@ -248,7 +248,7 @@
   - _fix:_ Move the boss-fixture comment block (lines 361-364) down to immediately above registerTestHook('spawnBossCloseup', …) (line 387); leave only the WILDHEART comment (365-367) above spawnBeastTransform.
 - ▣✓ d2684fd **`frontend/src/App.jsx:422`** [medium·AUTO·src] spawnSpellCast claims the closeup zombie 'CANNOT be cleared from a hook (same constraint boss-closeup documents)', but boss-closeup documents the OPPOSITE and clears mobs via ecs.remove.
   - _fix:_ Rewrite the spawnSpellCast comment (422-425) to drop the false 'CANNOT be cleared' claim; either add the same ecs.remove mob-clear the sibling fixtures use, or state 'staged far on +X so any stray mob falls off-frame'.
-- ▢ **`frontend/src/EnhancedMagicSystem.jsx:497`** [medium·AUTO·src] The trailing design comment cites two mutually-contradictory bloom thresholds (0.85 and 1.0), both wrong — the real composer luminanceThreshold is 0.65.
+- ▣✓ 52ec590 **`frontend/src/EnhancedMagicSystem.jsx:497`** [medium·AUTO·src] The trailing design comment cites two mutually-contradictory bloom thresholds (0.85 and 1.0), both wrong — the real composer luminanceThreshold is 0.65.
   - _fix:_ Reconcile both mentions to the actual value: '§3 bloom pass (luminanceThreshold 0.65)'.
 - ▣✓ 4ae60bc **`frontend/src/data/items.js:6`** [medium·AUTO·src] items.js header claims T3 (removing duplicate getItemRarity/getItemEmoji) is still pending, but T3 is already done and getItemEmoji no longer exists.
   - _fix:_ Update the header to state T3 is complete (both files re-export getItemRarity from this registry) and drop the reference to the non-existent getItemEmoji.
