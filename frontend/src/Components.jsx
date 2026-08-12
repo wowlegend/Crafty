@@ -45,6 +45,7 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
+import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
@@ -394,12 +395,9 @@ export const Player = ({ isWorldBuilt }) => {
 
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
       // selected spell; melee moves to T. Both gate on active+alive like every other live verb.
-      if (e.code === 'KeyF') {
-        if (getInput().active && useGameStore.getState().isAlive) triggerSpellCast();
-      }
-      if (e.code === 'KeyT') {
-        if (getInput().active && useGameStore.getState().isAlive) triggerMeleeAttack();
-      }
+      const express = routeExpressVerb(e.code, { active: getInput().active, isAlive: useGameStore.getState().isAlive });
+      if (express === 'cast') triggerSpellCast();
+      else if (express === 'melee') triggerMeleeAttack();
     };
     const handleKeyUp = (e) => {
       if (e.code === 'KeyW') setIntent('moveF', false);

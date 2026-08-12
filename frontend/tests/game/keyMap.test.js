@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KEY_MAP, KEY_GROUPS } from '../../src/game/keyMap.js';
 import { INTENT_KEYS } from '../../src/input/inputState.js';
+import { EXPRESS_VERBS } from '../../src/input/expressVerbs.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(HERE, '../../src/', p), 'utf8');
@@ -16,7 +17,21 @@ const handlers = read('InputManager.jsx') + read('Components.jsx');
 // reverse gate undercount live handlers, and it made the forward gate (which used a bare substring
 // instead) look like the lenient one when both were wrong in different directions.
 const CODE_HANDLER = /\b[A-Za-z_$][\w$]*\.code\s*===\s*'([A-Za-z0-9]+)'/g;
-const handledCodes = () => new Set([...handlers.matchAll(CODE_HANDLER)].map((m) => m[1]));
+
+// AND THE KEYS HANDLED BY A ROUTER TABLE RATHER THAN AN INLINE BRANCH.
+//
+// `input/expressVerbs.js` maps KeyF -> cast and KeyT -> melee. Components dispatches through it instead
+// of testing `e.code` twice inline, so a pattern that only understands `x.code === 'KeyF'` sees no
+// handler for either and reports two advertised-but-dead keys. That is the gate being right about its own
+// blindness rather than about the code: the keys ARE handled, through a seam it could not read.
+//
+// Imported, not grepped. The table is the live object the router consults, so a key listed here is
+// handled by construction — and a key silently dropped from it goes red on this gate immediately, which
+// is stronger than the regex it replaces.
+const handledCodes = () => new Set([
+  ...[...handlers.matchAll(CODE_HANDLER)].map((m) => m[1]),
+  ...Object.keys(EXPRESS_VERBS),
+]);
 
 describe('KEY_MAP — the binding single-source-of-truth (anti-drift)', () => {
   it('every row has a non-empty {key, label} in a known group', () => {
