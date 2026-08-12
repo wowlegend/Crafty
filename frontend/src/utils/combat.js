@@ -8,8 +8,7 @@ export const solveMeleeDamage = (attackerStats, baseWeaponDmg = 5) => {
     
     return {
         damage: Math.round(baseDmg * multiplier),
-        isCrit,
-        color: isCrit ? '#FF4500' : '#FFFFFF'
+        isCrit
     };
 };
 
@@ -21,15 +20,15 @@ export const solveSpellDamage = (attackerStats, baseSpellDmg = 20, spellType = '
     const critChance = Math.min(0.50, 0.05 + (agility * 0.003));
     const isCrit = Math.random() < critChance;
     
-    let color = '#9932CC'; // arcane
-    if (spellType === 'fireball') color = '#FF4500';
-    else if (spellType === 'iceball') color = '#00BFFF';
-    else if (spellType === 'lightning') color = '#FFD700';
-
+    // NO `color` HERE. This used to return a per-element hex, read by nothing: both production callers
+    // destructure damage/isCrit only (Components.jsx:235, EnhancedMagicSystem.jsx:204). Worse, the four
+    // hexes were a SECOND palette that disagreed with the canonical one in src/theme/tokens.js on every
+    // entry — fire #FF4500 against MAGIC.fire #FF7A3C, ice #00BFFF against #6FC8FF, lightning #FFD700
+    // against #FFE066, arcane #9932CC against #B36BFF. A damage solver is not a palette; the renderer
+    // reads MAGIC. Removed rather than corrected, so there is one source of element colour and not two.
     return {
         damage: isCrit ? Math.round(finalDmg * 1.8) : finalDmg, // finalDmg is already rounded (L20); only crit needs re-rounding
-        isCrit,
-        color
+        isCrit
     };
 };
 

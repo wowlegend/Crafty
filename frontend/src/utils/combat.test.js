@@ -6,15 +6,15 @@ import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from './combat';
 afterEach(() => vi.restoreAllMocks());
 
 describe('solveMeleeDamage', () => {
-  it('base formula at no-crit: weapon + STR*1.5, white', () => {
+  it('base formula at no-crit: weapon + STR*1.5', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.999); // never crit
     const r = solveMeleeDamage({ strength: 10, agility: 10 }, 5);
-    expect(r).toEqual({ damage: 20, isCrit: false, color: '#FFFFFF' }); // 5 + 15
+    expect(r).toEqual({ damage: 20, isCrit: false }); // 5 + 15
   });
-  it('crit doubles and goes orange; chance = 5% + AGI*0.5%, capped 75%', () => {
+  it('crit doubles; chance = 5% + AGI*0.5%, capped 75%', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.0); // always crit
     const r = solveMeleeDamage({ strength: 10, agility: 10 }, 5);
-    expect(r).toEqual({ damage: 40, isCrit: true, color: '#FF4500' });
+    expect(r).toEqual({ damage: 40, isCrit: true });
     // the cap: AGI 1000 -> raw 5.05 but capped at 0.75 — a roll of 0.76 must NOT crit
     vi.spyOn(Math, 'random').mockReturnValue(0.76);
     expect(solveMeleeDamage({ strength: 10, agility: 1000 }, 5).isCrit).toBe(false);
@@ -37,12 +37,13 @@ describe('solveSpellDamage', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.51);
     expect(solveSpellDamage({ intellect: 10, agility: 1000 }, 20).isCrit).toBe(false); // the cap
   });
-  it('the element colors: fire orange / ice blue / lightning gold / arcane violet default', () => {
+  // The element-colour case that used to sit here went with the field it tested. It is not an assertion
+  // being weakened to pass: `color` was read by no production caller and its four hexes contradicted the
+  // canonical MAGIC palette on every entry, so the test was pinning a second, wrong source of truth.
+  it('returns damage and isCrit only — no palette leaks out of the damage solver', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.999);
-    expect(solveSpellDamage({}, 20, 'fireball').color).toBe('#FF4500');
-    expect(solveSpellDamage({}, 20, 'iceball').color).toBe('#00BFFF');
-    expect(solveSpellDamage({}, 20, 'lightning').color).toBe('#FFD700');
-    expect(solveSpellDamage({}, 20, 'arcane').color).toBe('#9932CC');
+    expect(Object.keys(solveSpellDamage({}, 20, 'fireball')).sort()).toEqual(['damage', 'isCrit']);
+    expect(Object.keys(solveMeleeDamage({}, 10)).sort()).toEqual(['damage', 'isCrit']);
   });
 });
 

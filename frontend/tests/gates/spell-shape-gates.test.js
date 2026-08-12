@@ -4,7 +4,21 @@ import { resolve } from 'node:path';
 const SRC = readFileSync(resolve(process.cwd(), 'src/render/spellVfx.jsx'), 'utf8');
 describe('W2-T4 spellVfx renders distinct per-element geometry', () => {
   it('handles the new sigil silhouette (arcane rotating orb)', () => { expect(SRC).toMatch(/case 'sigil'/); });
-  it('the bolt silhouette is jagged/forked, not a plain cylinder', () => { expect(SRC).toMatch(/fork|jagged|seg/i); });
+  // A DATA ASSERTION, NOT A TOKEN LOTTERY. This was `/fork|jagged|seg/i` against the whole file — and
+  // 'seg' is a substring of 'segment', which appears in ordinary code and comments throughout, so the
+  // assertion passed for ANY bolt geometry including a single smooth cylinder. What makes the bolt jagged
+  // is the precomputed offset table, so assert the table: more than one segment, and the tilt angles
+  // actually VARY (a zig-zag whose every segment shares one angle is a straight line).
+  it('the bolt silhouette is jagged/forked, not a plain cylinder', () => {
+    const segs = SRC.match(/const BOLT_SEGMENTS = Array\.from\(\{ length: (\d+) \}/);
+    expect(segs, 'BOLT_SEGMENTS is gone — the bolt is no longer built from a segment table').not.toBeNull();
+    expect(Number(segs[1]), 'a one-segment bolt is a cylinder').toBeGreaterThan(2);
+    const forks = SRC.match(/const BOLT_FORKS = \[/);
+    expect(forks, 'BOLT_FORKS is gone — the bolt no longer splits at the tip').not.toBeNull();
+    // The zig-zag itself: the per-segment angle must be a function of the index, not a constant.
+    const table = SRC.slice(SRC.indexOf('const BOLT_SEGMENTS'), SRC.indexOf('const BOLT_FORKS'));
+    expect(table, 'every bolt segment shares one tilt, so the silhouette is straight').toMatch(/\bi\b/);
+  });
   it('the trail varies per element (not one shared cylinder)', () => { expect(SRC).toMatch(/profile\.trail|energy\.trail|\.trail/); });
   it('the impact varies per element (per-element impact geometry)', () => { expect(SRC).toMatch(/energy\.impact|profile\.impact|\.impact/); });
 });
