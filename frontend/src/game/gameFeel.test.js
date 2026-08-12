@@ -28,9 +28,18 @@ describe('rampAxis', () => {
   });
   it('uses ACCEL when reversing direction (sign flip is speeding up the new direction)', () => {
     // from +5 toward -10: magnitude not shrinking toward 0 monotonically; ramp by accel
+    //
+    // THE BOUNDS ALONE CANNOT SEE THE BRANCH THIS TEST IS NAMED FOR. With the real constants ACCEL
+    // gives -1 and DECEL gives -4, and BOTH satisfy `< 5` and `> -10` — so the assertion passed
+    // whichever rate was applied, which is the one thing it exists to pin.
     const v = rampAxis(5, -10, 0.1, ACCEL_RATE, DECEL_RATE);
     expect(v).toBeLessThan(5);
     expect(v).toBeGreaterThan(-10);
+    expect(v, 'the reversal did not ramp at ACCEL_RATE').toBeCloseTo(-1);
+
+    // And once more with sentinel rates an order of magnitude apart, so the discrimination does not
+    // depend on today's tuning: if DECEL were applied the result would be -95, not -5.
+    expect(rampAxis(5, -10, 1, 10, 100), 'reversal used DECEL, not ACCEL').toBeCloseTo(-5);
   });
 });
 

@@ -151,6 +151,15 @@ describe('static gates', () => {
     const m = src.match(/luminanceThreshold=\{\s*([0-9.]+)\s*\}/);
     expect(m, 'Bloom luminanceThreshold prop not found').not.toBeNull();
     expect(parseFloat(m[1])).toBeGreaterThanOrEqual(0.60);
+
+    // AND THE PROSE THAT QUOTES IT MUST AGREE. EnhancedMagicSystem.jsx explains its core colour choice
+    // by naming this threshold, and it named 1.0 while the composer had been at 0.65 — so the file's
+    // stated reason for its own tuning was arithmetic about a number that is not in the build. A comment
+    // that cites a value is a claim, and this is the cheapest place to keep it true.
+    const magic = readFileSync(resolve(SRC, 'EnhancedMagicSystem.jsx'), 'utf8');
+    const quoted = magic.match(/luminanceThreshold=([0-9.]+)/);
+    expect(quoted, 'the luminanceThreshold citation vanished from EnhancedMagicSystem.jsx').not.toBeNull();
+    expect(parseFloat(quoted[1]), 'the comment cites a luminanceThreshold the composer does not use').toBe(parseFloat(m[1]));
   });
 
   // S1-C-M1: the new primitives must consume tokens (no raw hex chrome) — keeps the

@@ -180,7 +180,15 @@ describe('B2c autosave triggers — everything we persist must be able to schedu
     // exactly where bossState lives, rewritten on every damage tick while none of its inputs could
     // schedule a save. A gate whose denominator excludes half the schema reports clean over the half it
     // never examined, which is the defect it exists to catch, one level up.
-    const block = (name) => schema.match(new RegExp(`${name}:\\s*\\{([\\s\\S]*?)\\n\\s{4}\\},`))[1];
+    // NAME THE FAILURE INSTEAD OF THROWING AN OPAQUE TypeError. These used to index `.match(...)[1]`
+    // directly, so a harmless reformat of saveSchema.js made `.match` return null and the gate died with
+    // "Cannot read properties of null" — a message that says nothing about the anchor that drifted, and
+    // that reads like a broken test rather than a gate that has lost sight of what it audits.
+    const block = (name) => {
+      const m = schema.match(new RegExp(`${name}:\\s*\\{([\\s\\S]*?)\\n\\s{4}\\},`));
+      if (!m) throw new Error(`saveSchema block "${name}" not found — the gate cannot see the schema it audits; re-anchor the regex`);
+      return m[1];
+    };
     const progBlock = block('progression');
     const gameStateBlock = block('game_state');
     const persisted = [...`${progBlock}\n${gameStateBlock}`.matchAll(/(\w+):\s*state\.(\w+)/g)].map((m) => m[2]);
@@ -188,7 +196,9 @@ describe('B2c autosave triggers — everything we persist must be able to schedu
     expect(gameStateBlock, 'the game_state block was not found — half the schema is unchecked').toContain('gameMode');
 
     // the keys the autosave subscription compares
-    const triggerBlock = app.match(/const unsub = useGameStore\.subscribe\(\(s, prevS\) => \{([\s\S]*?)\n\s{4}\}\);/)[1];
+    const triggerMatch = app.match(/const unsub = useGameStore\.subscribe\(\(s, prevS\) => \{([\s\S]*?)\n\s{4}\}\);/);
+    if (!triggerMatch) throw new Error('App.jsx autosave subscription not found — the gate cannot see the triggers it audits; re-anchor the regex');
+    const triggerBlock = triggerMatch[1];
     const triggers = new Set([...triggerBlock.matchAll(/s\.(\w+) !== prevS\.\1/g)].map((m) => m[1]));
     expect(triggers.size).toBeGreaterThan(5);
 

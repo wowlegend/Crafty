@@ -505,7 +505,7 @@ export const EnhancedMagicSystem = React.memo(() => {
 // flattering value (not 0) so the byte-stable regression frame holds the projectile at a
 // pleasing, slightly-expanded "alive" pose rather than a dead-on rest scale.
 // Tuned (POLISH) so the WHITE-HOT inner core DOMINATES the center (blooms past the §3
-// composer's luminanceThreshold=1.0 into a glowing heart) while a tight, saturated outer
+// composer's luminanceThreshold=0.65 into a glowing heart) while a tight, saturated outer
 // shell gives the element color at the edge — so it reads as a HOT energy ball, not a soft
 // pink/pastel sphere. `coreColor` is pushed toward white (the heart should bloom white-hot);
 // `glowColor` carries the element identity at the rim. Core is intentionally a touch LARGER
