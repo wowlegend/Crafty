@@ -55,10 +55,7 @@ export const GameSystemsProvider = ({ children }) => {
         useMana: state.useMana,
         consumeHunger: state.consumeHunger,
         feedPlayer: state.feedPlayer,
-        respawn: state.respawn,
-        attributes: state.attributes,
-        equipment: state.equipment,
-        getEffectiveAttributes: state.getEffectiveAttributes
+        respawn: state.respawn
     })));
     const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
 
@@ -73,6 +70,18 @@ export const GameSystemsProvider = ({ children }) => {
     // term verbatim. Level still scales spell damage, through the +5 attribute points per level that feed
     // intellect. eslint and knip cannot see this class -- the values ARE "used", by being placed in an
     // object literal -- which is why it took reading every line to find.
+    //
+    // attributes / equipment / getEffectiveAttributes DELETED 2026-08-12, same class and one layer worse.
+    // These three were SELECTED but never even reached the context: absent from the destructure below and
+    // absent from the `value` literal, so they were pure re-render fuel. `equipment` and `attributes` are
+    // replaced IMMUTABLY on every equip, unequip, attribute spend and level-up, so useShallow's reference
+    // compare failed each time, the provider re-rendered, `value` became a fresh object literal, and every
+    // context consumer -- <HUD> and the input manager, via App.jsx -- re-rendered for a value none of them
+    // read.
+    //
+    // The names DO appear in src/ui/GamePanels.jsx, which is why this looks live at a glance: that file
+    // builds its OWN useGameStore(useShallow(...)) at :167 carrying the same three keys, and references
+    // GameSystemsContext exactly zero times. Traced before deleting, not after.
 
     // Initialize spawn time to prevent instant fall damage when chunks generate
     useEffect(() => {
