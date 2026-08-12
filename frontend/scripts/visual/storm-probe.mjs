@@ -5,8 +5,8 @@
 // (== what stormMoodBoost('rain') yields) and screenshot again. Confirms the sky/grade darkens. /tmp/crafty-storm/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4202;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-storm';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

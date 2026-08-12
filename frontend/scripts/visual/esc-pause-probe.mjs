@@ -5,8 +5,8 @@
 // Saves PNGs to /tmp/crafty-esc/. Expects: gameStarted=true, showSettings-after-ESC=true.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4195;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-esc';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

@@ -3,9 +3,9 @@
 // Panel/Button/RunStat structure (amber 'warn' vs red 'danger') so this validates both. Not part of the gate.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5198;
+const PORT = probePort(import.meta.url);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const OUT = '/tmp/crafty-death';
 mkdirSync(OUT, { recursive: true });

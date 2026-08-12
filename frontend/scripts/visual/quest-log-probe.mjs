@@ -4,8 +4,8 @@
 // screenshot. Confirms giver + lore + themed objective + progress per active quest. Saves to /tmp/crafty-ql/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4201;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-ql';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

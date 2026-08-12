@@ -5,8 +5,8 @@
 // shafts appear in whichever direction they lie. Saves PNGs to /tmp/crafty-spawn/. Model: pov-probe.mjs.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4197;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-spawn';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

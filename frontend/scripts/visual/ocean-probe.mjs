@@ -5,8 +5,8 @@
 // Reusable across the milestone's slices (re-run after each water change to eyeball the result myself).
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4196, URL = `http://localhost:${PORT}`, OUT = '/tmp/crafty-ocean';
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url), URL = `http://localhost:${PORT}`, OUT = '/tmp/crafty-ocean';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
 // Server lifecycle via the SHARED _serve.mjs, not a hand-rolled spawn. What that buys, concretely:

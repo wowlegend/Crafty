@@ -3,9 +3,9 @@
 // new Feedback Intensity slider reads a mid value. Not part of the gate. Reusable for M3 settings slices.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5197;
+const PORT = probePort(import.meta.url);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const OUT = '/tmp/crafty-settings';
 mkdirSync(OUT, { recursive: true });

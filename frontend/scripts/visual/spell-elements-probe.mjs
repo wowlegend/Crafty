@@ -7,9 +7,9 @@
 // to /tmp/crafty-spell/. NOT part of the visual gate. Mirrors capture.mjs's launch recipe.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5211;
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-spell';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

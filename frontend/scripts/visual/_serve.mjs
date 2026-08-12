@@ -60,3 +60,61 @@ export function serveVite(port, { cwd, preview = false } = {}) {
 
   return { server, url, waitReady, shutdown };
 }
+
+/**
+ * ONE PORT PER PROBE, ALLOCATED HERE RATHER THAN IN EACH FILE.
+ *
+ * Measured 2026-08-12: of the probes under scripts/visual, FIFTEEN shared just six ports — 4196 was
+ * claimed by four different files, 4195 by three, 4194/4198/5197/5199 by two each. Every one of them
+ * binds with `--strictPort`, so running two that collide does not queue or fall back: the second dies
+ * on bind and the failure reads as a broken probe rather than as two probes wanting one socket. This
+ * repo has already paid for that exact confusion once, on the capture port.
+ *
+ * The fix belongs in the shared instrument, not in twenty-five hand-picked constants — a helper is used
+ * at the moment of the mistake, a convention is read before it. A probe that forgets to register throws
+ * with its own filename in the message instead of silently colliding with whatever 4196 is today.
+ *
+ * capture.mjs keeps 4178, which is documented as a managed port elsewhere; everything else is
+ * reallocated into a contiguous block so a gap is visible.
+ */
+export const PROBE_PORTS = Object.freeze({
+  'capture.mjs': 4178,
+  'dayphase-probe.mjs': 4210,
+  'death-probe.mjs': 4211,
+  'drive-elemancer.mjs': 4212,
+  'drive-mobs.mjs': 4213,
+  'esc-pause-probe.mjs': 4214,
+  'grass-probe.mjs': 4215,
+  'grass-swatch-probe.mjs': 4216,
+  'hands-probe.mjs': 4217,
+  'heldf-probe.mjs': 4218,
+  'hub-probe.mjs': 4219,
+  'hud-probe.mjs': 4220,
+  'look-e2e.mjs': 4221,
+  'magic-panel-probe.mjs': 4222,
+  'mobdeath-probe.mjs': 4223,
+  'ocean-probe.mjs': 4224,
+  'pause-resume-probe.mjs': 4225,
+  'pov-probe.mjs': 4226,
+  'quest-log-probe.mjs': 4227,
+  'settings-probe.mjs': 4228,
+  'soulbind-eyes-probe.mjs': 4229,
+  'spawn-legibility-probe.mjs': 4230,
+  'spell-elements-probe.mjs': 4231,
+  'storm-probe.mjs': 4232,
+  'touch-probe.mjs': 4233
+});
+
+/** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */
+export function probePort(metaUrl) {
+  const base = String(metaUrl).split('/').pop();
+  const port = PROBE_PORTS[base];
+  if (!port) {
+    throw new Error(
+      `probePort: "${base}" is not in PROBE_PORTS (scripts/visual/_serve.mjs). Add it with an unused ` +
+      `port rather than copying another probe's constant — every probe binds --strictPort, so a shared ` +
+      `port makes the second one die on bind and look broken.`
+    );
+  }
+  return port;
+}

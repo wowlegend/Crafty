@@ -5,8 +5,8 @@
 // HUD before the 0.8s dodge cooldown elapses. Saves PNGs to /tmp/crafty-hud/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4194;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-hud';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

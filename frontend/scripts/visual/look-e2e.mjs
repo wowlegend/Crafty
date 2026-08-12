@@ -4,12 +4,13 @@
 // Run: `npm run test:look`. Exits non-zero if the camera does not rotate on mouse movement.
 import { spawn } from 'node:child_process';
 import puppeteer from 'puppeteer';
+import { probePort } from './_serve.mjs';
 
-const PORT = 4191;
+const PORT = probePort(import.meta.url);
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // detached: vite runs in its OWN process group so the finally can SIGKILL the whole group; a plain
-// server.kill() only reaps the npx wrapper and ORPHANS the vite child holding :4191 (hygiene, charter §6.4).
+// server.kill() only reaps the npx wrapper and ORPHANS the vite child still holding PORT (charter §6.4).
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', detached: true });
 let browser = null, code = 0;
 

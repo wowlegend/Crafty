@@ -3,8 +3,8 @@
 // the LIVE-LOOK that validates the stylized gloved hands. Saves PNGs to /tmp/crafty-hands/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4198, OUT = '/tmp/crafty-hands';
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url), OUT = '/tmp/crafty-hands';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
 const { url, waitReady, shutdown } = serveVite(PORT);

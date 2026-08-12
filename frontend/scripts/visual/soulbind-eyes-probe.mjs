@@ -7,8 +7,8 @@
 // type (proving the exact gated scenario is live). Mirrors esc-pause-probe.mjs harness. PNG -> /tmp/crafty-soulbind/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
-const PORT = 4196;
+import { serveVite, probePort } from './_serve.mjs';
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-soulbind';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

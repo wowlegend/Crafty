@@ -17,6 +17,7 @@ import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { assertSubjectOnScreen, waitForStableFrame, assertIntraPageDeterminism } from './_probe.mjs';
 import { ELEMENT_COLOR } from '../../src/render/beastAvatarParts.js';
+import { probePort } from './_serve.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..'); // frontend/
@@ -26,7 +27,7 @@ const OUT = resolve(ROOT, 'tests/visual', isBaseline ? 'baseline' : 'current');
 // complete:true ONLY at a clean (crash-free) end -> diff.test.js refuses to run on a stale/partial/
 // crashed capture instead of silently diffing pre-failure frames. See src/devtest/captureFreshness.js.
 const META = resolve(OUT, '.capture-meta.json');
-const PORT = 4178;
+const PORT = probePort(import.meta.url);
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 

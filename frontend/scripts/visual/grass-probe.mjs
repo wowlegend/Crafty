@@ -3,9 +3,9 @@
 // determinism layer (enterCapture) + a low camera skimming the surface near the Hearth (~y56). Not a gate.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5196;
+const PORT = probePort(import.meta.url);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const OUT = '/tmp/crafty-grass';
 mkdirSync(OUT, { recursive: true });

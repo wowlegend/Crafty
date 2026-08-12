@@ -1,9 +1,9 @@
 // One-shot judge driver for the mobShowcase card (M6 T4). Mirrors capture.mjs's
 // proven launch/readiness recipe exactly; NOT part of the visual gate.
 import puppeteer from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5199;
+const PORT = probePort(import.meta.url);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const { url, waitReady, shutdown } = serveVite(PORT);

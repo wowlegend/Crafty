@@ -5,9 +5,9 @@
 // eyeball + the static dayPhase unit tests are the contract. Writes to /tmp/crafty-dayphase/.
 import { mkdirSync } from 'node:fs';
 import puppeteer, { KnownDevices } from 'puppeteer';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 4195;
+const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-dayphase';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });

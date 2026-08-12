@@ -17,9 +17,9 @@ import { mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 
 import puppeteer from 'puppeteer';
 import { PNG } from 'pngjs';
-import { serveVite } from './_serve.mjs';
+import { serveVite, probePort } from './_serve.mjs';
 
-const PORT = 5197;
+const PORT = probePort(import.meta.url);
 const SRC = new URL('../../src/OptimizedGrassSystem.jsx', import.meta.url).pathname;
 const OUT = '/tmp/crafty-grass-swatch';
 const BAK = `${OUT}/OptimizedGrassSystem.orig.jsx`;
