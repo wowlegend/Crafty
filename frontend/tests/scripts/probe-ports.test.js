@@ -26,9 +26,21 @@ const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/v
 // which spawns vite plus headless Chromium. The other three assertions ARE behavioural — they drive the
 // real exported table and the real function, including its failure path.
 
-/** Every script here that starts a server. `_`-prefixed files are helpers; freeze-density binds nothing. */
+/**
+ * Every script here that STARTS A SERVER — classified by what the file does, not by its name.
+ *
+ * This was a filename exclusion list (`!f.startsWith('_') && f !== 'freeze-density.mjs'`), and it broke
+ * the first time a non-server script was added to the directory: make-og-image.mjs, which reads a PNG
+ * and writes a PNG, was reported as a probe with no port allocation. An exclusion list is a denominator
+ * that rots — it has to be edited by whoever adds a file, which is exactly the person not thinking about
+ * this gate. Asking whether the file spawns vite cannot go stale that way.
+ */
+const bindsAPort = (src) => /serveVite\s*\(|['"]vite['"]\s*,\s*'--port'|'--port'/.test(src);
+
 const probeFiles = () =>
-  readdirSync(VISUAL).filter((f) => f.endsWith('.mjs') && !f.startsWith('_') && f !== 'freeze-density.mjs');
+  readdirSync(VISUAL)
+    .filter((f) => f.endsWith('.mjs') && !f.startsWith('_'))
+    .filter((f) => bindsAPort(readFileSync(resolve(VISUAL, f), 'utf8')));
 
 describe('probe ports are allocated centrally, one per probe', () => {
   it('no two probes are assigned the same port', () => {

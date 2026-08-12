@@ -191,11 +191,11 @@ function TouchControlsLive({ isWorldBuilt }) {
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}
       {active && (
-        <button data-touch-btn onPointerUp={() => dispatch(2)} aria-label="Cast"
+        <button data-touch-btn onPointerUp={() => dispatch(2)} aria-label={t('a11y.cast')} data-testid="touch-cast"
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 124px)', bottom: '9%', width: 64, height: 64 }} />
       )}
       {active && (
-        <button data-touch-btn aria-label="Jump"
+        <button data-touch-btn aria-label={t('a11y.jump')} data-testid="touch-jump"
           onPointerDown={() => setIntent('jump', true)}
           onPointerUp={() => setIntent('jump', false)}
           onPointerLeave={() => setIntent('jump', false)}
@@ -204,7 +204,7 @@ function TouchControlsLive({ isWorldBuilt }) {
       {active && (
         // M3 #6: touch DODGE -- edge-triggered (the dodge state machine in Components consumes the intent,
         // so one press = one roll); mirrors the Wind glyph above cast in TouchControlsSurface.
-        <button data-touch-btn aria-label="Dodge"
+        <button data-touch-btn aria-label={t('a11y.dodge')} data-testid="touch-dodge"
           onPointerDown={() => {
             // PULSED, like the Aspect sectors: held long enough that a once-per-frame state machine
             // cannot miss the rising edge, then cleared. Setting it true with no release relied entirely
@@ -222,7 +222,7 @@ function TouchControlsLive({ isWorldBuilt }) {
           style={{ ...hit, top: 'calc(50% - 140px)', left: 'calc(env(safe-area-inset-left,0px) + 10px)', width: 46, height: 46 }} />
       )}
       {active && trayOpen && TRAY_PANELS.map((p, i) => (
-        <button key={p.id} data-touch-btn aria-label={p.label}
+        <button key={p.id} data-touch-btn aria-label={t(p.labelKey)}
           onPointerUp={() => { togglePanel(p, useGameStore.getState()); setTrayOpen(false); setActive(false); }}
           style={{ ...hit, top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 }} />
       ))}

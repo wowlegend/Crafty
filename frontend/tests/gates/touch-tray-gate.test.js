@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { TRAY_PANELS, togglePanel } from '../../src/ui/touchTray.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { TRAY_ICON } from '../../src/ui/TouchControlsSurface.jsx';
+import { LOCALES } from '../../src/i18n/i18n.js';
+import { STRINGS } from '../../src/i18n/strings.js';
 
 // EVERY TRAY OPENER IS DRIVEN, NOT GREPPED.
 //
@@ -61,5 +63,49 @@ describe('touch tray openers drive the real store', () => {
     expect(togglePanel({ action: 'setShowNothingAtAll', show: 'showNothingAtAll' }, useGameStore.getState())).toBe(false);
     expect(togglePanel(null, useGameStore.getState())).toBe(false);
     expect(togglePanel(TRAY_PANELS[0], null)).toBe(false);
+  });
+});
+
+// EVERY TRAY LABEL RESOLVES IN EVERY LOCALE, NOT JUST ENGLISH.
+//
+// The registry used to carry BOTH `label` (a raw English string) and `labelKey` (an i18n key).
+// TouchControlsSurface rendered `t(p.labelKey)`; TouchControls rendered `p.label` — so the two surfaces
+// showing the same tray disagreed, and the one a player actually taps on a phone announced English to a
+// zh-CN player. Exactly the shape the vestigial `icon` field had before it was unified: two fields for
+// one decision, free to drift, with only one of them wired to what ships.
+//
+// `label` is deleted. This is the property that replaces it — and it checks the STRING TABLE rather than
+// the field's existence, since a labelKey pointing at a key nobody translated renders the raw key to the
+// player, which is worse than English.
+describe('tray labels are localised in every locale', () => {
+  it('every panel labelKey resolves to a real string in EVERY locale', () => {
+    expect(LOCALES.length, 'only one locale — this assertion cannot detect a missing translation').toBeGreaterThan(1);
+    let checked = 0;
+    for (const locale of LOCALES) {
+      const table = STRINGS[locale];
+      expect(table, `no string table for ${locale}`).toBeTruthy();
+      for (const p of TRAY_PANELS) {
+        const value = table[p.labelKey];
+        expect(typeof value, `${p.id}: "${p.labelKey}" is missing from ${locale} — the raw key would render`).toBe('string');
+        expect(value.length, `${p.id}: "${p.labelKey}" is empty in ${locale}`).toBeGreaterThan(0);
+        checked++;
+      }
+    }
+    expect(checked, 'the locale sweep collapsed').toBe(LOCALES.length * TRAY_PANELS.length);
+  });
+
+  it('the locales genuinely DIFFER — otherwise the sweep above proves only that a table exists', () => {
+    // A zh-CN table that had silently fallen back to the English values would satisfy every assertion
+    // above while shipping untranslated labels, which is the defect this gate exists for.
+    const differing = TRAY_PANELS.filter((p) => STRINGS['zh-CN'][p.labelKey] !== STRINGS.en[p.labelKey]);
+    expect(differing.length, 'no tray label differs between en and zh-CN — the translations are missing').toBe(TRAY_PANELS.length);
+  });
+
+  it('the raw English `label` field stays deleted', () => {
+    // It was read by nothing once TouchControls moved to t(labelKey), and a second source for one string
+    // is how the two surfaces disagreed in the first place.
+    for (const p of TRAY_PANELS) {
+      expect(p.label, `${p.id} carries a raw English label again`).toBeUndefined();
+    }
   });
 });

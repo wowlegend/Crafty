@@ -12,7 +12,7 @@ describe('touchTray — the panel-access registry', () => {
   it('registers the 4 core touch-openable panels with complete fields', () => {
     expect(TRAY_PANELS.map(p => p.id)).toEqual(['inventory', 'craft', 'build', 'magic']);
     for (const p of TRAY_PANELS) {
-      expect(p.label, `${p.id} label`).toBeTruthy();
+      expect(p.labelKey, `${p.id} labelKey`).toBeTruthy();
       expect(p.icon, `${p.id} icon`).toBeTruthy();
       expect(p.action, `${p.id} action`).toMatch(/^setShow/);
       expect(p.show, `${p.id} show`).toMatch(/^show/);
