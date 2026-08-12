@@ -10,12 +10,20 @@ const stateLike = {
   talentPoints: 1, unlockedTalents: { frost_shield: 2 }, spellLevels: { fireball: 3 },
   level: 4, currentXP: 25, totalXP: 400,
   gameMode: 'creative', selectedBlock: 'grass', activeSpell: 'fireball', isDay: true, gameTime: 12, achievements: ['first_block'],
+  questState: { quests: { first_blood: { progress: 3, claimed: false } }, achievements: ['first_kill'] },
 };
 
 describe('buildSaveData', () => {
   it('serializes the full progression slice + version', () => {
     const s = buildSaveData(stateLike, { position: { x: 5, y: 18, z: -3 } });
     expect(s.version).toBe(SAVE_VERSION);
+    // questState ROUND-TRIPS, not merely appears. The gate that used to cover this regexed saveSchema.js
+    // for the token `questState`, which the file's own explanatory comments contain twice — so it would
+    // have passed with the field removed from the payload entirely. Quest and achievement progress is
+    // the thing a player loses if this breaks.
+    expect(s.questState, 'questState is absent from the save payload').toBeTruthy();
+    expect(s.questState.quests.first_blood.progress, 'quest progress did not survive serialization').toBe(3);
+    expect(s.questState.achievements, 'achievements did not survive serialization').toEqual(['first_kill']);
     expect(s.player_data.position).toEqual({ x: 5, y: 18, z: -3 });
     expect(s.progression).toEqual({
       level: 4, currentXP: 25, totalXP: 400,

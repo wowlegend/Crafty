@@ -15,10 +15,17 @@ describe('quest persistence wiring gates', () => {
     expect(/setQuestState/.test(src)).toBe(true);
     expect(/questLoadedAt/.test(src)).toBe(true);
   });
-  it('buildSaveData serializes questState', () => {
-    expect(/questState/.test(read('src/game/saveSchema.js'))).toBe(true);
-  });
+  // The "buildSaveData serializes questState" case that used to sit here regexed saveSchema.js for the
+  // bare token `questState` — which that file's own explanatory comments contain twice, so it would have
+  // passed with the field removed from the payload entirely. The claim moved to
+  // src/game/saveSchema.test.js, which now builds a save from a fixture carrying real quest progress and
+  // asserts it comes back out. A serialization claim belongs to something that serializes.
   it('App autosave also triggers on questState (quest/achievement progress persists on tab-close)', () => {
-    expect(/questState\s*!==\s*prevS\.questState/.test(read('src/App.jsx'))).toBe(true);
+    // Kept as a source assertion: this is a cross-file wiring invariant inside a subscribe callback that
+    // cannot be reached without booting the app. Anchored to the comparison FORM, and asserted unique so
+    // a second copy of the trigger cannot mask a deleted one.
+    const app = read('src/App.jsx');
+    const hits = app.match(/s\.questState\s*!==\s*prevS\.questState/g) || [];
+    expect(hits.length, 'the autosave no longer triggers on questState — progress dies on tab-close').toBe(1);
   });
 });
