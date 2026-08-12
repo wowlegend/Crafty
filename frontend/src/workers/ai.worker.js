@@ -19,7 +19,7 @@ import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
-import { NEIGHBOR_OFFSETS } from '../game/aStarNeighbors.js';
+import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from '../game/aStarNeighbors.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 
@@ -42,7 +42,7 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
   const nodeData = {};
   nodeData[startIdx] = { 
     g: 0, 
-    f: Math.abs(startX - endX) + Math.abs(startZ - endZ), 
+    f: octileHeuristic(startX, startZ, endX, endZ), 
     parent: null, 
     x: startX, 
     z: startZ 
@@ -96,13 +96,13 @@ function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
       
       // 2. Slopes & Heights: Flat step cost + slope scale. 
       // Diagonal cost is sqrt(2). Deep drops add vertical caution penalty.
-      const stepCost = (dx !== 0 && dz !== 0 ? 1.414 : 1.0) + (heightDiff < -2.0 ? 1.5 : 0.0);
+      const stepCost = (dx !== 0 && dz !== 0 ? DIAG_COST : 1.0) + (heightDiff < -2.0 ? 1.5 : 0.0);
       const gScore = currNode.g + stepCost;
       
       if (!nodeData[nIdx] || gScore < nodeData[nIdx].g) {
         nodeData[nIdx] = {
           g: gScore,
-          f: gScore + Math.abs(nx - endX) + Math.abs(nz - endZ),
+          f: gScore + octileHeuristic(nx, nz, endX, endZ),
           parent: currentIdx,
           x: nx,
           z: nz
