@@ -20,8 +20,8 @@
       "kind": "artifact",
       "url": "https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4",
       "source": "docs/superpowers/sota-audit.html",
-      "syncedSha": "0be5fac",
-      "syncedAt": "2026-08-11",
+      "syncedSha": "2618e3f",
+      "syncedAt": "2026-08-12",
       "note": "Source was NEVER committed until 2026-08-09 — it existed only as a published artifact, the exact loss mode this script's header describes. Recovered by fetching the published page and stripping the publish wrapper (validateSource confirms the stored copy is the authored page, not the fetched shell)."
     }
   ]
