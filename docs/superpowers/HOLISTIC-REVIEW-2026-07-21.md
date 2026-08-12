@@ -451,7 +451,7 @@
 
 ### a11y (1)
 
-- ▢ **`frontend/src/ui/ChestInventoryPanel.jsx:61`** [medium·KEVIN·src] Chest transfer items are click-only <Slot> divs with no keyboard operability inside a focus-trapped modal.
+- ▣✓ 3cc7df0 **`frontend/src/ui/ChestInventoryPanel.jsx:61`** [medium·KEVIN·src] Chest transfer items are click-only <Slot> divs with no keyboard operability inside a focus-trapped modal.
   - _fix:_ Render the transfer items as real buttons (or give Slot role="button", tabIndex={0}, and an onKeyDown Enter/Space handler when onClick is present), so they enter the modal's FOCUSABLE set and can be activated by keyboard.
 
 ### inconsistency (11)
