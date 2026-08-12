@@ -150,7 +150,7 @@
 
 <header>
   <div class="eyebrow">
-    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-11</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
+    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-12</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
   </div>
   <h1>The visual-test harness is not failing at the thing we&nbsp;were fixing</h1>
   <p class="standfirst">A SOTA audit of the capture, comparison and baseline layers. The capture layer is above industry standard. The comparator is behind. The oracle — the committed baselines themselves — is ungoverned, and had never been audited by anyone.</p>
@@ -250,6 +250,32 @@
     ELEMANCER latch bug reached the same end state one frame late, so any assertion taken after a frame boundary
     reads identically in the broken and fixed builds. That is the liveness gap this page named, closed one verb
     at a time rather than by a coverage number.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-08-12 — the audit never asked whether the PROBES could run, and fifteen of them could not run together</span>
+    <p><strong>Six ports, fifteen probes.</strong> <code>4196</code> was claimed by four separate probes
+    (<code>heldf</code>, <code>ocean</code>, <code>soulbind-eyes</code>, <code>magic-panel</code>),
+    <code>4195</code> by three, and <code>4194</code> / <code>4198</code> / <code>5197</code> /
+    <code>5199</code> by two each. Every probe binds with <code>--strictPort</code>, so a collision does not
+    fall back to a free socket — the second process dies on bind, and the failure presents as a broken probe
+    rather than as two probes wanting one port. It compounds with the orphaned-vite bug this harness already
+    fixed: a leaked server from a crashed run squats the shared port and reddens a <em>different</em> probe,
+    for reasons in nobody's diff. This repo has already spent a session on exactly that confusion, on the
+    capture port.</p>
+    <p><strong>This page audited capture, comparison and the oracle — and treated the probe fleet as
+    plumbing.</strong> That was the gap. The probes are the only instruments here that observe the game in
+    motion, which is precisely the coverage hole the audit's central finding is about; an instrument that
+    cannot be started is a coverage hole that never files a report. Allocation now lives in
+    <code>_serve.mjs</code> as a frozen table behind <code>probePort(import.meta.url)</code>, so a new probe
+    that forgets to register gets an error naming its own file instead of a silent collision — the same
+    move that ended the process-leak class, put in the shared instrument rather than in a convention.</p>
+    <p class="guard"><strong>Gated in both directions and mutation-proven four ways:</strong> no two entries
+    share a port, the table and the directory agree BOTH ways (one direction alone lets an unregistered probe
+    ship <em>or</em> lets the table rot reserving ports for deleted files), <code>probePort</code> refuses an
+    unregistered name, and no probe re-hardcodes a literal. Each assertion was broken individually and went
+    RED on its own test. Verified as a lived result too, not just a green suite — <code>hud-probe</code> ran
+    to completion on its new port with 0 processes leaked afterward.</p>
   </div>
 
   <div class="verdict settled">
