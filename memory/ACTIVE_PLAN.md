@@ -17,7 +17,40 @@
 
 ---
 
-## 📍 THE CURSOR — 2026-08-11 · Phase C: the capture harness stops photographing a frozen world
+## 📍 THE CURSOR — 2026-08-12 · draining the 88-finding holistic-review queue
+
+**THE ONE UNIT IN FLIGHT: `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`, 39 open of 88.**
+49 closed. Re-read the file for the live count: `grep -c '^- ▢'`.
+
+**THE TRIAGE IS DONE AND IS THE EXPENSIVE PART — DO NOT REDO IT.** A 16-agent pass read all 88 against
+live HEAD, each partition asserting its own denominator (8 x 11). Its full output, with the per-finding
+FIX / GATE / MUTATION design and the adversarial ruling on each, is saved at
+`/private/tmp/claude-501/-Users-kz-Code/c7297111-afb7-46c9-83b3-6edc09ed7f41/scratchpad/triage88.json`
+(420KB, all 88 with attacks). **That path is session-scoped tmp and will NOT survive a reboot** — if it is
+gone, the workflow can be re-run from
+`/Users/kz/.claude/projects/-Users-kz-Code-Crafty/c7297111-afb7-46c9-83b3-6edc09ed7f41/workflows/scripts/crafty-88-triage-full-wf_15b6af81-536.js`.
+Post-attack verdicts: 59 LIVE, 12 ALREADY-FIXED, 9 STALE-CITE (defect real, line moved), 8 NOT-A-DEFECT.
+
+**THE RHYTHM THAT WORKS:** take 3-6 findings, verify each against the file yourself (the triage is a
+hypothesis per item, not a verdict), fix, mutation-prove EACH, run `npm run lint; echo $?` +
+`npx vitest run` + `npm run build`, one commit for the batch, then a separate `chore(queue): stamp`
+commit that flips `- ▢` to `- ▣✓ <sha>`. `queue-ledger` enforces that every finding carries a marker.
+
+**WHAT KEEPS HAPPENING, so expect it rather than rediscovering it:**
+- **The fix is routinely larger than the finding.** A `__proto__: {}` filed as a no-op test literal was
+  hiding a live prototype-chain hole in `sanitizeSettings`. A conditional `if (...) expect(...)` in the
+  climate test had gone blind — made unconditional it failed at once, because its probe coord had drifted.
+- **Mutations that touch the line without reproducing the SHAPE stay green.** It has happened four times
+  in this drain. When one stays green, the mutation is the finding, not the code.
+- **Trace consumer graphs with QUOTED grep patterns.** An unquoted `--include=*.js` failed under zsh and
+  returned zero external refs for every symbol, which would have deleted a live export.
+- **Never gate verification on a pipeline's exit status.** `npm run lint | tail -2 && ...` shipped a
+  commit with lint RED, because `tail` exits 0. Check `$?` of the command itself.
+
+**AFTER THE 88:** Phase C's remaining conversions are DELIBERATELY STOPPED — batches 2/4/5/6 of
+`docs/superpowers/plans/2026-08-11-crafty-phase-c-suppression-conversion.md` move ~0 pixels the 6% gate
+can resolve. The one open harness item worth doing is Batch 0.1: `diff.test.js` writes its contact sheet
+and diff PNG only when the GLOBAL gate reds, so a density-only failure leaves nothing to open.
 
 **✅ THE HARNESS HALF IS DONE (`ccebde0`).** The clock is COMMANDED, not free-running: `setCaptureFrame(n)`
 sets the phase absolutely and freezes it, `shot()` pins before the stability wait, and the run now reports
