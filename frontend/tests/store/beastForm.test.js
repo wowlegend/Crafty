@@ -104,11 +104,45 @@ describe('no-permanent-beast invariant', () => {
     expect(useGameStore.getState().activeBeastForm).toBeNull();
   });
 
-  it('the form state is TRANSIENT — never serialized into a save', () => {
+  // THE OLD VERSION OF THIS TEST PROVED THE WRONG THING.
+  //
+  // It entered a form, serialized, and asserted the JSON contained neither the string 'beastFormActive'
+  // nor 'activeBeastForm'. Both hold whether or not a form is active — they are facts about the save
+  // SCHEMA's key names, not about transient state being dropped. It would pass on a save built by a
+  // player who had never transformed, and it would pass if the form were serialized under any other key
+  // (`beast`, `form`, `playerForm`), which is the actual regression available here: a reload that loads
+  // you mid-beast, permanently, which the no-permanent-beast invariant exists to prevent.
+  //
+  // What "transient" MEANS is that the save is the same either way. That is directly checkable.
+  it('a save built mid-transformation is IDENTICAL to one built as a human', () => {
+    useGameStore.getState().exitBeastForm();
+    const human = JSON.stringify(buildSaveData(useGameStore.getState()));
+
     useGameStore.getState().enterBeastForm('arcane');
+    expect(useGameStore.getState().isBeastFormActive(), 'no form is active, so this compares two human saves').toBe(true);
+    const beast = JSON.stringify(buildSaveData(useGameStore.getState()));
+
+    expect(beast, 'the beast form leaked into the save — a reload would load you mid-transformation').toBe(human);
+  });
+
+  it('the form IDENTITY appears nowhere in the save, under any key name', () => {
+    // The complement, catching the case where the state is serialized under a name nobody thought to
+    // grep for. Every element is checked, since a leak could be element-specific (a per-form stat block).
+    for (const element of ['fire', 'ice', 'arcane', 'lightning']) {
+      useGameStore.getState().exitBeastForm();
+      useGameStore.getState().enterBeastForm(element);
+      expect(useGameStore.getState().activeBeastForm, `${element} did not activate`).toBe(element);
+      const json = JSON.stringify(buildSaveData(useGameStore.getState()));
+      expect(json.includes(`"${element}"`), `the active form "${element}" was serialized into the save`).toBe(false);
+    }
+  });
+
+  it('and the save is not simply EMPTY, which would satisfy both assertions above', () => {
+    // The presence case. buildSaveData returning {} — or throwing and being caught somewhere — makes
+    // "the form is not in the save" trivially true while losing the player's entire world.
+    useGameStore.getState().enterBeastForm('fire');
     const save = buildSaveData(useGameStore.getState());
-    const json = JSON.stringify(save);
-    expect(json).not.toContain('beastFormActive');
-    expect(json).not.toContain('activeBeastForm');
+    expect(Object.keys(save).length, 'buildSaveData produced an empty save').toBeGreaterThan(3);
+    expect(JSON.stringify(save).length).toBeGreaterThan(50);
   });
 });

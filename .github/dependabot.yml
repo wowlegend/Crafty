@@ -1,0 +1,47 @@
+# Dependency updates. There was no scanning of any kind before 2026-08-12: `npm install --no-audit`, no
+# audit step, no Dependabot — so a CVE in a transitive dep shipped to the live demo on the next push and
+# nothing was looking. The CI job now FAILS on a high/critical advisory; this is the other half, the part
+# that opens the fix.
+#
+# TWO-LEVEL REPO: the app manifest is in `frontend/`, not at the root. A `directory: "/"` entry here would
+# find no package.json and silently do nothing — a config that looks like coverage and provides none.
+#
+# Deliberately conservative on cadence. A weekly firehose of patch bumps across three ecosystems is how
+# Dependabot gets muted, and a muted bot is worse than none for the same reason a flaky gate is: the
+# signal that matters arrives in a stream nobody reads. Security updates are ungrouped and immediate;
+# routine version bumps are monthly and grouped into one PR per ecosystem.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the routine churn, so review is a single diff rather than a queue of near-identical
+      # ones. Security advisories bypass grouping and arrive on their own, which is the point.
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-minor-patch:
+        dependency-type: production
+        update-types: [minor, patch]
+    # Majors of the engine stack are never a drive-by merge: three 0.x libraries move together
+    # (three / @react-three/fiber / @react-three/drei) and a mismatched trio breaks rendering in ways
+    # the unit suite cannot see. Those upgrades are deliberate work, not a bot's.
+    ignore:
+      - dependency-name: three
+        update-types: [version-update:semver-major]
+      - dependency-name: '@react-three/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@dimforge/rapier3d-compat'
+        update-types: [version-update:semver-major]
+
+  # The workflow files themselves pin action versions, and a stale pinned action is its own supply-chain
+  # exposure — actions/checkout@v4 running arbitrary code on a runner that has the GITHUB_TOKEN.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

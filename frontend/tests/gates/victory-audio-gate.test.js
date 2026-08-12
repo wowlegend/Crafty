@@ -1,36 +1,77 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { createElement } from 'react';
+import { render, cleanup } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { VOICES } from '../../src/audio/synthVoices.js';
+import { VictoryOverlay } from '../../src/GameSystems.jsx';
 
-// SFX overhaul Slice 4 — the CLIMAX payoff was SILENT. VictoryOverlay (Blight Heart shattered -> the win
-// screen, the single biggest beat in the game) was a purely presentational component that fired NO sound.
-// This adds a dedicated triumphant `victory` voice (grander than the short reward fanfare) wired on the
-// overlay's mount via the codebase's window.* sound-bridge pattern (set once from App's useGameSounds
-// consumer, mirroring window.playFanfare / window.playLevelUpSound). This gate locks that wiring.
-const __dir = dirname(fileURLToPath(import.meta.url));
-const read = (p) => readFileSync(resolve(__dir, '../../src', p), 'utf8');
-const app = read('App.jsx');
-const sm = read('SoundManager.jsx');
-const gs = read('GameSystems.jsx');
+const HERE = dirname(fileURLToPath(import.meta.url));
+const read = (p) => readFileSync(resolve(HERE, '../../src', p), 'utf8');
 
-describe('SFX Slice 4 — the victory climax has a triumphant sting', () => {
-  it('the victory voice is registered + is a function', () => {
-    expect(typeof VOICES.victory).toBe('function');
+// SFX Slice 4 — the CLIMAX payoff was SILENT. VictoryOverlay (Blight Heart shattered -> the win screen,
+// the single biggest beat in the game) was purely presentational and fired no sound. A dedicated
+// triumphant `victory` voice is now wired on the overlay's mount through the codebase's window.* sound
+// bridge, the same pattern window.playFanfare and window.playLevelUpSound use.
+//
+// THE OLD GATE FOUND 'VictoryOverlay' IN THE SOURCE AND READ THE NEXT 600 CHARACTERS. A proximity slice
+// is a measurement of FORMATTING: adding a comment, extracting a helper, or moving the effect below the
+// JSX all break it while the sound still plays, and moving an unrelated `window.playVictory` into that
+// window satisfies it while the overlay stays silent. The overlay renders in jsdom, and the bridge is a
+// property on `window`, so the actual question — does mounting it make the sound fire — is one render.
+afterEach(() => { cleanup(); delete window.playVictory; });
+
+describe('the victory climax actually fires its sting', () => {
+  it('mounting the overlay calls the bridged victory sound, exactly once', () => {
+    const playVictory = vi.fn();
+    window.playVictory = playVictory;
+    render(createElement(VictoryOverlay, { onDismiss: () => {} }));
+    expect(playVictory, 'the win screen is silent — the biggest beat in the game fires no sound').toHaveBeenCalledTimes(1);
   });
-  it('SoundManager exposes a playVictory verb that plays the victory voice', () => {
-    expect(/playVictory:\s*\(\)\s*=>\s*playSound\(['"]victory['"]\)/.test(sm)).toBe(true);
+
+  it('a re-render does not re-fire it', () => {
+    // `[]` deps. A sting that retriggers on every render turns the win screen into a stutter.
+    const playVictory = vi.fn();
+    window.playVictory = playVictory;
+    const { rerender } = render(createElement(VictoryOverlay, { onDismiss: () => {} }));
+    rerender(createElement(VictoryOverlay, { onDismiss: () => {} }));
+    rerender(createElement(VictoryOverlay, { onDismiss: () => {} }));
+    expect(playVictory).toHaveBeenCalledTimes(1);
   });
-  it('App bridges playVictory onto window (set once from the useGameSounds consumer)', () => {
-    expect(/window\.playVictory\s*=/.test(app)).toBe(true);
-    expect(/playVictory/.test(app)).toBe(true);
+
+  it('renders without the bridge present — audio can be unavailable', () => {
+    // Capture mode and a headless run both have no audio context, so window.playVictory is simply absent.
+    // An unguarded call there would blank the win screen with a TypeError.
+    delete window.playVictory;
+    expect(() => render(createElement(VictoryOverlay, { onDismiss: () => {} }))).not.toThrow();
   });
-  it('VictoryOverlay fires the victory sting on mount', () => {
-    // The overlay component must trigger the bridged sound when it appears (boss-defeat -> win screen).
-    const vi = gs.indexOf('VictoryOverlay');
-    expect(vi).toBeGreaterThan(-1);
-    const block = gs.slice(vi, vi + 600);
-    expect(block.includes('window.playVictory')).toBe(true);
+
+  it('and the overlay it fires from is really the win screen', () => {
+    // The presence case: a component that rendered nothing would satisfy the assertions above while the
+    // player saw no victory screen at all.
+    window.playVictory = vi.fn();
+    const { container } = render(createElement(VictoryOverlay, { onDismiss: () => {} }));
+    expect(container.textContent, 'the victory overlay renders no VICTORY headline').toContain('VICTORY');
+  });
+});
+
+describe('the sound the sting resolves to is real', () => {
+  it('a victory voice is registered and synthesises', () => {
+    expect(typeof VOICES.victory, 'no victory voice — playVictory would resolve to nothing').toBe('function');
+  });
+
+  it('SoundManager exposes playVictory, wired to that voice', () => {
+    // Textual, deliberately and narrowly: SoundManager is a provider whose verbs are built inside a hook,
+    // and the thing being checked is a single key-to-voice mapping. Anchored to the mapping form rather
+    // than to a proximity window, so formatting cannot move it.
+    expect(read('SoundManager.jsx')).toMatch(/playVictory:\s*\(\)\s*=>\s*playSound\(['"]victory['"]\)/);
+  });
+
+  it('App publishes it onto the window the overlay reads', () => {
+    // The bridge's other end. Without this the overlay calls a property nobody ever set — which is
+    // exactly the shape of the four "shipped, compiling, gated green, never RUNNING" defects in the log.
+    expect(read('App.jsx')).toMatch(/window\.playVictory\s*=/);
   });
 });

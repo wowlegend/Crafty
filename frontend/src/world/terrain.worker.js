@@ -2,6 +2,7 @@ import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome } from './biomeTable.js';
+import { stampChunkRadius, blueprintHalfExtent } from './dungeonStamp.js';
 import { applyCaveCA } from './caveCA.js';
 // How many y layers the cave CA covers. Caves are a below-y20 feature; smoothing above that would chew
 // at the surface silhouette.
@@ -202,6 +203,8 @@ function getIndex(x, y, z) {
   return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
 }
 
+/** Where inside its chunk a dungeon is centred. Shared with the radius derivation below. */
+const DUNGEON_CENTRE_OFFSET = 8;
 const DUNGEON_BLUEPRINT = [];
 
 function initDungeonBlueprint() {
@@ -261,12 +264,18 @@ function stampStructures(blocks, cx, cz) {
     initDungeonBlueprint();
   }
 
-  for (let dcx = cx - 1; dcx <= cx + 1; dcx++) {
-    for (let dcz = cz - 1; dcz <= cz + 1; dcz++) {
+  // The neighbour radius is DERIVED from the blueprint's own footprint, not hardcoded to 1. With the
+  // current dungeon (half-extent 6, centred at local 8) the footprint spans local 2..14 and fits inside
+  // its own chunk, so this is a single iteration — the old fixed +/-1 sweep ran NINE candidates per
+  // chunk and eight of them could not write a block. If a blueprint ever grows past the seam the radius
+  // follows it, instead of clipping silently the way the cave automaton once did. See world/dungeonStamp.js.
+  const r = stampChunkRadius(blueprintHalfExtent(DUNGEON_BLUEPRINT), CHUNK_SIZE, DUNGEON_CENTRE_OFFSET);
+  for (let dcx = cx - r; dcx <= cx + r; dcx++) {
+    for (let dcz = cz - r; dcz <= cz + r; dcz++) {
       if (isDungeonChunk(dcx, dcz)) {
-        const dCenterX = dcx * CHUNK_SIZE + 8;
+        const dCenterX = dcx * CHUNK_SIZE + DUNGEON_CENTRE_OFFSET;
         const dCenterY = 12; // deep level Y = 12
-        const dCenterZ = dcz * CHUNK_SIZE + 8;
+        const dCenterZ = dcz * CHUNK_SIZE + DUNGEON_CENTRE_OFFSET;
 
         for (const [dx, dy, dz, blockType] of DUNGEON_BLUEPRINT) {
           const ax = dCenterX + dx;

@@ -1,0 +1,80 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = resolve(APP, '..');
+
+// THERE WAS NO DEPENDENCY SCANNING OF ANY KIND.
+//
+// `npm install --no-audit`, no audit step, no Dependabot config. A CVE in a transitive dep shipped to the
+// live demo on the next push with nothing looking at it — and `npm install` also runs the whole tree's
+// lifecycle scripts on a CI runner holding a GITHUB_TOKEN, which is the same supply chain.
+//
+// Measured 2026-08-12 while arming this: 0 vulnerabilities at every severity, so the threshold started
+// with nothing to grandfather.
+//
+// WHAT THIS FILE DOES *NOT* DO: run `npm audit`. That is a live registry call, and a network assertion
+// inside the offline unit suite goes red from weather rather than from a defect — a gate that decays into
+// noise gets muted, which is the failure mode this repo's own CI header warns about. The scan belongs in
+// CI where the network is expected and a failure is legible. What is checkable offline, and what actually
+// rots, is whether the scanning is still WIRED.
+const ciYml = resolve(ROOT, '.github/workflows/ci.yml');
+const dependabot = resolve(ROOT, '.github/dependabot.yml');
+
+describe('the supply chain is scanned at all', () => {
+  it('CI runs an explicit dependency audit', () => {
+    expect(existsSync(ciYml), 'ci.yml is missing — nothing here can be asserted').toBe(true);
+    const yml = readFileSync(ciYml, 'utf8');
+    expect(yml, 'no `npm audit` step — a CVE ships to the live demo unremarked').toMatch(/run:\s*npm audit\b/);
+  });
+
+  it('the audit has a THRESHOLD, so it can actually fail', () => {
+    // `npm audit` without --audit-level prints findings and exits 0 in some configurations, which is a
+    // step that reports rather than gates. The level is what makes it a gate.
+    const yml = readFileSync(ciYml, 'utf8');
+    expect(yml).toMatch(/npm audit --audit-level=(high|critical)/);
+  });
+
+  it('the audit is its OWN step, so a registry outage is legible as a registry outage', () => {
+    // Folded into the install or the lint step, a network failure would present as "lint failed", which
+    // is how a gate gets diagnosed as flaky and then ignored.
+    const yml = readFileSync(ciYml, 'utf8');
+    expect(yml, 'the audit has no name of its own').toMatch(/- name: [^\n]*[Aa]udit[^\n]*\n\s*run: npm audit/);
+  });
+
+  it('Dependabot exists and points at the app directory, not the repo root', () => {
+    // THE TRAP IN A TWO-LEVEL REPO. package.json lives in frontend/. A `directory: "/"` npm entry finds
+    // no manifest and silently does nothing — config that looks like coverage and provides none, which is
+    // this project's signature defect wearing a YAML hat.
+    expect(existsSync(dependabot), 'no .github/dependabot.yml — nothing opens the fix an audit demands').toBe(true);
+    const yml = readFileSync(dependabot, 'utf8')
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const npmBlock = yml.slice(yml.indexOf('package-ecosystem: npm'));
+    expect(npmBlock, 'the npm ecosystem entry does not point at /frontend, where package.json actually is')
+      .toMatch(/directory:\s*\/frontend/);
+  });
+
+  it('the directory Dependabot names really does contain a manifest', () => {
+    // Asserting the string is not asserting the path. This is what catches a future repo reshuffle.
+    //
+    // COMMENTS STRIPPED FIRST, because the first version of this test did not and matched the phrase
+    // `directory: "/"` out of the prose two blocks above explaining why that value would be wrong —
+    // capturing `/\`` and failing on a config that was correct. A parser that reads its own documentation
+    // as data is the exact defect gate-shape exists to catch, reproduced inside a gate I was writing.
+    const yml = readFileSync(dependabot, 'utf8')
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const dirs = [...yml.matchAll(/directory:\s*(\S+)/g)].map((m) => m[1].replace(/['"]/g, ''));
+    expect(dirs.length, 'no directories parsed out of dependabot.yml').toBeGreaterThan(0);
+    const npmDir = dirs.find((d) => d !== '/');
+    expect(existsSync(resolve(ROOT, `.${npmDir}`, 'package.json')),
+      `dependabot points npm at "${npmDir}", which has no package.json`).toBe(true);
+  });
+
+  it('the workflow actions are covered too', () => {
+    // A stale pinned action runs arbitrary code on a runner holding the GITHUB_TOKEN. Same supply chain,
+    // different ecosystem, and easy to leave out.
+    expect(readFileSync(dependabot, 'utf8')).toMatch(/package-ecosystem:\s*github-actions/);
+  });
+});

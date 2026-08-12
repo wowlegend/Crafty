@@ -69,6 +69,26 @@ jobs:
       - name: Dead-code ratchet (knip)
         run: npm run knip
 
+      # DEPENDENCY VULNERABILITIES. There was no scanning of any kind: install runs with `--no-audit`,
+      # there was no audit step, and no Dependabot config — so a CVE in a transitive dep shipped to the
+      # live demo on the next push with nothing looking at it. `npm install` also executes the full
+      # dependency tree's lifecycle scripts on this runner, which is the same supply chain.
+      #
+      # MEASURED 2026-08-12 before arming this: 0 vulnerabilities at every severity. So the threshold
+      # starts clean, with no pre-existing debt to grandfather in — the cheapest moment there will ever
+      # be to turn it on.
+      #
+      # HIGH, not moderate, deliberately. This workflow's own header says a flaky gate people learn to
+      # ignore is worse than no gate, and moderate advisories on dev-only transitives arrive constantly
+      # and are almost never actionable here (a static site with no server). High and critical are the
+      # band worth stopping a deploy for.
+      #
+      # It talks to the registry, which means a registry outage reds this job for reasons that are not a
+      # defect. That is why it is its own named step (the failure reads as what it is) and why it is NOT
+      # in the offline unit suite or the pre-push hook, where a network assertion would fail from weather.
+      - name: Dependency audit (high + critical)
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
 
