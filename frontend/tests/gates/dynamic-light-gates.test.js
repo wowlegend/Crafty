@@ -20,11 +20,30 @@ const walk = (dir, out = []) => {
 // program re-link hitch). The directional sun owns shadows; point lights must never cast.
 describe('dynamic-light gate', () => {
   it('no pointLight in src/ casts shadows', () => {
+    // MATCH THE VALUE, NOT THE ATTRIBUTE NAME. `/<pointLight[^>]*castShadow/s` terminates at the
+    // identifier, so it flagged the defensively-CORRECT `<pointLight castShadow={false}>` as an offender
+    // while missing every other way to switch shadows on: the imperative `light.castShadow = true`, and
+    // a spread of props carrying it. It reported on spelling rather than on behaviour, in both
+    // directions at once.
     const offenders = [];
+    let scanned = 0;
     for (const file of walk(SRC)) {
-      const m = readFileSync(file, 'utf8').match(/<pointLight[^>]*castShadow/s);
-      if (m) offenders.push(file.replace(SRC, 'src'));
+      scanned += 1;
+      const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      const why = [];
+      // JSX: bare `castShadow` (defaults true) or an explicitly truthy value, on a pointLight tag.
+      for (const m of src.matchAll(/<pointLight\b([^>]*)>/gs)) {
+        const attrs = m[1];
+        if (/\bcastShadow\s*=\s*\{\s*false\s*\}/.test(attrs)) continue;   // explicitly off: correct
+        if (/\bcastShadow\s*=\s*\{[^}]*\}/.test(attrs)) why.push('castShadow={<expr>}');
+        else if (/\bcastShadow(?![\w-])/.test(attrs)) why.push('bare castShadow (defaults true)');
+        if (/\{\s*\.\.\./.test(attrs)) why.push('spread props may carry castShadow');
+      }
+      // Imperative: a pointLight ref turned on after mount, which the JSX scan cannot see at all.
+      if (/pointLight[\w.]*\.castShadow\s*=\s*(?!false)/i.test(src)) why.push('imperative .castShadow =');
+      if (why.length) offenders.push(`${file.replace(SRC, 'src')} (${[...new Set(why)].join('; ')})`);
     }
+    expect(scanned, 'the walk enumerated nothing — this gate is scanning an empty tree').toBeGreaterThan(50);
     expect(offenders, `shadow-casting pointLight(s) in: ${offenders.join(', ')}`).toEqual([]);
   });
 });
