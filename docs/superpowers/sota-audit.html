@@ -158,8 +158,31 @@
 
 <section>
   <h2><span class="num">00</span> Status — every recommendation is now disposed of</h2>
+    <div class="note" style="margin:14px 0;padding:14px 16px;border-left:3px solid currentColor;opacity:.95">
+      <p><strong>BOTH DEFERRED ITEMS ARE NOW SHIPPED, and the comparator was the one that mattered.</strong>
+      This audit's headline was that the comparator is behind and the oracle ungoverned. The oracle got its
+      trailer gate on 2026-08-09. The comparator's per-frame tolerance was deferred as "a red gate nobody
+      can act on" — correct, and an objection to a SINGLE threshold rather than to asserting at all. It
+      shipped 2026-08-12 as a PER-FRAME RATCHET: each frame frozen at what it actually does, only a rise
+      fails, no adjudication and no invented tolerance.</p>
+      <p><strong>It found a real defect on its first armed run.</strong> <code>explore-day</code>
+      concentrated <b>30.35%</b> of a 128px window while the global 6% gate passed it at 1.625%. Cropping
+      both frames showed a distant treeline present in one run and thinner in the other — the
+      chunk-streaming variance diagnosed BY HAND twice before (S8 at 1.646%, S9 at 0.201%) and never
+      closed. Root cause: <code>waitForStableFrame</code> measured WALL TIME on a renderer managing 1-3
+      fps, so two polls 200ms apart routinely landed inside the same rendered frame and "two identical
+      screenshots" meant nothing had been drawn. Frame-gated now: byte-identical frames went
+      <b>18/31 to 23/31</b>, <code>explore-day-low</code> 4.49% to 0.38%.</p>
+      <p><strong>And the suppression finding is being reversed, carefully.</strong> The audit's other
+      structural point — the gated frames depict a build nobody plays — now has a commanded clock behind
+      it (<code>31/31 frames pinned at 90</code>, a declared 1.50s virtual) and its first conversion: the
+      sun casts shadows in the gated frames. A 17-agent survey proposed 41 conversions and the value pass
+      refuted all but that one, on measured grounds — the entire QUESTS panel is 7.51% of a frame, the
+      whole spell-cast VFX ensemble 0.64%. The cap on this programme was never the clock; it was the
+      oracle's resolution, which is what the ratchet above raises.</p>
+    </div>
   <div class="callout ok">
-    <span class="hd">Updated 2026-08-11 — what this audit's follow-through became</span>
+    <span class="hd">Updated 2026-08-12 — the two deferred items have landed, and one of them found a defect on its first run</span>
     <p><strong>The two deferred items are still deferred, on purpose, and the reasons have not changed.</strong>
     Per-frame tolerances still want n&ge;10 separate-process captures. <code>failOnFlakyTests</code> still wants
     10 consecutive clean CI runs; a per-shard flaky reporter now accumulates that record in the run log, so the
