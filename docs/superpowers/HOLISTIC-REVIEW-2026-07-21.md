@@ -444,7 +444,7 @@
 
 ### perf (2)
 
-- ▢ **`frontend/src/GameSystems.jsx:61`** [low·AUTO·src] `attributes`, `equipment`, and `getEffectiveAttributes` are pulled into the useShallow selector but never used, causing needless provider (and all-consumer) re-renders when equipment/attributes change.
+- ▣✓ 8624f69 **`frontend/src/GameSystems.jsx:61`** [low·AUTO·src] `attributes`, `equipment`, and `getEffectiveAttributes` are pulled into the useShallow selector but never used, causing needless provider (and all-consumer) re-renders when equipment/attributes change.
   - _fix:_ Drop `attributes`, `equipment`, and `getEffectiveAttributes` from the useShallow selector.
 - ▣✓ f0faddc **`frontend/src/render/playerRender.jsx:250`** [low·KEVIN·src] The ribbon trail replaces all three geometry attributes with brand-new THREE.BufferAttribute objects every frame during a swing, churning typed-array allocations and orphaning the previous frame's GL buffers.
   - _fix:_ Preallocate position/uv/index BufferAttributes once at a max point count with THREE.DynamicDrawUsage, write into their `.array` in place each frame, set `needsUpdate`, and use `geometry.setDrawRange` to control how many quads render; cache `buildRibbonIndices` output keyed by N so it is not rebuilt when the point count is stable.
