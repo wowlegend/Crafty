@@ -189,11 +189,11 @@
   - _fix:_ Drop `Slot` from the import list.
 - ▢ **`frontend/src/QuestSystem.jsx:260`** [low·AUTO·src] Unreachable `if (!nextQuest) return null;` guard — `nextQuest` can never be falsy.
   - _fix:_ Remove the `if (!nextQuest) return null;` line.
-- ▢ **`frontend/src/SoundManager.jsx:490`** [low·AUTO·src] Large block of orphaned SFX comments (490-521) describes voice-generation functions that no longer live here; the header 'NEW: Attack sound generation functions' is a lie — there are zero functions between these comments.
+- ▣✓ ca504eb **`frontend/src/SoundManager.jsx:490`** [low·AUTO·src] Large block of orphaned SFX comments (490-521) describes voice-generation functions that no longer live here; the header 'NEW: Attack sound generation functions' is a lie — there are zero functions between these comments.
   - _fix:_ Delete the vestigial comment blocks (or replace with a single pointer comment: 'voice definitions live in audio/synthVoices.js'). Same for the orphaned `// Enhanced magic system sounds` at 516.
 - ▢ **`frontend/src/SoundManager.jsx:185`** [low·KEVIN·src] synthPadRef's `gains` array is written but never read — the per-voice gain nodes are pushed and later reset, but never used for cleanup or modulation.
   - _fix:_ Either drop the `gains` array entirely (the vGain nodes stay alive via their in-graph connections during playback), or actually disconnect `pad.gains` in stopSynthPad if explicit teardown of those nodes is intended.
-- ▢ **`frontend/src/SoundManager.jsx:16`** [low·AUTO·src] Orphaned standalone comment 'Ambient chord progressions for mood adjustments' sits with no associated code — the chord progressions it refers to are imported at line 6.
+- ▣✓ ca504eb **`frontend/src/SoundManager.jsx:16`** [low·AUTO·src] Orphaned standalone comment 'Ambient chord progressions for mood adjustments' sits with no associated code — the chord progressions it refers to are imported at line 6.
   - _fix:_ Delete the orphaned comment.
 - ▢ **`frontend/src/audio/aspectMotifs.js:41`** [low·AUTO·src] makeArp and the four make*Motif functions are exported but nothing outside this module imports them — only the MOTIFS object is consumed (synthVoices.js:656), and there is no aspectMotifs.test.js exercising them.
   - _fix:_ Drop the `export` keyword from makeArp and the four make*Motif helpers (they are still referenced internally via the MOTIFS map), or add a unit test that justifies the public surface.
@@ -211,7 +211,7 @@
   - _fix:_ Drop `sampleMood` from the import: import { moodRef } from './mood.js';
 - ▢ **`frontend/src/render/spellVfx.jsx:249`** [low·AUTO·src] case 'crystal' is unreachable — no ENERGY_PROFILE entry uses shape:'crystal' (iceball moved to 'shards' at S3.5); the branch is self-described legacy pre-S3.5.
   - _fix:_ Remove the 'crystal' case (the 'sphere'/default arm already covers any unknown shape via shapeMat). If keeping as defensive, note it is currently unreachable.
-- ▢ **`frontend/src/store/useGameStore.jsx:480`** [low·KEVIN·src] addTalentPoint store action has zero callers; talent points are granted inline in grantXP's level-up loop.
+- ▣✓ ca504eb **`frontend/src/store/useGameStore.jsx:480`** [low·KEVIN·src] addTalentPoint store action has zero callers; talent points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addTalentPoint, or if kept as public API add the same `Math.max(0, Math.floor(Number(amount) || 0))` guard the sibling point-granters use.
 - ▢ **`frontend/src/store/useGameStore.jsx:285`** [low·KEVIN·src] addAttributePoints store action has zero callers; attribute points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addAttributePoints, or document it as intentional public API if a future feature (e.g. a quest reward) is planned to use it.
@@ -235,7 +235,7 @@
   - _fix:_ Either drop the neighbor loop (stamp self-chunk only) for clarity/perf, or add a comment that it's defensive for future dungeons wider than one chunk (halfW>7).
 - ▣✓ 9387c7d **`frontend/src/world/terrain.worker.js:704`** [low·AUTO·src] generateMesh redeclares local CHUNK_SIZE=16 and CHUNK_HEIGHT=256 that are never referenced in its body (getBlock and the axis sweep use literal 16/256), shadowing the identical module-level consts.
   - _fix:_ Delete the two local consts (module-level ones suffice), or actually use them in getBlock/the sweep to replace the 16/256 magic numbers.
-- ▢ **`frontend/tests/world/heightAt.test.js:25`** [low·AUTO·test] Test declares helper `mk` then abandons it in favor of `baseAt`, leaving an unused declaration.
+- ▣✓ ca504eb **`frontend/tests/world/heightAt.test.js:25`** [low·AUTO·test] Test declares helper `mk` then abandons it in favor of `baseAt`, leaving an unused declaration.
   - _fix:_ Delete the unused `mk` declaration; `baseAt` is the only helper the test body uses.
 - ▢ **`frontend/src/world/spellUpgrades.js:48`** [low·KEVIN·src] `statsFor` and `levelOf` are exported but never imported anywhere — they are used only internally within spellUpgrades.js. ⟵ **CITE CORRECTED 2026-08-08** (filed as `:51`, now JSDoc for `requiredLevelForUpgrade`). Live: `levelOf` at :48, `statsFor` at :62.
   - _fix:_ Drop the `export` on `levelOf`/`statsFor` (keep them module-local), or add a test that pins them if they are meant as public pure API.
@@ -252,7 +252,7 @@
   - _fix:_ Reconcile both mentions to the actual value: '§3 bloom pass (luminanceThreshold 0.65)'.
 - ▣✓ 4ae60bc **`frontend/src/data/items.js:6`** [medium·AUTO·src] items.js header claims T3 (removing duplicate getItemRarity/getItemEmoji) is still pending, but T3 is already done and getItemEmoji no longer exists.
   - _fix:_ Update the header to state T3 is complete (both files re-export getItemRarity from this registry) and drop the reference to the non-existent getItemEmoji.
-- ▢ **`frontend/src/data/lootTables.js:8`** [medium·AUTO·src] Header claims the loot-coverage gate enforces 'every item string is a valid registry item', but that gate only iterates LOOT_TABLES — CHEST_LOOT membership is unchecked.
+- ▣✓ ca504eb **`frontend/src/data/lootTables.js:8`** [medium·AUTO·src] Header claims the loot-coverage gate enforces 'every item string is a valid registry item', but that gate only iterates LOOT_TABLES — CHEST_LOOT membership is unchecked.
   - _fix:_ Extend loot-coverage-gates.test.js to also iterate CHEST_LOOT rows through the same `NAME_TO_ID[row.item]` assertion, or narrow the comment to say the gate covers only per-mob LOOT_TABLES.
 - ▣✓ 4ae60bc **`frontend/src/game/mobHitFx.js:11`** [medium·AUTO·src] deathBurst JSDoc describes the OLD reversed behavior (mob-body color, 50..110 clamp, unknown->white/50, hue-preserving tint floor) — every claim contradicts the actual code.
   - _fix:_ Rewrite the JSDoc block (lines 9-18) to match the code: fixed warm-gold '#FFB84D' for all mobs, count clamped 14..28 (= 8 + xp), no per-mob color / no tint-floor / no hue preservation. The correct description already exists in the inline comment lines 22-26; fold it into the JSDoc and delete the stale W2-T5 hue paragraph.
@@ -412,7 +412,7 @@
   - _fix:_ Render <QuestLog> in jsdom with a seeded active quest and assert lore/giver/objective text appears; simulate the L key through the real InputManager handler. Keep only the cross-file MenuSystem-mounts-QuestLog grep as structural.
 - ▢ **`frontend/tests/gates/quest-persistence-gates.test.js:18`** [low·KEVIN·test] Persistence gate asserts identifier presence; buildSaveData serialization of questState is directly round-trippable behaviorally.
   - _fix:_ Import buildSaveData, build from a store state carrying quest progress, and assert the returned blob has questState with the expected quests/completedQuestIds.
-- ▢ **`frontend/tests/gates/reward-audio-gates.test.js:32`** [low·KEVIN·test] Reward-audio gate counts source occurrences of window.playFanfare (>=2) as a proxy for two reward beats firing.
+- ▣✓ ca504eb **`frontend/tests/gates/reward-audio-gates.test.js:32`** [low·KEVIN·test] Reward-audio gate counts source occurrences of window.playFanfare (>=2) as a proxy for two reward beats firing.
   - _fix:_ Stub window.playFanfare, drive the real achievement-unlock and quest-complete paths (the claimQuest behavioral harness already exists), and assert the stub was called for each beat.
 - ⊘ DISMISSED — the behavioural coverage the finding asks for already exists in tests/store/siegeParams.test.js, which imports siegeParams directly and pins the night-0 baseline and the per-night ramp — `npx vitest run tests/store/siegeParams.test.js` **`frontend/tests/gates/siege-gates.test.js:44`** [low·KEVIN·test] Siege gate source-greps the consumer for siegeParams(nightCount).hostileChance instead of testing the pure exported siegeParams escalation behaviorally.
   - _fix:_ Import siegeParams and assert siegeParams(7).hostileChance > siegeParams(1).hostileChance and maxMobs escalates (and the zoneTier arg); keep the negative-literal + consumer-call greps as the thin structural wiring check.
