@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
 import { wandManaMultiplier } from '../game/wandFocus';
+import { applyBlockTrade, applyCrystalTrade } from '../game/tradeUpdaters.js';
 import { useT } from '../i18n/i18n.js';
 
 export const TradingInterface = React.memo(({ villager, onClose }) => {
@@ -30,18 +31,11 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
       return;
     }
 
-    // M5 #15 fix: route the bought item into `blocks` (the flat bucket the Inventory panel renders) --
-    // it used to land in `magic`, which NO panel renders, so the purchase vanished (lost-buy bug).
-    // Subtract from the FRESH prev (not the render-snapshot currentCount) so a concurrent
-    // inventory change between render and click isn't clobbered by an absolute set.
-    gameState.setInventory(prev => ({
-      ...prev,
-      blocks: {
-        ...prev.blocks,
-        [blockType]: Math.max(0, (prev.blocks?.[blockType] || 0) - required),
-        [resultItem]: (prev.blocks[resultItem] || 0) + resultCount
-      }
-    }));
+    // The arithmetic lives in game/tradeUpdaters.js, as a pure function of `prev`. Both rules it encodes
+    // — route the bought item into `blocks` (M5 #15), and subtract from the FRESH prev rather than the
+    // render-snapshot `currentCount` (2026-06-28) — are about a relationship between two states, which a
+    // closure inside a component can only be gated by grepping for. See that file for both regressions.
+    gameState.setInventory(prev => applyBlockTrade(prev, blockType, required, resultItem, resultCount));
     playPickup();
     setTradeMessage(`Traded ${required} ${blockType} for ${resultCount} ${resultItem}!`);
   };
@@ -54,16 +48,9 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
     }
 
     // B3b: crystals are SPENT from `blocks` (the canonical bucket ore->crystal + craft bank into) — not
-    // from `magic`, where nothing accumulates, which made the wand trade unreachable. The bought item still
-    // lands in `blocks` (M5 #15). Spend from the FRESH prev, not the render-snapshot currentCrystals.
-    gameState.setInventory(prev => ({
-      ...prev,
-      blocks: {
-        ...prev.blocks,
-        crystals: Math.max(0, (prev.blocks?.crystals || 0) - requiredCrystals),
-        [magicItem]: (prev.blocks[magicItem] || 0) + resultCount
-      }
-    }));
+    // from `magic`, where nothing accumulates, which made the wand trade unreachable. Same fresh-prev
+    // rule as the block trade; both live in game/tradeUpdaters.js.
+    gameState.setInventory(prev => applyCrystalTrade(prev, magicItem, requiredCrystals, resultCount));
     if (magicItem === 'wand') {
       playLevelUpSound();
     } else {

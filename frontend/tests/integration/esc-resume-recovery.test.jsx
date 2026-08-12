@@ -49,14 +49,19 @@ function menuProps(overrides = {}) {
     requestPointerLock: refusingLock(),
     ...overrides.gameState,
   };
+  // `...overrides` FIRST, `gameState` after. Written the other way round this reads like a default and
+  // behaves like an override: a caller passing `{ gameState: {...} }` replaced the whole merged object
+  // above with their partial, dropping requestPointerLock and every panel flag. Latent here — no current
+  // caller overrides gameState — and it bit the touch-entry gate the moment one did, so it is fixed in
+  // both rather than left as a trap for the next person who copies this helper.
   return {
-    gameState,
     showAchievements: false, setShowAchievements: NOOP,
     showSpellUpgrades: false, setShowSpellUpgrades: NOOP,
     showStats: false, setShowStats: NOOP,
     isPointerLocked: false, setIsPointerLocked: NOOP,
     questSystem: QUEST_STUB,
     ...overrides,
+    gameState,
   };
 }
 

@@ -37,13 +37,27 @@ export function dioramaMoteSpin(capture, elapsed) {
   return capture ? 0 : elapsed * MOTE_SPIN_RATE;
 }
 
+export const MOTE_COUNT = 28;
+
+/**
+ * PURE. The mote field's authored layout — a deterministic ring of MOTE_COUNT positions derived from
+ * the index, with NO randomness, which is the property that lets the menu frame be byte-stable.
+ *
+ * Exported for the same reason `dioramaMoteSpin` and `titleCameraPose` are: R3F hooks refuse to run
+ * outside a Canvas, so anything left inside the component body can only be reached by a source-grep —
+ * and the grep that used to guard this matched the word "motes" in a COMMENT.
+ */
+export function dioramaMotePositions() {
+  return Array.from({ length: MOTE_COUNT }, (_, i) => [Math.sin(i * 2.4) * 6, 1 + (i % 7) * 0.7, Math.cos(i * 1.7) * 6]);
+}
+
 function DioramaMotes() {
   // a small additive mote field (the light-motes signature) — RESET to zero rotation under capture.
   const ref = useRef();
   useFrame((s) => {
     if (ref.current) ref.current.rotation.y = dioramaMoteSpin(isCaptureMode(), s.clock.elapsedTime);
   });
-  const motes = Array.from({ length: 28 }, (_, i) => [Math.sin(i * 2.4) * 6, 1 + (i % 7) * 0.7, Math.cos(i * 1.7) * 6]);
+  const motes = dioramaMotePositions();
   return (
     <group ref={ref}>
       {motes.map((p, i) => (

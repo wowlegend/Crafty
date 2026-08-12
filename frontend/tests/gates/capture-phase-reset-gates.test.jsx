@@ -49,7 +49,7 @@ vi.mock('../../src/render/mascots/voxelKit', () => ({
 
 const { MascotCraftyHero, mascotIdlePose, MASCOT_REST } =
   await import('../../src/render/mascots/MascotCraftyHero.jsx');
-const { dioramaMoteSpin } = await import('../../src/render/TitleDiorama.jsx');
+const { dioramaMoteSpin, dioramaMotePositions, MOTE_COUNT } = await import('../../src/render/TitleDiorama.jsx');
 
 describe('capture determinism: the mascot idle RESETS to its declared pose', () => {
   it('returns the same pose for any clock value in capture mode', () => {
@@ -113,5 +113,42 @@ describe('capture determinism: the diorama mote ring RESETS to zero rotation', (
 
   it('zero is the spin ORIGIN, so entering capture is not a visual jump', () => {
     expect(dioramaMoteSpin(false, 0)).toBe(0);
+  });
+
+  // ABSORBED FROM tests/render/title-diorama-gates.test.js, deleted 2026-08-12.
+  //
+  // That file made three claims by source-grep: that TitleDiorama contains `Canvas`, that it mentions
+  // `isCaptureMode`, and that it matches /LightMotes|motes/i — which the word "motes" in its own COMMENT
+  // satisfies. The first two are already covered far more strongly by suites that RENDER the component
+  // (capture-dpr-gates reads the dpr prop the Canvas actually receives) and that drive the capture
+  // branch (the three blocks above, plus titleCameraPose). Only the mote FIELD itself had nothing
+  // behavioural behind it, so it gets a real assertion here rather than a grep somewhere else.
+  it('the mote field is a fixed, deterministic ring — no randomness anywhere in it', () => {
+    const a = dioramaMotePositions();
+    const b = dioramaMotePositions();
+    expect(a).toHaveLength(MOTE_COUNT);
+    expect(MOTE_COUNT, 'the field emptied out — the menu frame loses its motes entirely').toBeGreaterThan(0);
+    expect(a, 'the mote layout differs between two calls — a Math.random crept in and the menu frame can never be byte-stable').toEqual(b);
+  });
+
+  it('the motes are distinct and inside the diorama box, not stacked at the origin', () => {
+    // The grass-mote layer once rendered at the world origin instead of with its chunk (869f71e), which
+    // compiled, gated green, and was invisible. A position list that is all-zeros or all-identical is the
+    // same defect, and "the file mentions motes" cannot see either.
+    // The extent is a SQUARE of half-width 6, not a circle of radius 6: x and z sweep at different
+    // rates (sin(i*2.4) against cos(i*1.7)), so the ring is a Lissajous figure and the corner reaches
+    // 6*sqrt(2). Asserting a radius of 6 here failed on a real mote at 8.33 — bounding each AXIS is
+    // what the layout actually promises.
+    const p = dioramaMotePositions();
+    const unique = new Set(p.map((v) => v.join(',')));
+    expect(unique.size, 'the motes are stacked on top of each other').toBe(p.length);
+    for (const [x, y, z] of p) {
+      for (const v of [x, y, z]) expect(Number.isFinite(v), `a mote is at a non-finite coordinate: ${x},${y},${z}`).toBe(true);
+      expect(Math.abs(x), 'a mote sits outside the diorama box on X').toBeLessThanOrEqual(6.001);
+      expect(Math.abs(z), 'a mote sits outside the diorama box on Z').toBeLessThanOrEqual(6.001);
+      expect(y, 'a mote is below the plinth').toBeGreaterThan(0);
+    }
+    // And the field genuinely SPREADS — a layout collapsed near the origin passes every bound above.
+    expect(Math.max(...p.map(([x, , z]) => Math.hypot(x, z))), 'the ring collapsed toward the origin').toBeGreaterThan(4);
   });
 });
