@@ -165,7 +165,7 @@
 
 - ▣✓ 634dcc1 **`frontend/src/QuestSystem.jsx:121`** [medium·KEVIN·src] `lootDrops` state is never populated (setLootDrops is never called) yet it is exported from the hook return.
   - _fix:_ Remove `lootDrops`/`setLootDrops` state and drop `lootDrops` from the return object. Confirm no dynamic `.lootDrops` access first.
-- ▢ **`frontend/src/ui/touchTray.js:10`** [medium·KEVIN·src] The `icon` field in TRAY_PANELS is never rendered — the touch tray glyphs come from a separate id-keyed map in TouchControlsSurface, so the field is vestigial/duplicated data.
+- ▣✓ 7c07b56 **`frontend/src/ui/touchTray.js:10`** [medium·KEVIN·src] The `icon` field in TRAY_PANELS is never rendered — the touch tray glyphs come from a separate id-keyed map in TouchControlsSurface, so the field is vestigial/duplicated data.
   - _fix:_ Either (a) drive TouchControlsSurface's glyphs from `p.icon` to dedupe the two mappings, or (b) delete the `icon` field from TRAY_PANELS and the vacuous test assertion. Owner should pick the single source of truth.
 - ▣✓ c4a4958 **`frontend/src/utils/combat.js:32`** [medium·KEVIN·src] The `color` field returned by solveSpellDamage (line 32) and solveMeleeDamage (line 12) is never consumed by any production caller, and the hex values are stale legacy colors that contradict the canonical MAGIC palette.
   - _fix:_ Either drop the `color` field from both solvers (and the 4 color assertions in combat.test.js), or, if damage-number tinting was the intent, wire `color` into DamageNumber and source it from the MAGIC palette instead of the legacy hexes. Owner call on remove-vs-wire.
