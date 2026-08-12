@@ -25,6 +25,14 @@ const _expired = [];
  * @param {number} now         performance.now()
  * @param {(e:any)=>void} remove  ecs.remove
  */
+export function isRenderableMob(entity) {
+  // The OTHER half of the dissolve lifecycle, and it lived as an inline filter expression in
+  // SimplifiedNPCSystem's JSX where only a source-grep could reach it. A mob at health<=0 is dying, not
+  // gone: it must keep rendering until the sweep above retires it, or the corpse vanishes on the frame it
+  // dies and the whole death beat is invisible. Two conditions, one of which is easy to drop.
+  return !!entity && (entity.health > 0 || !!entity.dyingUntil);
+}
+
 export function sweepExpiredCorpses(entities, now, remove) {
   for (const e of entities || []) {
     if (e && e.dyingUntil && now >= e.dyingUntil) _expired.push(e);

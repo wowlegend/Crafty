@@ -83,6 +83,24 @@ function _hexScale(hex, k) {
   return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 }
 
+/**
+ * Does this mob render the glowing red hostile eyes?
+ *
+ * THREE conditions, and the gate that guarded them could only see one. It grepped MobModel.jsx for the
+ * token `!entity.isAlly` appearing ANYWHERE in the file — which the ally-attack branch two hundred lines
+ * up would have satisfied on its own, and which says nothing about the other two terms or about the
+ * operator joining them. The rule it exists to protect (W1: a soulbound companion must not stare at you
+ * with hostile eyes) is a boolean over three fields, so it belongs here as a boolean over three fields
+ * where a truth table can be run against it.
+ *
+ * @param {{type?: string, isAlly?: boolean}} entity
+ * @param {{passive?: boolean}} mobConfig  the MOB_TYPES row for `entity.type`
+ */
+export function hasHostileEyes(entity, mobConfig) {
+  if (!entity || !mobConfig) return false;
+  return !mobConfig.passive && entity.type !== 'villager' && !entity.isAlly;
+}
+
 /** The authored colour for a feature of `tone` on a body of `baseColor`. */
 export function featureColor(tone, baseColor) {
   if (tone === 'bone') return '#e6dcc4';

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { MOB_TYPES } from '../game/mobTypes';
-import { mobFeatures } from '../game/mobFeatures';
+import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
@@ -273,7 +273,7 @@ const MobModel = React.memo(({ entity }) => {
           {q.charOutline && <Outlines thickness={OUTLINE.mob.thickness} color={OUTLINE.color} toneMapped={false} />}
         </mesh>
         {/* Eyes for hostile mobs */}
-        {!mobConfig.passive && entity.type !== 'villager' && !entity.isAlly && (
+        {hasHostileEyes(entity, mobConfig) && (
           <>
             <mesh castShadow receiveShadow position={[-0.15, bodyH + headH / 2, bodyD / 3 + headD / 2 + 0.01]}>
               <boxGeometry args={[0.15, 0.1, 0.02]} />

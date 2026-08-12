@@ -9,6 +9,7 @@ import { MobModel } from './render/MobModel';
 import { MinimapSyncSystem } from './systems/MinimapSyncSystem';
 import { EnemyProjectileSystem } from './systems/EnemyProjectileSystem';
 import { SpawnerSystem } from './systems/SpawnerSystem';
+import { isRenderableMob } from './systems/corpseSweep.js';
 import { AIWorkerSystem } from './systems/AIWorkerSystem';
 import { xpOrbsQuery, lootDropsQuery, useEntities } from './systems/_npcShared';
 import { XPOrbSystem } from './systems/XPOrbSystem';
@@ -115,7 +116,7 @@ export const NPCSystem = React.memo(() => {
       <XPOrbSystem />
       <LootSystem />
 
-      {entities.filter(entity => entity && (entity.health > 0 || entity.dyingUntil)).map(entity => (
+      {entities.filter(isRenderableMob).map(entity => (
         <MobModel key={entity.id} entity={entity} />
       ))}
 

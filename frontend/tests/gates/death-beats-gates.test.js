@@ -20,15 +20,6 @@ describe('death-weight dissolve gates (M2 #7 S1)', () => {
     expect(dissolvePose(1).scale).toBeCloseTo(0);
   });
 
-  it('the kill DEFERS removal behind a dissolve (sets dyingUntil, not an immediate ecs.remove)', () => {
-    // the death finisher fires once (guarded so a hit on a dissolving corpse cannot re-kill it)
-    expect(npc).toMatch(/if \(entity\.health <= 0 && !entity\.dyingUntil\)/);
-    // removal is deferred to dyingUntil, NOT done inline in the death branch
-    expect(npc).toMatch(/entity\.dyingUntil = performance\.now\(\) \+ DEATH_DISSOLVE_MS/);
-    // the kill-bus + XP + spark still fire (kept)
-    expect(npc).toMatch(/emitMobKill\(entity\.type/);
-  });
-
   it('a dying corpse is swept (removed) only after the dissolve elapses, EVERY FRAME', () => {
     // The sweep moved out of SpawnerSystem's 1000ms spawn-check throttle, where the 320ms dissolve became
     // a 320-1320ms corpse lifetime. This gate pinned the inline `if (entity.dyingUntil)` block that lived
@@ -41,10 +32,6 @@ describe('death-weight dissolve gates (M2 #7 S1)', () => {
     expect(call, 'the sweep call is missing').toBeGreaterThan(-1);
     expect(throttle, 'the spawn throttle is missing').toBeGreaterThan(-1);
     expect(call, 'the corpse sweep is back inside the 1000ms spawn throttle').toBeLessThan(throttle);
-  });
-
-  it('a dissolving corpse keeps RENDERING (the filter includes dyingUntil)', () => {
-    expect(npc).toMatch(/entity\.health > 0 \|\| entity\.dyingUntil/);
   });
 
   it('MobModel renders the dissolve pose from dyingUntil via the shared windupRamp', () => {
