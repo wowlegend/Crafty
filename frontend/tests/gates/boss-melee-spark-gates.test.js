@@ -16,7 +16,12 @@ describe('M6 #3 boss-melee sparks (verb-consistency with the mob path)', () => {
   });
 
   it('the boss-hit branch sprays GPU sparks at the boss point', () => {
-    const branch = between(comp, 'Boss-cone branch', 'if (hitSomething');
+    // ANCHORED TO CODE, NOT PROSE. This delimited the region with the comment 'Boss-cone branch', and
+    // between() returns '' when its anchor is missing — so rewording or deleting that comment emptied
+    // the region and the two toMatch assertions below would fail for a reason unrelated to behaviour
+    // (or, had they been negations, pass over nothing). The call below occurs exactly once in the file.
+    const branch = between(comp, 'isPointInCone(playerPos, lookDir, bossPoint', 'if (hitSomething');
+    expect(branch, 'the boss-cone branch anchor no longer matches — re-anchor it').not.toBe('');
     expect(branch).toMatch(/triggerGPUSparks\(/);
     expect(branch).toMatch(/sparkFor\(sparkType, isCrit\)/);
   });

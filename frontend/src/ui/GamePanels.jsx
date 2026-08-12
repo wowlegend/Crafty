@@ -41,11 +41,6 @@ const RARITY_TEXT = {
     legendary: 'text-rarity-legendary',
 };
 
-// Renders a 2-tone game Icon for an item via the central registry (src/data/items.js).
-// If no icon maps (unknown / raw block), falls back to a small color swatch (block
-// color when known, else neutral) with NO glyph — never crashes on an unmapped item.
-// `size` is the Icon px size.
-
 // Paper-doll gear cell — bold-flat. Equipped -> a gold `Slot gear` with the 2-tone
 // item Icon + a Remove hover overlay; empty -> an empty `Slot` with the placeholder
 // Icon + label. Preserves onUnequip (click) + onHover (hover-inspect).

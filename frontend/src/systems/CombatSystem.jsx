@@ -111,7 +111,6 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       }]);
 
       if (entity.health <= 0 && !entity.dyingUntil) {
-        const store = useGameStore.getState();
 
         // Spawn warm-gold XP motes (recoloured from the old garish green). XP drops only on YOUR kills
         // (S2-B3-M1: ally kills would farm pickups). CAP the COUNT so a high-XP kill is a tasteful few

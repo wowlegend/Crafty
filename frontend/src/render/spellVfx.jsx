@@ -248,14 +248,6 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
             </mesh>
           </group>
         );
-      case 'crystal':
-        // angular ice shard (faceted, sharp) -- legacy single-dodecahedron fallback (pre-S3.5)
-        return (
-          <mesh renderOrder={0}>
-            <dodecahedronGeometry args={[size * 0.5, 0]} />
-            {shapeMat}
-          </mesh>
-        );
       case 'bolt':
         // W2-T4: a jagged, FORKING bolt — a deterministic zig-zag of short tilted cylinder
         // segments (the crackle in flight) plus a couple of short fork branches near the
