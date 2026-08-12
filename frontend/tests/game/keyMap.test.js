@@ -10,6 +10,14 @@ const read = (p) => readFileSync(resolve(HERE, '../../src/', p), 'utf8');
 // the handler universe: panel toggles live in InputManager, the verb intents + WASD/F in Components.
 const handlers = read('InputManager.jsx') + read('Components.jsx');
 
+// ONE PATTERN, BOTH DIRECTIONS, AND IT MATCHES ANY RECEIVER. The reverse test below parsed
+// `event.code === 'X'` — but Components.jsx:397 handles F as `e.code === 'KeyF'`, so every handler
+// written against a differently-named event object was invisible to it. That blind spot made the
+// reverse gate undercount live handlers, and it made the forward gate (which used a bare substring
+// instead) look like the lenient one when both were wrong in different directions.
+const CODE_HANDLER = /\b[A-Za-z_$][\w$]*\.code\s*===\s*'([A-Za-z0-9]+)'/g;
+const handledCodes = () => new Set([...handlers.matchAll(CODE_HANDLER)].map((m) => m[1]));
+
 describe('KEY_MAP — the binding single-source-of-truth (anti-drift)', () => {
   it('every row has a non-empty {key, label} in a known group', () => {
     const groups = new Set(KEY_GROUPS);
@@ -33,9 +41,19 @@ describe('KEY_MAP — the binding single-source-of-truth (anti-drift)', () => {
   });
 
   it('ANTI-LIE: every advertised keydown (`code`) row maps to a LIVE handler', () => {
-    for (const r of KEY_MAP.filter((r) => r.code)) {
+    // ANCHORED TO THE SYNTACTIC FORM, not to the bare quoted string. This asserted
+    // `handlers.includes(\`'${r.code}'\`)`, which any occurrence of the quoted code satisfies —
+    // a comment naming the key, a string in an unrelated array, a data table, a disabled branch. The
+    // REVERSE test in this same file (:67) already parses `event.code === 'X'`, so the two halves of one
+    // invariant were reading the source two different ways and only one of them could see a handler.
+    const handled = handledCodes();
+    expect(handled.size, 'no handlers parsed — the regex or the files moved, so this asserts nothing').toBeGreaterThan(8);
+
+    const advertised = KEY_MAP.filter((r) => r.code);
+    expect(advertised.length, 'no advertised keydown rows — the denominator is empty').toBeGreaterThan(4);
+    for (const r of advertised) {
       expect(
-        handlers.includes(`'${r.code}'`),
+        handled.has(r.code),
         `${r.key} (${r.code}) is advertised but has NO live keydown handler`,
       ).toBe(true);
     }
@@ -61,10 +79,17 @@ describe('KEY_MAP — the REVERSE direction, which was never guarded', () => {
   const COVERED_BY_COMPOUND_ROW = {
     // KEY_MAP row `{ key: '1–4', label: 'Select spell' }` carries no `code` because it stands for four.
     Digit1: '1–4', Digit2: '1–4', Digit3: '1–4', Digit4: '1–4',
+    // Movement, same shape: the rows are `{ key: 'WASD', label: 'Move' }`, `{ key: 'Space', ... }` and
+    // `{ key: 'Shift', label: 'Dodge-roll' }`, none of which carry a `code` — WASD because it stands for
+    // four, Space and Shift because their handlers key off ShiftLeft/ShiftRight and the row names the
+    // key a player presses, not the DOM code. These surfaced only once the handler pattern stopped
+    // requiring the receiver to be literally named `event`, and they are advertised, not missing.
+    KeyW: 'WASD', KeyA: 'WASD', KeyS: 'WASD', KeyD: 'WASD',
+    Space: 'Space', ShiftLeft: 'Shift', ShiftRight: 'Shift',
   };
 
   it('every LIVE keydown handler is advertised in KEY_MAP', () => {
-    const handled = [...new Set([...handlers.matchAll(/event\.code\s*===\s*'([A-Za-z0-9]+)'/g)].map((m) => m[1]))];
+    const handled = [...handledCodes()];
     expect(handled.length, 'no handlers parsed — the regex or the files moved').toBeGreaterThan(8);
 
     const advertised = new Set(KEY_MAP.filter((r) => r.code).map((r) => r.code));

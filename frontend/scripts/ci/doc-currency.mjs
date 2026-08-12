@@ -18,7 +18,8 @@
  * It does NOT try to judge prose staleness with an LLM. A lint that can be argued with is a lint that gets
  * ignored.
  */
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
@@ -156,9 +157,23 @@ if (existsSync(statusAbs)) {
     if (!re.test(status)) errors.push(`STATUS.md has lost ${what} — it is the source of truth; keep it whole.`);
   }
   // Soft signal: STATUS should not go stale relative to shipped code.
-  const ageDays = (Date.now() - statSync(statusAbs).mtimeMs) / 86_400_000;
-  if (ageDays > 14) {
-    warnings.push(`STATUS.md has not been touched in ${ageDays.toFixed(0)} days — is the registry still true?`);
+  //
+  // MEASURED FROM GIT, NOT FROM THE FILESYSTEM. This read `statSync(...).mtimeMs`, and a fresh CI
+  // checkout writes every file at clone time — so in the one environment where this lint runs on every
+  // push, the age was always ~0 and the warning was structurally incapable of firing. It could only ever
+  // have spoken on a developer's own machine, which is precisely where someone already knows.
+  // The commit date is the real "when was this last touched" and it travels with the repo.
+  let ageDays = null;
+  try {
+    const ts = execFileSync('git', ['log', '-1', '--format=%ct', '--', statusAbs], { encoding: 'utf8' }).trim();
+    if (ts) ageDays = (Date.now() - Number(ts) * 1000) / 86_400_000;
+  } catch {
+    // Not a git checkout (a tarball, a sandbox). Say so rather than silently reporting fresh — an age
+    // this cannot measure must not read as an age of zero.
+    warnings.push('STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.');
+  }
+  if (ageDays !== null && ageDays > 14) {
+    warnings.push(`STATUS.md has not been committed in ${ageDays.toFixed(0)} days — is the registry still true?`);
   }
 }
 
