@@ -12,7 +12,10 @@ export const solveMeleeDamage = (attackerStats, baseWeaponDmg = 5) => {
     };
 };
 
-export const solveSpellDamage = (attackerStats, baseSpellDmg = 20, spellType = 'fireball') => {
+// `_spellType` is retained in the signature and deliberately unused: EnhancedMagicSystem.jsx:204 passes it
+// positionally, and its only reader was the element-colour ladder removed with the dead `color` field.
+// Dropping the parameter would silently change the arity of a call site that still supplies three args.
+export const solveSpellDamage = (attackerStats, baseSpellDmg = 20, _spellType = 'fireball') => {
     const intellect = attackerStats.intellect || 10;
     const agility = attackerStats.agility || 10;
     const intellectMultiplier = 1.0 + (intellect * 0.02);
