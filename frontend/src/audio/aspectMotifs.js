@@ -7,7 +7,11 @@
  */
 
 /** A tiny additive-synth arpeggio: notes (Hz) played sequentially with overlap + decay. */
-export const makeArp = (ctx, notes, noteDur, wave, { gain = 0.32, overlap = 0.5, shimmer = 0 } = {}) => {
+// MODULE SURFACE IS `MOTIFS` ALONE. The five factories below were each exported and none of them was
+// ever imported anywhere — synthVoices.js takes the MOTIFS table and nothing else. An export is a claim
+// that something outside may depend on this; five false claims make the real seam impossible to see.
+// (makeArp's one external mention is a COMMENT in synthVoices.js, not a call.)
+const makeArp = (ctx, notes, noteDur, wave, { gain = 0.32, overlap = 0.5, shimmer = 0 } = {}) => {
   if (!ctx) return null;
   const sampleRate = ctx.sampleRate;
   const step = noteDur * (1 - overlap);
@@ -38,10 +42,10 @@ export const makeArp = (ctx, notes, noteDur, wave, { gain = 0.32, overlap = 0.5,
   return buffer;
 };
 
-export const makeWildheartMotif = (ctx) => makeArp(ctx, [110, 130.81, 164.81], 0.22, 'sawtooth', { gain: 0.3 });          // A2 C3 E3 — primal rise
-export const makeVoidhandMotif = (ctx) => makeArp(ctx, [164.81, 123.47, 82.41], 0.24, 'square', { gain: 0.3 });            // E3 B2 E2 — gravity falls
-export const makeSoulbindMotif = (ctx) => makeArp(ctx, [196.0, 246.94, 293.66, 392.0], 0.18, 'triangle', { gain: 0.3 });   // G3 B3 D4 G4 — a soul joins
-export const makeElemancerMotif = (ctx) => makeArp(ctx, [261.63, 329.63, 369.99, 493.88], 0.18, 'sine', { gain: 0.3, shimmer: 0.25 }); // C4 E4 F#4 B4 — lydian wonder
+const makeWildheartMotif = (ctx) => makeArp(ctx, [110, 130.81, 164.81], 0.22, 'sawtooth', { gain: 0.3 });          // A2 C3 E3 — primal rise
+const makeVoidhandMotif = (ctx) => makeArp(ctx, [164.81, 123.47, 82.41], 0.24, 'square', { gain: 0.3 });            // E3 B2 E2 — gravity falls
+const makeSoulbindMotif = (ctx) => makeArp(ctx, [196.0, 246.94, 293.66, 392.0], 0.18, 'triangle', { gain: 0.3 });   // G3 B3 D4 G4 — a soul joins
+const makeElemancerMotif = (ctx) => makeArp(ctx, [261.63, 329.63, 369.99, 493.88], 0.18, 'sine', { gain: 0.3, shimmer: 0.25 }); // C4 E4 F#4 B4 — lydian wonder
 
 export const MOTIFS = {
   motifWildheart: makeWildheartMotif,

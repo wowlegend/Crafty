@@ -45,7 +45,10 @@ export const SPELL_UPGRADES = {
 };
 
 /** The level a spell is actually at, given the persisted map. Absent/blank -> Level 1. */
-export const levelOf = (spellLevels, spellType) => (spellLevels && spellLevels[spellType]) || 1;
+// INTERNAL. `levelOf` and `statsFor` below are read only by this module (three call sites); both were
+// exported and neither had a single importer. Kept exported: SPELL_UPGRADES, requiredLevelForUpgrade,
+// useSpellUpgrades, which do.
+const levelOf = (spellLevels, spellType) => (spellLevels && spellLevels[spellType]) || 1;
 
 /**
  * The required PLAYER level to buy the given next-level upgrade entry, derived from its xpCost.
@@ -59,7 +62,7 @@ export function requiredLevelForUpgrade(nextLevelEntry) {
 }
 
 /** Pure: the stat row a spell casts at. The ONE place level -> stats is resolved. */
-export function statsFor(spellLevels, spellType) {
+function statsFor(spellLevels, spellType) {
     const upgrade = SPELL_UPGRADES[spellType];
     if (!upgrade) return null;
     return upgrade.levels[levelOf(spellLevels, spellType) - 1];

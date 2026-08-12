@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, cleanup } from '@testing-library/react';
 import * as THREE from 'three';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -51,8 +51,15 @@ const clearWorld = () => {
   for (const e of [...ecs.entities]) ecs.remove(e);
 };
 
+// UNMOUNT BETWEEN TESTS. This suite rendered <CombatSystem> in a beforeEach and never tore it down, and
+// RTL's own auto-cleanup is INACTIVE here: it registers only `if (typeof afterEach === 'function')`, and
+// vitest.config.js sets no `globals` and no `setupFiles`, so that branch never runs. Six mounted trees
+// accumulated in document.body across the file. Same shape as tests/gates/modal-a11y.test.jsx.
+afterEach(cleanup);
+
 describe('B1 friend/foe — the hub questgivers are not target practice', () => {
   beforeEach(() => {
+    expect(document.body.childElementCount, 'a previous test left a mounted React tree behind').toBe(0);
     clearWorld();
     render(<CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} />);
   });
