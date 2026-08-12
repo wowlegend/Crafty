@@ -7,7 +7,12 @@ describe('store bossActive', () => {
   it('defaults to a boolean false (not undefined)', () => {
     // Fresh store state must expose a real boolean, since SoundManager gates
     // boss music on `state.bossActive` truthiness.
-    expect(useGameStore.getState().bossActive).toBe(false);
+    //
+    // READ THE DECLARED INITIAL STATE, NOT THE ONE beforeEach JUST SET. This asserted
+    // `getState().bossActive` after a beforeEach calling `setBossActive(false)`, so it read back the
+    // test's own write and would have passed with a declared default of `undefined` — precisely the
+    // value the test name exists to rule out, and the one SoundManager's truthiness gate would trip on.
+    expect(useGameStore.getInitialState().bossActive).toBe(false);
   });
 
   it('setBossActive(true) flips the stored value to true', () => {
