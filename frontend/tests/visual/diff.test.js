@@ -6,6 +6,7 @@ import pixelmatch from 'pixelmatch';
 import { evaluateCaptureFreshness } from '../../src/devtest/captureFreshness.js';
 import { VISUAL_STATES } from '../../src/devtest/visualStates.js';
 import { maxWindowDensity } from '../../src/devtest/diffDensity.js';
+import { densityVerdict } from '../../scripts/ci/_density-ratchet.mjs';
 
 // S1-D states (all SIGNED OFF + baselined 2026-06-02): `spell-cast` (M1/M2 spell-VFX spine +
 // cast-arc, re-baselined after the #1 premium-energy polish), `title-mascot` (the chosen
@@ -234,4 +235,30 @@ describe('visual regression', () => {
       ).toBeLessThan(THRESHOLD);
     });
   }
+
+  // THE RATCHET. Runs last, so `density` is populated by every frame above.
+  //
+  // Until now this file computed a windowed local density for every frame and printed it under the words
+  // "REPORT ONLY, asserts nothing". The recorded reason was sound and was an objection to a SINGLE
+  // THRESHOLD, not to asserting: a TAU of 0.10 reds eight frames, seven of which pass the global gate,
+  // because this corpus has no one tolerance -- 18 of 31 frames reproduce with no changed pixel anywhere
+  // while explore-day carries 5.13% local terrain-streaming noise.
+  //
+  // A per-frame ratchet needs no adjudication and invents no tolerance. Each frame is frozen at what it
+  // actually does; only a RISE fails. That closes the false-negative class the density instrument was
+  // built for: a 248x248 block of a byte-identical frame could change completely and still move only
+  // 6% of the frame, so the global gate cannot see it and never could.
+  it('no frame has grown a NEW concentration of change (local-density ratchet)', () => {
+    const ledger = JSON.parse(readFileSync(resolve(DIR, '.density-ledger.json'), 'utf8'));
+    expect(density.length, 'no frame was measured — this assertion is running over nothing').toBe(STATES.length);
+    const { risen, unfrozen, missing } = densityVerdict(ledger.frames, density);
+    expect(unfrozen, 'gated state(s) absent from the density ledger — freeze them deliberately: node scripts/visual/freeze-density.mjs').toEqual([]);
+    expect(missing, 'frozen state(s) were never measured — a frame has left the corpus and its guard went with it').toEqual([]);
+    expect(
+      risen.map((r) => `${r.state} ${(r.density * 100).toFixed(2)}% > ${(r.allowed * 100).toFixed(2)}% at ${r.x},${r.y}`),
+      'a frame concentrated MORE change into one 128px window than it is frozen at. Open tests/visual/diff/<state>.png\n' +
+      '  at the window coordinates above. A rise here can sit far under the global 6% gate and still be a\n' +
+      '  real regression — that is the whole reason this assertion exists.'
+    ).toEqual([]);
+  });
 });

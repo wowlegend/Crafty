@@ -1,0 +1,97 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { densityVerdict, frozenFor, DENSITY_FLOOR } from '../../scripts/ci/_density-ratchet.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const LEDGER = resolve(HERE, '../visual/.density-ledger.json');
+
+// THE INSTRUMENT THAT MEASURED AND NEVER JUDGED.
+//
+// `src/devtest/diffDensity.js` has computed a windowed local density on every frame of every visual run
+// since 2026-08-09. `diff.test.js` printed it under the words "REPORT ONLY, asserts nothing". Measured
+// over a real pair: 18 of 31 frames reproduce with NO changed pixel anywhere, while the global gate lets
+// 6% of the frame move. So a 248x248 block of any of those 18 could change completely and pass — which
+// is the false-negative class the density instrument was written for, sitting unused beside it.
+//
+// The recorded objection to fixing it was that a single TAU of 0.10 reds eight frames, seven of which
+// currently pass. That is an objection to ONE NUMBER, not to asserting: this corpus has no single
+// tolerance, because `explore-day` carries 5.13% local terrain-streaming noise and eighteen frames carry
+// zero. A per-frame ratchet needs no adjudication and invents no tolerance — each frame is frozen at
+// what it does, and only a RISE fails.
+describe('local-density ratchet — a measurement that reaches a verdict', () => {
+  it('fails a frame whose local concentration RISES, even when the global ratio is tiny', () => {
+    // The whole point, in one case: 0.02% of the frame moved, all of it in one window.
+    const { risen } = densityVerdict({ menu: 0.02 }, [{ state: 'menu', density: 0.31, x: 640, y: 200 }]);
+    expect(risen).toHaveLength(1);
+    expect(risen[0].state).toBe('menu');
+    expect(risen[0].allowed).toBe(0.02);
+  });
+
+  it('passes a frame that stays at or under what it was frozen at', () => {
+    const { risen } = densityVerdict({ menu: 0.05 }, [
+      { state: 'menu', density: 0.05 },
+      { state: 'hearth', density: 0.0 },
+    ]);
+    expect(risen).toEqual([]);
+  });
+
+  it('refuses to silently admit a frame the ledger does not know', () => {
+    // Otherwise adding a capture state quietly adds an unguarded one, and the ledger stops being a
+    // denominator the moment the corpus grows — the exact defect this repo keeps shipping.
+    const { unfrozen } = densityVerdict({ menu: 0.02 }, [
+      { state: 'menu', density: 0.01 },
+      { state: 'brand-new-state', density: 0.9 },
+    ]);
+    expect(unfrozen).toEqual(['brand-new-state']);
+  });
+
+  it('notices a frozen frame that was not measured at all', () => {
+    // A frame vanishing from the corpus is how a gate quietly stops covering something.
+    const { missing } = densityVerdict({ menu: 0.02, hearth: 0.03 }, [{ state: 'menu', density: 0.01 }]);
+    expect(missing).toEqual(['hearth']);
+  });
+
+  it('freezes a byte-identical frame at the FLOOR, not at zero', () => {
+    // Frozen at exactly 0, one stray pixel reds the push. A gate that cries wolf gets ignored, which is
+    // a slower way of asserting nothing.
+    expect(frozenFor(0)).toBe(DENSITY_FLOOR);
+    expect(frozenFor(0.0001)).toBe(DENSITY_FLOOR);
+  });
+
+  it('gives a noisy frame headroom over what it actually did', () => {
+    expect(frozenFor(0.0513)).toBeGreaterThan(0.0513);
+    expect(frozenFor(0.0513), 'the headroom is so wide the frame is unguarded').toBeLessThan(0.12);
+  });
+
+  // AND THE CALLER. Twice today I have shipped a seam nothing called (stepCaptureFrames sat unused by
+  // the harness for two days; the stale-ledger direction was computed and never branched on). The
+  // density instrument itself is the third instance in this very file's subject matter — measured for
+  // days, asserted never. Reading diff.test.js's source is the right tool: the claim is that one file
+  // calls one function, and executing it means running the whole visual corpus.
+  it('the visual gate actually CALLS the ratchet, rather than only importing it', () => {
+    const gate = readFileSync(resolve(HERE, '../visual/diff.test.js'), 'utf8');
+    expect(gate, 'diff.test.js does not import the ratchet').toContain('_density-ratchet.mjs');
+    expect(gate, 'diff.test.js imports the ratchet and never calls it — the instrument is back to report-only')
+      .toMatch(/densityVerdict\(/);
+    const at = gate.indexOf('densityVerdict(');
+    expect(gate.slice(at, at + 900), 'the verdict is computed and never asserted').toMatch(/expect\(\s*risen/);
+  });
+
+  // THE DENOMINATOR, against the real ledger and the real corpus.
+  it('the committed ledger covers every gated state, and none of it is frozen open', () => {
+    expect(existsSync(LEDGER), 'no density ledger — run the visual gate with --freeze-density').toBe(true);
+    const ledger = JSON.parse(readFileSync(LEDGER, 'utf8'));
+    const frames = Object.keys(ledger.frames);
+    expect(frames.length, 'the ledger enumerates almost nothing — it is measuring the wrong thing').toBeGreaterThan(25);
+    for (const [state, allowed] of Object.entries(ledger.frames)) {
+      // NOT compared against the global 6% — those are different units and confusing them is how a
+      // tolerance gets "reasoned about" into meaninglessness. 9% of a 128x128 window is 1,474 pixels,
+      // i.e. 0.14% of the frame: far TIGHTER than the global gate, not looser. The real question is
+      // whether a window is so free to change that nothing in it is guarded.
+      expect(allowed, `${state} may change 15% of a window, which guards nothing`).toBeLessThan(0.15);
+      expect(allowed, `${state} is frozen below the floor and will red on noise`).toBeGreaterThanOrEqual(DENSITY_FLOOR);
+    }
+  });
+});
