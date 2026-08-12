@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -125,7 +125,7 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -192,7 +192,7 @@ jobs:
       run:
         working-directory: . # this one runs at the repo ROOT
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Doc-currency lint
         run: node frontend/scripts/ci/doc-currency.mjs
 
