@@ -19,8 +19,8 @@
 
 ## 📍 THE CURSOR — 2026-08-12 · draining the 88-finding holistic-review queue
 
-**THE ONE UNIT IN FLIGHT: `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`, 34 open of 88.**
-54 closed. Re-read the file for the live count: `grep -c '^- ▢'`.
+**THE ONE UNIT IN FLIGHT: `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`, 30 open of 88.**
+58 closed. Re-read the file for the live count: `grep -c '^- ▢'`.
 
 **THE TRIAGE IS DONE AND IS THE EXPENSIVE PART — DO NOT REDO IT.** A 16-agent pass read all 88 against
 live HEAD, each partition asserting its own denominator (8 x 11). Its full output, with the per-finding
@@ -51,6 +51,13 @@ commit that flips `- ▢` to `- ▣✓ <sha>`. `queue-ledger` enforces that ever
 - **A token grep over a file whose own COMMENTS contain the token is not a gate.** Hit twice here:
   saveSchema.js explains `questState` in prose, and QuestSystem imports `loreFor`. Strip comments, or
   move the claim to something that executes.
+- **A `Mutation-Proof:` trailer must start with exactly that token and a colon** — the commit-msg hook
+  parses it. Writing "Mutation-Proof, three directions:" was rejected, and because the commit failed, the
+  chained `git rev-parse HEAD` then stamped two queue rows with the PREVIOUS commit's sha. Un-stamp, fix
+  the trailer, re-stamp. Do not chain a stamp onto a commit that can be rejected.
+- **A name-level grep says "used"; only the consumer GRAPH says "read".** GameSystems selected
+  attributes/equipment/getEffectiveAttributes, which GamePanels uses constantly — from its OWN store
+  slice, referencing the context zero times. Trace the path, not the token.
 - **Never gate verification on a pipeline's exit status.** `npm run lint | tail -2 && ...` shipped a
   commit with lint RED, because `tail` exits 0. Check `$?` of the command itself.
 
