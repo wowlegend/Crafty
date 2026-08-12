@@ -54,7 +54,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.6.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "knip": "^6.17.1",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
