@@ -213,6 +213,21 @@ export async function assertSubjectOnScreen(page, { palette, label, minOnScreen 
  * @param {{screenshot: function}} page  puppeteer page (or any object with a screenshot())
  * @returns {Promise<{polls:number, settled:boolean, sawChange:boolean}>}
  */
+/**
+ * Await `n` real animation frames in the page. The DEFAULT for waitForStableFrame's inter-poll wait.
+ *
+ * Injectable so the unit tests can substitute it explicitly rather than have the function silently
+ * degrade on a page object that has no `evaluate` — a stability check that quietly stops requiring
+ * rendered frames is exactly the kind of instrument this file exists to prevent.
+ */
+export async function defaultAwaitFrames(page, n = 1) {
+  if (n <= 0) return 0;
+  return page.evaluate(async (count) => {
+    for (let i = 0; i < count; i++) await new Promise((r) => requestAnimationFrame(() => r()));
+    return count;
+  }, n);
+}
+
 export async function waitForStableFrame(
   page,
   {
@@ -221,7 +236,9 @@ export async function waitForStableFrame(
     max = 40,
     floor = 300,
     minBytes = 1024,
-    sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+    framesBetweenPolls = 1,
+    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+    awaitFrames = defaultAwaitFrames
   } = {}
 ) {
   await sleep(floor);
@@ -256,6 +273,22 @@ export async function waitForStableFrame(
   let polls = 0;
   let sawChange = false;
   for (; polls < max; polls++) {
+    // STABILITY HAS TO BE MEASURED IN RENDERED FRAMES, NOT IN WALL TIME. This loop used to sleep and
+    // re-screenshot, which asks "did the picture change while I waited" — and under SwiftShader the
+    // renderer manages roughly 1-3 fps, so at a 200ms interval two consecutive polls very often land
+    // inside the SAME rendered frame. Identical screenshots then mean nothing was drawn yet, not that
+    // the scene settled, and the loop exits having verified nothing.
+    //
+    // That is the residual nobody could close. `explore-day`'s distant treeline differs run to run —
+    // diagnosed by hand twice (S8 at 1.646% global, S9 at 0.201%) and still present today at 30.35% of
+    // a 128px window, which the local-density ratchet finally made visible. Waiting for at least one
+    // real animation frame between polls makes "stable" mean the renderer drew again and produced the
+    // same pixels, which is the property the caller has always believed it was getting.
+    //
+    // No timeout escape hatch, deliberately, matching flushFrames: if rAF stops firing the run must
+    // hang rather than degrade to screenshots of a frozen surface. `assertBrowserProducesFrames` is the
+    // bounded preflight that catches a genuinely dead compositor before any of this runs.
+    await awaitFrames(page, framesBetweenPolls);
     await sleep(interval);
     const shot = await shoot();
     if (shot.equals(prev)) {

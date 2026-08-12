@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tapVerdict, assertBaseline, waitForStableFrame, intraPageVerdict } from '../../scripts/visual/_probe.mjs';
+import { tapVerdict, assertBaseline, waitForStableFrame, intraPageVerdict, defaultAwaitFrames } from '../../scripts/visual/_probe.mjs';
 
 // The regression fixtures below are the ACTUAL measurements from 2026-08-05, when touch-probe.mjs reported
 // success over taps it never landed and two registry lines were written from the result. Every near-miss
@@ -86,6 +86,10 @@ describe('assertBaseline — an absence means nothing until the instrument has s
 // moved were the distant treeline, not the grass. `sleep` is injected so these run in microseconds.
 describe('waitForStableFrame — waits on the frame, and proves it can see a difference first', () => {
   const noSleep = () => Promise.resolve();
+  // Injected EXPLICITLY rather than letting the function degrade on a fake page with no `evaluate`.
+  // The real default is asserted separately below; a silent no-op here would hide a stability check
+  // that had stopped requiring rendered frames.
+  const noFrames = async () => 0;
   // frames: an array of buffers handed out in order; the last one repeats forever
   const pageOf = (frames) => {
     let i = 0;
@@ -94,15 +98,62 @@ describe('waitForStableFrame — waits on the frame, and proves it can see a dif
   const F = (byte) => Buffer.alloc(4096, byte); // above minBytes, so the blank-frame guard does not fire
 
   it('returns as soon as the frame has held still for needStable polls', async () => {
-    const r = await waitForStableFrame(pageOf([F(1)]), { sleep: noSleep, needStable: 3 });
+    const r = await waitForStableFrame(pageOf([F(1)]), { awaitFrames: noFrames, sleep: noSleep, needStable: 3 });
     expect(r.settled).toBe(true);
     expect(r.polls).toBe(2); // 3rd identical read breaks the loop
+  });
+
+  // STABILITY IN RENDERED FRAMES, NOT IN WALL TIME — the residual nobody could close.
+  //
+  // The loop used to sleep and re-screenshot. Under SwiftShader the renderer manages ~1-3 fps, so at a
+  // 200ms interval two consecutive polls very often land inside the SAME rendered frame: the screenshots
+  // match because nothing was DRAWN, not because the scene settled, and the loop exits having verified
+  // nothing. That is how explore-day's distant treeline kept differing run to run through two hand
+  // diagnoses (S8 1.646% global, S9 0.201%) and was still doing it at 30.35% of a 128px window.
+  it('requires a RENDERED FRAME between polls, not merely elapsed time', async () => {
+    let frames = 0;
+    await waitForStableFrame(pageOf([F(1)]), {
+      sleep: noSleep,
+      needStable: 3,
+      awaitFrames: async (_p, n) => { frames += n; return n; },
+    });
+    // Derived, not guessed: the first read happens BEFORE the loop, then each iteration awaits frames
+    // and re-reads. needStable 3 is reached on the third iteration, which breaks after its read — so
+    // three iterations ran and three frame-waits happened. (`polls` reports 2 because it is the loop
+    // counter at the break, which is why counting the waits is the honest assertion here.)
+    expect(frames, 'the loop polled without ever waiting for the renderer to draw a new frame').toBe(3);
+  });
+
+  it('asks for at least one frame per poll by default, so the default cannot be the degenerate one', async () => {
+    const asked = [];
+    await waitForStableFrame(pageOf([F(1)]), {
+      sleep: noSleep,
+      needStable: 2,
+      awaitFrames: async (_p, n) => { asked.push(n); return n; },
+    });
+    expect(asked.length).toBeGreaterThan(0);
+    for (const n of asked) expect(n, 'the default asks for zero frames, which is the old behaviour').toBeGreaterThanOrEqual(1);
+  });
+
+  it('defaultAwaitFrames drives real requestAnimationFrame calls in the page', async () => {
+    // The injected fakes above are substitutions; this asserts the thing they stand in for. Without it,
+    // the default could quietly become a no-op and every test above would still pass.
+    let rafs = 0;
+    const fakePage = {
+      evaluate: async (fn, n) => {
+        global.requestAnimationFrame = (cb) => { rafs++; cb(); return rafs; };
+        return fn(n);
+      },
+    };
+    const got = await defaultAwaitFrames(fakePage, 3);
+    expect(got).toBe(3);
+    expect(rafs, 'defaultAwaitFrames did not actually await animation frames').toBe(3);
   });
 
   it('keeps waiting while the frame is still changing, then settles', async () => {
     // four distinct frames (a mesh still swapping in), then stable
     const p = pageOf([F(1), F(2), F(3), F(4), F(9)]);
-    const r = await waitForStableFrame(p, { sleep: noSleep, needStable: 3 });
+    const r = await waitForStableFrame(p, { awaitFrames: noFrames, sleep: noSleep, needStable: 3 });
     expect(r.settled).toBe(true);
     expect(r.sawChange).toBe(true);
     expect(r.polls).toBeGreaterThan(3); // it did NOT return during the churn
@@ -112,7 +163,7 @@ describe('waitForStableFrame — waits on the frame, and proves it can see a dif
     // every read differs -> nothing is ever stable
     let n = 0;
     const page = { screenshot: async () => Buffer.alloc(4096, n++ % 251) };
-    const r = await waitForStableFrame(page, { sleep: noSleep, max: 12 });
+    const r = await waitForStableFrame(page, { awaitFrames: noFrames, sleep: noSleep, max: 12 });
     expect(r.settled).toBe(false);
     expect(r.polls).toBe(12); // denominator: it really did look 12 times
   });
@@ -122,7 +173,7 @@ describe('waitForStableFrame — waits on the frame, and proves it can see a dif
     // Every comparison then matches, the loop exits on its first look, and capture writes that frame as
     // a baseline. A settled world and a dead camera produce the same reading, so size is checked first.
     const page = { screenshot: async () => Buffer.alloc(10, 0) };
-    await expect(waitForStableFrame(page, { sleep: noSleep })).rejects.toThrow(/blank or failed|screenshot is/i);
+    await expect(waitForStableFrame(page, { awaitFrames: noFrames, sleep: noSleep })).rejects.toThrow(/blank or failed|screenshot is/i);
   });
 
   it('THROWS if the byte comparator itself cannot discriminate', async () => {
@@ -130,7 +181,7 @@ describe('waitForStableFrame — waits on the frame, and proves it can see a dif
     Buffer.prototype.equals = () => true; // a comparator that can only ever say "identical"
     try {
       const page = { screenshot: async () => Buffer.alloc(4096, 7) };
-      await expect(waitForStableFrame(page, { sleep: noSleep })).rejects.toThrow(/dead/i);
+      await expect(waitForStableFrame(page, { awaitFrames: noFrames, sleep: noSleep })).rejects.toThrow(/dead/i);
     } finally {
       Buffer.prototype.equals = realEquals;
     }
