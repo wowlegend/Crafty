@@ -213,7 +213,7 @@
   - _fix:_ Remove the 'crystal' case (the 'sphere'/default arm already covers any unknown shape via shapeMat). If keeping as defensive, note it is currently unreachable.
 - ▣✓ ca504eb **`frontend/src/store/useGameStore.jsx:480`** [low·KEVIN·src] addTalentPoint store action has zero callers; talent points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addTalentPoint, or if kept as public API add the same `Math.max(0, Math.floor(Number(amount) || 0))` guard the sibling point-granters use.
-- ▢ **`frontend/src/store/useGameStore.jsx:285`** [low·KEVIN·src] addAttributePoints store action has zero callers; attribute points are granted inline in grantXP's level-up loop.
+- ▣✓ b54a049 **`frontend/src/store/useGameStore.jsx:285`** [low·KEVIN·src] addAttributePoints store action has zero callers; attribute points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addAttributePoints, or document it as intentional public API if a future feature (e.g. a quest reward) is planned to use it.
 - ▣✓ 52ec590 **`frontend/src/systems/EnemyProjectileSystem.jsx:1`** [low·AUTO·src] `React` is imported but never referenced; the project uses the automatic JSX runtime (@vitejs/plugin-react default), so the import is vestigial.
   - _fix:_ Drop the default `React` from the import: `import { useRef, useState, useEffect } from 'react';`.
@@ -460,7 +460,7 @@
   - _fix:_ Add `'credits.font_puhuiti': 'Alibaba PuHuiTi 3.0 / 阿里巴巴普惠体'` (en) and `'阿里巴巴普惠体 / Alibaba PuHuiTi 3.0'` (zh-CN) to strings.js, then change CreditsScreen.jsx:69 to `label={t('credits.font_puhuiti')}` — mirroring the Smiley Sans row.
 - ▣✓ 18a210d **`frontend/src/theme/cssVars.js:82`** [medium·AUTO·src] TW_COLORS has silently drifted from the real Tailwind config: it omits the four Aspect colors (ferocity/kinetic/soul/resonance) that tailwind.config.cjs actually ships, and no parity test guards color structure.
   - _fix:_ Add the four missing entries to TW_COLORS after `info` (ferocity/kinetic/soul/resonance via tw('--ui-...')) to realign the spec object with the config. Stronger fix: have tailwind.config.cjs import TW_COLORS so colors have one SoT, and add a deep-equality color-parity test mirroring the existing scale parity so future color drift fails CI.
-- ▢ **`frontend/scripts/visual/heldf-probe.mjs:12`** [low·KEVIN·test] Probes reuse overlapping fixed ports (4194/4195/4196/5199) rather than per-probe dedicated ones; combined with the un-reaped vite orphan bug, a leaked vite squats the shared port and blocks the next probe.
+- ▣✓ fd209ce **`frontend/scripts/visual/heldf-probe.mjs:12`** [low·KEVIN·test] Probes reuse overlapping fixed ports (4194/4195/4196/5199) rather than per-probe dedicated ones; combined with the un-reaped vite orphan bug, a leaked vite squats the shared port and blocks the next probe.
   - _fix:_ Assign each probe a unique fixed port (or centralize a small port registry in a shared harness). Fixing the detached+group-kill orphan bug also removes the squatting source.
 - ▣✓ 18a210d **`frontend/src/EnhancedMagicSystem.jsx:383`** [low·AUTO·src] The 'pierce' switch case declares `const healAmount` without a block scope while the sibling 'freeze' case wraps its declarations in braces — no-case-declarations lint gap and an inconsistency with the neighbouring case.
   - _fix:_ Wrap the 'pierce' case body in braces `case 'pierce': { ... break; }` to match the 'freeze' case.
