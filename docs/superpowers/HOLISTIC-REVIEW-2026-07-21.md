@@ -82,7 +82,7 @@
   - _fix:_ Route a genuine own `__proto__` key through the load path where JSON.parse (which uses CreateDataProperty, unlike an object literal) DOES create an own `__proto__` property: loadSettings(fakeStorage({ [SETTINGS_KEY]: '{"__proto__":{"sfxVolume":9},"sfxVolume":0.5}' })) and assert the result is { sfxVolume: 0.5 } with Object.prototype unpolluted. Or simply drop the misleading term.
 - ▢ **`frontend/src/input/verbRouter.test.js:51`** [low·AUTO·test] Test 11 ('out-of-reach terrain behaves as nothing') exercises the same inputs/branch as Test 10 — `{ ...base }` shallow-copies base's identical primitive values — adding no coverage while claiming a distinct §5-11 case.
   - _fix:_ Replace Test 11 with a genuinely distinct case the ladder doesn't already cover — e.g. terrain in-reach but a mob nearer/tied at button 2 with a FINITE terrainDist — or delete Test 11 as a redundant duplicate of Test 10.
-- ▢ **`frontend/tests/gates/boss-melee-spark-gates.test.js:19`** [low·AUTO·test] The assertion region is delimited by a source COMMENT ('Boss-cone branch'); between() returns '' if the anchor is missing, so rewording/removing that comment breaks the gate with zero behavior change.
+- ▣✓ 1b75400 **`frontend/tests/gates/boss-melee-spark-gates.test.js:19`** [low·AUTO·test] The assertion region is delimited by a source COMMENT ('Boss-cone branch'); between() returns '' if the anchor is missing, so rewording/removing that comment breaks the gate with zero behavior change.
   - _fix:_ Re-anchor the region on stable code tokens (e.g. the boss-hit conditional or the sparkFor/triggerGPUSparks call site itself) instead of the comment, or extract the boss-spark decision into a pure helper and test it behaviorally.
 - ▢ **`frontend/tests/gates/dynamic-light-gates.test.js:22`** [low·AUTO·test] The shadow-casting-pointLight regex `/<pointLight[^>]*castShadow/s` matches the attribute NAME regardless of value, so it would flag the defensively-correct `<pointLight castShadow={false}>` and it misses imperative `light.castShadow = true` and spread-prop forms.
   - _fix:_ Tighten to only catch a truthy value, e.g. `/<pointLight[^>]*castShadow(?!\s*=\s*\{?\s*false)/s`, and add a secondary check for imperative `.castShadow = true` on PointLight instances if any exist.
@@ -209,7 +209,7 @@
   - _fix:_ Either keep as an intentional defensive default and correct the comment (the whiff is handled at line 26/33, not here), or drop the unreachable trailing return. Prefer keeping the defensive default but fixing the misleading 'whiff' attribution.
 - ▣✓ a72bffd **`frontend/src/render/LightMotes.jsx:22`** [low·AUTO·src] `sampleMood` is imported but never used — the component computes its mote tint via its own `moteAppearance`, not `sampleMood`.
   - _fix:_ Drop `sampleMood` from the import: import { moodRef } from './mood.js';
-- ▢ **`frontend/src/render/spellVfx.jsx:249`** [low·AUTO·src] case 'crystal' is unreachable — no ENERGY_PROFILE entry uses shape:'crystal' (iceball moved to 'shards' at S3.5); the branch is self-described legacy pre-S3.5.
+- ▣✓ 1b75400 **`frontend/src/render/spellVfx.jsx:249`** [low·AUTO·src] case 'crystal' is unreachable — no ENERGY_PROFILE entry uses shape:'crystal' (iceball moved to 'shards' at S3.5); the branch is self-described legacy pre-S3.5.
   - _fix:_ Remove the 'crystal' case (the 'sphere'/default arm already covers any unknown shape via shapeMat). If keeping as defensive, note it is currently unreachable.
 - ▣✓ ca504eb **`frontend/src/store/useGameStore.jsx:480`** [low·KEVIN·src] addTalentPoint store action has zero callers; talent points are granted inline in grantXP's level-up loop.
   - _fix:_ Remove addTalentPoint, or if kept as public API add the same `Math.max(0, Math.floor(Number(amount) || 0))` guard the sibling point-granters use.
@@ -221,7 +221,7 @@
   - _fix:_ Delete UI.color.gray, or if deliberately reserved, keep the '(kept)' note but surface it through the SoT chain (CSS var + Tailwind).
 - ▢ **`frontend/src/theme/tokens.js:100`** [low·KEVIN·src] UI.border.hairline (1.5) is defined and its comment promises a 'gold hairline accent', but it is never surfaced or consumed anywhere.
   - _fix:_ Either remove `hairline` (and its comment clause) as unused, or surface it: add --ui-border-hairline to SCALAR_VARS and borderWidth.hairline to TW_SCALES + tailwind.config.cjs so the promised accent is usable.
-- ▢ **`frontend/src/ui/GamePanels.jsx:44`** [low·AUTO·src] Orphaned comment block describing `ItemIcon` remains in this file even though ItemIcon was extracted to ui/panels/itemUi.jsx (imported at line 13). The comment floats detached above the PaperDollSlot comment and documents code that no longer lives here.
+- ▣✓ 1b75400 **`frontend/src/ui/GamePanels.jsx:44`** [low·AUTO·src] Orphaned comment block describing `ItemIcon` remains in this file even though ItemIcon was extracted to ui/panels/itemUi.jsx (imported at line 13). The comment floats detached above the PaperDollSlot comment and documents code that no longer lives here.
   - _fix:_ Delete the orphaned lines 44-47 (the accurate doc already lives above the export in itemUi.jsx).
 - ▣✓ 9387c7d **`frontend/src/ui/GamePanels.jsx:52`** [low·AUTO·src] PaperDollSlot destructures a `slotName` prop that is never referenced in its body; it is passed at all five call sites but does nothing (unequip is bound at the call site via onUnequip).
   - _fix:_ Drop `slotName` from the destructure and from the five call sites, or actually use it inside onUnequip instead of hardcoding the slot at each call site.
@@ -487,7 +487,7 @@
   - _fix:_ If it is meant to gate, `process.exit(withinBudget(cb) ? 0 : 1)`; otherwise rename 'gate' to 'report' in the header (L4) and log (L82) so no one wires it in expecting enforcement.
 - ▣✓ 93bf3d3 **`frontend/src/Components.jsx:484`** [low·AUTO·src] The input effect publishes performVerb into the store but its cleanup never clears it, unlike the sibling effect that nulls playerRigidBodyRef on teardown — a stale closure is retained after unmount.
   - _fix:_ Add `useGameStore.setState({ performVerb: null });` to the effect's cleanup return, matching the playerRigidBodyRef teardown.
-- ▢ **`frontend/src/systems/CombatSystem.jsx:110`** [low·AUTO·src] The death branch re-declares `const store = useGameStore.getState();`, shadowing the identical outer `store` fetched at line 52.
+- ▣✓ 1b75400 **`frontend/src/systems/CombatSystem.jsx:110`** [low·AUTO·src] The death branch re-declares `const store = useGameStore.getState();`, shadowing the identical outer `store` fetched at line 52.
   - _fix:_ Delete the inner `const store = useGameStore.getState();` at line 110 and reuse the outer `store`.
 - ▣✓ d539b0b **`frontend/src/utils/combat.js:30`** [low·AUTO·src] Redundant outer Math.round in solveSpellDamage's non-crit branch — finalDmg is already rounded at line 20.
   - _fix:_ Rewrite as `damage: isCrit ? Math.round(finalDmg * 1.8) : finalDmg,` — behaviorally identical, all existing tests still pass.
