@@ -1,5 +1,5 @@
 {
-  "_count": 113,
+  "_count": 110,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -26,7 +26,6 @@
     "tests/gates/camera-kick-gate.test.js",
     "tests/gates/character-render-gates.test.js",
     "tests/gates/chrome-brand-conformance-gates.test.js",
-    "tests/gates/coin-sink-gates.test.js",
     "tests/gates/combat-keybind-gates.test.js",
     "tests/gates/combat-log-gates.test.js",
     "tests/gates/compass-hearth-gates.test.js",
@@ -40,7 +39,6 @@
     "tests/gates/elemancer-noremesh-gates.test.js",
     "tests/gates/element-impact-gates.test.js",
     "tests/gates/equipment-dry-gates.test.js",
-    "tests/gates/error-boundary-gates.test.js",
     "tests/gates/fade-in-keyframe-gates.test.js",
     "tests/gates/friend-foe-gates.test.jsx",
     "tests/gates/grass-revival-gates.test.js",
@@ -92,7 +90,6 @@
     "tests/gates/spatial-sfx-bus-gates.test.js",
     "tests/gates/spawn-legibility-gates.test.js",
     "tests/gates/spell-cast-level-wire-gates.test.js",
-    "tests/gates/spell-mastery-ui-gates.test.js",
     "tests/gates/spell-motion-gates.test.js",
     "tests/gates/spell-shape-gates.test.js",
     "tests/gates/spell-vfx-gates.test.js",
