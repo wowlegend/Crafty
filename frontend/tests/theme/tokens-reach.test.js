@@ -69,6 +69,46 @@ describe('tokens — every group reaches the chain', () => {
   it('the deleted orphans stay deleted', () => {
     expect(UI.space, 'the unused spacing scale is back').toBeUndefined();
     expect(UI.color.gray, 'the unconsumed neutral ramp is back').toBeUndefined();
+    expect(UI.border?.hairline, 'the unconsumed hairline border width is back').toBeUndefined();
+  });
+
+  // THE ORPHAN RULE WAS GROUP-LEVEL, SO A DEAD KEY INSIDE A LIVE GROUP WAS INVISIBLE.
+  //
+  // `border` is excepted above as "consumed by TW_SCALES.borderWidth" — and it is, but only its `chrome`
+  // key. `border.hairline` sat beside it reaching nothing at all, with a comment promising a "gold
+  // hairline accent" nobody built, and the gate written specifically to catch orphans passed it every
+  // run because it only ever asked whether the GROUP was consumed. Same denominator defect this project
+  // keeps finding, one level down: the instrument examined groups and reported on tokens.
+  //
+  // Deleting hairline does not stop the next one; checking per KEY does.
+  it('no dead KEY hides inside a live group', () => {
+    /** For each scale-consuming group, the TW_SCALES entry that must mention each of its keys. */
+    const SCALE_FOR = {
+      radius: TW_SCALES.borderRadius,
+      border: TW_SCALES.borderWidth,
+      elevation: TW_SCALES.boxShadow,
+      z: TW_SCALES.zIndex,
+    };
+    const orphanKeys = [];
+    let checked = 0;
+    for (const [group, scale] of Object.entries(SCALE_FOR)) {
+      expect(UI[group], `${group} is no longer a token group — this check moved out from under itself`).toBeTruthy();
+      expect(scale, `TW_SCALES has no entry for ${group}`).toBeTruthy();
+      const scaleText = JSON.stringify(scale);
+      for (const key of Object.keys(UI[group])) {
+        checked++;
+        // Scale keys are derived from token keys by identity (radius, border), by a prefix
+        // (elevation -> `elev-sm`), or by kebab-casing (z -> `z-index`), so match on the key APPEARING
+        // in the built scale rather than on an exact key equality that only holds for two of the four.
+        const kebab = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        if (!scaleText.includes(`"${key}"`) && !scaleText.includes(`"${kebab}"`)
+            && !Object.keys(scale).some((sk) => sk.endsWith(`-${key}`))) {
+          orphanKeys.push(`${group}.${key}`);
+        }
+      }
+    }
+    expect(checked, 'no token keys enumerated — this assertion is vacuous').toBeGreaterThan(8);
+    expect(orphanKeys, 'these token KEYS reach no Tailwind scale — wire them or delete them').toEqual([]);
   });
 
   it('motion actually reaches Tailwind now, in BOTH copies', () => {

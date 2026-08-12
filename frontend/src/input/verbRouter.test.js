@@ -87,3 +87,60 @@ describe('verbRouter (#72 — the spec §5 edge table)', () => {
     expect(AIM_CONE_ARC).toBeCloseTo(Math.PI / 8, 5);
   });
 });
+
+// THE TWO FINAL RETURNS: UNREACHABLE FOR WELL-FORMED INPUT, AND A DELIBERATE NaN FALLBACK.
+//
+// A holistic-review finding proposed deleting them as unreachable. The first half of that is right and
+// is proven exhaustively below; the second half is the trap. Removing them makes routeMouseVerb return
+// `undefined` when a distance arrives as NaN, and downstream reads no verb — a click that silently does
+// nothing while the player keeps clicking. So the fallback stays, and BOTH facts are pinned here so the
+// next person to read `return 'attack'` at the bottom of a chain that always returns earlier does not
+// have to re-derive why it is there.
+describe('routeMouseVerb — the final returns', () => {
+  const DISTS = [0, 1, 5, 23.9, 24, 100, Infinity];
+  const BOOLS = [false, true];
+
+  it('is UNREACHABLE across every well-formed ctx — 392 combinations per button', () => {
+    // Exhaustive rather than sampled: the claim is "no input reaches this", and a sample cannot say that.
+    // Detected by instrumenting the branch conditions in the same order the router evaluates them.
+    let reached0 = 0, reached2 = 0, checked = 0;
+    for (const held of BOOLS) for (const meleeHit of BOOLS) for (const chestTargeted of BOOLS)
+      for (const aimedMobDist of DISTS) for (const terrainDist of DISTS) {
+        checked++;
+        if (!held && !meleeHit && !(aimedMobDist <= terrainDist) && !(terrainDist < Infinity)) reached0++;
+        if (!held && !(chestTargeted && terrainDist < aimedMobDist)
+            && !(aimedMobDist <= terrainDist) && !(terrainDist < Infinity)) reached2++;
+      }
+    expect(checked, 'the sweep collapsed — this assertion would be vacuous').toBe(392);
+    expect(reached0, 'the button-0 fallback IS reachable with ordinary numbers — the ladder above has a hole').toBe(0);
+    expect(reached2, 'the button-2 fallback IS reachable with ordinary numbers — the ladder above has a hole').toBe(0);
+  });
+
+  it('the WHIFF is handled above it, which is what its comment used to claim', () => {
+    // No target of any kind: both distances Infinity. `Infinity <= Infinity` is true, so the through-mob
+    // guard returns the combat verb and the bottom line is never involved.
+    const nothing = { held: false, meleeHit: false, chestTargeted: false, aimedMobDist: Infinity, terrainDist: Infinity };
+    expect(routeMouseVerb(0, nothing)).toBe('attack');
+    expect(routeMouseVerb(2, nothing)).toBe('cast');
+  });
+
+  it('a NaN distance still yields a VERB rather than undefined', () => {
+    // The reason to keep them. An upstream position going bad must not turn into a dead mouse button.
+    for (const ctx of [
+      { held: false, meleeHit: false, chestTargeted: false, aimedMobDist: NaN, terrainDist: Infinity },
+      { held: false, meleeHit: false, chestTargeted: false, aimedMobDist: 0, terrainDist: NaN },
+      { held: false, meleeHit: false, chestTargeted: true, aimedMobDist: NaN, terrainDist: NaN },
+    ]) {
+      expect(routeMouseVerb(0, ctx), `button 0 returned no verb for ${JSON.stringify(ctx)}`).toBe('attack');
+      expect(routeMouseVerb(2, ctx), `button 2 returned no verb for ${JSON.stringify(ctx)}`).toBe('cast');
+    }
+  });
+
+  it('and the NaN fallback is COMBAT, never a world-mutating verb', () => {
+    // The direction matters: mining or placing a block on garbage input edits the player's world. Swinging
+    // at nothing does not. If the fallback is ever changed, it must not be changed to 'mine' or 'place'.
+    const ctx = { held: false, meleeHit: false, chestTargeted: true, aimedMobDist: NaN, terrainDist: NaN };
+    expect(['mine', 'place', 'interact']).not.toContain(routeMouseVerb(0, ctx));
+    expect(['mine', 'place', 'interact']).not.toContain(routeMouseVerb(2, ctx));
+  });
+});

@@ -128,15 +128,20 @@ const compileShader = (shader) => {
         // S(tex) de-tile: subtle per-world-cell value jitter (mirrors world/detile.js tileValueOffset) so a
         // field of one block type stops reading as stamped identical tiles. Bounded +/-0.08, flat (no normal
         // map -> respects the bold-flat lock). Non-water. Static world cell -> capture-deterministic.
-        if (abs(vBlockType - 9.0) >= 0.1) {
-            float dh = sin(floor(vWorldPos.x) * 12.989 + floor(vWorldPos.y) * 78.233 + floor(vWorldPos.z) * 37.719) * 43758.5453;
-            diffuseColor.rgb *= (1.0 + (fract(dh) - 0.5) * 0.16);
-        }
+        // The "if (abs(vBlockType - 9.0) >= 0.1)" that wrapped this is gone: it is always true. W2 moved
+        // the water surface to Ocean.jsx and the mesher emits no water faces at all, so nothing typed 9
+        // ever reaches this material. Asserted, not assumed — mesher-geometry-gates.test.js drives water
+        // above stone, beside stone, under stone and pocketed in stone and checks no vertex carries type
+        // 9. Restore the guard if that gate ever has to be relaxed.
+        float dh = sin(floor(vWorldPos.x) * 12.989 + floor(vWorldPos.y) * 78.233 + floor(vWorldPos.z) * 37.719) * 43758.5453;
+        diffuseColor.rgb *= (1.0 + (fract(dh) - 0.5) * 0.16);
 
         // S1 vertex ambient occlusion: per-corner AO (aAO 0..3 from the mesher cornerAO) darkens concave
         // corners / crevices / under-overhangs so the voxel terrain reads with FORM (soft contact-shadow)
-        // instead of flat-shaded-per-face. Applied to the albedo BEFORE lighting. Water faces carry AO 3
-        // (vAO/3=1 -> no-op). Static geometry attribute -> capture-deterministic.
+        // instead of flat-shaded-per-face. Applied to the albedo BEFORE lighting. (This used to add
+        // "Water faces carry AO 3 (vAO/3=1 -> no-op)" — describing a case that cannot occur, since the
+        // mesher emits no water faces; the short-circuit that produced that 3 is deleted.) Static
+        // geometry attribute -> capture-deterministic.
         diffuseColor.rgb *= mix(0.55, 1.0, clamp(vAO / 3.0, 0.0, 1.0));
         `
     );
@@ -154,12 +159,11 @@ const compileShader = (shader) => {
         // only fogs LOW areas, so tall distant terrain never faded). Pure view-distance + a gentle distance
         // desaturation -> capture-deterministic (camera pinned in capture; skyHorizon snaps with mood). Tunables:
         // the 38->165 distance band + the 0.22 desat / 0.55 haze strengths (eyeball explore/hearth/landmark).
-        if (abs(vBlockType - 9.0) >= 0.1) {
-            float aerial = smoothstep(38.0, 165.0, length(vViewPosition));
-            float alum = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(alum), aerial * 0.22);
-            gl_FragColor.rgb = mix(gl_FragColor.rgb, skyHorizon, aerial * 0.55);
-        }
+        // Same always-true water guard removed here — see the vertex-dither block above.
+        float aerial = smoothstep(38.0, 165.0, length(vViewPosition));
+        float alum = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(alum), aerial * 0.22);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, skyHorizon, aerial * 0.55);
         `
     );
 };

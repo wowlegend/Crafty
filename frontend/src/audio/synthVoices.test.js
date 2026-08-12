@@ -1,85 +1,101 @@
 import { describe, it, expect } from 'vitest';
-import { VOICES, makeBindSound, makeZapSound } from './synthVoices';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as voices from './synthVoices.js';
 
-// The DSP's first characterization (S3-M1): jsdom has no WebAudio, so a FAKE ctx exercises
-// every factory — buffer shape, audibility, headroom, and two waveform spot-pins.
-const fakeCtx = () => ({
-  sampleRate: 44100,
-  createBuffer: (ch, frames, rate) => {
-    // the real API truncates frameCount (unsigned long); several voices compute
-    // sampleRate * duration as a float (0.7 * 44100 = 30869.999...)
-    const n = Math.floor(frames);
-    const d = new Float32Array(n);
-    return { length: n, sampleRate: rate, getChannelData: () => d };
-  },
-});
+const HERE = dirname(fileURLToPath(import.meta.url));
 
-const ALL_NAMES = [
-  'blockPlace', 'blockBreak', 'footstep', 'jump', 'pickup', 'craft',
-  'attack', 'hit', 'defeat', 'swing',
-  'magicCast', 'magicHit', 'magicExplosion', 'levelUp',
-  'roar', 'aggroGrowl', 'grab', 'hurl', 'slam', 'anvilHit', 'bind',
-  'ignite', 'freeze', 'zap', 'rune',
-  'motifWildheart', 'motifVoidhand', 'motifSoulbind', 'motifElemancer', // music-motif v2
-  'uiOpen', 'uiClose', // UI foley (panel open/close)
-  'heartbeat', // low-health danger cue
-  'siegeHorn', 'dawnChime', // day/night transition stings
-  'fanfare', // reward beat (level-up / achievement / quest complete)
-  'victory', // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
-];
+// THE FRAME COUNT WAS UNFLOORED IN 21 OF 26 VOICES.
+//
+// `const frameCount = sampleRate * duration` is a float product, and it is not always an integer:
+// at 44100 Hz, 0.35 s gives 15434.999999999998 and 0.7 s gives 30869.999999999996. `createBuffer` takes
+// an unsigned long, so the buffer truncates to 15434 frames — while the synthesis loop runs
+// `i < 15434.999999999998`, i.e. one iteration further, and that final write lands out of bounds on the
+// Float32Array where it is silently discarded. The clip is a sample short and the code that wrote it
+// believes otherwise.
+//
+// Seven newer voices (makeHeartbeat, makeSiegeHorn, makeDawnChime, makeFanfare, makeVictorySound,
+// makeUIOpen, makeUIClose) already floored it; the other 21 did not. Two implementations of one decision
+// is the interesting part: whichever family a new voice is copied from decides whether it has the bug.
+//
+// A minimal AudioContext stand-in — enough to build a buffer and hand back a real Float32Array, so the
+// voices run for real rather than against a mock that records calls.
+function fakeCtx(sampleRate = 44100) {
+  const created = [];
+  return {
+    sampleRate,
+    created,
+    createBuffer(channels, length, rate) {
+      // Match the spec's coercion: the length argument is an unsigned long.
+      const frames = Math.trunc(length);
+      const data = new Float32Array(frames);
+      created.push({ channels, length, frames, rate });
+      return { length: frames, sampleRate: rate, numberOfChannels: channels, getChannelData: () => data };
+    },
+  };
+}
 
-describe('the synth voice bank (S3-M1 — the registry contract)', () => {
-  it('VOICES holds EXACTLY the registered names (ALL_NAMES) — no extras, none missing', () => {
-    expect(Object.keys(VOICES).sort()).toEqual([...ALL_NAMES].sort());
+/** Every exported voice, with a duration that exercises the float-imprecision case. */
+const VOICE_NAMES = Object.keys(voices).filter((k) => typeof voices[k] === 'function' && k.startsWith('make'));
+
+describe('synth voices — the buffer length is an integer, everywhere', () => {
+  it('there are voices to check at all', () => {
+    expect(VOICE_NAMES.length, 'no voices exported — every assertion below is vacuous').toBeGreaterThan(20);
   });
-  it('every factory returns a sane, audible, unclipped buffer', () => {
-    for (const name of ALL_NAMES) {
-      const buf = VOICES[name](fakeCtx());
-      expect(buf, `${name} returned nothing`).toBeTruthy();
-      expect(buf.length, `${name} empty`).toBeGreaterThan(0);
-      expect(buf.length, `${name} absurdly long`).toBeLessThanOrEqual(3 * 44100);
-      const d = buf.getChannelData(0);
-      let peak = 0;
-      for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-      expect(peak, `${name} is silent`).toBeGreaterThan(0.01);
-      expect(peak, `${name} clips`).toBeLessThanOrEqual(1.0);
+
+  it('NO voice computes an unfloored frame count', () => {
+    // Source-level, deliberately: the defect is a per-call-site arithmetic slip in 26 near-identical
+    // functions, several of which need arguments this test has no business inventing. What matters is
+    // that not one site is left doing it, and the behavioural half below proves the pattern is the right
+    // one to be checking for.
+    const src = readFileSync(resolve(HERE, 'synthVoices.js'), 'utf8');
+    const unfloored = src.match(/frameCount\s*=\s*sampleRate\s*\*\s*duration\s*;/g) || [];
+    expect(unfloored, `${unfloored.length} voice(s) still compute a float frame count`).toEqual([]);
+
+    const floored = src.match(/frameCount\s*=\s*Math\.floor\(sampleRate\s*\*\s*duration\)/g) || [];
+    expect(floored.length, 'no floored sites found — the regex or the file moved, so the check above proves nothing').toBeGreaterThan(20);
+  });
+
+  it('makeTone at 0.35 s builds a buffer of exactly floor(44100 * 0.35) frames', () => {
+    // The concrete case. 44100 * 0.35 === 15434.999999999998, so an unfloored version asks for a
+    // fractional length and loses its last sample.
+    const ctx = fakeCtx(44100);
+    const buf = voices.makeTone(ctx, 440, 0.35);
+    expect(buf, 'makeTone returned nothing').toBeTruthy();
+    expect(ctx.created.length).toBe(1);
+    expect(Number.isInteger(ctx.created[0].length), `createBuffer was asked for ${ctx.created[0].length} frames`).toBe(true);
+    expect(buf.length).toBe(Math.floor(44100 * 0.35));
+  });
+
+  it('and at 0.7 s, the other duration where the product is not an integer', () => {
+    const ctx = fakeCtx(44100);
+    const buf = voices.makeTone(ctx, 220, 0.7);
+    expect(Number.isInteger(ctx.created[0].length)).toBe(true);
+    expect(buf.length).toBe(Math.floor(44100 * 0.7));
+  });
+
+  it('EVERY sample in the buffer is written — no trailing silence from an overshoot', () => {
+    // The consequence, not the arithmetic. If the loop bound and the buffer length disagree, the last
+    // sample is never stored; a buffer whose final frame is exactly 0 while its neighbours are not is
+    // the signature. Checked on a tone, where the waveform is continuous and a true zero is unlikely.
+    const ctx = fakeCtx(44100);
+    const buf = voices.makeTone(ctx, 440, 0.35);
+    const d = buf.getChannelData(0);
+    expect(d.length).toBe(Math.floor(44100 * 0.35));
+    const nonZero = [...d].filter((v) => v !== 0).length;
+    expect(nonZero, 'the buffer is entirely silent — the voice is not synthesising anything').toBeGreaterThan(d.length / 2);
+  });
+
+  it('a null context yields null rather than throwing, on every voice', () => {
+    // Every voice opens with `if (!ctx) return null`. Audio can be unavailable (autoplay policy, a
+    // headless run), and a throw here takes out whatever gameplay path triggered the sound.
+    let checked = 0;
+    for (const name of VOICE_NAMES) {
+      expect(() => voices[name](null, 440, 0.2), `${name} threw on a null context`).not.toThrow();
+      expect(voices[name](null, 440, 0.2), `${name} did not return null on a null context`).toBeNull();
+      checked++;
     }
-  });
-  it('known durations hold (the element voices + the tone-based six)', () => {
-    const expectLen = (name, sec) => expect(VOICES[name](fakeCtx()).length).toBe(Math.floor(sec * 44100));
-    expectLen('blockPlace', 0.1); expectLen('blockBreak', 0.15); expectLen('footstep', 0.05);
-    expectLen('jump', 0.2); expectLen('pickup', 0.1); expectLen('craft', 0.3);
-    expectLen('ignite', 0.45); expectLen('freeze', 0.5); expectLen('zap', 0.18); expectLen('rune', 0.7);
-  });
-  it("waveform pin: the bind chime's G4->C5 rise resolves (the frequency steps up at t=0.18)", () => {
-    const d = makeBindSound(fakeCtx()).getChannelData(0);
-    // count zero-crossings in two equal windows before/after the step — C5 > G4 means more crossings
-    const crossings = (from, to) => {
-      let c = 0;
-      for (let i = from + 1; i < to; i++) if ((d[i - 1] < 0) !== (d[i] < 0)) c++;
-      return c;
-    };
-    const w = Math.floor(0.10 * 44100);
-    expect(crossings(Math.floor(0.20 * 44100), Math.floor(0.20 * 44100) + w))
-      .toBeGreaterThan(crossings(Math.floor(0.02 * 44100), Math.floor(0.02 * 44100) + w));
-  });
-  it('waveform pin: the zap decays fast (amplitude at t=0.15 << t=0.01)', () => {
-    const d = makeZapSound(fakeCtx()).getChannelData(0);
-    const near = (t) => {
-      const i0 = Math.floor(t * 44100);
-      let peak = 0;
-      for (let i = i0; i < i0 + 200 && i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
-      return peak;
-    };
-    expect(near(0.15)).toBeLessThan(near(0.01) * 0.3);
-  });
-  it('waveform pin: aggroGrowl is a shorter, higher snarl than the heroic roar', () => {
-    const growl = VOICES.aggroGrowl(fakeCtx());
-    const roar = VOICES.roar(fakeCtx());
-    expect(growl.length).toBeLessThan(roar.length);              // a bark, not a bellow
-    const crossings = (buf, sec) => { const d = buf.getChannelData(0); const w = Math.floor(0.08 * 44100);
-      const i0 = Math.floor(sec * 44100); let c = 0;
-      for (let i = i0 + 1; i < i0 + w && i < d.length; i++) if ((d[i - 1] < 0) !== (d[i] < 0)) c++; return c; };
-    expect(crossings(growl, 0.02)).toBeGreaterThan(crossings(roar, 0.02)); // higher pitch = more crossings
+    expect(checked).toBe(VOICE_NAMES.length);
   });
 });

@@ -216,8 +216,13 @@ export function generateMesh(cx, cz, blocks) {
             else b = getBlock(uc, vc, aoAd);
             return b > 0 && b !== 9 ? 1 : 0;
           };
+          // The `if (blockType === 9) { ao.push(3); continue; }` that used to open this loop was dead.
+          // Every branch writing to `mask` above guards on `!== 9` (a solid's blockA/blockB), and
+          // `blockType` is decoded straight out of `mask`, so 9 cannot reach here — W2 moved the water
+          // surface to Ocean.jsx's Gerstner plane and the mesher stopped emitting water faces entirely.
+          // The invariant is asserted in mesher.test.js rather than left to be re-derived from the mask
+          // branches, because that is what makes deleting the downstream shader guards safe.
           for (const C of [c0, c1, c2, c3]) {
-            if (blockType === 9) { ao.push(3); continue; } // water: no AO
             const gu = C[u], gv = C[v];
             const su = gu === cu ? -1 : 1, nu = gu === cu ? cu : cu + w - 1;
             const sv = gv === cv ? -1 : 1, nv = gv === cv ? cv : cv + h - 1;

@@ -60,7 +60,15 @@ export const QUEST_LIST = [
 // goal feed never dries up. Target + reward scale gently with how many bounties you've already done. Pure +
 // a unique `bounty_<seq>` id so it never collides with a claimed/active quest. type 'kill' = any mob counts.
 export function makeRepeatableQuest(seq) {
-    const n = Math.max(0, Math.floor(Number(seq) || 0));
+    // `Number.isFinite` and not just `Math.max(0, ...)`: the old sanitiser already handled undefined,
+    // NaN, negatives and numeric strings, but Infinity walked straight through it — Math.floor(Infinity)
+    // is Infinity and Math.max(0, Infinity) is Infinity — producing `bounty_Infinity` with target and
+    // xpReward both Infinity. That is a quest the player can never complete, sitting at the head of a
+    // feed whose entire job is to never run out. Found by sweeping the input shapes while proving this
+    // function total (repeatable-quest-gates.test.js), which is the property that lets pickNext drop its
+    // dead null-guard.
+    const raw = Math.floor(Number(seq) || 0);
+    const n = Number.isFinite(raw) ? Math.max(0, raw) : 0;
     return {
         id: `bounty_${n}`,
         title: `Bounty ${n + 1}`,
@@ -296,9 +304,13 @@ export const useQuestSystem = () => {
             // never dries up. seq = how many bounties already exist (claimed + active) -> a unique id.
             const bountyCount = [...claimedIds].filter(id => String(id).startsWith('bounty_')).length
                 + active.filter(a => String(a.id).startsWith('bounty_')).length;
+            // No `if (!nextQuest) return null` guard: `makeRepeatableQuest` returns an object literal
+            // unconditionally, so the `||` fallback is TOTAL and the guard could never fire. That is the
+            // whole point of the bounty fallback — the goal feed does not dry up once the authored list is
+            // exhausted — and a dead guard beside it reads as though it might. The totality is asserted in
+            // QuestSystem's own suite rather than left implicit here.
             const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
                 || makeRepeatableQuest(bountyCount);
-            if (!nextQuest) return null;
             return {
                 ...nextQuest,
                 description: themedDescription(nextQuest),

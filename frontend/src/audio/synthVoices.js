@@ -13,7 +13,7 @@ export const makeTone = (ctx, frequency, duration, type = 'sine') => {
     if (!ctx) return null;
 
     const sampleRate = ctx.sampleRate;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -48,7 +48,7 @@ export const makeNoise = (ctx, duration) => {
     if (!ctx) return null;
 
     const sampleRate = ctx.sampleRate;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -64,7 +64,7 @@ export const makeRoarSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.7;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -88,7 +88,7 @@ export const makeAggroGrowl = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.34;                       // a short bark vs the roar's 0.7 bellow
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -108,7 +108,7 @@ export const makeGrabSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.3;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     const WT = Math.pow(2, 2 / 12); // a whole tone
@@ -129,7 +129,7 @@ export const makeHurlSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.3;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     let lp = 0;
@@ -149,7 +149,7 @@ export const makeSlamSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.28;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -172,7 +172,7 @@ export const makeAnvilSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.22;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -190,7 +190,7 @@ export const makeIgniteSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.45;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     let lp = 0;
@@ -212,7 +212,7 @@ export const makeFreezeSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.5;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     // ACCUMULATED phase, not `f * t`. sin(2*pi*f(t)*t) sweeps at DOUBLE the intended rate -- its real
@@ -238,7 +238,7 @@ export const makeZapSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.18;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -257,7 +257,7 @@ export const makeRuneSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.7;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     for (let i = 0; i < frameCount; i++) {
@@ -276,7 +276,7 @@ export const makeBindSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
     const duration = 0.45;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const d = buffer.getChannelData(0);
     // The step from G4 to C5 is why this one MUST accumulate: with phase computed as t*f, changing f
@@ -301,7 +301,7 @@ export const makeAttackSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.2;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -321,7 +321,7 @@ export const makeHitSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.15;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -341,7 +341,7 @@ export const makeDefeatSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.8;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -364,7 +364,7 @@ export const makeSwingSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.3;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -385,7 +385,7 @@ export const makeMagicCastSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.6;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -411,7 +411,7 @@ export const makeMagicHitSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 0.3;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -433,7 +433,7 @@ export const makeMagicExplosionSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 1.0;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 
@@ -455,7 +455,7 @@ export const makeLevelUpSound = (ctx) => {
 
     const sampleRate = ctx.sampleRate;
     const duration = 1.5;
-    const frameCount = sampleRate * duration;
+    const frameCount = Math.floor(sampleRate * duration);
     const buffer = ctx.createBuffer(1, frameCount, sampleRate);
     const channelData = buffer.getChannelData(0);
 

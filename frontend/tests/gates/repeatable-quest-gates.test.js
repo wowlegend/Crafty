@@ -37,3 +37,30 @@ describe('claimQuest falls back to a bounty when the authored list is exhausted'
     expect(quest).toMatch(/QUEST_LIST\.find\([\s\S]{0,200}\|\|\s*makeRepeatableQuest/);
   });
 });
+
+// THE FALLBACK IS TOTAL, WHICH IS WHY THE GUARD BESIDE IT WAS DEAD.
+//
+// `pickNext` reads `QUEST_LIST.find(...) || makeRepeatableQuest(bountyCount)`, and had an
+// `if (!nextQuest) return null;` after it. That guard could never fire — makeRepeatableQuest returns an
+// object literal unconditionally — and a holistic-review finding correctly flagged it as unreachable.
+// It is deleted; this is the property that KEEPS it unreachable, so the next reader of `pickNext` does
+// not have to trace two files to convince themselves the goal feed cannot dry up.
+describe('makeRepeatableQuest is TOTAL — the property that made the null guard dead', () => {
+  it('returns a usable quest for every input shape, including hostile ones', () => {
+    const inputs = [0, 1, 7, 999, -1, -0, 2.7, undefined, null, NaN, Infinity, -Infinity, '3', 'nonsense', {}, []];
+    let checked = 0;
+    for (const seq of inputs) {
+      const q = makeRepeatableQuest(seq);
+      expect(q, `makeRepeatableQuest(${JSON.stringify(seq)}) returned nothing — the || fallback is not total`).toBeTruthy();
+      // Not merely truthy: a quest the feed can actually render and track.
+      for (const field of ['id', 'title', 'description', 'type', 'target', 'xpReward']) {
+        expect(q[field] === undefined || q[field] === null,
+          `makeRepeatableQuest(${JSON.stringify(seq)}) produced a quest with no ${field}`).toBe(false);
+      }
+      expect(Number.isFinite(q.target), `target is not a finite number for seq ${JSON.stringify(seq)}`).toBe(true);
+      expect(q.target, `a bounty with a non-positive target can never be completed (seq ${JSON.stringify(seq)})`).toBeGreaterThan(0);
+      checked++;
+    }
+    expect(checked, 'the input sweep collapsed').toBe(inputs.length);
+  });
+});

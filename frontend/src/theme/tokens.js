@@ -98,7 +98,11 @@ export const UI = {
   // a design system, it is a second opinion nobody consults -- and the whole point of this file is to be
   // the ONE opinion. The gate in tokens-reach.test.js now fails on a new orphan.
   radius: { sm: 6, md: 10, lg: 14 },          // <=14 cap (§9)
-  border: { chrome: 4, hairline: 1.5 },       // 4px ink everywhere; gold hairline accent
+  // `hairline: 1.5` DELETED 2026-08-12. It reached nothing: cssVars emits only --ui-border-chrome and
+  // TW_SCALES.borderWidth carries only `chrome`, so no component could ever have used it. Its comment
+  // promised a "gold hairline accent" that was never built — a token describing a design decision
+  // nobody implemented, which is worse than an absent token because it reads as available.
+  border: { chrome: 4 },                      // 4px ink everywhere
   // hard offset shadows (blur 0, spread 0) — the bold-flat signature. The md value
   // is the locked `5px 5px 0 0 #0b0e14` recolored to the ink var.
   elevation: {

@@ -168,3 +168,77 @@ describe('greedy mesher — geometry contract', () => {
     expect(Array.from(a.ao)).toEqual(Array.from(b.ao));
   });
 });
+
+// THE MESHER EMITS NO WATER FACES. THIS IS THE INVARIANT THREE OTHER PLACES WERE ASSUMING.
+//
+// W2 moved the water surface to Ocean.jsx's Gerstner plane, and the mesher stopped emitting water
+// geometry. Nothing checked that. Three things downstream quietly depended on it anyway:
+//
+//   · mesher.js's own `if (blockType === 9) { ao.push(3); continue; }` in the AO corner loop — dead,
+//     because every branch that writes `mask` guards on `!== 9` and blockType is decoded from mask;
+//   · Terrain.jsx's TWO `abs(vBlockType - 9.0) >= 0.1` fragment guards, always true for the same reason;
+//   · the shader comment "Water faces carry AO 3", describing a case that cannot occur.
+//
+// A holistic-review finding proposed deleting all of them as unreachable. Deleting code because you
+// traced today's callers is a bet on nobody re-adding water faces later; asserting the invariant is what
+// settles it. `colors.r` carries the blockType per vertex, so the claim is directly measurable.
+describe('greedy mesher — the no-water-faces invariant', () => {
+  const WATER = 9;
+
+  /** Every distinct blockType in the emitted vertex colours. */
+  const emittedTypes = (m) => {
+    const seen = new Set();
+    for (let i = 0; i < m.colors.length; i += 3) seen.add(m.colors[i]);
+    return seen;
+  };
+
+  it('a chunk that is ENTIRELY water emits no geometry at all', () => {
+    const m = generateMesh(0, 0, slab(8, WATER));
+    expect(m.positions.length, 'the mesher emitted water geometry — Ocean.jsx owns that surface, so it would double-render').toBe(0);
+    expect(m.indices.length).toBe(0);
+  });
+
+  it('water sitting ON TOP of stone emits the stone faces and nothing typed 9', () => {
+    // The real shoreline/seabed case: the solid side of a solid-vs-water boundary IS drawn, and the
+    // water side is not. The presence half matters as much as the absence — a mesher that emitted
+    // nothing here would pass a bare "no water faces" check while deleting the seabed.
+    const b = slab(4, 1);
+    for (let y = 4; y < 8; y++) for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++) b[idx(x, y, z)] = WATER;
+    const m = generateMesh(0, 0, b);
+
+    expect(m.positions.length, 'the seabed vanished — the solid side of a solid/water boundary must still draw').toBeGreaterThan(0);
+    const types = emittedTypes(m);
+    expect(types.size, 'no vertex colours at all, so the assertion below is vacuous').toBeGreaterThan(0);
+    expect([...types], 'a WATER face reached the terrain material — the shader guards deleted alongside this are now load-bearing again').not.toContain(WATER);
+    expect([...types]).toEqual([1]);
+  });
+
+  it('water beside stone, water under stone, water in a pocket — still nothing typed 9', () => {
+    // Sweep the adjacency directions rather than trusting one arrangement, since the mask is built
+    // per-axis and a regression could reappear on one axis only.
+    const arrangements = {
+      'water column beside stone': (b) => { for (let y = 0; y < 8; y++) b[idx(0, y, 0)] = WATER; },
+      'water under stone': (b) => { for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++) b[idx(x, 0, z)] = WATER; },
+      'water pocket enclosed in stone': (b) => { b[idx(8, 2, 8)] = WATER; },
+    };
+    for (const [name, fill] of Object.entries(arrangements)) {
+      const b = slab(6, 1);
+      fill(b);
+      const m = generateMesh(0, 0, b);
+      expect(m.positions.length, `${name}: nothing rendered, so this case checks nothing`).toBeGreaterThan(0);
+      expect([...emittedTypes(m)], `${name}: a water face was emitted`).not.toContain(WATER);
+    }
+  });
+
+  it('every emitted AO value is a real corner value, not the water short-circuit constant', () => {
+    // The deleted branch pushed a flat 3 for water. With water gone, AO must be genuinely computed —
+    // and a chunk with a concave corner must produce at least one value BELOW 3, or the AO pass is inert.
+    const b = slab(4, 1);
+    for (let y = 4; y < 8; y++) b[idx(0, y, 0)] = 1;  // a pillar, making concave corners at its base
+    const m = generateMesh(0, 0, b);
+    const ao = [...m.ao];
+    expect(ao.length, 'no AO emitted').toBeGreaterThan(0);
+    expect(Math.min(...ao), 'every AO corner is fully lit — the AO pass is doing nothing').toBeLessThan(3);
+    for (const v of ao) expect(v >= 0 && v <= 3, `AO value ${v} is outside 0..3`).toBe(true);
+  });
+});
