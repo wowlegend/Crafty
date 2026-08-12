@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LOOT_TABLES } from '../../src/data/lootTables.js';
+import { LOOT_TABLES, CHEST_LOOT } from '../../src/data/lootTables.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 import { NAME_TO_ID } from '../../src/data/items.js';
 
@@ -34,6 +34,22 @@ describe('loot-coverage gate: every hostile mob drops something real', () => {
                 expect(row.chance).toBeLessThanOrEqual(1);
                 expect(row.xp).toBeGreaterThanOrEqual(0);
             }
+        }
+    });
+
+    // CHEST LOOT WAS OUTSIDE THE DENOMINATOR. lootTables.js's own header says "Every `item` string MUST
+    // be a valid display name ... The loot-coverage gate enforces that invariant" — and the gate iterated
+    // LOOT_TABLES only, so half the module it was named for went unexamined. A chest row naming an item
+    // the registry does not have spawns a pickup with no icon and no rarity, which is exactly the
+    // downstream identity break the header warns about.
+    it('CHEST_LOOT rows are valid registry items too — the header claims this and nothing checked it', () => {
+        const rows = Array.isArray(CHEST_LOOT) ? CHEST_LOOT : Object.values(CHEST_LOOT || {}).flat();
+        expect(rows.length, 'CHEST_LOOT enumerated nothing — this assertion is measuring an empty set').toBeGreaterThan(0);
+        for (const row of rows) {
+            expect(NAME_TO_ID[row.item], `CHEST_LOOT offers "${row.item}" which is not in the ITEMS registry`).toBeDefined();
+            expect(row.chance).toBeGreaterThan(0);
+            expect(row.chance).toBeLessThanOrEqual(1);
+            if (row.xp !== undefined) expect(row.xp).toBeGreaterThanOrEqual(0);
         }
     });
 });

@@ -13,8 +13,6 @@ import { biomeAmbience } from './audio/biomeAmbience.js';
 // SEPARATE node (windBedRef) and is unaffected. Set to 1 to restore the procedural music.
 const PROC_MUSIC_GAIN = 0;
 
-// Ambient chord progressions for mood adjustments
-
 const SoundContext = createContext();
 
 export const useSounds = () => {
@@ -492,37 +490,13 @@ export const SoundProvider = ({ children }) => {
 
 
 
-  // NEW: Attack sound generation functions
-  // ===== Aspect verb SFX (the 2026-06-10 audio design doc; ALL-SYNTH policy #74) =====
-  // WILDHEART roar — OWED since B1 shipped audio-silent: low saw sweep + beating growl + noise + sub.
-
-  // VOIDHAND grab — rising triangle chirp + the WHOLE-TONE shimmer partials (the Aspect motif stinger).
-
-  // HURL launch — a filtered-noise whoosh sweeping down (mass leaving the hand).
-
-  // SLAM — the heavy verb: click transient + 90Hz thump + sub drop (pairs with the camera kick).
-
-  // ANVIL HIT — the gold 3x moment: a bright metallic FM ping over the impact.
-
-  // SOULBIND bind — the grab-chirp's resolved sibling: two whole-tone steps that LAND (binding completes).
-
-  // ELEMANCER (S2-B4-M6): the four element voices — each zone kind speaks at its spawn
-  // moment. All-synth (#74); the bridge plays them spatially at the zone position.
-
-
-
-
-
-
-
-
-
-
-  // Enhanced magic system sounds
-
-
-
-
+  // THE ASPECT-VERB SFX COMMENTS THAT USED TO SIT HERE ARE GONE (2026-08-12).
+  //
+  // A header reading "NEW: Attack sound generation functions" stood above roughly thirty lines
+  // describing eight voices — WILDHEART, VOIDHAND, HURL, SLAM, ANVIL, SOULBIND, the four ELEMANCER
+  // elements — with ZERO functions between any of them. The voices had been extracted to the synth
+  // modules; only their commentary stayed, so this file documented an API it no longer contained and a
+  // reader looking for those generators found paragraphs promising them.
 
   const playSound = (soundName, playbackRate = 1) => {
     if (!soundEnabled || !audioContext.current || !sounds.current[soundName]) return;

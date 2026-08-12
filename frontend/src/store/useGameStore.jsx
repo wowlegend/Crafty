@@ -518,7 +518,6 @@ export const useGameStore = create((set, get) => ({
     showChestInterface: false,
     setShowChestInterface: (show) => set({ showChestInterface: show }),
     setActiveChestCoords: (coords) => set({ activeChestCoords: coords }),
-    addTalentPoint: (amount) => set((state) => ({ talentPoints: state.talentPoints + amount })),
     spendTalentPoint: (talentId) => set((state) => {
         if (state.talentPoints <= 0) return {};
         const currentVal = state.unlockedTalents[talentId] || 0;

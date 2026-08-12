@@ -28,8 +28,11 @@ describe('reward-beat audio is wired', () => {
     expect(exp).toMatch(/window\.playLevelUpSound/);
   });
   it('achievement-unlock and quest-complete fire the fanfare', () => {
-    // both reward beats call the bridged fanfare
-    const fanfareCalls = (quest.match(/window\.playFanfare/g) || []).length;
-    expect(fanfareCalls).toBeGreaterThanOrEqual(2);
+    // COUNT BEATS, NOT TOKENS, AND PIN THE NUMBER. This counted occurrences of `window.playFanfare`
+    // against a floor of 2 — but each beat is a GUARDED call, `if (window.playFanfare) window.playFanfare();`,
+    // so one beat already contributes two tokens. A single wired beat satisfied a test named for two, and
+    // deleting either one would have left it green.
+    const beats = (quest.match(/if \(window\.playFanfare\)\s*window\.playFanfare\(\)/g) || []).length;
+    expect(beats, 'expected exactly two guarded fanfare beats: achievement-unlock and quest-complete').toBe(2);
   });
 });

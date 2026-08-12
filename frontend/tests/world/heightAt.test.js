@@ -21,9 +21,12 @@ describe('heightAt — single source of truth for the surface formula', () => {
   });
 
   it('the highland swell is RARE: zero at/below threshold, growing above it', () => {
-    // isolate the highland term by holding n constant — use a stub keyed only on the highland freq (0.0018)
-    const mk = (hv) => (x) => (Math.abs(x) < 0.5 ? 0.2 /* n/continent/etc default */ : hv);
-    // simpler: compare two constant stubs and subtract the (identical) n contribution
+    // Isolate the highland term: subtract the (identical) n contribution from two constant stubs, so
+    // only the highland swell survives the difference.
+    //
+    // A `mk` helper used to sit here, building a frequency-keyed stub, and nothing ever called it — with
+    // the line below introduced as "simpler:", so the surviving comment read as commentary on a helper
+    // that had already been abandoned.
     const baseAt = (v) => computeHeight(() => v, 0, 0).baseHeight - (40 + (v * 0.5 + 0.5 + v * 0.1) * 18);
     expect(baseAt(HIGHLAND_THRESHOLD - 0.1)).toBeCloseTo(0, 9);  // below -> no swell
     expect(baseAt(HIGHLAND_THRESHOLD)).toBeCloseTo(0, 9);        // at -> no swell
