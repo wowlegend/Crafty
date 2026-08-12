@@ -5,6 +5,27 @@
 
 **Confirmed: 215**  ·  Plausible (secondary pass): 79  ·  Docs: 132 classified (+ archive/merge plan).
 
+## DRAINED — 2026-08-12
+
+**All 215 confirmed findings are disposed of: 207 fixed, 8 dismissed with a runnable proof, 0 open.**
+Every fix landed mutation-proven; the source-grep ratchet fell 115 -> 106 as gates became behavioural.
+
+## Found DURING the drain (NOT part of the 215)
+
+Recorded here rather than folded silently into a fix, because they were discovered by the work and not
+by the review — a reader comparing counts should be able to tell the two apart.
+
+- ▢ **`frontend/scripts/visual/heldf-probe.mjs`** [medium·KEVIN·test] The probe's premise is SIX WEEKS
+  STALE and its instrument is dead. Its header asserts "F is now MELEE only; RMB owns cast", which
+  Kevin's 2026-06-28 binding change reversed (F casts, T melees). Worse, on the 2026-08-12 run its own
+  positive control read `castCount afterRMB=0` and it warned "RMB did not register a cast" — then
+  reported **PASS** anyway, on an absence with no presence case. Root cause of the dead counter: the
+  probe wraps `store.castSpell`, and `EnhancedMagicSystem.jsx:164` re-installs that function via
+  `setState` whenever its effect re-runs, silently replacing the wrapper. Measured independently with a
+  throwaway probe: F does raise the cast count to 1 and T does not, so the BINDING is correct and only
+  the probe is wrong. Fix is a re-premised probe that asserts its positive control before its negative
+  one, and an instrument that survives re-installation.
+
 ## Confirmed by kind (priority ladder = execution order)
 
 | # | kind | count | AUTO | KEVIN |
@@ -398,7 +419,7 @@
   - _fix:_ Assert the store shape via import (expect(useGameStore.getState().abilityCooldowns).toBeDefined(); call setAbilityCooldowns and read back). jsdom-render AbilityBar with a store fixture and assert 5 labelled slots reading store cooldowns, and null under isCaptureMode(). Keep the Components buildCooldownMirror/throttle-ref grep as the structural piece (buildCooldownMirror behavior is already covered by cooldownMirror.test.js).
 - ▣✓ e06909c **`frontend/tests/gates/allocate-ui-gates.test.js:13`** [low·KEVIN·test] All three assertions grep GamePanels.jsx for allocateAttribute call strings and `attributePoints > 0`; the same behavior (incl. the 0-point gating) is already E2E-covered by inventory-attributes.test.jsx, making this gate a redundant source-string proxy.
   - _fix:_ Delete the redundant gate, or replace it with a thin note; the behavioral coverage already lives in tests/integration/inventory-attributes.test.jsx. If extra assurance is wanted, extend that render test rather than grepping the JSX.
-- ▢ **`frontend/tests/gates/combat-keybind-gates.test.js:19`** [low·KEVIN·test] The F-casts / T-melees keybinds are pinned with brittle windowed source regexes over Components.jsx (`/code === 'KeyF'\)\s*\{[\s\S]{0,120}triggerSpellCast\(\)/`) — a proxy for dispatch behavior a pure key->action router would let you test behaviorally.
+- ▣✓ bb3c8b0 **`frontend/tests/gates/combat-keybind-gates.test.js:19`** [low·KEVIN·test] The F-casts / T-melees keybinds are pinned with brittle windowed source regexes over Components.jsx (`/code === 'KeyF'\)\s*\{[\s\S]{0,120}triggerSpellCast\(\)/`) — a proxy for dispatch behavior a pure key->action router would let you test behaviorally.
   - _fix:_ Extract a pure keyToCombatAction(code) router from the Components.jsx keydown handler (returns 'cast' for KeyF, 'melee' for KeyT) and unit-test it directly; keep the keyMap label assertions (lines 27-30) as the data-contract gate.
 - ⊘ DISMISSED — colour distinctness IS pinned exactly, in a file the finding never opened — src/game/mobHitFx.test.js:10-13 asserts all four spark colours by value — `npx vitest run src/game/mobHitFx.test.js` **`frontend/tests/gates/element-impact-gates.test.js:32`** [low·KEVIN·test] The 'every spell element has a distinct impact case' check greps mobHitFx.js for `case 'spell':` even though sparkFor is a callable pure export — the per-element mapping is directly testable by invoking the function.
   - _fix:_ For each spell in SPELL_TO_ELEMENT call sparkFor(spell) and assert it returns a defined per-element-distinct descriptor (collect results, assert the set of colors has no unintended duplicates) instead of asserting the `case` label text exists.
