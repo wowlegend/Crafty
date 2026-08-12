@@ -92,7 +92,7 @@
   - _fix:_ Drop this to the puppeteer visual gate (authoritative for hand appearance) or narrow the regex to the exact accent token the design uses (e.g. `#E8D9A8`/`#FFD700`) rather than an /i alternation containing the generic words 'gold'/'accent'.
 - ▣✓ 52ec590 **`frontend/tests/gates/save-slot-ownership-gates.test.js:179`** [low·AUTO·test] B2c derives its trigger list by indexing .match(...)[1]; a source reformat makes .match return null and the test throws an opaque TypeError instead of a meaningful failure.
   - _fix:_ Guard each match: const m = schema.match(...); expect(m, 'progression block not found — saveSchema shape changed').not.toBeNull(); before indexing, and loosen `\n\s{4}\}` to `\n\s*\}`. Same for the App subscribe match.
-- ▢ **`frontend/tests/store/beastForm.test.js:111`** [low·AUTO·test] The 'form state is TRANSIENT — never serialized' assertions hold regardless of whether a beast form is active, so they prove the schema omits two key names, not that active transient state is dropped.
+- ▣✓ 54704cf **`frontend/tests/store/beastForm.test.js:111`** [low·AUTO·test] The 'form state is TRANSIENT — never serialized' assertions hold regardless of whether a beast form is active, so they prove the schema omits two key names, not that active transient state is dropped.
   - _fix:_ Assert the precondition before serializing: after `enterBeastForm('arcane')` add `expect(useGameStore.getState().isBeastFormActive()).toBe(true);` then build the save and keep the not.toContain checks — failing if the form never became active or if the key ever leaks into the schema.
 - ▣✓ 3bddf29 **`frontend/tests/store/bossActive.test.js:10`** [low·AUTO·test] The 'defaults to a boolean false (never undefined)' test is masked by its own beforeEach that pre-sets the value, so the default-value guarantee is never actually exercised.
   - _fix:_ Add one default-probe test per flag that reads the pristine initializer without running the setter first, e.g. `expect(useGameStore.getInitialState().bossActive).toBe(false)` (zustand v5.0.11 exposes getInitialState()). Keep the existing beforeEach-guarded tests for the setter behavior.
@@ -231,7 +231,7 @@
   - _fix:_ Simplify to `return 255 - hit.timeOfImpact;`.
 - ▣✓ 5a624e9 **`frontend/src/world/mesher.js:220`** [low·AUTO·src] The `if (blockType === 9)` water-AO branch in the corner loop is unreachable: water (code 9) is never written into the mesh mask, so blockType is never 9 at this point. ⟵ **CITE CORRECTED 2026-08-08** (filed as `terrain.worker.js:891`; that file is 692 lines and the greedy mesher moved to `mesher.js` at `71c24ca`). Defect intact at the new home; stale comment clause at `mesher.js:208`.
   - _fix:_ Remove the `blockType === 9` guard (and the 'Water faces carry AO 3' clause in the comment), or add an assert documenting that water never reaches the mask.
-- ▢ **`frontend/src/world/terrain.worker.js:260`** [low·KEVIN·src] The cx+-1 neighbor loop in stampStructures never writes cross-chunk: a dungeon footprint (halfW=6, centered at chunk*16+8) always fits inside its own chunk, so only dcx==cx,dcz==cz can stamp.
+- ▣✓ 54704cf **`frontend/src/world/terrain.worker.js:260`** [low·KEVIN·src] The cx+-1 neighbor loop in stampStructures never writes cross-chunk: a dungeon footprint (halfW=6, centered at chunk*16+8) always fits inside its own chunk, so only dcx==cx,dcz==cz can stamp.
   - _fix:_ Either drop the neighbor loop (stamp self-chunk only) for clarity/perf, or add a comment that it's defensive for future dungeons wider than one chunk (halfW>7).
 - ▣✓ 9387c7d **`frontend/src/world/terrain.worker.js:704`** [low·AUTO·src] generateMesh redeclares local CHUNK_SIZE=16 and CHUNK_HEIGHT=256 that are never referenced in its body (getBlock and the axis sweep use literal 16/256), shadowing the identical module-level consts.
   - _fix:_ Delete the two local consts (module-level ones suffice), or actually use them in getBlock/the sweep to replace the 16/256 magic numbers.
@@ -408,7 +408,7 @@
   - _fix:_ Tighten to `expect(components()).toMatch(/getInput\(\)\.active/)` (matches at L382/385/422), or assert the count of getInput().active reads >= the number of gated verbs; the pure seam src/input/inputState.js is already unit-testable for a behavioral reader/writer test.
 - ▣✓ e06909c **`frontend/tests/gates/inventory-flat-bucket-gates.test.js:21`** [low·KEVIN·test] Trade routing is asserted as exact inline code strings; the routing invariant is encoded but never executed.
   - _fix:_ Extract the trade-apply logic into a pure reducer (e.g. applyTrade(inventory, {resultItem, magicItem, count}) -> inventory) and behaviorally assert the result has counts under blocks[...] and nothing new under magic[...]; keep the negative source-grep as belt-and-suspenders.
-- ▢ **`frontend/tests/gates/quest-log-gates.test.js:15`** [low·KEVIN·test] QuestLog gate uses bare substring greps (/Modal/, /lore/, /giver/) that match any occurrence including comments/imports.
+- ▣✓ 54704cf **`frontend/tests/gates/quest-log-gates.test.js:15`** [low·KEVIN·test] QuestLog gate uses bare substring greps (/Modal/, /lore/, /giver/) that match any occurrence including comments/imports.
   - _fix:_ Render <QuestLog> in jsdom with a seeded active quest and assert lore/giver/objective text appears; simulate the L key through the real InputManager handler. Keep only the cross-file MenuSystem-mounts-QuestLog grep as structural.
 - ▣✓ 0cb78ca **`frontend/tests/gates/quest-persistence-gates.test.js:18`** [low·KEVIN·test] Persistence gate asserts identifier presence; buildSaveData serialization of questState is directly round-trippable behaviorally.
   - _fix:_ Import buildSaveData, build from a store state carrying quest progress, and assert the returned blob has questState with the expected quests/completedQuestIds.
@@ -420,7 +420,7 @@
   - _fix:_ Assert 'targetEntity' in useGameStore.getState(); add a jsdom render test for TargetFrame: shows the nameplate when targetEntity is set, renders null without one, and is suppressed under isCaptureMode().
 - ⊘ DISMISSED — between() does return empty on a missing marker, but a POSITIVE toMatch runs first in every it() and fails on the empty string, so a removed anchor cannot pass silently — `npx vitest run tests/gates/terrain-quest-callback-gates.test.js` **`frontend/tests/gates/terrain-quest-callback-gates.test.js:21`** [low·KEVIN·test] The block-place/break dead-wire fix is verified by string-slicing mine()/place() bodies out of Terrain.jsx via fragile signature markers; a missing marker returns '' making the not.toMatch pass vacuously.
   - _fix:_ Extract the mutation->quest-callback dispatch into a thin pure helper (e.g. onVoxelMutated(kind, store)) firing the right callback exactly once per kind, unit-test it, and keep the Terrain grep only as a thin wiring check.
-- ▢ **`frontend/tests/gates/victory-audio-gate.test.js:33`** [low·KEVIN·test] VictoryOverlay firing its sting on mount is asserted via a fragile 600-char proximity slice of GameSystems.jsx source rather than a render test — and the slice is already satisfied by a COMMENT.
+- ▣✓ 54704cf **`frontend/tests/gates/victory-audio-gate.test.js:33`** [low·KEVIN·test] VictoryOverlay firing its sting on mount is asserted via a fragile 600-char proximity slice of GameSystems.jsx source rather than a render test — and the slice is already satisfied by a COMMENT.
   - _fix:_ Render VictoryOverlay under jsdom with window.playVictory = vi.fn(), mount it in the victory state, and assert the mock was called once on mount (VictoryOverlay is a presentational DOM component; the VOICES.victory check at L20 already covers the voice).
 
 ### coverage-gap (8)
@@ -481,7 +481,7 @@
 
 ### enhancement (7)
 
-- ▢ **`.github/workflows/ci.yml:47`** [low·KEVIN·test] No dependency vulnerability scanning anywhere — install uses --no-audit and there is no npm audit step or Dependabot config, so a CVE in a (transitive) dep ships to the live Vercel demo unnoticed.
+- ▣✓ 54704cf **`.github/workflows/ci.yml:47`** [low·KEVIN·test] No dependency vulnerability scanning anywhere — install uses --no-audit and there is no npm audit step or Dependabot config, so a CVE in a (transitive) dep ships to the live Vercel demo unnoticed.
   - _fix:_ Add a non-blocking (or high-severity-gating) `npm audit --audit-level=high` step, or a .github/dependabot.yml with the npm ecosystem for frontend/, to surface known-CVE advisories before auto-deploy.
 - ▣✓ d539b0b **`frontend/scripts/perf/run-scenarios.mjs:82`** [low·KEVIN·test] The M2 C−B budget verdict (L82) is only logged; the process never exits non-zero on FAIL, so despite 'gate' framing `npm run perf:m2` returns 0 on a budget breach.
   - _fix:_ If it is meant to gate, `process.exit(withinBudget(cb) ? 0 : 1)`; otherwise rename 'gate' to 'report' in the header (L4) and log (L82) so no one wires it in expecting enforcement.
