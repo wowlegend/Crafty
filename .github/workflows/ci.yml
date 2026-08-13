@@ -173,12 +173,25 @@ jobs:
         if: always()
         run: node scripts/ci/runtime-reach.mjs
 
+      # UPLOAD THE ARTEFACTS THAT ACTUALLY EXIST. This uploaded `frontend/playwright-report/` until
+      # 2026-08-13 — a directory NOTHING creates, because the CI reporter set is [github, list, json]
+      # with no `html` reporter (playwright.config.js). So every red e2e run printed
+      # "##[warning]No files were found with the provided path" and attached nothing: run 31728827362
+      # has total_count: 0 artefacts. Meanwhile `trace: 'retain-on-failure'` HAD written a trace.zip,
+      # a screenshot and an error-context.md for each of the three failed attempts, into
+      # frontend/test-results/ — and the job threw them away. One of those traces would have settled
+      # in a single look a root cause that instead took three parallel investigations to corner, one
+      # of which reached a conclusion the timing data refuted. An upload path is a denominator too.
+      # Coverage is excluded: it is per-test JSON that the reachability report already consumed.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-shard-${{ matrix.shard }} # per-shard: a fixed name collides across the matrix
-          path: frontend/playwright-report/
+          name: playwright-traces-shard-${{ matrix.shard }} # per-shard: a fixed name collides across the matrix
+          path: |
+            frontend/test-results/
+            !frontend/test-results/coverage/
           retention-days: 7
+          if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
   # Doc-currency. Cheap, and it guards the failure mode that actually bit us:
