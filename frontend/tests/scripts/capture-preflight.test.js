@@ -314,3 +314,44 @@ describe('capture: a wedged compositor aborts loudly instead of hanging forever'
     }
   });
 });
+
+// THE END-OF-RUN MACHINE READING MUST BE TAKEN AT THE END.
+//
+// `machine` is computed once at startup, and the first version of this reused that single object in all
+// four sentinel writes — so a CRASH write would have reported the machine as it looked BEFORE whatever
+// killed the run, which is the one moment the reading exists to explain.
+//
+// The capture proves the readings genuinely differ, because the capture CREATES the pressure its own
+// pre-flight screens for: measured 2026-08-13, a run began at 5,285MB free (no warning, which is why it
+// was started) and sat at 2,256MB mid-run — below the 4,096MB threshold. A passing pre-flight says the
+// run was reasonable to BEGIN, never that it stayed healthy.
+//
+// This rode into cd75951 unmentioned and ungated, in a commit whose own message was about instruments
+// that report over input they never examined. Gated here rather than left as an untested claim.
+describe('capture: the end-of-run sentinel reads the machine AT THE END', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+  const writes = cap.split('\n').filter((l) => l.includes('writeFileSync(META'));
+
+  it('every END write takes a FRESH reading, not the start object', () => {
+    const ends = writes.filter((w) => w.includes('finishedAt'));
+    expect(ends.length, 'the end-of-run sentinel writes have moved — recount before trusting this').toBe(3);
+    for (const w of ends) {
+      expect(w, `an end write omits machineAtEnd: ${w.trim().slice(0, 80)}…`).toMatch(/machineAtEnd:/);
+      expect(w, 'machineAtEnd reuses the start object instead of re-reading — the whole defect')
+        .toMatch(/machineAtEnd:\s*readMachine\(\)/);
+    }
+  });
+
+  it('keeps the START reading too, because it explains why the run was begun', () => {
+    for (const w of writes.filter((x) => x.includes('finishedAt'))) {
+      expect(w, 'the start reading was dropped — the decision to run becomes unexplainable').toMatch(/\bmachine,/);
+    }
+  });
+
+  it('the START write carries only the start reading — there is no "end" yet', () => {
+    const start = writes.filter((w) => !w.includes('finishedAt'));
+    expect(start.length, 'the capture-start sentinel write has moved').toBe(1);
+    expect(start[0]).toMatch(/machine\s*\}/);
+    expect(start[0], 'the start write claims an end-of-run reading it cannot have').not.toMatch(/machineAtEnd/);
+  });
+});
