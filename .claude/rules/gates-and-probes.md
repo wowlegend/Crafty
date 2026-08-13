@@ -36,6 +36,8 @@ fires at the moment you can act on it.
 | `evaluateCaptureFreshness`'s unit tests | whether anything ever FILLS the `skipped` array they are handed — deleting the producer left the suite green |
 | a WCAG contrast gate's reference values | all achromatic (black/white/grey) — a mutation replacing the luminance coefficients with a plain average stayed GREEN |
 | a `text-text-inverse` usage scan | two of the three ways a gold background is declared here, reporting four false positives on correct code |
+| `dodge-latch`, green for two years | a world. `startPlay`'s swallowed wait meant it ran BEFORE terrain existed, so the 20 mobs gated on the same flag never spawned and nothing could kill the player — the green measured the absence of the game (2026-08-13) |
+| the CI e2e job's `upload-artifact` | every failure it was meant to preserve — the path was `playwright-report/`, which no configured reporter creates, so three `trace.zip` files per red run were written to `test-results/` and discarded (2026-08-13) |
 
 Read the count, never the tick.
 
@@ -108,6 +110,25 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
    deleting `skippedGated.push(...)` left the entire suite green, inside the commit that added it. When
    a value crosses a seam, ask the two questions separately: what proves the consumer HANDLES it, and
    what proves the producer EMITS it. Only the first is usually written.
+
+4d. **A SWALLOWED WAIT RELOCATES THE TEST INTO A DEGENERATE WORLD — that is its second cost, and the
+   one nobody names.** The known cost of `.catch(() => {})` on a readiness wait is that a real
+   precondition failure surfaces later, naming nothing: `_boot.js startPlay()` swallowed a 45s
+   world-build wait, and `imbue-latch` died on CI as a flat 15s timeout three attempts running with
+   only docs changed. The UNNAMED cost is that while the wait is being skipped, the code runs in a
+   state where everything gated on that same flag is ABSENT. `SpawnerSystem.jsx:94` gates all 20
+   hostile spawns on the very `isSpawnChunkLoaded` the wait was swallowing — so every spec using that
+   helper ran in a world with no terrain and therefore no mobs. `dodge-latch` had been green on
+   exactly that basis; making the wait strict moved it into a live world, mobs killed the player, and
+   the input gate correctly refused the press. **The old green was measuring the absence of the game.**
+   So when you remove a swallow, do not only ask what failure was hidden — **grep the flag for its
+   OTHER consumers**, and treat every test that depended on the swallow as unproven until re-run.
+
+4e. **ASSERT ON THE GATES ALONGSIDE THE SUBJECT.** `expect(dodge).toBe(true)` cannot distinguish a
+   broken latch from a refused press. `Components.jsx:366` gates on `active` AND `isAlive`, so CI
+   reported *"Shift no longer arms a dodge at all — the instrument is dead, or the verb is"* when the
+   verb was fine and the player was dead. Read the subject WITH its preconditions and put them in the
+   failure message; a one-line change turns an accusation into a diagnosis.
 
 5. **When a probe substitutes an API for a real gesture, say what that changes.** `esc-pause-probe` used
    `document.exitPointerLock()` in place of the native ESC. Per MDN those two paths differ in exactly the
