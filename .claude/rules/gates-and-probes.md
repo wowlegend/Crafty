@@ -27,7 +27,13 @@ fires at the moment you can act on it.
 | `tapTestId` | whether the tap landed on the element it named |
 | the `setActive` structural gate | satisfiable by the COMMENT explaining the import |
 | the local-density ratchet's own failure message | told you to open `tests/visual/diff/<state>.png` — a file written ONLY on GLOBAL-gate red, so a density-only failure pointed at nothing |
-| the density LEDGER it asserts against | **29 of 31 entries are the FLOOR constant**, not measurements, so for most frames it compares against an arbitrary number |
+| the density LEDGER it asserts against | 29 of 31 entries were the FLOOR constant, not measurements (FIXED 2026-08-13: frozen from a reviewed pair, **29 → 23**, ratcheted) |
+| `freeze-density.mjs`'s own docblock | it demanded **TWO captures** from the day it was written while the code read **ONE** hardcoded directory — every ledger it ever produced was single-sample, i.e. the requirement was a comment |
+| the same script, on a partial capture | aborted the WHOLE freeze if one frame was missing from one run, so a flaky canvas wait left the other thirty unmeasured |
+| the ledger gate's own remediation instruction | its failure message says to run `freeze-density.mjs`; doing so wrote a ledger **that gate then rejected**, because it wants an `_unmeasured` field nothing generated |
+| the density banner printed on every visual run | said "REPORT ONLY, asserts nothing" for four days **after** the ratchet started asserting |
+| a source gate asserting `for (const dir of sources)` | the SECOND occurrence of that pattern (an existence pre-check) — it stayed green under the exact mutation it named |
+| `evaluateCaptureFreshness`'s unit tests | whether anything ever FILLS the `skipped` array they are handed — deleting the producer left the suite green |
 | a WCAG contrast gate's reference values | all achromatic (black/white/grey) — a mutation replacing the luminance coefficients with a plain average stayed GREEN |
 | a `text-text-inverse` usage scan | two of the three ways a gold background is declared here, reporting four false positives on correct code |
 
@@ -86,6 +92,23 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
    reachable; a dispatched event is not a received one. If the assertion can be satisfied by a comment, it
    is satisfied by a comment — anchor structural gates to the syntactic form, not a bare token.
 
+4b. **COUNT YOUR PATTERN'S OCCURRENCES BEFORE TRUSTING IT, AND WHEN THE MUTATION STAYS GREEN, STOP
+   TIGHTENING.** A source gate asserted `freeze-density.mjs` contains `for (const dir of sources)` to
+   prove it reads every run directory. It passed — and kept passing when the read loop was mutated to
+   `[sources[0]]`, because a SECOND loop over `sources` (an existence pre-check) matched. A text match
+   cannot tell which occurrence is load-bearing, so a better regex answers the wrong question. **The fix
+   is to make the SUBJECT DRIVABLE**: `--baseline=` / `--out=` seams let a test execute the tool on
+   synthetic fixtures where the answer is known by construction, and the blind assertion was deleted
+   rather than patched. Where executing really is too expensive, anchor to a **SLICE** bounded by unique
+   landmarks (`cap.slice(stageStart, nextFinally)`), never to the whole file — a slice cannot match an
+   unrelated site.
+
+4c. **A PRODUCER/CONSUMER SPLIT HIDES AN UNTESTED PRODUCER.** `evaluateCaptureFreshness` is HANDED a
+   `skipped` array, so its nine unit tests say nothing about whether `capture.mjs` ever fills one —
+   deleting `skippedGated.push(...)` left the entire suite green, inside the commit that added it. When
+   a value crosses a seam, ask the two questions separately: what proves the consumer HANDLES it, and
+   what proves the producer EMITS it. Only the first is usually written.
+
 5. **When a probe substitutes an API for a real gesture, say what that changes.** `esc-pause-probe` used
    `document.exitPointerLock()` in place of the native ESC. Per MDN those two paths differ in exactly the
    respect the bug depended on, so the probe was structurally incapable of seeing it — while reporting PASS.
@@ -99,10 +122,14 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   (`scripts/ci/mutation-proof-trailer.mjs`). A gate here that calls `readFileSync` joins the frozen
   source-grep population (`tests/gates/.source-grep-ledger.json`, **106** as of 2026-08-13) which may FALL
   and never RISE — so a new source-reading gate sited here reds the push.
-- **`tests/scripts/**` — checks whose subject IS a file.** 16 files live here: config, tooling and
+- **`tests/scripts/**` — checks whose subject IS a file.** (`ls frontend/tests/scripts/*.test.js | wc -l`
+  — the count is deliberately not written here; this line said "16" and the next edit typed "18" against
+  an actual 17, in the file whose subject is numbers that rot): config, tooling and
   repo-shape checks that must read source or JSON by their nature (`supply-chain`, `probe-ports`,
   `node-runtime-declared`, `social-preview`, `vite-console-drop`, `text-inverse-usage`,
-  `density-ledger-measured`, …). Siting a check here keeps it out of the frozen population — **say so in
+  `density-ledger-measured`, `freeze-density`, …). Note `freeze-density.test.js` does NOT read the
+  subject's source — it EXECUTES it against synthetic frames via injected `--baseline`/`--out`, which is
+  why it lives here despite being a behavioural test: its fixtures are files. Siting a check here keeps it out of the frozen population — **say so in
   the file when you do it**, and never site something here merely to dodge the ratchet or the trailer.
   The test is whether the subject is BEHAVIOUR (gates/) or a FILE'S CONTENT (scripts/). Split when both:
   the WCAG work put the arithmetic in `tests/gates/` and the usage scan in `tests/scripts/`.
