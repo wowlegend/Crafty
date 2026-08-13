@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-08-13 — the density ledger is frozen, and the tool that freezes it was broken
+
+**The ledger.** 29 of 31 entries were the `DENSITY_FLOOR` constant, not measurements, so for most
+frames the ratchet compared against an arbitrary number — which is what `ocean-coast` failed against,
+un-adjudicably. Frozen from two reviewed captures on Chromium 151, merged at the worse run:
+**unmeasured 29 -> 23**, ratcheted; `ocean-coast` measured at 6.7%. The remaining 23 reproduce
+byte-identically and have no variance to measure.
+
+**`explore-day` was REFUSED.** It varies 5.13%–30.35% locally between runs on identical code and an
+identical renderer — an entire distant treeline, confirmed by cropping the disputed window at 3x.
+Frozen at what it "actually does" that is 54.7%: over half a window free to change, foreclosing every
+regression the frame could report while still printing a tick. `freeze-density` now keeps such a frame
+at its previous allowance, records it in `_ungateable`, and ABORTS if a new frame has nothing to fall
+back on. `DENSITY_UNGATEABLE` is the shared constant behind that and the ledger gate's own
+"guards nothing" assertion, which had it as a literal.
+
+**The freezer had demanded two captures while reading one, since the day it was written.** Also
+aborted the whole freeze when one frame was missing from one run, and produced a ledger the gate that
+tells you to run it rejects. All three proven RED first; it now takes N run directories.
+
+**A capture that skips a gated frame no longer reports itself complete.** It wrote
+`complete: true, crashes: 0` over a run that never photographed `title-mascot` (skipped in 2 of the
+last 3 runs). Correction on the record: I claimed the stale frame was kept SILENTLY — it was not, the
+freshness predicate's mtime rule reds by name, verified by reconstructing the exact `current/` state.
+
+**Two of my own gates were blind, and both were caught by mutation.** A source assertion claiming
+"the freezer reads every run directory" stayed green under a mutation making it read only the first,
+because a second loop over the same variable satisfied the regex; it was deleted, and the tool grew
+`--baseline`/`--out` so the claim is proven by running it. And deleting the line that records a
+skipped frame left the whole suite green — the predicate's tests are handed a skip list and say
+nothing about whether the capture fills one.
+
+**Owed:** a capture pair on a quiet machine. `shot()`'s stability requirement went 2 -> 5 consecutive
+stable frames (the terrain wait already demanded 6); that is an argued hypothesis, not a measurement —
+the machine was at load 21 with three other sessions' processes pinned. Expect more-complete frames
+and a deliberate re-baseline when it runs.
+
+
 ## 2026-08-08 — S9: the grass is lit, and was being drawn twice (`17964b8`)
 
 `MeshBasicMaterial` is unlit by definition, so the grass ignored every light in `Atmosphere`, the

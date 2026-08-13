@@ -207,12 +207,44 @@ the oracle was OVERSTATED and is corrected here.
 it would freeze noise` on exactly THREE frames, in BOTH runs independently: **ocean-coast, landmark,
 explore-day-med**. Its ratchet failure is inherent instability, not a regression.
 
-**4. NEXT ACTIONS, in order:**
-- Do NOT re-baseline the three unstable frames' PNGs — the capture explicitly says that freezes noise.
-  The other 27 may be re-baselined if wanted, but per (1) there is no correctness reason to.
-- DO freeze the density ledger from this A/B pair: `node scripts/visual/freeze-density.mjs`. Freezing a
-  frame's density at its measured variance x headroom is legitimate and is the whole point — it replaces
-  29 floor constants with measurements. That is a DIFFERENT act from re-baselining the oracle image.
-- `title-mascot` fails its 20s canvas wait at the end of a long GL session (2 of 3 recent runs). Worth a
-  separate fix; it is a GATED frame whose last-good copy is silently kept.
-- THEN merge PR #13 (green, held only to keep the capture pair clean).
+**4. WHAT LANDED (2026-08-13), and what is still owed**
+
+DONE — `e077dc9` the ledger is FROZEN from this pair. Unmeasured **29 -> 23**, ratcheted in
+`density-ledger-measured.test.js`. `ocean-coast` now sits at a measured **6.7%** instead of the 2%
+floor constant, which is the fix its own failure message prescribed. Its ratchet failure is resolved
+by MEASUREMENT, not by raising the floor.
+
+DONE — `43ee407` the freezer itself was broken in three ways, each proven RED first: it demanded TWO
+captures in its docblock while reading ONE hardcoded directory (so every ledger it ever produced was
+single-sample); it aborted the whole freeze if one frame was missing from one run; and regenerating
+the ledger reddened the gate whose failure message tells you to regenerate it. It now takes N run
+dirs, merges at the WORST run, records per-frame sample counts, and generates `_unmeasured`.
+
+DONE — `e077dc9` `explore-day` is REFUSED, not frozen. It varies 5.13%-30.35% local, which would
+freeze at 54.7% — past the point where an allowance is a gate. The freezer keeps such a frame at its
+previous value, records it in `_ungateable`, and ABORTS if a new frame has nothing to fall back on.
+
+DONE — `eb7d089` a capture that SKIPS a gated frame no longer reports itself complete. NOTE the
+correction: I claimed the stale frame was kept SILENTLY; it was not — the freshness predicate's mtime
+rule reds by name, verified by reconstructing the exact `current/` state and running the real gate.
+
+OWED — **a capture pair on a QUIET machine.** `79068f7` raised `shot()`'s stability requirement from
+2 consecutive stable frames to 5 (the terrain wait already demands 6 for the same reason). It is a
+HYPOTHESIS: proving a flakiness fix needs several post-change runs, and the machine was at load 21 on
+14 cores with three other sessions' node processes pinned near 100%. Capture crashes in that band and
+a load-skewed capture that SUCCEEDS is worse than none. When it runs:
+- expect frames to be MORE complete than baselines shot under the old wait; that red is a real signal
+  and calls for a deliberate re-baseline with a `Baseline-Review:` trailer, NOT for treating it as noise.
+- `explore-day` stays in `_ungateable` until a pair shows its variance has actually fallen.
+- Do NOT re-baseline `ocean-coast`, `landmark`, `explore-day-med` — the capture explicitly warns that
+  re-baselining a frame it declared non-deterministic freezes noise.
+
+OWED — **PR #13 and #15 are unmerged.** Both are fully green in CI. `gh pr merge` is DENIED by the
+permission layer in this session, so this needs Kevin or a settings rule. #13 is dev-deps only
+(playwright 1.62.1, knip 6.32.0, eslint, postcss, rapier3d-compat 0.19.3 — zero render risk). #15 is
+production deps (react 19.2.8, drei 10.7.8 patch, framer-motion 12.43.0, postprocessing 6.39.4,
+zustand 5.0.14) and CAN move pixels — the visual gate is in neither hook nor CI, so merge it only
+alongside a capture run.
+
+OWED — `era-review` artifact is 11 commits behind, `loop-progress` 6. Both informational, under the
+30-commit hard limit.
