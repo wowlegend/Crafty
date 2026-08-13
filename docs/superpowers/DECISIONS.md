@@ -18,6 +18,62 @@
 
 ---
 
+## 2026-08-13 (night) — [LOOP] three r174 KILLS the GL-error storm, and is still NOT landing tonight
+
+Kevin, going to sleep: *"if the upgrade works, then do it."* It does not work in the sense that clears the
+bar I set before measuring, so it is not landed. Both halves below are measured, with controls.
+
+**Where this came from.** `vanruesc` replied to our upstream report (pmndrs/postprocessing#750, labelled
+`investigating`) within hours. They could NOT reproduce the missing sun on three r172 — but they DO see the
+`glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image` error we had filed
+SEPARATELY as a production-bundle finding, and traced it to a three.js depth-texture-cloning bug fixed in
+r174 (mrdoob/three.js#30585). Their claim: postprocessing's `e19bfa3` triggers a bug that lives in older
+`three`. So two findings we had been treating as unrelated are one root cause.
+
+### ① Does r174 fix the GL storm — **YES, measured, with a presence control.**
+Identical probe, identical 12s window, production bundle both times:
+
+| build | `glBlitFramebuffer` messages |
+|---|---:|
+| three 0.172.0 + postprocessing 6.39.1 (committed state) | **6**, both message forms |
+| three 0.174.0 + postprocessing 6.39.4 | **0** |
+
+The control matters and is the reason this is stated as fact: a zero from an instrument never shown to
+produce a non-zero is not evidence. **`prod-smoke.mjs` cannot see this class at all** — it filters on
+`m.type() === 'error'` and these arrive as `warning`, so the repo's own prod gate is structurally blind to
+the error storm it was written to watch. That is a real gap and it is now written down.
+
+### ② Does r174 let us unpin postprocessing — **UNRESOLVED, and it is not the blocker.**
+Not answered, because the question is moot until ③ is decided: `explore-day` shows no sun disc at that
+camera angle in EITHER build, so the frame that would answer it has to be identified first.
+
+### ③ Why it is not landing — **the upgrade changes the whole look.**
+`three` r174 against the committed baselines: **19 of 31 frames over gate**, many at 99%+ local density
+(`explore-day` 99.70% vs a 9.30% ceiling; `spell-iceball` 99.90%; `ocean-depth` 99.19%). Comparing the two
+`explore-day` frames by eye, the r174 sky is materially more saturated — this reads as a global colour or
+tone-mapping change, not a regression in one subsystem.
+
+So landing it requires rewriting all 31 baselines. **That is a judgement about how the game should LOOK,
+which is Kevin's call, not a correctness fix the loop can self-gate** — and a bundled engine-bump +
+re-baseline is exactly the shape `baseline-trailer` exists to stop (ten of the last twelve baseline
+rewrites were bundled, which is how four monster baselines became pictures of an empty mountain).
+
+It also sits against a live decision-of-record: `c1d933e` deliberately blocks 0.x MINOR bumps for the
+engine stack in dependabot, because for 0.x the MINOR position is the breaking one. This measurement is
+evidence FOR that policy, not against it.
+
+**State: fully reverted.** `package.json` + `package-lock.json` restored from backup, `npm ci` re-run,
+three 0.172.0 / postprocessing 6.39.1 confirmed installed, git tree clean. Nothing about this experiment
+is committed except this entry.
+
+**Owed to Kevin in the morning — two separable decisions, do not bundle them:**
+1. Take r174 for the GL fix alone, accepting a full reviewed re-baseline of the look? (High value: the
+   storm currently MUTES the GL channel, so a genuine later error in that context is silenced.)
+2. Reply to #750 with the measurement above. Drafted, NOT posted — posting to a public upstream issue is
+   outward-facing and stays Kevin's.
+
+---
+
 ## 2026-08-02 — the audit batch (items ①–⑨), decided under the standing grant
 
 Kevin's instruction, verbatim: *"what do you recommend for all the punted / awaiting decision questions?
