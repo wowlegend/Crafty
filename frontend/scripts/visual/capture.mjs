@@ -163,7 +163,23 @@ async function shot(page, name) {
     .evaluate((n) => (window.__craftyTest && window.__craftyTest.call('setCaptureFrame', n)) ?? -1, CAPTURE_PHASE_FRAMES)
     .catch(() => -1);
   phases.push({ name, phase });
-  await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
+  // needStable WAS 2, AND 2 IS NOT ENOUGH FOR A BURSTY LOADER — measured 2026-08-13.
+  //
+  // Chunk meshes do not arrive smoothly; they land in bursts with quiet gaps between them, and two
+  // consecutive identical polls only proves the gap, not the end. `explore-day` exits this wait
+  // "settled" (it emits no WARN) and still varies 5.13% to 30.35% of a 128px window between two runs on
+  // identical code and an identical renderer — an entire distant treeline present in one and absent in
+  // the other. That is not noise: cropping the disputed window at 3x shows whole tree canopies.
+  //
+  // 30.35% x the ratchet headroom is 54.7%, past the point where an allowance is a gate at all, so
+  // freeze-density refuses to freeze it and the frame is currently ungateable. The lever is here, not
+  // there. `waitForStableTerrain` already demands SIX consecutive stable polls for exactly this reason
+  // and its docblock says so; this call site then settled for two.
+  //
+  // Cost is bounded and small: 3 extra polls x (1 rAF + 200ms) x 31 frames is ~1 minute on a ~30 minute
+  // run. `max` stays at 25, so a frame that genuinely cannot settle still WARNs rather than hanging —
+  // and that WARN is the honest signal, which is why it is not raised to hide one.
+  await waitForStableFrame(page, { needStable: 5, interval: 200, max: 25, floor: 120 });
   // A LOST CONTEXT IS A BLANK OBJECT, NOT A BLANK FRAME — so it can sit far under the 6% gate and pass.
   // Checked at the one door every gated frame passes through, immediately before the pixels are written,
   // because a context lost after the previous shot and before this one belongs to THIS frame.
