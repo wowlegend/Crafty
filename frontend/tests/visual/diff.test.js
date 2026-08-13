@@ -110,6 +110,16 @@ describe('visual capture freshness (item #12 fail-loud)', () => {
 const redFrames = [];
 const density = [];
 
+// THE FROZEN LEDGER, READ ONCE AND USED IN TWO PLACES.
+//
+// The ratchet at the bottom of this file asserts against it; the per-frame loop below needs it too, so a
+// density-only failure can WRITE the artifact its own error message tells you to open. Until 2026-08-12
+// it could not: the diff PNG was written only when the GLOBAL ratio went red, so a frame that failed the
+// ratchet alone produced a message reading "Open tests/visual/diff/<state>.png" for a file that did not
+// exist. The instruction pointed at nothing, and the first real ratchet failure (ocean-coast, 2.20%) had
+// to be diagnosed by hand in an out-of-band script — exactly the cost the contact sheet exists to remove.
+const LEDGER = JSON.parse(readFileSync(resolve(DIR, '.density-ledger.json'), 'utf8'));
+
 afterAll(() => {
   // The density table prints on EVERY run, green or red — it is calibration data, and data only collected
   // when something is already broken is collected too late to set a threshold from.
@@ -195,8 +205,17 @@ describe('visual regression', () => {
       const dens = maxWindowDensity(mask.data, base.width, base.height, 128, 32);
       density.push({ state, ratio, density: dens.density, x: dens.x, y: dens.y });
 
+      // A frame is worth an artifact if EITHER gate will fail on it, and the ratchet's comparison is
+      // `observed > ledger[state]` — the ledger stores the ALLOWANCE directly. (First draft called
+      // frozenFor() here, which is the wrong direction: that helper takes an OBSERVED density and returns
+      // what it should be FROZEN at, so it inflated 0.020 to 0.036 and the condition never fired. The
+      // mutation check caught it; a green run would not have.) Exceeding the allowance is a failure even
+      // when the global ratio is tiny — ocean-coast failed at 2.20% local while moving 0.0425% globally.
+      const allowed = LEDGER.frames?.[state];
+      const densityRed = allowed != null && dens.density > allowed;
+
       let diffPath = null;
-      if (ratio >= THRESHOLD) {
+      if (ratio >= THRESHOLD || densityRed) {
         mkdirSync(DIFF_DIR, { recursive: true });
         const out = new PNG({ width: base.width, height: base.height });
         const again = pixelmatch(base.data, cur.data, out.data, base.width, base.height, {
@@ -211,7 +230,33 @@ describe('visual regression', () => {
         expect(again, 'the diff image does not match the ratio that failed').toBe(diff);
         diffPath = resolve(DIFF_DIR, `${state}.png`);
         writeFileSync(diffPath, PNG.sync.write(out));
-        redFrames.push({ state, ratio });
+        redFrames.push({ state, ratio, density: dens.density, x: dens.x, y: dens.y, densityRed });
+
+        // AND, for a density failure, a ZOOMED CROP of the offending window. A 128px square inside a
+        // 1280x800 frame is 1.6% of its area; "at 768,672" is a coordinate a reviewer then has to go
+        // find. This writes baseline | current | mask for exactly that window at 3x, which is the crop
+        // that identified ocean-coast's change as scattered streaming variance rather than a shader
+        // regression — and is otherwise a hand-written script every single time.
+        if (densityRed) {
+          const WIN = 128, S = 3, PAD = 8;
+          const zoom = new PNG({ width: (WIN * 3 + PAD * 2) * S, height: WIN * S });
+          zoom.data.fill(0);
+          const blit = (src, ox) => {
+            for (let y = 0; y < WIN * S; y++) {
+              for (let x = 0; x < WIN * S; x++) {
+                const sx = dens.x + Math.floor(x / S);
+                const sy = dens.y + Math.floor(y / S);
+                if (sx >= base.width || sy >= base.height) continue;
+                const si = (sy * base.width + sx) << 2;
+                const di = (y * zoom.width + (x + ox * S)) << 2;
+                zoom.data[di] = src[si]; zoom.data[di + 1] = src[si + 1];
+                zoom.data[di + 2] = src[si + 2]; zoom.data[di + 3] = 255;
+              }
+            }
+          };
+          blit(base.data, 0); blit(cur.data, WIN + PAD); blit(mask.data, (WIN + PAD) * 2);
+          writeFileSync(resolve(DIFF_DIR, `${state}.window.png`), PNG.sync.write(zoom));
+        }
       }
       // A bare percentage is not a diagnosis, and on 2026-08-02 it actively misled: `landmark` failed at
       // 6.29% then 6.27% with ZERO source changes, which reads exactly like a renderer regression from the
@@ -249,9 +294,8 @@ describe('visual regression', () => {
   // built for: a 248x248 block of a byte-identical frame could change completely and still move only
   // 6% of the frame, so the global gate cannot see it and never could.
   it('no frame has grown a NEW concentration of change (local-density ratchet)', () => {
-    const ledger = JSON.parse(readFileSync(resolve(DIR, '.density-ledger.json'), 'utf8'));
     expect(density.length, 'no frame was measured — this assertion is running over nothing').toBe(STATES.length);
-    const { risen, unfrozen, missing } = densityVerdict(ledger.frames, density);
+    const { risen, unfrozen, missing } = densityVerdict(LEDGER.frames, density);
     expect(unfrozen, 'gated state(s) absent from the density ledger — freeze them deliberately: node scripts/visual/freeze-density.mjs').toEqual([]);
     expect(missing, 'frozen state(s) were never measured — a frame has left the corpus and its guard went with it').toEqual([]);
     expect(
