@@ -53,13 +53,22 @@ registry below plus Kevin's decisions.
 
 **MEASURED (re-run 2026-07-27; first measured 2026-07-13. Reproduce with the commands below):**
 - **181 gate files in `tests/gates/`; 106 of them `readFileSync` + regex the SOURCE.** That is **59% of the gate corpus asserting TEXT, not behaviour** — so ~75 are behavioural. (Re-measured 2026-08-13: `ls frontend/tests/gates/*.test.js*|wc -l`=181, `.source-grep-ledger.json _count`=106. This read "136 / 116 / 85% / only 20 behavioural". The headline risk is REAL but was overstated by 26 points, and the corpus has moved the OPPOSITE way from what the stale number implied.)
-  entire gate corpus asserting TEXT, not behaviour.** Only **20** are behavioural.
   `ls tests/gates/*.test.js* | wc -l` · `grep -rl readFileSync tests/gates/ | wc -l`
   *(Moved the right way since 07-13: 124→181 gates, behavioural 10→~75, so the text-assert share fell 92%→59%.
-  The seam-extraction work in the holistic campaign is what bought that — but 85% is still the headline risk.)*
-- **20 e2e specs; exactly ZERO fire a real key or click.** (Denominator re-measured 2026-08-13; the ZERO half re-verified and still exact — the only grep hit is a COMMENT at panel-overflow.spec.js:8.) They drive `__craftyTest` / `getState()` — the
-  store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → 1 hit, and it is a
-  COMMENT in `panel-overflow.spec.js` ("close it without a keyboard"), not a real input call. Still zero.
+  The seam-extraction work in the holistic campaign is what bought that. **59% is the headline risk — not 85%.**
+  Two dead fragments of the pre-correction sentence survived here until 2026-08-13 (later), one of them
+  re-asserting the very 85% the line above had just falsified. An external reviewer read this file that
+  same week and reported the corpus as 85% text-asserting and getting worse, when it was 59% and improving.
+  A correction that leaves the old number anywhere on the page has not landed.)*
+- **21 e2e specs. ZERO fire TRUSTED input; 2 drive the real listeners with synthetic events.** The
+  distinction is the whole finding, and this line asserted a flat "20 specs, exactly ZERO" until
+  2026-08-13 (later) — measured with a grep for Playwright's API only, which cannot see the other path.
+  `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → 1 hit, a COMMENT in
+  `panel-overflow.spec.js`. But `grep -rl "new KeyboardEvent" tests/e2e/` → **2** (`imbue-latch`,
+  `dodge-latch`), which dispatch through the REAL keydown handler — the store is not what they drive.
+  What no spec has is a *trusted* event: only those carry user activation, so pointer lock, the ESC
+  unlock and every browser default remain untested here. That is the real gap, and it is narrower and
+  more specific than "the tests drive the store".
 
 **MEASURED — the real coverage number (18-domain deep review, 2026-07-13/14; `docs/superpowers/audits/2026-07-13-18-domain-review.md`).**
 18 agents enumerated their domain's features and measured how each one is *actually* validated. **650 features:**
