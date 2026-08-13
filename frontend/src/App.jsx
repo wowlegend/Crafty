@@ -373,6 +373,18 @@ function GameApp({ experienceSystem }) {
       if (typeof opts.timeOfDay === 'number') {
         useGameStore.getState().setTimeOfDay(opts.timeOfDay);
       }
+      // RETURN THE RESULTING STATE, so the ack is worth something.
+      //
+      // This hook used to return undefined, and the harness called it FOURTEEN times without any way to
+      // check it took. Capture mode's whole job is SUPPRESSION -- 127 isCaptureMode() guards turning
+      // weather, mob AI, NPC routines, particles and spawning OFF -- so a silent failure produces frames
+      // that render perfectly, look entirely plausible, and are simply not deterministic. That reads as
+      // gate flakiness, which is the most expensive possible symptom.
+      //
+      // The repo already learned this one level down: `captureFrameIndex` exists because "a phase you
+      // cannot read is a phase you cannot assert, and a claim nothing can falsify is how this repo has
+      // shipped green gates over frozen worlds". The same reasoning was never applied to capture MODE.
+      return isCaptureMode();
     });
     registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
     registerTestHook('setDangerLevel', (n) => useGameStore.getState().setDangerLevel(n));

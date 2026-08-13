@@ -355,3 +355,52 @@ describe('capture: the end-of-run sentinel reads the machine AT THE END', () => 
     expect(start[0], 'the start write claims an end-of-run reading it cannot have').not.toMatch(/machineAtEnd/);
   });
 });
+
+// ACCEPTED-NOOP: enterCapture must be VERIFIED, not merely acknowledged.
+//
+// Until 2026-08-13 the `enterCapture` bridge hook returned undefined, and the harness called it from
+// nine places in this file checking none of them — there was nothing to check. Capture mode's entire
+// job is SUPPRESSION (127 isCaptureMode() guards turning weather, mob AI, NPC routines, particles and
+// spawning OFF), so a silent failure renders frames that look completely correct and simply are not
+// deterministic. It would present as gate flakiness, the most expensive symptom this repo has.
+//
+// Distinct from the shapes already tracked here: not ERRORED (nothing failed), not ABSENT (the hook
+// exists), not DEGRADED (there is no payload to inspect). The rule is: after a successful ack, require
+// the resulting STATE — never trust the acknowledgement alone.
+describe('capture: entering capture mode is verified, not just acked', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+  const app = readFileSync(resolve(HERE, '../../src/App.jsx'), 'utf8');
+
+  it('the hook RETURNS the resulting state, so the ack carries information', () => {
+    const at = app.indexOf("registerTestHook('enterCapture'");
+    expect(at, 'the enterCapture hook is gone — this gate asserts over nothing').toBeGreaterThan(-1);
+    const body = app.slice(at, app.indexOf("registerTestHook('setQualityTier'", at));
+    expect(body, 'enterCapture returns nothing again — the harness has nothing to verify against')
+      .toMatch(/return isCaptureMode\(\)/);
+  });
+
+  it('every call site goes through the ONE door that checks it', () => {
+    // Anchored by COUNT, not by a pattern that could match the door itself and call it a day. Exactly
+    // one raw bridge call may remain: the one inside enterCapture().
+    const raw = cap.split('\n').filter((l) => l.includes("__craftyTest.call('enterCapture'"));
+    expect(raw.length, `${raw.length} raw enterCapture bridge calls; only the helper's own may remain`).toBe(1);
+    const helperAt = cap.indexOf('async function enterCapture(page');
+    expect(helperAt, 'the enterCapture helper is gone').toBeGreaterThan(-1);
+    expect(cap.indexOf(raw[0]), 'the surviving raw call is OUTSIDE the helper — a site slipped the door')
+      .toBeGreaterThan(helperAt);
+  });
+
+  it('the door THROWS on a false ack rather than proceeding', () => {
+    const at = cap.indexOf('async function enterCapture(page');
+    const body = cap.slice(at, at + 900);
+    expect(body, 'the helper does not compare the returned state').toMatch(/engaged !== true/);
+    expect(body, 'the helper detects a failed engage and continues anyway — frames would be undeclared')
+      .toMatch(/throw new Error/);
+  });
+
+  it('the harness actually USES the door — at least the world-scene fixtures', () => {
+    // A helper nothing calls is the defect it was written to fix.
+    const uses = cap.split('\n').filter((l) => /await enterCapture\(page/.test(l));
+    expect(uses.length, 'nothing calls the enterCapture helper').toBeGreaterThanOrEqual(9);
+  });
+});

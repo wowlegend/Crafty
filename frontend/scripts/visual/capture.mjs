@@ -86,6 +86,36 @@ export async function flushFrames(page, n = 8, { label = captureStage, deadlineM
 }
 
 /**
+ * ENTER CAPTURE MODE, AND VERIFY IT ACTUALLY ENGAGED.
+ *
+ * ONE DOOR, for the same reason `shot` is one door. The harness called `enterCapture` from FOURTEEN
+ * separate places and checked the result at none of them, because until 2026-08-13 the hook returned
+ * `undefined` — there was nothing to check.
+ *
+ * WHY THIS ONE MATTERS MORE THAN THE OTHER BRIDGE CALLS. A silent `start` leaves you on the menu; a
+ * silent `setTimeOfDay` changes the lighting; both are glaring in the frame. Capture mode's entire job
+ * is SUPPRESSION — 127 `isCaptureMode()` guards turning weather, mob AI, NPC routines, particles and
+ * spawning OFF — so its silent failure renders a frame that looks completely correct and merely is not
+ * deterministic. It would present as gate flakiness, which is the most expensive symptom this repo has.
+ *
+ * This is the ACCEPTED-NOOP shape: a call that returns success for work it never did. Distinct from
+ * ERRORED (it did not fail), ABSENT (the hook is there), and DEGRADED (the payload looks fine, because
+ * there is no payload). The detection rule is the same in every instance: after a successful ack,
+ * require the resulting STATE or the first completion EVENT — never trust the acknowledgement alone.
+ */
+async function enterCapture(page, opts = {}) {
+  const engaged = await page.evaluate((o) => window.__craftyTest.call('enterCapture', o), opts);
+  if (engaged !== true) {
+    throw new Error(
+      `CAPTURE ABORTED — enterCapture acked but capture mode did not engage (returned ${JSON.stringify(engaged)}).\n` +
+      `    Every isCaptureMode() guard is therefore OFF: weather, mob AI, NPC routines, particles and\n` +
+      `    spawning are all LIVE. Frames taken now would render correctly and be non-deterministic, which\n` +
+      `    reads as flaky gates rather than as this fault. Failing here instead.`
+    );
+  }
+}
+
+/**
  * PREFLIGHT: can this browser produce a frame at all?
  *
  * On 2026-08-02 the gate failed for hours with `ProtocolError: Runtime.callFunctionOn timed out` and no
@@ -373,7 +403,7 @@ async function main() {
 
     // Enter the capture-determinism layer BEFORE any frame: seeded RNG + paused
     // physics/clock + pinned camera + suppressed mobs + suppressed auto-pointer-lock.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', {}));
+    await enterCapture(page, {});
     // Let the spawn chunk stream in (world builds) while the menu overlay stays up.
     await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
     await delay(1500);
@@ -441,7 +471,7 @@ async function main() {
     // — a high 3/4 looking down at the pad. W2-T7 FLUSHED the pad (HEARTH_Y 56 -> 51), so the lookAt
     // dropped [0,56,0] -> [0,51,0] and the camera height dropped proportionally (86 -> 81) to keep
     // the same framing of the now-lower pad. Override for this shot only, then RESTORE below.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [13, 81, 13], lookAt: [0, 51, 0] } }));
+    await enterCapture(page, { camera: { position: [13, 81, 13], lookAt: [0, 51, 0] } });
     await flushFrames(page, 10);
     await delay(900);
     await shot(page, 'hearth.png');
@@ -450,7 +480,7 @@ async function main() {
     // biome-snow: the World-M4a snow PINES. A solid snowfield sits ~40 blocks toward -z from origin
     // (probed: [0,-40], ~95% snow, avgY 54) but it's off the diorama frame, so the feature needs its
     // own pose — a high 3/4 over the snowfield. Camera-override for this shot, restored below.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [20, 82, -20], lookAt: [0, 54, -40] } }));
+    await enterCapture(page, { camera: { position: [20, 82, -20], lookAt: [0, 54, -40] } });
     await flushFrames(page, 10);
     await delay(900);
     await shot(page, 'biome-snow.png');
@@ -463,7 +493,7 @@ async function main() {
     // pose looking DOWN the slope shows the seabed receding into the deepening navy depth-tint with the
     // Gerstner surface above. (The far flat basin at x-135 reads as a featureless sandy flat — the ramp
     // is where the depth gradient actually reads.)
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-100, 26, 20], lookAt: [-128, 10, -10] } }));
+    await enterCapture(page, { camera: { position: [-100, 26, 20], lookAt: [-128, 10, -10] } });
     await flushFrames(page, 10);
     await delay(900);
     await shot(page, 'ocean-depth.png');
@@ -474,7 +504,7 @@ async function main() {
     // W2-T7 de-island moved the coast out: the -X shoreline now sits at x~-90..-110 (foam onset x-80,
     // deep basin x-120+). A high 3/4 over that NEW shoreline shows the foam line at the coast + the
     // shallow->deep grade from above. Camera-override, restored below (before the downstream diorama states).
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [-60, 78, 40], lookAt: [-110, 22, -6] } }));
+    await enterCapture(page, { camera: { position: [-60, 78, 40], lookAt: [-110, 22, -6] } });
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 10);
     await delay(900);
@@ -484,14 +514,14 @@ async function main() {
     // landmark: the World-M6 signature silhouettes. Probed nearest LAND landmark = a Sky-arch at
     // [40,-88] (baseY 41 -> top 92). A 3/4 pose ~66 units back frames the full arch clearing the
     // terrain against the sky. Off the diorama frame -> needs its own pose. Camera-override, restored below.
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [85, 62, -40], lookAt: [40, 70, -88] } }));
+    await enterCapture(page, { camera: { position: [85, 62, -40], lookAt: [40, 70, -88] } });
     await waitForStableTerrain(page, { stableFor: 6, settle: 2500 });
     await flushFrames(page, 10);
     await delay(900);
     await shot(page, 'landmark.png');
     console.log('captured landmark');
     // restore the default diorama pose for the downstream world states (explore tiers, night, studio cards)
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
+    await enterCapture(page, { camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } });
     await flushFrames(page, 6);
 
     // === mobile (touch overlay) — the FIRST baseline that renders the touch UI (M2) ===
@@ -499,13 +529,13 @@ async function main() {
     // phone-portrait viewport frames the S1-C thumb cluster over the diorama world. Restore the
     // 1280x800 viewport + showTouch:false afterward so the downstream tier/night/studio frames match.
     await page.setViewport({ width: 402, height: 874, deviceScaleFactor: 2 });
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: true }));
+    await enterCapture(page, { showTouch: true });
     await flushFrames(page, 8);
     await delay(400);
     await shot(page, 'mobile.png');
     console.log('captured mobile');
     await page.setViewport({ width: 1280, height: 800 });
-    await page.evaluate(() => window.__craftyTest.call('enterCapture', { showTouch: false, camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } }));
+    await enterCapture(page, { showTouch: false, camera: { position: [0, 70, 24], lookAt: [0, 64, -66] } });
     await flushFrames(page, 6);
 
     // === S2-A-M4b: forced MED / LOW tier baselines (Kevin ratifies before gate-blessing) ===
