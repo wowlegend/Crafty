@@ -16,7 +16,32 @@ test.describe('dodge intent latch', () => {
 
   const shift = (page, type) =>
     page.evaluate((t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'ShiftLeft', bubbles: true })), type);
-  const dodge = (page) => page.evaluate(() => window.__craftyTest.call('readIntents').dodge);
+
+  // Read the intent ALONGSIDE the two gates that decide whether the press is even considered:
+  // Components.jsx:366 requires `active` AND `isAlive`. A bare `.dodge` read cannot tell a broken
+  // latch from a refused press — which is exactly how CI run 31733744537 reported "the verb is dead"
+  // when the player was simply dead. Every assertion below carries this state in its message so the
+  // next failure names its own cause instead of accusing the feature.
+  const dodgeState = (page) =>
+    page.evaluate(() => {
+      const intents = window.__craftyTest.call('readIntents');
+      const s = window.useGameStore.getState();
+      return { dodge: intents.dodge, active: intents.active, alive: s.isAlive, health: s.playerHealth };
+    });
+  const dodge = async (page) => (await dodgeState(page)).dodge;
+
+  // THE SUBJECT OF THIS SPEC IS THE INPUT LATCH, NOT SURVIVAL — so state the survival precondition
+  // rather than inheriting it by accident. SpawnerSystem.jsx:94 spawns 20 hostiles the moment
+  // isSpawnChunkLoaded flips, and startPlayActive waits for exactly that flag, so on a slow runner
+  // the player can be dead before the presence control runs.
+  //
+  // Until 2026-08-13 this spec passed for a reason worth recording: `startPlay` swallowed its world
+  // wait, so the test ran BEFORE the world was built — in a world with no terrain and therefore no
+  // mobs. The green came from the absence of the game, and fixing the boot helper is what revealed it.
+  const declareAlive = (page) =>
+    page.evaluate(() =>
+      window.useGameStore.setState({ isAlive: true, playerHealth: window.useGameStore.getState().maxHealth })
+    );
 
   test('Shift does not latch while input is inactive, and clears on release when it is', async ({ page }) => {
     await bootDev(page);
@@ -33,8 +58,10 @@ test.describe('dodge intent latch', () => {
     // THE PRESENCE CONTROL. Everything above is an absence assertion, and an absence assertion is worth
     // nothing until the same instrument, in the same run, has shown it can see the positive case.
     await startPlayActive(page);
+    await declareAlive(page);
     await shift(page, 'keydown');
-    expect(await dodge(page), 'Shift no longer arms a dodge at all — the instrument is dead, or the verb is').toBe(true);
+    const armed = await dodgeState(page);
+    expect(armed.dodge, `Shift no longer arms a dodge at all — the instrument is dead, or the verb is. State: ${JSON.stringify(armed)}`).toBe(true);
 
     await shift(page, 'keyup');
     expect(
@@ -49,9 +76,11 @@ test.describe('dodge intent latch', () => {
     // press — otherwise the refusal and the clear disagree and the intent survives.
     await bootDev(page);
     await startPlayActive(page);
+    await declareAlive(page);
 
     await shift(page, 'keydown');
-    expect(await dodge(page)).toBe(true);
+    const held = await dodgeState(page);
+    expect(held.dodge, `the press was refused — State: ${JSON.stringify(held)}`).toBe(true);
 
     await page.evaluate(() => window.__craftyTest.call('readIntents')); // no-op read, keeps the ordering explicit
     await shift(page, 'keyup');
