@@ -48,17 +48,17 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **281 source files / 31,892 LOC** in
-  `frontend/src`, plus 120 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **306 source files / 34,447 LOC** in
+  `frontend/src`, plus 135 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1333 · `src/store/useGameStore.jsx` 1098 · `src/world/Terrain.jsx` 997 · `src/QuestSystem.jsx` 931 · `src/App.jsx` 922.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1378 · `src/store/useGameStore.jsx` 1130 · `src/world/Terrain.jsx` 1018 · `src/App.jsx` 1004 · `src/QuestSystem.jsx` 986.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
 <!-- END MEASURED -->
 
 - **What is still true qualitatively:** the codebase is **MONOLITHIC in shape** — a handful of large
-  imperative files carry the game loop, and de-monolithing is an **S3** goal, not the current state.
+  imperative files carry the game loop. De-monolithing is **CLOSED, not pending** — `memory/STATUS.md` records it done (SimplifiedNPCSystem 934→183, GameScene 933→304) and `SOTA-INITIATIVE.md` formally PARKED the remainder as "risky imperative-orchestration, not blocking". Five files remain ≥900 LOC by design, not by backlog.
   `Components.jsx` is a documented IRREDUCIBLE residual rather than an accidental god-file (verified
   2026-06-29): it is the `Player` useFrame imperative controller, already delegating all pure logic to
   imported `game/*` modules, and the remainder is the loop + input wiring that MUST NOT be split
@@ -90,8 +90,8 @@ render loop and physics step at 75% of a core in Kevin's OWN Chrome, long after 
   processes does NOT license a story about someone else's — that error was made here on 2026-08-09.
 
 Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deleting throwaway probes — lives in
-`.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or
-`frontend/tests/**`. That is where it belongs: at the moment of the mistake, not at orientation.
+`.claude/rules/gates-and-probes.md`, which auto-injects on ALL FOUR of its declared globs —
+`frontend/tests/**`, `frontend/scripts/**`, `frontend/src/**/*.test.js`, `frontend/src/**/*.test.jsx`. That is where it belongs: at the moment of the mistake, not at orientation.
 
 
 ## Build / Test / Gates (from `frontend/`)
@@ -136,7 +136,10 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   bullet stated a per-frame table (13 byte-identical, `menu` 0.455%, `explore-day` 0.210%) measured
   2026-08-09. On 2026-08-13 `puppeteer` went 24.42.0 → 25.6.0 to remove `extract-zip` (CVE-2026-56876),
   which moved the **bundled Chromium 147 → 151** — four majors. Every one of those numbers was produced
-  by a renderer that is no longer installed, and none is reproducible. **A determinism measurement is a
+  by a renderer that is no longer installed. **"None is reproducible" was DISPROVEN the same day**: two
+  clean captures on Chromium 151 put 17/31 frames byte-identical against the 147-shot baselines with ZERO
+  over the 6% gate. The renderer swap is real and the numbers are still void as CURRENT state — but the
+  oracle survived it, which is the opposite of what this paragraph predicted. **A determinism measurement is a
   claim about a RENDERER as much as about the code**, so it expires when either moves; that is why this
   file now names the COMMAND and the provenance field rather than a table. Read
   `tests/visual/baseline/.capture-meta.json` → `provenance.ua` for which Chromium a baseline was shot on,
@@ -156,7 +159,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 - The gate runs against the **DEV server**, so 3 of its 31 frames (`primitives-showcase-*`,
   `title-mascot`) are dev-only components that cannot exist in the bundle Vercel deploys on every push —
   and **no harness loads that bundle at all**.
-- **A gate's PASS is worth nothing without its DENOMINATOR.** Seven things here have now shipped a clean
+- **A gate's PASS is worth nothing without its DENOMINATOR.** SEVENTEEN things here have now shipped a clean
   report over input they never examined (`gate-shape` skipping 42% of gates, `doc-currency` blind to bare
   paths, a test written into `tests/visual/` which vitest EXCLUDES so it never ran, `esc-pause-probe` never
   pressing ESC twice, `tapTestId` never checking WHERE its tap landed, …). Read the count, not the tick.
@@ -164,7 +167,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
   as being salient while you write the gate, so the full checklist now lives in
   `.claude/rules/gates-and-probes.md`, which auto-loads on any edit under `frontend/tests/**`,
   `frontend/scripts/**`, `frontend/src/**/*.test.js` or `frontend/src/**/*.test.jsx` — **all four** globs;
-  this line named two, silently omitting the ~118 colocated `src` tests, which are most of the corpus. Keep
+  this line named two, silently omitting the **135** colocated `src` tests, which are most of the corpus. Keep
   the two in sync; this line is the always-loaded baseline, that file is the moment-of-use activation.
 - **A GREEN GATE IS NOT A LIVED RESULT — prove the entry point is REACHED in the running app.** The most
   common defect in the recent log, and nothing catches it: `fddf7d4` (two achievements dead on arrival —
@@ -203,7 +206,7 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
   `ROOT = /Users/kz/Code/Crafty` / `APP = frontend/` in every delegation prompt, plus any path rule the
   task touches. A subagent that reports a file "missing" from a relative path is usually reporting that
   you did not tell it where it was.
-Subagent-driven-development (Opus 4.8) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
+Subagent-driven-development (Opus 5) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
 - **EVERY milestone uses the `superpowers:writing-plans` discipline (Kevin, 2026-06-10):** before building ANY milestone (M0..Mn of any Aspect/stream), author its own plan doc in `docs/superpowers/plans/YYYY-MM-DD-crafty-<stream>-<milestone>.md` (TDD red-first steps + verification gates), THEN build. **No "build directly from the spec" shortcuts**, even for small/foundational milestones — the VOIDHAND-M1 skip (built from the spec's milestone breakdown without a plan doc) is the anti-pattern this rule forbids. The design SPEC is the HARD-GATE approval; the per-milestone PLAN is the build contract.
 
 ## Core Agent Skills (evaluate per task)
@@ -246,7 +249,7 @@ hand-kept copies drifted three different ways while one of them claimed they "ca
 
 1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
 2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
-3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — the PRIMARY work queue — 215 verified findings, priority-laddered, each tagged `[AUTO]`/`[KEVIN]` and marked `▣✓ <sha>` / `▢` / `⊘`. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — **DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
 4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
 5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
 6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
