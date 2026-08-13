@@ -284,7 +284,18 @@ export function MenuSystem({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.5, duration: 1 }}
-                  className="mt-8 flex justify-center gap-5 text-xs text-text-inverse/75"
+                  // `text-text/85`, NOT `text-text-inverse/75`. The inverse token is #231708, the
+                  // near-black documented in tokens.js as "text on gold fills" — and this strip sits over
+                  // the title diorama's dark ground, not over gold. MEASURED on the committed menu.png
+                  // baseline: glyph rgb(29,19,8) against ground rgb(16,12,8) is a contrast ratio of
+                  // 1.07:1, where WCAG AA wants 4.5:1 and even the large-text floor is 3.0:1. The whole
+                  // controls hint — the first thing a new player reads — was effectively invisible.
+                  //
+                  // This is the SAME defect fixed 35 lines below at the PAUSED overlay, whose comment
+                  // already spells out that the inverse token is wrong on a dark scrim. Fixed there,
+                  // missed here, and no instrument could see it: a jsdom test asserts the text EXISTS,
+                  // and the 6% pixel gate cannot tell invisible text from visible text.
+                  className="mt-8 flex justify-center gap-5 text-xs text-text/85"
                   style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
                 >
                   <span>{t('hint.wasdMove')}</span>
