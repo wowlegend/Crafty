@@ -40,6 +40,30 @@ re-trap the cursor. **Only a clickable surface recovers.**
   committed render matching the overlay's own predicate, so a post-paint effect flashes the overlay for a
   frame.
 
+## Two routers, two different questions — do not merge them
+
+`src/input/verbRouter.js` answers **"what does a CLICK mean HERE"** — it depends on aim, targets and
+distance, and its whole job is the target-priority ladder. `src/input/expressVerbs.js` answers **"which
+verb does this KEY fire"** — a fixed table (F = cast, T = melee, Kevin 2026-06-28) with a liveness
+precondition. Same shape, unrelated inputs; keeping them separate is deliberate.
+
+**The liveness gate lives INSIDE the router, not at the call site.** `routeExpressVerb` returns `null`
+when input is inactive or the player is dead, rather than returning the verb and trusting the caller to
+check. A second call site is how a liveness gate gets forgotten, and being input-dead while mobs keep
+swinging is the failure this whole file exists for.
+
+**verbRouter's two final returns look dead and are not.** `return 'attack'` / `return 'cast'` at the
+bottom of each ladder are unreachable across all **392** finite/Infinity input combinations — measured
+exhaustively, not argued — but reachable when a distance arrives as `NaN`, where every comparison is
+false and each guard falls through. Deleting them makes the router return `undefined`, which downstream
+reads as no verb: a dead mouse button while the player keeps clicking. They are NaN fallbacks, they are
+gated as such, and the fallback is deliberately a COMBAT verb — never one that edits the world.
+
+**A key moved into a router table becomes invisible to `keyMap.test.js`.** That suite parses
+`x.code === 'KeyF'` out of the handler files to prove every advertised key has a live handler; moving
+dispatch into `EXPRESS_VERBS` made F and T look advertised-but-dead. It now imports the table and unions
+it in — teach that gate about a new dispatch mechanism rather than loosening it.
+
 ## Other traps on this path
 
 - **Pointer-lock element mismatch.** Lock requests must target the `<canvas>` (`GameScene`'s

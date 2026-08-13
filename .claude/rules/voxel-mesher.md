@@ -54,6 +54,42 @@ leaves a cell populated, its absence corrupts geometry silently and across chunk
 proves nothing. Test the property the clear PROTECTS instead — meshing chunk B after A and C must equal
 meshing B alone.
 
+## 3b. The mesher emits NO water faces — and three places depend on it
+
+W2 moved the water surface to Ocean.jsx's Gerstner plane. Every branch that writes `mask` guards on
+`!== 9`, and `blockType` is decoded straight from `mask`, so block type 9 cannot reach the emit path.
+
+**This is now an ASSERTED invariant, not a comment** (`mesher-geometry-gates.test.js` drives water above
+stone, beside stone, under stone, pocketed in stone, and a chunk of pure water, checking no emitted vertex
+carries type 9 while the seabed still draws). It had to be, because three things silently rested on it and
+a finding proposed deleting all three as "dead":
+
+- the mesher's own `if (blockType === 9) { ao.push(3); continue; }` in the AO corner loop — deleted;
+- Terrain.jsx's TWO `abs(vBlockType - 9.0) >= 0.1` fragment guards, always true — deleted;
+- the shader comment "Water faces carry AO 3", describing a case that cannot occur — deleted.
+
+**If you ever re-introduce water faces, that gate goes red first** — which is the point. Deleting code
+because you traced today's callers is a bet on nobody changing the premise; asserting the premise is what
+makes the deletion safe. `colors.r` carries the blockType per vertex, so the claim is directly measurable.
+
+**AND: a shader edit is not covered by the unit suite.** `Terrain.jsx` builds GLSL inside a JS template
+literal — a green `npm run test:unit` says nothing about whether it compiles. Compile it in a real
+browser (`node scripts/visual/pov-probe.mjs`, then OPEN the frames) before believing a shader change.
+**Never put a backtick inside that template literal**; it terminates the string and the parse error lands
+far from the edit.
+
+## 3c. Structure stamping: derive the chunk radius, never hardcode it
+
+`stampStructures` swept a fixed ±1 chunk neighbourhood and discarded out-of-range blocks. Measured: of the
+1,352 candidate blocks the eight neighbour iterations examine, **ZERO** could ever land — the dungeon is
+centred at local 8 with half-extent 6, so its footprint (local 2..14) always fits its own chunk.
+
+Deleting the loop fixes today and breaks tomorrow: a larger blueprint would clip silently at the seam,
+exactly as the cave automaton did. The radius is **derived from the footprint** instead
+(`world/dungeonStamp.js` — `stampChunkRadius` / `blueprintHalfExtent`), so it is one iteration today and
+follows the blueprint if that grows. Extracted because `terrain.worker.js` assigns `self.onmessage` at
+module scope and cannot be imported under vitest — which is why this went unexamined for so long.
+
 ## 4. Mask indexing
 
 Every access is `mask[cu + cv * sizeU]` with `cu < sizeU`, `cv < sizeV`, so the live region is exactly

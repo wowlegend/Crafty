@@ -130,15 +130,23 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 - `npm run visual:capture` regenerates frames only. It preflights that the browser can present a frame and
   aborts in ~3s with a named cause if not, rather than hanging on a dead compositor.
 - Visual gate: capture-determinism is the **DESIGN** (forced `high` tier), **not the ACHIEVED state**.
-  Measured 2026-08-09 over an identical-code pair, all 31 frames: **13 byte-identical**, 16 at
-  0.002–0.089%, then `explore-day` 0.210% and `menu` 0.455%. Chromium does not guarantee deterministic
-  rendering (playwright#22620, crbug 919955), so exact equality is not a property you can demand —
-  `docs/superpowers/DECISIONS.md` (2026-08-09) carries the evidence and the ordered plan.
+  Chromium does not guarantee deterministic rendering (playwright#22620, crbug 919955), so exact equality
+  is not a property you can demand — `docs/superpowers/DECISIONS.md` (2026-08-09) carries the evidence.
+- **THE MEASURED DETERMINISM NUMBERS THAT USED TO SIT HERE ARE VOID, AND THE REASON GENERALISES.** This
+  bullet stated a per-frame table (13 byte-identical, `menu` 0.455%, `explore-day` 0.210%) measured
+  2026-08-09. On 2026-08-13 `puppeteer` went 24.42.0 → 25.6.0 to remove `extract-zip` (CVE-2026-56876),
+  which moved the **bundled Chromium 147 → 151** — four majors. Every one of those numbers was produced
+  by a renderer that is no longer installed, and none is reproducible. **A determinism measurement is a
+  claim about a RENDERER as much as about the code**, so it expires when either moves; that is why this
+  file now names the COMMAND and the provenance field rather than a table. Read
+  `tests/visual/baseline/.capture-meta.json` → `provenance.ua` for which Chromium a baseline was shot on,
+  and re-measure rather than quoting. A re-baseline on 151 is OWED — see `memory/ACTIVE_PLAN.md`.
 - **HOW determinism is actually achieved — by SUPPRESSION, not by seeding.** The old wording here said
   "seed RNG; freeze clocks", and an agent who believes that will misdiagnose a flapping frame. Measured:
-  `captureRandom` has **one** consumer (`render/WeatherSystem.jsx`) against **73 raw `Math.random()` in
-  19 files**; there is no global clock freeze, just scattered substitutions against 68 clock reads and 52
-  timers. What actually happens is that ~112 `isCaptureMode()` guards TURN THINGS OFF. **So the gated
+  `captureRandom` has **one** consumer (`render/WeatherSystem.jsx`) against **72 raw `Math.random()` in
+  20 files** (re-measured 2026-08-13; was 73/19 — the ratio, not the exact pair, is the point); there is
+  no global clock freeze, just scattered substitutions against clock reads and timers. What actually
+  happens is that **127** `isCaptureMode()` guards TURN THINGS OFF. **So the gated
   frames depict a build with weather, mob AI, NPC routines, particles and spawning disabled — a version
   nobody plays, and one structurally incapable of regressing anything that only manifests in motion.**
 - **A capture guard must RESET to a declared value, never early-`return`.** Stopping an animation leaves

@@ -161,3 +161,30 @@ the CORRECT tool for a classic Worker that cannot import** — do not mass-rewri
 - Superseded cursors live in `memory/archive/ACTIVE_PLAN-superseded-2026-07-to-08.md`. This file had SEVEN
   of them stacked up, back to 2026-07-13, while its own preamble said it owns the cursor only. Do not mine
   the archive for what is next.
+
+## IN FLIGHT — 2026-08-13 (resume here)
+
+**1. VISUAL RE-BASELINE (capture A running in background at time of writing).**
+- WHY: puppeteer 25.6.0 moved bundled Chromium **147 → 151**, so every committed baseline was captured on
+  a renderer four majors old. It is ALSO the only way to replace the **29 of 31 floor-clamped
+  density-ledger entries** with measurements (`_unmeasured` in `frontend/tests/visual/.density-ledger.json`).
+- PROCEDURE: two captures on identical code, quiet machine, review frames by eye, then
+  `node scripts/visual/freeze-density.mjs`. Preconditions written in that file's header.
+- Run A frames land in `/tmp/.../scratchpad/rbA/`; run B in `rbB/`. Compare A-vs-B for real run-to-run
+  variance, and A-vs-baseline for the Chromium delta.
+- COMMIT DISCIPLINE: `Baseline-Review:` trailer required; must NOT be bundled with any `frontend/src/` edit.
+- NOTE: I contaminated one earlier attempt by writing into `tests/visual/current/` while a capture owned
+  it, and crashed two others by running the test suite during a capture. Do neither.
+
+**2. PR #13 HELD, NOT ABANDONED.** Fully green (the dead re-exports it tripped on are removed). Merge it
+AFTER the re-baseline — a dependency change mid-capture contaminates the pair.
+
+**3. DOC REVIEW IN PROGRESS** (`CLAUDE.md` = `.agent/AGENTS.md`, plus `.claude/rules/*.md`). Verified drift
+found so far, all understated:
+- `isCaptureMode()` guards: doc says ~112, live is **127**
+- raw `Math.random()`: doc says 73 in 19 files, live is **72 in 20**
+- gates-and-probes.md says gate-shape covers "97 assertions / 42% skipped"; live is **388 assertions, 106
+  source-grep gates of 181 files (59%)**
+- source-grep ratchet: doc says 113/115, live is **106**
+- The whole capture-determinism measurement block (13 byte-identical, menu 0.455%, explore-day 0.210%,
+  "measured 2026-08-09") is INVALIDATED by the Chromium bump and must not be restated as current.
