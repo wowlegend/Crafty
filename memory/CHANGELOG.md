@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-08-13 (later) — a dependency bump removed the sun, and the gate caught it
+
+**PR #15 split, not merged whole.** Five of its six bumps landed and were verified visually inert —
+react/react-dom 19.2.8, drei 10.7.8, framer-motion 12.43.0, zustand 5.0.14: **20 of 31 frames
+byte-identical, ZERO over the global 6% gate**. The sixth, `postprocessing` 6.39.4, is **PINNED at
+6.39.1** and cannot move.
+
+**Why.** Under 6.39.4 `GodRaysEffect` stops compositing the sun. Blue channel at y=4, x=95..165,
+identical in spell-lightning and spell-arcane:
+
+```
+6.39.1 GodRays ON    ...195,196,197,198,198,199,200,200,201...  deep dip  -> disc present
+6.39.4 GodRays ON    ...216,217,217,218,219,220,220,221,222...  NO dip    -> disc absent
+6.39.4 GodRays OFF   ...213,212,212,213,213,214,216,217,219...  shallow   -> bare mesh
+```
+
+Disable the effect and the sun returns, which localises the fault to the effect's compositing rather
+than to the mesh. Filed upstream as **pmndrs/postprocessing#750**. 6.39.4 is current `latest`, so there
+is nothing newer to take. Cost of the pin: a `glBlitFramebuffer` console warning that 6.39.3 cured
+returns with it — invisible to players, which a missing sun is not.
+
+**I nearly re-baselined over it.** 17 of 31 frames breached the gate with a uniform signature — geometry
+unchanged, colour globally lifted — and after opening THREE frames I was ready to call it an expected
+tone shift and rewrite all 31 oracles. A 31-agent exhaustive review (one reviewer per frame, every flag
+re-checked by a second agent instructed to REFUTE it) returned `safeToRebaseline: false`: 23 tone-only,
+seven confirmed structural. Three frames is not a denominator.
+
+**What it is NOT, each costing a 33-minute capture** — recorded so nobody retries them. Not the sun's
+material: `depthTest`/`depthWrite` false, and separately `transparent`+`depthWrite` false (the vendor's
+documented contract), produced **byte-identical** output — two different configs, indistinguishable
+pixels. Not a GodRays code change: its render path is byte-identical across both versions; only the
+composer's depth plumbing moved, and that change is a correct fix.
+
+**Also corrected on the record:** I attributed the appearing/disappearing ENTITIES to #15. `ocean-coast`
+is one of three frames `capture.mjs` itself declares non-deterministic, and `explore-day`'s wandering
+treeline is a documented residual. Without a same-code control those were never attributable. And the
+console counts I quoted (256 / 2 / 137) are not comparable — Chrome collapses repeats as `[N times]`,
+so the figure tracks dwell time before reading.
+
+**Harness fixes that came out of it:** a wedged compositor now ABORTS with a named cause instead of
+hanging 31 minutes at 917% GPU CPU; `machineAtEnd` records the machine at run END, not just at start
+(a capture consumes 5.2 GB of its own headroom, so a start-only reading describes the machine before
+whatever killed it); and `enterCapture` — acked nine times and verified zero — now returns
+`isCaptureMode()` through one door that throws, the ACCEPTED-NOOP shape arriving in our own harness.
+
 ## 2026-08-13 — the density ledger is frozen, and the tool that freezes it was broken
 
 **The ledger.** 29 of 31 entries were the `DENSITY_FLOOR` constant, not measurements, so for most
