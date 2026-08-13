@@ -188,3 +188,31 @@ found so far, all understated:
 - source-grep ratchet: doc says 113/115, live is **106**
 - The whole capture-determinism measurement block (13 byte-identical, menu 0.455%, explore-day 0.210%,
   "measured 2026-08-09") is INVALIDATED by the Chromium bump and must not be restated as current.
+
+### RE-BASELINE RESULT (2026-08-13) — measured, not yet committed
+
+Two clean captures on Chromium 151 (A 31/31, B 30/30, 0 crashes, ~1786s each). Frames preserved in the
+session scratchpad `rbA/` and `rbB/`.
+
+**1. The Chromium bump was a non-event.** 17/31 byte-identical against the Chrome-147 baselines, ZERO
+frames over the 6% gate, worst `explore-day` 0.153% global. My earlier claim that 147->151 invalidated
+the oracle was OVERSTATED and is corrected here.
+
+**2. True run-to-run variance (A vs B, identical code AND renderer):** 22/30 byte-identical.
+`explore-day` 30.35% local / 1.536% global · `ocean-coast` 3.70% local · `hearth` 1.89% ·
+`explore-night-low` 1.88% · `explore-day-low` 1.81% · `biome-snow` 1.54%.
+
+**3. THE ocean-coast QUESTION IS ANSWERED, by the harness's own instrumentation.** `capture.mjs` emits
+`WARN: frame never stabilized after 34 polls (8.5s) -> THIS FRAME IS NOT DETERMINISTIC and re-baselining
+it would freeze noise` on exactly THREE frames, in BOTH runs independently: **ocean-coast, landmark,
+explore-day-med**. Its ratchet failure is inherent instability, not a regression.
+
+**4. NEXT ACTIONS, in order:**
+- Do NOT re-baseline the three unstable frames' PNGs — the capture explicitly says that freezes noise.
+  The other 27 may be re-baselined if wanted, but per (1) there is no correctness reason to.
+- DO freeze the density ledger from this A/B pair: `node scripts/visual/freeze-density.mjs`. Freezing a
+  frame's density at its measured variance x headroom is legitimate and is the whole point — it replaces
+  29 floor constants with measurements. That is a DIFFERENT act from re-baselining the oracle image.
+- `title-mascot` fails its 20s canvas wait at the end of a long GL session (2 of 3 recent runs). Worth a
+  separate fix; it is a GATED frame whose last-good copy is silently kept.
+- THEN merge PR #13 (green, held only to keep the capture pair clean).

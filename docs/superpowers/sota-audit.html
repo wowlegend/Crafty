@@ -150,7 +150,7 @@
 
 <header>
   <div class="eyebrow">
-    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-12</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
+    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-13</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
   </div>
   <h1>The visual-test harness is not failing at the thing we&nbsp;were fixing</h1>
   <p class="standfirst">A SOTA audit of the capture, comparison and baseline layers. The capture layer is above industry standard. The comparator is behind. The oracle — the committed baselines themselves — is ungoverned, and had never been audited by anyone.</p>
@@ -276,6 +276,35 @@
     unregistered name, and no probe re-hardcodes a literal. Each assertion was broken individually and went
     RED on its own test. Verified as a lived result too, not just a green suite — <code>hud-probe</code> ran
     to completion on its new port with 0 processes leaked afterward.</p>
+  </div>
+
+  <div class="callout ok">
+    <span class="hd">2026-08-13 — the re-baseline ran, and it settled two open questions by measurement</span>
+    <p><strong>The Chromium bump was a non-event, and my own prediction about it was wrong.</strong>
+    puppeteer 24.42.0 &rarr; 25.6.0 (removing <code>extract-zip</code>, CVE-2026-56876) moved the bundled
+    Chromium <b>147 &rarr; 151</b> — four majors — and I recorded that the baselines were effectively
+    invalidated and would show renderer diffs. Measured over a clean capture: <b>17 of 31 frames
+    byte-identical</b> against the Chrome-147 baselines, <b>ZERO</b> over the 6% gate, worst case
+    <code>explore-day</code> at 0.153% global. The oracle was never in danger. Recorded because the
+    prediction is the kind that quietly becomes folklore if only its confident half is remembered.</p>
+    <p class="guard"><strong>And <code>ocean-coast</code>'s density failure was diagnosed by the harness's
+    own instrumentation, which nobody had connected to it.</strong> <code>capture.mjs</code> emits
+    <code>WARN: frame never stabilized after 34 polls (8.5s) -&gt; THIS FRAME IS NOT DETERMINISTIC and
+    re-baselining it would freeze noise</code> — on exactly THREE frames, in BOTH independent runs:
+    <b>ocean-coast, landmark, explore-day-med</b>. So the 2.20% (then 3.70%) local-density failure is
+    inherent instability, not a regression. True run-to-run variance on identical code AND identical
+    renderer: 22/30 byte-identical, <code>explore-day</code> <b>30.35%</b> local / 1.536% global,
+    <code>ocean-coast</code> 3.70%.</p>
+    <p><strong>Which makes the density ledger's real defect precise.</strong> 29 of its 31 entries are the
+    <code>DENSITY_FLOOR</code> constant rather than measurements, so for most frames the ratchet compares
+    against an arbitrary number — that is what <code>ocean-coast</code> failed against. The fix is to
+    freeze from this A/B pair, NOT to raise the floor, and NOT to re-baseline the three unstable frames'
+    images (the capture says in as many words that doing so freezes noise). Freezing a frame's DENSITY at
+    its measured variance and re-baselining its PIXELS are different acts; only the first is safe here.</p>
+    <p class="guard"><strong>One hole this surfaced:</strong> <code>title-mascot</code> failed its 20s
+    canvas wait in 2 of the last 3 runs and takes a documented skip path that KEEPS the last-good copy.
+    A gated frame that silently reuses a stale image is a gate reporting on input it never examined —
+    this page's own subject.</p>
   </div>
 
   <div class="verdict settled">
