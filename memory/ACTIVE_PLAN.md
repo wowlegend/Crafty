@@ -256,6 +256,16 @@ went on asserting otherwise. Pin held at what the wrapper demands; Dependabot no
 at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
 `supply-chain.test.js`, mutation-proven both ways.
 
+DONE 2026-08-13 — **doc gardening COMPLETE across all 5 doc surfaces.** 92 findings from ~330 claims:
+README+`.claude/rules` `748cb36` · ARCHITECTURE `113661b` (18) · STATUS `5be4474` (9) · ROADMAP
+`f7214d6` (10) · AGENTS `3e004ba` (10, incl. regenerating MEASURED + fixing read-order.mjs the
+GENERATOR after I hand-edited its output and doc-currency caught it).
+
+ONLY REMAINING: **3 artifact pages ~25 commits behind** — `sota-audit`, `era-review`, `loop-progress`
+(`node frontend/scripts/ci/artifact-currency.mjs` lists them with URLs). NOTE: sota-audit does NOT carry
+my prod-smoke error — it already says "production-bundle smoke job" correctly. Refresh them for currency,
+not for correction.
+
 IN FLIGHT — **doc gardening from a 6-agent audit. ~330 claims checked, 92 issues (41 FALSE / 41 STALE /
 10 IMPRECISE).** Findings dump: `/private/tmp/claude-501/.../scratchpad/findings.txt` (session-scoped —
 if gone, re-run the workflow at
