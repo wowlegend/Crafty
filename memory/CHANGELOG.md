@@ -32,6 +32,19 @@ because a second loop over the same variable satisfied the regex; it was deleted
 skipped frame left the whole suite green — the predicate's tests are handed a skip list and say
 nothing about whether the capture fills one.
 
+**Late addition — a "dev-dependency" bump made an integration test exercise a different engine.**
+Merging PR #13 exposed a defect my own review of it had missed: I called it "dev-deps only, zero render
+risk", reasoning from the section name. `@dimforge/rapier3d-compat` is a direct dep ONLY because it was
+once a phantom import (`32625c0`); the app reaches physics through `@react-three/rapier`, which pins it
+EXACTLY at 0.19.2. While they agree they dedupe to one copy — which is precisely what makes
+`beast-collider-rapier.test.js`'s claim to drive "the same build the app ships" true. The 0.19.3 bump
+split them, and **nothing failed**: bundle +0.0KB, unit suite green, e2e unaffected because the app kept
+running 0.19.2 from a newly nested copy. Only the test's reason for existing was lost, with its comment
+still asserting otherwise. Pin held at the wrapper's version; Dependabot ignores it at PATCH too, since
+it can only move in lockstep; gated and mutation-proven. The `@types/three` 0.12.0 copy predates all of
+this, so "exactly one copy" would have been red before the defect existed — the gate asserts no NESTED
+copy instead.
+
 **Owed:** a capture pair on a quiet machine. `shot()`'s stability requirement went 2 -> 5 consecutive
 stable frames (the terrain wait already demanded 6); that is an argued hypothesis, not a measurement —
 the machine was at load 21 with three other sessions' processes pinned. Expect more-complete frames

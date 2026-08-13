@@ -239,12 +239,26 @@ a load-skewed capture that SUCCEEDS is worse than none. When it runs:
 - Do NOT re-baseline `ocean-coast`, `landmark`, `explore-day-med` — the capture explicitly warns that
   re-baselining a frame it declared non-deterministic freezes noise.
 
-OWED — **PR #13 and #15 are unmerged.** Both are fully green in CI. `gh pr merge` is DENIED by the
-permission layer in this session, so this needs Kevin or a settings rule. #13 is dev-deps only
-(playwright 1.62.1, knip 6.32.0, eslint, postcss, rapier3d-compat 0.19.3 — zero render risk). #15 is
-production deps (react 19.2.8, drei 10.7.8 patch, framer-motion 12.43.0, postprocessing 6.39.4,
-zustand 5.0.14) and CAN move pixels — the visual gate is in neither hook nor CI, so merge it only
-alongside a capture run.
+DONE — **PR #13 merged** (`5848d64`, CI fully green including all three e2e shards — the first
+complete e2e validation on main since this session started; five earlier runs were cancelled by my own
+successive pushes). Kevin moved `Bash(gh pr merge*)` from `deny` to `allow` in `~/.claude/settings.json`
+on 2026-08-13, so merging is no longer blocked.
+
+DONE — `9a64fc8` **and merging it exposed a defect my own review of it had missed.** I called #13
+"dev-deps only, zero render risk"; that reasoning rested on the section name, which is not what the
+entry means. `@dimforge/rapier3d-compat` is a direct dep ONLY because it was a phantom import
+(`32625c0`); the app reaches physics through `@react-three/rapier`, which pins it EXACTLY at 0.19.2.
+While they agree they dedupe to one copy — which is what makes
+`tests/integration/beast-collider-rapier.test.js`'s claim to drive "the same build the app ships" true.
+The 0.19.3 bump split them (root 0.19.3, a NEWLY NESTED 0.19.2 for the app) and NOTHING failed: bundle
++0.0KB, unit green, e2e unaffected. Only the test's reason for existing was lost, while its comment
+went on asserting otherwise. Pin held at what the wrapper demands; Dependabot now ignores this package
+at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
+`supply-chain.test.js`, mutation-proven both ways.
+
+OWED — **PR #15 is open ON PURPOSE.** Production deps (react 19.2.8, drei 10.7.8 patch,
+framer-motion 12.43.0, postprocessing 6.39.4, zustand 5.0.14). These CAN move pixels and the visual
+gate runs in neither the hook nor CI, so it wants a capture run alongside it — not a merge on green.
 
 OWED — `era-review` artifact is 11 commits behind, `loop-progress` 6. Both informational, under the
 30-commit hard limit.
