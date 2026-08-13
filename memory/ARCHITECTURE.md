@@ -16,7 +16,7 @@
 > CHANNELS (`game/*Channel.js` — Game-Loop-Isolation seams between DOM listeners / useFrame SMs /
 > render systems) + 15Hz ACCUMULATOR BRIDGES (`world/SquadAISystem|ElementZoneSystem.jsx`) + always-
 > mounted transient renderers (`world/SnareTetherSystem|ElementZoneRenderSystem.jsx`, instanced pools,
-> capture-frozen via now=0) + literal-token STATIC GATES (`tests/gates/*-noremesh-gates` ×4 + wiring
+> capture-frozen via now=0) + literal-token STATIC GATES (`tests/gates/*-noremesh-gates` ×3 — voidhand/elemancer/beast; there is no soulbind one + wiring
 > locks) + the sky-studio judge-fixture family (App.jsx test hooks, lanes x=0..240). Other load-bearing
 > systems added post-blueprint: the kill bus w/ source attribution (`game/mobKillBus.js` — player/ally/
 > hazard), the allegiance seam (`game/allegiance.js` — the ONLY isMob→isAlly door), curated fusion
@@ -40,23 +40,23 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - **Styling**: Tailwind CSS 3.x, Framer Motion 12.x
 - **State**: Zustand 5.x (global store), React hooks
 - **Build**: Vite 6.x (migrated from CRA Feb 2026)
-- **UI Design System (S1-C COMPLETE, bold-flat)**: single SoT chain — `src/theme/tokens.js` (semantic tokens) → `src/theme/cssVars.js` (`--ui-*` CSS vars via `applyThemeVars()` at boot + `TW_COLORS`/`TW_SCALES`) → `tailwind.config.cjs` `theme.extend` referencing the vars (parity-tested by `tests/theme/tailwind-wiring.test.js`). Component primitives in `src/ui/primitives/` (Panel/Button/Slot/StatBar/Icon/Toast/Tooltip/SpellRing + `cn()`). ONE bold-flat language across the whole in-game UI (the legacy minecraft-bevel/glass/neon languages are gone; `tests/gates/static-gates.test.js` hard-asserts single-language + zero-emoji). i18n in `src/i18n/` (`t()`/`useT()`, en default + lazy-CJK zh-CN). **Icon system (M3):** filled 2-tone game-icons (`src/ui/primitives/gameIcons.js`, 49 glyphs baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT + lucide-outline chrome for affordances; resolved by the `Icon` primitive's GAME_NAMES/CHROME maps. **Item registry `src/data/items.js`** = the single source for item name/icon/rarity (stable ids, `getItemRarity`/`getItemIcon`/`getItemName`/`normalizeItemName`); LOOT_TABLES/CHEST_LOOT/crafting use emoji-free names, with a `loadWorldData` save normalizer for legacy emoji keys. **Zero emoji in `src/`** (hard-gated). `CreditsScreen.jsx` attributes game-icons.net + fonts. DEV-only `PrimitivesShowcase` gates the system via 2 visual-regression states.
+- **UI Design System (S1-C COMPLETE, bold-flat)**: single SoT chain — `src/theme/tokens.js` (semantic tokens) → `src/theme/cssVars.js` (`--ui-*` CSS vars via `applyThemeVars()` at boot + `TW_COLORS`/`TW_SCALES`) → `tailwind.config.cjs` `theme.extend` referencing the vars (parity-tested by `tests/theme/tailwind-wiring.test.js`). Component primitives in `src/ui/primitives/` — read the set from its `index.js` rather than this line (there is no Tooltip; there ARE Slider and Modal; `cn` is deliberately not re-exported). ONE bold-flat language across the whole in-game UI (the legacy minecraft-bevel/glass/neon languages are gone; `tests/gates/static-gates.test.js` hard-asserts single-language + zero-emoji). i18n in `src/i18n/` (`t()`/`useT()`, en default + lazy-CJK zh-CN). **Icon system (M3):** filled 2-tone game-icons (`src/ui/primitives/gameIcons.js`, 49 glyphs baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT + lucide-outline chrome for affordances; resolved by the `Icon` primitive's GAME_NAMES/CHROME maps. **Item registry `src/data/items.js`** = the single source for item name/icon/rarity (stable ids, `getItemRarity`/`getItemIcon`/`getItemName`/`normalizeItemName`); LOOT_TABLES/CHEST_LOOT/crafting use emoji-free names, with a `loadWorldData` save normalizer for legacy emoji keys. **Zero emoji in `src/`** (hard-gated). `CreditsScreen.jsx` attributes game-icons.net + fonts. DEV-only `PrimitivesShowcase` gates the system via 2 visual-regression states.
 
 ## Core Features
 
 - Procedural infinite terrain generation with chunks and biome variety
 - Block placement and destruction with particle effects
 - Magic system with 4 spell types (Fireball, Iceball, Lightning, Arcane) + Shield
-- NPC/Mob system with 5 mob types, AI movement, health bars, hostile chase AI
+- NPC/Mob system with **10** mob types (`game/mobTypes.js`), AI movement, health bars, hostile chase AI
 - Day/night cycle
 - Creative mode gameplay
 - Player stats: health, mana, hunger with regeneration
 - XP and leveling system with visual feedback
 - Sound system with procedurally generated audio
-- Save/Load functionality (requires backend auth)
+- Save/Load — localStorage ONLY, no auth and no backend (`game/worldSaves.js`; zero network calls in src/)
 - Animated main menu with particle effects
 - Minimap HUD with mob tracking
-- Quest system with 15 trackable quests across 3 tiers
+- Quest system — 19 authored quests across 3 tiers PLUS an endless repeatable-bounty generator (`QuestSystem.jsx`)
 - Loot drop system (mobs drop items on death)
 - Treasure chests with random world spawning
 - Achievement system with 12 badges and stats tracking
@@ -116,7 +116,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | --- | ------ |
 | WASD | Move |
 | Mouse | Look around (click to enable; own `src/input/pointerLook.js`, not drei PointerLockControls as of 2026-06-15) |
-| F | Cast spell / Melee attack |
+| F | Cast spell (melee is T) |
 | 1-4 | Select spell type |
 | E | Inventory |
 | M | Magic |
@@ -128,8 +128,8 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | Right Click | Place block |
 | Tab | Achievements panel |
 | G | Open treasure chest |
-| T | Tame nearby passive mob |
-| U | Spell upgrades panel |
+| T | Melee attack |
+| U | Talents & Aspect guide |
 
 ## Mob Types
 
@@ -137,7 +137,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | ---- | ----- | ------ | -------- | ------ |
 | Pig | Pink | 50 | Passive, wanders | — |
 | Cow | Brown | 80 | Passive, wanders | — |
-| Zombie | Green | 100 | Hostile, chases player | 8 |
+| Husk (zombie) | Green | 100 | Hostile, chases player | 10 |
 | Skeleton | Beige | 80 | Hostile, chases player | 6 |
 | Spider | Black | 60 | Hostile, chases player | 4 |
 
@@ -149,7 +149,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | Iceball | 2 | 40 | 12 | Ice projectile with gravity |
 | Lightning | 3 | 75 | 25 | Fast electric strike |
 | Arcane | 4 | 60 | 18 | Mystical energy blast (pierce + lifesteal) |
-| Shield | — | — | 30 | Defensive barrier |
+| ~~Shield~~ | — | — | — | NEVER BUILT as a spell. `game/spells.js` has exactly four. "Shield" exists only as offhand EQUIPMENT (`game/equipment.js`). |
 
 ## Block Types
 
@@ -187,21 +187,21 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | RENDER_DISTANCE | 4 chunks |
 | Terrain height range | 12-22 (STALE — flattened 2026-06-15: `terrain.worker.js` baseHeight gentle plains + rare highland) |
 | Player height offset | 1.2 units |
-| Initial spawn | (0, 40, 0) |
+| Initial spawn | (0, 100, 0) — `game/playerSpawn.js` |
 | Physics gravity | -30 m/s² |
 | Max mob distance | 100 units (despawn beyond) |
 | Mob aggro range | 16 blocks |
 | Mob melee range | 2.5 blocks |
 | Minimap range | 60 world units |
 | Cast cooldown | 333ms (3 casts/sec) |
-| Jump velocity | 10 |
-| Gravity | 25 |
+| Jump velocity | 12.0 — `game/locomotion.js` |
+| Gravity | -32.0/s, terminal -50.0 — `game/locomotion.js` |
 | Chest spawn interval | 30 seconds |
 | Chest proximity range | 3 blocks |
 | Loot auto-collect delay | 2 seconds |
 | Boss spawn level | Level 5 |
-| Boss health | 500 HP |
-| Boss XP reward | 500 XP |
+| Boss health | 700 HP — `game/bossConfig.js` |
+| Boss XP reward | 600 XP — `game/bossConfig.js` |
 | Max pets | 3 |
 | Pet tame range | 4 blocks |
 | Night hostile spawn rate | 70% |
@@ -317,9 +317,9 @@ Procedural fluid surface dynamics are compiled inside `Terrain.jsx`:
 
 ### 3. Volumetric Weather Systems & Night Fireflies
 Immersive atmospheric weather is implemented via a `<WeatherSystem />` canvas component in `GameScene.jsx`:
-- **Instanced Bounding Boxes**: Animates 500 stretched raindrop boxes and 300 snow quads in a 40m bounding box centered on the player.
+- **Instanced Bounding Boxes**: Animates **400** raindrop boxes / **200** snow quads (base counts, each scaled by the tier `weather` multiplier — low 0.25 / med 0.6 / high 1.0) in a 40m box centred on the player. `render/WeatherSystem.jsx`.
 - **Terrain Colliders**: Particles query `getMobGroundLevel` to snap, splatter, and reset upon hitting the ground, avoiding underground particle clipping.
-- **Night Fireflies**: Spawns 40 glowing yellow-green firefly particles orbiting organically around the player at Night, fading out during the Day.
+- **Night Fireflies**: Spawns **30** glowing firefly particles (base, tier-scaled) orbiting the player at night, fading out during the Day.
 
 ### 4. Cavern Acoustics & Depth-Based Reverb
 Procedural Web Audio routing is added to `SpatialAudioController` (`GameScene.jsx`):
@@ -347,7 +347,7 @@ To deliver premium, industry-grade action RPG locomotion controls, `Components.j
 ## SOTA WebGL2 DataArrayTexture Voxel Texturing & Wind Foliage (May 2026)
 
 To support AAA-grade detailed voxel graphics and interactive vegetation fields, the graphics system incorporates a custom high-performance **WebGL2 DataArrayTexture** pipeline:
-- **Procedural Array Painting**: Generates dynamic 32x32 pixel organic texture slices for 9 layers (Grass, Dirt, Stone, Sand, Snow, Wood, Leaves, Cactus, Water) using deterministic sine/cosine noise offsets at startup (`proceduralTextures.js`), maintaining a 0-byte static file size asset footprint.
+- **Procedural Array Painting**: Generates dynamic 32x32 pixel organic texture slices for **16** layers (`world/proceduralTextures.js`: 0..9 base blocks · 10..13 ore tiles · 14 cobblestone · 15 glass) using deterministic sine/cosine noise offsets at startup (`proceduralTextures.js`), maintaining a 0-byte static file size asset footprint.
 - **Tiled UV Repeat Compilation**: The worker `terrain.worker.js` calculates local UV coordinates matching CCW corners `[0,0]`, `[0,h]`, `[w,h]`, `[w,0]` for each greedy quad of size $w \times h$. By binding `uv` attributes inside `Terrain.jsx`, textures tile perfectly tile-by-tile across merged faces without stretching.
 - **Vertex Color Layer Packing**: Packs the raw `blockType` integer inside the geometry's `color.r` channel. The fragment shader updates in `onBeforeCompile` read this coordinate on every frame, sampling the precise layer slice using `texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layer))`.
 - **Translucent Water Shading**: Enables explicit transparency blending (`alpha = 0.75`) for water block layers inside the fragment shader, revealing detailed sandy beaches underneath ocean shorelines.
