@@ -162,6 +162,33 @@ the CORRECT tool for a classic Worker that cannot import** — do not mass-rewri
   of them stacked up, back to 2026-07-13, while its own preamble said it owns the cursor only. Do not mine
   the archive for what is next.
 
+## 📍 CURSOR — 2026-08-13 (night). CI GREEN. Two decisions waiting on Kevin.
+
+Everything below this block from the earlier 08-13 session still stands; this is what is newest.
+
+**CI is green** (run 31741478286, all 5 jobs) after fixing a real race, not a flake: headless Chromium
+refuses the world-ready auto-pointer-lock, and that refusal clears the `active` input gate 44ms after
+`isSpawnChunkLoaded` flips, so a `forcePlay` landing on the wrong side of it made an input-gated verb
+permanently unreachable. Fixed by `startPlayActive` (`frontend/tests/e2e/_boot.js`) — strict world wait,
+re-assert until the gate HOLDS, named throw. Commits `314c024` `39b5642` `eabeb9e` `81f4bc9` `b0147d5`.
+
+**KEVIN-GATED, do not self-decide — both recorded in `docs/superpowers/DECISIONS.md` (2026-08-13 night):**
+1. **three r174.** MEASURED with a presence control: it takes the production bundle's `glBlitFramebuffer`
+   storm from 6 to 0, confirming the upstream maintainer's root-cause theory on
+   pmndrs/postprocessing#750. NOT landed: it changes the whole look (19 of 31 frames over gate, 99%+
+   local density, visibly more saturated sky), so it needs a full reviewed re-baseline — a LOOK
+   judgement, Kevin's call. Fully reverted; 0.172.0 / 6.39.1 installed.
+   **Still unanswered: whether r174 fixes the SUN.** The global change makes it unseparable without a
+   controlled r174 + 6.39.1 vs r174 + 6.39.4 pair. Run that pair before claiming either way.
+2. **Reply to #750** — drafted at `docs/superpowers/upstream-750-reply-draft.md`, NOT posted. A public
+   upstream comment is outward-facing.
+
+**Free finding worth acting on independently of both:** `scripts/ci/prod-smoke.mjs` filters on
+`m.type() === 'error'`, but the GL storm arrives as `warning` — so the production gate is structurally
+blind to the error class it exists to watch. Widening it is cheap and is NOT gated on the r174 decision.
+
+---
+
 ## IN FLIGHT — 2026-08-13 (resume here)
 
 **1. VISUAL RE-BASELINE (capture A running in background at time of writing).**
