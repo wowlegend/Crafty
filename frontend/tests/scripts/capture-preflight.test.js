@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertBrowserProducesFrames } from '../../scripts/visual/capture.mjs';
+import { assertBrowserProducesFrames, flushFrames } from '../../scripts/visual/capture.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -252,5 +252,65 @@ describe('capture: the machine it ran on is RECORDED, on every exit path', () =>
     expect(at, 'the warnings are computed and never surfaced').toBeGreaterThan(-1);
     expect(cap.slice(at, at + 200), 'a headroom warning kills the run — it must not, see machineHeadroom.js')
       .not.toMatch(/process\.exit|throw /);
+  });
+});
+
+// A WEDGED COMPOSITOR MUST ABORT, NOT HANG — and the cost of not doing so was measured.
+//
+// 2026-08-13: a capture wedged at the achievements-open stage with 28 of 31 frames written. node sat at
+// 4.7 SECONDS of CPU across 31 minutes while the SwiftShader GPU helper burned 917% CPU and 231 MINUTES
+// of CPU time. Nothing was emitted — no error, no timeout, no log line. puppeteer's default 180s
+// protocolTimeout never fired either. It was found only by comparing PNG mtimes against the run start.
+//
+// flushFrames' docblock forbade "fixing" this with a setTimeout, and that rule is right about the thing
+// it was protecting: a fallback that lets the run CONTINUE screenshots blank frames and produces a green
+// gate over pictures of nothing. But its own last sentence names the alternative — abort rather than
+// degrade — and the rule was being read as forbidding both. So the deadline THROWS.
+//
+// Driven against a stub page whose evaluate never settles, which is precisely a wedged compositor and
+// cannot be reproduced on demand any other way.
+describe('capture: a wedged compositor aborts loudly instead of hanging forever', () => {
+  const neverResolves = { evaluate: () => new Promise(() => {}) };
+
+  it('throws when rAF never comes back, rather than waiting forever', async () => {
+    await expect(flushFrames(neverResolves, 8, { deadlineMs: 40, label: 'achievements-open' }))
+      .rejects.toThrow(/CAPTURE ABORTED/);
+  });
+
+  it('names the STAGE, so the failure points somewhere', async () => {
+    // The 2026-08-13 hang was illegible precisely because nothing said where it stopped.
+    await expect(flushFrames(neverResolves, 8, { deadlineMs: 40, label: 'achievements-open' }))
+      .rejects.toThrow(/achievements-open/);
+  });
+
+  it('describes the SIGNATURE, since the cause is invisible from node', async () => {
+    // node is idle during this failure; the evidence is a GPU helper pinned across several cores. A
+    // reader who does not know that will look at the wrong process.
+    await expect(flushFrames(neverResolves, 8, { deadlineMs: 40 }))
+      .rejects.toThrow(/GPU helper process pinned/);
+  });
+
+  it('does NOT throw when the page answers — the presence case', async () => {
+    // Without this, an implementation that threw unconditionally would pass every assertion above.
+    const healthy = { evaluate: async () => undefined };
+    await expect(flushFrames(healthy, 8, { deadlineMs: 40 })).resolves.toBeUndefined();
+  });
+
+  it('clears its timer, so a healthy flush cannot leave the process alive', async () => {
+    // A dangling 120s timer per flush would keep node from exiting after the last frame — a capture that
+    // finishes and then appears to hang, which is the same symptom this whole block is about.
+    //
+    // FIRST DRAFT OF THIS WAS BLIND: it compared process._getActiveHandles().length before and after,
+    // which does not track timers at all, so before === after unconditionally and the assertion passed
+    // against a version that never called clearTimeout. Counting the timers directly is the fix; a
+    // green mutation is the finding, and this is the third instance of it today.
+    const healthy = { evaluate: async () => undefined };
+    vi.useFakeTimers();
+    try {
+      await flushFrames(healthy, 8, { deadlineMs: 120_000 });
+      expect(vi.getTimerCount(), 'flushFrames leaked a pending timer').toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

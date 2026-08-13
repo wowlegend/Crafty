@@ -36,15 +36,53 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // Await N rendered animation frames in-page so the GPU has actually presented the
 // settled scene (shadow map + mesh uploads) before a screenshot is taken. Deterministic
 // frame-count wait rather than a wall-clock guess.
-async function flushFrames(page, n = 8) {
-  // DO NOT "FIX" A HANG HERE BY RACING THIS AGAINST A setTimeout. If rAF is not firing, the renderer is
-  // not presenting anything, so a wall-clock fallback would let the run continue and screenshot blank or
-  // stale frames — a GREEN visual gate over pictures of nothing, which is worse than the hang. The bounded
-  // check is assertBrowserProducesFrames() below, which aborts the run instead of degrading it.
-  await page.evaluate(async (count) => {
-    const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
-    for (let i = 0; i < count; i++) await raf();
-  }, n);
+/** How long a frame flush may take before the compositor is declared dead. See FLUSH_DEADLINE_MS below. */
+const FLUSH_DEADLINE_MS = 120_000;
+
+export async function flushFrames(page, n = 8, { label = captureStage, deadlineMs = FLUSH_DEADLINE_MS } = {}) {
+  // DO NOT "FIX" A HANG HERE BY RACING THIS AGAINST A setTimeout **AND CONTINUING**. If rAF is not
+  // firing, the renderer is not presenting anything, so a wall-clock fallback that let the run proceed
+  // would screenshot blank or stale frames — a GREEN visual gate over pictures of nothing, which is
+  // worse than the hang. That rule forbids DEGRADING, and it names the alternative in its own last
+  // sentence: assertBrowserProducesFrames "aborts the run instead of degrading it".
+  //
+  // SO THIS ABORTS. It does not continue, it does not fall back, it throws.
+  //
+  // MEASURED 2026-08-13, and the cost of not having it was the whole point: a capture wedged here at
+  // the achievements-open stage with 28 of 31 frames written. node sat at 4.7s of CPU across 31 minutes
+  // while the SwiftShader GPU helper burned **917% CPU and 231 minutes of CPU time**, and nothing said
+  // anything — no error, no timeout, no output. Nine cores spinning on a silent process, discovered only
+  // because someone thought to compare file mtimes. puppeteer's default 180s protocolTimeout did not
+  // fire either. A hang that burns the machine and reports nothing is strictly worse than a loud abort,
+  // and the previous rule was being read as forbidding both.
+  //
+  // The deadline is deliberately far above any legitimate flush (8 rAF at SwiftShader's 1-3fps is a few
+  // seconds, and the slowest observed stage is well under 60s) so it cannot fire on a merely slow
+  // machine — the failure mode this file has already been bitten by twice.
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(
+      `CAPTURE ABORTED — the renderer stopped producing frames during "${label}".\n` +
+      `    flushFrames(${n}) got no rAF callback for ${deadlineMs / 1000}s. The compositor is wedged:\n` +
+      `    expect a Chrome GPU helper process pinned near 100% of several cores while node sits idle.\n` +
+      `    This is an ENVIRONMENT fault, not a code regression — same class as the boot preflight\n` +
+      `    (assertBrowserProducesFrames), which only runs once and cannot see a mid-run death.\n` +
+      `    Frames already written are FRESH but the run is INCOMPLETE; the sentinel stays complete:false\n` +
+      `    so the diff gate will refuse them. Re-run on a quieter machine; a reboot cures a wedged\n` +
+      `    compositor when re-running does not.`
+    )), deadlineMs);
+  });
+  try {
+    await Promise.race([
+      page.evaluate(async (count) => {
+        const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
+        for (let i = 0; i < count; i++) await raf();
+      }, n),
+      deadline,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -229,12 +267,21 @@ async function main() {
   // CPU contention with I/O and blocked processes. Measured here at load 21.25 with 39% of the CPU idle.
   // So this records rather than refuses: the next crash arrives with the machine state beside it, and
   // after a few the threshold stops being folklore. Enforcing a guessed one would foreclose that.
-  const machine = evaluateMachineHeadroom({
+  //
+  // A PRE-FLIGHT READING IS NOT THE STATE THE RUN DIES IN, AND THIS ONE PROVED IT ON ITS FIRST USE.
+  // Measured 2026-08-13: the capture started at 5,285MB free (no warning, which is WHY it was started)
+  // and sat at 2,256MB mid-run -- below the 4,096MB threshold. The capture CREATES the pressure the
+  // pre-flight checks for, so a passing pre-flight says the run was reasonable to BEGIN, never that it
+  // stayed healthy. Both readings are recorded for that reason: the start explains the decision, the end
+  // explains the outcome, and a crash write that carried only the start would report the machine as it
+  // looked before the thing that killed it.
+  const readMachine = () => evaluateMachineHeadroom({
     freeMemMB: freemem() / 1048576,
     totalMemMB: totalmem() / 1048576,
     loadAvg1: loadavg()[0],
     cores: cpus().length,
   });
+  const machine = readMachine();
   console.log(
     `  machine: ${Math.round(machine.freeMemMB)}MB free (${(machine.freeMemPct * 100).toFixed(1)}%), ` +
     `load ${machine.loadPerCore.toFixed(2)}/core`,
@@ -810,7 +857,7 @@ async function main() {
     console.error('  green gate over frames that do not depict the scene.');
     for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, skipped: skippedGated, machine, machineAtEnd: readMachine(), provenance, phase: phaseRecord }));
     return;
   }
   if (realCrashes.length) {
@@ -818,7 +865,7 @@ async function main() {
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
     // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, skipped: skippedGated, machine, machineAtEnd: readMachine(), provenance, phase: phaseRecord }));
   } else {
     console.log('\nNo render crashes during capture.');
     // THE PHASE DENOMINATOR. "Every frame was posed at t=1.5s" is a claim, and a claim nothing counts is
@@ -840,7 +887,7 @@ async function main() {
       process.exitCode = 1;
     }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, skipped: skippedGated, machine, machineAtEnd: readMachine(), provenance, phase: phaseRecord }));
   }
 }
 // RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns
