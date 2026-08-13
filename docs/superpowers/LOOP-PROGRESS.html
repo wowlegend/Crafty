@@ -230,7 +230,52 @@
   </div>
 
   <section>
-    <div class="eyebrow"><h2>Now — the 88 are DRAINED, and the instruments are what needed the work</h2><span class="rule"></span><span class="tag">2026-08-12 · 0 open</span></div>
+    <div class="eyebrow"><h2>Now — the density ledger is frozen, and it refuses one frame on purpose</h2><span class="rule"></span><span class="tag">2026-08-13 · 29 &rarr; 23 unmeasured</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>29 of the ratchet&rsquo;s 31 entries were the floor CONSTANT, not measurements</strong> —
+      so for most frames it compared against an arbitrary number, which is what <code>ocean-coast</code>
+      failed 2.20% against with nothing on disk able to say whether that was streaming variance or a
+      regression. Frozen from two reviewed Chromium-151 captures merged at the worse run: unmeasured
+      <b>29 &rarr; 23</b>, ratcheted; <code>ocean-coast</code> measured at 6.7%. The remaining 23
+      reproduce byte-identically and have no variance to measure.</p>
+      <p><strong>The tool that does the freezing had demanded two captures while reading one</strong>,
+      since the day it was written — so every ledger it ever produced was single-sample. It also aborted
+      the whole freeze when one frame was missing from one run, and emitted a ledger the gate that tells
+      you to run it rejects. All three proven RED first.</p>
+      <p><strong>And <code>explore-day</code> is REFUSED rather than frozen.</strong> It varies
+      5.13%&ndash;30.35% locally between runs on identical code and an identical renderer; frozen at what
+      it actually does that is 54.7%, an allowance no regression could ever exceed. The freezer now keeps
+      such a frame at its previous value, records it in <code>_ungateable</code>, and aborts if a new
+      frame has nothing to fall back on. <b>The fix belongs in the capture&rsquo;s stability wait</b>,
+      which asked for 2 consecutive stable frames where the terrain wait asks 6.</p>
+    </div></div>
+
+    <div class="card"><div class="mandate">
+      <p><strong>Two of my own gates were blind, and mutation is what said so.</strong> A source
+      assertion claiming &ldquo;the freezer reads every run directory&rdquo; stayed green under a
+      mutation making it read only the first, because a second loop over the same variable satisfied the
+      regex — deleted, and replaced by driving the tool end to end on synthetic frames. And deleting the
+      line that records a skipped gated frame left the whole suite green, because the freshness
+      predicate&rsquo;s tests are handed a skip list and say nothing about whether the capture fills one.</p>
+      <p><strong>One claim of mine was wrong and is corrected in place.</strong> I wrote that
+      <code>title-mascot</code>&rsquo;s skip silently keeps a stale frame. Reconstructing the exact
+      <code>current/</code> state and running the real gate reds by name — the freshness rule had been
+      catching it all along. What was real is that the capture reported <code>complete: true</code> over a
+      run that never photographed a gated frame.</p>
+    </div></div>
+
+    <div class="card"><div class="mandate">
+      <p><strong>Owed, and blocked on things this session cannot do:</strong> a capture pair on a QUIET
+      machine (load was 21 on 14 cores from other sessions&rsquo; processes; captures crash in that band
+      and a load-skewed capture that succeeds is worse than none) — expect more-complete frames and a
+      deliberate re-baseline when it runs. And PRs <b>#13</b> (dev-deps, zero render risk) and <b>#15</b>
+      (production deps incl. react 19.2.8, which CAN move pixels) are both fully green and unmerged:
+      <code>gh pr merge</code> is denied by the permission layer here.</p>
+    </div></div>
+  </section>
+
+  <section>
+    <div class="eyebrow"><h2>2026-08-12 — the 88 are DRAINED, and the instruments are what needed the work</h2><span class="rule"></span><span class="tag">2026-08-12 · 0 open</span></div>
     <div class="card"><div class="mandate">
       <p><strong>All 215 confirmed findings are disposed of — 207 fixed, 8 dismissed with a runnable proof, 0 open</strong>, every stamp resolving to a real commit. The last stretch was mostly gates learning to measure the thing they were named after: fourteen source-grep gates became behavioural, the frozen source-grep ratchet fell <b>115 → 106</b>, and two gates were deleted once the coverage they claimed was verified to exist more strongly elsewhere.</p>
       <p class="guard"><strong>Four findings filed as "delete this dead branch" were worth KEEPING.</strong> The verb router's two final returns are unreachable across all 392 finite/Infinity input combinations — measured, not argued — but reachable under NaN, where deleting them makes the router return <code>undefined</code> and the mouse button silently dies. The dungeon stamp's ±1 chunk sweep really did waste 8 of 9 iterations (1,352 candidate blocks examined, ZERO able to land), but hardcoding "self only" would clip a larger blueprint at the seam exactly as the cave automaton once did; the radius is derived from the footprint instead.</p>
@@ -247,7 +292,7 @@
   </section>
 
   <section>
-    <div class="eyebrow"><h2>Now — draining the 88, and the harness that has to be trusted first</h2><span class="rule"></span><span class="tag">2026-08-12 · 33 of 88 closed</span></div>
+    <div class="eyebrow"><h2>2026-08-12 (earlier) — draining the 88, and the harness that has to be trusted first</h2><span class="rule"></span><span class="tag">2026-08-12 · 33 of 88 closed</span></div>
     <div class="card"><div class="mandate">
       <p><strong>The visual oracle photographed a frozen world, and the clock built to fix that was still run-dependent.</strong> Determinism was bought by SUPPRESSION — 218 <code>isCaptureMode()</code> sites across 65 files — so nothing that only manifests in motion could regress. The frame clock shipped 08-09 under a commit titled "step-then-shoot"; <code>capture.mjs</code>, 766 lines and 31 screenshot sites, never called it. And the clock itself advanced once per RENDERED frame, so the captured phase was whatever the machine drew: same box, same schedule, two runs read <code>[6,10,13,15,16]</code> and <code>[6,11,13,14,16]</code>. It is a COMMANDED clock now, and every run reports <code>31/31 frames pinned at 90 (1.50s virtual)</code>.</p>
       <p class="guard"><strong>The sun casts shadows in the gated frames — the one conversion of 41 that the 6% threshold can resolve.</strong> A 17-agent survey proposed 41; the value pass refuted all but this. Its calibration is the argument: the entire QUESTS panel is 7.51% of a frame, the whole spell-cast VFX ensemble 0.64%. Every baseline had depicted a world with no sun shadows for the oracle's entire life. Determinism was measured rather than assumed — two runs with shadows on, worst self-diff 0.185% against 0.210% before them.</p>
@@ -258,7 +303,7 @@
   </section>
 
   <section>
-    <div class="eyebrow"><h2>Latest — closing the full-source audit, one mutation-proven commit at a time</h2><span class="rule"></span><span class="tag">2026-08-11 · 97 of 108 · every HIGH closed</span></div>
+    <div class="eyebrow"><h2>2026-08-11 — closing the full-source audit, one mutation-proven commit at a time</h2><span class="rule"></span><span class="tag">2026-08-11 · 97 of 108 · every HIGH closed</span></div>
     <div class="card"><div class="mandate">
       <p><strong>The Building Tools panel did nothing, and had done nothing since it shipped.</strong> Reachable four ways — KeyB, the HUD grid button, the touch tray, the panel registry — localized into two languages, writing <code>buildingMode</code> / <code>buildSize</code> / <code>selectedBuildBlock</code> into the store, and <b>nothing read them</b>. Every mode placed exactly one block: an advertised pillar of a voxel building game, inert. Wired now, but <em>not as specced</em>, and the reason is the economy rather than the code — <code>place</code> debits per block, so the panel's size-10 cube is 1000 blocks in one click and 1000 worker messages. The footprint is cell-capped at 64 and each mode's usable size is DERIVED from that cap, so no mode can define its way around it. <b>No E2E had ever placed a block</b> in this repo; one does now, and it took five iterations, every failure being the test rather than the wiring.</p>
       <p class="guard"><strong>The ELEMANCER imbue loop was one cast out of phase for its entire life.</strong> The latch decided <code>consume</code> inside <code>useFrame</code>, one frame after the projectile had already spawned and already read the element slot — so the cast that PAID got <code>imbueKind: null</code>, and the kind sat parked for the NEXT cast to take for free. The advertised prime cast key, F, never stamped the latch's input at all, so on that path the stance idled armed forever. Two findings, one mechanism: the consume moved into the call that spawns the projectile. Its unit test was green throughout — it tested the slot in isolation, arm then consume, which is exactly the green-gate-over-a-seam-that-never-runs pattern this repo documents.</p>
