@@ -169,3 +169,50 @@ describe('capture: every gated frame is shot at a DECLARED clock phase', () => {
     expect(cap.slice(wrongBlock, wrongBlock + 400), 'an undeclared phase is reported but does not fail the run').toContain('process.exitCode = 1');
   });
 });
+
+// A SKIPPED GATED FRAME MUST REACH THE SENTINEL, NOT ONLY THE CONSOLE.
+//
+// The title-mascot shot is wrapped in a try/catch that falls through to the CLEAN end by design — the
+// other 30 frames should still land. But the run then writes `complete: true, crashes: 0` over a capture
+// that never photographed a gated frame, and the only thing that caught it was the leftover png's mtime:
+// a symptom, in another file, that fires by coincidence rather than because anything recorded the skip.
+//
+// THIS GATE EXISTS BECAUSE ITS ABSENCE WAS MEASURED. Deleting `skippedGated.push` from the catch left the
+// whole suite GREEN — the recorder was wired and nothing proved it was invoked, which is this repo's
+// signature defect and the reason `evaluateCaptureFreshness`'s own unit test cannot close it: that test
+// is handed a `skipped` array, and says nothing about whether capture.mjs ever fills one.
+//
+// Anchored to the CATCH BLOCK, not to a global token. A previous structural gate here claimed to prove
+// "the freezer reads every run directory" and stayed green under a mutation, because it matched an
+// unrelated second occurrence. A slice cannot do that.
+describe('capture: a gated frame it fails to take is RECORDED, not just logged', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+
+  it('records the skip inside the title-mascot catch block itself', () => {
+    const at = cap.indexOf("captureStage = 'title-mascot';");
+    expect(at, 'the title-mascot stage is gone — this gate is asserting over nothing').toBeGreaterThan(-1);
+    const close = cap.indexOf('} finally {', at);
+    expect(close, 'no finally after the title-mascot stage — the slice below would run to EOF').toBeGreaterThan(at);
+    const stage = cap.slice(at, close);
+
+    const catchAt = stage.indexOf('} catch (e) {');
+    expect(catchAt, 'the title-mascot shot is no longer wrapped in a catch').toBeGreaterThan(-1);
+    const catchBody = stage.slice(catchAt);
+    expect(catchBody, 'the catch swallows a missed GATED frame without recording it — the sentinel will say complete')
+      .toMatch(/skippedGated\.push\(/);
+  });
+
+  it('every sentinel write carries the skip list, so no exit path can drop it', () => {
+    // Three writes: the crashed end, the fatal-GL end, and the clean end. A skip recorded on only one of
+    // them is a hole shaped exactly like the one this replaces.
+    // Matched per LINE: the object literal contains `Date.now()`, so a `[^)]*` body regex stops at the
+    // first paren and silently matches nothing — which reads as "zero writes" rather than as a broken
+    // pattern. That mistake was made here first, and it is the same shape as the gate above.
+    const writes = cap.split('\n').filter((l) => l.includes('writeFileSync(META'));
+    const withFinish = writes.filter((w) => w.includes('finishedAt'));
+    expect(withFinish.length, 'the end-of-run sentinel writes have moved — recount before trusting this').toBe(3);
+    for (const w of withFinish) {
+      expect(w, `a sentinel write omits the skip list: ${w.slice(0, 90)}…`).toMatch(/skipped:/);
+    }
+  });
+});

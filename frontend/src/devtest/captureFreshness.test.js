@@ -74,6 +74,35 @@ describe('evaluateCaptureFreshness', () => {
     expect(ok).toBe(true);
   });
 
+  it('FAILS LOUD when a gated frame was SKIPPED, even though the run reached a clean end', () => {
+    // The exact shape capture.mjs produces: the title-mascot try/catch falls through to the CLEAN end,
+    // so the sentinel says complete:true crashes:0 over a run that never photographed a gated frame.
+    // Measured 2026-08-13: skipped in 2 of the last 3 runs, and the run reported itself complete both
+    // times. Note the mtime check is NOT what fires here — this png is dated INSIDE the run window, so
+    // this is the case the old predicate would have passed.
+    const { ok, reasons } = evaluateCaptureFreshness(
+      { startedAt: 1000, finishedAt: 9000, complete: true, crashes: 0, skipped: ['title-mascot'] },
+      ['menu', 'title-mascot'],
+      { menu: { exists: true, mtimeMs: 5000 }, 'title-mascot': { exists: true, mtimeMs: 5000 } },
+    );
+    expect(ok).toBe(false);
+    expect(reasons.join(' ')).toMatch(/SKIPPED/);
+    expect(reasons.join(' ')).toContain('title-mascot');
+    expect(reasons.join(' '), 'it fired on mtime, not on the skip — the coincidence, not the cause')
+      .not.toMatch(/older than the capture run start/);
+  });
+
+  it('a clean run with an EMPTY skipped list still passes — the check is not just "field present"', () => {
+    // The presence case. If any `skipped` key failed the run, every capture would red the moment the
+    // field was added, and the guard would be a blanket rather than a measurement.
+    const { ok } = evaluateCaptureFreshness(
+      { startedAt: 1000, finishedAt: 9000, complete: true, crashes: 0, skipped: [] },
+      ['menu'],
+      { menu: { exists: true, mtimeMs: 5000 } },
+    );
+    expect(ok).toBe(true);
+  });
+
   it('accumulates multiple independent failure reasons', () => {
     const pngInfo = { ...freshPngs(NOW), menu: { exists: false } };
     const meta = { startedAt: NOW, complete: false, crashes: 1 };

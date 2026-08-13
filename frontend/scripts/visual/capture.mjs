@@ -135,6 +135,10 @@ async function waitForServer(url, tries = 60) {
 // Module scope so `shot` can reach them: a per-shot GL check has to record into the same bucket the
 // end-of-run summary reads, and `shot` is the one door every gated frame goes through.
 const fatalGl = [];
+// GATED FRAMES THIS RUN DID NOT PHOTOGRAPH. The title-mascot catch below falls through to the CLEAN
+// end by design, so without this the sentinel writes `complete: true` over a capture that is missing a
+// frame the diff gate will nonetheless compare. Recorded, not inferred from the leftover file's mtime.
+const skippedGated = [];
 const FATAL_GL_RE = /THREE\.WebGLProgram: Shader Error|WebGL context lost|CONTEXT_LOST_WEBGL|Error linking program|shader compilation/i;
 let captureStage = 'boot';
 
@@ -701,6 +705,7 @@ async function main() {
       await shot(page, 'title-mascot.png');
       console.log('captured title-mascot');
     } catch (e) {
+      skippedGated.push('title-mascot');
       console.warn(`WARN: title-mascot capture failed (${e && e.message || e}) -> skipping title-mascot.png (a GATED frame; its last-good copy is kept), continuing to clean end`);
     }
   } finally {
@@ -771,7 +776,7 @@ async function main() {
     console.error('  green gate over frames that do not depict the scene.');
     for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, skipped: skippedGated, provenance, phase: phaseRecord }));
     return;
   }
   if (realCrashes.length) {
@@ -779,7 +784,7 @@ async function main() {
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
     // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, skipped: skippedGated, provenance, phase: phaseRecord }));
   } else {
     console.log('\nNo render crashes during capture.');
     // THE PHASE DENOMINATOR. "Every frame was posed at t=1.5s" is a claim, and a claim nothing counts is
@@ -801,7 +806,7 @@ async function main() {
       process.exitCode = 1;
     }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, skipped: skippedGated, provenance, phase: phaseRecord }));
   }
 }
 // RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns
