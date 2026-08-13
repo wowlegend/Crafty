@@ -233,7 +233,19 @@ async function shot(page, name) {
     .evaluate((n) => (window.__craftyTest && window.__craftyTest.call('setCaptureFrame', n)) ?? -1, CAPTURE_PHASE_FRAMES)
     .catch(() => -1);
   phases.push({ name, phase });
-  // needStable WAS 2, AND 2 IS NOT ENOUGH FOR A BURSTY LOADER — measured 2026-08-13.
+  // needStable IS 2, AND A HYPOTHESIS THAT IT SHOULD BE 5 IS PARKED HERE — NOT ABANDONED, NOT ACTIVE.
+  //
+  // PARKED 2026-08-13 so PR #15 (react 19.2.8, drei/postprocessing patches) could be validated against
+  // ONE moving variable. With this at 5 AND the render deps changed, a red diff would have had two
+  // candidate causes and no way to separate them — precisely the confound `baseline-trailer` exists to
+  // forbid, since it makes an intended look change indistinguishable from a regression. 2 is the setting
+  // that completed two captures cleanly; 5 has one trial, and that trial WEDGED (see flushFrames).
+  //
+  // Nothing below is retracted. The analysis stands and the change is in git history; it wants its own
+  // capture pair, on its own, with nothing else moving. What IS retracted is the ~1 minute cost estimate
+  // its commit carried: measured at 57.2s/frame against 57.6s/frame on the prior pair, the cost is ~0.
+  //
+  // THE ORIGINAL ANALYSIS, kept because it is still the best account of the defect:
   //
   // Chunk meshes do not arrive smoothly; they land in bursts with quiet gaps between them, and two
   // consecutive identical polls only proves the gap, not the end. `explore-day` exits this wait
@@ -249,7 +261,7 @@ async function shot(page, name) {
   // Cost is bounded and small: 3 extra polls x (1 rAF + 200ms) x 31 frames is ~1 minute on a ~30 minute
   // run. `max` stays at 25, so a frame that genuinely cannot settle still WARNs rather than hanging —
   // and that WARN is the honest signal, which is why it is not raised to hide one.
-  await waitForStableFrame(page, { needStable: 5, interval: 200, max: 25, floor: 120 });
+  await waitForStableFrame(page, { needStable: 2, interval: 200, max: 25, floor: 120 });
   // A LOST CONTEXT IS A BLANK OBJECT, NOT A BLANK FRAME — so it can sit far under the 6% gate and pass.
   // Checked at the one door every gated frame passes through, immediately before the pixels are written,
   // because a context lost after the previous shot and before this one belongs to THIS frame.
