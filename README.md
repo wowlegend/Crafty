@@ -4,11 +4,13 @@
 
 [![CI](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml/badge.svg)](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml)
 
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![Three.js](https://img.shields.io/badge/Three.js-r172-000000?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org)
-[![Rapier Physics](https://img.shields.io/badge/Rapier-2.2-E15B35?style=for-the-badge&logo=rust&logoColor=white)](https://rapier.rs)
-[![Miniplex ECS](https://img.shields.io/badge/ECS-Miniplex-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://github.com/hmans/miniplex)
-[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+[![React](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/react?filename=frontend%2Fpackage.json&style=for-the-badge&label=React&color=61DAFB&logo=react&logoColor=black)](https://react.dev)
+[![Three.js](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/three?filename=frontend%2Fpackage.json&style=for-the-badge&label=three.js&color=000000&logo=three.js&logoColor=white)](https://threejs.org)
+[![Rapier](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/@react-three/rapier?filename=frontend%2Fpackage.json&style=for-the-badge&label=Rapier&color=E15B35&logo=rust&logoColor=white)](https://rapier.rs)
+[![R3F](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/@react-three/fiber?filename=frontend%2Fpackage.json&style=for-the-badge&label=R3F&color=black&logo=react&logoColor=white)](https://r3f.docs.pmnd.rs)
+[![Vite](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/dev/vite?filename=frontend%2Fpackage.json&style=for-the-badge&label=Vite&color=646CFF&logo=vite&logoColor=white)](https://vite.dev)
+
+<sub>Version badges read <code>frontend/package.json</code> directly — they cannot go stale, which the hand-typed ones they replaced had already managed.</sub>
 
 A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a procedurally generated frontier of distinct biomes, wield four combat Aspects and an elemental spell arsenal, and chase the Blight-Heart climax. Built on a declarative-imperative hybrid (React + R3F/Three.js + Rapier) tuned for high-refresh (ProMotion 120Hz) smoothness, and playable on desktop, iPad, and iPhone.
 
@@ -27,7 +29,7 @@ A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a
 * **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic emerald XP orbs; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
 * **🛒 Trading, crafting & progression**: passive merchant villagers with reciprocal trading, a 3×3 crafting grid, an attribute/talent progression tree, and a spell-mastery upgrade system.
 * **📱 Desktop + touch**: full desktop mouse-look/keyboard plus a built-out iPad/iPhone touch layer (virtual joystick, verb wheel, pointer-lock-free cold start).
-* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and a deterministic 24-state visual-regression gate + ~1,970 unit tests guarding it.
+* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and the test harness below guarding every pixel of it.
 * **💾 Offline world save**: chunk modifications, inventory, and progression persist to local storage — no login wall.
 
 ---
@@ -67,6 +69,36 @@ graph TD
 
 ---
 
+## 🔬 The test harness — the unusual part
+
+Most of this repo's engineering effort is not in the game. It is in making the game's own instruments
+incapable of lying, after several of them were caught doing exactly that.
+
+| Gate | What it stops |
+| :--- | :--- |
+| **31-frame visual regression** | Deterministic headless captures diffed against committed PNG oracles. A **per-frame local-density ratchet** runs beside the global 6% tolerance, because a 248×248 block of a frame can change completely while moving only 0.02% of the pixels — the false negative the global gate cannot see. |
+| **`Mutation-Proof:` trailer** | A commit adding or rewriting a gate must state what was broken to make it go RED. A gate green on day one against unfixed code is a rubber stamp. |
+| **`Baseline-Review:` trailer** | The visual oracle has its own governance: a baseline rewrite is its own commit, never bundled with `src/`. Measured over 1,603 commits, ten of the last twelve baseline rewrites were bundled — which is how four monster baselines quietly became pictures of an empty mountain. |
+| **`gate-shape`** | Assertions satisfiable by a *comment*, plus a frozen source-grep population that may fall and never rise. |
+| **`doc-currency`** | Canonical docs citing paths that no longer exist — including bare, un-backticked ones. |
+| **`cli-guard`** | A script exporting a seam while running its CLI at module scope, so importing it executes the tool. |
+| **`bundle-budget`** | Per-chunk byte ceilings, with `three` / `rapier` / `r3f` split out. |
+
+Plus `eslint` (where `no-unused-vars` is an **error**), the full unit suite, a production build, `knip`,
+and a 3-way-sharded Playwright e2e run in CI.
+
+**Counts are deliberately not written here.** This file said *"24-state visual-regression gate + ~1,970
+unit tests"* while the real figures were 31 and 3,189 — a number in prose rots no matter how confidently
+it was written. Read them from the source instead:
+
+```bash
+cd frontend
+ls tests/visual/baseline/*.png | wc -l   # gated frames
+npm run test:unit                        # the suite prints its own total
+```
+
+---
+
 ## ⌨️ Controls
 
 | Key | Action |
@@ -94,8 +126,11 @@ _On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace th
 ## 🚀 Quick Start
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (v18+ recommended)
-* `npm` or `pnpm`
+* **[Node.js](https://nodejs.org/) 24.x** — not a suggestion: `frontend/package.json` declares
+  `"engines": { "node": ">=24.0.0 <25" }` and install fails outside that range. (This line said "v18+
+  recommended" until 2026-08-13, which was wrong in the one direction that matters — it sent newcomers
+  at a version the project rejects.)
+* **npm** — the repo is locked with `package-lock.json`; pnpm/yarn will resolve a different tree.
 
 ### Installation
 1. Clone the repository:
@@ -112,10 +147,6 @@ _On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace th
 3. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)** — set explicitly by
    `server.port` in `frontend/vite.config.js`, which also sets `open: true`, so it launches on its own.
 
-   > This line previously read `5173` and mocked the correct value: *"the README said 3000 for months, which
-   > is a server nothing in this repo has ever started."* The correction was the error — 5173 is Vite's
-   > default, but this repo overrides it. Written confidently, in a canonical doc, about a fact one line of
-   > config away.
 
 ---
 
