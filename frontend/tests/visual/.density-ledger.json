@@ -33,5 +33,7 @@
     "spell-iceball": 0.02,
     "spell-lightning": 0.02,
     "title-mascot": 0.02
-  }
+  },
+  "_unmeasured": 29,
+  "_unmeasured_note": "COUNT OF ENTRIES SITTING EXACTLY AT DENSITY_FLOOR (0.02). These are NOT measurements. A frame whose observed density fell below the floor is clamped up to it, so for these frames the ratchet compares against an arbitrary constant rather than against what the frame actually does \u2014 it cannot tell 'legitimately near the floor' from 'regressed'. ocean-coast failed at 0.022 against exactly this, and the failure could not be adjudicated. This number is RATCHETED by tests/scripts/density-ledger-measured.test.js: it may fall, never rise. It falls when a reviewed two-capture pair is used to freeze frames at measured values. Do NOT lower it by raising DENSITY_FLOOR \u2014 that is weakening a gate because it fired."
 }

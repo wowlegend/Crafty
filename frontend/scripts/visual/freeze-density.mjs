@@ -12,6 +12,31 @@
  *
  * Every frame is frozen at `max(FLOOR, observed * HEADROOM)`; the arithmetic lives in
  * scripts/ci/_density-ratchet.mjs so the gate and the freezer cannot drift apart.
+ *
+ * ============================================================================================
+ * KNOWN LIMITATION, MEASURED 2026-08-12: 29 OF 31 ENTRIES ARE NOT MEASUREMENTS.
+ * ============================================================================================
+ * `max(FLOOR, ...)` means any frame whose observed density falls below 0.02 is CLAMPED UP to the
+ * floor. Ran against the current pair, that is 29 of 31 frames — only `explore-day` (0.093) and
+ * `biome-snow` (0.028) carry a real number. For the other 29 the ratchet compares against a constant,
+ * so it cannot distinguish "this frame legitimately sits near the floor" from "this frame regressed".
+ *
+ * ocean-coast failed at 0.022 against exactly such an entry and the failure was un-adjudicable.
+ *
+ * THE FIX IS TO RUN THIS SCRIPT ON A PROPER PAIR, WHICH MEANS:
+ *   1. A QUIET MACHINE. Capture crashes under load (TargetCloseError, headless Chromium killed at
+ *      load 13-37 on 2026-08-12), and worse, a load-skewed capture that SUCCEEDS bakes load artifacts
+ *      into the oracle permanently. A corrupted baseline is worse than a stale one.
+ *   2. TWO captures on identical code, so the number frozen reflects real run-to-run variance rather
+ *      than one run's noise. Freezing from a single run records that run's accidents as allowed.
+ *   3. Frames REVIEWED by eye before freezing, per the header above.
+ *
+ * It is also now REQUIRED for a second reason: puppeteer 25.6.0 moved the bundled Chromium 147 -> 151,
+ * so the committed baselines were captured on a renderer four majors old and a re-baseline is owed
+ * regardless. Do both in one deliberate pass, with a Baseline-Review trailer, unbundled from src edits.
+ *
+ * The unmeasured count is ratcheted by tests/scripts/density-ledger-measured.test.js — it may fall and
+ * may never rise. Do NOT lower it by raising DENSITY_FLOOR; that is silencing a gate that fired.
  */
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
