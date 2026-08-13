@@ -133,6 +133,23 @@ describe('the supply chain is scanned at all', () => {
       .not.toMatch(/open-pull-requests-limit:\s*0/);
   });
 
+  it('Vercel does not build a PREVIEW for dependabot branches', () => {
+    // THE ROOT CAUSE OF THREE DEPLOY-FAILURE EMAILS TO THE OWNER. Vercel builds a preview per PR, so
+    // every Dependabot PR produced a deployment — and a bump that legitimately cannot install (eslint 10
+    // against eslint-plugin-react's <=9.7 peer; @react-three/postprocessing 3.0.5 against a pinned
+    // three@0.172) fails that build and emails him. Three times, twice after midnight his time.
+    //
+    // Nothing about a dependency bump needs a hosted preview: CI already runs unit, lint, knip, build and
+    // three e2e shards on the branch. The preview added an email and no signal. `ignoreCommand` exits 0
+    // to SKIP a build, so matching dependabot/* and exiting 0 is the whole fix.
+    const cfg = JSON.parse(readFileSync(resolve(APP, 'vercel.json'), 'utf8'));
+    expect(cfg.ignoreCommand, 'vercel.json has no ignoreCommand — dependabot branches will deploy again').toBeTruthy();
+    expect(cfg.ignoreCommand, 'the ignoreCommand does not match dependabot branches').toContain('dependabot/');
+    expect(cfg.ignoreCommand, 'the ignoreCommand never exits 0, so it can never skip a build').toContain('exit 0');
+    // And production must still deploy — an ignoreCommand that skips everything is a silent outage.
+    expect(cfg.outputDirectory, 'the build output directory went missing alongside the ignore rule').toBe('build');
+  });
+
   it('the workflow actions are covered too', () => {
     // A stale pinned action runs arbitrary code on a runner holding the GITHUB_TOKEN. Same supply chain,
     // different ecosystem, and easy to leave out.
