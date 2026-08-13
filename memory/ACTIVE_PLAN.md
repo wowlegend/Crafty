@@ -256,6 +256,38 @@ went on asserting otherwise. Pin held at what the wrapper demands; Dependabot no
 at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
 `supply-chain.test.js`, mutation-proven both ways.
 
+BLOCKED — **postprocessing is PINNED at 6.39.1 and cannot move. Upstream regression, fully isolated
+2026-08-13.** 6.39.4 is the current `latest`, so there is no newer release to take.
+
+**What breaks:** under 6.39.4, `GodRaysEffect` stops compositing the sun entirely. Isolated by ablation
+(godRays disabled at every tier, sun material untouched, ONE variable moved). Blue channel sampled at
+y=4 across x=95..165, identical in both spell-lightning and spell-arcane:
+
+```
+6.39.1, GodRays ON   213,214,215,195,196,197,198,198,199,200,200,201,223,224,224   deep dip = bright disc
+6.39.4, GodRays ON   214,215,215,216,217,217,218,219,220,220,221,222,223,224,225   NO dip  = sun absent
+6.39.4, GodRays OFF  214,215,215,213,212,212,213,213,214,216,217,219,223,224,225   shallow dip = mesh only
+```
+
+The sun returns the moment the EFFECT is removed, so the mesh renders fine — it is the effect's
+compositing that fails.
+
+**What it is NOT** (each cost a 33-minute capture, so do not retry them): the sun material. Setting
+`depthTest`/`depthWrite` false, and separately `transparent`+`depthWrite` false (the vendor's documented
+contract), produced BYTE-IDENTICAL output — the same 15 sample values in both frames. Two different
+material configs, indistinguishable pixels: the material is not the lever. And `GodRaysEffect`'s render
+path is byte-identical between 6.39.1 and 6.39.4 — only the composer's depth plumbing changed (one shared
+depth attachment -> separate InputDepth/OutputDepth/stable textures, which is a correct fix for the
+glBlitFramebuffer error).
+
+**Still worth doing regardless:** our light source violates the documented contract ("must not write depth
+and has to be flagged as transparent"). It is not the cause, but it is wrong, and fixing it is free.
+
+**Cost of the pin:** the glBlitFramebuffer warning class stays. Invisible to players; a missing sun is not.
+
+**Not yet done — NEEDS KEVIN:** filing this upstream at github.com/pmndrs/postprocessing. The reproduction
+is complete (versions, ablation, pixel measurements) but filing is public posting and wants his say-so.
+
 NEXT SESSION — **ROADMAP Phase 26: physically-based sky.** Kevin's call 2026-08-13, deferred until the
 current postprocessing work closes. Atmospheric scattering (highest value), volumetric clouds (most
 transformative, needs a perf budget agreed BEFORE building — the cost lands on the constrained low/med
