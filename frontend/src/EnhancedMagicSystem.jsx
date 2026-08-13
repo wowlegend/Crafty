@@ -21,7 +21,9 @@ import * as THREE from 'three';
 import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc } from './render/spellVfx';
 import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
-export { MagicWand } from './render/spellVfx';
+// (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
+// imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
+// re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
 
 // Per-frame scratch for the boss proximity test below. See its call site: it held three numbers for
 // one comparison and was allocated once per projectile per frame.

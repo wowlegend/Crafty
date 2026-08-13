@@ -256,4 +256,6 @@ export const VictoryOverlay = ({ onDismiss }) => {
     );
 };
 
-export { solveMeleeDamage, solveSpellDamage, mitigateDamage } from './utils/combat';
+// (A dead re-export of solveMeleeDamage / solveSpellDamage / mitigateDamage from utils/combat lived
+// here. Components.jsx and EnhancedMagicSystem.jsx both import them from utils/combat directly, so
+// this barrel offered a second path to the same three functions that nothing used.)

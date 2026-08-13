@@ -92,6 +92,38 @@ describe('the supply chain is scanned at all', () => {
     }
   });
 
+  it('the 0.x ENGINE STACK also blocks MINOR, where its breaking changes actually live', () => {
+    // The majors rule was not enough. It let through a grouped PR carrying `three 0.172.0 -> 0.185.1`
+    // — thirteen releases of the renderer — plus @react-three/fiber, drei and lucide-react 0.439 ->
+    // 0.577, and that PR passed EVERY CI check. It passed because CI structurally cannot see rendering:
+    // the visual gate runs in neither the pre-push hook nor the workflow. Under semver a 0.x MINOR is
+    // the breaking position, so `version-update:semver-major` matches none of these bumps.
+    //
+    // Listed explicitly rather than by wildcard, because blocking minors everywhere would also block
+    // ordinary safe minors on stable 1.x+ packages, which is the churn Dependabot is FOR.
+    const yml = readFileSync(dependabot, 'utf8')
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const npmBlock = yml.slice(yml.indexOf('package-ecosystem: npm'), yml.indexOf('package-ecosystem: github-actions'));
+    const ZERO_X = ['three', '@react-three/*', '@dimforge/rapier3d-compat', 'postprocessing', 'lucide-react'];
+    for (const dep of ZERO_X) {
+      const esc = dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      expect(npmBlock, `${dep} can still take a MINOR bump — for a 0.x package that is a breaking change, and no gate in CI can see a render regression`)
+        .toMatch(new RegExp(`dependency-name:\\s*'?${esc}'?[\\s\\S]{0,80}version-update:semver-minor`));
+    }
+  });
+
+  it('but ordinary packages can still take minors — otherwise Dependabot does nothing useful', () => {
+    // The counterweight. If minor were blocked wholesale, the config would be a very elaborate way of
+    // turning the bot off, and the routine patch churn it exists to deliver would stop arriving.
+    const yml = readFileSync(dependabot, 'utf8')
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const npmBlock = yml.slice(yml.indexOf('package-ecosystem: npm'), yml.indexOf('package-ecosystem: github-actions'));
+    expect(npmBlock, 'minors are blocked for EVERY package — the bot now delivers nothing')
+      .not.toMatch(/dependency-name:\s*'\*'[\s\S]{0,80}version-update:semver-minor/);
+    expect(npmBlock, 'the minor/patch groups are gone, so routine churn arrives one PR per package')
+      .toMatch(/update-types:\s*\[minor, patch\]/);
+  });
+
   it('and SECURITY updates are not blocked by that — they bypass `ignore` by design', () => {
     // The thing that would make the block above a mistake: if it also silenced advisories, the audit gate
     // in ci.yml would have nothing to open a fix with. Dependabot's security updates ignore `ignore`,

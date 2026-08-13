@@ -51,6 +51,32 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: [version-update:semver-major]
+      # AND MINOR, FOR THE 0.x ENGINE STACK. Corrected again 2026-08-12, after the majors-ignore rule
+      # produced a grouped PR containing `three 0.172.0 -> 0.185.1` — THIRTEEN releases of the renderer —
+      # alongside @react-three/fiber and drei, and it passed every CI check.
+      #
+      # It passed because CI structurally cannot see rendering: the visual gate is in neither the pre-push
+      # hook nor the workflow (733-925s per run, and every baseline is macOS/arm64 against Ubuntu runners).
+      # A green tick on a renderer bump is a statement about unit tests and bundle size, not about pixels.
+      #
+      # Under semver, 0.x MINOR is the breaking position — 0.172 -> 0.185 is thirteen breaking releases
+      # wearing a "minor" label, and `version-update:semver-major` matches none of them. The original
+      # config's own comment already said these libraries move together and a mismatched trio breaks
+      # rendering in ways the unit suite cannot see; the RULE just never expressed it. Physics (rapier)
+      # and the icon set (lucide-react, 0.439 -> 0.577) are the same shape.
+      #
+      # These are deliberate work: bump, run `npm run test:visual`, LOOK at the frames, and re-baseline
+      # with a Baseline-Review trailer if the render legitimately moved.
+      - dependency-name: three
+        update-types: [version-update:semver-minor]
+      - dependency-name: '@react-three/*'
+        update-types: [version-update:semver-minor]
+      - dependency-name: '@dimforge/rapier3d-compat'
+        update-types: [version-update:semver-minor]
+      - dependency-name: postprocessing
+        update-types: [version-update:semver-minor]
+      - dependency-name: lucide-react
+        update-types: [version-update:semver-minor]
 
   # The workflow files themselves pin action versions, and a stale pinned action is its own supply-chain
   # exposure — actions/checkout@v4 running arbitrary code on a runner that has the GITHUB_TOKEN.
