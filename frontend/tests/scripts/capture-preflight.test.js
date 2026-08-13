@@ -216,3 +216,41 @@ describe('capture: a gated frame it fails to take is RECORDED, not just logged',
     }
   });
 });
+
+// AND THE PRODUCER, per the lesson two describes above: machineHeadroom.test.js is HANDED readings, so
+// it says nothing about whether capture.mjs ever takes any. That is the exact split that let a deleted
+// `skippedGated.push` sail through a green suite earlier today.
+describe('capture: the machine it ran on is RECORDED, on every exit path', () => {
+  const cap = readFileSync(resolve(HERE, '../../scripts/visual/capture.mjs'), 'utf8');
+
+  it('actually reads the machine, rather than importing the evaluator and not calling it', () => {
+    expect(cap, 'the headroom evaluator is not imported').toMatch(/evaluateMachineHeadroom/);
+    expect(cap, 'imported and never called — the sentinel would carry no machine state')
+      .toMatch(/evaluateMachineHeadroom\(\{/);
+    // The readings must come from the OS, not from a literal: a hardcoded 20000MB would satisfy every
+    // other assertion here and record a machine nobody ran on.
+    const at = cap.indexOf('evaluateMachineHeadroom({');
+    const call = cap.slice(at, at + 260);
+    expect(call, 'free memory is not read from the OS').toMatch(/freemem\(\)/);
+    expect(call, 'total memory is not read from the OS').toMatch(/totalmem\(\)/);
+    expect(call, 'load is not read from the OS').toMatch(/loadavg\(\)/);
+    expect(call, 'core count is not read from the OS').toMatch(/cpus\(\)/);
+  });
+
+  it('records it on every sentinel write, start and end alike', () => {
+    // A run that dies mid-way is precisely the one whose machine state matters, so the START write has
+    // to carry it too — recording only at a clean end would omit every crash.
+    const writes = cap.split('\n').filter((l) => l.includes('writeFileSync(META'));
+    expect(writes.length, 'the sentinel writes have moved — recount before trusting this').toBe(4);
+    for (const w of writes) {
+      expect(w, `a sentinel write omits the machine state: ${w.trim().slice(0, 80)}…`).toMatch(/machine/);
+    }
+  });
+
+  it('WARNS without aborting — the threshold is a guess and a refused run is a datapoint not collected', () => {
+    const at = cap.indexOf('for (const w of machine.warnings)');
+    expect(at, 'the warnings are computed and never surfaced').toBeGreaterThan(-1);
+    expect(cap.slice(at, at + 200), 'a headroom warning kills the run — it must not, see machineHeadroom.js')
+      .not.toMatch(/process\.exit|throw /);
+  });
+});

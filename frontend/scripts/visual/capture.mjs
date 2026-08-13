@@ -11,6 +11,7 @@
 // Capture mode also suppresses the auto-pointer-lock, keeping the menu overlay visible
 // until we explicitly `start`, so the `menu` frame is the real title screen.
 import { spawn } from 'node:child_process';
+import { freemem, totalmem, loadavg, cpus } from 'node:os';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -18,6 +19,7 @@ import puppeteer from 'puppeteer';
 import { assertSubjectOnScreen, waitForStableFrame, assertIntraPageDeterminism } from './_probe.mjs';
 import { ELEMENT_COLOR } from '../../src/render/beastAvatarParts.js';
 import { probePort } from './_serve.mjs';
+import { evaluateMachineHeadroom } from '../../src/devtest/machineHeadroom.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..'); // frontend/
@@ -222,7 +224,23 @@ async function main() {
   // sentinel stays complete:false so an isolated `diff.test.js` run FAILS LOUD on the stale frames
   // (the iter-105 hole). Re-written complete:true at the clean end below.
   const runStartedAt = Date.now();
-  writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, complete: false }));
+  // WHAT THE MACHINE HAD, RECORDED ON EVERY RUN. Captures have died with TargetCloseError -- a renderer
+  // KILLED mid-run -- and the only thing ever written down about it was a load average, which conflates
+  // CPU contention with I/O and blocked processes. Measured here at load 21.25 with 39% of the CPU idle.
+  // So this records rather than refuses: the next crash arrives with the machine state beside it, and
+  // after a few the threshold stops being folklore. Enforcing a guessed one would foreclose that.
+  const machine = evaluateMachineHeadroom({
+    freeMemMB: freemem() / 1048576,
+    totalMemMB: totalmem() / 1048576,
+    loadAvg1: loadavg()[0],
+    cores: cpus().length,
+  });
+  console.log(
+    `  machine: ${Math.round(machine.freeMemMB)}MB free (${(machine.freeMemPct * 100).toFixed(1)}%), ` +
+    `load ${machine.loadPerCore.toFixed(2)}/core`,
+  );
+  for (const w of machine.warnings) console.warn(`WARN: ${w}`);
+  writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, complete: false, machine }));
   // Page-error observability (the silent-crash hole): an uncaught render-loop throw used to
   // freeze the R3F canvas so every later 3D fixture screenshotted the SAME frozen frame — the
   // diff gate then passed on STALE/wrong frames (it hid 3 crashes for 6 iters: iter 159/160
@@ -792,7 +810,7 @@ async function main() {
     console.error('  green gate over frames that do not depict the scene.');
     for (const e of realFatalGl) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, skipped: skippedGated, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, fatalGl: realFatalGl.length, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
     return;
   }
   if (realCrashes.length) {
@@ -800,7 +818,7 @@ async function main() {
     for (const e of realCrashes) console.error(`  [@${e.stage}] ${e.msg}`);
     process.exitCode = 1;
     // leave the sentinel INVALID (complete:false) so even an isolated diff run fails loud.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, skipped: skippedGated, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: false, crashes: realCrashes.length, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
   } else {
     console.log('\nNo render crashes during capture.');
     // THE PHASE DENOMINATOR. "Every frame was posed at t=1.5s" is a claim, and a claim nothing counts is
@@ -822,7 +840,7 @@ async function main() {
       process.exitCode = 1;
     }
     // validate the sentinel: this run produced a complete, crash-free set of fresh current/ frames.
-    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, skipped: skippedGated, provenance, phase: phaseRecord }));
+    writeFileSync(META, JSON.stringify({ startedAt: runStartedAt, finishedAt: Date.now(), complete: true, crashes: 0, skipped: skippedGated, machine, provenance, phase: phaseRecord }));
   }
 }
 // RUN ONLY AS A CLI. Without this guard, `import`ing anything from this file launches a browser and spawns
