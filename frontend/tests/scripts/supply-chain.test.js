@@ -156,3 +156,75 @@ describe('the supply chain is scanned at all', () => {
     expect(readFileSync(dependabot, 'utf8')).toMatch(/package-ecosystem:\s*github-actions/);
   });
 });
+
+// A BUMP THAT BROKE A DEDUP AND MADE AN INTEGRATION TEST TEST THE WRONG ENGINE.
+//
+// `@dimforge/rapier3d-compat` is a DIRECT dependency here for one reason: it was a phantom import
+// (32625c0 — "declare the phantom rapier dep, drop the knip ignore hiding it"), used by
+// tests/integration/beast-collider-rapier.test.js and scripts/bench/bull-physics-bench.mjs. The app
+// itself reaches physics only through `@react-three/rapier`, which pins rapier3d-compat EXACTLY —
+// no range. So the two agree, dedupe to ONE copy, and the integration test's central claim holds:
+// it drives "the same build the app ships".
+//
+// Dependabot bumped the direct pin 0.19.2 -> 0.19.3 on 2026-08-13 inside a group labelled
+// "dev-dependencies", which is how it read as harmless. It split them: root 0.19.3, and a NESTED
+// 0.19.2 under @react-three/rapier for the app. Nothing failed. The bundle did not move (+0.0KB —
+// only the test and the bench import the root copy, and neither is bundled), the unit suite stayed
+// green, and e2e was unaffected because the APP still got 0.19.2. The only casualty was the reason
+// the integration test exists, and its comment went on asserting otherwise.
+//
+// That is this repo's signature defect arriving through the dependency graph: an instrument reporting
+// over input it never examined — here, over a different physics engine than the one it names.
+//
+// Read from the LOCKFILE, which is committed, rather than from node_modules, which is a property of
+// whoever ran install last.
+describe('the physics engine under test is the one the app ships', () => {
+  const lock = JSON.parse(readFileSync(resolve(APP, 'package-lock.json'), 'utf8'));
+  const pkg = JSON.parse(readFileSync(resolve(APP, 'package.json'), 'utf8'));
+  const RAPIER = '@dimforge/rapier3d-compat';
+
+  it('the direct pin matches what @react-three/rapier demands', () => {
+    const wrapper = lock.packages['node_modules/@react-three/rapier'];
+    expect(wrapper, '@react-three/rapier is not in the lockfile — has the physics stack changed?').toBeTruthy();
+    const wants = wrapper.dependencies?.[RAPIER];
+    expect(wants, '@react-three/rapier no longer depends on rapier3d-compat directly').toBeTruthy();
+
+    const declared = pkg.devDependencies?.[RAPIER] ?? pkg.dependencies?.[RAPIER];
+    expect(declared, `${RAPIER} is not declared — it was a phantom dep once already (32625c0)`).toBeTruthy();
+    expect(
+      declared,
+      `the direct pin is ${declared} but @react-three/rapier demands ${wants}. They will NOT dedupe, so ` +
+      `tests/integration/beast-collider-rapier.test.js drives a DIFFERENT physics build from the one the ` +
+      `app ships while claiming it is "the same build". Move BOTH together (an npm "overrides" entry) and ` +
+      `re-validate the game, or hold the direct pin at what the wrapper demands.`,
+    ).toBe(wants);
+  });
+
+  it('no NESTED copy under @react-three/rapier — the observable of the split', () => {
+    // The assertion above compares declarations; this checks the RESULT, because npm could dedupe or not
+    // for reasons neither version string shows.
+    //
+    // Measured across the bump rather than assumed. Before: TWO entries — the root one, and a 0.12.0
+    // under `@types/three`. After: THREE, the new one nested under @react-three/rapier. So "exactly one
+    // copy" would have been red before the defect existed, and is the wrong assertion. The @types/three
+    // copy is a transitive of a TYPES package — never loaded, never bundled, and older than this gate —
+    // so it is named here rather than filtered by a pattern that would also hide a real second copy.
+    const copies = Object.keys(lock.packages).filter((p) => p.endsWith(`node_modules/${RAPIER}`));
+    const nested = copies.filter((p) => p !== `node_modules/${RAPIER}` && !p.startsWith('node_modules/@types/'));
+    expect(
+      nested,
+      `${RAPIER} is duplicated at ${nested.join(', ')}. A nested copy means the app and the integration ` +
+      `test run different physics builds while the test claims otherwise.`,
+    ).toEqual([]);
+    expect(copies, 'the root copy vanished — rapier is a phantom dep again (see 32625c0)')
+      .toContain(`node_modules/${RAPIER}`);
+  });
+
+  it('the integration test still makes the claim this gate protects', () => {
+    // If someone deletes the "same build the app ships" claim, this gate is guarding nothing and should
+    // be reconsidered rather than left as decoration.
+    const t = readFileSync(resolve(APP, 'tests/integration/beast-collider-rapier.test.js'), 'utf8');
+    expect(t, 'the integration test no longer claims to drive the shipped build — re-examine this gate')
+      .toMatch(/the same build the app ships/);
+  });
+});

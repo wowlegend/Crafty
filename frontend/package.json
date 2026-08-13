@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@babel/parser": "^7.29.8",
-    "@dimforge/rapier3d-compat": "0.19.3",
+    "@dimforge/rapier3d-compat": "0.19.2",
     "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

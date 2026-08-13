@@ -71,8 +71,19 @@ updates:
         update-types: [version-update:semver-minor]
       - dependency-name: '@react-three/*'
         update-types: [version-update:semver-minor]
+      # rapier3d-compat is held at PATCH as well, and for a DIFFERENT reason from the render trio above.
+      # @react-three/rapier pins it EXACTLY (2.2.0 -> "0.19.2", no range), and our direct entry exists
+      # only because it was a phantom dep (32625c0: imported by an integration test and a bench, declared
+      # nowhere). While the two agree they dedupe to one copy and the integration test genuinely drives
+      # "the same build the app ships", which is its whole reason for existing.
+      #
+      # The 0.19.2 -> 0.19.3 patch bump of 2026-08-13 broke that. It arrived in a group labelled
+      # "dev-dependencies", nothing failed, the bundle did not move, and the app kept running 0.19.2 from
+      # a NEWLY NESTED copy — the only casualty was the test quietly starting to exercise a different
+      # engine than the one it names. So this package cannot move on its own at ANY level: it moves when
+      # @react-three/rapier moves, together, or not at all. `supply-chain.test.js` fails if they diverge.
       - dependency-name: '@dimforge/rapier3d-compat'
-        update-types: [version-update:semver-minor]
+        update-types: [version-update:semver-minor, version-update:semver-patch]
       - dependency-name: postprocessing
         update-types: [version-update:semver-minor]
       # @react-three/postprocessing is held at PATCH too, which the minor rule alone did not cover.
