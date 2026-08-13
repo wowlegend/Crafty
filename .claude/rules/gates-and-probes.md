@@ -160,6 +160,46 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   never "close the tab" (an unverified instruction) and never "all clean" (an unverified all-clear).
   Prefer running these in CI, where there is no cmux and no browser at all.
 
+## The bundle NOTHING here loads
+
+Every harness in this repo drives the **DEV server**. `capture.mjs`, all 25 probes, the e2e suite — all
+of them. The build Vercel serves on every push is loaded by nothing, which `.agent/AGENTS.md` already
+notes in passing. On 2026-08-13 something finally looked, and both numbers were news:
+
+| | LCP | render delay |
+|---|---:|---:|
+| dev (`vite`) | 1,559 ms | 1,556 ms |
+| **production (`vite preview`)** | **237 ms** | 233 ms |
+
+So any performance claim measured against the dev server is ~6.6x wrong, in the flattering direction for
+a fix and the alarming one for a baseline.
+
+**And the production console carries 256 WebGL errors per load** — `GL_INVALID_OPERATION:
+glBlitFramebuffer` in two alternating forms, per frame, until Chrome emits *"too many errors, no more
+errors will be reported to the console for this context"* and stops. Two consequences: 256 is a FLOOR
+rather than a count, and **once muted, a genuine GL error later in that context is silenced too** — the
+noise disables the very channel `capture.mjs`'s `fatalGl` bucket watches. `FATAL_GL_RE` does not match
+it (verified by running the regex against the message, not by reading it).
+
+**Do NOT "fix" this by widening `FATAL_GL_RE`.** The capture runs the dev server, so it would still
+never load the frame where this happens. What is missing is a probe that loads the PRODUCTION build.
+
+To look, no new dependency required — `chrome-devtools` is installed globally (see
+`~/.claude/projects/-Users-kz-Code/memory/reference_chrome_devtools_cli.md` for flags and the privacy
+defaults, which are ON by default and want turning off):
+
+```
+npm run build && npx vite preview --port <free> --strictPort --outDir build   # kill it afterwards
+chrome-devtools start --isolated=true --headless=true --no-usage-statistics --no-performance-crux
+chrome-devtools new_page http://localhost:<free>
+chrome-devtools performance_start_trace --reload=true --autoStop=true
+chrome-devtools list_console_messages
+chrome-devtools stop
+```
+
+`puppeteer` is already a devDependency and speaks the same CDP, so a committed probe should use that
+rather than adding a tool to the gate path. Required CLI params are POSITIONAL, not flags.
+
 ## The meta-rule
 
 When an error class recurs *despite being documented*, the next fix does not belong in a document. Put it in
