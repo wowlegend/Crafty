@@ -72,6 +72,35 @@ describe('the supply chain is scanned at all', () => {
       `dependabot points npm at "${npmDir}", which has no package.json`).toBe(true);
   });
 
+  it('NO ecosystem proposes majors — the fan-out that emailed the owner at 00:21', () => {
+    // MEASURED 2026-08-12: the first version of this config grouped only [minor, patch], so every major
+    // escaped grouping and got its own PR. Dependabot's first scan runs when the config LANDS, not on the
+    // monthly schedule, so eight PRs opened in four minutes and Vercel built a preview for each. One
+    // failed and emailed the owner. The header claimed to be avoiding exactly that.
+    //
+    // Every `updates:` entry must therefore carry a wildcard major-ignore. Checked per entry rather than
+    // once for the file, because the github-actions block was added without one — a second ecosystem is
+    // precisely where a rule stated once gets forgotten.
+    const yml = readFileSync(dependabot, 'utf8')
+      .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+    const blocks = yml.split(/(?=\s*- package-ecosystem:)/).filter((b) => b.includes('package-ecosystem:'));
+    expect(blocks.length, 'no ecosystem blocks parsed — this assertion is vacuous').toBeGreaterThan(1);
+    for (const b of blocks) {
+      const eco = (b.match(/package-ecosystem:\s*(\S+)/) || [])[1];
+      expect(b, `the "${eco}" ecosystem can still propose majors — unrequested major PRs cost review attention nobody chose`)
+        .toMatch(/dependency-name:\s*'\*'[\s\S]{0,80}version-update:semver-major/);
+    }
+  });
+
+  it('and SECURITY updates are not blocked by that — they bypass `ignore` by design', () => {
+    // The thing that would make the block above a mistake: if it also silenced advisories, the audit gate
+    // in ci.yml would have nothing to open a fix with. Dependabot's security updates ignore `ignore`,
+    // so what is asserted here is that nothing has ALSO disabled them.
+    const yml = readFileSync(dependabot, 'utf8');
+    expect(yml, 'security updates have been switched off, leaving the audit gate with no remediation path')
+      .not.toMatch(/open-pull-requests-limit:\s*0/);
+  });
+
   it('the workflow actions are covered too', () => {
     // A stale pinned action runs arbitrary code on a runner holding the GITHUB_TOKEN. Same supply chain,
     // different ecosystem, and easy to leave out.

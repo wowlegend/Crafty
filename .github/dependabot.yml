@@ -27,15 +27,29 @@ updates:
       production-minor-patch:
         dependency-type: production
         update-types: [minor, patch]
-    # Majors of the engine stack are never a drive-by merge: three 0.x libraries move together
-    # (three / @react-three/fiber / @react-three/drei) and a mismatched trio breaks rendering in ways
-    # the unit suite cannot see. Those upgrades are deliberate work, not a bot's.
+    # NO MAJORS, FROM ANY PACKAGE. Corrected 2026-08-12, an hour after the first version of this file
+    # landed, because that version was wrong in a way its own comment claimed to be guarding against.
+    #
+    # WHAT HAPPENED. The groups above only cover [minor, patch], so every MAJOR escaped grouping and got
+    # its own PR. Dependabot's first scan runs the moment the config lands, not on the monthly schedule,
+    # so eight PRs opened within four minutes — the exact firehose the header says it is avoiding — and
+    # Vercel built a preview for each. One failed and emailed the owner at 00:21 his time.
+    #
+    # The blocked one is instructive rather than embarrassing: eslint 9 -> 10 cannot resolve at all,
+    # because eslint-plugin-react's LATEST release (7.37.5, the version already pinned here) still peers
+    # on `eslint@^3 || ... || ^9.7`. There is no plugin release that supports eslint 10 yet. Verified
+    # against the registry, not assumed. So it was never mergeable, and a bot could not have known that
+    # before opening it — which is the general case, not a special one.
+    #
+    # THE PRINCIPLE THE OLD LIST HAD RIGHT BUT SCOPED TOO NARROWLY: a major is deliberate work. It is a
+    # changelog to read and a peer graph to check, and this repo's owner reviews asynchronously — so an
+    # unrequested major PR costs attention at a moment nobody chose. The old list named three packages;
+    # the reasoning applied to all of them. Majors stay discoverable via `npm outdated`, and SECURITY
+    # updates bypass this block entirely, which is the whole point of the audit gate in ci.yml.
+    #
+    # To re-enable majors for a package, delete its wildcard from this list. It is one line, on purpose.
     ignore:
-      - dependency-name: three
-        update-types: [version-update:semver-major]
-      - dependency-name: '@react-three/*'
-        update-types: [version-update:semver-major]
-      - dependency-name: '@dimforge/rapier3d-compat'
+      - dependency-name: '*'
         update-types: [version-update:semver-major]
 
   # The workflow files themselves pin action versions, and a stale pinned action is its own supply-chain
@@ -45,3 +59,9 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
+    # Same rule, same reason. actions/checkout v4 -> v7 is three majors of behaviour change to read; it
+    # arrived as its own PR on the first scan alongside two siblings. Security advisories still come
+    # through, which is what actually matters for an action running on a token-bearing runner.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
