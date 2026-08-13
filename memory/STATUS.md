@@ -25,7 +25,7 @@
 
 ## 1. Where Crafty actually is (re-measured 2026-07-27)
 
-Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**264 source files / 29.5K LOC**
+Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**306 source files / 34,447 LOC** (re-measured 2026-08-13; `node frontend/scripts/ci/measure.mjs` is the single authority — do not hand-type this)
 excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
 
 **DONE (verified against code, not docs):**
@@ -40,7 +40,7 @@ excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's s
   chain + log) → polish (movement feel, weather, affix model, boot chrome).
 - **Ember Frontier + Blight-Heart climax** — a real win-state (the answer to "what is the point").
 - **v6** (tech-debt + de-monolith) · **v7** (weather bugs + all-4-spell SOTA VFX redesign).
-- Gates today (measured 2026-07-27): **2114 unit across 329 files · 24-state visual · 15 e2e specs ·
+- Gates today (measured 2026-07-27): **3189 unit across 425 files · 31-state visual · 20 e2e specs ·
   build / knip / doc-currency clean · eslint clean and now BLOCKING on dead code** (`no-unused-vars` was
   promoted OFF → `warn` → `error` during the holistic-review campaign, `9387c7d`).
 
@@ -52,12 +52,12 @@ registry below plus Kevin's decisions.
 **⚠️ The finding that reframes everything — and be precise about which parts are MEASURED vs INHERITED:**
 
 **MEASURED (re-run 2026-07-27; first measured 2026-07-13. Reproduce with the commands below):**
-- **136 gate files in `tests/gates/`; 116 of them `readFileSync` + regex the SOURCE.** That is **85% of the
+- **181 gate files in `tests/gates/`; 106 of them `readFileSync` + regex the SOURCE.** That is **59% of the gate corpus asserting TEXT, not behaviour** — so ~75 are behavioural. (Re-measured 2026-08-13: `ls frontend/tests/gates/*.test.js*|wc -l`=181, `.source-grep-ledger.json _count`=106. This read "136 / 116 / 85% / only 20 behavioural". The headline risk is REAL but was overstated by 26 points, and the corpus has moved the OPPOSITE way from what the stale number implied.)
   entire gate corpus asserting TEXT, not behaviour.** Only **20** are behavioural.
   `ls tests/gates/*.test.js* | wc -l` · `grep -rl readFileSync tests/gates/ | wc -l`
-  *(Moved the right way since 07-13: 124→136 gates, behavioural 10→20, so the text-assert share fell 92%→85%.
+  *(Moved the right way since 07-13: 124→181 gates, behavioural 10→~75, so the text-assert share fell 92%→59%.
   The seam-extraction work in the holistic campaign is what bought that — but 85% is still the headline risk.)*
-- **15 e2e specs; exactly ZERO fire a real key or click.** They drive `__craftyTest` / `getState()` — the
+- **20 e2e specs; exactly ZERO fire a real key or click.** (Denominator re-measured 2026-08-13; the ZERO half re-verified and still exact — the only grep hit is a COMMENT at panel-overflow.spec.js:8.) They drive `__craftyTest` / `getState()` — the
   store, not the game. `grep -rlE "keyboard\.|mouse\.|\.click\(|\.press\(" tests/e2e/` → 1 hit, and it is a
   COMMENT in `panel-overflow.spec.js` ("close it without a keyboard"), not a real input call. Still zero.
 
@@ -327,7 +327,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   assertion couldn't be made to fail → decoration). **B5 is DONE** (dial + layout + progression fixed; this
   verified stale). **+ VISUAL
   RE-BASELINE OWED** — the gameplay HUD baselines still show the OLD buried position; a re-capture is owed
-  once machine load < ~10 (was ~24; the capture harness times out above that). Intended change → KEVIN-REVIEW.
+  once machine load < ~10 — **DISCHARGED 2026-08-13**: three captures ran to completion, and the "harness times out above that" mechanism is superseded (`cd75951` makes a wedged compositor ABORT by name instead of hanging). This sat as a transient-state blocker with no expiry and no owner for a month. Intended change → KEVIN-REVIEW.
 - ▣✓ **B6 — ALL THREE FIXED.** (B6a+B6b `df90131` 2026-07-14; B6c 2026-08-05.)
   - **B6c ✓ 2 of the 12 achievements were DEAD ON ARRIVAL.** 'Rising Star' (level 5) and 'Shining Star'
     (level 10) key off `stats.level`, which is written by exactly one function — `updateLevel` in
@@ -444,8 +444,8 @@ chunk offset), then S7-S15.
 > swap-in it admitted the count could not see. A sleep encodes an assumption about frame cost that any
 > commit can invalidate. It is now a CONDITION — `waitForStableFrame` in `scripts/visual/_probe.mjs`
 > polls until the frame stops changing, refuses a blank frame, and WARNs loudly rather than
-> screenshotting anyway. Current state: worst **0.083%**, 0 of 31 above 1%, **22 of 31 byte-identical**,
-> zero never-stabilized warnings.
+> screenshotting anyway. ~~Current state: worst 0.083%, 0 of 31 above 1%, 22 of 31 byte-identical, zero never-stabilized warnings.~~
+> **FALSIFIED 2026-08-13** by a two-capture pair on Chromium 151: `explore-day` measured **30.35% local / 1.536% global**, `hearth` 1.89%, and the freezer REFUSED to freeze explore-day at all (`.density-ledger.json` `_ungateable`) because 54.7% would guard nothing. THREE frames emit "never stabilized" every run — ocean-coast, landmark, explore-day-med — not zero. A determinism figure is a claim about a RENDERER as much as about the code: re-measure it, never quote it.
 >
 > **The lesson is the one the pass-13 note already carried, one level up.** "Three runs agreed" is not
 > determinism, in the same way one run is not. Determinism is a claim about a code state, so it expires
@@ -455,7 +455,7 @@ chunk offset), then S7-S15.
 
 **THE RE-BASELINE IS DONE.** Three consecutive runs at loads ~5.5 / ~25.9 / ~14.7 all logged
 `player settled at y=52.2 via terrain-formula+hearth (physics + visual)` — same source, same value, three
-different machine loads. Run-to-run diff across all 31 frames: **worst 0.045%** (`hearth`), **0 of 31 above
+different machine loads. ~~Run-to-run diff across all 31 frames: worst 0.045% (`hearth`), 0 of 31 above~~ **SUPERSEDED — see the 2026-08-13 correction above: hearth 1.89%, explore-day 30.35% local.** Historic figure kept for the trend, not as current state. Formerly 0 of 31 above
 1%**, against a 6% gate threshold. The only warning is `title-mascot`, which is UNGATED and non-fatal by
 design — so this is determinism by SUCCESS, not the shared-failure trap of pass 13.
 
@@ -1005,7 +1005,7 @@ you know the floor.** Same shape as asserting an absence without a baseline.
   so a brand-new source-grep gate created at that exact path would have been waved through by the gate
   whose only job is to refuse it. Fixed at the mechanism, not the entry —
   `frontend/scripts/ci/_gate-ratchet.mjs` compares BOTH directions, `gate-shape` now fails on a stale
-  entry with the re-freeze instruction, and the ledger is re-frozen at 115.
+  entry with the re-freeze instruction, and the ledger is re-frozen at 106 (fell 115→106 on 2026-08-13; it may fall and never rise).
 
   **What remains TRUE and is the real finding:** three gates this session were *anti-correlated with
   correctness* — green while the code was broken, RED once it was fixed (`quest-rewards`, `ore-drop`, and the
