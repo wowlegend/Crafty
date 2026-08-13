@@ -2,28 +2,47 @@
 /**
  * FREEZE THE LOCAL-DENSITY RATCHET from a real capture pair.
  *
- * Usage: node scripts/visual/freeze-density.mjs        (writes tests/visual/.density-ledger.json)
- *        node scripts/visual/freeze-density.mjs --dry  (prints the table, writes nothing)
+ * Usage: node scripts/visual/freeze-density.mjs                    (uses tests/visual/current)
+ *        node scripts/visual/freeze-density.mjs <dirA> <dirB> ...  (one directory per capture run)
+ *        node scripts/visual/freeze-density.mjs --dry ...          (prints the table, writes nothing)
+ *        node scripts/visual/freeze-density.mjs --baseline=<dir> --out=<path> ...
  *
- * Reads `tests/visual/baseline` against `tests/visual/current` — so it must run immediately after a
- * capture, on a pair you have already reviewed. Freezing against an unreviewed pair records whatever
- * noise or regression that run happened to contain as permanently allowed, which is the same defect as
- * blessing a baseline nobody opened.
+ * `--baseline` and `--out` exist so this tool can be driven END TO END by a test on synthetic frames.
+ * They were added after a source-grep assertion that claimed to prove "it reads every run directory"
+ * STAYED GREEN under a mutation that made it read only the first — it had anchored to the wrong loop.
+ * With both paths hardcoded the only available check was that grep; with them injectable the real
+ * question ("does a second run's worse frame reach the ledger") is answerable by running the thing.
  *
- * Every frame is frozen at `max(FLOOR, observed * HEADROOM)`; the arithmetic lives in
- * scripts/ci/_density-ratchet.mjs so the gate and the freezer cannot drift apart.
+ * Reads `tests/visual/baseline` against each supplied run directory — so it must run on a pair you have
+ * already reviewed. Freezing against an unreviewed pair records whatever noise or regression that run
+ * happened to contain as permanently allowed, which is the same defect as blessing a baseline nobody
+ * opened.
+ *
+ * Every frame is frozen at `max(FLOOR, worst_observed * HEADROOM)`; the arithmetic — including the merge
+ * across runs — lives in scripts/ci/_density-ratchet.mjs so the gate and the freezer cannot drift apart.
  *
  * ============================================================================================
- * KNOWN LIMITATION, MEASURED 2026-08-12: 29 OF 31 ENTRIES ARE NOT MEASUREMENTS.
+ * IT DEMANDED TWO CAPTURES AND COULD ONLY READ ONE. Fixed 2026-08-13.
  * ============================================================================================
- * `max(FLOOR, ...)` means any frame whose observed density falls below 0.02 is CLAMPED UP to the
- * floor. Ran against the current pair, that is 29 of 31 frames — only `explore-day` (0.093) and
- * `biome-snow` (0.028) carry a real number. For the other 29 the ratchet compares against a constant,
- * so it cannot distinguish "this frame legitimately sits near the floor" from "this frame regressed".
+ * Requirement 2 below has been in this docblock since the file was written, and until now the code
+ * read exactly one hardcoded `tests/visual/current`. So the documented procedure was unexecutable and
+ * every ledger this tool has ever produced was single-sample — the precise thing the requirement
+ * forbids. A requirement a tool cannot satisfy is not a requirement, it is a comment.
  *
- * ocean-coast failed at 0.022 against exactly such an entry and the failure was un-adjudicable.
+ * It also refused a partial capture OUTRIGHT: one frame missing from one run and the whole freeze
+ * exited 1, so the 30 frames that did land stayed unmeasured because the 31st did not. `title-mascot`
+ * fails its canvas wait in most long GL sessions, which made that the common case rather than the edge.
  *
- * THE FIX IS TO RUN THIS SCRIPT ON A PROPER PAIR, WHICH MEANS:
+ * ============================================================================================
+ * AND REGENERATING IT REDDENED THE GATE THAT TELLS YOU TO REGENERATE. Fixed 2026-08-13.
+ * ============================================================================================
+ * `tests/scripts/density-ledger-measured.test.js` asserts the ledger carries `_unmeasured` and an
+ * explanatory `_unmeasured_note`, and its FAILURE MESSAGE points you at this script. This script wrote
+ * neither — those two fields were hand-added to the JSON once and nothing regenerated them. Following
+ * the instruction printed by a red gate therefore produced a differently red gate, with the cause in a
+ * third file. Both are generated now, so the count is measured rather than typed and cannot go stale.
+ *
+ * WHAT A GOOD FREEZE STILL REQUIRES — the tool cannot check any of these for you:
  *   1. A QUIET MACHINE. Capture crashes under load (TargetCloseError, headless Chromium killed at
  *      load 13-37 on 2026-08-12), and worse, a load-skewed capture that SUCCEEDS bakes load artifacts
  *      into the oracle permanently. A corrupted baseline is worse than a stale one.
@@ -31,67 +50,150 @@
  *      than one run's noise. Freezing from a single run records that run's accidents as allowed.
  *   3. Frames REVIEWED by eye before freezing, per the header above.
  *
- * It is also now REQUIRED for a second reason: puppeteer 25.6.0 moved the bundled Chromium 147 -> 151,
- * so the committed baselines were captured on a renderer four majors old and a re-baseline is owed
- * regardless. Do both in one deliberate pass, with a Baseline-Review trailer, unbundled from src edits.
+ * NOT EVERY FRAME MAY BE FROZEN AT ALL. `capture.mjs` emits "frame never stabilized after N polls ->
+ * THIS FRAME IS NOT DETERMINISTIC" for frames that never settle; on 2026-08-13 that was ocean-coast,
+ * landmark and explore-day-med, in BOTH runs independently. Freezing their DENSITY at measured variance
+ * is legitimate and is what makes their failures adjudicable. Re-baselining their PIXELS is not — the
+ * capture says in as many words that doing so freezes noise. Two different acts; do not conflate them
+ * because they follow the same capture.
  *
  * The unmeasured count is ratcheted by tests/scripts/density-ledger-measured.test.js — it may fall and
  * may never rise. Do NOT lower it by raising DENSITY_FLOOR; that is silencing a gate that fired.
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { maxWindowDensity } from '../../src/devtest/diffDensity.js';
-import { frozenFor } from '../ci/_density-ratchet.mjs';
+import { frozenFor, mergeObserved, DENSITY_FLOOR } from '../ci/_density-ratchet.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VIS = resolve(HERE, '../../tests/visual');
 const LEDGER = join(VIS, '.density-ledger.json');
 
+/** The note the ledger carries about its own unmeasured entries. Generated, so it cannot go stale. */
+function unmeasuredNote(unmeasured, total, sources, thin) {
+  return (
+    `${unmeasured} of ${total} entries sit at DENSITY_FLOOR (${DENSITY_FLOOR}) rather than at a measured ` +
+    `value, because frozenFor clamps anything below the floor UP to it. For those frames the ratchet ` +
+    `compares against a constant, so it cannot distinguish "this frame legitimately reproduces almost ` +
+    `exactly" from "this frame regressed by less than the floor" — a frame that is byte-identical today ` +
+    `and gains 1% local noise tomorrow still passes. That is the ratchet's real blind spot and it is not ` +
+    `fixable by measurement alone; a byte-identical frame HAS no variance to measure. Do NOT raise ` +
+    `DENSITY_FLOOR to shrink this number: that widens every floored entry's allowance at once and is ` +
+    `silencing a gate rather than measuring anything. Frozen from ${sources.length} capture run(s): ` +
+    `${sources.join(', ')}. ${thin} entr${thin === 1 ? 'y rests' : 'ies rest'} on a single run and ` +
+    `${thin === 1 ? 'is' : 'are'} therefore weaker evidence than the rest — see _samples.`
+  );
+}
+
 function main() {
-  const dry = process.argv.includes('--dry');
-  const names = readdirSync(join(VIS, 'baseline')).filter((f) => f.endsWith('.png')).sort();
+  const argv = process.argv.slice(2);
+  const dry = argv.includes('--dry');
+  const flag = (name, fallback) => {
+    const hit = argv.find((a) => a.startsWith(`--${name}=`));
+    return hit ? resolve(hit.slice(name.length + 3)) : fallback;
+  };
+  const baselineDir = flag('baseline', join(VIS, 'baseline'));
+  const out = flag('out', LEDGER);
+  const dirArgs = argv.filter((a) => !a.startsWith('--'));
+  const sources = dirArgs.length ? dirArgs.map((d) => resolve(d)) : [join(VIS, 'current')];
+
+  for (const dir of [baselineDir, ...sources]) {
+    if (!existsSync(dir)) {
+      console.error(`freeze-density: directory does not exist: ${dir}`);
+      process.exit(1);
+    }
+  }
+
+  const names = readdirSync(baselineDir).filter((f) => f.endsWith('.png')).sort();
   if (!names.length) {
-    console.error('freeze-density: no baseline PNGs found — nothing to freeze');
+    console.error(`freeze-density: no baseline PNGs in ${baselineDir} — nothing to freeze`);
     process.exit(1);
   }
-  const frames = {};
-  const rows = [];
+
+  // frame -> one observed density per run that captured it.
+  const perFrame = {};
+  const skipped = [];
   for (const f of names) {
-    const a = PNG.sync.read(readFileSync(join(VIS, 'baseline', f)));
-    let b;
-    try {
-      b = PNG.sync.read(readFileSync(join(VIS, 'current', f)));
-    } catch {
-      console.error(`freeze-density: current/${f} is missing — capture before freezing`);
-      process.exit(1);
+    const a = PNG.sync.read(readFileSync(join(baselineDir, f)));
+    perFrame[f] = [];
+    for (const dir of sources) {
+      const p = join(dir, f);
+      if (!existsSync(p)) {
+        skipped.push(`${f} absent from ${dir}`);
+        continue;
+      }
+      const b = PNG.sync.read(readFileSync(p));
+      if (a.width !== b.width || a.height !== b.height) {
+        console.error(`freeze-density: ${f} differs in SIZE between baseline and ${dir}`);
+        process.exit(1);
+      }
+      const mask = new PNG({ width: a.width, height: a.height });
+      pixelmatch(a.data, b.data, mask.data, a.width, a.height, { threshold: 0.1, diffMask: true });
+      perFrame[f].push(maxWindowDensity(mask.data, a.width, a.height, 128, 32).density);
     }
-    if (a.width !== b.width || a.height !== b.height) {
-      console.error(`freeze-density: ${f} differs in SIZE between baseline and current`);
-      process.exit(1);
-    }
-    const mask = new PNG({ width: a.width, height: a.height });
-    pixelmatch(a.data, b.data, mask.data, a.width, a.height, { threshold: 0.1, diffMask: true });
-    const d = maxWindowDensity(mask.data, a.width, a.height, 128, 32);
-    const state = f.replace(/\.png$/, '');
-    frames[state] = frozenFor(d.density);
-    rows.push({ state, observed: d.density, frozen: frames[state] });
   }
+
+  // A frame no run captured cannot be frozen from evidence, and admitting it at the floor would be the
+  // ledger's own defect committed by the tool meant to cure it.
+  const uncovered = names.filter((f) => perFrame[f].length === 0);
+  if (uncovered.length) {
+    console.error(`freeze-density: ${uncovered.length} frame(s) captured by NO run — cannot freeze from nothing:`);
+    for (const f of uncovered) console.error(`  ${f}`);
+    console.error('  Re-capture, or pass a run directory that contains them.');
+    process.exit(1);
+  }
+
+  const merged = mergeObserved(
+    Object.fromEntries(names.map((f) => [f.replace(/\.png$/, ''), perFrame[f]])),
+  );
+
+  const frames = {};
+  const samples = {};
+  const rows = [];
+  for (const [state, { observed, samples: n }] of Object.entries(merged)) {
+    frames[state] = frozenFor(observed);
+    samples[state] = n;
+    rows.push({ state, observed, frozen: frames[state], samples: n });
+  }
+
   rows.sort((x, y) => y.observed - x.observed);
-  console.log(`  ${'state'.padEnd(26)}${'observed'.padStart(10)}${'frozen at'.padStart(12)}`);
+  console.log(`  ${'state'.padEnd(26)}${'worst'.padStart(9)}${'frozen at'.padStart(12)}${'runs'.padStart(6)}`);
   for (const r of rows) {
-    console.log(`  ${r.state.padEnd(26)}${(r.observed * 100).toFixed(2).padStart(9)}%${(r.frozen * 100).toFixed(2).padStart(11)}%`);
+    const thin = r.samples < sources.length ? ' <- single run' : '';
+    console.log(
+      `  ${r.state.padEnd(26)}${(r.observed * 100).toFixed(2).padStart(8)}%` +
+      `${(r.frozen * 100).toFixed(2).padStart(11)}%${String(r.samples).padStart(6)}${thin}`,
+    );
   }
-  const atFloor = rows.filter((r) => r.observed === 0).length;
-  console.log(`  ${rows.length} frames; ${atFloor} byte-identical (frozen at the floor)`);
+  for (const s of skipped) console.log(`  NOTE: ${s}`);
+
+  const unmeasured = rows.filter((r) => r.frozen === DENSITY_FLOOR).length;
+  const thin = rows.filter((r) => r.samples < sources.length).length;
+  console.log(
+    `  ${rows.length} frames from ${sources.length} run(s); ${unmeasured} clamped to the floor; ${thin} single-run`,
+  );
+
   if (dry) return;
   writeFileSync(
-    LEDGER,
-    JSON.stringify({ _count: Object.keys(frames).length, _note: 'regenerate: node scripts/visual/freeze-density.mjs, on a REVIEWED capture pair', frames }, null, 2) + '\n'
+    out,
+    JSON.stringify(
+      {
+        _count: Object.keys(frames).length,
+        _note: 'regenerate: node scripts/visual/freeze-density.mjs <runDirA> <runDirB>, on REVIEWED capture runs',
+        _sources: sources.map((s) => s.replace(resolve(VIS, '../..') + '/', '')),
+        frames,
+        _samples: samples,
+        _unmeasured: unmeasured,
+        _unmeasured_note: unmeasuredNote(unmeasured, rows.length, sources, thin),
+      },
+      null,
+      2,
+    ) + '\n',
   );
-  console.log(`  frozen ${Object.keys(frames).length} frames -> tests/visual/.density-ledger.json`);
+  console.log(`  frozen ${Object.keys(frames).length} frames -> ${out}`);
 }
 
 // CLI only — importing this file must not read the whole corpus as a side effect (cli-guard).

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { densityVerdict, frozenFor, DENSITY_FLOOR } from '../../scripts/ci/_density-ratchet.mjs';
+import { densityVerdict, frozenFor, mergeObserved, DENSITY_FLOOR } from '../../scripts/ci/_density-ratchet.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LEDGER = resolve(HERE, '../visual/.density-ledger.json');
@@ -63,6 +63,60 @@ describe('local-density ratchet — a measurement that reaches a verdict', () =>
   it('gives a noisy frame headroom over what it actually did', () => {
     expect(frozenFor(0.0513)).toBeGreaterThan(0.0513);
     expect(frozenFor(0.0513), 'the headroom is so wide the frame is unguarded').toBeLessThan(0.12);
+  });
+
+  // MERGING RUNS — the arithmetic that made "freeze from TWO captures" executable.
+  //
+  // freeze-density.mjs demanded two captures in its docblock from the day it was written and read
+  // exactly one directory, so every ledger it has produced was single-sample: the requirement was a
+  // comment. These pin the one thing that is easy to get backwards.
+  it('freezes at the WORST run, not the best and not the average', () => {
+    // The gate fires on `observed > frozen`, so the frozen value is a CEILING. Real numbers from the
+    // 2026-08-13 pair: taking the min freezes explore-day at 0.093 and reds any run that behaves like
+    // the other one; taking the mean freezes it at 0.100, which reds it too.
+    const merged = mergeObserved({ 'explore-day': [0.093, 0.107] });
+    expect(merged['explore-day'].observed, 'merged toward the quieter run — the next capture reds').toBe(0.107);
+    expect(merged['explore-day'].observed, 'averaged the runs, which is still below what one run did').not.toBe(0.1);
+  });
+
+  it('reports how many runs each frame rests on, so a thin entry is visible', () => {
+    // title-mascot fails its canvas wait under a long GL session, so it is routinely captured by one run
+    // of a pair. That entry is weaker evidence and the ledger has to be able to say so rather than
+    // presenting it as equally well measured.
+    const merged = mergeObserved({ menu: [0.01, 0.02], 'title-mascot': [0.0] });
+    expect(merged.menu.samples).toBe(2);
+    expect(merged['title-mascot'].samples).toBe(1);
+  });
+
+  it('refuses to invent a value for a frame no run captured', () => {
+    // Admitting it at the floor would be the ledger's own defect, committed by the tool meant to cure it.
+    expect(mergeObserved({ menu: [0.01], ghost: [] })).not.toHaveProperty('ghost');
+  });
+
+  it('the freezer actually CALLS the merge, rather than only importing it', () => {
+    // Same check as the diff.test.js one below, for the same reason: this file's subject is instruments
+    // that were wired up and never invoked. Reading the source is the right tool — executing the freezer
+    // means running pixelmatch over the whole corpus.
+    const freezer = readFileSync(resolve(HERE, '../../scripts/visual/freeze-density.mjs'), 'utf8');
+    expect(freezer, 'freeze-density does not import the merge').toContain('mergeObserved');
+    expect(freezer, 'freeze-density imports the merge and never calls it — it is back to single-run')
+      .toMatch(/mergeObserved\(/);
+    // WHAT IS DELIBERATELY *NOT* ASSERTED HERE: that it reads every run directory. The obvious source
+    // check — that the file contains `for (const dir of sources)` — was written, passed, and then STAYED
+    // GREEN under a mutation making the read loop use `[sources[0]]`, because a second loop over
+    // `sources` (the existence check) satisfied the regex. Tightening the pattern would not have fixed
+    // the category. That claim is now proven by running the tool: tests/scripts/freeze-density.test.js.
+  });
+
+  it('the freezer writes the fields the ledger gate demands', () => {
+    // It did not, and the gate that demanded them named THIS script in its failure message. Following a
+    // red gate's own instruction produced a differently red gate with the cause in a third file. Matched
+    // as object KEYS (`_unmeasured:`), not as bare words, for the reason above.
+    const freezer = readFileSync(resolve(HERE, '../../scripts/visual/freeze-density.mjs'), 'utf8');
+    for (const field of ['_count', '_sources', '_samples', '_unmeasured', '_unmeasured_note']) {
+      expect(freezer, `the freezer never writes ${field}, so regenerating the ledger reds density-ledger-measured`)
+        .toMatch(new RegExp(`${field}:`));
+    }
   });
 
   // AND THE CALLER. Twice today I have shipped a seam nothing called (stepCaptureFrames sat unused by

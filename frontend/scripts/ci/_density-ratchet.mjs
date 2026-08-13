@@ -38,6 +38,39 @@ export function frozenFor(density) {
 }
 
 /**
+ * Collapse per-run observations of the same frame into the one number to freeze at.
+ *
+ * THE DIRECTION IS THE WHOLE POINT AND IT IS EASY TO GET BACKWARDS. `freeze-density.mjs` has demanded
+ * "TWO captures on identical code, so the number frozen reflects real run-to-run variance rather than
+ * one run's noise" since it was written, while READING EXACTLY ONE `current/` directory — the
+ * requirement lived in a docblock the code could not satisfy. This is the arithmetic that lets it.
+ *
+ * The gate fires on `observed > frozen`, so the frozen value is a CEILING and the merge must be MAX.
+ * Taking the min (or a mean) would freeze most frames below what they demonstrably do on a good day,
+ * and every such frame would red on ordinary variance — a gate that cries wolf, which this file's own
+ * header calls a slower way of asserting nothing. Measured on the 2026-08-13 pair: `explore-day`
+ * reproduces at 0.093 against one run and 0.107 against the other; a mean would freeze it at 0.180 and
+ * red the very next capture that behaved like the second run.
+ *
+ * A frame observed by only ONE run is still merged — a partial capture is not a reason to refuse the 30
+ * frames that did land — but the sample count is returned so the caller can record that the entry rests
+ * on one observation. `title-mascot` is that frame today: it fails its canvas wait under a long GL
+ * session, so it is the least-sampled entry in the corpus and the ledger should say so rather than
+ * present it as equally well evidenced.
+ *
+ * @param {Record<string, number[]>} perFrame  frame name -> the densities each run observed for it
+ * @returns {Record<string, {observed: number, samples: number}>}
+ */
+export function mergeObserved(perFrame) {
+  const out = {};
+  for (const [state, densities] of Object.entries(perFrame)) {
+    if (!densities.length) continue;
+    out[state] = { observed: Math.max(...densities), samples: densities.length };
+  }
+  return out;
+}
+
+/**
  * Compare observed local densities against the frozen ledger.
  *
  * @param {Record<string, number>} frozen    ledger: frame name -> allowed local density
