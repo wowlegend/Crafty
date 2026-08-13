@@ -1,5 +1,5 @@
 import { test, expect } from './_fixtures.js';
-import { bootDev, startPlay } from './_boot.js';
+import { bootDev, startPlayActive } from './_boot.js';
 
 // THE IMBUE LATCH CONSUMED THE WRONG CAST, AND ON THE ADVERTISED KEY IT CONSUMED NOTHING AT ALL.
 //
@@ -20,7 +20,9 @@ test.describe('elemancer imbue latch', () => {
 
   test('the cast that pays is the cast that consumes — synchronously, on the F key', async ({ page }) => {
     await bootDev(page);
-    await startPlay(page);
+    // startPlayActive, not startPlay: every assertion below is gated on getInput().active, and a bare
+    // forcePlay can be undone by the world-ready pointer-lock refusal before the first frame reads it.
+    await startPlayActive(page);
     await page.waitForFunction(() => !!window.useGameStore, null, { timeout: 60000 });
 
     // Grant the talent and a full bank, then ARM through the real Z path. Arming is a stance toggle

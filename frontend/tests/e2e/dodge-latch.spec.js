@@ -1,5 +1,5 @@
 import { test, expect } from './_fixtures.js';
-import { bootDev, startPlay } from './_boot.js';
+import { bootDev, startPlayActive } from './_boot.js';
 
 // A SHIFT PRESSED WHILE YOU WERE NOT PLAYING CAME BACK AS A ROLL.
 //
@@ -32,7 +32,7 @@ test.describe('dodge intent latch', () => {
 
     // THE PRESENCE CONTROL. Everything above is an absence assertion, and an absence assertion is worth
     // nothing until the same instrument, in the same run, has shown it can see the positive case.
-    await startPlay(page);
+    await startPlayActive(page);
     await shift(page, 'keydown');
     expect(await dodge(page), 'Shift no longer arms a dodge at all — the instrument is dead, or the verb is').toBe(true);
 
@@ -48,7 +48,7 @@ test.describe('dodge intent latch', () => {
     // arrived while inactive, so the clear has to happen regardless of the active gate that refused the
     // press — otherwise the refusal and the clear disagree and the intent survives.
     await bootDev(page);
-    await startPlay(page);
+    await startPlayActive(page);
 
     await shift(page, 'keydown');
     expect(await dodge(page)).toBe(true);
