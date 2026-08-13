@@ -32,6 +32,25 @@ export const DENSITY_FLOOR = 0.02;
  */
 export const DENSITY_HEADROOM = 1.8;
 
+/**
+ * The allowance above which an entry has stopped being a gate.
+ *
+ * 15% of a 128x128 window is 2,458 pixels, i.e. 0.24% of the frame — still far TIGHTER than the global
+ * 6% gate, so this is not a loose number. It is the line past which "frozen at what the frame actually
+ * does" and "guarding the frame" come apart, and something has to give.
+ *
+ * IT MUST GIVE IN THE DIRECTION OF THE CAPTURE, NOT THE LEDGER. `explore-day` varies 5.13% to 30.35%
+ * local between two runs on identical code and an identical renderer — its distant treeline streams in
+ * late, a residual diagnosed by hand three times (S8 1.646% global, S9 0.201%, and here). Freezing it at
+ * 30.35% x 1.8 = 54.7% would record "over half of any window may change" as expected, which forecloses
+ * every regression that frame could ever report. The instrument would still print a tick.
+ *
+ * So a frame whose measured variance exceeds this does not get a wider allowance; it gets recorded as
+ * beyond what this instrument can express, and the capture gets fixed. That is the difference between a
+ * ratchet and a rubber stamp, and it is the one direction the charter forbids moving in silently.
+ */
+export const DENSITY_UNGATEABLE = 0.15;
+
 /** The value a frame observed at `density` should be frozen at. */
 export function frozenFor(density) {
   return Math.max(DENSITY_FLOOR, Math.ceil(density * DENSITY_HEADROOM * 1000) / 1000);

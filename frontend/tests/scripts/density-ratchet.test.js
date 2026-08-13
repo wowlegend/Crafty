@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { densityVerdict, frozenFor, mergeObserved, DENSITY_FLOOR } from '../../scripts/ci/_density-ratchet.mjs';
+import {
+  densityVerdict, frozenFor, mergeObserved, DENSITY_FLOOR, DENSITY_UNGATEABLE,
+} from '../../scripts/ci/_density-ratchet.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LEDGER = resolve(HERE, '../visual/.density-ledger.json');
@@ -143,8 +145,11 @@ describe('local-density ratchet — a measurement that reaches a verdict', () =>
       // NOT compared against the global 6% — those are different units and confusing them is how a
       // tolerance gets "reasoned about" into meaninglessness. 9% of a 128x128 window is 1,474 pixels,
       // i.e. 0.14% of the frame: far TIGHTER than the global gate, not looser. The real question is
-      // whether a window is so free to change that nothing in it is guarded.
-      expect(allowed, `${state} may change 15% of a window, which guards nothing`).toBeLessThan(0.15);
+      // whether a window is so free to change that nothing in it is guarded. The threshold is the shared
+      // DENSITY_UNGATEABLE rather than a literal, because freeze-density now REFUSES to write a value at
+      // or above it — the two must be the same number or the freezer emits ledgers this gate rejects.
+      expect(allowed, `${state} may change ${DENSITY_UNGATEABLE * 100}% of a window, which guards nothing`)
+        .toBeLessThan(DENSITY_UNGATEABLE);
       expect(allowed, `${state} is frozen below the floor and will red on noise`).toBeGreaterThanOrEqual(DENSITY_FLOOR);
     }
   });

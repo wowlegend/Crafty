@@ -50,6 +50,17 @@
  *      than one run's noise. Freezing from a single run records that run's accidents as allowed.
  *   3. Frames REVIEWED by eye before freezing, per the header above.
  *
+ * ============================================================================================
+ * AND IT REFUSES TO WIDEN A GATE PAST THE POINT OF BEING ONE. Added 2026-08-13.
+ * ============================================================================================
+ * `explore-day` varies 5.13% to 30.35% local across two runs on identical code and an identical
+ * renderer — its distant treeline streams in late. Freezing it at what it "actually does" means
+ * 30.35% x 1.8 = 54.7%, i.e. over half of any window may change, which forecloses every regression
+ * that frame could ever report while still printing a tick. So a frame whose merged variance would
+ * freeze past DENSITY_UNGATEABLE keeps its PREVIOUS allowance and is recorded in `_ungateable`
+ * instead. A frame with no previous value aborts the freeze: a gated state that cannot be gated must
+ * not be admitted at all. Fix the capture, not the ledger.
+ *
  * NOT EVERY FRAME MAY BE FROZEN AT ALL. `capture.mjs` emits "frame never stabilized after N polls ->
  * THIS FRAME IS NOT DETERMINISTIC" for frames that never settle; on 2026-08-13 that was ocean-coast,
  * landmark and explore-day-med, in BOTH runs independently. Freezing their DENSITY at measured variance
@@ -66,7 +77,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 import { maxWindowDensity } from '../../src/devtest/diffDensity.js';
-import { frozenFor, mergeObserved, DENSITY_FLOOR } from '../ci/_density-ratchet.mjs';
+import { frozenFor, mergeObserved, DENSITY_FLOOR, DENSITY_UNGATEABLE } from '../ci/_density-ratchet.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const VIS = resolve(HERE, '../../tests/visual');
@@ -150,31 +161,71 @@ function main() {
     Object.fromEntries(names.map((f) => [f.replace(/\.png$/, ''), perFrame[f]])),
   );
 
+  // The ledger being REPLACED. A frame whose variance has outgrown the instrument keeps whatever it was
+  // already frozen at, so a bad capture cannot widen a gate just by being run through the freezer.
+  let previous = {};
+  try { previous = JSON.parse(readFileSync(out, 'utf8')).frames ?? {}; } catch { previous = {}; }
+
   const frames = {};
   const samples = {};
+  const ungateable = {};
   const rows = [];
   for (const [state, { observed, samples: n }] of Object.entries(merged)) {
-    frames[state] = frozenFor(observed);
+    const wouldFreezeAt = frozenFor(observed);
     samples[state] = n;
+    if (wouldFreezeAt >= DENSITY_UNGATEABLE) {
+      if (!Object.prototype.hasOwnProperty.call(previous, state)) {
+        console.error(
+          `freeze-density: ${state} varies by ${(observed * 100).toFixed(2)}% locally, which would freeze at ` +
+          `${(wouldFreezeAt * 100).toFixed(1)}% — past ${(DENSITY_UNGATEABLE * 100)}%, an allowance that guards nothing. ` +
+          `It has no previous value to keep, so there is nothing to fall back to: a gated state that ` +
+          `cannot be gated must not be admitted. Fix the capture's determinism for this frame first.`,
+        );
+        process.exit(1);
+      }
+      frames[state] = previous[state];
+      ungateable[state] = { observed, wouldFreezeAt, kept: previous[state] };
+      rows.push({ state, observed, frozen: frames[state], samples: n, wouldFreezeAt });
+      continue;
+    }
+    frames[state] = wouldFreezeAt;
     rows.push({ state, observed, frozen: frames[state], samples: n });
   }
 
   rows.sort((x, y) => y.observed - x.observed);
   console.log(`  ${'state'.padEnd(26)}${'worst'.padStart(9)}${'frozen at'.padStart(12)}${'runs'.padStart(6)}`);
   for (const r of rows) {
-    const thin = r.samples < sources.length ? ' <- single run' : '';
+    const flags = [
+      r.samples < sources.length ? 'single run' : '',
+      r.wouldFreezeAt ? `UNGATEABLE, would be ${(r.wouldFreezeAt * 100).toFixed(1)}% - kept` : '',
+    ].filter(Boolean).join(', ');
     console.log(
       `  ${r.state.padEnd(26)}${(r.observed * 100).toFixed(2).padStart(8)}%` +
-      `${(r.frozen * 100).toFixed(2).padStart(11)}%${String(r.samples).padStart(6)}${thin}`,
+      `${(r.frozen * 100).toFixed(2).padStart(11)}%${String(r.samples).padStart(6)}${flags ? '  <- ' + flags : ''}`,
     );
   }
   for (const s of skipped) console.log(`  NOTE: ${s}`);
 
   const unmeasured = rows.filter((r) => r.frozen === DENSITY_FLOOR).length;
   const thin = rows.filter((r) => r.samples < sources.length).length;
+  // Run directories are routinely session-scoped scratch paths that will not exist tomorrow, so record
+  // the NAME rather than an absolute path that rots into false provenance the moment the tmpdir is swept.
+  const label = (p) => p.replace(resolve(VIS, '../..') + '/', '').split('/').pop();
+  const sourceLabels = sources.map(label);
+
+  const beyond = Object.keys(ungateable);
   console.log(
-    `  ${rows.length} frames from ${sources.length} run(s); ${unmeasured} clamped to the floor; ${thin} single-run`,
+    `  ${rows.length} frames from ${sources.length} run(s); ${unmeasured} clamped to the floor; ${thin} single-run; ` +
+    `${beyond.length} beyond the instrument`,
   );
+  for (const state of beyond) {
+    const u = ungateable[state];
+    console.log(
+      `  UNGATEABLE ${state}: varies ${(u.observed * 100).toFixed(2)}% locally -> would freeze at ` +
+      `${(u.wouldFreezeAt * 100).toFixed(1)}%, past ${(DENSITY_UNGATEABLE * 100)}%. KEPT at ` +
+      `${(u.kept * 100).toFixed(2)}% — widen the capture's determinism, not this allowance.`,
+    );
+  }
 
   if (dry) return;
   writeFileSync(
@@ -183,11 +234,12 @@ function main() {
       {
         _count: Object.keys(frames).length,
         _note: 'regenerate: node scripts/visual/freeze-density.mjs <runDirA> <runDirB>, on REVIEWED capture runs',
-        _sources: sources.map((s) => s.replace(resolve(VIS, '../..') + '/', '')),
+        _sources: sourceLabels,
         frames,
         _samples: samples,
+        _ungateable: ungateable,
         _unmeasured: unmeasured,
-        _unmeasured_note: unmeasuredNote(unmeasured, rows.length, sources, thin),
+        _unmeasured_note: unmeasuredNote(unmeasured, rows.length, sourceLabels, thin),
       },
       null,
       2,

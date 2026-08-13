@@ -126,7 +126,10 @@ afterAll(() => {
   if (density.length) {
     const rows = [...density].sort((a, b) => b.density - a.density);
     const amp = rows.filter((r) => r.ratio > 0).map((r) => r.density / r.ratio);
-    console.log(`\n  WINDOWED DIFF DENSITY (128px window, 32px stride) — REPORT ONLY, asserts nothing`);
+    // The banner said "REPORT ONLY, asserts nothing" for four days after the ratchet started asserting.
+    // A print statement describing the instrument's own behaviour is a claim, and this one had gone
+    // false — a reader deciding whether to trust a green run would have read it and been misled.
+    console.log(`\n  WINDOWED DIFF DENSITY (128px window, 32px stride) — RATCHETED per frame against .density-ledger.json`);
     console.log(`  ${'state'.padEnd(24)}${'global'.padStart(10)}${'local max'.padStart(12)}   worst window`);
     for (const r of rows.slice(0, 8)) {
       console.log(

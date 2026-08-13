@@ -29,7 +29,19 @@ const LEDGER = JSON.parse(readFileSync(resolve(APP, 'tests/visual/.density-ledge
 // of unmeasured entries may FALL and may never RISE. It does not red the tree today (that would block
 // on a machine condition nobody controls), but a new frame admitted at the floor cannot pass unnoticed,
 // and the number is visible instead of buried in a JSON file nobody reads.
-const FROZEN_UNMEASURED = 29;
+// 2026-08-13: 29 -> 23, by doing exactly that. Two reviewed captures on a quiet machine, merged at the
+// worse run. The remaining 23 are frames that reproduce byte-identically, and no amount of capturing
+// measures the variance of something that has none — the floor is the honest value for them. This
+// number may still fall (a frame that starts carrying real noise gets a real number) and may never rise.
+const FROZEN_UNMEASURED = 23;
+
+// AND THE OTHER END OF THE SCALE. A frame whose measured variance would freeze ABOVE
+// DENSITY_UNGATEABLE keeps its previous allowance instead, because a 54.7% window allowance is not a
+// gate — it is a tick over input nothing could fail. That is a real coverage hole and it has to be
+// counted, not absorbed: `explore-day`'s distant treeline streams in late, so it varies 5.13%-30.35%
+// local across two runs on identical code and an identical renderer. The fix is in capture.mjs's
+// stability wait, not here, and this number going UP means someone widened the hole instead.
+const FROZEN_UNGATEABLE = 1;
 
 const flooredEntries = () =>
   Object.entries(LEDGER.frames).filter(([, v]) => v === DENSITY_FLOOR).map(([k]) => k);
@@ -65,6 +77,28 @@ describe('the density ledger knows how much of itself is unmeasured', () => {
     expect(measured.length, 'every single entry is the floor — the ratchet measures nothing at all').toBeGreaterThan(0);
     for (const [name, v] of measured) {
       expect(v, `${name} is frozen BELOW the floor, which frozenFor cannot produce`).toBeGreaterThan(DENSITY_FLOOR);
+    }
+  });
+
+  it('the set of frames too unstable to gate may FALL, never rise', () => {
+    const beyond = Object.keys(LEDGER._ungateable ?? {});
+    expect(
+      beyond.length,
+      `${beyond.length} frame(s) are frozen at an allowance the freezer refused to widen (${beyond.join(', ')}), ` +
+      `up from ${FROZEN_UNGATEABLE}. Each one is a gated state whose own variance exceeds what the ratchet ` +
+      `can express, so its entry is guarding nothing. Fix the capture's determinism for that frame; do NOT ` +
+      `raise DENSITY_UNGATEABLE, which would let every one of them through at once.`,
+    ).toBeLessThanOrEqual(FROZEN_UNGATEABLE);
+  });
+
+  it('each ungateable frame records what it would have cost, so the hole is legible', () => {
+    // A bare list of names would say a frame is unguarded without saying how badly. `wouldFreezeAt` is
+    // the number the ledger REFUSED to write, and it is the whole argument for fixing the capture.
+    for (const [state, u] of Object.entries(LEDGER._ungateable ?? {})) {
+      expect(u.observed, `${state} records no observed variance`).toBeGreaterThan(0);
+      expect(u.wouldFreezeAt, `${state} would not actually have exceeded the line`).toBeGreaterThanOrEqual(0.15);
+      expect(u.kept, `${state} is not actually held at the value the ledger uses`).toBe(LEDGER.frames[state]);
+      expect(u.kept, `${state} was widened after all`).toBeLessThan(u.wouldFreezeAt);
     }
   });
 

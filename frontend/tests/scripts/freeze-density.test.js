@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { DENSITY_FLOOR, frozenFor } from '../../scripts/ci/_density-ratchet.mjs';
+import { DENSITY_FLOOR, DENSITY_UNGATEABLE, frozenFor } from '../../scripts/ci/_density-ratchet.mjs';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const FREEZER = join(APP, 'scripts/visual/freeze-density.mjs');
@@ -24,8 +24,12 @@ const FREEZER = join(APP, 'scripts/visual/freeze-density.mjs');
 //
 // Frames are 256x256 so the density window (128x128, step 32) fits with room to slide.
 const W = 256;
-const BLOCK = { A: 64, B: 32 }; // -> best-window densities of 0.25 and 0.0625
-const DENSITY = { A: (64 * 64) / (128 * 128), B: (32 * 32) / (128 * 128) };
+// Sized so BOTH stay UNDER the ungateable line once headroom is applied (0.0625 -> 0.113 and
+// 0.0156 -> 0.029, against a 0.15 ceiling), because a fixture that is itself ungateable tests the
+// refusal path by accident and nothing else. The first draft used 64/32 and every merge assertion
+// died on exit 1 -- the fixture, not the tool.
+const BLOCK = { A: 32, B: 16 }; // -> best-window densities of 0.0625 and 0.015625
+const DENSITY = { A: (32 * 32) / (128 * 128), B: (16 * 16) / (128 * 128) };
 
 function png(blockSize) {
   const p = new PNG({ width: W, height: W });
@@ -127,6 +131,46 @@ describe('freeze-density, driven end to end', () => {
     expect(ledger._unmeasured, 'quiet and thin are byte-identical, so both clamp to the floor').toBe(2);
     expect(ledger._unmeasured_note.length).toBeGreaterThan(200);
     expect(ledger._sources, 'the ledger does not record which runs it was frozen from').toHaveLength(2);
+  });
+
+  // REFUSING TO WIDEN PAST THE POINT OF BEING A GATE.
+  //
+  // explore-day varies 5.13% to 30.35% local between two runs on identical code. Frozen at what it
+  // "actually does" that is 54.7% — over half of any window free to change — which forecloses every
+  // regression the frame could ever report while still printing a tick. The block is 96px of a 256px
+  // frame here, which lands a window at 25% -> 45% frozen, well past the 15% line.
+  const HUGE = 64;
+
+  it('keeps a frame at its PREVIOUS allowance instead of widening past the ungateable line', () => {
+    mkdirSync(dir('runWild'));
+    writeFileSync(dir('runWild', 'quiet.png'), png(0));
+    writeFileSync(dir('runWild', 'noisy.png'), png(HUGE));
+    writeFileSync(dir('runWild', 'thin.png'), png(0));
+
+    const before = freeze([dir('runA'), dir('runB')]);   // noisy at a gateable 11.3%
+    const kept = frozenFor(DENSITY.A);
+    expect(before.frames.noisy).toBe(kept);
+
+    const after = freeze([dir('runWild')]);
+    expect(frozenFor((HUGE * HUGE) / (128 * 128)), 'the fixture no longer exceeds the line')
+      .toBeGreaterThanOrEqual(DENSITY_UNGATEABLE);
+    expect(after.frames.noisy, 'a wild run widened the gate just by being run through the freezer').toBe(kept);
+    expect(after._ungateable.noisy.kept).toBe(kept);
+    expect(after._ungateable.noisy.wouldFreezeAt).toBeGreaterThan(kept);
+    expect(after._ungateable, 'the well-behaved frames were dragged in too').not.toHaveProperty('quiet');
+  });
+
+  it('ABORTS rather than admit a NEW frame it cannot gate', () => {
+    // The other branch, and the one that matters for a growing corpus: there is no previous value to
+    // fall back on, so there is nothing honest to write. A gated state that cannot be gated must not be
+    // admitted at all — admitting it is how the ledger stops being a denominator.
+    const fresh = dir('fresh-ledger.json');
+    expect(() => {
+      execFileSync('node', [FREEZER, `--baseline=${dir('baseline')}`, `--out=${fresh}`, dir('runWild')], {
+        cwd: APP, encoding: 'utf8',
+      });
+    }).toThrow(/an allowance that guards nothing/);
+    expect(() => readFileSync(fresh, 'utf8'), 'it aborted and still wrote a ledger').toThrow();
   });
 
   it('--dry writes nothing', () => {
