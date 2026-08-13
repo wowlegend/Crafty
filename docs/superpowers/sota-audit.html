@@ -295,16 +295,55 @@
     inherent instability, not a regression. True run-to-run variance on identical code AND identical
     renderer: 22/30 byte-identical, <code>explore-day</code> <b>30.35%</b> local / 1.536% global,
     <code>ocean-coast</code> 3.70%.</p>
-    <p><strong>Which makes the density ledger's real defect precise.</strong> 29 of its 31 entries are the
-    <code>DENSITY_FLOOR</code> constant rather than measurements, so for most frames the ratchet compares
-    against an arbitrary number — that is what <code>ocean-coast</code> failed against. The fix is to
-    freeze from this A/B pair, NOT to raise the floor, and NOT to re-baseline the three unstable frames'
-    images (the capture says in as many words that doing so freezes noise). Freezing a frame's DENSITY at
-    its measured variance and re-baselining its PIXELS are different acts; only the first is safe here.</p>
-    <p class="guard"><strong>One hole this surfaced:</strong> <code>title-mascot</code> failed its 20s
-    canvas wait in 2 of the last 3 runs and takes a documented skip path that KEEPS the last-good copy.
-    A gated frame that silently reuses a stale image is a gate reporting on input it never examined —
-    this page's own subject.</p>
+    <p><strong>Which makes the density ledger's real defect precise, and it is now FIXED.</strong> 29 of
+    its 31 entries were the <code>DENSITY_FLOOR</code> constant rather than measurements, so for most
+    frames the ratchet compared against an arbitrary number — that is what <code>ocean-coast</code> failed
+    against. Frozen from this reviewed pair, merged at the worse run: unmeasured falls <b>29 → 23</b>,
+    ratcheted, and <code>ocean-coast</code> now sits at a measured 6.7% instead of the 2% constant. That
+    is the fix its own failure message prescribed — replacing a constant with a measurement, not raising
+    the floor. The remaining 23 reproduce byte-identically and have no variance to measure.</p>
+    <p class="guard"><strong>And the tool that does it demanded two captures while being able to read
+    one.</strong> "TWO captures on identical code, so the number frozen reflects real run-to-run variance
+    rather than one run's noise" has been requirement 2 in <code>freeze-density.mjs</code>'s docblock
+    since the day it was written, over code that read a single hardcoded directory. Every ledger it ever
+    produced was single-sample: the requirement was a comment. It also aborted the entire freeze if one
+    frame was missing from one run, so <code>title-mascot</code>'s flaky canvas wait left the other thirty
+    unmeasured — and regenerating the ledger reddened the gate whose failure message tells you to
+    regenerate it, because that gate wants an <code>_unmeasured</code> field nothing generated.</p>
+    <p><strong>One frame was REFUSED, and that is the part worth keeping.</strong>
+    <code>explore-day</code> varies 5.13%–30.35% locally. Frozen at what it "actually does" that is
+    <b>54.7%</b> — over half of any window free to change, which forecloses every regression the frame
+    could ever report while still printing a tick. So the freezer keeps such a frame at its PREVIOUS
+    allowance, records it in <code>_ungateable</code> with the number it refused to write, and aborts
+    outright if the frame is new and has nothing to fall back on. A gated state that cannot be gated must
+    not be admitted; the fix belongs in the capture's stability wait, which asked for 2 consecutive stable
+    frames where the terrain wait asks 6. That change is made and is <em>explicitly unverified</em> —
+    proving a flakiness fix needs several captures on a quiet machine, and the machine is at load 21.</p>
+    <p class="guard">Not to be conflated: freezing a frame's DENSITY at its measured variance and
+    re-baselining its PIXELS are different acts. Only the first is safe here — the capture says in as many
+    words that re-baselining a frame it declared non-deterministic freezes noise.</p>
+    <p class="guard"><strong>One hole this surfaced — and the claim above it was wrong.</strong> I wrote
+    here that <code>title-mascot</code>, which failed its 20s canvas wait in 2 of the last 3 runs, takes a
+    skip path that SILENTLY keeps the last-good copy. Then I reconstructed exactly what
+    <code>current/</code> looks like after such a run and ran the real gate on it: it reds by name —
+    <code>current/title-mascot.png is older than the capture run start — STALE frame</code>. The
+    freshness predicate's mtime rule already caught it. The page said otherwise for a few hours because I
+    had read the skip path and not run it, which is the failure this page is about, committed on this
+    page.</p>
+    <p><strong>What was real is smaller and worth fixing anyway:</strong> the capture writes
+    <code>complete: true, crashes: 0</code> into <code>.capture-meta.json</code> — the one durable channel
+    a human reads to decide whether to trust the frames — over a run that never photographed a gated
+    frame. mtime catches the symptom in another file, by the coincidence that a skip leaves an OLD file
+    behind. The run now records the skip itself. <em>And the first version of that fix was ungated:</em>
+    deleting the line that records it left the whole suite green, because the predicate's unit tests are
+    HANDED a skip list and say nothing about whether the capture ever fills one. Wired up and never
+    invoked — inside the fix for it.</p>
+    <p class="guard"><strong>The ratchet also caught what it was built for, live.</strong> That same
+    reconstruction ran the second capture's <code>explore-day</code> past the global gate at
+    <b>1.662%</b> — comfortably under 6%, a clean pass — while the local-density ratchet failed it at
+    <code>explore-day 30.35% &gt; 9.30% at 448,416</code>. A whole treeline missing, invisible to the
+    instrument that had been guarding it, named by the one that had been printing "REPORT ONLY, asserts
+    nothing" for four days after it started asserting.</p>
   </div>
 
   <div class="verdict settled">
