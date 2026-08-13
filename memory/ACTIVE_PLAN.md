@@ -256,6 +256,13 @@ went on asserting otherwise. Pin held at what the wrapper demands; Dependabot no
 at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
 `supply-chain.test.js`, mutation-proven both ways.
 
+NEXT SESSION — **ROADMAP Phase 26: physically-based sky.** Kevin's call 2026-08-13, deferred until the
+current postprocessing work closes. Atmospheric scattering (highest value), volumetric clouds (most
+transformative, needs a perf budget agreed BEFORE building — the cost lands on the constrained low/med
+tiers), richer light shafts (cheapest — GodRays already runs). Read Phase 26's warning block first: the
+sun is a camera-locked billboard serving as GodRaysEffect's light source, bound by a vendor material
+contract, and making it real scene geometry is NOT an upgrade.
+
 OWED — **A WEBGL ERROR STORM ON THE PRODUCTION BUNDLE, INVISIBLE TO EVERY GATE HERE.** Found
 2026-08-13 by tracing the production build (`vite preview`) with the `chrome-devtools` CLI — the first
 time anything in this project has loaded the bundle Vercel actually serves, which CLAUDE.md already

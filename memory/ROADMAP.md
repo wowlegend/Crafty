@@ -65,6 +65,27 @@
 - [ ] **WebSocket Multiplayer State Sync**: Decouple player inputs to support network-interpolated guest character visual models.
 - [ ] **Run-Length Encoded Chunk Compression**: Compress terrain data streams into run-length array packages before local or network saves.
 
+### Phase 26: Physically-Based Sky — Atmospheric Scattering, Volumetric Clouds & Light Shafts [PLANNED]
+*The three things that separate a nice stylised sky from one people screenshot. Raised by Kevin 2026-08-13
+after the GodRays depth investigation; deliberately deferred until the postprocessing work is closed.*
+- [ ] **Atmospheric Scattering (Rayleigh/Mie)**: Replace the sky-dome colour gradient in `render/Atmosphere.jsx`
+      with physically-derived scattering, so blue sky and red sunsets fall out of the sun angle rather than
+      being authored per mood. The highest-value of the three: it is what makes modern skies read as expensive,
+      and it feeds the existing per-mood MOOD_GRADE rather than replacing it.
+- [ ] **Volumetric Clouds**: Real depth with light transmitted through it, versus flat sprites. The most
+      transformative and the most expensive — needs a perf budget decided BEFORE building, since the frame
+      cost lands on every tier and the low/med tiers are already the constrained ones.
+- [ ] **Richer Light Shafts**: GodRays already runs (high + med tiers, `q.godRaySamples` 100/60). Carry more of
+      the mood through it rather than adding an effect — cheapest of the three by a wide margin.
+
+**DO NOT start these before reading this**, because the sun is not what it looks like: it is a
+camera-locked billboard at a fixed 380 units that exists as `GodRaysEffect`'s LIGHT SOURCE, reparented into
+the effect's own `lightScene` every frame. Its material is bound by the vendor contract "must not write depth
+and has to be flagged as transparent" (postprocessing JSDoc), and violating that is what removed the sun from
+the sky on the 6.39.4 bump. Making it genuine scene geometry is NOT an upgrade and would need two meshes
+(an invisible light source plus a visible object) — every engine draws the sun as a sky element for the same
+reason: it never gets closer. See `.claude/rules/` and the 2026-08-13 CHANGELOG entry.
+
 ### Phase 18: Rapier Kinematic Character Controller [COMPLETED]
 *Deeply optimizing character locomotion, ground-snapping, slope navigation, and walled sliding.*
 - [x] **WASM-Native Character Controller**: Integrated Rapier KCC to offload collision checking directly to WASM, resolving capsule sliding jitters.
