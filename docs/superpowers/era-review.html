@@ -224,6 +224,29 @@
   </div>
 
   <section>
+    <div class="eyebrow"><h2>2026-08-13 (later) — a dependency bump removed the sun</h2><span class="rule"></span><span class="tag">upstream #750</span></div>
+    <div class="card"><div class="mandate">
+      <p><strong>PR #15 was split, not merged.</strong> Five bumps landed verified-inert (react 19.2.8,
+      drei 10.7.8, framer-motion, zustand): 20 of 31 frames byte-identical, ZERO over the 6% gate. The
+      sixth, <code>postprocessing</code> 6.39.4, is PINNED at 6.39.1 — under it <code>GodRaysEffect</code>
+      stops compositing the sun. Filed upstream as <b>pmndrs/postprocessing#750</b>.</p>
+      <p><strong>I nearly re-baselined over it.</strong> 17 of 31 frames breached the gate with a uniform
+      signature; after opening THREE I was ready to call it an expected tone shift and rewrite all 31
+      oracles. A 31-agent exhaustive review returned <code>safeToRebaseline: false</code> — 23 tone-only,
+      seven confirmed structural. Three frames is not a denominator.</p>
+      <p><strong>Two fixes failed before one ablation answered it.</strong> Both material-contract attempts
+      produced byte-identical output — two different configs, indistinguishable pixels, so the material was
+      never the lever. The ablation was the first test designed to rule something OUT rather than to be
+      right, and it answered in one run.</p>
+      <p><strong>Then a 6-agent doc audit checked ~330 claims across every canonical surface: 92 issues
+      (41 FALSE).</strong> All five doc surfaces remediated. Three of the FALSE claims were mine, written
+      that same day — including "every harness drives the DEV server", which
+      <code>scripts/ci/prod-smoke.mjs</code> has disproven since it became a CI gate. I had quoted that
+      gate's own problem-statement as current state.</p>
+    </div></div>
+  </section>
+
+  <section>
     <div class="eyebrow"><h2>2026-08-13 — the ledger is frozen, and two of my own gates were blind</h2><span class="rule"></span><span class="tag">29 &rarr; 23 unmeasured</span></div>
     <div class="card"><div class="mandate">
       <p><strong>The local-density ratchet was comparing 29 of 31 frames against a constant.</strong>

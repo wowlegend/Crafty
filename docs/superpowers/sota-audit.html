@@ -346,6 +346,38 @@
     nothing" for four days after it started asserting.</p>
   </div>
 
+  <div class="callout kill">
+    <span class="hd">2026-08-13 (later) — a dependency bump removed the SUN, and I nearly re-baselined over it</span>
+    <p><strong>The gate caught a real regression and my first read of it was wrong.</strong> A
+    <code>postprocessing</code> 6.39.1&nbsp;&rarr;&nbsp;6.39.4 bump put <b>17 of 31 frames</b> over the 6%
+    gate with a uniform signature — geometry unchanged, colour globally lifted. I opened THREE frames,
+    concluded "expected tone shift from a depth-buffer fix", and was ready to rewrite all 31 oracles. A
+    31-agent exhaustive review (one reviewer per frame, every flag re-checked by a second agent instructed
+    to <em>refute</em> it) returned <code>safeToRebaseline: false</code>: 23 tone-only, <b>seven confirmed
+    structural</b>. Three frames is not a denominator.</p>
+    <p class="guard"><strong>The sun was gone.</strong> Blue channel at y=4 across x=95..165, identical in
+    two independent frames: baseline dips <code>195,196,197,198,199,200,201</code> — a hard disc edge —
+    while 6.39.4 is a flat ramp <code>216,217,218,219,220,221,222</code>. Disabling the effect brings it
+    back (<code>213,212,212,213,213,214</code>), which localises the fault to <code>GodRaysEffect</code>'s
+    compositing rather than to the mesh. Filed upstream as
+    <a href="https://github.com/pmndrs/postprocessing/issues/750">pmndrs/postprocessing#750</a>;
+    <code>postprocessing</code> is pinned at 6.39.1 and the other five bumps landed verified-inert.</p>
+    <p><strong>Two fixes of mine failed before one ablation answered it.</strong> Setting
+    <code>depthTest</code>/<code>depthWrite</code> false, and separately honouring the vendor's documented
+    contract (<em>"must not write depth and has to be flagged as transparent"</em>), produced
+    <b>byte-identical</b> output — the same fifteen sample values, both frames. Two different material
+    configurations, indistinguishable pixels: the material was never the lever. The ablation was the first
+    test designed to rule something OUT rather than to be right, and it answered in one run what two
+    fix-attempts could not.</p>
+    <p class="guard"><strong>And a claim on this page's own subject, from me.</strong> I asserted
+    repeatedly that "every harness drives the DEV server; the bundle Vercel ships is loaded by nothing".
+    False — <code>scripts/ci/prod-smoke.mjs</code> loads the production build and runs as a CI gate. Its
+    OWN docblock opens "nothing has ever LOADED it", because it was written to <em>close</em> that gap: I
+    quoted a fix's problem-statement as current state. <em>This page already said "production-bundle smoke
+    job" correctly.</em> The information was in my own published artifact while I asserted the opposite
+    elsewhere — the failure was not missing information, it was not re-reading before repeating.</p>
+  </div>
+
   <div class="verdict settled">
     <p class="lead">All 10 ranked changes are landed. The one below the line and the one re-sequenced item are deferred by recorded decision, with criteria — not by silence. The four items this audit could not check have now been checked.</p>
     <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase.</p>
