@@ -256,6 +256,27 @@ went on asserting otherwise. Pin held at what the wrapper demands; Dependabot no
 at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
 `supply-chain.test.js`, mutation-proven both ways.
 
+IN FLIGHT — **doc gardening from a 6-agent audit. ~330 claims checked, 92 issues (41 FALSE / 41 STALE /
+10 IMPRECISE).** Findings dump: `/private/tmp/claude-501/.../scratchpad/findings.txt` (session-scoped —
+if gone, re-run the workflow at
+`~/.claude/projects/-Users-kz-Code-Crafty/<session>/workflows/scripts/crafty-doc-audit-wf_9b19ac41-373.js`).
+
+DONE: README (`748cb36`, incl. two errors of MINE — a 300x arithmetic slip and the prod-bundle claim
+below), `.claude/rules/gates-and-probes.md` (`748cb36`), ARCHITECTURE 18 fixes (`113661b`).
+
+REMAINING, in priority order:
+- **STATUS 19 issues** — the rot is concentrated in MEASURED counts: 264 files/29.5K LOC (now 306/34,447),
+  2114 tests (now 3189), 136 gates/116 source-grep/"85% assert TEXT" (now 181/106 = 59%), 15 e2e (now 20),
+  ledger frozen at 115 (now 106), and the determinism block at lines 447/458 falsified by the 2026-08-13
+  pair. Its qualitative findings held up well — only the numbers rotted.
+- **ROADMAP 14** — incl. "de-monolith DONE [5 god-files -> 2]" (still 5 >=900 LOC), a [COMPLETED]
+  "Persistent World Saving ... to the database" that is localStorage-only, and a header dated June 11.
+- **AGENTS 10** — incl. line 139 "none is reproducible" about the Chromium-147 determinism numbers,
+  disproven the same day (ZERO frames crossed the 6% gate on 151).
+- **3 artifact pages ~21 commits behind** (`sota-audit`, `era-review`, `loop-progress`) — and sota-audit
+  additionally carries my WRONG "first time anything loaded the production bundle" claim, which must be
+  corrected there, not just here.
+
 BLOCKED — **postprocessing is PINNED at 6.39.1 and cannot move. Upstream regression, fully isolated
 2026-08-13.** 6.39.4 is the current `latest`, so there is no newer release to take.
 
