@@ -256,6 +256,33 @@ went on asserting otherwise. Pin held at what the wrapper demands; Dependabot no
 at PATCH too (it moves in lockstep with `@react-three/rapier` or not at all); gated in
 `supply-chain.test.js`, mutation-proven both ways.
 
+OWED — **A WEBGL ERROR STORM ON THE PRODUCTION BUNDLE, INVISIBLE TO EVERY GATE HERE.** Found
+2026-08-13 by tracing the production build (`vite preview`) with the `chrome-devtools` CLI — the first
+time anything in this project has loaded the bundle Vercel actually serves, which CLAUDE.md already
+noted no harness does. On every load:
+
+```
+128x  GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same image.
+128x  GL_INVALID_OPERATION: glBlitFramebuffer: Depth/stencil buffer format combination not allowed for blit.
+  1x  WebGL: too many errors, no more errors will be reported to the console for this context.
+```
+
+Per-frame, until **Chrome mutes the context**. So 256 is a FLOOR, not a count — and once muted, a
+genuine GL error later in that same context is silenced too. That is the part that matters: the noise
+is not merely ugly, it disables the channel `capture.mjs` watches.
+
+`capture.mjs`'s `FATAL_GL_RE` does NOT match it — verified by running the actual regex against the
+message string, not by reading it. It looks for `Shader Error|context lost|CONTEXT_LOST_WEBGL|Error
+linking program|shader compilation`; none matches `GL_INVALID_OPERATION: glBlitFramebuffer`. Shape
+points at the postprocessing stack blitting with a shared depth/stencil attachment.
+
+Also measured, and worth keeping: **production LCP 237ms vs the dev server's 1559ms** (render delay
+233ms vs 1556ms, CLS 0.00 both). Any perf reasoning from dev numbers is 6.6x wrong.
+
+Next step is a probe that loads the PRODUCTION build and asserts on its console — the gate that would
+have caught this. Do NOT simply widen `FATAL_GL_RE` and call it done: the capture runs the DEV server,
+so it would still never see this frame.
+
 OWED — **PR #15 is open ON PURPOSE.** Production deps (react 19.2.8, drei 10.7.8 patch,
 framer-motion 12.43.0, postprocessing 6.39.4, zustand 5.0.14). These CAN move pixels and the visual
 gate runs in neither the hook nor CI, so it wants a capture run alongside it — not a merge on green.
