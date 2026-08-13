@@ -160,11 +160,20 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   never "close the tab" (an unverified instruction) and never "all clean" (an unverified all-clear).
   Prefer running these in CI, where there is no cmux and no browser at all.
 
-## The bundle NOTHING here loads
+## The DEV/PROD split — and a claim of mine that was already false when I wrote it
 
-Every harness in this repo drives the **DEV server**. `capture.mjs`, all 25 probes, the e2e suite — all
-of them. The build Vercel serves on every push is loaded by nothing, which `.agent/AGENTS.md` already
-notes in passing. On 2026-08-13 something finally looked, and both numbers were news:
+**CORRECTION 2026-08-13.** This section originally opened "Every harness in this repo drives the DEV
+server ... the build Vercel serves is loaded by nothing." That was FALSE when written.
+`scripts/ci/prod-smoke.mjs` loads the PRODUCTION build (`serveVite(PORT, { preview: true })`) and runs
+as a CI gate — `.github/workflows/ci.yml:106`. I read an older line in `.agent/AGENTS.md`, repeated it,
+and never ran `ls`. The gate's own docblock says "nothing has ever LOADED it", because it was written
+to CLOSE that gap: I quoted the problem statement of the fix as if it were current state.
+
+What IS true, and is the useful part: `capture.mjs` and all 25 probes drive the DEV server, so the
+VISUAL corpus says nothing about the shipped bundle. `prod-smoke` covers boot/render/GL-alive on prod;
+it does not diff pixels. Two different coverages, and only the second gap is real.
+
+The numbers below stand — they were measured, not inferred:
 
 | | LCP | render delay |
 |---|---:|---:|
@@ -182,7 +191,9 @@ noise disables the very channel `capture.mjs`'s `fatalGl` bucket watches. `FATAL
 it (verified by running the regex against the message, not by reading it).
 
 **Do NOT "fix" this by widening `FATAL_GL_RE`.** The capture runs the dev server, so it would still
-never load the frame where this happens. What is missing is a probe that loads the PRODUCTION build.
+never load the frame where this happens. The probe that loads the production build ALREADY EXISTS —
+`scripts/ci/prod-smoke.mjs`, a CI gate — so the work is to teach THAT about this error class, not to
+write a new one. (This line previously claimed the probe was missing. It was not.)
 
 To look, no new dependency required — `chrome-devtools` is installed globally (see
 `~/.claude/projects/-Users-kz-Code/memory/reference_chrome_devtools_cli.md` for flags and the privacy

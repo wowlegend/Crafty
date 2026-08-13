@@ -26,7 +26,7 @@ A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a
 * **🔥 Distinct elemental spells**: fire, ice, lightning, and arcane, each a genuinely distinct silhouette + motion + palette — a roiling flame teardrop, a solid faceted ice crystal, a thin crackling lightning wire, and an orbital arcane rune-wheel — with per-cast telegraphs and impacts.
 * **🌍 Procedural frontier world**: noise-driven temperature × moisture × continent selection across 10 biomes (snow, taiga, plains, forest, meadow, swamp, jungle, savanna, desert, mesa) with per-biome flora, vertex ambient occlusion, a toon ocean + shore foam, a dynamic day/night cycle, and biome-aware weather (rain/snow).
 * **⚡ Decoupled high-frequency loop**: mob AI, spatial tracking, particles, and terrain meshing run off React's state tree via transient refs, object pools, and offscreen **Web Workers** (A* pathfinding + greedy-mesher chunk generation) to keep the render loop smooth on the web/mobile envelope.
-* **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic emerald XP orbs; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
+* **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic gold XP motes; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
 * **🛒 Trading, crafting & progression**: passive merchant villagers with reciprocal trading, a 3×3 crafting grid, an attribute/talent progression tree, and a spell-mastery upgrade system.
 * **📱 Desktop + touch**: full desktop mouse-look/keyboard plus a built-out iPad/iPhone touch layer (virtual joystick, verb wheel, pointer-lock-free cold start).
 * **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and the test harness below guarding every pixel of it.
@@ -48,7 +48,7 @@ graph TD
     subgraph "High-Frequency Render Loop (R3F & Rapier)"
         C --> D["RigidBody Physics World"]
         C --> E["ECS Entity-Component-System (Miniplex)"]
-        D -->|"Sub-frame Lerping (0.35)"| F["Smoothed Camera System"]
+        D -->|"Sub-frame Lerping (0.85)"| F["Smoothed Camera System"]
         F -->|"GPU transform matrix"| G["StableMagicHands (Viewport Locked)"]
     end
 
@@ -58,14 +58,14 @@ graph TD
     end
 
     E -->|"Physics simulation"| D
-    E -->|"Green icosahedron entities"| L["XPOrbSystem"]
+    E -->|"Gold icosahedron motes"| L["XPOrbSystem"]
     K -->|"Leap attacks & IK articulation"| D
 ```
 
 ### Technical Design Pillars
 1. **GPU-Bound Viewport Locking**: The player's first-person hands are mounted natively within the active three.js camera primitive hierarchy. Complex global coordinate translations and wobbly lerps are replaced with local matrix locking, assuring 100% vibration-free hand meshes during high-momentum jumps.
-2. **Sub-Frame Interpolation**: To prevent 60Hz physics step stutter on high-refresh ProMotion (120Hz) screens, camera updates are mathematically lerped toward the player's translation by a decay factor of `0.35`, keeping input lag imperceptible while absorbing micro-snaps.
-3. **Seam-Resistant Grounding**: Ground detection uses a downward Rapier physical raycast (`world.castRay`) extending 1.05 units from the capsule center, ensuring rock-solid jumping mechanics across flat voxel triangle seams.
+2. **Sub-Frame Interpolation**: To prevent 60Hz physics step stutter on high-refresh ProMotion (120Hz) screens, camera updates are lerped toward the player's translation by a factor of `0.85` (`src/Components.jsx`), keeping input lag imperceptible while absorbing micro-snaps.
+3. **Seam-Resistant Grounding**: Ground state comes from the Rapier character controller itself — `controllerRef.current.computedGrounded()` (`src/Components.jsx:994`) — rather than a hand-rolled raycast, so jumping stays solid across flat voxel triangle seams. (This read "a downward `world.castRay` extending 1.05 units" until 2026-08-13; that raycast exists but detects CHESTS, twenty lines further down.)
 
 ---
 
@@ -76,7 +76,7 @@ incapable of lying, after several of them were caught doing exactly that.
 
 | Gate | What it stops |
 | :--- | :--- |
-| **31-frame visual regression** | Deterministic headless captures diffed against committed PNG oracles. A **per-frame local-density ratchet** runs beside the global 6% tolerance, because a 248×248 block of a frame can change completely while moving only 0.02% of the pixels — the false negative the global gate cannot see. |
+| **31-frame visual regression** | Deterministic headless captures diffed against committed PNG oracles. A **per-frame local-density ratchet** runs beside the global 6% tolerance, because a change can be tightly concentrated: 15% of a 128×128 window is 2,458 pixels — **0.24%** of a 1280×800 frame — so a whole UI panel can be wrong while the global number stays quiet. That is the false negative the global gate cannot see. |
 | **`Mutation-Proof:` trailer** | A commit adding or rewriting a gate must state what was broken to make it go RED. A gate green on day one against unfixed code is a rubber stamp. |
 | **`Baseline-Review:` trailer** | The visual oracle has its own governance: a baseline rewrite is its own commit, never bundled with `src/`. Measured over 1,603 commits, ten of the last twelve baseline rewrites were bundled — which is how four monster baselines quietly became pictures of an empty mountain. |
 | **`gate-shape`** | Assertions satisfiable by a *comment*, plus a frozen source-grep population that may fall and never rise. |
