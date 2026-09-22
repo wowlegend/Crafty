@@ -592,3 +592,28 @@ rgb(42,42,51) to (16,3,40) is a ~4x drop that no amount of reading the hex predi
 
 **Ordering note:** if the lighting floor (L1) is fixed first, the glove value may need no change at all.
 Measure the hands AFTER any ambient change, not before, or the tuning will be against a moving target.
+
+---
+
+## G1 — `gate-shape.mjs` cannot see the assertion form that fooled it (found 2026-09-22, OPEN)
+
+`gate-shape` exists to catch "an assertion satisfiable by a COMMENT alone". It blanks comments with a real
+AST (so trailing comments are handled correctly) — but it only inspects `expect(x).toMatch(re)`
+(`scripts/ci/gate-shape.mjs:187`, `n.callee.property?.name === 'toMatch'`).
+
+The form `expect(/re/.test(src)).toBe(true)` is invisible to it. That is exactly how `siege-gates`
+asserted `incrementNight()` into a file where it appears zero times in code, green on the comment
+documenting its removal — and gate-shape reported the corpus clean throughout. Four comment-satisfied gates
+were found by hand this session; gate-shape caught none of them.
+
+**Fix:** teach the collector the second form (a `.test(` call on a regex literal whose argument is a
+source read, inside `expect(...)` compared with `toBe(true)`), then re-run it over the corpus BEFORE
+trusting its count. A detector that false-negatives gets widened, never exempted. Mutation-prove it by
+reintroducing the siege-gates shape against a comment-only token.
+
+**Related, also open:** 14 gate files still carry a local `strip` that removes only block and FULL-LINE
+comments, not `code; // trailing`. `tests/gates/_srcWalk.js` has the fixed version; migrate them onto it.
+
+## Tooling added 2026-09-22
+`frontend/scripts/dev/mutate.sh` — the mutation runner, committed (it lived in a session scratchpad).
+Exit 0 RED / 1 SURVIVED / 3 COULD NOT CHECK. Self-tested: all three exit codes, subject clean after each.
