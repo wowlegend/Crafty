@@ -57,7 +57,16 @@ ROOT="$PWD"
 APP="$ROOT/frontend"
 
 TIER="push"
-for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; esac; done
+RANGE_ONLY=0
+for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; esac; done
+# --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
+# core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
+# commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file
+# on a receipt match, so queue-ledger, artifact-currency and e2e-freshness silently never ran on those
+# pushes — found when artifact-currency, skipped for a day, surfaced 74 commits of page drift at once.
+if [ "$RANGE_ONLY" = 1 ] && [ "$TIER" != "push" ]; then
+  printf '\033[31m✖ pipeline: --range-only is only meaningful with --tier=push\033[0m\n' >&2; exit 2
+fi
 case "$TIER" in
   commit|push|fast) ;;
   *) printf '\033[31m✖ pipeline: unknown tier %s (expected commit|push|fast)\033[0m\n' "$TIER" >&2; exit 2 ;;
@@ -76,8 +85,17 @@ RECEIPT="$RECEIPT_DIR/crafty-pipeline-green-tree"
 fail=0
 failed_steps=""
 say() { printf '\n\033[1m── %s\033[0m\n' "$1"; }
+SECTION=core
+ran_range=0
+skipped_core=0
 step() { # step <name> <cmd...>
   local name="$1"; shift
+  if [ "$RANGE_ONLY" = 1 ] && [ "$SECTION" = core ]; then
+    printf '\033[2m── skipped (certified by the pre-commit receipt for this exact tree): %s\033[0m\n' "$name"
+    skipped_core=$((skipped_core + 1))
+    return 0
+  fi
+  [ "$SECTION" = range ] && ran_range=$((ran_range + 1))
   say "$name"
   if "$@"; then
     return 0
@@ -116,6 +134,7 @@ if [ "$TIER" != "push" ]; then
   printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE\033[0m\n' "$TIER"
 fi
 if [ "$TIER" = "push" ]; then
+  SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
   step "artifact-currency (a published page drifting from HEAD)" node scripts/ci/artifact-currency.mjs
   step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
@@ -143,6 +162,15 @@ if [ "$TIER" = "fast" ]; then
 fi
 
 printf '\n'
+if [ "$RANGE_ONLY" = 1 ] && [ "$ran_range" -eq 0 ]; then
+  # ZERO-GUARD (R3a): a range-only run that ran no range gate certified nothing.
+  printf '\033[31m✖ pipeline (push, range-only): 0 commit-range gates ran — COULD NOT CHECK, not a pass\033[0m\n'
+  exit 3
+fi
+if [ "$fail" -eq 0 ] && [ "$RANGE_ONLY" = 1 ]; then
+  printf '\033[32m✓ pipeline (push, range-only): %s commit-range gate(s) passed; %s offline-core step(s) certified by the receipt\033[0m\n' "$ran_range" "$skipped_core"
+  exit 0
+fi
 if [ "$fail" -eq 0 ]; then
   printf '\033[32m✓ pipeline (%s): every step passed\033[0m\n' "$TIER"
   # Record the receipt ONLY for the commit tier, and only on a fully green run. A tree hash is written

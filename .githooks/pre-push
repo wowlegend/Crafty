@@ -91,8 +91,15 @@ done
 # already in the receipt, spinning up a worktree to re-derive that answer buys nothing.
 #
 # WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
-# OFFLINE CORE. The commit-shaped gates (trailers, queue-ledger, artifact-currency, e2e-freshness) read a
-# COMMIT RANGE that did not exist when the receipt was written, so they run unconditionally, above.
+# OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
+# written, so they run on EVERY push: the two trailers above, and queue-ledger / artifact-currency /
+# e2e-freshness via `pipeline.sh --tier=push --range-only` below.
+#
+# THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the
+# pipeline, and those three gates live in its push tier, so on every receipt-matched push they silently
+# never ran — while this comment said they "run unconditionally, above". Only the trailers were above.
+# Found when a partial-stage fix stopped the receipt being written, the full path ran for once, and
+# artifact-currency surfaced 74 commits of drift that had accumulated past a gate nobody was running.
 #
 # The receipt lives in .git/ and so cannot survive a clone — a fresh checkout has certified nothing, which
 # is the correct default. A missing or stale receipt costs a full certification: it fails toward WORK, not
@@ -111,20 +118,20 @@ for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")
   PUSHED_TREE=$(git rev-parse "$SHA^{tree}" 2>/dev/null || true)
 
+  RANGE_FLAG=""
   if [ -n "$GREEN_TREE" ] && [ "$GREEN_TIER" = "commit" ] && [ -n "$PUSHED_TREE" ] && [ "$PUSHED_TREE" = "$GREEN_TREE" ]; then
     printf '\n══ pre-push: %s — offline core already certified on this exact tree (%s) ══\n' "$SHORT" "$GREEN_AT"
-    printf '  tree %s matches the pre-commit receipt; re-running it would re-derive a known answer.\n' "$(printf '%.10s' "$PUSHED_TREE")"
-    printf '  The commit-shaped gates above DID run — the receipt does not speak for a range it never saw.\n'
-    continue
-  fi
-
-  if [ -n "$GREEN_TREE" ]; then
+    printf '  tree %s matches the pre-commit receipt; the core is skipped, the commit-range gates still run.\n' "$(printf '%.10s' "$PUSHED_TREE")"
+    RANGE_FLAG="--range-only"
+  elif [ -n "$GREEN_TREE" ]; then
     printf '\n  (receipt present but for tree %s, not %s — certifying in full)\n' \
       "$(printf '%.10s' "$GREEN_TREE")" "$(printf '%.10s' "${PUSHED_TREE:-unknown}")"
   else
     printf '\n  (no green receipt on this machine — certifying in full)\n'
   fi
-  printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"
+  if [ -z "$RANGE_FLAG" ]; then
+    printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"
+  fi
 
   WT="$(mktemp -d "${TMPDIR:-/tmp}/crafty-prepush-XXXXXX")"
   # Always tear the worktree down, on success, failure or interrupt.
@@ -149,7 +156,8 @@ for SHA in $TARGETS; do
   # restated a DIFFERENT set; they disagreed, and the drift surfaced as CI mailing about a commit that
   # passed locally (2026-09-22: a damage-model change broke an E2E spec only the workflow ran).
   # ci/pipeline.sh is now the definition and both callers invoke it, so neither can drift.
-  bash "$WT/ci/pipeline.sh" --tier=push
+  # shellcheck disable=SC2086 -- RANGE_FLAG is empty or one word, by construction above
+  bash "$WT/ci/pipeline.sh" --tier=push $RANGE_FLAG
 
   cd "$REPO_ROOT"
   git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"
