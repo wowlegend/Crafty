@@ -1,5 +1,5 @@
 {
-  "_count": 103,
+  "_count": 104,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -38,6 +38,7 @@
     "tests/gates/equipment-dry-gates.test.js",
     "tests/gates/fade-in-keyframe-gates.test.js",
     "tests/gates/friend-foe-gates.test.jsx",
+    "tests/gates/grass-biome-tint-gates.test.js",
     "tests/gates/grass-revival-gates.test.js",
     "tests/gates/hands-render-gates.test.js",
     "tests/gates/heartbeat-stable-interval-gates.test.js",

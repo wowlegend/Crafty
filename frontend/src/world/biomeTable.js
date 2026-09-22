@@ -156,3 +156,35 @@ export function pickBiome(temperature, moisture, continent) {
   // drier temperate: open plains inland, coastal flats read as flower meadow (continent-distinct)
   return coastal ? { ...BIOMES.meadow } : { ...BIOMES.plains };
 }
+
+/**
+ * Q14 — the per-biome tint MULTIPLIER table, luminance-normalised, one entry per biome as rgb triples.
+ *
+ * MOVED HERE 2026-09-22 from `Terrain.jsx`, because it now has two consumers: the ground (a shader
+ * uniform indexed by a per-vertex biome id) and the wind-grass blades (`bladeTint`, per instance). Two
+ * copies of this arithmetic would be two things to retune and one of them would be forgotten — and the
+ * failure would be silent, since a blade whose tint drifts from the ground beneath it looks like a
+ * lighting artefact rather than a bug.
+ *
+ * It lives in this plain module rather than in the R3F component so a node test can drive it; a shader
+ * is unreachable by every gate this repo has, and a React module drags the renderer into any test that
+ * imports it.
+ *
+ * STRENGTH IS KEVIN'S DIAL. 0.35 is the middle rung of TERRAIN-GRASS-SOTA-PLAN's 25/35/50 ladder, and 0
+ * is an EXACT no-op (`tintPreservingLuminance` returns [1,1,1]), so reverting is one number.
+ */
+export const BIOME_TINT_STRENGTH = 0.35;
+
+export function biomeTintTable(strength = BIOME_TINT_STRENGTH) {
+  const out = new Float32Array(BIOME_NAMES.length * 3);
+  for (let i = 0; i < BIOME_NAMES.length; i++) {
+    const m = tintPreservingLuminance(
+      [BIOME_TINT_RGB[i * 3], BIOME_TINT_RGB[i * 3 + 1], BIOME_TINT_RGB[i * 3 + 2]],
+      strength,
+    );
+    out[i * 3] = m[0];
+    out[i * 3 + 1] = m[1];
+    out[i * 3 + 2] = m[2];
+  }
+  return out;
+}

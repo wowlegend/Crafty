@@ -11,9 +11,12 @@ describe('grassTops (sparse grass-top positions for the wind-grass overlay)', ()
     const ys = Int16Array.from([10, 5, 0, 6,  5, 11, 5, 5,  0, 0, 0, 0,  6, 6, 6, 12]);
     const out = grassTops(codes, ys, SIZE, 100, 200, { stride: 1, cap: 50 });
     // grass at flat indices 0 (x0,z0), 5 (x1,z1), 15 (x3,z3)
-    expect(out).toContainEqual([100 + 0, 10 + 1, 200 + 0]);
-    expect(out).toContainEqual([100 + 1, 11 + 1, 200 + 1]);
-    expect(out).toContainEqual([100 + 3, 12 + 1, 200 + 3]);
+    // The fourth element is the column's biome id (Q14, 2026-09-22), 0 when no ids are supplied. It is
+    // asserted here rather than sliced off: the tuple ARITY is the contract the consumer destructures,
+    // and a test that ignores the extra slot would stay green if the producer dropped it again.
+    expect(out).toContainEqual([100 + 0, 10 + 1, 200 + 0, 0]);
+    expect(out).toContainEqual([100 + 1, 11 + 1, 200 + 1, 0]);
+    expect(out).toContainEqual([100 + 3, 12 + 1, 200 + 3, 0]);
     expect(out.length).toBe(3); // no non-grass columns
   });
 

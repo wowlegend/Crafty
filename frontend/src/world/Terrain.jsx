@@ -3,7 +3,7 @@ import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { BIOME_NAMES, BIOME_TINT_RGB, tintPreservingLuminance } from './biomeTable.js';
+import { biomeTintTable } from './biomeTable.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
@@ -195,17 +195,11 @@ const compileShader = (shader) => {
  * STRENGTH IS KEVIN'S DIAL. 0.35 is the middle rung of TERRAIN-GRASS-SOTA-PLAN's 25/35/50 ladder, and 0
  * is an exact no-op, so reverting is one number.
  */
-export const BIOME_TINT_STRENGTH = 0.35;
-const biomeTintUniform = new Float32Array(BIOME_NAMES.length * 3);
-for (let i = 0; i < BIOME_NAMES.length; i++) {
-  const m = tintPreservingLuminance(
-    [BIOME_TINT_RGB[i * 3], BIOME_TINT_RGB[i * 3 + 1], BIOME_TINT_RGB[i * 3 + 2]],
-    BIOME_TINT_STRENGTH,
-  );
-  biomeTintUniform[i * 3] = m[0];
-  biomeTintUniform[i * 3 + 1] = m[1];
-  biomeTintUniform[i * 3 + 2] = m[2];
-}
+// The dial and the table both live in biomeTable.js now — the wind-grass blades need the identical
+// multipliers, and two copies of this arithmetic would drift silently. Re-exported so existing importers
+// of BIOME_TINT_STRENGTH from this module keep working.
+export { BIOME_TINT_STRENGTH } from './biomeTable.js';
+const biomeTintUniform = biomeTintTable();
 
 opaqueMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uBiomeTint = { value: biomeTintUniform };

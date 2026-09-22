@@ -14,19 +14,38 @@ describe('grass revival 1a -- worker emits grass-tops', () => {
   const worker = read('world/terrain.worker.js');
 
   it('the worker imports the pure grassTops helper', () => {
-    expect(worker).toMatch(/import \{ grassTops \} from '\.\/grassField\.js'/);
+    // Match the SPECIFIER, not the whole clause — the import now also carries columnTops, and a gate
+    // about "the worker uses the pure helper" should not red because a sibling export joined it. The
+    // GrassWindDriver case two describes below already does this; the two were inconsistent.
+    expect(worker).toMatch(/import \{[^}]*\bgrassTops\b[^}]*\} from '\.\/grassField\.js'/);
   });
-  it('it scans each column TOP block (topCodes/topYs) then derives grass-tops', () => {
-    expect(worker).toMatch(/const topCodes = new Uint8Array/);
-    expect(worker).toMatch(/const topYs = new Int16Array/);
-    expect(worker).toMatch(/const gTops = grassTops\(topCodes, topYs, CHUNK_SIZE/);
+  it('BOTH worker paths derive grass-tops through the shared column scan, and neither inlines it', () => {
+    // RE-POINTED 2026-09-22. This used to require `const topCodes = new Uint8Array` in the worker — an
+    // assertion about the loop being written out INLINE, which is the thing that was wrong: it was
+    // written out twice, build path and update_block path, and the second copy carried a comment saying
+    // a shared helper was the upgrade path. Two copies is how the update path once lost grassTops
+    // entirely, so editing any block killed that chunk's wind-grass until reload.
+    //
+    // So the assertion is now the PROPERTY that matters rather than the shape it used to have: the
+    // scan is called at both sites and inlined at neither. The scan's BEHAVIOUR is driven in
+    // `grass-biome-tint-gates.test.js` against a synthetic chunk, which is a thing a grep cannot do.
+    expect((worker.match(/columnTops\(blocks, getIndex, CHUNK_SIZE, CHUNK_HEIGHT\)/g) || []).length,
+      'the two worker paths must BOTH go through the shared scan').toBe(2);
+    expect((worker.match(/const gTops = grassTops\(topCodes, topYs, CHUNK_SIZE/g) || []).length).toBe(2);
+    expect(worker, 'the column scan has been re-inlined — the two copies will drift again')
+      .not.toMatch(/const topCodes = new Uint8Array/);
+  });
+  it('both grass-top calls pass the chunk biome ids (a blade must know its biome)', () => {
+    // Without this the ids reach the mesher and not the blades, which is the state that shipped: the
+    // ground tinted per biome and the grass standing on it did not.
+    expect((worker.match(/\{ stride: 2, cap: 50 \}, biomeChunks\.get\(key\)\)/g) || []).length).toBe(2);
   });
   it('grassTops rides the chunk_mesh payload (data only, transferred buffers unchanged)', () => {
     expect(worker).toMatch(/grassTops: gTops/);
   });
   it('the pure helper still maps grass columns to world positions', () => {
     const out = grassTops(Uint8Array.from([1, 3]), Int16Array.from([7, 2]), 2, 0, 0, { stride: 1, cap: 50 });
-    expect(out).toEqual([[0, 8, 0]]); // only the grass column (code 1), y = topY + 1
+    expect(out).toEqual([[0, 8, 0, 0]]); // only the grass column (code 1), y = topY + 1, biome id 0 (none given)
   });
 });
 

@@ -11,7 +11,7 @@ import { pineShape, acaciaShape, swampShape, jungleShape } from './foliage.js';
 import { computeHeight } from './heightAt.js';
 import { oreCodeFor } from './oreGen.js';
 import { linearRgbToHex } from '../game/colorHex.js';
-import { grassTops } from './grassField.js';
+import { grassTops, columnTops } from './grassField.js';
 import { generateMesh } from './mesher.js';
 
 // Constants
@@ -73,17 +73,8 @@ self.onmessage = function(e) {
     // M4 #5: scan each column's TOP block (highest non-air) -> a sparse list of grass-top world
     // positions for the wind-grass overlay (OptimizedGrassSystem). Gen-time read of `blocks` only --
     // NO extra mesh work, NO re-mesh. The plain array is structured-cloned (not transferred).
-    const topCodes = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
-    const topYs = new Int16Array(CHUNK_SIZE * CHUNK_SIZE);
-    for (let z = 0; z < CHUNK_SIZE; z++) {
-      for (let x = 0; x < CHUNK_SIZE; x++) {
-        for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-          const b = blocks[getIndex(x, y, z)];
-          if (b !== 0) { topCodes[x + z * CHUNK_SIZE] = b; topYs[x + z * CHUNK_SIZE] = y; break; }
-        }
-      }
-    }
-    const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 });
+    const { topCodes, topYs } = columnTops(blocks, getIndex, CHUNK_SIZE, CHUNK_HEIGHT);
+    const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 }, biomeChunks.get(key));
 
     // Transfer buffers back to main thread
     self.postMessage({
@@ -148,17 +139,8 @@ self.onmessage = function(e) {
       // grassTops but update_block dropped it, so editing ANY block killed the chunk's wind-grass until
       // reload. shortcut: inlined to mirror the generate-path scan (the grass-revival gate locks those
       // literal tokens); a shared computeGrassTops helper is the upgrade path.
-      const topCodes = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
-      const topYs = new Int16Array(CHUNK_SIZE * CHUNK_SIZE);
-      for (let z = 0; z < CHUNK_SIZE; z++) {
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-          for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-            const b = blocks[getIndex(x, y, z)];
-            if (b !== 0) { topCodes[x + z * CHUNK_SIZE] = b; topYs[x + z * CHUNK_SIZE] = y; break; }
-          }
-        }
-      }
-      const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 });
+      const { topCodes, topYs } = columnTops(blocks, getIndex, CHUNK_SIZE, CHUNK_HEIGHT);
+      const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 }, biomeChunks.get(key));
       self.postMessage({
         type: 'chunk_mesh',
         payload: {

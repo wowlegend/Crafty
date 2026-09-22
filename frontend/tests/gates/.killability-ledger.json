@@ -1,8 +1,8 @@
 {
   "_README": "Un-receipted check files. MAY FALL, NEVER RISE. A receipt is the token \"Mutation-Proof:\" inside the file, naming the mutation applied and the RED observed. Regenerate: node scripts/ci/killability-ledger.mjs --write",
   "_count": 452,
-  "_total": 485,
-  "_receipted": 33,
+  "_total": 486,
+  "_receipted": 34,
   "_frozenAt": "2026-09-22",
   "files": [
     "scripts/ci/_density-ratchet.mjs",

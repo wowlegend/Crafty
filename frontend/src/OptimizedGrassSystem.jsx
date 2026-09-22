@@ -6,6 +6,7 @@ import { mobsQuery } from './ecs/world';
 import { frameElapsed } from './devtest/captureClock.js';
 import { collectBendSources } from './game/grassBend.js';
 import { bladeTransform, bladeTint } from './game/grassVariation.js';
+import { biomeTintTable } from './world/biomeTable.js';
 
 // S9. LIT grass, with GPU wind sway + player displacement.
 //
@@ -218,7 +219,12 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
     
     const tint = new THREE.Color();
 
-    grassBlocks.forEach(([x, y, z], i) => {
+    // Q14: the SAME luminance-normalised multipliers the ground shader uses, from the one table in
+    // biomeTable.js. Hoisted out of the loop — it is a pure derivation of constants, so rebuilding it
+    // per blade would be 50 identical Float32Arrays per chunk.
+    const biomeTint = biomeTintTable();
+
+    grassBlocks.forEach(([x, y, z, biomeId], i) => {
       // S8: yaw / scale / sub-cell offset, all hashed from the world (x,z) -- deterministic, RNG-free
       // and clock-free, so the capture gate still byte-compares. `py` arrives base-anchored: the quad
       // is centre-origin, so the lift that stands it on the surface scales WITH the blade (a fixed
@@ -233,7 +239,13 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
       // instanceColor MULTIPLIES the material colour (color_fragment: `diffuseColor.rgb *= vColor`),
       // so this is a multiplier centred on 1.0, never a colour. Recolouring the grass toward its
       // yellow-green substrate is S9's owner call; S8 only adds spread around whatever it becomes.
-      const c = bladeTint(x, z);
+      // The fourth element is the column's biome id, carried from the worker (grassField.grassTops).
+      // Without it a blade in a savanna rendered the same green as one in a taiga while the block
+      // directly beneath it did not — the blades and the ground disagreed, which reads as a lighting
+      // artefact rather than as a bug. `b * 3` indexes the rgb triple; an out-of-range id would read
+      // undefined and tint to NaN, so it is clamped to the table rather than trusted.
+      const b3 = Math.min(Math.max(0, biomeId | 0), biomeTint.length / 3 - 1) * 3;
+      const c = bladeTint(x, z, [biomeTint[b3], biomeTint[b3 + 1], biomeTint[b3 + 2]]);
       tint.setRGB(c.r, c.g, c.b);
       grassMeshRef.current.setColorAt(i, tint);
     });
