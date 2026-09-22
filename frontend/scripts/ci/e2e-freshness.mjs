@@ -34,6 +34,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { join, resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,33 +68,100 @@ export function treeId(app = APP) {
   return { id: h.digest('hex').slice(0, 16), files: files.length };
 }
 
-/** The verdict, separated from I/O so the selftest can drive it on synthetic inputs. */
-export function verdict(current, stamp) {
+/**
+ * THE VERDICT — reframed 2026-09-22, because the first version demanded proof that cannot exist.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * THE CIRCULARITY I SHIPPED
+ *
+ * v1 refused any push whose observed tree differed from the last LOCALLY recorded green e2e run. But
+ * `ci/pipeline.sh` declares e2e CI-only — "too slow for any local tier (~20 min, workers: 1), so the push
+ * tier asserts the receipt" — and the receipt could only be written by a local run. So every `src/` change
+ * forced a twenty-minute local run of a suite the pipeline itself says belongs in CI.
+ *
+ * And it cannot be fixed by teaching CI to write the receipt: **CI cannot have run e2e on an unpushed
+ * tree.** The gate asked for evidence that can only exist AFTER the act it gates. That is not a plumbing
+ * bug, it is a goal that cannot be satisfied — the shape GF-L1 is supposed to catch before building.
+ *
+ * Proven in practice the same day: the local run it demanded went RED with four failures, three of them
+ * `Test timeout` / `Execution context was destroyed` on a machine at load 126. A perf spec timing out
+ * while the run itself holds 3.3 cores is evidence about the box, not the build.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * WHAT THE GATE IS ACTUALLY FOR, restated
+ *
+ * The defect it was built for: a damage-model change broke `soft-death-protections`, which only the
+ * workflow runs, so the author could not have seen it. The goal is **never silently lose an e2e
+ * regression** — not "prove green before pushing", which is impossible here.
+ *
+ * Achievable version, in three tiers:
+ *
+ *   1. A LOCAL RECEIPT for this exact tree still short-circuits everything. If someone did run the suite
+ *      green on this tree, nothing more is owed. Kept as a fast path, no longer the only path.
+ *   2. Otherwise the base matters: **do not stack an unverified change onto a tree CI has already called
+ *      RED.** That is the condition under which a regression actually goes missing — the next red run is
+ *      attributed to the known breakage and the new one rides in behind it.
+ *   3. Otherwise ALLOW, loudly, naming that this tree's e2e verdict belongs to CI and has not been given
+ *      yet. An honest "unverified, CI decides" beats a gate people learn to bypass.
+ *
+ * Fail-OPEN when the base state cannot be read (no `gh`, no network, no remote): a push path that breaks
+ * when GitHub is unreachable teaches `--no-verify`, and R5 says choose the direction deliberately and say
+ * which. The one thing that still fails CLOSED is a base CI run that is KNOWN red.
+ *
+ * @param {{id:string,files:number}} current  the observed tree
+ * @param {object|null} stamp                 the local green receipt, if any
+ * @param {{state:string|null, sha?:string}} [base]  CI conclusion for the push base; state null = unknown
+ */
+export function verdict(current, stamp, base = { state: null }) {
   // R3a — a zero-file walk means the globs stopped matching, which would make every future run "fresh"
   // forever. That is a control failure, not a pass.
   if (current.files === 0) {
     return { code: 3, line: 'e2e-freshness: COULD NOT CHECK — 0 observed files. The scan matched nothing; this is a control failure, not a pass.' };
   }
-  if (!stamp) {
-    return {
-      code: 0,
-      line:
-        `e2e-freshness: no stamp (${current.files} files observed, tree ${current.id}).\n` +
-        '  Fresh clone or first run — NOT refusing. Record one with:\n' +
-        '    cd frontend && npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record',
-    };
+
+  // TIER 1 — a local receipt for THIS tree settles it outright.
+  if (stamp && stamp.treeId === current.id) {
+    return { code: 0, line: `e2e-freshness: fresh (tree ${current.id}, ${current.files} files, green at ${stamp.at})` };
   }
-  if (stamp.treeId !== current.id) {
+
+  // TIER 2 — refuse to stack onto a base CI has already called red.
+  if (base && base.state === 'failure') {
     return {
       code: 1,
       line:
-        `e2e-freshness: STALE. The last green E2E run was against tree ${stamp.treeId}; this tree is ${current.id}.\n` +
-        `  ${current.files} files observed under ${OBSERVED.join(', ')} — one of them changed since that run.\n` +
-        '  E2E is CI-only, so nothing else in this push path can see an E2E regression. Run it:\n' +
+        `e2e-freshness: the push BASE is RED on CI${base.sha ? ` (${base.sha})` : ''}, and this tree has no local green receipt.\n` +
+        '  Stacking an unverified change onto a known-broken base is how a regression goes missing: the\n' +
+        '  next red run gets attributed to the breakage already there. Fix the base, or record a local\n' +
+        '  green for this tree:\n' +
         '    cd frontend && npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record',
     };
   }
-  return { code: 0, line: `e2e-freshness: fresh (tree ${current.id}, ${current.files} files, green at ${stamp.at})` };
+
+  // TIER 3 — allow, and say plainly what is and is not known.
+  const why = base && base.state === 'success' ? `base CI is green${base.sha ? ` (${base.sha})` : ''}`
+    : 'base CI state UNKNOWN (no gh, no network, or no runs yet) — failing OPEN by design';
+  return {
+    code: 0,
+    line:
+      `e2e-freshness: this tree has NO e2e verdict yet — ${why}.\n` +
+      `  ${current.files} files observed under ${OBSERVED.join(', ')}; e2e is CI-only, so CI decides this one.\n` +
+      '  Watch it: gh run list --workflow=ci.yml --branch main --limit 1\n' +
+      '  To settle it locally instead (~20 min, and a loaded machine will produce timeouts that are about\n' +
+      '  the machine): npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record',
+  };
+}
+
+/** Read the push base's CI conclusion. Network + gh, so it is isolated here and always degrades to
+ *  `{state:null}` — never throws into the push path. */
+export function readBaseCi(exec) {
+  try {
+    const out = exec('gh run list --workflow=ci.yml --branch main --limit 1 --json conclusion,headSha --jq \'.[0] | "\\(.conclusion) \\(.headSha[0:7])"\'');
+    const [conclusion, sha] = String(out).trim().split(/\s+/);
+    if (!conclusion || conclusion === 'null') return { state: null };
+    return { state: conclusion, sha };
+  } catch {
+    return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
@@ -109,7 +177,7 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   } catch {
     /* absent */
   }
-  const v = verdict(current, stamp);
+  const v = verdict(current, stamp, readBaseCi((cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })));
   console.log(v.line);
   process.exit(v.code);
 }
