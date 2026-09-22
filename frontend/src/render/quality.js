@@ -19,7 +19,17 @@
 export const TIERS = {
   low:  { ao: false, godRays: false, godRaySamples: 0,   bloomMipmap: false, shadowMapSize: 512,  renderDistance: 2, weather: 0.25, dprCap: 1.5, outlineWorldEdge: false, charOutline: true,  charRim: false, moteCount: 36  },
   med:  { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 1024, renderDistance: 3, weather: 0.6,  dprCap: 2,   outlineWorldEdge: false, charOutline: true,  charRim: false, moteCount: 80  },
-  high: { ao: true,  godRays: true,  godRaySamples: 100, bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 2,   outlineWorldEdge: true,  charOutline: true,  charRim: true,  moteCount: 140 },
+  // godRaySamples high 100 -> 60 (2026-09-22). This file's own header states the governing fact —
+  // "GodRays cost scales ~linearly with samples" — which makes 100 the single most expensive knob in the
+  // post chain, and it was never cost-budgeted: `selectTier` puts any machine with >=12 GB and >=8 cores
+  // on `high`, so a 36 GB / 14-core laptop runs 100-sample god rays across 7.7 Mpx at dpr 2. Measured
+  // live: navigator.deviceMemory reports 32 on a secure context (NOT clamped to 8 — I assumed it was and
+  // was wrong), cores 14, so selectTier returns 'high' on exactly that machine.
+  // 60 is not a guess: `med` has shipped 60 since S1-D-M3 as the value judged to hold the atmosphere
+  // signature, so this takes ~40% off the most expensive pass at a quality point already accepted.
+  // dprCap stays 2 deliberately — it is the next lever and the only one that changes SHARPNESS, so it
+  // wants a measured before/after and Kevin's eye, not a silent edit.
+  high: { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 2,   outlineWorldEdge: true,  charOutline: true,  charRim: true,  moteCount: 140 },
 };
 
 /**

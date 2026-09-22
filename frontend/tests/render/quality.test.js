@@ -32,10 +32,28 @@ describe('TIERS config', () => {
     expect(TIERS.med.godRays).toBe(true);
     expect(TIERS.high.godRays).toBe(true);
   });
-  it('med uses fewer god-ray samples than high (perf), low has none', () => {
+  // REWRITTEN 2026-09-22. This asserted `med < high` strictly, and blocked the commit that set high's
+  // samples to med's 60 — correctly, because it caught a rung of the quality ladder being collapsed.
+  //
+  // The rung is deliberately gone, and there is precedent in quality.js itself: `charOutline` is
+  // TIER-INDEPENDENT (true at every tier) by explicit decision, because the cheap value is the right
+  // value and the knob must not be a perf-downgrade casualty. This is the same argument inverted. 60 is
+  // the sample count `med` has shipped since S1-D-M3 as the value judged to HOLD the atmosphere
+  // signature — so everything above 60 was surplus over an already-accepted look, on the one knob whose
+  // own header says its cost scales ~linearly, on the tier a 36GB/14-core laptop actually gets.
+  //
+  // What replaces the rung is a CEILING plus the floor that was always here. The ladder still ramps where
+  // ramping means something, and those are asserted elsewhere in this file: renderDistance, moteCount,
+  // and the ao/godRays/bloomMipmap toggles.
+  it('god-ray samples: none at low, a real count at med, and no tier exceeds med (cost ceiling)', () => {
     expect(TIERS.low.godRaySamples).toBe(0);
     expect(TIERS.med.godRaySamples).toBeGreaterThan(0);
-    expect(TIERS.med.godRaySamples).toBeLessThan(TIERS.high.godRaySamples);
+    // The ceiling. `high` may match med but never exceed it: GodRays is the costliest pass in the chain
+    // and 60 already reads correctly, so a higher number buys nothing visible and burns a laptop.
+    expect(TIERS.high.godRaySamples).toBeLessThanOrEqual(TIERS.med.godRaySamples);
+    // ...and high must still HAVE god rays — a ceiling must not be satisfiable by turning them off.
+    expect(TIERS.high.godRaySamples).toBeGreaterThan(0);
+    expect(TIERS.high.godRays).toBe(true);
   });
   // S1-D-M3: mote count ramps with tier (sparse on low, full cloud on high).
   it('mote count ramps monotonically with tier', () => {

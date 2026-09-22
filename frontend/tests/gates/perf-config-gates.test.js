@@ -98,11 +98,21 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
     expect(window).toMatch(/setQualityTier\(next\)/);
   });
 
-  it('PerformanceMonitor uses built-in hysteresis (bounds + flipflops) to prevent oscillation', () => {
-    // The dead-zone `bounds` margin + `flipflops` instability cap stop incline/decline
-    // ping-ponging. Conservative defaults; real-device threshold tuning is S3.
-    expect(src).toMatch(/bounds\s*=\s*\{/);
-    expect(src).toMatch(/flipflops\s*=\s*\{/);
+  it('PerformanceMonitor uses the bounds dead zone for hysteresis — and does NOT cap flipflops', () => {
+    // REWRITTEN 2026-09-22. This case used to assert `flipflops = {` as half of the anti-oscillation
+    // mechanism. It was removed from GameScene that day, and gate-shape immediately reported that the
+    // assertion now matched ONLY the residue COMMENT naming the old value — "delete the guarded code and
+    // this assertion still passes; it is not a gate". Correct diagnosis: the property changed, so the
+    // gate had to change with it rather than be relaxed.
+    //
+    // WHY flipflops is gone. drei's default is Infinity, and its sampler opens with
+    // `if (api.fallback) return;` under "If the fallback has been reached do not continue running
+    // samples" (read from the installed drei source). Exceeding the cap stops SAMPLING for the session,
+    // so a warm-up climb of 2 inclines plus one dip froze adaptation permanently. `bounds` is the
+    // mechanism whose job is hysteresis; a transition budget was doing it by switching the instrument off.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).toMatch(/bounds\s*=\s*\{/);        // the dead zone IS present, in code
+    expect(code).not.toMatch(/flipflops\s*=\s*\{/); // and the session-freezing cap is not
   });
 
   it('the PerformanceMonitor stays inside the !isCaptureMode guard (capture forced-high untouched)', () => {

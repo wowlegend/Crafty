@@ -193,9 +193,25 @@ export function GameScene({
           // So onIncline ADDS recovery (the ratchet is no longer strictly one-way at the happy
           // path) but is not yet bulletproof. The whole monitor stays inside !isCaptureMode so
           // the deterministic forced-high capture path is never perturbed by recovery logic.
+          // flipflops REMOVED 2026-09-22 (was 3), restoring drei's own default of Infinity.
+          // Read from the installed drei source: `flipflops = Infinity` IS the default, and the sampler opens
+          // with `if (api.fallback) return;` under the comment "If the fallback has been reached do not continue
+          // running samples". So exceeding it does not merely stop reacting — it stops SAMPLING, permanently,
+          // for the rest of the session.
+          //
+          // The residue note above already had the arithmetic: a normal warm-up climb (low->med->high = 2
+          // inclines) plus one dip is 3, so adaptation froze almost immediately and every later thermal or load
+          // change was invisible. Oscillation is already prevented by the `bounds` dead zone — that is the
+          // mechanism whose job it is; a transition budget was doing it by switching the instrument off.
+          //
+          // WHAT THIS STILL DOES NOT FIX, and it is the important half: PerformanceMonitor samples FRAME RATE,
+          // and frame rate is not a measure of COST. A machine pinned at 100% GPU while holding a comfortable
+          // 60 fps sits inside the [50, 90] dead zone forever and never declines — which is exactly the case
+          // that spins the fans on a high-refresh laptop. No rate-based governor can see it. The answer is to
+          // make `high` cheap enough to be safe rather than to tune the monitor, which is why the MSAA and
+          // god-ray changes alongside this matter more than this line does.
           <PerformanceMonitor
             bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
-            flipflops={3}
             factor={0.5}
             onDecline={() => {
               const cur = useGameStore.getState().qualityTier;
@@ -262,7 +278,27 @@ export function GameScene({
 
           <Sun onReady={setSunMesh} />
 
-          <EffectComposer>
+          {/* multisampling={0} — MEASURED-COST CHANGE, 2026-09-22.
+              @react-three/postprocessing defaults `multisampling` to 8 and `frameBufferType` to
+              HalfFloatType (both read from the installed dist, not from memory). Passing no prop therefore
+              allocated an 8x multisampled RGBA16F render target at full canvas resolution and resolved it
+              with blitFramebuffer EVERY FRAME. Arithmetic on those verified constants: 8 bytes per sample
+              x 8 samples x canvas px = ~471 MB of MSAA buffer at 1728x1117 dpr2, ~62 MB even at 1280x800
+              dpr1 — on top of the resolved target.
+
+              And <SMAA/> is four lines below, doing shader-based antialiasing on the resolved image. So the
+              chain paid for hardware 8x MSAA AND a full AA pass. SMAA is the standard substitute and its
+              presence here is what makes 0 the right value rather than a lower one; this is not "AA off".
+
+              Related, and NOT claimed as fixed by this: the production console carries
+              `GL_INVALID_OPERATION: glBlitFramebuffer` per frame until Chrome mutes the context
+              (.claude/rules/gates-and-probes.md). A per-frame MSAA resolve is the only blitFramebuffer in
+              this pipeline, so it is the prime suspect — but SwiftShader reports MAX_SAMPLES 4 and emitted
+              zero GL errors, so the headless probe CANNOT confirm it. Verify in a real Chrome before
+              writing that down as solved.
+
+              To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
+          <EffectComposer multisampling={0}>
             {q.ao && (
               <N8AO
                 halfRes
