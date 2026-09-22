@@ -1,5 +1,5 @@
 {
-  "_count": 106,
+  "_count": 105,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -30,7 +30,6 @@
     "tests/gates/compass-hearth-gates.test.js",
     "tests/gates/danger-bridge-gates.test.js",
     "tests/gates/daynight-audio-gates.test.js",
-    "tests/gates/daynight-clock-gates.test.js",
     "tests/gates/death-beats-gates.test.js",
     "tests/gates/death-fx-gates.test.js",
     "tests/gates/dusk-warning-gates.test.js",

@@ -73,7 +73,14 @@ export function dimensions(src) {
   return {
     // An import of the SUBJECT, not of the test framework. `vitest`, `node:*` and `@testing-library`
     // are harness imports and prove nothing about reaching the code under test.
-    executes: /^\s*import\s[\s\S]*?from\s+'(?!vitest|node:|@testing-library|@playwright)[^']+'/m.test(code),
+    // STATIC or DYNAMIC. The first version matched only `import … from '…'`, so a file reaching its
+    // subject through `await import('../../src/x.js')` — which is how a test must do it when the module
+    // has to load AFTER `vi.mock` calls are hoisted — scored as if it executed nothing. Found by scoring
+    // a conversion I had just written and getting 2/5 for a file that drives its subject with fake timers.
+    // A census that undercounts the good shape pushes work in the wrong direction, which is worse than
+    // being merely incomplete.
+    executes: /^\s*import\s[\s\S]*?from\s+'(?!vitest|node:|@testing-library|@playwright)[^']+'/m.test(code)
+      || /\bimport\(\s*'(?!vitest|node:|@testing-library|@playwright)[^']+'\s*\)/.test(code),
     receipt: src.includes('Mutation-Proof:'),
     denominator: /\b(toHaveLength|toBeGreaterThan|\.length\b[\s\S]{0,40}toBe|scanned|checked|count)\b/.test(code),
     zeroGuard: /\b(length\)?\s*(===|>)\s*0|toBeGreaterThan\(0\)|COULD NOT CHECK|exit\(3\))/.test(code),

@@ -29,6 +29,13 @@ describe('gate-census dimensions', () => {
     expect(dimensions(wrap("import { thing } from '../../src/game/thing.js';")).executes).toBe(true);
   });
 
+  it('executes: a DYNAMIC import of the subject counts too', () => {
+    // A test that must load its subject AFTER vi.mock hoisting has to use `await import(...)`. Scoring
+    // that as "executes nothing" undercounts exactly the shape the census exists to encourage.
+    expect(dimensions("const { thing } = await import('../../src/game/thing.js');").executes).toBe(true);
+    expect(dimensions("await import('vitest');").executes).toBe(false); // harness, still excluded
+  });
+
   it('executes: a HARNESS import does not — importing vitest proves nothing about reaching the code', () => {
     for (const m of ['vitest', 'node:fs', '@testing-library/react', '@playwright/test']) {
       expect(dimensions(`import x from '${m}';`).executes, m).toBe(false);
