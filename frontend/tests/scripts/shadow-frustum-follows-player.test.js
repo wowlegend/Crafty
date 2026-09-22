@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { snapShadowCentre, SUN_OFFSET } from '../../src/render/Atmosphere.jsx';
+import { snapShadowCentre, sunWorldPosition, SUN_DISTANCE, SUN_OFFSET } from '../../src/render/Atmosphere.jsx';
 import { TIERS } from '../../src/render/quality.js';
 
 /**
@@ -118,6 +118,66 @@ describe('the shadow frustum follows the player', () => {
       // And must not sprawl far beyond it, which is what spent the shadow map's pixels on empty space.
       expect(extent, `tier ${t}`).toBeLessThanOrEqual((TIERS[t].renderDistance + 1) * CHUNK);
     }
+  });
+
+  it('the sun position has exactly ONE writer (two silently cancelled the first version of this fix)', () => {
+    // THE REGRESSION THIS CASE EXISTS FOR. The first version of this change wrote
+    // `sunRef.current.position` near the top of the useFrame to follow the player, while the mood block
+    // below already wrote `position.set(m.sunPos)` every frame. The later write won, so the follow was
+    // DEAD — and because the TARGET still moved, the light-to-target vector rotated as the player walked,
+    // swinging every shadow's direction. Worse than the pinned frustum it replaced.
+    //
+    // No assertion in this file caught it: they drove a pure function and grepped for the target write.
+    // A second writer is invisible to both. Comment-stripped so the account above cannot satisfy it.
+    const atmos = readFileSync(resolve(HERE, '../../src/render/Atmosphere.jsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const writes = atmos.match(/sunRef\.current\.position\.set\(/g) || [];
+    expect(writes.length).toBe(1);
+  });
+
+  it('mood owns the DIRECTION and the player owns the CENTRE — both, from one function', () => {
+    const centre = { x: 300, z: -120 };
+    const moodSun = [-55, 48, -52];
+    const p = sunWorldPosition(centre, moodSun);
+
+    // The centre follows: x/z sit near the player, not near the world origin.
+    expect(Math.abs(p.x - centre.x)).toBeLessThanOrEqual(SUN_DISTANCE);
+    expect(Math.abs(p.z - centre.z)).toBeLessThanOrEqual(SUN_DISTANCE);
+    expect(p.x).toBeGreaterThan(100); // decisively player-side, not origin-side
+
+    // The DIRECTION is the mood's: the light-to-target vector must be parallel to moodSun, because that
+    // vector IS the shadow direction. If the centre leaked into it, shadows would swing as you walk.
+    const dir = { x: p.x - centre.x, y: p.y - 0, z: p.z - centre.z };
+    const len = Math.hypot(dir.x, dir.y, dir.z);
+    const mlen = Math.hypot(...moodSun);
+    for (const [i, k] of [[0, 'x'], [1, 'y'], [2, 'z']]) {
+      expect(dir[k] / len).toBeCloseTo(moodSun[i] / mlen, 6);
+    }
+  });
+
+  it('the shadow DIRECTION is invariant to where the player stands', () => {
+    // The property the regression broke, stated directly: walking must not rotate the sun.
+    const moodSun = [-55, 48, -52];
+    const unit = (c) => {
+      const p = sunWorldPosition(c, moodSun);
+      const d = { x: p.x - c.x, y: p.y, z: p.z - c.z };
+      const l = Math.hypot(d.x, d.y, d.z);
+      return [d.x / l, d.y / l, d.z / l];
+    };
+    const a = unit({ x: 0, z: 0 });
+    const b = unit({ x: 900, z: -700 });
+    for (let i = 0; i < 3; i++) expect(b[i]).toBeCloseTo(a[i], 9);
+  });
+
+  it('falls back to the historical bearing when a mood supplies no sunPos', () => {
+    for (const bad of [null, undefined, [1, 2], [NaN, 1, 2]]) {
+      const p = sunWorldPosition({ x: 0, z: 0 }, bad);
+      expect(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)).toBe(true);
+      expect(p.y).toBeGreaterThan(0); // the sun is above the world in every fallback
+    }
+    const l = Math.hypot(SUN_OFFSET.x, SUN_OFFSET.y, SUN_OFFSET.z);
+    const p = sunWorldPosition({ x: 0, z: 0 }, null);
+    expect(p.y).toBeCloseTo((SUN_OFFSET.y / l) * SUN_DISTANCE, 6);
   });
 
   it('the far plane clears the sun offset (source — one assignment inside an unmountable useFrame)', () => {

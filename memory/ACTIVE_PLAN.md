@@ -5,6 +5,60 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
+### SESSION LOG — 2026-09-22, perf + gates stretch (10 commits, UNPUSHED at time of writing)
+
+**Why unpushed:** `e2e-freshness` is STALE because `src/` changed. Running the suite clears it; that run
+was started at the end of this stretch. Nothing is wrong with the commits — the gate is doing its job.
+
+**PERF — three render-cost defaults, none visible to any of the 17 gates.**
+- `<EffectComposer>` had NO `multisampling` prop. The package default is 8 on a HalfFloatType target
+  (read from the installed dist), i.e. an 8x multisampled RGBA16F buffer at full canvas resolution,
+  blit-resolved every frame — ~471 MB at dpr 2. Never intended: the Canvas sets `antialias: false
+  // Post-processing handles AA` and `<SMAA/>` is four lines below. Now `multisampling={0}`.
+- `flipflops={3}` on PerformanceMonitor froze adaptation for the session (drei's default is Infinity and
+  its sampler opens `if (api.fallback) return;`). Removed. **NAMED, NOT FIXED:** frame rate is not COST —
+  a machine at 100% GPU holding 60fps sits in the [50,90] dead zone forever and never declines.
+- `godRaySamples: 100` at `high`, never cost-budgeted. Measured live: `navigator.deviceMemory` is 32 on a
+  secure context (NOT clamped to 8 — I claimed that and was wrong) and cores 14, so `selectTier` returns
+  `high` on Kevin's laptop. Now 60, the value `med` has shipped since S1-D-M3.
+
+**LOOKS — the shadow frustum was pinned to spawn.** The sun had no `target`, so three.js aimed it at the
+world ORIGIN, with a hardcoded +/-100 ortho box. The world streams indefinitely, so past ~100 units from
+spawn the whole world silently lost sun shadows. Now follows the player, texel-snapped (stops shadow
+crawl), with the extent DERIVED from `(renderDistance + 0.5) * CHUNK` — 72 at high, which is ~14 px/unit
+against the old ~10. Sharper shadows at identical cost, and correct everywhere.
+
+**THE CHROME TAB.** `_serve.mjs` omitted `--no-open` on the preview branch only, and `vite.config.js`
+declares `server: { open: true }`; vite resolves `preview.open ?? server.open`. So every `vite preview`
+launched Kevin's real Chrome. Fixed. This is the mechanism `.claude/rules/gates-and-probes.md` recorded as
+unknowable after seeing it once on :4180.
+
+**THE 11.8 GB TAB — JS EXONERATED, GPU IMPLICATED, NOT CONFIRMED.** 90 heap samples over 58s show a GC
+sawtooth bounded 70-140 MB at -0.4 MB/s. The JS heap does not leak, so the process-level figure is
+GPU-side. `EffectComposer.setSize` reallocates input/output buffers, `<AdaptiveDpr>` is mounted, and
+PerformanceMonitor moves `dprCap` — so every resize reallocated that 471 MB target. Coherent mechanism,
+NOT proven: GPU memory is unreadable from a page and `renderer.info` is unreachable in the prod bundle
+(four accessors tried). The GL error ledger, seeded by CI from a real browser, is what will adjudicate it.
+
+**GATES.** `scripts/ci/gate-census.mjs` replaces the one-shot audit whose verdicts were 4-for-4 wrong on
+contact. It scores all 480 check files on five machine-determinable dimensions and REFUSES to issue a
+disposition (a test asserts it never prints DELETE). First reading: executes 85% · receipt 3% ·
+denominator 52% · zeroGuard 22% · blindSpot 6%; **37 files score 0/5**. Two converted so far, both 0/5 ->
+5/5: `verb-router-gates` (now imports the router, drives the loaded-chest branch that prevents a misclick
+destroying a chest) and `hud-stat-wire-gates` (now RENDERS the provider instead of regex-parsing its
+object literal — the file `_boot.js` names as its sole guard and the audit wanted deleted).
+`prod-smoke` now polls `gl.getError()` per frame instead of scraping a console Chrome MUTES after ~256
+errors — closing OI-06 and OI-08, ratcheted rather than thresholded because SwiftShader cannot supply the
+number.
+
+**OWED, and none of it hidden:**
+- ~35 remaining 0/5 gates. Run `node frontend/scripts/ci/gate-census.mjs --top 40` for the live list.
+- **Real-browser confirmation of every perf claim.** SwiftShader caps samples at 4 and reports 0 GL
+  errors, so it cannot settle the `glBlitFramebuffer` question. CI is the instrument.
+- **Visual re-baseline**, already owed since postprocessing 6.39.1 -> 6.39.5; the shadow change adds to it.
+- **KEVIN DECISION — `dprCap` 2 -> 1.75.** The biggest remaining lever (~23% off all 9 post passes) and
+  the ONLY one that changes visible sharpness. Not taken silently.
+
 ### RESOLVED 2026-09-22 — child's name, fix-forward (Kevin's call)
 
 - **DONE.** The name was in 24 tracked files / 49 lines of a PUBLIC repo, two of them pairing it with the

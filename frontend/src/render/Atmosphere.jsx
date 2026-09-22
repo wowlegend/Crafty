@@ -174,10 +174,44 @@ export function snapShadowCentre(pos, extent, mapSize) {
   };
 }
 
-/** The sun's offset from the frustum centre. Direction is what matters for a directional light; the
- *  magnitude only has to clear the terrain so nothing is clipped by `near`. Same bearing as the old
- *  constant [50,100,50] so the light ANGLE — and therefore every shadow's direction — is unchanged. */
+/** Fallback bearing if a mood ever supplies no sunPos. Same bearing as the historical constant. */
 export const SUN_OFFSET = { x: 50, y: 100, z: 50 };
+
+/** How far up the light-direction ray the sun sits. Only has to clear terrain so nothing is clipped by
+ *  the shadow camera's `near`; a directional light's position otherwise carries no distance meaning. */
+export const SUN_DISTANCE = 140;
+
+/**
+ * PURE. Where the sun light belongs: the MOOD owns the direction, the PLAYER owns the centre.
+ *
+ * WHY THIS EXISTS AS ONE FUNCTION. Both facts were being written to `sunRef.current.position` from two
+ * places in the same useFrame — my player-follow write near the top, and the long-standing
+ * `position.set(m.sunPos)` in the mood block below. The later one silently won, so the follow was dead
+ * code AND the target still moved, which left the light-to-target vector rotating as the player walked.
+ * That swings every shadow's DIRECTION while you move, which is worse than the pinned frustum it replaced.
+ *
+ * A second writer is not a bug you fix by reordering, because the next edit reorders it back. It is a bug
+ * you fix by leaving exactly one place that can write the value, and that is what this function is for.
+ *
+ * The mood's `sunPos` is treated as a DIRECTION, not a location — which is also what makes the sun-arc
+ * work (QUEUE.md B1) a drop-in later: an arc changes this vector, and the shadow sweeps for free.
+ *
+ * @param {{x:number,z:number}} centre  texel-snapped frustum centre (the player)
+ * @param {number[]|null} sunPos        the mood's sun direction, e.g. [-55, 48, -52]
+ * @returns {{x:number,y:number,z:number}}
+ */
+export function sunWorldPosition(centre, sunPos) {
+  const c = centre && Number.isFinite(centre.x) ? centre : { x: 0, z: 0 };
+  const v = Array.isArray(sunPos) && sunPos.length === 3 && sunPos.every(Number.isFinite)
+    ? sunPos
+    : [SUN_OFFSET.x, SUN_OFFSET.y, SUN_OFFSET.z];
+  const len = Math.hypot(v[0], v[1], v[2]) || 1;
+  return {
+    x: c.x + (v[0] / len) * SUN_DISTANCE,
+    y: (v[1] / len) * SUN_DISTANCE,   // absolute: terrain height must not tilt the shadow direction
+    z: c.z + (v[2] / len) * SUN_DISTANCE,
+  };
+}
 
 export function Atmosphere({ shadowConfig }) {
   const { scene, camera } = useThree();
@@ -187,6 +221,7 @@ export function Atmosphere({ shadowConfig }) {
   // exactly how the shadowed region ended up pinned to spawn. three.js only updates a target's
   // matrixWorld if it is in the scene graph, so it is added here rather than just assigned.
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
+  const shadowCentreRef = useRef({ x: 0, z: 0 });
   const fillRef = useRef();
   const hemiRef = useRef();
   const domeRef = useRef();
@@ -210,11 +245,11 @@ export function Atmosphere({ shadowConfig }) {
     // would make the oracle depict one more thing nobody plays. It DOES change the gated frames, which
     // folds into the re-baseline already owed since postprocessing 6.39.1 -> 6.39.5.
     if (sunRef.current && shadowConfig?.extent) {
+      // ONLY the target here. The light's POSITION is written once, in the mood block below, via
+      // sunWorldPosition — because it depends on the mood direction as well as this centre, and two
+      // writers to one property is how the first version of this change silently did nothing.
       const c = snapShadowCentre(st.playerPosition, shadowConfig.extent, shadowConfig.mapSize?.[0] ?? 1024);
-      // y is absolute, not relative to the player: a directional light's SHADOW DIRECTION is the
-      // light-to-target vector, so letting terrain height into it would tilt every shadow in the world as
-      // the player walked up a hill. x/z follow, y does not.
-      sunRef.current.position.set(c.x + SUN_OFFSET.x, SUN_OFFSET.y, c.z + SUN_OFFSET.z);
+      shadowCentreRef.current = c;
       sunTarget.position.set(c.x, 0, c.z);
       sunTarget.updateMatrixWorld();
     }
@@ -257,7 +292,9 @@ export function Atmosphere({ shadowConfig }) {
     if (sunRef.current) {
       sunRef.current.color.copy(m.sun);
       sunRef.current.intensity = m.sunIntensity;
-      sunRef.current.position.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]);
+      // THE ONE PLACE the sun's position is written. Mood owns the direction, player owns the centre.
+      const sp = sunWorldPosition(shadowCentreRef.current, m.sunPos);
+      sunRef.current.position.set(sp.x, sp.y, sp.z);
     }
     if (fillRef.current) {
       fillRef.current.color.copy(m.fill);
