@@ -124,4 +124,13 @@ describe('grass biome tint (Q14)', () => {
     expect(terrain).toMatch(/shader\.uniforms\.uBiomeTintMask = \{ value: biomeTintMaskUniform \};/);
     expect(terrain, 'a literal-sized tint array is back').not.toMatch(/uBiomeTint\[\d+\]/);
   });
+
+  it('plan Task 1 — the terrain sampler reads raw vUv: fract() breaks the mip derivative at block edges', () => {
+    // texture-mipmap-gates drives the texture itself; this is the sampler half, kept here because this file
+    // already reads Terrain.jsx. With mipmaps, fract(vUv) makes the derivative jump at every block edge and
+    // the GPU picks the smallest mip there — a grid line on every block. The texture wraps REPEAT instead.
+    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    expect(terrain).toMatch(/texture\(voxelTextures, vec3\(vUv\.x, vUv\.y, layerIndex\)\)/);
+    expect(terrain).not.toMatch(/fract\(vUv/);
+  });
 });

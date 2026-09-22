@@ -10,7 +10,15 @@ const ORE_TILES = [
   { layer: 13, seed: 57.3, r: 79,  g: 208, b: 231 }, // diamond #4FD0E7
 ];
 
-export function createProceduralVoxelTextures() {
+/**
+ * Distant-terrain mipmapping (EXTERNAL-BASELINE #2). OFF, because "no mipmaps" is part of the bold-flat
+ * design lock (tests/world/proceduralTextures.test.js) and crossing it is Kevin's taste call, queued with a
+ * same-renderer A/B in KEVIN-REVIEW-BATCH. Flipping this one constant is the whole change: the sampler in
+ * Terrain.jsx already reads raw vUv, which mipmapping needs and which is identical without it.
+ */
+const TERRAIN_MIPMAPS = false;
+
+export function createProceduralVoxelTextures({ mipmaps = TERRAIN_MIPMAPS } = {}) {
   const size = 32; // 32x32 resolution per texture slice
   // Layer index == block code (see src/world/blockIds.js + BLOCK_COLORS in terrain.worker.js).
   // 0..9 base block types · 10..13 ore tiles (S6: coal/iron/gold/diamond) · 14 cobblestone · 15 glass (R4a).
@@ -203,12 +211,18 @@ export function createProceduralVoxelTextures() {
   texture.format = THREE.RGBAFormat;
   texture.type = THREE.UnsignedByteType;
   
-  // Use NearestFilter to maintain pixel-perfect voxel look
-  texture.minFilter = THREE.NearestFilter;
+  // Up close always NEAREST: the pixel-perfect voxel look. Far away, with `mipmaps`: without a mip chain every
+  // distant face samples one texel of a 32x32 tile per pixel and crawls as the camera moves, which no
+  // post-process AA can fix. NEAREST within a level, LINEAR between levels (Minecraft's choice).
+  // No anisotropy: three r172 skips it whenever magFilter is Nearest (WebGLTextures.js), so grazing ground
+  // reaches the small mips sooner than it would with a linear mag filter. That is the known ceiling.
+  // REPEAT is load-bearing: the terrain sampler reads raw vUv (no fract), so the derivative is continuous
+  // across block edges and the GPU does not pick the smallest mip at every seam.
+  texture.minFilter = mipmaps ? THREE.NearestMipmapLinearFilter : THREE.NearestFilter;
   texture.magFilter = THREE.NearestFilter;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.generateMipmaps = false;
+  texture.generateMipmaps = mipmaps;
   texture.needsUpdate = true;
   
   return texture;

@@ -117,8 +117,10 @@ const compileShader = (shader) => {
         `
         float layerIndex = floor(vBlockType + 0.5); // Round to nearest integer to prevent floating-point interpolation drift/truncation to layer 0
         
-        // Sample nearest pixel-art repeating tile coordinates from array layer
-        vec4 texColor = texture(voxelTextures, vec3(fract(vUv.x), fract(vUv.y), layerIndex));
+        // Sample the tile from its array layer. Raw vUv, NOT fract(vUv): the texture wraps REPEAT, and fract
+        // makes the UV derivative jump at every block edge, where the GPU would then pick the smallest mip
+        // and draw a grid line around every block.
+        vec4 texColor = texture(voxelTextures, vec3(vUv.x, vUv.y, layerIndex));
         
         // Set the diffuse color to the sampled texture (before lighting calculations).
         // The DataArrayTexture stores sRGB-display bytes but is sampled through a
