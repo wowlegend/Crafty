@@ -298,6 +298,33 @@ Both are cheap relative to how much screen time they get, and both are pure veri
 
 ## C. THE 5 THINGS THAT WOULD MOST CHANGE HOW CRAFTY PLAYS
 
+> ### ⚠️ STATUS RE-VERIFIED LIVE 2026-09-22 — TWO OF THESE FIVE ARE ALREADY DONE
+>
+> Every row below was re-checked against the source, not against the prose. **C1 and C2 are SHIPPED.**
+> A queue that points a future session at finished work is the stale-doc trap this repo names as a LIVE
+> TRAP, and it costs a whole session to discover by reimplementing.
+>
+> | item | verdict | evidence |
+> |---|---|---|
+> | **C1** damage lockout | ✅ **DONE** | `useGameStore.jsx` has `damageLockouts: {}` keyed per attacker and `const key = sourceKey \|\| source`. `lastDamageTime` is deliberately KEPT as the hit SIGNAL the HUD and camera read — it is no longer the rate limiter. Wired end to end: `mobDamage.js` spreads all four args, `AIWorkerSystem.jsx:77` calls `damagePlayer(...damageArgsForAttack(attack))`. Callers passing no key fall back to `source`, so a pre-existing call site degrades to per-CLASS rather than silently losing its limit. |
+> | **C2** LMB destroys chests | ✅ **DONE** | `verbRouter.js` `button === 0` now has `if (chestTargeted && chestHasItems) return 'interact'`, gated on HAS ITEMS so removing an empty chest you placed still works (§5-12 preserved). Wired: `Terrain.jsx:887/891` builds both flags (via the pure `chestState.chestHasItems`), `Components.jsx:490/491` passes them into the ctx, `:502` routes `'interact'` to `terrainVerbs.open(hit)`. |
+> | **C3** boss second appearance | ❌ **STILL OPEN** | `grep -rn bossTier src` → **0 hits**, as the row claims. |
+> | **C4** talent tree is not a choice | ❌ **STILL OPEN** | **18** node ids, **0** hits for `exclusive` or `capstone` in `talentTree.js`. The row's "`grep -rn respec` returns zero hits" is right, but be careful re-deriving it: a bare `respec` grep returns FOUR hits that are all the word "respect**s**" (prefers-reduced-motion, and a comment in `progression.js`). Substring, not implementation. |
+> | **C5** five mobs share one movement | ❌ **STILL OPEN** | `ai.worker.js` still has exactly **two** typed arms, `skeleton` (:278) and `spider` (:299), as the row claims. |
+>
+> **The fabricated path is still in the C1 row below and is still fabricated.** It says
+> "`game/damageSource.js` already exists, with tests". It does not exist — verified by `ls` —, and it is
+> one of the four false verdicts that made the original one-shot audit's DELETE column unsafe and led to
+> `gate-census.mjs` refusing to issue dispositions at all. The real fix used `sourceKey` on the existing
+> `damagePlayer` signature and needed no new module. Left in place below, labelled, rather than silently
+> edited: the row is evidence of how that audit failed.
+>
+> C1's row also asks for the fix to be "gated with a lived probe, not a unit test — a pack of three must
+> measurably out-damage a single". **That gate does not exist.** The per-attacker keying is implemented
+> and commented; nothing in the suite drives three attackers and compares total damage. That is the real
+> remaining C1 work, and it is a test, not a feature.
+
+
 ### C1 — Delete the 500 ms global damage lockout. `[Q21]`
 
 `src/store/useGameStore.jsx:825`:
