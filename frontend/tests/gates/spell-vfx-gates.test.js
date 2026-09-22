@@ -65,8 +65,8 @@ describe('S1-D-M1 spell-VFX spine', () => {
 
   // The non-blocking hitstop replacement must exist as a store-flag the loop reads.
   it('non-blocking hitstop store flag is set on the damage path', () => {
-    expect(npc(), 'damageMob must set a non-blocking hitstop flag (hitstopUntil)')
-      .toMatch(/hitstopUntil/);
+    expect(npc(), 'damageMob must set the non-blocking hitstop through the store (triggerHitstop)')
+      .toMatch(/triggerHitstop\(/);
   });
 
   // (d) The per-instance React-sphere slop components are GONE. Asserting the component

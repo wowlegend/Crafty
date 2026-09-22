@@ -66,7 +66,7 @@ export const useBossSystem = (playerLevel) => {
                     bStore.triggerCameraShake?.(ENTRANCE.shakeWeight);
                 },
                 bloom: bStore.isCaptureMode ? null : () => bStore.triggerBloomSpike?.(ENTRANCE.bloomMs),
-                hitstop: bStore.isCaptureMode ? null : () => useGameStore.setState({ hitstopUntil: performance.now() + ENTRANCE.hitstopMs }),
+                hitstop: bStore.isCaptureMode ? null : () => useGameStore.getState().triggerHitstop(ENTRANCE.hitstopMs),
             }));
             let y = 35; // spawn high up over the lair
             const getGy = useGameStore.getState().getMobGroundLevel;
@@ -123,7 +123,7 @@ export const useBossSystem = (playerLevel) => {
             ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!')],
             ['loot', () => { if (store.addToInventory) for (const [item, qty] of BOSS_LOOT) store.addToInventory(item, qty); }],
             // M2 #7 climactic boss-kill beat: a brief slow-mo freeze ('boss'-tier hitstop) + a bloom flash.
-            ['hitstop', () => useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP.boss })],
+            ['hitstop', () => useGameStore.getState().triggerHitstop(HITSTOP.boss)],
             ['bloom', () => store.triggerBloomSpike && store.triggerBloomSpike(450)],
             ['win', () => store.markGameWon && store.markGameWon()], // S9c: the persisted win — LAST + idempotent
         ]);

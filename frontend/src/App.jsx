@@ -316,6 +316,12 @@ function GameApp({ experienceSystem }) {
     // mirror, so a latched intent — a Shift pressed with a panel open that spends itself as a roll the
     // moment lock returns — was unobservable from any test. Read-only; DEV-only like the whole bridge.
     registerTestHook('readIntents', () => ({ ...getInput() }));
+    // Read the live mobs (ECS authority, not the damped render group). The world-hitstop E2E needs to see
+    // a knockback impulse HELD across a freeze and spent after it, and the ECS is otherwise unreachable
+    // from a page. Read-only; a copy, so a spec cannot mutate an entity through it.
+    registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
+      id: e.id, type: e.type, health: e.health, x: e.position.x, z: e.position.z, knockback: !!e.knockback,
+    })));
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded

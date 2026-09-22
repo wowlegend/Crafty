@@ -4,6 +4,7 @@ import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
+import { worldTimeScale } from './game/hitstop.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
@@ -1138,8 +1139,7 @@ export const Player = ({ isWorldBuilt }) => {
     // player's per-frame motion toward zero — a brief micro-freeze that reads as impact
     // weight. Replaces the old main-thread busy-wait (which froze the whole tab). Cheap
     // store read; 0 = inactive. Capture mode never reaches here (early return above).
-    const hitstopUntil = useGameStore.getState().hitstopUntil || 0;
-    const hitstopScale = performance.now() < hitstopUntil ? 0 : 1;
+    const hitstopScale = worldTimeScale(performance.now(), useGameStore.getState().hitstopUntil);
 
     // E-ter: kick the camera when the PLAYER is hit. Every other kick fires from the verb that caused it;
     // this one originates in the store (damagePlayer), which has no camera, so the controller polls the hit

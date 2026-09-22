@@ -9,6 +9,7 @@ import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
+import { worldTimeScale } from '../game/hitstop.js';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -116,7 +117,10 @@ const MobModel = React.memo(({ entity }) => {
           groupRef.current.scale.set(1, 1, 1);
         }
       }
-      const t = Math.min(1, delta * 10);
+      // Hitstop holds the WORLD, not only the player (EXTERNAL-BASELINE #3): while frozen the damp takes no
+      // step, so the mob you hit stops where it stood and resumes from there.
+      const ws = worldTimeScale(performance.now(), useGameStore.getState().hitstopUntil);
+      const t = Math.min(1, delta * 10 * ws);
       groupRef.current.position.lerp(entity.position, t);
       const cur = groupRef.current.rotation.y;
       const dr = Math.atan2(Math.sin(entity.rotation - cur), Math.cos(entity.rotation - cur));

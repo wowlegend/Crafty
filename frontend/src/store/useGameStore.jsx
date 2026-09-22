@@ -16,6 +16,7 @@ import { clampFerocity } from '../game/ferocity.js';
 import { clampKinetic } from '../game/kinetic.js';
 import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
+import { stackHitstop } from '../game/hitstop.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
@@ -345,10 +346,19 @@ export const useGameStore = create((set, get) => ({
     masterMuted: false,
     setMasterMuted: (m) => set({ masterMuted: !!m }),
 
-    // S1-D-M1: Non-blocking hitstop. `damageMob` sets this to `performance.now() + ms`;
-    // the player movement loop clamps its motion toward zero while now < hitstopUntil.
-    // Replaces the old main-thread busy-wait. 0 = inactive (always in the past).
+    // S1-D-M1: Non-blocking hitstop. While now < hitstopUntil the WORLD holds still — the player's motion,
+    // mob render damp and the AI tick all read game/hitstop.js worldTimeScale (EXTERNAL-BASELINE #3; it was
+    // the player alone). 0 = inactive (always in the past). `triggerHitstop` is the ONE writer: it stacks a
+    // burst of hits and caps it (stackHitstop), and `hitstopStart` is the burst's start the cap counts from.
     hitstopUntil: 0,
+    hitstopStart: 0,
+    triggerHitstop: (ms) => {
+        const cur = get();
+        const next = stackHitstop({ until: cur.hitstopUntil, start: cur.hitstopStart }, performance.now(), ms);
+        if (next.until !== cur.hitstopUntil || next.start !== cur.hitstopStart) {
+            set({ hitstopUntil: next.until, hitstopStart: next.start });
+        }
+    },
 
     // S1-D-M1: Transient bloom-spike. Spell impacts set this to `performance.now() + ms`;
     // a useFrame consumer in the EffectComposer drives the Bloom effect's intensity up
@@ -902,8 +912,8 @@ export const useGameStore = create((set, get) => ({
             // The stamp is also the HIT SIGNAL the per-frame camera controller edge-detects for its kick,
             // so it is set on every accepted hit, not only when an attacker position was supplied.
             lastHitDir: dir != null ? { angle: dir, t: now } : { angle: state.lastHitDir?.angle ?? null, t: now },
-            ...(stopMs > 0 ? { hitstopUntil: performance.now() + stopMs } : {}),
         });
+        if (stopMs > 0) get().triggerHitstop(stopMs);
 
         setTimeout(() => {
             set({ damageFlash: false, screenShake: 0 });

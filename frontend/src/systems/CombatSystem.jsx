@@ -49,7 +49,7 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       if (isDirectPlayerHit(source)) {
         const weight = damage >= 40 ? 'crit' : damage >= 30 ? 'heavy' : 'light';
         const ji = useGameStore.getState().juiceIntensity ?? 1;
-        useGameStore.setState({ hitstopUntil: performance.now() + HITSTOP[weight] * ji });
+        useGameStore.getState().triggerHitstop(HITSTOP[weight] * ji);
       }
 
       const store = useGameStore.getState();

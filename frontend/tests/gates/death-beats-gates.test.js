@@ -53,7 +53,7 @@ describe('boss-kill climactic beat gates (M2 #7 S1b)', () => {
     // (game/bossKill.js), so they are no longer positionally adjacent to `newHealth <= 0`. That a boss kill
     // ACTUALLY fires the hitstop + bloom (and that a throwing reward cannot void the win) is now proven
     // BEHAVIORALLY in boss-killblock-gates.test.jsx. Here we keep only the loose presence check.
-    expect(boss).toMatch(/hitstopUntil: performance\.now\(\) \+ HITSTOP\.boss/);
+    expect(boss).toMatch(/triggerHitstop\(HITSTOP\.boss\)/);
     expect(boss).toMatch(/triggerBloomSpike\(/);
   });
 });
