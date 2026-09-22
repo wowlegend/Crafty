@@ -709,3 +709,46 @@ way when the suppression census is worked rather than discovered again per subsy
 primitive and the bridge hook shipped; the caller never did, and no gate asserted the CALLER — this
 repo's most-repeated defect class, inside the harness built to catch it. `tests/scripts/capture-preflight.test.js`
 now asserts it, and the assertion goes red against exactly the `7d743d6` state.
+
+---
+
+## 2026-09-22 — commit `5348c0b8` carries the WRONG message. Read this instead.
+
+**What happened.** I wrote a defensive line into a commit script:
+
+```
+git commit -F <scratchpad>/msg.txt 2>/dev/null || true
+```
+
+intending a no-op — a leftover path that I expected to fail harmlessly, guarded by `|| true`. It did not
+fail. `msg.txt` still existed from earlier in the same session (the MSAA / render-cost work, already
+committed separately as `9c52cd02`), so the command SUCCEEDED and committed the staged gate work under
+that stale, unrelated message. It was pushed before I read the output.
+
+**The lesson, and it is the one this repo keeps paying for in a new costume:** `|| true` does not make a
+command a no-op, it makes its FAILURE invisible. I had reasoned about what the command would do when the
+file was absent and never about what it would do when present — the same shape as every gate in this
+campaign that was green over input it never examined. A guard that hides an outcome is not a guard.
+
+**What `5348c0b8` actually contains** (9 files; the message describing MSAA, dprCap and godRaySamples
+belongs to `9c52cd02` and the commits around it):
+
+- the last six check files brought above 0/5 on `gate-census.mjs` — `chrome-brand-conformance`,
+  `title-screen-brand`, `heartbeat-stable-interval`, `touch-wiring`, `hud-declutter`, `npc-spawn`
+- `tests/gates/_srcWalk.js` — `strip()` fixed to remove TRAILING `// comments`, which it never had. The
+  helper ~10 gates share, whose whole purpose is to stop a gate being satisfied by prose, was doing half
+  its job. It reddened a carrier list written an hour earlier the moment it was fixed.
+- `tests/sanity.test.js` — documented as deliberately 0/5 (it has no subject; its job is to prove the
+  runner executed anything at all) and given the one case it lacked: proof that an assertion can FAIL.
+- brand conformance widened from 2 files to all 308, and its patterns strengthened as a result: the old
+  file had deliberately weakened `confetti` to an implementation-signature match because a historical
+  comment would have tripped the bare word. Stripping comments solves that properly.
+- `touch-wiring`'s pointer-lock check widened from 4 hand-named files to repo-wide — which immediately
+  disproved the claim I wrote into it. There are TWO readers of `document.pointerLockElement` in code,
+  not one: `Components.jsx:510` (the authority, owns `pointerlockchange`, writes `setActive()`) and
+  `input/pointerLook.js:32` (guards its own mousemove on the lock being held at all, deliberately not on
+  which element holds it). That is a real tension with this repo's "consumers read `getInput().active`"
+  rule, and it is now pinned as a PAIR so a third reader reds.
+
+Campaign state at that commit: **32 check files at 0/5 → 0**; the five remaining 0/5 rows are
+`scripts/ci` helper modules, which are not checks and are each driven by tests elsewhere.
