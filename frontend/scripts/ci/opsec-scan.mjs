@@ -72,7 +72,11 @@ export const RULES = [
  * and the one local-override file that is supposed to hold machine-specific values.
  * Gated by the selftest so a third entry cannot be added quietly.
  */
-export const EXEMPT = ['frontend/scripts/ci/opsec-scan.mjs', '.claude/settings.local.json'];
+export const EXEMPT = [
+  'frontend/scripts/ci/opsec-scan.mjs', // contains the patterns, so it reports itself
+  'frontend/tests/scripts/opsec-scan.test.js', // its FIXTURES are synthetic instances of each pattern
+  '.claude/settings.local.json', // the designated home for machine-specific values
+];
 
 /** PURE. Scan one file's text; returns findings. Comments are NOT stripped — a home path in a comment
  *  is published exactly as loudly as one in code. */

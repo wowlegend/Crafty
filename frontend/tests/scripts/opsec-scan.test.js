@@ -97,10 +97,16 @@ describe('opsec-scan — verdict shape', () => {
 });
 
 describe('opsec-scan — the exemptions are gated (R10)', () => {
-  it('exempts exactly two paths, and both have a structural reason', () => {
+  // Three entries, each with the SAME structural reason rather than an ad-hoc pass: a scanner cannot
+  // scan its own pattern table or its own synthetic fixtures without reporting itself, and the .local
+  // file is the designated home for the machine-specific values this gate pushes people toward. A FOURTH
+  // entry is a real carve-out and fails here — which is the point, since a gate's exception is where the
+  // next defect lives. Learned the hard way: this gate blocked its own first push on its own fixtures.
+  it('exempts exactly three paths, each for a structural reason', () => {
     expect([...EXEMPT].sort()).toEqual([
-      '.claude/settings.local.json', // the designated home for machine-specific values
-      'frontend/scripts/ci/opsec-scan.mjs', // contains the patterns, so it would report itself
+      '.claude/settings.local.json',
+      'frontend/scripts/ci/opsec-scan.mjs',
+      'frontend/tests/scripts/opsec-scan.test.js',
     ]);
   });
 
