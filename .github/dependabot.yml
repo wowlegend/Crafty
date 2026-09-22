@@ -84,8 +84,19 @@ updates:
       # @react-three/rapier moves, together, or not at all. `supply-chain.test.js` fails if they diverge.
       - dependency-name: '@dimforge/rapier3d-compat'
         update-types: [version-update:semver-minor, version-update:semver-patch]
+      # postprocessing is held at PATCH as well, and the reason is three lines below in this same file,
+      # written for its NEIGHBOUR and never applied here. The minor-only rule let PR #18 through on
+      # 2026-09-01: `6.39.1 -> 6.39.4`, a PATCH, of the exact version measured 2026-08-13 as removing the
+      # sun from the sky. It sat OPEN and 8/8 GREEN for three weeks, one click from the live demo,
+      # because the 31-frame visual gate runs in NEITHER the pre-push hook NOR CI — so every check in the
+      # pipeline is structurally incapable of seeing a missing sun. Closed 2026-09-22.
+      #
+      # Crafty's sun is not ordinary scene geometry: it is a camera-locked billboard that GodRaysEffect
+      # reparents into its own `lightScene` each frame, the effect owning a `renderTargetLight` with its
+      # own DepthTexture. That is why upstream's god-rays demo renders fine on a version that breaks ours
+      # (pmndrs/postprocessing#750). A patch of this package is a render change, not a dependency change.
       - dependency-name: postprocessing
-        update-types: [version-update:semver-minor]
+        update-types: [version-update:semver-minor, version-update:semver-patch]
       # @react-three/postprocessing is held at PATCH too, which the minor rule alone did not cover.
       # Measured 2026-08-13: 3.0.5 declares peer `three >= 0.182.0`, and three is pinned at 0.172.0 by
       # the rule above — so `npm install` refuses with ERESOLVE and the PR fails every check. A patch of
@@ -94,6 +105,17 @@ updates:
       - dependency-name: '@react-three/postprocessing'
         update-types: [version-update:semver-patch]
       - dependency-name: lucide-react
+        update-types: [version-update:semver-minor]
+      # react / react-dom are held at MINOR because the RENDERER's peer range, not ours, is the binding
+      # constraint. Measured 2026-09-22: @react-three/fiber@9.7.0 — the LATEST release, so there is no
+      # upgrade out of this — still declares `react >=19 <19.3`, and react 19.3.0 published 2026-09-09.
+      # react sits in the production-minor-patch group and was NOT ignored, so the next monthly run
+      # generates a grouped PR that ERESOLVEs on install and fails every check, then regenerates forever.
+      # This is the same shape as the @react-three/postprocessing rule above: a dependency whose bump is
+      # gated by somebody else's peer range. Revisit when fiber widens the range, not on a schedule.
+      - dependency-name: react
+        update-types: [version-update:semver-minor]
+      - dependency-name: react-dom
         update-types: [version-update:semver-minor]
 
   # The workflow files themselves pin action versions, and a stale pinned action is its own supply-chain
