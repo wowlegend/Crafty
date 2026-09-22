@@ -21,26 +21,40 @@ const ROOT = resolve(APP, '..');
 // CI where the network is expected and a failure is legible. What is checkable offline, and what actually
 // rots, is whether the scanning is still WIRED.
 const ciYml = resolve(ROOT, '.github/workflows/ci.yml');
+// THE AUDIT MOVED, AND THIS GUARD HAD TO MOVE WITH IT. `npm audit` used to be an inline step in
+// ci.yml; as of 2026-09-22 ci.yml calls `bash ci/pipeline.sh --tier=fast` and the pipeline owns the
+// step, because the hook and the workflow were two independently-maintained lists that disagreed.
+// These assertions were anchored to the FILE rather than to the BUILD, so they went red on a change
+// that strengthened the thing they guard -- the guard-stayed-put-while-its-subject-moved class. They
+// now read whichever surface defines the step, so a future move fails loudly here instead of
+// silently passing over an empty search.
+const pipeline = resolve(ROOT, 'ci/pipeline.sh');
+/** The concatenated CI definition: the workflow AND the pipeline it calls. */
+const ciDefinition = () => {
+  const parts = [ciYml, pipeline].filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8'));
+  if (parts.length === 0) throw new Error('neither ci.yml nor ci/pipeline.sh exists — nothing to assert');
+  return parts.join('\n');
+};
 const dependabot = resolve(ROOT, '.github/dependabot.yml');
 
 describe('the supply chain is scanned at all', () => {
   it('CI runs an explicit dependency audit', () => {
     expect(existsSync(ciYml), 'ci.yml is missing — nothing here can be asserted').toBe(true);
-    const yml = readFileSync(ciYml, 'utf8');
+    const yml = ciDefinition();
     expect(yml, 'no `npm audit` step — a CVE ships to the live demo unremarked').toMatch(/run:\s*npm audit\b/);
   });
 
   it('the audit has a THRESHOLD, so it can actually fail', () => {
     // `npm audit` without --audit-level prints findings and exits 0 in some configurations, which is a
     // step that reports rather than gates. The level is what makes it a gate.
-    const yml = readFileSync(ciYml, 'utf8');
+    const yml = ciDefinition();
     expect(yml).toMatch(/npm audit --audit-level=(high|critical)/);
   });
 
   it('the audit is its OWN step, so a registry outage is legible as a registry outage', () => {
     // Folded into the install or the lint step, a network failure would present as "lint failed", which
     // is how a gate gets diagnosed as flaky and then ignored.
-    const yml = readFileSync(ciYml, 'utf8');
+    const yml = ciDefinition();
     expect(yml, 'the audit has no name of its own').toMatch(/- name: [^\n]*[Aa]udit[^\n]*\n\s*run: npm audit/);
   });
 

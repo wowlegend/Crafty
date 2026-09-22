@@ -13,7 +13,27 @@ each ~300k context.
   (erasure is not real without a GitHub Support GC + deleting forks). **His call, not a technical one.**
   Either way: add a `Marcus` BLOCK rule to `scripts/ci/opsec-scan.mjs` so it cannot re-enter.
 
-### IN FLIGHT — the CI unification (his explicit ask; cause of his CI-failure emails)
+### IN FLIGHT — ONE STEP LEFT, and main is SAFE (the commit exists locally, push is blocked)
+
+`86f592ec` is committed but NOT pushed: the pipeline correctly refuses it on two rows of
+`frontend/tests/scripts/supply-chain.test.js`. Those assertions are YAML-shaped —
+`/run:\s*npm audit\b/` and `/- name: [^\n]*[Aa]udit[^\n]*\n\s*run:/` — and `npm audit` now lives in
+`ci/pipeline.sh` as `step "npm audit (high + critical)" npm audit --audit-level=high`. The file-read was
+already re-pointed to read ci.yml AND the pipeline concatenated (`ciDefinition()`); only the two REGEXES
+still assume YAML.
+
+FINISH IT: widen those two patterns to accept either surface's shape — the invariant is "an audit step
+exists, it is NAMED, and it carries a THRESHOLD", not "a YAML key called run". Then
+`bash ci/pipeline.sh --tier=push` must be fully green, and push. Do NOT relax the threshold assertion;
+that is the part with teeth.
+
+Everything else in the unification is DONE and verified: both callers invoke `ci/pipeline.sh`,
+`gate-table.mjs` generates from the pipeline (not from a caller), pipeline step lines and table rows
+both read 15 (asserted by comparing counts, after the generator's own regex silently dropped 3 indented
+push-tier steps and wrote "9 gates"), and the trailer gates stay with the hook because only a push has
+the refspecs they read.
+
+### THE CI UNIFICATION — why it existed (his explicit ask; cause of his CI-failure emails)
 
 `ci/pipeline.sh` and `frontend/scripts/ci/e2e-freshness.mjs` are WRITTEN and PROVEN but the two callers
 are **NOT yet rewired**. Finish this first:
