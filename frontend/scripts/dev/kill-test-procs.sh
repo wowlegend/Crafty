@@ -11,81 +11,95 @@
 # and do not match these patterns. Read the patterns before adding to them.
 
 #
-# ⚠️ DO NOT RUN THIS WHILE A TEST IS ACTIVELY RUNNING. It is a blanket killer: if a capture, an e2e run, or a
-# background workflow agent is driving a browser right now, this will SABOTAGE it mid-probe. (I did exactly
-# that on 2026-07-13 — killed a live workflow agent's browser while "tidying up".) Run it at SESSION-CLOSE, or
-# when the box is idle, or when you have confirmed the survivors are stale. Pass --force to skip the guard.
+# OWNERSHIP, NOT AGE, DECIDES WHAT IS A LEAK (2026-09-22). This sweep used to refuse only when a matching
+# process was YOUNGER than 3 minutes, and its age check never even looked at puppeteer's Chrome. So a visual
+# capture running for 15 minutes — a live run, doing its job — read as stale and was killed mid-frame: a
+# session lost a 31-frame A/B capture that way, by sweeping up after a 2-minute e2e run beside it. Age is a
+# proxy for "abandoned"; the real property is whether anything still OWNS the process.
+#
+# So: for every matching process, walk up its parents past other matching processes (a Chrome helper to its
+# Chrome, `vite` to its `npm exec vite` wrapper) to the first NON-matching ancestor — the owner. If the chain
+# reaches launchd (PID 1), the runner that started it is gone: it is an ORPHAN, a true leak, and it is killed.
+# If the owner is a live process (capture.mjs, the Playwright runner, a shell), the run is live and it is left
+# alone — and the owner is NAMED, so a hung runner is visible rather than silently swept. `--force` kills
+# everything matching, as before.
+#
+# ONE EXCEPTION THE REAL BROWSER FORCES, found by reading a live capture's process table before trusting the
+# test: Chrome's crashpad handlers double-fork on purpose, so they sit at PPID 1 while their Chrome is alive,
+# and their argv names a SHARED crash database, not the instance. Nothing ties one to its Chrome. So a PPID-1
+# crashpad handler is left alone while ANY matching browser is owned by a live run, and swept otherwise.
+#
+# KTP_PATTERN / KTP_BROWSER / KTP_CRASHPAD override the matches (extended regexes) — for the test that
+# drives this script on processes of its own; never needed in normal use.
 
 set -e
 
-# Guard: refuse to run if a browser process is YOUNG (< 3 min) — that almost certainly means a live run.
-#
-# TWO macOS TRAPS, both of which silently broke the first version of this guard (fixed 2026-07-14):
-#   1. `ps -eo etimes=` is NOT supported on macOS — it errors with `etimes: keyword not found`, so the
-#      awk `$1` was never an age at all. macOS gives `etime`, formatted [[DD-]HH:]MM:SS. A raw MM:SS
-#      value read as seconds makes a 2-minute-old process look 9 hours old (I nearly killed a live
-#      16-agent fleet on that misread).
-#   2. Grepping `ps` output for a pattern MATCHES THE MATCHER — awk's own command line contains the
-#      pattern string, and it is 0 seconds old, so the guard always saw a "young" process and refused
-#      to run, every time, forever. `pgrep` does not match itself; use it.
-age_secs() {  # [[DD-]HH:]MM:SS -> seconds
-  echo "$1" | awk -F: '{ d=0; h=0;
-    if ($1 ~ /-/) { split($1, a, "-"); d=a[1]; $1=a[2] }
-    if (NF == 3) { h=$1; m=$2; s=$3 } else { m=$1; s=$2 }
-    print ((d*24 + h) * 60 + m) * 60 + s }'
-}
-if [ "$1" != "--force" ]; then
-  young=0
-  # `|| true` on EVERY pgrep: a no-match pgrep exits 1, and under `set -e` that aborts the whole command
-  # substitution — so a failing FIRST pgrep silently swallowed the second one's PIDs, the guard saw an
-  # empty list, and it happily killed a live dev server. (Same class as `grep -c` returning 1 on no match.)
-  for pid in $(pgrep -f "ms-playwright/" 2>/dev/null || true; \
-               pgrep -f "Crafty/frontend/node_modules/.bin/vite" 2>/dev/null || true); do
-    et=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ')
-    [ -n "$et" ] || continue
-    # if-form, NOT `[ ... ] && x=1` — under `set -e` a false test as the last command in the body
-    # exits the script with status 1.
-    if [ "$(age_secs "$et")" -lt 180 ]; then young=$((young + 1)); fi
+PATTERN="${KTP_PATTERN:-Crafty/frontend/node_modules/.bin/vite|npm exec vite --port|ms-playwright/(chromium|webkit|firefox)|cache/puppeteer/chrome}"
+BROWSER="${KTP_BROWSER:-cache/puppeteer/chrome|ms-playwright/}"
+CRASHPAD="${KTP_CRASHPAD:-chrome_crashpad_handler}"
+FORCE=0
+[ "$1" = "--force" ] && FORCE=1
+
+cmd_of() { ps -o command= -p "$1" 2>/dev/null || true; }
+is_test_proc() { cmd_of "$1" | grep -qE "$PATTERN"; }
+
+owner_of() {  # the first NON-matching ancestor of PID: 1 = orphaned, 0 = vanished mid-scan
+  p=$1; depth=0
+  while [ "$depth" -lt 64 ]; do
+    pp=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
+    if [ -z "$pp" ]; then echo 0; return; fi
+    if [ "$pp" = "1" ] || [ "$pp" = "0" ]; then echo 1; return; fi
+    if is_test_proc "$pp"; then p=$pp; else echo "$pp"; return; fi
+    depth=$((depth + 1))
   done
-  if [ "$young" -gt 0 ]; then
-    printf '✋ REFUSING: %s test process(es) started in the last 3 minutes — a run is probably LIVE.\n' "$young"
-    printf '   Killing now would sabotage an active capture / e2e / workflow agent mid-probe.\n'
-    printf '   Wait for it to finish, or re-run with --force if you are sure they are stale.\n'
-    exit 0
+  echo 0
+}
+
+# One pass: classify every matching process, then signal the leaks. Re-derived from scratch each pass — a
+# killed parent re-parents its children to launchd, so the second pass sees orphans the first could not.
+sweep_pass() {  # $1 = signal
+  orphans=""; crashpads=""; left=0; owners=""; live_browser=0
+  for pid in $(pgrep -f "$PATTERN" 2>/dev/null || true); do
+    if [ "$FORCE" = "1" ]; then orphans="$orphans $pid"; continue; fi
+    owner=$(owner_of "$pid")
+    if [ "$owner" = "1" ]; then
+      if cmd_of "$pid" | grep -qE "$CRASHPAD"; then crashpads="$crashpads $pid"; else orphans="$orphans $pid"; fi
+    elif [ "$owner" != "0" ]; then
+      left=$((left + 1))
+      if cmd_of "$pid" | grep -qE "$BROWSER"; then live_browser=1; fi
+      case " $owners " in *" $owner "*) ;; *) owners="$owners $owner" ;; esac
+    fi
+  done
+  if [ "$live_browser" = "1" ]; then
+    for pid in $crashpads; do left=$((left + 1)); done
+    held_crashpads=$crashpads
+  else
+    orphans="$orphans $crashpads"; held_crashpads=""
   fi
-fi
+  for pid in $orphans; do
+    if kill "-$1" "$pid" 2>/dev/null; then
+      case " $killed " in *" $pid "*) ;; *) killed="$killed $pid" ;; esac
+    fi
+  done
+}
 
 before=$(uptime | sed 's/.*averages*//')
-
-# (a) vite dev servers started from THIS project (capture.mjs, playwright webServer, ad-hoc probes)
-pkill -f "Crafty/frontend/node_modules/.bin/vite" 2>/dev/null || true
-pkill -f "npm exec vite --port" 2>/dev/null || true
-
-# (b) Playwright's headless browsers (its own cache path — never a user-installed browser)
-pkill -f "ms-playwright/chromium" 2>/dev/null || true
-pkill -f "ms-playwright/webkit" 2>/dev/null || true
-pkill -f "ms-playwright/firefox" 2>/dev/null || true
-
-# (c) PUPPETEER's Chrome — added 2026-08-02. This was a real coverage hole: the header above promises to
-# sweep "Playwright's own cached browsers", but the VISUAL CAPTURE GATE (scripts/visual/capture.mjs, the
-# most load-sensitive thing in this repo and the one the hygiene rules were written for) drives PUPPETEER,
-# not Playwright. Its Chrome lives under ~/.cache/puppeteer/chrome/<build>/ and matched none of the
-# patterns above, so a capture that died on its error path left Chrome running and every subsequent
-# `✓ 0 playwright still alive` was reporting on the wrong process family.
-# The path is puppeteer's OWN cache — it can never match a user-installed Chrome/Brave/Safari, which is
-# the same safety property the ms-playwright patterns rely on.
-pkill -f "cache/puppeteer/chrome" 2>/dev/null || true
-
+killed=""
+sweep_pass TERM
 sleep 1
+sweep_pass KILL   # anything that ignored SIGTERM, and children re-adopted when their parent died
+swept=$(echo $killed | wc -w | tr -d ' ')
 
-vite=$(pgrep -f "Crafty/frontend/node_modules/.bin/vite" 2>/dev/null | wc -l | tr -d ' ')
-pw=$(pgrep -f "ms-playwright/" 2>/dev/null | wc -l | tr -d ' ')
-pup=$(pgrep -f "cache/puppeteer/chrome" 2>/dev/null | wc -l | tr -d ' ')
-
-printf '✓ test-proc cleanup: %s vite / %s playwright / %s puppeteer still alive\n' "$vite" "$pw" "$pup"
+alive=$(pgrep -f "$PATTERN" 2>/dev/null | wc -l | tr -d ' ')
+printf '✓ test-proc cleanup: swept %s orphaned process(es); %s still alive\n' "$swept" "$alive"
 printf '  load before:%s  after: %s\n' "$before" "$(uptime | sed 's/.*averages*//')"
-
-if [ "$vite" != "0" ] || [ "$pw" != "0" ] || [ "$pup" != "0" ]; then
-  printf '  NOTE: survivors are likely an ACTIVE run (a workflow agent, a capture, an e2e in flight).\n'
-  printf '        Do not force-kill blindly — you may sabotage a live test.\n'
+if [ "$left" -gt 0 ]; then
+  printf '  LEFT ALONE: %s process(es) owned by a LIVE run — not a leak while the owner lives:\n' "$left"
+  for o in $owners; do
+    printf '    owner %s: %s\n' "$o" "$(ps -o command= -p "$o" 2>/dev/null | cut -c1-140)"
+  done
+  if [ -n "$held_crashpads" ]; then
+    printf '    +%s crashpad handler(s) at PPID 1, kept while a live browser exists (they cannot be tied to one)\n' "$(echo $held_crashpads | wc -w | tr -d ' ')"
+  fi
+  printf '  If an owner is hung rather than running, stop IT; --force kills everything matching.\n'
 fi
