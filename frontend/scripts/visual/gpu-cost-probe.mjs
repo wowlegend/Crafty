@@ -124,10 +124,24 @@ async function main() {
       if (!gl) return { error: 'no webgl2 context on the canvas' };
       // R3F does not publish the renderer. Reach it through the canvas's fiber store, and if that
       // changes shape say so rather than printing null metrics beside a success line.
+      // R3F does not publish the renderer, and the fiber-root shape has moved between versions — so try
+      // the known accessors in order and REPORT WHICH ONE WORKED, rather than printing nulls beside a
+      // success line. `canvas.__r3f.store` alone returned nothing here, and a probe that says UNMEASURED
+      // is worth more than one that says 0.
       const canvasEl = document.querySelector('canvas');
-      const store = canvasEl?.__r3f?.store ?? canvasEl?.__r3f?.root?.store ?? null;
-      const r = store?.getState?.().gl ?? null;
-      const rWhy = r ? null : 'could not reach the R3F renderer via canvas.__r3f.store — renderer.info metrics are UNMEASURED, not zero';
+      const f = canvasEl?.__r3f;
+      const candidates = [
+        ['__r3f.store', f?.store],
+        ['__r3f.root', f?.root],
+        ['__r3f.root.store', f?.root?.store],
+        ['__r3f.container.store', f?.container?.store],
+      ];
+      let r = null, rVia = null;
+      for (const [name, st] of candidates) {
+        const gl = typeof st?.getState === 'function' ? st.getState()?.gl : st?.gl;
+        if (gl?.info) { r = gl; rVia = name; break; }
+      }
+      const rWhy = r ? null : `could not reach the R3F renderer — tried ${candidates.map(([n]) => n).join(', ')}; renderer.info is UNMEASURED, not zero`;
 
       // Drain GL errors across real frames. One getError() per frame, because the queue is drained by
       // reading and a single poll at the end would report at most ONE error for the whole run.
@@ -135,17 +149,28 @@ async function main() {
       const codes = new Set();
       const t0 = performance.now();
       let frames = 0;
+      // Sample the heap on a timer independent of rAF: under SwiftShader rAF can drop to 2/s, and a
+      // per-frame sample would then be 12 points over 6s and read as flat by accident.
+      window.__heapSeries = [];
+      const heapTimer = setInterval(() => {
+        if (performance.memory) window.__heapSeries.push([Math.round(performance.now() - t0), Math.round(performance.memory.usedJSHeapSize / 1048576)]);
+      }, 500);
+      const _stopHeap = () => clearInterval(heapTimer);
       await new Promise((done) => {
         const tick = () => {
           frames++;
           let e;
           while ((e = gl.getError()) !== gl.NO_ERROR) { glErrors++; codes.add(e); }
-          if (performance.now() - t0 >= secs * 1000) return done();
+          if (performance.now() - t0 >= secs * 1000) { _stopHeap(); return done(); }
           requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
       });
       const elapsed = (performance.now() - t0) / 1000;
+
+      // HEAP SERIES — a leak is a RATE, and a single reading cannot show one. Sampled across the poll so
+      // the output is growth-per-second rather than a point that could be anywhere on a curve.
+      const heapSeries = window.__heapSeries || [];
 
       const c = document.querySelector('canvas');
       const samples = gl.getParameter(gl.SAMPLES) || 0;
@@ -167,12 +192,14 @@ async function main() {
         geometries: r?.info?.memory?.geometries ?? null,
         programs: r?.info?.programs?.length ?? null,
         rWhy,
+        rVia,
         glErrors,
         glErrorCodes: [...codes],
         glErrorsPerFrame: frames ? +(glErrors / frames).toFixed(2) : 0,
         frames,
         fps: +(frames / elapsed).toFixed(1),
         heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+        heapSeries,
       };
     }, SECONDS);
 
@@ -190,6 +217,7 @@ async function main() {
     if (m.rWhy) {
       console.log(`  renderer.info     UNMEASURED — ${m.rWhy}`);
     } else {
+      console.log(`  renderer via      canvas.${m.rVia}`);
       console.log(`  shader programs   ${m.programs}`);
       console.log(`  draw calls        ${m.drawCalls}`);
       console.log(`  triangles         ${m.tris}`);
@@ -199,6 +227,16 @@ async function main() {
     console.log('  ── load-DEPENDENT (evidence about the MACHINE, not the build) ────────────');
     console.log(`  fps               ${m.fps}   (1-min load average right now: ${load})`);
     console.log(`  JS heap           ${m.heapMB} MB`);
+    if (m.heapSeries && m.heapSeries.length >= 3) {
+      const [t0h, h0] = m.heapSeries[0];
+      const [t1h, h1] = m.heapSeries[m.heapSeries.length - 1];
+      const secs = Math.max(0.001, (t1h - t0h) / 1000);
+      const rate = (h1 - h0) / secs;
+      console.log(`  heap SERIES       ${m.heapSeries.map(([, h]) => h).join(' -> ')} MB over ${secs.toFixed(1)}s`);
+      console.log(`  heap RATE         ${rate >= 0 ? '+' : ''}${rate.toFixed(1)} MB/s${rate > 1 ? '   <- GROWING. Extrapolated: ' + Math.round(rate * 60) + ' MB/min' : ''}`);
+    } else {
+      console.log('  heap SERIES       UNMEASURED — fewer than 3 samples; performance.memory may be absent');
+    }
 
     if (JSON_OUT) {
       writeFileSync(JSON_OUT, `${JSON.stringify({ ...m, loadAvg: load, dpr: DPR, at: new Date().toISOString() }, null, 2)}\n`);
