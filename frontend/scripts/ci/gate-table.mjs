@@ -40,6 +40,7 @@ export const END = '<!-- END GATES -->';
  * Keyed by the gate name as it appears in the hook.
  */
 export const DESCRIPTIONS = {
+  'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none',
   'killability-ledger': 'a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can',
   'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
   'baseline-trailer': 'a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match',

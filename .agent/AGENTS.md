@@ -97,7 +97,7 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**12 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
+**13 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
 paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),
 the last time one commit after the gate landed. Do not edit the table by hand; add the description to
 `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
@@ -111,6 +111,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 | artifact-currency | `node scripts/ci/artifact-currency.mjs` | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
+| opsec-scan | `node scripts/ci/opsec-scan.mjs --all` | ✅ | ✅ | an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none |
 | killability-ledger | `node scripts/ci/killability-ledger.mjs` | ✅ | ✅ | a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
 | unit + static gates | `npm run test:unit` | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |

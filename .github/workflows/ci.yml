@@ -66,6 +66,11 @@ jobs:
       # How many of this suite's own checks have ever been PROVEN to fail. Ratcheted: the un-receipted
       # count may fall and never rise, so a NEW check file must name the mutation that reds it while
       # the existing debt stays payable rather than blocking. Prints the denominator on every run.
+      # This repo is PUBLIC and Vercel auto-deploys every push. Scans the whole tracked tree in CI
+      # (--all), where the pre-push hook only sees what one commit staged.
+      - name: OPSEC scan (public repo must not publish the operator machine)
+        run: node scripts/ci/opsec-scan.mjs --all
+
       - name: Killability receipts (ratchet + denominator)
         run: node scripts/ci/killability-ledger.mjs
 
