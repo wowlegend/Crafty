@@ -5,245 +5,57 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### ⚠️ RESUME HERE — 2026-09-22, 94% context, git DOWN
+### RESUME HERE — 2026-09-22, session 2, all work committed and pushed
 
-**ONE COMMAND UNBLOCKS EVERYTHING: `sudo xcodebuild -license accept`** (Kevin's, needs sudo). Until then
-PATH `git` and `/usr/bin/python3` refuse. Working substitutes: `/opt/homebrew/bin/git` (2.55.0),
-`/opt/homebrew/bin/python3` (3.14.7 — use it for `append-episode`, which is shebang-pinned to the broken
-one; AB SOTA is shipping a polyglot fallback as Q27). Do NOT push around it: the pre-push hook calls PATH
-git and a silently-degraded hook is the bypass these gates exist to stop.
+**THE `xcodebuild -license` BLOCKER IS GONE.** PATH `git` is 2.55.0 (via the AB shim) and
+`/usr/bin/python3` is 3.9.6. The previous cursor said git was DOWN and told the next session to use
+`/opt/homebrew/bin/git`; re-verified 2026-09-22 and both work. A stale blocker is worse than no note —
+it sends the next session around a chokepoint that is open.
+
+**STATE:** main is at `635d9063`, four commits pushed this session, each certified by the new
+commit-time pipeline. CI cancels superseded runs, so only the tip gets a full run — check the TIP.
+
+**THE CHOKEPOINT MOVED TO THE COMMIT.** `.githooks/pre-commit` is now a real tracked file (it was an
+untracked symlink into Agentic-Brain, so a fresh clone got no pre-commit at all, silently). It runs
+`ci/pipeline.sh --tier=commit` — the offline core, 69s — and chains the estate-wide attribution guard
+through that guard's own `GIT_HOOK_NAME` channel. A green run writes a tree receipt that pre-push
+honours, so commit-then-push is near-instant. It has already blocked one of my own commits on an opsec
+leak that would otherwise have surfaced only at push.
 
 **NEXT MOVES, in order:**
-1. `git add -A && git commit` the B2 + gate work (~21 files), push, watch CI.
-2. Wire the grass biome id: `OptimizedGrassSystem` must pass a biome multiplier to `bladeTint(x,z,mul)` —
-   the composition is DONE and tested, only the id plumbing through the worker's grass-top payload is
+1. Resume the census: `node frontend/scripts/ci/gate-census.mjs --top 40` — **23 files at 0/5**,
+   mean score 2.03. Convert top-down; every conversion gets mutations RUN, not declared.
+2. Wire the grass biome id: `OptimizedGrassSystem` must pass a biome multiplier to `bladeTint(x,z,mul)`.
+   The composition is DONE and tested; only the id plumbing through the worker's grass-top payload is
    missing. Until then blades and ground disagree.
-3. Resume the census: `node frontend/scripts/ci/gate-census.mjs --top 40` — **32 files at 0/5**.
-4. QUEUE.md B3–B5 (boss emissive-through-armour, 10-biome read, AO-as-shadow) untouched.
+3. QUEUE.md B3–B5 (boss emissive-through-armour, 10-biome read, AO-as-shadow) untouched.
+4. KEVIN DECISIONS still open: `dprCap` 2 -> 1.75, and `BIOME_TINT_STRENGTH` (0.35 on the 25/35/50
+   ladder; `0` is an exact no-op).
 
-**GATE CONVERSIONS DONE (all 0/5 -> 5/5, all mutation-proven):** verb-router, hud-stat-wire (renders the
-real provider), daynight-clock (drives fake timers), nametags, ocean-mesher (meshes a one-third-water
-chunk and inspects the output).
+**GATES CONVERTED THIS SESSION (all 0/5 -> 5/5, every one mutation-proven):** verb-router, hud-stat-wire,
+daynight-clock, nametags, ocean-mesher, biome-flora, biome-table, beast/voidhand/elemancer-noremesh,
+elemancer-wiring (new), progression-source, save-consolidation, quest-persistence, allegiance, siege.
 
-**CENSUS SHARPENED TWICE BY USING IT:** `executes` missed `await import(...)`; `zeroGuard` missed any
-numeric floor other than 0 (that one alone moved the corpus 106 -> 182 of 484, i.e. ~76 gates were already
-better than the census credited). A census that undercounts the better form steers authors to the weaker.
+**WHAT THE CONVERSIONS KEEP FINDING — three shapes, all live in this corpus:**
+- *A gate satisfied by the comment explaining its own obsolescence.* `siege-gates` required
+  `incrementNight()` in a file where it appears zero times, green on the comment documenting its
+  removal. Strip comments before asserting a file DOES something.
+- *A scope-qualified claim.* "Nothing outside X does Y" checking two or four hand-named files. Correct
+  about what it examined, false as written, and the defect lands in the file nobody listed.
+- *A concatenation.* Joining two files before matching so neither can say which one carries the line —
+  and in three cases a refactor had already moved it between exactly that pair.
 
-**HARNESS FIX:** `scratchpad/mut.sh` now REFUSES to mutate without a restore artifact and verifies the
-restore byte-for-byte. It had silently left `mesher.js` mutated (water guard deleted) while printing a
-normal RED verdict, and the next mutation stacked on top. Episode written.
+**CENSUS SHARPENED FOUR TIMES BY USING IT:** `executes` missed `await import(...)` and imports past line
+one; `zeroGuard` missed any numeric floor other than 0, and then missed `.length` pinned to a non-zero
+literal. A census that undercounts the better form steers authors toward the weaker one.
 
-### ⚠️ UNCOMMITTED AT FLUSH — git is DOWN, work is on disk only
+**HARNESS:** `scratchpad/mut.sh` refuses to mutate without a restore artifact and verifies the restore
+byte-for-byte. It reported COULD NOT CHECK (exit 3) four times this session rather than faking a verdict
+— twice on a non-unique anchor, twice on a changed collection count. That is the behaviour to keep.
 
-**BLOCKER: `sudo xcodebuild -license accept`.** Kevin's Xcode update repointed xcode-select, so
-`/usr/bin/git` and `/usr/bin/python3` refuse. PATH `git` is broken; `/opt/homebrew/bin/git` (2.55.0) and
-`/opt/homebrew/bin/python3` (3.14.7) still work. Do NOT push around it — the pre-push hook calls PATH git,
-and a silently-degraded hook is the bypass these gates exist to stop.
-
-**1 commit unpushed** (`9c52cd02`, fully gated — all 9 pipeline steps verified to have run).
-**Uncommitted: B2 BIOME TINTS, COMPLETE AND GREEN** (lint clean, build clean, 3319/3319 tests pass).
-
-B2 (QUEUE.md Q14) — six of ten biomes shared `surfaceBlock: 1` and rendered pixel-identical at ground
-level; all ten declared a `tint` with ZERO consumers. Wired end to end:
-- `world/biomeTable.js` — `BIOME_NAMES` / `BIOME_ID` / `BIOME_TINT_RGB` DERIVED from BIOMES (never typed,
-  so they cannot desync); `hexToRgb01`; `tintPreservingLuminance`. Each entry stamped with its own `name`
-  at module init so `pickBiome`'s `{...BIOMES.x}` carries identity without touching its branch ladder.
-- `world/terrain.worker.js` — per-COLUMN `biomeIds` Uint8Array(256) filled at the existing pickBiome call;
-  cached in a `biomeChunks` Map parallel to `chunks` (which stores a raw Uint8Array indexed directly
-  elsewhere, so changing its shape would have broken every consumer). Evicted in LOCKSTEP with
-  `chunks.delete`/`.clear` — an un-evicted parallel map would be a leak I introduced myself.
-  Recorded BEFORE the beach override: that swaps the surface BLOCK to sand, it does not change the biome.
-- `world/mesher.js` — biome id baked into `color.g`, the channel the file itself called "now unused".
-  Zero extra bytes, no new attribute. Column read off `c0` (the greedy loop has no x/z scalars) and
-  CLAMPED not masked: a far-edge corner at 16 would wrap to column 0 under `& 15`.
-- `world/Terrain.jsx` — `uniform vec3 uBiomeTint[10]`, precomputed CPU-side at
-  `BIOME_TINT_STRENGTH = 0.35`, applied as ONE multiply after the AO line. No GLSL twin of the maths.
-
-**WHY LUMINANCE-PRESERVING IS THE LOAD-BEARING CHOICE:** a plain `c * tint` darkens every biome (all ten
-tints have luminance < white), which on a LOCKED bold-flat direction reads as dirt. Normalising to unit
-luminance means strength shifts HUE only — verified, multiplier luminance = 1.0000 at every strength.
-
-**STILL OWED on B2:** `OptimizedGrassSystem.jsx` tints blades independently (`bladeTint(x,z)`), so the
-blades and the ground they grow from will DISAGREE until it reads the same table. QUEUE.md B2 says do them
-in the same commit — so do that before committing, or state the disagreement.
-Also: a gate for the wiring (worker→mesher→shader). `tests/scripts/biome-tint.test.js` covers the pure
-table only (7 cases, 4 mutations) and says so as its blind spot.
-
-**Gate loosened, deliberately:** `biome-table-gates` pinned the literal
-`let { surfaceBlock, secondaryBlock } = pickBiome(...)`. Q14 needed the biome NAME, so the call split in
-two and the gate fired — correctly. Rewritten to assert the PROPERTY (pickBiome called with the climate
-triple; surfaceBlock arrives via `let`; the beach reassignment still present) rather than re-pinning a new
-literal, which would just move the brittleness one edit into the future.
-
-### SESSION LOG — 2026-09-22, perf + gates stretch (10 commits, UNPUSHED at time of writing)
-
-**Why unpushed:** `e2e-freshness` is STALE because `src/` changed. Running the suite clears it; that run
-was started at the end of this stretch. Nothing is wrong with the commits — the gate is doing its job.
-
-**PERF — three render-cost defaults, none visible to any of the 17 gates.**
-- `<EffectComposer>` had NO `multisampling` prop. The package default is 8 on a HalfFloatType target
-  (read from the installed dist), i.e. an 8x multisampled RGBA16F buffer at full canvas resolution,
-  blit-resolved every frame. ~236 MB at dpr 2 — NOT the ~471 MB first written: a real ANGLE Metal / M3 Max
-  context grants MAX_SAMPLES 4, so the requested 8 was always clamped. Never intended: the Canvas sets `antialias: false
-  // Post-processing handles AA` and `<SMAA/>` is four lines below. Now `multisampling={0}`.
-- `flipflops={3}` on PerformanceMonitor froze adaptation for the session (drei's default is Infinity and
-  its sampler opens `if (api.fallback) return;`). Removed. **NAMED, NOT FIXED:** frame rate is not COST —
-  a machine at 100% GPU holding 60fps sits in the [50,90] dead zone forever and never declines.
-- `godRaySamples: 100` at `high`, never cost-budgeted. Measured live: `navigator.deviceMemory` is 32 on a
-  secure context (NOT clamped to 8 — I claimed that and was wrong) and cores 14, so `selectTier` returns
-  `high` on Kevin's laptop. Now 60, the value `med` has shipped since S1-D-M3.
-
-**LOOKS — the shadow frustum was pinned to spawn.** The sun had no `target`, so three.js aimed it at the
-world ORIGIN, with a hardcoded +/-100 ortho box. The world streams indefinitely, so past ~100 units from
-spawn the whole world silently lost sun shadows. Now follows the player, texel-snapped (stops shadow
-crawl), with the extent DERIVED from `(renderDistance + 0.5) * CHUNK` — 72 at high, which is ~14 px/unit
-against the old ~10. Sharper shadows at identical cost, and correct everywhere.
-
-**THE CHROME TAB.** `_serve.mjs` omitted `--no-open` on the preview branch only, and `vite.config.js`
-declares `server: { open: true }`; vite resolves `preview.open ?? server.open`. So every `vite preview`
-launched Kevin's real Chrome. Fixed. This is the mechanism `.claude/rules/gates-and-probes.md` recorded as
-unknowable after seeing it once on :4180.
-
-**THE GL STORM IS FIXED — AND NOT BY US.** Measured on real ANGLE Metal (M3 Max), production build, full
-chain including N8AO halfRes: **0 GL errors over 1672 frames**. Controlled pair — 0 with
-`multisampling={0}` AND 0 with the package default — so the MSAA path is uninvolved and my "prime suspect"
-hypothesis is REFUTED, not merely unconfirmed. The fix was upstream: postprocessing 6.39.5 (078a6d1).
-Posted as verification to pmndrs/postprocessing#750 and as a data point to N8python/n8ao#53.
-**Three dead instruments caught on the way**, each by its own control: (1) `prod-smoke` runs
-`--use-angle=swiftshader` in CI too, and SwiftShader cannot emit this error, so its seeded 0 was
-meaningless; (2) a tab opened in Kevin's Chrome read `visibility: hidden` / `rafTest: 0` — a hidden tab
-renders nothing, so 0 errors over 0 frames; (3) CDP evaluate timeouts from putting a 60s wait inside a 45s
-call. The GL ledger in prod-smoke remains a SwiftShader-path regression guard only; that limit is written
-into the file.
-
-**THE 11.8 GB TAB — JS EXONERATED, GPU IMPLICATED, NOT CONFIRMED.** 90 heap samples over 58s show a GC
-sawtooth bounded 70-140 MB at -0.4 MB/s. The JS heap does not leak, so the process-level figure is
-GPU-side. `EffectComposer.setSize` reallocates input/output buffers, `<AdaptiveDpr>` is mounted, and
-PerformanceMonitor moves `dprCap` — so every resize reallocated that ~236 MB target. Coherent mechanism,
-NOT proven: GPU memory is unreadable from a page and `renderer.info` is unreachable in the prod bundle
-(four accessors tried). The GL error ledger, seeded by CI from a real browser, is what will adjudicate it.
-
-**GATES.** `scripts/ci/gate-census.mjs` replaces the one-shot audit whose verdicts were 4-for-4 wrong on
-contact. It scores all 480 check files on five machine-determinable dimensions and REFUSES to issue a
-disposition (a test asserts it never prints DELETE). First reading: executes 85% · receipt 3% ·
-denominator 52% · zeroGuard 22% · blindSpot 6%; **37 files score 0/5**. Two converted so far, both 0/5 ->
-5/5: `verb-router-gates` (now imports the router, drives the loaded-chest branch that prevents a misclick
-destroying a chest) and `hud-stat-wire-gates` (now RENDERS the provider instead of regex-parsing its
-object literal — the file `_boot.js` names as its sole guard and the audit wanted deleted).
-`prod-smoke` now polls `gl.getError()` per frame instead of scraping a console Chrome MUTES after ~256
-errors — closing OI-06 and OI-08, ratcheted rather than thresholded because SwiftShader cannot supply the
-number.
-
-**OWED, and none of it hidden:**
-- ~35 remaining 0/5 gates. Run `node frontend/scripts/ci/gate-census.mjs --top 40` for the live list.
-- **Real-browser confirmation of every perf claim.** SwiftShader caps samples at 4 and reports 0 GL
-  errors, so it cannot settle the `glBlitFramebuffer` question. CI is the instrument.
-- **Visual re-baseline**, already owed since postprocessing 6.39.1 -> 6.39.5; the shadow change adds to it.
-- **KEVIN DECISION — `dprCap` 2 -> 1.75.** The biggest remaining lever (~23% off all 9 post passes) and
-  the ONLY one that changes visible sharpness. Not taken silently.
-
-### RESOLVED 2026-09-22 — child's name, fix-forward (Kevin's call)
-
-- **DONE.** The name was in 24 tracked files / 49 lines of a PUBLIC repo, two of them pairing it with the
-  age. Kevin ruled fix-forward. Renamed across every tracked file in one pass: the design-constraint name
-  `<name>-floor` -> `kid-floor`, `<name> (8)` -> `an 8-year-old`, and the save-slot test fixture
-  `"<name>'s Castle"` -> `"Skyhold Keep"`. Every occurrence in `src/` was a COMMENT (esbuild strips them)
-  and in `tests/` a FIXTURE, so nothing behavioural moved and the production bundle was never affected
-  (verified: 0 hits in `build/assets`).
-- **History NOT rewritten, deliberately.** It is in ~1,900 commits, and a force-push does not erase
-  anything on GitHub without a Support GC plus deletion of every fork — so the cost is real and the
-  benefit is not. Fix-forward is the honest scope.
-- **Enforced, not just fixed:** `scripts/ci/opsec-scan.mjs` now carries a `child-name` BLOCK rule, which
-  is never ratcheted. Re-entry reds the push before it can reach a public remote.
-
-### IN FLIGHT — ONE STEP LEFT, and main is SAFE (the commit exists locally, push is blocked)
-
-`86f592ec` is committed but NOT pushed: the pipeline correctly refuses it on two rows of
-`frontend/tests/scripts/supply-chain.test.js`. Those assertions are YAML-shaped —
-`/run:\s*npm audit\b/` and `/- name: [^\n]*[Aa]udit[^\n]*\n\s*run:/` — and `npm audit` now lives in
-`ci/pipeline.sh` as `step "npm audit (high + critical)" npm audit --audit-level=high`. The file-read was
-already re-pointed to read ci.yml AND the pipeline concatenated (`ciDefinition()`); only the two REGEXES
-still assume YAML.
-
-FINISH IT: widen those two patterns to accept either surface's shape — the invariant is "an audit step
-exists, it is NAMED, and it carries a THRESHOLD", not "a YAML key called run". Then
-`bash ci/pipeline.sh --tier=push` must be fully green, and push. Do NOT relax the threshold assertion;
-that is the part with teeth.
-
-Everything else in the unification is DONE and verified: both callers invoke `ci/pipeline.sh`,
-`gate-table.mjs` generates from the pipeline (not from a caller), pipeline step lines and table rows
-both read 15 (asserted by comparing counts, after the generator's own regex silently dropped 3 indented
-push-tier steps and wrote "9 gates"), and the trailer gates stay with the hook because only a push has
-the refspecs they read.
-
-### THE CI UNIFICATION — why it existed (his explicit ask; cause of his CI-failure emails)
-
-`ci/pipeline.sh` and `frontend/scripts/ci/e2e-freshness.mjs` are WRITTEN and PROVEN but the two callers
-are **NOT yet rewired**. Finish this first:
-1. `.githooks/pre-push` lines 109-123 → replace the inline gate list with `bash ci/pipeline.sh --tier=push`
-   (keep the per-commit worktree + certification loop around it; `CRAFTY_PUSH_RANGE` is the seam).
-2. `.github/workflows/ci.yml` gates job → `bash ci/pipeline.sh --tier=fast`.
-3. Regenerate the gate table (`node frontend/scripts/ci/gate-table.mjs --write`) — `gate-table.mjs`
-   parses the HOOK, so it must learn the pipeline's step list or the generated block goes stale.
-WHY: the hook ran 13 gates and ci.yml ran a DIFFERENT set. A damage-model change passed every gate the
-hook knows and broke an E2E spec only the workflow runs. Two lists drift; one must BE the build.
-e2e-freshness is the receipt (21 specs × ~20min is too slow to run per-push): content-keyed on
-`src/**` + `tests/e2e/**`, fail-CLOSED on stale, fail-OPEN on absent.
-
-### DONE THIS SESSION (all pushed, all mutation-proven)
-
-- `e68dc194` postprocessing 6.39.5 exact. **The sun is back** — controlled pair on ONE renderer: outdoor
-  day frames 10.7-38.6% changed, `explore-night` 0.022%, pure-UI 0.000%. Second finding: 6.39.1 was
-  WASHED OUT (its godrays pass hazed the whole frame), so the pin was costing contrast everywhere.
-- `de7795cd` **a pack of six dealt the damage of one** — `lastDamageTime` was one global number. Now
-  per-attacker; `ai.worker.js` already stamped the entity id and the call site discarded it.
-- `f5a792aa` **LMB on a chest destroyed it and everything inside** (`mine()` deletes, drops nothing).
-- `21308d2e` `killability-ledger.mjs` — 12th gate. **5 of 471 check files carry a receipt (1.1%)**;
-  ratcheted at 466 so debt falls, never rises.
-- `a0613e43` + `de814119` `opsec-scan.mjs` — public-repo publish guard, ratcheted (423 accepted
-  home-path lines). It blocked its own first push on its own fixtures: right direction, wrong target.
-- `00f1daf7` e2e cooldown spec re-pointed. Stale branches deleted (both verified 0-ahead of main).
-- `.claude/settings.json`: statusLine/subagentStatusLine moved to `settings.local.json` — vibe-island
-  had INJECTED an absolute `$HOME/...` path into a tracked file on its own.
-
-### BLOCKED, measured
-
-**Visual re-baseline.** Needs a clean capture pair; machine had 1.3GB free of 36GB (the run that died
-had 3.3GB and its own preflight called that too little). So the 31-frame oracle still depicts 6.39.1's
-washed-out look while main renders 6.39.5 — **the visual gate is currently mis-aimed**. Re-run
-`scratchpad/cap-pair-clean.sh` (it ASSERTS `complete:true` + provenance, which the first pair did not —
-a dead run leaves the previous build's frames in `current/` and 31 files look like a complete capture).
-
-### NOT STARTED — the bulk of the goal
-
-`docs/superpowers/sota-2026-09/` holds the enumeration: `GATES.md` (24 DELETE / 51 CONVERT / 208
-ENHANCE verdicts), `OPEN-ITEMS.md`, `FUTUREPROOF.md`, `QUEUE.md` (ranked, Q01-Q60).
-Untreated: the gate prune itself · C3-C5 gameplay (boss second appearance, talent-tree choice, 5 mob
-movement arms) · B1-B5 looks (sun arc, 10 biomes reading as 10, boss emissive-through-armour, AO as
-shadow) · Phase 26 sky.
-**Treat QUEUE.md as a hypothesis, not a spec** — three of its concrete claims were false in the
-dangerous direction (a fabricated module path, advice to commit absolute symlinks, a census off by 92).
-
----
-
-# Active Plan — the LIVE CURSOR
-
-> **📍 REPO LAYOUT (compaction-resilient):** TWO-LEVEL repo. ROOT `/Users/kz/Code/Crafty/` holds `.git`,
-> `docs/superpowers/`, `memory/`, `.superpowers/` (gitignored mockups). APP `/Users/kz/Code/Crafty/frontend/`
-> holds `src/`, `tests/`, `package.json` — **run npm/tests from `frontend/`; source is `frontend/src/`; docs +
-> memory are at the ROOT, one level ABOVE `frontend/`.** Bash cwd drifts and resets on compaction → use
-> ABSOLUTE paths; **NEVER assert a file is "gone/missing" from a relative `ls`/`find`** (the false-absence trap
-> — it bit twice on 2026-06-01).
-
-> ## 🧭 DOC ROLE — this file owns THE CURSOR ONLY
-> **It holds exactly one thing: the single unit of work in flight right now, and the next one.**
-> - **Where we are / the full open-work registry / what's next** → **`memory/STATUS.md`** (the source of truth).
-> - **How the loop operates** → `docs/superpowers/LOOP-CHARTER.md`.
-> - **History** → `memory/CHANGELOG.md`. **Map of all docs** → `docs/superpowers/INDEX.md`.
->
-> This file used to duplicate status, handoffs, and per-slice detail. That scatter is over. Keep it SHORT.
-
----
+**THREE MUTANTS SURVIVED and each was a real finding:** a prefix match (`.hostileChance` matching
+`.hostileChanceX`), a driven test whose steps could not distinguish the mutation from correct behaviour,
+and a detector anchored on a receiver name that an alias evades. A surviving mutant IS the finding.
 
 ## 📍 THE CURSOR — 2026-08-12 · draining the 88-finding holistic-review queue
 
