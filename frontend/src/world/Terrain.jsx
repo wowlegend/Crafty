@@ -3,7 +3,7 @@ import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { biomeTintTable, aoFloorColor, AO_FLOOR } from './biomeTable.js';
+import { BIOME_TINT, aoFloorColor, AO_FLOOR } from './biomeTable.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
@@ -214,7 +214,7 @@ const compileShader = (shader) => {
 // were none: the only consumer imports it from `biomeTable.js` directly, so the re-export was dead the
 // moment it was written, and `knip` reddened the first CI run that reached it. Backward compatibility
 // for importers you did not grep for is speculative generality with a reassuring comment on it.
-const biomeTintUniform = biomeTintTable();
+const biomeTintUniform = BIOME_TINT; // the one table the grass blades also read (R1.10)
 
 opaqueMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uBiomeTint = { value: biomeTintUniform };

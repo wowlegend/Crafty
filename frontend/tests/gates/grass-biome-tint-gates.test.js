@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SRC, strip } from './_srcWalk.js';
 import { grassTops, columnTops, GRASS_CODE } from '../../src/world/grassField.js';
-import { biomeTintTable, BIOME_ID, BIOME_NAMES, BIOME_TINT_STRENGTH } from '../../src/world/biomeTable.js';
+import { biomeTintTable, BIOME_ID, BIOME_NAMES, BIOME_TINT_STRENGTH, BIOME_TINT } from '../../src/world/biomeTable.js';
 import { bladeTint } from '../../src/game/grassVariation.js';
 
 /**
@@ -98,6 +98,20 @@ describe('grass biome tint (Q14)', () => {
     const src = strip(readFileSync(resolve(SRC, 'OptimizedGrassSystem.jsx'), 'utf8'));
     expect(src, 'the grass loop no longer destructures a biome id')
       .toMatch(/grassBlocks\.forEach\(\(\[\s*x,\s*y,\s*z,\s*biomeId\s*\]/);
-    expect(src, 'the blade tint is no longer given a biome multiplier').toMatch(/bladeTint\(x,\s*z,\s*\[/);
+    expect(src, 'the blade tint is no longer given a biome multiplier').toMatch(/bladeTint\(x,\s*z,\s*mul\)/);
+    expect(src, 'the scratch multiplier is no longer filled from the biome row')
+      .toMatch(/mul\[0\] = biomeTint\[b3\]; mul\[1\] = biomeTint\[b3 \+ 1\]; mul\[2\] = biomeTint\[b3 \+ 2\];/);
+  });
+
+  it('R1.10 — ground and blades read ONE table, and it is the pure derivation at the dial', () => {
+    // Values: the shared table is exactly what biomeTintTable() derives at Kevin's strength.
+    expect([...BIOME_TINT]).toEqual([...biomeTintTable(BIOME_TINT_STRENGTH)]);
+    // Identity (weak, structural — neither consumer imports cleanly under node): both reference the shared
+    // object and neither re-derives it. A re-derivation is how two copies drift.
+    const grass = strip(readFileSync(resolve(SRC, 'OptimizedGrassSystem.jsx'), 'utf8'));
+    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    expect(grass).toMatch(/const biomeTint = BIOME_TINT;/);
+    expect(terrain).toMatch(/const biomeTintUniform = BIOME_TINT;/);
+    expect(grass + terrain, 'a consumer re-derives the table instead of sharing it').not.toMatch(/biomeTintTable\(/);
   });
 });

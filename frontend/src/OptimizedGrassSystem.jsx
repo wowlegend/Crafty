@@ -6,7 +6,7 @@ import { mobsQuery } from './ecs/world';
 import { frameElapsed } from './devtest/captureClock.js';
 import { collectBendSources } from './game/grassBend.js';
 import { bladeTransform, bladeTint } from './game/grassVariation.js';
-import { biomeTintTable } from './world/biomeTable.js';
+import { BIOME_TINT } from './world/biomeTable.js';
 
 // S9. LIT grass, with GPU wind sway + player displacement.
 //
@@ -219,10 +219,10 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
     
     const tint = new THREE.Color();
 
-    // Q14: the SAME luminance-normalised multipliers the ground shader uses, from the one table in
-    // biomeTable.js. Hoisted out of the loop — it is a pure derivation of constants, so rebuilding it
-    // per blade would be 50 identical Float32Arrays per chunk.
-    const biomeTint = biomeTintTable();
+    // Q14 / R1.10: the SAME luminance-normalised multipliers the ground shader uses — the SAME OBJECT, in
+    // fact (biomeTable.BIOME_TINT). `mul` is one scratch triple reused per blade; bladeTint only reads it.
+    const biomeTint = BIOME_TINT;
+    const mul = [1, 1, 1];
 
     grassBlocks.forEach(([x, y, z, biomeId], i) => {
       // S8: yaw / scale / sub-cell offset, all hashed from the world (x,z) -- deterministic, RNG-free
@@ -245,7 +245,8 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
       // artefact rather than as a bug. `b * 3` indexes the rgb triple; an out-of-range id would read
       // undefined and tint to NaN, so it is clamped to the table rather than trusted.
       const b3 = Math.min(Math.max(0, biomeId | 0), biomeTint.length / 3 - 1) * 3;
-      const c = bladeTint(x, z, [biomeTint[b3], biomeTint[b3 + 1], biomeTint[b3 + 2]]);
+      mul[0] = biomeTint[b3]; mul[1] = biomeTint[b3 + 1]; mul[2] = biomeTint[b3 + 2];
+      const c = bladeTint(x, z, mul);
       tint.setRGB(c.r, c.g, c.b);
       grassMeshRef.current.setColorAt(i, tint);
     });
