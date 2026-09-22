@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { BIOME_TINT, aoFloorColor, AO_FLOOR } from './biomeTable.js';
+import { biomeTintGlsl, biomeTintMask } from './terrainTint.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
@@ -101,7 +102,7 @@ const compileShader = (shader) => {
         uniform vec3 uAoFloor;   // S11 the colour a fully-occluded corner reads as (sky HUE, fixed luminance)
         flat varying float vBlockType;
         flat varying float vBiome; // Q14 biome id from the vertex stage
-        uniform vec3 uBiomeTint[10];
+        ${TINT_GLSL.decl}
         varying float vWorldY;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
@@ -165,7 +166,9 @@ const compileShader = (shader) => {
         // level; this is the consumer the biomeTable tint field never had. The multiplier arrives
         // luminance-normalised from the CPU, so this shifts HUE without darkening — one multiply, no
         // branch, no texture fetch. Index clamped: a corrupt attribute must not read out of bounds.
-        diffuseColor.rgb *= uBiomeTint[int(clamp(vBiome, 0.0, 9.0))];
+        // R1.5/R1.6: only the natural surface blocks take it (world/terrainTint.js), and the array and the
+        // clamp are sized from BIOME_NAMES rather than typed as 10 and 9.0.
+        ${TINT_GLSL.apply}
         `
     );
 
@@ -215,9 +218,15 @@ const compileShader = (shader) => {
 // moment it was written, and `knip` reddened the first CI run that reached it. Backward compatibility
 // for importers you did not grep for is speculative generality with a reassuring comment on it.
 const biomeTintUniform = BIOME_TINT; // the one table the grass blades also read (R1.10)
+// R1.5/R1.6: the tint GLSL is sized from the biome table, and the per-block mask from the texture array's
+// OWN depth — neither is a literal that can fall out of step with the data it indexes.
+const TEX_LAYERS = voxelTextures.image.depth;
+const TINT_GLSL = biomeTintGlsl(undefined, TEX_LAYERS);
+const biomeTintMaskUniform = biomeTintMask(TEX_LAYERS);
 
 opaqueMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uBiomeTint = { value: biomeTintUniform };
+    shader.uniforms.uBiomeTintMask = { value: biomeTintMaskUniform };
     compileShader(shader);
     opaqueMaterial.userData.shader = shader;
 };

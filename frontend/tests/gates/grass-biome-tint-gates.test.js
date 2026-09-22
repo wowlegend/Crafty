@@ -114,4 +114,14 @@ describe('grass biome tint (Q14)', () => {
     expect(terrain).toMatch(/const biomeTintUniform = BIOME_TINT;/);
     expect(grass + terrain, 'a consumer re-derives the table instead of sharing it').not.toMatch(/biomeTintTable\(/);
   });
+
+  it('R1.5/R1.6 — Terrain splices the GENERATED tint GLSL and binds its mask (weak, structural)', () => {
+    // terrain-tint-gates drives the generator; this pins that Terrain actually uses it, rather than a
+    // literal array size or an unmasked multiply creeping back in beside it.
+    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    expect(terrain).toMatch(/\$\{TINT_GLSL\.decl\}/);
+    expect(terrain).toMatch(/\$\{TINT_GLSL\.apply\}/);
+    expect(terrain).toMatch(/shader\.uniforms\.uBiomeTintMask = \{ value: biomeTintMaskUniform \};/);
+    expect(terrain, 'a literal-sized tint array is back').not.toMatch(/uBiomeTint\[\d+\]/);
+  });
 });
