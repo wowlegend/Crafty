@@ -617,3 +617,26 @@ comments, not `code; // trailing`. `tests/gates/_srcWalk.js` has the fixed versi
 ## Tooling added 2026-09-22
 `frontend/scripts/dev/mutate.sh` — the mutation runner, committed (it lived in a session scratchpad).
 Exit 0 RED / 1 SURVIVED / 3 COULD NOT CHECK. Self-tested: all three exit codes, subject clean after each.
+
+---
+
+## R1 — INDEPENDENT CODE REVIEW OF THE 2026-09-22 SESSION (`673ecde8..a0af9d55`, high effort). FIX THESE FIRST.
+
+Ten findings against work I shipped today. **The pattern matters more than any one row: my gates proved
+properties of PURE FUNCTIONS, and the bugs live where those functions meet the running system.** The
+shoulder-charge gate asserts the goal point is past the player — true, and the brute still oscillates,
+because nothing latches the charge. Verify each row before fixing (a review is a claim, not a result);
+then fix with a gate that drives the INTEGRATION, and mutation-prove it with `scripts/dev/mutate.sh`.
+
+| # | sev | where | finding |
+|---|---|---|---|
+| R1.1 | HIGH | `world/mesher.js:616` | Quad biome read from corner `c0`, which lies OUTSIDE the quad for top/+X/-X/-Z faces (a 1x1 grass top takes column (x,z+1)'s biome). The greedy merge key (`blockType|dir`) ignores biome, so one merged quad spanning a border gets one tint: borders snap to quad rectangles and the grass blades (per exact column) disagree with the ground at every border — the defect Q14 was meant to remove. Fix: biome into the merge key + sample the quad's own column. |
+| R1.2 | HIGH | `game/mobMovement.js` shoulder | The charge is never LATCHED. The goal is recomputed every tick from the current vector, so it is a homing beeline that never arrives: sidestepping re-aims it, and past the player the vector flips — the brute oscillates across the player all fight and faces away half the time. Fix: latch the charge target at commit time; release on arrival/timeout. Gate it in the worker loop, not the pure fn. |
+| R1.3 | HIGH | `.githooks/pre-commit:68` | The pipeline tests the WORKING TREE but the receipt certifies `git write-tree` (the INDEX). With partial staging, a never-tested tree is certified and pre-push skips the offline core for it. Fix: refuse to write a receipt when `git diff --quiet` (unstaged changes) is false, or test a checkout of the index. |
+| R1.4 | MED | `store/useGameStore.jsx` respec | Respec refunds ranks but does not unwind state effect-less unlocks granted: a third ally from `soulbind_pack` stays (squadCap only gates NEW snares), active beast form / held grab continue. Free, repeatable exploit. |
+| R1.5 | MED | `world/Terrain.jsx:316` | Biome tint multiplies EVERY opaque block — stone, ores, sand, snow, wood, player-placed blocks, cave walls 30 blocks under a jungle. Should gate on the grass surface (or top faces of surface blocks). |
+| R1.6 | MED | `world/Terrain.jsx:295` | `uniform vec3 uBiomeTint[10]` and `clamp(vBiome, 0.0, 9.0)` hard-coded; an 11th biome clamps to mesa on the ground while the blades get it right. Derive from `BIOME_NAMES.length` + pin with a gate. |
+| R1.7 | LOW | `scripts/ci/gate-census.mjs:119` | `drivenBy` misses sibling imports (`from './doc-anchors.mjs'`) inside scripts/ci, so helpers only other CI scripts use are falsely listed UNDRIVEN. |
+| R1.8 | LOW | `ui/SpellUpgradePanel.jsx` | Respec wipes the whole build in one click beside the close button, no confirm/undo. |
+| R1.9 | LOW | `scripts/ci/gate-census.mjs:128` | ~8,000 readFileSync per run; read each file once into a Map. |
+| R1.10 | LOW | `OptimizedGrassSystem.jsx:225` | `biomeTintTable()` rebuilt per chunk + an array per blade; export one frozen module-level table and share it with Terrain (also guarantees ground and blades read the same object). |
