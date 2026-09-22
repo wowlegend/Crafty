@@ -30,7 +30,23 @@ describe('the defaults reproduce the worker exactly — the safety property', ()
     // A new MOB_TYPES entry must play as the baseline, never with NaN ranges.
     const a = archetypeFor('not-a-mob');
     expect(a).toEqual(DEFAULT_ARCHETYPE);
-    for (const v of Object.values(archetypeFor(undefined))) expect(Number.isFinite(v)).toBe(true);
+    // RE-POINTED 2026-09-22 (C5/Q25). This asserted every value was a finite NUMBER, which was right
+    // while the table held only numbers. `movement` is a STRING kind now, so the assertion is split
+    // rather than relaxed: the numeric fields keep their NaN guard, and the new field gets a stronger
+    // one than a blanket finite-check ever gave it — it must name a movement that actually exists.
+    const MOVEMENTS = new Set(['beeline', 'flank', 'shoulder']);
+    for (const [k, v] of Object.entries(archetypeFor(undefined))) {
+      if (k === 'movement') {
+        expect(MOVEMENTS.has(v), `unknown movement kind '${v}' — mobMovement would silently beeline`).toBe(true);
+      } else {
+        expect(Number.isFinite(v), `${k} is not a finite number`).toBe(true);
+      }
+    }
+    // And EVERY designed archetype must name a real movement, not just the default. A typo here is
+    // silent: movementGoal falls back to beeline, so the mob plays as undesigned and nothing errors.
+    for (const type of ['moss_brute', 'skitterling', 'duskhound']) {
+      expect(MOVEMENTS.has(archetypeFor(type).movement), `${type} names an unknown movement`).toBe(true);
+    }
   });
 });
 

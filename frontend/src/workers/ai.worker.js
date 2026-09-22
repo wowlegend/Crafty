@@ -21,6 +21,7 @@ import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
 import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from '../game/aStarNeighbors.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
+import { movementGoal } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
@@ -189,7 +190,8 @@ self.onmessage = function(e) {
       // were the same creature in different meshes — the moss brute looked like a tank and played like a
       // zombie. Undesigned types resolve to the former module-scope constants exactly.
       const { aggroRange: AGGRO_RANGE, leashMult: LEASH_MULT, meleeRange: MELEE_RANGE,
-              attackCooldown: ATTACK_COOLDOWN, verticalReach: VERTICAL_REACH_T } = archetypeFor(type);
+              attackCooldown: ATTACK_COOLDOWN, verticalReach: VERTICAL_REACH_T,
+              movement: MOVEMENT } = archetypeFor(type);
       
       // Aggro transition (+ de-aggro leash): a chased mob drops aggro once the player gets past
       // 1.5x aggro range, so it stops pursuing across the whole map and falls back to wandering below.
@@ -311,9 +313,14 @@ self.onmessage = function(e) {
         } else {
           // Standard Melee (Zombie & Bosses). B4: this is THE line that made building pointless — a zombie
           // 200 blocks below you, one block away horizontally, was inside MELEE_RANGE and swung.
+          //
+          // C5/Q25: the APPROACH is now archetype data rather than one hardcoded beeline. `movementGoal`
+          // returns the player position unchanged for 'beeline' and for any unnamed movement, so every
+          // type that has not been designed yet walks exactly as it did before this line existed.
           isMoving = true;
-          targetX = playerX;
-          targetZ = playerZ;
+          const goal = movementGoal(MOVEMENT, { x, z, playerX, playerZ, id });
+          targetX = goal.targetX;
+          targetZ = goal.targetZ;
           if (canReach(dx, dy, dz, MELEE_RANGE, VERTICAL_REACH_T) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }

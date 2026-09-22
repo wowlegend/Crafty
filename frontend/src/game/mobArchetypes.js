@@ -42,15 +42,19 @@ export const DEFAULT_ARCHETYPE = Object.freeze({
   meleeRange: 2.5,
   attackCooldown: 1500,
   verticalReach: 2.5,
+  // C5/Q25: HOW it approaches, resolved by game/mobMovement.js. 'beeline' is the CURRENT behaviour
+  // expressed as data, not a new one — so a type that names no movement plays exactly as it does today,
+  // the same safety property the numbers above shipped with.
+  movement: 'beeline',
 });
 
 export const ARCHETYPES = Object.freeze({
   // Relentless siege engine: it will not lose you, it reaches further, and it swings slowly enough to read.
-  moss_brute: Object.freeze({ leashMult: 4.0, meleeRange: 3.2, attackCooldown: 2400, verticalReach: 3.2 }),
+  moss_brute: Object.freeze({ leashMult: 4.0, meleeRange: 3.2, attackCooldown: 2400, verticalReach: 3.2, movement: 'shoulder' }),
   // Swarmer: gets in your face fast, chips, and gives up if you actually break away.
   skitterling: Object.freeze({ aggroRange: 16, leashMult: 1.15, meleeRange: 1.8, attackCooldown: 700 }),
   // Pack hunter: finds you from a long way off and worries at you.
-  duskhound: Object.freeze({ aggroRange: 28, leashMult: 2.0, attackCooldown: 950 }),
+  duskhound: Object.freeze({ aggroRange: 28, leashMult: 2.0, attackCooldown: 950, movement: 'flank' }),
 });
 
 /**
