@@ -19,7 +19,29 @@ import { fileURLToPath } from 'node:url';
 // rare event, never per frame. A boss hit is rare, so Game-Loop-Isolation holds.
 const SRC = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'BossEntity.jsx'), 'utf8');
 
+/*
+ * ENHANCED 2026-09-22, selected by `gate-census.mjs` at 0/5. The assertions here were already sound —
+ * slice-anchored, negative cases carrying their rationale — so nothing was rewritten. What was missing
+ * was the evidence ABOUT them: no stated receipt, no stated blind spot, and no denominator.
+ *
+ * BLIND SPOT, stated (R7), and it is large: every case below reads `BossEntity.jsx` as TEXT. Nothing
+ * renders the boss, nothing takes a hit, and nothing observes a pixel change. The bug this file exists
+ * for was precisely a cue that did not reach the screen, so a source gate is structurally the wrong
+ * shape for it — it is here because BossEntity is an R3F component and no harness in this repo drives
+ * one. The honest statement is that the SHAPE of the fix is pinned, not the behaviour. A real check
+ * would be a live probe that damages the boss and diffs the frame; that does not exist.
+ *
+ * Mutation-Proof: 4 mutations, recorded on the commit.
+ */
 describe('boss damage flash — a render actually happens', () => {
+  it('the subject file was actually read — the source of every claim below', () => {
+    // R3a: `not.toMatch` on an empty string passes. Two of the cases here are negative assertions, so a
+    // failed read would report the defect as fixed.
+    expect(SRC.length, 'BossEntity.jsx read as empty — every negative assertion below is vacuous')
+      .toBeGreaterThan(2000);
+    expect(SRC).toContain('isFlashing');
+  });
+
   it('the flash is STATE, not a ref read during render', () => {
     expect(SRC).toMatch(/const \[isFlashing, setIsFlashing\] = useState\(false\)/);
     expect(
