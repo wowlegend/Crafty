@@ -21,7 +21,7 @@ import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
 import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from '../game/aStarNeighbors.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
-import { movementGoal } from '../game/mobMovement.js';
+import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
@@ -175,7 +175,9 @@ self.onmessage = function(e) {
         id, passive, x, y, z, targetX, targetZ, isMoving, isAggro,
         lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid,
         wanderRoll,
+        chargeX = 0, chargeZ = 0, chargeAt = 0, chargeReadyAt = 0,
       } = entity;
+      let charging = false; // the shoulder charge is under way this tick (game/mobMovement.js)
       let pendingAttack = null; // M2 #4: what this mob WOULD strike this tick (gated through the windup below)
       
       const dx = playerX - x;
@@ -317,11 +319,23 @@ self.onmessage = function(e) {
           // C5/Q25: the APPROACH is now archetype data rather than one hardcoded beeline. `movementGoal`
           // returns the player position unchanged for 'beeline' and for any unnamed movement, so every
           // type that has not been designed yet walks exactly as it did before this line existed.
-          isMoving = true;
-          const goal = movementGoal(MOVEMENT, { x, z, playerX, playerZ, id });
+          //
+          // The charge (R1.2) is LATCHED state carried across ticks in chargeX/Z/At/ReadyAt, round-tripped by
+          // game/mobStateSync.js. BRACE and RECOVER stand still; RECOVER also does not swing — that winded
+          // window after a dodged charge is the whole point of dodging it.
+          const goal = movementGoal(MOVEMENT, {
+            x, z, playerX, playerZ, id, now,
+            charge: { x: chargeX, z: chargeZ, at: chargeAt, readyAt: chargeReadyAt },
+          });
           targetX = goal.targetX;
           targetZ = goal.targetZ;
-          if (canReach(dx, dy, dz, MELEE_RANGE, VERTICAL_REACH_T) && now - lastAttackTime > ATTACK_COOLDOWN) {
+          ({ x: chargeX, z: chargeZ, at: chargeAt, readyAt: chargeReadyAt } = goal.charge);
+          charging = goal.phase === 'charge';
+          const winded = goal.phase === 'recover';
+          isMoving = goal.phase !== 'brace' && !winded;
+          // The brace is the TELL: plant and face the committed line, so a player reads where it will run.
+          if (goal.phase === 'brace') rotation = Math.atan2(chargeX - x, chargeZ - z);
+          if (!winded && canReach(dx, dy, dz, MELEE_RANGE, VERTICAL_REACH_T) && now - lastAttackTime > ATTACK_COOLDOWN) {
             pendingAttack = { id, type: 'melee', damage, position: [x, y, z] };
           }
         }
@@ -366,6 +380,7 @@ self.onmessage = function(e) {
       } else {
         // Wandering logic for idle/passive mobs
         isAggro = false;
+        chargeAt = 0; // a charge does not survive losing the player; a later engagement starts fresh
         moveTimer -= delta;
         if (moveTimer <= 0) {
           // The re-roll is a PURE function in game/mobWander.js. It lived here, and this file assigns
@@ -388,7 +403,7 @@ self.onmessage = function(e) {
         const dist = Math.sqrt(tdx * tdx + tdz * tdz);
         
         if (dist > 0.15) {
-          const speedMult = isAggro ? (type === 'spider' ? 2.0 : 1.5) : 1.0;
+          const speedMult = (isAggro ? (type === 'spider' ? 2.0 : 1.5) : 1.0) * (charging ? SHOULDER_CHARGE_SPEED : 1.0);
           const coverBoost = isCoverSeeking ? 1.2 : 1.0;
           const actualSpeed = speed * speedMult * coverBoost * delta;
           
@@ -404,7 +419,7 @@ self.onmessage = function(e) {
       
       updates.push({
         id, x, z, rotation, isAggro, isMoving, targetX, targetZ, lastAttackTime, windupUntil, moveTimer, isCoverSeeking,
-        wanderRoll
+        wanderRoll, chargeX, chargeZ, chargeAt, chargeReadyAt,
       });
     }
     

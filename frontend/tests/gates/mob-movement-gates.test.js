@@ -1,10 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { SRC, strip } from './_srcWalk.js';
 import {
-  movementGoal, flankSide,
+  movementGoal, flankSide, IDLE_CHARGE,
   FLANK_WIDTH, FLANK_COMMIT_DIST, FLANK_FULL_DIST, SHOULDER_OVERSHOOT, SHOULDER_CHARGE_DIST,
+  SHOULDER_BRACE_MS, SHOULDER_RECOVER_MS,
 } from '../../src/game/mobMovement.js';
 import { archetypeFor } from '../../src/game/mobArchetypes.js';
 
@@ -27,7 +25,10 @@ const dist = (g, px, pz) => Math.hypot(g.targetX - px, g.targetZ - pz);
  * BLIND SPOT, stated (R7): this drives the pure goal function. It does not prove the worker's pathing
  * reaches the goal, that a hound visibly arcs on screen, or that a brute's charge is dodgeable in
  * practice — the last is a FEEL question and the honest instrument for it is a person playing. The
- * worker wiring is asserted structurally at the end, which is the weak kind by this repo's standard.
+ * worker wiring used to be asserted structurally at the end, the weak kind by this repo's standard; it is
+ * now BEHAVIOURAL in mob-charge-loop-gates.test.js, which drives the real worker across ticks. That test
+ * exists because this file's shoulder case was green on a charge that oscillated in play (QUEUE R1.2): a
+ * charge is a property of many ticks, and one pure call cannot see it.
  *
  * Mutation-Proof: 5 mutations, recorded on the commit.
  */
@@ -35,7 +36,7 @@ describe('C5 mob movement archetypes', () => {
   it('an UNNAMED movement is byte-identical to beeline — the safety property', () => {
     // If this ever fails, every undesigned mob type silently changed behaviour.
     const ctx = { x: 3, z: -4, playerX: 40, playerZ: 17, id: 'z-1' };
-    const plain = { targetX: 40, targetZ: 17 };
+    const plain = { targetX: 40, targetZ: 17, phase: 'walk', charge: IDLE_CHARGE };
     for (const kind of ['beeline', undefined, null, '', 'not-a-kind', 42]) {
       expect(movementGoal(kind, ctx), `movement '${kind}' diverged from beeline`).toEqual(plain);
     }
@@ -67,16 +68,33 @@ describe('C5 mob movement archetypes', () => {
     for (const s of sides) expect(Math.abs(s)).toBe(1);
   });
 
-  it('a SHOULDER charge aims PAST the player, and only inside the charge band', () => {
-    const p = { playerX: 0, playerZ: 0, id: 'brute-1' };
+  it('a SHOULDER charge commits PAST the player, only inside the charge band, and HOLDS that point', () => {
+    const p = { playerX: 0, playerZ: 0, id: 'brute-1', now: 5000 };
     const walking = movementGoal('shoulder', { ...p, x: -(SHOULDER_CHARGE_DIST + 5), z: 0 });
-    expect(walking, 'outside the band a brute must walk normally').toEqual({ targetX: 0, targetZ: 0 });
+    expect(walking, 'outside the band a brute must walk normally')
+      .toEqual({ targetX: 0, targetZ: 0, phase: 'walk', charge: IDLE_CHARGE });
 
-    const charging = movementGoal('shoulder', { ...p, x: -6, z: 0 });
-    expect(charging.targetX, 'the charge stops AT the player — it cannot be sidestepped').toBeGreaterThan(0);
-    expect(dist(charging, 0, 0)).toBeCloseTo(SHOULDER_OVERSHOOT, 6);
-    // The overshoot must continue the APPROACH direction, not point anywhere else.
-    expect(charging.targetZ).toBeCloseTo(0, 6);
+    // Inside the band it COMMITS: it braces in place and latches a point OVERSHOOT past the player.
+    const commit = movementGoal('shoulder', { ...p, x: -6, z: 0 });
+    expect(commit.phase).toBe('brace');
+    expect([commit.targetX, commit.targetZ], 'a bracing brute stands still').toEqual([-6, 0]);
+    expect(commit.charge.x, 'the charge stops AT the player — it cannot be sidestepped').toBeGreaterThan(0);
+    expect(Math.hypot(commit.charge.x, commit.charge.z)).toBeCloseTo(SHOULDER_OVERSHOOT, 6);
+    expect(commit.charge.z, 'the overshoot must continue the APPROACH direction').toBeCloseTo(0, 6);
+
+    // After the brace it runs at the LATCHED point — wherever the player has gone since.
+    const later = { ...p, now: 5000 + SHOULDER_BRACE_MS + 10, x: -5, z: 0, playerX: 0, playerZ: 7, charge: commit.charge };
+    const run = movementGoal('shoulder', later);
+    expect(run.phase).toBe('charge');
+    expect([run.targetX, run.targetZ], 'a sidestep re-aimed the charge').toEqual([commit.charge.x, commit.charge.z]);
+
+    // On arrival it is winded, and stays winded until the recovery ends.
+    const arrived = movementGoal('shoulder', { ...later, x: commit.charge.x, z: 0 });
+    expect(arrived.phase).toBe('recover');
+    const still = movementGoal('shoulder', { ...later, now: later.now + SHOULDER_RECOVER_MS - 50, charge: arrived.charge });
+    expect(still.phase).toBe('recover');
+    const again = movementGoal('shoulder', { ...later, now: later.now + SHOULDER_RECOVER_MS + 50, charge: arrived.charge });
+    expect(again.phase, 'recovery never ends').not.toBe('recover');
   });
 
   it('degenerate geometry returns a FINITE goal — a NaN goal is a mob that walks nowhere, silently', () => {
@@ -95,14 +113,4 @@ describe('C5 mob movement archetypes', () => {
     expect(archetypeFor('zombie').movement, 'an undesigned type must stay on beeline').toBe('beeline');
   });
 
-  it('the worker CONSUMES the archetype movement — it is not computed and dropped', () => {
-    // The weak, structural half, and it guards the exact shape this repo keeps shipping: a value
-    // computed, compiling, and never reaching the thing it was for.
-    const w = strip(readFileSync(resolve(SRC, 'workers/ai.worker.js'), 'utf8'));
-    expect(w, 'the worker no longer resolves a movement from the archetype').toMatch(/movement: MOVEMENT/);
-    expect(w, 'the goal is computed but not assigned to the path target')
-      .toMatch(/const goal = movementGoal\(MOVEMENT,[\s\S]{0,120}targetX = goal\.targetX;[\s\S]{0,40}targetZ = goal\.targetZ;/);
-    expect(w, 'the hardcoded beeline is back alongside the archetype goal')
-      .not.toMatch(/targetX = goal\.targetX;[\s\S]{0,80}targetX = playerX;/);
-  });
 });

@@ -19,6 +19,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
+import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
 
 // AIWorkerSystem -- bridges mob AI to a Web Worker at 15Hz (movement/attacks/aggro), processes
 // knockback main-thread, and runs the ambient hub-NPC routine. Extracted VERBATIM from
@@ -93,9 +94,6 @@ export const AIWorkerSystem = () => {
         for (const update of updates) {
           const entity = entityMap.get(update.id);
           if (entity && entity.health > 0) {
-            entity.position.x = update.x;
-            entity.position.z = update.z;
-            entity.rotation = update.rotation;
             // AUDIO (enemy-presence split): the false->true aggro edge SNARLS spatially — you HEAR a
             // hostile notice you before it reaches you (global cooldown so a siege turn isn't a wall of growls).
             if (!entity.passive && !entity.isAggro && update.isAggro && store.playSpatialSound) {
@@ -105,17 +103,11 @@ export const AIWorkerSystem = () => {
                 store.playSpatialSound('aggroGrowl', [entity.position.x, entity.position.y, entity.position.z], 0.9, 22);
               }
             }
-            entity.isAggro = update.isAggro;
-
-            // Sync back worker state
-            entity.isMoving = update.isMoving;
-            entity.targetX = update.targetX;
-            entity.targetZ = update.targetZ;
-            entity.lastAttackTime = update.lastAttackTime;
-            entity.windupUntil = update.windupUntil; // M2 #4: render reads this for the charge pose (slice 2)
-            entity.moveTimer = update.moveTimer;
-            entity.wanderRoll = update.wanderRoll; // round-trips the seeded wander's roll counter
-            entity.isCoverSeeking = update.isCoverSeeking;
+            // Position, heading, aggro and EVERY worker-owned state field, from the one list the payload
+            // below also reads (game/mobStateSync.js). The growl above runs first because it needs the
+            // OLD aggro value. windupUntil drives the render's charge pose; wanderRoll and the charge
+            // latch only work if they come back next tick, which is what the shared list guarantees.
+            applyMobUpdate(entity, update);
 
             if (store.getMobGroundLevel) {
               const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
@@ -221,27 +213,10 @@ export const AIWorkerSystem = () => {
           }
         }
       }
-      return {
-        id: e.id,
-        passive: e.passive,
-        x: e.position.x,
-        y: e.position.y,
-        z: e.position.z,
-        targetX: e.targetX,
-        targetZ: e.targetZ,
-        isMoving: e.isMoving,
-        isAggro: e.isAggro,
-        lastAttackTime: e.lastAttackTime,
-        windupUntil: e.windupUntil || 0,
-        damage: e.damage,
-        type: e.type,
-        moveTimer: e.moveTimer,
+      return buildMobPayload(e, {
         speed: e.speed * (e.zoneSlowMult || 1) * spellSlowFactor(e, performance.now()), // zone slow + iceball spell-freeze (separate channels)
-        rotation: e.rotation,
-        health: e.health,
-        maxHealth: e.maxHealth,
-        heightGrid: heightGrid
-      };
+        heightGrid,
+      });
     });
 
     workerRef.current.postMessage({

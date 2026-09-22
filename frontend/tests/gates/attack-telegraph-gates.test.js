@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { MOB_STATE_FIELDS, buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,8 +70,16 @@ describe('attack-telegraph gates (M2 #4)', () => {
   it('windupUntil round-trips: worker destructures + outputs it, SNS sends + reads it back', () => {
     expect(/let \{[\s\S]{0,200}lastAttackTime, windupUntil,/.test(worker)).toBe(true);   // destructure in
     expect(worker).toMatch(/updates\.push\(\{[\s\S]{0,160}lastAttackTime, windupUntil,/); // output back
-    expect(npc).toMatch(/windupUntil: e\.windupUntil \|\| 0/);                            // SNS -> worker
-    expect(npc).toMatch(/entity\.windupUntil = update\.windupUntil/);                     // readback for render
+    // SNS -> worker and readback for render: since R1.2 both sides read ONE list (game/mobStateSync.js), so
+    // assert the field is ON it and that the two shared functions carry it — behaviourally, not by regex.
+    // mob-charge-loop-gates drives the whole list round-trip through the real worker.
+    expect(MOB_STATE_FIELDS).toContain('windupUntil');
+    expect(buildMobPayload({ position: { x: 0, y: 0, z: 0 } }, { speed: 1, heightGrid: null }).windupUntil).toBe(0);
+    const ent = { position: { x: 0, y: 0, z: 0 } };
+    applyMobUpdate(ent, { x: 0, z: 0, rotation: 0, isAggro: true, windupUntil: 1234 });
+    expect(ent.windupUntil).toBe(1234);
+    expect(npc).toMatch(/applyMobUpdate\(entity, update\);/);
+    expect(npc).toMatch(/return buildMobPayload\(e, \{/);
   });
 
   it('the pure machine itself is dodgeable (strike vs cancel on elapse)', () => {

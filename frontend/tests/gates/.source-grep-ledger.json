@@ -1,5 +1,5 @@
 {
-  "_count": 107,
+  "_count": 106,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -58,7 +58,6 @@
     "tests/gates/master-bus-gates.test.js",
     "tests/gates/mob-aggro-audio-gate.test.js",
     "tests/gates/mob-los-sync-gates.test.js",
-    "tests/gates/mob-movement-gates.test.js",
     "tests/gates/modal-static-gates.test.js",
     "tests/gates/music-gates.test.js",
     "tests/gates/nametags-gates.test.js",
