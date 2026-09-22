@@ -99,12 +99,40 @@ export function dimensions(src) {
 export const SCORE_KEYS = ['executes', 'receipt', 'denominator', 'zeroGuard', 'blindSpot'];
 export const scoreOf = (d) => SCORE_KEYS.reduce((n, k) => n + (d[k] ? 1 : 0), 0);
 
+/**
+ * PURE: which of `files` (repo-relative) import `subject`, i.e. DRIVE it.
+ *
+ * Added 2026-09-22, and it fixes a category error in this file's own output. Five files under
+ * `scripts/ci/` all scored 0/5 and read as one uniform class of "unevidenced". Four of them are pure
+ * HELPER modules — `_density-ratchet` is imported by FOUR tests, `_gate-ratchet` by one — and scoring a
+ * library on "does it carry a Mutation-Proof receipt" is asking the wrong question of it. Exactly one of
+ * the five, `read-order.mjs`, was driven by nothing at all: the generator behind the orientation block
+ * rendered into three surfaces, with no test anywhere.
+ *
+ * So the uniform low score CONVEYED NOTHING and hid the single real gap inside it. That is this repo's
+ * own "read the count, not the tick" turned on the census itself. A helper's meaningful question is not
+ * "does it have a receipt" but "does anything execute it", and that is mechanically answerable.
+ */
+export function drivenBy(subjectFile, files, readText) {
+  const base = subjectFile.split('/').pop().replace(/\.mjs$/, '');
+  // Match an import of THIS module specifically, by path, not a bare mention of its name in prose.
+  const re = new RegExp(`from\\s+'[^']*\\bci/${base}\\.mjs'|import\\(\\s*'[^']*\\bci/${base}\\.mjs'`);
+  return files.filter((f) => f !== subjectFile && re.test(readText(f)));
+}
+
 export function census(root = APP_ROOT) {
   // survey() returns { rows, total, receipted, unreceipted } — not an array. Read the shape from the
   // source rather than assuming it; the first draft called .map on the envelope and threw.
-  return survey(root).rows.map((row) => {
-    const d = dimensions(readFileSync(resolve(root, row.file), 'utf8'));
-    return { ...row, ...d, score: scoreOf(d) };
+  const rows = survey(root).rows;
+  const read = (f) => { try { return readFileSync(resolve(root, f), 'utf8'); } catch { return ''; } };
+  const all = rows.map((r) => r.file);
+  return rows.map((row) => {
+    const d = dimensions(read(row.file));
+    // Only meaningful for the scripts/ci group: a test file is not "driven by" anything, it IS the driver.
+    const driven = row.file.startsWith('scripts/ci/') ? drivenBy(row.file, all, read).length : null;
+    // An `export` that is not the CLI's own entry point is a SEAM: something a test could execute.
+    const exportsSeam = driven !== null && /^export\s+(function|const|class)\s/m.test(read(row.file));
+    return { ...row, ...d, driven, exportsSeam, score: scoreOf(d) };
   });
 }
 
@@ -126,6 +154,22 @@ export function verdict(rows) {
     `  denominator    ${pct('denominator').padEnd(22)} a clean report is indistinguishable from never looking`,
     `  zeroGuard      ${pct('zeroGuard').padEnd(22)} an empty subject set passes vacuously`,
     `  blindSpot      ${pct('blindSpot').padEnd(22)} does not say what it cannot see`,
+    '',
+    ...(() => {
+      // A scripts/ci file nothing imports is either a CLI (fine — it is executed, not imported) or a
+      // helper with no driver (a real gap). Naming them separately is the whole point of the `driven`
+      // dimension: without it they sit indistinguishably among the 0/5 rows.
+      // STRUCTURAL, not a name list. The first version of this filter matched `/_|-ratchet|read-order|
+      // doc-anchors/` — an allowlist of shapes I happened to have in mind, which is the exact defect
+      // this session spent the day deleting from other gates (a gate with a named exception is two
+      // gates, one unwritten). The real property is: it EXPORTS a seam and nothing imports it. A pure
+      // CLI with no exports is legitimately undriven — it is executed, not imported — and a module that
+      // offers a seam nobody exercises is a gap whatever it is called.
+      const undriven = rows.filter((r) => r.driven === 0 && r.exportsSeam);
+      if (!undriven.length) return [];
+      return ['', `  UNDRIVEN HELPERS (${undriven.length}) — exports a seam, and no test imports it:`,
+        ...undriven.map((r) => `    ${r.file}`)];
+    })(),
     '',
     '  BY SCORE (0 = unevidenced on every dimension; it may still guard something real)',
   ];

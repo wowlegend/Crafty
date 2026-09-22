@@ -97,8 +97,14 @@ export function parseHook(src) {
     // `npm audit` and `prod-smoke` were printed as pre-push gates when they are deliberately CI-only,
     // which is a scope defect in the exact form R9 names (a gate's LABEL is a claim with a scope).
     // Derive the tier from the structure the script already provides, never from prose.
+    // A `!=` GUARD IS AN EXCLUSION, NOT AN ABSENCE OF ONE. This used to collapse `!=` to 'core', whose
+    // CALLERS entry says commit+push+ci — so a step inside `if [ "$TIER" != "push" ]` would have been
+    // printed as a pre-push gate while the script explicitly skips it there. No live step sits in such a
+    // block today (the one `!=` block in pipeline.sh holds only a printf), so the current table is
+    // correct and this is a LATENT defect — but it is latent in exactly the class this generator exists
+    // to prevent: a column that is fiction. Found 2026-09-22 by writing the first test for this file.
     const guard = line.match(/^if \[ "\$TIER" (=|!=) "(\w+)" \]; then$/);
-    if (guard) { tier = guard[1] === '=' ? guard[2] : 'core'; return; }
+    if (guard) { tier = guard[1] === '=' ? guard[2] : `not-${guard[2]}`; return; }
     if (/^fi$/.test(line)) { tier = 'core'; return; }
 
     const m = line.match(/^\s*step "([^"]+)"\s+(.+)$/);
@@ -124,6 +130,11 @@ export const CALLERS = {
   push:  { commit: false, push: true,  ci: false },
   fast:  { commit: false, push: false, ci: true  },
   range: { commit: false, push: true,  ci: false },
+  // The exclusions. Derived from the same three tiers, so adding a tier cannot leave one unmapped
+  // silently — `callersFor` falls back to `core` and that fallback is now asserted in the test.
+  'not-commit': { commit: false, push: true,  ci: true  },
+  'not-push':   { commit: true,  push: false, ci: true  },
+  'not-fast':   { commit: true,  push: true,  ci: false },
 };
 export const callersFor = (gate) => CALLERS[gate.tier] || CALLERS.core;
 
