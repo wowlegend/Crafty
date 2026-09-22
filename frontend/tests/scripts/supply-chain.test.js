@@ -41,7 +41,10 @@ describe('the supply chain is scanned at all', () => {
   it('CI runs an explicit dependency audit', () => {
     expect(existsSync(ciYml), 'ci.yml is missing — nothing here can be asserted').toBe(true);
     const yml = ciDefinition();
-    expect(yml, 'no `npm audit` step — a CVE ships to the live demo unremarked').toMatch(/run:\s*npm audit\b/);
+    // EITHER SURFACE'S SHAPE. The invariant is "an audit step is INVOKED", not "a YAML key called run":
+    // ci.yml spells it `run: npm audit`, ci/pipeline.sh spells it `step "…" npm audit`. Pinning the YAML
+    // spelling is what made this go red on a change that STRENGTHENED the audit by giving it one home.
+    expect(yml, 'no `npm audit` step — a CVE ships to the live demo unremarked').toMatch(/(?:run:\s*|step "[^"]*"\s+)npm audit\b/);
   });
 
   it('the audit has a THRESHOLD, so it can actually fail', () => {
@@ -55,7 +58,12 @@ describe('the supply chain is scanned at all', () => {
     // Folded into the install or the lint step, a network failure would present as "lint failed", which
     // is how a gate gets diagnosed as flaky and then ignored.
     const yml = ciDefinition();
-    expect(yml, 'the audit has no name of its own').toMatch(/- name: [^\n]*[Aa]udit[^\n]*\n\s*run: npm audit/);
+    // NAMED, in whichever surface owns it. A YAML step names itself with `- name:` above its `run:`;
+    // a pipeline step carries its name as the first argument. Both are the same property — a failure
+    // that reads as "audit" rather than as an anonymous command — so both satisfy it.
+    expect(yml, 'the audit has no name of its own').toMatch(
+      /(?:- name: [^\n]*[Aa]udit[^\n]*\n\s*run: npm audit|step "[^"]*[Aa]udit[^"]*"\s+npm audit)/
+    );
   });
 
   it('Dependabot exists and points at the app directory, not the repo root', () => {
