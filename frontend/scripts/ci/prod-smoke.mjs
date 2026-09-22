@@ -22,7 +22,7 @@
  *
  *   node scripts/ci/prod-smoke.mjs        (expects `npm run build` to have run first)
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -32,6 +32,53 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 // A fourth dedicated port. capture=4178, e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
 // picked its own, it minted the worst crop of orphan cmux preview surfaces.
 const PORT = 4180;
+
+/**
+ * THE GL ERROR LEDGER — the error class this gate exists to watch and structurally could not see.
+ *
+ * `.claude/rules/gates-and-probes.md` records that the production console carries
+ * `GL_INVALID_OPERATION: glBlitFramebuffer` in two alternating forms, PER FRAME, until Chrome emits
+ * "too many errors, no more errors will be reported to the context" and stops. Two consequences, and the
+ * second is why a console scrape is the wrong instrument:
+ *
+ *   1. any console-message count is a FLOOR, not a count — the browser stops reporting;
+ *   2. once muted, a genuine GL error later in that context is silenced too, so the noise disables the
+ *      very channel this file's `page.on('console')` handler watches.
+ *
+ * `gl.getError()` is immune to both: it drains a queue on the context itself, with no console involved and
+ * no muting. One call per frame, because reading DRAINS — a single poll at the end reports at most ONE
+ * error for the whole run, which is how a count like this reads as clean.
+ *
+ * RATCHETED, NOT THRESHOLDED. The honest problem is that nobody knows the post-fix number: the headless
+ * probe runs SwiftShader, which reports MAX_SAMPLES 4 and emitted zero GL errors, so it cannot settle the
+ * question and a threshold picked here would be a guess wearing a gate's clothes. So the first run
+ * RECORDS, and later runs may FALL and never RISE — the same shape as the opsec, killability and
+ * source-grep ledgers in this repo. That makes the number falsifiable without pretending to know it.
+ */
+export const GL_LEDGER_PATH = resolve(ROOT, 'frontend/tests/gates/.gl-error-ledger.json');
+
+/** PURE: the verdict on a GL error count against the ledger, separated from I/O so a test can drive it. */
+export function glVerdict(count, frames, ledger) {
+  // R3a — zero frames means the poll never ran, and "0 errors over 0 frames" is the reading a dead
+  // instrument gives. That is a control failure, not good news.
+  if (!frames) {
+    return { ok: false, control: true, line: 'GL errors: COULD NOT CHECK — polled over 0 frames; the instrument did not run.' };
+  }
+  const cap = ledger?.count;
+  if (cap === undefined || cap === null) {
+    return { ok: true, seed: true, line: `GL errors: ${count} over ${frames} frames — NO LEDGER YET, recording this as the ceiling. Re-freeze with --write-gl.` };
+  }
+  if (count > cap) {
+    return {
+      ok: false,
+      line:
+        `GL errors ROSE: ${count} over ${frames} frames, ceiling is ${cap}.\n` +
+        '  A per-frame GL error is a real cost and it MUTES the console channel this gate watches for\n' +
+        '  everything else. Find it before raising the ceiling; the ratchet may fall, never rise.',
+    };
+  }
+  return { ok: true, line: `GL errors: ${count} over ${frames} frames (ceiling ${cap}${count < cap ? ' — FELL, re-freeze with --write-gl' : ''})` };
+}
 
 /** PURE: is this console/page message worth failing over? */
 export function isFatalMessage(text) {
@@ -114,6 +161,38 @@ if (isCli) {
     if (lost > 0) errors.push(`${lost} canvas/canvases have a LOST WebGL context`);
 
     console.log(`prod-smoke: booted, ${frames} frames in 4s, ${lost} lost context(s)`);
+
+    // GL ERROR POLL — see the GL_LEDGER docblock above for why this, and not the console handler.
+    const gl = await page.evaluate(
+      () => new Promise((res) => {
+        const c = document.querySelector('canvas');
+        const ctx = c && (c.getContext('webgl2') || c.getContext('webgl'));
+        if (!ctx) return res({ count: 0, frames: 0, codes: [] });
+        let count = 0, n = 0;
+        const codes = new Set();
+        const stop = Date.now() + 3000;
+        const tick = () => {
+          n++;
+          let e;
+          // Drain EVERY error this frame: getError pops one per call, so a single read per frame would
+          // undercount a storm by exactly the factor that makes a storm a storm.
+          while ((e = ctx.getError()) !== ctx.NO_ERROR) { count++; codes.add(e); }
+          if (Date.now() < stop) requestAnimationFrame(tick);
+          else res({ count, frames: n, codes: [...codes] });
+        };
+        requestAnimationFrame(tick);
+        setTimeout(() => res({ count, frames: n, codes: [...codes] }), 4000); // always resolves
+      })
+    );
+    let glLedger = null;
+    try { glLedger = JSON.parse(readFileSync(GL_LEDGER_PATH, 'utf8')); } catch { /* absent -> seed */ }
+    const gv = glVerdict(gl.count, gl.frames, glLedger);
+    console.log(`prod-smoke: ${gv.line}${gl.codes.length ? `  codes=[${gl.codes.join(',')}]` : ''}`);
+    if (!gv.ok) errors.push(gv.line.split('\n')[0]);
+    if (process.argv.includes('--write-gl')) {
+      writeFileSync(GL_LEDGER_PATH, `${JSON.stringify({ count: gl.count, frames: gl.frames, at: new Date().toISOString() }, null, 2)}\n`);
+      console.log(`prod-smoke: froze the GL ceiling at ${gl.count}`);
+    }
 
     // SETTINGS PERSISTENCE — a PRODUCTION-ONLY defect, which is why it belongs here and nowhere else.
     // `initSettingsPersistence` used to be the last statement of the DEV-only test-bridge effect, behind
