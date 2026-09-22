@@ -11,13 +11,20 @@
 // table, no height function, no `self`, no postMessage. The worker now imports it and calls it at the
 // same two sites.
 //
-// The mesher merges coplanar faces on `blockType | (dirFlag << 8)` and emits 4 unindexed verts + 2 tris
-// per merged quad, returning transferable typed arrays. Winding is CCW-from-outside on all six faces
-// because `Terrain.jsx` renders `FrontSide` — a CW face is invisible, which is how the terrain once went
-// see-through (see .claude/rules/r3f-pointer-lock-voxel-meshing.md).
+// The mesher merges coplanar faces on a KEY that carries everything a face's appearance depends on —
+// `blockType | dir << 8 | cornerAO << 10 | biome << 18` (built inline in the mask pass) — and emits 4
+// unindexed verts + 2 tris per merged quad, returning transferable typed arrays. Winding is
+// CCW-from-outside on all six faces because `Terrain.jsx` renders `FrontSide` — a CW face is invisible,
+// which is how the terrain once went see-through (see .claude/rules/voxel-mesher.md).
 import { cornerAO } from './vertexAO.js';
 
-const mask = new Uint16Array(4096);
+// 32-bit: the key needs 26 bits (8 type + 2 dir + 8 AO + 8 biome). It was 16-bit while the key was only
+// type + dir, which is exactly why AO and biome could not be in it.
+const mask = new Uint32Array(4096);
+
+// A 1x1 face cell's four corners in (u, v) order (lo,lo) (hi,lo) (hi,hi) (lo,hi), as outward steps.
+const CORNER_SU = [-1, 1, 1, -1];
+const CORNER_SV = [-1, -1, 1, 1];
 
 export function generateMesh(cx, cz, blocks, biomeIds) {
   const positions = [];
@@ -32,6 +39,45 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
   function getBlock(bx, by, bz) {
     if (bx < 0 || bx >= 16 || by < 0 || by >= 256 || bz < 0 || bz >= 16) return 0;
     return blocks[bx + bz * 16 + by * 256];
+  }
+
+  // Is the voxel at in-plane (uc, vc) of the AIR layer `ad` on sweep axis `d` an AO occluder (opaque,
+  // non-water)? The ONE implementation both the merge key and the emitted corners read, so the key can
+  // never disagree with what is drawn.
+  function occluderAt(d, ad, uc, vc) {
+    let b;
+    if (d === 0) b = getBlock(ad, uc, vc);
+    else if (d === 1) b = getBlock(vc, ad, uc);
+    else b = getBlock(uc, vc, ad);
+    return b > 0 && b !== 9 ? 1 : 0;
+  }
+
+  // The greedy-merge KEY of one 1x1 face cell: `face` (blockType | dir << 8) plus the four corner AO
+  // levels and the biome of the face's OWN column. Everything that changes how a face looks has to be in
+  // the key, or the merge smears it:
+  //  - AO: with only type+dir in the key, a floor strip merged 16 cells deep beside a wall got one wall-side
+  //    and one open-side AO value, interpolated across all 16 — a crease became a 16-block gradient.
+  //    Merging only cells with IDENTICAL corner AO is exact, not an approximation: two neighbouring cells
+  //    share a vertex, and a vertex has one AO value, so identical cells force the merged edges uniform.
+  //  - biome: one merged quad spanning a biome border took ONE tint, so borders snapped to quad rectangles
+  //    and disagreed with the per-column grass blades on top (QUEUE R1.1). The old read took the column off
+  //    corner c0, which for four of six directions lies OUTSIDE the quad.
+  // The face's column is the SOLID block's, which is inside the chunk by construction (getBlock returns 0
+  // outside it, and a face needs a solid side).
+  function faceKey(d, q, cu, cv, face) {
+    const dirFlag = face >> 8;
+    const ad = dirFlag === 1 ? q + 1 : q;
+    let aoKey = 0;
+    for (let k = 0; k < 4; k++) {
+      const su = CORNER_SU[k], sv = CORNER_SV[k];
+      aoKey |= cornerAO(occluderAt(d, ad, cu + su, cv), occluderAt(d, ad, cu, cv + sv), occluderAt(d, ad, cu + su, cv + sv)) << (k * 2);
+    }
+    let bx, bz;
+    if (d === 1) { bx = cv; bz = cu; }
+    else if (d === 0) { bx = dirFlag === 1 ? q : q + 1; bz = cv; }
+    else { bx = cu; bz = dirFlag === 1 ? q : q + 1; }
+    const biome = biomeIds ? (biomeIds[bz * 16 + bx] & 0xFF) : 0;
+    return face | (aoKey << 10) | (biome << 18);
   }
 
   // Sweep along the 3 primary axes: d = 0 (X), 1 (Y), 2 (Z)
@@ -81,18 +127,20 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           const bIsSolid = blockB > 0 && blockB !== 9;
           const bIsWater = blockB === 9;
 
+          let face = 0;
           if (blockA > 0 && blockA !== 9 && blockB === 0) {
             // Positive face of SOLID block A (facing +d) against air
-            mask[cu + cv * sizeU] = blockA | (1 << 8);
+            face = blockA | (1 << 8);
           } else if (blockA === 0 && blockB > 0 && blockB !== 9) {
             // Negative face of SOLID block B (facing -d) against air
-            mask[cu + cv * sizeU] = blockB | (2 << 8);
+            face = blockB | (2 << 8);
           } else if (aIsSolid && bIsWater) {
             // Solid block next to water -> still draw the solid face (the seabed/shore wall)
-            mask[cu + cv * sizeU] = blockA | (1 << 8);
+            face = blockA | (1 << 8);
           } else if (bIsSolid && aIsWater) {
-            mask[cu + cv * sizeU] = blockB | (2 << 8);
+            face = blockB | (2 << 8);
           }
+          if (face !== 0) mask[cu + cv * sizeU] = faceKey(d, q, cu, cv, face);
           // Water emits NO faces (Ocean.jsx owns the water surface): water-vs-air top/bottom,
           // water-vs-water, and water-vs-solid (the solid side is drawn above) are all skipped.
         }
@@ -105,7 +153,8 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           if (val === 0) continue;
 
           const blockType = val & 0xFF;
-          const dirFlag = val >> 8;
+          const dirFlag = (val >> 8) & 3;
+          const biomeId = (val >> 18) & 0xFF;
 
           // Find maximum horizontal width w along axis u
           let w = 1;
@@ -209,13 +258,7 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           // occlusion). Generic across all 6 face dirs: each corner's (u,v) comes from its world coords
           // (u=(d+1)%3, v=(d+2)%3) so no per-winding special-casing. Capture-deterministic (static voxels).
           const aoAd = dirFlag === 1 ? q + 1 : q; // the air-side d-layer in front of the face
-          const aoSolid = (uc, vc) => {
-            let b;
-            if (d === 0) b = getBlock(aoAd, uc, vc);
-            else if (d === 1) b = getBlock(vc, aoAd, uc);
-            else b = getBlock(uc, vc, aoAd);
-            return b > 0 && b !== 9 ? 1 : 0;
-          };
+          const aoSolid = (uc, vc) => occluderAt(d, aoAd, uc, vc);
           // The `if (blockType === 9) { ao.push(3); continue; }` that used to open this loop was dead.
           // Every branch writing to `mask` above guards on `!== 9` (a solid's blockA/blockB), and
           // `blockType` is decoded straight out of `mask`, so 9 cannot reach here — W2 moved the water
@@ -228,6 +271,11 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
             const sv = gv === cv ? -1 : 1, nv = gv === cv ? cv : cv + h - 1;
             ao.push(cornerAO(aoSolid(nu + su, nv), aoSolid(nu, nv + sv), aoSolid(nu + su, nv + sv)));
           }
+          const aoBase = ao.length - 4;
+          // 0fps anisotropy fix: split the quad along the diagonal whose endpoints are BRIGHTER in sum. The
+          // default split c0-c2 drags a single dark corner along the diagonal into a band across half the
+          // face; splitting c1-c3 instead keeps the darkening in the corner's own triangle.
+          const flipDiagonal = ao[aoBase] + ao[aoBase + 2] < ao[aoBase + 1] + ao[aoBase + 3];
 
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
@@ -239,13 +287,9 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           //   caller, or a chunk meshed before the ids existed) -> 0, which the tint table maps to a real
           //   biome rather than to garbage.
           // color.b = still unused, still 3-wide for the same reason as before.
-          // The column is read off c0, the quad's first corner, because the greedy loop works in a
-          // transformed (u,v,d) axis space and has no x/z scalars here — c0 is the one local-space triple
-          // in scope. CLAMPED rather than masked: a far-edge quad can have a corner at 16, and `& 15`
-          // would wrap that to column 0 and tint the chunk's edge with the opposite side's biome.
-          const bcx = c0[0] < 0 ? 0 : (c0[0] > 15 ? 15 : c0[0] | 0);
-          const bcz = c0[2] < 0 ? 0 : (c0[2] > 15 ? 15 : c0[2] | 0);
-          const biomeId = biomeIds ? biomeIds[bcz * 16 + bcx] : 0;
+          // The biome comes out of the merge KEY (`faceKey`), so every cell this quad covers has it — the
+          // quad cannot straddle a border. It used to be read off corner c0, which for four of six face
+          // directions is a column OUTSIDE the quad (QUEUE R1.1).
           colors.push(
             blockType, biomeId, 0,
             blockType, biomeId, 0,
@@ -266,10 +310,18 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
             uvs.push(0, 0, w, 0, w, h, 0, h); // the rest: c0->c1 spans w, c0->c3 spans h
           }
 
-          indices.push(
-            indexOffset, indexOffset + 1, indexOffset + 2,
-            indexOffset, indexOffset + 2, indexOffset + 3
-          );
+          // Both splits keep the corners' cyclic order, so both stay CCW-from-outside.
+          if (flipDiagonal) {
+            indices.push(
+              indexOffset, indexOffset + 1, indexOffset + 3,
+              indexOffset + 1, indexOffset + 2, indexOffset + 3
+            );
+          } else {
+            indices.push(
+              indexOffset, indexOffset + 1, indexOffset + 2,
+              indexOffset, indexOffset + 2, indexOffset + 3
+            );
+          }
           indexOffset += 4;
         }
       }
