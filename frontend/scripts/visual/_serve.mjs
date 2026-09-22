@@ -130,7 +130,8 @@ export const PROBE_PORTS = Object.freeze({
   'spell-elements-probe.mjs': 4231,
   'storm-probe.mjs': 4232,
   'touch-probe.mjs': 4233,
-  'gpu-cost-probe.mjs': 4234
+  'gpu-cost-probe.mjs': 4234,
+  'godrays-probe.mjs': 4235
 });
 
 /** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */

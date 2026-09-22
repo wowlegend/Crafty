@@ -456,3 +456,29 @@ So: the visual oracle photographs a build nobody plays, the e2e suite fires a re
 ---
 
 *Every file:line, count, version and PR state cited in this document was either read live from the working tree on 2026-09-22, or is attributed to the lane that measured it. The table at the top of this file lists what I re-verified myself rather than inherited.*
+
+---
+
+## L1 — LOOKS: unlit faces go near-black at a low sun (observed 2026-09-22, NOT yet diagnosed)
+
+Observed while looking at `/tmp/crafty-godrays/A1-godrays-on.png` (tier high, `setTimeOfDay(0.3)`,
+sun above horizon). The structures nearest the camera — the same buildings that read brown and red in
+`/tmp/crafty-grass/grass-ground.png` at midday — render as large flat near-black navy slabs, losing all
+material identity. On a LOCKED bold-flat art direction, a surface that goes to near-black stops reading
+as a material at all and reads as a hole.
+
+**This is an observation from ONE frame at ONE time of day with GodRays raising scene contrast. It is
+not a diagnosis and must not be treated as one.** Three candidate causes, untested:
+1. the ambient/hemisphere light floor is too low, so faces with no direct sun fall off a cliff;
+2. the mood colour-grade (`MoodGradeDriver` lerps saturation/brightness/contrast per mood) crushing
+   shadows at that mood;
+3. GodRays' own blend darkening non-source regions — cheap to rule out, the probe already captures the
+   matching `B-godrays-off.png`.
+
+**First step is (3), because the evidence already exists:** diff the same region between
+`A1-godrays-on.png` and `B-godrays-off.png`. If the slabs are equally dark in B, GodRays is exonerated
+and the cause is lighting or grade.
+
+**Then measure before tuning.** Sample the actual pixel luminance of a known material (a plank wall) at
+several `timeOfDay` values and find where it falls off; a "raise the ambient a bit" edit with no
+before/after number is the shape this repo keeps paying for.

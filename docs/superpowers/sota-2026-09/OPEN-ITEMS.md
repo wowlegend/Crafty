@@ -53,6 +53,70 @@ effort.
 
 ---
 
+### ⚠️ OI-01 / OI-02 / OI-03 — RE-VERIFIED LIVE 2026-09-22, and their PREMISES HAVE MOVED
+
+All three rows above were written against dependency facts that are no longer true. Re-measured from
+`node_modules` and the live registry, not from the rows:
+
+| Package | Declared | Installed | Upstream latest | Row's premise |
+|---|---|---|---|---|
+| `postprocessing` | **`6.39.5`** (exact) | **6.39.5** | **6.39.5** | ❌ OI-03 says "PINNED at 6.39.1" and "6.39.4 is still upstream `latest`, so there is no newer release to take" |
+| `three` | `^0.172.0` | 0.172.0 | **0.186.0** | ⚠️ OI-01/OI-02 are framed around **r174**; upstream is now **r186**, fourteen minors further on |
+| `@react-three/postprocessing` | `^3.0.4` | 3.0.4 | 3.1.1 | not mentioned by any row |
+| `@react-three/fiber` | — | 9.5.0 | — | — |
+| `@react-three/drei` | — | 10.7.8 | — | — |
+
+**What this changes:**
+
+- **OI-03 is largely DEAD as written.** The pin is no longer 6.39.1, and 6.39.5 both exists and is
+  installed — so "there is no newer release to take" is false and the newer release was already taken.
+  Its cited source `DECISIONS.md:20-40` contains no `postprocessing` or `GodRay` text at all; that
+  citation is dangling. What survives is one genuine open question, restated below.
+- **OI-01/OI-02 must be re-framed or re-measured before Kevin is asked.** Every number in them
+  (19 of 31 frames over gate, `explore-day` 99.70% local) was produced against **r174 on Chromium 147**.
+  Both halves of that have moved: the candidate is now r186, and puppeteer's bundled Chromium is 151.
+  Asking Kevin to make a LOOK judgement on numbers from a renderer that is no longer installed, about a
+  version that is no longer the candidate, is asking him to decide on fiction. **Do not surface these to
+  him until re-measured.**
+
+### OI-03b — THE QUESTION THAT SURVIVES: does GodRays composite the sun at 6.39.5?
+
+`GodRays` is live and horizon-gated (`GameScene.jsx:353`, `samples={q.godRaySamples}`), and the original
+defect was that under 6.39.4 `GodRaysEffect` stopped compositing the sun entirely. We are now two
+patches past that on the version that shipped. **Nobody has checked whether the regression is gone.**
+
+**And nothing can check it.** Four files mention god rays — `character-render-gates`,
+`render/quality.test.js`, `scripts/sun-arc.test.js`, `scripts/effect-chain-cost.test.js` — and every one
+of them is about COST, QUALITY TIERS or the sun's ARC. Not one asserts that the effect composites
+anything. The most expensive visual effect in the game (its sample count is described in
+`render/quality.js` as "the single most expensive knob in the file") has no check that it renders at all.
+
+**ANSWERED 2026-09-22 — GodRays COMPOSITES at 6.39.5. OI-03b CLOSED.**
+
+`scripts/visual/godrays-probe.mjs` (new, port 4235). Measured on this machine, headless swiftshader,
+1280x800, tier forced to `high`, `setTimeOfDay(0.3)`, both preconditions read back live before any frame
+was trusted (`tier=high sunAboveHorizon=true` — a frame shot with the pass unmounted cannot answer
+whether the pass composites, and the store default tier is `low`, which sets `godRays:false`):
+
+| measurement | mean abs channel diff |
+|---|---:|
+| run noise floor — the SAME build captured twice | **6.4882** |
+| GodRays present vs the one element removed | **62.2298** |
+| ratio | **9.59x** |
+
+The threshold is a ratio of two things measured in the same session, not a constant: Chromium does not
+guarantee deterministic rendering and this repo has measured that directly, so "must differ by N%" would
+be a constant pretending to be a control. The frame was also OPENED, not just scored — the warm orange
+bloom off the sun disc is visible, which is the pass doing its job.
+
+The 6.39.4 regression is NOT present on the shipped pin. The probe patches out the single `<GodRays>`
+element (quality-tier switching would have brought six confounds: AO, shadow map size, render distance,
+outlines, mote count) and restores byte-identical, verified.
+
+**~~Owed~~ (done):** a presence-controlled probe — same frame, sun above horizon, GodRays on vs off, assert the sun
+region is measurably brighter with it on. An absence assertion here would be worthless: a dead probe and
+a dead effect read identically, which is exactly how the 6.39.4 regression went unnoticed.
+
 ## B. STILL OPEN — MEDIUM blast radius
 
 | ID | Title | Source (file:line) | Cat | Status verdict + EVIDENCE | Blast | Decides |
