@@ -52,17 +52,6 @@ step() { # step <name> <cmd...>
   return 1
 }
 
-# ── RANGE. The trailer gates need to know which commits are being pushed. The hook supplies it; a human
-#    or CI gets a sane default rather than a crash.
-RANGE="${CRAFTY_PUSH_RANGE:-}"
-if [ -z "$RANGE" ]; then
-  if git rev-parse --verify -q origin/main >/dev/null 2>&1; then
-    RANGE="origin/main..HEAD"
-  else
-    RANGE="HEAD~1..HEAD"
-  fi
-fi
-
 cd "$APP"
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -88,12 +77,21 @@ step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "push" ]; then
-  step "mutation-proof-trailer (a new gate must state what it broke)" node scripts/ci/mutation-proof-trailer.mjs "$RANGE"
-  step "baseline-trailer (an oracle rewrite is its own commit)" node scripts/ci/baseline-trailer.mjs "$RANGE"
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
   step "artifact-currency (a published page drifting from HEAD)" node scripts/ci/artifact-currency.mjs
   step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# WHAT THE HOOK OWNS, AND WHY THIS FILE DOES NOT CLAIM IT
+#
+# `mutation-proof-trailer` and `baseline-trailer` read the COMMIT RANGES BEING PUSHED, which arrive on
+# the hook's stdin as refspecs and exist nowhere else — not in the tree, not in a runner's checkout, not
+# in this script's environment. The hook runs them itself, once per pushed ref, before this file is
+# called. "One definition" means no step is stated TWICE, not that every step lives here; a step this
+# file cannot honestly execute would be a second, weaker copy. First draft of this pipeline did claim
+# them, reading a `$RANGE` that was a leaked loop variable from an earlier loop in the hook.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: CI-ONLY — needs the network or a browser, so it must never sit in a developer's push path. A

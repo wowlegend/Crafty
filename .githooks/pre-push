@@ -106,21 +106,11 @@ for SHA in $TARGETS; do
 
   cd "$WT/frontend"
 
-  printf '\n▶ doc-currency\n';            node scripts/ci/doc-currency.mjs
-  printf '\n▶ queue-ledger (every finding carries its own marker)\n'; node scripts/ci/queue-ledger.mjs
-  printf '\n▶ artifact-currency (the published page the owner reads)\n'; node scripts/ci/artifact-currency.mjs
-  printf '\n▶ eslint (crash-class + dead-code, src + scripts + tests)\n'; npm run --silent lint
-  printf '\n▶ gate-shape (no assertion may be satisfied by a comment)\n'; node scripts/ci/gate-shape.mjs
-  # BEFORE test:unit, deliberately. The defect this catches manifests AS a corrupted unit run: importing a
-  # seam from an unguarded script executes it, and i18n-adoption.mjs's process.exit(1) killed the vitest
-  # worker during collection so the suite reported "1 failed | no tests" while every assertion skipped.
-  # Running it first turns that into a named cause instead of a mystery.
-  printf '\n▶ opsec-scan (a PUBLIC repo must not publish the operator machine)\n'; node scripts/ci/opsec-scan.mjs --all
-  printf '\n▶ killability-ledger (a new check file must name the mutation that reds it)\n'; node scripts/ci/killability-ledger.mjs
-  printf '\n▶ cli-guard (an exporting script must not run its CLI on import)\n'; node scripts/ci/cli-guard.mjs
-  printf '\n▶ unit + static gates\n';     npm run --silent test:unit
-  printf '\n▶ build\n';                   npm run --silent build
-  printf '\n▶ bundle byte budget\n';      node scripts/ci/bundle-budget.mjs
+  # THE PIPELINE, not a copy of it. This block used to restate 13 gates while .github/workflows/ci.yml
+  # restated a DIFFERENT set; they disagreed, and the drift surfaced as CI mailing about a commit that
+  # passed locally (2026-09-22: a damage-model change broke an E2E spec only the workflow ran).
+  # ci/pipeline.sh is now the definition and both callers invoke it, so neither can drift.
+  bash "$WT/ci/pipeline.sh" --tier=push
 
   cd "$REPO_ROOT"
   git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"

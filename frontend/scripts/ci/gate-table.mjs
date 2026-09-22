@@ -28,7 +28,11 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
-const HOOK = join(ROOT, '.githooks/pre-push');
+// THE DEFINITION, not a caller. This parsed `.githooks/pre-push` until 2026-09-22, when the hook and
+// ci.yml were two independently-maintained lists that disagreed -- a damage-model change passed every
+// gate the hook knew and broke an E2E spec only the workflow ran. Both now call ci/pipeline.sh, so the
+// table must be generated from the pipeline or it documents a caller rather than the build.
+const HOOK = join(ROOT, 'ci/pipeline.sh');
 const CI = join(ROOT, '.github/workflows/ci.yml');
 const AGENTS = join(ROOT, '.agent/AGENTS.md');
 
@@ -73,7 +77,10 @@ export function parseHook(src) {
       }
       return;
     }
-    const m = line.match(/printf '\\n▶ ([^\\']+?)\\n';\s*(.+)$/);
+    // LEADING WHITESPACE MATTERS: the push-tier steps sit inside an `if` block and are indented, so an
+    // anchor at column 0 silently dropped three gates and the table reported 9 of 12. A generator that
+    // produces a COUNT must not have a denominator bug.
+    const m = line.match(/^\s*step "([^"]+)"\s+(.+)$/);
     if (!m) return;
     const name = m[1].replace(/\s*\([^)]*\)\s*$/, '').trim();
     const cmd = m[2].trim().replace(/^npm run --silent /, 'npm run ').replace(/\s*\|\|.*$/, '');
@@ -107,7 +114,7 @@ export function renderBlock(gates, ciText) {
   });
   return [
     BEGIN,
-    `**${gates.length} gates authorize a push.** Generated from \`.githooks/pre-push\` in hook order — this`,
+    `**${gates.length} gates authorize a push.** Generated from \`ci/pipeline.sh\` -- the ONE definition both the hook and CI call — this`,
     'paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),',
     'the last time one commit after the gate landed. Do not edit the table by hand; add the description to',
     '`DESCRIPTIONS` in `gate-table.mjs` and regenerate.',

@@ -53,69 +53,17 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
-      - name: ESLint (includes the crash-class gate — no-undef / react/jsx-no-undef)
-        run: npm run lint
-
-      # 85% of tests/gates/ asserts against source TEXT rather than executing the module, and a whole-file
-      # substring match is satisfied by a COMMENT naming the symbol — so the gate stays green when the code
-      # it guards is deleted. This runs every toMatch pattern against the target file twice, once with all
-      # comment ranges blanked, and fails any assertion that only survives the raw copy.
-      - name: Gate shape (no assertion satisfied by a comment)
-        run: node scripts/ci/gate-shape.mjs
-
-      # How many of this suite's own checks have ever been PROVEN to fail. Ratcheted: the un-receipted
-      # count may fall and never rise, so a NEW check file must name the mutation that reds it while
-      # the existing debt stays payable rather than blocking. Prints the denominator on every run.
-      # This repo is PUBLIC and Vercel auto-deploys every push. Scans the whole tracked tree in CI
-      # (--all), where the pre-push hook only sees what one commit staged.
-      - name: OPSEC scan (public repo must not publish the operator machine)
-        run: node scripts/ci/opsec-scan.mjs --all
-
-      - name: Killability receipts (ratchet + denominator)
-        run: node scripts/ci/killability-ledger.mjs
-
-      - name: Unit + static gates (vitest)
-        run: npm run test:unit
-
-      - name: Dead-code ratchet (knip)
-        run: npm run knip
-
-      # DEPENDENCY VULNERABILITIES. There was no scanning of any kind: install runs with `--no-audit`,
-      # there was no audit step, and no Dependabot config — so a CVE in a transitive dep shipped to the
-      # live demo on the next push with nothing looking at it. `npm install` also executes the full
-      # dependency tree's lifecycle scripts on this runner, which is the same supply chain.
+      # THE PIPELINE, not a copy of it. These steps used to be listed here AND, differently, in
+      # .githooks/pre-push -- two independently-maintained descriptions of "the build". They disagreed,
+      # and the drift surfaced on 2026-09-22 as CI mailing about a commit that passed every local gate:
+      # a damage-model change broke tests/e2e/soft-death-protections.spec.js, which only this workflow
+      # ran. ci/pipeline.sh is the definition; both callers invoke it, so neither can drift.
       #
-      # MEASURED 2026-08-12 before arming this: 0 vulnerabilities at every severity. So the threshold
-      # starts clean, with no pre-existing debt to grandfather in — the cheapest moment there will ever
-      # be to turn it on.
-      #
-      # HIGH, not moderate, deliberately. This workflow's own header says a flaky gate people learn to
-      # ignore is worse than no gate, and moderate advisories on dev-only transitives arrive constantly
-      # and are almost never actionable here (a static site with no server). High and critical are the
-      # band worth stopping a deploy for.
-      #
-      # It talks to the registry, which means a registry outage reds this job for reasons that are not a
-      # defect. That is why it is its own named step (the failure reads as what it is) and why it is NOT
-      # in the offline unit suite or the pre-push hook, where a network assertion would fail from weather.
-      - name: Dependency audit (high + critical)
-        run: npm audit --audit-level=high
-
-      - name: Build
-        run: npm run build
-
-      # The build artifact is what actually ships to Vercel, so assert on its BYTES, not on the config
-      # that was *supposed* to produce them. (The old bundle-split gate merely grepped vite.config.js for
-      # `manualChunks` and asserted zero bytes — a vacuous gate. See STATUS §V4.)
-      - name: Bundle byte budget
-        run: node scripts/ci/bundle-budget.mjs
-
-      # ...and assert it RUNS, not merely that it compiled to the right size. Until 2026-08-09 nothing in
-      # this repo ever LOADED the production bundle: every harness drives the dev server, so 100% of visual
-      # and e2e coverage tested a build that never ships and 0% tested the one Vercel auto-deploys on every
-      # push. Three of the 31 gated visual frames are dev-only components that cannot exist in production.
-      # Boots / renders a frame / no console errors / GL context alive. No baselines, so it cannot rot.
-      - name: Production bundle smoke
-        run: node scripts/ci/prod-smoke.mjs
+      # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
+      # skips the commit-shaped ones, which need a push refspec a runner does not have.
+      - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
+        working-directory: .
+        run: bash ci/pipeline.sh --tier=fast
 
   # ---------------------------------------------------------------------------
   # E2E. Separate job so a slow browser run can't stall the fast gates.
