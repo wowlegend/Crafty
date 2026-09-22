@@ -1,67 +1,86 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { SRC, strip, sourceFiles } from './_srcWalk.js';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const SRC = resolve(HERE, '../../src');
-const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
-
-// W2 brand-conformance gate (REBUILT).
-//
-// W1 deleted the original auth-only brand gate (it scanned the now-deleted AuthComponents.jsx,
-// so it died with that file). The 2026-06-17 audit recommended a BROADER gate covering the two
-// first-impression chrome surfaces that survive — App.jsx (the app shell / pre-game splash) and
-// MenuSystem.jsx (the title screen) — so the off-brand chrome the rebuild removed cannot silently
-// return. The LOCKED bold-flat design language (per CLAUDE.md "Design Language — S1-C") forbids:
-//   • off-brand display fonts        — `Orbitron`, `pixel-font`  (bold-flat uses `font-display`)
-//   • the old confetti / particle FX — the `menu-particle` class + a <Confetti>/`confetti(` widget
-//   • the raw candy-purple palette   — `bg-purple-600`
-//   • the glow / shimmer chrome      — `glow-button`, `shimmer-text`
-//   • the off-brand wordmark string  — raw "CRAFTY RPG" (the wordmark is now "Crafty" on font-display)
-//
-// PATTERN-CHOICE NOTE (avoids a false positive): MenuSystem.jsx line ~201 has a legit *comment*
-// that uses the bare prose words "purple gradient" and "confetti" to describe what the rebuild
-// REPLACED. So this gate matches IMPLEMENTATION signatures only — the `menu-particle` CSS class and
-// a JSX `<Confetti`/`confetti(` widget call — NEVER the bare word /confetti/, which would wrongly
-// bite that historical comment.
-const CHROME = {
-  'App.jsx': read('App.jsx'),
-  'MenuSystem.jsx': read('MenuSystem.jsx'),
-};
-
-// Each entry: [human label, RegExp]. A file FAILS the gate if any pattern matches.
+/**
+ * BRAND CONFORMANCE — the LOCKED bold-flat design language, enforced across ALL of src/.
+ *
+ * W1 deleted the original auth-only brand gate along with the file it scanned. W2 rebuilt it over the
+ * two first-impression surfaces, App.jsx and MenuSystem.jsx.
+ *
+ * WIDENED 2026-09-22, selected by `gate-census.mjs` at 0/5. Two files is not where a design language
+ * lives. `CLAUDE.md` states the lock for the whole codebase, and off-brand chrome returns wherever
+ * someone is building UI — which by definition is not the two files a previous regression happened to
+ * touch. Measured before widening: all eight signatures are already absent from all 308 source files, so
+ * this costs nothing today and closes the gap for every file that is not one of the two.
+ *
+ * AND IT MADE THE PATTERNS STRONGER. The old file documented a deliberate weakening: MenuSystem.jsx
+ * carries a comment using the prose words "purple gradient" and "confetti" to describe what the rebuild
+ * REPLACED, so the gate matched only implementation signatures (`menu-particle`, `<Confetti`) and never
+ * the bare word, "which would wrongly bite that historical comment". That is solving a comment problem
+ * by narrowing the assertion. Stripping comments solves it properly and lets the bare word be forbidden:
+ * a `confetti(` helper imported under any name, or a CSS class spelled differently, is now caught.
+ *
+ * Doing that found the shared `strip` helper was only half working — it removed block and full-line
+ * comments but not `code; // trailing`, and two trailing comments in `systems/CombatSystem.jsx` were the
+ * only `confetti` hits in the repo. Fixed in `_srcWalk.js`, which ~10 gates now share.
+ *
+ * BLIND SPOT, stated (R7): these are TEXT signatures of chrome that was removed once. They cannot see
+ * NEW off-brand chrome nobody has named — a different gradient, another display font, a fresh particle
+ * layer — and nothing here renders a pixel or judges whether the result looks on-brand. A brand lock
+ * enforced by a blocklist only ever forbids the past.
+ *
+ * Mutation-Proof: 3 mutations, recorded on the commit.
+ */
 const OFF_BRAND = [
   ['off-brand display font (Orbitron)', /Orbitron/],
   ['off-brand pixel font class (pixel-font)', /pixel-font/],
   ['confetti/particle FX class (menu-particle)', /menu-particle/],
-  ['confetti widget (<Confetti> / confetti(…))', /<Confetti\b|\bconfetti\s*\(/],
+  ['confetti in ANY form (class, widget or helper)', /confetti/i],
   ['raw candy-purple palette (bg-purple-600)', /bg-purple-600/],
   ['glow chrome (glow-button)', /glow-button/],
   ['shimmer chrome (shimmer-text)', /shimmer-text/],
   ['off-brand wordmark string ("CRAFTY RPG")', /CRAFTY RPG/],
+  ['the removed purple radial gradient', /radial-gradient\(ellipse at 50% 30%, #1a1040/],
 ];
 
-describe('W2 chrome brand conformance — App.jsx + MenuSystem.jsx free of removed off-brand patterns', () => {
-  for (const [file, src] of Object.entries(CHROME)) {
-    describe(file, () => {
-      for (const [label, re] of OFF_BRAND) {
-        it(`has no ${label}`, () => {
-          expect(re.test(src), `${file} contains off-brand ${label} (regression of W1-removed chrome) — pattern ${re}`).toBe(false);
-        });
-      }
-    });
-  }
+describe('brand conformance — the bold-flat lock, across all of src/', () => {
+  const files = sourceFiles();
 
-  // Aggregate sweep — one assertion enumerating EVERY (file, pattern) offender, so a multi-pattern
-  // regression surfaces the full list at once rather than one failure at a time.
-  it('aggregate: zero off-brand chrome signatures across both first-impression files', () => {
+  it('the scan reached the codebase, and the pattern set is pinned', () => {
+    // R3a: every assertion here is an ABSENCE. Over zero files, or zero patterns, they all pass.
+    expect(files.length, 'the src walk found nothing — every exclusion below is vacuous')
+      .toBeGreaterThan(300);
+    expect(OFF_BRAND.length).toBe(9);
+  });
+
+  it('the detector is LIVE — each pattern can still see what it forbids', () => {
+    // A positive control, because a typo in any one of nine regexes would disarm that line silently and
+    // permanently, and nothing about the green result would look different.
+    const canary = {
+      'off-brand display font (Orbitron)': 'fontFamily: "Orbitron"',
+      'off-brand pixel font class (pixel-font)': 'className="pixel-font"',
+      'confetti/particle FX class (menu-particle)': '<div className="menu-particle" />',
+      'confetti in ANY form (class, widget or helper)': 'import confetti from "x"',
+      'raw candy-purple palette (bg-purple-600)': 'className="bg-purple-600"',
+      'glow chrome (glow-button)': 'className="glow-button"',
+      'shimmer chrome (shimmer-text)': 'className="shimmer-text"',
+      'off-brand wordmark string ("CRAFTY RPG")': '<h1>CRAFTY RPG</h1>',
+      'the removed purple radial gradient': 'background: radial-gradient(ellipse at 50% 30%, #1a1040, #000)',
+    };
+    for (const [label, re] of OFF_BRAND) {
+      expect(re.test(canary[label]), `the "${label}" pattern is dead — it cannot match its own canary`).toBe(true);
+    }
+  });
+
+  it('ZERO off-brand chrome signatures anywhere in src — one list, every offender at once', () => {
     const offenders = [];
-    for (const [file, src] of Object.entries(CHROME)) {
+    for (const f of files) {
+      const code = strip(readFileSync(f, 'utf8'));
       for (const [label, re] of OFF_BRAND) {
-        if (re.test(src)) offenders.push(`${file}: ${label}`);
+        if (re.test(code)) offenders.push(`${f.slice(SRC.length + 1)}: ${label}`);
       }
     }
-    expect(offenders, `off-brand chrome signatures returned:\n${offenders.join('\n')}`).toEqual([]);
+    expect(offenders, `off-brand chrome returned:\n${offenders.join('\n')}`).toEqual([]);
   });
 });

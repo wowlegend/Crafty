@@ -82,8 +82,12 @@ describe('hub NPC spawn + AI-skip', () => {
     // found in this corpus in a single session.
     expect(read('store/useGameStore.jsx'), 'the npcEntities mirror is gone — minimap and nametags go blank')
       .toMatch(/npcEntities:/);
+    // TWO modules, not three. `world/npcSpawn.js` was in this list an hour after it was written, on the
+    // strength of a TRAILING comment — the shared `strip` helper removed block and full-line comments
+    // but not `code; // trailing`, so a comment-derived entry got into a list whose whole purpose is to
+    // pin real ones. Fixed in `_srcWalk.js`; this is the assertion that caught it.
     expect(carriersOf(/npcEntities/), 'the set of modules touching the NPC mirror changed')
-      .toEqual(['store/useGameStore.jsx', 'ui/RadialMinimap.jsx', 'world/npcSpawn.js']);
+      .toEqual(['store/useGameStore.jsx', 'ui/RadialMinimap.jsx']);
     // The sync payload must carry the two fields the consumers branch on: `role` routes the G-interact
     // and `isNPC` selects the gold blip. Asserted in CODE, which is what the old case could not do.
     const sync = read('systems/MinimapSyncSystem.jsx');
