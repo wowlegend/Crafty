@@ -3,7 +3,7 @@ import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { biomeTintTable } from './biomeTable.js';
+import { biomeTintTable, aoFloorColor, AO_FLOOR } from './biomeTable.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
@@ -50,6 +50,10 @@ const compileShader = (shader) => {
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
     shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from sampleMood)
+    // S11 sky-coloured AO. Initialised to the exact grey the AO term used before this existed, so a
+    // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
+    // flashing a wrong colour for one frame.
+    shader.uniforms.uAoFloor = { value: new THREE.Color(AO_FLOOR, AO_FLOOR, AO_FLOOR) };
 
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
@@ -94,6 +98,7 @@ const compileShader = (shader) => {
         uniform sampler2DArray voxelTextures;
         uniform float mood;
         uniform vec3 skyHorizon; // S2 aerial-perspective haze colour (= sky horizon, set per-frame from mood)
+        uniform vec3 uAoFloor;   // S11 the colour a fully-occluded corner reads as (sky HUE, fixed luminance)
         flat varying float vBlockType;
         flat varying float vBiome; // Q14 biome id from the vertex stage
         uniform vec3 uBiomeTint[10];
@@ -148,7 +153,13 @@ const compileShader = (shader) => {
         // "Water faces carry AO 3 (vAO/3=1 -> no-op)" — describing a case that cannot occur, since the
         // mesher emits no water faces; the short-circuit that produced that 3 is deleted.) Static
         // geometry attribute -> capture-deterministic.
-        diffuseColor.rgb *= mix(0.55, 1.0, clamp(vAO / 3.0, 0.0, 1.0));
+        // S11: the floor is a COLOUR now, not a grey scalar. A contact shadow is lit by the sky, so a
+        // crevice at noon is blue and at dusk is warm — the single cheapest thing that stops voxel AO
+        // reading as dirt. Its LUMINANCE is pinned to the old 0.55 in every mood (see aoFloorColor):
+        // multiplying by the sky colour directly would crush crevices toward black at dusk and at night,
+        // which is the opposite of the intent. Static vAO attribute + a mood-driven uniform that snaps
+        // with mood -> capture-deterministic, same contract as skyHorizon two terms below.
+        diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0));
 
         // Q14 BIOME TINT. Six of ten biomes share surfaceBlock 1 and rendered pixel-identical at ground
         // level; this is the consumer the biomeTable tint field never had. The multiplier arrives
@@ -575,11 +586,17 @@ export const MinecraftWorld = React.memo(() => {
     // capture-frozen wave time now, so the land material has no time-varying term.
     useFrame(() => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
-        const sky = sampleMood(mood).skyHorizon; // S2 aerial haze target (shared scratch -> copy, don't retain)
+        const sampled = sampleMood(mood); // shared scratch -> read/copy now, never retain
+        const sky = sampled.skyHorizon;   // S2 aerial haze target
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
             opaqueShader.uniforms.mood.value = mood;
             opaqueShader.uniforms.skyHorizon.value.copy(sky);
+            // S11: derive the AO floor from the SAME mood sample, so AO and haze can never disagree
+            // about what the sky is doing. aoFloorColor keeps the luminance at AO_FLOOR and takes only
+            // the hue, so this shifts colour across the day without changing how dark a crevice is.
+            const ao = aoFloorColor([sampled.skyMid.r, sampled.skyMid.g, sampled.skyMid.b]);
+            opaqueShader.uniforms.uAoFloor.value.setRGB(ao[0], ao[1], ao[2]);
         }
     });
 

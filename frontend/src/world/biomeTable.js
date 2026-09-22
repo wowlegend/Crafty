@@ -188,3 +188,30 @@ export function biomeTintTable(strength = BIOME_TINT_STRENGTH) {
   }
   return out;
 }
+
+/**
+ * S11 — the AO floor colour: how dark, and what HUE, a fully-occluded crevice reads as.
+ *
+ * WHY IT IS NOT `skyMid * 0.55`. That is the obvious form and it is wrong at the ends of the day. A
+ * contact shadow is lit by the SKY, so tinting it toward the sky colour is right — but multiplying by a
+ * sky colour also multiplies by its BRIGHTNESS, and `skyMid` at dusk and under the obsidian mood is
+ * dark. The crevices would crush toward black exactly when the scene is already dim, which is the
+ * failure mode recorded as L1 in the SOTA queue: on a LOCKED bold-flat art direction a surface that
+ * goes near-black stops reading as a material and reads as a hole.
+ *
+ * So the sky supplies the HUE and the floor constant supplies the BRIGHTNESS, via the same
+ * luminance-preserving normalisation the biome tint uses. `AO_FLOOR` then means what it has always
+ * meant — a fully-occluded corner sits at 55% — in every mood, and the only thing the sky changes is
+ * whether that 55% reads blue (daylight) or warm (dusk).
+ *
+ * @param {[number,number,number]} skyRgb the mood's skyMid, 0..1 per channel
+ * @param {number} strength 0 = neutral grey (exactly the old behaviour), 1 = full sky hue
+ * @returns {[number,number,number]} the AO floor colour to mix toward at vAO = 0
+ */
+export const AO_FLOOR = 0.55;
+export const AO_SKY_STRENGTH = 0.6;
+
+export function aoFloorColor(skyRgb, strength = AO_SKY_STRENGTH, floor = AO_FLOOR) {
+  const m = tintPreservingLuminance(skyRgb, strength);
+  return [floor * m[0], floor * m[1], floor * m[2]];
+}
