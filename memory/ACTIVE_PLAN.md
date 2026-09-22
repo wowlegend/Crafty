@@ -5,57 +5,60 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-22, session 2, all work committed and pushed
+### RESUME HERE — 2026-09-22, session 2. READ THE CI LINE FIRST.
 
-**THE `xcodebuild -license` BLOCKER IS GONE.** PATH `git` is 2.55.0 (via the AB shim) and
-`/usr/bin/python3` is 3.9.6. The previous cursor said git was DOWN and told the next session to use
-`/opt/homebrew/bin/git`; re-verified 2026-09-22 and both work. A stale blocker is worse than no note —
-it sends the next session around a chokepoint that is open.
+**CHECK CI BEFORE ANYTHING ELSE, AND READ THE CONCLUSION FIELD, NOT THE RUN LIST.** This repo's CI uses
+cancel-in-progress. Pushing faster than it completes (runs 6-20 min) silently cancels the previous run,
+and ten cancelled rows in `gh run list` scan like ordinary history rather than like ten unanswered
+questions. That happened today: the first run to actually finish came back RED, on a dead export knip
+found. Use `gh run list --workflow=ci.yml --branch main --json status,conclusion` and treat `cancelled`
+as UNKNOWN. **A green commit-time pipeline is evidence about the OFFLINE CORE ONLY** — knip, npm audit,
+prod-smoke and e2e are fast-tier (CI-only) by design, so the local chokepoint is blind to them by
+construction, not by accident.
 
-**STATE:** main is at `635d9063`, four commits pushed this session, each certified by the new
-commit-time pipeline. CI cancels superseded runs, so only the tip gets a full run — check the TIP.
-
-**THE CHOKEPOINT MOVED TO THE COMMIT.** `.githooks/pre-commit` is now a real tracked file (it was an
+**THE CHOKEPOINT MOVED TO THE COMMIT.** `.githooks/pre-commit` is a real tracked file now (it was an
 untracked symlink into Agentic-Brain, so a fresh clone got no pre-commit at all, silently). It runs
 `ci/pipeline.sh --tier=commit` — the offline core, 69s — and chains the estate-wide attribution guard
-through that guard's own `GIT_HOOK_NAME` channel. A green run writes a tree receipt that pre-push
-honours, so commit-then-push is near-instant. It has already blocked one of my own commits on an opsec
-leak that would otherwise have surfaced only at push.
+through that guard's own GIT_HOOK_NAME channel. A green run writes a tree receipt pre-push honours.
+
+**GATE CENSUS: DRAINED.** 32 check files at 0/5 -> 0. The five rows still reading 0/5 are `scripts/ci`
+HELPER modules, which are not checks; the census now asks them a different question (`driven` — does any
+test import this?) and they all pass it. Corpus mean 1.98 -> 2.21, receipted 24 -> 57.
 
 **NEXT MOVES, in order:**
-1. Resume the census: `node frontend/scripts/ci/gate-census.mjs --top 40` — **23 files at 0/5**,
-   mean score 2.03. Convert top-down; every conversion gets mutations RUN, not declared.
-2. Wire the grass biome id: `OptimizedGrassSystem` must pass a biome multiplier to `bladeTint(x,z,mul)`.
-   The composition is DONE and tested; only the id plumbing through the worker's grass-top payload is
-   missing. Until then blades and ground disagree.
-3. QUEUE.md B3–B5 (boss emissive-through-armour, 10-biome read, AO-as-shadow) untouched.
-4. KEVIN DECISIONS still open: `dprCap` 2 -> 1.75, and `BIOME_TINT_STRENGTH` (0.35 on the 25/35/50
-   ladder; `0` is an exact no-op).
+1. **The 147 -> 151 re-baseline is the unblocker.** `capture.mjs --baseline` writes the WHOLE directory,
+   so nothing can be added to the visual corpus until it happens. Every current baseline was shot on
+   HeadlessChrome/147 and installed puppeteer bundles 151. Two clean 151 captures on 2026-08-13 put
+   17/31 byte-identical with zero over the 6% gate, so the review is "confirm 14 frames moved for
+   renderer reasons", not a full re-review. KEVIN-GATED: it is a 31-image oracle rewrite.
+2. **Then add the eye-level capture state.** No gated camera is at player height — seven poses at
+   y 81/82/26/78/62/70/70 against a surface at ~51. See FUTUREPROOF.md.
+3. QUEUE C3 (bossTier, 0 hits) and C4 (18 talent nodes, 0 capstone/exclusive) are the remaining
+   gameplay items. C1, C2 and C5 are DONE — C1 and C2 were already done before this session and the
+   queue was pointing at finished work; both are now marked with evidence.
+4. B5 glove value: measure AFTER any lighting change, never before. The ladder instrument is described
+   in QUEUE.md; the hex cannot be picked by reading it (rgb(42,42,51) renders to (16,3,40)).
 
-**GATES CONVERTED THIS SESSION (all 0/5 -> 5/5, every one mutation-proven):** verb-router, hud-stat-wire,
-daynight-clock, nametags, ocean-mesher, biome-flora, biome-table, beast/voidhand/elemancer-noremesh,
-elemancer-wiring (new), progression-source, save-consolidation, quest-persistence, allegiance, siege.
+**KEVIN DECISIONS OPEN:** the 147->151 re-baseline (above) · `dprCap` 2 -> 1.75 · the FPV glove value.
 
-**WHAT THE CONVERSIONS KEEP FINDING — three shapes, all live in this corpus:**
-- *A gate satisfied by the comment explaining its own obsolescence.* `siege-gates` required
-  `incrementNight()` in a file where it appears zero times, green on the comment documenting its
-  removal. Strip comments before asserting a file DOES something.
-- *A scope-qualified claim.* "Nothing outside X does Y" checking two or four hand-named files. Correct
-  about what it examined, false as written, and the defect lands in the file nobody listed.
-- *A concatenation.* Joining two files before matching so neither can say which one carries the line —
-  and in three cases a refactor had already moved it between exactly that pair.
+**WHAT THE LOOKS WORK LANDED:** sky-coloured AO (B4, luminance pinned at 0.5500 in every mood so it
+cannot deepen L1), boss emissive split by surface kind (B3 — the wings were at 40% of the armour plate,
+the ratio was backwards), grass blades take the ground's biome tint, and the sun arc.
 
-**CENSUS SHARPENED FOUR TIMES BY USING IT:** `executes` missed `await import(...)` and imports past line
-one; `zeroGuard` missed any numeric floor other than 0, and then missed `.length` pinned to a non-zero
-literal. A census that undercounts the better form steers authors toward the weaker one.
+**WHAT THE LOOKS WORK RULED OUT, which is worth as much:** L1 is NOT the ambient floor — tripling it
+moved the dark/lit RATIO by 1.07x, i.e. it is a global exposure and the hole stays a hole. And L1 does
+not reproduce in capture mode at all (darkest world tile 44.4 there, against rgb(16,3,40) live). The
+visual gate is a diorama of a build with 127 things switched off and the player's own hands excluded by
+`{!inCapture && <StableMagicHands/>}`; it is not evidence about how the game looks in play.
+
+**INSTRUMENTS BUILT THIS SESSION:** `godrays-probe.mjs` (boot-identity control; answered OI-03b),
+`ambient-floor-probe.mjs` (ladder + derived regions; refuses when no dark subject exists),
+`gate-census.mjs` (+`driven` dimension), `_srcWalk.js` (shared walker; `strip` now removes TRAILING
+comments, which it never did), `_seamClosure.js` (import-closure reachability).
 
 **HARNESS:** `scratchpad/mut.sh` refuses to mutate without a restore artifact and verifies the restore
-byte-for-byte. It reported COULD NOT CHECK (exit 3) four times this session rather than faking a verdict
-— twice on a non-unique anchor, twice on a changed collection count. That is the behaviour to keep.
-
-**THREE MUTANTS SURVIVED and each was a real finding:** a prefix match (`.hostileChance` matching
-`.hostileChanceX`), a driven test whose steps could not distinguish the mutation from correct behaviour,
-and a detector anchored on a receiver name that an alias evades. A surviving mutant IS the finding.
+byte-for-byte. It reported COULD NOT CHECK (exit 3) seven times this session rather than faking a
+verdict. Keep that behaviour.
 
 ## 📍 THE CURSOR — 2026-08-12 · draining the 88-finding holistic-review queue
 
