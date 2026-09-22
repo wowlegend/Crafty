@@ -30,20 +30,27 @@ test('spawn protection: damage is ignored within the 5s window, then lands after
   expect(res.afterProtection).toBeLessThan(100); // post-window hit lands (mitigated, but < full)
 });
 
-test('damage cooldown: a second hit within 500ms is dropped', async ({ page }) => {
+test('damage cooldown: the SAME attacker hitting twice within 500ms is dropped', async ({ page }) => {
+  // This used two DIFFERENT source strings ('hit1', 'hit2') and relied on the cooldown being GLOBAL.
+  // It is now per-ATTACKER: `lastDamageTime` was one number for the whole game, so a pack of six mobs
+  // dealt the damage of one. Two different attackers inside one window both land — that is the fix, and
+  // the row below asserts it. The invariant here is unchanged: ONE attacker cannot machine-gun you.
   const res = await store(page, () => {
     const g = () => window.useGameStore.getState();
     const now = Date.now();
-    // past spawn protection, no recent damage
-    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now - 6000, lastDamageTime: 0 });
-    g().damagePlayer(20, 'hit1');
+    // past spawn protection, no recent damage from anyone
+    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now - 6000, lastDamageTime: 0, damageLockouts: {} });
+    g().damagePlayer(20, 'melee', null, 'mob:1');
     const afterFirst = g().playerHealth;
-    g().damagePlayer(20, 'hit2'); // < 500ms after hit1 -> ignored by the cooldown
-    const afterSecond = g().playerHealth;
-    return { afterFirst, afterSecond };
+    g().damagePlayer(20, 'melee', null, 'mob:1'); // SAME attacker, < 500ms -> its own cooldown drops it
+    const afterSame = g().playerHealth;
+    g().damagePlayer(20, 'melee', null, 'mob:2'); // a DIFFERENT attacker in the same window -> lands
+    const afterOther = g().playerHealth;
+    return { afterFirst, afterSame, afterOther };
   });
   expect(res.afterFirst).toBeLessThan(100); // first hit landed
-  expect(res.afterSecond).toBe(res.afterFirst); // cooldown dropped the rapid second hit
+  expect(res.afterSame).toBe(res.afterFirst); // the same attacker's rapid second hit was dropped
+  expect(res.afterOther).toBeLessThan(res.afterFirst); // a second ATTACKER is not rate-limited by the first
 });
 
 test('dead player takes no further damage (isAlive guard)', async ({ page }) => {
