@@ -1,5 +1,5 @@
 {
-  "_count": 104,
+  "_count": 103,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -35,7 +35,6 @@
     "tests/gates/dynamic-light-gates.test.js",
     "tests/gates/elemancer-wiring-gates.test.js",
     "tests/gates/element-impact-gates.test.js",
-    "tests/gates/equipment-dry-gates.test.js",
     "tests/gates/fade-in-keyframe-gates.test.js",
     "tests/gates/friend-foe-gates.test.jsx",
     "tests/gates/grass-biome-tint-gates.test.js",
