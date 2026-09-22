@@ -14,7 +14,7 @@ import { KICK_PROFILES } from '../../src/game/cameraKick.js';
 const reset = (over = {}) => {
   useGameStore.setState({
     isAlive: true, playerHealth: 100, maxHealth: 100,
-    lastDamageTime: 0, hitstopUntil: 0, lastHitDir: null,
+    lastDamageTime: 0, damageLockouts: {}, hitstopUntil: 0, lastHitDir: null,
     _spawnTime: 0, isPlayerInvincible: () => false,
     attributes: { strength: 1, agility: 1, intellect: 1, vitality: 1 }, equipment: {},
     ...over,
@@ -82,10 +82,24 @@ describe('E-ter — the freeze does not fire when it should not', () => {
   });
 
   it('does NOT freeze on a hit rejected by the damage cooldown', () => {
+    // SAME attacker twice. This used two DIFFERENT source strings ('first', then 'too soon') and relied
+    // on the cooldown being GLOBAL to reject the second. The cooldown is now per-ATTACKER, so two
+    // different attackers inside one window both land — that is the fix, not a regression. The assertion
+    // here is unchanged and still the point: a hit the cooldown REJECTS must not freeze the screen.
     useGameStore.getState().damagePlayer(20, 'first');
     const after = useGameStore.getState().hitstopUntil;
-    useGameStore.getState().damagePlayer(20, 'too soon'); // inside the 500ms window
+    useGameStore.getState().damagePlayer(20, 'first'); // same attacker, inside its 500ms window
     expect(useGameStore.getState().hitstopUntil).toBe(after);
+  });
+
+  it('DOES freeze when a SECOND, DIFFERENT attacker lands in the same window', () => {
+    // The other half, and the one that would have caught the global cooldown: the test above passes just
+    // as well on a build where nothing can ever hit you twice. Without this row, "rejected" and "the
+    // damage path is dead" are the same reading.
+    useGameStore.getState().damagePlayer(20, 'first');
+    const after = useGameStore.getState().hitstopUntil;
+    useGameStore.getState().damagePlayer(20, 'second attacker');
+    expect(useGameStore.getState().hitstopUntil).toBeGreaterThan(after);
   });
 
   it('does NOT freeze a dead player', () => {

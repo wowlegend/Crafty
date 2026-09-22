@@ -9,7 +9,7 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
 
 beforeEach(() => {
   // Reset the guards damagePlayer checks so the death-edge test can land deterministically.
-  useGameStore.setState({ isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0, beastCharging: false });
+  useGameStore.setState({ isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0, damageLockouts: {}, beastCharging: false });
   useGameStore.getState().exitBeastForm();
 });
 

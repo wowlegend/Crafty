@@ -19,6 +19,11 @@ import { hurtStopMs } from '../game/hurtFeel.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
+// How long ONE attacker must wait before it can damage the player again. This was an inline 500 applied
+// to a single global timestamp, which made it a world-wide budget rather than a per-attacker cooldown —
+// see the comment in damagePlayer. The duration is unchanged; only what it is keyed on moved.
+const DAMAGE_LOCKOUT_MS = 500;
+
 export const EQUIPMENT_STATS = {
     // Weapons
     'sword': { strength: 2, agility: 1 },
@@ -809,7 +814,12 @@ export const useGameStore = create((set, get) => ({
     lastDamageTime: 0,
     setLastDamageTime: (time) => set({ lastDamageTime: time }),
 
-    damagePlayer: (amount, source = 'unknown', sourcePos = null) => {
+    // Per-ATTACKER damage lockout stamps, keyed by sourceKey (see damagePlayer). `lastDamageTime` above
+    // is kept because it is a different thing: the timestamp of the most recent accepted hit, which the
+    // HUD and the camera controller read as a hit SIGNAL. It is no longer the rate limiter.
+    damageLockouts: {},
+
+    damagePlayer: (amount, source = 'unknown', sourcePos = null, sourceKey = null) => {
         const state = get();
         if (!state.isAlive) return;
 
@@ -822,7 +832,18 @@ export const useGameStore = create((set, get) => ({
         const now = Date.now();
         if (now - useGameStore.getState()._spawnTime < 5000) return;
 
-        if (now - state.lastDamageTime < 500) return;
+        // PER-ATTACKER, not global. This read `now - state.lastDamageTime < 500`, and lastDamageTime is
+        // one number for the whole game — so the rule was never "this attacker may hit me twice a second",
+        // it was "the WORLD may hit me twice a second". Six mobs swinging on their own cooldowns landed
+        // the damage of one, which silently deleted the threat model above it: the night siege,
+        // SquadAISystem, squadAI.js and every archetype distinction mobArchetypes.js draws.
+        //
+        // `sourceKey` identifies the ATTACKER; `source` stays the display/attribution string. Callers that
+        // pass no key fall back to `source`, so a pre-existing call site keeps a rate limit rather than
+        // silently losing one — per-class instead of per-entity, which is strictly better than global.
+        const key = sourceKey || source;
+        const lockouts = state.damageLockouts || {};
+        if (now - (lockouts[key] || 0) < DAMAGE_LOCKOUT_MS) return;
 
         // Apply Armor Damage Mitigation
         const effective = state.getEffectiveAttributes();
@@ -844,6 +865,7 @@ export const useGameStore = create((set, get) => ({
         const stopMs = hurtStopMs(finalDamage, state.maxHealth);
         set({
             lastDamageTime: now,
+            damageLockouts: { ...lockouts, [key]: now },
             damageFlash: true,
             screenShake: finalDamage / 10,
             // The stamp is also the HIT SIGNAL the per-frame camera controller edge-detects for its kick,

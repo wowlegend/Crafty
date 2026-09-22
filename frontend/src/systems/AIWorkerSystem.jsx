@@ -18,6 +18,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 // way; the copies were never necessary. See ai.worker.js's header.
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
+import { damageArgsForAttack } from '../game/mobDamage.js';
 
 // AIWorkerSystem -- bridges mob AI to a Web Worker at 15Hz (movement/attacks/aggro), processes
 // knockback main-thread, and runs the ambient hub-NPC routine. Extracted VERBATIM from
@@ -68,7 +69,12 @@ export const AIWorkerSystem = () => {
                 entity.knockback = [dir[0]/mag * 15, dir[1], dir[2]/mag * 15]; // Reuse knockback for leap
             }
           } else if (store.damagePlayer) {
-            store.damagePlayer(attack.damage, attack.type, attack.position); // sourcePos -> directional hit cue
+            // (amount, displaySource, sourcePos -> directional hit cue, ATTACKER KEY). This passed only
+            // (damage, type, position) and discarded `attack.id`, so every melee mob in the world shared
+            // the lockout key 'melee' and a pack of six was rate-limited as one attacker. The mapping
+            // lives in game/mobDamage.js so the producer is testable — inline here, reverting it would
+            // leave the whole suite green.
+            store.damagePlayer(...damageArgsForAttack(attack));
 
             // Phase 11: Spatial Attack Sound
             if (store.playSpatialSound) {

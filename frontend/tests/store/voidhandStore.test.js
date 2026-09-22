@@ -9,7 +9,7 @@ import { KINETIC_MAX, GRAB_COST } from '../../src/game/kinetic.js';
 
 beforeEach(() => {
   useGameStore.setState({
-    isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0,
+    isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0, damageLockouts: {},
     voidhandHeld: false, heldPhantom: null,
   });
 });

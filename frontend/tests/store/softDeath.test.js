@@ -35,6 +35,10 @@ describe('soft death: respawn keeps ALL progression + inventory + coins (LOCKED)
       // no spawn-immunity window, no recent-hit cooldown.
       _spawnTime: 0,
       lastDamageTime: 0,
+      // per-ATTACKER lockout stamps: the sibling of lastDamageTime above, and the slot that
+      // actually rate-limits since the cooldown stopped being global. Without clearing it, a lockout
+      // left by an earlier test in this file blocks the lethal hit and the death path is never reached.
+      damageLockouts: {},
       isPlayerInvincible: () => false,
     });
   });
