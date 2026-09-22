@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon, SpellRing } from './primitives/index.js';
-import { ASPECT_TREES } from '../game/talentTree.js';
+import { ASPECT_TREES, canUnlockTalent, talentBlockedBy } from '../game/talentTree.js';
 import { ASPECT_GUIDE } from '../game/aspectGuide.js';
 import { SPELL_UPGRADES, requiredLevelForUpgrade } from '../world/spellUpgrades.js';
 
@@ -22,6 +22,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const talentPoints = useGameStore(state => state.talentPoints || 0);
     const unlockedTalents = useGameStore(state => state.unlockedTalents || {});
     const spendTalentPoint = useGameStore(state => state.spendTalentPoint);
+    const respecTalentPoints = useGameStore(state => state.respecTalentPoints);
+    const spentRanks = Object.values(unlockedTalents).reduce((n, v) => n + (v || 0), 0);
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
     const spellLevels = useGameStore(state => state.spellLevels || {});
@@ -67,6 +69,22 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                 <div className="text-xs text-text-muted font-bold uppercase tracking-wider">{t('talent.playerLevel')}</div>
                                 <div className="font-display text-2xl text-spell-arcane tabular-nums">{playerLevel}</div>
                             </Panel>
+                            {/* C4/Q24: the respec. Without a caller the store action is dead config —
+                                a table entry nothing reads, which is the mistake this session already
+                                shipped twice. Disabled rather than hidden when there is nothing to
+                                refund, so the affordance is discoverable before you have spent. */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                data-testid="talent-respec"
+                                disabled={spentRanks === 0}
+                                aria-label={t('talent.respec')}
+                                title={t('talent.respecHint')}
+                                onClick={() => respecTalentPoints && respecTalentPoints()}
+                                className="px-3 text-text-muted"
+                            >
+                                {t('talent.respec')}
+                            </Button>
                             <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
                                 <Icon name="close" size={18} />
                             </Button>
@@ -104,7 +122,13 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                         const currentLvl = unlockedTalents[node.id] || 0;
                                         const isPrereqMet = !node.prereq || (unlockedTalents[node.prereq] || 0) > 0;
                                         const isMaxed = currentLvl >= node.limit;
-                                        const canUpgrade = talentPoints > 0 && isPrereqMet && !isMaxed;
+                                        // C4/Q24: ask the SAME predicate the store asks. This panel used to
+                                        // re-derive the rules itself, which is how the store's missing prereq
+                                        // check went unnoticed for so long — the UI greyed the node out, so
+                                        // nobody could reach the hole by clicking, and the authority stayed
+                                        // wrong. One predicate means the panel cannot disagree with the store.
+                                        const blockedBy = talentBlockedBy(node.id, unlockedTalents);
+                                        const canUpgrade = canUnlockTalent(node.id, unlockedTalents, talentPoints);
 
                                         return (
                                             <Panel
@@ -144,6 +168,16 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                 {node.prereq && (
                                                     <div className="text-[10px] text-spell-arcane mt-1 font-bold">
                                                         Prerequisite: {branch.nodes.find(n => n.id === node.prereq)?.name || node.prereq}
+                                                    </div>
+                                                )}
+
+                                                {/* C4/Q24: an either/or node must SAY why it is closed. A
+                                                    disabled control with no reason reads as a bug, and the
+                                                    choice is the feature — the player needs to see that
+                                                    taking one shut the other. */}
+                                                {blockedBy && (
+                                                    <div className="text-[10px] text-text-muted mt-1 font-bold" data-testid={`talent-excluded-${node.id}`}>
+                                                        {t('talent.excludedBy')} {branch.nodes.find(n => n.id === blockedBy)?.name || blockedBy}
                                                     </div>
                                                 )}
 

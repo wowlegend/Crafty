@@ -123,3 +123,44 @@ describe('C4 the talent tree is a choice', () => {
       .not.toMatch(/const limit = TALENT_LIMITS\[talentId\]/);
   });
 });
+
+/**
+ * THE WIRING HALF — added after the store action shipped with NO CALLER.
+ *
+ * `respecTalentPoints` went in one commit with a docblock warning that a table entry nothing reads is
+ * dead config, and it had zero call sites: the exact mistake, one commit after writing the warning, for
+ * the third time in a session. This asserts the panel reaches it.
+ *
+ * It also asserts the panel asks the SHARED predicate. The panel used to re-derive the unlock rules
+ * itself, which is precisely how the store's missing `prereq` check survived: the UI greyed the node
+ * out, so no one could reach the hole by clicking, and the authority stayed wrong while every visible
+ * symptom was absent. Two implementations of one rule is one that can drift, and here the drift was
+ * invisible BY CONSTRUCTION.
+ *
+ * BLIND SPOT (R7): source assertions. Nothing renders the panel or clicks the button — that the control
+ * is reachable, enabled at the right time, and legible is unchecked.
+ */
+describe('C4 the respec and the exclusion are REACHABLE, not just implemented', () => {
+  const panel = strip(readFileSync(resolve(SRC, 'ui/SpellUpgradePanel.jsx'), 'utf8'));
+
+  it('the panel was read as code', () => {
+    expect(panel.length).toBeGreaterThan(2000);
+  });
+
+  it('the respec action has a CALL SITE — it shipped with none', () => {
+    expect(panel, 'the panel does not read the respec action').toMatch(/state\.respecTalentPoints/);
+    expect(panel, 'the respec action is read but never invoked').toMatch(/respecTalentPoints\(\)/);
+  });
+
+  it('the panel asks the SHARED predicate instead of re-deriving the rules', () => {
+    expect(panel, 'the panel no longer consults canUnlockTalent').toMatch(/canUnlockTalent\(node\.id/);
+    expect(panel, 'the panel re-derives the spend rule itself again — two authorities drift')
+      .not.toMatch(/canUpgrade = talentPoints > 0 && isPrereqMet/);
+  });
+
+  it('an excluded node SAYS why it is closed', () => {
+    // A disabled control with no reason reads as a bug, and the choice IS the feature.
+    expect(panel, 'the exclusion is computed but never shown').toMatch(/talentBlockedBy\(node\.id/);
+    expect(panel).toMatch(/talent\.excludedBy/);
+  });
+});
