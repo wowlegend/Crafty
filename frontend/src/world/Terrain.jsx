@@ -207,9 +207,13 @@ const compileShader = (shader) => {
  * is an exact no-op, so reverting is one number.
  */
 // The dial and the table both live in biomeTable.js now — the wind-grass blades need the identical
-// multipliers, and two copies of this arithmetic would drift silently. Re-exported so existing importers
-// of BIOME_TINT_STRENGTH from this module keep working.
-export { BIOME_TINT_STRENGTH } from './biomeTable.js';
+// multipliers, and two copies of this arithmetic would drift silently.
+//
+// I ALSO ADDED A RE-EXPORT HERE AND CI DELETED IT. The comment said "re-exported so existing importers
+// of BIOME_TINT_STRENGTH from this module keep working" — I never checked whether any existed. There
+// were none: the only consumer imports it from `biomeTable.js` directly, so the re-export was dead the
+// moment it was written, and `knip` reddened the first CI run that reached it. Backward compatibility
+// for importers you did not grep for is speculative generality with a reassuring comment on it.
 const biomeTintUniform = biomeTintTable();
 
 opaqueMaterial.onBeforeCompile = (shader) => {
