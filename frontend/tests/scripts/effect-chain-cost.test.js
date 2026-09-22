@@ -14,8 +14,10 @@ import { TIERS, selectTier } from '../../src/render/quality.js';
  *
  *   1. <EffectComposer> was mounted with NO `multisampling` prop. The package default is 8 and
  *      `frameBufferType` defaults to HalfFloatType (both read from the installed dist). That is an 8x
- *      multisampled RGBA16F target at full canvas resolution, blit-resolved every frame — ~471 MB at
- *      1728x1117 dpr2 by arithmetic on those constants. Meanwhile the <Canvas> sets
+ *      multisampled RGBA16F target at full canvas resolution, blit-resolved every frame. First written
+ *      here as ~471 MB at dpr2 from the REQUESTED sample count; measured later on a real ANGLE Metal /
+ *      Apple M3 Max context, MAX_SAMPLES is 4, so the requested 8 was always clamped and the true figure
+ *      is ~236 MB. Half as large, same verdict.
  *      `antialias: false // Post-processing handles AA` and <SMAA/> sits in the same chain. The author
  *      delegated AA to post; the 8x MSAA was cost nobody asked for and nobody could see.
  *

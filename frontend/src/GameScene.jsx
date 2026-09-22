@@ -309,20 +309,25 @@ export function GameScene({
               @react-three/postprocessing defaults `multisampling` to 8 and `frameBufferType` to
               HalfFloatType (both read from the installed dist, not from memory). Passing no prop therefore
               allocated an 8x multisampled RGBA16F render target at full canvas resolution and resolved it
-              with blitFramebuffer EVERY FRAME. Arithmetic on those verified constants: 8 bytes per sample
-              x 8 samples x canvas px = ~471 MB of MSAA buffer at 1728x1117 dpr2, ~62 MB even at 1280x800
-              dpr1 — on top of the resolved target.
+              with blitFramebuffer EVERY FRAME. MEASURED CORRECTION 2026-09-22: the GPU grants 4, not 8.
+              `MAX_SAMPLES` reads 4 on a real ANGLE Metal / Apple M3 Max context, so the requested 8 was
+              always CLAMPED. The cost is 8 bytes per sample x 4 samples x canvas px = ~236 MB at
+              1728x1117 dpr2, not the ~471 MB first written here from the REQUESTED count. Half the
+              figure, same verdict: a redundant multisampled buffer, reallocated on every canvas resize.
 
               And <SMAA/> is four lines below, doing shader-based antialiasing on the resolved image. So the
               chain paid for hardware 8x MSAA AND a full AA pass. SMAA is the standard substitute and its
               presence here is what makes 0 the right value rather than a lower one; this is not "AA off".
 
-              Related, and NOT claimed as fixed by this: the production console carries
-              `GL_INVALID_OPERATION: glBlitFramebuffer` per frame until Chrome mutes the context
-              (.claude/rules/gates-and-probes.md). A per-frame MSAA resolve is the only blitFramebuffer in
-              this pipeline, so it is the prime suspect — but SwiftShader reports MAX_SAMPLES 4 and emitted
-              zero GL errors, so the headless probe CANNOT confirm it. Verify in a real Chrome before
-              writing that down as solved.
+              THE GL-STORM HYPOTHESIS THAT LIVED HERE IS REFUTED — by controlled
+              measurement, not by doubt. This comment named the per-frame MSAA resolve as the prime suspect
+              for the `GL_INVALID_OPERATION: glBlitFramebuffer` storm. It is not the cause. Measured on real
+              ANGLE Metal, production build, full chain: 0 errors over 1672 frames with multisampling={0},
+              and 0 over 1783 frames with the package default. Identical, so the MSAA path is uninvolved.
+              The fix was upstream — postprocessing 6.39.5 (078a6d1) stopped EffectComposer building its
+              stable depth texture with DepthTexture.clone(), which on three r172 shares one GPU image
+              between a texture and its clones. Confirmed for r172 at pmndrs/postprocessing#750.
+              This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
           <EffectComposer multisampling={0}>

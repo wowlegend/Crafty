@@ -13,7 +13,8 @@ was started at the end of this stretch. Nothing is wrong with the commits — th
 **PERF — three render-cost defaults, none visible to any of the 17 gates.**
 - `<EffectComposer>` had NO `multisampling` prop. The package default is 8 on a HalfFloatType target
   (read from the installed dist), i.e. an 8x multisampled RGBA16F buffer at full canvas resolution,
-  blit-resolved every frame — ~471 MB at dpr 2. Never intended: the Canvas sets `antialias: false
+  blit-resolved every frame. ~236 MB at dpr 2 — NOT the ~471 MB first written: a real ANGLE Metal / M3 Max
+  context grants MAX_SAMPLES 4, so the requested 8 was always clamped. Never intended: the Canvas sets `antialias: false
   // Post-processing handles AA` and `<SMAA/>` is four lines below. Now `multisampling={0}`.
 - `flipflops={3}` on PerformanceMonitor froze adaptation for the session (drei's default is Infinity and
   its sampler opens `if (api.fallback) return;`). Removed. **NAMED, NOT FIXED:** frame rate is not COST —
@@ -33,10 +34,22 @@ declares `server: { open: true }`; vite resolves `preview.open ?? server.open`. 
 launched Kevin's real Chrome. Fixed. This is the mechanism `.claude/rules/gates-and-probes.md` recorded as
 unknowable after seeing it once on :4180.
 
+**THE GL STORM IS FIXED — AND NOT BY US.** Measured on real ANGLE Metal (M3 Max), production build, full
+chain including N8AO halfRes: **0 GL errors over 1672 frames**. Controlled pair — 0 with
+`multisampling={0}` AND 0 with the package default — so the MSAA path is uninvolved and my "prime suspect"
+hypothesis is REFUTED, not merely unconfirmed. The fix was upstream: postprocessing 6.39.5 (078a6d1).
+Posted as verification to pmndrs/postprocessing#750 and as a data point to N8python/n8ao#53.
+**Three dead instruments caught on the way**, each by its own control: (1) `prod-smoke` runs
+`--use-angle=swiftshader` in CI too, and SwiftShader cannot emit this error, so its seeded 0 was
+meaningless; (2) a tab opened in Kevin's Chrome read `visibility: hidden` / `rafTest: 0` — a hidden tab
+renders nothing, so 0 errors over 0 frames; (3) CDP evaluate timeouts from putting a 60s wait inside a 45s
+call. The GL ledger in prod-smoke remains a SwiftShader-path regression guard only; that limit is written
+into the file.
+
 **THE 11.8 GB TAB — JS EXONERATED, GPU IMPLICATED, NOT CONFIRMED.** 90 heap samples over 58s show a GC
 sawtooth bounded 70-140 MB at -0.4 MB/s. The JS heap does not leak, so the process-level figure is
 GPU-side. `EffectComposer.setSize` reallocates input/output buffers, `<AdaptiveDpr>` is mounted, and
-PerformanceMonitor moves `dprCap` — so every resize reallocated that 471 MB target. Coherent mechanism,
+PerformanceMonitor moves `dprCap` — so every resize reallocated that ~236 MB target. Coherent mechanism,
 NOT proven: GPU memory is unreadable from a page and `renderer.info` is unreachable in the prod bundle
 (four accessors tried). The GL error ledger, seeded by CI from a real browser, is what will adjudicate it.
 
