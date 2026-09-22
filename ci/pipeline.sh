@@ -149,20 +149,10 @@ if [ "$fail" -eq 0 ]; then
   # here and consumed by pre-push; the tier name goes in with it so a `commit` receipt can never be
   # mistaken for authorisation to skip the commit-shaped gates.
   if [ "$TIER" = "commit" ]; then
-    TREE="$(cd "$ROOT" && git write-tree 2>/dev/null || true)"
-    # VERIFY THE ARTIFACT, NEVER THE INTENT. The first version printed "certified" on a write that had
-    # just failed with "No such file or directory" — the announce-success-on-a-no-op shape this estate
-    # keeps hitting (a redirect fails, the command continues, the next line reports a pass). So read the
-    # file back and compare, and say plainly when it did not land. A missing receipt only costs a full
-    # certification at push time; a receipt CLAIMED but absent is a silent lie about what was checked.
-    if [ -z "$TREE" ]; then
-      printf '\033[33m  receipt NOT written: git write-tree failed — the push will certify in full\033[0m\n'
-    elif printf '%s commit %s\n' "$TREE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >| "$RECEIPT" 2>/dev/null &&
-         [ "$(cut -d' ' -f1 "$RECEIPT" 2>/dev/null)" = "$TREE" ]; then
-      printf '\033[2m  receipt: tree %.10s certified — a push of this tree skips the offline core\033[0m\n' "$TREE"
-    else
-      printf '\033[33m  receipt NOT written to %s — the push will certify in full\033[0m\n' "$RECEIPT"
-    fi
+    # The steps above tested the WORKING TREE; the receipt certifies the INDEX. write-receipt.sh refuses
+    # when the two differ (a partial stage), and reads the file back before claiming it landed. A refusal
+    # is not a failure of this run — it only sends the push down the full-certification path.
+    sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" || true
   fi
   exit 0
 fi

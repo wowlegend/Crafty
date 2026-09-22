@@ -32,7 +32,8 @@
 # Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to
 # pass --no-verify, and a bypassed gate is worth less than no gate.
 #
-# WHAT IT BUYS AT PUSH TIME: a green run records the index tree hash, and pre-push skips re-deriving the
+# WHAT IT BUYS AT PUSH TIME: a green run records the index tree hash (ci/write-receipt.sh — REFUSED when the
+# tested working tree differs from the index, i.e. a partial stage), and pre-push skips re-deriving the
 # same answer in a fresh worktree when the tree matches. Commit-then-push is therefore near-instant.
 #
 # ESCAPE HATCH, and its cost: `git commit --no-verify` skips this AND writes no receipt, so the push pays
