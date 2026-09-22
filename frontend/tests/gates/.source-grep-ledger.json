@@ -47,7 +47,7 @@
     "tests/gates/home-anchor-gates.test.js",
     "tests/gates/hub-render-gates.test.js",
     "tests/gates/hud-declutter-gates.test.js",
-    "tests/gates/hud-stat-wire-gates.test.js",
+    "tests/gates/hud-stat-wire-gates.test.jsx",
     "tests/gates/input-abstraction-gates.test.js",
     "tests/gates/kill-attribution-gates.test.js",
     "tests/gates/landmarks-gates.test.js",
