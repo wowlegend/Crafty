@@ -131,7 +131,8 @@ export const PROBE_PORTS = Object.freeze({
   'storm-probe.mjs': 4232,
   'touch-probe.mjs': 4233,
   'gpu-cost-probe.mjs': 4234,
-  'godrays-probe.mjs': 4235
+  'godrays-probe.mjs': 4235,
+  'ambient-floor-probe.mjs': 4236
 });
 
 /** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */

@@ -486,7 +486,48 @@ So: the visual oracle photographs a build nobody plays, the e2e suite fires a re
 
 ---
 
-## L1 — LOOKS: unlit faces go near-black at a low sun (observed 2026-09-22, NOT yet diagnosed)
+## L1 — DIAGNOSED 2026-09-22. It is NOT the ambient floor, and it does NOT reproduce in capture mode.
+
+**Two controlled experiments, `scripts/visual/ambient-floor-probe.mjs` (new, port 4236). Both results
+are negative, and both are worth more than the tuning they prevented.**
+
+**1. Raising the ambient floor is NOT the fix.** Tripling `explore.ambientIntensity` from the shipped
+0.90 to 2.80 moved the dark/lit RATIO by **1.07x** — both regions lifted together. Ambient is a global
+exposure here: the scene washes out and the hole stays a hole relative to its surroundings. Reporting
+only the dark patch's value would have made every step look like progress, which is exactly how a
+tuning session talks itself into shipping a washed-out scene. **Do not bump ambient on this evidence.**
+
+**2. THE SUBJECT DOES NOT EXIST IN CAPTURE MODE.** After the probe was corrected to DERIVE its regions
+from the frame rather than inherit them, it refused to report: the darkest WORLD tile in a capture-mode
+frame at `setTimeOfDay(0.3)` reads **44.4**, well above the near-black threshold. That is a legitimately
+dark material, not a hole. The luminance-13.7 tile found on a first pass turned out to sit inside the
+MINIMAP rect — UI, which does not respond to ambient at all and would also have been a dead control.
+
+So the near-black surfaces measured at rgb(16,3,40) live in the LIVE-GAME frames (hands-probe, and the
+godrays A-frames) and not in the deterministic harness. **Which means the visual gate could never have
+caught L1, and still cannot.** That is the same structural gap as the FPV hands being `!inCapture`: the
+capture corpus is not a sample of what the player sees, it is a sample of a build with 127 things
+switched off.
+
+**What is still unknown, stated precisely.** Whether the live-only darkness is (a) something capture
+suppresses — weather, a light, a post pass — or (b) specific to that camera position and those
+particular structures. Nothing here distinguishes them. The next step is a LIVE-mode version of this
+same ladder, which the probe can do by skipping `enterCapture`, at the cost of comparing frames that
+are no longer deterministic — which is precisely the trade the godrays probe had to reason about.
+
+**Two corrections recorded rather than quietly fixed**, because both are instances of classes this
+estate keeps paying for:
+- The first version hardcoded its DARK rect from a different probe's frames. It landed on a patch
+  reading 73.9 and produced a confident ratio about pixels that were never the subject — an input the
+  assertion read and never set.
+- The control has to be a well-lit WORLD tile. "The brightest tile on screen" selected the quests
+  PANEL, and UI is unaffected by ambient, so it would have shown zero lift and made every world change
+  look like a dramatic improvement in the ratio.
+
+---
+
+## L1 (original observation, kept for provenance)
+
 
 Observed while looking at `/tmp/crafty-godrays/A1-godrays-on.png` (tier high, `setTimeOfDay(0.3)`,
 sun above horizon). The structures nearest the camera — the same buildings that read brown and red in
