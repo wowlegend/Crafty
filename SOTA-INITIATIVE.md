@@ -38,7 +38,7 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 - **The game must look, FEEL and SOUND state-of-the-art and amazing to play** (Kevin 2026-06-10) — audio and
   game-feel are first-class SOTA axes (§5), not polish afterthoughts.
 - **Audience is BROAD (Kevin 2026-06-04, coherence-pillars P5):** kids → young adults → adults, "blur the
-  lines", to maximise appeal + later monetisation. Marcus (8) is A user, NOT a depth-lowering floor —
+  lines", to maximise appeal + later monetisation. An 8-year-old is A user, NOT a depth-lowering floor —
   intensity / real-stakes / hard modes allowed; age-8 legibility stays a virtue, never a ceiling.
 - **Language:** English default; **zh-CN as a locale toggle** (full content translation owed — task #73).
 - **Platform envelope:** great on web + iPad + mobile (touch). NOT AAA GPU budgets — clever > brute-force.

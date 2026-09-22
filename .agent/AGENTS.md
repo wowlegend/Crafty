@@ -97,37 +97,43 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**15 gates authorize a push.** Generated from `ci/pipeline.sh` -- the ONE definition both the hook and CI call — this
-paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),
-the last time one commit after the gate landed. Do not edit the table by hand; add the description to
-`DESCRIPTIONS` in `gate-table.mjs` and regenerate.
+**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
+add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-| Gate | Command | pre-push | CI | What it actually stops |
-|---|---|:--:|:--:|---|
-| opsec-scan | `node scripts/ci/opsec-scan.mjs --all` | ✅ | — | an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none |
-| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks |
-| eslint | `npm run lint` | ✅ | — | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
-| gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | — | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
-| killability-ledger | `node scripts/ci/killability-ledger.mjs` | ✅ | — | a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can |
-| cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
-| unit + static gates | `npm run test:unit` | ✅ | — | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
-| build | `npm run build` | ✅ | — | broken JSX/imports |
-| bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | — | a chunk growing past its byte ceiling |
-| queue-ledger | `node scripts/ci/queue-ledger.mjs` | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
-| artifact-currency | `node scripts/ci/artifact-currency.mjs` | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
-| e2e freshness | `node scripts/ci/e2e-freshness.mjs` | ✅ | — | **TODO — describe what this stops** (a new gate landed with no description) |
-| knip | `npm run knip` | ✅ | — | **TODO — describe what this stops** (a new gate landed with no description) |
-| npm audit | `npm audit --audit-level=high` | ✅ | — | **TODO — describe what this stops** (a new gate landed with no description) |
-| prod-smoke | `node scripts/ci/prod-smoke.mjs` | ✅ | ✅ | **TODO — describe what this stops** (a new gate landed with no description) |
+**9 run on every commit** (offline core, 69s) · **14 on every push** · **12 in CI**.
+The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
+and all three network/browser gates were printed as pre-push gates they have never been.
+
+| Gate | Command | pre-commit | pre-push | CI | What it actually stops |
+|---|---|:--:|:--:|:--:|---|
+| mutation-proof-trailer | `node scripts/ci/mutation-proof-trailer.mjs <range>` | — | ✅ | — | a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
+| baseline-trailer | `node scripts/ci/baseline-trailer.mjs <range>` | — | ✅ | — | a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match |
+| opsec-scan | `node scripts/ci/opsec-scan.mjs --all` | ✅ | ✅ | ✅ | an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none |
+| doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks |
+| eslint | `npm run lint` | ✅ | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
+| gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
+| killability-ledger | `node scripts/ci/killability-ledger.mjs` | ✅ | ✅ | ✅ | a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can |
+| cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | ✅ | ✅ | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
+| unit + static gates | `npm run test:unit` | ✅ | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
+| build | `npm run build` | ✅ | ✅ | ✅ | broken JSX/imports |
+| bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | ✅ | a chunk growing past its byte ceiling |
+| queue-ledger | `node scripts/ci/queue-ledger.mjs` | — | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
+| artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
+| e2e freshness | `node scripts/ci/e2e-freshness.mjs` | — | ✅ | — | a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The 21 Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk |
+| knip | `npm run knip` | — | — | ✅ | an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure |
+| npm audit | `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify |
+| prod-smoke | `node scripts/ci/prod-smoke.mjs` | — | — | ✅ | the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser |
 <!-- END GATES -->
 
-**Not pre-push gates**, kept by hand because they are not in the hook:
+**Outside the pipeline entirely**, kept by hand because no tier can call them. `knip` used to be listed
+here too and was a DUPLICATE of the generated row above — the hand-kept copy is now only for what the
+pipeline genuinely cannot see:
 
-| Gate | Command | pre-push | CI | What it actually stops |
-|---|---|:--:|:--:|---|
-| knip | `npm run knip` | — | ✅ | unused files/exports/deps |
-| e2e | `npm run test:e2e` (playwright, **sharded 3×** in CI) | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow |
-| visual | `npm run test:visual` | — | — | **neither hook nor CI runs it.** Manual, before a milestone or any render change |
+| Gate | Command | pre-commit | pre-push | CI | What it actually stops |
+|---|---|:--:|:--:|:--:|---|
+| e2e (the suite) | `npm run test:e2e` (playwright, **sharded 3×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), so the push checks the RECEIPT instead — the `e2e freshness` row above |
+| visual | `npm run test:visual` | — | — | — | **nothing runs it.** Manual, before a milestone or any render change — so a green pipeline says nothing about how Crafty LOOKS |
 
 - `test:visual` is `capture.mjs && vitest`, i.e. it RE-CAPTURES. Never run it alongside another capture —
   both bind port 4178 with `--strictPort` and the collision fakes a failure.

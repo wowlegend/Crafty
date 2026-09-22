@@ -35,7 +35,7 @@ Telegraph rune-quad (≈150ms) → stretch-billboard projectile trail → impact
 
 ### M4 — Mascot — *KEVIN'S TASTE CALL (do NOT autonomously finalize)*
 Render one reference each (same camera/light) of the 3 concept directions → batch for Kevin's pick. All ship on the existing `characterStyle.js` toon+rim+outline pipeline. Acceptance gate = shape-language matrix + 100%-black-silhouette test.
-- **A — "Spark Familiar"** (recommended lead): floating voxel elemental companion, element-tinted to active spell, ember aura via GPUSparkSystem. Low-rig, high cosmetic-SKU + Marcus appeal; named in the spec; cross-wired to the spell signature.
+- **A — "Spark Familiar"** (recommended lead): floating voxel elemental companion, element-tinted to active spell, ember aura via GPUSparkSystem. Low-rig, high cosmetic-SKU + a young player appeal; named in the spec; cross-wired to the spell signature.
 - **B — "Crafty Hero"**: chunky toy-like apprentice-mage avatar (evolves the pointy-hat). Most commercial/customizable; humanoid rig (more S2 production).
 - **C — "Craft-Golem"**: friendly creature built from the world's voxel blocks + glowing rune-core (reuses spell-emissive material). Most theme-ownable; mid build.
 

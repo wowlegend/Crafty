@@ -488,8 +488,8 @@ Lines 80-160 span the tail of §0-C (mission, hard frame, and the accreted decis
   - *replacement:* the §1 step-5 LIVE-PROBE + LOOK axis
 - **85-88** · `redundant` · **compress** (verified)
   - The AUDIENCE IS BROAD clause is a third near-verbatim copy of text that already exists in two upstream docs — and the clause itself admits the master plan now states it natively.
-  - *evidence:* SOTA-INITIATIVE.md:40-42 "Audience is BROAD (Kevin 2026-06-04, coherence-pillars P5): kids → young adults → adults, 'blur the lines' … Marcus (8) is A user, NOT a depth-lowering floor". Third copy at specs/crafty-coherence-pillars.md:30 (P5).
-  - *replacement:* - **Audience is BROAD** (Kevin 2026-06-04) — canonical text in `SOTA-INITIATIVE.md` §1 and coherence-pillars P5. Marcus (8) is A user, not a depth ceiling.
+  - *evidence:* SOTA-INITIATIVE.md:40-42 "Audience is BROAD (Kevin 2026-06-04, coherence-pillars P5): kids → young adults → adults, 'blur the lines' … An 8-year-old is A user, NOT a depth-lowering floor". Third copy at specs/crafty-coherence-pillars.md:30 (P5).
+  - *replacement:* - **Audience is BROAD** (Kevin 2026-06-04) — canonical text in `SOTA-INITIATIVE.md` §1 and coherence-pillars P5. An 8-year-old is A user, not a depth ceiling.
 - **154-156** · `redundant` · **delete** (verified)
   - The two-level-repo / absolute-paths / never-assert-absence-from-a-relative-path triple is stated identically on all three governance surfaces.
   - *evidence:* LOOP-KERNEL-PROMPT.md:73-74 "REPO (two-level): ROOT … APP … Absolute paths always. NEVER assert file-absence from a relative ls/find." .agent/AGENTS.md:8-9 same rule. Charter:154-156 same rule. AGENTS.md is the only auto-loaded surface.

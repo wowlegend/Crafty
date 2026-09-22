@@ -13,7 +13,7 @@
 
 > **Crafty is a warm, hand-crafted voxel world that reads instantly and turns dangerous beautifully.**
 
-A **lit, ink-outlined voxel** look — the Hytale / modern-Fortnite / Brawl-Stars "Vanguard+Toon" sweet spot — premium and readable at thumbnail/clip scale, running light on web/iPad/mobile, and unmistakably *Crafty* via three owned signatures. Premium taste is the highest bar; commercial readability is the floor; an 8-year-old (Marcus) must read it in 0.5s and a young adult must find it cool.
+A **lit, ink-outlined voxel** look — the Hytale / modern-Fortnite / Brawl-Stars "Vanguard+Toon" sweet spot — premium and readable at thumbnail/clip scale, running light on web/iPad/mobile, and unmistakably *Crafty* via three owned signatures. Premium taste is the highest bar; commercial readability is the floor; an 8-year-old (a young player) must read it in 0.5s and a young adult must find it cool.
 
 **Three commitments, in tension, resolved:**
 - **Tasteful & distinctive** (Kevin's bar) → carried by the *signatures*, not the base.
@@ -108,7 +108,7 @@ Replace the **three clashing UI languages** (minecraft-bevel + glassmorphic + ad
 
 - **One language:** a refined "Crafty" UI — evolve the best of the glassmorphic into a warm, premium, kid-legible system. Tasteful, not corporate; high contrast for small screens.
 - **Design tokens:** color (derived from the game palette — warm parchment/glass surfaces + teal/gold accents), spacing scale, radii, elevation, type scale — single source-of-truth (CSS custom properties), no scattered values.
-- **Typography:** friendly-premium + high legibility; a characterful display face + a clean UI sans; **first-class Chinese (Simplified) support** (Marcus, Chinese-speaking) — type pairing must include a quality CJK face. IB-grade: tabular numerals for stats, baseline alignment, no orphaned punctuation.
+- **Typography:** friendly-premium + high legibility; a characterful display face + a clean UI sans; **first-class Chinese (Simplified) support** (a young player, Chinese-speaking) — type pairing must include a quality CJK face. IB-grade: tabular numerals for stats, baseline alignment, no orphaned punctuation.
 - **Custom iconography:** a cohesive icon/sprite set replacing all emoji (brand identity + monetization-grade polish).
 - **Touch-*ready* layout (input is S3, layout is S1):** responsive HUD breakpoints, `viewport-fit=cover` + `env(safe-area-inset-*)`, thumb-zone-aware HUD placement, `touch-action:none` on canvas. The on-screen controls *layer* is designed here as a visual system; its *input wiring* is built in S3.
 

@@ -5,13 +5,19 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### AWAITING KEVIN — do not decide these
+### RESOLVED 2026-09-22 — child's name, fix-forward (Kevin's call)
 
-- **`Marcus` (his son, 8) is in 23 tracked files / 45 lines of a PUBLIC repo**, and at least two pair the
-  name with the age ("Marcus (8) is A user, not a depth-lowering floor"). Does NOT reach the production
-  bundle (0 in `build/assets`). I recommended fix-forward on live docs and NOT rewriting history
-  (erasure is not real without a GitHub Support GC + deleting forks). **His call, not a technical one.**
-  Either way: add a `Marcus` BLOCK rule to `scripts/ci/opsec-scan.mjs` so it cannot re-enter.
+- **DONE.** The name was in 24 tracked files / 49 lines of a PUBLIC repo, two of them pairing it with the
+  age. Kevin ruled fix-forward. Renamed across every tracked file in one pass: the design-constraint name
+  `<name>-floor` -> `kid-floor`, `<name> (8)` -> `an 8-year-old`, and the save-slot test fixture
+  `"<name>'s Castle"` -> `"Skyhold Keep"`. Every occurrence in `src/` was a COMMENT (esbuild strips them)
+  and in `tests/` a FIXTURE, so nothing behavioural moved and the production bundle was never affected
+  (verified: 0 hits in `build/assets`).
+- **History NOT rewritten, deliberately.** It is in ~1,900 commits, and a force-push does not erase
+  anything on GitHub without a Support GC plus deletion of every fork — so the cost is real and the
+  benefit is not. Fix-forward is the honest scope.
+- **Enforced, not just fixed:** `scripts/ci/opsec-scan.mjs` now carries a `child-name` BLOCK rule, which
+  is never ratcheted. Re-entry reds the push before it can reach a public remote.
 
 ### IN FLIGHT — ONE STEP LEFT, and main is SAFE (the commit exists locally, push is blocked)
 

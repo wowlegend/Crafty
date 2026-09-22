@@ -479,10 +479,10 @@ The harm is an ASYMMETRY, which is what elevates it above cosmetic: SpawnerSyste
 **Every autosave clobbers the player's chosen world name with `Save_<timestamp>`**
 - *domain:* Save / load / persistence / migration  ·  *at:* `src/store/useGameStore.jsx:972 (`writeWorld(id, { name: data.save_name, created_at: new Date().toISOString(), ... }, data)`) + src/game/worldSaves.js:35 (`list.unshift({ id, ...meta })`) + src/game/saveSchema.js:16 (`save_name: 'Save_' + new Date().toLocaleString()`)`
 - *verdict:* CONFIRMED
-- *player impact (refuter's words):* Real and guaranteed, but metadata-only — no data loss. Player creates a world named "Marcus's Castle" (or hits WorldManager Save, which names it "Guest's World - <date>"), places a single block, and 5 seconds later the World Manager index entry is renamed to `Save_<toLocaleString>`. The world blob itself is intact and still loads; what is corrupted is the index metadata: name (destroyed), created_
+- *player impact (refuter's words):* Real and guaranteed, but metadata-only — no data loss. Player creates a world named "Skyhold Keep" (or hits WorldManager Save, which names it "Guest's World - <date>"), places a single block, and 5 seconds later the World Manager index entry is renamed to `Save_<toLocaleString>`. The world blob itself is intact and still loads; what is corrupted is the index metadata: name (destroyed), created_
 - *executed evidence:*
   ```
-  probe2 P11 (real store + real worldSaves): 'after Create/Save-As: index name = "Marcus's Castle"' -> one saveActiveWorld -> 'after ONE autosave: index name = "Save_7/13/2026, 10:25:06 AM"; blob.name = "Save_7/13/2026, 10:25:06 AM"'. Confirmed LIVE in the browser: after a real play session the world list read `["Save_7/13/2026, 10:46:45 AM"]`.
+  probe2 P11 (real store + real worldSaves): 'after Create/Save-As: index name = "Skyhold Keep"' -> one saveActiveWorld -> 'after ONE autosave: index name = "Save_7/13/2026, 10:25:06 AM"; blob.name = "Save_7/13/2026, 10:25:06 AM"'. Confirmed LIVE in the browser: after a real play session the world list read `["Save_7/13/2026, 10:46:45 AM"]`.
   ```
 
 **'Create New World' does not create a new world — it silently clones the current one**

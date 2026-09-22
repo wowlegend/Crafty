@@ -164,7 +164,7 @@ assigned all four **[LOOP]** and the charter says the RECORD, not this prompt, i
 stale list here is what put twelve non-Kevin items in front of Kevin. The only taste row still **[KEVIN]** is the
 ocean water aesthetic.
 SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
-Blight-Heart · audience is BROAD (Marcus is a user, not a ceiling) · world-design HYBRID · CPU-ocean fork.
+Blight-Heart · audience is BROAD (the youngest players are users, not a ceiling) · world-design HYBRID · CPU-ocean fork.
 
 CONTINUE: while committable units remain — read the depth, never recall it: `node frontend/scripts/ci/queue-ledger.mjs`. This is an ACTIVE build queue, not a hold.
 AWAIT + INTEGRATE any in-flight background Workflow instead of idle-spinning. ~20–30min heartbeat ONLY if genuinely

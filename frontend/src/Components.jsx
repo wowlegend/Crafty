@@ -1039,7 +1039,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (!headHit) {
           // Ledge detected! Perform vault boost.
           // M5 review [C]: the ledge-vault is DELIBERATELY form-INVARIANT (not x loco.jumpMult) — a
-          // traversal-reliability / Marcus-floor choice (every form mantles a ledge identically). Per-
+          // traversal-reliability / kid-floor choice (every form mantles a ledge identically). Per-
           // form mobility lives in the primary jump (x jumpMult); revisit if Kevin wants form-vault feel.
           velocityY.current = VAULT_VELOCITY;
           

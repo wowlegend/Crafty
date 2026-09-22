@@ -242,7 +242,7 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
     GREEN — which is why both files exist: the store round-trip alone would have shipped this.
   - **B2a ✓** the autosave no longer destroys your world. `_sessionWorldId` (in-memory, never persisted): an
     autosave may only write to a slot THIS SESSION opened or created; unowned → mint. Also stopped renaming
-    "Marcus's Castle" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within
+    "Skyhold Keep" → `Save_<timestamp>`, and added `mintWorldId()` (a bare `Date.now()` id collides within
     a millisecond — my own RED test caught that in my own fix).
   - **B2b ✓** "Create New World" no longer clones the world you're playing. `startNewWorld()` resets by
     round-tripping the store's INITIAL state through the save schema → drift-proof by construction. That gate
@@ -1485,7 +1485,7 @@ Full text: `docs/superpowers/specs/crafty-coherence-pillars.md`. Each is an "X e
 - **P2** Cohesive loop: every system feeds fight→loot→build→fight-harder — even over standalone "cool" toys.
 - **P3** ONE locked visual/UI language + a readable feedback grammar — even over raw effect count.
 - **P4** Runs great in the **web / iPad / mobile + touch** envelope — even over GPU-maximal fidelity.
-- **P5** Broad-audience legible (≈8 → adult), zh-CN-ready — even over hardcore gatekeeping. *(Marcus is a user,
+- **P5** Broad-audience legible (≈8 → adult), zh-CN-ready — even over hardcore gatekeeping. *(the youngest players are users,
   NOT a depth-lowering ceiling — real stakes are allowed.)*
 
 **⛔ The only HARD VETOES in the system are P4's two invariants: (1) NO frequent mid-combat re-mesh;

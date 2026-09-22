@@ -534,7 +534,7 @@
 >    with a HOW IT PLAYS card: the key (R/V/X/Z), what banks the meter, and the loop in 3-4 steps
 >    (e.g. SOULBIND: weaken to a third [jade bar] → hold X → it fights for you → two together + X =
 >    FUSE). Header retitled — the four-powers/four-keys model is stated in one line. EYEBALL: open the
->    talent panel; is the loop clear enough that Marcus could run each Aspect from the card alone?
+>    talent panel; is the loop clear enough that an 8-year-old could run each Aspect from the card alone?
 >
 > **🛠️ YOUR 2026-06-10 PLAYTEST FIXES — ALL SIX SHIPPED (re-verify protocol, ~3 min):**
 >    (1) RESPAWN: die FAR from spawn (>100 blocks out — the bug only triggered there), respawn → you

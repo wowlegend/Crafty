@@ -887,7 +887,7 @@ export const useGameStore = create((set, get) => ({
             // SM's own !alive catches up next frame, flashing the charge-glow / orbiting phantom over the
             // soft-death screen (transient-safety; same 1-frame-race class the WILDHEART review caught).
             set({ isAlive: false, beastCharging: false, voidhandHeld: false, heldPhantom: null });
-            get().exitBeastForm(); // death-edge: drop beast form NOW (before the soft-death screen) -- no-permanent-beast + Marcus-floor
+            get().exitBeastForm(); // death-edge: drop beast form NOW (before the soft-death screen) -- no-permanent-beast + kid-floor
             if (useGameStore.getState().playDefeatSound) useGameStore.getState().playDefeatSound();
         }
 
@@ -1141,7 +1141,7 @@ export const useGameStore = create((set, get) => ({
             setActiveWorldId(id);
         }
         // Preserve the player's chosen name. `data.save_name` is a `Save_<timestamp>` placeholder minted
-        // fresh on every serialize, so writing it back renamed "Marcus's Castle" to "Save_7/13/2026,
+        // fresh on every serialize, so writing it back renamed "Skyhold Keep" to "Save_7/13/2026,
         // 10:25:06 AM" on the first autosave. Only a brand-new slot gets the placeholder.
         const existing = listWorlds().find((w) => w.id === id);
         const name = (existing && existing.name) || data.save_name;

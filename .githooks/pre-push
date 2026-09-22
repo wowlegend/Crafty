@@ -83,8 +83,47 @@ for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE" || exit 1
 done
 
+# ── green-tree receipt (AB's shape, adopted 2026-09-22 on Kevin's direction) ────────────────────────
+#
+# pre-commit certifies the offline core against the staged tree and records the INDEX TREE HASH. git's
+# index tree IS the tree the resulting commit stores — verified, not assumed: `git write-tree` and
+# `git rev-parse HEAD^{tree}` returned the same sha on a clean index. So when the tree being pushed is
+# already in the receipt, spinning up a worktree to re-derive that answer buys nothing.
+#
+# WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
+# OFFLINE CORE. The commit-shaped gates (trailers, queue-ledger, artifact-currency, e2e-freshness) read a
+# COMMIT RANGE that did not exist when the receipt was written, so they run unconditionally, above.
+#
+# The receipt lives in .git/ and so cannot survive a clone — a fresh checkout has certified nothing, which
+# is the correct default. A missing or stale receipt costs a full certification: it fails toward WORK, not
+# toward trust.
+RECEIPT="$(git rev-parse --git-common-dir)/crafty-pipeline-green-tree"
+GREEN_TREE=""
+GREEN_TIER=""
+GREEN_AT=""
+if [ -f "$RECEIPT" ]; then
+  GREEN_TREE=$(cut -d' ' -f1 "$RECEIPT" 2>/dev/null || true)
+  GREEN_TIER=$(cut -d' ' -f2 "$RECEIPT" 2>/dev/null || true)
+  GREEN_AT=$(cut -d' ' -f3 "$RECEIPT" 2>/dev/null || true)
+fi
+
 for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")
+  PUSHED_TREE=$(git rev-parse "$SHA^{tree}" 2>/dev/null || true)
+
+  if [ -n "$GREEN_TREE" ] && [ "$GREEN_TIER" = "commit" ] && [ -n "$PUSHED_TREE" ] && [ "$PUSHED_TREE" = "$GREEN_TREE" ]; then
+    printf '\n══ pre-push: %s — offline core already certified on this exact tree (%s) ══\n' "$SHORT" "$GREEN_AT"
+    printf '  tree %s matches the pre-commit receipt; re-running it would re-derive a known answer.\n' "$(printf '%.10s' "$PUSHED_TREE")"
+    printf '  The commit-shaped gates above DID run — the receipt does not speak for a range it never saw.\n'
+    continue
+  fi
+
+  if [ -n "$GREEN_TREE" ]; then
+    printf '\n  (receipt present but for tree %s, not %s — certifying in full)\n' \
+      "$(printf '%.10s' "$GREEN_TREE")" "$(printf '%.10s' "${PUSHED_TREE:-unknown}")"
+  else
+    printf '\n  (no green receipt on this machine — certifying in full)\n'
+  fi
   printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"
 
   WT="$(mktemp -d "${TMPDIR:-/tmp}/crafty-prepush-XXXXXX")"

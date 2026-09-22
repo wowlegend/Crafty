@@ -687,7 +687,7 @@ enforcing it once.
 | # | Decision of record — do NOT relitigate | Set | Who can reverse |
 |---|---|---|---|
 | 1 | Ember Frontier → fixed far-edge Blight-Heart climax; real win-state + endless post-climax | 06-15 | KEVIN |
-| 2 | Audience is BROAD (kids → adults). Marcus (8) is A user, never a depth floor | 06-04 | KEVIN |
+| 2 | Audience is BROAD (kids → adults). An 8-year-old is A user, never a depth floor | 06-04 | KEVIN |
 | 3 | EN is the default; zh-CN is a lazy-loaded locale TOGGLE (full content translation still owed, #73) | — | KEVIN |
 | 4 | Control scheme Option A · **F = cast spell**, **T = melee** | 06-28 | KEVIN |
 | 5 | bloom `luminanceThreshold 0.65` is INTENDED — it supersedes the old ≥0.85 spec; do not "fix" it | 06-28 | loop may propose |

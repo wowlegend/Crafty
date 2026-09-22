@@ -38,7 +38,30 @@ import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/**
+ * The names this repo must never publish, assembled from char codes so the literal does not appear in
+ * the tree. That indirection is the point, not cleverness: a BLOCK rule spelling out the string it
+ * blocks re-introduces exactly what it exists to remove, and `git grep` would find it in the gate.
+ * The gate is EXEMPT from its own scan (it holds every pattern), but the tree is not, and a reader
+ * grepping for the name should find nothing.
+ *
+ * Added 2026-09-22 after a full public-repo audit found an operator family member's given name in 24
+ * tracked files / 49 lines, twice paired with an age. Those were renamed fix-forward (design constraint
+ * `<name>-floor` -> `kid-floor`, save-slot fixture -> "Skyhold Keep"); this rule is what stops the next
+ * one, since the original entered through ordinary design prose that no reviewer would think to flag.
+ */
+export const PRIVATE_NAMES = [String.fromCharCode(77, 97, 114, 99, 117, 115)];
+
 export const RULES = [
+  {
+    id: 'child-name',
+    severity: 'BLOCK',
+    // Case-insensitive, word-bounded: the possessive form ("<name>'s Castle") is covered by the bare
+    // name, and \b keeps it off substrings inside unrelated identifiers.
+    re: new RegExp(`\\b(?:${PRIVATE_NAMES.join('|')})\\b`, 'gi'),
+    why: "publishes an operator family member's given name on a PUBLIC repo — the audit that prompted this rule found it in ordinary design prose, which is why a human reviewer will not catch it",
+    fix: 'use the role, not the person: `kid-floor` for the accessibility constraint, a neutral fixture name in tests. NEVER ratcheted — there is no acceptable count',
+  },
   {
     id: 'home-path',
     severity: 'BLOCK',

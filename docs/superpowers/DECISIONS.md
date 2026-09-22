@@ -276,7 +276,7 @@ charter now names them and points here.
   the headless-safe `forcePlay` hook, kept SEPARATE from the puppeteer visual gate (Kevin 2026-06-28).
   Design-of-record `specs/2026-06-28-crafty-control-scheme-design.md`.
 - **Audience is BROAD** (Kevin 2026-06-04, also in coherence-pillars P5): kids → young adults → adults, "blur
-  the lines". Marcus (8) is A user, **not a depth-lowering floor** — intensity, real stakes and hard modes are
+  the lines". An 8-year-old is A user, **not a depth-lowering floor** — intensity, real stakes and hard modes are
   allowed; age-8 legibility is a design virtue, never a ceiling.
 - **Chinese (zh-CN) is a locale TOGGLE with ENGLISH as default** — design copy in English, then routed through
   `t()` so the toggle stays complete. Full content translation is owed (#73) but the game is EN-first.

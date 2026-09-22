@@ -122,7 +122,7 @@ button), it FIRES in real sieges (the wall is reachable), and it NEVER re-meshes
   capture-suppressed unless a dedicated capture seed places a phantom (§9).
 - **Zero new menu** → the 2 existing attack intents (`attack`, `cast`) re-skin while VOIDHAND is
   active, exactly as WILDHEART re-skins melee (§4).
-- **Kid-safe (Marcus, 8)** → no friendly-fire on the player in v1; SURF (the strong escape) is CUT
+- **Kid-safe (8-year-olds)** → no friendly-fire on the player in v1; SURF (the strong escape) is CUT
   from v1; the orbit is auto-positioned (no aim-fiddle to grab).
 - **God-file discipline** → the SM extracts to a pure `src/game/voidhand.js` (like beastTransform.js)
   + `src/game/voidhandData.js` (like beasts.js); Components.jsx wires it (§7).
@@ -278,7 +278,7 @@ a combat re-mesh.
 ## 10. What to CUT for a shippable v1
 
 - **SURF** (the 3rd verb, JUGGERNAUT charge-dash wrecking-ball) → v2. Most complex (movement-velocity
-  override + invulnerability + held-block dash physics) and the kid-safety risk (Marcus spamming a
+  override + invulnerability + held-block dash physics) and the kid-safety risk (a kid spamming a
   damage-immune escape). v1 = HURL + SLAM only.
 - **Element-charge VISUAL** on the held phantom → v2; v1 applies element only at IMPACT (spark + damage
   type), no held tint.

@@ -89,14 +89,14 @@ describe('B2a save-slot ownership — an autosave may not overwrite a world it n
   it("an autosave does not clobber the player's chosen world NAME with Save_<timestamp>", () => {
     // Kevin's son names his world. One autosave later it is called "Save_7/13/2026, 10:25:06 AM".
     const data = buildSaveData(useGameStore.getState(), { position: { x: 0, y: 18, z: 0 } });
-    writeWorld('w1', { name: "Marcus's Castle", created_at: 'x', is_owner: true }, data);
+    writeWorld('w1', { name: "Skyhold Keep", created_at: 'x', is_owner: true }, data);
     setActiveWorldId('w1');
     useGameStore.setState({ _sessionWorldId: 'w1', level: 4 });
 
     useGameStore.getState().saveActiveWorld({ x: 0, y: 18, z: 0 });
 
-    expect(listWorlds()[0].name).toBe("Marcus's Castle");
-    expect(readWorld('w1').name).toBe("Marcus's Castle");
+    expect(listWorlds()[0].name).toBe("Skyhold Keep");
+    expect(readWorld('w1').name).toBe("Skyhold Keep");
   });
 
   it('B2b: "Create New World" creates a NEW world — it does not clone the one you are playing', () => {

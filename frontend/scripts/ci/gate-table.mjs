@@ -33,6 +33,12 @@ const ROOT = resolve(HERE, '../../..');
 // gate the hook knew and broke an E2E spec only the workflow ran. Both now call ci/pipeline.sh, so the
 // table must be generated from the pipeline or it documents a caller rather than the build.
 const HOOK = join(ROOT, 'ci/pipeline.sh');
+// The two trailer gates run in the PUSH HOOK, not the pipeline — deliberately, because they read the
+// refspecs git puts on the hook's stdin and nothing else has them. A table generated only from the
+// pipeline therefore cannot see them, and printed "15 gates authorize a push" when 17 do: an undercount
+// in the exact file that exists to stop undercounting (it read "three", "Six" and "NINE" in turn when it
+// was hand-kept). Parsing both surfaces is the fix; asserting the count here would just be a fourth guess.
+const PUSH_HOOK = join(ROOT, '.githooks/pre-push');
 const CI = join(ROOT, '.github/workflows/ci.yml');
 const AGENTS = join(ROOT, '.agent/AGENTS.md');
 
@@ -44,6 +50,10 @@ export const END = '<!-- END GATES -->';
  * Keyed by the gate name as it appears in the hook.
  */
 export const DESCRIPTIONS = {
+  'e2e freshness': 'a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The 21 Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk',
+  'knip': 'an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure',
+  'npm audit': 'a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify',
+  'prod-smoke': 'the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser',
   'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none',
   'killability-ledger': 'a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can',
   'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
@@ -63,6 +73,7 @@ export const DESCRIPTIONS = {
 export function parseHook(src) {
   const gates = [];
   const lines = src.split('\n');
+  let tier = 'core';
   lines.forEach((line, i) => {
     // PRE-BANNER INVOCATIONS. A couple of gates take a commit RANGE and run before the printf-banner
     // block, so they never match the pattern below. This used to hardcode `mutation-proof-trailer` by
@@ -73,54 +84,77 @@ export function parseHook(src) {
     if (preBanner && !/^\s*#/.test(line)) {
       const name = preBanner[1];
       if (!gates.some((g) => g.name === name)) {
-        gates.push({ name, cmd: `node scripts/ci/${name}.mjs <range>`, line: i + 1 });
+        gates.push({ name, cmd: `node scripts/ci/${name}.mjs <range>`, tier: 'range', line: i + 1 });
       }
       return;
     }
     // LEADING WHITESPACE MATTERS: the push-tier steps sit inside an `if` block and are indented, so an
     // anchor at column 0 silently dropped three gates and the table reported 9 of 12. A generator that
     // produces a COUNT must not have a denominator bug.
+    // TIER TRACKING. Until 2026-09-22 every parsed step was rendered with `pre-push: ✅`, and the CI
+    // column was inferred by grepping ci.yml for the script name — which stopped working the moment CI
+    // began calling `pipeline.sh --tier=fast` instead of naming steps. So BOTH columns were fiction:
+    // `npm audit` and `prod-smoke` were printed as pre-push gates when they are deliberately CI-only,
+    // which is a scope defect in the exact form R9 names (a gate's LABEL is a claim with a scope).
+    // Derive the tier from the structure the script already provides, never from prose.
+    const guard = line.match(/^if \[ "\$TIER" (=|!=) "(\w+)" \]; then$/);
+    if (guard) { tier = guard[1] === '=' ? guard[2] : 'core'; return; }
+    if (/^fi$/.test(line)) { tier = 'core'; return; }
+
     const m = line.match(/^\s*step "([^"]+)"\s+(.+)$/);
     if (!m) return;
     const name = m[1].replace(/\s*\([^)]*\)\s*$/, '').trim();
     const cmd = m[2].trim().replace(/^npm run --silent /, 'npm run ').replace(/\s*\|\|.*$/, '');
-    gates.push({ name, cmd, line: i + 1 });
+    gates.push({ name, cmd, tier, line: i + 1 });
   });
   return gates;
 }
 
-/** PURE: which gate names appear as CI steps. */
-export function parseCi(src) {
-  const names = new Set();
-  for (const m of src.matchAll(/^\s*-?\s*name:\s*(.+)$/gm)) names.add(m[1].trim().toLowerCase());
-  for (const m of src.matchAll(/run:\s*(.+)$/gm)) names.add(m[1].trim().toLowerCase());
-  return names;
-}
+/**
+ * PURE: which of the three callers run a gate, derived from its tier. The mapping IS the pipeline's
+ * contract, stated once:
+ *   core  — no tier guard      -> every caller
+ *   push  — reads a commit RANGE -> pre-push only (a CI runner on a squashed ref cannot rebuild it)
+ *   fast  — needs network/browser -> CI only (never on an edit path, R5)
+ * A range-reading pre-banner gate (the trailers) is `range`: the hook owns it, and this file says so
+ * rather than claiming the pipeline runs it.
+ */
+export const CALLERS = {
+  core:  { commit: true,  push: true,  ci: true  },
+  push:  { commit: false, push: true,  ci: false },
+  fast:  { commit: false, push: false, ci: true  },
+  range: { commit: false, push: true,  ci: false },
+};
+export const callersFor = (gate) => CALLERS[gate.tier] || CALLERS.core;
 
-/** PURE: does CI run this gate? Matched on the gate's command, not its prose name. */
-export function inCi(gate, ciText) {
-  const script = (gate.cmd.match(/scripts\/ci\/([\w-]+)\.mjs/) || [])[1];
-  if (script) return new RegExp(script).test(ciText);
-  if (/npm run lint/.test(gate.cmd)) return /run: .*npm run lint|npm run lint/.test(ciText);
-  if (/test:unit/.test(gate.cmd)) return /test:unit/.test(ciText);
-  if (/npm run build/.test(gate.cmd)) return /npm run build/.test(ciText);
-  return false;
-}
+/*
+ * REMOVED 2026-09-22: `parseCi` / `inCi`. They answered "does ci.yml mention this script's name", which
+ * was true until CI started calling `pipeline.sh --tier=fast` — after that they returned false for nearly
+ * every gate and the CI column was fiction. The tier guard in the script is the real answer, so the
+ * column is derived from `CALLERS` above instead. Deleted rather than left exported: a dead function that
+ * once decided a column is a trap for the next reader.
+ */
 
-export function renderBlock(gates, ciText) {
+export function renderBlock(gates, _ciText) {
+  const tick = (b) => (b ? '✅' : '—');
   const rows = gates.map((g) => {
     const desc = DESCRIPTIONS[g.name] || '**TODO — describe what this stops** (a new gate landed with no description)';
-    return `| ${g.name} | \`${g.cmd}\` | ✅ | ${inCi(g, ciText) ? '✅' : '—'} | ${desc} |`;
+    const c = callersFor(g);
+    return `| ${g.name} | \`${g.cmd}\` | ${tick(c.commit)} | ${tick(c.push)} | ${tick(c.ci)} | ${desc} |`;
   });
+  const n = (t) => gates.filter((g) => (callersFor(g))[t]).length;
   return [
     BEGIN,
-    `**${gates.length} gates authorize a push.** Generated from \`ci/pipeline.sh\` -- the ONE definition both the hook and CI call — this`,
-    'paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),',
-    'the last time one commit after the gate landed. Do not edit the table by hand; add the description to',
-    '`DESCRIPTIONS` in `gate-table.mjs` and regenerate.',
+    `**${gates.length} gates, across three callers.** Generated from \`ci/pipeline.sh\` — the ONE definition`,
+    'pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;',
+    'add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.',
     '',
-    '| Gate | Command | pre-push | CI | What it actually stops |',
-    '|---|---|:--:|:--:|---|',
+    `**${n('commit')} run on every commit** (offline core, 69s) · **${n('push')} on every push** · **${n('ci')} in CI**.`,
+    'The columns are DERIVED from each step\'s tier guard in the script, not asserted here — they used to be,',
+    'and all three network/browser gates were printed as pre-push gates they have never been.',
+    '',
+    '| Gate | Command | pre-commit | pre-push | CI | What it actually stops |',
+    '|---|---|:--:|:--:|:--:|---|',
     ...rows,
     END,
   ].join('\n');
@@ -128,6 +162,9 @@ export function renderBlock(gates, ciText) {
 
 export function derive() {
   const gates = parseHook(readFileSync(HOOK, 'utf8'));
+  // Range gates first: they run before anything else in the hook, so the table should read in run order.
+  const rangeGates = existsSync(PUSH_HOOK) ? parseHook(readFileSync(PUSH_HOOK, 'utf8')) : [];
+  gates.unshift(...rangeGates.filter((r) => !gates.some((g) => g.name === r.name)));
   const ciText = existsSync(CI) ? readFileSync(CI, 'utf8') : '';
   return { gates, ciText };
 }

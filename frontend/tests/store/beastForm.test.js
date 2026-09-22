@@ -70,7 +70,7 @@ describe('enterBeastForm return contract (M4: spend Ferocity only on a real tran
 });
 
 describe('no-permanent-beast invariant', () => {
-  it('DEATH drops the form at the death edge (before respawn) — Marcus-floor + no-permanent-beast', () => {
+  it('DEATH drops the form at the death edge (before respawn) — kid-floor + no-permanent-beast', () => {
     useGameStore.getState().enterBeastForm('fire');
     expect(useGameStore.getState().isBeastFormActive()).toBe(true);
     useGameStore.getState().damagePlayer(9999, 'test');

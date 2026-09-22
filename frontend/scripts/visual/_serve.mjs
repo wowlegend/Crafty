@@ -27,15 +27,42 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  * @returns {{ server: import('node:child_process').ChildProcess, url: string,
  *            waitReady: (tries?: number) => Promise<void>, shutdown: (browser?: any) => Promise<void> }}
  */
+/**
+ * PURE. The argv for one managed vite process. Extracted from `serveVite` so it can be DRIVEN by a test
+ * rather than grepped — a text assertion on the ternary that used to live here would have matched the
+ * line while the defect sat in which branch carried a flag.
+ *
+ * ── `--no-open` ON BOTH BRANCHES, and why it was missing from one ───────────────────────────────────
+ * The preview branch omitted it until 2026-09-22, and that single missing flag is the whole mechanism
+ * behind a bug this repo had recorded as unexplainable ("a listening localhost port CAN mint a browser
+ * tab ... but you cannot tell", .claude/rules/gates-and-probes.md).
+ *
+ * The chain, each link verified rather than inferred:
+ *   1. `vite.config.js` declares `server: { open: true }` (for the human dev server on :3000).
+ *   2. vite resolves preview options as `open: preview?.open ?? server.open` — read from the INSTALLED
+ *      source, `resolvePreviewOptions` in dist/node/chunks. There is no `preview` block in our config.
+ *   3. So `vite preview` inherited `open: true` and launched the SYSTEM DEFAULT BROWSER — the operator's
+ *      own Chrome, not a harness browser — on a tab pointed at the port.
+ *   4. `shutdown()` SIGKILLs vite's process GROUP. A browser the OS launched is not in that group, so the
+ *      tab survives, and a loaded Crafty tab keeps running the R3F render loop and the Rapier physics
+ *      step at ~100% of a core indefinitely. Measured today: 1.9 GB RSS, 102.6% CPU, server long dead.
+ *
+ * That is also why only :4180 ever did it — it is the one preview port; every dev probe (4178, 4179, and
+ * the frozen table below) took the other branch and passed the flag. The asymmetry WAS the bug.
+ *
+ * Never let a managed server open a browser. The harness brings its own; anything else is the operator's.
+ */
+export function viteArgv(port, preview = false) {
+  const base = preview ? ['vite', 'preview'] : ['vite'];
+  return [...base, '--port', String(port), '--strictPort', '--no-open'];
+}
+
 export function serveVite(port, { cwd, preview = false } = {}) {
   const url = `http://localhost:${port}`;
   // `preview: true` serves the BUILT bundle from build/ instead of the dev server. Same lifecycle, same
   // process-group kill — the whole point of this helper is that there is one correct way to do that, and
   // a fourth hand-rolled spawn would be a fourth chance to orphan vite on the port.
-  const argv = preview
-    ? ['vite', 'preview', '--port', String(port), '--strictPort']
-    : ['vite', '--port', String(port), '--strictPort', '--no-open'];
-  const server = spawn('npx', argv, { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
+  const server = spawn('npx', viteArgv(port, preview), { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
 
   const waitReady = async (tries = 60) => {
     for (let i = 0; i < tries; i++) {

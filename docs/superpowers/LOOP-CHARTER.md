@@ -93,7 +93,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   **Ember-Frontier / Blight-Heart** world direction · the **grade LOCK REVERSAL** (glowier/warmer authorized) ·
   **control scheme Option A, F=cast / T=melee** · **bloom 0.65 is INTENDED** (supersedes the ≥0.85 spec) ·
   **grantXP full-heal is INTENDED** · **E2E = `@playwright/test`, separate from the visual gate** · **audience
-  is BROAD** (Marcus is a user, not a ceiling) · **zh-CN is a toggle, EN default** · **controller-SEQUENTIAL
+  is BROAD** (the youngest players are users, not a ceiling) · **zh-CN is a toggle, EN default** · **controller-SEQUENTIAL
   for code** · **de-monolith is full loop authority**. Reversing one is genuinely-Kevin; affirming a
   sub-direction inside one is loop authority.
   *(Migrated 2026-08-07. They had been embedded in ~5.5 KB of mandate narrative — 06-17 rebuild, 06-20 "fix

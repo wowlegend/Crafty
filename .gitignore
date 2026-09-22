@@ -32,3 +32,8 @@ yarn-error.log*
 
 # Serena LSP index cache + project config (local tooling)
 .serena/
+graphify-out/
+.graphify_*
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

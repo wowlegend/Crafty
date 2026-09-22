@@ -26,7 +26,7 @@ Make Crafty **fun + cohesive + SOTA *as a game*** (S1 made it look SOTA). The ho
 So Crafty today is a **feature-rich sampler**, not a game someone chooses to keep playing. S2 fixes that in two layers: **S2-A** turns the sampler into a genuinely fun, cohesive, persistent action-RPG loop; **S2-B** layers a distinctive, beyond-SOTA **ability identity** (the four Aspects) on top.
 
 ### Success metric (how we judge "fun + cohesive", not a proxy)
-A playtest passes when, *without instruction*, a new player (and the 8-yo floor, Marcus) will: (a) re-enter for "one more night" because the **next 10 minutes contain a visible improvement** (Diablo-style 3-horizon cascade), (b) make a **build choice that changes how they fight** (Aspect / attribute / gear), and (c) produce a **clip-worthy moment** in a normal session. Machine-checkable proxies are layered under each milestone (the deterministic visual gate + static gates + a real-device FPS number), because the only trustworthy verification surface is a harness that can go red — every doc "SOTA/COMPLETED" label is inadmissible.
+A playtest passes when, *without instruction*, a new player (and the 8-yo floor) will: (a) re-enter for "one more night" because the **next 10 minutes contain a visible improvement** (Diablo-style 3-horizon cascade), (b) make a **build choice that changes how they fight** (Aspect / attribute / gear), and (c) produce a **clip-worthy moment** in a normal session. Machine-checkable proxies are layered under each milestone (the deterministic visual gate + static gates + a real-device FPS number), because the only trustworthy verification surface is a harness that can go red — every doc "SOTA/COMPLETED" label is inadmissible.
 
 ---
 
@@ -37,7 +37,7 @@ A playtest passes when, *without instruction*, a new player (and the 8-yo floor,
 3. **Touch is 100% unbuilt** and every verb is Pointer-Lock-gated (dead on iOS). **Every new verb gates on an abstract input intent**, never `pointerLockElement` — so it maps to KB+mouse *and* a future tap/drag/swipe layer. (The touch *UI* is S3; the *abstraction discipline* is day-1 in S2.)
 4. **Game-loop isolation (CRITICAL).** Never bind declarative React to high-freq imperative systems (R3F `useFrame`, Rapier) via `useState`/store subscriptions. High-freq state → refs / `getState()` / miniplex queries; Zustand only on transitions (level-up/death/equip).
 5. **Platform envelope.** Web + iPad + mobile, no-GPU-to-modest hardware. Loop scope (mob counts, particle/loot budgets, render distance) is device-tier-gated (`quality.js`) and validated against a real number.
-6. **Audience + legal.** Floor = Marcus (8, Chinese-speaking): <60 s legible, near-text-free, zh-CN-ready, joyful, kid-safe (soft stakes, no permadeath, no self-frustration trap). Monetization = direct cosmetics + a transparent pass; **NO gacha/lootboxes/pay-to-win** (PEGI-16/COPPA/FTC). Cosmetics are an S4 concern; S2 only ensures the design *opens* a clean cosmetic-VFX surface and never sells power.
+6. **Audience + legal.** Floor = an 8-year-old Chinese-speaking player: <60 s legible, near-text-free, zh-CN-ready, joyful, kid-safe (soft stakes, no permadeath, no self-frustration trap). Monetization = direct cosmetics + a transparent pass; **NO gacha/lootboxes/pay-to-win** (PEGI-16/COPPA/FTC). Cosmetics are an S4 concern; S2 only ensures the design *opens* a clean cosmetic-VFX surface and never sells power.
 
 ---
 
@@ -76,7 +76,7 @@ One unifying frame: the player specializes into **Aspects**, each a distinct fan
 
 ### S2-B1 · WILDHEART — beast-transform (LEAD)
 Hold a roar → **become an element-beast** (the loaded element picks the form: fire→comet, ice→boulder-bull, lightning→hawk, arcane→golem). Your two attack intents *re-skin* per beast, so skill transfers with zero new menu. A timed Ferocity meter banks in the day, unleashes in the siege.
-- **Why lead:** lowest build-risk (**zero voxel edits → never re-meshes**; MED), highest immediate WOW + Marcus-joy, clip-gold → validates "an Aspect on S2-A = fun" cheaply + impressively, and builds the Aspect-meta scaffold the others reuse.
+- **Why lead:** lowest build-risk (**zero voxel edits → never re-meshes**; MED), highest immediate WOW + a young player-joy, clip-gold → validates "an Aspect on S2-A = fun" cheaply + impressively, and builds the Aspect-meta scaffold the others reuse.
 - **Grounds on:** Rapier collider hot-swap, dodge i-frames, the 4 elements, GPU sparks.
 - **Hardest part / de-risk:** the collider hot-swap must be **transactional** (a hard restore-invariant on form-exit/death/save — no "permanent-beast" bug) + a real-device FPS check on the high-restitution bull *before* the other three beasts. Prototype the swap behind the visual gate first.
 
@@ -97,7 +97,7 @@ Cast at the **blocks**: each voxel carries an element-state; fire burns wood (sp
 - **Why last:** the **boldest fantasy but the one true re-mesh kill-risk.** Gated behind the **S2-A perf number** + an **overlay-first build** (render BURNING as a non-re-meshing decal + damage-flag first; use readable elemental OBJECTS like oil-wood/ice-crystal, not hidden per-voxel bytes; profile on a real iPad *before* adding propagation/re-mesh). **Self-hazard OFF on the youngest tier** so a kid's own fire never punishes them.
 - **Grounds on:** `terrain.worker` chunk arrays, element-typed sparks, magic secondaries, A* on the live grid — but re-mesh perf is the gate.
 
-**Folded / parked (considered, not lost):** JUGGERNAUT (charge-dash wrecking-ball) → folds into VOIDHAND's kit as the SURF/dash verb. Glyph-carving (hanzi-glyph casting — a lovely Marcus hook) + sculpt-spells (a built companion) → the two weakest originals; their best ideas can fold into an Aspect as sub-features.
+**Folded / parked (considered, not lost):** JUGGERNAUT (charge-dash wrecking-ball) → folds into VOIDHAND's kit as the SURF/dash verb. Glyph-carving (hanzi-glyph casting — a lovely a young player hook) + sculpt-spells (a built companion) → the two weakest originals; their best ideas can fold into an Aspect as sub-features.
 
 ---
 
