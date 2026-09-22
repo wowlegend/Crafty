@@ -1,8 +1,8 @@
 {
   "_README": "Un-receipted check files. MAY FALL, NEVER RISE. A receipt is the token \"Mutation-Proof:\" inside the file, naming the mutation applied and the RED observed. Regenerate: node scripts/ci/killability-ledger.mjs --write",
-  "_count": 445,
+  "_count": 443,
   "_total": 488,
-  "_receipted": 43,
+  "_receipted": 45,
   "_frozenAt": "2026-09-22",
   "files": [
     "scripts/ci/_density-ratchet.mjs",
@@ -298,7 +298,6 @@
     "tests/gates/music-gates.test.js",
     "tests/gates/new-world-reset-gates.test.js",
     "tests/gates/night-ratchet-gates.test.jsx",
-    "tests/gates/npc-spawn-gates.test.js",
     "tests/gates/objective-tracker-gates.test.js",
     "tests/gates/ocean-coastline-gates.test.js",
     "tests/gates/ocean-depth-tint-gates.test.js",
@@ -314,7 +313,6 @@
     "tests/gates/quest-rewards-gates.test.jsx",
     "tests/gates/quest-stats-guard-gates.test.js",
     "tests/gates/quest-tracker-touch.test.jsx",
-    "tests/gates/radial-minimap-gates.test.js",
     "tests/gates/recipe-output-gates.test.js",
     "tests/gates/recipe-output-usable.test.js",
     "tests/gates/recipes-gates.test.js",
