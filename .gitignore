@@ -37,3 +37,11 @@ graphify-out/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# AB-ATTRIBUTION-GUARD BEGIN — machine-local hook plumbing installed by
+# Agentic-Brain/hooks/install-attribution-guard.sh; symlinks carry absolute paths.
+/.githooks/pre-commit.local
+/.githooks/post-commit.local
+/.githooks/commit-msg
+/.githooks/post-commit
+# AB-ATTRIBUTION-GUARD END

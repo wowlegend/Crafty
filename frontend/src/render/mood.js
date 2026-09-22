@@ -93,8 +93,74 @@ export function moodTarget({ isDay = true, dangerLevel = 0, weatherBoost = 0 } =
   return THREE.MathUtils.clamp(Math.max(night, Number(dangerLevel) || 0, Number(weatherBoost) || 0), 0, 2);
 }
 
+/**
+ * PURE. Rotate a mood's NOON sun direction onto the day/night arc.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * WHY THIS EXISTS (QUEUE.md B1 — "the biggest one and it is mostly already written")
+ *
+ * `game/dayPhase.js` has exported `cycleFraction(gameTime)` all along — 0 = dawn, 0.25 = noon, 0.5 = dusk,
+ * 0.75 = midnight — and its own comment says it "drives the day-phase dial's sun/moon orbit angle". But
+ * `grep -rn cycleFraction src` found references ONLY inside dayPhase.js itself. Meanwhile `MOOD_SCALARS`
+ * held `sunPos` as three fixed constants. So the HUD dial showed a sun travelling dawn -> noon -> dusk
+ * while the sun in the sky did not move: the game contradicted its own instrument.
+ *
+ * The arc belongs HERE, in the one place `_out.sunPos` is written, because all three consumers read that
+ * single value and therefore follow for free:
+ *   render/Sun.jsx:18       the sun billboard — and therefore the GodRays shaft angle, since the billboard
+ *                           IS the effect's light source
+ *   render/Atmosphere.jsx   the skydome's `sunDir` uniform — the glow lobe moves with the disc
+ *   render/Atmosphere.jsx   the directional light, via sunWorldPosition — shadows sweep for free
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * THE MAPPING, and why not a great-circle rotation
+ *
+ * The obvious construction — Rodrigues-rotate the noon vector about a horizontal axis — is wrong for this
+ * game. The moods sit at ~33 degrees of elevation, so a 90-degree rotation overshoots well past the
+ * horizon and the sun would set less than a quarter of the way through the day half. `isDayAtUnit` makes
+ * fraction 0..0.5 the DAY, so the sun has to be above the horizon across exactly that span.
+ *
+ * So elevation and azimuth are driven separately, which also keeps the mood's own look exact at noon:
+ *   elevation:  e = sin(elev_noon) * sin(2*pi*f)     f=0 -> 0 (dawn, horizon) · f=0.25 -> the mood's own
+ *                                                    noon elevation · f=0.5 -> 0 (dusk) · then below
+ *   azimuth:    a = a_noon + SWING * cos(2*pi*f)     f=0 -> one side, f=0.5 -> the other: it rises and
+ *                                                    sets on opposite horizons
+ *
+ * At f = 0.25 this returns the mood vector's own direction unchanged, so every existing look is preserved
+ * at noon and the arc is a strict addition rather than a re-tune.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * @param {number[]} noon   the mood's sunPos, treated as the NOON direction (magnitude ignored)
+ * @param {number} fraction cycleFraction(gameTime) in [0,1)
+ * @param {number[]} [out]  optional 3-array to write into (avoids an allocation in the frame loop)
+ * @returns {number[]} a unit-length direction
+ */
+export const SUN_ARC_SWING = Math.PI / 2; // 90 degrees each side of the noon azimuth
+
+export function sunArcDirection(noon, fraction, out = [0, 0, 0]) {
+  const v = Array.isArray(noon) && noon.length === 3 && noon.every(Number.isFinite) ? noon : [0, 1, 0];
+  const len = Math.hypot(v[0], v[1], v[2]) || 1;
+  const nx = v[0] / len, ny = v[1] / len, nz = v[2] / len;
+
+  const f = Number.isFinite(fraction) ? ((fraction % 1) + 1) % 1 : 0.25; // NaN -> noon, never a dead sun
+  const theta = 2 * Math.PI * f;
+
+  // The mood's noon elevation (as a sine) and noon azimuth, recovered from the vector itself.
+  const sinNoonElev = Math.min(1, Math.max(-1, ny));
+  const aNoon = Math.atan2(nx, nz);
+
+  const e = sinNoonElev * Math.sin(theta);
+  const a = aNoon + SUN_ARC_SWING * Math.cos(theta);
+  const horiz = Math.sqrt(Math.max(0, 1 - e * e));
+
+  out[0] = horiz * Math.sin(a);
+  out[1] = e;
+  out[2] = horiz * Math.cos(a);
+  return out;
+}
+
 /** Resolve the blended atmosphere for a continuous mood. Returns shared scratch. */
-export function sampleMood(mood) {
+export function sampleMood(mood, cycle) {
   const m = THREE.MathUtils.clamp(Number(mood) || 0, 0, 2);
   const i = Math.min(Math.floor(m), 1);        // bracket lower index: 0 or 1
   const t = m - i;                              // fraction into [i, i+1]
@@ -117,6 +183,11 @@ export function sampleMood(mood) {
   _out.sunPos[0] = lerp(sa.sunPos[0], sb.sunPos[0], t);
   _out.sunPos[1] = lerp(sa.sunPos[1], sb.sunPos[1], t);
   _out.sunPos[2] = lerp(sa.sunPos[2], sb.sunPos[2], t);
+  // THE ARC. `cycle` is cycleFraction(gameTime); omitted (undefined) leaves the historical fixed bearing,
+  // so this is additive and every existing caller is unchanged. Applied AFTER the mood lerp so the mood
+  // still owns the noon direction and the arc only rotates it — at cycle 0.25 the result is the lerped
+  // vector's own direction, unchanged.
+  if (cycle !== undefined && cycle !== null) sunArcDirection(_out.sunPos, cycle, _out.sunPos);
   // Magic-hour colour script (per-mood grade) — lerped on the same fraction t.
   const ga = MOOD_GRADE[a], gb = MOOD_GRADE[b];
   _out.grade.saturation = lerp(ga.saturation, gb.saturation, t);

@@ -6,6 +6,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { cycleFraction } from '../game/dayPhase.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { isCaptureMode } from '../devtest/captureMode.js';
 import { moodRef, moodTarget, sampleMood } from './mood.js';
@@ -181,6 +182,16 @@ export const SUN_OFFSET = { x: 50, y: 100, z: 50 };
  *  the shadow camera's `near`; a directional light's position otherwise carries no distance meaning. */
 export const SUN_DISTANCE = 140;
 
+/** Capture pins the solar angle HERE — a declared constant, never "wherever the clock was". 0.25 = noon,
+ *  the one fraction at which sunArcDirection returns the mood's own bearing unchanged, so committed
+ *  baselines keep their exact sun direction. */
+export const CAPTURE_SOLAR_FRACTION = 0.25;
+
+/** Above this y-component the sun counts as above the horizon (god rays allowed). A small positive
+ *  epsilon rather than 0: exactly at the horizon the screen-space projection is at its least stable,
+ *  which is the three.js#18446 sign-flip region. */
+export const SUN_HORIZON_EPS = 0.02;
+
 /**
  * PURE. Where the sun light belongs: the MOOD owns the direction, the PLAYER owns the centre.
  *
@@ -222,6 +233,7 @@ export function Atmosphere({ shadowConfig }) {
   // matrixWorld if it is in the scene graph, so it is added here rather than just assigned.
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
   const shadowCentreRef = useRef({ x: 0, z: 0 });
+  const sunAboveHorizonRef = useRef(true);
   const fillRef = useRef();
   const hemiRef = useRef();
   const domeRef = useRef();
@@ -263,7 +275,31 @@ export function Atmosphere({ shadowConfig }) {
     } else {
       moodRef.current = THREE.MathUtils.lerp(moodRef.current, target, Math.min(1, delta * 2.0));
     }
-    const m = sampleMood(moodRef.current);
+    // THE SUN ARC (QUEUE.md B1). cycleFraction drives the sun's orbit angle; until today its only
+    // references were inside dayPhase.js itself, so the HUD dial showed a travelling sun while the sky's
+    // sun stood still.
+    //
+    // CAPTURE SAFETY, per AGENTS.md: "a capture guard must RESET to a declared value, never early-return."
+    // Freezing the arc wherever the clock happened to be would make every gated frame run-dependent, since
+    // boot length varies 1.68-10.43s between processes. So capture pins the solar angle to a DECLARED
+    // constant — noon, which is also the fraction at which the arc returns the mood's own historical
+    // bearing unchanged, so the existing baselines keep their exact sun direction.
+    const cycle = cap ? CAPTURE_SOLAR_FRACTION : cycleFraction(st.gameTime);
+    const m = sampleMood(moodRef.current, cycle);
+    // Above the horizon? The GodRays shaft is a screen-space effect whose light source is the sun
+    // BILLBOARD, and three.js#18446 records that the official godrays example flips the shaft downwards
+    // when "the signs of the sun's screen space position vector components change" — which an arcing sun
+    // crosses by construction. It is also simply wrong to cast sun shafts at night. Published for the
+    // effect's mount gate rather than solved inside the shader.
+    const above = m.sunPos[1] > SUN_HORIZON_EPS;
+    if (above !== sunAboveHorizonRef.current) {
+      sunAboveHorizonRef.current = above;
+      // EDGE-TRIGGERED, and that is what makes a store write legal here. Game-Loop-Isolation forbids
+      // binding a useFrame to reactive state — but this fires only when the sun CROSSES the horizon,
+      // twice per day/night cycle, not per frame. Mounting/unmounting an effect pass needs a real React
+      // render, so a transient ref could not do the job; a per-frame write would have been the violation.
+      useGameStore.setState({ sunAboveHorizon: above });
+    }
 
     // Distance fog (terrain only -- the dome has fog:false). Background = horizon as a
     // base colour in case the dome ever fails to cover a pixel.

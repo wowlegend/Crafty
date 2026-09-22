@@ -576,6 +576,10 @@ export const useGameStore = create((set, get) => ({
     setBuildSize: (size) => set({ buildSize: size }),
 
     // Look sensitivity (mouse pointerSpeed + touch drag-look); 1 = default, clamped 0.3..2.5.
+    // Is the sun above the horizon? Written EDGE-TRIGGERED by <Atmosphere> (twice per day/night cycle,
+    // never per frame) so <EffectComposer> can gate the GodRays pass. Default true = the historical
+    // always-on behaviour, so nothing changes until the arc actually moves the sun below the horizon.
+    sunAboveHorizon: true,
     lookSensitivity: 1,
     setLookSensitivity: (v) => set({ lookSensitivity: Math.max(0.3, Math.min(2.5, Number(v) || 1)) }),
     selectedBuildBlock: null,

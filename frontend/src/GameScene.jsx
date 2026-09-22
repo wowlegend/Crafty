@@ -88,6 +88,10 @@ export function GameScene({
   // (a mount toggle that flips only during capture setup, never in the hot loop).
   const captureStudio = useGameStore((s) => s.captureStudio);
   const qualityTier = useGameStore((s) => s.qualityTier);
+  // A real subscription, deliberately: this must trigger a React render to mount/unmount the GodRays
+  // pass. <Atmosphere> writes it edge-triggered (twice per day/night cycle), so this is not a per-frame
+  // binding and does not violate Game-Loop-Isolation.
+  const sunAboveHorizon = useGameStore((s) => s.sunAboveHorizon);
   const q = TIERS[qualityTier] || TIERS.low;
   const [sunMesh, setSunMesh] = useState(null);
 
@@ -332,7 +336,13 @@ export function GameScene({
                 color="black"
               />
             )}
-            {q.godRays && sunMesh && (
+            {/* HORIZON GATE (2026-09-22, with the sun arc). GodRays is a screen-space effect whose light
+                source is the sun BILLBOARD, and three.js#18446 records the official godrays example
+                flipping its shaft downwards when "the signs of the sun's screen space position vector
+                components change" — which an arcing sun crosses at every dawn and dusk by construction.
+                Casting sun shafts at night is also just wrong. Gated on the store flag rather than solved
+                in the shader: the pass simply is not mounted while the sun is down. */}
+            {q.godRays && sunMesh && sunAboveHorizon && (
               // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
               // high 100 / med 60) to stay in med's perf envelope.
               <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
