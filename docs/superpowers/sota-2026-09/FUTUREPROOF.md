@@ -384,3 +384,35 @@ separate investigations have.
 **Do not "fix" this by re-pointing an existing camera lower.** Those seven poses are the oracle for
 everything they currently cover, and moving one rewrites its baseline while losing the coverage it had.
 This is an ADDITION.
+
+### The eye-level state is BLOCKED, and the blocker is a sequencing fact worth knowing
+
+I went to add the ground-level capture state described above and stopped at a hard constraint.
+
+`capture.mjs --baseline` writes the WHOLE baseline directory (`OUT = tests/visual/<baseline|current>`).
+There is no per-state flag. **So a 32nd baseline cannot be added without regenerating all 31 existing
+ones in the same act.**
+
+And those 31 are due for regeneration anyway, for an unrelated reason:
+`tests/visual/baseline/.capture-meta.json` records
+`provenance.ua = HeadlessChrome/147.0.0.0`, while installed puppeteer now bundles Chromium **151** (the
+24.42.0 -> 25.6.0 bump taken to drop `extract-zip` / CVE-2026-56876). Every baseline in the repo was shot
+by a renderer that is no longer installed.
+
+**Therefore the correct order is:**
+
+1. The 147 -> 151 re-baseline happens FIRST, as ONE deliberate reviewed act, under its own
+   `Baseline-Review:` trailer, unbundled from `frontend/src/`.
+2. The eye-level state is added in the SAME act or immediately after, since it costs the same
+   regeneration.
+
+**Why I did not do step 1.** It is a 31-image ORACLE rewrite. This estate's own rule is that the
+operator is the tier-0 sensor for a look judgement and that an agent reviewing its own evidence is not
+independent — approval is not laundering. Re-freezing 31 oracles on my own say-so would replace the
+reference for every visual claim in the project with one nobody checked. That is the single highest-blast
+-radius thing available in this repo and it is not mine to do unreviewed.
+
+**What makes it cheap when it happens.** Two clean captures on Chromium 151 were already taken on
+2026-08-13 and put **17 of 31 frames byte-identical** against the 147 baselines with **zero** over the 6%
+gate. The renderer move is real and the oracle survived it, so the review is "confirm 14 frames changed
+in ways that are renderer noise, not regressions" rather than a full re-review of all 31.
