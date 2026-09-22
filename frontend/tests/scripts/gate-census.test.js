@@ -59,6 +59,14 @@ describe('gate-census dimensions', () => {
     expect(dimensions('// Mutation proof was considered').receipt).toBe(false);
   });
 
+  it('zeroGuard counts ANY numeric floor, not only the literal zero', () => {
+    // A gate asserting `toBeGreaterThan(400)` has a STRONGER guard than `> 0`. Scoring it as absent would
+    // push authors toward the weaker form — the census steering the corpus the wrong way.
+    expect(dimensions('expect(src.length).toBeGreaterThan(400);').zeroGuard).toBe(true);
+    expect(dimensions('expect(rows.length).toBeGreaterThan(0);').zeroGuard).toBe(true);
+    expect(dimensions('expect(x).toBe(1);').zeroGuard).toBe(false);
+  });
+
   it('denominator and zeroGuard are detected in code, not prose', () => {
     expect(dimensions('expect(files).toHaveLength(12);').denominator).toBe(true);
     expect(dimensions('expect(rows.length).toBeGreaterThan(0);').zeroGuard).toBe(true);

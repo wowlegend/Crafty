@@ -13,9 +13,22 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm,
 describe('Biome table gate (World-M3)', () => {
   const worker = strip(read('world/terrain.worker.js'));
 
-  it('the worker selects the biome via pickBiome (data-driven), with a let binding for the beach override', () => {
+  it('the worker selects the biome via pickBiome (data-driven), with a REASSIGNABLE surface binding', () => {
+    // LOOSENED 2026-09-22, deliberately and with the property kept. This pinned the exact literal
+    // `let { surfaceBlock, secondaryBlock } = pickBiome(temperature, moisture, continent)`. Q14 needed
+    // the biome's NAME as well as its blocks, so the call became `const picked = pickBiome(...)` followed
+    // by `let { surfaceBlock, secondaryBlock } = picked`. The gate fired — correctly, it was doing its
+    // job — but what it was defending is that the surface blocks stay REASSIGNABLE for the beach override
+    // below, not that the destructure sits on the same line as the call.
+    //
+    // So the assertion now names the property: pickBiome is called with the climate triple, and
+    // surfaceBlock/secondaryBlock arrive through a `let`. Re-pinning the new literal would just move the
+    // brittleness one edit into the future.
     expect(worker).toMatch(/from '\.\/biomeTable\.js'/);
-    expect(worker).toMatch(/let \{ surfaceBlock, secondaryBlock \} = pickBiome\(temperature, moisture, continent\)/);
+    expect(worker).toMatch(/pickBiome\(temperature, moisture, continent\)/);
+    expect(worker).toMatch(/let \{ surfaceBlock, secondaryBlock \}/);
+    // and the reassignment it exists to permit is still there
+    expect(worker).toMatch(/surfaceBlock = 4;/);
   });
   it('the inline temperature/moisture biome branch is GONE (moved into pickBiome)', () => {
     expect(worker).not.toMatch(/if \(temperature > 0\.7 && moisture < 0\.3\)/);

@@ -52,6 +52,64 @@ export const BIOMES = {
 // Multi-axis biome selection. Order matters: the two HARD CORNERS run FIRST (byte-identical to the
 // legacy branch) so the climate/visual pins hold; the temperate/hot variety fills the middle, using
 // `continent` (coastal continent < 0 vs inland >= 0) plus the temperature/moisture quadrants.
+/**
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * BIOME IDS AND TINTS — the consumer the `tint` field never had (QUEUE.md B2, Q14).
+ *
+ * All ten biomes above have declared a `tint` since they were written, and a repo-wide grep found NO
+ * consumer. Meanwhile SIX of the ten share `surfaceBlock: 1` — taiga, plains, forest, meadow, jungle,
+ * savanna — so six of ten biomes render pixel-identical at ground level. Kevin's own recorded question
+ * was "how do different biomes appear?", and today the honest answer is: four of them do.
+ *
+ * DERIVED FROM `BIOMES`, NEVER TYPED. Both tables below are computed from the object above, so a biome
+ * added or a tint edited cannot desynchronise them — the failure mode a hand-written parallel array has
+ * by construction, and the one a numeric shader index would make silent rather than loud.
+ *
+ * ID STABILITY IS THE CONTRACT. The id is the index into `BIOME_NAMES`, i.e. `Object.keys(BIOMES)` order.
+ * That order is therefore load-bearing: it is baked into chunk geometry as a vertex attribute, so
+ * REORDERING the object retints every already-meshed chunk. Append new biomes at the END. A gate pins
+ * the current order so a reorder fails loudly instead of silently recolouring the world.
+ */
+// Each entry carries its own key as `name`, stamped once at module init. `pickBiome` returns
+// `{ ...BIOMES.x }`, so this makes the biome's identity travel with every pick WITHOUT touching any of
+// pickBiome's branches — the alternative was a parallel name-returning function that would have had to
+// mirror that branch ladder and could drift from it.
+for (const [k, v] of Object.entries(BIOMES)) v.name = k;
+
+export const BIOME_NAMES = Object.keys(BIOMES);
+export const BIOME_ID = Object.fromEntries(BIOME_NAMES.map((n, i) => [n, i]));
+
+/** PURE. '#rrggbb' -> [r,g,b] in 0..1, the form a shader uniform wants. */
+export function hexToRgb01(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return [1, 1, 1]; // unknown -> white, i.e. tint is a no-op rather than a black world
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/** Flat Float32Array of [r,g,b] per biome, indexed by BIOME_ID — ready for a `uniform vec3[]`. */
+export const BIOME_TINT_RGB = new Float32Array(
+  BIOME_NAMES.flatMap((n) => hexToRgb01(BIOMES[n].tint)),
+);
+
+/**
+ * PURE. A LUMINANCE-PRESERVING tint: scale the surface colour toward the biome hue without changing how
+ * bright it reads. A naive `mix(c, c * tint, s)` darkens every biome whose tint is not white, which on a
+ * bold-flat art direction reads as dirt rather than as a biome. Normalising the tint to unit luminance
+ * first means `strength` controls HUE SHIFT only, and the locked look survives.
+ *
+ * Computed on the CPU and uploaded as a `uniform vec3[]`, so the shader is a single multiply and there is
+ * NO GLSL twin of this arithmetic to drift from it. That is the point of doing it here: a shader is
+ * unreachable by every gate this repo has, so the only safe place for the maths is somewhere a node test
+ * can drive it.
+ */
+export function tintPreservingLuminance(rgb, strength) {
+  const L = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  if (!(L > 0)) return [1, 1, 1];
+  const s = Math.min(1, Math.max(0, Number(strength) || 0));
+  return rgb.map((c) => 1 + ((c / L) - 1) * s);
+}
+
 export function pickBiome(temperature, moisture, continent) {
   const coastal = continent < 0; // near a continental edge (low/zero continent noise)
 

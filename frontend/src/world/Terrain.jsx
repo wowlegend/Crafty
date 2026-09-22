@@ -3,6 +3,7 @@ import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
+import { BIOME_NAMES, BIOME_TINT_RGB, tintPreservingLuminance } from './biomeTable.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
@@ -53,6 +54,7 @@ const compileShader = (shader) => {
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
         flat varying float vBlockType;
+        flat varying float vBiome; // Q14 biome id (color.g) — flat: per-column, never interpolated
         varying float vWorldY;
         attribute float aAO; // S1 vertex AO factor 0..3 (mesher cornerAO), forwarded to vAO
         varying float vAO;
@@ -68,6 +70,7 @@ const compileShader = (shader) => {
         `
         void main() {
             vBlockType = color.r;
+            vBiome = color.g; // Q14: biome id, baked into the free channel by the mesher
             vAO = aAO; // S1 vertex AO 0..3 -> fragment diffuse multiplier
             vUv = uv;
 `
@@ -92,6 +95,8 @@ const compileShader = (shader) => {
         uniform float mood;
         uniform vec3 skyHorizon; // S2 aerial-perspective haze colour (= sky horizon, set per-frame from mood)
         flat varying float vBlockType;
+        flat varying float vBiome; // Q14 biome id from the vertex stage
+        uniform vec3 uBiomeTint[10];
         varying float vWorldY;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
@@ -144,6 +149,12 @@ const compileShader = (shader) => {
         // mesher emits no water faces; the short-circuit that produced that 3 is deleted.) Static
         // geometry attribute -> capture-deterministic.
         diffuseColor.rgb *= mix(0.55, 1.0, clamp(vAO / 3.0, 0.0, 1.0));
+
+        // Q14 BIOME TINT. Six of ten biomes share surfaceBlock 1 and rendered pixel-identical at ground
+        // level; this is the consumer the biomeTable tint field never had. The multiplier arrives
+        // luminance-normalised from the CPU, so this shifts HUE without darkening — one multiply, no
+        // branch, no texture fetch. Index clamped: a corrupt attribute must not read out of bounds.
+        diffuseColor.rgb *= uBiomeTint[int(clamp(vBiome, 0.0, 9.0))];
         `
     );
 
@@ -169,7 +180,35 @@ const compileShader = (shader) => {
     );
 };
 
+/**
+ * Q14 BIOME TINT — the uniform, precomputed on the CPU so the shader is one multiply.
+ *
+ * `tintPreservingLuminance` normalises each biome's tint to unit luminance, so BIOME_TINT_STRENGTH
+ * controls HUE SHIFT only and never brightness. That is what lets a tint land on a LOCKED bold-flat art
+ * direction without dimming it: a plain `c * tint` darkens every biome here, because all ten tints have
+ * luminance below white, and a darker world reads as dirt rather than as a biome.
+ *
+ * Computed here rather than in GLSL on purpose — there is then no shader-side copy of the arithmetic to
+ * drift from it, and the maths lives somewhere a node test can drive it. A shader is unreachable by every
+ * gate this repo has.
+ *
+ * STRENGTH IS KEVIN'S DIAL. 0.35 is the middle rung of TERRAIN-GRASS-SOTA-PLAN's 25/35/50 ladder, and 0
+ * is an exact no-op, so reverting is one number.
+ */
+export const BIOME_TINT_STRENGTH = 0.35;
+const biomeTintUniform = new Float32Array(BIOME_NAMES.length * 3);
+for (let i = 0; i < BIOME_NAMES.length; i++) {
+  const m = tintPreservingLuminance(
+    [BIOME_TINT_RGB[i * 3], BIOME_TINT_RGB[i * 3 + 1], BIOME_TINT_RGB[i * 3 + 2]],
+    BIOME_TINT_STRENGTH,
+  );
+  biomeTintUniform[i * 3] = m[0];
+  biomeTintUniform[i * 3 + 1] = m[1];
+  biomeTintUniform[i * 3 + 2] = m[2];
+}
+
 opaqueMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.uBiomeTint = { value: biomeTintUniform };
     compileShader(shader);
     opaqueMaterial.userData.shader = shader;
 };

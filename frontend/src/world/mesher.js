@@ -19,7 +19,7 @@ import { cornerAO } from './vertexAO.js';
 
 const mask = new Uint16Array(4096);
 
-export function generateMesh(cx, cz, blocks) {
+export function generateMesh(cx, cz, blocks, biomeIds) {
   const positions = [];
   const normals = [];
   const colors = [];
@@ -232,14 +232,25 @@ export function generateMesh(cx, cz, blocks) {
           positions.push(...c0, ...c1, ...c2, ...c3);
           normals.push(...normalVector, ...normalVector, ...normalVector, ...normalVector);
 
-          // color.r = blockType (vertexColor read by the terrain shader); color.g/color.b are now unused
-          // (the old shore-foam/seabed-depth bake moved to the Ocean.jsx plane) but the attribute stays
-          // 3-wide so the shader's `attribute vec3 color` read is unchanged.
+          // color.r = blockType (vertexColor read by the terrain shader).
+          // color.g = BIOME ID (Q14) — the channel this comment used to call "now unused". The attribute
+          //   was already 3-wide with two channels free, so per-vertex biome costs ZERO extra bytes and
+          //   no second attribute. `biomeIds` is per COLUMN, hence indexed by x/z only. Absent (an older
+          //   caller, or a chunk meshed before the ids existed) -> 0, which the tint table maps to a real
+          //   biome rather than to garbage.
+          // color.b = still unused, still 3-wide for the same reason as before.
+          // The column is read off c0, the quad's first corner, because the greedy loop works in a
+          // transformed (u,v,d) axis space and has no x/z scalars here — c0 is the one local-space triple
+          // in scope. CLAMPED rather than masked: a far-edge quad can have a corner at 16, and `& 15`
+          // would wrap that to column 0 and tint the chunk's edge with the opposite side's biome.
+          const bcx = c0[0] < 0 ? 0 : (c0[0] > 15 ? 15 : c0[0] | 0);
+          const bcz = c0[2] < 0 ? 0 : (c0[2] > 15 ? 15 : c0[2] | 0);
+          const biomeId = biomeIds ? biomeIds[bcz * 16 + bcx] : 0;
           colors.push(
-            blockType, 0, 0,
-            blockType, 0, 0,
-            blockType, 0, 0,
-            blockType, 0, 0
+            blockType, biomeId, 0,
+            blockType, biomeId, 0,
+            blockType, biomeId, 0,
+            blockType, biomeId, 0
           );
 
           // Tiled UVs. The rect must match the quad's WORLD edges in the SAME orientation or the texture

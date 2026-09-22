@@ -5,6 +5,76 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
+### ⚠️ RESUME HERE — 2026-09-22, 94% context, git DOWN
+
+**ONE COMMAND UNBLOCKS EVERYTHING: `sudo xcodebuild -license accept`** (Kevin's, needs sudo). Until then
+PATH `git` and `/usr/bin/python3` refuse. Working substitutes: `/opt/homebrew/bin/git` (2.55.0),
+`/opt/homebrew/bin/python3` (3.14.7 — use it for `append-episode`, which is shebang-pinned to the broken
+one; AB SOTA is shipping a polyglot fallback as Q27). Do NOT push around it: the pre-push hook calls PATH
+git and a silently-degraded hook is the bypass these gates exist to stop.
+
+**NEXT MOVES, in order:**
+1. `git add -A && git commit` the B2 + gate work (~21 files), push, watch CI.
+2. Wire the grass biome id: `OptimizedGrassSystem` must pass a biome multiplier to `bladeTint(x,z,mul)` —
+   the composition is DONE and tested, only the id plumbing through the worker's grass-top payload is
+   missing. Until then blades and ground disagree.
+3. Resume the census: `node frontend/scripts/ci/gate-census.mjs --top 40` — **32 files at 0/5**.
+4. QUEUE.md B3–B5 (boss emissive-through-armour, 10-biome read, AO-as-shadow) untouched.
+
+**GATE CONVERSIONS DONE (all 0/5 -> 5/5, all mutation-proven):** verb-router, hud-stat-wire (renders the
+real provider), daynight-clock (drives fake timers), nametags, ocean-mesher (meshes a one-third-water
+chunk and inspects the output).
+
+**CENSUS SHARPENED TWICE BY USING IT:** `executes` missed `await import(...)`; `zeroGuard` missed any
+numeric floor other than 0 (that one alone moved the corpus 106 -> 182 of 484, i.e. ~76 gates were already
+better than the census credited). A census that undercounts the better form steers authors to the weaker.
+
+**HARNESS FIX:** `scratchpad/mut.sh` now REFUSES to mutate without a restore artifact and verifies the
+restore byte-for-byte. It had silently left `mesher.js` mutated (water guard deleted) while printing a
+normal RED verdict, and the next mutation stacked on top. Episode written.
+
+### ⚠️ UNCOMMITTED AT FLUSH — git is DOWN, work is on disk only
+
+**BLOCKER: `sudo xcodebuild -license accept`.** Kevin's Xcode update repointed xcode-select, so
+`/usr/bin/git` and `/usr/bin/python3` refuse. PATH `git` is broken; `/opt/homebrew/bin/git` (2.55.0) and
+`/opt/homebrew/bin/python3` (3.14.7) still work. Do NOT push around it — the pre-push hook calls PATH git,
+and a silently-degraded hook is the bypass these gates exist to stop.
+
+**1 commit unpushed** (`9c52cd02`, fully gated — all 9 pipeline steps verified to have run).
+**Uncommitted: B2 BIOME TINTS, COMPLETE AND GREEN** (lint clean, build clean, 3319/3319 tests pass).
+
+B2 (QUEUE.md Q14) — six of ten biomes shared `surfaceBlock: 1` and rendered pixel-identical at ground
+level; all ten declared a `tint` with ZERO consumers. Wired end to end:
+- `world/biomeTable.js` — `BIOME_NAMES` / `BIOME_ID` / `BIOME_TINT_RGB` DERIVED from BIOMES (never typed,
+  so they cannot desync); `hexToRgb01`; `tintPreservingLuminance`. Each entry stamped with its own `name`
+  at module init so `pickBiome`'s `{...BIOMES.x}` carries identity without touching its branch ladder.
+- `world/terrain.worker.js` — per-COLUMN `biomeIds` Uint8Array(256) filled at the existing pickBiome call;
+  cached in a `biomeChunks` Map parallel to `chunks` (which stores a raw Uint8Array indexed directly
+  elsewhere, so changing its shape would have broken every consumer). Evicted in LOCKSTEP with
+  `chunks.delete`/`.clear` — an un-evicted parallel map would be a leak I introduced myself.
+  Recorded BEFORE the beach override: that swaps the surface BLOCK to sand, it does not change the biome.
+- `world/mesher.js` — biome id baked into `color.g`, the channel the file itself called "now unused".
+  Zero extra bytes, no new attribute. Column read off `c0` (the greedy loop has no x/z scalars) and
+  CLAMPED not masked: a far-edge corner at 16 would wrap to column 0 under `& 15`.
+- `world/Terrain.jsx` — `uniform vec3 uBiomeTint[10]`, precomputed CPU-side at
+  `BIOME_TINT_STRENGTH = 0.35`, applied as ONE multiply after the AO line. No GLSL twin of the maths.
+
+**WHY LUMINANCE-PRESERVING IS THE LOAD-BEARING CHOICE:** a plain `c * tint` darkens every biome (all ten
+tints have luminance < white), which on a LOCKED bold-flat direction reads as dirt. Normalising to unit
+luminance means strength shifts HUE only — verified, multiplier luminance = 1.0000 at every strength.
+
+**STILL OWED on B2:** `OptimizedGrassSystem.jsx` tints blades independently (`bladeTint(x,z)`), so the
+blades and the ground they grow from will DISAGREE until it reads the same table. QUEUE.md B2 says do them
+in the same commit — so do that before committing, or state the disagreement.
+Also: a gate for the wiring (worker→mesher→shader). `tests/scripts/biome-tint.test.js` covers the pure
+table only (7 cases, 4 mutations) and says so as its blind spot.
+
+**Gate loosened, deliberately:** `biome-table-gates` pinned the literal
+`let { surfaceBlock, secondaryBlock } = pickBiome(...)`. Q14 needed the biome NAME, so the call split in
+two and the gate fired — correctly. Rewritten to assert the PROPERTY (pickBiome called with the climate
+triple; surfaceBlock arrives via `let`; the beach reassignment still present) rather than re-pinning a new
+literal, which would just move the brittleness one edit into the future.
+
 ### SESSION LOG — 2026-09-22, perf + gates stretch (10 commits, UNPUSHED at time of writing)
 
 **Why unpushed:** `e2e-freshness` is STALE because `src/` changed. Running the suite clears it; that run

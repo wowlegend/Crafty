@@ -105,12 +105,22 @@ export function bladeTransform(x, y, z) {
  *
  * @returns {{r:number, g:number, b:number}}
  */
-export function bladeTint(x, z) {
+export function bladeTint(x, z, biomeMul) {
   const value = signed(x, z, 4) * TINT_VALUE;
   const hue = signed(x, z, 5) * TINT_HUE;
-  return {
-    r: BASE_TINT.r + value + hue,
-    g: BASE_TINT.g + value,
-    b: BASE_TINT.b + value - hue
-  };
+  const r = BASE_TINT.r + value + hue;
+  const g = BASE_TINT.g + value;
+  const b = BASE_TINT.b + value - hue;
+  // Q14: COMPOSE with the biome multiplier when one is supplied. Both are multipliers centred on 1 — the
+  // per-blade spread here, and the luminance-normalised biome hue shift from biomeTable — so composing is
+  // a plain product and preserves BOTH properties: the spread stays centred, and the biome shifts hue
+  // without darkening. Adding or lerping them would not.
+  //
+  // WHY AN ARGUMENT RATHER THAN A LOOKUP: this module is pure (no noise fields, no store), which is what
+  // lets a node test drive it. Resolving the biome here would mean sampling climate noise per blade on
+  // the main thread, every frame's worth of instances. The caller already knows the column.
+  //
+  // Omitted -> unchanged behaviour, so this is additive and every existing caller is unaffected.
+  if (!biomeMul) return { r, g, b };
+  return { r: r * biomeMul[0], g: g * biomeMul[1], b: b * biomeMul[2] };
 }

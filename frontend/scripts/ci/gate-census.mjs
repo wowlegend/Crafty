@@ -83,7 +83,11 @@ export function dimensions(src) {
       || /\bimport\(\s*'(?!vitest|node:|@testing-library|@playwright)[^']+'\s*\)/.test(code),
     receipt: src.includes('Mutation-Proof:'),
     denominator: /\b(toHaveLength|toBeGreaterThan|\.length\b[\s\S]{0,40}toBe|scanned|checked|count)\b/.test(code),
-    zeroGuard: /\b(length\)?\s*(===|>)\s*0|toBeGreaterThan\(0\)|COULD NOT CHECK|exit\(3\))/.test(code),
+    // toBeGreaterThan(N) for ANY N, not just 0. Found by scoring a gate that asserted a source file was
+    // longer than 400 chars — a STRONGER guard than `> 0`, scored as none because the detector only knew
+    // the literal zero. Same class as the dynamic-import miss: a census that undercounts the better form
+    // pushes authors toward the weaker one.
+    zeroGuard: /\b(length\)?\s*(===|>)\s*0|toBeGreaterThan\(\s*\d+\s*\)|toHaveLength\(\s*[1-9]|COULD NOT CHECK|exit\(3\))/.test(code),
     blindSpot: /(BLIND SPOT|blind spot|cannot see|does NOT prove|CANNOT answer|UNMEASURED)/.test(src),
   };
 }

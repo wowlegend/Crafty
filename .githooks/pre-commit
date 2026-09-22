@@ -1,0 +1,76 @@
+#!/bin/sh
+# Crafty pre-commit gate — the offline pipeline core, on the COMMIT.
+#
+# WHY THE COMMIT AND NOT ONLY THE PUSH. Until 2026-09-22 every gate in this repo ran at pre-push and none
+# at pre-commit, which is backwards: a break is cheapest to fix in the minute you wrote it, and by push
+# time it may be buried under three more commits. Agentic-Brain front-loads its suite onto the commit and
+# keeps the push to a differential plus a tree receipt; this adopts that shape.
+#
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# WHY THIS FILE EXISTS AT ALL, which is the part worth reading.
+#
+# This hook used to be an UNTRACKED SYMLINK into ~/Code/Agentic-Brain/hooks/git-attribution-guard.sh, and
+# the pipeline call was added by editing THAT file. Two defects in one move:
+#
+#   1. BLAST RADIUS. The guard is estate-wide — every repo Kevin owns symlinks it. Gating it on
+#      `[ -f "$ROOT/ci/pipeline.sh" ]` felt polymorphic, but Inkbloom ALSO has a `ci/pipeline.sh` and it
+#      does NOT accept `--tier=commit`; it would have ignored the unknown flag and run its whole pipeline
+#      on every Inkbloom commit. A repo-specific invocation does not belong in a shared file, however
+#      carefully it is guarded — gate-authoring class 10: the exception is where the next defect lives.
+#
+#   2. IT DID NOT SURVIVE A CLONE. An untracked symlink is operator machine wiring, not repo content
+#      (class 11). A fresh clone got NO pre-commit at all, silently — byte-identical to a pass. The
+#      commit-msg hook and pre-push are tracked files; this one now is too.
+#
+# The guard's own install notes prescribe exactly this: "If a repo already has a pre-commit, source this
+# from it instead of replacing." So Crafty owns its hook and CHAINS the guard, rather than the guard
+# growing a Crafty limb.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+#
+# WHAT RUNS: `ci/pipeline.sh --tier=commit` — the offline, deterministic core (opsec, doc-currency,
+# eslint, gate-shape, killability, cli-guard, the unit suite, build, bundle budget). 69s measured.
+# Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to
+# pass --no-verify, and a bypassed gate is worth less than no gate.
+#
+# WHAT IT BUYS AT PUSH TIME: a green run records the index tree hash, and pre-push skips re-deriving the
+# same answer in a fresh worktree when the tree matches. Commit-then-push is therefore near-instant.
+#
+# ESCAPE HATCH, and its cost: `git commit --no-verify` skips this AND writes no receipt, so the push pays
+# the full certification instead. Nothing is bypassed by skipping here — it is only deferred.
+
+set -u
+
+ROOT=$(git rev-parse --show-toplevel) || exit 1
+
+# ── 1. attribution / identity: the estate-wide guard, invoked as a dispatcher ──
+# GIT_HOOK_NAME is the guard's own sanctioned dispatcher channel; without it the guard derives its mode
+# from basename "$0", which is this file, and would fall through to its catch-all. Naming it is free and
+# exact. If the guard is absent (a clone on a machine with no Agentic-Brain), PRINT THE SKIP — a silent
+# skip is byte-identical to a pass, and this one would let a Claude-attributed commit through.
+GUARD="$HOME/Code/Agentic-Brain/hooks/git-attribution-guard.sh"
+if [ -x "$GUARD" ]; then
+  GIT_HOOK_NAME=pre-commit "$GUARD" || exit 1
+else
+  printf '\033[33m⚠ attribution guard NOT FOUND at %s — identity is UNCHECKED on this commit\033[0m\n' "$GUARD" >&2
+fi
+
+# ── 2. the offline pipeline core ──
+# Only when something is actually staged. An empty commit has nothing to certify, and a receipt written
+# for a tree nobody changed would be true and useless.
+if git diff --cached --quiet; then
+  exit 0
+fi
+
+if [ ! -f "$ROOT/ci/pipeline.sh" ]; then
+  printf '\033[33m⚠ ci/pipeline.sh NOT FOUND — the offline core is UNRUN on this commit\033[0m\n' >&2
+  exit 0
+fi
+
+if ! sh "$ROOT/ci/pipeline.sh" --tier=commit; then
+  printf '\n\033[31m✖ commit blocked — the offline pipeline core is RED on the staged tree\033[0m\n' >&2
+  printf '  Fix it now, while the change is one commit old. Deliberate override: git commit --no-verify\n' >&2
+  printf '  (overriding writes NO green receipt, so pre-push certifies the commit in full instead)\n\n' >&2
+  exit 1
+fi
+
+exit 0

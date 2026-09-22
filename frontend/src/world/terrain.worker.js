@@ -1,7 +1,7 @@
 import { createNoise3D, createNoise2D } from 'simplex-noise';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
-import { pickBiome } from './biomeTable.js';
+import { pickBiome, BIOME_ID } from './biomeTable.js';
 import { stampChunkRadius, blueprintHalfExtent } from './dungeonStamp.js';
 import { applyCaveCA } from './caveCA.js';
 // How many y layers the cave CA covers. Caves are a below-y20 feature; smoothing above that would chew
@@ -25,6 +25,10 @@ let noise3D;
 // In-memory chunk storage (so we can re-mesh on block updates)
 // Map of chunkKey ("cx_cz") to Uint8Array
 const chunks = new Map();
+// Q14: per-chunk biome ids, cached ALONGSIDE `chunks` rather than folded into it. `chunks` stores a raw
+// Uint8Array that several call sites index directly (`blocks[index]`), so changing its shape to carry a
+// second array would have broken every one of them — a parallel map is the smaller blast radius.
+const biomeChunks = new Map();
 const chunkModifications = new Map();
 
 // Deterministic per-coordinate PRNG for vegetation placement. Trees/cacti previously used
@@ -64,7 +68,7 @@ self.onmessage = function(e) {
     }
     
     // Generate mesh from blocks
-    const meshData = generateMesh(cx, cz, blocks);
+    const meshData = generateMesh(cx, cz, blocks, biomeChunks.get(key));
 
     // M4 #5: scan each column's TOP block (highest non-air) -> a sparse list of grass-top world
     // positions for the wind-grass overlay (OptimizedGrassSystem). Gen-time read of `blocks` only --
@@ -139,7 +143,7 @@ self.onmessage = function(e) {
       }
       
       // Re-mesh
-      const meshData = generateMesh(cx, cz, blocks);
+      const meshData = generateMesh(cx, cz, blocks, biomeChunks.get(key));
       // M4 #5 parity (review HIGH): refresh the wind-grass overlay on edit too — the generate path emits
       // grassTops but update_block dropped it, so editing ANY block killed the chunk's wind-grass until
       // reload. shortcut: inlined to mirror the generate-path scan (the grass-revival gate locks those
@@ -180,11 +184,13 @@ self.onmessage = function(e) {
   else if (type === 'unload') {
     const { cx, cz } = payload;
     chunks.delete(`${cx}_${cz}`);
+    biomeChunks.delete(`${cx}_${cz}`); // evict in LOCKSTEP with chunks, or the parallel map is a leak
   }
   else if (type === 'load_modifications') {
     const { modifications } = payload;
     chunkModifications.clear();
     chunks.clear();
+    biomeChunks.clear(); // same lockstep as the delete above
     
     if (Array.isArray(modifications)) {
       for (const [cx, cz, index, blockType] of modifications) {
@@ -379,6 +385,10 @@ function spawnSupportBeams(blocks, cx, cz) {
 
 function generateChunkData(cx, cz) {
   const blocks = new Uint8Array(VOLUME);
+  // Q14 BIOME TINT: one id per COLUMN (not per voxel — biome is a 2D climate property, so a 16x16 byte
+  // array is the whole of it). Filled in the pass that already calls pickBiome, so it costs one array
+  // write per column and no extra noise sampling. The mesher bakes it into a free vertex channel.
+  const biomeIds = new Uint8Array(CHUNK_SIZE * CHUNK_SIZE);
   const startX = cx * CHUNK_SIZE;
   const startZ = cz * CHUNK_SIZE;
 
@@ -401,7 +411,12 @@ function generateChunkData(cx, cz) {
 
       // M3: biome selection is data-driven (world/biomeTable.js) — byte-identical to the old
       // inline 3-branch. `let` so the beach override below can still reassign to sand.
-      let { surfaceBlock, secondaryBlock } = pickBiome(temperature, moisture, continent);
+      const picked = pickBiome(temperature, moisture, continent);
+      let { surfaceBlock, secondaryBlock } = picked;
+      // Recorded from the CLIMATE pick, deliberately BEFORE the beach override below: that override swaps
+      // the surface BLOCK to sand, it does not move the column into a different biome. Tinting a beach by
+      // its parent biome is correct — a jungle beach and a snow beach should not read the same.
+      biomeIds[z * CHUNK_SIZE + x] = BIOME_ID[picked.name] ?? 0;
 
       if (surfaceY < BEACH_BAND_TOP) {
           surfaceBlock = 4; // Sand beach
@@ -617,6 +632,7 @@ function generateChunkData(cx, cz) {
     }
   }
 
+  biomeChunks.set(`${cx}_${cz}`, biomeIds);
   return blocks;
 }
 
