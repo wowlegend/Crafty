@@ -15,10 +15,12 @@
  *
  * TWO deterministic checks. No model, no judgement:
  *
- *   A. COMMENT-SATISFIED ASSERTION (hard fail). For every gate that reads exactly ONE source file, each
- *      `toMatch(/re/)` pattern is run against that file twice — raw, and with every COMMENT range blanked
- *      (AST-derived, so string literals stay code). A pattern that matches raw but NOT blanked is satisfied
- *      only by a comment. It is not a gate.
+ *   A. COMMENT-SATISFIED ASSERTION (hard fail). For every gate that reads source files, each POSITIVE
+ *      presence assertion — `toMatch(/re/)`, `expect(/re/.test(src)).toBe(true)`, `toContain('s')`,
+ *      `expect(src.includes('s')).toBe(true)` (see collectAssertions) — is run against those files twice:
+ *      raw, and with every COMMENT range blanked (AST-derived, so string literals stay code). A pattern that
+ *      matches raw but NOT blanked is satisfied only by a comment. It is not a gate. Gates it could not
+ *      resolve a target for, and regexes held in variables, are COUNTED in the output, never skipped silently.
  *
  *   B. SOURCE-GREP RATCHET. The population of gates that call readFileSync is frozen in
  *      tests/gates/.source-grep-ledger.json. A NEW one fails the push; the count may fall freely. This bounds
@@ -132,8 +134,11 @@ function resolveTarget(value) {
   if (!/\.(js|jsx|mjs)$/.test(value)) return null;
   // Tried relative to src/ first (the overwhelmingly common case), then to the app root, which is how
   // gates reach scripts/ and tests/. Existence decides; nothing is inferred from shape.
-  for (const c of [join('src', value), value]) {
-    const abs = resolve(APP, c);
+  // THIRD candidate, relative to the GATE'S OWN DIRECTORY: `resolve(__dirname, '../../src/world/mesher.js')`
+  // is the most literal way to write it, and neither app-relative candidate resolves it (both walk out of
+  // the app). Found 2026-09-22 by planting a comment-only canary in exactly that shape: every form, the
+  // original toMatch included, reported zero findings — the gate had been skipped, not cleared.
+  for (const abs of [resolve(APP, join('src', value)), resolve(APP, value), resolve(GATES, value)]) {
     if (abs.startsWith(APP) && existsSync(abs) && !abs.endsWith('/')) return relative(APP, abs);
   }
   return null;
@@ -170,31 +175,106 @@ function composedPaths(ast) {
   return out;
 }
 
-/** Collect (a) the src files this gate reads, and (b) its POSITIVE toMatch regex literals. */
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The argument of the `expect(...)` call at the root of an assertion chain, or undefined. */
+function expectArg(callee) {
+  let node = callee?.object;
+  while (node?.type === 'MemberExpression') node = node.object;
+  if (node?.type === 'CallExpression' && node.callee?.type === 'Identifier' && node.callee.name === 'expect') {
+    return node.arguments?.[0];
+  }
+  return undefined;
+}
+
+/**
+ * Every POSITIVE source-presence assertion in a gate, whatever its FORM.
+ *
+ * THE FIRST VERSION SAW ONE FORM, `expect(x).toMatch(/re/)`, AND THE CORPUS USES FOUR (QUEUE G1). Measured
+ * 2026-09-22 across tests/gates: 522 toMatch, 69 `expect(/re/.test(src)).toBe(true)`, 41 `toContain('s')`,
+ * 41 `expect(src.includes('s')).toBe(true)`. The second form is how `siege-gates` asserted `incrementNight()`
+ * into a file where it appears zero times in code, green on the comment documenting its removal — while this
+ * script reported the corpus clean. A detector that recognises one assertion form is a sweep, not a guard.
+ *
+ * Polarity is honoured in every form: `.not.` anywhere in the chain, `toBe(false)` and `toBeFalsy()` are
+ * ABSENCE assertions, which comment-blanking cannot judge (see isNegated). A regex held in a VARIABLE
+ * (`expect(RE.test(src))`) cannot be reconstructed without data flow, so it is COUNTED as unchecked
+ * rather than silently skipped — the denominator line prints it.
+ *
+ * @returns {{ patterns: Array<{pattern:string, flags:string, line:number, form:string}>, unchecked: number }}
+ */
+export function collectAssertions(ast) {
+  const patterns = [];
+  let unchecked = 0;
+  walk(ast.program, (n) => {
+    if (n.type !== 'CallExpression' || n.callee?.type !== 'MemberExpression') return;
+    const matcher = n.callee.property?.name;
+    const arg0 = n.arguments?.[0];
+    const line = n.loc?.start.line;
+    if (isNegated(n.callee)) return;
+
+    if (matcher === 'toMatch' && arg0?.type === 'RegExpLiteral') {
+      patterns.push({ pattern: arg0.pattern, flags: arg0.flags, line, form: 'toMatch' });
+      return;
+    }
+    if (matcher === 'toContain' && arg0?.type === 'StringLiteral') {
+      patterns.push({ pattern: escapeRe(arg0.value), flags: '', line, form: 'toContain' });
+      return;
+    }
+    const truthy = (matcher === 'toBe' || matcher === 'toEqual') ? arg0?.type === 'BooleanLiteral' && arg0.value === true
+      : matcher === 'toBeTruthy';
+    if (!truthy) return;
+    const subject = expectArg(n.callee);
+    if (subject?.type !== 'CallExpression' || subject.callee?.type !== 'MemberExpression') return;
+    const method = subject.callee.property?.name;
+    const recv = subject.callee.object;
+    if (method === 'test' && recv?.type === 'RegExpLiteral') {
+      patterns.push({ pattern: recv.pattern, flags: recv.flags, line, form: 're.test' });
+    } else if (method === 'test' && recv?.type === 'Identifier') {
+      unchecked++;
+    } else if (method === 'includes' && subject.arguments?.[0]?.type === 'StringLiteral') {
+      patterns.push({ pattern: escapeRe(subject.arguments[0].value), flags: '', line, form: 'includes' });
+    }
+  });
+  return { patterns, unchecked };
+}
+
+/**
+ * The verdict for one pattern over the files a gate reads: comment-satisfied when it matches the raw text of
+ * at least one target and the comment-blanked text of none. `null` when the pattern cannot be rebuilt.
+ */
+export function commentOnlyHits(p, targets) {
+  const safeFlags = p.flags.replace(/[gy]/g, '');
+  try {
+    // Fresh RegExp per test: a /g/ pattern carries lastIndex between calls and would give a bogus result.
+    const re = () => new RegExp(p.pattern, safeFlags);
+    const rawHits = targets.filter((t) => re().test(t.raw));
+    const blankHits = targets.filter((t) => re().test(t.blanked));
+    return { rawHits, blankHits, commentOnly: rawHits.length > 0 && blankHits.length === 0 };
+  } catch {
+    return null; // a pattern we cannot reconstruct is not something to accuse anyone over
+  }
+}
+
+export { blankComments, parseJs, resolveTarget };
+
+/** Collect (a) the src files this gate reads, and (b) its POSITIVE source-presence assertions. */
 function inspectGate(gateSrc) {
   const ast = parseJs(gateSrc);
   if (!ast) return null;
   const srcPaths = new Set();
-  const patterns = [];
   walk(ast.program, (n) => {
     if (n.type === 'StringLiteral') {
       const p = resolveTarget(n.value);
       if (p) srcPaths.add(p);
     }
-    if (
-      n.type === 'CallExpression' &&
-      n.callee?.type === 'MemberExpression' &&
-      n.callee.property?.name === 'toMatch' &&
-      n.arguments?.[0]?.type === 'RegExpLiteral' &&
-      !isNegated(n.callee)
-    ) {
-      patterns.push({ pattern: n.arguments[0].pattern, flags: n.arguments[0].flags, line: n.loc?.start.line });
-    }
   });
   for (const p of composedPaths(ast)) srcPaths.add(p);
-  return { srcPaths: [...srcPaths], patterns };
+  const { patterns, unchecked } = collectAssertions(ast);
+  return { srcPaths: [...srcPaths], patterns, unchecked };
 }
 
+function main() {
 const gateFiles = readdirSync(GATES)
   .filter((f) => /\.test\.jsx?$/.test(f))
   .sort();
@@ -202,6 +282,9 @@ const gateFiles = readdirSync(GATES)
 const errors = [];
 const sourceGrepGates = [];
 let checked = 0;
+let unchecked = 0;
+const byForm = {};
+const untargeted = [];
 
 for (const f of gateFiles) {
   const abs = join(GATES, f);
@@ -209,7 +292,9 @@ for (const f of gateFiles) {
   if (/readFileSync/.test(gateSrc)) sourceGrepGates.push(`tests/gates/${f}`);
 
   const info = inspectGate(gateSrc);
-  if (!info || info.patterns.length === 0) continue;
+  if (!info) continue;
+  unchecked += info.unchecked;
+  if (info.patterns.length === 0) continue;
 
   // MULTI-TARGET GATES ARE CHECKED TOO. The first version bailed on any gate reading more than one source
   // file, reasoning that a pattern could be satisfied by any of them and guessing which would produce false
@@ -227,27 +312,26 @@ for (const f of gateFiles) {
     .map((t) => ({ ...t, raw: readFileSync(t.abs, 'utf8') }))
     .map((t) => ({ ...t, blanked: blankComments(t.raw) }))
     .filter((t) => t.blanked !== null);
-  if (targets.length === 0) continue;
+  if (targets.length === 0) {
+    // A gate with source assertions and no file this script can resolve is NOT CHECKED — say so (R3). It
+    // may be legitimate (a gate asserting on computed strings), but silence is what hid the class above.
+    if (/readFileSync/.test(gateSrc)) untargeted.push(`tests/gates/${f}`);
+    continue;
+  }
 
   for (const p of info.patterns) {
-    // Fresh RegExp per test: a /g/ pattern carries lastIndex between calls and would give a bogus result.
-    const safeFlags = p.flags.replace(/[gy]/g, '');
-    let rawHits, blankHits;
-    try {
-      const re = () => new RegExp(p.pattern, safeFlags);
-      rawHits = targets.filter((t) => re().test(t.raw));
-      blankHits = targets.filter((t) => re().test(t.blanked));
-    } catch {
-      continue; // a pattern we cannot reconstruct is not something to accuse anyone over
-    }
+    const v = commentOnlyHits(p, targets);
+    if (!v) continue;
+    const { rawHits, blankHits } = v;
     checked++;
+    byForm[p.form] = (byForm[p.form] || 0) + 1;
     if (VERBOSE) {
-      console.log(`  ${f}:${p.line}  /${p.pattern}/  raw=${rawHits.length}/${targets.length} code-only=${blankHits.length}`);
+      console.log(`  ${f}:${p.line}  [${p.form}] /${p.pattern}/  raw=${rawHits.length}/${targets.length} code-only=${blankHits.length}`);
     }
-    if (rawHits.length > 0 && blankHits.length === 0) {
+    if (v.commentOnly) {
       const where = rawHits.map((t) => t.rel).join(', ');
       errors.push(
-        `tests/gates/${f}:${p.line}\n` +
+        `tests/gates/${f}:${p.line}  [${p.form}]\n` +
           `    /${p.pattern}/ matches ${where} ONLY inside a comment` +
           (targets.length > 1 ? ` (and no other file this gate reads matches it in code either).\n` : `.\n`) +
           `    Delete the guarded code and this assertion still passes — it is not a gate.\n` +
@@ -300,7 +384,21 @@ if (errors.length) {
   process.exit(1);
 }
 
+// ZERO-GUARD (R3a): a collector that stopped recognising assertions would otherwise print a clean line
+// over nothing. The corpus has hundreds; zero means the collector is broken, not that the gates are clean.
+if (checked === 0) {
+  console.error('✖ gate-shape: 0 assertions checked — the collector recognised nothing; this is not a pass');
+  process.exit(3);
+}
+
+const forms = Object.entries(byForm).sort().map(([k, n]) => `${k} ${n}`).join(', ');
 console.log(
-  `✓ gate-shape: ${checked} assertions verified against code-only source; ` +
+  `✓ gate-shape: ${checked} assertions verified against code-only source (${forms}); ` +
+    `${unchecked} unchecked (regex held in a variable); ` +
+    `${untargeted.length} source-reading gate(s) with no resolvable target, NOT checked` +
+    (VERBOSE && untargeted.length ? ` [${untargeted.join(', ')}]` : '') + '; ' +
     `${sourceGrepGates.length} source-grep gates (ratchet holding)`
 );
+}
+
+if (process.argv[1] && resolve(process.argv[1]).endsWith('gate-shape.mjs')) main();

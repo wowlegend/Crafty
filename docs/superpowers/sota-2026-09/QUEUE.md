@@ -595,7 +595,15 @@ Measure the hands AFTER any ambient change, not before, or the tuning will be ag
 
 ---
 
-## G1 — `gate-shape.mjs` cannot see the assertion form that fooled it (found 2026-09-22, OPEN)
+## G1 — `gate-shape.mjs` cannot see the assertion form that fooled it (found 2026-09-22, FIXED)
+
+**FIXED 2026-09-22.** The collector now reads all four presence forms (`toMatch`, `expect(/re/.test(src)).toBe(true)`,
+`toContain('s')`, `expect(src.includes('s')).toBe(true)`) with polarity honoured in each, and prints a per-form
+denominator plus the counts it could NOT check. Planting the siege shape against a real comment-only token exposed
+a second, older blind spot: a gate reading `resolve(__dirname, '../../src/...')` resolved to no target and was
+skipped silently, so even `toMatch` reported nothing. Fixed too. Corpus re-run: **547 assertions checked (was 387,
++41%), 0 comment-satisfied**; 2 gates read non-JS files and are named as unchecked. `tests/scripts/gate-shape.test.js`,
+7/7 mutants RED.
 
 `gate-shape` exists to catch "an assertion satisfiable by a COMMENT alone". It blanks comments with a real
 AST (so trailing comments are handled correctly) — but it only inspects `expect(x).toMatch(re)`
