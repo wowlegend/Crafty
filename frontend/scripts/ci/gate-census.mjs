@@ -87,7 +87,11 @@ export function dimensions(src) {
     // longer than 400 chars — a STRONGER guard than `> 0`, scored as none because the detector only knew
     // the literal zero. Same class as the dynamic-import miss: a census that undercounts the better form
     // pushes authors toward the weaker one.
-    zeroGuard: /\b(length\)?\s*(===|>)\s*0|toBeGreaterThan\(\s*\d+\s*\)|toHaveLength\(\s*[1-9]|COULD NOT CHECK|exit\(3\))/.test(code),
+    // Widened 2026-09-22 (third false negative this instrument has found in itself): a `.length` pinned
+    // to a NON-ZERO literal — `expect(GATED.length).toBe(12)` — is a zero-guard, and a strict one, since
+    // it reds on an empty collection AND on a silently shrunk one. `toBe(0)` is deliberately NOT matched:
+    // asserting a collection is empty is the vacuous case this dimension exists to find.
+    zeroGuard: /\b(length\)?\s*(===|>)\s*0|toBeGreaterThan\(\s*\d+\s*\)|toHaveLength\(\s*[1-9]|length\s*(?:,[^)]*)?\)\s*\.\s*to(?:Be|Equal)\(\s*[1-9]|COULD NOT CHECK|exit\(3\))/.test(code),
     blindSpot: /(BLIND SPOT|blind spot|cannot see|does NOT prove|CANNOT answer|UNMEASURED)/.test(src),
   };
 }

@@ -1,5 +1,5 @@
 {
-  "_count": 105,
+  "_count": 103,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -10,7 +10,6 @@
     "tests/gates/atmosphere-isolation-gates.test.js",
     "tests/gates/attack-telegraph-gates.test.js",
     "tests/gates/audio-resume-gates.test.js",
-    "tests/gates/beast-noremesh-gates.test.js",
     "tests/gates/biome-ambience-gates.test.js",
     "tests/gates/biome-flora-gates.test.js",
     "tests/gates/biome-foliage-gates.test.js",
@@ -34,7 +33,7 @@
     "tests/gates/death-fx-gates.test.js",
     "tests/gates/dusk-warning-gates.test.js",
     "tests/gates/dynamic-light-gates.test.js",
-    "tests/gates/elemancer-noremesh-gates.test.js",
+    "tests/gates/elemancer-wiring-gates.test.js",
     "tests/gates/element-impact-gates.test.js",
     "tests/gates/equipment-dry-gates.test.js",
     "tests/gates/fade-in-keyframe-gates.test.js",
@@ -103,7 +102,6 @@
     "tests/gates/verb-router-gates.test.js",
     "tests/gates/vfx-extraction-gates.test.js",
     "tests/gates/victory-audio-gate.test.js",
-    "tests/gates/voidhand-noremesh-gates.test.js",
     "tests/gates/wand-economy-gates.test.js",
     "tests/gates/weather-density-gate.test.js"
   ]

@@ -67,6 +67,19 @@ describe('gate-census dimensions', () => {
     expect(dimensions('expect(x).toBe(1);').zeroGuard).toBe(false);
   });
 
+  it('a .length pinned to a non-zero literal is a zero-guard; pinned to ZERO it is not', () => {
+    // Widened 2026-09-22 after the detector scored `expect(GATED.length).toBe(12)` as no guard at all.
+    // That form is STRICTER than `> 0` — it reds on an empty collection and on a silently shrunk one —
+    // so scoring it zero pushed authors toward the weaker shape. Both directions are pinned here, and the
+    // `toBe(0)` case is the one that must stay FALSE: asserting a collection is empty is the vacuous
+    // verdict this dimension exists to find, not a guard against it.
+    expect(dimensions('expect(GATED.length).toBe(12);').zeroGuard).toBe(true);
+    expect(dimensions('expect(files.length).toEqual(5);').zeroGuard).toBe(true);
+    expect(dimensions('expect(GATED.length, "msg").toBe(3);').zeroGuard).toBe(true);
+    expect(dimensions('expect(GATED.length).toBe(0);').zeroGuard).toBe(false);
+    expect(dimensions('expect(x.size).toBe(3);').zeroGuard).toBe(false);
+  });
+
   it('denominator and zeroGuard are detected in code, not prose', () => {
     expect(dimensions('expect(files).toHaveLength(12);').denominator).toBe(true);
     expect(dimensions('expect(rows.length).toBeGreaterThan(0);').zeroGuard).toBe(true);
