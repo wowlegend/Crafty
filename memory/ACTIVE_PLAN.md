@@ -5,7 +5,23 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-22, session 2. READ THE CI LINE FIRST.
+### RESUME HERE — 2026-09-22 night, session 3 (overnight goal). STATE AT THE LAST FLUSH:
+
+- **Kevin's overnight goal** (set 2026-09-22 evening) orders: R1 → EXTERNAL-BASELINE → G1/C3/OPEN-ITEMS, and
+  keep `docs/superpowers/sota-2026-09/OVERNIGHT.md` current (it is his morning read — UNTRACKED until committed).
+- **R1 COMPLETE** (all ten fixed; R1.5/R1.6 = `f4515dd9`, A/B evidence in sota-2026-09/evidence/tint-mask-*).
+  Unpushed commits 27d42f95..f4515dd9 + the docs/page commit; artifacts republished (sota-audit v11,
+  era-review v21) and `--sync`ed. Next: push onto a COMPLETED CI run, read the conclusion.
+- **Baseline tranche in progress** — plan `docs/superpowers/plans/2026-09-22-crafty-sota-baseline-tranche.md`.
+  Untracked, NOT wired: `game/hitstop.js`, `render/cloudField.js` + `cloud-field-gates` (green). The RED
+  tests are HELD OUT of the tree (so commits stay green) at
+  `scratchpad/tranche-hold/` = world-hitstop-gates.test.js, texture-mipmap-gates.test.js, and
+  grass-biome-tint-gates.full.js (carries the extra 'plan Task 1 — sampler reads raw vUv' it()). That
+  scratchpad is session tmp: if gone, the plan doc carries the test code. Restore them red-first per task.
+  Do NOT edit src/ while a capture runs (vite HMR).
+- EXTERNAL-BASELINE's "no dodge" claim was FALSE (dodge + 0.2s i-frames exist) — corrected in the doc.
+
+### (older) RESUME — 2026-09-22, session 2. READ THE CI LINE FIRST.
 
 **CHECK CI BEFORE ANYTHING ELSE, AND READ THE CONCLUSION FIELD, NOT THE RUN LIST.** This repo's CI uses
 cancel-in-progress. Pushing faster than it completes (runs 6-20 min) silently cancels the previous run,

@@ -14,6 +14,7 @@ what we already thought of. **Rank new work by this file, not only by our own ba
 | Hitstop freezes only the player | `src/Components.jsx` `hitstopScale` multiplies the KCC move only | ✅ confirmed |
 | three current = 0.186.0, fiber current = 9.8.0, Crafty installed 0.172.0 | `npm view three version`, `npm view @react-three/fiber version`, `node_modules/three/package.json` | ✅ confirmed |
 | r186 ships `SunLight` (CSM on WebGL); r186 removed `PCFSoftShadowMap` | agent: tag r186 `examples/jsm/lights/SunLight.js`, `WebGLShadowMap.js:99-101` | agent-verified, not re-run here |
+| "No dodge, parry or i-frames" | `src/game/dodge.js` (`isDodgeInvincible`), `Components.jsx` dodge state `iframeDuration: 0.2`, consumed by the store's damage path (`isPlayerInvincible`) | ❌ **FALSE — corrected 2026-09-22.** A dodge with a 0.2 s i-frame window exists and gates incoming damage; only PARRY is absent. The agent's grep missed it. Recommendation #3 below is narrowed accordingly. |
 
 Everything under "inference or unverified" below is exactly that. Line numbers are as of HEAD `7351c3bd`.
 
@@ -34,7 +35,7 @@ Everything under "inference or unverified" below is exactly that. Line numbers a
 | Foliage | Instanced lit grass, GPU wind + bend, stride 2, cap 50/chunk | `OptimizedGrassSystem.jsx` |
 | Characters | Primitive boxes, 2-band toon, inverted-hull outline; no glTF/skinning | `MobToonMaterial.jsx` |
 | Mob AI | Worker 3D A* on a **9×9 local grid**; per-archetype aggro/cooldown/leash; ~380 ms escapable windup | `ai.worker.js:30,142,199-218,330-352` |
-| Combat feel | Tiered hitstop but **player-motion only**; shake/kick/knockback/telegraphs; **no dodge, parry or i-frames** | `Components.jsx:1135-1140` |
+| Combat feel | Tiered hitstop but **player-motion only**; shake/kick/knockback/telegraphs; a **dodge with 0.2 s i-frames** exists (`game/dodge.js`); no parry | `Components.jsx:1135-1140`, `game/dodge.js` |
 | Save | JSON in `localStorage` (sync, ~5 MB); no IndexedDB/OPFS | `game/worldSaves.js` |
 
 ## 2. State of the art (primary-sourced)
@@ -66,21 +67,22 @@ Everything under "inference or unverified" below is exactly that. Line numbers a
 | Water | Minor (+ main-thread perf smell) | flat sheen; per-frame CPU loop | M | Low |
 | AA order | Minor | SMAA on pre-tonemap HDR | S | Low |
 | Hitstop scope | **Major**, cheap | PLAY — world keeps moving during the freeze | S | Low |
-| Evasion verb | **Major** | PLAY — windups have no active answer | M | Med |
+| Evasion verb | ~~Major~~ — **exists** (dodge + 0.2 s i-frames); parry absent | PLAY — the windup already has an active answer | — | — |
 | Pathfinding 9×9 | Minor-Major | PLAY — mobs stick on features >4 blocks | M | Med |
 | Save backend | Minor now | quota + sync stalls | M | Low |
 | Renderer generation | Future-proofing | newest effects gated on WebGPU | L | **High** |
 
 ## 4. Top 5 (impact ÷ cost × risk)
 
-1. **AO (and biome) into the greedy-merge key + 0fps diagonal flip** — worker-only. Shares its change
+1. ✅ **SHIPPED `1be94a5c`** — **AO (and biome) into the greedy-merge key + 0fps diagonal flip** — worker-only. Shares its change
    site with QUEUE **R1.1** (biome read outside the quad), so they land as ONE change. Verify: floor-beside-wall
    fixture (only the crease row darkens; ≥2 quads), quads/chunk budget over fixed seeds (≤ +25%).
 2. **Mipmap the texture array** — keep nearest MAG, mipmapped MIN (+ optional anisotropy). Verify:
    far-band temporal-stability probe (sub-pixel camera jitter, depth > 40 m), plus a gate on `generateMipmaps`.
-3. **World hitstop + dash with i-frames** — one global time-scale read by mob interpolation, VFX ageing and
-   AI tick; dash ~150-250 ms invulnerable with cooldown, interacting with the existing 380 ms windup.
-   Verify: e2e (dash in windup → 0 damage inside window, >0 outside), unit (mob visual delta 0 in hitstop).
+3. **World hitstop** — one global time-scale read by mob interpolation, VFX ageing and AI tick, not only
+   the player's own motion. (The dash-with-i-frames half of the original recommendation rested on a false
+   "no dodge" claim — the dodge exists; see the verification table.) Verify: unit (mob visual delta 0 in
+   hitstop), and a cap on total freeze per window so multi-hits do not read as lag.
 4. **three 0.172 → 0.186 + `SunLight` CSM on WebGL** — set `shadows="percentage"` explicitly first.
    Watch the 6 `onBeforeCompile` files and the global ShaderChunk patch; FUTUREPROOF R1 records a
    postprocessing version that broke the sun. Verify: gates + zero-warning boot + far-caster capture state

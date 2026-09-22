@@ -150,16 +150,114 @@
 
 <header>
   <div class="eyebrow">
-    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-08-13</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
+    <span>Crafty</span><span>Audited 2026-08-09</span><span>Updated 2026-09-22</span><span>42 agents · 8 lanes · 32 adversarial verifications</span>
   </div>
   <h1>The visual-test harness is not failing at the thing we&nbsp;were fixing</h1>
   <p class="standfirst">A SOTA audit of the capture, comparison and baseline layers. The capture layer is above industry standard. The comparator is behind. The oracle — the committed baselines themselves — is ungoverned, and had never been audited by anyone.</p>
 </header>
 
 <section>
-  <h2><span class="num">00</span> Status — every recommendation is now disposed of</h2>
+  <h2><span class="num">00</span> Status — every recommendation is disposed of, and the oracle is out of date</h2>
+
+  <div class="verdict">
+    <p class="lead">Now, 2026-09-22: the harness's weak point has moved from the comparator to the oracle. All 31 baselines were shot on a browser and a post-processing build the harness no longer runs, and the re-shoot that fixes it is Kevin's to approve.</p>
+    <p><strong>What the oracle is.</strong> HEAD's <code>tests/visual/baseline/.capture-meta.json</code> records <code>HeadlessChrome/147.0.0.0</code> on SwiftShader, from a run on 2026-08-12 (12:13&rarr;12:41 UTC); the last baseline commit is <code>043dcdb0</code>, the same day. Since then puppeteer 25.6.0 has moved the bundled Chromium to 151, and <code>postprocessing</code> went 6.39.1 &rarr; 6.39.5 in <code>e68dc194</code>, which on its own moved outdoor day frames by 10.7%–38.6% in a controlled pair on one renderer. Nothing has re-shot the baselines since: <code>capture.mjs --baseline</code> rewrites all 31 at once (<code>015de3fa</code>), and a 31-image oracle rewrite is recorded as Kevin's call.</p>
+    <p><strong>What the gate covers.</strong> Measured three ways in <code>7fc40aa4</code>: no gated camera at eye level, the first-person hands excluded by construction, and the near-black defect L1 absent from capture mode entirely. It is a regression guard for terrain, sky and UI massing and, in <code>FUTUREPROOF.md</code>'s words, "not evidence about how the game looks in play".</p>
+    <p><strong>What is settled.</strong> The sun composites at <code>postprocessing</code> 6.39.5, measured by a probe that had to be rebuilt three times before its evidence held (<code>c71c1a4e</code>). The production GL error storm was fixed upstream, not by us (<code>9c52cd02</code>). And the check corpus can now state its own weakness: 61 of 496 check files carry a killability receipt (<code>killability-ledger.mjs</code>, run for this page against a clean export of <code>57c4cd93</code>), where the first reading was 5 of 471 (<code>21308d2e</code>).</p>
+    <p><strong>CI, at the time of writing.</strong> The last completed run on <code>origin/main</code> concluded <code>success</code> at <code>7351c3bd</code>. Local HEAD was <code>57c4cd93</code>, four commits ahead, when this was written; by <code>1be94a5c</code> it is nine ahead and still unpushed, so none of them has a CI verdict. Earlier the same day a run at <code>30bf6f5b</code> finished RED on knip, the next twelve were cancelled by cancel-in-progress before finishing, and the next to finish (<code>4b10722b</code>) was red on the same finding — <code>gh run list</code>, where <code>1c5e6d6f</code>'s message says ten; a cancelled run is UNKNOWN, not a pass.</p>
+  </div>
+
+  <h3>Awaiting Kevin — four calls the loop has recorded and not taken</h3>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Item</th><th>Why it is his</th><th>Record</th></tr></thead>
+      <tbody>
+        <tr><td>Re-baseline 147 &rarr; 151, all 31 PNGs — then the eye-level state in the same act</td><td>A 31-image oracle rewrite replaces the reference for every visual claim in the project, and an agent reviewing its own evidence is not independent</td><td><code>015de3fa</code> · <code>FUTUREPROOF.md</code> · <code>memory/ACTIVE_PLAN.md</code></td></tr>
+        <tr><td><code>dprCap</code> 2 &rarr; 1.75</td><td>The one render-cost lever that changes SHARPNESS; <code>0e395354</code> left it at 2 because it "wants a measured pair and Kevin's eye rather than a silent edit"</td><td><code>0e395354</code> · <code>memory/ACTIVE_PLAN.md</code></td></tr>
+        <tr><td>FPV glove value</td><td>A taste call on a LOCKED direction. <code>GLOVE_INK</code> #2A2A33 renders at (16,3,40), and the value ladder did not complete. Measure after any lighting change, not before</td><td><code>8e05f994</code> · <code>QUEUE.md</code> B5</td></tr>
+        <tr><td><code>three</code> 0.172 &rarr; 0.186 + <code>SunLight</code> cascaded shadows</td><td>A dependency bump, which the external baseline itself routes to him. r186 also removes <code>PCFSoftShadowMap</code>, which Crafty relies on implicitly. To be prepared, not merged</td><td><code>EXTERNAL-BASELINE.md</code> #4 · <code>OVERNIGHT.md</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The r174 question this page's 2026-08-13 entries leave open is not on the list, on purpose: <code>OPEN-ITEMS.md</code> (OI-01/02) records that every number in it came from r174 on Chromium 147 while the candidate is now r186, and marks it do-not-surface until re-measured.</p>
+
+  <div class="callout kill">
+    <span class="hd">2026-09-22 — the oracle depicts a build that no longer exists, and nothing can be added to it until it is re-shot</span>
+    <p><strong>Two provenance breaks, then look changes on top.</strong> The PNGs are Chromium 147 with <code>postprocessing</code> 6.39.1. The density ledger that ratchets them was frozen from the two Chromium-151 captures of 2026-08-13 (<code>_sources: ["rbA","rbB"]</code>, <code>e077dc96</code>), so ledger and PNGs were shot on different renderers (<code>OPEN-ITEMS.md</code> OI-12). Then the 6.39.5 bump, measured as a pair on one renderer with the package the only variable (<code>e68dc194</code>): outdoor day frames 10.7%–38.6% changed, <code>explore-night</code> 0.022%, pure-UI frames 0.000%. That asymmetry is the evidence it is sun-coupled rather than noise. Opening the frames showed 6.39.1 washed out — its godrays pass hazed the whole frame — and that is the version the committed oracle was shot on.</p>
+    <p class="guard"><strong>Three later commits say in their own messages that they move gated pixels:</strong> <code>8e67b4cb</code> (the shadow frustum now follows the player and is sized from what is loaded, 72 units at high instead of 100); <code>55842e57</code> (sky-tinted AO, which "applies to every terrain face at every capture camera"); and the ground half of the biome tint from <code>c3055ddc</code>, which "does move pixels" (<code>30bf6f5b</code>). A fourth says the opposite and is wrong: <code>e5d50dc2</code>'s blind spot reads "the capture corpus has no boss state", but <code>capture.mjs:651-657</code> force-spawns the boss for <code>boss-closeup</code> and <code>GameScene.jsx</code> renders it through <code>BossEntity</code>, so the boss's emissive re-split lands inside a gated frame (<code>boss-closeup.png</code> and <code>boss-obsidian.png</code> are both in the baseline set). A fifth landed after this was written: <code>1be94a5c</code> put AO and biome into the mesher's merge key, and its own same-renderer A/B moved terrain frames — <code>biome-snow</code> 0.74%, <code>hearth</code> 0.30%, <code>ocean-coast</code> 0.27% — while UI frames moved 0.000%.</p>
+    <p><strong>Two changes do not move the oracle, by design.</strong> The sun arc (<code>29180226</code>) pins capture to <code>CAPTURE_SOLAR_FRACTION = 0.25</code> — noon, the one fraction at which the arc leaves the mood bearing untouched — so it resets to a declared value instead of freezing wherever the clock was. The grass-blade tint (<code>57ca5205</code>) is a few pixels at cameras 20–30 m up; <code>30bf6f5b</code> corrects that commit's own claim that the baselines were owed a re-shoot for it.</p>
+    <p class="guard"><strong>The constraint that makes it one act.</strong> <code>capture.mjs --baseline</code> writes the whole baseline directory, with no per-state flag, so a 32nd state cannot be added without regenerating the other 31 (<code>015de3fa</code>). That blocks the eye-level state, and it would equally block the far-caster state <code>EXTERNAL-BASELINE.md</code> lists for cascaded shadows. <code>015de3fa</code> prices the review at "confirm 14 frames moved for renderer reasons", from the 2026-08-13 pair that put 17 of 31 frames byte-identical on 151. That pair is the 2026-08-13 code on two renderers; a re-shoot today also carries every change above, so the 14-frame estimate describes a code state that no longer exists.</p>
+    <p><strong>What the re-shoot must not freeze.</strong> The density ledger is unchanged since <code>e077dc96</code>: 23 of 31 entries still sit at the <code>DENSITY_FLOOR</code> constant, <code>title-mascot</code> rests on one sample, and <code>explore-day</code> is still <code>_ungateable</code> (observed 30.35%, would freeze at 54.7%, kept at 9.3%). <code>needStable</code> is still 2 (<code>capture.mjs:264</code>); the hypothesis that it should be 5 is parked (OI-10). <code>QUEUE.md</code> orders the settle fixes (Q09, Q10) before the re-baseline (Q11), and names <code>ocean-coast</code>, <code>landmark</code> and <code>explore-day-med</code> as frames not to re-baseline while the capture warns they never stabilise.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-09-22 — "a build nobody plays", measured three ways</span>
+    <p><strong>§08 below said the gated frames depict a build with its moving systems switched off. Three separate investigations measured what that costs</strong> (<code>7fc40aa4</code>).</p>
+    <p><strong>No gated camera stands where the player does.</strong> <code>capture.mjs</code> has seven explicit poses at y = 81, 82, 26, 78, 62, 70, 70, against a surface near y 51 and a standing eye near 53. Every pose but one looks down from 10–31 units up, and the low one, y 26, is below sea level at 28 (<code>FUTUREPROOF.md</code>). At that height a 0.7 m grass tuft is a few pixels: S8 grass scored 3.119% with zero of 31 frames over the 6% gate, so the gate would have passed that feature whether or not it worked.</p>
+    <p><strong>The first-person hands are in zero gated frames, permanently.</strong> <code>Components.jsx:1372</code> mounts them as <code>{!inCapture &amp;&amp; &lt;StableMagicHands … /&gt;}</code>. Their first probe run (<code>8e05f994</code>) found them covering 11,043 pixels across x 338–1239, y 427–799 — established with a presence control, <code>GLOVE_INK</code> set to magenta and restored, after a first look had concluded they were absent — and rendering at (16,3,40) against ground at (74,94,108).</p>
+    <p><strong>The near-black defect does not exist in capture.</strong> L1, near-camera structures going near-black at a low sun, measures rgb(16,3,40) in live frames; in a capture-mode frame the darkest world tile reads 44.4 (<code>8e1c17ac</code>). Whatever produces it is either among what capture switches off or at a camera the corpus never occupies, and nothing yet distinguishes the two.</p>
+    <p class="guard"><strong>Suppression, re-counted.</strong> At <code>57c4cd93</code>, <code>git grep</code> finds 127 <code>isCaptureMode()</code> call sites outside the module that defines it — the number <code>AGENTS.md</code> carries — against one consumer of <code>captureRandom</code> (<code>render/WeatherSystem.jsx</code>) and 72 raw <code>Math.random()</code> in 20 files. The two new render systems this month followed the reset-to-a-declared-value rule instead of adding a guard: the sun arc pins noon (<code>29180226</code>), and the shadow follow is deliberately not suppressed, because the capture position is already deterministic and a 128th guard "would make the oracle depict one more thing nobody plays" (<code>8e67b4cb</code>).</p>
+    <p><strong>Closing it is an addition, not a re-point.</strong> The seven poses are the oracle for what they cover; moving one rewrites its baseline and loses that coverage. An eye-level state needs a repeatable pose, a reviewed baseline under its own trailer, and a decision about whether the hands are in frame (<code>FUTUREPROOF.md</code>) — and it waits on the re-shoot above.</p>
+  </div>
+
+  <div class="callout ok">
+    <span class="hd">2026-09-22 — the sun is back, the pin moved to 6.39.5, and the GL storm was fixed upstream</span>
+    <p><strong>The 2026-08-13 entry below ends with <code>postprocessing</code> pinned at 6.39.1.</strong> Upstream closed pmndrs/postprocessing#750 on 2026-09-09 as "should be fixed in v6.39.5" — a claim made against a demo whose sun is ordinary scene geometry, where Crafty's is a camera-locked billboard that <code>GodRaysEffect</code> reparents into its own light scene. So it was measured here, as a pair on one renderer (Chromium 151 / SwiftShader) with the package the only variable, and pinned EXACT at 6.39.5 (<code>e68dc194</code>). The old <code>^6.39.1</code> was never a pin; the lockfile alone held it.</p>
+    <p class="guard"><strong>The green tick was the finding.</strong> Dependabot's PR #18 offered 6.39.1 &rarr; 6.39.4 — the version that removed the sun — as a PATCH, which the ignore rule did not cover. It sat open and 8/8 green for three weeks, because the 31-frame gate runs in neither the hook nor CI (<code>12f369bf</code>, which widens the rule to patches). <code>gh pr view 18</code>: closed 2026-09-22.</p>
+    <p><strong>The GL storm is not ours to credit.</strong> The composer's per-frame MSAA resolve had been named as the likely source of the production <code>GL_INVALID_OPERATION: glBlitFramebuffer</code> storm. A controlled pair on a real GPU (headless, <code>--use-angle=metal</code>, renderer string confirmed) refuted it: 0 errors over 1,672 frames with <code>multisampling={0}</code>, 0 over 1,783 with the package default. The fix was 6.39.5 itself, which stopped building the composer's depth texture with <code>DepthTexture.clone()</code> — on three r172 that shares one GPU image between a texture and its clones (<code>9c52cd02</code>). The reply to #750 was posted only after that measurement existed.</p>
+    <p class="guard"><strong>Three instruments returned a clean zero that nothing could have made non-zero</strong> on the way there (<code>9c52cd02</code>): <code>prod-smoke</code> on SwiftShader, which does not perform the driver-side validation that raises the error; a backgrounded tab in the operator's Chrome (<code>visibilityState: hidden</code>, rAF 0, canvas 300×150 — zero errors over zero frames); and two CDP timeouts from a 60 s wait inside a 45 s call.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-09-22 — the production gate can see the storm's channel now, on a rasteriser that cannot raise it</span>
+    <p><strong><code>prod-smoke</code> watched the console, and the storm disables the console.</strong> Chrome stops reporting after "too many errors" for that context, so any message count is a floor, and once the context is muted a genuine later error is silenced too. <code>53788fc3</code> drains <code>gl.getError()</code> every frame instead — every frame, because a read drains the queue and a single end-of-run poll reports at most one error — and ratchets the count: the first run records, later runs may fall and never rise.</p>
+    <p class="guard"><strong>Its first reading is not the answer it looks like.</strong> CI seeded "GL errors: 0 over 8 frames" (<code>673ecde8</code>) under <code>--use-angle=swiftshader</code>, which cannot raise the driver-side error, so the ledger is a regression guard for the SwiftShader path and nothing more; the file now says so. The visual capture runs the same renderer — <code>.capture-meta.json</code> records SwiftShader — and its <code>FATAL_GL_RE</code> does not match the storm's message (<code>OPEN-ITEMS.md</code> OI-08), so it shares the blindness.</p>
+    <p><strong>A correction to ② below.</strong> That answer found one MSAA surface, the title diorama, and it was right about canvas flags. It could not see the post chain: the <code>EffectComposer</code> was mounted with no <code>multisampling</code> prop, and <code>@react-three/postprocessing</code> defaults it to 8 on a half-float target (<code>0e395354</code>), clamped to the driver's <code>MAX_SAMPLES</code> of 4 (<code>9c52cd02</code>, which also halves the first cost estimate from ~471 MB to ~236 MB at dpr 2). <code>0e395354</code> set it to 0, because SMAA already does the antialiasing; the same commit cut <code>high</code>'s <code>godRaySamples</code> 100 &rarr; 60 and removed the <code>flipflops={3}</code> cap that froze the adaptive quality governor after three transitions.</p>
+  </div>
+
+  <div class="callout ok">
+    <span class="hd">2026-09-22 — three new probes (29 &rarr; 32), each wrong before it was right, and the tab that outlived its server</span>
+    <p><strong><code>godrays-probe.mjs</code> answered whether GodRays composites at 6.39.5 — on its fourth design</strong> (<code>9b0fef39</code>, <code>c71c1a4e</code>). v1 reported "works, 9.59×" because renaming the element made it an undefined component and React tore down the whole composer; the giveaway was far-sky luminance falling 150.2 &rarr; 18.7. v2 reported the opposite, "inert", on a noise floor that was really scene animation — 0.74 in far sky against 10.44 on the sun disc. v3 added capture mode, but every shot is a fresh boot and the sun disc moved 46.74 between two frames of the same build. v4 stands: a boot-identity control on far sky, which GodRays cannot reach (A1~A2 0.000, A1~B 0.034), then local reads — the shaft corridor moves 5.214 against same-boot noise of 0.285, 18×, with sky luminance 157.7 both ways. The effect is real, localised and small, which is why no whole-frame statistic could see it. The probe now exits 3 when boots diverge or the control loses sky luminance.</p>
+    <p><strong><code>ambient-floor-probe.mjs</code> ruled out the obvious fix for L1, then refused to report</strong> (<code>8e1c17ac</code>). Tripling the ambient from 0.90 to 2.80 moved the dark/lit ratio by 1.07× — a global exposure, so the hole stays a hole relative to its surroundings. It reports the ratio rather than the dark value, because the dark value alone makes every rung look like progress. Its first rectangle was inherited from another probe's live-game frames and landed on a patch reading 73.9; its first "brightest tile" control selected the QUESTS panel, which does not respond to ambient. Regions are now derived from the frame with UI excluded, and it exits 3 when no near-black subject exists.</p>
+    <p><strong><code>gpu-cost-probe.mjs</code> answers "what does a frame cost" on the production bundle</strong> (<code>0e395354</code>, <code>fe0bfaa5</code>). It prints the load average beside the fps, because load moved 232 &rarr; 13 inside one session, and samples the JS heap on a 500 ms timer: 90 samples over 58 s, a GC sawtooth between ~70 and ~140 MB at −0.4 MB/s. The JS heap does not leak; the 11.8 GB a tab reported is GPU-side, cause not confirmed. It prints <code>renderer.info</code> as UNMEASURED rather than zeros, after four accessors all returned null in the production build.</p>
+    <p class="guard"><strong>The tab that outlived its server has a root cause</strong> (<code>92746779</code>). <code>_serve.mjs</code> passed <code>--no-open</code> on its dev branch and not its preview branch, and <code>vite preview</code> inherits <code>server.open: true</code>, so every <code>prod-smoke</code> run launched the system browser — outside vite's process group, so the tab survived the kill and kept the render loop running: 1.9 GB RSS and 102.6% of a core, measured. The argv is now a pure function, driven by a test that asserts its own 5/5 denominator. All three new probes are registered in <code>PROBE_PORTS</code> at 4234–4236.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-09-22 — one pipeline, 17 gates, and the visual gate still in none of them</span>
+    <p><strong>The hook and the workflow were two lists that disagreed</strong> — a damage-model change was green on every gate the hook knew and broke <code>soft-death-protections</code>, which only the workflow ran (<code>e45492ac</code>). <code>ci/pipeline.sh</code> is now the one definition both call (<code>86f592ec</code>), tiered by where a step can honestly run (<code>92746779</code>). The generated table in <code>AGENTS.md</code>: 17 gates, 9 on every commit (the offline core, 69 s), 14 on every push, 12 in CI. The <code>visual</code> row still reads "nothing runs it". The table had been fiction twice over: its generator anchored <code>step</code> to column 0 and silently dropped three indented gates (<code>86f592ec</code>), and it printed all three network and browser gates as pre-push gates they have never been (<code>92746779</code>).</p>
+    <p><strong>A mechanical census replaced a one-shot verdict list.</strong> <code>GATES.md</code>'s per-file DELETE / CONVERT verdicts were false on contact four times, one of them a DELETE for the last guard of a live property; <code>gate-census.mjs</code> scores five dimensions and refuses to issue a disposition (<code>728772f6</code>). First reading, 479 files: 13 carried a receipt, 37 scored 0/5, 3 scored 5/5. At <code>57c4cd93</code>, run for this page against a clean export: 496 files, 454 executing their subject, 61 with a receipt, 41 at 5/5, and 5 at 0/5 — all five <code>scripts/ci</code> modules rather than checks.</p>
+    <p class="guard"><strong>Four gates were green on the comment documenting the thing they guarded</strong>, found by hand while <code>gate-shape</code>, the detector built for that class, reported the corpus clean (<code>fa2bb471</code>). The cleanest case: <code>siege-gates</code> asserted a call that had been deleted, and passed on the comment explaining the deletion (<code>635d9063</code>). <code>gate-shape</code> read one assertion form of four and skipped a path shape silently; it now reads all four and checks 547 assertions, up from 387, with 0 comment-satisfied (<code>94c63b8c</code>). And a 5/5 census score is not a verdict either: the shadow-follow gate scored 5/5 while the change it guarded was dead, overwritten by a second writer later in the same <code>useFrame</code> (<code>a7ef3408</code>).</p>
+    <p><strong>What a green commit tier is not.</strong> knip, npm audit, <code>prod-smoke</code> and E2E are CI-only by design, so the commit chokepoint is blind to them; a dead export reached CI exactly that way (<code>1c5e6d6f</code>). E2E's push-time stand-in, <code>e2e-freshness</code>, first demanded a local receipt for evidence only CI can produce — its goal was wrong, not its plumbing — and now refuses only to stack an unverified change onto a base CI has already called red (<code>e71b73a7</code>).</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-09-22 — what the external baseline says the oracle will need to see</span>
+    <p><strong><code>EXTERNAL-BASELINE.md</code> is the first work list not written by the sessions doing the work</strong> (<code>27d42f95</code>), primary-sourced against three r186, pmndrs, Minecraft's Vibrant Visuals and Veloren. Four of its rendering gaps land on this harness, because each is a change a still frame from 20–30 m up is poorly placed to judge.</p>
+    <p><strong>AO and biome are absent from the greedy-merge key.</strong> Re-verified the same day: the key is block type and face direction only, and AO is sampled at the merged quad's corners, so a merged quad interpolates four samples across its whole span and a crease becomes a many-block gradient. Its stated verification is a floor-beside-wall fixture, not a frame. It shared a change site with QUEUE R1.1 (a quad reads its biome from a corner outside it), and the two landed as one change after this was written (<code>1be94a5c</code>) — verified by a merge-key gate over 10 real-shaped chunks plus a same-renderer capture A/B, and so one more gated-pixel change the Chromium-147 oracle has not seen.</p>
+    <p><strong>The block texture array has no mipmaps</strong> — <code>NearestFilter</code>, <code>generateMipmaps = false</code> (<code>proceduralTextures.js:207,211</code>, re-read at <code>57c4cd93</code>) — so distance shimmers in a way no post pass fixes. Its verification is a far-band temporal-stability probe, sub-pixel camera jitter at depth &gt; 40 m: shimmer is a property of motion, and every gated frame is a still.</p>
+    <p><strong>Shadows stop at ±72 units at high</strong> — one directional light, no cascades, now player-following and texel-snapped (<code>8e67b4cb</code>, <code>a7ef3408</code>). r186's <code>SunLight</code> brings cascades to WebGL and removes <code>PCFSoftShadowMap</code>, which Crafty depends on implicitly; pin <code>shadows="percentage"</code> first so the softness change is explicit. Its verification includes a far-caster capture state — a 32nd state, under the same whole-directory constraint as the eye-level one. Kevin-gated as a dependency bump.</p>
+    <p class="guard"><strong>Clouds and cloud shadows</strong> — today there are no clouds anywhere — are to be driven by the capture clock so capture stays deterministic, and verified by a sky-region-localised capture diff. That is the statistic <code>godrays-probe</code> had to arrive at the hard way: a localised effect averaged over a whole frame reads as noise.</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="hd">2026-08-13 (night) &rarr; 2026-09-21 — r174 measured and not landed, then forty days without Crafty work</span>
+    <p><strong>three r174 took the production GL storm from 6 messages to 0, with a presence control, and was reverted anyway</strong> (<code>b2227091</code>): 19 of 31 frames went over the gate, many at 99%+ local density, with a visibly more saturated sky. That is a judgement about how the game should look, and a bundled engine bump plus re-baseline is precisely the shape <code>baseline-trailer</code> exists to stop. The same measurement found <code>prod-smoke</code> blind to the storm — it filtered on <code>'error'</code> and the storm arrives as <code>'warning'</code> — which 2026-09-22 fixed, above. Its numbers are r174 on Chromium 147, and the candidate is now r186 (<code>OPEN-ITEMS.md</code>).</p>
+    <p><strong>The E2E harness got its first real traces.</strong> The failure-upload path pointed at a directory nothing creates, while <code>retain-on-failure</code> traces were being written and thrown away (<code>314c024c</code>). The first uploaded trace diagnosed <code>dodge-latch</code>: it had passed for two years in a pre-world with no mobs, and a strict wait for the spawn chunk moved it into a live one where the player could die first (<code>81f4bc99</code>, following the pointer-lock race fixed in <code>39b56427</code>).</p>
+    <p>After that evening the next Crafty work is the 2026-09-22 campaign; the two commits in between (2026-09-19/20) came from other sessions (<code>PLAN.md</code>).</p>
+  </div>
+
     <div class="note" style="margin:14px 0;padding:14px 16px;border-left:3px solid currentColor;opacity:.95">
-      <p><strong>BOTH DEFERRED ITEMS ARE NOW SHIPPED, and the comparator was the one that mattered.</strong>
+      <p><strong><span class="was">BOTH DEFERRED ITEMS ARE NOW SHIPPED</span>, and the comparator was the one that mattered.</strong>
+      <em>Corrected 2026-09-22: neither shipped as specified. What landed for the comparator is a different,
+      narrower instrument — a per-frame LOCAL-DENSITY ratchet, described next — while the deferred per-frame
+      tolerances on the global diff are still owed at n = 3 against n&nbsp;&ge;&nbsp;10 (<code>OPEN-ITEMS.md</code>
+      OI-27; the disposition table further down this section says the same).
+      <code>failOnFlakyTests</code> was never set: <code>frontend/playwright.config.js:16</code> still reads
+      <code>retries: process.env.CI ? 2 : 0</code> at <code>57c4cd93</code>. OI-25 recorded the
+      10-consecutive-clean-runs counter at 4 and frozen, because nothing was pushed between 2026-08-13 and
+      2026-09-22; the 09-22 pushes then reset it — three runs failed that day, the last at <code>4b10722b</code>,
+      and three have completed green since. Every figure in this note was measured on Chromium 147.</em>
       This audit's headline was that the comparator is behind and the oracle ungoverned. The oracle got its
       trailer gate on 2026-08-09. The comparator's per-frame tolerance was deferred as "a red gate nobody
       can act on" — correct, and an objection to a SINGLE threshold rather than to asserting at all. It
@@ -182,7 +280,7 @@
       oracle's resolution, which is what the ratchet above raises.</p>
     </div>
   <div class="callout ok">
-    <span class="hd">Updated 2026-08-12 — the two deferred items have landed, and one of them found a defect on its first run</span>
+    <span class="hd">Updated 2026-08-12 — <span class="was">the two deferred items have landed, and one of them</span> a per-frame density ratchet landed and found a defect on its first run; both deferred items stay deferred, as the text below says (heading corrected 2026-09-22)</span>
     <p><strong>The two deferred items are still deferred, on purpose, and the reasons have not changed.</strong>
     Per-frame tolerances still want n&ge;10 separate-process captures. <code>failOnFlakyTests</code> still wants
     10 consecutive clean CI runs; a per-shard flaky reporter now accumulates that record in the run log, so the
@@ -280,6 +378,12 @@
 
   <div class="callout ok">
     <span class="hd">2026-08-13 — the re-baseline ran, and it settled two open questions by measurement</span>
+    <p><em>Read with 2026-09-22 hindsight: these two captures (<code>rbA</code>, <code>rbB</code>) froze the
+    DENSITY LEDGER below; they were never committed as PNG baselines. HEAD's <code>.capture-meta.json</code>
+    still records <code>HeadlessChrome/147.0.0.0</code> and the last baseline commit is <code>043dcdb0</code>
+    (2026-08-12), so the ledger and the PNGs it ratchets were shot on different renderers
+    (<code>OPEN-ITEMS.md</code> OI-12). "The oracle was never in danger" held for the renderer move alone;
+    it is not a statement about the oracle now — see the top of this section.</em></p>
     <p><strong>The Chromium bump was a non-event, and my own prediction about it was wrong.</strong>
     puppeteer 24.42.0 &rarr; 25.6.0 (removing <code>extract-zip</code>, CVE-2026-56876) moved the bundled
     Chromium <b>147 &rarr; 151</b> — four majors — and I recorded that the baselines were effectively
@@ -317,8 +421,12 @@
     allowance, records it in <code>_ungateable</code> with the number it refused to write, and aborts
     outright if the frame is new and has nothing to fall back on. A gated state that cannot be gated must
     not be admitted; the fix belongs in the capture's stability wait, which asked for 2 consecutive stable
-    frames where the terrain wait asks 6. That change is made and is <em>explicitly unverified</em> —
-    proving a flakiness fix needs several captures on a quiet machine, and the machine is at load 21.</p>
+    frames where the terrain wait asks 6. <span class="was">That change is made and is explicitly unverified</span> —
+    proving a flakiness fix needs several captures on a quiet machine, and the machine is at load 21.
+    <em>(Corrected 2026-09-22: that change was reverted the same day, before this entry was published —
+    <code>6cf6b059</code> parked <code>needStable</code> at 2 so PR #15 could be validated against one
+    variable. <code>capture.mjs:264</code> still reads <code>needStable: 2</code> at <code>57c4cd93</code>;
+    OI-10 records that the one trial of 5 wedged.)</em></p>
     <p class="guard">Not to be conflated: freezing a frame's DENSITY at its measured variance and
     re-baselining its PIXELS are different acts. Only the first is safe here — the capture says in as many
     words that re-baselining a frame it declared non-deterministic freezes noise.</p>
@@ -361,7 +469,9 @@
     back (<code>213,212,212,213,213,214</code>), which localises the fault to <code>GodRaysEffect</code>'s
     compositing rather than to the mesh. Filed upstream as
     <a href="https://github.com/pmndrs/postprocessing/issues/750">pmndrs/postprocessing#750</a>;
-    <code>postprocessing</code> is pinned at 6.39.1 and the other five bumps landed verified-inert.</p>
+    <span class="was"><code>postprocessing</code> is pinned at 6.39.1</span> and the other five bumps landed verified-inert.
+    <em>(Superseded 2026-09-22: pinned exact at 6.39.5 by <code>e68dc194</code>, which restores the sun —
+    measured, and covered at the top of this section.)</em></p>
     <p><strong>Two fixes of mine failed before one ablation answered it.</strong> Setting
     <code>depthTest</code>/<code>depthWrite</code> false, and separately honouring the vendor's documented
     contract (<em>"must not write depth and has to be flagged as transparent"</em>), produced
@@ -380,8 +490,8 @@
 
   <div class="verdict settled">
     <p class="lead">All 10 ranked changes are landed. The one below the line and the one re-sequenced item are deferred by recorded decision, with criteria — not by silence. The four items this audit could not check have now been checked.</p>
-    <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase.</p>
-    <p><strong>The audit's central claim held up.</strong> It argued the harness was not failing at tolerance, and that the real holes were coverage, content and an ungoverned oracle. The re-baseline (#2) and baseline governance (#3) closed the oracle hole; per-frame tolerances — the thing the investigation had been aimed at — remain correctly below the line, still waiting on n≥10.</p>
+    <p><strong>The headline result:</strong> <code>menu</code>, the frame that consumed the entire determinism investigation, is now <span class="zero">0.0000% run-to-run — byte-identical across separate processes</span>, from 0.984 / 0.455 / 0.359 / 0.557%. Byte-identical frames went 13 → 23 of 30. The fix was the one this audit ranked #4: capture guards that RESET to a declared value instead of early-<code>return</code>ing at a run-dependent phase. <em>(Both measured on Chromium 147 — see the renderer note in §02.)</em></p>
+    <p><strong>The audit's central claim held up.</strong> It argued the harness was not failing at tolerance, and that the real holes were coverage, content and an ungoverned oracle. The re-baseline (#2) and baseline governance (#3) closed the oracle hole; per-frame tolerances — the thing the investigation had been aimed at — remain correctly below the line, still waiting on n≥10. <em>(2026-09-22: governance still holds, but the oracle is open again in a different form — its PNGs predate Chromium 151 and the look changes since, and re-shooting them is Kevin-gated. See the top of this section.)</em></p>
   </div>
 
   <div class="scroll">
@@ -390,15 +500,15 @@
       <tbody>
         <tr><td class="rank">1</td><td>Write the pixelmatch diff PNG on failure</td><td><span class="tag done">LANDED</span></td><td>Two-pass; second pass asserts its count equals the first, so a mismatch means the writer is lying</td></tr>
         <tr><td class="rank">2</td><td>Land the owed re-baseline in one commit</td><td><span class="tag done">LANDED</span></td><td><code>6af95b7</code> — 19 frames, images opened, gate re-run after promotion 32/32</td></tr>
-        <tr><td class="rank">3</td><td>Baseline governance — trailer gate + contact sheet</td><td><span class="tag done">LANDED</span></td><td><code>baseline-trailer.mjs</code> is now the 11th pre-push gate; also forbids bundling a baseline rewrite with <code>src/</code></td></tr>
+        <tr><td class="rank">3</td><td>Baseline governance — trailer gate + contact sheet</td><td><span class="tag done">LANDED</span></td><td><code>baseline-trailer.mjs</code> is now <span class="was">the 11th pre-push gate</span> one of 14 push-tier gates among 17 in the generated table (2026-09-22; it runs from the hook, the only place the pushed commit range exists — <code>86f592ec</code>); also forbids bundling a baseline rewrite with <code>src/</code></td></tr>
         <tr><td class="rank">4</td><td>Reset the two animated-phase sites to declared values</td><td><span class="tag done">LANDED</span></td><td>The fix that produced 0.0000%. <code>MASCOT_REST</code> is frozen and the JSX reads from it, so markup and seam cannot drift</td></tr>
         <tr><td class="rank">5</td><td>Fail the capture on shader-link errors and context loss</td><td><span class="tag done">LANDED</span></td><td>Its own narrowed filter later caught a real message the loose version would have swallowed</td></tr>
         <tr><td class="rank">6</td><td>Delete the <code>title-mascot</code> crash-filter exclusion</td><td><span class="tag done">LANDED</span></td><td>Plus its three stale comments</td></tr>
         <tr><td class="rank">7</td><td>Assert the gate's own denominator</td><td><span class="tag done">LANDED</span></td><td>Anchored to the test file's own path, not <code>process.cwd()</code></td></tr>
         <tr><td class="rank">8</td><td>Promote the in-process invariant to a standing gate</td><td><span class="tag done">LANDED</span></td><td><code>assertIntraPageDeterminism</code> — no baseline, cannot rot</td></tr>
         <tr><td class="rank">9</td><td>Windowed diff-density, report-only</td><td><span class="tag done">LANDED</span></td><td>Report-only as specified; it is the running calibration mechanism for the deferred tolerances</td></tr>
-        <tr><td class="rank">10</td><td>Fail on flaky E2E in CI, after fixing the two specs</td><td><span class="tag done">SPECS FIXED</span> <span class="tag defer">FLIP DEFERRED</span></td><td>Both fixed in <code>10a3cca</code>, for two different reasons. The flip waits on 10 consecutive clean runs — there has been <strong>one</strong>. A per-shard flaky reporter now accumulates that record in the CI log</td></tr>
-        <tr><td class="rank">—</td><td>Per-frame tolerances (below the line)</td><td><span class="tag defer">DEFERRED, n=3</span></td><td>Correctly still below the line: the audit demanded n≥10 separate-process captures and there are 3. Protocol recorded before the fact</td></tr>
+        <tr><td class="rank">10</td><td>Fail on flaky E2E in CI, after fixing the two specs</td><td><span class="tag done">SPECS FIXED</span> <span class="tag defer">FLIP DEFERRED</span></td><td>Both fixed in <code>10a3cca</code>, for two different reasons. The flip waits on 10 consecutive clean runs — there has been <strong>one</strong>. A per-shard flaky reporter now accumulates that record in the CI log. <em>2026-09-22: still unflipped. <code>OPEN-ITEMS.md</code> OI-25 put the count at 4, frozen while nothing was pushed for forty days; the day's pushes reset it (three failed runs, the last at <code>4b10722b</code>). <code>e71b73a7</code> recorded four local e2e failures under heavy load, three load-attributable and one (<code>dodge-latch</code>) a genuine signal, left for CI to adjudicate — and CI did fail <code>dodge-latch</code> on all three attempts in the run at <code>30bf6f5b</code>, while the e2e shards of every run completed after it concluded success (retries included)</em></td></tr>
+        <tr><td class="rank">—</td><td>Per-frame tolerances (below the line)</td><td><span class="tag defer">DEFERRED, n=3</span></td><td>Correctly still below the line: the audit demanded n≥10 separate-process captures and there are 3. Protocol recorded before the fact. <em>2026-09-22: unchanged, OI-27. The per-frame local-density ratchet of 2026-08-12 is a different instrument and does not discharge it</em></td></tr>
       </tbody>
     </table>
   </div>
@@ -409,11 +519,13 @@
   <div class="callout ok">
     <span class="hd">① Is the gate ever actually run?</span>
     <p><strong>No — not automatically, and that stays true by decision.</strong> It is in neither the pre-push hook nor CI; the hook holds only a comment reminding a human. 733 s to run, and every baseline is macOS arm64 against Ubuntu x86-64 runners. But the question <em>“when was this oracle last exercised”</em> had no answer at all before, and now does: <code>.capture-meta.json</code> stamps every run. Last one <strong>2026-08-09 04:52:11 → 05:07:36, 925 s, complete, 0 crashes</strong>, on ANGLE/SwiftShader Vulkan 1.3.0. The instrument now exists; the scheduling stays manual.</p>
+    <p><em>2026-09-22: still manual — the generated gate table in <code>AGENTS.md</code> lists <code>visual</code> as "nothing runs it". The committed <code>.capture-meta.json</code> now records the 2026-08-12 baseline run, 12:13&rarr;12:41 UTC, on <code>HeadlessChrome/147.0.0.0</code>. No capture was shot as a BASELINE during the 2026-09-22 session. Full captures did run as same-renderer A/B pairs — the postprocessing pair (<code>e68dc194</code>, 31 frames a leg) and the mesher pair (<code>1be94a5c</code>) — while the grass-tint check got none, because <code>30bf6f5b</code> found the load average at 78.20 on 14 cores, and capture is load-sensitive.</em></p>
   </div>
 
   <div class="callout ok">
     <span class="hd">② Is antialiasing granted under the software rasteriser?</span>
     <p><strong>Yes — 4× MSAA, and the request is honoured in both directions</strong> (<code>antialias:true</code> → <code>granted:true</code>, <code>SAMPLES 4</code>; <code>false</code> → <code>SAMPLES 0</code>). Probed with the capture's exact launch flags. And it explains a signature: <strong>exactly one surface asks for AA</strong> — <code>TitleDiorama</code>, which is the <code>menu</code> frame — while <code>GameScene</code> sets <code>antialias:false</code>. So the single MSAA frame was the single noisiest frame, and its diff showed “hairline outlines tracing every edge”, which is what an MSAA resolve does to a small geometric difference. <strong>AA was the amplifier, not the cause:</strong> MSAA is deterministic given identical geometry, and the residual reached 0.0000% with no AA change at all. Anyone reading “AA was on” as the diagnosis would blur the frame and remove no variance. It also confirms <code>includeAA:false</code> — the antialiasing-<em>aware</em> default, whose name reads backwards — is the correct setting here, now measured rather than assumed.</p>
+    <p><em>Corrected 2026-09-22: "exactly one surface asks for AA" was true of the canvas flags and not of the frame. The in-game <code>EffectComposer</code> was mounted with no <code>multisampling</code> prop and so requested 8× MSAA by package default (<code>0e395354</code>), clamped to the driver's <code>MAX_SAMPLES</code> of 4 (<code>9c52cd02</code>), until <code>0e395354</code> set it to 0. The menu conclusion stands: that frame reached 0.0000% with no AA change.</em></p>
   </div>
 
   <div class="callout ok">
@@ -433,7 +545,7 @@
     <p class="lead">Every defect this harness has actually shipped was a coverage or content failure. Not one was a tolerance failure.</p>
     <p>Four <code>beast-*</code> baselines that were pictures of an empty mountain. Seven of 31 frames captured, baselined, and absent from the <code>STATES</code> array for weeks — 23% of the gate's apparent coverage was decorative. Grass motes rendered at the world origin. Mob grass-bending that never ran.</p>
     <p>Meanwhile <code>menu.png</code>, the frame that consumed the entire determinism investigation, sits at 0.36–0.98% run-to-run. It has never failed the 6% gate and <em>mathematically cannot</em> — it needs 61,440 changed pixels to fail and produces about 10,000 at worst. <code>ocean-coast</code> at <span class="hot">8.36%</span> is red right now, and has been throughout.</p>
-    <p><em>Since updated: <code>menu</code> is now 0.0000%, and <code>ocean-coast</code>'s red was cleared by the re-baseline at <code>6af95b7</code>. The reasoning above is preserved as it was written — this is the audit, not a status board.</em></p>
+    <p><em>Since updated: <code>menu</code> is now 0.0000%, and <code>ocean-coast</code>'s red was cleared by the re-baseline at <code>6af95b7</code> — both on Chromium 147. The reasoning above is preserved as it was written — this is the audit, not a status board.</em></p>
   </div>
 
   <div class="layers">
@@ -441,24 +553,29 @@
       <span class="name">Capture layer</span>
       <span class="grade">Above standard</span>
       <p>The completeness sentinel, subject-on-screen palette probing, the byte-flip dead-comparator canary, the browser-presents-a-frame preflight, and the single-door <code>shot()</code> invariant are things no surveyed off-the-shelf tool ships. Defend it; don't rebuild it.</p>
+      <span class="then">2026-09-22: mechanics still sound; coverage is not — no eye-level pose, hands excluded (§00).</span>
     </div>
     <div class="layer mid">
       <span class="name">Comparator layer</span>
       <span class="grade">Behind → closing</span>
       <p>One global 6% threshold over 31 frames, no diff image written on failure, no windowed density. Every diagnosis in this investigation required an out-of-band manual crop.</p>
-      <span class="then">Since: diff PNG + contact sheet + windowed density landed; per-frame tolerances still owed.</span>
+      <span class="then">Since: diff PNG + contact sheet + windowed density landed, then a per-frame local-density ratchet (2026-08-12); per-frame tolerances still owed (OI-27).</span>
     </div>
     <div class="layer bad">
       <span class="name">Oracle layer</span>
       <span class="grade">Ungoverned → gated</span>
       <p>No gate covers <code>tests/visual/baseline/**</code>. 10 of the last 12 baseline-rewriting commits also touch <code>src/</code> in the same commit. No diff artifact, no contact sheet, no baseline changelog.</p>
-      <span class="then">Since: <code>baseline-trailer</code> is the 11th pre-push gate; bundling with <code>src/</code> is now rejected.</span>
+      <span class="then">Since: <code>baseline-trailer</code> gates every push; bundling with <code>src/</code> is rejected. 2026-09-22: the PNGs are Chromium-147 shots, owed a Kevin-reviewed re-shoot.</span>
     </div>
   </div>
 </section>
 
 <section>
   <h2><span class="num">02</span> The measured distribution</h2>
+  <div class="callout warn">
+    <span class="hd">Renderer note, 2026-09-22 — every number in this section is a Chromium-147 measurement</span>
+    <p>puppeteer 24.42.0 &rarr; 25.6.0, taken on 2026-08-13 to remove <code>extract-zip</code>, moved the bundled Chromium 147 &rarr; 151. <code>AGENTS.md</code> now treats this per-frame table as void as current state: a determinism measurement is a claim about a renderer as much as about the code, so it expires when either moves. The one 151 reading on record — 17 of 31 frames byte-identical against the 147 baselines, zero over the 6% gate — is the 2026-08-13 code, before every change listed at the top of §00. The numbers below are kept as the audit's evidence, not as a status board; re-measure rather than quote them.</p>
+  </div>
   <p>Computed from a preserved identical-code capture pair, comparing all 31 frames. Not a continuum — three tiers with a clean gap between them.</p>
 
   <div class="tiers">
@@ -595,19 +712,21 @@
 <section>
   <h2><span class="num">08</span> Assumptions the audit broke</h2>
   <ol>
-    <li><strong>"RNG is seeded."</strong> The per-key seeded generator exists and is sound — and has <strong>exactly one consumer file</strong>. 73 raw <code>Math.random()</code> sites remain across 18 files. Determinism is achieved by <em>suppression</em>, not seeding.</li>
+    <li><strong>"RNG is seeded."</strong> The per-key seeded generator exists and is sound — and has <strong>exactly one consumer file</strong>. 73 raw <code>Math.random()</code> sites remain across 18 files. Determinism is achieved by <em>suppression</em>, not seeding. <em>(Re-counted at <code>57c4cd93</code>: 72 across 20 non-test files, against 127 <code>isCaptureMode()</code> call sites; <code>captureRandom</code> still has one consumer, <code>render/WeatherSystem.jsx</code>.)</em></li>
     <li><strong>Consequence nobody had stated:</strong> the gated frames depict a build with weather, mob AI, NPC routines, particles, spawning and VFX <em>turned off</em>. The gate validates a version of the game nobody plays, and is structurally incapable of regressing anything that only manifests in motion.</li>
     <li><strong>"Clocks are frozen."</strong> No global freeze — seven scattered per-consumer substitutions against 68 time-reading sites and 52 timers. Nobody enumerated which run under capture.</li>
     <li><strong>Three of the 31 gated frames cannot exist in the shipped bundle.</strong> They are dev-only components behind a DEV guard, and the capture runs against the dev server. So ~10% of the gate tests surfaces that never ship, and 0% tests the artifact that auto-deploys on every push. Raised by zero research lanes.</li>
     <li><strong>The baseline sentinel is written but read nowhere</strong> — the comparator hardcodes the current directory.</li>
   </ol>
-  <p><em>All five were acted on: 1 and 3 are corrected in the project's own instructions (which had claimed the opposite), 4 produced a production-bundle smoke job, and 5 is wired — the comparator now attributes each frame to the capture that produced it.</em></p>
+  <p><em>All five were acted on: 1 and 3 are corrected in the project's own instructions (which had claimed the opposite), 4 produced a production-bundle smoke job, and 5 is wired — the comparator now attributes each frame to the capture that produced it. 2026-09-22: item 2 has since been measured three ways — no eye-level camera, the hands excluded, L1 absent from capture (<code>7fc40aa4</code>, top of §00) — and the smoke job from item 4 now reads GL errors per frame, on the SwiftShader path only (<code>53788fc3</code>, <code>673ecde8</code>).</em></p>
 </section>
 
 <footer>
   <p><strong>Denominator.</strong> 8 research lanes × ~3 rounds × 5 search backends ≈ 120 lane-queries, all 5 lanes live on every round after retry. Primary sources opened, not merely cited: 15 Chromium source files at three revisions, the CDP domain docs, MDN, the Khronos WebGL spec, three.js's own e2e suite, Blender's render-test handbook, Unity's graphics test framework. Installed-version reads settled most refutations — including <code>strings</code> on the actual Chrome binary. Repo measurement: all 31 baselines decoded and profiled, historical baseline blobs extracted and visually opened, the proposed density metric executed offline against a real capture pair, six CI logs read, guard populations counted across 60 files.</p>
   <hr>
   <p><strong>Explicitly not checked</strong>, because no execution was permitted at audit time: whether the gate is ever actually run; whether antialiasing is granted under the software rasteriser; the diorama's mount order relative to capture-mode entry; any post-fix measurement of the menu residual. Every "this will help" claim was mechanism-verified, not outcome-verified. <strong>All four have since been executed and are answered in §00</strong> — the AA probe overturned nothing but explained the delta-of-1 half of the menu signature, and the post-fix measurement came back at exact equality. The distinction that produced this paragraph is worth keeping: a mechanism-verified claim is a hypothesis with good reasoning attached, and this page was careful to say so rather than let the reasoning pass for a result.</p>
+  <hr>
+  <p><strong>2026-09-22 update — sources and denominator.</strong> The commit messages <code>9b84efe..57c4cd93</code> (74 commits; the five through <code>1be94a5c</code> were read by the verification pass, which also corrected the CI-run, capture and deferred-item statements against <code>gh run list</code>), <code>docs/superpowers/sota-2026-09/</code> (QUEUE, OPEN-ITEMS, FUTUREPROOF, GATES, PLAN, EXTERNAL-BASELINE, OVERNIGHT), <code>memory/ACTIVE_PLAN.md</code>, and commands run for this page: <code>gate-census.mjs</code> and <code>killability-ledger.mjs</code> against a clean <code>git archive</code> export of <code>57c4cd93</code> (the working tree carried another session's uncommitted edits), <code>git grep</code> counts at <code>57c4cd93</code>, <code>gh run list</code> for CI and <code>gh pr view 18</code>. No capture, browser or dev server was run for this update, so it adds no new pixel measurement of its own.</p>
 </footer>
 
 </div>
