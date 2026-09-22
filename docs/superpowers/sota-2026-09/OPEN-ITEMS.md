@@ -195,3 +195,34 @@ effort.
 - **A `Mutation-Proof:` trailer must start with exactly that token and a colon**, and a stamp must never be chained onto a commit that can be rejected.
 - **Do not re-baseline `ocean-coast`, `landmark` or `explore-day-med`** — the capture explicitly WARNs they never stabilize, in both runs independently.
 - **Verify every registry line against live code before working *or repeating* it.** Nineteen rows in this ledger were already closed; three of those had been re-listed as open for over a month.
+
+---
+
+## CORRECTION — the blade biome tint is probably BELOW the visual gate's noise floor (2026-09-22)
+
+Commit `57ca5205` claims "THE VISUAL BASELINES ARE NOW OWED A RE-SHOOT ... the gated frames really do
+change". That overstates it for the BLADES, and the evidence was already written down in this repo
+before I wrote the claim.
+
+`scripts/visual/grass-swatch-probe.mjs`'s own docblock:
+
+> The 31 gated capture states put their cameras 20-30m above the ground (capture.mjs: y 62-82 looking at
+> y 51-70), where a 0.7m tuft is a few pixels. S8 measured 3.119% against baseline with ZERO of 31 frames
+> over the 6% threshold — the gate would have passed it whether or not the feature worked.
+
+So: a change to BLADE colour is very likely under the 6% threshold on every gated frame. The GROUND tint
+(B2, already shipped, a shader uniform over whole block faces) is the part that genuinely moves pixels.
+Conflating the two is what produced the overstatement.
+
+**What this means practically:**
+- Do NOT re-baseline on the strength of the blade change alone; there may be nothing to re-baseline.
+- The re-baseline owed for the Chromium 147 -> 151 renderer move is a SEPARATE and real debt. Keep it.
+- **The visual gate cannot see the wind-grass at all**, at any strength. That is the finding worth
+  keeping: the feature with the most recent activity in this repo is invisible to the only instrument
+  that looks at pixels. A ground-level gated state would fix it, and none exists.
+
+**Also measured 2026-09-22, and it is why no 31-state capture was run:** load average 78.20 on 14 cores
+with only 17 processes in R state — blocked/IO, not runnable CPU. `NotificationCenter` (100.7%) and
+`WindowServer` (91.3%) had both been pegged for 3d10h, alongside 4+ concurrent `npm exec
+ccstatusline@latest` across ~33 sessions. ZERO leaked vite/Chromium from this session. Capture is
+load-sensitive, so a 31-state run under that load would measure the machine, not the change.
