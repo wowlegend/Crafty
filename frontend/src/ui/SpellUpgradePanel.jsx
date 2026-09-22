@@ -17,6 +17,9 @@ const SPELL_MASTERY = [
 ];
 // The level-gate is the shared requiredLevelForUpgrade from spellUpgrades.js (same gate as upgradeSpell).
 
+/** How long a first respec press stays armed before it quietly disarms. */
+export const RESPEC_ARM_MS = 3000;
+
 export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const t = useT();
     const talentPoints = useGameStore(state => state.talentPoints || 0);
@@ -24,6 +27,15 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const spendTalentPoint = useGameStore(state => state.spendTalentPoint);
     const respecTalentPoints = useGameStore(state => state.respecTalentPoints);
     const spentRanks = Object.values(unlockedTalents).reduce((n, v) => n + (v || 0), 0);
+    // R1.8: respec wipes the whole build and sits beside the close button, so it takes TWO presses — the
+    // first arms it (the label changes), the second commits. It disarms itself after RESPEC_ARM_MS, so a
+    // stray first press can never be cashed by an unrelated later one.
+    const [respecArmed, setRespecArmed] = React.useState(false);
+    React.useEffect(() => {
+        if (!respecArmed) return undefined;
+        const id = setTimeout(() => setRespecArmed(false), RESPEC_ARM_MS);
+        return () => clearTimeout(id);
+    }, [respecArmed]);
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
     const spellLevels = useGameStore(state => state.spellLevels || {});
@@ -78,12 +90,17 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                 size="sm"
                                 data-testid="talent-respec"
                                 disabled={spentRanks === 0}
-                                aria-label={t('talent.respec')}
+                                aria-label={respecArmed ? t('talent.respecConfirm') : t('talent.respec')}
                                 title={t('talent.respecHint')}
-                                onClick={() => respecTalentPoints && respecTalentPoints()}
-                                className="px-3 text-text-muted"
+                                data-armed={respecArmed ? 'true' : 'false'}
+                                onClick={() => {
+                                    if (!respecArmed) { setRespecArmed(true); return; }
+                                    setRespecArmed(false);
+                                    if (respecTalentPoints) respecTalentPoints();
+                                }}
+                                className={`px-3 ${respecArmed ? 'text-spell-fire' : 'text-text-muted'}`}
                             >
-                                {t('talent.respec')}
+                                {respecArmed ? t('talent.respecConfirm') : t('talent.respec')}
                             </Button>
                             <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
                                 <Icon name="close" size={18} />

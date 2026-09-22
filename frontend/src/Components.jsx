@@ -22,7 +22,7 @@ import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset, SHAKE_WEIGHT_MAX } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
-import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
+import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
 import { armImbueCast } from './game/elemancerChannel.js';
@@ -322,6 +322,7 @@ export const Player = ({ isWorldBuilt }) => {
         active: getInput().active,
         alive: store.isAlive,
         canIgnite: rCanIgnite(store.resonanceBanked) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
+        owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
       });
       imbueSMRef.current = sm;
       if (action === 'consume') {
@@ -714,7 +715,7 @@ export const Player = ({ isWorldBuilt }) => {
         }
         if (best) { snareTargetId = best.id; snareTarget = best; }
       }
-      const squadCap = 2 + ((stv.unlockedTalents?.['soulbind_pack'] > 0) ? 1 : 0);
+      const squadCap = squadCapFor(stv.unlockedTalents);
       const { sm: ssm, action: saction } = decideSoulbind(soulbindSMRef.current, {
         snareEdge,
         active: vin.active,
@@ -805,6 +806,7 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         canIgnite: rCanIgnite(stv.resonanceBanked) && (stv.unlockedTalents?.['elemancer_imbue'] > 0),
+        owned: (stv.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
       });
       imbueSMRef.current = ism;
       if (iaction === 'arm') stv.setImbueArmed(true);

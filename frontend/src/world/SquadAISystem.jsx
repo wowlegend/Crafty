@@ -2,7 +2,9 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
-import { mobsQuery, alliesQuery } from '../ecs/world';
+import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
+import { squadCapFor } from '../game/soulbind.js';
+import { releaseOverCap } from '../game/allegiance.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { stepSquad, ALLY_DPS_HIT } from '../game/squadAI';
 
@@ -25,6 +27,10 @@ export function SquadAISystem() {
     accumRef.current = 0;
     if (alliesQuery.entities.length === 0) return;
     const store = useGameStore.getState();
+    // R1.4: the cap is an invariant held every tick, so ANY way the cap falls (a respec refunding Pack
+    // Bond, a load) shrinks the squad — not only the snare gate that stops new binds.
+    releaseOverCap(ecs, alliesQuery.entities, squadCapFor(store.unlockedTalents));
+    if (alliesQuery.entities.length === 0) return;
     const p = store.playerPosition;
     if (!p) return;
     const now = state.clock.getElapsedTime();

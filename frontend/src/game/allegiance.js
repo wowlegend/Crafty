@@ -19,3 +19,26 @@ export function convertMobToAlly(world, entity) {
   entity.isAggro = false;               // no lingering hostility flag
   return entity;
 }
+
+/**
+ * releaseOverCap(world, allies, cap) -> the entities released (removed from the world).
+ *
+ * The squad cap is an INVARIANT, not a gate on new binds only (QUEUE R1.4): a respec that refunds Pack
+ * Bond lowers the cap, and a squad above it must shrink, or the refund is a free, repeatable exploit —
+ * take Pack Bond, bind a third, respec, keep it. Released creatures DEPART (the bond breaks) rather than
+ * turning hostile at your side, which would punish a menu choice with a fight.
+ *
+ * Who leaves is deterministic: plain binds before hybrids (a fusion cost 50 Soul), then the weakest
+ * (lowest maxHealth), then by id. `allies` is not mutated by the sort — miniplex re-indexes on remove.
+ */
+export function releaseOverCap(world, allies, cap) {
+  const excess = (allies?.length || 0) - cap;
+  if (excess <= 0) return [];
+  const order = [...allies].sort((a, b) =>
+    (Number(!!a.hybridId) - Number(!!b.hybridId)) ||
+    ((a.maxHealth || 0) - (b.maxHealth || 0)) ||
+    String(a.id).localeCompare(String(b.id)));
+  const out = order.slice(0, excess);
+  for (const e of out) world.remove(e);
+  return out;
+}

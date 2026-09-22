@@ -9,6 +9,19 @@
 export const SNARE_CHANNEL_SEC = 1.1;  // hold-to-bind window (Kevin-tunable)
 export const SNARE_COOLDOWN_SEC = 1.5; // after a completed bind (anti-spam; breaks are free)
 
+/** Bound creatures you may hold without Pack Bond. Not a talent grant — the base of the verb. */
+export const BASE_SQUAD_CAP = 2;
+
+/**
+ * The squad cap for a talent map: BASE_SQUAD_CAP, +1 with Pack Bond (`soulbind_pack`). ONE definition,
+ * read by both the snare gate (Components) and the cap ENFORCEMENT (SquadAISystem). It used to be an
+ * inline expression at the snare gate only, which is why a respec that removed Pack Bond left a third
+ * ally in the squad forever: the cap gated new binds and nothing re-checked the ones already held.
+ */
+export function squadCapFor(unlockedTalents) {
+  return BASE_SQUAD_CAP + ((unlockedTalents?.soulbind_pack ?? 0) > 0 ? 1 : 0);
+}
+
 export function makeSoulbindState() {
   return { channeling: false, channelStart: 0, targetId: null, cooldownUntil: 0 };
 }

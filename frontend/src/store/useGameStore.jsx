@@ -529,6 +529,14 @@ export const useGameStore = create((set, get) => ({
             maxHealth, maxMana,
             playerHealth: Math.min(state.playerHealth, maxHealth),
             mana: Math.min(state.mana, maxMana),
+            // R1.4: refunding a verb must also END what the verb is doing, or respec is a free exploit —
+            // hold a beast form or a grab through it and keep both. These are the same store flags each
+            // Aspect SM reads as its ACTIVE state, so clearing them IS the SM's own exit path (the form's
+            // collider swap is driven by activeBeastForm). The squad-cap half lives in SquadAISystem,
+            // because the store never touches the ECS world; the imbue stance is owned by its SM's ref,
+            // which disarms itself when the talent is no longer owned (game/elemancer.js `owned`).
+            beastFormActive: false, activeBeastForm: null, beastCharging: false,
+            voidhandHeld: false, heldPhantom: null,
         };
     }),
 

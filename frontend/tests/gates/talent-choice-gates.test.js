@@ -147,6 +147,13 @@ describe('C4 the respec and the exclusion are REACHABLE, not just implemented', 
     expect(panel.length).toBeGreaterThan(2000);
   });
 
+  it('SquadAISystem ENFORCES the squad cap every tick (R1.4) — the store cannot reach the ECS world', () => {
+    // The weak, structural half of respec-unwind-gates: the frame loop is an R3F useFrame and is not
+    // rendered in a unit test. The behaviour of releaseOverCap + squadCapFor is driven there for real.
+    const sq = strip(readFileSync(resolve(SRC, 'world/SquadAISystem.jsx'), 'utf8'));
+    expect(sq).toMatch(/releaseOverCap\(ecs, alliesQuery\.entities, squadCapFor\(store\.unlockedTalents\)\);/);
+  });
+
   it('the respec action has a CALL SITE — it shipped with none', () => {
     expect(panel, 'the panel does not read the respec action').toMatch(/state\.respecTalentPoints/);
     expect(panel, 'the respec action is read but never invoked').toMatch(/respecTalentPoints\(\)/);

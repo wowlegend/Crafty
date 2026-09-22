@@ -12,12 +12,16 @@ export function makeImbueState() {
 }
 
 /** decideImbue(sm, ctx) -> { sm, action }; action: 'none'|'arm'|'disarm'|'consume'.
- *  ctx: { imbueEdge, castFired, active, alive, canIgnite } */
+ *  ctx: { imbueEdge, castFired, active, alive, canIgnite, owned }
+ *  `owned` (the elemancer_imbue talent) is checked on the ARMED branch too: canIgnite is only read at
+ *  arm-time, so without it a respec that refunds the talent left the stance armed in this ref while the
+ *  store's reticle flag went dark — the next cast consumed an imbue the player no longer owns (R1.4).
+ *  Absent (older callers) is not `false`, so it only ever disarms when a caller says so. */
 export function decideImbue(sm, ctx) {
   const out = { ...sm };
 
   if (sm.armed) {
-    if (!ctx.alive || !ctx.active) { out.armed = false; return { sm: out, action: 'disarm' }; }
+    if (!ctx.alive || !ctx.active || ctx.owned === false) { out.armed = false; return { sm: out, action: 'disarm' }; }
     if (ctx.castFired) { out.armed = false; return { sm: out, action: 'consume' }; }
     if (ctx.imbueEdge) { out.armed = false; return { sm: out, action: 'disarm' }; }
     return { sm: out, action: 'none' };
