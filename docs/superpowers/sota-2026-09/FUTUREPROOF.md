@@ -340,3 +340,47 @@ correct, once, and nothing re-asked.
 *Every version number, advisory range, peer constraint, Node lifecycle date, upstream issue state, PR check
 rollup and action release tag here was read from a live source on 2026-09-22: the npm registry,
 `npm audit --json`, `nodejs.org/dist/index.json`, the nodejs/Release schedule, and the GitHub API via `gh`.*
+
+---
+
+## THE VISUAL GATE IS NOT A SAMPLE OF WHAT THE PLAYER SEES (measured 2026-09-22)
+
+Three independent findings this session all bottomed out in the same structural fact, which is why it
+belongs here rather than in a bug row. The capture corpus is the only instrument in this repo that looks
+at pixels, and it is systematically blind to the player's actual view.
+
+**1. No gated camera is at eye level.** Measured from `capture.mjs`: seven explicit poses, at
+y = **81, 82, 26, 78, 62, 70, 70**. The terrain surface sits around y ≈ 51 (the states' own `lookAt`
+values target 51-54) and a standing player's eye is therefore ≈ 53. Every pose but one is **10-31 units
+above the surface looking down**; the single low one, y = 26, is BELOW sea level at 28, i.e. underwater.
+The repo's own `grass-swatch-probe.mjs` docblock already says this in passing — "the 31 gated capture
+states put their cameras 20-30m above the ground, where a 0.7m tuft is a few pixels" — and then measures
+that S8 grass scored 3.119% with zero of 31 frames over the 6% gate, i.e. **the gate would have passed
+that feature whether or not it worked**.
+
+**2. The FPV hands are excluded by construction.** `Components.jsx:1372` mounts them as
+`{!inCapture && <StableMagicHands ... />}`. The most-on-screen geometry in a first-person game appears in
+zero gated frames, permanently. A hands regression is invisible to every automated check here — which is
+why B5 could say "nobody has ever run the probe and looked" and be right.
+
+**3. L1 does not reproduce in capture at all.** The near-black surfaces measured at rgb(16,3,40) in live
+frames are absent from capture mode: the darkest WORLD tile there reads 44.4, a legitimately dark
+material. Whatever produces the live darkness is among the ~127 things `isCaptureMode()` switches off,
+or is specific to a camera the corpus never occupies.
+
+**The honest statement of what the visual gate covers:** a diorama view, from above, of a build with
+weather, mob AI, NPC routines, particles, spawning and the player's own hands disabled. It is a good
+regression guard for terrain, sky and UI massing. **It is not evidence about how the game looks in play,
+and no claim of that form should cite it.**
+
+**What closing this actually costs, stated so it is not underestimated.** A ground-level gated state
+needs (a) a deterministic way to stand the player somewhere repeatable — `isSpawnChunkLoaded` plus a
+pinned pose, which the existing states already do; (b) a reviewed baseline PNG, which is an ORACLE and
+must be frozen deliberately under a `Baseline-Review:` trailer, never bundled with a src change; and (c)
+a decision about the hands, since including them means the frame changes whenever held-item art changes.
+None of that is hard. The reason it has not happened is that nothing made the gap visible, and now three
+separate investigations have.
+
+**Do not "fix" this by re-pointing an existing camera lower.** Those seven poses are the oracle for
+everything they currently cover, and moving one rewrites its baseline while losing the coverage it had.
+This is an ADDITION.
