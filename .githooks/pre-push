@@ -115,6 +115,7 @@ for SHA in $TARGETS; do
   # seam from an unguarded script executes it, and i18n-adoption.mjs's process.exit(1) killed the vitest
   # worker during collection so the suite reported "1 failed | no tests" while every assertion skipped.
   # Running it first turns that into a named cause instead of a mystery.
+  printf '\n▶ killability-ledger (a new check file must name the mutation that reds it)\n'; node scripts/ci/killability-ledger.mjs
   printf '\n▶ cli-guard (an exporting script must not run its CLI on import)\n'; node scripts/ci/cli-guard.mjs
   printf '\n▶ unit + static gates\n';     npm run --silent test:unit
   printf '\n▶ build\n';                   npm run --silent build

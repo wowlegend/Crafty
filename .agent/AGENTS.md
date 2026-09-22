@@ -97,7 +97,7 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**11 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
+**12 gates authorize a push.** Generated from `.githooks/pre-push` in hook order — this
 paragraph undercounted itself three times when it was hand-maintained ("three" -> "Six" -> "NINE"),
 the last time one commit after the gate landed. Do not edit the table by hand; add the description to
 `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
@@ -111,6 +111,7 @@ the last time one commit after the gate landed. Do not edit the table by hand; a
 | artifact-currency | `node scripts/ci/artifact-currency.mjs` | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
 | eslint | `npm run lint` | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
+| killability-ledger | `node scripts/ci/killability-ledger.mjs` | ✅ | ✅ | a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
 | unit + static gates | `npm run test:unit` | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
 | build | `npm run build` | ✅ | ✅ | broken JSX/imports |
@@ -211,7 +212,28 @@ Subagent-driven-development (Opus 5) per task: implementer + spec-compliance rev
 
 ## Core Agent Skills (evaluate per task)
 - `brainstorming` — before new game features / UI.
-- `ruthless-cleaner-kz` (via `cleanup-kz`) — auditing/refactoring/dead-code in ECS systems.
+- ~~`ruthless-cleaner-kz` (via `cleanup-kz`)~~ — **ARCHIVED 2026-08-29** to
+  `Agentic-Brain/skills-archive/` (restorable via `git mv` + `sync.sh`). Last actually
+  invoked in week 2026-W29; stale for four weeks after that, then dead. Its sibling
+  `upgrade-deps-kz` was archived the same day and had **never** been invoked in any
+  recorded week. Both were authored out of Crafty work months ago.
+  **OPEN — needs a SOTA pass, not a like-for-like replacement.** Two jobs lost a home:
+  (1) *cleanup / dead-code / refactor auditing*. Crafty already has the better half of
+      this deterministically — `knip` is wired, and `docs/superpowers/specs/crafty-coherence-pillars.md`
+      line 66 specifies the accretion ratchet (net-LOC ratio, jscpd duplicate blocks,
+      knip/ts-prune dead exports, cyclomatic delta on god-files) as **a deterministic
+      script, advisory-flag only, never auto-delete** — and that spec still names
+      `cleanup-kz` as its wiring target. That wiring target no longer exists: decide
+      whether the ratchet script becomes the whole answer, or whether an LLM review
+      layer sits on top of it.
+  (2) *dependency upgrades*. Crafty has `ci.yml` but **no `dependabot.yml`** — so
+      nothing replaced the skill here; the job is simply unowned. Evaluate
+      Dependabot vs Renovate (grouping, auto-merge policy) against the estate's
+      2026-08-12 lesson: a Dependabot config's FIRST scan fires the moment it lands,
+      not on the declared schedule, and `[minor, patch]` groups exclude majors —
+      for 0.x packages the MINOR position is the breaking one.
+  Estate context: `rules-global/github-automation.md` carries the Dependabot gotchas;
+  archival rationale and the skill-frequency evidence are in the Agentic-Brain commit.
 - `pre-commit-kz` — BEFORE any git commit (debug commands, broken builds, secrets).
 - `session-archivist-kz` — the 4-piece doc update after major tasks.
 

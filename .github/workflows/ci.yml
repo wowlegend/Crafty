@@ -63,6 +63,12 @@ jobs:
       - name: Gate shape (no assertion satisfied by a comment)
         run: node scripts/ci/gate-shape.mjs
 
+      # How many of this suite's own checks have ever been PROVEN to fail. Ratcheted: the un-receipted
+      # count may fall and never rise, so a NEW check file must name the mutation that reds it while
+      # the existing debt stays payable rather than blocking. Prints the denominator on every run.
+      - name: Killability receipts (ratchet + denominator)
+        run: node scripts/ci/killability-ledger.mjs
+
       - name: Unit + static gates (vitest)
         run: npm run test:unit
 
