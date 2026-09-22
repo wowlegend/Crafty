@@ -91,29 +91,53 @@ of them is about COST, QUALITY TIERS or the sun's ARC. Not one asserts that the 
 anything. The most expensive visual effect in the game (its sample count is described in
 `render/quality.js` as "the single most expensive knob in the file") has no check that it renders at all.
 
-**ANSWERED 2026-09-22 — GodRays COMPOSITES at 6.39.5. OI-03b CLOSED.**
+**ANSWERED 2026-09-22 — GodRays COMPOSITES at 6.39.5. OI-03b CLOSED.** `scripts/visual/godrays-probe.mjs`
+(new, port 4235). But read the next section before citing the number: the first answer was right by
+accident, and two of the four runs reached confident OPPOSITE conclusions.
 
-`scripts/visual/godrays-probe.mjs` (new, port 4235). Measured on this machine, headless swiftshader,
-1280x800, tier forced to `high`, `setTimeOfDay(0.3)`, both preconditions read back live before any frame
-was trusted (`tier=high sunAboveHorizon=true` — a frame shot with the pass unmounted cannot answer
-whether the pass composites, and the store default tier is `low`, which sets `godRays:false`):
+**The measurement that stands** — capture mode engaged, tier forced `high`, `setTimeOfDay(0.3)`, both
+preconditions read back live, all three frames verified to have booted to the same world state:
 
 | measurement | mean abs channel diff |
 |---|---:|
-| run noise floor — the SAME build captured twice | **6.4882** |
-| GodRays present vs the one element removed | **62.2298** |
-| ratio | **9.59x** |
+| boot identity, far sky (GodRays cannot reach it): A1~A2 | **0.000** |
+| boot identity, far sky: A1~B | **0.034** |
+| shaft corridor, same-boot noise | 0.285 |
+| **shaft corridor, GodRays removed** | **5.214** (18x the noise, 104x the boot floor) |
+| halo around the sun, GodRays removed | 3.551 |
+| far-sky luminance on / off | 157.7 / 157.7 |
 
-The threshold is a ratio of two things measured in the same session, not a constant: Chromium does not
-guarantee deterministic rendering and this repo has measured that directly, so "must differ by N%" would
-be a constant pretending to be a control. The frame was also OPENED, not just scored — the warm orange
-bloom off the sun disc is visible, which is the pass doing its job.
+The effect is REAL, LOCALISED and SMALL — 5.21 over the corridor. **No whole-frame statistic can see it**,
+and the frame was opened, not just scored.
 
-The 6.39.4 regression is NOT present on the shipped pin. The probe patches out the single `<GodRays>`
-element (quality-tier switching would have brought six confounds: AO, shadow map size, render distance,
-outlines, mote count) and restores byte-identical, verified.
+### How this probe was wrong three times, because the pattern is worth more than the answer
 
-**~~Owed~~ (done):** a presence-controlled probe — same frame, sun above horizon, GodRays on vs off, assert the sun
+Four runs. Two verdicts, opposite, both confident, both unsound. The conclusion never moved because the
+evidence improved — it moved because the instrument kept being broken in a new way.
+
+| run | design | verdict | why it was unsound |
+|---|---|---|---|
+| v1 | whole-frame mean; "off" by renaming the tag to `<GodRaysDISABLED` | ✅ works, **9.59x** | the rename made it an UNDEFINED COMPONENT, so React tore down the entire EffectComposer. The control had no postprocessing at all. The giveaway was in the numbers I nearly shipped without reading: the **sky fell from 150.2 to 18.7 luminance**, and removing a god-ray pass cannot darken the sky eightfold |
+| v2 | same, but "off" flips the guard to `false &&` | ❌ inert, **1.23x** | the "noise floor" was two captures of a LIVE game 30s apart — that is scene ANIMATION, not renderer noise, and it was spatially structured: **0.74 in far sky vs 10.44 on the sun disc**. The drift was largest exactly where the effect lives, so it swamped the signal |
+| v3 | adds `enterCapture` | ❌ inert, **0.26x** | capture mode worked (far sky A1~A2 = **0.002**) but every shot is a FRESH BOOT, and the sun disc differed **46.74** between two A-frames because the player settles differently and moves the sun's screen position. Whole-frame means measured where the camera landed |
+| v4 | boot-identity control + localised regions | ✅ works, corridor **18x** | sound: the pair is PROVEN to be the same world from the same place before any difference is attributed |
+
+**Three lessons, all of which this estate already had written down and none of which I applied until the
+measurement forced me to:**
+
+1. **A whole-frame mean is the wrong statistic for a localised effect.** Shafts occupy a few percent of
+   the frame; averaged over 1M pixels a strong local effect reads as noise. v2 and v3 both died here.
+2. **"Noise floor" is a claim about what is held constant, and it must be verified, not assumed.** Mine
+   was scene animation in v2 and boot variance in v3. The tell both times was SPATIAL STRUCTURE — a real
+   renderer noise floor is roughly uniform; mine was 0.002 in one corner and 46.74 in another.
+3. **A broken instrument that agrees with the truth is still broken.** v1 got the right answer and I
+   committed its number as evidence. Had the regression actually been present, v1 would have reported
+   "works" just as loudly, because what it was really measuring was React unmounting a subtree.
+
+The probe now exits **3 (COULD NOT CHECK)** rather than 0 when the boots diverge or the control loses
+sky luminance — the two failures that produced the wrong answers.
+
+**~~Owed~~ (done):** a presence-controlled probe**~~Owed~~ (done):** a presence-controlled probe — same frame, sun above horizon, GodRays on vs off, assert the sun
 region is measurably brighter with it on. An absence assertion here would be worthless: a dead probe and
 a dead effect read identically, which is exactly how the 6.39.4 regression went unnoticed.
 
