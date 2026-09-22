@@ -1,5 +1,5 @@
 {
-  "_count": 104,
+  "_count": 105,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -19,6 +19,7 @@
     "tests/gates/blight-monolith-gates.test.js",
     "tests/gates/block-debris-gates.test.js",
     "tests/gates/boot-chrome-gate.test.js",
+    "tests/gates/boss-emissive-gates.test.js",
     "tests/gates/boss-lair-gates.test.js",
     "tests/gates/boss-melee-spark-gates.test.js",
     "tests/gates/bundle-split-gates.test.js",

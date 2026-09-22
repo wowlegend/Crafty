@@ -72,3 +72,50 @@ export function installRim(material, { color = RIM.color, power = RIM.power, str
 export function flashableMaterial(mat) {
   return !!mat && (mat.isMeshStandardMaterial === true || mat.isMeshToonMaterial === true);
 }
+
+/**
+ * BOSS EMISSIVE, BY SURFACE KIND — the art rule that stops the payoff reading as a plastic box.
+ *
+ * THE DEFECT (QUEUE B3 / Q15). The torso is a `<boxGeometry args={[3,2,4]} />` at `roughness={0.15}
+ * metalness={0.9}` — a genuinely beautiful obsidian setup — and then an emissive of the phase colour at
+ * 0.8 to 2.2 floods every bit of it. The obsidian stops being obsidian and the result reads as a flat
+ * purple box: cheaper-looking than the trash mobs, and it is the climax of the entire run.
+ *
+ * AND THE RATIO WAS BACKWARDS. The WINGS — thin membranes, the one surface on the model that should
+ * carry a phase glow because light passing through a membrane is what that glow imitates — sat at
+ * `emissiveIntensityVal * 0.4`, i.e. forty percent of the armour plate. The surface that should have
+ * been brightest was dimmer than the one that should have been darkest.
+ *
+ * THE RULE: emissive belongs on surfaces light can PASS THROUGH or ESCAPE FROM — membranes, eyes, the
+ * seams between plates — and not on the plates themselves. A phase-coloured glow on obsidian reads as
+ * plastic; the same colour on a membrane beside unflooded obsidian reads as HEAT. `bodyColor` is not
+ * touched: the obsidian was always right, and "fix the boss" by lightening it would lose the one thing
+ * that already worked.
+ *
+ * A plate keeps a low sheen rather than zero, so the phase still registers in its crevices and at
+ * grazing angles — deleting it outright would flatten the boss the other way.
+ *
+ * The damage FLASH is deliberately kind-independent: it must dominate every surface at once or it stops
+ * reading as a hit, which is the whole point of `src/render/bossFlash.test.js`.
+ */
+export const BOSS_FLASH_EMISSIVE = 3.0;
+
+/** Per-phase emissive intensity by surface kind. Phase index is clamped, so an unknown phase is safe. */
+export const BOSS_EMISSIVE = {
+  plate:    [0.10, 0.18, 0.26], // obsidian armour — a sheen, never a flood
+  membrane: [1.10, 1.80, 2.60], // wings — this is where the phase colour lives
+};
+// NO `eye` BAND, deliberately. I wrote one, and the gate caught it as dead config within the minute:
+// the boss eyes are `<meshBasicMaterial color={eyeColor} toneMapped={false} />`. A basic material is
+// unlit and untone-mapped, so the eyes are already the brightest thing on the model BY CONSTRUCTION,
+// through a better mechanism than emissive — they cannot be dimmed by the scene and they never blow out
+// the tone curve. Adding an emissive band for them would have been a table entry nothing reads, and the
+// gate's first run also showed the entry was WRONG: at phase 2 it sat at 3.20 against a flash of 3.00,
+// so a hit would have made the eyes DIMMER. Two defects in one unwired constant.
+
+export function bossEmissiveIntensity(kind, bossPhase, isFlashing = false) {
+  if (isFlashing) return BOSS_FLASH_EMISSIVE;
+  const band = BOSS_EMISSIVE[kind] || BOSS_EMISSIVE.plate;
+  const i = Math.min(band.length - 1, Math.max(0, Math.floor(Number(bossPhase) || 0)));
+  return band[i];
+}

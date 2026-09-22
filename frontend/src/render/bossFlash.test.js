@@ -72,6 +72,13 @@ describe('boss damage flash — a render actually happens', () => {
     // If a future edit drives the material imperatively instead, this whole approach can be revisited.
     // Until then, no render means no flash, and that is the fact the fix rests on.
     expect(SRC).toMatch(/isFlashing \? "#ef4444"/);
-    expect(SRC).toMatch(/emissiveIntensityVal = isFlashing \? 3\.0/);
+    // RE-POINTED 2026-09-22. This pinned `emissiveIntensityVal = isFlashing ? 3.0`, a single intensity
+    // for the whole model. B3 split emissive by surface KIND — plates get a sheen, membranes carry the
+    // phase colour — so that variable is gone. The CLAIM is unchanged and is what matters here: the
+    // flash still reaches the material through a declarative prop, which is why a render is required.
+    // `bossEmissiveIntensity` returns the flash value for every kind, which is asserted in
+    // boss-emissive-gates; here we only need that isFlashing still drives the binding.
+    expect(SRC).toMatch(/bossEmissiveIntensity\('plate', bossPhase, isFlashing\)/);
+    expect(SRC).toMatch(/bossEmissiveIntensity\('membrane', bossPhase, isFlashing\)/);
   });
 });

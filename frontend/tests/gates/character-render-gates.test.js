@@ -30,7 +30,13 @@ describe('M2b static gates', () => {
     // The boss's attack language is its emissive glow — the M2b outline must be purely
     // additive. Both the torso emissive binding and its intensity binding must remain.
     expect(src).toMatch(/emissive=\{bodyEmissive\}/);
-    expect(src).toMatch(/emissiveIntensity=\{emissiveIntensityVal\}/);
+    // RE-POINTED 2026-09-22 (B3/Q15). The single `emissiveIntensityVal` is gone: emissive is assigned by
+    // surface KIND now, because one value flooding obsidian armour is what made the boss read as a flat
+    // purple box. The claim this case makes — the outline pass is purely ADDITIVE and did not strip the
+    // telegraph — is unchanged, so it follows the bindings rather than being relaxed. Counted, so a
+    // single surface losing its binding cannot hide behind the others.
+    expect((src.match(/emissiveIntensity=\{plateEmissive\}/g) || []).length).toBe(2);
+    expect((src.match(/emissiveIntensity=\{membraneEmissive\}/g) || []).length).toBe(2);
   });
 
   it('boss is NOT converted to a toon material', () => {

@@ -7,7 +7,7 @@ import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
-import { OUTLINE } from './characterStyle';
+import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { windupRamp } from '../game/attackTelegraph.js';
@@ -476,9 +476,14 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
     
     // Satisfying damage indicator color values and majestic obsidian styling
-    const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black
-    const bodyEmissive = isFlashing ? "#ef4444" : phase.color; // Emissive phase color highlight
-    const emissiveIntensityVal = isFlashing ? 3.0 : (bossPhase === 2 ? 2.2 : (bossPhase === 1 ? 1.5 : 0.8));
+    const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black — UNCHANGED
+    const bodyEmissive = isFlashing ? "#ef4444" : phase.color; // the phase colour; WHERE it lands is the fix
+    // B3/Q15: emissive by surface KIND, not one value flooding the armour. See characterStyle.js —
+    // plates get a sheen, membranes carry the phase colour. The old single `emissiveIntensityVal` put
+    // 0.8-2.2 on the torso and 40% of that on the wings, which is backwards: the surface light should
+    // pass through was dimmer than the surface it should only graze.
+    const plateEmissive = bossEmissiveIntensity('plate', bossPhase, isFlashing);
+    const membraneEmissive = bossEmissiveIntensity('membrane', bossPhase, isFlashing);
     const eyeColor = isFlashing ? "#ffffff" : (bossPhase === 2 ? "#f43f5e" : (bossPhase === 1 ? "#fbbf24" : "#c084fc"));
 
     return (
@@ -493,7 +498,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                         metalness={0.9}
                         color={bodyColor}
                         emissive={bodyEmissive}
-                        emissiveIntensity={emissiveIntensityVal}
+                        emissiveIntensity={plateEmissive}
                     />
                     {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                 </mesh>
@@ -517,7 +522,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                         metalness={0.95} 
                         color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
                         emissive={isFlashing ? "#ef4444" : phase.color}
-                        emissiveIntensity={isFlashing ? 3.0 : emissiveIntensityVal * 0.4}
+                        emissiveIntensity={membraneEmissive}
                         transparent 
                         opacity={0.85} 
                     />
@@ -529,7 +534,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                         metalness={0.95} 
                         color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
                         emissive={isFlashing ? "#ef4444" : phase.color}
-                        emissiveIntensity={isFlashing ? 3.0 : emissiveIntensityVal * 0.4}
+                        emissiveIntensity={membraneEmissive}
                         transparent 
                         opacity={0.85} 
                     />
@@ -554,7 +559,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                             metalness={0.9}
                             color={bodyColor}
                             emissive={bodyEmissive}
-                            emissiveIntensity={emissiveIntensityVal}
+                            emissiveIntensity={plateEmissive}
                         />
                         {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                     </mesh>
