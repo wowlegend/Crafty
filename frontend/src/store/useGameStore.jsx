@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
-import { TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from '../game/talentTree.js';
+import { foldTalentEffects, refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
@@ -516,11 +516,30 @@ export const useGameStore = create((set, get) => ({
     showChestInterface: false,
     setShowChestInterface: (show) => set({ showChestInterface: show }),
     setActiveChestCoords: (coords) => set({ activeChestCoords: coords }),
+    // C4/Q24: a choice you cannot revisit is a one-way door, and the second-run problem is precisely
+    // that there is no build to come back and try differently. Refunds every rank; reuses the shape
+    // refundUnknownTalents already established.
+    respecTalentPoints: () => set((state) => {
+        const r = respecTalents(state.unlockedTalents, state.talentPoints);
+        const effective = effectiveWith(state.attributes, state.equipment, r.unlockedTalents);
+        const { maxHealth, maxMana } = deriveMaxStats(state.level, effective);
+        // A respec REMOVES stat talents, so the caps FALL. Clamp current down, never heal.
+        return {
+            ...r,
+            maxHealth, maxMana,
+            playerHealth: Math.min(state.playerHealth, maxHealth),
+            mana: Math.min(state.mana, maxMana),
+        };
+    }),
+
     spendTalentPoint: (talentId) => set((state) => {
-        if (state.talentPoints <= 0) return {};
+        // C4/Q24: ONE authority for "may this rank be taken". This used to check points and limit only
+        // — it did NOT enforce `prereq`, so the store would happily rank a node whose prerequisite was
+        // untaken and the tree's own shape was advisory, held up by whatever the panel chose to grey
+        // out. `canUnlockTalent` enforces points, limit, prereq AND the new exclusivity in one place,
+        // which is also what stops `excludes` being a data field nothing reads.
+        if (!canUnlockTalent(talentId, state.unlockedTalents, state.talentPoints)) return {};
         const currentVal = state.unlockedTalents[talentId] || 0;
-        const limit = TALENT_LIMITS[talentId] || 0;
-        if (!limit || currentVal >= limit) return {};
         
         const newUnlocked = { ...state.unlockedTalents, [talentId]: currentVal + 1 };
 

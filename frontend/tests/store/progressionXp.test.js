@@ -60,8 +60,22 @@ describe('talent effects derived (not baked) via ASPECT_TREES', () => {
     expect(useGameStore.getState().getEffectiveAttributes().armor).toBe(12); // 2 ranks * 6
   });
   it('enforces the per-node limit from ASPECT_TREES (voidhand_crush limit 2)', () => {
+    // RE-POINTED 2026-09-22 (C4/Q24), and the reason is the finding. This spent nine points straight
+    // into `voidhand_crush` and expected 2 ranks — but that node declares `prereq: 'voidhand_force'`,
+    // and the store NEVER ENFORCED prereq. It checked points and limit only, so the tree's own shape
+    // was advisory, held up by whatever the panel chose to grey out. The test passed because the bug
+    // existed. Taking the prereq first is what makes this a limit test rather than a record of a hole.
+    useGameStore.getState().spendTalentPoint('voidhand_force');
+    expect(useGameStore.getState().unlockedTalents.voidhand_force, 'the prereq itself must be takeable').toBe(1);
     for (let i = 0; i < 9; i++) useGameStore.getState().spendTalentPoint('voidhand_crush');
     expect(useGameStore.getState().unlockedTalents.voidhand_crush).toBe(2);
+  });
+
+  it('the store REFUSES a node whose prereq is untaken — it used to allow it', () => {
+    expect(useGameStore.getState().unlockedTalents.voidhand_force || 0).toBe(0);
+    useGameStore.getState().spendTalentPoint('voidhand_crush');
+    expect(useGameStore.getState().unlockedTalents.voidhand_crush, 'a gated node was ranked with no prereq')
+      .toBeUndefined();
   });
   it('an unknown/stale talent id cannot be spent (limit 0)', () => {
     useGameStore.getState().spendTalentPoint('frost_shield'); // old id, no longer in trees

@@ -13,6 +13,12 @@ export const ASPECT_TREES = [
       { id: 'voidhand_force', name: 'Kinetic Force', desc: '+3 Strength per rank — kinetic strikes and hurled mass hit harder.', limit: 3, prereq: null, effect: { stat: 'strength', perRank: 3 } },
       { id: 'voidhand_ward', name: 'Gravity Ward', desc: '+6 Armor per rank — orbiting mass shields you (base-as-anvil).', limit: 3, prereq: null, effect: { stat: 'armor', perRank: 6 } },
       { id: 'voidhand_crush', name: 'Crushing Pull', desc: '+2 Strength per rank — heavier gravitic slams.', limit: 2, prereq: 'voidhand_force', effect: { stat: 'strength', perRank: 2 } },
+      // C4/Q24 CAPSTONES — the first EITHER/OR in the tree. Both are stat nodes, deliberately: an
+      // effect-less capstone needs a call site, and a table entry nothing reads is dead config that
+      // looks like a feature (the boss `eye` emissive band, same day). These fold through
+      // getEffectiveAttributes like every other stat node, so they work the moment they are taken.
+      { id: 'voidhand_singularity', name: 'Singularity', desc: '+8 Strength — everything you hurl lands like a collapsing star. Excludes Event Horizon.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_horizon', effect: { stat: 'strength', perRank: 8 } },
+      { id: 'voidhand_horizon', name: 'Event Horizon', desc: '+14 Armor — nothing reaches you through the orbit. Excludes Singularity.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_singularity', effect: { stat: 'armor', perRank: 14 } },
       // S2-B2-M4: the grab UNLOCK — effect-LESS like wildheart_roar (the stat-fold skips it;
       // rank is read at the SM entry gate in Components). Gates the whole VOIDHAND verb kit.
       { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: 'Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs 25 banked Kinetic); hurl it (attack) or slam it down (cast).', limit: 1, prereq: 'voidhand_force' },
@@ -27,6 +33,8 @@ export const ASPECT_TREES = [
       // S2-B1-M6 SIGNATURE nodes (effect-less — skipped by the stat-fold; rank read at THEIR OWN site):
       { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation — hold R with a full Ferocity bank in the night siege to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: 'wildheart_vigor' },
       { id: 'wildheart_endurance', name: 'Primal Endurance', desc: '+3s beast-form duration per rank — stay feral longer (read at the duration timer, not the stat-fold).', limit: 3, prereq: 'wildheart_roar' },
+      { id: 'wildheart_apex', name: 'Apex Predator', desc: '+8 Strength — the beast hits like the thing other beasts run from. Excludes Untamed.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_untamed', effect: { stat: 'strength', perRank: 8 } },
+      { id: 'wildheart_untamed', name: 'Untamed', desc: '+10 Agility — too fast to corner. Excludes Apex Predator.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_apex', effect: { stat: 'agility', perRank: 10 } },
     ],
   },
   {
@@ -38,6 +46,8 @@ export const ASPECT_TREES = [
       // S2-B3-M2: effect-less unlocks (the voidhand_grasp pattern) — the kit gates on talents, not stats.
       { id: 'soulbind_snare', name: 'Soul Snare', desc: 'Unlock the SNARE verb — bind a weakened creature to your squad (X).', limit: 1, prereq: 'soulbind_bond' },
       { id: 'soulbind_pack', name: 'Pack Warden', desc: '+1 squad slot — a third creature may walk beside you.', limit: 1, prereq: 'soulbind_snare' },
+      { id: 'soulbind_communion', name: 'Communion', desc: '+8 Intellect — the bond carries more than one mind. Excludes Bulwark.', limit: 1, prereq: 'soulbind_link', excludes: 'soulbind_bulwark', effect: { stat: 'intellect', perRank: 8 } },
+      { id: 'soulbind_bulwark', name: 'Warden Bulwark', desc: '+12 Armor — you are the wall your squad stands behind. Excludes Communion.', limit: 1, prereq: 'soulbind_link', excludes: 'soulbind_communion', effect: { stat: 'armor', perRank: 12 } },
     ],
   },
   {
@@ -46,6 +56,8 @@ export const ASPECT_TREES = [
       { id: 'elemancer_focus', name: 'Elemental Focus', desc: '+4 Intellect per rank — greater spell power and a deeper mana pool.', limit: 3, prereq: null, effect: { stat: 'intellect', perRank: 4 } },
       { id: 'elemancer_volatile', name: 'Volatile Edge', desc: '+3 Agility per rank — volatile elements crit more often.', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 3 } },
       { id: 'elemancer_cataclysm', name: 'Cataclysm', desc: '+3 Intellect per rank — channel cataclysmic elemental force.', limit: 2, prereq: 'elemancer_focus', effect: { stat: 'intellect', perRank: 3 } },
+      { id: 'elemancer_conflux', name: 'Conflux', desc: '+8 Intellect — every element answers at once. Excludes Wildfire.', limit: 1, prereq: 'elemancer_cataclysm', excludes: 'elemancer_wildfire', effect: { stat: 'intellect', perRank: 8 } },
+      { id: 'elemancer_wildfire', name: 'Wildfire', desc: '+10 Agility — it spreads faster than it burns. Excludes Conflux.', limit: 1, prereq: 'elemancer_cataclysm', excludes: 'elemancer_conflux', effect: { stat: 'agility', perRank: 10 } },
       // S2-B4-M2: the effect-less unlock (the 4x pattern) — the kit gates on talents, not stats.
       { id: 'elemancer_imbue', name: 'Elemental Imbue', desc: 'Unlock IMBUE — charge your next cast to paint an element zone into the world (Z).', limit: 1, prereq: 'elemancer_focus' },
     ],
@@ -85,4 +97,53 @@ export function refundUnknownTalents(unlockedTalents, talentPoints) {
     else refunded += unlockedTalents[id] || 0;
   }
   return { unlockedTalents: kept, talentPoints: (talentPoints || 0) + refunded };
+}
+
+
+/**
+ * C4/Q24 — EXCLUSIVITY. The tree's first real choice.
+ *
+ * Before this, all 18 nodes added a number and every one of them was takeable, so "which build" had no
+ * answer: you took everything in some order and the tree drained by L18. The stated problem in one
+ * sentence was *with 18 nodes that all add a number, there is no build to choose, so there is no build
+ * to come back and try differently.*
+ *
+ * `excludes` is ONE FIELD, consumed here and at the unlock site. It does not touch the stat fold — an
+ * excluded node simply cannot be ranked, so `foldTalentEffects` never sees it and every solver and
+ * `deriveMaxStats` keep deriving rather than baking.
+ *
+ * DELIBERATELY ADDITIVE. The capstones are NEW nodes behind existing prereqs; no node that was takeable
+ * before this became un-takeable. Making two existing nodes exclusive would have silently removed power
+ * from every saved character, which is a balance change wearing a mechanism's clothes.
+ */
+export function talentBlockedBy(nodeId, unlockedTalents) {
+  const node = NODE_BY_ID[nodeId];
+  if (!node || !node.excludes) return null;
+  const rival = node.excludes;
+  return (unlockedTalents && (unlockedTalents[rival] || 0) > 0) ? rival : null;
+}
+
+/** Can this node take another rank right now? Prereq + limit + exclusivity, in one place. */
+export function canUnlockTalent(nodeId, unlockedTalents, talentPoints) {
+  const node = NODE_BY_ID[nodeId];
+  if (!node) return false;
+  if ((talentPoints || 0) <= 0) return false;
+  if (((unlockedTalents || {})[nodeId] || 0) >= node.limit) return false;
+  if (node.prereq && ((unlockedTalents || {})[node.prereq] || 0) <= 0) return false;
+  if (talentBlockedBy(nodeId, unlockedTalents)) return false;
+  return true;
+}
+
+/**
+ * RESPEC — refund every spent rank. The other half of making the tree a choice: a choice you cannot
+ * revisit is a one-way door, and the whole second-run problem is that there is no build to come back
+ * and try differently.
+ *
+ * It reuses the shape `refundUnknownTalents` already established (return a new pair, never mutate), so
+ * the store's existing migration call site needs no new concept.
+ */
+export function respecTalents(unlockedTalents, talentPoints) {
+  let refunded = 0;
+  for (const id in (unlockedTalents || {})) refunded += unlockedTalents[id] || 0;
+  return { unlockedTalents: {}, talentPoints: (talentPoints || 0) + refunded };
 }

@@ -18,7 +18,12 @@ import AspectHintToast from '../../src/ui/AspectHintToast.jsx';
 const ASPECT = 'wildheart_roar';
 
 beforeEach(() => {
-  useGameStore.setState({ talentPoints: 5, unlockedTalents: {}, aspectHint: null });
+  // C4/Q24: `wildheart_roar` declares `prereq: 'wildheart_vigor'`, and as of 2026-09-22 the store
+  // ENFORCES prereq — it never did before, so this fixture could start from an empty tree and rank a
+  // gated node. It passed because the bug existed. Seeding the prereq is what makes the cases below
+  // about the HINT rather than about a hole in the unlock path. (Third test in this repo found relying
+  // on that hole; the others are in progressionXp.test.js.)
+  useGameStore.setState({ talentPoints: 5, unlockedTalents: { wildheart_vigor: 1 }, aspectHint: null });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
