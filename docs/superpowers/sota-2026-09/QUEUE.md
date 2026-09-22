@@ -482,3 +482,45 @@ and the cause is lighting or grade.
 **Then measure before tuning.** Sample the actual pixel luminance of a known material (a plank wall) at
 several `timeOfDay` values and find where it falls off; a "raise the ambient a bit" edit with no
 before/after number is the shape this repo keeps paying for.
+
+---
+
+## B5 partial — THE FPV HANDS, MEASURED 2026-09-22. They render, they are huge, and they are a black hole.
+
+`scripts/visual/hands-probe.mjs` existed and, per B5's own note, had never been run. It has now been run
+and the frames opened. Three findings, all measured, none of them what I expected to find.
+
+**1. The hands ARE on screen, and they are large.** Established with a presence control rather than by
+looking: `GLOVE_INK` was temporarily set to magenta and the probe re-run, giving **11,043 magenta pixels
+in a bounding box of x 338-1239, y 427-799** — roughly the whole lower third of a 1280x800 frame. The
+source was restored byte-identical. (Before that control I had looked at the real frame and concluded
+the hands were absent, which was wrong; a diff of idle-vs-swing was also useless because the probe moves
+the camera between shots, so the changed bbox was the entire frame.)
+
+**2. They render at luminance ~10 — a black hole where the gloves should be.** `GLOVE_INK` is `#2A2A33`
+= rgb(42,42,51), and under the scene's lighting the rendered pixels sample at **(16,3,40)** and
+**(1,15,43)**. For scale, the ground beside them is **(74,94,108)**. Adjacent surfaces therefore span a
+**9x luminance range**, and the dark end has lost all material identity — it does not read as a dark
+glove, it reads as a hole in the frame. Note the green channel collapsing to 3 and 15 while blue holds
+near 40: these surfaces are lit almost entirely by the blue sky term with essentially no sun
+contribution.
+
+**This is the same defect as L1, on a different subject.** L1 recorded near-camera structures going
+near-black at a low sun. Same mechanism: a dark base colour plus a lighting floor that does not hold it
+up. Treating either one by tuning that one material is fixing the instance; the class is the floor.
+
+**3. THE VISUAL GATE CAN NEVER SEE THEM, BY CONSTRUCTION.** `Components.jsx:1372` mounts them as
+`{!inCapture && <StableMagicHands ... />}`. Capture mode suppresses the hands outright, so not one of
+the 31 gated frames contains the most-on-screen geometry in a first-person game. That is why "nobody has
+ever looked" — there was no instrument that could, and the one probe that could had never been run.
+It also means a hands regression is invisible to every automated check in this repo, permanently.
+
+**What is NOT done, and why.** Choosing the replacement glove value is a taste call on a LOCKED art
+direction, and the value ladder I started measuring (`#2A2A33` vs `#45454F` vs `#5C5C68`, rendered
+luminance in the glove bbox) did not complete. The instrument is straightforward — patch the token,
+re-run the probe, sample the measured bbox, restore — and `grass-swatch-probe.mjs` is the committed
+precedent for exactly this shape. **Do not pick a value without rendering it:** the collapse from
+rgb(42,42,51) to (16,3,40) is a ~4x drop that no amount of reading the hex predicts.
+
+**Ordering note:** if the lighting floor (L1) is fixed first, the glove value may need no change at all.
+Measure the hands AFTER any ambient change, not before, or the tuning will be against a moving target.
