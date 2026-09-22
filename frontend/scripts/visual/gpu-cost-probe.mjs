@@ -42,7 +42,7 @@
 import puppeteer from 'puppeteer';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { execSync } from 'node:child_process';
+import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -57,11 +57,11 @@ const SECONDS = Number(arg('--seconds', '6'));
 const DPR = Number(arg('--dpr', '1'));
 const JSON_OUT = arg('--json', '');
 
-const loadAvg = () => {
-  try {
-    return execSync('uptime', { encoding: 'utf8' }).match(/load averages?: ([\d.]+)/)?.[1] ?? '?';
-  } catch { return '?'; }
-};
+// os.loadavg() rather than shelling out to `uptime`: knip correctly flagged the latter as an unlisted
+// binary, and the builtin is better anyway — no subprocess, no PATH dependency, no output parsing, and it
+// works on any platform Node runs on. An allowlist entry would have silenced the finding rather than
+// removing the dependency.
+const loadAvg = () => os.loadavg()[0].toFixed(2);
 
 async function main() {
   const { url, waitReady, shutdown } = serveVite(PORT, { preview: true });

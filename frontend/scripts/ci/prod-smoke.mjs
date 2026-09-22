@@ -49,11 +49,30 @@ const PORT = 4180;
  * no muting. One call per frame, because reading DRAINS — a single poll at the end reports at most ONE
  * error for the whole run, which is how a count like this reads as clean.
  *
- * RATCHETED, NOT THRESHOLDED. The honest problem is that nobody knows the post-fix number: the headless
- * probe runs SwiftShader, which reports MAX_SAMPLES 4 and emitted zero GL errors, so it cannot settle the
- * question and a threshold picked here would be a guess wearing a gate's clothes. So the first run
- * RECORDS, and later runs may FALL and never RISE — the same shape as the opsec, killability and
- * source-grep ledgers in this repo. That makes the number falsifiable without pretending to know it.
+ * RATCHETED, NOT THRESHOLDED. Nobody knows the post-fix number, so the first run RECORDS and later runs
+ * may FALL and never RISE — the same shape as the opsec, killability and source-grep ledgers here. That
+ * makes the number falsifiable without pretending to know it.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * WHAT THIS LEDGER CANNOT SETTLE, AND IT IS THE QUESTION IT WAS BUILT FOR
+ *
+ * CI's first seeded reading was `GL errors: 0 over 8 frames`. That is NOT evidence that the
+ * `glBlitFramebuffer` storm is gone, and it must not be quoted as if it were.
+ *
+ * This probe launches with `--use-angle=swiftshader` — in CI exactly as locally. SwiftShader is a CPU
+ * rasteriser: it reports MAX_SAMPLES 4, it does not implement the driver-side validation that emits
+ * `GL_INVALID_OPERATION: glBlitFramebuffer: Read and write depth stencil attachments cannot be the same
+ * image`, and the storm was only ever OBSERVED in a real Chrome on a real GPU. So a 0 here means "this
+ * rasteriser raised nothing", which is the reading a driver that cannot raise it would always give.
+ *
+ * The ledger is therefore a REGRESSION GUARD FOR THE SWIFTSHADER PATH and nothing more. It will catch a
+ * new GL error class that even SwiftShader validates; it cannot confirm the real-driver storm is fixed.
+ * A real reading has to come from a real GPU — the operator's own Chrome, which is where the original
+ * ~256-per-load observation came from (.claude/rules/gates-and-probes.md).
+ *
+ * This limit is stated here rather than discovered later because a ledger seeded at 0 reads like an
+ * all-clear, and an all-clear from an instrument that cannot see the thing is the DEGRADED shape — the
+ * most dangerous of the three, because it looks like success.
  */
 export const GL_LEDGER_PATH = resolve(ROOT, 'frontend/tests/gates/.gl-error-ledger.json');
 
