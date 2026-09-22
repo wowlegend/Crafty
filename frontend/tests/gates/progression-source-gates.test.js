@@ -1,18 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { SRC, strip, sourceFiles } from './_srcWalk.js';
 import { deriveMaxStats, xpForLevel } from '../../src/game/progression.js';
 
-const SRC = resolve(process.cwd(), 'src');
-const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-function sourceFiles(dir = SRC, out = []) {
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    if (statSync(p).isDirectory()) sourceFiles(p, out);
-    else if (/\.jsx?$/.test(e) && !/\.test\.jsx?$/.test(e)) out.push(p);
-  }
-  return out;
-}
 
 /**
  * A3 progression single-source gate — the max-stat formula has exactly one home.

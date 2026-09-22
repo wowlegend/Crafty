@@ -1,20 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { SRC, strip, sourceFiles } from './_srcWalk.js';
 
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../src');
 const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
-const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-
-function sourceFiles(dir = SRC, out = []) {
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    if (statSync(p).isDirectory()) sourceFiles(p, out);
-    else if (/\.jsx?$/.test(e) && !/\.test\.jsx?$/.test(e)) out.push(p);
-  }
-  return out;
-}
 
 /**
  * S2-B4-M4/M5 — the ELEMANCER wiring locks. These assert a PRESENCE (the zone-slow consumer exists, the
