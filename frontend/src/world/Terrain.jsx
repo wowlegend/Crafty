@@ -25,6 +25,7 @@ import { nearestLandmark } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
+import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 
@@ -834,6 +835,10 @@ export const MinecraftWorld = React.memo(() => {
                 targetedZ,
                 targetCoords,
                 chestTargeted: !!(store.chests && store.chests.has(targetCoords)),
+                // Whether that chest still holds anything. The router refuses a left-click MINE on a
+                // loaded chest (mine() deletes the chest and drops nothing), but lets you remove an
+                // empty one you placed — so the guard needs the contents, not just the presence.
+                chestHasItems: chestHasItems(store.chests && store.chests.get(targetCoords)),
             };
         };
 

@@ -69,9 +69,27 @@ describe('verbRouter (#72 — the spec §5 edge table)', () => {
     }
     expect(checked, 'the sweep enumerated nothing').toBe(16);
   });
-  // §5-12: chest with no mob, b0 -> mine (break chest, existing cleanup)
-  it('12: b0 on chest -> mine', () => {
+  // §5-12: an EMPTY chest with no mob, b0 -> mine. Removing a chest you placed has to stay possible;
+  // what must not stay possible is destroying a chest with things in it (§5-12a below).
+  it('12: b0 on an EMPTY chest -> mine', () => {
     expect(routeMouseVerb(0, { ...base, chestTargeted: true, terrainDist: 4 })).toBe('mine');
+  });
+  // §5-12a: THE DATA-LOSS ROW. A loaded chest must not be minable by a left-click.
+  //
+  // `button === 0` had no chest branch at all, so LMB fell through to 'mine' — and Terrain.jsx's mine()
+  // does not drop the contents, it calls newChests.delete(targetCoords). One misclick permanently
+  // destroyed the chest and everything stored in it. This router's own design-of-record says the
+  // base-destructive mis-routes are "impossible by construction"; this was one, and it was not.
+  it('12a: b0 on a chest WITH ITEMS -> interact, never mine', () => {
+    expect(routeMouseVerb(0, { ...base, chestTargeted: true, chestHasItems: true, terrainDist: 4 })).toBe('interact');
+  });
+  // The guard must not swallow combat: a mob nearer than the chest still takes the swing.
+  it('12b: mob in front of a loaded chest -> attack', () => {
+    expect(routeMouseVerb(0, { ...base, chestTargeted: true, chestHasItems: true, terrainDist: 6, aimedMobDist: 3 })).toBe('attack');
+  });
+  // And it must not leak onto ordinary terrain — mining is otherwise untouched.
+  it('12c: loaded-chest flag without a chest target -> mine (no leak onto plain blocks)', () => {
+    expect(routeMouseVerb(0, { ...base, chestTargeted: false, chestHasItems: true, terrainDist: 4 })).toBe('mine');
   });
   // §5-13: unknown button -> none (b1/middle never routes)
   it('13: middle button -> none', () => {

@@ -14,6 +14,8 @@
 //                ray passes through them, so this pure-math distance is the through-mob guard)
 //   terrainDist  toi of the single 8m build ray (Infinity if no hit)
 //   chestTargeted the ray hit resolves to a placed chest
+//   chestHasItems that chest currently stores something — the difference between removing a chest
+//                you placed and destroying one with your things in it
 
 export const AIM_CONE_RANGE = 24;          // ~spell range; through-mob guard reach
 export const AIM_CONE_ARC = Math.PI / 8;   // narrow crosshair cone (vs the wide PI/2 melee arc)
@@ -32,11 +34,20 @@ export const AIM_CONE_ARC = Math.PI / 8;   // narrow crosshair cone (vs the wide
 // keeps clicking. Deleting these as "dead code" is exactly the mistake this comment exists to prevent;
 // tests/gates/verb-router-gates.test.js pins both halves so the next reader does not have to re-derive it.
 export function routeMouseVerb(button, ctx) {
-  const { held, meleeHit, aimedMobDist, terrainDist, chestTargeted } = ctx;
+  const { held, meleeHit, aimedMobDist, terrainDist, chestTargeted, chestHasItems } = ctx;
   if (button === 0) {
     if (held) return 'attack';                       // -> HURL at M3; never mines the anvil wall
     if (meleeHit) return 'attack';
     if (aimedMobDist <= terrainDist) return 'attack'; // through-mob guard; tie -> combat; ALSO the whiff
+    // A LOADED CHEST IS NOT TERRAIN. `button === 0` had no chest branch, so a left-click on a chest fell
+    // straight through to 'mine' — and Terrain.jsx's mine() does not drop the contents, it calls
+    // `newChests.delete(targetCoords)`. One misclick permanently destroyed the chest and everything in it.
+    // This file's own header says the base-destructive mis-routes are "impossible by construction"; this
+    // one was not, and it cost more than a wall.
+    //
+    // Gated on HAS ITEMS, not on being a chest, so removing an empty chest you placed still works (§5-12).
+    // Reached only when the chest is nearer than any mob — the through-mob guard above already returned.
+    if (chestTargeted && chestHasItems) return 'interact';
     if (terrainDist < Infinity) return 'mine';
     return 'attack';                                 // unreachable for well-formed numbers; NaN fallback
   }

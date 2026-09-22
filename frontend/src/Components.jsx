@@ -488,6 +488,7 @@ export const Player = ({ isWorldBuilt }) => {
         aimedMobDist,
         terrainDist: hit ? hit.toi : Infinity,
         chestTargeted: !!(hit && hit.chestTargeted),
+        chestHasItems: !!(hit && hit.chestHasItems),
       });
 
       if (verb === 'attack') {
