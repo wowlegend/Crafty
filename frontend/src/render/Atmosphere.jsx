@@ -150,10 +150,43 @@ function makeSkyDomeMaterial() {
   });
 }
 
+/**
+ * PURE. Where the shadow frustum's centre belongs this frame, texel-snapped.
+ *
+ * WHY SNAP. A directional shadow map is a grid in light space. Slide its centre by a fraction of a texel
+ * and every shadow edge re-samples on a different boundary, so the whole world's shadows CRAWL as the
+ * player walks — the classic artefact, and far more visible on voxel geometry where every edge is a
+ * straight line. Quantising the centre to whole-texel steps means the map slides in discrete jumps and
+ * the edges stay put between them. It is one multiply and two rounds per frame.
+ *
+ * @param {{x:number,z:number}} pos      the player's world position (transient read at the call site)
+ * @param {number} extent                half-width of the ortho frustum, world units
+ * @param {number} mapSize               shadow map resolution in texels
+ * @returns {{x:number,z:number}}        the snapped centre
+ */
+export function snapShadowCentre(pos, extent, mapSize) {
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return { x: 0, z: 0 };
+  const unitsPerTexel = (extent * 2) / Math.max(1, mapSize);
+  if (!Number.isFinite(unitsPerTexel) || unitsPerTexel <= 0) return { x: pos.x, z: pos.z };
+  return {
+    x: Math.round(pos.x / unitsPerTexel) * unitsPerTexel,
+    z: Math.round(pos.z / unitsPerTexel) * unitsPerTexel,
+  };
+}
+
+/** The sun's offset from the frustum centre. Direction is what matters for a directional light; the
+ *  magnitude only has to clear the terrain so nothing is clipped by `near`. Same bearing as the old
+ *  constant [50,100,50] so the light ANGLE — and therefore every shadow's direction — is unchanged. */
+export const SUN_OFFSET = { x: 50, y: 100, z: 50 };
+
 export function Atmosphere({ shadowConfig }) {
   const { scene, camera } = useThree();
   const ambientRef = useRef();
   const sunRef = useRef();
+  // The light's aim point. A directional light with no `target` aims at the world ORIGIN, which is
+  // exactly how the shadowed region ended up pinned to spawn. three.js only updates a target's
+  // matrixWorld if it is in the scene graph, so it is added here rather than just assigned.
+  const sunTarget = useMemo(() => new THREE.Object3D(), []);
   const fillRef = useRef();
   const hemiRef = useRef();
   const domeRef = useRef();
@@ -161,10 +194,30 @@ export function Atmosphere({ shadowConfig }) {
   const domeGeo = useMemo(() => new THREE.SphereGeometry(100, 32, 16), []);
   // prop-attached sky-dome material + geometry -> dispose on unmount
   useEffect(() => () => { domeMat.dispose(); domeGeo.dispose(); }, [domeMat, domeGeo]);
+  useEffect(() => {
+    scene.add(sunTarget);
+    if (sunRef.current) sunRef.current.target = sunTarget;
+    return () => { scene.remove(sunTarget); };
+  }, [scene, sunTarget]);
 
   useFrame((state, delta) => {
     const st = useGameStore.getState();
     const cap = isCaptureMode();
+
+    // KEEP THE SHADOW FRUSTUM ON THE PLAYER. Transient read via getState() — never a subscription
+    // (Game-Loop-Isolation). This runs in capture too, deliberately: the player's capture position is
+    // itself deterministic, so the frames stay reproducible, and adding a 128th isCaptureMode branch
+    // would make the oracle depict one more thing nobody plays. It DOES change the gated frames, which
+    // folds into the re-baseline already owed since postprocessing 6.39.1 -> 6.39.5.
+    if (sunRef.current && shadowConfig?.extent) {
+      const c = snapShadowCentre(st.playerPosition, shadowConfig.extent, shadowConfig.mapSize?.[0] ?? 1024);
+      // y is absolute, not relative to the player: a directional light's SHADOW DIRECTION is the
+      // light-to-target vector, so letting terrain height into it would tilt every shadow in the world as
+      // the player walked up a hill. x/z follow, y does not.
+      sunRef.current.position.set(c.x + SUN_OFFSET.x, SUN_OFFSET.y, c.z + SUN_OFFSET.z);
+      sunTarget.position.set(c.x, 0, c.z);
+      sunTarget.updateMatrixWorld();
+    }
     // W4-T8: the storm sky-darken boost is FORCED to 0 in capture. The weather state machine still ticks
     // during a capture (which runs >90s, longer than the 90s weather cycle), so a live weatherMoodBoost
     // would darken every frame captured after the first transition -> non-deterministic baselines. Capture
@@ -236,10 +289,13 @@ export function Atmosphere({ shadowConfig }) {
         // the whole spell-cast VFX ensemble 0.64%. Shadows move a large fraction of every outdoor frame,
         // so a regression that switches them off again goes red on its own, with no new assertion.
         //
-        // Nothing about it is nondeterministic: the light position is a constant, the shadow config is
+        // Nothing about it is nondeterministic: the light FOLLOWS the player (2026-09-22) but the player's
+        // capture position is itself deterministic and the offset/angle are constants, the shadow config is
         // derived from the quality tier that `enterCapture` pins to 'high', and the geometry casting
         // the shadows is the same terrain the frame already had to settle before it could be shot.
         castShadow
+        // Initial placement only — the useFrame above keeps this on the player every frame. Left at the
+        // historical constant so the very first frame before that runs is unchanged.
         position={[50, 100, 50]}
         intensity={1.5}
         shadow-mapSize={shadowConfig.mapSize}

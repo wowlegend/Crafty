@@ -113,17 +113,40 @@ export function GameScene({
     };
   }, []);
 
-  const shadowConfig = useMemo(() => ({
-    mapSize: [q.shadowMapSize, q.shadowMapSize],
-    camera: {
-      left: -100,
-      right: 100,
-      top: 100,
-      bottom: -100,
-      near: 0.1,
-      far: 200
-    }
-  }), [q.shadowMapSize]);
+  // SHADOW FRUSTUM — DERIVED from renderDistance, 2026-09-22 (was a hardcoded +/-100 box).
+  //
+  // The old box was world-anchored and 200 units wide, while the sun sat at a constant [50,100,50] with no
+  // `target` — so three.js aimed it at the world ORIGIN and the shadowed region was a fixed 200x200 patch
+  // around spawn. The world streams around the player indefinitely (CHUNK_SIZE 16, renderDistance 2/3/4,
+  // no position clamp found), so past ~100 units from spawn the entire world silently lost its sun
+  // shadows — while still paying to render a 2048^2 shadow map every frame for a region the player had
+  // left. <Atmosphere> now moves the light and its target with the player, which is what makes an extent
+  // this tight correct rather than a downgrade.
+  //
+  // The extent now covers exactly what is LOADED and no more: renderDistance chunks in each direction,
+  // plus half a chunk of margin so geometry at the edge still casts. That makes the shadow map denser at
+  // the same byte cost — at high, 2048px over 144 units is ~14 px per world unit against the old ~10, so
+  // voxel shadows get SHARPER while the wasted coverage goes away. Deriving it also means a tier that
+  // lowers renderDistance automatically tightens its shadows instead of spreading the same pixels wider.
+  const shadowConfig = useMemo(() => {
+    const CHUNK = 16; // src/world/terrain.worker.js CHUNK_SIZE
+    const extent = (q.renderDistance + 0.5) * CHUNK;
+    return {
+      mapSize: [q.shadowMapSize, q.shadowMapSize],
+      // The frustum the light looks THROUGH; <Atmosphere> keeps it centred on the player.
+      extent,
+      camera: {
+        left: -extent,
+        right: extent,
+        top: extent,
+        bottom: -extent,
+        near: 0.1,
+        // The light rides SUN_OFFSET above the player, so `far` only has to span that offset plus the
+        // depth of the world below — not a fixed world distance.
+        far: 400,
+      },
+    };
+  }, [q.shadowMapSize, q.renderDistance]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
