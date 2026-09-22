@@ -1,3 +1,68 @@
+## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
+
+Kevin's standing `/goal` (still armed): enhance Crafty to cutting-edge SOTA + future-proof, full
+autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune EVERY gate against the
+evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
+each ~300k context.
+
+### AWAITING KEVIN — do not decide these
+
+- **`Marcus` (his son, 8) is in 23 tracked files / 45 lines of a PUBLIC repo**, and at least two pair the
+  name with the age ("Marcus (8) is A user, not a depth-lowering floor"). Does NOT reach the production
+  bundle (0 in `build/assets`). I recommended fix-forward on live docs and NOT rewriting history
+  (erasure is not real without a GitHub Support GC + deleting forks). **His call, not a technical one.**
+  Either way: add a `Marcus` BLOCK rule to `scripts/ci/opsec-scan.mjs` so it cannot re-enter.
+
+### IN FLIGHT — the CI unification (his explicit ask; cause of his CI-failure emails)
+
+`ci/pipeline.sh` and `frontend/scripts/ci/e2e-freshness.mjs` are WRITTEN and PROVEN but the two callers
+are **NOT yet rewired**. Finish this first:
+1. `.githooks/pre-push` lines 109-123 → replace the inline gate list with `bash ci/pipeline.sh --tier=push`
+   (keep the per-commit worktree + certification loop around it; `CRAFTY_PUSH_RANGE` is the seam).
+2. `.github/workflows/ci.yml` gates job → `bash ci/pipeline.sh --tier=fast`.
+3. Regenerate the gate table (`node frontend/scripts/ci/gate-table.mjs --write`) — `gate-table.mjs`
+   parses the HOOK, so it must learn the pipeline's step list or the generated block goes stale.
+WHY: the hook ran 13 gates and ci.yml ran a DIFFERENT set. A damage-model change passed every gate the
+hook knows and broke an E2E spec only the workflow runs. Two lists drift; one must BE the build.
+e2e-freshness is the receipt (21 specs × ~20min is too slow to run per-push): content-keyed on
+`src/**` + `tests/e2e/**`, fail-CLOSED on stale, fail-OPEN on absent.
+
+### DONE THIS SESSION (all pushed, all mutation-proven)
+
+- `e68dc194` postprocessing 6.39.5 exact. **The sun is back** — controlled pair on ONE renderer: outdoor
+  day frames 10.7-38.6% changed, `explore-night` 0.022%, pure-UI 0.000%. Second finding: 6.39.1 was
+  WASHED OUT (its godrays pass hazed the whole frame), so the pin was costing contrast everywhere.
+- `de7795cd` **a pack of six dealt the damage of one** — `lastDamageTime` was one global number. Now
+  per-attacker; `ai.worker.js` already stamped the entity id and the call site discarded it.
+- `f5a792aa` **LMB on a chest destroyed it and everything inside** (`mine()` deletes, drops nothing).
+- `21308d2e` `killability-ledger.mjs` — 12th gate. **5 of 471 check files carry a receipt (1.1%)**;
+  ratcheted at 466 so debt falls, never rises.
+- `a0613e43` + `de814119` `opsec-scan.mjs` — public-repo publish guard, ratcheted (423 accepted
+  home-path lines). It blocked its own first push on its own fixtures: right direction, wrong target.
+- `00f1daf7` e2e cooldown spec re-pointed. Stale branches deleted (both verified 0-ahead of main).
+- `.claude/settings.json`: statusLine/subagentStatusLine moved to `settings.local.json` — vibe-island
+  had INJECTED an absolute `$HOME/...` path into a tracked file on its own.
+
+### BLOCKED, measured
+
+**Visual re-baseline.** Needs a clean capture pair; machine had 1.3GB free of 36GB (the run that died
+had 3.3GB and its own preflight called that too little). So the 31-frame oracle still depicts 6.39.1's
+washed-out look while main renders 6.39.5 — **the visual gate is currently mis-aimed**. Re-run
+`scratchpad/cap-pair-clean.sh` (it ASSERTS `complete:true` + provenance, which the first pair did not —
+a dead run leaves the previous build's frames in `current/` and 31 files look like a complete capture).
+
+### NOT STARTED — the bulk of the goal
+
+`docs/superpowers/sota-2026-09/` holds the enumeration: `GATES.md` (24 DELETE / 51 CONVERT / 208
+ENHANCE verdicts), `OPEN-ITEMS.md`, `FUTUREPROOF.md`, `QUEUE.md` (ranked, Q01-Q60).
+Untreated: the gate prune itself · C3-C5 gameplay (boss second appearance, talent-tree choice, 5 mob
+movement arms) · B1-B5 looks (sun arc, 10 biomes reading as 10, boss emissive-through-armour, AO as
+shadow) · Phase 26 sky.
+**Treat QUEUE.md as a hypothesis, not a spec** — three of its concrete claims were false in the
+dangerous direction (a fabricated module path, advice to commit absolute symlinks, a census off by 92).
+
+---
+
 # Active Plan — the LIVE CURSOR
 
 > **📍 REPO LAYOUT (compaction-resilient):** TWO-LEVEL repo. ROOT `/Users/kz/Code/Crafty/` holds `.git`,

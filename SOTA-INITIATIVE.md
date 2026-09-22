@@ -64,7 +64,7 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 7. **Adversarial verification on big deltas** (multi-agent review; fix confirmed findings before "done") —
    the proven anti-slop mechanism (it has caught real bugs the builds missed, repeatedly).
 8. **No AI footers in commits; no `git add -A`; absolute paths (TWO-LEVEL repo).** Own repo + own
-   initiative — **separate from moneymaker** (its rules/ledgers/AUP frame do not apply here).
+   initiative — **self-contained**: no other project's rules, ledgers or acceptable-use frame apply here.
 
 ## 3. Status (LIVING — refresh at every milestone; last: 2026-06-18)
 
