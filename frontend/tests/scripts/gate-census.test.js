@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dimensions, scoreOf, verdict, SCORE_KEYS } from '../../scripts/ci/gate-census.mjs';
+import { dimensions, scoreOf, verdict, SCORE_KEYS, drivenBy } from '../../scripts/ci/gate-census.mjs';
 
 /**
  * The census is an instrument, so its own reading has to be provable on inputs where the answer is known
@@ -118,5 +118,34 @@ describe('gate-census verdict', () => {
     // The whole reason this instrument exists: the prior one-shot audit's DELETE column was unsafe.
     const v = verdict([{ file: 'a', group: 'g', score: 0 }]);
     expect(v.lines.join('\n')).not.toMatch(/\b(DELETE|REMOVE|SAFE TO)\b/);
+  });
+});
+
+describe('drivenBy — an import is RESOLVED against its importer, not matched as text (R1.7)', () => {
+  // Mutation-Proof: via scripts/dev/mutate.sh against scripts/ci/gate-census.mjs, each observed RED —
+  //   M1 revert to the `ci/<name>.mjs` text match (the sibling case)      M2 skip relative resolution (join dropped)
+  //   M3 plausible-wrong: compare basenames only (the lookalike case)
+  const SUBJECT = 'scripts/ci/helper.mjs';
+  const files = {
+    [SUBJECT]: 'export const x = 1;',
+    'scripts/ci/sibling.mjs': "import { x } from './helper.mjs';",
+    'tests/scripts/driver.test.js': "import { x } from '../../scripts/ci/helper.mjs';",
+    'tests/scripts/dynamic.test.js': "const m = await import('../../scripts/ci/helper.mjs');",
+    'tests/scripts/prose.test.js': '// see scripts/ci/helper.mjs for the rule; run node scripts/ci/helper.mjs',
+    'scripts/ci/lookalike.mjs': "import { y } from './other/helper.mjs';",
+    'scripts/ci/prefix.mjs': "import { z } from './helper.mjs.bak';",
+  };
+  const read = (f) => files[f] ?? '';
+  const drivers = drivenBy(SUBJECT, Object.keys(files), read).sort();
+
+  it('a SIBLING import in scripts/ci counts — the case the text match could not see', () => {
+    expect(drivers).toContain('scripts/ci/sibling.mjs');
+  });
+  it('static and dynamic imports from tests count', () => {
+    expect(drivers).toContain('tests/scripts/driver.test.js');
+    expect(drivers).toContain('tests/scripts/dynamic.test.js');
+  });
+  it('prose, a same-named file elsewhere, and a longer path do NOT count — and the subject never drives itself', () => {
+    expect(drivers).toEqual(['scripts/ci/sibling.mjs', 'tests/scripts/driver.test.js', 'tests/scripts/dynamic.test.js']);
   });
 });

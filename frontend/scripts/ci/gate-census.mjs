@@ -60,7 +60,7 @@
  * Usage: node scripts/ci/gate-census.mjs [--json <path>] [--top N] [--group <name>]
  */
 import { writeFileSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, posix } from 'node:path';
 import { APP_ROOT, POPULATION, survey } from './killability-ledger.mjs';
 
 /** PURE: the weakness dimensions of one check file's text. */
@@ -113,18 +113,34 @@ export const scoreOf = (d) => SCORE_KEYS.reduce((n, k) => n + (d[k] ? 1 : 0), 0)
  * own "read the count, not the tick" turned on the census itself. A helper's meaningful question is not
  * "does it have a receipt" but "does anything execute it", and that is mechanically answerable.
  */
+//
+// RESOLVED, NOT MATCHED (QUEUE R1.7). The first version matched `…ci/<name>.mjs` in an import string, which
+// cannot see a SIBLING — `scripts/ci/gate-census.mjs` imports `'./killability-ledger.mjs'`, no `ci/` in it —
+// so a helper driven only by another CI script was listed UNDRIVEN. Every relative import specifier is now
+// resolved against its importer's directory and compared to the subject path, which is what an import IS.
+const IMPORT_SPEC = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"]+)['"]/g;
 export function drivenBy(subjectFile, files, readText) {
-  const base = subjectFile.split('/').pop().replace(/\.mjs$/, '');
-  // Match an import of THIS module specifically, by path, not a bare mention of its name in prose.
-  const re = new RegExp(`from\\s+'[^']*\\bci/${base}\\.mjs'|import\\(\\s*'[^']*\\bci/${base}\\.mjs'`);
-  return files.filter((f) => f !== subjectFile && re.test(readText(f)));
+  return files.filter((f) => {
+    if (f === subjectFile) return false;
+    const dir = posix.dirname(f);
+    for (const m of readText(f).matchAll(IMPORT_SPEC)) {
+      if (posix.normalize(posix.join(dir, m[1])) === subjectFile) return true;
+    }
+    return false;
+  });
 }
 
 export function census(root = APP_ROOT) {
   // survey() returns { rows, total, receipted, unreceipted } — not an array. Read the shape from the
   // source rather than assuming it; the first draft called .map on the envelope and threw.
   const rows = survey(root).rows;
-  const read = (f) => { try { return readFileSync(resolve(root, f), 'utf8'); } catch { return ''; } };
+  // Each file is read ONCE (R1.9): drivenBy scans the whole population per scripts/ci subject, which was
+  // ~8,000 readFileSync per run for ~500 files.
+  const cache = new Map();
+  const read = (f) => {
+    if (!cache.has(f)) { let t = ''; try { t = readFileSync(resolve(root, f), 'utf8'); } catch { /* absent -> '' */ } cache.set(f, t); }
+    return cache.get(f);
+  };
   const all = rows.map((r) => r.file);
   return rows.map((row) => {
     const d = dimensions(read(row.file));
