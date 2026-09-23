@@ -7,7 +7,9 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
-| `4ff5cd6b` `458de5db` | **Review #5 fixes** (8 findings, each reproduced by a failing test first): a knockback shove could carry a mob THROUGH a thin wall (now walked against the ground where it happens); trench corners wedged mobs; a mob refused at a wall walked in place; a build placed on a mob embedded it; an undismissed VICTORY followed you into another world; the world clock lost a hitstop that ended between frames; three literal chunk sizes left | local green; pushing |
+| `8db8016a` `fa065432` | **Mobs walk under trees and roofs.** The mob ground probe read the TOP of each column, so under a tree canopy or a roof the "ground" was the canopy: since the wall fix (`232f0581`) a mob refused to walk under any tree, and a roof you built over a mob lifted it onto the roof (review #6 caught both). Mobs now stand on the floor of the air gap their feet are in. Proven twice: a Rapier world built from the real mesher's output with the real AI worker chasing under a roof and a canopy, and in the RUNNING game — a roof placed with the build verb over a spawned zombie (with the old snap it stood on the roof in 6 of 6 samples; now 0) | run in progress (pushed `fa065432`) |
+| `06d3f190` | **Perfect dodge, the core** (the parry the baseline found missing, on your Shift dodge): the timing window, the stagger the AI honours, and a strike already in flight dropped. Nothing player-visible yet — the dodge wiring and the feedback are the next task | run in progress (pushed `fa065432`) |
+| `4ff5cd6b` `458de5db` | **Review #5 fixes** (8 findings, each reproduced by a failing test first): a knockback shove could carry a mob THROUGH a thin wall (now walked against the ground where it happens); trench corners wedged mobs; a mob refused at a wall walked in place; a build placed on a mob embedded it; an undismissed VICTORY followed you into another world; the world clock lost a hitstop that ended between frames; three literal chunk sizes left | ✅ run 35817017547 (`9063b8c7`) |
 | `5b1cb802` | VICTORY is now an EVENT of the first dragon's death: it no longer reappears on every reload of a won game, and a return kill never announces the win again | ✅ run 35815906462 (`34ead1d3`) |
 | `d8e8a5b0` | One chunk index for the streamer, block edits and the far-field mask; the far ring no longer computes normals its flat-shaded material never reads | ✅ run 35815906462 (`34ead1d3`) |
 | `c72586cd` | **A paused WORLD clock.** A hitstop now HOLDS a mob's windup (and the brute's brace/charge) instead of letting it expire inside the freeze and strike the frame it ends; the dragon's attacks and its lava warning hold too, instead of bursting out right after your hit. Proven in the running game (new e2e case) | ✅ run 35815906462 (`34ead1d3`) |
@@ -49,10 +51,19 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- Nothing uncommitted. Next: `/code-review high` over `34ead1d3..HEAD`, then the **perfect dodge** (the baseline's
-  missing parry, on the Shift verb you already have — design in `specs/2026-09-23-crafty-perfect-dodge-design.md`).
+- Review #6 (`/code-review high` over `34ead1d3..9063b8c7`) → QUEUE R7, 8 findings. R7.1 (HIGH, a regression of
+  my own R6.4) FIXED. R7.2–R7.8 queued (chunk-size literals, one voxel-index helper, knockback scaled by frame
+  time, one wall-walk implementation, per-sub-step ray cost, A* vs mover corner rule, a refused wanderer
+  re-picking the same wall). R7.9 new: spells, XP orbs, loot and spawns still read the column top — a spell cast
+  under a tree may burst on launch; verifying in the game before fixing.
+- Perfect dodge Tasks 3–4 (the Shift wiring, riposte, feedback, e2e). **Budget note:** the `index` bundle chunk
+  is at 738.7 of 742.2 KB, so this task has ~3.5 KB of room before the byte budget refuses it.
 
 ## Corrections to things I told you
+
+- **My wall fix (`232f0581`) stopped mobs walking under trees, and my R6.4 fix lifted a mob onto any roof built
+  over it** (review #6). Both came from the ground probe reading the column top; neither was caught by my gates,
+  which modelled the world as a heightmap — no overhangs. Fixed at the probe (`8db8016a`).
 
 - **R4.5's VICTORY fix was itself wrong** (review #4): it derived the screen from saved state, so a won game
   showed VICTORY on every reload. Replaced by an event (`5b1cb802`).
@@ -82,12 +93,14 @@ has its own same-renderer A/B so you can judge them one at a time.
 | 147→151 visual re-baseline | rewrites the 31-image oracle |
 | three 0.172 → 0.186 + `SunLight` CSM | dependency bump (EXTERNAL-BASELINE #4); will be prepared, not merged |
 | dprCap 2 → 1.75 · FPV glove value | your standing calls |
+| vitest 4 → 5 (dev only) | GitHub flags 3 moderate advisories, all the TEST runner (`@vitest/mocker` path traversal); nothing ships to players. The fix is a major bump of the whole test toolchain — yours to schedule, not an overnight change |
 | **Distant-terrain mipmaps (one constant)** | "no mipmaps" is part of the bold-flat LOCK, recorded as your taste call. Built and proven; flip `const TERRAIN_MIPMAPS = false` in `world/proceduralTextures.js` to `true` (and update the lock test). Same-renderer A/B is in KEVIN-REVIEW-BATCH (evidence `mipmaps-ab-*.png`): far faces go from crawling speckle to flat colour, crisp up close, no seams. My read: it looks MORE bold-flat, not less |
 
 ## Next, in order
 
-1. Commit R3.9 on the capture verdict, then R3.11; push onto a completed run.
-2. R3.7 (the far field takes the danger grade and cloud shadows — one generated grade string for both),
-   R3.8 (swamp trees grow on dirt), R3.10 (rebuild perf).
-3. `/code-review high` over `ba8c3ebf..HEAD`.
-4. QUEUE R2.6/R2.7, G2, I1, I2, then the next EXTERNAL-BASELINE runner-up.
+1. R7.9 — verify a spell cast under a tree in the running game; if it bursts on launch, one point query on the
+   floor rule for projectiles, orbs, loot and spawn placement.
+2. Perfect dodge Task 3 (Shift wiring, riposte, feedback, i18n) and Task 4 (e2e through the real listener).
+3. R7.2–R7.8, then `/code-review high` over `9063b8c7..HEAD`.
+4. R4.2b (pause Rapier through a freeze), I3 (mipmap motion probe for your lock decision), G2, I1, I2, then the
+   next EXTERNAL-BASELINE gap.

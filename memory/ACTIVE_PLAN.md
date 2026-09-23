@@ -15,15 +15,14 @@ each ~300k context.
   row); `/code-review high` #3 over `0398b7b7..33c75345` → QUEUE R4, all ten verified + fixed (`84f9efe2`,
   `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
   `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
-- **Review #4 done** (QUEUE R5, all fixed: `43154097` `c72586cd` `d8e8a5b0` `5b1cb802`; R2.7 world clock shipped in
-  `c72586cd`). Review #5 → QUEUE R6: R6.1-R6.4 + R6.8 FIXED `458de5db`; **NEXT: R6.5 (clear victoryPending in
-  loadWorldData, store ~1036), R6.6 (worldClock: accumulate frozen spans at triggerHitstop so a burst ending between
-  ticks is not lost), R6.7 (literal /16 chunk indices: BossEntity:72, useGameStore:1087, blightHeart:22,
-  shrines:12 → chunkOf; widen the gate)**; then push onto a completed run; `/code-review high` over
-  `34ead1d3..HEAD`; then the perfect-dodge plan + build (spec `specs/2026-09-23-crafty-perfect-dodge-design.md`); then R4.2b
-  (pause the Rapier step through a freeze — design first, it moves the player's body), I3 (mipmap motion
-  probe before Kevin decides the lock), G2, I1, I2; then the next EXTERNAL-BASELINE gap
-  (CSM shadows are Kevin-gated via the three bump; parry is the open PLAY verb — brainstorm + spec first).
+- **Reviews #4, #5 done** (QUEUE R5, R6 — all fixed, pushed through `9063b8c7`, CI green run 35817017547).
+  **Review #6 → QUEUE R7** (8 findings). R7.1 FIXED `8db8016a` (the mob FLOOR probe, `game/mobFloor.js` +
+  `world/mobFloorProbe.js`) + e2e `fa065432` (`tests/e2e/mob-floor.spec.js`); pushed `fa065432`. Perfect dodge
+  Tasks 1-2 `06d3f190` (plan `docs/superpowers/plans/2026-09-23-crafty-perfect-dodge.md`).
+  **NEXT:** R7.9 (spells/orbs/loot/spawns read the column top — verify a cast under a tree bursts on launch
+  first) → perfect dodge Task 3 (Components.jsx dodge start, CombatSystem riposte, MobModel stagger pose, parry
+  voice, keyMap/onboarding/i18n; the `index` chunk has ~3.5 KB of budget left) → Task 4 e2e → R7.2-R7.8 →
+  `/code-review high` over `9063b8c7..HEAD`; then R4.2b, I3, G2, I1, I2; then the next EXTERNAL-BASELINE gap.
 - **Worktree** `.claude/worktrees/mip-ab` is capture scratch (reset it to HEAD before each A/B; frames land in
   the scratchpad capA..capJ, which dies with the session — commit messages carry the verdicts).
 
