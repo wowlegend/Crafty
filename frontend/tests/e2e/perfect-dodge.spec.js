@@ -28,7 +28,11 @@ test.describe('perfect dodge', () => {
 
   // A zombie of our own, 1.6 m off the player, every other hostile within 24 m removed (they would hit the
   // player and blur whose strike landed), the player alive and full.
-  const stage = (page) => page.evaluate(() => {
+  const stage = (page) => page.evaluate(async () => {
+    // SPAWN PROTECTION: damagePlayer drops every hit for 5 s after spawn. A strike landing inside it reads exactly
+    // like one the stagger cancelled — the control caught a run where it did. Wait it out.
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    while (Date.now() - (window.useGameStore.getState()._spawnTime || 0) < 5500) await frame();
     const s = window.useGameStore.getState();
     window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth });
     s.setTimeOfDay?.(0.5);
@@ -50,27 +54,63 @@ test.describe('perfect dodge', () => {
     const frame = () => new Promise((r) => requestAnimationFrame(r));
     const zombie = () => call('readMobs').find((m) => m.id === id);
     const store = window.useGameStore;
+    // Where everything stood — in every failure message, so the next red names its cause (CI run 35822535594 failed
+    // three different ways and said why for none of them).
+    const where = () => {
+      const m = zombie(), c = window.__threeCamera.position, st = store.getState();
+      return m ? { dist: +Math.hypot(m.x - c.x, m.z - c.z).toFixed(2), dy: +(m.y - c.y).toFixed(2), windup: m.windupUntil,
+        stagger: m.staggerUntil, now: call('worldNow'), alive: st.isAlive, hp: st.playerHealth } : { zombie: 'gone' };
+    };
+    // THE PHASE IS READ ON THE FROZEN CLOCK. worldNow() is computed once per frame, so a due read between frames is
+    // up to a frame stale — at ~3 fps, longer than the whole window: the first CI version froze on "161 ms left"
+    // and the dodge start, reading the clock at the freeze, saw the windup already over. So: freeze on ANY live
+    // windup, wait one frame for the clock to settle at the freeze, read the exact due, and press only if it is in
+    // the phase; otherwise let the freeze run out and try the next windup.
+    const inPhase = (due) => (phase === 'early' ? due > WINDOW + 60 : due > 30 && due <= WINDOW - 30);
     const t0 = performance.now();
-    let z = null, due = 0;
-    while (performance.now() - t0 < 30000) {
+    let z = null, due = 0, tries = 0;
+    while (performance.now() - t0 < 90000 && !z) {
       await frame();
       const m = zombie();
-      if (!m) return { why: 'the zombie is gone' };
-      due = m.windupUntil - call('worldNow');
-      const inPhase = phase === 'early' ? due > WINDOW + 60 : due > 30 && due <= WINDOW - 30;
-      if (m.windupUntil > 0 && inPhase) { z = m; break; }
+      if (!m) return { why: `the zombie is gone after ${tries} tries` };
+      if (!(m.windupUntil > call('worldNow'))) continue;
+      tries++;
+      store.setState({ playerHealth: store.getState().maxHealth }); // aborted tries let strikes land
+      store.getState().triggerHitstop(1500);
+      await frame();
+      const f = zombie();
+      due = f ? f.windupUntil - call('worldNow') : 0;
+      if (f && f.windupUntil > 0 && inPhase(due)) { z = f; break; }
+      while (performance.now() < store.getState().hitstopUntil) await frame(); // not this one: let it run out
     }
-    if (!z) return { why: `no windup reached the ${phase} phase in 30 s` };
-    store.getState().triggerHitstop(1500);
+    if (!z) return { why: `no windup's frozen due fell in the ${phase} phase in ${tries} tries — ${JSON.stringify(where())}` };
     const hp0 = store.getState().playerHealth;
     const dueAtPress = z.windupUntil - call('worldNow');
+    // Did the controller START a roll, or did something else clear the intent? The dodge start plays its 'swing'
+    // through the store's playSpatialSound — spied for the press. (The first draft read the invincibility callback,
+    // which a slow frame sets and clears inside one frame: it reported "no roll" for a roll that staggered a zombie.)
+    let started = false;
+    const realSound = store.getState().playSpatialSound;
+    store.setState({ playSpatialSound: (name, ...rest) => { if (name === 'swing') started = true; return realSound?.(name, ...rest); } });
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', bubbles: true }));
     const armed = call('readIntents').dodge === true; // a refused press also reads "not set" below — tell them apart
     let consumed = false;
     for (let i = 0; i < 20 && !consumed; i++) { await frame(); consumed = call('readIntents').dodge === false; }
+    await frame();
+    store.setState({ playSpatialSound: realSound });
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft', bubbles: true }));
     const after = zombie();
+    const atPress = where();
     const staggeredAtPress = !!after && after.staggerUntil > call('worldNow');
+    // THE RIPOSTE'S staggered hit, taken NOW — inside the freeze, so the stagger is certainly live. (Measured in a
+    // later evaluate, a fast runner's world clock could spend the rest of the stagger in the round trip: CI run
+    // 35822535594's first attempt.)
+    let staggeredHit = null;
+    if (staggeredAtPress && phase === 'perfect') {
+      const h0 = after.health;
+      window.GameMethods.damageMob(id, 10, 'physical', 'player');
+      staggeredHit = h0 - zombie().health;
+    }
     // The lowest health from the press until the strike would have landed: regen cannot hide a hit.
     // And whether the zombie wound up AGAIN while staggered: the worker's own part (the main thread's in-flight
     // filter drops a staggered mob's strike too, so a strike alone cannot show the worker honoured the stagger).
@@ -83,7 +123,7 @@ test.describe('perfect dodge', () => {
     while (performance.now() < store.getState().hitstopUntil) { await frame(); sample(); } // the freeze runs out
     const w0 = call('worldNow');
     while (call('worldNow') - w0 < 900) { await frame(); sample(); }
-    return { armed, consumed, dueAtPress, staggeredAtPress, hpLost: hp0 - low, rewound, alive: store.getState().isAlive };
+    return { armed, consumed, started, dueAtPress, staggeredAtPress, staggeredHit, atPress, hpLost: hp0 - low, rewound, alive: store.getState().isAlive };
   }, { id, phase, WINDOW: PERFECT_WINDOW_MS });
 
   test('a press in the last moments of the windup staggers the zombie, its strike never lands, and a hit on it deals 1.5x', async ({ page }) => {
@@ -97,27 +137,28 @@ test.describe('perfect dodge', () => {
     expect(r.why, r.why).toBeUndefined();
     expect(r.armed, `Shift did not arm the dodge (input inactive or the player dead) — ${JSON.stringify(r)}`).toBe(true);
     expect(r.consumed, `the controller never consumed the Shift press — ${JSON.stringify(r)}`).toBe(true);
-    expect(r.staggeredAtPress, `the perfect press staggered nothing (${r.dueAtPress.toFixed(0)} ms of windup left at the press)`).toBe(true);
+    expect(r.started, `the intent was cleared but no roll started (something else consumed it) — ${JSON.stringify(r)}`).toBe(true);
+    expect(r.staggeredAtPress, `the perfect press staggered nothing (${r.dueAtPress.toFixed(0)} ms of windup left at the press) — ${JSON.stringify(r.atPress)}`).toBe(true);
     expect(r.hpLost, `the staggered zombie's strike landed anyway: the player lost ${r.hpLost}`).toBe(0);
     expect(r.rewound, `the staggered zombie wound up again in ${r.rewound} samples — the worker ignored the stagger`).toBe(0);
 
     // THE RIPOSTE, measured as a RATIO against an unstaggered hit on the same zombie — whatever else damageMob
-    // multiplies, it multiplies both. The staggered hit first (the stagger is live), the control after it ends.
-    const ratio = await page.evaluate(async ({ id, STAGGER }) => {
+    // multiplies, it multiplies both. The staggered hit was taken inside the freeze; the control after it ends.
+    const plain = await page.evaluate(async ({ id, STAGGER }) => {
       const call = (n) => window.__craftyTest.call(n);
       const frame = () => new Promise((r) => requestAnimationFrame(r));
-      const hp = () => call('readMobs').find((m) => m.id === id)?.health;
-      const z = call('readMobs').find((m) => m.id === id);
-      if (!z || !(z.staggerUntil > call('worldNow'))) return { why: 'the stagger was over before the riposte could be measured' };
-      const h0 = hp(); window.GameMethods.damageMob(id, 10, 'physical', 'player'); const staggered = h0 - hp();
+      const zombie = () => call('readMobs').find((m) => m.id === id);
+      while (zombie() && zombie().staggerUntil > call('worldNow')) await frame();
       const w0 = call('worldNow');
-      while (call('worldNow') - w0 < STAGGER + 200) await frame();
-      const h1 = hp(); window.GameMethods.damageMob(id, 10, 'physical', 'player'); const plain = h1 - hp();
-      return { staggered, plain };
+      while (call('worldNow') - w0 < 100) await frame();
+      const z = zombie();
+      if (!z) return null;
+      window.GameMethods.damageMob(id, 10, 'physical', 'player');
+      return z.health - zombie().health;
     }, { id, STAGGER: STAGGER_MS });
-    expect(ratio.why, ratio.why).toBeUndefined();
-    expect(ratio.plain, 'the control hit dealt no damage — the ratio would mean nothing').toBeGreaterThan(0);
-    expect(ratio.staggered / ratio.plain, `a hit on the staggered zombie dealt ${(ratio.staggered / ratio.plain).toFixed(2)}x`).toBeCloseTo(RIPOSTE_MULT, 2);
+    expect(r.staggeredHit, 'the staggered hit dealt no damage').toBeGreaterThan(0);
+    expect(plain, 'the control hit dealt no damage (or the zombie was gone) — the ratio would mean nothing').toBeGreaterThan(0);
+    expect(r.staggeredHit / plain, `a hit on the staggered zombie dealt ${(r.staggeredHit / plain).toFixed(2)}x`).toBeCloseTo(RIPOSTE_MULT, 2);
   });
 
   test('CONTROL: the same press made EARLY in the windup is an ordinary dodge — no stagger', async ({ page }) => {
