@@ -20,7 +20,7 @@
  *   Remove `manualChunks` from vite.config.js, rebuild → the split assertion → RED.
  *   Point OUT_DIR at a non-existent dir → "no chunks found" → RED (it fails loud instead of passing empty).
  */
-import { readdirSync, statSync, existsSync } from 'node:fs';
+import { readdirSync, statSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -91,6 +91,35 @@ if (splitMissing.length) {
   failed = true;
 } else {
   console.log(`\n✓ split: ${MUST_STAY_SPLIT.join(' / ')} are separate chunks`);
+}
+
+// LAZY PANELS (plan 2026-09-23-crafty-lazy-panels): the on-demand panels are ONE chunk loaded after boot. A marker
+// only a panel's source carries (a data-testid) must be ABSENT from the boot `index` chunk and PRESENT in exactly one
+// other chunk, the same one for every marker — the presence half proves the split happened rather than the panel
+// having been deleted, and one chunk means one request. A second STATIC importer of any panel module would pull it
+// back into the boot chunk; this is what sees that.
+const LAZY_PANEL_MARKERS = ['alloc-strength', 'progression-panel']; // GamePanels, SpellUpgradePanel
+const bootChunk = findChunk('index');
+const holdersOf = (marker) => chunks.filter((c) => readFileSync(join(OUT_DIR, c.file), 'utf8').includes(marker));
+const panelChunks = new Set();
+let lazyBad = 0;
+for (const marker of LAZY_PANEL_MARKERS) {
+  const holders = holdersOf(marker);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ lazy panels: "${marker}" is in the BOOT chunk (${bootChunk.file}) — a panel is statically imported again`);
+    failed = true; lazyBad++;
+  } else if (holders.length !== 1) {
+    console.error(`✘ lazy panels: "${marker}" found in ${holders.length} chunk(s) — expected exactly one lazy panel chunk`);
+    failed = true; lazyBad++;
+  } else {
+    panelChunks.add(holders[0].file);
+  }
+}
+if (panelChunks.size > 1) {
+  console.error(`✘ lazy panels: the panels are split across ${panelChunks.size} chunks (${[...panelChunks].join(', ')}) — one import, one chunk`);
+  failed = true;
+} else if (panelChunks.size === 1 && lazyBad === 0) {
+  console.log(`✓ lazy panels: ${LAZY_PANEL_MARKERS.length} panel markers only in ${[...panelChunks][0]}, none in the boot chunk`);
 }
 
 if (failed) {

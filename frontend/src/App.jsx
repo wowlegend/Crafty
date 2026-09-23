@@ -25,6 +25,7 @@ import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { installTestBridge, registerTestHook } from './devtest/testBridge.js';
+import { loadPanels, prefetchPanels } from './ui/panels/lazyPanels.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
@@ -62,6 +63,13 @@ const MascotStudio = import.meta.env.DEV
   : () => null;
 
 function App() {
+  // Load the panel chunk once the page has settled (ui/panels/lazyPanels.js), so the first panel a player opens is
+  // normally already here. On idle, not at mount: boot is busy streaming the world.
+  useEffect(() => {
+    const ric = window.requestIdleCallback;
+    const id = ric ? ric(prefetchPanels, { timeout: 8000 }) : setTimeout(prefetchPanels, 4000);
+    return () => (ric ? window.cancelIdleCallback(id) : clearTimeout(id));
+  }, []);
   return (
     <SoundProvider>
       <GameAppWrapper />
@@ -867,8 +875,10 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
     });
-    // Open a modal (inventory/crafting) for the visual gate. DEV-only.
-    registerTestHook('openModal', (which = 'inventory') => {
+    // Open a modal (inventory/crafting) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
+    // WAITS for it first (page.evaluate awaits the promise): a capture must never shoot the empty Suspense frame.
+    registerTestHook('openModal', async (which = 'inventory') => {
+      await loadPanels();
       const store = useGameStore.getState();
       store.setCaptureStudio(false); // modal OVER the explore world is an in-world frame -> motes on
       if (which === 'inventory') store.setShowInventory(true);

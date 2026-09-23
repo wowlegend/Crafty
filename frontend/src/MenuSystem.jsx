@@ -1,20 +1,23 @@
 import React, { lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+// The on-demand panels come from ONE lazy chunk (ui/panels/lazyPanels.js, plan 2026-09-23-crafty-lazy-panels): each
+// renders inside its own keyed <Suspense> below, so a panel opened before the chunk arrives shows nothing for that
+// moment instead of unmounting its siblings, and AnimatePresence still sees one keyed child per panel.
 import {
   Inventory,
   CraftingTable,
   BuildingTools,
   SettingsPanel,
-  MagicSystem
-} from './ui/GamePanels';
+  MagicSystem,
+  CreditsScreen,
+  WorldManager,
+  TradingInterface,
+  QuestLog,
+  SpellUpgradePanel,
+  ChestInventoryPanel,
+} from './ui/panels/lazyPanels.js';
 import { Icon, Button } from './ui/primitives/index.js';
-import { CreditsScreen } from './ui/CreditsScreen';
-import { WorldManager } from './WorldManager';
-import { TradingInterface } from './ui/TradingInterface';
 import { AchievementsPanel } from './QuestSystem';
-import { QuestLog } from './ui/QuestLog';
-import { SpellUpgradePanel } from './ui/SpellUpgradePanel';
-import { ChestInventoryPanel } from './ui/ChestInventoryPanel';
 import { shouldShowTitleMenu, shouldShowResumeOverlay } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice } from './input/touchDevice';
@@ -87,110 +90,130 @@ export function MenuSystem({
  
       <AnimatePresence>
         {showSpellUpgrades && (
-          <SpellUpgradePanel
-            onClose={() => {
-              setShowSpellUpgrades(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="SpellUpgradePanel" fallback={null}>
+            <SpellUpgradePanel
+              onClose={() => {
+                setShowSpellUpgrades(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
  
       <AnimatePresence>
         {gameState.showChestInterface && (
-          <ChestInventoryPanel
-            coords={gameState.activeChestCoords}
-            onClose={() => {
-              gameState.setShowChestInterface(false);
-              gameState.setActiveChestCoords(null);
-              enterPlay();
-            }}
-          />
+          <Suspense key="ChestInventoryPanel" fallback={null}>
+            <ChestInventoryPanel
+              coords={gameState.activeChestCoords}
+              onClose={() => {
+                gameState.setShowChestInterface(false);
+                gameState.setActiveChestCoords(null);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
  
       <AnimatePresence>
         {gameState.showInventory && (
-          <Inventory
-            gameState={gameState}
-            onClose={() => {
-              gameState.setShowInventory(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="Inventory" fallback={null}>
+            <Inventory
+              gameState={gameState}
+              onClose={() => {
+                gameState.setShowInventory(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showQuestLog && (
-          <QuestLog
-            quests={questSystem.quests}
-            onClose={() => {
-              gameState.setShowQuestLog(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="QuestLog" fallback={null}>
+            <QuestLog
+              quests={questSystem.quests}
+              onClose={() => {
+                gameState.setShowQuestLog(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showCrafting && (
-          <CraftingTable
-            gameState={gameState}
-            onClose={() => {
-              gameState.setShowCrafting(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="CraftingTable" fallback={null}>
+            <CraftingTable
+              gameState={gameState}
+              onClose={() => {
+                gameState.setShowCrafting(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showMagic && (
-          <MagicSystem
-            onClose={() => {
-              gameState.setShowMagic(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="MagicSystem" fallback={null}>
+            <MagicSystem
+              onClose={() => {
+                gameState.setShowMagic(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showBuildingTools && (
-          <BuildingTools
-            gameState={gameState}
-            onClose={() => {
-              gameState.setShowBuildingTools(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="BuildingTools" fallback={null}>
+            <BuildingTools
+              gameState={gameState}
+              onClose={() => {
+                gameState.setShowBuildingTools(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showSettings && (
-          <SettingsPanel
-            gameState={gameState}
-            onClose={() => {
-              gameState.setShowSettings(false);
-              enterPlay();
-            }}
-            onOpenWorldManager={() => {
-              gameState.setShowSettings(false);
-              gameState.setShowWorldManager(true);
-            }}
-            onOpenCredits={() => {
-              gameState.setShowSettings(false);
-              gameState.setShowCredits(true);
-            }}
-            showStats={showStats}
-            setShowStats={setShowStats}
-          />
+          <Suspense key="SettingsPanel" fallback={null}>
+            <SettingsPanel
+              gameState={gameState}
+              onClose={() => {
+                gameState.setShowSettings(false);
+                enterPlay();
+              }}
+              onOpenWorldManager={() => {
+                gameState.setShowSettings(false);
+                gameState.setShowWorldManager(true);
+              }}
+              onOpenCredits={() => {
+                gameState.setShowSettings(false);
+                gameState.setShowCredits(true);
+              }}
+              showStats={showStats}
+              setShowStats={setShowStats}
+            />
+          </Suspense>
         )}
         {gameState.showWorldManager && (
-          <WorldManager
-            gameState={gameState}
-            onWorldLoad={gameState.loadWorldData}
-            onClose={() => {
-              gameState.setShowWorldManager(false);
-              // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
-              if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
-            }}
-          />
+          <Suspense key="WorldManager" fallback={null}>
+            <WorldManager
+              gameState={gameState}
+              onWorldLoad={gameState.loadWorldData}
+              onClose={() => {
+                gameState.setShowWorldManager(false);
+                // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
+                if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+              }}
+            />
+          </Suspense>
         )}
         {gameState.showCredits && (
-          <CreditsScreen
-            onClose={() => {
-              gameState.setShowCredits(false);
-              enterPlay();
-            }}
-          />
+          <Suspense key="CreditsScreen" fallback={null}>
+            <CreditsScreen
+              onClose={() => {
+                gameState.setShowCredits(false);
+                enterPlay();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -201,16 +224,18 @@ export function MenuSystem({
           was the one panel that POPPED out while the rest faded. */}
       <AnimatePresence>
         {gameState.showTradingInterface && (
-          <TradingInterface
-            villager={gameState.selectedVillager}
-            gameState={gameState}
-            onClose={() => {
-              gameState.setShowTradingInterface(false);
-              gameState.setSelectedVillager(null);
-              // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
-              if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
-            }}
-          />
+          <Suspense key="TradingInterface" fallback={null}>
+            <TradingInterface
+              villager={gameState.selectedVillager}
+              gameState={gameState}
+              onClose={() => {
+                gameState.setShowTradingInterface(false);
+                gameState.setSelectedVillager(null);
+                // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
+                if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
