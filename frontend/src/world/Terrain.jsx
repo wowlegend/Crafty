@@ -33,6 +33,7 @@ import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
+import { markChunkLoaded, markChunkUnloaded, clearLoadedChunks, loadedChunkSet } from './loadedChunks.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -638,7 +639,6 @@ export const MinecraftWorld = React.memo(() => {
     });
 
     const [chunks, setChunks] = useState({});
-    const chunksRef = useRef(new Set());
     // B2d: the streamer's in-flight/dedup bookkeeping. This USED to be a `new Set()` local to the
     // streaming effect — unreachable from the worker's message handler, which is exactly why the handler
     // could not drain it on a world load, and why loading a save permanently destroyed the terrain.
@@ -646,12 +646,14 @@ export const MinecraftWorld = React.memo(() => {
     // of having asked for them, or the streamer can never ask again.
     const requestedChunksRef = useRef(new Set());
 
+    // The mounted set lives in world/loadedChunks.js — the far field hole-punches itself by it (R3.9), and it is
+    // the same Set getGeneratedChunks hands the spawner, so no consumer holds a private copy that can disagree.
     const handleMount = React.useCallback((key) => {
-        chunksRef.current.add(key);
+        markChunkLoaded(key);
     }, []);
 
     const handleUnmount = React.useCallback((key) => {
-        chunksRef.current.delete(key);
+        markChunkUnloaded(key);
     }, []);
 
     // Expose chunks state for debugging
@@ -705,7 +707,7 @@ export const MinecraftWorld = React.memo(() => {
             } else if (type === 'load_modifications_done') {
                 // Wipe the live world so the worker can re-stream it with the save's block edits applied.
                 setChunks({});
-                chunksRef.current.clear();
+                clearLoadedChunks();
                 // B2d: ...and wipe the record of having REQUESTED those chunks. Without this the
                 // streamer's guard (`!requestedChunks.has(key)`) still considers every chunk
                 // "already requested", so it never asks again — and the cull path that would have
@@ -721,7 +723,7 @@ export const MinecraftWorld = React.memo(() => {
 
     // Provide ground level approximation for NPCs via top-down physics raycast
     useEffect(() => {
-        useGameStore.getState().setGetGeneratedChunks(() => chunksRef.current);
+        useGameStore.getState().setGetGeneratedChunks(loadedChunkSet);
         
         // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #2): ONE reusable Ray + ONE persistent filter
         // closure. This is the hottest physics call in the game — AI height grids, leg IK, weather

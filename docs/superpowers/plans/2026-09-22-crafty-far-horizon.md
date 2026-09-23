@@ -57,3 +57,37 @@
 - [ ] **Step 5: Mutation-prove** the structural checks (M8 unmounted; M9 re-centred on the raw position).
 - [ ] **Step 6: SEE it** — same-renderer capture vs the previous capture; localise the diff to the horizon band; open `explore-day`, `landmark`, `ocean-coast`, `biome-snow`; presence control = UI frames 0.000%.
 - [ ] **Step 7: Commit** with the band numbers and the opened-frame verdict.
+
+### Task 3: Hole-punch the ring by the loaded-chunk set (QUEUE R3.9 — fixes R3.4, R3.5, R3.6)
+
+Review #2 showed no FIXED sink can be right: the sink must be deep exactly where a chunk IS loaded, and that set
+changes continuously (Terrain keeps chunks to `renderDistance + 2`, and streams the square in over seconds). So
+the ring stops guessing: it is drawn at the true surface everywhere and DISCARDS every fragment over a loaded chunk.
+
+**Files:**
+- Create: `frontend/src/world/loadedChunks.js` — the loaded-chunk registry (Terrain's mounted set, now the ONE set
+  `getGeneratedChunks` also returns) + `buildLoadedMask` + the generated `loadedMaskGlsl`.
+- Create: `frontend/tests/gates/loaded-chunk-mask-gates.test.js`.
+- Modify: `frontend/src/world/Terrain.jsx` (mount/unmount/clear go through the registry), `farField.js` (land at the
+  true top, water sunk only below the deepest wave trough, canopy everywhere, `canopyFrom` deleted),
+  `FarField.jsx` (R8 mask texture + `vFarXZ` varying + the spliced discard), `far-field-gates.test.js`.
+
+**Interfaces:**
+- Produces: `markChunkLoaded(key)`, `markChunkUnloaded(key)`, `clearLoadedChunks()`, `loadedChunkSet() -> Set<string>`,
+  `loadedChunksVersion() -> number`, `LOADED_MASK_SIZE = 32`,
+  `buildLoadedMask(keys, centreCx, centreCz, size, out) -> { data: Uint8Array, originX, originZ, size }`
+  (texel `(i, j)` = chunk `(originX + i, originZ + j)` at `data[j * size + i]`), `loadedMaskGlsl(size) -> string`
+  reading `vFarXZ`, `uMaskOrigin`, `uLoadedMask`. `FAR_WATER_SINK` (derived from the wave table).
+
+- [ ] **Step 1: Failing tests** — the mask indexes a known key set (negative coords, out-of-range keys dropped); the
+  generated GLSL, INTERPRETED against a nearest-sampling model of the DataTexture (`flipY = false`: row `j` is
+  `v = (j + 0.5) / size`), discards exactly where `floor(x/16)_floor(z/16)` is loaded, swept across chunk edges on an
+  ASYMMETRIC key set; the registry bumps its version only on a real change; land vertices at `top + canopy`;
+  `FAR_WATER_SINK` exceeds the sum of the wave amplitudes by at most 0.5 m.
+- [ ] **Step 2: Run → FAIL.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run → PASS**, lint, build.
+- [ ] **Step 5: Mutation-prove** — mask origin off by one chunk; u/v swapped; `floor` → `round`; the discard deleted
+  (structural); Terrain's mount stops registering; the version bumped on a no-op; water sink below the trough depth.
+- [ ] **Step 6: SEE it** — same-renderer capture A/B in the worktree; open the horizon frames and an ocean frame.
+- [ ] **Step 7: Commit** with call-site counts.

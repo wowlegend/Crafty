@@ -1,4 +1,4 @@
-// farField.js — THE FAR HORIZON: a sunk, flat-shaded heightfield ring beyond the loaded chunks.
+// farField.js — THE FAR HORIZON: a flat-shaded heightfield ring beyond the loaded chunks.
 // Spec: docs/superpowers/specs/2026-09-22-crafty-far-horizon-design.md (EXTERNAL-BASELINE runner-up #1).
 //
 // Past the loaded square (72 m at high) the world used to end in fog over sky colour, while the camera sees
@@ -7,14 +7,21 @@
 //
 // Pure: the sampler and the tile colours are injected, so a test drives synthetic worlds. The component that
 // draws it is world/FarField.jsx.
+//
+// The ring sits AT the true surface: it never has to hide under real terrain, because its fragment shader
+// discards every fragment over a loaded chunk (world/loadedChunks.js, QUEUE R3.9). A fixed sink was tried first
+// and could not be right — the sink must be deep exactly where a chunk IS loaded, and that set moves.
 import * as THREE from 'three';
 import { BIOME_TINT, BIOME_ID } from './biomeTable.js';
 import { BLOCK_ID } from './blockIds.js';
 import { BIOME_TINTED_BLOCKS } from './terrainTint.js';
-import { SEA_LEVEL } from './oceanProfile.js';
+import { SEA_LEVEL, WAVES } from './oceanProfile.js';
 
-/** How far below the real surface the ring sits, so a loaded chunk always wins the depth test. */
-export const FAR_SINK = 2;
+/**
+ * How far below sea level far WATER sits: just past the deepest trough the Gerstner sum can reach, so where the
+ * ocean plane (render/Ocean.jsx) covers it no flat patch pokes through a trough. Derived from the wave table.
+ */
+export const FAR_WATER_SINK = WAVES.reduce((sum, w) => sum + w[3], 0) + 0.1;
 /** Outer radius, metres. The camera sees 500 m; the fog has swallowed most of it by here. */
 export const FAR_OUTER = 420;
 /** The centre snaps to this grid, so the ring is rebuilt only when the player crosses a cell — never swims. */
@@ -48,23 +55,16 @@ const CANOPY_SURFACES = new Set([BLOCK_ID.grass, BLOCK_ID.snow]);
 const CHUNK = 16;
 
 /**
- * The two radii that keep the ring honest, measured from the ring's (snapped) centre.
+ * The ring's inner radius, measured from its (snapped) centre.
  *
- * The loaded square is `renderDistance` chunks each way around the player's CHUNK, so it always covers the
- * disk of radius renderDistance*16 around the player and never reaches past (renderDistance+1)*16*sqrt2.
- * The ring centre sits up to `slack` = (step/2)*sqrt2 from the player (snapCentre picks the cell centre).
- *  - inner: the hole the ring leaves must lie INSIDE the always-loaded disk, or there is a gap of nothing
- *    between the real terrain and the far field. inner = renderDistance*16 - slack.
- *  - canopyFrom: the canopy lifts the ring above the real ground, so it may only start where no chunk can
- *    be loaded. canopyFrom = (renderDistance+1)*16*sqrt2 + slack.
- * Everywhere between, the ring lies FAR_SINK under the real surface, hidden by any chunk that is there.
+ * The loaded square is `renderDistance` chunks each way around the player's CHUNK, so once streamed it always
+ * covers the disk of radius renderDistance*16 around the player. The ring centre sits up to `slack` =
+ * (step/2)*sqrt2 from the player (snapCentre picks the cell centre). The hole the ring leaves must lie INSIDE
+ * that disk, or there is a band of nothing between the real terrain and the far field; inside it, the ring
+ * would only be discarded fragment by fragment. inner = renderDistance*16 - slack.
  */
-export function farRadii(renderDistance, step = FAR_RECENTRE) {
-  const slack = (step / 2) * Math.SQRT2;
-  return {
-    inner: Math.max(0, renderDistance * CHUNK - slack),
-    canopyFrom: (renderDistance + 1) * CHUNK * Math.SQRT2 + slack,
-  };
+export function farInnerRadius(renderDistance, step = FAR_RECENTRE) {
+  return Math.max(0, renderDistance * CHUNK - (step / 2) * Math.SQRT2);
 }
 
 /** The ring centre for a player position: the CENTRE of its FAR_RECENTRE grid cell. */
@@ -90,13 +90,10 @@ export function layerMeanLinear(texture) {
   return out;
 }
 
-/**
- * One column of the far field: its (sunk) height and linear colour. `s` is a surfaceBlockAt result.
- * `canopy` scales the tree lift (0 where real terrain may be loaded — see farFieldGeometry).
- */
-export function farColumn(s, means, canopy = 1) {
+/** One column of the far field: its height (the surface top, plus canopy) and linear colour. `s` is a surfaceBlockAt result. */
+export function farColumn(s, means) {
   if (s.isWater) {
-    return { y: SEA_LEVEL - FAR_SINK, r: FAR_WATER_LINEAR[0], g: FAR_WATER_LINEAR[1], b: FAR_WATER_LINEAR[2] };
+    return { y: SEA_LEVEL - FAR_WATER_SINK, r: FAR_WATER_LINEAR[0], g: FAR_WATER_LINEAR[1], b: FAR_WATER_LINEAR[2] };
   }
   const bi = BIOME_ID[s.biome] ?? 0;
   const tint = [BIOME_TINT[bi * 3], BIOME_TINT[bi * 3 + 1], BIOME_TINT[bi * 3 + 2]];
@@ -105,25 +102,23 @@ export function farColumn(s, means, canopy = 1) {
   const leaves = means[BLOCK_ID.leaves];
   const cov = CANOPY_SURFACES.has(s.surfaceBlock) ? (FAR_CANOPY[s.biome] || 0) : 0;
   const c = [0, 1, 2].map((k) => ground[k] * gt[k] * (1 - cov) + leaves[k] * tint[k] * cov);
-  return { y: s.surfaceY + 1 - FAR_SINK + cov * FAR_CANOPY_HEIGHT * canopy, r: c[0], g: c[1], b: c[2] };
+  return { y: s.surfaceY + 1 + cov * FAR_CANOPY_HEIGHT, r: c[0], g: c[1], b: c[2] };
 }
 
 /**
  * The ring's geometry around (cx, cz): `rings` radii from r0 to r1 (geometric spacing) x `sectors` angles,
- * stitched into one indexed triangle list. The canopy lift ramps in only beyond `canopyFrom` (farRadii) —
- * past anywhere a real chunk can be loaded — so wherever real terrain can exist the ring stays below it.
+ * stitched into one indexed triangle list.
  */
-export function farFieldGeometry({ cx, cz, r0, r1, canopyFrom, rings = FAR_RINGS, sectors = FAR_SECTORS, sample, means }) {
+export function farFieldGeometry({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = FAR_SECTORS, sample, means }) {
   const positions = new Float32Array(rings * sectors * 3);
   const colors = new Float32Array(rings * sectors * 3);
   let v = 0;
   for (let i = 0; i < rings; i++) {
     const r = r0 + (r1 - r0) * Math.pow(i / (rings - 1), RADIAL_POW);
-    const canopy = THREE.MathUtils.clamp((r - canopyFrom) / 24, 0, 1);
     for (let j = 0; j < sectors; j++) {
       const a = (j / sectors) * Math.PI * 2;
       const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-      const col = farColumn(sample(x, z), means, canopy);
+      const col = farColumn(sample(x, z), means);
       positions[v] = x; positions[v + 1] = col.y; positions[v + 2] = z;
       colors[v] = col.r; colors[v + 1] = col.g; colors[v + 2] = col.b;
       v += 3;

@@ -3,7 +3,7 @@ import { bootDev, startPlay, store } from './_boot.js';
 
 // B2d — "LOAD WORLD" PERMANENTLY DESTROYS THE TERRAIN. (18-domain review, CRITICAL.)
 //
-// `load_modifications_done` wipes the live chunks (`setChunks({})` + `chunksRef.current.clear()`) so the
+// `load_modifications_done` wipes the live chunks (`setChunks({})` + `clearLoadedChunks()`) so the
 // worker can re-stream them with the save's block edits applied. But the streamer's dedup bookkeeping —
 // `requestedChunks` — is NEVER cleared. Its guard is `!requestedChunks.has(key)`, so every chunk key is
 // still marked "already requested" and can never be requested again. The cull path that WOULD drain the
@@ -78,7 +78,7 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
 
   // 3. The world must come BACK — not merely be non-empty.
   //
-  //    `> 0` is a VACUOUS assertion here and I nearly shipped it: the load clears chunksRef, but a few
+  //    `> 0` is a VACUOUS assertion here and I nearly shipped it: the load clears the loaded-chunk set, but a few
   //    `generate` requests are already in flight and their replies land afterwards and re-add themselves.
   //    So the count creeps off zero on stale in-flight chunks while the real world (dozens of chunks)
   //    never re-streams — and a `> 0` gate goes green on a world the player is falling through. Demand
