@@ -10,13 +10,14 @@ import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
 import { OptimizedGrassSystem, GrassWindDriver } from '../OptimizedGrassSystem';
-import { createProceduralVoxelTextures } from './proceduralTextures';
+import { sharedVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
 import { getInput } from '../input/inputState';
 import { moodRef, sampleMood, sunDirRef, cloudCoverRef } from '../render/mood';
 import { cloudShadowGlsl } from '../render/cloudField.js';
 import { aerialGlsl } from '../render/aerialPerspective.js';
+import { landGradeGlsl } from '../render/landGrade.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
@@ -38,7 +39,7 @@ import { markChunkLoaded, markChunkUnloaded, clearLoadedChunks, loadedChunkSet }
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
-const voxelTextures = createProceduralVoxelTextures();
+const voxelTextures = sharedVoxelTextures(); // the ONE block texture array (the far field averages the same one)
 
 // Shared SOTA opaque-LAND terrain material (W2: water is owned by the Ocean.jsx Gerstner plane now;
 // this material renders only land — de-tile, vertex AO, danger-mood grade, aerial perspective).
@@ -140,13 +141,8 @@ const compileShader = (shader) => {
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a);
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
-        // at obsidian. LUMINANCE-PRESERVING (no darkening) so dusk stays readable — the per-mood
-        // LIGHTING sets brightness. Gentle at dusk (danger<=1), strong only at obsidian (danger 1->2).
-        float danger = clamp(mood, 0.0, 2.0);
-        float moodLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-        float desat = danger <= 1.0 ? danger * 0.18 : 0.18 + (danger - 1.0) * 0.54;
-        vec3 coolGrey = vec3(moodLum * 0.92, moodLum * 0.96, moodLum * 1.06);
-        diffuseColor.rgb = mix(diffuseColor.rgb, coolGrey, clamp(desat, 0.0, 0.75));
+        // at obsidian. The arithmetic lives in render/landGrade.js — the far field grades by the SAME lines.
+        ${LAND_GRADE_GLSL}
 
         // S(tex) de-tile: subtle per-world-cell value jitter (mirrors world/detile.js tileValueOffset) so a
         // field of one block type stops reading as stamped identical tiles. Bounded +/-0.08, flat (no normal
@@ -243,6 +239,7 @@ const TEX_LAYERS = voxelTextures.image.depth;
 const TINT_GLSL = biomeTintGlsl(undefined, TEX_LAYERS);
 const CLOUD_SHADOW_GLSL = cloudShadowGlsl(); // the same field the sky dome draws (render/skyDome.js)
 const AERIAL_GLSL = aerialGlsl(); // shared with the far field (world/FarField.jsx)
+const LAND_GRADE_GLSL = landGradeGlsl(); // shared with the far field (world/FarField.jsx)
 const biomeTintMaskUniform = biomeTintMask(TEX_LAYERS);
 
 opaqueMaterial.onBeforeCompile = (shader) => {

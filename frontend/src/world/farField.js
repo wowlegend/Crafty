@@ -47,10 +47,16 @@ export const FAR_CANOPY_HEIGHT = 5;
 export const FAR_WATER_LINEAR = Object.freeze(new THREE.Color('#10BCC6').toArray());
 
 const TINTED = new Set(BIOME_TINTED_BLOCKS.map((b) => BLOCK_ID[b]));
-// The worker grows trees on grass (the flora branches testing surfaceBlock === 1) and pines on snow
-// (surfaceBlock === 5); the desert's cacti are too sparse to read at distance. Stone cliffs and beaches in a
-// forest stay bare.
-const CANOPY_SURFACES = new Set([BLOCK_ID.grass, BLOCK_ID.snow]);
+
+/**
+ * Whether a column's surface carries trees, read off the worker's flora branches (terrain.worker.js): grass in
+ * every biome, pines on snow, and DIRT only in the swamp, whose droopy trees grow on the murky flats (QUEUE R3.8
+ * — dirt was missing, so a far swamp read bare). The desert's cacti are too sparse to read at distance; stone
+ * cliffs, beaches and dirt anywhere else stay bare.
+ */
+export function carriesCanopy(block, biome) {
+  return block === BLOCK_ID.grass || block === BLOCK_ID.snow || (block === BLOCK_ID.dirt && biome === 'swamp');
+}
 
 const CHUNK = 16;
 
@@ -100,7 +106,7 @@ export function farColumn(s, means) {
   const ground = means[s.surfaceBlock] || means[BLOCK_ID.stone];
   const gt = TINTED.has(s.surfaceBlock) ? tint : [1, 1, 1];
   const leaves = means[BLOCK_ID.leaves];
-  const cov = CANOPY_SURFACES.has(s.surfaceBlock) ? (FAR_CANOPY[s.biome] || 0) : 0;
+  const cov = carriesCanopy(s.surfaceBlock, s.biome) ? (FAR_CANOPY[s.biome] || 0) : 0;
   const c = [0, 1, 2].map((k) => ground[k] * gt[k] * (1 - cov) + leaves[k] * tint[k] * cov);
   return { y: s.surfaceY + 1 + cov * FAR_CANOPY_HEIGHT, r: c[0], g: c[1], b: c[2] };
 }
@@ -110,8 +116,17 @@ export function farColumn(s, means) {
  * stitched into one indexed triangle list.
  */
 export function farFieldGeometry({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = FAR_SECTORS, sample, means }) {
-  const positions = new Float32Array(rings * sectors * 3);
-  const colors = new Float32Array(rings * sectors * 3);
+  const { positions, colors } = farFieldVertices({ cx, cz, r0, r1, rings, sectors, sample, means });
+  return { positions, colors, index: farFieldIndex(rings, sectors) };
+}
+
+/**
+ * The ring's vertices, written INTO `out` when given (QUEUE R3.10: a rebuild on every 32 m cell crossing used
+ * to allocate two 19k-float arrays and three BufferAttributes; the component now keeps one set and refills it).
+ */
+export function farFieldVertices({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = FAR_SECTORS, sample, means, out }) {
+  const positions = out?.positions || new Float32Array(rings * sectors * 3);
+  const colors = out?.colors || new Float32Array(rings * sectors * 3);
   let v = 0;
   for (let i = 0; i < rings; i++) {
     const r = r0 + (r1 - r0) * Math.pow(i / (rings - 1), RADIAL_POW);
@@ -124,6 +139,11 @@ export function farFieldGeometry({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = 
       v += 3;
     }
   }
+  return { positions, colors };
+}
+
+/** The ring's triangles: a function of its resolution alone, so the component builds it ONCE. */
+export function farFieldIndex(rings = FAR_RINGS, sectors = FAR_SECTORS) {
   const index = new Uint32Array((rings - 1) * sectors * 6);
   let k = 0;
   for (let i = 0; i < rings - 1; i++) {
@@ -134,5 +154,5 @@ export function farFieldGeometry({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = 
       index[k++] = b; index[k++] = c; index[k++] = d;
     }
   }
-  return { positions, colors, index };
+  return index;
 }

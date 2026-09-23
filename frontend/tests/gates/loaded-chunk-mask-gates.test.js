@@ -30,7 +30,7 @@ import { carriersOf } from './_srcWalk.js';
 const S = LOADED_MASK_SIZE;
 
 // Run the generated snippet in JS. It is a flat list of `float a = expr;` plus one `if (...) discard;`, over
-// vFarXZ.x/.y, uMaskOrigin.x/.y, floor and one texture() read — the generator emits only that on purpose.
+// vWorldPos.x/.z, uMaskOrigin.x/.y, floor and one texture() read — the generator emits only that on purpose.
 function runMask(src, x, z, mask) {
   const tex = (u, v) => {
     const i = Math.floor(u * mask.size), j = Math.floor(v * mask.size);
@@ -39,7 +39,7 @@ function runMask(src, x, z, mask) {
   const js = src
     .replace(/\bfloat\s+/g, 'let ')
     .replace(/\bfloor\(/g, 'Math.floor(')
-    .replace(/vFarXZ\.x/g, 'X').replace(/vFarXZ\.y/g, 'Z')
+    .replace(/vWorldPos\.x/g, 'X').replace(/vWorldPos\.z/g, 'Z')
     .replace(/uMaskOrigin\.x/g, 'OX').replace(/uMaskOrigin\.y/g, 'OZ')
     .replace(/texture\(uLoadedMask, vec2\(([^;]*?)\)\)\.r/g, 'TEX($1).r')
     .replace(/\bdiscard;/g, 'return true;');
@@ -105,7 +105,7 @@ describe('the GLSL lookup reads the mask in the SAME convention it was built in'
   });
 
   it('declares nothing but what the far-field material provides', () => {
-    for (const name of ['vFarXZ', 'uMaskOrigin', 'uLoadedMask']) expect(G).toContain(name);
+    for (const name of ['vWorldPos', 'uMaskOrigin', 'uLoadedMask']) expect(G).toContain(name);
     expect(G, 'a backtick would end the shader template literal it is spliced into').not.toContain('`');
   });
 });

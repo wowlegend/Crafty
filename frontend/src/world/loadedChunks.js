@@ -57,15 +57,15 @@ export function buildLoadedMask(keys, centreCx, centreCz, size = LOADED_MASK_SIZ
 }
 
 /**
- * The fragment-shader lookup, generated so its constants cannot drift from the mask's. Needs a `vec2 vFarXZ`
- * varying (world x, z), `uniform vec2 uMaskOrigin` and `uniform sampler2D uLoadedMask`. Scalar statements only:
- * the gate interprets this text in JS.
+ * The fragment-shader lookup, generated so its constants cannot drift from the mask's. Needs a `vec3 vWorldPos`
+ * varying (the same world position the cloud shadows read), `uniform vec2 uMaskOrigin` and
+ * `uniform sampler2D uLoadedMask`. Scalar statements only: the gate interprets this text in JS.
  */
 export function loadedMaskGlsl(size = LOADED_MASK_SIZE) {
   const S = size.toFixed(1), C = CHUNK.toFixed(1);
   return `
-        float lmx = floor(vFarXZ.x / ${C}) - uMaskOrigin.x;
-        float lmz = floor(vFarXZ.y / ${C}) - uMaskOrigin.y;
+        float lmx = floor(vWorldPos.x / ${C}) - uMaskOrigin.x;
+        float lmz = floor(vWorldPos.z / ${C}) - uMaskOrigin.y;
         if (lmx >= 0.0 && lmz >= 0.0 && lmx < ${S} && lmz < ${S} && texture(uLoadedMask, vec2((lmx + 0.5) / ${S}, (lmz + 0.5) / ${S})).r > 0.5) discard;
 `;
 }

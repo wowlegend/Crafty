@@ -179,7 +179,7 @@ describe('cloud shadows on the terrain — the sun\'s light only', () => {
     // The studio cards zero the sky's cover; a shadow that ignored it would drift over ground under a clear sky.
     expect(g.decl).toMatch(/uniform float uCloudCover;/);
     expect(g.apply).toMatch(/cloudDensity\([^;]*\) \* uCloudCover/);
-    expect(carriersOf(/uniforms\.uCloudCover\.value = cloudCoverRef\.current/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/uniforms\.uCloudCover\.value = cloudCoverRef\.current/).sort()).toEqual(['world/FarField.jsx', 'world/Terrain.jsx']);
     expect(carriersOf(/cloudCoverRef\.current = u\.uCloudCover\.value/)).toEqual(['render/Atmosphere.jsx']);
   });
 
@@ -194,12 +194,14 @@ describe('cloud shadows on the terrain — the sun\'s light only', () => {
     expect(g.apply).toContain(`1.0 - ${CLOUD_SHADOW_STRENGTH.toFixed(6)} * cloudDensity(`);
   });
 
-  it('Terrain splices it after lights_fragment_end and feeds the shared clock and the resolved sun (weak, structural)', () => {
-    expect(carriersOf(/\$\{CLOUD_SHADOW_GLSL\.decl\}/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/'#include <lights_fragment_end>',\s*`\s*#include <lights_fragment_end>\s*\$\{CLOUD_SHADOW_GLSL\.apply\}/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/uniforms\.uTime\.value = frameElapsed\(state\.clock\.elapsedTime\)/).sort()).toEqual(['world/Terrain.jsx']);
-    // The sun direction is RESOLVED once, in Atmosphere (mood, arc, the capture pin); Terrain reads it.
-    expect(carriersOf(/uniforms\.uSunDir\.value\.copy\(sunDirRef\.current\)/)).toEqual(['world/Terrain.jsx']);
+  it('the terrain AND the far field splice it after lights_fragment_end and feed the shared clock and the resolved sun (weak, structural)', () => {
+    // Two materials since QUEUE R3.7: a far horizon without the shadows the land in front of it wears is a seam.
+    const both = ['world/FarField.jsx', 'world/Terrain.jsx'];
+    expect(carriersOf(/CLOUD_SHADOW_GLSL\.decl\b/).sort()).toEqual(both);
+    expect(carriersOf(/'#include <lights_fragment_end>',\s*`\s*#include <lights_fragment_end>\s*\$\{CLOUD_SHADOW_GLSL\.apply\}/).sort()).toEqual(both);
+    expect(carriersOf(/uniforms\.uTime\.value = frameElapsed\(state\.clock\.elapsedTime\)/).sort()).toEqual(both);
+    // The sun direction is RESOLVED once, in Atmosphere (mood, arc, the capture pin); both materials read it.
+    expect(carriersOf(/uniforms\.uSunDir\.value\.copy\(sunDirRef\.current\)/).sort()).toEqual(both);
     expect(carriersOf(/sunDirRef\.current\.copy\(u\.sunDir\.value\)/)).toEqual(['render/Atmosphere.jsx']);
   });
 });

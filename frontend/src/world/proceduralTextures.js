@@ -18,6 +18,16 @@ const ORE_TILES = [
  */
 const TERRAIN_MIPMAPS = false;
 
+let shared = null;
+/**
+ * THE block texture array the game renders with — built once, read by the terrain material and by the far field
+ * (its per-layer mean colours). The far field used to build a second copy just to average it (QUEUE R3.10).
+ */
+export function sharedVoxelTextures() {
+  if (!shared) shared = createProceduralVoxelTextures();
+  return shared;
+}
+
 export function createProceduralVoxelTextures({ mipmaps = TERRAIN_MIPMAPS } = {}) {
   const size = 32; // 32x32 resolution per texture slice
   // Layer index == block code (see src/world/blockIds.js + BLOCK_COLORS in terrain.worker.js).

@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   FAR_WATER_SINK, FAR_OUTER, FAR_RECENTRE, FAR_CANOPY, FAR_CANOPY_HEIGHT, FAR_WATER_LINEAR,
-  farInnerRadius, snapCentre, layerMeanLinear, farColumn, farFieldGeometry,
+  farInnerRadius, snapCentre, layerMeanLinear, farColumn, farFieldGeometry, farFieldVertices, farFieldIndex, carriesCanopy,
 } from '../../src/world/farField.js';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
 import { BIOME_TINT, BIOME_ID } from '../../src/world/biomeTable.js';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
 import { SEA_LEVEL, WAVES } from '../../src/world/oceanProfile.js';
-import { carriersOf } from './_srcWalk.js';
+import { carriersOf, sourceTexts } from './_srcWalk.js';
 
 /**
  * THE FAR HORIZON — a heightfield ring beyond the loaded chunks (spec 2026-09-22-crafty-far-horizon-design,
@@ -31,6 +31,12 @@ import { carriersOf } from './_srcWalk.js';
  *   M10 GameScene: the far field unmounted                   -> mount RED (structural)
  *   M11 FarField: re-centred on the raw position, not the grid -> snap RED (structural)
  *   M12 Terrain: the haze typed back inline                  -> one-definition RED (structural)
+ *   (R3.7 / R3.8 / R3.10:)
+ *   G1 FarField: the grade not spliced                       G2 Terrain: the grade typed back inline
+ *   G3 FarField: mood never fed (the boss sky stays ungraded) G4 FarField: cloud shadows not spliced
+ *   C1 plausible-wrong: dirt carries canopy in every biome    C2 swamp dirt bare again
+ *   P1 the rebuild allocates new BufferAttributes again       P2 farFieldVertices ignores `out`
+ *   P3 FarField builds its own texture array again
  *
  * BLIND SPOT: nothing here renders. Whether the ring reads as land to the horizon, meets the ocean plane without
  * a seam, and vanishes over loaded terrain is judged from a same-renderer capture (plan Tasks 2 and 3).
@@ -178,5 +184,61 @@ describe('the far field is drawn, from the real world, hazed like the terrain (w
   it('ONE aerial-haze definition, spliced by both the terrain and the far field', () => {
     expect(carriersOf(/\$\{AERIAL_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/Terrain.jsx']);
     expect(carriersOf(/smoothstep\(38\.0, 165\.0/), 'a hand-typed copy of the haze is back').toEqual([]);
+  });
+  it('R3.7: ONE danger-mood grade, spliced after the albedo by both materials — no seam in the boss fight', () => {
+    expect(carriersOf(/\$\{LAND_GRADE_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/Terrain.jsx']);
+    expect(carriersOf(/coolGrey = vec3\(/), 'a hand-typed copy of the grade is back').toEqual(['render/landGrade.js']);
+    expect(carriersOf(/'#include <color_fragment>',\s*`#include <color_fragment>\s*\$\{LAND_GRADE_GLSL\}/)).toEqual(['world/FarField.jsx']);
+    expect(carriersOf(/shader\.uniforms\.mood\.value = moodRef\.current;/)).toEqual(['world/FarField.jsx']);
+  });
+
+  it('R3.7: the far field takes the cloud shadows on the SAME clock and sun as the terrain', () => {
+    expect(carriersOf(/'#include <lights_fragment_end>',\s*`#include <lights_fragment_end>\s*\$\{CLOUD_SHADOW_GLSL\.apply\}/)).toEqual(['world/FarField.jsx']);
+    expect(carriersOf(/shader\.uniforms\.uTime\.value = frameElapsed\(state\.clock\.elapsedTime\);/)).toEqual(['world/FarField.jsx']);
+    expect(carriersOf(/shader\.uniforms\.uCloudCover\.value = cloudCoverRef\.current;/)).toEqual(['world/FarField.jsx']);
+  });
+
+  it('R3.10: a rebuild refills one set of buffers — nothing is allocated on the rebuild path', () => {
+    // A slice bounded by two landmarks unique to FarField's rebuild, so no other `new` in the file can satisfy it.
+    const src = sourceTexts().find((t) => t.file === 'world/FarField.jsx').code;
+    const start = src.indexOf('builtFor.current = key;'), end = src.indexOf('geo.computeBoundingSphere();');
+    expect(start > 0 && end > start, 'the rebuild landmarks moved — this check reads nothing').toBe(true);
+    const rebuild = src.slice(start, end);
+    expect(rebuild).toContain('farFieldVertices(');
+    expect(rebuild, 'the rebuild allocates again').not.toMatch(/\bnew\b|setAttribute\(|setIndex\(/);
+    // ...and the ONE texture array: nothing builds a second copy just to average it.
+    expect(carriersOf(/createProceduralVoxelTextures\(/)).toEqual(['world/proceduralTextures.js']);
+  });
+});
+
+describe('R3.10 — the split builders are the same geometry', () => {
+  it('farFieldVertices writes INTO the buffers it is given, and matches farFieldGeometry exactly', () => {
+    const args = { cx: 48, cz: -16, r0: INNER, r1: FAR_OUTER, rings: 12, sectors: 48, sample: plain, means: MEANS };
+    const out = { positions: new Float32Array(12 * 48 * 3), colors: new Float32Array(12 * 48 * 3) };
+    const v = farFieldVertices({ ...args, out });
+    expect(v.positions).toBe(out.positions);
+    expect(v.colors).toBe(out.colors);
+    const g = farFieldGeometry(args);
+    expect(Array.from(out.positions)).toEqual(Array.from(g.positions));
+    expect(Array.from(out.colors)).toEqual(Array.from(g.colors));
+    expect(Array.from(farFieldIndex(12, 48))).toEqual(Array.from(g.index));
+  });
+});
+
+describe('R3.8 — which surfaces carry the canopy (read off the worker\'s flora branches)', () => {
+  it('grass everywhere, snow, and dirt ONLY in the swamp', () => {
+    expect(carriesCanopy(BLOCK_ID.grass, 'plains')).toBe(true);
+    expect(carriesCanopy(BLOCK_ID.snow, 'snow')).toBe(true);
+    expect(carriesCanopy(BLOCK_ID.dirt, 'swamp'), 'swamp trees grow on the murky dirt flats').toBe(true);
+    expect(carriesCanopy(BLOCK_ID.dirt, 'forest'), 'dirt anywhere else is bare').toBe(false);
+    expect(carriesCanopy(BLOCK_ID.stone, 'forest')).toBe(false);
+    expect(carriesCanopy(BLOCK_ID.sand, 'swamp')).toBe(false);
+  });
+
+  it('a far swamp column is lifted by its canopy; the same dirt in a forest is not', () => {
+    expect(FAR_CANOPY.swamp).toBeGreaterThan(0);
+    const col = (biome) => farColumn({ surfaceBlock: BLOCK_ID.dirt, surfaceY: 40, isWater: false, biome }, MEANS);
+    expect(col('swamp').y).toBeCloseTo(41 + FAR_CANOPY.swamp * FAR_CANOPY_HEIGHT, 6);
+    expect(col('forest').y).toBe(41);
   });
 });
