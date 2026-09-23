@@ -5,7 +5,7 @@ import { nearestLandmark } from './world/shrines.js';
 import { blightHeartSite } from './world/blightHeart.js';
 import { dayPhase } from './game/dayPhase.js';
 import { useT } from './i18n/i18n.js';
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
 import { CombatInstructions } from './ui/CombatInstructions';
@@ -39,7 +39,6 @@ import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
-import { showsVictory } from './game/bossTier.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -523,7 +522,7 @@ export function HUD({
   spellUpgrades
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
-  const [victoryDismissed, setVictoryDismissed] = useState(false);
+  const victoryPending = useGameStore((s) => s.victoryPending); // a rare event, not a per-frame value
   return (
     <>
       <AnimatePresence>
@@ -669,9 +668,10 @@ export function HUD({
         }} />
       )}
       
-      {/* C3: VICTORY is the FIRST dragon's; a return kill is a trophy, not the win again (game/bossTier.js). */}
-      {showsVictory({ bossDefeated: bossSystem?.bossDefeated, bossTier: bossSystem?.bossTier, victoryDismissed }) && (
-        <VictoryOverlay onDismiss={() => setVictoryDismissed(true)} />
+      {/* VICTORY is an EVENT of the first dragon's death (world/bossSystem.js 'victory'), never derived from saved
+          state — so a reload cannot resurrect it and a return kill never raises it (review #4, R5.5). */}
+      {victoryPending && (
+        <VictoryOverlay onDismiss={() => useGameStore.setState({ victoryPending: false })} />
       )}
 
       {isPointerLocked && (

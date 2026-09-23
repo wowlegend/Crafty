@@ -847,6 +847,10 @@ export const useGameStore = create((set, get) => ({
     // the boss does not auto-respawn into a beaten game. One-way latch; serialized in game_state.
     gameWon: false,
     markGameWon: () => set((state) => (state.gameWon ? {} : { gameWon: true })),
+    // VICTORY is an EVENT of the first dragon's death, not a state (review #4, R5.5): raised by that kill's own
+    // isolated effect and cleared when the overlay is dismissed. Never saved, so a reload cannot resurrect it —
+    // deriving it from saved state (defeated + tier) showed the win screen again on every load of a won game.
+    victoryPending: false,
     damageFlash: false,
     screenShake: 0,
     lastHitDir: null, // {angle,t} of the most recent directional hit (combat-legibility cue); null until a sourced hit

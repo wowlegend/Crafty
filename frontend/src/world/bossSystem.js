@@ -163,6 +163,9 @@ export const useBossSystem = (playerLevel) => {
             // M2 #7 climactic boss-kill beat: a brief slow-mo freeze ('boss'-tier hitstop) + a bloom flash.
             ['hitstop', () => useGameStore.getState().triggerHitstop(HITSTOP.boss)],
             ['bloom', () => store.triggerBloomSpike && store.triggerBloomSpike(450)],
+            // VICTORY for the FIRST dragon only — keyed on the tier it HAD, captured at the kill, so it does not
+            // depend on the 'tier' step above succeeding (R4.5) and a return kill never raises it (R5.5).
+            ['victory', () => { if (bossTier === 0) useGameStore.setState({ victoryPending: true }); }],
             ['win', () => store.markGameWon && store.markGameWon()], // S9c: the persisted win — LAST + idempotent
         ]);
     }, [bossActive, bossHealth, scheduleNotifClear, stats, bossTier]);

@@ -64,13 +64,3 @@ export function bossCanReturn({ tier, killNight, nightCount, level } = {}) {
   if (![killNight, nightCount, level].every(Number.isFinite)) return false;
   return nightCount >= killNight + RETURN_NIGHTS && level >= BOSS_BASE_LEVEL + LEVEL_STEP * n;
 }
-
-/**
- * Does the VICTORY overlay belong on screen? It is the FIRST dragon's: shown once the dragon is down while the
- * tier is at most 1. The first kill makes the tier 1 — and if that isolated kill effect THROWS, the tier stays
- * 0 while the win still lands, so 0 must count too (review #3, R4.5: `tier === 1` stranded the win's own UI).
- * A return kill leaves the tier at 2 or more: a trophy, not the win again.
- */
-export function showsVictory({ bossDefeated, bossTier, victoryDismissed } = {}) {
-  return !!bossDefeated && !victoryDismissed && tierOf(bossTier) <= 1;
-}
