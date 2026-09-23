@@ -197,3 +197,39 @@ export function gerstnerNormalInto(out, x, z, time) {
   out.z = nz / len;
   return out;
 }
+
+/**
+ * THE SAME WAVES, ON THE GPU. GLSL for `void gerstnerWave(vec2 p, float t, out vec3 disp, out vec3 nrm)`:
+ * `p` is world (x, z), `disp` is (horizontal x shift, height above SEA_LEVEL, horizontal z shift) and `nrm`
+ * the normalised surface normal — exactly gerstnerDisplace minus the sample point, and gerstnerNormal.
+ *
+ * Generated from the wave table with every constant substituted BY VALUE and the waves unrolled, so the
+ * shader cannot drift from the functions above by a retuned row, and ocean-gpu-waves-gates can INTERPRET the
+ * text against them. Scalar locals only, for that reason. Ocean.jsx displaces the plane with it, which
+ * removed a ~9,400-vertex CPU loop that ran every frame.
+ */
+export function gerstnerGlsl(waves = WAVES, q = STEEPNESS) {
+  const f = (n) => Number(n).toFixed(9);
+  const lines = [
+    'void gerstnerWave(vec2 p, float t, out vec3 disp, out vec3 nrm) {',
+    '  float dx = 0.0; float dz = 0.0; float h = 0.0;',
+    '  float nx = 0.0; float nz = 0.0; float ny = 1.0;',
+  ];
+  waves.forEach(([dirX, dirZ, wl, amp, spd], i) => {
+    const [wx, wz] = _norm(dirX, dirZ);
+    const k = (Math.PI * 2) / wl;
+    const wa = k * amp;
+    lines.push(
+      `  float ph${i} = ${f(k)} * (${f(wx)} * p.x + ${f(wz)} * p.y) + t * ${f(spd * k)}; float c${i} = cos(ph${i}); float s${i} = sin(ph${i});`,
+      `  dx += ${f(q * amp * wx)} * c${i}; dz += ${f(q * amp * wz)} * c${i}; h += ${f(amp)} * s${i};`,
+      `  nx -= ${f(wx * wa)} * c${i}; nz -= ${f(wz * wa)} * c${i}; ny -= ${f(q * wa)} * s${i};`,
+    );
+  });
+  lines.push(
+    '  float il = inversesqrt(nx * nx + ny * ny + nz * nz);',
+    '  disp = vec3(dx, h, dz);',
+    '  nrm = vec3(nx * il, ny * il, nz * il);',
+    '}',
+  );
+  return lines.join('\n');
+}

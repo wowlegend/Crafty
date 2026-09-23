@@ -6,14 +6,14 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SEA_LEVEL, gerstnerDisplaceInto, gerstnerNormalInto } from '../world/oceanProfile.js';
+import { SEA_LEVEL, gerstnerGlsl } from '../world/oceanProfile.js';
 
-// Per-vertex scratch for the useFrame below. The loop runs once per vertex per FRAME -- ~9,400 on a 96x96
-// plane -- and the object-returning gerstner helpers allocated a literal and an array each time, roughly
-// 18,800 short-lived allocations per frame at display refresh. Module scope, because this component is a
-// singleton and the values never outlive one iteration.
-const _d = { x: 0, y: 0, z: 0 };
-const _n = { x: 0, y: 0, z: 0 };
+// THE WAVES RUN ON THE GPU. Until 2026-09-22 this component displaced every vertex of the plane on the CPU
+// every frame (~9,400 of them, ~14% of the frame budget by this file's own earlier measurement) and
+// re-uploaded position, normal and foam. The vertex shader now calls a GLSL gerstnerWave() GENERATED from
+// the same wave table as oceanProfile's JS functions (constants substituted by value; ocean-gpu-waves-gates
+// interprets the text against them), so the surface is the tested one and the frame loop sets two uniforms.
+const GERSTNER_GLSL = gerstnerGlsl();
 import { isCaptureMode } from '../devtest/captureMode.js';
 import { oceanVisibleNear } from '../world/oceanVisibility.js';
 import { surfaceBlockAt } from '../world/climate.js';
@@ -46,16 +46,9 @@ export function Ocean() {
     emissive: '#0E7E93', emissiveIntensity: 0.22,
     transparent: true, opacity: 0.93,
   }), []);
-  // Per-vertex foam on its OWN attribute, plus the undisplaced grid. The grid matters: Gerstner moves a
-  // vertex in x/z, so reading last frame's position back as this frame's sample point would compound the
-  // displacement every frame and tear the sheet apart within seconds.
-  const base = useMemo(() => {
-    const c = geo.attributes.position.count;
-    geo.setAttribute('aFoam', new THREE.BufferAttribute(new Float32Array(c), 1));
-    const g = new Float32Array(c * 2);
-    for (let i = 0; i < c; i++) { g[i * 2] = geo.attributes.position.getX(i); g[i * 2 + 1] = geo.attributes.position.getY(i); }
-    return g;
-  }, [geo]);
+  // The wave clock and the plane's world centre, read by the vertex shader. The shader samples the waves
+  // at the UNDISPLACED grid point (position is never written back), so nothing compounds frame to frame.
+  const oceanUniforms = useMemo(() => ({ uTime: { value: CAPTURE_TIME }, uCenter: { value: new THREE.Vector2() } }), []);
 
   // prop-attached geometry + material are not auto-disposed by R3F -> dispose on unmount
   useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
@@ -70,36 +63,39 @@ export function Ocean() {
     const visible = isCaptureMode() || oceanVisibleNear(cx, cz, sampleSurfaceY);
     mesh.visible = visible;
     if (!visible) return;
-    const t = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;
+    oceanUniforms.uTime.value = isCaptureMode() ? CAPTURE_TIME : state.clock.elapsedTime;
     // snap the plane centre to the camera's XZ (so it always covers the view); keep it at SEA_LEVEL.
     mesh.position.set(cx, SEA_LEVEL, cz);
-    const pos = geo.attributes.position, nrm = geo.attributes.normal, foam = geo.attributes.aFoam;
-    for (let i = 0; i < pos.count; i++) {
-      // Sample from the UNDISPLACED grid, never from the vertex we wrote last frame.
-      const lx = base[i * 2], ly = base[i * 2 + 1];
-      const wx = cx + lx, wz = cz - ly;
-      gerstnerDisplaceInto(_d, wx, wz, t);
-      // plane local (x,y) -> world (x,z); rotated -90deg about X, so world z maps to NEGATIVE local y
-      pos.setXYZ(i, lx + (_d.x - wx), ly - (_d.z - wz), _d.y - SEA_LEVEL);
-      gerstnerNormalInto(_n, wx, wz, t);
-      nrm.setXYZ(i, _n.x, -_n.z, _n.y); // world normal -> plane-local under the -90deg X rotation
-      // Foam where real foam is: on the crests AND on the steep faces. Height alone caps only the very
-      // top of the swell; with Gerstner sharpening the crests, the steep leading face is where water
-      // actually breaks, and a slope term is what stops the foam reading as a painted-on stripe.
-      const crest = THREE.MathUtils.smoothstep(_d.y, SEA_LEVEL + 0.85, SEA_LEVEL + 1.75);
-      const slope = THREE.MathUtils.smoothstep(1 - _n.y, 0.05, 0.22);
-      foam.setX(i, Math.min(1, crest * 0.85 + slope * 0.5));
-    }
-    pos.needsUpdate = true; nrm.needsUpdate = true; foam.needsUpdate = true;
+    oceanUniforms.uCenter.value.set(cx, cz);
   });
 
   // Fresnel + glossy band tint injected post-lighting (reads off the recomputed normal).
   const onBeforeCompile = useMemo(() => (shader) => {
-    // foam travels on its own attribute now, so it cannot multiply the diffuse to black
-    shader.vertexShader = `attribute float aFoam;\nvarying float vFoam;\n${shader.vertexShader}`.replace(
-      '#include <begin_vertex>',
-      '#include <begin_vertex>\n  vFoam = aFoam;'
-    );
+    shader.uniforms.uTime = oceanUniforms.uTime;
+    shader.uniforms.uCenter = oceanUniforms.uCenter;
+    // The waves, on the GPU. The plane is rotated -90deg about X, so local (x, y) is world (x, -z): sample
+    // at the world point, then map the displacement and the normal back into plane-local axes. The normal
+    // is computed first because three includes beginnormal_vertex before begin_vertex.
+    shader.vertexShader = `uniform float uTime;\nuniform vec2 uCenter;\nvarying float vFoam;\n${GERSTNER_GLSL}\n${shader.vertexShader}`
+      .replace(
+        '#include <beginnormal_vertex>',
+        `vec2 gWp = uCenter + vec2(position.x, -position.y);
+  vec3 gDisp; vec3 gNrm;
+  gerstnerWave(gWp, uTime, gDisp, gNrm);
+  vec3 objectNormal = vec3(gNrm.x, -gNrm.z, gNrm.y);
+  #ifdef USE_TANGENT
+    vec3 objectTangent = vec3(tangent.xyz);
+  #endif`
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `vec3 transformed = vec3(position.x + gDisp.x, position.y - gDisp.z, gDisp.y);
+  // Foam where real foam is: on the crests AND on the steep faces. Height alone caps only the very top of
+  // the swell; with Gerstner sharpening the crests, the steep leading face is where water actually breaks.
+  float gCrest = smoothstep(0.85, 1.75, gDisp.y);
+  float gSlope = smoothstep(0.05, 0.22, 1.0 - gNrm.y);
+  vFoam = min(1.0, gCrest * 0.85 + gSlope * 0.5);`
+      );
     shader.fragmentShader = `varying float vFoam;\n${shader.fragmentShader}`.replace(
       '#include <dithering_fragment>',
       `#include <dithering_fragment>
@@ -110,7 +106,7 @@ export function Ocean() {
        gl_FragColor.rgb += vec3(0.16, 0.26, 0.27) * band; // glossy highlight band off the real normal (tighter + dimmer)
        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.99, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85); // crest + breaking-face foam`
     );
-  }, []);
+  }, [oceanUniforms]);
   mat.onBeforeCompile = onBeforeCompile;
 
   return (

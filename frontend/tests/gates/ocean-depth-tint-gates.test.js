@@ -35,11 +35,13 @@ describe('Ocean voxel-water render path is retired (W2-T2)', () => {
     // the object-returning pair allocated a literal and an array per vertex per frame -- ~18,800
     // short-lived allocations at display refresh, in the one loop that must not stutter. The gate follows
     // the surface to where it is computed rather than pinning the older spelling.
-    expect(ocean).toMatch(/import \{[^}]*\bgerstnerDisplaceInto\b[^}]*\} from '\.\.\/world\/oceanProfile\.js'/);
-    expect(ocean).toMatch(/gerstnerDisplaceInto\(_d, wx, wz, t\)/);
-    expect(ocean).toMatch(/gerstnerNormalInto\(_n, wx, wz, t\)/);
-    // And the loop must not go back to allocating: no `new THREE.Vector3` and no object literal returned
-    // per vertex inside the frame callback.
+    // Re-anchored 2026-09-22 (third time, same rule): the surface moved to the GPU — the vertex shader calls
+    // a gerstnerWave() generated from oceanProfile's wave table (ocean-gpu-waves-gates interprets it against
+    // the JS functions). Anchored to the import of the GENERATOR and its splice into the vertex shader.
+    expect(ocean).toMatch(/import \{[^}]*\bgerstnerGlsl\b[^}]*\} from '\.\.\/world\/oceanProfile\.js'/);
+    expect(ocean).toMatch(/const GERSTNER_GLSL = gerstnerGlsl\(\);/);
+    expect(ocean).toMatch(/gerstnerWave\(gWp, uTime, gDisp, gNrm\)/);
+    // And no per-vertex loop comes back on the CPU.
     expect(/const d = gerstner/.test(ocean), 'the per-vertex loop allocates again').toBe(false);
   });
 });
