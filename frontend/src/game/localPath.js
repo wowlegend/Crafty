@@ -31,6 +31,7 @@ export function cellCentre(g, origin) {
 }
 import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from './aStarNeighbors.js';
 import { groundForMover } from './mobFloor.js';
+import { SHOULDER_RECOVER_MS } from './mobMovement.js';
 
 /** Cells per side of the mob-centred grid; the mob is at (4, 4). */
 export const GRID = 9;
@@ -122,6 +123,18 @@ export function clampMove(heightGrid, fromX, fromZ, toX, toZ, climber = false) {
     const a = heightAt(fx, fz), b = heightAt(tx, tz);
     return a === null || b === null || b - a <= STEP_UP;
   };
+  return walkAgainstWalls(fromX, fromZ, toX, toZ, canEnter);
+}
+
+/**
+ * THE sub-step walk: from (fromX, fromZ) toward (toX, toZ) in steps of at most SUBSTEP, asking
+ * canEnter(fromX, fromZ, toX, toZ) of each; a refused step slides along whichever axis is free. clampMove (the AI's
+ * moves, on the height grid) and the knockback shove (game/captureRest.js, on the floor probe) both run it — the
+ * shove had its own copy without the slide, so a shove glancing along a wall stopped dead (review #6, R7.5).
+ * CONTRACT: every step canEnter allows is taken, so a stateful canEnter can track where the walker stands.
+ * @returns {{x:number, z:number, blocked:boolean}}
+ */
+export function walkAgainstWalls(fromX, fromZ, toX, toZ, canEnter) {
   const n = Math.max(1, Math.ceil(Math.hypot(toX - fromX, toZ - fromZ) / SUBSTEP));
   const sx = (toX - fromX) / n, sz = (toZ - fromZ) / n;
   let x = fromX, z = fromZ, blocked = false;
@@ -201,13 +214,45 @@ export function settleOnGround(e, groundY, climber = false) {
  * A column with no data leaves the mob as it is.
  * @returns {boolean} whether the move was refused
  */
-export function snapMob(e, getFloor, getTop) {
+export function snapMob(e, getFloor, getTop, now = 0) {
   const climber = CLIMBERS.has(e.type);
+  const tried = { x: e.position.x, z: e.position.z };
   // A mob buried in its OWN column — a build taller than the reach placed on it, or a first snap inside solid — gets
   // an Infinity floor, which held it embedded forever; R6.4 decided such a mob is lifted out, so it gets the column
   // top, as a climber at a wall does (review #7, R8.4).
   const liftOut = climber || onOwnColumn(e);
   const groundY = groundForMover(getFloor, getTop, e.position.x, e.position.z, e.position.y - 0.5, liftOut);
   if (groundY === null || Number.isNaN(groundY)) return false;
-  return settleOnGround(e, groundY, climber);
+  const refused = settleOnGround(e, groundY, climber);
+  if (refused) turnFromWall(e, tried, now);
+  return refused;
+}
+
+/** How far a refused wanderer heads back out from the wall it met, blocks. */
+const TURN_AWAY_DIST = 4;
+/** How long it keeps that heading before the worker re-rolls, seconds (the worker's moveTimer unit). */
+const TURN_AWAY_S = 1.5;
+
+/**
+ * What a mob does after the snap refused its move into a wall (review #6, R7.8). settleOnGround stops it, and the
+ * worker re-rolled a wanderer at once — often into the same wall — while a latched shoulder charge kept driving
+ * into the wall until its timer ran out, then charged it again. So: a CHARGE that meets a wall ends there, and the
+ * brute is winded for SHOULDER_RECOVER_MS — the same punish window a dodged charge gives; a WANDERER heads back
+ * out, away from the wall, for TURN_AWAY_S. A chasing mob is left to A* and clampMove.
+ * `tried` is where the refused move would have put it; `now` is the world clock the worker's charge timers read.
+ */
+function turnFromWall(e, tried, now) {
+  if (e.chargeAt > 0) {
+    e.chargeAt = 0; e.chargeX = 0; e.chargeZ = 0;
+    e.chargeReadyAt = now + SHOULDER_RECOVER_MS;
+    return;
+  }
+  if (e.isAggro) return;
+  const dx = tried.x - e.position.x, dz = tried.z - e.position.z;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-6)) return;
+  e.targetX = e.position.x - (dx / len) * TURN_AWAY_DIST;
+  e.targetZ = e.position.z - (dz / len) * TURN_AWAY_DIST;
+  e.isMoving = true;
+  e.moveTimer = TURN_AWAY_S;
 }

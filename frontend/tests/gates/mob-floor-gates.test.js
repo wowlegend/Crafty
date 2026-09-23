@@ -298,15 +298,15 @@ describe('the real worker chases a player UNDER a roof and UNDER a tree — the 
 
 describe('a knockback shove under the canopy is not stopped by the canopy', () => {
   it('the full shove under the leaves; the trunk still stops it', () => {
-    const e = { type: 'zombie', health: 10, position: { x: 1.2, y: GROUND + 0.5, z: 2.4 }, knockback: [0, 0, 5] };
-    drainKnockback([e], 0.1, false, floorAt); // 5 * 0.1 * 4 = a 2 m shove, z 2.4 -> 4.4, all under the canopy
+    const e = { type: 'zombie', health: 10, position: { x: 1.2, y: GROUND + 0.5, z: 2.4 }, knockback: [0, 0, 30] };
+    drainKnockback([e], false, floorAt); // 30 * 4/60 = a 2 m shove, z 2.4 -> 4.4, all under the canopy
     expect(e.position.z).toBeCloseTo(4.4, 6);
-    const c = { type: 'zombie', health: 10, position: { x: 1.2, y: GROUND + 0.5, z: 6.4 }, knockback: [0, 0, -5] };
-    drainKnockback([c], 0.1, false, (x, z) => topAt(x, z));
+    const c = { type: 'zombie', health: 10, position: { x: 1.2, y: GROUND + 0.5, z: 6.4 }, knockback: [0, 0, -30] };
+    drainKnockback([c], false, (x, z) => topAt(x, z));
     expect(c.position.z, 'control: the top-down walk let the shove in under the canopy').toBeGreaterThan(5.9);
     // Off the column seams (z + 0.1 never a whole number): a ray exactly on an edge is the blind spot above.
-    const t = { type: 'zombie', health: 10, position: { x: 3.4, y: GROUND + 0.5, z: 1.45 }, knockback: [0, 0, 5] };
-    drainKnockback([t], 0.1, false, floorAt); // into the trunk at z 3
+    const t = { type: 'zombie', health: 10, position: { x: 3.4, y: GROUND + 0.5, z: 1.45 }, knockback: [0, 0, 30] };
+    drainKnockback([t], false, floorAt); // into the trunk at z 3
     expect(t.position.z, `the shove went through the trunk to z ${t.position.z.toFixed(2)}`).toBeLessThan(2.9);
   });
 });
@@ -377,9 +377,9 @@ describe('an XP orb dropped under the canopy lands on the ground, not on the lea
 
 describe('AIWorkerSystem wiring (weak, structural — the chase above drives the same calls)', () => {
   it('snaps, builds grids and drains knockback on the floor probe; Terrain registers it', () => {
-    expect(carriersOf(/snapMob\(entity, store\.getMobFloor, store\.getMobGroundLevel\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/snapMob\(entity, store\.getMobFloor, store\.getMobGroundLevel, worldNow\(\)\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/heightGridAt\(e\.position\.x, e\.position\.z, e\.position\.y - 0\.5, getMobFloor\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
-    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, delta, false, useGameStore\.getState\(\)\.getMobFloor\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, false, useGameStore\.getState\(\)\.getMobFloor\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/setGetMobFloor\(makeMobFloorProbe\(rapier, world\)\)/)).toEqual(['world/Terrain.jsx']);
     expect(carriersOf(/groundForMover\(store\.getMobFloor, store\.getMobGroundLevel, m\.x, m\.z, feet, true\)/)).toEqual(['world/SquadAISystem.jsx']);
     expect(carriersOf(/store\.getMobFloor\(worldX, worldZ, entity\.position\.y - 0\.5\)/)).toEqual(['render/MobModel.jsx']);

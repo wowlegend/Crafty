@@ -9,7 +9,7 @@
 // Pure functions, no React and no THREE import: they take the objects and mutate them, so a unit test can
 // drive them with real `THREE.Object3D`s — or plain stubs — and assert the resulting numbers.
 
-import { STEP_UP, CLIMBERS } from './localPath.js';
+import { STEP_UP, CLIMBERS, walkAgainstWalls } from './localPath.js';
 
 /**
  * The dragon's declared rest pose. `rotation` is the part that was MISSING: the old capture branch reset
@@ -50,20 +50,40 @@ export function bossCaptureReset(refs, spawnPos) {
 }
 
 /**
- * Walk `pos` toward (tx, tz) in sub-steps, stopping before any column whose floor (game/mobFloor.js, as seen from
- * the floor it is leaving) is more than STEP_UP up, or that has no floor it fits in (Infinity).
+ * How far a knockback impulse carries, per unit of impulse: the displacement the old `impulse * delta * 4` gave at
+ * 60 fps, now the SAME at any frame rate. The impulse is one-shot, spent by one frame, so scaling it by that frame's
+ * delta made a shove twice as long at 30 fps and six blocks long on a 10 fps hitch — and a spider's leap (the same
+ * impulse, magnitude 15) jump six metres (review #6, R7.4).
+ */
+export const KNOCKBACK_SHOVE_S = 4 / 60;
+
+/**
+ * Walk `pos` toward (tx, tz) through THE sub-step walk (localPath.walkAgainstWalls — with its slide), refusing any
+ * column whose floor (game/mobFloor.js, seen from the mob's feet) is more than STEP_UP above the one it leaves, or
+ * that has no floor it fits in (Infinity). The floor is probed once per COLUMN crossed, not per sub-step: an AoE on a
+ * slow frame cast hundreds of rays (review #6, R7.5, R7.6).
  */
 function shoveAgainstWalls(pos, tx, tz, floorAt) {
-  const dx = tx - pos.x, dz = tz - pos.z;
-  const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.5));
-  let here = pos.y - 0.5; // the feet: y is not touched until the next ground snap
-  for (let i = 0; i < n; i++) {
-    const nx = pos.x + dx / n, nz = pos.z + dz / n;
-    const next = floorAt(nx, nz, here);
-    if (next === Infinity || (next != null && !Number.isNaN(next) && next - here > STEP_UP)) return;
-    pos.x = nx; pos.z = nz;
+  const feet = pos.y - 0.5; // y is not touched until the next ground snap
+  const seen = new Map();
+  const floor = (x, z) => {
+    const key = Math.floor(x + 0.1) * 73856093 ^ Math.floor(z + 0.1) * 19349663;
+    if (!seen.has(key)) seen.set(key, floorAt(x, z, feet));
+    return seen.get(key);
+  };
+  // The floor it STANDS on is tracked from the feet, never re-probed at the point it is leaving: that point can sit
+  // on a column seam (x + 0.1 whole) and read the neighbour's floor — a canopy read there made the canopy look level.
+  // walkAgainstWalls takes every step canEnter allows, so `here` follows the walk exactly.
+  let here = feet;
+  const canEnter = (fx, fz, nx, nz) => {
+    const next = floor(nx, nz);
+    if (next === Infinity) return false;
+    if (next != null && !Number.isNaN(next) && next - here > STEP_UP) return false;
     if (next != null && Number.isFinite(next)) here = next;
-  }
+    return true;
+  };
+  const r = walkAgainstWalls(pos.x, pos.z, tx, tz, canEnter);
+  pos.x = r.x; pos.z = r.z;
 }
 
 /**
@@ -83,19 +103,19 @@ function shoveAgainstWalls(pos, tx, tz, floorAt) {
  * (game/mobFloor.js): the column top would call a tree canopy a wall and stop a shove under it (R7.1).
  *
  * @param {Iterable<object>} entities
- * @param {number} delta  seconds since the last frame
- * @param {boolean} capture  true to clear without moving
+ * @param {boolean} capture  true to clear without moving (there is no frame delta: the shove is a fixed distance,
+ *   KNOCKBACK_SHOVE_S per unit of impulse — R7.4)
  * @param {(x:number, z:number, feet:number) => number|null} [floorAt]  the mob floor probe, optional
  * @returns {number} eligible entities drained — the DENOMINATOR, so "nothing moved" can be told apart
  *                   from "nothing was looked at"
  */
-export function drainKnockback(entities, delta, capture, floorAt = null) {
+export function drainKnockback(entities, capture, floorAt = null) {
   let drained = 0;
   for (const e of entities || []) {
     if (!e || e.health <= 0 || e.isStatic || !e.knockback) continue;
     if (!capture) {
-      const tx = e.position.x + e.knockback[0] * delta * 4;
-      const tz = e.position.z + e.knockback[2] * delta * 4;
+      const tx = e.position.x + e.knockback[0] * KNOCKBACK_SHOVE_S;
+      const tz = e.position.z + e.knockback[2] * KNOCKBACK_SHOVE_S;
       if (floorAt && !CLIMBERS.has(e.type)) shoveAgainstWalls(e.position, tx, tz, floorAt);
       else { e.position.x = tx; e.position.z = tz; }
       e.snapSync = true; // MobModel exact-copies this frame so the shove reads instant, not damped

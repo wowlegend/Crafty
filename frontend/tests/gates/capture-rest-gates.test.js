@@ -70,7 +70,7 @@ describe('drainKnockback — under capture the impulse is CLEARED, not left pend
   it('applies the impulse in normal play — the positive control', () => {
     // Without this, every "did not move" below is indistinguishable from a drain that skipped everything.
     const m = mob([10, 0, 4]);
-    expect(drainKnockback([m], 1 / 60, false)).toBe(1);
+    expect(drainKnockback([m], false)).toBe(1);
     expect(m.position.x).toBeCloseTo((10 * 4) / 60, 10);
     expect(m.position.z).toBeCloseTo((4 * 4) / 60, 10);
     expect(m.snapSync).toBe(true);
@@ -83,7 +83,7 @@ describe('drainKnockback — under capture the impulse is CLEARED, not left pend
     // fired on the way out. Whether any mob carries one at capture time is a race, which is exactly the
     // run-dependence the guard was supposed to remove.
     const m = mob([10, 0, 4]);
-    expect(drainKnockback([m], 1 / 60, true)).toBe(1);
+    expect(drainKnockback([m], true)).toBe(1);
     expect(m.position.x, 'the mob moved under capture').toBe(0);
     expect(m.position.z, 'the mob moved under capture').toBe(0);
     expect(m.knockback, 'the impulse survived capture and will fire on exit').toBeNull();
@@ -95,15 +95,15 @@ describe('drainKnockback — under capture the impulse is CLEARED, not left pend
     const dead = { ...mob([1, 0, 1]), health: 0 };
     const npc = { ...mob([1, 0, 1]), isStatic: true };
     const idle = mob(null);
-    expect(drainKnockback([live, dead, npc, idle], 1 / 60, true)).toBe(1);
+    expect(drainKnockback([live, dead, npc, idle], true)).toBe(1);
     expect(dead.knockback, 'drained a corpse').not.toBeNull();
     expect(npc.knockback, 'shoved a static hub NPC off its post').not.toBeNull();
   });
 
   it('survives an empty or missing list rather than throwing', () => {
-    expect(drainKnockback([], 1 / 60, true)).toBe(0);
-    expect(drainKnockback(null, 1 / 60, true)).toBe(0);
-    expect(drainKnockback([null, undefined], 1 / 60, false)).toBe(0);
+    expect(drainKnockback([], true)).toBe(0);
+    expect(drainKnockback(null, true)).toBe(0);
+    expect(drainKnockback([null, undefined], false)).toBe(0);
   });
 });
 

@@ -118,7 +118,7 @@ export const AIWorkerSystem = () => {
             // The snap REFUSES a climb (review #4, R5.3/R5.6): every mover — the worker's chase or wander, a
             // knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them. It snaps
             // to the FLOOR under the feet, not the column top — a roof or a canopy (review #6, R7.1).
-            snapMob(entity, store.getMobFloor, store.getMobGroundLevel);
+            snapMob(entity, store.getMobFloor, store.getMobGroundLevel, worldNow());
           }
         }
       }
@@ -184,7 +184,7 @@ export const AIWorkerSystem = () => {
       // stamped in the instant before the flag flipped sitting on the entity for the whole capture (this
       // loop is its only reader) to fire on the way out. Whether a mob carries one at capture time is a
       // race, i.e. exactly the run-dependence the guard exists to remove.
-      drainKnockback(mobsQuery.entities, delta, true);
+      drainKnockback(mobsQuery.entities, true);
       return; // AI/movement stays frozen so capture frames are byte-stable
     }
     const now = worldNow(); // the WORLD clock: the worker's timers hold through a hitstop (R2.7)
@@ -192,7 +192,7 @@ export const AIWorkerSystem = () => {
     // full by whichever frame drains it — draining it at a frozen scale would spend it at zero length and
     // the hit would never shove. So a frozen frame HOLDS it, and it lands the frame the freeze ends: the
     // blow connects, the world holds its breath, then the mob flies.
-    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false, useGameStore.getState().getMobFloor);
+    if (delta > 0) drainKnockback(mobsQuery.entities, false, useGameStore.getState().getMobFloor);
 
     // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
     // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the

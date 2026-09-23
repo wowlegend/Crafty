@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { findLocalPath, clampMove, STEP_UP, GRID, CLIMBERS, gridOrigin, settleOnGround, snapMob, heightGridAt } from '../../src/game/localPath.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { carriersOf } from './_srcWalk.js';
-import { drainKnockback } from '../../src/game/captureRest.js';
+import { drainKnockback, KNOCKBACK_SHOVE_S } from '../../src/game/captureRest.js';
+import { SHOULDER_RECOVER_MS } from '../../src/game/mobMovement.js';
 
 /**
  * MOBS RESPECT WALLS (QUEUE P1; plan 2026-09-23-crafty-mob-wall-collision).
@@ -238,22 +239,23 @@ describe('settleOnGround — the snap every mover passes through refuses a climb
 describe('a knockback shove respects walls where it happens (review #5, R6.2/R6.8)', () => {
   const wallAt5 = (x) => (Math.floor(x + 0.1) === 5 ? GROUND + 3 : GROUND);
   const shoved = (type, x, kx) => ({ type, health: 10, position: { x, y: GROUND + 0.5, z: 0 }, knockback: [kx, 0, 0] });
+  // Impulses are x15 what they were: the shove is a fixed impulse * 4/60 now (R7.4), no longer * a long frame.
   it('a multi-block shove across a ONE-column wall stops at the wall — it does not land on the far side', () => {
-    const e = shoved('zombie', 4.2, 10); // 10 * 0.1 s * 4 = a 4 m shove on a long frame: to x 8.2, past the wall
-    drainKnockback([e], 0.1, false, (x) => wallAt5(x));
+    const e = shoved('zombie', 4.2, 60); // 60 * 4/60 = a 4 m shove: to x 8.2, past the wall
+    drainKnockback([e], false, (x) => wallAt5(x));
     expect(e.position.x, `the shove crossed the wall to x ${e.position.x.toFixed(2)}`).toBeLessThan(4.9);
     expect(e.position.x, 'the shove did not move it at all').toBeGreaterThan(4.2);
   });
   it('open ground takes the whole shove; a climber takes it through the wall; no probe = the old free shove', () => {
-    const open = shoved('zombie', 10, 5); drainKnockback([open], 0.1, false, () => GROUND);
+    const open = shoved('zombie', 10, 30); drainKnockback([open], false, () => GROUND);
     expect(open.position.x).toBeCloseTo(12, 9);
-    const spider = shoved('spider', 4.2, 10); drainKnockback([spider], 0.1, false, (x) => wallAt5(x));
+    const spider = shoved('spider', 4.2, 60); drainKnockback([spider], false, (x) => wallAt5(x));
     expect(spider.position.x).toBeCloseTo(8.2, 9);
-    const noProbe = shoved('zombie', 4.2, 10); drainKnockback([noProbe], 0.1, false);
+    const noProbe = shoved('zombie', 4.2, 60); drainKnockback([noProbe], false);
     expect(noProbe.position.x).toBeCloseTo(8.2, 9);
   });
   it('AIWorkerSystem drains with the live ground probe (weak, structural)', () => {
-    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, delta, false, useGameStore\.getState\(\)\.getMobFloor\)/))
+    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, false, useGameStore\.getState\(\)\.getMobFloor\)/))
       .toEqual(['systems/AIWorkerSystem.jsx']);
   });
 });
@@ -324,5 +326,64 @@ describe('the real worker: a wall stops a zombie, a gap lets it through, a spide
   it('a spider climbs it, as spiders do', () => {
     const r = chase(mob('spider'), world());
     expect(r.minX, 'the spider was stopped by a wall it should climb').toBeLessThan(4);
+  });
+});
+
+// ---- review #6 (QUEUE R7.4-R7.6, R7.8) -------------------------------------------------------------------
+
+describe('a shove is a DISTANCE, not a frame-length (R7.4); it slides along a wall (R7.5); it probes per column (R7.6)', () => {
+  const wallAt5 = (x) => (Math.floor(x + 0.1) === 5 ? GROUND + 3 : GROUND);
+  it('the shove per unit of impulse is the 60 fps tuning, and a spider leap (impulse 15) carries 1 m at any frame rate', () => {
+    expect(KNOCKBACK_SHOVE_S).toBeCloseTo(4 / 60, 12);
+    const leap = { type: 'spider', health: 10, position: { x: 0, y: GROUND + 0.5, z: 0 }, knockback: [15, 0, 0] };
+    drainKnockback([leap], false);
+    expect(leap.position.x, 'the leap scaled with something other than the impulse').toBeCloseTo(1, 9);
+  });
+  it('a shove glancing along a wall SLIDES along it instead of stopping dead', () => {
+    const e = { type: 'zombie', health: 10, position: { x: 4.2, y: GROUND + 0.5, z: 0.3 }, knockback: [60, 0, 60] }; // 4 m each way
+    drainKnockback([e], false, (x) => wallAt5(x));
+    expect(e.position.x, 'it crossed the wall').toBeLessThan(4.9);
+    expect(e.position.z, `it stopped dead at the wall (z ${e.position.z.toFixed(2)}) instead of sliding along it`).toBeGreaterThan(4);
+    // ...and the mirror: a wall ACROSS z, so it is the x-slide that must carry it (the case above only needs z).
+    const f = { type: 'zombie', health: 10, position: { x: 0.3, y: GROUND + 0.5, z: 4.2 }, knockback: [60, 0, 60] };
+    drainKnockback([f], false, (x, z) => (Math.floor(z + 0.1) === 5 ? GROUND + 3 : GROUND));
+    expect(f.position.z, 'it crossed the wall').toBeLessThan(4.9);
+    expect(f.position.x, `it stopped dead at the wall (x ${f.position.x.toFixed(2)}) instead of sliding along it`).toBeGreaterThan(4);
+  });
+  it('the floor is probed once per COLUMN the shove crosses, not per sub-step', () => {
+    let calls = 0;
+    const e = { type: 'zombie', health: 10, position: { x: 10.3, y: GROUND + 0.5, z: 0.3 }, knockback: [60, 0, 0] }; // 4 m: 5 columns
+    drainKnockback([e], false, () => { calls++; return GROUND; });
+    expect(e.position.x).toBeCloseTo(14.3, 9);
+    expect(calls, `${calls} probes for a 4 m shove`).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('after the snap refuses a move into a wall (R7.8)', () => {
+  const wall = (x) => (Math.floor(x + 0.1) === 5 ? GROUND + 3 : GROUND);
+  const top = (x, z) => wall(x, z);
+  it('a CHARGE that meets the wall ends there, and the brute is winded — the punish window', () => {
+    const b = { type: 'moss_brute', isAggro: true, position: { x: 4.4, y: GROUND + 0.5, z: 0 }, chargeAt: 900, chargeX: 12, chargeZ: 0, chargeReadyAt: 0 };
+    snapMob(b, (x, z) => wall(x, z), top, 1000);
+    b.position.x = 5.4; // the charge drives it into the wall
+    expect(snapMob(b, (x, z) => wall(x, z), top, 1100)).toBe(true);
+    expect([b.chargeAt, b.chargeX, b.chargeZ], 'the charge kept driving into the wall').toEqual([0, 0, 0]);
+    expect(b.chargeReadyAt, 'not winded: no recovery was set').toBe(1100 + SHOULDER_RECOVER_MS);
+  });
+  it('a WANDERER heads back out, away from the wall, instead of re-rolling into it', () => {
+    const w = { type: 'zombie', isAggro: false, isMoving: true, moveTimer: 2, position: { x: 4.4, y: GROUND + 0.5, z: 0 } };
+    snapMob(w, (x, z) => wall(x, z), top, 0);
+    w.position.x = 5.4;
+    expect(snapMob(w, (x, z) => wall(x, z), top, 0)).toBe(true);
+    expect(w.isMoving).toBe(true);
+    expect(w.targetX, 'it was not sent AWAY from the wall').toBeLessThan(w.position.x - 3);
+    expect(w.moveTimer).toBeGreaterThan(0);
+  });
+  it('a CHASING mob is left to A* and clampMove (stopped, not redirected)', () => {
+    const c = { type: 'zombie', isAggro: true, isMoving: true, targetX: 9, targetZ: 0, position: { x: 4.4, y: GROUND + 0.5, z: 0 } };
+    snapMob(c, (x, z) => wall(x, z), top, 0);
+    c.position.x = 5.4;
+    expect(snapMob(c, (x, z) => wall(x, z), top, 0)).toBe(true);
+    expect([c.isMoving, c.targetX]).toEqual([false, 9]);
   });
 });

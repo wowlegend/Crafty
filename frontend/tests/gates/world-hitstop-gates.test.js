@@ -103,7 +103,7 @@ describe('the store is the ONE writer, and it caps', () => {
     // frozen-frame drain would consume the shove at zero length and the hit would never push. The frame
     // must HOLD it. Each pattern is the one line that does it; each has exactly one carrier.
     // `delta` in both files is the WORLD delta (const delta = worldDelta(frameDelta); census-enforced).
-    expect(carriersOf(/if \(delta > 0\) drainKnockback\(mobsQuery\.entities, delta, false,/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/if \(delta > 0\) drainKnockback\(mobsQuery\.entities, false,/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/tickAccumRef\.current \+= delta;/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/const t = Math\.min\(1, delta \* 10\);/)).toEqual(['render/MobModel.jsx']);
   });
