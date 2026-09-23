@@ -7,13 +7,20 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
-| `1eba517f` + `6e7591cb` | **C3 — the Shadow Dragon returns.** After the first kill (still THE win), it wakes again at the lair once you have survived 3 more nights AND gained 4 more levels — announced once, a tier stronger (health ×1.5, damage ×1.2, capped speed, double XP, more scales; the crown only the first time). Survives save/load; old won saves become "one kill, return in 3 nights". Driven through the real hook | committed, pushing next |
-| `ba8c3ebf` | **The far horizon.** Land and sea now continue past the loaded chunks to 420 m, from the same surface formula, coloured like the near terrain and hazed by the same lines — distant ridgelines and headlands instead of fog over sky. Sunk under real terrain wherever a chunk can be, so it never pokes through (proven over every player position). Side-effect measured, not hidden: on med/high tiers the ground just under the horizon is up to ~8 levels darker because bright sky no longer blooms over it | CI running |
-| `813428ac` + `0de44886` | **Clouds, and their shadows on the ground, from one field.** Bright by day, a dim shape at night, dark in the boss sky; shadows dim only the SUN's light (valleys stay readable), fade with a low sun, and vanish where the sky has no cloud | ✅ `927b2191`-era CI green up to `813428ac`'s predecessor; rest in `ba8c3ebf`'s run |
-| `91dcabc6` `7482cfdc` `3ef77fa5` | Review fixes: brute's charge dropped on cover-seek; e2e-freshness treats a running base as unknown and a timeout as red; the sweep sees through `npm`/`sh -c` wrappers | CI running |
-| `20d51bdd` | **The test-process sweep kills leaks, not live runs.** It decided "leaked" by AGE (>3 min) and killed one of my own captures 15 minutes in. Now it decides by OWNERSHIP (is the process tree still rooted in a live runner?) and names the runner it left alone. Chrome's crashpad handlers sit at PPID 1 while alive, which I found by reading a live capture's process table after the tests were green; they are held while any browser is owned | local green; not pushed yet |
-| `6a33a101` | **Distant-terrain mipmaps, built and proven, NOT turned on** — see *Blocked on you*. What ships: the terrain sampler reads raw `vUv` (identical without mips, required with them) | local green; not pushed yet |
-| `68900749` | **EXTERNAL-BASELINE #3 — hitstop holds the WORLD.** A heavy hit now freezes the mob you hit, the AI clock and the mob animation, not just you; a burst of hits is capped (180 ms) so it never reads as lag; the knockback shove waits for the freeze and lands after it. Proven in the running game by a new e2e (`tests/e2e/world-hitstop.spec.js`) | local green; not pushed yet |
+| `bb9f170c` | **The hitstop freeze reaches EVERY world system.** It used to reach only the mobs, the AI clock and the boss (each edited to opt in); allies kept swinging, spells and enemy bolts kept flying (a bolt could land on you inside your own hit's freeze), debris, orbs and loot drifted, zones ticked. Now one function decides, and a census fails any frame loop that reads its raw delta — 15 loops: 12 freeze, 3 run on real time on purpose (your controller, the sky, the weather). Proven in the running game: a kill's XP orbs hang through the freeze, then move | local green incl. both e2e cases; pushing |
+| `674a54eb` | A returning dragon's entrance names its tier; a corrupted save's kill night no longer wakes it at once | local green; pushing |
+| `1c0dde0b` | **The far horizon steps aside for real terrain.** Review #2 found its fixed 2 m sink wrong three ways (far water floating over a loaded seabed, canopy poking through chunks, triangles over gullies). Now it discards itself over every chunk on screen and sits at the true surface: distant ridges stand at their real height behind the tree line. Capture A/B opened: UI 0.000%, only the horizon band moved, no holes | local green; pushing |
+| `9860eaa9` | **The ocean's waves run on the GPU.** The CPU used to displace ~9,400 vertices and re-upload three buffers every frame (~14% of the frame budget by its own comment). The shader is GENERATED from the same wave table the physics reads, and a gate interprets the generated text against the JS surface at sample points, so they cannot drift | run 35809277093 in progress (pushed with `7ba29a83`) |
+| `aad73f24` | Review #2 fixes for C3: a reload mid-return-fight refilled the dragon (reproduced: 1050 HP instead of 200); the VICTORY overlay re-fired on a return kill after a reload; autosave missed the tier | ✅ run 35807841045 (`a77af81e`) |
+| `add563ff` | Hitting the BOSS lands with weight too — its melee and spell hits freeze the world, the dragon included | ✅ run 35807841045 (`a77af81e`) |
+| `1eba517f` + `6e7591cb` | **C3 — the Shadow Dragon returns.** After the first kill (still THE win), it wakes again at the lair once you have survived 3 more nights AND gained 4 more levels — announced once, a tier stronger (health ×1.5, damage ×1.2, capped speed, double XP, more scales; the crown only the first time). Survives save/load; old won saves become "one kill, return in 3 nights". Driven through the real hook | ✅ run 35806632575 (`0398b7b7`) |
+| `ba8c3ebf` | **The far horizon.** Land and sea now continue past the loaded chunks to 420 m, from the same surface formula, coloured like the near terrain and hazed by the same lines — distant ridgelines and headlands instead of fog over sky. Side-effect measured, not hidden: on med/high tiers the ground just under the horizon is up to ~8 levels darker because bright sky no longer blooms over it. **Review #2 found its fixed 2 m sink wrong three ways (R3.4–R3.6); the hole-punch that replaces it is in flight below** | ✅ run 35805582391 |
+| `813428ac` + `0de44886` | **Clouds, and their shadows on the ground, from one field.** Bright by day, a dim shape at night, dark in the boss sky; shadows dim only the SUN's light (valleys stay readable), fade with a low sun, and vanish where the sky has no cloud | ✅ run 35805582391 (`ba8c3ebf`) |
+| `91dcabc6` `7482cfdc` `3ef77fa5` | Review #1 fixes: brute's charge dropped on cover-seek; e2e-freshness treats a running base as unknown and a timeout as red; the sweep sees through `npm`/`sh -c` wrappers | ✅ run 35805582391 (`ba8c3ebf`) |
+| `9e8efbf2` + `927b2191` | CI went red on `8202ec59` — knip (CI-only) read `pgrep`/`pkill` as missing dependencies; and e2e-freshness then blocked the fix because it read the whole red run instead of the e2e jobs. Both fixed | ✅ run 35803592408 |
+| `20d51bdd` | **The test-process sweep kills leaks, not live runs.** It decided "leaked" by AGE (>3 min) and killed one of my own captures 15 minutes in. Now it decides by OWNERSHIP (is the process tree still rooted in a live runner?) and names the runner it left alone. Chrome's crashpad handlers sit at PPID 1 while alive, which I found by reading a live capture's process table after the tests were green; they are held while any browser is owned | ❌ run 35801779905 (knip only, see above) → ✅ 35803592408 |
+| `6a33a101` | **Distant-terrain mipmaps, built and proven, NOT turned on** — see *Blocked on you*. What ships: the terrain sampler reads raw `vUv` (identical without mips, required with them) | ❌ 35801779905 (knip only) → ✅ 35803592408 |
+| `68900749` | **EXTERNAL-BASELINE #3 — hitstop holds the WORLD.** A heavy hit now freezes the mob you hit, the AI clock and the mob animation, not just you; a burst of hits is capped (180 ms) so it never reads as lag; the knockback shove waits for the freeze and lands after it. Proven in the running game by a new e2e (`tests/e2e/world-hitstop.spec.js`) | ❌ 35801779905 (knip only) → ✅ 35803592408 |
 | `c06b4ee1` | Docs: operator pages current (republished), R1 closed, this log, the baseline-tranche plan | ✅ CI success (run 35796538484) |
 | `f4515dd9` | **R1.5 + R1.6** — the biome tint stops colouring stone, wood and ores (a green cast on every plaza and cliff in forest/jungle columns); the shader's tint array is sized from the biome table. Same-renderer A/B: stone and trunks moved, grass/leaves untouched, UI 0.00%. **See `evidence/tint-mask-ab-hearth.png`** (left old, right new) and `tint-mask-heat-hearth.png` (where it changed) | ✅ CI success (run 35796538484, `c06b4ee1`) |
 | `1be94a5c` | **R1.1 + EXTERNAL-BASELINE #1** — voxel AO no longer smears across merged faces; biome tint no longer read outside the quad. Same-renderer A/B: UI frames 0.000% (noise floor zero), terrain frames changed exactly where the smears were. **See `evidence/mesher-ao-ab-biome-snow.png` and `-hearth.png`** (left old, right new) | ✅ CI success (run 35796538484, `c06b4ee1`) |
@@ -33,7 +40,8 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- Nothing uncommitted of note. C3 waits only on CI to push.
+- R3.7 (the far field takes the danger grade and cloud shadows), R3.8 (swamp trees grow on dirt), R3.10
+  (far-field rebuild perf) — one capture A/B for the three.
 
 ## Corrections to things I told you
 
@@ -59,8 +67,8 @@ has its own same-renderer A/B so you can judge them one at a time.
 
 ## Next, in order
 
-1. Commit clouds after the capture; push onto a completed CI run.
-2. `/code-review high` over the whole overnight range.
-3. The baseline's runners-up, ranked: SMAA after tone-mapping (cheap), the far-horizon heightfield impostor
-   (the highest LOOKS ceiling), Gerstner waves into the vertex shader (also removes a per-frame CPU loop).
-4. C3 (the dragon returns, tiered) with its own spec + plan, then OPEN-ITEMS and I1.
+1. Commit R3.9 on the capture verdict, then R3.11; push onto a completed run.
+2. R3.7 (the far field takes the danger grade and cloud shadows — one generated grade string for both),
+   R3.8 (swamp trees grow on dirt), R3.10 (rebuild perf).
+3. `/code-review high` over `ba8c3ebf..HEAD`.
+4. QUEUE R2.6/R2.7, G2, I1, I2, then the next EXTERNAL-BASELINE runner-up.
