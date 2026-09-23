@@ -5,7 +5,7 @@ import { useBossSystem } from '../../src/world/bossSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { GameMethods } from '../../src/GameMethods';
 import { blightHeartSite } from '../../src/world/blightHeart';
-import { bossTierStats, RETURN_NIGHTS, LEVEL_STEP, BOSS_BASE_LEVEL } from '../../src/game/bossTier.js';
+import { bossTierStats, RETURN_NIGHTS, LEVEL_STEP, BOSS_BASE_LEVEL, showsVictory } from '../../src/game/bossTier.js';
 import { carriersOf } from './_srcWalk.js';
 
 /**
@@ -23,6 +23,8 @@ import { carriersOf } from './_srcWalk.js';
  *   B6 the reawakening announced every poll              B7 plausible-wrong: rewards read from tier 0
  *   B8 BossEntity reads BOSS_CONFIG.phases again (structural)
  *   B9 the return's entrance says "the Shadow Dragon" again   B10 = B4 re-proven on the refactored line
+ *   V1 plausible-wrong: showsVictory back to `tier === 1` (a throwing tier step strands VICTORY — R4.5)
+ *   V2 showsVictory ignores the tier (a return kill announces the win again)
  *
  * BLIND SPOT: BossEntity's per-phase speed/damage come from bossTierStats(bossTier) by source shape only
  * (a structural check at the end); whether the tier-2 dragon FEELS harder is a person-playing question.
@@ -60,6 +62,24 @@ describe('C3 — a kill makes the next dragon a tier stronger, and the first is 
     expect(s.bossKillNight).toBe(5);
     expect(s.bossDefeated).toBe(true);
     expect(GameMethods.grantXP).toHaveBeenCalledWith(bossTierStats(0).xpReward, 'Shadow Dragon Defeated!');
+  });
+
+  it('the TIER step itself throwing still lands the win AND its VICTORY screen (review #3, R4.5)', () => {
+    const setBossEncounter = useGameStore.getState().setBossEncounter;
+    // Only the TIER write throws: the hook's per-change sync (bossSystem.js) calls the same action without a tier.
+    useGameStore.setState({
+      setBossEncounter: (e) => { if (e.tier !== undefined) throw new Error('tier write blew up'); return setBossEncounter(e); },
+    });
+    try {
+      const hook = fightAndKill(BOSS_BASE_LEVEL);
+      expect(useGameStore.getState().gameWon, 'the win itself was stranded').toBe(true);
+      const r = hook.result.current;
+      expect(r.bossTier, 'the tier step did not actually fail — this case tested nothing').toBe(0);
+      expect(showsVictory({ bossDefeated: r.bossDefeated, bossTier: r.bossTier, victoryDismissed: false }),
+        'the player won the game and VICTORY stayed hidden').toBe(true);
+    } finally {
+      useGameStore.setState({ setBossEncounter });
+    }
   });
 
   it('a reward that THROWS still lands the tier bump and the win', () => {
@@ -150,6 +170,16 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
   });
 });
 
+describe('showsVictory — the first dragon\'s screen, never a return kill\'s', () => {
+  it('tier 0 (the tier step failed) and 1 (the first kill) show it; a return kill (2+) and a dismissal do not', () => {
+    expect(showsVictory({ bossDefeated: true, bossTier: 1 })).toBe(true);
+    expect(showsVictory({ bossDefeated: true, bossTier: 0 })).toBe(true);
+    expect(showsVictory({ bossDefeated: true, bossTier: 2 })).toBe(false);
+    expect(showsVictory({ bossDefeated: true, bossTier: 1, victoryDismissed: true })).toBe(false);
+    expect(showsVictory({ bossDefeated: false, bossTier: 1 })).toBe(false);
+  });
+});
+
 describe('C3 — the renderer and the health bar read the tier (weak, structural)', () => {
   it('BossEntity takes its phase speed and damage from the tier, and the scene passes the tier in', () => {
     expect(carriersOf(/const tierPhases = useMemo\(\(\) => bossTierStats\(bossTier\)\.phases/)).toEqual(['render/BossEntity.jsx']);
@@ -158,7 +188,7 @@ describe('C3 — the renderer and the health bar read the tier (weak, structural
     expect(carriersOf(/bossName=\{bossSystem\.bossName\}/)).toEqual(['HUD.jsx']);
     // The VICTORY overlay is the first dragon's: gated on the tier that kill produces, so a return kill after
     // a reload does not announce the win again (review 2026-09-22).
-    expect(carriersOf(/bossSystem\?\.bossDefeated && bossSystem\?\.bossTier === 1 && !victoryDismissed/)).toEqual(['HUD.jsx']);
+    expect(carriersOf(/showsVictory\(\{ bossDefeated: bossSystem\?\.bossDefeated, bossTier: bossSystem\?\.bossTier, victoryDismissed \}\)/)).toEqual(['HUD.jsx']);
   });
 });
 

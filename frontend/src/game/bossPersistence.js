@@ -49,14 +49,16 @@ export function phaseForHealth(health, maxHealth) {
  * The save payload for the encounter. Health is coerced here rather than at load, because a NaN survives
  * `JSON.stringify` as `null` and comes back as a boss with no health at all.
  */
-export function serializeBossState({ bossActive, bossHealth, bossDefeated, bossTier, bossKillNight } = {}) {
+export function serializeBossState({ bossActive, bossHealth, bossDefeated, bossTier, bossKillNight, nightCount } = {}) {
   const tier = nat(bossTier, 0);
   return {
     health: num(bossHealth, bossTierStats(tier).health),
     active: !!bossActive,
     defeated: !!bossDefeated,
     tier, // QUEUE C3: dragons slain so far — the next fight's strength
-    killNight: nat(bossKillNight, 0), // the night of the last kill — the return cadence counts from it
+    // The night of the last kill — the return cadence counts from it. A junk value is written as TONIGHT, the
+    // rule hydrate applies too: writing 0 (a valid night) would make a slain dragon due at once (QUEUE R4.4).
+    killNight: nat(bossKillNight, tier >= 1 ? nat(nightCount, 0) : 0),
   };
 }
 

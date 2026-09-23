@@ -39,6 +39,7 @@ import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
+import { showsVictory } from './game/bossTier.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -668,8 +669,8 @@ export function HUD({
         }} />
       )}
       
-      {/* C3: VICTORY is the FIRST dragon's (tier just became 1). A return kill is a trophy, not the win again. */}
-      {bossSystem?.bossDefeated && bossSystem?.bossTier === 1 && !victoryDismissed && (
+      {/* C3: VICTORY is the FIRST dragon's; a return kill is a trophy, not the win again (game/bossTier.js). */}
+      {showsVictory({ bossDefeated: bossSystem?.bossDefeated, bossTier: bossSystem?.bossTier, victoryDismissed }) && (
         <VictoryOverlay onDismiss={() => setVictoryDismissed(true)} />
       )}
 

@@ -10,6 +10,7 @@ import { bossTierStats } from '../../src/game/bossTier.js';
 // Mutation-Proof: by hand (cp backup, byte-verified restore), each RED:
 //   S1 loadWorldData drops bossTier on the floor      S2 the load path stops passing nightCount
 //   S3 plausible-wrong: the load path still pins maxHealth to BOSS_CONFIG.health (a tier-1 fight clamps to 700)
+//   S4 (mutate.sh) plausible-wrong: a junk killNight SERIALIZES as night 0 (review #3, R4.4)
 const POS = { position: { x: 0, y: 18, z: 0 } };
 const reload = (over) => {
   const save = buildSaveData({ ...useGameStore.getState(), ...over }, POS);
@@ -35,6 +36,13 @@ describe('boss tier save round-trip (C3)', () => {
     const s = reload({ gameWon: true, bossTier: 1, bossKillNight: 4, bossActive: true, bossDefeated: false, bossHealth: hp, nightCount: 9 });
     expect(s.bossActive).toBe(true);
     expect(s.bossHealth).toBe(hp);
+  });
+
+  it('a junk kill night in LIVE state saves as tonight, not as night 0 — the slain dragon is not due at once (R4.4)', () => {
+    for (const bad of [NaN, undefined, -2]) {
+      const s = reload({ gameWon: true, bossTier: 2, bossKillNight: bad, bossDefeated: true, bossHealth: 0, nightCount: 31 });
+      expect(s.bossKillNight, `killNight ${String(bad)}`).toBe(31);
+    }
   });
 
   it('a won save from BEFORE tiers loads as one kill, its return counted from the night it was loaded on', () => {
