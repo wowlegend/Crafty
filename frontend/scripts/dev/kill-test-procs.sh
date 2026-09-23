@@ -37,19 +37,25 @@ set -e
 PATTERN="${KTP_PATTERN:-Crafty/frontend/node_modules/.bin/vite|npm exec vite --port|ms-playwright/(chromium|webkit|firefox)|cache/puppeteer/chrome}"
 BROWSER="${KTP_BROWSER:-cache/puppeteer/chrome|ms-playwright/}"
 CRASHPAD="${KTP_CRASHPAD:-chrome_crashpad_handler}"
+# LAUNCHER WRAPPERS are transparent to the walk (review 2026-09-22). `npm run dev` runs vite under npm and a
+# `sh -c vite ...`, neither of which matches PATTERN. When the shell that started them exits, both are
+# re-adopted by launchd and stay alive — so a walk that stopped at the first non-matching ancestor called
+# npm a live owner and left the leaked vite alone forever. Only COMMAND launchers qualify: `sh -c`/`bash -c`/
+# `zsh -c` and npm/npx. An interactive shell, node, or a runner script is an owner.
+WRAPPER='^(npm|npx)( |$)|^(/bin/|/usr/bin/)?(ba|z)?sh -c '
 FORCE=0
 [ "$1" = "--force" ] && FORCE=1
 
 cmd_of() { ps -o command= -p "$1" 2>/dev/null || true; }
 is_test_proc() { cmd_of "$1" | grep -qE "$PATTERN"; }
 
-owner_of() {  # the first NON-matching ancestor of PID: 1 = orphaned, 0 = vanished mid-scan
+owner_of() {  # the first ancestor that neither matches nor is a launcher wrapper: 1 = orphaned, 0 = vanished
   p=$1; depth=0
   while [ "$depth" -lt 64 ]; do
     pp=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ' || true)
     if [ -z "$pp" ]; then echo 0; return; fi
     if [ "$pp" = "1" ] || [ "$pp" = "0" ]; then echo 1; return; fi
-    if is_test_proc "$pp"; then p=$pp; else echo "$pp"; return; fi
+    if is_test_proc "$pp" || cmd_of "$pp" | grep -qE "$WRAPPER"; then p=$pp; else echo "$pp"; return; fi
     depth=$((depth + 1))
   done
   echo 0

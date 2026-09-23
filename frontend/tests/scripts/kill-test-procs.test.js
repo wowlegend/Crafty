@@ -29,6 +29,8 @@ import { tmpdir } from 'node:os';
  *   K4 owners never reported                                                           -> "named" RED
  *   K5 plausible-wrong: crashpad handlers swept like any orphan                         -> "crashpad" RED
  *   K6 crashpad handlers never swept, even with no browser left                         -> "crashpad" RED
+ *   K7 plausible-wrong: an orphaned launcher wrapper treated as a live owner (the review's defect) -> "wrapper" RED
+ *   K8 plausible-wrong: every non-matching ancestor walked past (a live runner too)   -> live-wrapper RED
  *
  * BLIND SPOT: the DEFAULT patterns are not driven here. They were checked by hand against a live capture's
  * real process table on 2026-09-22 (vite -> npm exec -> capture.mjs; Chrome helpers -> Chrome -> capture.mjs;
@@ -134,6 +136,33 @@ describe('kill-test-procs: ownership decides, not age', () => {
     expect(await waitFor(() => !alive(browser.pid))).toBe(true);
     const out = sweep();
     expect(await waitFor(() => !alive(crashpad)), `crashpad: an orphaned crashpad handler survived with no browser left:\n${out}`).toBe(true);
+  });
+
+  // A launcher wrapper whose OWN command line does not match — the real shape: npm's `sh -c vite ...` does not
+  // carry this repo's vite path, only its child does. The marker reaches the leaf through the environment, so
+  // the wrapper's argv holds variable NAMES only.
+  const WRAP_CMD = '"$KTP_NODE" -e "setInterval(() => {}, 1000)" "$KTP_TAG"; true';
+  const wrapEnv = (tag) => ({ ...process.env, KTP_NODE: process.execPath, KTP_TAG: `${MARK}-${tag}` });
+
+  it('a LAUNCHER wrapper orphaned at PPID 1 does not shield its child (npm run dev, then the shell exits)', async () => {
+    // Review 2026-09-22: the walk stopped at the first NON-matching ancestor and called it a live owner. A
+    // leaked `npm run dev` has exactly that shape: npm and its `sh -c vite` are re-adopted by launchd and stay
+    // alive, so the vite under them read as "owned by a live run" forever. Launcher wrappers (npm, npx,
+    // sh -c) are transparent to the walk now; the owner is the first ancestor that is neither.
+    spawnSync('sh', ['-c', `sh -c '${WRAP_CMD}' >/dev/null 2>&1 &`], { env: wrapEnv('wrapped') });
+    expect(await waitFor(() => pidsOf('wrapped').length === 1), 'the wrapped fixture never started').toBe(true);
+    const [leaf] = pidsOf('wrapped');
+    const out = sweep();
+    expect(await waitFor(() => !alive(leaf)), `wrapper: a leaf under an orphaned launcher survived:\n${out}`).toBe(true);
+  });
+
+  it('a wrapper under a LIVE runner still counts as live, and the RUNNER is named', async () => {
+    const w = spawn('sh', ['-c', WRAP_CMD], { stdio: 'ignore', env: wrapEnv('live-wrapped') });
+    expect(await waitFor(() => pidsOf('live-wrapped').length === 1), 'the live wrapped fixture never started').toBe(true);
+    const out = sweep();
+    expect(pidsOf('live-wrapped').length, `a leaf under a live runner's wrapper was swept:\n${out}`).toBe(1);
+    expect(out, `named: the runner is not named:\n${out}`).toMatch(new RegExp(`owner ${process.pid}:`));
+    expect(out, `named: the wrapper was named instead of the runner:\n${out}`).not.toMatch(new RegExp(`owner ${w.pid}:`));
   });
 
   it('--force kills an owned process too', async () => {
