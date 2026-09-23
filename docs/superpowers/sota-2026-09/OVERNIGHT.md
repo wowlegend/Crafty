@@ -53,8 +53,20 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- **Review #7** (`/code-review high` over `9063b8c7..9c6dc852`: R7.1, R7.9, the perfect dodge) running; findings go
-  to QUEUE R8 and get verified before any fix.
+- **CI went RED on `9c6dc852`** (run 35822535594): the perfect-dodge e2e, flaky three different ways, all in the SPEC
+  (the game was right). Fixed in `962b69bd` — the main cause: the game's world clock is computed once per frame, so a
+  reading taken between frames is up to a frame old, and at a loaded runner's frame rate that is longer than the whole
+  220 ms window the spec was aiming a key press at. The push gate then refused to push onto a red base without a full
+  local e2e run: **42/42 green (43 min)**, receipt recorded; pushing now.
+- **Review #7 → QUEUE R8**, all eleven verified then fixed (`d729e2c0`, `a53aaae1`) except R8.8's leg-IK cost, which is
+  unmeasured.
+- **Parked, tested, not yet in main:** R7.4–R7.8 (a knockback shove is a fixed distance — a spider's leap was 6 m on a
+  slow frame; one wall-walk with a slide; a brute that charges into a wall is winded; a wanderer turns away) and the
+  **lazy panels** (every on-demand panel leaves the boot bundle for one prefetched chunk — the budget room the next
+  features need). WIP `45590d2c`, branch `wip/r7-lazy-panels`, worktree `mip-ab`; next up.
+- **Round two of the external baseline** (`EXTERNAL-BASELINE-R2.md`): round one's top five are done or yours. The new
+  top five, each re-checked in the source: a **hold-to-charge heavy melee** (three genre leaders shipped one this year;
+  spec written), glowing ore texels, leaf translucency + sway, storm lightning, and a **lantern + baked block light**.
 
 - Review #6 (`/code-review high` over `34ead1d3..9063b8c7`) → QUEUE R7. R7.1 (HIGH, a regression of my own
   R6.4) and R7.9 FIXED; R7.9b (a mob can SPAWN on a canopy) open. R7.2–R7.8 queued (chunk-size literals, one voxel-index helper, knockback scaled by frame
@@ -99,7 +111,7 @@ has its own same-renderer A/B so you can judge them one at a time.
 | 147→151 visual re-baseline | rewrites the 31-image oracle |
 | three 0.172 → 0.186 + `SunLight` CSM | dependency bump (EXTERNAL-BASELINE #4); will be prepared, not merged |
 | dprCap 2 → 1.75 · FPV glove value | your standing calls |
-| vitest 4 → 5 (dev only) | GitHub flags 3 moderate advisories, all the TEST runner (`@vitest/mocker` path traversal); nothing ships to players. The fix is a major bump of the whole test toolchain — yours to schedule, not an overnight change |
+| vitest 3 → 4 (dev only) | Two open medium Dependabot alerts (#60 `@vitest/mocker`, #62 `vitest` — a path traversal in the TEST runner's mocker), both patched in 4.1.11; installed is 3.2.7. Nothing ships to players. A major bump of the whole test toolchain — yours to schedule. (Corrected: this row said "4 → 5, 3 advisories", read off `npm audit`'s latest-version fix and its three package entries; the page refresh caught it against the live alerts) |
 | **Distant-terrain mipmaps (one constant)** | "no mipmaps" is part of the bold-flat LOCK, recorded as your taste call. Built and proven; flip `const TERRAIN_MIPMAPS = false` in `world/proceduralTextures.js` to `true` (and update the lock test). Same-renderer A/B is in KEVIN-REVIEW-BATCH (evidence `mipmaps-ab-*.png`): far faces go from crawling speckle to flat colour, crisp up close, no seams. My read: it looks MORE bold-flat, not less |
 
 ## Next, in order

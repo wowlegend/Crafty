@@ -15,14 +15,13 @@ each ~300k context.
   row); `/code-review high` #3 over `0398b7b7..33c75345` → QUEUE R4, all ten verified + fixed (`84f9efe2`,
   `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
   `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
-- **Reviews #4, #5 done** (QUEUE R5, R6 — all fixed, pushed through `9063b8c7`, CI green run 35817017547).
-  **Review #6 → QUEUE R7** (8 findings). R7.1 FIXED `8db8016a` (the mob FLOOR probe, `game/mobFloor.js` +
-  `world/mobFloorProbe.js`) + e2e `fa065432` (`tests/e2e/mob-floor.spec.js`); pushed `fa065432`. Perfect dodge
-  Tasks 1-2 `06d3f190` (plan `docs/superpowers/plans/2026-09-23-crafty-perfect-dodge.md`).
-  **NEXT:** R7.9 (spells/orbs/loot/spawns read the column top — verify a cast under a tree bursts on launch
-  first) → perfect dodge Task 3 (Components.jsx dodge start, CombatSystem riposte, MobModel stagger pose, parry
-  voice, keyMap/onboarding/i18n; the `index` chunk has ~3.5 KB of budget left) → Task 4 e2e → R7.2-R7.8 →
-  `/code-review high` over `9063b8c7..HEAD`; then R4.2b, I3, G2, I1, I2; then the next EXTERNAL-BASELINE gap.
+- **Reviews #4-#7 done** (QUEUE R5-R8). Pushed through `a01b1982`; CI RED on `9c6dc852` (the perfect-dodge e2e, a
+  spec flake) — fixed in `962b69bd`, full local e2e 42/42 green (receipt `frontend/tests/e2e/.last-green.json`).
+  **NEXT:** push onto the completed run; then port WIP `45590d2c` (branch `wip/r7-lazy-panels` in worktree `mip-ab`:
+  R7.4-R7.8 + lazy panels) into main through the pipeline (build + the bundle-budget lazy-panel marker check); then
+  the heavy-melee milestone (spec `docs/superpowers/specs/2026-09-23-crafty-heavy-melee-design.md`; plan doc owed) =
+  `docs/superpowers/sota-2026-09/EXTERNAL-BASELINE-R2.md` Top 5 #1; then #3 ore glow, #2 leaves, #4 lightning,
+  #5 lantern + block light. Also owed: the "21 Playwright specs" count in `scripts/ci/gate-table.mjs` (23 now).
 - **Worktree** `.claude/worktrees/mip-ab` is capture scratch (reset it to HEAD before each A/B; frames land in
   the scratchpad capA..capJ, which dies with the session — commit messages carry the verdicts).
 
