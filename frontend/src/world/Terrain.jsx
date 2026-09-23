@@ -34,7 +34,7 @@ import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
-import { markChunkLoaded, markChunkUnloaded, clearLoadedChunks, loadedChunkSet } from './loadedChunks.js';
+import { markChunkLoaded, markChunkUnloaded, loadedChunkSet } from './loadedChunks.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -256,7 +256,10 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     // every hook unconditional, and gate only the JSX output.
     const empty = !meshData || !meshData.positions || meshData.positions.length === 0;
 
-    React.useEffect(() => {
+    // A LAYOUT effect (review #3, R4.3): the far field hole-punches itself by this registry, so a chunk must be
+    // registered before its first painted frame and unregistered before its last — a passive effect runs after
+    // paint, leaving a frame where the ring overlapped the new chunk (or left a hole where an old one went).
+    React.useLayoutEffect(() => {
         if (empty) return undefined; // empty chunks don't register (preserves prior behavior)
         const key = `${cx}_${cz}`;
         if (onMount) onMount(key);
@@ -703,8 +706,10 @@ export const MinecraftWorld = React.memo(() => {
                 }
             } else if (type === 'load_modifications_done') {
                 // Wipe the live world so the worker can re-stream it with the save's block edits applied.
+                // The loaded-chunk registry empties itself as each ChunkMesh unmounts (its layout-effect cleanup),
+                // at the commit that removes it — clearing it here, BEFORE that commit, left the old chunks drawn
+                // with the far field no longer punched out beneath them (review #3, R4.3).
                 setChunks({});
-                clearLoadedChunks();
                 // B2d: ...and wipe the record of having REQUESTED those chunks. Without this the
                 // streamer's guard (`!requestedChunks.has(key)`) still considers every chunk
                 // "already requested", so it never asks again — and the cull path that would have

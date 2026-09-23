@@ -9,7 +9,7 @@
 // Flat-shaded vertex colours: bold-flat, no textures at 400 m.
 //
 // HOLE-PUNCHED by the loaded chunks (QUEUE R3.9): the ring sits at the true surface and its fragment shader
-// discards over every chunk Terrain has on screen (world/loadedChunks.js), read as a 32x32 R8 mask around the
+// discards over every chunk Terrain has on screen (world/loadedChunks.js), read as a 64x64 R8 mask around the
 // player. So real terrain and its impostor never overlap, and there is no sink to get wrong.
 //
 // Rebuilt ONLY when the player crosses a FAR_RECENTRE cell (snapCentre), never per frame — the geometry is a
@@ -26,7 +26,7 @@ import { sharedVoxelTextures } from './proceduralTextures.js';
 import {
   farFieldVertices, farFieldIndex, farInnerRadius, snapCentre, layerMeanLinear, FAR_OUTER, FAR_RINGS, FAR_SECTORS,
 } from './farField.js';
-import { LOADED_MASK_SIZE, buildLoadedMask, loadedMaskGlsl, loadedChunkSet, loadedChunksVersion } from './loadedChunks.js';
+import { LOADED_MASK_SIZE, buildLoadedMask, loadedMaskGlsl, loadedChunkSet, loadedChunksVersion, chunkOf } from './loadedChunks.js';
 import { aerialGlsl } from '../render/aerialPerspective.js';
 import { landGradeGlsl } from '../render/landGrade.js';
 import { cloudShadowGlsl } from '../render/cloudField.js';
@@ -122,7 +122,7 @@ export function FarField({ renderDistance }) {
     const p = useGameStore.getState().playerPosition;
     if (!p) return;
 
-    const pcx = Math.floor(p.x / 16), pcz = Math.floor(p.z / 16);
+    const pcx = chunkOf(p.x), pcz = chunkOf(p.z);
     const mkey = `${loadedChunksVersion()},${pcx},${pcz}`;
     if (maskFor.current !== mkey) {
       maskFor.current = mkey;

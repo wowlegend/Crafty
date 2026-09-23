@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   LOADED_MASK_SIZE, buildLoadedMask, loadedMaskGlsl,
-  markChunkLoaded, markChunkUnloaded, clearLoadedChunks, loadedChunkSet, loadedChunksVersion,
+  markChunkLoaded, markChunkUnloaded, loadedChunkSet, loadedChunksVersion, chunkOf,
 } from '../../src/world/loadedChunks.js';
+import { FAR_OUTER } from '../../src/world/farField.js';
 import { carriersOf } from './_srcWalk.js';
 
 /**
@@ -19,7 +20,9 @@ import { carriersOf } from './_srcWalk.js';
  *   K1 plausible-wrong: the mask origin off by one chunk      K2 plausible-wrong: u and v swapped in the lookup
  *   K3 plausible-wrong: floor -> round in the chunk index      K4 out-of-range keys wrap instead of being dropped
  *   K5 the registry bumps its version on a no-op              K6 FarField: the discard not spliced (structural)
- *   K7 Terrain: mount stops registering the chunk (structural)  K9 clearing the set does not bump the version
+ *   K7 Terrain: mount stops registering the chunk (structural)  K9 (retired with clearLoadedChunks, R4.3)
+ *   (review #3:) K10 the mask back to 32 texels   K11 registration back in a passive useEffect   K12 the early clear
+ *   restored   K13 plausible-wrong: chunkOf rounds instead of floors
  *   (K8, an `indexOf('_', 1)` start offset in the key parse, SURVIVED as an equivalent mutant — '-' is never
  *   '_' — so the dead offset was deleted rather than tested.)
  *
@@ -48,7 +51,7 @@ function runMask(src, x, z, mask) {
 
 describe('buildLoadedMask — which texel is which chunk', () => {
   it('centres on the given chunk and marks exactly the keys inside it', () => {
-    const keys = new Set(['-3_5', '0_0', '2_-7', '40_0', '-17_0']); // the last two fall outside a 32 mask at 0,0
+    const keys = new Set(['-3_5', '0_0', '2_-7', '40_0', '-40_0']); // the last two fall outside the mask at 0,0
     const m = buildLoadedMask(keys, 0, 0);
     expect([m.originX, m.originZ, m.size]).toEqual([-S / 2, -S / 2, S]);
     const at = (cx, cz) => m.data[(cz - m.originZ) * S + (cx - m.originX)];
@@ -111,7 +114,7 @@ describe('the GLSL lookup reads the mask in the SAME convention it was built in'
 });
 
 describe('the registry — Terrain\'s mounted set, versioned so the far field rebuilds only on a change', () => {
-  beforeEach(() => clearLoadedChunks());
+  beforeEach(() => { for (const k of [...loadedChunkSet()]) markChunkUnloaded(k); });
 
   it('a real change bumps the version; a repeat does not', () => {
     const v0 = loadedChunksVersion();
@@ -127,12 +130,12 @@ describe('the registry — Terrain\'s mounted set, versioned so the far field re
     expect(loadedChunkSet().size).toBe(0);
   });
 
-  it('clearing a non-empty set bumps the version (a save load wipes the world)', () => {
-    markChunkLoaded('1_1');
-    const v = loadedChunksVersion();
-    clearLoadedChunks();
-    expect(loadedChunkSet().size).toBe(0);
-    expect(loadedChunksVersion()).toBeGreaterThan(v);
+  it('the mask reaches past the whole far-field ring (review #3, R4.3: at 32 texels a far chunk left after a teleport sat outside it)', () => {
+    expect((LOADED_MASK_SIZE / 2) * 16, 'a mounted chunk inside the ring can fall outside the mask').toBeGreaterThanOrEqual(FAR_OUTER + 16);
+  });
+
+  it('chunkOf is the chunk a coordinate falls in — the one definition both sides of the mask use (R4.9)', () => {
+    expect([chunkOf(0), chunkOf(15.99), chunkOf(16), chunkOf(-0.01), chunkOf(-16), chunkOf(-16.01)]).toEqual([0, 0, 1, -1, -1, -2]);
   });
 });
 
@@ -140,7 +143,10 @@ describe('wired: Terrain feeds it, the far field reads it (weak, structural)', (
   it('Terrain registers mounts and unmounts, clears it on a save load, and hands it out as getGeneratedChunks', () => {
     expect(carriersOf(/markChunkLoaded\(key\);/)).toEqual(['world/Terrain.jsx']);
     expect(carriersOf(/markChunkUnloaded\(key\);/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/clearLoadedChunks\(\);/)).toEqual(['world/Terrain.jsx']);
+    // In a LAYOUT effect, so the registry changes at the commit that draws or removes the chunk, not after paint
+    // (review #3, R4.3); and no early clear — each unmount unregisters itself.
+    expect(carriersOf(/React\.useLayoutEffect\(\(\) => \{\s*if \(empty\) return undefined;/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/clearLoadedChunks/), 'an early clear is back (it ran before the unmount commit)').toEqual([]);
     expect(carriersOf(/setGetGeneratedChunks\(loadedChunkSet\)/)).toEqual(['world/Terrain.jsx']);
     expect(carriersOf(/chunksRef/), 'a second, private copy of the loaded set is back').toEqual([]);
   });
@@ -148,5 +154,7 @@ describe('wired: Terrain feeds it, the far field reads it (weak, structural)', (
   it('the far field splices the generated lookup and rebuilds the mask from the registry', () => {
     expect(carriersOf(/\$\{LOADED_MASK_GLSL\}/)).toEqual(['world/FarField.jsx']);
     expect(carriersOf(/buildLoadedMask\(loadedChunkSet\(\),/)).toEqual(['world/FarField.jsx']);
+    expect(carriersOf(/const pcx = chunkOf\(p\.x\), pcz = chunkOf\(p\.z\);/)).toEqual(['world/FarField.jsx']);
+    expect(carriersOf(/Math\.floor\(p\.[xz] \/ 16\)/), 'a literal chunk size is back on the JS side').toEqual([]);
   });
 });

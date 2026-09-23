@@ -3,7 +3,7 @@ import { bootDev, startPlay, store } from './_boot.js';
 
 // B2d — "LOAD WORLD" PERMANENTLY DESTROYS THE TERRAIN. (18-domain review, CRITICAL.)
 //
-// `load_modifications_done` wipes the live chunks (`setChunks({})` + `clearLoadedChunks()`) so the
+// `load_modifications_done` wipes the live chunks (`setChunks({})`, each ChunkMesh unregistering itself as it unmounts) so the
 // worker can re-stream them with the save's block edits applied. But the streamer's dedup bookkeeping —
 // `requestedChunks` — is NEVER cleared. Its guard is `!requestedChunks.has(key)`, so every chunk key is
 // still marked "already requested" and can never be requested again. The cull path that WOULD drain the

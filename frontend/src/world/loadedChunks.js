@@ -9,8 +9,17 @@
 // around the player, rebuilt only when the set's version or the player's chunk changes.
 const CHUNK = 16;
 
-/** Texels per side of the mask: +-16 chunks (256 m) around the player, far past the widest resident square. */
-export const LOADED_MASK_SIZE = 32;
+/**
+ * Texels per side of the mask: +-32 chunks (512 m) around the player, so it reaches past the whole far-field ring
+ * (FAR_OUTER, 420 m). At 32 (+-256 m) a chunk still mounted far away after a teleport sat outside the mask and
+ * the ring drew over it until it was culled (review #3, R4.3). 4 KB.
+ */
+export const LOADED_MASK_SIZE = 64;
+
+/** The chunk a world coordinate falls in — the ONE definition both sides of the mask use (review #3, R4.9). */
+export function chunkOf(v) {
+  return Math.floor(v / CHUNK);
+}
 
 const loaded = new Set();
 let version = 0;
@@ -23,12 +32,6 @@ export function markChunkLoaded(key) {
 
 export function markChunkUnloaded(key) {
   if (loaded.delete(key)) version++;
-}
-
-export function clearLoadedChunks() {
-  if (loaded.size === 0) return;
-  loaded.clear();
-  version++;
 }
 
 /** The live set of `${cx}_${cz}` keys. Read it; register through the functions above. */
