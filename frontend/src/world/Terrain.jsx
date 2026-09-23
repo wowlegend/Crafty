@@ -14,7 +14,10 @@ import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
 import { getInput } from '../input/inputState';
-import { moodRef, sampleMood } from '../render/mood';
+import { moodRef, sampleMood, sunDirRef } from '../render/mood';
+import { cloudShadowGlsl } from '../render/cloudField.js';
+import { aerialGlsl } from '../render/aerialPerspective.js';
+import { frameElapsed } from '../devtest/captureClock.js';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
@@ -55,6 +58,9 @@ const compileShader = (shader) => {
     // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
     // flashing a wrong colour for one frame.
     shader.uniforms.uAoFloor = { value: new THREE.Color(AO_FLOOR, AO_FLOOR, AO_FLOOR) };
+    // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (useFrame below).
+    shader.uniforms.uTime = { value: 0 };
+    shader.uniforms.uSunDir = { value: sunDirRef.current.clone() };
 
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
@@ -103,6 +109,7 @@ const compileShader = (shader) => {
         flat varying float vBlockType;
         flat varying float vBiome; // Q14 biome id from the vertex stage
         ${TINT_GLSL.decl}
+        ${CLOUD_SHADOW_GLSL.decl}
         varying float vWorldY;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
@@ -174,6 +181,16 @@ const compileShader = (shader) => {
         `
     );
 
+    // CLOUD SHADOWS (EXTERNAL-BASELINE #5; render/cloudField.js cloudShadowGlsl). Right after the lights are
+    // summed and before they are combined: only the DIRECT terms are dimmed, so ambient and sky bounce stay.
+    shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <lights_fragment_end>',
+        `
+        #include <lights_fragment_end>
+        ${CLOUD_SHADOW_GLSL.apply}
+        `
+    );
+
     shader.fragmentShader = shader.fragmentShader.replace(
         '#include <opaque_fragment>',
         `
@@ -188,10 +205,8 @@ const compileShader = (shader) => {
         // desaturation -> capture-deterministic (camera pinned in capture; skyHorizon snaps with mood). Tunables:
         // the 38->165 distance band + the 0.22 desat / 0.55 haze strengths (eyeball explore/hearth/landmark).
         // Same always-true water guard removed here — see the vertex-dither block above.
-        float aerial = smoothstep(38.0, 165.0, length(vViewPosition));
-        float alum = dot(gl_FragColor.rgb, vec3(0.299, 0.587, 0.114));
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(alum), aerial * 0.22);
-        gl_FragColor.rgb = mix(gl_FragColor.rgb, skyHorizon, aerial * 0.55);
+        // The arithmetic lives in render/aerialPerspective.js — the far field hazes by the SAME lines.
+        ${AERIAL_GLSL}
         `
     );
 };
@@ -224,6 +239,8 @@ const biomeTintUniform = BIOME_TINT; // the one table the grass blades also read
 // OWN depth — neither is a literal that can fall out of step with the data it indexes.
 const TEX_LAYERS = voxelTextures.image.depth;
 const TINT_GLSL = biomeTintGlsl(undefined, TEX_LAYERS);
+const CLOUD_SHADOW_GLSL = cloudShadowGlsl(); // the same field the sky dome draws (render/skyDome.js)
+const AERIAL_GLSL = aerialGlsl(); // shared with the far field (world/FarField.jsx)
 const biomeTintMaskUniform = biomeTintMask(TEX_LAYERS);
 
 opaqueMaterial.onBeforeCompile = (shader) => {
@@ -599,7 +616,7 @@ export const MinecraftWorld = React.memo(() => {
     // Update shared terrain shader uniforms (the surviving LAND grade: danger-mood + aerial haze).
     // W2: the water clock (time/timeOfDay) is gone — Ocean.jsx owns the animated surface + its own
     // capture-frozen wave time now, so the land material has no time-varying term.
-    useFrame(() => {
+    useFrame((state) => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
         const sampled = sampleMood(mood); // shared scratch -> read/copy now, never retain
         const sky = sampled.skyHorizon;   // S2 aerial haze target
@@ -612,6 +629,9 @@ export const MinecraftWorld = React.memo(() => {
             // the hue, so this shifts colour across the day without changing how dark a crevice is.
             const ao = aoFloorColor([sampled.skyMid.r, sampled.skyMid.g, sampled.skyMid.b]);
             opaqueShader.uniforms.uAoFloor.value.setRGB(ao[0], ao[1], ao[2]);
+            // Cloud shadows: the sky dome's clock (the capture clock under capture) and the sun Atmosphere resolved.
+            opaqueShader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);
+            opaqueShader.uniforms.uSunDir.value.copy(sunDirRef.current);
         }
     });
 

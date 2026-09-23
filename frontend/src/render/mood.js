@@ -10,6 +10,11 @@ import { PALETTE } from '../theme/tokens.js';
 // frame; src/world/Terrain.jsx reads it to drive the terrain `mood`/`timeOfDay`.
 export const moodRef = { current: 0 };
 
+// The sun direction <Atmosphere> resolved this frame (mood, day arc, the capture pin — all of it). Written
+// there, once per frame; read by anything that must agree with the sky's sun, such as the terrain's cloud
+// shadows. Re-deriving it elsewhere would duplicate the arc and the capture pin, and drift from them.
+export const sunDirRef = { current: new THREE.Vector3(0.3, 0.6, 0.3).normalize() };
+
 const STATES = ['explore', 'dusk', 'obsidian']; // index === integer mood
 
 // Per-state lighting scalars (tunable). Colours are sourced from tokens.PALETTE.
