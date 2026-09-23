@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { findLocalPath, clampMove, STEP_UP, GRID, CLIMBERS, gridOrigin, settleOnGround } from '../../src/game/localPath.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { carriersOf } from './_srcWalk.js';
+import { drainKnockback } from '../../src/game/captureRest.js';
 
 /**
  * MOBS RESPECT WALLS (QUEUE P1; plan 2026-09-23-crafty-mob-wall-collision).
@@ -25,6 +26,10 @@ import { carriersOf } from './_srcWalk.js';
  *   F4 AIWorkerSystem frames its grid with round() again
  *   G1 settleOnGround ignores the step rule (the snap lifts any mover again)   G2 plausible-wrong: it refuses the
  *      move but still writes the wall-top y   G3 AIWorkerSystem snaps directly again (structural)
+ *   (review #5:) H1 plausible-wrong: the corner rule checks only the climb INTO the orthogonal (the trench cut)
+ *   H2 a refused mover keeps walking (isMoving not cleared)   H3 plausible-wrong: the own-column rise refused too
+ *   H4 the shove ignores walls (the original R6.2)   H5 plausible-wrong: the shove checked only at its END
+ *   H6 AIWorkerSystem drains without the probe (structural)
  *   R57 the blocked-stop removed (a zombie at the wall walks in place) — SURVIVED the first time: nothing
  *      asserted isMoving; the unbroken-wall case now does. R57b plausible-wrong: "stopped" = moved exactly zero
  *      (the first fix — a zombie pressed into the wall at a shallow angle creeps millimetres and kept walking)
@@ -87,6 +92,18 @@ describe('findLocalPath — around a wall when it can, as close as it can get wh
       }
     }
     expect(p[p.length - 1], 'no path around the corner at all').toEqual([6, 6]);
+  });
+
+  it('no cutting a corner past a TRENCH either — the climb out of it is the wall (review #5, R6.1)', () => {
+    // Current 50, orthogonals (5,4) and (4,5) are 3-deep trenches at 47, the diagonal (5,5) at 50: stepping
+    // (4,4) -> (5,5) sweeps through a trench and must climb 3 blocks out of it — clampMove refuses that.
+    const g = grid(50);
+    g[4 * GRID + 5] = 47; g[5 * GRID + 4] = 47;
+    const p = findLocalPath(g, 4, 4, 6, 6);
+    for (let i = 1; i < p.length; i++) {
+      const [ax, az] = p[i - 1], [bx, bz] = p[i];
+      if (ax === 4 && az === 4) expect([bx, bz], 'the path cut the corner past the trench').not.toEqual([5, 5]);
+    }
   });
 
   it('boxed in on every side, there is nowhere to go: null', () => {
@@ -197,9 +214,44 @@ describe('settleOnGround — the snap every mover passes through refuses a climb
     const s = at(0, 0); settleOnGround(s, 50, true);
     s.position.x = 1; expect(settleOnGround(s, 60, true)).toBe(false);
   });
+  it('a refused mover STOPS (isMoving off, a wanderer re-rolls) instead of walking into the wall every tick (review #5, R6.3)', () => {
+    const e = { ...at(0, 0), isMoving: true, moveTimer: 3 }; settleOnGround(e, 50);
+    e.position.x = 1;
+    expect(settleOnGround(e, 53)).toBe(true);
+    expect(e.isMoving).toBe(false);
+    expect(e.moveTimer, 'a wanderer keeps its old heading into the wall until the timer runs out').toBe(0);
+  });
+  it('blocks placed on the mob\'s OWN column lift it rather than embedding it forever (review #5, R6.4)', () => {
+    const e = at(0.3, 0); settleOnGround(e, 50);
+    expect(settleOnGround(e, 52)).toBe(false); // same column, now 2 higher: a build footprint on the mob
+    expect(e.position.y).toBe(52.5);
+  });
   it('AIWorkerSystem snaps through it (weak, structural)', () => {
     expect(carriersOf(/settleOnGround\(entity, groundY, CLIMBERS\.has\(entity\.type\)\);/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/entity\.position\.y = groundY \+ 0\.5;/), 'an unchecked top-surface snap is back').toEqual([]);
+  });
+});
+
+describe('a knockback shove respects walls where it happens (review #5, R6.2/R6.8)', () => {
+  const wallAt5 = (x) => (Math.floor(x + 0.1) === 5 ? GROUND + 3 : GROUND);
+  const shoved = (type, x, kx) => ({ type, health: 10, position: { x, y: GROUND + 0.5, z: 0 }, knockback: [kx, 0, 0] });
+  it('a multi-block shove across a ONE-column wall stops at the wall — it does not land on the far side', () => {
+    const e = shoved('zombie', 4.2, 10); // 10 * 0.1 s * 4 = a 4 m shove on a long frame: to x 8.2, past the wall
+    drainKnockback([e], 0.1, false, (x) => wallAt5(x));
+    expect(e.position.x, `the shove crossed the wall to x ${e.position.x.toFixed(2)}`).toBeLessThan(4.9);
+    expect(e.position.x, 'the shove did not move it at all').toBeGreaterThan(4.2);
+  });
+  it('open ground takes the whole shove; a climber takes it through the wall; no probe = the old free shove', () => {
+    const open = shoved('zombie', 10, 5); drainKnockback([open], 0.1, false, () => GROUND);
+    expect(open.position.x).toBeCloseTo(12, 9);
+    const spider = shoved('spider', 4.2, 10); drainKnockback([spider], 0.1, false, (x) => wallAt5(x));
+    expect(spider.position.x).toBeCloseTo(8.2, 9);
+    const noProbe = shoved('zombie', 4.2, 10); drainKnockback([noProbe], 0.1, false);
+    expect(noProbe.position.x).toBeCloseTo(8.2, 9);
+  });
+  it('AIWorkerSystem drains with the live ground probe (weak, structural)', () => {
+    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, delta, false, useGameStore\.getState\(\)\.getMobGroundLevel\)/))
+      .toEqual(['systems/AIWorkerSystem.jsx']);
   });
 });
 

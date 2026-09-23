@@ -190,7 +190,7 @@ export const AIWorkerSystem = () => {
     // full by whichever frame drains it — draining it at a frozen scale would spend it at zero length and
     // the hit would never shove. So a frozen frame HOLDS it, and it lands the frame the freeze ends: the
     // blow connects, the world holds its breath, then the mob flies.
-    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false);
+    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false, useGameStore.getState().getMobGroundLevel);
 
     // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
     // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the

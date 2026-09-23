@@ -9,6 +9,8 @@
 // Pure functions, no React and no THREE import: they take the objects and mutate them, so a unit test can
 // drive them with real `THREE.Object3D`s — or plain stubs — and assert the resulting numbers.
 
+import { STEP_UP, CLIMBERS } from './localPath.js';
+
 /**
  * The dragon's declared rest pose. `rotation` is the part that was MISSING: the old capture branch reset
  * the wings and the position and left `rotation` alone, while the flight loop writes `rotation.y` (turn)
@@ -47,6 +49,20 @@ export function bossCaptureReset(refs, spawnPos) {
   return n;
 }
 
+/** Walk `pos` toward (tx, tz) in sub-steps, stopping before any column that rises more than STEP_UP. */
+function shoveAgainstWalls(pos, tx, tz, groundAt) {
+  const dx = tx - pos.x, dz = tz - pos.z;
+  const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.5));
+  let here = groundAt(pos.x, pos.z);
+  for (let i = 0; i < n; i++) {
+    const nx = pos.x + dx / n, nz = pos.z + dz / n;
+    const next = groundAt(nx, nz);
+    if (here != null && next != null && !Number.isNaN(here) && !Number.isNaN(next) && next - here > STEP_UP) return;
+    pos.x = nx; pos.z = nz;
+    if (next != null && !Number.isNaN(next)) here = next;
+  }
+}
+
 /**
  * Drain pending knockback impulses.
  *
@@ -56,19 +72,28 @@ export function bossCaptureReset(refs, spawnPos) {
  * then fired on the way out. Whether any entity carries one at capture time is a race, which is precisely
  * the run-dependence the guard was meant to remove.
  *
+ * A SHOVE RESPECTS WALLS (review #5, R6.2/R6.8). A long frame makes one shove several blocks long, and it used to
+ * land wherever it pointed — through a one-block wall onto the ground beyond, which the 15 Hz ground snap accepts
+ * because it compares only where the mob ENDS. So when a ground probe is given, the shove is walked in sub-steps
+ * under a cell and stops before the first column more than STEP_UP above the one it is leaving — the same rule
+ * the AI's own moves obey (game/localPath.js). Climbers are shoved freely.
+ *
  * @param {Iterable<object>} entities
  * @param {number} delta  seconds since the last frame
  * @param {boolean} capture  true to clear without moving
+ * @param {(x:number, z:number) => number|null} [groundAt]  the mob ground probe (top of the column), optional
  * @returns {number} eligible entities drained — the DENOMINATOR, so "nothing moved" can be told apart
  *                   from "nothing was looked at"
  */
-export function drainKnockback(entities, delta, capture) {
+export function drainKnockback(entities, delta, capture, groundAt = null) {
   let drained = 0;
   for (const e of entities || []) {
     if (!e || e.health <= 0 || e.isStatic || !e.knockback) continue;
     if (!capture) {
-      e.position.x += e.knockback[0] * delta * 4;
-      e.position.z += e.knockback[2] * delta * 4;
+      const tx = e.position.x + e.knockback[0] * delta * 4;
+      const tz = e.position.z + e.knockback[2] * delta * 4;
+      if (groundAt && !CLIMBERS.has(e.type)) shoveAgainstWalls(e.position, tx, tz, groundAt);
+      else { e.position.x = tx; e.position.z = tz; }
       e.snapSync = true; // MobModel exact-copies this frame so the shove reads instant, not damped
     }
     e.knockback = null;

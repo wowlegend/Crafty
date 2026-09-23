@@ -40,6 +40,11 @@ export const CLIMBERS = new Set(['spider']);
 /** Longest sub-step clampMove checks, in metres: under a cell, so a fast move cannot jump a 1-block wall. */
 const SUBSTEP = 0.5;
 
+/** Can a diagonal's swept path pass through an orthogonal cell of height `ho` from `hFrom` to `hTo`? */
+function cornerOk(hFrom, ho, hTo) {
+  return ho - hFrom <= STEP_UP && hTo - ho <= STEP_UP;
+}
+
 /**
  * A* on the local grid from (sx, sz) to (ex, ez). Returns the cell path (start first) to the goal, or — when the
  * goal cannot be reached — to the reached cell nearest it (octile distance, then fewest steps); null when no
@@ -82,10 +87,12 @@ export function findLocalPath(heightGrid, sx, sz, ex, ez) {
       if (closedSet.has(nIdx)) continue;
       const heightDiff = heightGrid[nIdx] - ch;
       if (heightDiff > STEP_UP) continue; // a wall: walked around, never stepped up
-      // No cutting a corner (review #4, R5.2): a diagonal step needs BOTH orthogonal neighbours passable, or the
-      // mover (clampMove, which checks the real swept path) refuses it and the mob wedges at the gap forever.
-      if (dx !== 0 && dz !== 0
-        && (heightGrid[nx + currNode.z * GRID] - ch > STEP_UP || heightGrid[currNode.x + nz * GRID] - ch > STEP_UP)) continue;
+      // No cutting a corner (review #4 R5.2, review #5 R6.1): a diagonal sweeps through one of its two orthogonal
+      // cells, so BOTH legs of each — into the orthogonal, and out of it to the target — must be climbable, or the
+      // mover (clampMove, which checks the real swept path) refuses it and the mob wedges at the corner forever.
+      // A wall beside the corner fails the first leg; a trench beside it fails the second.
+      if (dx !== 0 && dz !== 0 && (!cornerOk(ch, heightGrid[nx + currNode.z * GRID], heightGrid[nIdx])
+        || !cornerOk(ch, heightGrid[currNode.x + nz * GRID], heightGrid[nIdx]))) continue;
       // Diagonal cost is sqrt(2); a deep drop adds a caution penalty.
       const gScore = currNode.g + (dx !== 0 && dz !== 0 ? DIAG_COST : 1.0) + (heightDiff < -2.0 ? 1.5 : 0.0);
       if (!nodeData[nIdx] || gScore < nodeData[nIdx].g) {
@@ -138,9 +145,17 @@ export function clampMove(heightGrid, fromX, fromZ, toX, toZ, climber = false) {
  */
 export function settleOnGround(e, groundY, climber = false) {
   const feet = e.position.y - 0.5;
-  if (!climber && e.footX !== undefined && groundY - feet > STEP_UP) {
+  // Blocks placed on the column the mob ALREADY stands on (a build footprint) lift it: refusing would rewind it
+  // to the same spot forever, embedded in the new blocks (review #5, R6.4).
+  const sameColumn = e.footX !== undefined
+    && Math.floor(e.position.x + 0.1) === Math.floor(e.footX + 0.1) && Math.floor(e.position.z + 0.1) === Math.floor(e.footZ + 0.1);
+  if (!climber && e.footX !== undefined && !sameColumn && groundY - feet > STEP_UP) {
     e.position.x = e.footX;
     e.position.z = e.footZ;
+    // And it STOPS: a refused mover kept walking into the wall every tick, and a wanderer kept its heading until
+    // its timer ran out. isMoving and moveTimer round-trip to the worker, which re-rolls a wander at once (R6.3).
+    e.isMoving = false;
+    e.moveTimer = 0;
     return true;
   }
   e.position.y = groundY + 0.5;
