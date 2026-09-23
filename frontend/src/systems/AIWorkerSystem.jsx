@@ -5,6 +5,7 @@ import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 import { gridOrigin, settleOnGround, CLIMBERS } from '../game/localPath.js';
+import { strikesToApply } from '../game/perfectDodge.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -52,8 +53,9 @@ export const AIWorkerSystem = () => {
       if (type === 'TICK_RESULT') {
         const store = useGameStore.getState();
 
-        // Handle attacks
-        for (const attack of attacks) {
+        // Handle attacks — minus any from a mob the player's perfect dodge staggered after this reply was computed.
+        const byId = (id) => mobsQuery.entities.find((ent) => ent.id === id);
+        for (const attack of strikesToApply(attacks, byId, worldNow())) {
           if (attack.type === 'projectile') {
             // Phase 12: Archer System - Spawn Arrow
             if (store.spawnEnemyProjectile) {

@@ -20,6 +20,7 @@ import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
 import { findLocalPath, clampMove, CLIMBERS, gridOrigin, cellOf, cellCentre } from '../game/localPath.js';
+import { isStaggered } from '../game/perfectDodge.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
@@ -91,6 +92,7 @@ self.onmessage = function(e) {
         chargeX = 0, chargeZ = 0, chargeAt = 0, chargeReadyAt = 0,
       } = entity;
       let charging = false; // the shoulder charge is under way this tick (game/mobMovement.js)
+      const staggered = isStaggered(entity, now);
       let pendingAttack = null; // M2 #4: what this mob WOULD strike this tick (gated through the windup below)
       
       const dx = playerX - x;
@@ -258,6 +260,9 @@ self.onmessage = function(e) {
         // M2 #4 attack telegraph — now the IMPORTED game/attackTelegraph.js state machine, not a copy of
         // it. Defers the strike behind a ~380ms windup and re-evaluates intent at strike time, so dodging
         // out of range during the windup whiffs the attack (the readability + fairness win).
+        // PERFECT DODGE (game/perfectDodge.js): a staggered mob neither strikes nor winds up — the main thread
+        // stamps staggerUntil (world clock, the same `now`) when the player dodges into its strike.
+        if (staggered) { pendingAttack = null; windupUntil = 0; }
         const phase = attackPhase(now, windupUntil, !!pendingAttack);
         windupUntil = phase.windupUntil;
         if (phase.action === 'strike') { attacks.push(pendingAttack); lastAttackTime = now; }
@@ -311,6 +316,8 @@ self.onmessage = function(e) {
         }
       }
       
+      if (staggered) isMoving = false; // reeling: it does not advance while staggered
+
       // --- Step 4: Velocity Interpolation & Angle Rotation System ---
       if (isMoving) {
         const tdx = targetX - x;

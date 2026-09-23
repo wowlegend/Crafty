@@ -38,6 +38,7 @@ export function buildMobPayload(e, { speed, heightGrid }) {
     isAggro: e.isAggro,
     lastAttackTime: e.lastAttackTime,
     windupUntil: e.windupUntil || 0,
+    staggerUntil: e.staggerUntil || 0, // MAIN-thread-owned (the perfect dodge stamps it); the worker only reads it
     moveTimer: e.moveTimer,
     wanderRoll: e.wanderRoll || 0,
     isCoverSeeking: !!e.isCoverSeeking,
