@@ -25,6 +25,9 @@ import { verdict, readBaseCi, OBSERVED } from '../../scripts/ci/e2e-freshness.mj
  *      breaks when GitHub is unreachable teaches --no-verify; R5 says choose and say which)
  *   M4 zero-file walk returns 0 instead of 3                  -> control case RED
  *   M5 readBaseCi rethrows instead of degrading to unknown    -> degrade case RED
+ *   M6 plausible-wrong: the RUN conclusion again (the 8202ec59 false refusal) -> non-e2e-red case RED
+ *   M7 plausible-wrong: one green shard makes the base green   -> any-shard case RED
+ *   M8 no e2e job observed reads as green                     -> no-job case RED
  */
 const CUR = { id: 'abc', files: 468 };
 
@@ -48,7 +51,7 @@ describe('e2e-freshness verdict', () => {
   it('TIER 2: refuses to STACK an unverified change onto a base CI called RED', () => {
     const v = verdict(CUR, null, { state: 'failure', sha: '1234567' });
     expect(v.code).toBe(1);
-    expect(v.line).toMatch(/BASE is RED/);
+    expect(v.line).toMatch(/BASE's e2e is RED/);
     expect(v.line).toMatch(/1234567/); // names WHICH run, so the claim is checkable
   });
 
@@ -69,8 +72,39 @@ describe('e2e-freshness verdict', () => {
 
   it('readBaseCi degrades to unknown instead of throwing into the push path', () => {
     expect(readBaseCi(() => { throw new Error('gh: command not found'); })).toEqual({ state: null });
-    expect(readBaseCi(() => 'null null')).toEqual({ state: null });
-    expect(readBaseCi(() => 'success abc1234')).toEqual({ state: 'success', sha: 'abc1234' });
+    expect(readBaseCi(() => 'null null null')).toEqual({ state: null });
     expect(OBSERVED.length).toBeGreaterThan(0); // R3a — the observed set must not be empty
+  });
+});
+
+// THE BASE STATE IS THE E2E VERDICT, NOT THE RUN'S. 2026-09-22: CI went red on 8202ec59 because knip flagged
+// two OS binaries; all three e2e shards on that run PASSED. The gate read the RUN conclusion, called the
+// base's e2e red, and refused a one-line knip fix unless 20 minutes of e2e were re-run locally on a loaded
+// machine — for a tree whose src/ and tests/e2e/ CI had just passed. A knip failure cannot hide an e2e
+// regression (they are separate jobs with separate conclusions); only a red E2E job can.
+describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
+  // A fake gh: the run list answers with id/conclusion/sha, the job query with the e2e jobs' conclusions.
+  const gh = (run, e2eJobs) => (cmd) => (cmd.includes('run list') ? run : cmd.includes('run view') ? e2eJobs : '');
+
+  it('a run red on a NON-e2e job, with every e2e shard green, is an e2e-green base', () => {
+    expect(readBaseCi(gh('35801779905 failure 8202ec5', 'success success success')))
+      .toEqual({ state: 'success', sha: '8202ec5', run: 'failure' });
+  });
+
+  it('any e2e shard red makes the base red', () => {
+    expect(readBaseCi(gh('1 failure abc1234', 'success failure success')).state).toBe('failure');
+  });
+
+  it('a run with NO e2e job observed is unknown (fail open), never green', () => {
+    expect(readBaseCi(gh('1 success abc1234', '')).state).toBe(null);
+  });
+
+  it('a cancelled e2e shard is unknown, not a verdict', () => {
+    expect(readBaseCi(gh('1 cancelled abc1234', 'success cancelled success')).state).toBe(null);
+  });
+
+  it('the refusal still fires for a base whose e2e is red', () => {
+    const v = verdict(CUR, null, readBaseCi(gh('1 failure 1234567', 'failure success success')));
+    expect(v.code).toBe(1);
   });
 });

@@ -129,7 +129,7 @@ export function verdict(current, stamp, base = { state: null }) {
     return {
       code: 1,
       line:
-        `e2e-freshness: the push BASE is RED on CI${base.sha ? ` (${base.sha})` : ''}, and this tree has no local green receipt.\n` +
+        `e2e-freshness: the push BASE's e2e is RED on CI${base.sha ? ` (${base.sha})` : ''}, and this tree has no local green receipt.\n` +
         '  Stacking an unverified change onto a known-broken base is how a regression goes missing: the\n' +
         '  next red run gets attributed to the breakage already there. Fix the base, or record a local\n' +
         '  green for this tree:\n' +
@@ -138,7 +138,8 @@ export function verdict(current, stamp, base = { state: null }) {
   }
 
   // TIER 3 — allow, and say plainly what is and is not known.
-  const why = base && base.state === 'success' ? `base CI is green${base.sha ? ` (${base.sha})` : ''}`
+  const runNote = base && base.run && base.run !== base.state ? `; the run itself concluded ${base.run}, on a non-e2e job` : '';
+  const why = base && base.state === 'success' ? `base CI e2e is green${base.sha ? ` (${base.sha})` : ''}${runNote}`
     : 'base CI state UNKNOWN (no gh, no network, or no runs yet) — failing OPEN by design';
   return {
     code: 0,
@@ -151,14 +152,30 @@ export function verdict(current, stamp, base = { state: null }) {
   };
 }
 
-/** Read the push base's CI conclusion. Network + gh, so it is isolated here and always degrades to
- *  `{state:null}` — never throws into the push path. */
+/**
+ * Read the push base's E2E verdict — the conclusions of the base run's e2e JOBS, not the run's.
+ *
+ * The run's conclusion was read here until 2026-09-22, when a run red on knip alone (two OS binaries
+ * flagged; all three e2e shards green) made this gate refuse a one-line knip fix unless 20 minutes of e2e
+ * were re-run locally. A knip, lint or build failure cannot hide an e2e regression — those are separate
+ * jobs with separate conclusions — so the stacking rule's question is only ever the e2e jobs' answer.
+ *   - every e2e job 'success'       -> 'success'
+ *   - any e2e job 'failure'         -> 'failure'
+ *   - none observed, or any other   -> null (unknown; fail open, loudly — a cancelled shard is no verdict)
+ * `run` carries the run's own conclusion so the printed line can say what it was.
+ * Network + gh, so it is isolated here and always degrades to `{state:null}` — never throws into the push path.
+ */
 export function readBaseCi(exec) {
   try {
-    const out = exec('gh run list --workflow=ci.yml --branch main --limit 1 --json conclusion,headSha --jq \'.[0] | "\\(.conclusion) \\(.headSha[0:7])"\'');
-    const [conclusion, sha] = String(out).trim().split(/\s+/);
-    if (!conclusion || conclusion === 'null') return { state: null };
-    return { state: conclusion, sha };
+    const out = exec('gh run list --workflow=ci.yml --branch main --limit 1 --json databaseId,conclusion,headSha --jq \'.[0] | "\\(.databaseId) \\(.conclusion) \\(.headSha[0:7])"\'');
+    const [id, run, sha] = String(out).trim().split(/\s+/);
+    if (!id || id === 'null' || !run || run === 'null') return { state: null };
+    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | .conclusion] | join(" ")'`);
+    const e2e = String(jobs).trim().split(/\s+/).filter(Boolean);
+    let state = null;
+    if (e2e.includes('failure')) state = 'failure';
+    else if (e2e.length > 0 && e2e.every((c) => c === 'success')) state = 'success';
+    return { state, sha, run };
   } catch {
     return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
   }
