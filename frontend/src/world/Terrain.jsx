@@ -14,7 +14,7 @@ import { createProceduralVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
 import { getInput } from '../input/inputState';
-import { moodRef, sampleMood, sunDirRef } from '../render/mood';
+import { moodRef, sampleMood, sunDirRef, cloudCoverRef } from '../render/mood';
 import { cloudShadowGlsl } from '../render/cloudField.js';
 import { aerialGlsl } from '../render/aerialPerspective.js';
 import { frameElapsed } from '../devtest/captureClock.js';
@@ -61,6 +61,7 @@ const compileShader = (shader) => {
     // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (useFrame below).
     shader.uniforms.uTime = { value: 0 };
     shader.uniforms.uSunDir = { value: sunDirRef.current.clone() };
+    shader.uniforms.uCloudCover = { value: cloudCoverRef.current };
 
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
@@ -632,6 +633,7 @@ export const MinecraftWorld = React.memo(() => {
             // Cloud shadows: the sky dome's clock (the capture clock under capture) and the sun Atmosphere resolved.
             opaqueShader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);
             opaqueShader.uniforms.uSunDir.value.copy(sunDirRef.current);
+            opaqueShader.uniforms.uCloudCover.value = cloudCoverRef.current;
         }
     });
 

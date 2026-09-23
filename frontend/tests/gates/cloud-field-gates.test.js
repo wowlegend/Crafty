@@ -42,6 +42,9 @@ import { carriersOf } from './_srcWalk.js';
  *   M19 Terrain: the injection spliced nowhere                           -> structural RED
  *   M20 skyDome: cloud cover ignored in the composite                     -> studio-reset RED
  *   M21 Atmosphere: the studio cards not reset to 0                       -> studio-reset RED (structural)
+ *   M22 the terrain shadow ignores the sky's cover (review)               -> no-shadow-without-cloud RED
+ *   M23 no sun-elevation fade (review: a grazing sun samples ~3,400 m away) -> low-sun RED
+ *   M24 Terrain never reads the cover                                     -> structural RED
  *
  * BLIND SPOT: the GLSL is not compiled here — only a browser does that (the capture). How the clouds and
  * their shadows LOOK is judged from the captured frames. Atmosphere's and Terrain's per-frame writes are
@@ -170,6 +173,20 @@ describe('cloud shadows on the terrain — the sun\'s light only', () => {
     expect(g.apply).toMatch(/reflectedLight\.directSpecular \*= cloudShade;/);
     expect(g.apply, 'shadowing the albedo darkens caves and the shaded side too').not.toMatch(/diffuseColor/);
     expect(g.apply, 'shadowing the indirect light darkens what the sun never reached').not.toMatch(/indirect/);
+  });
+
+  it('no shadow without its cloud: the terrain obeys the SAME cover the sky does (review 2026-09-22)', () => {
+    // The studio cards zero the sky's cover; a shadow that ignored it would drift over ground under a clear sky.
+    expect(g.decl).toMatch(/uniform float uCloudCover;/);
+    expect(g.apply).toMatch(/cloudDensity\([^;]*\) \* uCloudCover/);
+    expect(carriersOf(/uniforms\.uCloudCover\.value = cloudCoverRef\.current/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/cloudCoverRef\.current = u\.uCloudCover\.value/)).toEqual(['render/Atmosphere.jsx']);
+  });
+
+  it('the shadow fades as the sun nears the horizon, instead of sampling a cloud thousands of metres away', () => {
+    // cloudPlane clamps the ray's y to 0.05, so a set or grazing sun samples ~3,400 m along its azimuth —
+    // a cloud neither the player nor the light has anything to do with.
+    expect(g.apply).toMatch(/smoothstep\(0\.05, 0\.25, normalize\(uSunDir\)\.y\)/);
   });
 
   it('the strength lands in the GLSL by value, and a driven strength moves it', () => {

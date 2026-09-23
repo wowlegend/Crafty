@@ -67,9 +67,12 @@ export function cloudTint(m, out) {
  */
 export function cloudShadowGlsl(strength = CLOUD_SHADOW_STRENGTH, p = CLOUD_PARAMS) {
   return {
-    decl: ['uniform float uTime;', 'uniform vec3 uSunDir;', cloudGlsl(p)].join('\n'),
+    decl: ['uniform float uTime;', 'uniform vec3 uSunDir;', 'uniform float uCloudCover;', cloudGlsl(p)].join('\n'),
     apply: [
-      `float cloudShade = 1.0 - ${f(strength)} * cloudDensity(cloudPlane(vWorldPos, normalize(uSunDir), uTime));`,
+      // x uCloudCover: no shadow where the sky shows no cloud (the same cover the dome uses).
+      // x the sun's elevation: cloudPlane clamps a grazing ray's y to 0.05, which samples a cloud thousands
+      // of metres away along a set sun's azimuth; the shadow fades out before that instead.
+      `float cloudShade = 1.0 - ${f(strength)} * cloudDensity(cloudPlane(vWorldPos, normalize(uSunDir), uTime)) * uCloudCover * smoothstep(0.05, 0.25, normalize(uSunDir).y);`,
       'reflectedLight.directDiffuse *= cloudShade;',
       'reflectedLight.directSpecular *= cloudShade;',
     ].join('\n'),

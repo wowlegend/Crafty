@@ -14,6 +14,9 @@ export const moodRef = { current: 0 };
 // there, once per frame; read by anything that must agree with the sky's sun, such as the terrain's cloud
 // shadows. Re-deriving it elsewhere would duplicate the arc and the capture pin, and drift from them.
 export const sunDirRef = { current: new THREE.Vector3(0.3, 0.6, 0.3).normalize() };
+// The cloud cover <Atmosphere> set this frame (0..1; 0 for the sky-studio cards). The terrain's cloud shadows
+// read it so there is never a shadow under a sky with no cloud in it.
+export const cloudCoverRef = { current: 1 };
 
 const STATES = ['explore', 'dusk', 'obsidian']; // index === integer mood
 

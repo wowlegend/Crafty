@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { cycleFraction } from '../game/dayPhase.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { isCaptureMode } from '../devtest/captureMode.js';
-import { moodRef, moodTarget, sampleMood, sunDirRef } from './mood.js';
+import { moodRef, moodTarget, sampleMood, sunDirRef, cloudCoverRef } from './mood.js';
 import { starIntensity } from './nightSky.js';
 import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
@@ -264,6 +264,7 @@ export function Atmosphere({ shadowConfig }) {
       // The sky-studio subject cards sit ~74 m under the cloud plane, where clouds loom behind the subject:
       // a declared reset for those cards only (the same call LightMotes makes), never an early return.
       u.uCloudCover.value = st.captureStudio ? 0 : 1;
+      cloudCoverRef.current = u.uCloudCover.value; // the terrain's shadows obey the same cover
     }
 
     if (ambientRef.current) {
