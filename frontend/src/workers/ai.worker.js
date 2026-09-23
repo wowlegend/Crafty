@@ -19,7 +19,7 @@ import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
-import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from '../game/aStarNeighbors.js';
+import { findLocalPath, clampMove, CLIMBERS } from '../game/localPath.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
@@ -27,94 +27,7 @@ import { archetypeFor } from '../game/mobArchetypes.js';
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
 // its own module realm, so isCaptureMode() would read a separate binding that is permanently false.
 
-// A* Voxel Pathfinding Solver on a 9x9 Local Grid
-// startX, startZ are the local starting grid coords (typically 4, 4)
-// endX, endZ are the local target grid coords clamped to [0, 8]
-function findAStarPath(heightGrid, startX, startZ, endX, endZ) {
-  const cols = 9;
-  const rows = 9;
-  
-  const openSet = [];
-  const closedSet = new Set();
-  
-  const startIdx = startX + startZ * cols;
-  const endIdx = endX + endZ * cols;
-  
-  const nodeData = {};
-  nodeData[startIdx] = { 
-    g: 0, 
-    f: octileHeuristic(startX, startZ, endX, endZ), 
-    parent: null, 
-    x: startX, 
-    z: startZ 
-  };
-  
-  openSet.push(startIdx);
-  
-  let iterations = 0;
-  // Safety cap to prevent worker stalls (9x9 grid completes in very few steps)
-  while (openSet.length > 0 && iterations++ < 120) {
-    // Sort openSet by f score
-    openSet.sort((a, b) => nodeData[a].f - nodeData[b].f);
-    const currentIdx = openSet.shift();
-    
-    if (currentIdx === endIdx) {
-      // Path found! Reconstruct
-      const path = [];
-      let curr = currentIdx;
-      while (curr !== null) {
-        path.push([nodeData[curr].x, nodeData[curr].z]);
-        curr = nodeData[curr].parent;
-      }
-      path.reverse();
-      return path;
-    }
-    
-    closedSet.add(currentIdx);
-    const currNode = nodeData[currentIdx];
-    const cx = currNode.x;
-    const cz = currNode.z;
-    const ch = heightGrid[currentIdx];
-    
-    // The neighbour table is MODULE-LEVEL (NEIGHBOR_OFFSETS). It used to be built here, inside the A*
-    // expansion loop: nine fresh arrays -- the outer literal plus eight pairs -- per expanded node, per
-    // aggro mob, at 15 Hz. The values are constant, so every one of those was allocated to hold the same
-    // eight numbers it held last time.
-    for (const [dx, dz] of NEIGHBOR_OFFSETS) {
-      const nx = cx + dx;
-      const nz = cz + dz;
-      if (nx < 0 || nx >= cols || nz < 0 || nz >= rows) continue;
-      
-      const nIdx = nx + nz * cols;
-      if (closedSet.has(nIdx)) continue;
-      
-      const nh = heightGrid[nIdx];
-      const heightDiff = nh - ch;
-      
-      // Voxel navigation rules:
-      // 1. Impassable walls: Steeper than 1.25 blocks up cannot be scaled.
-      if (heightDiff > 1.25) continue;
-      
-      // 2. Slopes & Heights: Flat step cost + slope scale. 
-      // Diagonal cost is sqrt(2). Deep drops add vertical caution penalty.
-      const stepCost = (dx !== 0 && dz !== 0 ? DIAG_COST : 1.0) + (heightDiff < -2.0 ? 1.5 : 0.0);
-      const gScore = currNode.g + stepCost;
-      
-      if (!nodeData[nIdx] || gScore < nodeData[nIdx].g) {
-        nodeData[nIdx] = {
-          g: gScore,
-          f: gScore + octileHeuristic(nx, nz, endX, endZ),
-          parent: currentIdx,
-          x: nx,
-          z: nz
-        };
-        if (!openSet.includes(nIdx)) {
-          openSet.push(nIdx);
-        }
-      }
-    }
-  }
-}
+// The local 9x9 A* lives in game/localPath.js (findLocalPath), with the step rule Step 4 enforces (QUEUE P1).
 
 // 2D Line-Of-Sight height check on a local 9x9 height grid
 // hasLineOfSight now IMPORTS game/mobLineOfSight.js (see the header) instead of mirroring it.
@@ -268,7 +181,7 @@ self.onmessage = function(e) {
             const targetGridX = Math.max(0, Math.min(8, bestCoverX));
             const targetGridZ = Math.max(0, Math.min(8, bestCoverZ));
             
-            const path = findAStarPath(heightGrid, 4, 4, targetGridX, targetGridZ);
+            const path = findLocalPath(heightGrid, 4, 4, targetGridX, targetGridZ);
             if (path && path.length > 1) {
               const nextNode = path[1];
               targetX = startXGrid + nextNode[0];
@@ -367,7 +280,7 @@ self.onmessage = function(e) {
           const startZGrid = Math.round(z) - 4;
           
           // Run 3D A* from center cell (4, 4) to target grid cell
-          const path = findAStarPath(heightGrid, 4, 4, targetGridX, targetGridZ);
+          const path = findLocalPath(heightGrid, 4, 4, targetGridX, targetGridZ);
           
           if (path && path.length > 1) {
             // Steer towards the next immediate path node
@@ -412,8 +325,15 @@ self.onmessage = function(e) {
           
           // Cap movement to prevent overshooting small local cells
           const moveDist = Math.min(actualSpeed, dist);
-          x += (tdx / dist) * moveDist;
-          z += (tdz / dist) * moveDist;
+          const toX = x + (tdx / dist) * moveDist, toZ = z + (tdz / dist) * moveDist;
+          // QUEUE P1: a mob does not step UP a wall (the main thread snaps y to the TOP surface, so an unchecked
+          // move into a wall cell used to lift it onto the wall). It slides along it instead; spiders climb.
+          if (heightGrid && heightGrid.length === 81) {
+            ({ x, z } = clampMove(heightGrid, x, z, toX, toZ, CLIMBERS.has(type)));
+          } else {
+            x = toX;
+            z = toZ;
+          }
           rotation = Math.atan2(tdx, tdz);
         } else {
           isMoving = false;
