@@ -20,6 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
+import { pressHeavy, releaseHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -145,6 +146,7 @@ export const Player = ({ isWorldBuilt }) => {
 
   const lastAttackTime = useRef(0);
   const lastAttackTypeRef = useRef(null);
+  const heavyReadyRef = useRef(false); // the heavy's READY tick plays once per charge
   const MELEE_COOLDOWN = 300; // milliseconds
 
   // Expose camera globally for magic system
@@ -213,12 +215,14 @@ export const Player = ({ isWorldBuilt }) => {
     lastAliveRef.current = isAlive;
   }, [isAlive]);
 
-  const triggerMeleeAttack = useCallback(() => {
+  const triggerMeleeAttack = useCallback((opts) => {
     const now = performance.now();
     const store = useGameStore.getState();
     // M5: in a beast form the melee re-skins — per-form cooldown, scaled damage, element spark. Read
     // the form once (transient getState); human (null element) = the identity (cooldown/damage x1).
     const beastEl = store.beastFormActive ? store.activeBeastForm : null;
+    // HEAVY (game/heavyAttack.js): a charged release — the human sword's, not a beast form's (v1).
+    const heavy = !!opts?.heavy && !beastEl;
     if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
@@ -242,6 +246,7 @@ export const Player = ({ isWorldBuilt }) => {
     // activeBeastForm) — NOT the live activeSpell, so spell-switching mid-form can't desync the spark
     // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract).
     const { dealt, sparkType } = resolveFormMelee(damage, beastEl);
+    const swing = heavy ? Math.round(dealt * HEAVY_MULT) : dealt;
 
     if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
       const lookDir = new THREE.Vector3();
@@ -262,7 +267,13 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (hitMobs && hitMobs.length > 0) {
         hitMobs.forEach(mob => {
-          GameMethods.damageMob(mob.id, dealt, sparkType);
+          GameMethods.damageMob(mob.id, swing, sparkType);
+          // A HEAVY staggers what it hits (the perfect dodge's stagger: the riposte then applies) and shoves it harder.
+          if (heavy && mob.health > 0) {
+            mob.staggerUntil = Math.max(mob.staggerUntil || 0, worldNow() + HEAVY_STAGGER_MS);
+            mob.windupUntil = 0;
+            if (mob.knockback) mob.knockback = [mob.knockback[0] * HEAVY_SHOVE_MULT, mob.knockback[1], mob.knockback[2] * HEAVY_SHOVE_MULT];
+          }
         });
         hitSomething = true;
       }
@@ -276,8 +287,8 @@ export const Player = ({ isWorldBuilt }) => {
         if (bp) {
           const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
           if (isPointInCone(playerPos, lookDir, bossPoint, range, angleRad) && store.damageBoss) {
-            store.damageBoss(dealt);
-            store.triggerHitstop?.(hitstopForHit(dealt, store.juiceIntensity ?? 1)); // the boss's hits land too
+            store.damageBoss(swing);
+            store.triggerHitstop?.(hitstopForHit(swing, store.juiceIntensity ?? 1)); // the boss's hits land too
             // Mirror the melee mob-hit feedback at the player layer: a spatial 'hit'
             // sound at the boss (damageBoss plays no SFX of its own, unlike the spell
             // path) plus the same visceral crit camera-shake the mob path triggers.
@@ -402,9 +413,13 @@ export const Player = ({ isWorldBuilt }) => {
       // selected spell; melee moves to T. Both gate on active+alive like every other live verb.
       const express = routeExpressVerb(e.code, { active: getInput().active, isAlive: useGameStore.getState().isAlive });
       if (express === 'cast') triggerSpellCast();
-      else if (express === 'melee') triggerMeleeAttack();
+      else if (express === 'melee' && !e.repeat) { // a held T CHARGES a heavy now; its key-repeat used to spam taps
+        triggerMeleeAttack();
+        pressHeavy(performance.now());
+      }
     };
     const handleKeyUp = (e) => {
+      if (e.code === 'KeyT') releaseHeavySwing();
       if (e.code === 'KeyW') setIntent('moveF', false);
       else if (e.code === 'KeyS') setIntent('moveB', false);
       else if (e.code === 'KeyA') setIntent('moveL', false);
@@ -505,8 +520,21 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (verb === 'mine') GameMethods.terrainVerbs?.mine(hit);
       else if (verb === 'place') GameMethods.terrainVerbs?.place(hit);
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
+      return verb;
     };
-    const handleMouseDown = (e) => performVerb(e.button);
+    // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the mouse button on an
+    // attack starts the charge, and the release throws the heavy. Only the REAL mouse presses it — the touch overlay
+    // calls performVerb with no release event, and a press it never releases would slow the walk forever.
+    const handleMouseDown = (e) => {
+      const verb = performVerb(e.button);
+      if (e.button === 0 && verb === 'attack' && !useGameStore.getState().voidhandHeld) pressHeavy(performance.now());
+    };
+    const releaseHeavySwing = () => {
+      const now = performance.now();
+      if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
+      if (releaseHeavy(now)) triggerMeleeAttack({ heavy: true });
+    };
+    const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing(); };
     useGameStore.setState({ performVerb }); // touch overlay (M1) dispatches via store.performVerb
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
@@ -528,6 +556,7 @@ export const Player = ({ isWorldBuilt }) => {
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
@@ -536,6 +565,7 @@ export const Player = ({ isWorldBuilt }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       removeBlurReset();
@@ -823,6 +853,7 @@ export const Player = ({ isWorldBuilt }) => {
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
     const isPlayerAlive = useGameStore.getState().isAlive;
     if (!isPlayerAlive) {
+      cancelHeavy(); // a heavy's charge dies with the player (this branch returns before the input checks below)
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       const translation = rigidBodyRef.current.translation();
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, translation.x, 0.85);
@@ -836,7 +867,7 @@ export const Player = ({ isWorldBuilt }) => {
     // jump + gravity sites below.
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
-    const speed = moveSpeed(loco);
+    const speed = moveSpeed(loco) * heavyWalkMult(performance.now()); // charging a heavy slows the walk
     const currentTrans = rigidBodyRef.current.translation();
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
@@ -906,6 +937,11 @@ export const Player = ({ isWorldBuilt }) => {
     // Handle dodge roll state machine
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
+    // A heavy's charge dies with the input (a release then throws nothing); death is handled above.
+    if (!isLocked) cancelHeavy();
+    const heavyReady = isHeavyReady(performance.now());
+    if (heavyReady && !heavyReadyRef.current) useGameStore.getState().playSpatialSound?.('heavyReady', currentTrans, 0.7, 8);
+    heavyReadyRef.current = heavyReady;
 
     if (isLocked && input.dodge) {
       // Edge-trigger: consume the dodge intent so one press = one dodge.
@@ -924,6 +960,7 @@ export const Player = ({ isWorldBuilt }) => {
           moveR: isLocked && input.moveR,
         });
 
+        cancelHeavy(); // a dodge drops a heavy's charge
         // Initialize dodge
         dodge.isActive = true;
         dodge.timeElapsed = 0;
@@ -1167,6 +1204,7 @@ export const Player = ({ isWorldBuilt }) => {
     // `isNewHit` is the edge detector: without it one hit would kick every frame until the next one.
     if (isNewHit(seenHitRef.current, useGameStore.getState().lastHitDir)) {
       seenHitRef.current = useGameStore.getState().lastHitDir.t;
+      cancelHeavy(); // a hit taken breaks a heavy's charge
       const _hf = new THREE.Vector3(); camera.getWorldDirection(_hf);
       addKick(kickRef.current, localToWorldKick(_hf.x, _hf.z, KICK_PROFILES.hurt));
     }

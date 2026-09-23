@@ -206,6 +206,23 @@ export const makeParrySound = (ctx) => {
     return buffer;
 };
 
+// The heavy melee's READY tick (game/heavyAttack.js): a short rising steel glint, so a held charge is heard, not guessed.
+export const makeHeavyReadySound = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.18;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const f = 900 + 1400 * (t / duration); // rising
+      const env = Math.min(t * 300, 1) * Math.exp(-t * 18);
+      d[i] = (Math.sin(2 * Math.PI * f * t) + Math.sin(2 * Math.PI * f * 1.5 * t) * 0.35) * env * 0.3;
+    }
+    return buffer;
+};
+
 export const makeIgniteSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
@@ -722,6 +739,7 @@ export const VOICES = {
   slam: makeSlamSound,
   anvilHit: makeAnvilSound,
   parry: makeParrySound,
+  heavyReady: makeHeavyReadySound,
   bind: makeBindSound,
   ignite: makeIgniteSound,
   freeze: makeFreezeSound,

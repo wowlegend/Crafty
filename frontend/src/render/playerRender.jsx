@@ -14,6 +14,7 @@ import { BLOCK_TYPES } from '../world/Blocks';
 import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
+import { heavyChargeLevel } from '../game/heavyAttack.js';
 
 // Swing-ribbon scratch, allocated ONCE at the ring's capacity. The trail used to build a Float32Array
 // pair, a Uint16Array and three BufferAttributes every frame of every swing, plus two bounding-volume
@@ -396,6 +397,14 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         // Stable Idle
         rightHandRef.current.position.copy(baseRightPos);
         rightHandRef.current.rotation.set(0, 0, 0);
+        // HEAVY MELEE charge (game/heavyAttack.js): the sword hand draws back and up as the charge builds, and trembles
+        // once it is ready — the tell that the release will land heavy. Level 0 (no hold, and always under capture).
+        const charge = heavyChargeLevel(performance.now());
+        if (charge > 0) {
+          const shake = charge >= 1 ? Math.sin(time * 90) * 0.006 : 0;
+          rightHandRef.current.position.set(baseRightPos.x + 0.1 * charge, baseRightPos.y + 0.12 * charge + shake, baseRightPos.z + 0.3 * charge);
+          rightHandRef.current.rotation.set(-0.8 * charge, 0.25 * charge, 0.35 * charge);
+        }
 
         leftHandRef.current.position.copy(baseLeftPos);
         leftHandRef.current.rotation.set(0, 0, 0);

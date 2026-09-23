@@ -18,10 +18,10 @@ export const KEY_MAP = [
   { key: 'Space', label: 'Jump',                    group: 'Move' },
   { key: 'Shift', label: 'Dodge-roll (at a lunge: perfect)', group: 'Move' },
   // --- Combat ---
-  { key: 'LMB',   label: 'Attack / mine',           group: 'Combat' },
+  { key: 'LMB',   label: 'Attack (hold: heavy) / mine', group: 'Combat' },
   { key: 'RMB',   label: 'Cast / place / interact',  group: 'Combat' },
   { key: 'F',     code: 'KeyF', label: 'Cast spell', group: 'Combat' },
-  { key: 'T',     code: 'KeyT', label: 'Melee attack', group: 'Combat' },
+  { key: 'T',     code: 'KeyT', label: 'Melee (hold: heavy)', group: 'Combat' },
   { key: '1–4',   label: 'Select spell',            group: 'Combat' },
   { key: 'Wheel', label: 'Cycle block',             group: 'Combat', panelHide: true },
   // --- Aspects (the signature identity — R/V/X/Z) ---

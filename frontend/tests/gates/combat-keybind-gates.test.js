@@ -90,10 +90,13 @@ describe('the router is WIRED, and each verb reaches its own trigger', () => {
     // The crossover is the defect that matters: routing correctly and then calling the wrong function
     // reproduces the exact bug the binding change fixed, one layer further down.
     const comp = read('Components.jsx');
-    expect(comp).toMatch(/express === 'cast'\)\s*triggerSpellCast\(\)/);
-    expect(comp).toMatch(/express === 'melee'\)\s*triggerMeleeAttack\(\)/);
-    expect(/express === 'cast'\)\s*triggerMeleeAttack\(\)/.test(comp), 'cast is wired to the melee trigger').toBe(false);
-    expect(/express === 'melee'\)\s*triggerSpellCast\(\)/.test(comp), 'melee is wired to the cast trigger').toBe(false);
+    // A branch may carry a further condition and a block (T's melee does: `&& !e.repeat) { // ...` — a held T charges
+    // a heavy, so its key-repeat must not re-swing). BRANCH reads the call that branch makes first.
+    const BRANCH = (verb, trigger) => new RegExp(`express === '${verb}'[^)]*\\)\\s*(?:\\{[^\\n]*\\n\\s*)?${trigger}\\(\\)`);
+    expect(comp).toMatch(BRANCH('cast', 'triggerSpellCast'));
+    expect(comp).toMatch(BRANCH('melee', 'triggerMeleeAttack'));
+    expect(BRANCH('cast', 'triggerMeleeAttack').test(comp), 'cast is wired to the melee trigger').toBe(false);
+    expect(BRANCH('melee', 'triggerSpellCast').test(comp), 'melee is wired to the cast trigger').toBe(false);
   });
 });
 

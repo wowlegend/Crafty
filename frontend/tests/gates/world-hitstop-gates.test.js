@@ -124,7 +124,9 @@ describe('every hit the player lands has weight — the boss too', () => {
 
   it('the mob path and BOTH boss paths use it (weak, structural)', () => {
     expect(carriersOf(/triggerHitstop\(hitstopForHit\(damage, ji\)\)/)).toEqual(['systems/CombatSystem.jsx']);
-    expect(carriersOf(/store\.damageBoss\(dealt\);\s*store\.triggerHitstop\?\.\(hitstopForHit\(dealt,/)).toEqual(['Components.jsx']);
+    // The SAME value sizes the freeze that the boss took (a backreference): the heavy swing renamed it `swing`, and a
+    // freeze sized from the light number under a 2x hit would read as the lighter blow.
+    expect(carriersOf(/store\.damageBoss\((\w+)\);\s*store\.triggerHitstop\?\.\(hitstopForHit\(\1,/)).toEqual(['Components.jsx']);
     expect(carriersOf(/store\.damageBoss\(projectile\.damage\);\s*store\.triggerHitstop\?\.\(hitstopForHit\(projectile\.damage,/)).toEqual(['EnhancedMagicSystem.jsx']);
   });
 
