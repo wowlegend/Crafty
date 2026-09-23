@@ -28,6 +28,9 @@ import { verdict, readBaseCi, OBSERVED } from '../../scripts/ci/e2e-freshness.mj
  *   M6 plausible-wrong: the RUN conclusion again (the 8202ec59 false refusal) -> non-e2e-red case RED
  *   M7 plausible-wrong: one green shard makes the base green   -> any-shard case RED
  *   M8 no e2e job observed reads as green                     -> no-job case RED
+ *   M9 plausible-wrong: a pending shard ignored (only finished shards read)  -> in-progress case RED
+ *   M9b plausible-wrong: the RUN's status gates the verdict                  -> other-job-running case RED
+ *   M10 a timed-out shard read as unknown (fail open)          -> timed-out case RED
  */
 const CUR = { id: 'abc', files: 468 };
 
@@ -83,28 +86,44 @@ describe('e2e-freshness verdict', () => {
 // machine — for a tree whose src/ and tests/e2e/ CI had just passed. A knip failure cannot hide an e2e
 // regression (they are separate jobs with separate conclusions); only a red E2E job can.
 describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
-  // A fake gh: the run list answers with id/conclusion/sha, the job query with the e2e jobs' conclusions.
+  // A fake gh, in the wire format readBaseCi asks for: the run list answers `id|status|conclusion|sha`, the
+  // job query one `status:conclusion` per e2e job. A still-running run prints an EMPTY conclusion, which is
+  // why the fields are `|`-separated: split on whitespace, "123  abc1234" shifted the sha into the conclusion.
   const gh = (run, e2eJobs) => (cmd) => (cmd.includes('run list') ? run : cmd.includes('run view') ? e2eJobs : '');
+  const done = (...cs) => cs.map((c) => `completed:${c}`).join(' ');
 
   it('a run red on a NON-e2e job, with every e2e shard green, is an e2e-green base', () => {
-    expect(readBaseCi(gh('35801779905 failure 8202ec5', 'success success success')))
+    expect(readBaseCi(gh('35801779905|completed|failure|8202ec5', done('success', 'success', 'success'))))
       .toEqual({ state: 'success', sha: '8202ec5', run: 'failure' });
   });
 
-  it('any e2e shard red makes the base red', () => {
-    expect(readBaseCi(gh('1 failure abc1234', 'success failure success')).state).toBe('failure');
+  it('any e2e shard red makes the base red — a TIMED-OUT shard included', () => {
+    expect(readBaseCi(gh('1|completed|failure|abc1234', done('success', 'failure', 'success'))).state).toBe('failure');
+    expect(readBaseCi(gh('1|completed|failure|abc1234', done('success', 'timed_out', 'success'))).state).toBe('failure');
   });
 
   it('a run with NO e2e job observed is unknown (fail open), never green', () => {
-    expect(readBaseCi(gh('1 success abc1234', '')).state).toBe(null);
+    expect(readBaseCi(gh('1|completed|success|abc1234', '')).state).toBe(null);
   });
 
   it('a cancelled e2e shard is unknown, not a verdict', () => {
-    expect(readBaseCi(gh('1 cancelled abc1234', 'success cancelled success')).state).toBe(null);
+    expect(readBaseCi(gh('1|completed|cancelled|abc1234', done('success', 'cancelled', 'success'))).state).toBe(null);
+  });
+
+  it('an e2e shard still RUNNING means no verdict yet — even when the shards that finished are green', () => {
+    // Review 2026-09-22: with one shard green and two pending, the pending ones printed "" and were
+    // filtered out, and the base read green before its verdict existed.
+    const r = readBaseCi(gh('35803592408|in_progress||927b219', 'completed:success in_progress: in_progress:'));
+    expect(r.state).toBe(null);
+    expect(r.sha).toBe('927b219');
+  });
+
+  it('every e2e shard finished green while ANOTHER job still runs: the e2e verdict exists, and it is green', () => {
+    expect(readBaseCi(gh('2|in_progress||abc1234', done('success', 'success', 'success'))).state).toBe('success');
   });
 
   it('the refusal still fires for a base whose e2e is red', () => {
-    const v = verdict(CUR, null, readBaseCi(gh('1 failure 1234567', 'failure success success')));
+    const v = verdict(CUR, null, readBaseCi(gh('1|completed|failure|1234567', done('failure', 'success', 'success'))));
     expect(v.code).toBe(1);
   });
 });

@@ -160,21 +160,26 @@ export function verdict(current, stamp, base = { state: null }) {
  * were re-run locally. A knip, lint or build failure cannot hide an e2e regression — those are separate
  * jobs with separate conclusions — so the stacking rule's question is only ever the e2e jobs' answer.
  *   - every e2e job 'success'       -> 'success'
- *   - any e2e job 'failure'         -> 'failure'
+ *   - any e2e job 'failure' or 'timed_out' -> 'failure'
+ *   - any e2e job not yet completed -> null (its verdict does not exist yet, whatever the finished shards say).
+ *     The RUN's status is not the question either: every e2e shard can finish while knip still runs.
  *   - none observed, or any other   -> null (unknown; fail open, loudly — a cancelled shard is no verdict)
  * `run` carries the run's own conclusion so the printed line can say what it was.
  * Network + gh, so it is isolated here and always degrades to `{state:null}` — never throws into the push path.
  */
 export function readBaseCi(exec) {
   try {
-    const out = exec('gh run list --workflow=ci.yml --branch main --limit 1 --json databaseId,conclusion,headSha --jq \'.[0] | "\\(.databaseId) \\(.conclusion) \\(.headSha[0:7])"\'');
-    const [id, run, sha] = String(out).trim().split(/\s+/);
-    if (!id || id === 'null' || !run || run === 'null') return { state: null };
-    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | .conclusion] | join(" ")'`);
-    const e2e = String(jobs).trim().split(/\s+/).filter(Boolean);
+    // `|`-separated, because a still-running run has an EMPTY conclusion: split on whitespace, the sha slid
+    // into the conclusion field and the base's status was never read at all (review 2026-09-22).
+    const out = exec('gh run list --workflow=ci.yml --branch main --limit 1 --json databaseId,status,conclusion,headSha --jq \'.[0] | "\\(.databaseId)|\\(.status)|\\(.conclusion)|\\(.headSha[0:7])"\'');
+    const [id, status, conclusion, sha] = String(out).trim().split('|');
+    if (!id || id === 'null') return { state: null };
+    const run = status === 'completed' ? conclusion : status; // what to SAY about the run; not the verdict
+    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status):\\(.conclusion)"] | join(" ")'`);
+    const e2e = String(jobs).trim().split(/\s+/).filter(Boolean).map((j) => j.split(':'));
     let state = null;
-    if (e2e.includes('failure')) state = 'failure';
-    else if (e2e.length > 0 && e2e.every((c) => c === 'success')) state = 'success';
+    if (e2e.some(([, c]) => c === 'failure' || c === 'timed_out')) state = 'failure'; // a timeout is a red shard
+    else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'success')) state = 'success';
     return { state, sha, run };
   } catch {
     return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
