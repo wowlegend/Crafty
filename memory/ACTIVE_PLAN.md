@@ -5,21 +5,25 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-22 night, session 3 (overnight goal). STATE AT THE LAST FLUSH:
+### RESUME HERE — 2026-09-22 night, session 3 (overnight goal). STATE AT THE LAST FLUSH (~23:30 PDT):
 
-- **Kevin's overnight goal** (set 2026-09-22 evening) orders: R1 → EXTERNAL-BASELINE → G1/C3/OPEN-ITEMS, and
-  keep `docs/superpowers/sota-2026-09/OVERNIGHT.md` current (it is his morning read — UNTRACKED until committed).
-- **R1 COMPLETE** (all ten fixed; R1.5/R1.6 = `f4515dd9`, A/B evidence in sota-2026-09/evidence/tint-mask-*).
-  Unpushed commits 27d42f95..f4515dd9 + the docs/page commit; artifacts republished (sota-audit v11,
-  era-review v21) and `--sync`ed. Next: push onto a COMPLETED CI run, read the conclusion.
-- **Baseline tranche in progress** — plan `docs/superpowers/plans/2026-09-22-crafty-sota-baseline-tranche.md`.
-  Untracked, NOT wired: `game/hitstop.js`, `render/cloudField.js` + `cloud-field-gates` (green). The RED
-  tests are HELD OUT of the tree (so commits stay green) at
-  `scratchpad/tranche-hold/` = world-hitstop-gates.test.js, texture-mipmap-gates.test.js, and
-  grass-biome-tint-gates.full.js (carries the extra 'plan Task 1 — sampler reads raw vUv' it()). That
-  scratchpad is session tmp: if gone, the plan doc carries the test code. Restore them red-first per task.
-  Do NOT edit src/ while a capture runs (vite HMR).
-- EXTERNAL-BASELINE's "no dodge" claim was FALSE (dodge + 0.2s i-frames exist) — corrected in the doc.
+- **Kevin's overnight goal** orders: R1 → EXTERNAL-BASELINE → G1/C3/OPEN-ITEMS; keep
+  `docs/superpowers/sota-2026-09/OVERNIGHT.md` current (his morning read).
+- **DONE + pushed (CI on `ba8c3ebf` in flight; last completed run `927b2191` = success):** R1 all ten,
+  G1, baseline #1 AO (`1be94a5c`), #3 world hitstop (`68900749`, + e2e `world-hitstop.spec.js`), #2
+  mipmaps as a Kevin-gated one-constant option (`6a33a101`, A/B in KEVIN-REVIEW-BATCH), #5 clouds +
+  cloud shadows (`813428ac`, review fixes `0de44886`), runner-up far horizon (`ba8c3ebf`), sweep by
+  ownership (`20d51bdd`, `3ef77fa5`), e2e-freshness reads e2e jobs (`927b2191`, `7482cfdc`), knip
+  ignoreBinaries (`9e8efbf2`), charge latch on cover-seek (`91dcabc6`).
+- **Committed, NOT pushed yet:** C3 boss tiers `6e7591cb` (core+save) + `1eba517f` (the fight). Push once
+  CI on `ba8c3ebf` completes (never push onto a running run).
+- **/code-review high** ran over 7351c3bd..813428ac: QUEUE `R2` table — 5 fixed, 5 OPEN with shapes
+  (R2.6 world-delta census, R2.7 paused world clock on both sides, G2 gate-shape subject, R2.9, R2.10).
+- **Next:** push C3; run `/code-review high` over 813428ac..HEAD (far field + C3 + fixes); then R2.6/R2.7
+  (hitstop completeness), G2, I1, I2, remaining OPEN-ITEMS. SMAA-order runner-up is VOID (library says SMAA
+  first). Gerstner-to-vertex-shader runner-up still open.
+- **Worktree** `.claude/worktrees/mip-ab` (detached, has copied cloud/far-field files) is capture scratch; a
+  capture there leaves frames in scratchpad capA..capG. Remove it with `git worktree remove` when done.
 
 ### (older) RESUME — 2026-09-22, session 2. READ THE CI LINE FIRST.
 

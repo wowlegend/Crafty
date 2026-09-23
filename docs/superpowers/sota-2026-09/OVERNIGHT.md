@@ -7,6 +7,10 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
+| `1eba517f` + `6e7591cb` | **C3 — the Shadow Dragon returns.** After the first kill (still THE win), it wakes again at the lair once you have survived 3 more nights AND gained 4 more levels — announced once, a tier stronger (health ×1.5, damage ×1.2, capped speed, double XP, more scales; the crown only the first time). Survives save/load; old won saves become "one kill, return in 3 nights". Driven through the real hook | committed, pushing next |
+| `ba8c3ebf` | **The far horizon.** Land and sea now continue past the loaded chunks to 420 m, from the same surface formula, coloured like the near terrain and hazed by the same lines — distant ridgelines and headlands instead of fog over sky. Sunk under real terrain wherever a chunk can be, so it never pokes through (proven over every player position). Side-effect measured, not hidden: on med/high tiers the ground just under the horizon is up to ~8 levels darker because bright sky no longer blooms over it | CI running |
+| `813428ac` + `0de44886` | **Clouds, and their shadows on the ground, from one field.** Bright by day, a dim shape at night, dark in the boss sky; shadows dim only the SUN's light (valleys stay readable), fade with a low sun, and vanish where the sky has no cloud | ✅ `927b2191`-era CI green up to `813428ac`'s predecessor; rest in `ba8c3ebf`'s run |
+| `91dcabc6` `7482cfdc` `3ef77fa5` | Review fixes: brute's charge dropped on cover-seek; e2e-freshness treats a running base as unknown and a timeout as red; the sweep sees through `npm`/`sh -c` wrappers | CI running |
 | `20d51bdd` | **The test-process sweep kills leaks, not live runs.** It decided "leaked" by AGE (>3 min) and killed one of my own captures 15 minutes in. Now it decides by OWNERSHIP (is the process tree still rooted in a live runner?) and names the runner it left alone. Chrome's crashpad handlers sit at PPID 1 while alive, which I found by reading a live capture's process table after the tests were green; they are held while any browser is owned | local green; not pushed yet |
 | `6a33a101` | **Distant-terrain mipmaps, built and proven, NOT turned on** — see *Blocked on you*. What ships: the terrain sampler reads raw `vUv` (identical without mips, required with them) | local green; not pushed yet |
 | `68900749` | **EXTERNAL-BASELINE #3 — hitstop holds the WORLD.** A heavy hit now freezes the mob you hit, the AI clock and the mob animation, not just you; a burst of hits is capped (180 ms) so it never reads as lag; the knockback shove waits for the freeze and lands after it. Proven in the running game by a new e2e (`tests/e2e/world-hitstop.spec.js`) | local green; not pushed yet |
@@ -29,10 +33,7 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- **Clouds + cloud shadows** (EXTERNAL-BASELINE #5, the last of the tranche) — built and gated (17 checks, 19
-  mutants RED). Clouds take the mood: bright by day, a dim shape at night (not a lamp), dark in the boss
-  sky. Their shadows dim only the SUN's light on the ground, so shaded valleys stay readable. Waiting on a
-  capture to SEE them before commit.
+- Nothing uncommitted of note. C3 waits only on CI to push.
 
 ## Corrections to things I told you
 
