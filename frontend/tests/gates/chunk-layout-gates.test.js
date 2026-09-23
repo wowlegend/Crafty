@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_AREA, CHUNK_VOLUME, voxelIndex, columnIndex, chunkOf, chunkOrigin,
+  CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_AREA, CHUNK_VOLUME, voxelIndex, columnIndex, chunkOf,
 } from '../../src/world/chunkLayout.js';
 import { generateMesh } from '../../src/world/mesher.js';
 import { carriersOf } from './_srcWalk.js';
@@ -39,7 +39,7 @@ describe('the layout is a bijection onto the block array', () => {
     expect(n).toBe(CHUNK_VOLUME);
     expect([voxelIndex(1, 0, 0), voxelIndex(0, 0, 1), voxelIndex(0, 1, 0)]).toEqual([1, CHUNK_SIZE, CHUNK_AREA]);
     expect([columnIndex(1, 0), columnIndex(0, 1)]).toEqual([1, CHUNK_SIZE]);
-    expect([chunkOf(-0.5), chunkOf(15.99), chunkOf(16), chunkOrigin(-2)]).toEqual([-1, 0, 1, -2 * CHUNK_SIZE]);
+    expect([chunkOf(-0.5), chunkOf(15.99), chunkOf(16)]).toEqual([-1, 0, 1]);
   });
 });
 

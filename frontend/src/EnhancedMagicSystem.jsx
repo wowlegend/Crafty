@@ -302,6 +302,14 @@ export const EnhancedMagicSystem = React.memo(() => {
     const deltaMs = delta * 1000;
 
     let survivingProjectiles = [];
+    // Sub-stepped, checked every half metre (R7.9): one end-of-frame check let a slow frame carry a spell through a
+    // wall. The floor of the air gap the spell is IN, not the column top: under a canopy the top is the leaves, and
+    // every cast there burst at the muzzle. With no probe registered, the old floor of 12.5. Built once per frame,
+    // not per projectile (review #7, R8.9).
+    const probes = useGameStore.getState();
+    const grounded = probes.getMobGroundLevel
+      ? (p) => projectileGrounded(p, probes.getMobFloor, probes.getMobGroundLevel)
+      : (p) => p.y <= 12.5;
 
     for (let i = 0; i < projectilesRef.current.length; i++) {
       const projectile = projectilesRef.current[i];
@@ -312,13 +320,6 @@ export const EnhancedMagicSystem = React.memo(() => {
       const drop = projectileGravity(projectile.type);
       if (drop) projectile.velocity.y -= drop * delta;
 
-      // Sub-stepped, checked every half metre (R7.9): one end-of-frame check let a slow frame carry a spell
-      // through a wall. The floor of the air gap the spell is IN, not the column top: under a canopy the top is
-      // the leaves, and every cast there burst at the muzzle. With no probe registered, the old floor of 12.5.
-      const probes = useGameStore.getState();
-      const grounded = probes.getMobGroundLevel
-        ? (p) => projectileGrounded(p, probes.getMobFloor, probes.getMobGroundLevel)
-        : (p) => p.y <= 12.5;
       const landed = advanceProjectile(projectile.position, projectile.velocity, delta, grounded);
 
       let keep = true;

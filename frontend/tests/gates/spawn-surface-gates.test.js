@@ -19,6 +19,9 @@ import { carriersOf } from './_srcWalk.js';
  *   V2 plausible-wrong: the depth probe one block under the top (it lands in the roof slab or the canopy and
  *      reads the top back — no overhang is ever seen)
  *   V3 the spawner reads the column top directly again (structural)
+ *   (review #7:) V4 the neighbours not checked (a tree top over its trunk reads as ground, R8.3)
+ *   V5 plausible-wrong: the depth probe's own reach shorter than its depth (nothing in reach: every column refused)
+ *   V6 plausible-wrong: an Infinity from the depth probe accepted as ground (R8.10's unsafe direction)
  *
  * BLIND SPOTS: a canopy or a floating layer thicker than SPAWN_SOLID_DEPTH reads as ground; a naturally thin crust
  * over a shallow cave is refused as an overhang (conservative: the spawner tries another column).
@@ -29,6 +32,7 @@ function fixtureBlocks() {
   const set = (x, y, z, t = 1) => { b[x + z * 16 + y * 256] = t; };
   for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) for (let y = 0; y < GROUND; y++) set(x, y, z);
   for (let x = 1; x <= 4; x++) for (let z = 1; z <= 4; z++) { set(x, 56, z, 6); set(x, 57, z, 6); } // CANOPY 56..58
+  for (let y = 50; y <= 55; y++) set(2, y, 2, 5); // its TRUNK: one solid run from the ground to the canopy top
   for (let x = 8; x <= 12; x++) for (let z = 8; z <= 12; z++) set(x, 54, z);                    // ROOF 54..55
   for (let z = 0; z < 16; z++) for (let y = 50; y <= 51; y++) set(14, y, z);                    // A HILL STEP: top 52
   return b;
@@ -57,14 +61,21 @@ describe('spawnGroundAt — ground only', () => {
   });
   it('a canopy and a roof are refused — the column-top control would have spawned on them', () => {
     expect(topAt(2, 2), 'control: the fixture has no canopy').toBeCloseTo(58, 3);
-    expect(spawnGroundAt(floorAt, topAt, 2, 2), 'spawned on (or under) the canopy').toBe(null);
+    expect(spawnGroundAt(floorAt, topAt, 3, 3), 'spawned on (or under) the canopy').toBe(null);
+    // The TRUNK column is solid from the ground to the canopy top — one run, no gap — so a depth probe alone reads it
+    // as ground (review #7, R8.3). Its neighbours are canopy: a column is ground only if they are too.
+    expect(topAt(2, 2), 'control: the trunk column tops out at the canopy').toBeCloseTo(58, 3);
+    expect(spawnGroundAt(floorAt, topAt, 2, 2), 'spawned on the tree top over its trunk').toBe(null);
     expect(topAt(10, 10), 'control: the fixture has no roof').toBeCloseTo(55, 3);
     expect(spawnGroundAt(floorAt, topAt, 10, 10), 'spawned on (or under) the roof').toBe(null);
   });
   it('no floor probe registered: the column top, as before; no data: null', () => {
-    expect(spawnGroundAt(null, topAt, 2, 2)).toBeCloseTo(58, 3);
+    expect(spawnGroundAt(null, topAt, 3, 3)).toBeCloseTo(58, 3);
     expect(spawnGroundAt(floorAt, topAt, 40, 40), 'an unloaded column spawned').toBe(null);
     expect(SPAWN_SOLID_DEPTH).toBeGreaterThan(2); // deeper than a 2-block canopy, or it reads the canopy as ground
+  });
+  it('an Infinity from the depth probe (nothing in reach) REFUSES — the safe direction (R8.10)', () => {
+    expect(spawnGroundAt(() => Infinity, () => 50, 0, 0)).toBe(null);
   });
   it('the spawner places natural spawns through it (weak, structural)', () => {
     expect(carriersOf(/spawnGroundAt\(store\.getMobFloor, store\.getMobGroundLevel, x, z\)/)).toEqual(['systems/SpawnerSystem.jsx']);

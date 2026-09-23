@@ -22,8 +22,12 @@ export const MOB_CLEARANCE = 1.5;
 export const FLOOR_REACH = 4.5;
 /** The feet are tested this far above the feet: the snap sets them exactly ON a face. */
 const FEET_EPS = 0.1;
-/** The most faces one column walk collects before calling the column unknown. */
-const MAX_FACES = 16;
+/**
+ * The most faces one column walk collects. Past it the walk answers from the faces it saw — a floor above within
+ * reach, else a wall — never "no data", which switched off the snap AND the wall rule for the mob (review #7, R8.7).
+ * 64 faces is 32 solid layers above the feet.
+ */
+const MAX_FACES = 64;
 /** How far past a face the next cast starts, so it cannot meet the same face again (faces sit on whole blocks). */
 const STEP_PAST = 0.01;
 
@@ -39,7 +43,7 @@ const STEP_PAST = 0.01;
  * @param {number} [clearance]  the gap height the mover needs
  * @returns {number|null}
  */
-export function floorInColumn(faces, feet, clearance = MOB_CLEARANCE) {
+export function floorInColumn(faces, feet, clearance = MOB_CLEARANCE, reach = FLOOR_REACH) {
   if (!faces || faces.length === 0) return null;
   const p = feet + FEET_EPS;
   let above = Infinity;
@@ -50,7 +54,7 @@ export function floorInColumn(faces, feet, clearance = MOB_CLEARANCE) {
     // drops — a gap it would have to squeeze into at its current height is not one it can enter.
     const roomy = ceiling - Math.max(top, feet) >= clearance;
     if (top > p) {
-      if (roomy && top - feet <= FLOOR_REACH) above = top; // descending: the last one kept is the lowest
+      if (roomy && top - feet <= reach) above = top; // descending: the last one kept is the lowest
       continue;
     }
     if (roomy && ceiling > p) return top; // the gap the feet are in
@@ -62,8 +66,8 @@ export function floorInColumn(faces, feet, clearance = MOB_CLEARANCE) {
 /**
  * Collect the faces of one column from the sky down, stopping at the first TOP at or below the feet: the gap it
  * opens is the lowest that can matter. `castDown(y)` returns the height of the first face below y, or null.
- * @returns {number[]|null} the faces, descending; null when more than MAX_FACES lie above the feet (unknown, not
- *   a wall — the caller skips the snap, as it does for an unloaded column)
+ * @returns {number[]} the faces, descending — cut at MAX_FACES (then every one lies above the feet, and the rule
+ *   answers with a floor above or a wall)
  */
 export function columnFaces(castDown, feet, sky = 255) {
   const faces = [];
@@ -76,7 +80,7 @@ export function columnFaces(castDown, feet, sky = 255) {
     if (faces.length % 2 === 1 && hit <= p) return faces; // a TOP at or below the feet
     y = hit - STEP_PAST;
   }
-  return null;
+  return faces;
 }
 
 /**
@@ -95,18 +99,34 @@ export function floorUnderPoint(getFloor, getTop, x, z, y) {
 export const SPAWN_SOLID_DEPTH = 4;
 
 /**
- * Where a mob may SPAWN in a column: its top, only when the top is ground — solid SPAWN_SOLID_DEPTH down (QUEUE
- * R7.9b). A tree canopy, a roof or a bridge is not: spawning ON one looks broken, and spawning UNDER a roof puts a
- * mob inside the player's sealed base, which is what building walls exists to prevent. null = spawn elsewhere.
- * The test is one point query SPAWN_SOLID_DEPTH below the top: inside solid it answers the top itself; in an air gap
- * under an overhang it answers that gap's floor. (A canopy thicker than the depth reads as ground.)
+ * Is this column's top GROUND — solid SPAWN_SOLID_DEPTH down? One point query that far below the top: inside solid it
+ * answers the top; in an air gap under an overhang, that gap's floor. It asks with its OWN reach — borrowing a mob's
+ * FLOOR_REACH made the refusal hold only while SPAWN_SOLID_DEPTH < FLOOR_REACH, and past it every canopy read as
+ * ground (review #7, R8.10). An answer of Infinity (nothing in reach) refuses: the safe direction.
+ */
+function groundTop(getFloor, getTop, x, z) {
+  const top = getTop(x, z);
+  if (top === null || !Number.isFinite(top)) return null;
+  const under = getFloor(x, z, top - SPAWN_SOLID_DEPTH - FEET_EPS, 0, SPAWN_SOLID_DEPTH + 1);
+  return under !== null && Math.abs(under - top) < 0.01 ? top : null;
+}
+
+const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/**
+ * Where a mob may SPAWN in a column: its top, only when it and its four neighbours are ground (QUEUE R7.9b, R8.3).
+ * A tree canopy, a roof or a bridge is not: spawning ON one looks broken, and spawning UNDER a roof puts a mob inside
+ * the player's sealed base, which is what building walls exists to prevent. The neighbours are what catch a TREE
+ * TOP: its trunk column is one solid run from the ground to the canopy top, which a depth probe reads as ground,
+ * but its neighbours are canopy. null = spawn elsewhere. (A canopy thicker than the depth reads as ground.)
  */
 export function spawnGroundAt(getFloor, getTop, x, z) {
-  const top = getTop ? getTop(x, z) : null;
-  if (top === null || !Number.isFinite(top)) return null;
-  if (!getFloor) return top;
-  const under = floorUnderPoint(getFloor, getTop, x, z, top - SPAWN_SOLID_DEPTH);
-  return under !== null && Math.abs(under - top) < 0.01 ? top : null;
+  if (!getTop) return null;
+  if (!getFloor) { const t = getTop(x, z); return t === null || !Number.isFinite(t) ? null : t; }
+  const top = groundTop(getFloor, getTop, x, z);
+  if (top === null) return null;
+  for (const [dx, dz] of NEIGHBOURS) if (groundTop(getFloor, getTop, x + dx, z + dz) === null) return null;
+  return top;
 }
 
 /**

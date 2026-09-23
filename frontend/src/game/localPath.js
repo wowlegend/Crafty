@@ -152,6 +152,12 @@ export function heightGridAt(x, z, feet, floorAt) {
   return out;
 }
 
+/** Is the mob still on the column of its last footing — or has it none yet (a first snap)? */
+function onOwnColumn(e) {
+  return e.footX === undefined
+    || (Math.floor(e.position.x + 0.1) === Math.floor(e.footX + 0.1) && Math.floor(e.position.z + 0.1) === Math.floor(e.footZ + 0.1));
+}
+
 /**
  * THE GROUND SNAP, with the step rule — the ONE choke point every mover passes through (review #4, R5.3/R5.6).
  *
@@ -169,8 +175,7 @@ export function settleOnGround(e, groundY, climber = false) {
   // Blocks placed on the column the mob ALREADY stands on (a build footprint) lift it: refusing would rewind it
   // to the same spot forever, embedded in the new blocks (review #5, R6.4). Only a floor the mob is INSIDE can
   // do that now — a roof above its gap is not its floor (R7.1).
-  const sameColumn = e.footX !== undefined
-    && Math.floor(e.position.x + 0.1) === Math.floor(e.footX + 0.1) && Math.floor(e.position.z + 0.1) === Math.floor(e.footZ + 0.1);
+  const sameColumn = e.footX !== undefined && onOwnColumn(e);
   const wall = groundY === Infinity || (!climber && e.footX !== undefined && !sameColumn && groundY - feet > STEP_UP);
   if (wall) {
     if (e.footX !== undefined) {
@@ -198,7 +203,11 @@ export function settleOnGround(e, groundY, climber = false) {
  */
 export function snapMob(e, getFloor, getTop) {
   const climber = CLIMBERS.has(e.type);
-  const groundY = groundForMover(getFloor, getTop, e.position.x, e.position.z, e.position.y - 0.5, climber);
+  // A mob buried in its OWN column — a build taller than the reach placed on it, or a first snap inside solid — gets
+  // an Infinity floor, which held it embedded forever; R6.4 decided such a mob is lifted out, so it gets the column
+  // top, as a climber at a wall does (review #7, R8.4).
+  const liftOut = climber || onOwnColumn(e);
+  const groundY = groundForMover(getFloor, getTop, e.position.x, e.position.z, e.position.y - 0.5, liftOut);
   if (groundY === null || Number.isNaN(groundY)) return false;
   return settleOnGround(e, groundY, climber);
 }

@@ -5,7 +5,7 @@ import { makeMobFloorProbe } from '../../src/world/mobFloorProbe.js';
 import { floorInColumn, columnFaces, groundForMover, floorUnderPoint, MOB_CLEARANCE, FLOOR_REACH } from '../../src/game/mobFloor.js';
 import { projectileGrounded, advanceProjectile, PROJECTILE_SUBSTEP } from '../../src/game/projectilePhysics.js';
 import { stepXPOrb } from '../../src/game/xpOrbStepper.js';
-import { snapMob, heightGridAt, STEP_UP } from '../../src/game/localPath.js';
+import { snapMob, heightGridAt, settleOnGround, STEP_UP } from '../../src/game/localPath.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { drainKnockback } from '../../src/game/captureRest.js';
 import { carriersOf } from './_srcWalk.js';
@@ -34,6 +34,9 @@ import { carriersOf } from './_srcWalk.js';
  *   M6 plausible-wrong: the next cast starts ON the face it just met (re-hits it; the walk gives up)
  *   M7 settleOnGround takes an Infinity floor (y = Infinity) — SURVIVED the first time: every Infinity case crossed
  *      columns, where the finite rise rule refuses anyway; the own-column and first-snap cases now pin it
+ *   (review #7:) N1 an entombed own column held embedded again (no lift-out)  N3 a capped walk returns "no data"
+ *   again. (Not N2: lifting out on EVERY column is an equivalent mutant — an Infinity floor means the top is past
+ *   the reach, so on another column the step rule refuses it anyway; the own-column test states the intent.)
  *   M8 the climber fallback removed (a spider stops at a tall pillar)
  *   M9 AIWorkerSystem snaps with the top-down probe again (structural)
  *   M10 the knockback walk reads the column top (a shove stops at the canopy edge)
@@ -95,10 +98,13 @@ describe('columnFaces — walks the column until the first top at or below the f
   it('collects roof top, underside, then the ground, and stops there', () => {
     expect(columnFaces(columnOf([55, 54, 50, 40, 30, 0]), 50)).toEqual([55, 54, 50]);
   });
-  it('an empty column is empty; a column with too many faces above the feet is unknown (null)', () => {
+  it('an empty column is empty; a walk cut at its cap answers from what it saw — a WALL, never "no data" (R8.7)', () => {
     expect(columnFaces(() => null, 50)).toEqual([]);
-    const many = Array.from({ length: 40 }, (_, i) => 250 - i * 2);
-    expect(columnFaces(columnOf(many), 50)).toBe(null);
+    // 49 solid layers above the feet: more faces than the cap. "No data" switched off the snap AND the wall rule.
+    const many = Array.from({ length: 98 }, (_, i) => 250 - i * 2);
+    const faces = columnFaces(columnOf(many), 50);
+    expect(faces.length, 'the walk was not capped').toBe(64);
+    expect(floorInColumn(faces, 50), 'a capped walk read as no data (the mob walks through walls)').toBe(Infinity);
   });
 });
 
@@ -198,13 +204,21 @@ describe('snapMob — the snap AIWorkerSystem makes, on the real probe', () => {
     p.position.x = 15.4; expect(snapMob(p, floorAt, topAt)).toBe(true);
     expect(p.position.y, 'an Infinity floor was written as y').toBeCloseTo(GROUND + 0.5, 3);
   });
-  it('a floorless OWN column (entombed, or a first snap inside the pillar) holds y — the own-column exemption must not take Infinity', () => {
+  it('a mob entombed in its OWN column (a build taller than the reach placed on it, or a first snap inside solid) is lifted out onto the top, as R6.4 decided (R8.4)', () => {
     const first = at(15.4, 1.4); // no footing yet, feet inside the 8-high pillar
-    expect(snapMob(first, floorAt, topAt)).toBe(true);
-    expect(first.position.y).toBe(GROUND + 0.5);
+    expect(snapMob(first, floorAt, topAt)).toBe(false);
+    expect(first.position.y, 'held embedded in the pillar').toBeCloseTo(58.5, 3);
     const own = at(15.4, 1.4, { footX: 15.3, footZ: 1.3 }); // same column: the R6.4 exemption's case
-    expect(snapMob(own, floorAt, topAt)).toBe(true);
-    expect(own.position.y).toBe(GROUND + 0.5);
+    expect(snapMob(own, floorAt, topAt)).toBe(false);
+    expect(own.position.y, 'held embedded in the pillar').toBeCloseTo(58.5, 3);
+  });
+  it('settleOnGround never writes an Infinity floor — with no top to lift onto, the mob holds (M7)', () => {
+    const e = at(15.4, 1.4, { footX: 15.3, footZ: 1.3 });
+    expect(settleOnGround(e, Infinity)).toBe(true);
+    expect(e.position.y).toBe(GROUND + 0.5);
+    const f = at(15.4, 1.4);
+    expect(settleOnGround(f, Infinity)).toBe(true);
+    expect(f.position.y).toBe(GROUND + 0.5);
   });
   it('a spider climbs the wall onto its floor, and the floorless pillar onto its top', () => {
     const s = at(13.4, 5.4, { type: 'spider' }); snapMob(s, floorAt, topAt);

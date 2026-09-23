@@ -29,8 +29,3 @@ export function columnIndex(lx, lz) {
 export function chunkOf(v) {
   return Math.floor(v / CHUNK_SIZE);
 }
-
-/** The world coordinate of a chunk's low edge. */
-export function chunkOrigin(c) {
-  return c * CHUNK_SIZE;
-}
