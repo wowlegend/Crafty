@@ -29,12 +29,12 @@
  * memory/ROADMAP.md left it FRESH (the scope really is scoped), and deleting the stamp exits 0 with
  * guidance rather than refusing. An empty observed-file walk exits 3, never 0.
  *
- * Record a pass:  npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record
+ * Record a pass:  node scripts/ci/e2e-freshness.mjs --run   (runs the suite; records only if the tree did not change)
  * Exit: 0 = fresh, or absent-and-warned · 1 = STALE · 3 = COULD NOT CHECK.
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { join, resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -133,7 +133,7 @@ export function verdict(current, stamp, base = { state: null }) {
         '  Stacking an unverified change onto a known-broken base is how a regression goes missing: the\n' +
         '  next red run gets attributed to the breakage already there. Fix the base, or record a local\n' +
         '  green for this tree:\n' +
-        '    cd frontend && npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record',
+        '    cd frontend && node scripts/ci/e2e-freshness.mjs --run',
     };
   }
 
@@ -148,7 +148,7 @@ export function verdict(current, stamp, base = { state: null }) {
       `  ${current.files} files observed under ${OBSERVED.join(', ')}; e2e is CI-only, so CI decides this one.\n` +
       '  Watch it: gh run list --workflow=ci.yml --branch main --limit 1\n' +
       '  To settle it locally instead (~20 min, and a loaded machine will produce timeouts that are about\n' +
-      '  the machine): npm run test:e2e && node scripts/ci/e2e-freshness.mjs --record',
+      '  the machine): node scripts/ci/e2e-freshness.mjs --run',
   };
 }
 
@@ -242,9 +242,40 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
   }
 }
 
+/**
+ * PURE: may a finished run be recorded as green for the tree it STARTED on?
+ *
+ * `--record` after `npm run test:e2e` hashed the tree at RECORD time — not the tree the suite tested. A spec written
+ * into tests/e2e while a 45-minute run was in flight (Playwright collects its specs at the start, so the new one never
+ * ran) would have been certified green along with everything else; it was caught by hand on 2026-09-23, once. So
+ * `--run` hashes the tree, runs the suite, hashes it again, and records only when the suite passed AND the two agree.
+ */
+export function receiptVerdict(before, after, exitCode) {
+  if (exitCode !== 0) return { ok: false, line: `e2e-freshness: the suite exited ${exitCode} — nothing recorded.` };
+  if (!before || !after || before.id !== after.id) {
+    return {
+      ok: false,
+      line:
+        `e2e-freshness: the tree CHANGED during the run (${before?.id} -> ${after?.id}) — nothing recorded.\n` +
+        '  The suite tested the first tree; the edits made while it ran were never tested. Re-run.',
+    };
+  }
+  return { ok: true, line: `e2e-freshness: recorded green for tree ${before.id} (${before.files} files) — unchanged across the run` };
+}
+
 if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   const current = treeId();
+  if (process.argv.includes('--run')) {
+    const extra = process.argv.slice(process.argv.indexOf('--run') + 1);
+    const res = spawnSync('npx', ['playwright', 'test', ...extra], { cwd: APP, stdio: 'inherit' });
+    const after = treeId();
+    const v = receiptVerdict(current, after, res.status);
+    if (v.ok) writeFileSync(STAMP, `${JSON.stringify({ treeId: current.id, files: current.files, at: new Date().toISOString() }, null, 2)}\n`);
+    console.log(v.line);
+    process.exit(v.ok ? 0 : 1);
+  }
   if (process.argv.includes('--record')) {
+    console.log('e2e-freshness: --record certifies the tree as it is NOW, whatever the run tested — prefer --run.');
     writeFileSync(STAMP, `${JSON.stringify({ treeId: current.id, files: current.files, at: new Date().toISOString() }, null, 2)}\n`);
     console.log(`e2e-freshness: recorded green for tree ${current.id} (${current.files} files)`);
     process.exit(0);

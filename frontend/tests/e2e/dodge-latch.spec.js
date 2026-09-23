@@ -29,6 +29,17 @@ test.describe('dodge intent latch', () => {
       return { dodge: intents.dodge, active: intents.active, alive: s.isAlive, health: s.playerHealth };
     });
   const dodge = async (page) => (await dodgeState(page)).dodge;
+  // PRESS AND READ IN ONE EVALUATE. As two round trips, a frame could run between them — and the controller spends a
+  // held dodge intent into a roll on its next frame (edge-triggered: one press, one roll), so a press that WORKED read
+  // back as "refused" (local run 2026-09-23, dodge-latch:73, under a load of ~25). Nothing renders inside one
+  // synchronous evaluate, so the read is of the latch itself, not of whether a frame happened to intervene.
+  const pressShift = (page) =>
+    page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', bubbles: true }));
+      const intents = window.__craftyTest.call('readIntents');
+      const s = window.useGameStore.getState();
+      return { dodge: intents.dodge, active: intents.active, alive: s.isAlive, health: s.playerHealth };
+    });
 
   // THE SUBJECT OF THIS SPEC IS THE INPUT LATCH, NOT SURVIVAL — so state the survival precondition
   // rather than inheriting it by accident. SpawnerSystem.jsx:94 spawns 20 hostiles the moment
@@ -59,8 +70,7 @@ test.describe('dodge intent latch', () => {
     // nothing until the same instrument, in the same run, has shown it can see the positive case.
     await startPlayActive(page);
     await declareAlive(page);
-    await shift(page, 'keydown');
-    const armed = await dodgeState(page);
+    const armed = await pressShift(page);
     expect(armed.dodge, `Shift no longer arms a dodge at all — the instrument is dead, or the verb is. State: ${JSON.stringify(armed)}`).toBe(true);
 
     await shift(page, 'keyup');
@@ -78,8 +88,7 @@ test.describe('dodge intent latch', () => {
     await startPlayActive(page);
     await declareAlive(page);
 
-    await shift(page, 'keydown');
-    const held = await dodgeState(page);
+    const held = await pressShift(page);
     expect(held.dodge, `the press was refused — State: ${JSON.stringify(held)}`).toBe(true);
 
     await page.evaluate(() => window.__craftyTest.call('readIntents')); // no-op read, keeps the ordering explicit

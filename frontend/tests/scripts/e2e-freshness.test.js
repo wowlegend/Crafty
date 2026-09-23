@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -38,6 +38,8 @@ import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, E2E_TIMEOUT_MIN, OBS
  *   A3 the CRLF normalisation dropped -> SURVIVED first (the only CRLF case had a comment on the e2e line, which
  *      absorbs the \r); RED on the added CRLF-without-comment case
  *   A4 plausible-wrong: the e2e line must end at the colon (no comment) -> the comment case RED
+ *   R1 receiptVerdict ignores a tree that changed during the run -> the mid-run case RED
+ *   R2 plausible-wrong: a killed run (status null) records -> the red-suite case RED
  * Live, not a fixture: against the real gh output the gate now reads base 37d030a as RED (it read UNKNOWN before).
  *   M9 plausible-wrong: a pending shard ignored (only finished shards read)  -> in-progress case RED
  *   M9b plausible-wrong: the RUN's status gates the verdict                  -> other-job-running case RED
@@ -189,5 +191,21 @@ describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
   it('the refusal still fires for a base whose e2e is red', () => {
     const v = verdict(CUR, null, readBaseCi(gh('1|completed|failure|1234567', done('failure', 'success', 'success'))));
     expect(v.code).toBe(1);
+  });
+});
+
+describe('receiptVerdict — a run is recorded for the tree it STARTED on, and only if it did not change', () => {
+  const T = (id) => ({ id, files: 490 });
+  it('green and unchanged: recorded', () => {
+    expect(receiptVerdict(T('a1'), T('a1'), 0).ok).toBe(true);
+  });
+  it('the tree changed during the run (a spec added mid-run, never collected): refused, even though the suite passed', () => {
+    const v = receiptVerdict(T('a1'), T('b2'), 0);
+    expect(v.ok).toBe(false);
+    expect(v.line).toMatch(/CHANGED during the run/);
+  });
+  it('a red suite is never recorded, changed or not', () => {
+    expect(receiptVerdict(T('a1'), T('a1'), 1).ok).toBe(false);
+    expect(receiptVerdict(T('a1'), T('a1'), null).ok, 'a killed run (status null)').toBe(false);
   });
 });
