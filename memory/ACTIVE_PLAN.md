@@ -17,20 +17,12 @@ each ~300k context.
   ignoreBinaries (`9e8efbf2`), charge latch on cover-seek (`91dcabc6`).
 - **C3 PUSHED** (`0398b7b7`, CI run in flight at 90% flush; `ba8c3ebf` = all-green incl. e2e). `/code-review high`
   over 813428ac..HEAD running in the background (forked agent) — verify each finding before fixing.
-- **UNCOMMITTED WIP — Gerstner waves on the GPU** (`world/oceanProfile.js` gerstnerGlsl, `render/Ocean.jsx`,
-  the new ocean GPU-waves gate (uncommitted, under frontend/tests/gates) 6/6 mutants RED incl. W4 equivalent-at-Q=1 fixed, re-anchored
-  `ocean-depth-tint-gates`). Capture H (worktree = HEAD 0398b7b7 + these two files) → scratchpad `capH`; diff vs
-  `capG` (ocean frames should match ~pixel-for-pixel; studio frames lose clouds from 0de44886 — expected), OPEN the
-  ocean frames, then commit + push. One eslint WARNING seen at commit add563ff — check `npm run lint`.
-- **Committed since C3 push:** `add563ff` boss hitstop (hitstopForHit shared rule; BossEntity freezes),
-  the boss review fixes (reload keeps return-fight HP; VICTORY first dragon only; autosave triggers).
-- **Review #2 (813428ac..HEAD) still OPEN, verified-or-not noted:** far field — water columns sit at SEA_LEVEL-2
-  ABOVE the loaded seabed (fix: water y = lerp(seabedTop-2, SEA_LEVEL-2, canopy ramp)); triangle interiors can
-  cover gullies inside the loaded area + ring under the player at low tier (fix: sink ~10 m where canopy=0);
-  canopyFrom ignores Terrain's cull hysteresis (chunks kept to rd+2 — VERIFY in Terrain, then widen); no
-  danger-mood grade / cloud shadows on the far field (seam in the boss fight); swamp trees grow on DIRT
-  (add dirt to CANOPY_SURFACES); FarField rebuild allocs + sync sampling (perf); hydrate killNight coercion
-  duplicate; return entrance text still says "Shadow Dragon awakens". Put these in QUEUE as R3.
+- **GPU ocean COMMITTED** `9860eaa9` (A/B: ocean frames match the CPU version within noise). Pushed through
+  `a77af81e`; `9860eaa9` + later NOT yet pushed — push onto a completed CI run.
+- **NEXT = QUEUE R3.9: hole-punch the far field by a loaded-chunk mask** (design in the R3 table), which fixes
+  R3.4/R3.5/R3.6 together; then R3.7 (grade + cloud shadows on the far field), R3.8 (swamp dirt canopy),
+  R3.10 (rebuild perf), R3.11 (tidy). Each: red-first gate, mutation-proof, same-renderer capture A/B in the
+  worktree `.claude/worktrees/mip-ab` (reset it to HEAD first), OPEN the frames, commit.
 - **/code-review high** ran over 7351c3bd..813428ac: QUEUE `R2` table — 5 fixed, 5 OPEN with shapes
   (R2.6 world-delta census, R2.7 paused world clock on both sides, G2 gate-shape subject, R2.9, R2.10).
 - **Next:** push C3; run `/code-review high` over 813428ac..HEAD (far field + C3 + fixes); then R2.6/R2.7

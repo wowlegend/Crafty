@@ -666,6 +666,22 @@ Ten unverified candidates; each checked against source before any action.
 | R2.9 | `.githooks/pre-push` | a receipt-matched push still builds a full worktree and may `npm install` | OPEN — perf only, not correctness. |
 | R2.10 | `world/mesher.js` | corner AO computed in the key pass, then recomputed per emitted quad | OPEN — perf only; decode it from the key. Measure worker mesh time first. |
 
+## R3 — `/code-review high` over 813428ac..0398b7b7 (far horizon + C3), 2026-09-22
+
+| # | where | finding | disposition |
+|---|---|---|---|
+| R3.1 | `world/bossSystem.js` | a reload during a return fight refilled the dragon's HP | ✅ FIXED `aad73f24` (reproduced: 1050 instead of 200) |
+| R3.2 | `HUD.jsx` | VICTORY overlay re-fired on a return kill after a reload | ✅ FIXED `aad73f24` (gated on tier 1) |
+| R3.3 | `App.jsx` | autosave triggers lacked bossTier/bossKillNight | ✅ FIXED `aad73f24` |
+| R3.4 | `world/farField.js` | far WATER sits at SEA_LEVEL-2, above the loaded seabed (a near-surface swimmer sees a floor) | OPEN — true. Fixed by R3.9 |
+| R3.5 | `world/farField.js` | canopyFrom ignores Terrain's cull hysteresis (chunks kept to renderDistance + 2, `Terrain.jsx:816`) | OPEN — VERIFIED true. Fixed by R3.9 |
+| R3.6 | `world/farField.js` | triangle interiors can cover gullies inside loaded chunks; at low tier the ring runs under the player | OPEN — true for a fixed 2 m sink. Fixed by R3.9 |
+| R3.7 | `world/FarField.jsx` | no danger-mood grade, no cloud shadows: a seam in the boss fight | OPEN — share Terrain's grade + `cloudShadowGlsl` (both are generated strings already) |
+| R3.8 | `world/farField.js` | swamp trees grow on DIRT (`terrain.worker.js:578`); CANOPY_SURFACES omits it | OPEN — add `BLOCK_ID.dirt` |
+| R3.9 | `world/farField.js` + `FarField.jsx` | **the design fix for R3.4–R3.6**: no FIXED sink can be right, because the sink must be deep only where a chunk IS loaded and chunk presence changes continuously. HOLE-PUNCH instead: a `world/loadedChunks.js` 32x32 R8 mask of loaded chunks around the player (Terrain writes it when its chunk set changes; origin in chunk coords), sampled in the far field's fragment shader to `discard` wherever a real chunk is loaded. Then the ring sits AT the true surface (tiny sink only against the ocean plane), canopy lifts anywhere, water at sea level — no step at the loaded edge. Gates: pure mask build/index; the discard is spliced; mutation: mask ignored / origin off by one chunk | OPEN — next |
+| R3.10 | `world/FarField.jsx` | each rebuild allocates new arrays + BufferAttributes and regenerates the texture array Terrain already holds | OPEN — perf; build the index once, reuse attributes, read `voxelTextures` |
+| R3.11 | `game/bossPersistence.js`, `bossSystem.js` | killNight coercion duplicates `nat`; stats recomputed; the return entrance still says "the Shadow Dragon awakens" | OPEN — tidy; use `stats.name` in the entrance toast |
+
 ## I2 — knip sits in the CI-only tier, which its own rule says it does not belong in (found 2026-09-22, OPEN)
 
 `ci/pipeline.sh` puts knip under "TIER: CI-ONLY — needs the network or a browser". knip needs neither: it is
