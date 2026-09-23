@@ -49,17 +49,20 @@ export function bossCaptureReset(refs, spawnPos) {
   return n;
 }
 
-/** Walk `pos` toward (tx, tz) in sub-steps, stopping before any column that rises more than STEP_UP. */
-function shoveAgainstWalls(pos, tx, tz, groundAt) {
+/**
+ * Walk `pos` toward (tx, tz) in sub-steps, stopping before any column whose floor (game/mobFloor.js, as seen from
+ * the floor it is leaving) is more than STEP_UP up, or that has no floor it fits in (Infinity).
+ */
+function shoveAgainstWalls(pos, tx, tz, floorAt) {
   const dx = tx - pos.x, dz = tz - pos.z;
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.5));
-  let here = groundAt(pos.x, pos.z);
+  let here = pos.y - 0.5; // the feet: y is not touched until the next ground snap
   for (let i = 0; i < n; i++) {
     const nx = pos.x + dx / n, nz = pos.z + dz / n;
-    const next = groundAt(nx, nz);
-    if (here != null && next != null && !Number.isNaN(here) && !Number.isNaN(next) && next - here > STEP_UP) return;
+    const next = floorAt(nx, nz, here);
+    if (next === Infinity || (next != null && !Number.isNaN(next) && next - here > STEP_UP)) return;
     pos.x = nx; pos.z = nz;
-    if (next != null && !Number.isNaN(next)) here = next;
+    if (next != null && Number.isFinite(next)) here = next;
   }
 }
 
@@ -76,23 +79,24 @@ function shoveAgainstWalls(pos, tx, tz, groundAt) {
  * land wherever it pointed — through a one-block wall onto the ground beyond, which the 15 Hz ground snap accepts
  * because it compares only where the mob ENDS. So when a ground probe is given, the shove is walked in sub-steps
  * under a cell and stops before the first column more than STEP_UP above the one it is leaving — the same rule
- * the AI's own moves obey (game/localPath.js). Climbers are shoved freely.
+ * the AI's own moves obey (game/localPath.js). Climbers are shoved freely. The probe is the mob FLOOR probe
+ * (game/mobFloor.js): the column top would call a tree canopy a wall and stop a shove under it (R7.1).
  *
  * @param {Iterable<object>} entities
  * @param {number} delta  seconds since the last frame
  * @param {boolean} capture  true to clear without moving
- * @param {(x:number, z:number) => number|null} [groundAt]  the mob ground probe (top of the column), optional
+ * @param {(x:number, z:number, feet:number) => number|null} [floorAt]  the mob floor probe, optional
  * @returns {number} eligible entities drained — the DENOMINATOR, so "nothing moved" can be told apart
  *                   from "nothing was looked at"
  */
-export function drainKnockback(entities, delta, capture, groundAt = null) {
+export function drainKnockback(entities, delta, capture, floorAt = null) {
   let drained = 0;
   for (const e of entities || []) {
     if (!e || e.health <= 0 || e.isStatic || !e.knockback) continue;
     if (!capture) {
       const tx = e.position.x + e.knockback[0] * delta * 4;
       const tz = e.position.z + e.knockback[2] * delta * 4;
-      if (groundAt && !CLIMBERS.has(e.type)) shoveAgainstWalls(e.position, tx, tz, groundAt);
+      if (floorAt && !CLIMBERS.has(e.type)) shoveAgainstWalls(e.position, tx, tz, floorAt);
       else { e.position.x = tx; e.position.z = tz; }
       e.snapSync = true; // MobModel exact-copies this frame so the shove reads instant, not damped
     }

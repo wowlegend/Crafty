@@ -4,7 +4,8 @@ import { useGameStore } from '../store/useGameStore';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
-import { gridOrigin, settleOnGround, CLIMBERS } from '../game/localPath.js';
+import { heightGridAt, snapMob } from '../game/localPath.js';
+import { groundForMover } from '../game/mobFloor.js';
 import { strikesToApply } from '../game/perfectDodge.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
@@ -113,14 +114,10 @@ export const AIWorkerSystem = () => {
             // latch only work if they come back next tick, which is what the shared list guarantees.
             applyMobUpdate(entity, update);
 
-            if (store.getMobGroundLevel) {
-              const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
-              if (groundY !== null && !isNaN(groundY)) {
-                // The snap REFUSES a climb (review #4, R5.3/R5.6): every mover — the worker's chase or wander,
-                // a knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them.
-                settleOnGround(entity, groundY, CLIMBERS.has(entity.type));
-              }
-            }
+            // The snap REFUSES a climb (review #4, R5.3/R5.6): every mover — the worker's chase or wander, a
+            // knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them. It snaps
+            // to the FLOOR under the feet, not the column top — a roof or a canopy (review #6, R7.1).
+            snapMob(entity, store.getMobFloor, store.getMobGroundLevel);
           }
         }
       }
@@ -166,8 +163,10 @@ export const AIWorkerSystem = () => {
       // moves a few centimetres a frame, so a 60Hz ray answers the same question sixty times a second.
       // Staggered by index so the four hub NPCs do not all probe on the same frame.
       if (store.getMobGroundLevel && (capture || (frame + i) % NPC_GROUND_PROBE_EVERY === 0)) {
-        const gy = store.getMobGroundLevel(e.position.x, e.position.z);
-        if (gy != null && !isNaN(gy)) {
+        // The floor under its feet (a hub NPC under an awning stays under it, R7.1); the patrol is scripted, not
+        // stepped, so a floorless column falls back to its top as a climber's would.
+        const gy = groundForMover(store.getMobFloor, store.getMobGroundLevel, e.position.x, e.position.z, e.position.y - 0.5, true);
+        if (gy != null && Number.isFinite(gy)) {
           // Under capture, SNAP to the ground too -- a lerp toward it is another run-dependent pose.
           e.position.y = capture ? gy + 0.5 : e.position.y + ((gy + 0.5) - e.position.y) * 0.1;
         }
@@ -192,7 +191,7 @@ export const AIWorkerSystem = () => {
     // full by whichever frame drains it — draining it at a frozen scale would spend it at zero length and
     // the hit would never shove. So a frozen frame HOLDS it, and it lands the frame the freeze ends: the
     // blow connects, the world holds its breath, then the mob flies.
-    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false, useGameStore.getState().getMobGroundLevel);
+    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false, useGameStore.getState().getMobFloor);
 
     // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
     // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the
@@ -207,24 +206,13 @@ export const AIWorkerSystem = () => {
     tickAccumRef.current = 0;
 
     const store = useGameStore.getState();
-    const getMobGroundLevel = store.getMobGroundLevel;
+    const getMobFloor = store.getMobFloor;
     const mobsData = mobsQuery.entities.filter(e => e && e.health > 0 && !e.isStatic).map(e => {
       let heightGrid = null;
       if (!e.passive && e.isAggro) {
-        heightGrid = [];
-        // The one grid framing (game/localPath.js): centred on the COLUMN the mob stands on (review #4, R5.1).
-        const startX = gridOrigin(e.position.x);
-        const startZ = gridOrigin(e.position.z);
-        if (getMobGroundLevel) {
-          for (let gz = 0; gz < 9; gz++) {
-            for (let gx = 0; gx < 9; gx++) {
-              const worldX = startX + gx;
-              const worldZ = startZ + gz;
-              const h = getMobGroundLevel(worldX, worldZ);
-              heightGrid.push((h === null || isNaN(h)) ? e.position.y : h);
-            }
-          }
-        }
+        // The one grid framing (game/localPath.js, review #4 R5.1), of FLOORS as the mob's feet see them — a roof
+        // over a column is not a wall in it (review #6, R7.1).
+        heightGrid = getMobFloor ? heightGridAt(e.position.x, e.position.z, e.position.y - 0.5, getMobFloor) : [];
       }
       return buildMobPayload(e, {
         speed: e.speed * (e.zoneSlowMult || 1) * spellSlowFactor(e, performance.now()), // zone slow + iceball spell-freeze (separate channels)

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { findLocalPath, clampMove, STEP_UP, GRID, CLIMBERS, gridOrigin, settleOnGround } from '../../src/game/localPath.js';
+import { findLocalPath, clampMove, STEP_UP, GRID, CLIMBERS, gridOrigin, settleOnGround, snapMob, heightGridAt } from '../../src/game/localPath.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { carriersOf } from './_srcWalk.js';
 import { drainKnockback } from '../../src/game/captureRest.js';
@@ -30,12 +30,16 @@ import { drainKnockback } from '../../src/game/captureRest.js';
  *   H2 a refused mover keeps walking (isMoving not cleared)   H3 plausible-wrong: the own-column rise refused too
  *   H4 the shove ignores walls (the original R6.2)   H5 plausible-wrong: the shove checked only at its END
  *   H6 AIWorkerSystem drains without the probe (structural)
+ *   (review #6, R7.1 — the snap, the grid and the drain now go through snapMob / heightGridAt / the FLOOR probe,
+ *   and this file's harness calls the same two functions:) G3b AIWorkerSystem snaps with settleOnGround directly
+ *   again   H6b it drains on the column-top probe again   F4b heightGridAt frames by round() again
  *   R57 the blocked-stop removed (a zombie at the wall walks in place) — SURVIVED the first time: nothing
  *      asserted isMoving; the unbroken-wall case now does. R57b plausible-wrong: "stopped" = moved exactly zero
  *      (the first fix — a zombie pressed into the wall at a shallow angle creeps millimetres and kept walking)
  *
  * BLIND SPOTS: movers that never pass the worker-reply snap (SquadAISystem allies set their own y) are not
- * covered; a mob whose FIRST snap happens under an overhang still lands on the roof (no footing to return to);
+ * covered; a heightmap world has no overhangs, so roofs and canopies are mob-floor-gates' job (R7.1) — and spawn
+ * placement still reads the column top, so a mob can SPAWN on a canopy or a roof (QUEUE R7.9);
  * a refused knockback renders at the illegal spot for up to one AI tick (~66 ms) before it is pulled back; and
  * whether a siege against a built wall FEELS right needs a person playing.
  */
@@ -163,11 +167,9 @@ const world = ({ zFrom = -40, zTo = 40, gapZ = [] } = {}) => (x, z) => {
   const cx = Math.floor(x + 0.1), cz = Math.floor(z + 0.1); // the probe's +0.1 seam jitter
   return cx === 5 && cz >= zFrom && cz <= zTo && !gapZ.includes(cz) ? GROUND + 3 : GROUND;
 };
-/** AIWorkerSystem's grid, built from the mob's position exactly as it builds it (gridOrigin — the mob's column). */
+/** AIWorkerSystem's grid, through the call it makes (heightGridAt). A heightmap has no overhangs: floor = top. */
 function gridAt(ground, e) {
-  const sx = gridOrigin(e.position.x), sz = gridOrigin(e.position.z), out = [];
-  for (let gz = 0; gz < 9; gz++) for (let gx = 0; gx < 9; gx++) out.push(ground(sx + gx, sz + gz));
-  return out;
+  return heightGridAt(e.position.x, e.position.z, e.position.y - 0.5, (x, z) => ground(x, z));
 }
 const mob = (type, over = {}) => ({
   id: `${type}-1`, passive: false, type, position: { x: 10, y: GROUND + 0.5, z: 0 },
@@ -184,7 +186,7 @@ function chase(e, ground, { ticks = 300, dt = 0.1, player = [0, GROUND, 0], noGr
     onmessage({ data: { type: 'TICK', playerPos: player, now, delta: dt, mobs: [payload], captureSeed: null } });
     const r = posted[posted.length - 1];
     for (const u of r.updates) applyMobUpdate(e, u);
-    settleOnGround(e, ground(e.position.x, e.position.z), CLIMBERS.has(e.type)); // AIWorkerSystem's ground snap
+    snapMob(e, (x, z) => ground(x, z), ground); // AIWorkerSystem's ground snap, the call it makes
     maxGround = Math.max(maxGround, ground(e.position.x, e.position.z));
     minX = Math.min(minX, e.position.x);
     maxX = Math.max(maxX, e.position.x);
@@ -227,7 +229,8 @@ describe('settleOnGround — the snap every mover passes through refuses a climb
     expect(e.position.y).toBe(52.5);
   });
   it('AIWorkerSystem snaps through it (weak, structural)', () => {
-    expect(carriersOf(/settleOnGround\(entity, groundY, CLIMBERS\.has\(entity\.type\)\);/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/snapMob\(entity, /)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/settleOnGround\(/), 'a second snap path bypasses snapMob').toEqual(['game/localPath.js']);
     expect(carriersOf(/entity\.position\.y = groundY \+ 0\.5;/), 'an unchecked top-surface snap is back').toEqual([]);
   });
 });
@@ -250,7 +253,7 @@ describe('a knockback shove respects walls where it happens (review #5, R6.2/R6.
     expect(noProbe.position.x).toBeCloseTo(8.2, 9);
   });
   it('AIWorkerSystem drains with the live ground probe (weak, structural)', () => {
-    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, delta, false, useGameStore\.getState\(\)\.getMobGroundLevel\)/))
+    expect(carriersOf(/drainKnockback\(mobsQuery\.entities, delta, false, useGameStore\.getState\(\)\.getMobFloor\)/))
       .toEqual(['systems/AIWorkerSystem.jsx']);
   });
 });
@@ -263,7 +266,8 @@ describe('ONE grid framing, everywhere that frames the grid (review #4, R5.1)', 
     }
   });
   it('AIWorkerSystem builds the grid through gridOrigin, and no round()-framed grid is left anywhere (weak, structural)', () => {
-    expect(carriersOf(/const startX = gridOrigin\(e\.position\.x\);/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/heightGridAt\(e\.position\.x, /)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/const ox = gridOrigin\(x\), oz = gridOrigin\(z\);/), 'heightGridAt frames by the mob\'s column').toEqual(['game/localPath.js']);
     expect(carriersOf(/Math\.round\([^)]*\)\s*-\s*4\b/), 'a round()-framed 9x9 grid is back').toEqual([]);
   });
 });

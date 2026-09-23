@@ -137,6 +137,10 @@ export const useGameStore = create((set, get) => ({
     
     getMobGroundLevel: null,
     setGetMobGroundLevel: (fn) => set({ getMobGroundLevel: fn }),
+    // (x, z, feet) -> the floor a mob at those feet stands on (world/mobFloorProbe.js); the column TOP above is
+    // a roof or a canopy wherever there is one (review #6, R7.1). Terrain.jsx registers both.
+    getMobFloor: null,
+    setGetMobFloor: (fn) => set({ getMobFloor: fn }),
 
     playerRigidBodyRef: null,
     beastGroupRef: null, // the RENDERED beast avatar group (transient ref; see BeastAvatar)

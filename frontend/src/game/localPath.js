@@ -30,6 +30,7 @@ export function cellCentre(g, origin) {
   return origin + g + 0.4;
 }
 import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from './aStarNeighbors.js';
+import { groundForMover } from './mobFloor.js';
 
 /** Cells per side of the mob-centred grid; the mob is at (4, 4). */
 export const GRID = 9;
@@ -134,24 +135,48 @@ export function clampMove(heightGrid, fromX, fromZ, toX, toZ, climber = false) {
 }
 
 /**
+ * The mob's grid of FLOORS in the one framing above: each column's floor as the mob's feet see it
+ * (game/mobFloor.js) — Infinity where it cannot stand, so A* and clampMove treat it as a wall; a column the
+ * probe knows nothing about reads as level with the mob. AIWorkerSystem builds every aggro mob's grid here.
+ * @param {(x:number, z:number, feet:number) => number|null} floorAt
+ */
+export function heightGridAt(x, z, feet, floorAt) {
+  const ox = gridOrigin(x), oz = gridOrigin(z);
+  const out = new Array(GRID * GRID);
+  for (let gz = 0; gz < GRID; gz++) {
+    for (let gx = 0; gx < GRID; gx++) {
+      const h = floorAt(ox + gx, oz + gz, feet);
+      out[gz * GRID + gx] = h === null || Number.isNaN(h) ? feet : h;
+    }
+  }
+  return out;
+}
+
+/**
  * THE GROUND SNAP, with the step rule — the ONE choke point every mover passes through (review #4, R5.3/R5.6).
  *
- * The main thread snaps a mob's y to the top of the column it stands on (the probe casts down from y = 255).
+ * The main thread snaps a mob's y to the FLOOR of the column it stands on — the bottom of the air gap its feet
+ * are in, not the column's top (game/mobFloor.js, review #6 R7.1: the top is a roof or a tree canopy).
  * The worker's clampMove only covers aggro mobs that carry a height grid; wandering mobs, the first aggro tick,
  * knockback shoves and spawns set x/z with no check, and the snap then lifted them onto any wall. So the snap
- * itself refuses: if the column's top is more than STEP_UP above the mob's feet, the mob goes back to the last
- * position that stood on reachable ground, and its y is left alone. Any step DOWN is taken. Climbers climb.
+ * itself refuses: if the floor is more than STEP_UP above the mob's feet, or the column has no floor it fits in
+ * (Infinity), the mob goes back to the last position that stood on reachable ground, and its y is left alone.
+ * Any step DOWN is taken. Climbers climb any finite rise.
  * Mutates `e.position` and the entity's `footX/footZ` memory; returns whether the move was refused.
  */
 export function settleOnGround(e, groundY, climber = false) {
   const feet = e.position.y - 0.5;
   // Blocks placed on the column the mob ALREADY stands on (a build footprint) lift it: refusing would rewind it
-  // to the same spot forever, embedded in the new blocks (review #5, R6.4).
+  // to the same spot forever, embedded in the new blocks (review #5, R6.4). Only a floor the mob is INSIDE can
+  // do that now — a roof above its gap is not its floor (R7.1).
   const sameColumn = e.footX !== undefined
     && Math.floor(e.position.x + 0.1) === Math.floor(e.footX + 0.1) && Math.floor(e.position.z + 0.1) === Math.floor(e.footZ + 0.1);
-  if (!climber && e.footX !== undefined && !sameColumn && groundY - feet > STEP_UP) {
-    e.position.x = e.footX;
-    e.position.z = e.footZ;
+  const wall = groundY === Infinity || (!climber && e.footX !== undefined && !sameColumn && groundY - feet > STEP_UP);
+  if (wall) {
+    if (e.footX !== undefined) {
+      e.position.x = e.footX;
+      e.position.z = e.footZ;
+    }
     // And it STOPS: a refused mover kept walking into the wall every tick, and a wanderer kept its heading until
     // its timer ran out. isMoving and moveTimer round-trip to the worker, which re-rolls a wander at once (R6.3).
     e.isMoving = false;
@@ -162,4 +187,18 @@ export function settleOnGround(e, groundY, climber = false) {
   e.footX = e.position.x;
   e.footZ = e.position.z;
   return false;
+}
+
+/**
+ * Snap a mob to the ground under it: its floor (game/mobFloor.js), or for a climber at a floorless wall the
+ * column top; then the step rule (settleOnGround). The ONE call AIWorkerSystem makes per worker reply, and the one
+ * the gates drive — so the probe choice cannot differ between the game and its test (review #6, R7.1).
+ * A column with no data leaves the mob as it is.
+ * @returns {boolean} whether the move was refused
+ */
+export function snapMob(e, getFloor, getTop) {
+  const climber = CLIMBERS.has(e.type);
+  const groundY = groundForMover(getFloor, getTop, e.position.x, e.position.z, e.position.y - 0.5, climber);
+  if (groundY === null || Number.isNaN(groundY)) return false;
+  return settleOnGround(e, groundY, climber);
 }

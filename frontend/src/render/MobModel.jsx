@@ -239,15 +239,16 @@ const MobModel = React.memo(({ entity }) => {
       // IK height snapping (epsilon-gated like the swing: the damp's asymptote keeps speed>0 for
       // seconds after a stop, which kept these 4 raycasts/mob firing — review-fix 2026-06-10)
       const store = useGameStore.getState();
-      if (store.getMobGroundLevel && speed > 0.05) {
+      if (store.getMobFloor && speed > 0.05) {
         const checkIK = (mesh, offsetX, offsetZ) => {
           if (!mesh) return;
           const cosR = Math.cos(entity.rotation);
           const sinR = Math.sin(entity.rotation);
           const worldX = entity.position.x + (offsetX * cosR + offsetZ * sinR);
           const worldZ = entity.position.z + (-offsetX * sinR + offsetZ * cosR);
-          const groundY = store.getMobGroundLevel(worldX, worldZ);
-          if (groundY !== null && !isNaN(groundY)) {
+          // The floor under the feet, not the column top: under a roof the legs reached for the roof (R7.1).
+          const groundY = store.getMobFloor(worldX, worldZ, entity.position.y - 0.5);
+          if (groundY !== null && Number.isFinite(groundY)) {
              const targetY = groundY - entity.position.y;
              mesh.position.y += (Math.max(-0.3, targetY + 0.3) - mesh.position.y) * 0.2;
           }

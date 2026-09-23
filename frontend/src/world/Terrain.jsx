@@ -35,6 +35,7 @@ import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
+import { makeMobFloorProbe } from './mobFloorProbe.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -753,6 +754,10 @@ export const MinecraftWorld = React.memo(() => {
             return null;
         });
 
+        // The mob FLOOR probe beside it (review #6, R7.1): the column top above is a roof or a tree canopy wherever
+        // there is one, so every mob mover snaps and plans on the floor under its feet instead.
+        useGameStore.getState().setGetMobFloor(makeMobFloorProbe(rapier, world));
+
         // The `checkCollision` registration that stood here was DELETED 2026-08-11. It built a filtered
         // downward Rapier ray and published it to the store, and NOTHING ever read it -- a wire to nowhere
         // that the next author has to trace before they can rule it out. The live ground probe every
@@ -761,6 +766,7 @@ export const MinecraftWorld = React.memo(() => {
         return () => {
             useGameStore.getState().setGetGeneratedChunks(null);
             useGameStore.getState().setGetMobGroundLevel(null);
+            useGameStore.getState().setGetMobFloor(null);
         };
     }, [rapier, world]);
 

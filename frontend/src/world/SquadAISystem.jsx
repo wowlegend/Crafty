@@ -8,6 +8,7 @@ import { releaseOverCap } from '../game/allegiance.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { stepSquad, ALLY_DPS_HIT } from '../game/squadAI';
 import { worldDelta } from '../game/worldClock.js';
+import { groundForMover } from '../game/mobFloor.js';
 
 const AI_TICK_SEC = 1 / 15; // the AIWorkerSystem cadence (SimplifiedNPCSystem :72)
 
@@ -37,15 +38,18 @@ export function SquadAISystem() {
     if (!p) return;
     const now = state.clock.getElapsedTime();
     const { moves, attacks, teleports } = stepSquad(alliesQuery.entities, mobsQuery.entities, p, now, store.isAlive);
+    // Allies stand on the FLOOR under their feet, not the column top — a roof or a canopy (review #6, R7.1). A
+    // teleport lands beside the player, whose published y is the camera's, rounded: two below it is inside the
+    // ground or in the player's own gap, and either way the floor rule finds the player's floor.
+    const teleported = new Set(teleports.map((t) => t.id));
     for (const m of moves.concat(teleports)) {
       const a = alliesQuery.entities.find((e) => e.id === m.id);
       if (!a) continue;
+      const feet = teleported.has(m.id) ? p.y - 2 : a.position.y - 0.5;
       a.position.x = m.x;
       a.position.z = m.z;
-      if (store.getMobGroundLevel) {
-        const gy = store.getMobGroundLevel(m.x, m.z);
-        if (gy !== null && !Number.isNaN(gy)) a.position.y = gy + 0.5;
-      }
+      const gy = groundForMover(store.getMobFloor, store.getMobGroundLevel, m.x, m.z, feet, true);
+      if (gy !== null && Number.isFinite(gy)) a.position.y = gy + 0.5;
     }
     for (const at of attacks) {
       const a = alliesQuery.entities.find((e) => e.id === at.id);
