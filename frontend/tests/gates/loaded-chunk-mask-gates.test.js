@@ -22,6 +22,7 @@ import { carriersOf } from './_srcWalk.js';
  *   K5 the registry bumps its version on a no-op              K6 FarField: the discard not spliced (structural)
  *   K7 Terrain: mount stops registering the chunk (structural)  K9 (retired with clearLoadedChunks, R4.3)
  *   (review #4:) K14 the streamer indexes chunks with its own Math.floor again
+ *   (review #5:) K15 the save's block replay divides by a typed 16 again
  *   (review #3:) K10 the mask back to 32 texels   K11 registration back in a passive useEffect   K12 the early clear
  *   restored   K13 plausible-wrong: chunkOf rounds instead of floors
  *   (K8, an `indexOf('_', 1)` start offset in the key parse, SURVIVED as an equivalent mutant — '-' is never
@@ -160,5 +161,8 @@ describe('wired: Terrain feeds it, the far field reads it (weak, structural)', (
     // ...and the streamer and the block edits index chunks the same way (review #4, R5.8).
     expect(carriersOf(/Math\.floor\([^)]*\/ CHUNK_SIZE\)/), 'a second chunk-index definition is back').toEqual(['world/loadedChunks.js']);
     expect(carriersOf(/const playerCx = chunkOf\(camera\.position\.x\);/)).toEqual(['world/Terrain.jsx']);
+    // ...and no literal chunk size anywhere (review #5, R6.7: boss voxel destruction, the save's block replay and
+    // the Blight-Heart chunk each divided by a typed 16). The one /16 left is a music arpeggio step, not a chunk.
+    expect(carriersOf(/Math\.floor\([^)]*\/\s*16\)/), 'a literal /16 chunk index is back').toEqual(['SoundManager.jsx']);
   });
 });

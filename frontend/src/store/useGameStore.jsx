@@ -17,6 +17,7 @@ import { clampKinetic } from '../game/kinetic.js';
 import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
 import { stackHitstop } from '../game/hitstop.js';
+import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
@@ -352,11 +353,16 @@ export const useGameStore = create((set, get) => ({
     // burst of hits and caps it (stackHitstop), and `hitstopStart` is the burst's start the cap counts from.
     hitstopUntil: 0,
     hitstopStart: 0,
+    // Every FINISHED burst's frozen span, banked when the next burst starts, so the world clock
+    // (game/worldClock.js) is exact however the frames fall — a burst that ended and another that began
+    // between two frames used to lose the first one's tail (review #5, R6.6).
+    hitstopFrozenTotal: 0,
     triggerHitstop: (ms) => {
         const cur = get();
         const next = stackHitstop({ until: cur.hitstopUntil, start: cur.hitstopStart }, performance.now(), ms);
         if (next.until !== cur.hitstopUntil || next.start !== cur.hitstopStart) {
-            set({ hitstopUntil: next.until, hitstopStart: next.start });
+            const banked = next.start !== cur.hitstopStart ? Math.max(0, cur.hitstopUntil - cur.hitstopStart) : 0;
+            set({ hitstopUntil: next.until, hitstopStart: next.start, hitstopFrozenTotal: (cur.hitstopFrozenTotal || 0) + banked });
         }
     },
 
@@ -1084,11 +1090,11 @@ export const useGameStore = create((set, get) => ({
                     const wy = parseInt(wyStr);
                     const wz = parseInt(wzStr);
 
-                    const cx = Math.floor(wx / 16);
-                    const cz = Math.floor(wz / 16);
-                    const lx = wx - cx * 16;
-                    const lz = wz - cz * 16;
-                    const index = lx + lz * 16 + wy * 256;
+                    const cx = chunkOf(wx); // the ONE chunk index (world/loadedChunks.js, review #5 R6.7)
+                    const cz = chunkOf(wz);
+                    const lx = wx - cx * CHUNK_SIZE;
+                    const lz = wz - cz * CHUNK_SIZE;
+                    const index = lx + lz * CHUNK_SIZE + wy * CHUNK_SIZE * CHUNK_SIZE;
 
                     modifications.push([cx, cz, index, blockType]);
                 }
@@ -1104,6 +1110,8 @@ export const useGameStore = create((set, get) => ({
                 isDay,
                 gameTime,
                 gameWon,
+                // A pending VICTORY belongs to the kill that raised it, never to the world loaded next (R6.5).
+                victoryPending: false,
                 bossHealth: boss.health,
                 bossActive: boss.active,
                 bossDefeated: boss.defeated,

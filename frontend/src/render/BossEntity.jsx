@@ -12,6 +12,7 @@ import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
 import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
+import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
@@ -69,10 +70,10 @@ const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
 
     const newBlocks = new Map(store.worldBlocks);
     chosen.forEach(b => {
-        const cx = Math.floor(b.x / 16);
-        const cz = Math.floor(b.z / 16);
-        const lx = b.x - cx * 16;
-        const lz = b.z - cz * 16;
+        const cx = chunkOf(b.x); // the ONE chunk index (world/loadedChunks.js, review #5 R6.7)
+        const cz = chunkOf(b.z);
+        const lx = b.x - cx * CHUNK_SIZE;
+        const lz = b.z - cz * CHUNK_SIZE;
 
         worker.postMessage({
             type: 'update_block',

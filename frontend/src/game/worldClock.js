@@ -15,22 +15,18 @@ import { worldTimeScale } from './hitstop.js';
 
 let scale = 1;
 let worldMs = null;
-let lastNow = null;
 
 /**
  * Advance the world one frame: this frame's freeze scale, and the WORLD clock — wall time minus every frozen
- * span, exact to the freeze window [hitstopStart, hitstopUntil] rather than to frame boundaries (R2.7).
+ * span (R2.7). A CLOSED FORM, not an accumulation over ticks: the store banks each finished burst's span when the
+ * next one starts (hitstopFrozenTotal), and the burst in force contributes its elapsed part. Summing overlaps per
+ * tick lost a burst that ended and another that began between two frames (review #5, R6.6).
  * Called once per frame by systems/WorldClockTicker.jsx; tests call it directly with an injected `now`.
  */
 export function tickWorldClock(now = performance.now()) {
-  const { hitstopUntil = 0, hitstopStart = 0 } = useGameStore.getState();
+  const { hitstopUntil = 0, hitstopStart = 0, hitstopFrozenTotal = 0 } = useGameStore.getState();
   scale = worldTimeScale(now, hitstopUntil);
-  if (lastNow === null) worldMs = now;
-  else if (now > lastNow) {
-    const frozen = Math.max(0, Math.min(now, hitstopUntil) - Math.max(lastNow, hitstopStart));
-    worldMs += now - lastNow - frozen;
-  }
-  lastNow = now;
+  worldMs = now - hitstopFrozenTotal - Math.max(0, Math.min(now, hitstopUntil) - hitstopStart);
 }
 
 /**

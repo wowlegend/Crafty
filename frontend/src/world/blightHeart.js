@@ -1,4 +1,5 @@
 import { TIER_RING, MAX_TIER } from './zoneTier.js';
+import { chunkOf } from './loadedChunks.js';
 
 // S9: the Blight Heart -- a FIXED, foreshadowed far-frontier lair (NOT a random ambush). The same coord
 // every game (the world seed is fixed), so it is a learnable destination you see on the horizon + journey
@@ -19,5 +20,5 @@ export function blightHeartSite() {
 // only when this chunk is loaded (you're near the climax), mirroring the landmark streamer. Pure.
 export function blightHeartChunk() {
   const { x, z } = blightHeartSite();
-  return { cx: Math.floor(x / 16), cz: Math.floor(z / 16) };
+  return { cx: chunkOf(x), cz: chunkOf(z) }; // the ONE chunk index (review #5, R6.7)
 }

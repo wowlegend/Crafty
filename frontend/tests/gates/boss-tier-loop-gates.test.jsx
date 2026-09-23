@@ -28,6 +28,7 @@ import { carriersOf } from './_srcWalk.js';
  *   V3 the victory effect raises it on every kill (a return kill announces the win again)
  *   V4 plausible-wrong: raised from the tier AFTER the kill (a throwing tier step strands it again)
  *   V5 victoryPending saved with the game (a reload resurrects VICTORY)
+ *   V6 loadWorldData leaves a pending VICTORY in place (it shows over another world — review #5, R6.5)
  *
  * BLIND SPOT: BossEntity's per-phase speed/damage come from bossTierStats(bossTier) by source shape only
  * (a structural check at the end); whether the tier-2 dragon FEELS harder is a person-playing question.
@@ -176,6 +177,15 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
 });
 
 describe('VICTORY is an EVENT of the first kill, not a state a reload can re-derive (review #4, R5.5)', () => {
+  it('an undismissed VICTORY does not follow the player into ANOTHER world they load (review #5, R6.5)', async () => {
+    const { buildSaveData } = await import('../../src/game/saveSchema');
+    useGameStore.setState({ victoryPending: false, gameWon: false, bossTier: 0, bossDefeated: false });
+    const other = JSON.parse(JSON.stringify(buildSaveData(useGameStore.getState(), { position: { x: 0, y: 18, z: 0 } })));
+    useGameStore.setState({ victoryPending: true }); // the first dragon just died; the player did not dismiss it
+    useGameStore.getState().loadWorldData(other);
+    expect(useGameStore.getState().victoryPending, 'the win screen appeared over an unrelated world').toBe(false);
+  });
+
   it('a won game RELOADED does not raise VICTORY again — the flag is never saved', async () => {
     const { buildSaveData } = await import('../../src/game/saveSchema');
     useGameStore.setState({ victoryPending: true, gameWon: true, bossTier: 1, bossDefeated: true, bossHealth: 0 });

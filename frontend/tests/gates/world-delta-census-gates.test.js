@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { sourceTexts } from './_srcWalk.js';
 import { worldDelta, realDelta, tickWorldClock, isWorldFrozen, worldNow } from '../../src/game/worldClock.js';
 import { carriersOf } from './_srcWalk.js';
@@ -23,6 +23,8 @@ import { useGameStore } from '../../src/store/useGameStore';
  *   (R2.7:) C1 plausible-wrong: the whole tick counted as frozen (not the overlap)   C2 the freeze ignored
  *   C3 the worker sent the wall clock again   C4 MobModel's telegraph reads the wall clock again
  *   C5 the dragon's timers on the wall clock again (R5.4)
+ *   (review #5:) C6 the store stops banking finished bursts (a between-frames burst is lost again — R6.6)
+ *   C7 plausible-wrong: the clock ignores the banked total
  *
  * BLIND SPOT: the census proves each site DECIDED, not that it decided right — a world system routed through
  * realDelta passes. The world/real split is listed in the plan task and is the review surface. Callbacks passed
@@ -176,6 +178,25 @@ describe('worldNow — the WORLD clock does not advance through a freeze (QUEUE 
     freeze(1000, 1180); // a second hit stacks the burst (hitstopStart is the burst's start)
     tickWorldClock(T + 1200);
     expect(worldNow() - w0).toBeCloseTo(20, 9);
+  });
+
+  it('a burst that ENDS and another that STARTS between two frames: both are subtracted (review #5, R6.6)', () => {
+    // Through the REAL writer, triggerHitstop, with the wall clock pinned: A freezes 90..100, a frame at 95, B
+    // freezes 105..125, the next frame at 111. Frozen so far: 10 (all of A) + 6 (B) = 16, so the world reads 95.
+    // Summing per-tick overlaps with only the burst in force lost A's tail (5 ms) and read 100.
+    const spy = vi.spyOn(performance, 'now');
+    try {
+      useGameStore.setState({ hitstopStart: 0, hitstopUntil: 0, hitstopFrozenTotal: 0 });
+      spy.mockReturnValue(T + 90); useGameStore.getState().triggerHitstop(10);
+      tickWorldClock(T + 95);
+      expect(worldNow()).toBeCloseTo(T + 90, 9);
+      spy.mockReturnValue(T + 105); useGameStore.getState().triggerHitstop(20);
+      tickWorldClock(T + 111);
+      expect(worldNow(), 'the first burst\'s tail was lost between frames').toBeCloseTo(T + 95, 9);
+    } finally {
+      spy.mockRestore();
+      useGameStore.setState({ hitstopStart: 0, hitstopUntil: 0, hitstopFrozenTotal: 0 });
+    }
   });
 
   it('the worker, the telegraph and the dragon read it (weak, structural)', () => {
