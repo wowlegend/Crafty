@@ -76,9 +76,69 @@ import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 // pointer-lock controls). Suppressed in capture mode (the harness pins the camera). Renders nothing.
 // PointerLook extracted -> src/render/PointerLook.jsx (v6 de-monolith A2.4).
 
-export function GameScene({
+// THE POST-PROCESSING CHAIN, BUILT ONCE (plan 2026-09-23-crafty-perf-heat-ipad, Task 2). @react-three/postprocessing
+// rebuilds every EffectPass whenever its <EffectComposer>'s children re-render — its pass-building layout effect
+// depends on `children` — and removePass/addPass delete and re-create the composer's depth textures and depth
+// render target. Inline in GameScene it re-rendered on every hunger tick (5 s) and mana tick (1 s while regenerating):
+// GPU allocations every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
+// chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
+// (Defined here, not in its own file: the effect-chain gates read this file.)
+const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptureMode }) {
+  return (
+    <EffectComposer multisampling={0}>
+      {q.ao && (
+        <N8AO
+          halfRes
+          aoRadius={1.2}
+          distanceFalloff={1.0}
+          intensity={2.0}
+          quality="medium"
+          color="black"
+        />
+      )}
+      {/* HORIZON GATE (2026-09-22, with the sun arc). GodRays is a screen-space effect whose light
+          source is the sun BILLBOARD, and three.js#18446 records the official godrays example
+          flipping its shaft downwards when "the signs of the sun's screen space position vector
+          components change" — which an arcing sun crosses at every dawn and dusk by construction.
+          Casting sun shafts at night is also just wrong. Gated on the store flag rather than solved
+          in the shader: the pass simply is not mounted while the sun is down. */}
+      {q.godRays && sunMesh && sunAboveHorizon && (
+        // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
+        // high 100 / med 60) to stay in med's perf envelope.
+        <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
+      )}
+      {/* S1-D-M3 MAGIC-HOUR COLOUR SCRIPT: these two effects are now driven PER-MOOD
+          by <MoodGradeDriver> (saturation/brightness/contrast lerped on mood — knobs
+          in mood.js MOOD_GRADE). The props here are the EXPLORE-grade initial values
+          so the first frame already reads warm before the driver resolves the live
+          effect instances. Capture-safe (mood snapped in capture). */}
+      <HueSaturation saturation={0.30} />
+      <BrightnessContrast brightness={0.09} contrast={0.06} />
+      <Bloom
+        intensity={0.95}
+        luminanceThreshold={0.65}
+        luminanceSmoothing={0.25}
+        mipmapBlur={q.bloomMipmap}
+      />
+      <SMAA />
+      <ToneMapping mode={ToneMappingMode.NEUTRAL} />
+      {/* Per-frame random film grain — disabled in dev capture mode because it
+          makes every frame pixel-different (defeats the visual-regression diff). */}
+      {!isCaptureMode && <Noise opacity={0.01} />}
+      <Vignette eskil={false} offset={0.45} darkness={0.35} />
+      <BloomSpikeDriver />
+      <MoodGradeDriver />
+    </EffectComposer>
+  );
+});
+
+export const GameScene = React.memo(function GameScene({
   isWorldBuilt,
-  bossSystem,
+  bossActive,
+  bossPositionRef,
+  bossPhase,
+  bossHealth,
+  bossTier,
   showStats
 }) {
   const canvasRef = useRef(null); // the WebGL canvas (set in onCreated) — the element we pointer-lock
@@ -303,11 +363,11 @@ export function GameScene({
             <Nametags />
 
             <BossEntity
-              bossActive={bossSystem.bossActive}
-              bossPositionRef={bossSystem.bossPositionRef}
-              bossPhase={bossSystem.bossPhase}
-              bossHealth={bossSystem.bossHealth}
-              bossTier={bossSystem.bossTier}
+              bossActive={bossActive}
+              bossPositionRef={bossPositionRef}
+              bossPhase={bossPhase}
+              bossHealth={bossHealth}
+              bossTier={bossTier}
             />
           </Physics>
 
@@ -338,50 +398,7 @@ export function GameScene({
               This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
-          <EffectComposer multisampling={0}>
-            {q.ao && (
-              <N8AO
-                halfRes
-                aoRadius={1.2}
-                distanceFalloff={1.0}
-                intensity={2.0}
-                quality="medium"
-                color="black"
-              />
-            )}
-            {/* HORIZON GATE (2026-09-22, with the sun arc). GodRays is a screen-space effect whose light
-                source is the sun BILLBOARD, and three.js#18446 records the official godrays example
-                flipping its shaft downwards when "the signs of the sun's screen space position vector
-                components change" — which an arcing sun crosses at every dawn and dusk by construction.
-                Casting sun shafts at night is also just wrong. Gated on the store flag rather than solved
-                in the shader: the pass simply is not mounted while the sun is down. */}
-            {q.godRays && sunMesh && sunAboveHorizon && (
-              // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
-              // high 100 / med 60) to stay in med's perf envelope.
-              <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
-            )}
-            {/* S1-D-M3 MAGIC-HOUR COLOUR SCRIPT: these two effects are now driven PER-MOOD
-                by <MoodGradeDriver> (saturation/brightness/contrast lerped on mood — knobs
-                in mood.js MOOD_GRADE). The props here are the EXPLORE-grade initial values
-                so the first frame already reads warm before the driver resolves the live
-                effect instances. Capture-safe (mood snapped in capture). */}
-            <HueSaturation saturation={0.30} />
-            <BrightnessContrast brightness={0.09} contrast={0.06} />
-            <Bloom
-              intensity={0.95}
-              luminanceThreshold={0.65}
-              luminanceSmoothing={0.25}
-              mipmapBlur={q.bloomMipmap}
-            />
-            <SMAA />
-            <ToneMapping mode={ToneMappingMode.NEUTRAL} />
-            {/* Per-frame random film grain — disabled in dev capture mode because it
-                makes every frame pixel-different (defeats the visual-regression diff). */}
-            {!isCaptureMode && <Noise opacity={0.01} />}
-            <Vignette eskil={false} offset={0.45} darkness={0.35} />
-            <BloomSpikeDriver />
-            <MoodGradeDriver />
-          </EffectComposer>
+          <PostFX q={q} sunMesh={sunMesh} sunAboveHorizon={sunAboveHorizon} isCaptureMode={isCaptureMode} />
           <Preload all />
         </Suspense>
 
@@ -389,4 +406,4 @@ export function GameScene({
       </Canvas>
     </div>
   );
-}
+});

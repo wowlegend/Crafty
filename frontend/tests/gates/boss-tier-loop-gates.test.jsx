@@ -202,7 +202,10 @@ describe('C3 — the renderer and the health bar read the tier (weak, structural
   it('BossEntity takes its phase speed and damage from the tier, and the scene passes the tier in', () => {
     expect(carriersOf(/const tierPhases = useMemo\(\(\) => bossTierStats\(bossTier\)\.phases/)).toEqual(['render/BossEntity.jsx']);
     expect(carriersOf(/BOSS_CONFIG\.phases\[bossPhase\]/), 'a phase read straight from BOSS_CONFIG is back').toEqual([]);
-    expect(carriersOf(/bossTier=\{bossSystem\.bossTier\}/)).toEqual(['GameScene.jsx']);
+    // The chain App -> GameScene -> BossEntity (GameScene is memoised on primitives since the perf fix, so App hands it
+    // the tier, not the per-render bossSystem object).
+    expect(carriersOf(/bossTier=\{bossSystem\.bossTier\}/)).toEqual(['App.jsx']);
+    expect(carriersOf(/bossTier=\{bossTier\}/)).toEqual(['GameScene.jsx']);
     expect(carriersOf(/bossName=\{bossSystem\.bossName\}/)).toEqual(['HUD.jsx']);
     // The VICTORY overlay is the first dragon's: gated on the tier that kill produces, so a return kill after
     // a reload does not announce the win again (review 2026-09-22).

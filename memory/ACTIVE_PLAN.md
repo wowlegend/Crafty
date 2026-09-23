@@ -7,6 +7,12 @@ each ~300k context.
 
 ### RESUME HERE — 2026-09-23 ~06:00 PDT, session 3 (third stretch). READ FIRST.
 
+- **UPDATE ~06:25:** P1 APPLIED in the working tree (uncommitted): `frontend/src/GameScene.jsx` (PostFX memo +
+  GameScene memo with boss primitives), `frontend/src/App.jsx`; gate `frontend/tests/e2e/gl-churn.spec.js` (depth
+  allocations 37 -> 3 in 12 s idle, framebuffers 57 -> 7). Memo mutations P1-P4 were running (scratchpad `gmut.py`;
+  pre-fix backups `GameScene.p1.bak` / `App.p1.bak`). The shadow-reset unit gate is written RED-first and parked in the scratchpad
+  (`parked/shadow-reset-gates.test.js`; its module = scratchpad `shadowReset.js`, not yet copied in). P1 COMMITTED (see git log: perf(render) post-processing built once); next P5.
+
 - **Kevin, live site (57c45ae4 deployed):** M3 Max heats, fans overdrive; iPad visuals "very buggy / broken". This
   now leads the work. Plan: `docs/superpowers/plans/2026-09-23-crafty-perf-heat-ipad.md` (root causes verified in
   source: P1 post-processing rebuilt on every GameScene re-render — hunger 5 s / mana 1 s ticks; P5 three r172 keeps a

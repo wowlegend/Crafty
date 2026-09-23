@@ -984,7 +984,11 @@ function GameApp({ experienceSystem }) {
           not, and which is precisely the kind of thing a reader takes on trust from a prop list. */}
       <GameScene
         isWorldBuilt={isWorldBuilt}
-        bossSystem={bossSystem}
+        bossActive={bossSystem.bossActive}
+        bossPositionRef={bossSystem.bossPositionRef}
+        bossPhase={bossSystem.bossPhase}
+        bossHealth={bossSystem.bossHealth}
+        bossTier={bossSystem.bossTier}
         showStats={showStats}
       />
 
