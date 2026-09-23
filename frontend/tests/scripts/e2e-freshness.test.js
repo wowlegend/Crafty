@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verdict, readBaseCi, jobTimedOut, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -33,6 +33,11 @@ import { verdict, readBaseCi, jobTimedOut, E2E_TIMEOUT_MIN, OBSERVED } from '../
  *   T3 the timeout inference not wired into readBaseCi         -> run-35830093253 case RED
  *   T4 plausible-wrong: the FIRST timeout-minutes in ci.yml (the 20-minute gates job) -> the read-limit case RED
  *   T5 the 30 s slack widened to 90                           -> the 24m00s boundary RED
+ *   A1 the annotation ignored (duration decides always)        -> the R9.6 superseded-late case RED
+ *   A2 plausible-wrong: any annotation text counts as a timeout -> the R9.6 superseded-late case RED
+ *   A3 the CRLF normalisation dropped -> SURVIVED first (the only CRLF case had a comment on the e2e line, which
+ *      absorbs the \r); RED on the added CRLF-without-comment case
+ *   A4 plausible-wrong: the e2e line must end at the colon (no comment) -> the comment case RED
  * Live, not a fixture: against the real gh output the gate now reads base 37d030a as RED (it read UNKNOWN before).
  *   M9 plausible-wrong: a pending shard ignored (only finished shards read)  -> in-progress case RED
  *   M9b plausible-wrong: the RUN's status gates the verdict                  -> other-job-running case RED
@@ -95,7 +100,13 @@ describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
   // A fake gh, in the wire format readBaseCi asks for: the run list answers `id|status|conclusion|sha`, the
   // job query one `status,conclusion,startedAt,completedAt` per e2e job. A still-running run prints an EMPTY conclusion, which is
   // why the fields are `|`-separated: split on whitespace, "123  abc1234" shifted the sha into the conclusion.
-  const gh = (run, e2eJobs) => (cmd) => (cmd.includes('run list') ? run : cmd.includes('run view') ? e2eJobs : '');
+  // `notes` answers the annotations query (a cancelled shard's GitHub annotations); a function may throw (offline).
+  const gh = (run, e2eJobs, notes = '') => (cmd) => {
+    if (cmd.includes('run list')) return run;
+    if (cmd.includes('run view')) return e2eJobs;
+    if (cmd.includes('annotations')) return typeof notes === 'function' ? notes(cmd) : notes;
+    return '';
+  };
   const T0 = '2026-09-23T07:07:39Z', T3 = '2026-09-23T07:10:39Z';
   const done = (...cs) => cs.map((c) => `completed,${c},${T0},${T3}`).join(' ');
 
@@ -119,20 +130,42 @@ describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
 
   // A JOB TIMEOUT CONCLUDES `cancelled`. Run 35830093253: shard 2 went red on perfect-dodge, then hit its 25-minute
   // limit — cancelled at 07:32:50 after starting 07:07:39 — and this gate read the base as UNKNOWN and failed open.
-  it('a shard cancelled after running its WHOLE timeout timed out: the base is red (run 35830093253)', () => {
-    const real = `completed,success,${T0},2026-09-23T07:21:15Z completed,cancelled,${T0},2026-09-23T07:32:50Z completed,success,${T0},2026-09-23T07:24:12Z`;
-    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', real), 25).state).toBe('failure');
-    // the SAME shard cancelled three minutes in — a superseded run — is still no verdict
-    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', done('success', 'cancelled', 'success')), 25).state).toBe(null);
+  // GitHub's annotations on that shard, verbatim (gh api .../check-runs/107080443383/annotations, 2026-09-23).
+  const TIMED_OUT = 'The job has exceeded the maximum execution time of 25m0s The operation was canceled.';
+  const SUPERSEDED = 'The operation was canceled.';
+  const real = `completed,success,${T0},2026-09-23T07:21:15Z,1 completed,cancelled,${T0},2026-09-23T07:32:50Z,107080443383 completed,success,${T0},2026-09-23T07:24:12Z,3`;
+  it('a shard GitHub stopped at its limit is red (run 35830093253, by its annotation)', () => {
+    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', real, TIMED_OUT), 25).state).toBe('failure');
+  });
+  it('R9.6: a shard SUPERSEDED within 30 s of the limit is no verdict — the annotation, not the duration, decides', () => {
+    const late = `completed,success,${T0},${T3},1 completed,cancelled,${T0},2026-09-23T07:32:20Z,2 completed,success,${T0},${T3},3`; // 24m41s
+    expect(readBaseCi(gh('9|completed|cancelled|abc1234', late, SUPERSEDED), 25).state).toBe(null);
+  });
+  it('annotations unreadable (offline): the duration decides, erring RED; a short cancel stays unknown', () => {
+    const offline = () => { throw new Error('gh: network'); };
+    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', real, offline), 25).state).toBe('failure');
+    expect(readBaseCi(gh('9|completed|cancelled|abc1234', done('success', 'cancelled', 'success'), offline), 25).state).toBe(null);
   });
 
-  it('jobTimedOut: a cancel within 30 s of the limit timed out; one short of that, or any other conclusion, did not', () => {
-    const job = (c, end) => ['completed', c, T0, end];
+  it('jobTimedOut, by the duration (no annotations): within 30 s of the limit timed out; short of that, or any other conclusion, did not', () => {
+    const job = (c, end) => ['completed', c, T0, end, '7'];
     expect(jobTimedOut(job('cancelled', '2026-09-23T07:32:09Z'), 25)).toBe(true); // 24m30s
     expect(jobTimedOut(job('cancelled', '2026-09-23T07:31:39Z'), 25)).toBe(false); // 24m00s
     expect(jobTimedOut(job('success', '2026-09-23T07:40:00Z'), 25)).toBe(false);
     expect(jobTimedOut(job('cancelled', 'null'), 25), 'a job with no end time').toBe(false);
     expect(jobTimedOut(job('cancelled', '2026-09-23T07:40:00Z'), null), 'no limit read: nothing inferred').toBe(false);
+  });
+
+  it('parseE2eTimeout: the e2e job only, a trailing comment on its line allowed, CRLF normalised (R9.6)', () => {
+    const yml = 'jobs:\n  gates:\n    timeout-minutes: 20\n  e2e: # sharded\n    name: e2e\n    timeout-minutes: 25\n  docs:\n    timeout-minutes: 5\n';
+    expect(parseE2eTimeout(yml)).toBe(25);
+    expect(parseE2eTimeout(yml.replace(/\n/g, '\r\n')), 'a CRLF file').toBe(25);
+    // ...and WITHOUT the comment: there `[^\n]*` cannot absorb the \r, so this is the case CRLF actually breaks (A3
+    // survived the comment-only version above).
+    expect(parseE2eTimeout(yml.replace('  e2e: # sharded', '  e2e:').replace(/\n/g, '\r\n')), 'a CRLF file, no comment').toBe(25);
+    expect(parseE2eTimeout(yml.replace('  e2e: # sharded', '  e2e:')), 'no comment').toBe(25);
+    expect(parseE2eTimeout('jobs:\n  gates:\n    timeout-minutes: 20\n'), 'no e2e job').toBe(null);
+    expect(parseE2eTimeout('jobs:\n  e2e:\n    name: e2e\n  docs:\n    timeout-minutes: 5\n'), "not the NEXT job's limit").toBe(null);
   });
 
   it('the limit is READ from ci.yml — the e2e job\'s timeout-minutes, a positive integer (R3a: null would infer nothing)', () => {

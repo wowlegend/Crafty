@@ -154,24 +154,42 @@ export function verdict(current, stamp, base = { state: null }) {
 
 /** The e2e job's `timeout-minutes`, read from the workflow: the job block runs from `  e2e:` to the next job at the
  *  same indent. Null when it cannot be read — and then no timeout is inferred (a cancel stays unknown). */
+/** PURE: the e2e job's `timeout-minutes` from ci.yml's text, or null. The job block runs from `  e2e:` (a trailing
+ *  comment allowed) to the next job at the same indent; CRLF line ends are normalised first (R9.6 — a re-saved CRLF
+ *  file made this null, which silently turned the timeout inference back off). */
+export function parseE2eTimeout(ymlText) {
+  const yml = String(ymlText).replace(/\r\n/g, '\n');
+  const head = /\n {2}e2e:[ \t]*(#[^\n]*)?\n/.exec(yml);
+  if (!head) return null;
+  const rest = yml.slice(head.index + 1);
+  const next = rest.slice(1).search(/\n {2}[a-z][\w-]*:/);
+  const m = /\n {4}timeout-minutes: (\d+)/.exec(next < 0 ? rest : rest.slice(0, next + 1));
+  return m ? Number(m[1]) : null;
+}
+
+/** The e2e job's `timeout-minutes`, read from the workflow — null when it cannot be read. */
 export const E2E_TIMEOUT_MIN = (() => {
   try {
-    const yml = readFileSync(resolve(APP, '../.github/workflows/ci.yml'), 'utf8');
-    const at = yml.indexOf('\n  e2e:\n');
-    if (at < 0) return null;
-    const rest = yml.slice(at + 1);
-    const next = rest.slice(1).search(/\n {2}[a-z][\w-]*:\n/);
-    const m = /\n {4}timeout-minutes: (\d+)/.exec(next < 0 ? rest : rest.slice(0, next + 1));
-    return m ? Number(m[1]) : null;
+    return parseE2eTimeout(readFileSync(resolve(APP, '../.github/workflows/ci.yml'), 'utf8'));
   } catch {
     return null;
   }
 })();
 
-/** Did this e2e job — [status, conclusion, startedAt, completedAt] — TIME OUT? GitHub concludes a job timeout as
- *  `cancelled`, exactly like a superseded run; only a job that ran (to within 30 s) its whole limit timed out. */
-export function jobTimedOut([, c, start, end], timeoutMin = E2E_TIMEOUT_MIN) {
-  if (c !== 'cancelled' || !(timeoutMin > 0)) return false;
+/** GitHub's own words on a job it stopped at its limit — the check-run annotation of run 35830093253's red shard. */
+export const TIMEOUT_ANNOTATION = /exceeded the maximum execution time/i;
+
+/**
+ * Did this e2e job — [status, conclusion, startedAt, completedAt, id] — TIME OUT? GitHub concludes a job timeout as
+ * `cancelled`, exactly like a run superseded by `cancel-in-progress`. The VERDICT is GitHub's annotation on the job
+ * (`annotations`, the joined messages): it names the timeout, and a superseded job's says "The operation was
+ * canceled." When the annotations cannot be read (null), the duration decides — a cancel within 30 s of the limit —
+ * which errs toward RED, the safe side of a stacking rule (R9.6: a supersede in the last 30 s read as a timeout).
+ */
+export function jobTimedOut([, c, start, end], timeoutMin = E2E_TIMEOUT_MIN, annotations = null) {
+  if (c !== 'cancelled') return false;
+  if (annotations != null) return TIMEOUT_ANNOTATION.test(annotations);
+  if (!(timeoutMin > 0)) return false;
   const ms = Date.parse(end) - Date.parse(start);
   return Number.isFinite(ms) && ms >= (timeoutMin * 60 - 30) * 1000;
 }
@@ -204,10 +222,19 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
     if (!id || id === 'null') return { state: null };
     const run = status === 'completed' ? conclusion : status; // what to SAY about the run; not the verdict
     // `,`-separated: the timestamps carry `:`.
-    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status),\\(.conclusion),\\(.startedAt),\\(.completedAt)"] | join(" ")'`);
+    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status),\\(.conclusion),\\(.startedAt),\\(.completedAt),\\(.databaseId)"] | join(" ")'`);
     const e2e = String(jobs).trim().split(/\s+/).filter(Boolean).map((j) => j.split(','));
     let state = null;
-    if (e2e.some((j) => j[1] === 'failure' || j[1] === 'timed_out' || jobTimedOut(j, timeoutMin))) state = 'failure'; // a timeout is a red shard
+    // A cancelled shard's annotations say whether GitHub stopped it at its limit; unreadable -> null -> the duration.
+    const notes = (j) => {
+      if (j[1] !== 'cancelled' || !j[4]) return null;
+      try {
+        return String(exec(`gh api repos/{owner}/{repo}/check-runs/${j[4]}/annotations --jq '[.[].message] | join(" ")'`));
+      } catch {
+        return null;
+      }
+    };
+    if (e2e.some((j) => j[1] === 'failure' || j[1] === 'timed_out' || jobTimedOut(j, timeoutMin, notes(j)))) state = 'failure'; // a timeout is a red shard
     else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'success')) state = 'success';
     return { state, sha, run };
   } catch {

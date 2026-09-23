@@ -800,3 +800,17 @@ probe). Write it before Kevin decides the lock, so the decision rests on the pro
 | R8.9 | `EnhancedMagicSystem` | the `grounded` closure and a getState() per projectile per frame | **FIXED** — built once per frame |
 | R8.10 | `mobFloor.spawnGroundAt` | its refusal silently depends on SPAWN_SOLID_DEPTH + 0.1 <= FLOOR_REACH; past it every canopy reads as ground | **FIXED** — the spawn check carries its own reach (depth + 1), and an Infinity answer refuses (the safe direction) |
 | R8.11 | `chunkLayout.chunkOrigin` | (self, found at commit) exported with zero callers | **DELETED** — 29 `c * CHUNK_SIZE` sites already read the one constant; a wrapper adds nothing |
+
+## R9 — review #8 (`/code-review high 37d030a8..359309c6`, 2026-09-23), each to be VERIFIED before fixing
+
+| # | Where | Finding | Disposition |
+|---|---|---|---|
+| R9.1 | `ui/panels/lazyPanels.js` | a `React.lazy` wrapper keeps its first REJECTED promise: a panel opened while its chunk fails (offline, or a stale tab after a Vercel deploy) rethrows on every render, and the nearest boundary is the app-wide one — the game is replaced by the reload screen; `onceRetrying` retries the import, not the wrapper | OPEN |
+| R9.2 | `Components.jsx` heavy wiring | the charge is pressed in a beast form, where `triggerMeleeAttack` drops `heavy`: the walk slows, the ready tick plays, and the release fires a FREE extra light swing | OPEN |
+| R9.3 | `Components.jsx` heavy wiring | the mouse and T share one charge: T's keyup releases (or cancels) a charge the mouse started; and T charges while the voidhand is held, where LMB does not | OPEN |
+| R9.4 | `ui/panels/lazyPanels.js` | a prefetched chunk does not stop a panel's FIRST open from suspending: `React.lazy` reads its factory's promise as pending on the first render, so the "already here" open still shows a blank beat | OPEN |
+| R9.5 | `game/captureRest.js` shove | each column's floor is asked from the ORIGINAL feet height and cached; after a shove steps down or up, later columns are judged against the wrong air gap | OPEN |
+| R9.6 | `scripts/ci/e2e-freshness.mjs` | a run superseded (cancel-in-progress) in its last 30 s reads as a timeout (red); and a CRLF ci.yml makes `E2E_TIMEOUT_MIN` null, silently back to failing open | OPEN |
+| R9.7 | `game/localPath.snapMob` | the new `now` parameter defaults to 0: a caller that omits it gives a wall-charging brute a recovery that ended long ago | OPEN |
+| R9.8 | `game/captureRest.js` | the per-shove column cache keys two coordinates into one 32-bit hash; two columns can collide and share a floor | OPEN |
+| R9.9 | `scripts/ci/bundle-budget.mjs` | `holdersOf` re-reads every chunk (the 2.2 MB rapier one included) once per marker | OPEN |

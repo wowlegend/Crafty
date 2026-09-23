@@ -100,7 +100,14 @@ if (splitMissing.length) {
 // back into the boot chunk; this is what sees that.
 const LAZY_PANEL_MARKERS = ['alloc-strength', 'progression-panel']; // GamePanels, SpellUpgradePanel
 const bootChunk = findChunk('index');
-const holdersOf = (marker) => chunks.filter((c) => readFileSync(join(OUT_DIR, c.file), 'utf8').includes(marker));
+// Each chunk is read ONCE, lazily, and kept: the per-marker scan re-read every chunk (the 2.2 MB rapier one too) once
+// per marker (review #8, R9.9).
+const chunkText = new Map();
+const textOf = (c) => {
+  if (!chunkText.has(c.file)) chunkText.set(c.file, readFileSync(join(OUT_DIR, c.file), 'utf8'));
+  return chunkText.get(c.file);
+};
+const holdersOf = (marker) => chunks.filter((c) => textOf(c).includes(marker));
 const panelChunks = new Set();
 let lazyBad = 0;
 for (const marker of LAZY_PANEL_MARKERS) {
