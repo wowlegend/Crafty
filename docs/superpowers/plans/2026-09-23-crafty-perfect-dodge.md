@@ -43,10 +43,10 @@ Feedback reuses existing hooks (hitstop, sparks, the anvil-text float, a new pro
 distance <= PERFECT_RANGE, |dy| <= VERTICAL_REACH, not passive, alive), `isStaggered(e, now) -> boolean`,
 `riposteDamage(damage, e, now) -> number`.
 
-- [ ] Step 1: failing tests — in window/in range selected; 230 ms before the strike not; strike already due (<= 0) not;
+- [x] Step 1: failing tests — in window/in range selected; 230 ms before the strike not; strike already due (<= 0) not;
   3.5 m away not; 3 m above not; passive/dead not; two mobs both selected; isStaggered boundary; riposte x1.5 only
   while staggered.
-- [ ] Step 2: FAIL. Step 3: implement. Step 4: PASS.
+- [x] Step 2: FAIL. Step 3: implement. Step 4: PASS. (`06d3f190`)
 
 ### Task 2: the worker honours the stagger; in-flight strikes are dropped
 
@@ -57,7 +57,7 @@ false), `systems/AIWorkerSystem.jsx` (skip an attack whose entity `isStaggered`)
 `staggerUntil` produces no strike across the whole stagger and resumes after; the in-flight filter as a pure
 function `strikesToApply(attacks, entityById, now)`.
 
-- [ ] Steps: failing loop test → implement → pass → mutation (worker ignores staggerUntil; filter ignores stagger).
+- [x] Steps: failing loop test → implement → pass → mutation (worker ignores staggerUntil; filter ignores stagger). (`06d3f190`)
 
 ### Task 3: the dodge detects it; the riposte lands; the feedback fires
 
@@ -68,7 +68,7 @@ hitstop, sparks at each target, `playSpatialSound('parry', …)`, a "PERFECT!" f
 ting). `render/MobModel.jsx`: a stagger wobble while `isStaggered(entity, wnow)`. `game/keyMap.js`: the dodge row
 teaches the timing; `game/onboardingTips.js`: one tip; i18n en + zh-CN for any new string.
 
-- [ ] Steps: structural gates for each wiring (weak, named), then Task 4 is the real proof.
+- [x] Steps: structural gates for each wiring (weak, named), then Task 4 is the real proof. (`a8c35ad2`)
 
 ### Task 4: E2E through the real listener
 
@@ -77,6 +77,12 @@ In-page: spawn a zombie beside the player, sample per frame until `windupUntil -
 dispatch `keydown`/`keyup` ShiftLeft on window → the zombie is staggered, the player's health unchanged across the
 strike time; a hit on it deals 1.5x (damageMob with a known amount). Control: the same with the press 300 ms early →
 no stagger. Mutation by hand: the window check removed → the early press staggers (control red).
+
+**Done** (see the commit after `a8c35ad2`). As built, the press is made under a world FREEZE (a hitstop holds
+`windupUntil - worldNow()` still across the frame that consumes it — a loaded runner renders slower than the
+220 ms window), and the control also asserts the unstaggered strike DOES land. Deviation from the plan: the
+worker's stagger is judged by the zombie NOT WINDING UP again, not by the player's health — the in-flight filter
+drops a staggered mob's strike too, so a health-based check could not see the worker (K4 survived that draft).
 
 ### Task 5: SEE it, commit, review
 
