@@ -4,8 +4,9 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { t } from '../i18n/i18n.js';
 
-export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, type }) => {
+export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, isPerfect, type }) => {
   const meshRef = useRef();
   const startTime = useRef(null);
 
@@ -19,16 +20,20 @@ export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, 
     ctx.clearRect(0, 0, 256, 128);
     
     const isCrit = !isXP && !isAnvil && damage >= 40;
-    const fontSize = isAnvil ? 'bold 46px Outfit, Inter, Impact' : (isCrit ? 'bold 64px Outfit, Inter, Impact' : 'bold 50px Outfit, Inter, Impact');
+    const fontSize = (isAnvil || isPerfect) ? 'bold 46px Outfit, Inter, Impact' : (isCrit ? 'bold 64px Outfit, Inter, Impact' : 'bold 50px Outfit, Inter, Impact');
     ctx.font = fontSize;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    const text = isAnvil ? 'WALL HIT!' : (isXP ? `+${damage} XP` : (isCrit ? `${damage}!` : `${damage}`));
+    const text = isPerfect ? t('combat.perfectDodge') : isAnvil ? 'WALL HIT!' : (isXP ? `+${damage} XP` : (isCrit ? `${damage}!` : `${damage}`));
     
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 30, 0, 98);
-    if (isAnvil) {
+    if (isPerfect) {
+      // The perfect dodge (game/perfectDodge.js): ice-white to sky — a clean deflection, not a damage number.
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(1, '#5fd8ff');
+    } else if (isAnvil) {
       // M7-T3: the base-as-anvil 3x moment — GOLD (the design-closure must READ)
       gradient.addColorStop(0, '#ffe9a3');
       gradient.addColorStop(1, '#ffb300');
@@ -78,7 +83,7 @@ export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, 
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
     return tex;
-  }, [damage, isXP, isAnvil, type]);
+  }, [damage, isXP, isAnvil, isPerfect, type]);
 
   // the in-frame dispose only fires if the number lives >1s; a scene/HMR/StrictMode teardown
   // before then (or a texture swap on prop change) would otherwise leak the 256x128 CanvasTexture
@@ -129,7 +134,7 @@ export const DamageNumber = ({ damage, position, id, onComplete, isXP, isAnvil, 
     }
   });
 
-  const scale = isAnvil ? [3.0, 1.5, 1] : (isXP ? [1.8, 0.9, 1] : (damage >= 40 ? [2.8, 1.4, 1] : [2.2, 1.1, 1])); // larger scale for crits + the gold WALL HIT!
+  const scale = (isAnvil || isPerfect) ? [3.0, 1.5, 1] : (isXP ? [1.8, 0.9, 1] : (damage >= 40 ? [2.8, 1.4, 1] : [2.2, 1.1, 1])); // larger scale for crits + the gold WALL HIT!
 
   return (
     <sprite ref={meshRef} position={[position[0], position[1] + 1.8, position[2]]} scale={scale}>

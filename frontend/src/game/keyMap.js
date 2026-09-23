@@ -16,7 +16,7 @@ export const KEY_MAP = [
   // --- Move (continuous intents, Components keydown) ---
   { key: 'WASD',  label: 'Move',                    group: 'Move' },
   { key: 'Space', label: 'Jump',                    group: 'Move' },
-  { key: 'Shift', label: 'Dodge-roll',              group: 'Move' },
+  { key: 'Shift', label: 'Dodge-roll (at a lunge: perfect)', group: 'Move' },
   // --- Combat ---
   { key: 'LMB',   label: 'Attack / mine',           group: 'Combat' },
   { key: 'RMB',   label: 'Cast / place / interact',  group: 'Combat' },

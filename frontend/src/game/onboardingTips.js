@@ -4,6 +4,7 @@
 export const ONBOARDING_TIPS = [
   { text: 'Build by day, survive the night siege — defeat foes to unlock powerful Aspect abilities.', type: 'info' },
   { text: "Your goal: journey to the frontier shrines, then shatter the Blight Heart at the world's edge — follow the compass.", type: 'quest' },
+  { text: 'Dodge (Shift) just as a foe lunges: a PERFECT dodge staggers it, and your next hits land harder.', type: 'info' },
 ];
 
 // Re-show the tips through the notification bus (`add` = store.addNotification). Staggered so the two

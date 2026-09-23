@@ -11,6 +11,8 @@ import { sparkFor, hitKnockback, deathBurst } from '../game/mobHitFx';
 import { emitMobKill } from '../game/mobKillBus.js';
 import { DEATH_DISSOLVE_MS } from '../game/deathFx.js';
 import { hitstopForHit } from '../game/hitstop.js';
+import { riposteDamage } from '../game/perfectDodge.js';
+import { worldNow } from '../game/worldClock.js';
 import { nextSpawnId } from './_npcShared';
 
 // CombatSystem -- registers damageMob / captureMob / checkMobCollision / checkMobsInMeleeCone on the
@@ -31,6 +33,10 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // "you cannot delete the game's service layer by mashing left-click" an invariant rather than
       // a filter each caller has to remember. Refuse before any side effect fires.
       if (!canPlayerDamage(entity)) return null;
+
+      // THE RIPOSTE (game/perfectDodge.js): a mob a perfect dodge staggered takes 1.5x from every hit, for as
+      // long as the stagger lasts on the world clock. Here, at the one choke point, so every damage path gets it.
+      damage = riposteDamage(damage, entity, worldNow());
 
       // Phase 9 / S1-D-M1: Visceral Hitstop (micro-freeze for game feel).
       // Was a MAIN-THREAD BUSY-WAIT (a spin loop on the wall clock) that froze

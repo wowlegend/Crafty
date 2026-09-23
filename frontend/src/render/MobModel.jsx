@@ -8,6 +8,7 @@ import { MOB_TYPES } from '../game/mobTypes';
 import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
+import { isStaggered, staggerPose } from '../game/perfectDodge.js';
 import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
 import { worldDelta, worldNow } from '../game/worldClock.js';
 import { Panel, Icon } from '../ui/primitives/index.js';
@@ -163,6 +164,12 @@ const MobModel = React.memo(({ entity }) => {
           modelRef.current.rotation.x = -0.2 * wave;
           modelRef.current.rotation.z = 0;
         }
+      } else if (isStaggered(entity, wnow)) {
+        // The perfect dodge's STAGGER: reeling, so the riposte window reads from across the fight.
+        const sp = staggerPose(wnow);
+        modelRef.current.scale.set(sp.scaleXZ, sp.scaleY, sp.scaleXZ);
+        modelRef.current.rotation.x = sp.pitch;
+        modelRef.current.rotation.z = sp.roll;
       } else if (entity.windupUntil && wnow < entity.windupUntil) {
         // M2 #4 ANTICIPATION: coil back + crouch, accelerating toward the strike, so the player can
         // read (and dodge) the incoming attack. Flinch above wins if a hit landed mid-windup.

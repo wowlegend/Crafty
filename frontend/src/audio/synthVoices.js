@@ -186,6 +186,26 @@ export const makeAnvilSound = (ctx) => {
     return buffer;
 };
 
+// The perfect dodge (game/perfectDodge.js): a bright blade-on-blade TING — three inharmonic partials over a click,
+// ringing longer than the anvil's thud so it reads as a clean deflection, not a hit.
+export const makeParrySound = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 0.4;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const ring = Math.sin(2 * Math.PI * 1760 * t) + Math.sin(2 * Math.PI * 2793 * t) * 0.6
+        + Math.sin(2 * Math.PI * 4410 * t) * 0.25 * Math.exp(-t * 20);
+      const env = Math.min(t * 400, 1) * Math.exp(-t * 7);
+      const click = t < 0.004 ? 1 - t / 0.004 : 0;
+      d[i] = ring * env * 0.28 + click * 0.3;
+    }
+    return buffer;
+};
+
 export const makeIgniteSound = (ctx) => {
     if (!ctx) return null;
     const sampleRate = ctx.sampleRate;
@@ -701,6 +721,7 @@ export const VOICES = {
   hurl: makeHurlSound,
   slam: makeSlamSound,
   anvilHit: makeAnvilSound,
+  parry: makeParrySound,
   bind: makeBindSound,
   ignite: makeIgniteSound,
   freeze: makeFreezeSound,

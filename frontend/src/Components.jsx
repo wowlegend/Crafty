@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
-import { realDelta } from './game/worldClock.js';
+import { realDelta, worldNow } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
@@ -19,6 +19,7 @@ import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
+import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -34,7 +35,7 @@ const MOTIF_COOLDOWN_SEC = 10;
 let _lastWildheartMotif = -Infinity;
 let _lastVoidhandMotif = -Infinity;
 import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
-import { ecs, alliesQuery } from './ecs/world';
+import { ecs, alliesQuery, mobsQuery } from './ecs/world';
 import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
 import { lookupHybrid, applyFusion, FUSE_RADIUS } from './game/hybrids.js';
 import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
@@ -942,6 +943,20 @@ export const Player = ({ isWorldBuilt }) => {
         // Trigger camera shake
         if (useGameStore.getState().triggerCameraShake) {
           useGameStore.getState().triggerCameraShake(0.5);
+        }
+
+        // PERFECT DODGE (game/perfectDodge.js): pressed in the last moments of a nearby mob's windup, its strike
+        // never lands and it staggers — open to a 1.5x riposte. The dodge is refunded, so perfect dodges chain.
+        const perfect = applyPerfectDodge(mobsQuery.entities, currentTrans, worldNow());
+        if (perfect.length > 0) {
+          dodge.lastDodgeTime = nowTime - dodge.cooldown;
+          const st = useGameStore.getState();
+          st.triggerHitstop?.(PERFECT_HITSTOP_MS);
+          for (const m of perfect) {
+            st.triggerGPUSparks?.(new THREE.Vector3(m.position.x, m.position.y + 0.8, m.position.z), '#d8f4ff', 22, 'lightning');
+          }
+          st.playSpatialSound?.('parry', currentTrans, 1.2, 20);
+          GameMethods.spawnPerfectText?.(perfect[0].position);
         }
       }
     }

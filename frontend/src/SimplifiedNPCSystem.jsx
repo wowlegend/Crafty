@@ -86,6 +86,15 @@ export const NPCSystem = React.memo(() => {
         position: [position.x, position.y + 0.6, position.z]
       }]);
     };
+    // The perfect dodge's PERFECT! banner (Components.jsx dodge start, game/perfectDodge.js).
+    GameMethods.spawnPerfectText = (position) => {
+      setDamageNumbers(prev => [...prev, {
+        id: damageId.current++,
+        isPerfect: true,
+        damage: 0,
+        position: [position.x, position.y + 0.6, position.z]
+      }]);
+    };
     // M3c-T2: rarity-tinted pickup pop, fired from the LootSystem collect branch.
     GameMethods.spawnLootPop = (position, color) => {
       setLootPops(prev => [...prev, {
@@ -141,6 +150,7 @@ export const NPCSystem = React.memo(() => {
           damage={dmg.damage}
           isXP={dmg.isXP}
           isAnvil={dmg.isAnvil}
+          isPerfect={dmg.isPerfect}
           type={dmg.type}
           position={dmg.position}
           onComplete={removeDamageNumber}

@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   PERFECT_WINDOW_MS, PERFECT_RANGE, STAGGER_MS, RIPOSTE_MULT, perfectDodgeTargets, isStaggered, riposteDamage,
-  strikesToApply,
+  strikesToApply, applyPerfectDodge, staggerPose, PERFECT_HITSTOP_MS,
 } from '../../src/game/perfectDodge.js';
+import { VOICES } from '../../src/audio/synthVoices.js';
+import { HITSTOP } from '../../src/game/trauma.js';
+import { carriersOf, sourceTexts } from './_srcWalk.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { VERTICAL_REACH } from '../../src/game/mobSenses.js';
 import { WINDUP_MS } from '../../src/game/attackTelegraph.js';
@@ -21,8 +24,14 @@ import { WINDUP_MS } from '../../src/game/attackTelegraph.js';
  *   P7 passive mobs targeted                                  W1 the worker ignores staggerUntil (it strikes)
  *   W2 a staggered mob still advances                         W3 the in-flight filter ignores the stagger
  *   W4 the payload drops staggerUntil (the worker never sees it)
+ *   (Task 3:) D1 applyPerfectDodge leaves the windup running (the pose and the worker's pending strike)
+ *   D2 plausible-wrong: the stagger stamped as a duration, not an instant on the clock it was given
+ *   D3 plausible-wrong: the sway read off the wall clock, not the world time passed in
+ *   D4 the dodge start never refunds (structural)  D5 the riposte applied AFTER the hitstop is sized
+ *   (structural order)  D6 MobModel never poses the stagger (structural)
  *
- * BLIND SPOT: nothing here proves a real Shift press reaches the selection (plan Task 4's e2e does).
+ * BLIND SPOT: the Task 3 wiring checks are structural — whether a real Shift press staggers a real zombie, and
+ * whether a hit on it really deals 1.5x through damageMob, is tests/e2e/perfect-dodge.spec.js's job.
  */
 const NOW = 100000;
 const mob = (over = {}) => ({
@@ -123,5 +132,54 @@ describe('a staggered mob neither strikes nor advances — through the real ai.w
     const ents = { a: { staggerUntil: now + 100 }, b: {}, c: { staggerUntil: now - 1 } };
     const out = strikesToApply([{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'gone' }], (id) => ents[id], now);
     expect(out.map((s) => s.id)).toEqual(['b', 'c', 'gone']);
+  });
+});
+
+// ---- Task 3: the dodge start staggers, the riposte and the pose read it, the feedback exists --------------
+
+describe('applyPerfectDodge — what the dodge start does to the mobs it answers', () => {
+  it('stamps the stagger on the WORLD clock it is given and cancels the windup; everyone else untouched', () => {
+    const a = mob({ id: 'a' }), far = mob({ id: 'far', position: { x: 9, y: 50.5, z: 0 } });
+    const hit = applyPerfectDodge([a, far], player, NOW);
+    expect(hit.map((m) => m.id)).toEqual(['a']);
+    expect(a.staggerUntil).toBe(NOW + STAGGER_MS);
+    expect(a.windupUntil, 'the windup kept running: the pose coils on and the worker still holds the strike').toBe(0);
+    expect(far.staggerUntil).toBeUndefined();
+    expect(far.windupUntil).toBe(NOW + 120);
+    expect(applyPerfectDodge([mob({ windupUntil: NOW + 500 })], player, NOW), 'a press too early staggered').toEqual([]);
+  });
+  it('the deflection lands with the heavy hitstop, and the parry voice exists in the bank', () => {
+    expect(PERFECT_HITSTOP_MS).toBe(HITSTOP.heavy);
+    expect(typeof VOICES.parry).toBe('function');
+  });
+});
+
+describe('staggerPose — reeling, on the world clock', () => {
+  it('leans back and sags; the sway is bounded and moves with the time it is GIVEN (a hitstop holds it)', () => {
+    const p = staggerPose(1000);
+    expect(p.pitch).toBeLessThan(0);
+    expect(p.scaleY).toBeLessThan(1);
+    expect(staggerPose(1000)).toEqual(p);
+    expect(Math.abs(staggerPose(1131).roll - p.roll), 'the sway does not move with world time').toBeGreaterThan(0.1);
+    for (let t = 0; t < 2000; t += 37) expect(Math.abs(staggerPose(t).roll)).toBeLessThanOrEqual(0.25);
+  });
+});
+
+describe('the wiring (weak, structural — the e2e drives these through a real Shift press)', () => {
+  it('the dodge start calls applyPerfectDodge on the live mobs at world time, and refunds the cooldown', () => {
+    expect(carriersOf(/applyPerfectDodge\(mobsQuery\.entities, currentTrans, worldNow\(\)\)/)).toEqual(['Components.jsx']);
+    expect(carriersOf(/dodge\.lastDodgeTime = nowTime - dodge\.cooldown;/)).toEqual(['Components.jsx']);
+    expect(carriersOf(/GameMethods\.spawnPerfectText = /)).toEqual(['SimplifiedNPCSystem.jsx']);
+  });
+  it('damageMob applies the riposte BEFORE the hitstop is sized from the damage', () => {
+    const src = sourceTexts().find((x) => x.file === 'systems/CombatSystem.jsx').code;
+    const ri = src.indexOf('damage = riposteDamage(damage, entity, worldNow());');
+    const hs = src.indexOf('triggerHitstop(hitstopForHit(damage');
+    expect(ri, 'no riposte in damageMob').toBeGreaterThan(0);
+    expect(hs, 'the hitstop line moved — re-anchor this check').toBeGreaterThan(0);
+    expect(ri, 'the riposte runs after the hitstop is sized').toBeLessThan(hs);
+  });
+  it('MobModel poses a staggered mob', () => {
+    expect(carriersOf(/isStaggered\(entity, wnow\)\) \{\s*[^}]*staggerPose\(wnow\)/)).toEqual(['render/MobModel.jsx']);
   });
 });
