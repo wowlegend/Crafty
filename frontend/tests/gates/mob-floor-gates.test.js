@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { generateMesh } from '../../src/world/mesher.js';
 import { makeMobFloorProbe } from '../../src/world/mobFloorProbe.js';
-import { floorInColumn, columnFaces, groundForMover, MOB_CLEARANCE, FLOOR_REACH } from '../../src/game/mobFloor.js';
+import { floorInColumn, columnFaces, groundForMover, floorUnderPoint, MOB_CLEARANCE, FLOOR_REACH } from '../../src/game/mobFloor.js';
+import { projectileGrounded, advanceProjectile, PROJECTILE_SUBSTEP } from '../../src/game/projectilePhysics.js';
+import { stepXPOrb } from '../../src/game/xpOrbStepper.js';
 import { snapMob, heightGridAt, STEP_UP } from '../../src/game/localPath.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { drainKnockback } from '../../src/game/captureRest.js';
@@ -36,12 +38,19 @@ import { carriersOf } from './_srcWalk.js';
  *   M9 AIWorkerSystem snaps with the top-down probe again (structural)
  *   M10 the knockback walk reads the column top (a shove stops at the canopy edge)
  *   M11 allies set y from the column top again   M12 the leg IK reaches for the column top again (both structural)
+ *   (R7.9, spells and drops:) P1 projectileGrounded reads the column top (a cast under a canopy bursts at the
+ *   muzzle)  P2 plausible-wrong: the point query asks a mob's headroom  P3 the orb stepper drops its own y
+ *   P4 EnhancedMagicSystem on the column top (structural)  P5 loot on the column top (structural)
+ *   P6 a point buried past reach answers Infinity (an orb falls through the pillar)  P7 the bounce writes an
+ *   Infinity floor — SURVIVED the first time (P6 made it unreachable through floorUnderPoint); pinned directly
+ *   S1 advanceProjectile in one step (a slow frame tunnels the wall)  S2 plausible-wrong: grounded checked only
+ *   at the end of the frame  S3 EnhancedMagicSystem moves the spell in one unchecked step again (structural)
  *
  * BLIND SPOTS: a ray landing exactly on a triangle's diagonal could miss both triangles and flip one gap — and one
  * landing exactly on a column seam (x + 0.1 a whole number) may read the neighbour's faces (measure zero for float
  * positions; the old probe had both exposures); the probe ignores placed-block edits until the
- * chunk re-meshes (as every collider does); XP orbs, loot, spell projectiles and spawn placement still read the column
- * top (QUEUE R7.9); allies, hub NPCs and the leg IK are moved onto the floor with STRUCTURAL checks only; and whether a siege under a roof FEELS right needs a person playing.
+ * chunk re-meshes (as every collider does); spawn placement still reads the column top (a mob can SPAWN on a canopy;
+ * QUEUE R7.9); allies, hub NPCs and the leg IK are moved onto the floor with STRUCTURAL checks only; and whether a siege under a roof FEELS right needs a person playing.
  */
 
 // ---- the pure rule ---------------------------------------------------------------------------------------
@@ -288,6 +297,70 @@ describe('a knockback shove under the canopy is not stopped by the canopy', () =
   });
 });
 
+// ---- points: a spell in flight, a dropped orb (QUEUE R7.9) ------------------------------------------------
+
+describe('a spell cast under a canopy or a roof flies; one flown into solid lands', () => {
+  const at = (x, y, z) => ({ x, y, z });
+  it('at the caster\'s eye height under the leaves and under the roof: in flight — the column-top control bursts it', () => {
+    expect(projectileGrounded(at(2.4, 51.6, 2.4), floorAt, topAt)).toBe(false);
+    expect(projectileGrounded(at(10.4, 51.6, 10.4), floorAt, topAt)).toBe(false);
+    expect(projectileGrounded(at(2.4, 51.6, 2.4), null, topAt), 'control: the column top did not burst it — the scenario is empty').toBe(true);
+    expect(projectileGrounded(at(10.4, 51.6, 10.4), null, topAt), 'control (roof)').toBe(true);
+  });
+  it('into the trunk, into the roof slab from below, down to the ground: landed; above the roof: in flight', () => {
+    expect(projectileGrounded(at(3.4, 51.6, 3.4), floorAt, topAt), 'flew through the trunk').toBe(true);
+    expect(projectileGrounded(at(10.4, 54.5, 10.4), floorAt, topAt), 'flew through the roof slab').toBe(true);
+    expect(projectileGrounded(at(10.4, 50.3, 10.4), floorAt, topAt), 'flew through the ground under the roof').toBe(true);
+    expect(projectileGrounded(at(10.4, 56.2, 10.4), floorAt, topAt)).toBe(false);
+    expect(projectileGrounded(at(15.4, 52, 1.4), floorAt, topAt), 'flew through the tall pillar').toBe(true);
+  });
+  it('a slow frame cannot carry a spell THROUGH the wall: the flight is checked every half metre', () => {
+    const grounded = (p) => projectileGrounded(p, floorAt, topAt);
+    const pos = { x: 10.4, y: 51.6, z: 6.4 };
+    const landed = advanceProjectile(pos, { x: 25, y: 0, z: 0 }, 1 / 3, grounded); // a 3 fps frame: 8.3 m
+    expect(landed, `the fireball flew through the wall to x ${pos.x.toFixed(2)}`).toBe(true);
+    expect(pos.x).toBeGreaterThan(13.9);
+    expect(pos.x, 'it landed, but not AT the wall').toBeLessThan(14.1 + PROJECTILE_SUBSTEP);
+    const one = { x: 10.4, y: 51.6, z: 6.4 };
+    expect(grounded({ x: one.x + 25 / 3, y: one.y, z: one.z }), 'control: the frame\'s END point is clear — only a sub-step sees the wall').toBe(false);
+  });
+  it('under the roof, sub-stepped: the floor predicate flies the whole frame; the column-top predicate bursts at once', () => {
+    const pos = { x: 9.4, y: 51.6, z: 10.4 };
+    expect(advanceProjectile(pos, { x: 0, y: 0, z: 25 }, 1 / 3, (p) => projectileGrounded(p, floorAt, topAt))).toBe(false);
+    const bug = { x: 9.4, y: 51.6, z: 10.4 };
+    expect(advanceProjectile(bug, { x: 0, y: 0, z: 25 }, 1 / 3, (p) => projectileGrounded(p, null, topAt)), 'control').toBe(true);
+    expect(bug.z, 'control: the column-top predicate let it get out from under the roof').toBeLessThan(10.4 + 2 * PROJECTILE_SUBSTEP);
+  });
+  it('floorUnderPoint asks no headroom: a point in a 1-high gap is in the gap', () => {
+    expect(floorUnderPoint(floorAt, topAt, 5, 13, 50.5)).toBeCloseTo(50, 3); // under the low overhang
+    expect(floorUnderPoint(null, topAt, 5, 13, 50.5), 'no floor probe: the column top').toBeCloseTo(52, 3);
+  });
+});
+
+describe('an XP orb dropped under the canopy lands on the ground, not on the leaves', () => {
+  const drop = (groundYAt) => {
+    const orb = { position: { x: 2.4, y: 51.2, z: 2.4 }, velocity: { x: 0, y: 0, z: 0 }, age: 0 };
+    const ctx = { playerPos: { x: 40, y: 50, z: 40 }, groundYAt }; // far: no magnet
+    for (let i = 0; i < 90; i++) stepXPOrb(orb, 1 / 60, ctx);
+    return orb.position.y;
+  };
+  it('the stepper never writes a non-finite floor: a groundYAt answering Infinity (the floor probe\'s "wall") is skipped', () => {
+    const orb = { position: { x: 0, y: 51, z: 0 }, velocity: { x: 0, y: 0, z: 0 }, age: 0 };
+    stepXPOrb(orb, 1 / 60, { playerPos: { x: 40, y: 50, z: 40 }, groundYAt: () => Infinity });
+    expect(Number.isFinite(orb.position.y), `an Infinity floor was written: y = ${orb.position.y}`).toBe(true);
+  });
+  it('an orb buried inside the tall pillar surfaces on its top (a finite floor), it does not fall through it', () => {
+    const orb = { position: { x: 15.4, y: 52, z: 1.4 }, velocity: { x: 0, y: 0, z: 0 }, age: 0 };
+    const ctx = { playerPos: { x: 40, y: 50, z: 40 }, groundYAt: (x, z, y) => floorUnderPoint(floorAt, topAt, x, z, y) };
+    for (let i = 0; i < 90; i++) stepXPOrb(orb, 1 / 60, ctx);
+    expect(orb.position.y).toBeCloseTo(58.1, 2);
+  });
+  it('settles at the ground under the canopy; the column-top control snaps it onto the leaves', () => {
+    expect(drop((x, z, y) => floorUnderPoint(floorAt, topAt, x, z, y))).toBeCloseTo(50.1, 2);
+    expect(drop((x, z) => topAt(x, z)), 'control: the column top left it on the ground — the scenario is empty').toBeCloseTo(58.1, 2);
+  });
+});
+
 describe('AIWorkerSystem wiring (weak, structural — the chase above drives the same calls)', () => {
   it('snaps, builds grids and drains knockback on the floor probe; Terrain registers it', () => {
     expect(carriersOf(/snapMob\(entity, store\.getMobFloor, store\.getMobGroundLevel\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
@@ -296,6 +369,11 @@ describe('AIWorkerSystem wiring (weak, structural — the chase above drives the
     expect(carriersOf(/setGetMobFloor\(makeMobFloorProbe\(rapier, world\)\)/)).toEqual(['world/Terrain.jsx']);
     expect(carriersOf(/groundForMover\(store\.getMobFloor, store\.getMobGroundLevel, m\.x, m\.z, feet, true\)/)).toEqual(['world/SquadAISystem.jsx']);
     expect(carriersOf(/store\.getMobFloor\(worldX, worldZ, entity\.position\.y - 0\.5\)/)).toEqual(['render/MobModel.jsx']);
+    expect(carriersOf(/projectileGrounded\(p, probes\.getMobFloor, probes\.getMobGroundLevel\)/)).toEqual(['EnhancedMagicSystem.jsx']);
+    expect(carriersOf(/advanceProjectile\(projectile\.position, projectile\.velocity, delta, grounded\)/)).toEqual(['EnhancedMagicSystem.jsx']);
+    expect(carriersOf(/projectile\.position\.x \+= projectile\.velocity\.x \* delta/), 'an unchecked whole-frame move is back').toEqual([]);
+    expect(carriersOf(/floorUnderPoint\(store\.getMobFloor, store\.getMobGroundLevel, x, z, y\)/).sort()).toEqual(['systems/LootSystem.jsx', 'systems/XPOrbSystem.jsx']);
+    expect(carriersOf(/groundYAt: store\.getMobGroundLevel/), 'a drop reads the column top again').toEqual([]);
     expect(STEP_UP).toBeLessThan(MOB_CLEARANCE);
   });
 });

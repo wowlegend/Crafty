@@ -9,6 +9,7 @@ import { getItemRarity } from '../data/items.js';
 import { rarityBeam } from '../game/lootJuice.js';
 import { lootDropsQuery } from './_npcShared';
 import { worldDelta } from '../game/worldClock.js';
+import { floorUnderPoint } from '../game/mobFloor.js';
 
 // LootSystem -- loot-drop magnet/pull + collect side-effects (physics is the pure game/xpOrbStepper.js
 // stepLootDrop). Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.7); behavior
@@ -38,13 +39,14 @@ export const LootSystem = () => {
     }
     const store = useGameStore.getState();
     const playerPos = camera.position;
+    const groundYAt = (x, z, y) => floorUnderPoint(store.getMobFloor, store.getMobGroundLevel, x, z, y);
 
     for (const entity of [...lootDropsQuery.entities]) {
       // physics extracted to the pure game/xpOrbStepper.js stepLootDrop (S3-M6, byte-equivalent;
       // magnet range 7 / base 40 / floor 3); the component keeps the loot collect side-effects.
       const collected = stepLootDrop(entity, delta, {
         playerPos,
-        groundYAt: store.getMobGroundLevel,
+        groundYAt, // the floor of the air gap the drop is in, not the column top (R7.9)
       }).collected;
       if (collected) {
         if (store.addToInventory) store.addToInventory(entity.item, 1);

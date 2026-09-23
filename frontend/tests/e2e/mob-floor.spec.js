@@ -15,11 +15,94 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // within 3 blocks — the first draft demanded a FLAT one and the e2e world, hilly at spawn, had none among 32).
 // If none exists the spec fails as SETUP, naming how many sites it scanned — never as "the probe is broken".
 //
-// Mutation-Proof: by hand (cp backup of src/systems/AIWorkerSystem.jsx, byte-verified restore), observed RED:
-//   E1 snapMob(entity, null, store.getMobGroundLevel) — the top-down snap — "the zombie stood ON the roof"
-//   (the probe asserts stay green under E1: they read getMobFloor directly — which is why the zombie is here)
+// Mutation-Proof: by hand (cp backup, byte-verified restore), each observed RED:
+//   E1 AIWorkerSystem: snapMob(entity, null, store.getMobGroundLevel) — the top-down snap — "the zombie stood ON
+//      the roof" (the probe asserts stay green under E1: they read getMobFloor directly — which is why the zombie
+//      is here)
+//   E2 EnhancedMagicSystem: projectileGrounded(projectile.position, null, ...) — the column top (R7.9) — "the
+//      fireball cast under the roof burst after 0.0 m"
 test.describe('mob floor', () => {
   test.setTimeout(180000);
+
+  // A dry 7x7 patch whose tops lie within 3 blocks, centred on (cx, cz), mapped before anything is built on it.
+  const mapPatch = (page, cx, cz) => page.evaluate(({ cx, cz, sea }) => {
+    const s = window.useGameStore.getState();
+    const grounds = {};
+    let lo = Infinity, hi = -Infinity;
+    for (let i = -3; i <= 3; i++) {
+      for (let j = -3; j <= 3; j++) {
+        const t = s.getMobGroundLevel(cx + i, cz + j);
+        if (t == null || t <= sea + 1) return null;
+        grounds[`${i},${j}`] = Math.round(t);
+        lo = Math.min(lo, t); hi = Math.max(hi, t);
+      }
+    }
+    return hi - lo <= 3 ? { cx, cz, grounds, maxTop: Math.round(hi) } : null;
+  }, { cx, cz, sea: SEA_LEVEL });
+
+  // A 7x7 roof through the real placement verb, then wait for the re-meshed collider to carry it.
+  const buildRoof = async (page, { cx, cz }, roofY) => {
+    await page.evaluate(({ cx, cz, roofY }) => {
+      const s = window.useGameStore.getState();
+      s.setSelectedBlock('stone');
+      s.addToInventory('stone', 100);
+      window.useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
+      const V = window.__threeCamera.position.constructor;
+      for (let i = -3; i <= 3; i++) {
+        for (let j = -3; j <= 3; j++) {
+          window.GameMethods.terrainVerbs.place({ hitPoint: new V(cx + i + 0.5, roofY + 0.5, cz + j + 0.5), normal: { x: 0, y: 1, z: 0 } });
+        }
+      }
+    }, { cx, cz, roofY });
+    return page.waitForFunction(({ cx, cz, roofY }) => {
+      const top = window.useGameStore.getState().getMobGroundLevel;
+      return [[0, 0], [3, 3], [-3, -3]].every(([i, j]) => { const t = top(cx + i, cz + j); return t != null && t > roofY + 0.9; });
+    }, { cx, cz, roofY }, { timeout: 30000 }).then(() => true, () => false);
+  };
+
+  test('a fireball cast under a roof flies — it does not burst at the muzzle (R7.9)', async ({ page }) => {
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(
+      () => window.GameMethods?.terrainVerbs?.place && window.__threeCamera && window.useGameStore.getState().castSpell
+        && window.__craftyTest?.call('readProjectiles') !== undefined,
+      null, { timeout: 60000 },
+    );
+    const me = await page.evaluate(() => {
+      const c = window.__threeCamera.position;
+      return { cx: Math.floor(c.x), cz: Math.floor(c.z), eye: c.y };
+    });
+    const site = await mapPatch(page, me.cx, me.cz);
+    expect(site, 'SETUP: the ground around the player is not a dry patch with tops within 3 blocks').not.toBeNull();
+    const roofY = Math.max(site.maxTop + 3, Math.ceil(me.eye) + 1); // over the player's head, with air under it
+    expect(await buildRoof(page, site, roofY), 'the roof over the player never reached the collider').toBe(true);
+
+    // PRESENCE CONTROL: the column top above the caster IS the roof — the old test would call the muzzle "ground".
+    const top = await page.evaluate(({ cx, cz }) => window.useGameStore.getState().getMobGroundLevel(cx, cz), site);
+    expect(top, 'control: the top probe does not read the roof over the caster').toBeGreaterThan(me.eye);
+
+    const flight = await page.evaluate(async () => {
+      const s = window.useGameStore.getState();
+      window.useGameStore.setState({ isAlive: true, mana: s.maxMana ?? 100 });
+      const before = new Set(window.__craftyTest.call('readProjectiles').map((p) => p.id));
+      s.castSpell('fireball');
+      const mine = () => window.__craftyTest.call('readProjectiles').find((p) => !before.has(p.id));
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const path = [];
+      const t0 = performance.now();
+      while (performance.now() - t0 < 6000) {
+        const p = mine();
+        if (!p) { if (path.length) break; await frame(); continue; }
+        path.push({ x: p.x, y: p.y, z: p.z });
+        await frame();
+      }
+      return path;
+    });
+    expect(flight.length, 'SETUP: castSpell created no projectile (mana, cooldown or an unmounted system)').toBeGreaterThan(0);
+    const a = flight[0], b = flight[flight.length - 1];
+    const travelled = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    expect(travelled, `the fireball cast under the roof burst after ${travelled.toFixed(1)} m (${flight.length} frames)`).toBeGreaterThan(4);
+  });
 
   test('a roof over open ground: the live floor probe and a zombie under it stay on the ground', async ({ page }) => {
     await bootDev(page);

@@ -80,6 +80,18 @@ export function columnFaces(castDown, feet, sky = 255) {
 }
 
 /**
+ * The floor under a POINT — a spell in flight, a dropped orb (QUEUE R7.9): the bottom of the air gap containing
+ * it, with no headroom asked. A point inside solid gets the top of that solid — the column top when it is taller
+ * than FLOOR_REACH — so a caller's "y <= floor + r" reads it as a hit and an orb buried in a wall surfaces on it.
+ * Falls back to the column top when no floor probe is registered.
+ */
+export function floorUnderPoint(getFloor, getTop, x, z, y) {
+  if (!getFloor) return getTop ? getTop(x, z) : null;
+  const floor = getFloor(x, z, y - FEET_EPS, 0);
+  return floor === Infinity && getTop ? getTop(x, z) : floor;
+}
+
+/**
  * The ground a mover snaps to: its floor; for a climber facing a wall, the column top (a spider goes up it).
  * Falls back to the top-down probe when no floor probe is registered.
  */

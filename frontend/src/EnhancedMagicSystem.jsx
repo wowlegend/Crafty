@@ -11,7 +11,7 @@ import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { applyWandFocus } from './game/wandFocus';
 import { getWands } from './game/crystalWallet';
-import { projectileGravity } from './game/projectilePhysics';
+import { projectileGravity, projectileGrounded, advanceProjectile } from './game/projectilePhysics';
 import { freezeSlowMult } from './game/freeze';
 import { SPELL_TYPES } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
@@ -23,6 +23,7 @@ import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc } from
 import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
 import { worldDelta } from './game/worldClock.js';
+import { registerTestHook } from './devtest/testBridge.js';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
 // imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
@@ -52,6 +53,14 @@ export const EnhancedMagicSystem = React.memo(() => {
   const burnManagerRef = useRef(null);
   if (!burnManagerRef.current) burnManagerRef.current = makeBurnManager();
   useEffect(() => () => burnManagerRef.current?.stopAll(), []);
+  // DEV: the live spells, read-only, for the mob-floor E2E (R7.9) — a cast under a roof must FLY, and only the
+  // projectile's own path can show it. A copy, so a spec cannot mutate one through it. No-op in prod.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    registerTestHook('readProjectiles', () => projectilesRef.current.map((p) => ({
+      id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z,
+    })));
+  }, []);
 
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
     // damageMob is read per-tick (via the getter) so the burn stops the instant it disappears.
@@ -303,9 +312,14 @@ export const EnhancedMagicSystem = React.memo(() => {
       const drop = projectileGravity(projectile.type);
       if (drop) projectile.velocity.y -= drop * delta;
 
-      projectile.position.x += projectile.velocity.x * delta;
-      projectile.position.y += projectile.velocity.y * delta;
-      projectile.position.z += projectile.velocity.z * delta;
+      // Sub-stepped, checked every half metre (R7.9): one end-of-frame check let a slow frame carry a spell
+      // through a wall. The floor of the air gap the spell is IN, not the column top: under a canopy the top is
+      // the leaves, and every cast there burst at the muzzle. With no probe registered, the old floor of 12.5.
+      const probes = useGameStore.getState();
+      const grounded = probes.getMobGroundLevel
+        ? (p) => projectileGrounded(p, probes.getMobFloor, probes.getMobGroundLevel)
+        : (p) => p.y <= 12.5;
+      const landed = advanceProjectile(projectile.position, projectile.velocity, delta, grounded);
 
       let keep = true;
 
@@ -313,20 +327,10 @@ export const EnhancedMagicSystem = React.memo(() => {
         createSpellImpact(projectile.position, projectile.type);
         keep = false;
       } else {
-        if (useGameStore.getState().getMobGroundLevel) {
-          const groundLevel = useGameStore.getState().getMobGroundLevel(projectile.position.x, projectile.position.z);
-          if (groundLevel !== null && !isNaN(groundLevel) && projectile.position.y <= groundLevel + 0.5) {
-            createSpellImpact(projectile.position, projectile.type);
-            // S2-B4-M5: the imbued impact paints the element zone (the age-out above is a
-            // FIZZLE by design — no zone, no refund; recorded in the M5 plan).
-            if (projectile.imbueKind) {
-              requestZone({ kind: projectile.imbueKind, pos: projectile.position });
-              projectile.imbueKind = null;
-            }
-            keep = false;
-          }
-        } else if (projectile.position.y <= 12.5) {
+        if (landed) {
           createSpellImpact(projectile.position, projectile.type);
+          // S2-B4-M5: the imbued impact paints the element zone (the age-out above is a
+          // FIZZLE by design — no zone, no refund; recorded in the M5 plan).
           if (projectile.imbueKind) {
             requestZone({ kind: projectile.imbueKind, pos: projectile.position });
             projectile.imbueKind = null;

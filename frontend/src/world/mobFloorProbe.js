@@ -3,7 +3,8 @@
 import { columnFaces, floorInColumn } from '../game/mobFloor.js';
 
 /**
- * (x, z, feet) -> the floor under a mover at those feet | Infinity (the column is a wall to it) | null (no data).
+ * (x, z, feet, clearance?) -> the floor under a mover at those feet | Infinity (the column is a wall to it) |
+ * null (no data). `clearance` defaults to a mob's; floorUnderPoint passes 0 for a point.
  *
  * Casts meet FIXED colliders only — the chunks' terrain trimeshes. The player capsule (kinematic) and flying
  * debris cuboids (dynamic) would each add a face the alternation does not expect and flip every gap below them.
@@ -13,7 +14,7 @@ import { columnFaces, floorInColumn } from '../game/mobFloor.js';
 export function makeMobFloorProbe(rapier, world) {
   const ray = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
   const onlyFixed = rapier.QueryFilterFlags.ONLY_FIXED | rapier.QueryFilterFlags.EXCLUDE_SENSORS;
-  return (x, z, feet) => {
+  return (x, z, feet, clearance) => {
     ray.origin.x = x + 0.1;
     ray.origin.z = z + 0.1;
     const castDown = (y) => {
@@ -21,6 +22,6 @@ export function makeMobFloorProbe(rapier, world) {
       const hit = world.castRay(ray, y + 512, false, onlyFixed);
       return hit ? y - hit.timeOfImpact : null;
     };
-    return floorInColumn(columnFaces(castDown, feet), feet);
+    return floorInColumn(columnFaces(castDown, feet), feet, clearance);
   };
 }
