@@ -452,8 +452,16 @@ export const useGameStore = create((set, get) => ({
     // (`game/bossPersistence.phaseForHealth`), and persisting a derived value invites it to drift.
     bossHealth: BOSS_CONFIG.health,
     bossDefeated: false,
-    setBossEncounter: ({ health, active, defeated }) =>
-      set({ bossHealth: health, bossActive: !!active, bossDefeated: !!defeated }),
+    // QUEUE C3: dragons slain so far (the next fight's tier, game/bossTier.js) and the night of the last kill
+    // (the return cadence counts from it). Persisted with the encounter; written by the same single writer.
+    bossTier: 0,
+    bossKillNight: 0,
+    setBossEncounter: ({ health, active, defeated, tier, killNight }) =>
+      set({
+        bossHealth: health, bossActive: !!active, bossDefeated: !!defeated,
+        ...(Number.isFinite(tier) ? { bossTier: tier } : {}),
+        ...(Number.isFinite(killNight) ? { bossKillNight: killNight } : {}),
+      }),
     // S2-B1 WILDHEART -- single-writer beast-form authority (mirrors bossActive above). TRANSIENT:
     // never serialized (absent from saveSchema), so load/respawn ALWAYS returns to human -- this IS
     // the no-permanent-beast invariant. Components.jsx subscribes to `activeBeastForm` (a rare
@@ -1026,7 +1034,11 @@ export const useGameStore = create((set, get) => ({
             // spread: a won game can never re-arm the dragon, a defeated one stays defeated, health is
             // clamped into [0, max], and a save with no boss block (written before this existed) reads as
             // "not started". Absent-block tolerance is the same forward-compat contract as `prog` below.
-            const boss = hydrateBossState(saveData.game_state?.bossState, { maxHealth: BOSS_CONFIG.health, gameWon });
+            // C3: the fight is sized from its TIER (no fixed max), and a won pre-tier save counts its first
+            // return from the night it was loaded on.
+            const boss = hydrateBossState(saveData.game_state?.bossState, {
+                gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount,
+            });
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
             const prog = saveData.progression;
@@ -1091,6 +1103,8 @@ export const useGameStore = create((set, get) => ({
                 bossHealth: boss.health,
                 bossActive: boss.active,
                 bossDefeated: boss.defeated,
+                bossTier: boss.tier,
+                bossKillNight: boss.killNight,
                 level,
                 currentXP,
                 totalXP,

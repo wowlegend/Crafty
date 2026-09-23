@@ -44,7 +44,8 @@ describe('B2g — the boss fight survives a reload', () => {
   it('actually writes the encounter into the save payload', () => {
     useGameStore.setState({ bossHealth: 35, bossActive: true, bossDefeated: false });
     const payload = buildSaveData(useGameStore.getState(), {});
-    expect(payload.game_state.bossState).toEqual({ health: 35, active: true, defeated: false });
+    // C3 added the tier and the last kill's night — the encounter is still written whole, and only once.
+    expect(payload.game_state.bossState).toEqual({ health: 35, active: true, defeated: false, tier: 0, killNight: 0 });
   });
 
   it('does NOT persist the derived phase — one source for one fact', () => {

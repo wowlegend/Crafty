@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { serializeBossState, hydrateBossState, phaseForHealth } from './bossPersistence.js';
+import { bossTierStats } from './bossTier.js';
 import { BOSS_CONFIG } from './bossConfig.js';
 
 const MAX = BOSS_CONFIG.health;
+
+// Mutation-Proof (C3 tiers, via scripts/dev/mutate.sh against bossPersistence.js), each RED: P1 a won
+// pre-tier save re-arms; P2 a won save kept at tier 0; P3 plausible-wrong: max always the tier-0 health;
+// P4 tier not serialized; P5 a junk killNight trusted.
 
 describe('phaseForHealth — ONE derivation, shared by the hook and the rehydrate', () => {
   // bossSystem.js derives the phase from hpPercent inside a useEffect. Persisting the phase alongside the
@@ -34,9 +39,9 @@ describe('phaseForHealth — ONE derivation, shared by the hook and the rehydrat
 });
 
 describe('serializeBossState — only what cannot be re-derived', () => {
-  it('carries health, active and defeated — and NOT the derivable phase', () => {
-    const out = serializeBossState({ bossActive: true, bossHealth: 420, bossDefeated: false, bossPhase: 1 });
-    expect(out).toEqual({ health: 420, active: true, defeated: false });
+  it('carries health, active, defeated, tier and killNight — and NOT the derivable phase', () => {
+    const out = serializeBossState({ bossActive: true, bossHealth: 420, bossDefeated: false, bossPhase: 1, bossTier: 2, bossKillNight: 17 });
+    expect(out).toEqual({ health: 420, active: true, defeated: false, tier: 2, killNight: 17 });
     expect(out).not.toHaveProperty('phase');
   });
 
@@ -54,7 +59,7 @@ describe('serializeBossState — only what cannot be re-derived', () => {
 });
 
 describe('hydrateBossState — a reload must not change the fight', () => {
-  const fresh = { active: false, health: MAX, defeated: false, phase: 0 };
+  const fresh = { active: false, health: MAX, defeated: false, phase: 0, tier: 0, killNight: 0 };
 
   it('restores a fight in progress at the HP it was left at — the whole bug', () => {
     // B2g: bossHealth was useState(BOSS_CONFIG.health), so a reload during the fight handed the dragon
@@ -79,12 +84,14 @@ describe('hydrateBossState — a reload must not change the fight', () => {
     expect(hydrateBossState(null, { maxHealth: MAX })).toEqual(fresh);
   });
 
-  it('NEVER re-arms the dragon in a won game, whatever the save says', () => {
-    // S9c persists gameWon. A save that also carried active:true would otherwise resurrect the boss into
-    // a beaten game on every load.
-    const out = hydrateBossState({ health: 300, active: true, defeated: false }, { maxHealth: MAX, gameWon: true });
+  it('NEVER re-arms the dragon from a won PRE-TIER save, whatever it says', () => {
+    // S9c persists gameWon. A legacy save (no tier) that also carried active:true would otherwise resurrect
+    // the boss into a beaten game on every load. It hydrates as one kill, the return pending from tonight.
+    const out = hydrateBossState({ health: 300, active: true, defeated: false }, { maxHealth: MAX, gameWon: true, nightCount: 12 });
     expect(out.active).toBe(false);
     expect(out.defeated).toBe(true);
+    expect(out.tier).toBe(1);
+    expect(out.killNight).toBe(12);
   });
 
   it('keeps a defeated dragon defeated and inactive', () => {
@@ -127,6 +134,41 @@ describe('hydrateBossState — a reload must not change the fight', () => {
   it('round-trips: serialize -> JSON -> hydrate leaves the fight exactly where it was', () => {
     const live = { bossActive: true, bossHealth: 233, bossDefeated: false };
     const out = hydrateBossState(JSON.parse(JSON.stringify(serializeBossState(live))), { maxHealth: MAX });
-    expect(out).toEqual({ active: true, health: 233, defeated: false, phase: phaseForHealth(233, MAX) });
+    expect(out).toEqual({ active: true, health: 233, defeated: false, phase: phaseForHealth(233, MAX), tier: 0, killNight: 0 });
+  });
+});
+
+// QUEUE C3 — the dragon returns. Tier = dragons slain so far; killNight = the night of the last kill.
+describe('hydrateBossState — tiers', () => {
+  const T1 = bossTierStats(1).health;
+
+  it('round-trips a RETURN fight in a won game — a tiered save is trusted, not overruled by the win', () => {
+    const live = { bossActive: true, bossHealth: 900, bossDefeated: false, bossTier: 1, bossKillNight: 20 };
+    const out = hydrateBossState(JSON.parse(JSON.stringify(serializeBossState(live))), { gameWon: true, nightCount: 25 });
+    expect(out).toMatchObject({ active: true, health: 900, defeated: false, tier: 1, killNight: 20 });
+  });
+
+  it('sizes the fight from the TIER: health clamps to that tier\'s max, and the phase reads against it', () => {
+    const out = hydrateBossState({ health: 99999, active: true, defeated: false, tier: 1, killNight: 3 }, { gameWon: true });
+    expect(out.health).toBe(T1);
+    const mid = hydrateBossState({ health: T1 * 0.5, active: true, defeated: false, tier: 1, killNight: 3 }, { gameWon: true });
+    expect(mid.phase).toBe(phaseForHealth(T1 * 0.5, T1));
+  });
+
+  it('a slain tier waits: defeated, inactive, its kill night kept', () => {
+    const out = hydrateBossState({ health: 0, active: false, defeated: true, tier: 2, killNight: 30 }, { gameWon: true, nightCount: 31 });
+    expect(out).toMatchObject({ active: false, defeated: true, health: 0, tier: 2, killNight: 30 });
+  });
+
+  it('a won save with a tier of 0 is contradictory: it has killed at least one dragon', () => {
+    expect(hydrateBossState({ health: 0, active: false, defeated: true, tier: 0, killNight: 4 }, { gameWon: true }).tier).toBe(1);
+  });
+
+  it('junk tier and killNight coerce to safe integers, never NaN', () => {
+    for (const bad of [NaN, -3, 'two', null, {}]) {
+      const out = hydrateBossState({ health: 100, active: true, defeated: false, tier: bad, killNight: bad }, { nightCount: 7 });
+      expect(Number.isInteger(out.tier) && out.tier >= 0, `tier ${String(bad)}`).toBe(true);
+      expect(Number.isFinite(out.killNight), `killNight ${String(bad)}`).toBe(true);
+    }
   });
 });

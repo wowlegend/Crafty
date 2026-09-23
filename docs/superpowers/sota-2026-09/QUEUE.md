@@ -649,6 +649,33 @@ then fix with a gate that drives the INTEGRATION, and mutation-prove it with `sc
 | R1.9 | ✅ FIXED (each file read once) — was LOW; measured whole-run 0.39 s before, so tidiness not speed | `scripts/ci/gate-census.mjs:128` | ~8,000 readFileSync per run; read each file once into a Map. |
 | R1.10 | ✅ FIXED (`biomeTable.BIOME_TINT`, one object read by the ground uniform and the blades; a reused scratch triple per blade; 4/4 mutants RED) — was LOW | `OptimizedGrassSystem.jsx:225` | `biomeTintTable()` rebuilt per chunk + an array per blade; export one frozen module-level table and share it with Terrain (also guarantees ground and blades read the same object). |
 
+## R2 — `/code-review high` over the overnight range (7351c3bd..813428ac), 2026-09-22
+
+Ten unverified candidates; each checked against source before any action.
+
+| # | where | finding | disposition |
+|---|---|---|---|
+| R2.1 | `scripts/ci/e2e-freshness.mjs` | a running base read green from its finished shards; a timeout failed open | ✅ FIXED `7482cfdc` (reproduced live on run 35803592408) |
+| R2.2 | `scripts/dev/kill-test-procs.sh` | an orphaned `npm`/`sh -c` wrapper shielded a leaked vite forever | ✅ FIXED `3ef77fa5` (my first tests passed before the fix — the wrappers carried the marker; rebuilt) |
+| R2.3 | `render/cloudField.js` | terrain shadows ignored the sky's cloud cover | ✅ FIXED `0de44886` |
+| R2.4 | `render/cloudField.js` | a set/grazing sun sampled clouds ~3,400 m away | ✅ FIXED `0de44886` (fade with sun elevation) |
+| R2.5 | `workers/ai.worker.js` | the shoulder-charge latch survived a cover-seek break-off | ✅ FIXED `91dcabc6` (first test to ever drive the cover branch) |
+| R2.6 | `game/hitstop.js` | the freeze is per-consumer opt-in: allies, BossEntity, projectiles, particles keep moving | OPEN — true. Shape: one `worldDelta(delta)` read by every world `useFrame`, gated by a census that fails when a world-simulating `useFrame` reads raw `delta`. M-size. |
+| R2.7 | `workers/ai.worker.js` | the worker's timers (brace, windup, recover) run on wall-clock through a freeze | OPEN — true, and NOT a one-line fix: `windupUntil`/`chargeAt` are also read on the main thread against `performance.now()` (MobModel's telegraph), so a paused world clock must replace wall time on BOTH sides at once. |
+| R2.8 | `scripts/ci/gate-shape.mjs` | `toContain`/`includes`/`toMatch` literals are checked against the gate's source files whatever the `expect()` subject is | OPEN as **G2** — true by construction, latent (0 false accusations in today's corpus). Shape: only count an assertion whose subject resolves to a source-text binding (`readFileSync`/`read(`/`strip(` init). |
+| R2.9 | `.githooks/pre-push` | a receipt-matched push still builds a full worktree and may `npm install` | OPEN — perf only, not correctness. |
+| R2.10 | `world/mesher.js` | corner AO computed in the key pass, then recomputed per emitted quad | OPEN — perf only; decode it from the key. Measure worker mesh time first. |
+
+## I2 — knip sits in the CI-only tier, which its own rule says it does not belong in (found 2026-09-22, OPEN)
+
+`ci/pipeline.sh` puts knip under "TIER: CI-ONLY — needs the network or a browser". knip needs neither: it is
+offline, deterministic, ~20 s here. So no local chokepoint can see a knip failure, and one reached CI on
+`8202ec59` (a test spawning `pgrep`/`pkill`, fixed in `9e8efbf2` via `ignoreBinaries`). **Shape of the fix:** a
+push-tier step that also runs under `--range-only` (a SECTION that is neither `core` nor `range`), stated ONCE
+with a guard true for `push` and `fast`, and teach `scripts/ci/gate-table.mjs` to derive that guard (it
+generates the gate table from the guards, and `doc-currency` fails on drift). Mutation-prove: an unused export
+added in a scratch commit must redden the pre-push.
+
 ## I1 — the capture has no subset mode (instrument gap, found 2026-09-22, OPEN)
 
 Every look change gets a same-renderer A/B (two full captures), and `scripts/visual/capture.mjs` can only
