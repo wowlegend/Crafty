@@ -5,7 +5,31 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-23, session 3 after the second compaction (overnight goal).
+### RESUME HERE — 2026-09-23 ~06:00 PDT, session 3 (third stretch). READ FIRST.
+
+- **Kevin, live site (57c45ae4 deployed):** M3 Max heats, fans overdrive; iPad visuals "very buggy / broken". This
+  now leads the work. Plan: `docs/superpowers/plans/2026-09-23-crafty-perf-heat-ipad.md` (root causes verified in
+  source: P1 post-processing rebuilt on every GameScene re-render — hunger 5 s / mana 1 s ticks; P5 three r172 keeps a
+  light's first shadow target through a tier change = broken shadows on iPad; P4 no frame cap, governor pins high at
+  120 Hz). `dprCap` stays Kevin's.
+- **CI RED on 57c45ae4** (run 35845534213, shards 2+3 cancelled at the limit). Fixes committed, NOT pushed:
+  b2cd2674 (review #8 R9), d35351cf (world-hitstop/perfect-dodge vs in-freeze stalls), cd491d37 (dodge-latch race +
+  `e2e-freshness --run`). A full local run died on dodge-latch (now fixed); the push needs a GREEN receipt:
+  `cd frontend && node scripts/ci/e2e-freshness.mjs --run` (then commit `.last-green.json`, push onto a completed run).
+- **Drafts waiting in the session scratchpad** (apply AFTER no e2e server runs; each validated before commit):
+  `patch-postfx.py` (P1: PostFX memo inside GameScene.jsx + GameScene memo with boss primitives; App passes them) ·
+  `shadowReset.js` (to become a new module beside Atmosphere in the render dir) + `patch-shadow.py` (P5 + DEV hook readSunShadow) ·
+  `FrameCap.jsx` (a new render-dir component; P4, stepCap pure; still owed: store `frameCap` 60 default,
+  settingsPersist pick/sanitize, SettingsPanel toggle en+zh-CN, PerformanceMonitor bounds [cap*0.83, Infinity] when
+  capped, unit gate) · `parked/gl-churn.spec.js`, `parked/shadow-tier.spec.js` (e2e gates, red-first) · emissive
+  ores: `oreGlow.js`, `patch-oreglow-terrain.py`, `patch-oreglow-gate.py`, `parked/ore-glow-gates.test.js`,
+  `ore-glow.spec.js` · lightning: `lightning.js`, `lightning-gates.test.js`. Leftover probes must never sit in
+  tests/e2e (the killability ledger caught one).
+- **Order:** apply P1 + P5 + P4 with gates -> targeted e2e -> `--run` full receipt -> push -> CI. Then Task 1
+  instrument on the PROD build (Chromium + WebKit 26.5, installed) for before/after numbers; WebKit iPad-viewport
+  frames opened. Then Task 3 (stop rendering behind the title / pause), Task 6 hot loops. Emissive ores etc. after.
+
+### (older) RESUME HERE — 2026-09-23, session 3 after the second compaction (overnight goal).
 
 - **Local, unpushed:** `aed92d0f` (R7.4-R7.8) · `e9f4038f` (lazy panels) · `bdc62737` · `42b3777f` · `34ab5ff5` (heavy
   melee, plan `docs/superpowers/plans/2026-09-23-crafty-heavy-melee.md`, Task 5 review owed) · `152e98ab` (perfect-dodge
