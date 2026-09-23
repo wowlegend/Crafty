@@ -15,6 +15,8 @@ import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
+import { resetShadowForConfig } from './shadowReset.js';
+import { registerTestHook } from '../devtest/testBridge.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // S1-D-M3: HEIGHT / VALLEY-MIST FOG (subtle).
@@ -168,6 +170,20 @@ export function Atmosphere({ shadowConfig }) {
   const { scene, camera } = useThree();
   const ambientRef = useRef();
   const sunRef = useRef();
+  // A TIER CHANGE RE-BUILDS THE SHADOW (render/shadowReset.js): three keeps a light's first shadow target for life.
+  const cam = shadowConfig?.camera || {};
+  const [mapW, mapH] = shadowConfig?.mapSize || [0, 0];
+  useEffect(() => {
+    resetShadowForConfig(sunRef.current?.shadow);
+  }, [mapW, mapH, cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far]);
+  // DEV-only: the live shadow target's real size, for the tier-change e2e (the bridge is tree-shaken in prod).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    registerTestHook('readSunShadow', () => {
+      const sh = sunRef.current?.shadow;
+      return sh ? { mapSize: [sh.mapSize.x, sh.mapSize.y], map: sh.map ? [sh.map.width, sh.map.height] : null } : null;
+    });
+  }, []);
   // The light's aim point. A directional light with no `target` aims at the world ORIGIN, which is
   // exactly how the shadowed region ended up pinned to spawn. three.js only updates a target's
   // matrixWorld if it is in the scene graph, so it is added here rather than just assigned.
