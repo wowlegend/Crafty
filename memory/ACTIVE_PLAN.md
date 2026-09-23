@@ -18,7 +18,7 @@ each ~300k context.
 - **C3 PUSHED** (`0398b7b7`, CI run in flight at 90% flush; `ba8c3ebf` = all-green incl. e2e). `/code-review high`
   over 813428ac..HEAD running in the background (forked agent) — verify each finding before fixing.
 - **UNCOMMITTED WIP — Gerstner waves on the GPU** (`world/oceanProfile.js` gerstnerGlsl, `render/Ocean.jsx`,
-  `tests/gates/ocean-gpu-waves-gates.test.js` 6/6 mutants RED incl. W4 equivalent-at-Q=1 fixed, re-anchored
+  the new ocean GPU-waves gate (uncommitted, under frontend/tests/gates) 6/6 mutants RED incl. W4 equivalent-at-Q=1 fixed, re-anchored
   `ocean-depth-tint-gates`). Capture H (worktree = HEAD 0398b7b7 + these two files) → scratchpad `capH`; diff vs
   `capG` (ocean frames should match ~pixel-for-pixel; studio frames lose clouds from 0de44886 — expected), OPEN the
   ocean frames, then commit + push. One eslint WARNING seen at commit add563ff — check `npm run lint`.
