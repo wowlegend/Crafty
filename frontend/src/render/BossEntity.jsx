@@ -1,7 +1,7 @@
 // BossEntity.jsx — the Shadow Dragon R3F render + its destroyVoxelsInRadius terrain-destruction
 // helper (extracted from AdvancedGameFeatures S3-M4 p4 T4; byte-exact). The capture-determinism
 // freeze (if (isCaptureMode()) { ... } before the bossPositionRef movement) is preserved verbatim.
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
@@ -10,6 +10,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
+import { bossTierStats } from '../game/bossTier.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
@@ -102,7 +103,9 @@ const DRAGON_FEATURES = [
   { box: [0.16, 0.5, 0.34], pos: [0, 1.2, -1.2], rot: [-0.2, 0, 0] },
 ];
 
-export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth }) => {
+export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth, bossTier = 0 }) => {
+    // C3: a returning dragon's per-phase speed and damage are its TIER's (game/bossTier.js); tier 0 is BOSS_CONFIG.
+    const tierPhases = useMemo(() => bossTierStats(bossTier).phases, [bossTier]);
     const meshRef = useRef();
     const { camera } = useThree();
 
@@ -202,7 +205,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             return;
         }
 
-        const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
+        const phase = tierPhases[bossPhase] || tierPhases[0];
         const playerX = camera.position.x;
         const playerZ = camera.position.z;
         const bx = bossPositionRef.current[0];
@@ -473,7 +476,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
     if (!bossActive || !bossPositionRef?.current) return null;
 
-    const phase = BOSS_CONFIG.phases[bossPhase] || BOSS_CONFIG.phases[0];
+    const phase = tierPhases[bossPhase] || tierPhases[0];
     
     // Satisfying damage indicator color values and majestic obsidian styling
     const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black — UNCHANGED

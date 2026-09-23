@@ -3,7 +3,7 @@ import React from 'react';
 import { Panel, StatBar, Icon } from './primitives/index.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 
-export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase }) => {
+export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossName }) => {
     if (!bossActive) return null;
 
     const hpPercent = (bossHealth / bossMaxHealth) * 100;
@@ -17,7 +17,7 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
             <Panel variant="raise" className="px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-danger text-base leading-none">
-                        <Icon name="dragon" size={18} className="flex-none" /> {BOSS_CONFIG.name}
+                        <Icon name="dragon" size={18} className="flex-none" /> {bossName || BOSS_CONFIG.name /* C3: 'Shadow Dragon Risen II' */}
                     </span>
                     <span className="text-text-muted font-bold text-xs text-right">
                         {subText}

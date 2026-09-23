@@ -619,6 +619,7 @@ export function HUD({
               bossHealth={bossSystem.bossHealth}
               bossMaxHealth={bossSystem.bossMaxHealth}
               bossPhase={bossSystem.bossPhase}
+              bossName={bossSystem.bossName}
             />
 
             {bossSystem.bossNotification && (

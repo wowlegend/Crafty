@@ -305,6 +305,7 @@ export function GameScene({
               bossPositionRef={bossSystem.bossPositionRef}
               bossPhase={bossSystem.bossPhase}
               bossHealth={bossSystem.bossHealth}
+              bossTier={bossSystem.bossTier}
             />
           </Physics>
 

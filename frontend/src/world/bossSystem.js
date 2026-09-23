@@ -1,9 +1,9 @@
 // bossSystem.js — the Shadow Dragon boss state machine + the bossActive->dangerLevel obsidian-mood
 // bridge (extracted from AdvancedGameFeatures S3-M4 p4; mounted once in App). Verbatim.
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
-import { BOSS_CONFIG, BOSS_LOOT } from '../game/bossConfig.js';
+import { bossTierStats, bossCanReturn, BOSS_BASE_LEVEL } from '../game/bossTier.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
@@ -18,14 +18,18 @@ export const useBossSystem = (playerLevel) => {
     // dragon back all 700 HP. Lazy initialisers: read once at mount, after loadGame has hydrated the store.
     const [bossActive, setBossActive] = useState(() => useGameStore.getState().bossActive);
     const [bossHealth, setBossHealth] = useState(() => useGameStore.getState().bossHealth);
-    const [bossMaxHealth] = useState(BOSS_CONFIG.health);
+    // QUEUE C3: the dragon returns, a tier stronger per kill (game/bossTier.js). Tier 0 is the original fight.
+    // Every number that used to read BOSS_CONFIG — max health, XP, loot, name — reads the tier's stats.
+    const [bossTier, setBossTier] = useState(() => useGameStore.getState().bossTier || 0);
+    const stats = useMemo(() => bossTierStats(bossTier), [bossTier]);
+    const bossMaxHealth = stats.health;
     const bossPositionRef = useRef(null);
     const [bossDefeated, setBossDefeated] = useState(() => useGameStore.getState().bossDefeated);
     // Seeded from the restored HP, NOT 0. The effect below announces every phase change, so mounting at
     // 17% HP with phase 0 would fire "PHASE 3: ENRAGED!" on load — announcing a transition the player
     // passed before they quit. Same derivation the effect uses, so mount produces no change to announce.
     const [bossPhase, setBossPhase] = useState(() =>
-        phaseForHealth(useGameStore.getState().bossHealth, BOSS_CONFIG.health));
+        phaseForHealth(useGameStore.getState().bossHealth, bossTierStats(useGameStore.getState().bossTier || 0).health));
     const [bossNotification, setBossNotification] = useState(null);
     const bossSpawned = useRef(false);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
@@ -42,12 +46,26 @@ export const useBossSystem = (playerLevel) => {
     // when you REACH the foreshadowed, compass-marked destination. A useEffect keyed on [playerLevel] does
     // NOT re-fire as the player MOVES, so a poll is required to detect arrival. Transient store reads ->
     // Game-Loop-Isolation. The DEV forceBossSpawn (boss-closeup fixture) is a separate effect, untouched.
+    //
+    // C3 TIERS. Tier 0 keeps that rule exactly (level 5, and a won game never re-arms it). A slain tier
+    // (defeated, tier >= 1) waits until bossCanReturn — RETURN_NIGHTS nights since the kill AND LEVEL_STEP
+    // more levels — is announced ONCE when it becomes due, and wakes when the player walks back to the lair.
+    const returnAnnounced = useRef(false);
     useEffect(() => {
-        // S9c: a persisted win (gameWon) keeps the slain dragon from auto-respawning into a beaten game.
-        if (playerLevel < 5 || bossSpawned.current || bossDefeated || useGameStore.getState().gameWon) return;
+        if (bossSpawned.current) return;
+        if (bossTier === 0 && (playerLevel < BOSS_BASE_LEVEL || bossDefeated || useGameStore.getState().gameWon)) return;
         const lair = blightHeartSite();
         const interval = setInterval(() => {
             if (bossSpawned.current) return;
+            if (bossTier > 0 && bossDefeated) {
+                const s = useGameStore.getState();
+                if (!bossCanReturn({ tier: bossTier, killNight: s.bossKillNight, nightCount: s.nightCount, level: playerLevel })) return;
+                if (!returnAnnounced.current) {
+                    returnAnnounced.current = true;
+                    setBossNotification(`The Blight Heart stirs again -- the ${bossTierStats(bossTier).name} waits at the lair.`);
+                    scheduleNotifClear(6000);
+                }
+            }
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             if (Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) > 24) return; // not at the lair yet
@@ -75,10 +93,18 @@ export const useBossSystem = (playerLevel) => {
                 if (gy !== null && !isNaN(gy)) y = gy + 15;
             }
             bossPositionRef.current = [lair.x, y, lair.z];
+            // A RETURN starts a fresh fight at its tier's health (the slain tier sat at 0, defeated).
+            if (bossTier > 0) {
+                setBossHealth(bossTierStats(bossTier).health);
+                setBossDefeated(false);
+                setBossPhase(0);
+                bossKilledRef.current = false;
+                returnAnnounced.current = false;
+            }
             setBossActive(true);
         }, 1500);
         return () => clearInterval(interval);
-    }, [playerLevel, bossDefeated]);
+    }, [playerLevel, bossDefeated, bossTier, scheduleNotifClear]);
 
     useEffect(() => {
         // The threshold walk moved to game/bossPersistence.phaseForHealth so the rehydrate seeds the phase
@@ -119,15 +145,25 @@ export const useBossSystem = (playerLevel) => {
         runBossKillEffects([
             ['deactivate', () => setBossActive(false)],
             ['defeated', () => setBossDefeated(true)],
-            ['notify', () => { setBossNotification('BOSS DEFEATED! You have slain the Shadow Dragon! +600 XP!'); scheduleNotifClear(6000); }],
-            ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(BOSS_CONFIG.xpReward, 'Shadow Dragon Defeated!')],
-            ['loot', () => { if (store.addToInventory) for (const [item, qty] of BOSS_LOOT) store.addToInventory(item, qty); }],
+            ['notify', () => { setBossNotification(`BOSS DEFEATED! You have slain the ${stats.name}! +${stats.xpReward} XP!`); scheduleNotifClear(6000); }],
+            ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(stats.xpReward, `${stats.name} Defeated!`)],
+            ['loot', () => { if (store.addToInventory) for (const [item, qty] of stats.loot) store.addToInventory(item, qty); }],
+            // C3: the next dragon is a tier stronger, and its return is counted from TONIGHT. Before the win
+            // latch, isolated like every effect here, so a throwing reward cannot strand the tier either.
+            ['tier', () => {
+                const next = bossTier + 1;
+                useGameStore.getState().setBossEncounter({
+                    health: 0, active: false, defeated: true, tier: next, killNight: useGameStore.getState().nightCount,
+                });
+                bossSpawned.current = false;
+                setBossTier(next);
+            }],
             // M2 #7 climactic boss-kill beat: a brief slow-mo freeze ('boss'-tier hitstop) + a bloom flash.
             ['hitstop', () => useGameStore.getState().triggerHitstop(HITSTOP.boss)],
             ['bloom', () => store.triggerBloomSpike && store.triggerBloomSpike(450)],
             ['win', () => store.markGameWon && store.markGameWon()], // S9c: the persisted win — LAST + idempotent
         ]);
-    }, [bossActive, bossHealth, scheduleNotifClear]);
+    }, [bossActive, bossHealth, scheduleNotifClear, stats, bossTier]);
 
     useEffect(() => {
         useGameStore.setState({ damageBoss: damageBoss });
@@ -175,5 +211,6 @@ export const useBossSystem = (playerLevel) => {
     return {
         bossActive, bossHealth, bossMaxHealth, bossPositionRef,
         bossDefeated, bossPhase, bossNotification, damageBoss,
+        bossTier, bossName: stats.name,
     };
 };
