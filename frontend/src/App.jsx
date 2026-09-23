@@ -322,8 +322,9 @@ function GameApp({ experienceSystem }) {
     // Read the live mobs (ECS authority, not the damped render group). The world-hitstop E2E needs to see
     // a knockback impulse HELD across a freeze and spent after it, and the ECS is otherwise unreachable
     // from a page. Read-only; a copy, so a spec cannot mutate an entity through it.
+    // `y` for the mob-floor E2E (R7.1): a mob under a roof must stay on the ground, which only its y can show.
     registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
-      id: e.id, type: e.type, health: e.health, x: e.position.x, z: e.position.z, knockback: !!e.knockback,
+      id: e.id, type: e.type, health: e.health, x: e.position.x, y: e.position.y, z: e.position.z, knockback: !!e.knockback,
     })));
     // The XP orbs a kill scatters (R2.6): the world-hitstop E2E needs a SECOND world consumer, one that was
     // not already opted in, to see the freeze reach the systems the review found still moving. `age` is the
