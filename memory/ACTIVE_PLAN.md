@@ -16,7 +16,11 @@ each ~300k context.
   `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
   `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
 - **Review #4 done** (QUEUE R5, all fixed: `43154097` `c72586cd` `d8e8a5b0` `5b1cb802`; R2.7 world clock shipped in
-  `c72586cd`). **NEXT:** push; `/code-review high` over `4f28c78d..HEAD`; then R4.2b
+  `c72586cd`). Review #5 → QUEUE R6: R6.1-R6.4 + R6.8 FIXED `458de5db`; **NEXT: R6.5 (clear victoryPending in
+  loadWorldData, store ~1036), R6.6 (worldClock: accumulate frozen spans at triggerHitstop so a burst ending between
+  ticks is not lost), R6.7 (literal /16 chunk indices: BossEntity:72, useGameStore:1087, blightHeart:22,
+  shrines:12 → chunkOf; widen the gate)**; then push onto a completed run; `/code-review high` over
+  `34ead1d3..HEAD`; then the perfect-dodge plan + build (spec `specs/2026-09-23-crafty-perfect-dodge-design.md`); then R4.2b
   (pause the Rapier step through a freeze — design first, it moves the player's body), I3 (mipmap motion
   probe before Kevin decides the lock), G2, I1, I2; then the next EXTERNAL-BASELINE gap
   (CSM shadows are Kevin-gated via the three bump; parry is the open PLAY verb — brainstorm + spec first).

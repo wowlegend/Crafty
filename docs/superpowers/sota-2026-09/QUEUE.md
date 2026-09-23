@@ -761,11 +761,11 @@ probe). Write it before Kevin decides the lock, so the decision rests on the pro
 
 | # | Where | Finding | Disposition |
 |---|---|---|---|
-| R6.1 | `game/localPath.js` A* | the corner guard checks only orthogonals ABOVE the current cell; a trench orthogonal (target > STEP_UP above it) is still cut and clampMove wedges the mob | OPEN |
-| R6.2 | `game/localPath.js` settleOnGround | compares only the DESTINATION column: a multi-block knockback shove across a thin wall onto equal ground beyond is accepted — it passes THROUGH the wall | OPEN |
-| R6.3 | settleOnGround | a refused grid-less mover keeps isMoving/target: walks in place and jitters until its wander re-rolls | OPEN |
-| R6.4 | settleOnGround | if the mob's OWN column rises > STEP_UP (a build placed on it), every snap is refused and it stays embedded | OPEN |
+| R6.1 | `game/localPath.js` A* | the corner guard checks only orthogonals ABOVE the current cell; a trench orthogonal (target > STEP_UP above it) is still cut and clampMove wedges the mob | ✅ FIXED `458de5db` — both legs of both orthogonals checked |
+| R6.2 | `game/localPath.js` settleOnGround | compares only the DESTINATION column: a multi-block knockback shove across a thin wall onto equal ground beyond is accepted — it passes THROUGH the wall | ✅ FIXED `458de5db` — the shove is walked against the ground probe in drainKnockback |
+| R6.3 | settleOnGround | a refused grid-less mover keeps isMoving/target: walks in place and jitters until its wander re-rolls | ✅ FIXED `458de5db` — a refused mover stops and re-rolls |
+| R6.4 | settleOnGround | if the mob's OWN column rises > STEP_UP (a build placed on it), every snap is refused and it stays embedded | ✅ FIXED `458de5db` — a rise of the mob's own column lifts it |
 | R6.5 | `world/bossSystem.js`, store | victoryPending is never cleared on loadWorldData / new world: an undismissed VICTORY reappears over another save | OPEN |
 | R6.6 | `game/worldClock.js` | only the CURRENT burst window is subtracted: a burst that ends and another that starts between two ticks loses the first's tail | OPEN |
 | R6.7 | BossEntity:72, useGameStore:1087, blightHeart:22, shrines:12 | literal `Math.floor(v / 16)` chunk indices remain; the R5.8 gate only matched `/ CHUNK_SIZE` | OPEN |
-| R6.8 | `systems/AIWorkerSystem.jsx` | the wall check for knockback runs at the 15 Hz reply, after a STALE reply overwrites x/z — the shove renders on the wall or is lost; the guard belongs in drainKnockback (or knockback through clampMove) | OPEN |
+| R6.8 | `systems/AIWorkerSystem.jsx` | the wall check for knockback runs at the 15 Hz reply, after a STALE reply overwrites x/z — the shove renders on the wall or is lost; the guard belongs in drainKnockback (or knockback through clampMove) | ✅ FIXED `458de5db` — with R6.2 (a stale-reply race of a few ms remains: the shove can be lost, never through a wall) |
