@@ -98,4 +98,74 @@ test.describe('world hitstop', () => {
     expect(held.later.some((m) => m && m.knockback === false),
       `the freeze ended and the held knockback was never spent — the hit is lost after all (${where})`).toBe(true);
   });
+
+  // R2.6: the freeze used to reach only the consumers edited to opt in (mobs, AI clock, boss). XP orbs were not
+  // one of them, which makes them the honest second subject: a kill scatters orbs whose `age` advances only
+  // when XPOrbSystem's frame loop steps them. Frozen, it must hold; after, it must move (or the orb is
+  // collected, which also takes steps).
+  //
+  // Mutation-Proof: by hand against src/systems/XPOrbSystem.jsx (cp backup, byte-verified restore):
+  //   E4 the orb step reads its raw frame delta again -> "an orb aged while the world was frozen"
+  test('a kill\'s XP orbs hang through the freeze, then move', async ({ page }) => {
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.evaluate(() => window.useGameStore.setState({ isAlive: true, playerHealth: window.useGameStore.getState().maxHealth }));
+
+    const r = await page.evaluate(async () => {
+      const frame = () => new Promise((res) => requestAnimationFrame(() => res(performance.now())));
+      const orbs = () => window.__craftyTest.call('readOrbs');
+      let t = await frame();
+      const t0 = t;
+      for (let i = 0; i < 5; i++) t = await frame();
+      const frameMs = (t - t0) / 5;
+      const store = window.useGameStore;
+      // Kill a mob of our own and return the ids of the orbs its death ADDED.
+      const killForOrbs = () => {
+        const beforeMobs = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+        const s = store.getState();
+        s.spawnMob(s.playerPosition.x + 6, s.playerPosition.z, 'zombie');
+        const mob = window.__craftyTest.call('readMobs').find((m) => !beforeMobs.has(m.id));
+        if (!mob) return null;
+        const beforeOrbs = new Set(orbs().map((o) => o.id));
+        window.GameMethods.damageMob(mob.id, 99999, 'physical', 'player');
+        return new Set(orbs().filter((o) => !beforeOrbs.has(o.id)).map((o) => o.id));
+      };
+      const ages = (ids) => orbs().filter((o) => ids.has(o.id)).map((o) => o.age);
+
+      // PRESENCE CONTROL: no freeze of ours (the kill's own light hitstop passes in a few frames) -> they age.
+      store.setState({ hitstopUntil: 0, hitstopStart: 0 });
+      const freeIds = killForOrbs();
+      const freeStart = freeIds ? ages(freeIds) : [];
+      for (let i = 0; i < 20; i++) await frame();
+      const freeEnd = freeIds ? ages(freeIds) : [];
+
+      // THE SUBJECT: the same kill, then a freeze sized from the measured frame time.
+      store.setState({ hitstopUntil: 0, hitstopStart: 0 });
+      const ids = killForOrbs();
+      const freezeMs = Math.min(30000, Math.max(2500, frameMs * 16));
+      store.getState().triggerHitstop(freezeMs);
+      const until = store.getState().hitstopUntil;
+      const frozen = [];
+      while (ids && performance.now() < until) {
+        await frame();
+        if (performance.now() < until) frozen.push(ages(ids));
+      }
+      const later = [];
+      for (let i = 0; i < 12; i++) { await frame(); later.push(ages(ids)); }
+      return { frameMs, freezeMs, freeCount: freeIds ? freeIds.size : -1, freeStart, freeEnd, count: ids ? ids.size : -1, frozen, later };
+    });
+
+    const where = `frame ${r.frameMs.toFixed(0)} ms, freeze ${r.freezeMs.toFixed(0)} ms, ${r.frozen.length} frozen frames, ${r.count} orbs`;
+    expect(r.freeCount, 'the presence kill scattered no orbs — nothing below could be seen').toBeGreaterThan(0);
+    expect(r.freeEnd.length === 0 || Math.max(...r.freeEnd) > Math.max(...r.freeStart),
+      'unfrozen orbs never aged — the instrument cannot see an orb step at all').toBe(true);
+    expect(r.count, `the frozen kill scattered no orbs (${where})`).toBeGreaterThan(0);
+    expect(r.frozen.length, `fewer than 3 frames rendered inside the freeze (${where})`).toBeGreaterThanOrEqual(3);
+    // From the second frozen frame on (the frame that triggered the freeze may already have stepped once).
+    const [first, ...rest] = r.frozen.slice(1);
+    for (const f of rest) expect(f, `an orb aged while the world was frozen (${where})`).toEqual(first);
+    const last = r.later[r.later.length - 1];
+    expect(last.length < first.length || Math.max(...last) > Math.max(...first),
+      `the freeze ended and the orbs never moved again (${where})`).toBe(true);
+  });
 });

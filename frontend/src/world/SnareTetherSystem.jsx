@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { readSnareState, consumeBindCeremony } from '../game/snareChannel';
 import { isCaptureMode } from '../devtest/captureMode';
 import { warnIfNotWorldSpace } from './sceneSpace.js';
+import { worldDelta } from '../game/worldClock.js';
 
 /**
  * SnareTetherSystem — S2-B3-M4: the soul-ribbon tether drawn while the SNARE channel holds.
@@ -27,7 +28,8 @@ export function SnareTetherSystem() {
   const ringRef = useRef();
   const ceremonyRef = useRef({ t: 0 });
 
-  useFrame((_, delta) => {
+  useFrame((_, frameDelta) => {
+    const delta = worldDelta(frameDelta); // a tether's timer holds through a hitstop (R2.6)
     // DEV guard: this component writes WORLD coordinates, so its parent must be untransformed.
     // It was mounted inside the player's RigidBody until 2026-08-09 and rendered at player+world.
     if (import.meta.env.DEV) warnIfNotWorldSpace(meshRef.current, 'SnareTetherSystem');

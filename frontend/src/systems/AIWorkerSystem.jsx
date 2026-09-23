@@ -18,7 +18,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 // way; the copies were never necessary. See ai.worker.js's header.
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
-import { worldTimeScale } from '../game/hitstop.js';
+import { worldDelta } from '../game/worldClock.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
 import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
 
@@ -169,7 +169,8 @@ export const AIWorkerSystem = () => {
     }
   });
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // 0 through a hitstop: the AI clock stops with the world (R2.6)
     if (!camera || !workerRef.current) return;
     if (isCaptureMode()) {
       // CLEAR without displacing — that IS the declared reset. Returning past the drain left any impulse
@@ -184,9 +185,7 @@ export const AIWorkerSystem = () => {
     // full by whichever frame drains it — draining it at a frozen scale would spend it at zero length and
     // the hit would never shove. So a frozen frame HOLDS it, and it lands the frame the freeze ends: the
     // blow connects, the world holds its breath, then the mob flies.
-    const ws = worldTimeScale(now, useGameStore.getState().hitstopUntil);
-
-    if (ws > 0) drainKnockback(mobsQuery.entities, delta, false);
+    if (delta > 0) drainKnockback(mobsQuery.entities, delta, false);
 
     // S2-B2-pre-M2 perf (STATE-REVIEW-2026-06-10 #3): the AI bridge ticks at 15Hz, not render
     // rate. The mobsData rebuild (~20 fields × N mobs), the structured-clone postMessage, the
@@ -195,7 +194,7 @@ export const AIWorkerSystem = () => {
     // 15Hz authority updates reading as smooth motion. The worker receives the ACCUMULATED
     // seconds since the last tick (movement-speed parity), clamped vs tab-stall spikes.
     // (Knockback above stays render-rate — instant hit feel.)
-    tickAccumRef.current += delta * ws; // the AI clock stops with the world
+    tickAccumRef.current += delta; // the AI clock stops with the world
     if (tickAccumRef.current < AI_TICK_SEC) return;
     const tickDelta = Math.min(tickAccumRef.current, 0.25);
     tickAccumRef.current = 0;

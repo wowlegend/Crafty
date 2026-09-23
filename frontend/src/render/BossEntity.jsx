@@ -11,7 +11,7 @@ import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
-import { worldTimeScale } from '../game/hitstop.js';
+import { worldDelta } from '../game/worldClock.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
@@ -182,7 +182,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
     useFrame((state, rawDelta) => {
         // Hitstop holds the WORLD, the boss included: its flight, pitch and fireballs take no step while frozen.
-        const delta = rawDelta * worldTimeScale(performance.now(), useGameStore.getState().hitstopUntil);
+        const delta = worldDelta(rawDelta);
         if (!bossActive || !bossPositionRef?.current || !meshRef.current) {
             // Clean up any remaining visual effects if boss becomes inactive
             if (fireballsRef.current.length > 0 || lavaZonesRef.current.length > 0) {

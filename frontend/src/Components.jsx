@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
+import { realDelta } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
@@ -541,7 +542,10 @@ export const Player = ({ isWorldBuilt }) => {
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    // R2.6: the player controller runs on REAL time — the camera and input never freeze — and applies the
+    // hitstop to its own motion below (hitstopScale), so the blow lands without the view seizing up.
+    const delta = realDelta(frameDelta);
     if (!rigidBodyRef.current) return;
 
     // Dev capture mode: pin the follow-cam to a fixed pose so frames are byte-stable.

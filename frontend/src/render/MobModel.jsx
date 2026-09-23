@@ -9,7 +9,7 @@ import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
-import { worldTimeScale } from '../game/hitstop.js';
+import { worldDelta } from '../game/worldClock.js';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -88,7 +88,8 @@ const MobModel = React.memo(({ entity }) => {
     return () => clearInterval(interval);
   }, [entity.position, entity.type]);
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // the whole model holds through a hitstop (R2.6)
     if (!groupRef.current) return;
 
     // 1. Sync position/rotation from the ECS entity (No React State!). The AI worker ticks at
@@ -118,9 +119,8 @@ const MobModel = React.memo(({ entity }) => {
         }
       }
       // Hitstop holds the WORLD, not only the player (EXTERNAL-BASELINE #3): while frozen the damp takes no
-      // step, so the mob you hit stops where it stood and resumes from there.
-      const ws = worldTimeScale(performance.now(), useGameStore.getState().hitstopUntil);
-      const t = Math.min(1, delta * 10 * ws);
+      // step (delta is the world delta), so the mob you hit stops where it stood and resumes from there.
+      const t = Math.min(1, delta * 10);
       groupRef.current.position.lerp(entity.position, t);
       const cur = groupRef.current.rotation.y;
       const dr = Math.atan2(Math.sin(entity.rotation - cur), Math.cos(entity.rotation - cur));

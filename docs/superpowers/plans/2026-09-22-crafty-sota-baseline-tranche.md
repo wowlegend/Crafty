@@ -110,3 +110,42 @@
 - [ ] **Step 5: Mutation-prove** — M1 injection into `diffuseColor` (plausible-wrong: darkens ambient); M2 strength 0; M3 shadows sampled without the sun offset (they would sit under the camera's view of the cloud, not the sun's).
 - [ ] **Step 6: SEE it** — capture; open `explore-day` and `hearth`: patchy large-scale shade on sunlit ground, none inside caves/overhangs beyond what was there.
 - [ ] **Step 7: Commit.** Then `/code-review high` over the tranche's range.
+
+### Task 5: The freeze reaches EVERY world consumer, not the ones that opted in (QUEUE R2.6)
+
+Review #2: hitstop froze the mobs, the AI clock and the boss because each was edited to read
+`worldTimeScale`; allies, projectiles (the player's and the enemies'), particles, element zones, hurled
+blocks, snare tethers, XP orbs and loot kept moving through it. Opt-in per consumer is the defect shape: the
+next world system written will not opt in either.
+
+**Files:**
+- Create: `frontend/src/game/worldClock.js` — `worldDelta(delta)` (0 through a freeze, the frame's delta
+  otherwise; reads the store's `hitstopUntil` against `performance.now()`) and `realDelta(delta)` (identity:
+  a consumer that runs on real time ON PURPOSE says so at its own call site — the player controller, which
+  applies the freeze to its own motion; the sky's mood lerp; the weather).
+- Create: `frontend/tests/gates/world-delta-census-gates.test.js`.
+- Modify: every `useFrame` whose callback takes a delta — `EnhancedMagicSystem`, `MobModel`,
+  `BlockParticleSystem`, `SquadAISystem`, `ElementZoneSystem`, `HurlSystem`, `SnareTetherSystem`,
+  `XPOrbSystem`, `LootSystem`, `EnemyProjectileSystem`, `BossEntity`, `AIWorkerSystem` (world);
+  `Components`, `Atmosphere`, `WeatherSystem` (real).
+
+**Interfaces:** Produces `worldDelta(delta: number) -> number`, `realDelta(delta: number) -> number`.
+
+- [ ] **Step 1: Failing census** — for every `useFrame((a, d) => ...)` in `src/`, the callback body (comments
+  stripped, balanced from `useFrame(` to its close) names `d` exactly twice: the parameter, and one
+  `worldDelta(d)` or `realDelta(d)`. So a raw use of the frame delta anywhere in a world callback is red. Prints
+  and asserts the denominator. Plus: `worldDelta` is 0 inside a freeze and the delta outside it, through the
+  real store.
+- [ ] **Step 2: Run → FAIL** (15 sites, 0 routed).
+- [ ] **Step 3: Implement** — route each site; the three `worldTimeScale` readers (MobModel, BossEntity,
+  AIWorkerSystem) move to `worldDelta`, so one expression, not four, decides what "frozen" means.
+- [ ] **Step 4: Run → PASS**, lint, full unit suite, build; the existing `world-hitstop` e2e still green in CI.
+- [ ] **Step 5: Mutation-prove** — a world site reads its raw delta again; a site routed through
+  `realDelta` that should freeze is NOT caught (state it — the census proves a decision was made, not that it
+  was right; the named world list in this task is the review surface); `worldDelta` inverted; a census that
+  skips arrow heads with a destructured first parameter.
+- [ ] **Step 6: Commit** with the site count.
+
+**Blind spot, stated up front:** consumers animated by ABSOLUTE time (`state.clock`, `performance.now()` —
+the spell and pickup VFX, GPU sparks) are not delta readers, so this census cannot see them; they keep moving
+through a freeze. That is R2.7's paused world clock, not this task.

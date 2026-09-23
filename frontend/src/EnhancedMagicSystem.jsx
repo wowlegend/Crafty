@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { EnhancedSpellProjectile, SpellImpactPop, CastTelegraph, ChainArc } from './render/spellVfx';
 import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
+import { worldDelta } from './game/worldClock.js';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
 // imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
@@ -287,8 +288,9 @@ export const EnhancedMagicSystem = React.memo(() => {
     // fires. This is what makes the `spell-cast` capture state byte-stable across runs.
     // No-op in gameplay (live delta + clock). Mirrors the Player/WeatherSystem capture pins.
     const capture = isCaptureMode();
-    const delta = capture ? 0 : frameDelta;
-    const deltaMs = capture ? 0 : frameDelta * 1000;
+    // R2.6: the player's spells hang mid-flight through a hitstop, like everything else in the world.
+    const delta = capture ? 0 : worldDelta(frameDelta);
+    const deltaMs = delta * 1000;
 
     let survivingProjectiles = [];
 

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { InstancedRigidBodies } from '@react-three/rapier';
 import * as THREE from 'three';
 import { parkDeadDebris } from '../game/debrisPark.js';
+import { worldDelta } from '../game/worldClock.js';
 
 const MAX_PARTICLES = 200;
 
@@ -79,7 +80,8 @@ export const BlockParticleSystem = ({ worker }) => {
 
     const hidePosition = useMemo(() => ({ x: 0, y: -1000, z: 0 }), []);
 
-    useFrame((state, delta) => {
+    useFrame((state, frameDelta) => {
+        const delta = worldDelta(frameDelta); // debris hangs in the air through a hitstop (R2.6)
         if (!meshRef.current || !api.current) return;
         
         // Age each live particle; at 2s it's "dead" and teleported far below the world (no scale change —

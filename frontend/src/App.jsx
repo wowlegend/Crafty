@@ -324,6 +324,10 @@ function GameApp({ experienceSystem }) {
     registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
       id: e.id, type: e.type, health: e.health, x: e.position.x, z: e.position.z, knockback: !!e.knockback,
     })));
+    // The XP orbs a kill scatters (R2.6): the world-hitstop E2E needs a SECOND world consumer, one that was
+    // not already opted in, to see the freeze reach the systems the review found still moving. `age` is the
+    // orb's own clock — it advances only when XPOrbSystem steps it. Read-only copy.
+    registerTestHook('readOrbs', () => ecs.entities.filter((e) => e.isXPOrb).map((e) => ({ id: e.id, age: e.age })));
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded

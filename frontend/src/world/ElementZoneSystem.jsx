@@ -6,6 +6,7 @@ import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { makeZoneRegistry, spawnZone, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
 import { consumeZoneRequest } from '../game/elemancerChannel';
+import { worldDelta } from '../game/worldClock.js';
 
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
 const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
@@ -29,7 +30,8 @@ export function ElementZoneSystem() {
   const dayMotifPlayedRef = useRef(false); // music-motif v2: the stinger plays on the DAY'S FIRST zone only
   const zonesActiveRef = useRef(false); // tracks zone presence -> clear frozen-slow ONCE when the last zone expires
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // zones stop ticking through a hitstop (R2.6)
     if (isCaptureMode()) return;
     const store = useGameStore.getState();
 

@@ -9,7 +9,8 @@ import { carriersOf } from './_srcWalk.js';
  *
  * `hitstopUntil` had one reader — the player's movement — so the mob you hit, and everything else, kept
  * moving through the freeze. Now there is one writer (the store's `triggerHitstop`, which caps a burst) and
- * the world's frame-rate consumers read one scale (`worldTimeScale`).
+ * the world's frame-rate consumers read one scale (`worldTimeScale`) — since R2.6 through ONE function,
+ * `game/worldClock.worldDelta`, which a census (world-delta-census-gates) requires of every delta-taking useFrame.
  *
  * Mutation-Proof: via scripts/dev/mutate.sh, each observed RED:
  *   M1 hitstop.js: the scale is always 1                                     -> scale RED
@@ -23,6 +24,9 @@ import { carriersOf } from './_srcWalk.js';
  *   M9 AIWorkerSystem: the AI clock ignores the scale                        -> hold RED (structural)
  *   M10 CombatSystem: writes hitstopUntil directly again                     -> one-writer RED
  *   M11 store: triggerHitstop writes now + ms, skipping the stacking rule    -> store-cap RED
+ *   (R2.6 re-pointed the structural checks at the worldDelta shape; re-proven there:)
+ *   M12 AIWorkerSystem: the drain guard dropped (`if (true)`)               -> hold RED (structural)
+ *   M13 a second, private reader of worldTimeScale in a world consumer       -> one-definition RED
  *
  * BLIND SPOT (the integration seam): MobModel / AIWorkerSystem / Components are R3F frame loops, not
  * rendered here, so their use of the scale is asserted structurally — the weak kind — and nothing here
@@ -86,19 +90,20 @@ describe('the store is the ONE writer, and it caps', () => {
     expect(writers).toEqual(['store/useGameStore.jsx']);
   });
 
-  it('the world consumers read the scale (weak, structural)', () => {
-    expect(carriersOf(/worldTimeScale\(/).sort()).toEqual(
-      ['Components.jsx', 'game/hitstop.js', 'render/BossEntity.jsx', 'render/MobModel.jsx', 'systems/AIWorkerSystem.jsx'].sort(),
-    );
+  it('ONE definition of frozen: only worldDelta and the player controller read the scale (weak, structural)', () => {
+    // Every world consumer goes through game/worldClock.worldDelta (the census proves each one does); a second
+    // private reader of worldTimeScale is a second definition of "frozen" that can drift from the first.
+    expect(carriersOf(/worldTimeScale\(/).sort()).toEqual(['Components.jsx', 'game/hitstop.js', 'game/worldClock.js'].sort());
   });
 
   it('the AI clock stops with the world, and the knockback shove WAITS rather than being spent (weak, structural)', () => {
     // drainKnockback spends the whole one-frame impulse in whichever frame calls it (captureRest.js), so a
     // frozen-frame drain would consume the shove at zero length and the hit would never push. The frame
     // must HOLD it. Each pattern is the one line that does it; each has exactly one carrier.
-    expect(carriersOf(/if \(ws > 0\) drainKnockback\(mobsQuery\.entities, delta, false\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
-    expect(carriersOf(/tickAccumRef\.current \+= delta \* ws;/)).toEqual(['systems/AIWorkerSystem.jsx']);
-    expect(carriersOf(/const t = Math\.min\(1, delta \* 10 \* ws\);/)).toEqual(['render/MobModel.jsx']);
+    // `delta` in both files is the WORLD delta (const delta = worldDelta(frameDelta); census-enforced).
+    expect(carriersOf(/if \(delta > 0\) drainKnockback\(mobsQuery\.entities, delta, false\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/tickAccumRef\.current \+= delta;/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/const t = Math\.min\(1, delta \* 10\);/)).toEqual(['render/MobModel.jsx']);
   });
 });
 
@@ -122,7 +127,7 @@ describe('every hit the player lands has weight — the boss too', () => {
   });
 
   it('the boss holds still through the freeze like every other mob (weak, structural)', () => {
-    expect(carriersOf(/const delta = rawDelta \* worldTimeScale\(performance\.now\(\), useGameStore\.getState\(\)\.hitstopUntil\);/)).toEqual(['render/BossEntity.jsx']);
+    expect(carriersOf(/const delta = worldDelta\(rawDelta\);/)).toEqual(['render/BossEntity.jsx']);
   });
 });
 

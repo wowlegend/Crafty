@@ -10,6 +10,7 @@ import { createStormBed } from '../audio/stormBed.js';
 import { getAudioBridge } from '../audio/audioBridge.js';
 import { surfaceBlockAt } from '../world/climate.js';
 import { weatherDummy } from './_sceneScratch';
+import { realDelta } from '../game/worldClock.js';
 
 // WeatherSystem -- volumetric rain/snow/firefly instanced-particle cycles + the storm sky-darken mood
 // boost + the storm ambience bed. Extracted VERBATIM from GameScene.jsx (v6 de-monolith A2.5 -- the last
@@ -196,7 +197,7 @@ export const WeatherSystem = () => {
     // time-driven particle motion renders at a deterministic pose. No-op in gameplay.
     const capture = isCaptureMode();
     const time = capture ? 0 : state.clock.elapsedTime;
-    const delta = capture ? 0 : frameDelta;
+    const delta = capture ? 0 : realDelta(frameDelta); // weather is ambient: rain keeps falling through a hitstop (R2.6)
     const playerPos = useGameStore.getState().playerPosition;
     if (!playerPos) return;
 

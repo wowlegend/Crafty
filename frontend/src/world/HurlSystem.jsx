@@ -8,6 +8,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
 import { adoptHurlRequest, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
 import { warnIfNotWorldSpace } from './sceneSpace.js';
+import { worldDelta } from '../game/worldClock.js';
 
 /**
  * HurlSystem — S2-B2-M3: consumes hurlChannel requests and runs the PURE flight/impact core.
@@ -36,7 +37,8 @@ export function HurlSystem() {
     if (flashMeshRef.current) flashMeshRef.current.position.set(pos.x, pos.y, pos.z);
   };
 
-  useFrame((_, delta) => {
+  useFrame((_, frameDelta) => {
+    const delta = worldDelta(frameDelta); // a hurled block hangs mid-flight through a hitstop (R2.6)
     // DEV guard: this component writes WORLD coordinates, so its parent must be untransformed.
     // It was mounted inside the player's RigidBody until 2026-08-09 and rendered at player+world.
     if (import.meta.env.DEV) warnIfNotWorldSpace(meshRef.current, 'HurlSystem');

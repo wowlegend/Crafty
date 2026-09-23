@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { stepEnemyProjectiles } from '../game/enemyProjectiles.js';
+import { worldDelta } from '../game/worldClock.js';
 
 // EnemyProjectileSystem -- ranged-mob projectiles. Extracted VERBATIM from SimplifiedNPCSystem.jsx
 // (v6 de-monolith A1.2); behavior unchanged. Self-contained: only top-level imports, no shared
@@ -32,7 +33,8 @@ export const EnemyProjectileSystem = () => {
     }});
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // an enemy bolt cannot land on you while the world is frozen (R2.6)
     const list = liveRef.current;
     if (list.length === 0) return;
     if (!camera) return; // early-frame guard (mirrors sibling systems) — camera.position below would throw

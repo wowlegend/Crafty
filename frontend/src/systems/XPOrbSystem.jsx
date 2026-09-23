@@ -5,6 +5,7 @@ import { ecs } from '../ecs/world';
 import { GameMethods } from '../GameMethods';
 import { stepXPOrb } from '../game/xpOrbStepper';
 import { xpOrbsQuery } from './_npcShared';
+import { worldDelta } from '../game/worldClock.js';
 
 // XPOrbSystem -- XP-orb magnet/pull + collect side-effects (physics is the pure game/xpOrbStepper.js).
 // Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.6); behavior unchanged. The shared
@@ -13,7 +14,8 @@ export const XPOrbSystem = () => {
   const { camera } = useThree();
   const { playPickup } = useGameSounds();
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // orbs hang through a hitstop (R2.6)
     if (!camera) return;
     const store = useGameStore.getState();
     const playerPos = camera.position;

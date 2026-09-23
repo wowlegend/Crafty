@@ -14,6 +14,7 @@ import { starIntensity } from './nightSky.js';
 import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
 import { frameElapsed } from '../devtest/captureClock.js';
+import { realDelta } from '../game/worldClock.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // S1-D-M3: HEIGHT / VALLEY-MIST FOG (subtle).
@@ -186,7 +187,8 @@ export function Atmosphere({ shadowConfig }) {
     return () => { scene.remove(sunTarget); };
   }, [scene, sunTarget]);
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = realDelta(frameDelta); // the sky's mood lerp is ambient: a freeze does not stop the day (R2.6)
     const st = useGameStore.getState();
     const cap = isCaptureMode();
 

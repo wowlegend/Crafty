@@ -7,6 +7,7 @@ import { squadCapFor } from '../game/soulbind.js';
 import { releaseOverCap } from '../game/allegiance.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { stepSquad, ALLY_DPS_HIT } from '../game/squadAI';
+import { worldDelta } from '../game/worldClock.js';
 
 const AI_TICK_SEC = 1 / 15; // the AIWorkerSystem cadence (SimplifiedNPCSystem :72)
 
@@ -20,7 +21,8 @@ const AI_TICK_SEC = 1 / 15; // the AIWorkerSystem cadence (SimplifiedNPCSystem :
  */
 export function SquadAISystem() {
   const accumRef = useRef(0);
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // allies hold still through a hitstop, like the mobs (R2.6)
     if (isCaptureMode()) return;
     accumRef.current += delta;
     if (accumRef.current < AI_TICK_SEC) return;

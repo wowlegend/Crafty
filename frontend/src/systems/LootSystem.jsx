@@ -8,6 +8,7 @@ import { stepLootDrop } from '../game/xpOrbStepper';
 import { getItemRarity } from '../data/items.js';
 import { rarityBeam } from '../game/lootJuice.js';
 import { lootDropsQuery } from './_npcShared';
+import { worldDelta } from '../game/worldClock.js';
 
 // LootSystem -- loot-drop magnet/pull + collect side-effects (physics is the pure game/xpOrbStepper.js
 // stepLootDrop). Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.7); behavior
@@ -16,7 +17,8 @@ export const LootSystem = () => {
   const { camera } = useThree();
   const { playPickup } = useGameSounds();
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // loot hangs through a hitstop (R2.6)
     if (!camera) return;
     // Capture-determinism: SETTLE the loot to its declared resting state rather than stopping the loop.
     //

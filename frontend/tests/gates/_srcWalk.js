@@ -38,6 +38,11 @@ export function sourceFiles(dir = SRC, out = []) {
   return out;
 }
 
+/** Every source file's CODE (comments stripped), for a property gate that must parse rather than match. */
+export function sourceTexts(files = sourceFiles()) {
+  return files.map((f) => ({ file: f.slice(SRC.length + 1), code: strip(readFileSync(f, 'utf8')) }));
+}
+
 /** Repo-relative paths whose CODE (comments stripped) matches `re`. */
 export function carriersOf(re, files = sourceFiles()) {
   return files.filter((f) => re.test(strip(readFileSync(f, 'utf8')))).map((f) => f.slice(SRC.length + 1));
