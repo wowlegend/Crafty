@@ -7,8 +7,10 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
-| `8db8016a` `fa065432` | **Mobs walk under trees and roofs.** The mob ground probe read the TOP of each column, so under a tree canopy or a roof the "ground" was the canopy: since the wall fix (`232f0581`) a mob refused to walk under any tree, and a roof you built over a mob lifted it onto the roof (review #6 caught both). Mobs now stand on the floor of the air gap their feet are in. Proven twice: a Rapier world built from the real mesher's output with the real AI worker chasing under a roof and a canopy, and in the RUNNING game — a roof placed with the build verb over a spawned zombie (with the old snap it stood on the roof in 6 of 6 samples; now 0) | run in progress (pushed `fa065432`) |
-| `06d3f190` | **Perfect dodge, the core** (the parry the baseline found missing, on your Shift dodge): the timing window, the stagger the AI honours, and a strike already in flight dropped. Nothing player-visible yet — the dodge wiring and the feedback are the next task | run in progress (pushed `fa065432`) |
+| `a8c35ad2` `9c6dc852` | **The perfect dodge is live — the parry the baseline found missing, on your Shift.** Dodge in the last moments of a foe's lunge (the 380 ms coil-and-glow you can already read): its strike never lands, it staggers for 1.4 s — reeling back, swaying — and every hit on it deals 1.5x. The dodge is refunded so they chain; it lands with a heavy hitstop, ice-white sparks, a new bright "ting" and a PERFECT! banner (en/zh-CN). Proven through a real Shift press in the running game, with the control: the same press made early is an ordinary dodge and that strike DOES land. **See `evidence/perfect-dodge-windup.png` → `perfect-dodge-stagger.png`** (the glow drops, it reels). Not yet seen with my own eyes: the banner and the sparks (out of frame in that shot) | run in progress (pushed `9c6dc852`) |
+| `a01b1982` | **Spells cast under a tree or a roof fly; loot dropped under a canopy lands on the ground.** Same root as the mob fix below: a spell burst 2 m from you under any canopy, and drops snapped up onto the leaves. Proving it in the game found a second bug the frame rate had hidden: a spell's collision was checked once per frame, so on a slow frame a fireball crossed 8 m unchecked — straight through a thin wall. Now checked every half metre | ✅ run for `a01b1982` |
+| `8db8016a` `fa065432` | **Mobs walk under trees and roofs.** The mob ground probe read the TOP of each column, so under a tree canopy or a roof the "ground" was the canopy: since the wall fix (`232f0581`) a mob refused to walk under any tree, and a roof you built over a mob lifted it onto the roof (review #6 caught both). Mobs now stand on the floor of the air gap their feet are in. Proven twice: a Rapier world built from the real mesher's output with the real AI worker chasing under a roof and a canopy, and in the RUNNING game — a roof placed with the build verb over a spawned zombie (with the old snap it stood on the roof in 6 of 6 samples; now 0) | ✅ run 35819618808 (`fa065432`) |
+| `06d3f190` | Perfect dodge, the core: the timing window, the stagger the AI honours, a strike already in flight dropped | ✅ run 35819618808 (`fa065432`) |
 | `4ff5cd6b` `458de5db` | **Review #5 fixes** (8 findings, each reproduced by a failing test first): a knockback shove could carry a mob THROUGH a thin wall (now walked against the ground where it happens); trench corners wedged mobs; a mob refused at a wall walked in place; a build placed on a mob embedded it; an undismissed VICTORY followed you into another world; the world clock lost a hitstop that ended between frames; three literal chunk sizes left | ✅ run 35817017547 (`9063b8c7`) |
 | `5b1cb802` | VICTORY is now an EVENT of the first dragon's death: it no longer reappears on every reload of a won game, and a return kill never announces the win again | ✅ run 35815906462 (`34ead1d3`) |
 | `d8e8a5b0` | One chunk index for the streamer, block edits and the far-field mask; the far ring no longer computes normals its flat-shaded material never reads | ✅ run 35815906462 (`34ead1d3`) |
@@ -51,13 +53,17 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- Review #6 (`/code-review high` over `34ead1d3..9063b8c7`) → QUEUE R7, 8 findings. R7.1 (HIGH, a regression of
-  my own R6.4) FIXED. R7.2–R7.8 queued (chunk-size literals, one voxel-index helper, knockback scaled by frame
+- **Review #7** (`/code-review high` over `9063b8c7..9c6dc852`: R7.1, R7.9, the perfect dodge) running; findings go
+  to QUEUE R8 and get verified before any fix.
+
+- Review #6 (`/code-review high` over `34ead1d3..9063b8c7`) → QUEUE R7. R7.1 (HIGH, a regression of my own
+  R6.4) and R7.9 FIXED; R7.9b (a mob can SPAWN on a canopy) open. R7.2–R7.8 queued (chunk-size literals, one voxel-index helper, knockback scaled by frame
   time, one wall-walk implementation, per-sub-step ray cost, A* vs mover corner rule, a refused wanderer
   re-picking the same wall). R7.9 new: spells, XP orbs, loot and spawns still read the column top — a spell cast
   under a tree may burst on launch; verifying in the game before fixing.
-- Perfect dodge Tasks 3–4 (the Shift wiring, riposte, feedback, e2e). **Budget note:** the `index` bundle chunk
-  is at 738.7 of 742.2 KB, so this task has ~3.5 KB of room before the byte budget refuses it.
+- **Budget note:** the `index` bundle chunk is at 740.9 of 742.2 KB after the perfect dodge — 1.3 KB of room.
+  The next feature that lands in the main chunk will hit the byte budget; raising that ceiling is a decision
+  about load time I will make only with a measured reason, not to fit a feature.
 
 ## Corrections to things I told you
 
@@ -98,9 +104,8 @@ has its own same-renderer A/B so you can judge them one at a time.
 
 ## Next, in order
 
-1. R7.9 — verify a spell cast under a tree in the running game; if it bursts on launch, one point query on the
-   floor rule for projectiles, orbs, loot and spawn placement.
-2. Perfect dodge Task 3 (Shift wiring, riposte, feedback, i18n) and Task 4 (e2e through the real listener).
-3. R7.2–R7.8, then `/code-review high` over `9063b8c7..HEAD`.
+1. Review #7's findings (QUEUE R8), verified then fixed.
+2. R7.9b, R7.2–R7.8.
+3. See the PERFECT! banner and the sparks in a frame (a probe that frames the zombie from further back).
 4. R4.2b (pause Rapier through a freeze), I3 (mipmap motion probe for your lock decision), G2, I1, I2, then the
    next EXTERNAL-BASELINE gap.
