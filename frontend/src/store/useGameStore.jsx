@@ -18,6 +18,7 @@ import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
 import { stackHitstop } from '../game/hitstop.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
+import { voxelIndex } from '../world/chunkLayout.js';
 import { clampSoul } from '../game/soul.js';
 import { clampResonance } from '../game/resonance.js';
 
@@ -1098,7 +1099,7 @@ export const useGameStore = create((set, get) => ({
                     const cz = chunkOf(wz);
                     const lx = wx - cx * CHUNK_SIZE;
                     const lz = wz - cz * CHUNK_SIZE;
-                    const index = lx + lz * CHUNK_SIZE + wy * CHUNK_SIZE * CHUNK_SIZE;
+                    const index = voxelIndex(lx, wy, lz);
 
                     modifications.push([cx, cz, index, blockType]);
                 }

@@ -11,9 +11,7 @@
 // min 45 / max 53 / avg 49 — so 51 caps ~1.5 above the average and ~2 BELOW the footprint max: a
 // gently-raised pad flush with the land, still well above the water fill (y<=28) so it never floods.
 import { HUB_BUILDINGS } from './hubLayout.js';
-
-const CHUNK_SIZE = 16;
-const CHUNK_HEIGHT = 256;
+import { CHUNK_SIZE, CHUNK_HEIGHT, voxelIndex } from './chunkLayout.js';
 
 export const HEARTH_Y = 51;       // a flush pad nestled in the ≈y45-53 origin grade; >> the water fill (y<=28)
 export const HEARTH_RADIUS = 7;   // world [-7,7] in x/z -> a 15x15 standable platform
@@ -24,9 +22,7 @@ export function isHearthChunk(cx, cz) {
   return (cx === -1 || cx === 0) && (cz === -1 || cz === 0);
 }
 
-function idx(x, y, z) {
-  return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
-}
+const idx = voxelIndex;
 
 // Flatten the Hearth footprint in THIS chunk to a solid plinth capped at HEARTH_Y, clearing
 // everything above (natural hills / trees / overhang). Must run AFTER the main gen + foliage

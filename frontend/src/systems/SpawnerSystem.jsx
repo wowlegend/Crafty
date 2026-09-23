@@ -13,6 +13,7 @@ import { weightedPick } from '../game/spawnWeights';
 import { MOB_TYPES } from '../game/mobTypes';
 import { runSpawnPlacement } from './spawnPlacement.js';
 import { spawnGroundAt } from '../game/mobFloor.js';
+import { CHUNK_SIZE } from '../world/chunkLayout.js';
 
 // SpawnerSystem -- siege/day mob spawning + the one-time static hub-NPC spawn + distance-cull.
 // Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.3); behavior unchanged.
@@ -160,8 +161,8 @@ export const SpawnerSystem = () => {
           // Pre-filter chunks whose center distance to the player is in [20, 90]
           let candidateChunks = loadedChunkKeys.filter(key => {
             const [cx, cz] = key.split('_').map(Number);
-            const centerX = cx * 16 + 8;
-            const centerZ = cz * 16 + 8;
+            const centerX = cx * CHUNK_SIZE + CHUNK_SIZE / 2;
+            const centerZ = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
             const chunkDist = Math.sqrt((centerX - playerX) ** 2 + (centerZ - playerZ) ** 2);
             return chunkDist >= 20 && chunkDist <= 90;
           });

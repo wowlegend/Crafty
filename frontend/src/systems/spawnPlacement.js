@@ -11,6 +11,7 @@
 //
 // MUTATION-PROOF: move `attempts++` back inside the `dist >= 28 && dist <= 85` guard and the placement
 // gate test goes RED (it spawns maxAttempts mobs instead of the in-range subset).
+import { CHUNK_SIZE } from '../world/chunkLayout.js';
 export function runSpawnPlacement({ candidateChunks, spawnCount, maxAttempts, playerX, playerZ, rng, trySpawn }) {
   if (!candidateChunks || candidateChunks.length === 0) return 0;
   let spawned = 0;
@@ -19,8 +20,8 @@ export function runSpawnPlacement({ candidateChunks, spawnCount, maxAttempts, pl
     attempts++; // count EVERY pick so the loop is bounded even when all picks land out of range
     const randomKey = candidateChunks[Math.floor(rng() * candidateChunks.length)];
     const [cx, cz] = randomKey.split('_').map(Number);
-    const x = cx * 16 + rng() * 16;
-    const z = cz * 16 + rng() * 16;
+    const x = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
+    const z = cz * CHUNK_SIZE + rng() * CHUNK_SIZE;
     const dist = Math.sqrt((x - playerX) ** 2 + (z - playerZ) ** 2);
 
     // Only spawn if not too close (avoid visible spawning) and not too far.

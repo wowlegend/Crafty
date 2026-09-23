@@ -296,7 +296,7 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     if (empty) return null;
 
     return (
-        <group position={[cx * 16, 0, cz * 16]}>
+        <group position={[cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE]}>
             {opaqueGeometry && (
                 <mesh geometry={opaqueGeometry} material={opaqueMaterial} castShadow receiveShadow />
             )}
@@ -513,7 +513,7 @@ const LandmarksRender = ({ chunks }) => {
     for (const key in chunks) {
         const { cx, cz } = chunks[key];
         if (!isLandmarkChunk(cx, cz)) continue;
-        const wx = cx * 16 + 8, wz = cz * 16 + 8;
+        const wx = cx * CHUNK_SIZE + CHUNK_SIZE / 2, wz = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
         const { surfaceY, isWater } = surfaceBlockAt(wx, wz);
         if (isWater || surfaceY < 32) continue; // land only (no rising-from-the-seabed)
         marks.push(<group key={key} position={[wx, 0, wz]}><Landmark type={landmarkTypeAt(cx, cz)} baseY={surfaceY} /></group>);

@@ -13,11 +13,10 @@ import { oreCodeFor } from './oreGen.js';
 import { linearRgbToHex } from '../game/colorHex.js';
 import { grassTops, columnTops } from './grassField.js';
 import { generateMesh } from './mesher.js';
+import { CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_VOLUME, voxelIndex, columnIndex } from './chunkLayout.js';
 
-// Constants
-const CHUNK_SIZE = 16;
-const CHUNK_HEIGHT = 256;
-const VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT;
+// Constants: the chunk geometry and the block layout are chunkLayout.js's (R7.2/R7.3).
+const VOLUME = CHUNK_VOLUME;
 
 let noise2D;
 let noise3D;
@@ -187,9 +186,7 @@ self.onmessage = function(e) {
   }
 };
 
-function getIndex(x, y, z) {
-  return x + z * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
-}
+const getIndex = voxelIndex;
 
 /** Where inside its chunk a dungeon is centred. Shared with the radius derivation below. */
 const DUNGEON_CENTRE_OFFSET = 8;
@@ -398,7 +395,7 @@ function generateChunkData(cx, cz) {
       // Recorded from the CLIMATE pick, deliberately BEFORE the beach override below: that override swaps
       // the surface BLOCK to sand, it does not move the column into a different biome. Tinting a beach by
       // its parent biome is correct — a jungle beach and a snow beach should not read the same.
-      biomeIds[z * CHUNK_SIZE + x] = BIOME_ID[picked.name] ?? 0;
+      biomeIds[columnIndex(x, z)] = BIOME_ID[picked.name] ?? 0;
 
       if (surfaceY < BEACH_BAND_TOP) {
           surfaceBlock = 4; // Sand beach
@@ -454,7 +451,7 @@ function generateChunkData(cx, cz) {
       
       let surfaceY = -1;
       for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-        const type = blocks[x + z * CHUNK_SIZE + y * 256];
+        const type = blocks[voxelIndex(x, y, z)];
         if (type > 0 && type !== 9) {
           surfaceY = y;
           break;
@@ -462,7 +459,7 @@ function generateChunkData(cx, cz) {
       }
 
       if (surfaceY > SEA_LEVEL && vegRandom(worldX, worldZ, 1) < 0.02) {
-        const surfaceBlock = blocks[x + z * CHUNK_SIZE + surfaceY * 256];
+        const surfaceBlock = blocks[voxelIndex(x, surfaceY, z)];
         // M4b biome-flora wiring: branch foliage on the biome's flora KIND (biomeTable), not just the
         // surface block, so grass biomes diverge (taiga pines vs forest oaks) + mesa stays bare.
         // pickBiome + computeHeight are PURE -> capture-deterministic, gen-time only (NO-RE-MESH).

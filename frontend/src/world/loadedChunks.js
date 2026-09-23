@@ -7,8 +7,10 @@
 // The far field (world/FarField.jsx) draws land at the true surface everywhere and DISCARDS every fragment over a
 // loaded chunk, so real terrain and its impostor never overlap (QUEUE R3.9). It reads the set as a small R8 mask
 // around the player, rebuilt only when the set's version or the player's chunk changes.
-/** Blocks per chunk side — the ONE definition the streamer, block edits and the far-field mask share. */
-export const CHUNK_SIZE = 16;
+// The chunk size and chunkOf live in chunkLayout.js (the terrain worker needs them without this registry);
+// re-exported here so the streamer, block edits and the far-field mask keep one import.
+import { CHUNK_SIZE, chunkOf } from './chunkLayout.js';
+export { CHUNK_SIZE, chunkOf };
 
 /**
  * Texels per side of the mask: +-32 chunks (512 m) around the player, so it reaches past the whole far-field ring
@@ -16,11 +18,6 @@ export const CHUNK_SIZE = 16;
  * the ring drew over it until it was culled (review #3, R4.3). 4 KB.
  */
 export const LOADED_MASK_SIZE = 64;
-
-/** The chunk a world coordinate falls in — the ONE definition both sides of the mask use (review #3, R4.9). */
-export function chunkOf(v) {
-  return Math.floor(v / CHUNK_SIZE);
-}
 
 const loaded = new Set();
 let version = 0;

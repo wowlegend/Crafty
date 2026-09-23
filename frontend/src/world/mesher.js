@@ -17,6 +17,7 @@
 // CCW-from-outside on all six faces because `Terrain.jsx` renders `FrontSide` — a CW face is invisible,
 // which is how the terrain once went see-through (see .claude/rules/voxel-mesher.md).
 import { cornerAO } from './vertexAO.js';
+import { CHUNK_SIZE, CHUNK_HEIGHT, voxelIndex, columnIndex } from './chunkLayout.js';
 
 // 32-bit: the key needs 26 bits (8 type + 2 dir + 8 AO + 8 biome). It was 16-bit while the key was only
 // type + dir, which is exactly why AO and biome could not be in it.
@@ -37,8 +38,8 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
 
   // Helper to read blocks safely with boundary culling
   function getBlock(bx, by, bz) {
-    if (bx < 0 || bx >= 16 || by < 0 || by >= 256 || bz < 0 || bz >= 16) return 0;
-    return blocks[bx + bz * 16 + by * 256];
+    if (bx < 0 || bx >= CHUNK_SIZE || by < 0 || by >= CHUNK_HEIGHT || bz < 0 || bz >= CHUNK_SIZE) return 0;
+    return blocks[voxelIndex(bx, by, bz)];
   }
 
   // Is the voxel at in-plane (uc, vc) of the AIR layer `ad` on sweep axis `d` an AO occluder (opaque,
@@ -76,7 +77,7 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
     if (d === 1) { bx = cv; bz = cu; }
     else if (d === 0) { bx = dirFlag === 1 ? q : q + 1; bz = cv; }
     else { bx = cu; bz = dirFlag === 1 ? q : q + 1; }
-    const biome = biomeIds ? (biomeIds[bz * 16 + bx] & 0xFF) : 0;
+    const biome = biomeIds ? (biomeIds[columnIndex(bx, bz)] & 0xFF) : 0;
     return face | (aoKey << 10) | (biome << 18);
   }
 
@@ -86,9 +87,9 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
     const u = (d + 1) % 3;
     const v = (d + 2) % 3;
 
-    const sizeD = d === 1 ? 256 : 16;
-    const sizeU = u === 1 ? 256 : 16;
-    const sizeV = v === 1 ? 256 : 16;
+    const sizeD = d === 1 ? CHUNK_HEIGHT : CHUNK_SIZE;
+    const sizeU = u === 1 ? CHUNK_HEIGHT : CHUNK_SIZE;
+    const sizeV = v === 1 ? CHUNK_HEIGHT : CHUNK_SIZE;
 
     // Slice boundary q between voxel coordinate q and q+1 along axis d
     for (let q = -1; q < sizeD; q++) {

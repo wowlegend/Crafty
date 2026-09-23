@@ -159,7 +159,8 @@ describe('wired: Terrain feeds it, the far field reads it (weak, structural)', (
     expect(carriersOf(/const pcx = chunkOf\(p\.x\), pcz = chunkOf\(p\.z\);/)).toEqual(['world/FarField.jsx']);
     expect(carriersOf(/Math\.floor\(p\.[xz] \/ 16\)/), 'a literal chunk size is back on the JS side').toEqual([]);
     // ...and the streamer and the block edits index chunks the same way (review #4, R5.8).
-    expect(carriersOf(/Math\.floor\([^)]*\/ CHUNK_SIZE\)/), 'a second chunk-index definition is back').toEqual(['world/loadedChunks.js']);
+    // (chunkOf moved to world/chunkLayout.js with the rest of the layout — R7.2; loadedChunks re-exports it.)
+    expect(carriersOf(/Math\.floor\([^)]*\/ CHUNK_SIZE\)/), 'a second chunk-index definition is back').toEqual(['world/chunkLayout.js']);
     expect(carriersOf(/const playerCx = chunkOf\(camera\.position\.x\);/)).toEqual(['world/Terrain.jsx']);
     // ...and no literal chunk size anywhere (review #5, R6.7: boss voxel destruction, the save's block replay and
     // the Blight-Heart chunk each divided by a typed 16). The one /16 left is a music arpeggio step, not a chunk.
