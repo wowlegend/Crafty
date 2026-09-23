@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_WALK_MULT,
-  pressHeavy, releaseHeavy, cancelHeavy, heavyChargeLevel, isHeavyReady, heavyWalkMult,
+  pressHeavy, releaseHeavy, cancelHeavy, heavyChargeLevel, isHeavyReady, isHeavyHeld, heavyWalkMult,
 } from '../../src/game/heavyAttack.js';
 
 /**
@@ -15,6 +15,8 @@ import {
  *   H1 the hold threshold ignored (a tap starts charging)   H2 plausible-wrong: a release before ready throws the heavy
  *   H3 cancel ignored   H4 plausible-wrong: a second press (key repeat) restarts the charge
  *   H5 the walk is slowed before the hold threshold (every tap would stutter the player)
+ *   H6 (R9.3) releaseHeavy ignores which input holds the charge -> the mouse/T case
+ *   H7 (R9.3) plausible-wrong: a second press by another input takes the charge over -> the mouse/T case
  *
  * BLIND SPOT: nothing here proves a real mouse hold reaches the machine (plan Task 4's e2e does).
  */
@@ -58,6 +60,29 @@ describe('press, hold, release', () => {
     pressHeavy(T0);
     pressHeavy(T0 + 500);
     expect(releaseHeavy(T0 + HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 5)).toBe(true);
+  });
+  it('R9.3: a charge belongs to the input that pressed it — T tapped during a mouse hold neither takes it nor ends it', () => {
+    pressHeavy(T0, 'mouse');
+    pressHeavy(T0 + 200, 'key'); // T down mid-hold: ignored
+    expect(releaseHeavy(T0 + 250, 'key'), "T's keyup ended the mouse's charge").toBe(false);
+    expect(heavyChargeLevel(T0 + HEAVY_HOLD_MS + 10), 'the mouse charge was dropped').toBeGreaterThan(0);
+    expect(releaseHeavy(T0 + HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 5, 'mouse'), 'the mouse release lost its heavy').toBe(true);
+    // ...and the mirror: a held T is released by T, not by a stray mouseup
+    pressHeavy(T0, 'key');
+    expect(releaseHeavy(T0 + 2000, 'mouse')).toBe(false);
+    expect(releaseHeavy(T0 + 2000, 'key')).toBe(true);
+  });
+  it('isHeavyHeld: true from the press to the release or a cancel, whichever input holds it', () => {
+    expect(isHeavyHeld()).toBe(false);
+    pressHeavy(T0, 'key');
+    expect(isHeavyHeld()).toBe(true);
+    releaseHeavy(T0 + 50, 'mouse'); // not the holder
+    expect(isHeavyHeld(), 'a stray release ended the hold').toBe(true);
+    releaseHeavy(T0 + 60, 'key');
+    expect(isHeavyHeld()).toBe(false);
+    pressHeavy(T0, 'mouse');
+    cancelHeavy();
+    expect(isHeavyHeld()).toBe(false);
   });
   it('the walk slows only while CHARGING — never on a tap', () => {
     expect(heavyWalkMult(T0)).toBe(1);

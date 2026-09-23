@@ -28,6 +28,8 @@ import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavy
 //   J2 Components.jsx: the heavy's staggerUntil line removed -> "the heavy staggered nothing"
 //   J3 Components.jsx: the mouseup listener not added -> "the held release dealt nothing"
 //   J4 Components.jsx: the release throws the heavy whatever the charge (plausible-wrong) -> the half-charged CONTROL
+//   J5 (R9.3) releaseHeavy ignores which input holds the charge -> "a T tapped during the mouse hold ended its charge"
+//   J6 (R9.2) the beast-form gate dropped from the mouse press -> "a BEAST-form hold threw ... on release"
 test.describe('heavy melee', () => {
   test.setTimeout(240000);
 
@@ -54,13 +56,15 @@ test.describe('heavy melee', () => {
       const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
       // A MOSS BRUTE, for its 220 health: a warm-up swing, the control's tap, the full hold's tap and the heavy come to
       // 5 taps' worth — a zombie's 100 would die on the heavy itself, and a dead mob staggers nothing.
-      s.spawnMob(gx, gz, 'moss_brute', s.getMobFloor ? s.getMobFloor(gx, gz, cam.position.y - 1.6) : null);
+      const gy = s.getMobFloor ? s.getMobFloor(gx, gz, cam.position.y - 1.6) : null;
+      window.__heavySpawn = { x: gx, y: gy, z: gz }; // the beast phase's fresh brute stands here, whatever became of this one
+      s.spawnMob(gx, gz, 'moss_brute', gy);
       // FREEZE AT ONCE, and pin the crit roll, for the whole measurement. The first draft waited 600 ms for the zombie
       // to settle first; it walked into the player in that time (0.29 m, straight below the cone) and even the tap
       // missed — a setup race that read as a failed swing.
       window.__heavyRandom = Math.random;
       Math.random = () => 0.999;
-      s.triggerHitstop(30000);
+      s.triggerHitstop(120000); // long enough for every phase below; each asserts it still holds
       const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
       return added.length === 1 ? added[0].id : null;
     });
@@ -73,13 +77,19 @@ test.describe('heavy melee', () => {
     await page.evaluate((mid) => {
       const zombie = () => window.__craftyTest.call('readMobs').find((e) => e.id === mid);
       window.__heavyLog = [];
-      const log = (ev) => () => window.__heavyLog.push({ ev, t: performance.now(), hp: zombie()?.health ?? null });
+      // `mid` is re-pointed (window.__heavyMob) when the beast phase swaps in a fresh brute; `form` is read on the event.
+      window.__heavyMob = mid;
+      const log = (ev) => () => {
+        const m = window.__craftyTest.call('readMobs').find((e) => e.id === window.__heavyMob);
+        window.__heavyLog.push({ ev, t: performance.now(), hp: m?.health ?? null, form: window.useGameStore.getState().beastFormActive });
+      };
       window.addEventListener('mousedown', log('down'), { capture: true });
       window.addEventListener('mouseup', log('up'), { capture: true });
     }, id);
     const read = () => page.evaluate((mid) => {
       const call = (n) => window.__craftyTest.call(n);
-      const m = call('readMobs').find((e) => e.id === mid);
+      const cur = window.__heavyMob ?? mid; // the beast phase swaps in a fresh brute
+      const m = call('readMobs').find((e) => e.id === cur);
       const c = window.__threeCamera.position;
       const st = window.useGameStore.getState();
       return m
@@ -88,6 +98,14 @@ test.describe('heavy melee', () => {
           mob: [+m.x.toFixed(2), +m.z.toFixed(2)], cam: [+c.x.toFixed(2), +c.z.toFixed(2)] }
         : { hp: null, gone: true };
     }, id);
+    // AIM, before every phase. The in-page holds below block the main thread for up to 0.8 s, and the frame after one
+    // integrates that whole gap: the camera was measured wandering ~1 m and ~0.6 m in height across the phases, and
+    // one run in three the cross phase's press then missed the cone (a SETUP failure, caught as one). The aim is set,
+    // not inherited: the camera is turned to the current brute before each press.
+    const aim = () => page.evaluate(() => {
+      const m = window.__craftyTest.call('readMobs').find((e) => e.id === window.__heavyMob);
+      if (m) window.__threeCamera.lookAt(m.x, m.y + 0.8, m.z);
+    });
     // One hold of `ms`: down, wait, up — then the two event reads and the state 120 ms after the release.
     const hold = async (ms) => {
       await page.mouse.down();
@@ -96,7 +114,7 @@ test.describe('heavy melee', () => {
       await page.waitForTimeout(120);
       const after = await read();
       const [down, up] = await page.evaluate(() => window.__heavyLog.splice(0));
-      return { press: down.hp - up.hp, release: up.hp - after.hp, heldMs: Math.round(up.t - down.t), after };
+      return { press: down.hp - up.hp, release: up.hp - after.hp, heldMs: Math.round(up.t - down.t), after, form: [down.form, up.form] };
     };
 
     await page.mouse.move(640, 360);
@@ -105,6 +123,7 @@ test.describe('heavy melee', () => {
     // WARM-UP. The page's FIRST swing stalls the main thread (measured: a 490 ms hold read 2602 ms on the game's own
     // clock, the release handled two seconds late) — whatever the first hit initialises, it is not the charge under
     // test. So one quick click first, unmeasured.
+    await aim();
     r.warm = await hold(40);
     await page.waitForTimeout(400); // past the light swing's 300 ms cooldown
     // The CONTROL: released half-way through the charge — past the light cooldown, not ready. THIS ONE IS HELD IN THE
@@ -113,6 +132,7 @@ test.describe('heavy melee', () => {
     // the warm-up read 50. The window this control needs (past 300, short of 700) is narrower than that jitter. The
     // bounds are both reported: the press handler stamps its charge between t0 and t1, so the true hold lies in
     // [t2 - t1, t2 - t0]. The FULL hold below is the real mouse, and J3 proves that path reaches the listener.
+    await aim();
     r.half = await page.evaluate(({ ms, mid }) => {
       const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === mid)?.health ?? null;
       const opts = { button: 0, bubbles: true, cancelable: true };
@@ -129,12 +149,68 @@ test.describe('heavy melee', () => {
     r.half.after = await read();
     await page.waitForTimeout(400); // past the light swing's 300 ms cooldown
     // The FULL hold: past the hold threshold and the whole charge.
+    await aim();
     r.full = await hold(HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200);
+    // R9.3 (review #8): T tapped DURING a mouse hold. Its keyup used to release the charge the MOUSE held (early: the
+    // mouse's own release then threw nothing). And a T tapped LATE in the hold — as a real key lands under load —
+    // swung its own light tap, whose 300 ms cooldown then silently ate the charged release (found by this case going
+    // red intermittently WITH the R9.3 fix in: release 0). Held in the page, on the game's clock, so the late tap is
+    // placed exactly: press at 0, T down and up at +600 ms, release at +820 ms (charged at 700).
+    await page.waitForTimeout(400);
+    // Health is read DIRECTLY around each dispatch: for an event dispatched AT window, the capture-phase log listener
+    // was measured running AFTER the game's own handler (a correct heavy read as "press 60, release 0").
+    await aim();
+    r.cross = await page.evaluate(() => {
+      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__heavyMob)?.health ?? null;
+      const opts = { button: 0, bubbles: true, cancelable: true };
+      const spin = (until) => { while (performance.now() < until) { /* the hold, on the clock the charge reads */ } };
+      const h0 = hp(), t0 = performance.now();
+      window.dispatchEvent(new MouseEvent('mousedown', opts));
+      const h1 = hp();
+      spin(t0 + 600);
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT', bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyT', bubbles: true }));
+      const h2 = hp();
+      spin(t0 + 820);
+      window.dispatchEvent(new MouseEvent('mouseup', opts));
+      const h3 = hp();
+      window.__heavyLog.splice(0);
+      return { press: h0 - h1, tTap: h1 - h2, release: h2 - h3, heldMs: Math.round(performance.now() - t0) };
+    });
+    await page.waitForTimeout(120);
+    r.crossAfter = await read();
+    // R9.2 (review #8): a hold in a BEAST form. The heavy is the human sword's; a form's hold used to slow the walk,
+    // tick "ready", and throw a free extra light swing on release. Now the release adds nothing.
+    // The form is entered through the REAL roar (R held past the anticipation, a full Ferocity bank, the talent): a
+    // store-called enterBeastForm lasts ONE frame — the transform state machine never started its timer, so its next
+    // tick exits the form. The first version of this case did that, held a HUMAN sword, and survived its own mutant.
+    // A FRESH brute, frozen where the first stood: the first one is nearly spent, and the roar's burst lands on it.
+    r.beastId = await page.evaluate((mid) => {
+      const s = window.useGameStore.getState();
+      const at = window.__heavySpawn;
+      if (window.__craftyTest.call('readMobs').some((e) => e.id === mid)) window.GameMethods.damageMob(mid, 99999, 'physical', 'ally');
+      const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+      s.spawnMob(at.x, at.z, 'moss_brute', at.y);
+      const fresh = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id));
+      window.__heavyMob = fresh?.id ?? null;
+      window.useGameStore.setState({ ferocityBanked: 100, unlockedTalents: { ...s.unlockedTalents, wildheart_roar: 1 } });
+      return window.__heavyMob;
+    }, id);
+    // R is HELD until the form commits, not for a fixed time: the transform needs the roar held across frames for its
+    // 0.45 s anticipation, and a fixed 900 ms hold lost that race in 1 of 2 runs at this machine's ~3-5 fps (measured;
+    // the human sword then threw its heavy, correctly — which is what a SETUP line must say, not the verdict).
+    await page.keyboard.down('r');
+    r.roared = await page.waitForFunction(() => window.useGameStore.getState().beastFormActive === true, null, { timeout: 20000 })
+      .then(() => true, () => false);
+    await page.keyboard.up('r');
+    await page.waitForTimeout(3000); // the transform camera plays out and hands back the first-person view
+    await aim();
+    r.beast = await hold(HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200);
     await page.evaluate(() => { Math.random = window.__heavyRandom; });
 
     const where = JSON.stringify(r);
     const { half, full } = r;
-    console.log(`[heavy-melee] half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms) · full: press ${full.press} release ${full.release} (${full.heldMs} ms) · ${where}`);
+    console.log(`[heavy-melee] half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms) · full: press ${full.press} release ${full.release} (${full.heldMs} ms) · cross: ${JSON.stringify(r.cross)} @ ${JSON.stringify({ dist: r.crossAfter?.dist, dy: r.crossAfter?.dy, mob: r.crossAfter?.mob, cam: r.crossAfter?.cam })} · full@ ${JSON.stringify({ dist: full.after.dist, dy: full.after.dy, cam: full.after.cam })} · beast: ${JSON.stringify({ form: r.beast?.form, press: r.beast?.press, release: r.beast?.release, heldMs: r.beast?.heldMs })}`);
     expect(full.after.gone, `SETUP: the brute died or vanished mid-measurement — ${where}`).toBeUndefined();
     expect(full.after.active && full.after.alive, `SETUP: the input gate dropped or the player died — ${where}`).toBe(true);
     expect(full.after.frozen, `SETUP: the world freeze ran out mid-measurement (the brute was free to move and strike) — ${where}`).toBe(true);
@@ -147,5 +223,18 @@ test.describe('heavy melee', () => {
     expect(full.release, `the charged release dealt nothing — the release never threw the heavy: ${where}`).toBeGreaterThan(0);
     expect(full.release / full.press, `the charged release dealt ${(full.release / full.press).toFixed(2)}x the tap: ${where}`).toBeCloseTo(HEAVY_MULT, 1);
     expect(full.after.staggered, `the heavy staggered nothing: ${where}`).toBe(true);
+    // R9.3: the mouse's charge survived a T tapped inside it (the brute is staggered from the heavy above, so both of
+    // these hits carry the riposte — the release is compared with the unstaggered tap as a floor, not an equality).
+    expect(r.cross.press, `SETUP: the cross hold's press did not reach the brute — ${where}`).toBeGreaterThan(0);
+    expect(r.cross.tTap, `a T tapped during a held charge swung a light tap (${r.cross.tTap}) — the arm is drawn back: ${where}`).toBe(0);
+    expect(r.cross.release, `a T tapped during the mouse hold ended its charge, or its tap's cooldown ate the release (release ${r.cross.release}): ${where}`)
+      .toBeGreaterThanOrEqual(HEAVY_MULT * half.press);
+    // R9.2: in a beast form the hold charges nothing — the release adds NOTHING.
+    expect(r.beastId, `SETUP: the fresh brute did not spawn — ${where}`).not.toBeNull();
+    expect(r.roared, `SETUP: holding R for 20 s never committed a beast form — ${where}`).toBe(true);
+    expect(r.beast.form, `SETUP: not in a beast form at the press AND the release — the roar did not take, or the form ended: ${where}`).toEqual([true, true]);
+    expect(r.beast.after.frozen, `SETUP: the world freeze ran out before the beast hold ended — ${where}`).toBe(true);
+    expect(r.beast.press, `SETUP: the form's press did not swing — ${where}`).toBeGreaterThan(0);
+    expect(r.beast.release, `a BEAST-form hold threw ${r.beast.release} on release — a free extra swing: ${where}`).toBe(0);
   });
 });

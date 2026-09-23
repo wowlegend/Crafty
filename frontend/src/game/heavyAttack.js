@@ -23,10 +23,22 @@ export const HEAVY_SHOVE_MULT = 2.5;
 export const HEAVY_WALK_MULT = 0.55;
 
 let pressedAt = 0; // 0 = nothing held
+let pressedBy = null; // WHICH input holds the charge: 'mouse' or 'key' (R9.3)
 
-/** The melee button went down. A second press while held (T key-repeat) is ignored — it must not restart the charge. */
-export function pressHeavy(now) {
-  if (pressedAt === 0) pressedAt = now || 1;
+/**
+ * The melee input `source` ('mouse' or 'key') went down. A second press while ANY charge is held (T key-repeat, or T
+ * tapped during a mouse hold) is ignored — it must not restart the charge or take it over.
+ */
+export function pressHeavy(now, source = 'mouse') {
+  if (pressedAt === 0) {
+    pressedAt = now || 1;
+    pressedBy = source;
+  }
+}
+
+/** Is a charge held (by either input)? While it is, the arm is drawn back: no light swing fires (Components). */
+export function isHeavyHeld() {
+  return pressedAt !== 0;
 }
 
 /** The charge so far, in [0, 1]: 0 until HEAVY_HOLD_MS, 1 once ready. */
@@ -41,16 +53,22 @@ export function isHeavyReady(now) {
   return pressedAt !== 0 && now - pressedAt >= HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
 }
 
-/** The button came up: true when the charge was ready — throw the heavy. Always ends the hold. */
-export function releaseHeavy(now) {
+/**
+ * The input `source` came up: true when the charge was ready — throw the heavy. Ends the hold only when `source` is
+ * the input that holds it (R9.3): a T tapped during a mouse hold released the MOUSE's charge on its keyup.
+ */
+export function releaseHeavy(now, source = 'mouse') {
+  if (pressedAt === 0 || source !== pressedBy) return false;
   const ready = isHeavyReady(now);
   pressedAt = 0;
+  pressedBy = null;
   return ready;
 }
 
 /** A dodge, death or lost input drops the charge; the release then throws nothing. */
 export function cancelHeavy() {
   pressedAt = 0;
+  pressedBy = null;
 }
 
 /** The walk multiplier: HEAVY_WALK_MULT while CHARGING (past the hold threshold), 1 otherwise — never on a tap. */

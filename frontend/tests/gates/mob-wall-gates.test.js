@@ -357,6 +357,38 @@ describe('a shove is a DISTANCE, not a frame-length (R7.4); it slides along a wa
     expect(e.position.x).toBeCloseTo(14.3, 9);
     expect(calls, `${calls} probes for a 4 m shove`).toBeLessThanOrEqual(5);
   });
+  // R9.5 (review #8): every column was probed from the ORIGINAL feet. A shove that steps DOWN two blocks and then runs
+  // under an overhang slab at the old feet height asked the overhang columns from inside the slab (Infinity: a wall)
+  // and stopped, though the mob — now two blocks lower — walks under it.
+  it('after stepping down, the next columns are judged from the floor it stands on, not the height it started at', () => {
+    const floorAt = (x, z, feet) => {
+      const cx = Math.floor(x + 0.1);
+      if (cx <= 10) return GROUND;
+      if (cx === 11) return GROUND - 2; // the step down
+      return feet > GROUND - 1 ? Infinity : GROUND - 2; // under a slab: solid at the old feet, open two below
+    };
+    const e = { type: 'zombie', health: 10, position: { x: 10.3, y: GROUND + 0.5, z: 0.3 }, knockback: [60, 0, 0] }; // 4 m
+    drainKnockback([e], false, floorAt);
+    expect(e.position.x, `the shove stopped at x ${e.position.x.toFixed(2)}, at the overhang`).toBeCloseTo(14.3, 9);
+    // The SAME column asked twice from two heights: a diagonal shove meets the overhang column (11, 1) from the upper
+    // floor (refused), slides down the step into (11, 0), and asks (11, 1) again from below — where it is open. A
+    // cache keyed by column alone replays the first refusal (S6 SURVIVED the case above, which never re-asks, and a
+    // first version of this one, whose open ground let the shove step diagonally around the stale column — traced:
+    // with the fix it runs the corridor to z 4.07, with the height-blind cache it stops at z 0.73).
+    const diag = (x, z, feet) => {
+      const cx = Math.floor(x + 0.1), cz = Math.floor(z + 0.1);
+      if (cz <= 0) return cx <= 10 ? GROUND : GROUND - 2;
+      if (cx !== 11) return Infinity; // walls at any height, either side of...
+      return feet > GROUND - 1 ? Infinity : GROUND - 2; // ...a one-column corridor under an overhang, open from below
+    };
+    const d = { type: 'zombie', health: 10, position: { x: 10.4, y: GROUND + 0.5, z: 0.4 }, knockback: [60, 0, 60] };
+    drainKnockback([d], false, diag);
+    expect(d.position.z, `the shove never went under the overhang (z ${d.position.z.toFixed(2)}): a stale refusal was replayed`).toBeGreaterThan(1.5);
+    // CONTROL: from the SAME start height, a column that really is a wall still stops it.
+    const w = { type: 'zombie', health: 10, position: { x: 10.3, y: GROUND + 0.5, z: 0.3 }, knockback: [60, 0, 0] };
+    drainKnockback([w], false, (x) => (Math.floor(x + 0.1) >= 12 ? Infinity : GROUND));
+    expect(w.position.x).toBeLessThan(11.9);
+  });
 });
 
 describe('after the snap refuses a move into a wall (R7.8)', () => {
@@ -369,6 +401,12 @@ describe('after the snap refuses a move into a wall (R7.8)', () => {
     expect(snapMob(b, (x, z) => wall(x, z), top, 1100)).toBe(true);
     expect([b.chargeAt, b.chargeX, b.chargeZ], 'the charge kept driving into the wall').toEqual([0, 0, 0]);
     expect(b.chargeReadyAt, 'not winded: no recovery was set').toBe(1100 + SHOULDER_RECOVER_MS);
+  });
+  it('R9.7: a refused charge with NO world clock throws, instead of a recovery that ended at world 0 + 1600', () => {
+    const b = { type: 'moss_brute', isAggro: true, position: { x: 4.4, y: GROUND + 0.5, z: 0 }, chargeAt: 900, chargeX: 12, chargeZ: 0, chargeReadyAt: 0 };
+    snapMob(b, (x, z) => wall(x, z), top, 1000);
+    b.position.x = 5.4;
+    expect(() => snapMob(b, (x, z) => wall(x, z), top), 'a forgotten clock was defaulted').toThrow(/world clock/);
   });
   it('a WANDERER heads back out, away from the wall, instead of re-rolling into it', () => {
     const w = { type: 'zombie', isAggro: false, isMoving: true, moveTimer: 2, position: { x: 4.4, y: GROUND + 0.5, z: 0 } };

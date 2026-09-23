@@ -65,16 +65,20 @@ export const KNOCKBACK_SHOVE_S = 4 / 60;
  */
 function shoveAgainstWalls(pos, tx, tz, floorAt) {
   const feet = pos.y - 0.5; // y is not touched until the next ground snap
-  const seen = new Map();
-  const floor = (x, z) => {
-    const key = Math.floor(x + 0.1) * 73856093 ^ Math.floor(z + 0.1) * 19349663;
-    if (!seen.has(key)) seen.set(key, floorAt(x, z, feet));
-    return seen.get(key);
-  };
   // The floor it STANDS on is tracked from the feet, never re-probed at the point it is leaving: that point can sit
   // on a column seam (x + 0.1 whole) and read the neighbour's floor — a canopy read there made the canopy look level.
   // walkAgainstWalls takes every step canEnter allows, so `here` follows the walk exactly.
   let here = feet;
+  // Each next column is asked from the floor the shove STANDS on (`here`), not from where it started: after a step
+  // down, the old feet height can sit inside an overhang the mob now walks under (review #8, R9.5). Cached per column
+  // AND height, on an exact key (the XOR hash it replaces never collided at shove scale — 0 in 1.8 M neighbourhood
+  // keys, R9.8 — but a string costs nothing and leaves nothing to check).
+  const seen = new Map();
+  const floor = (x, z) => {
+    const key = `${Math.floor(x + 0.1)},${Math.floor(z + 0.1)},${here}`;
+    if (!seen.has(key)) seen.set(key, floorAt(x, z, here));
+    return seen.get(key);
+  };
   const canEnter = (fx, fz, nx, nz) => {
     const next = floor(nx, nz);
     if (next === Infinity) return false;

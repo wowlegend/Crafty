@@ -20,7 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { pressHeavy, releaseHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { pressHeavy, releaseHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -223,6 +223,10 @@ export const Player = ({ isWorldBuilt }) => {
     const beastEl = store.beastFormActive ? store.activeBeastForm : null;
     // HEAVY (game/heavyAttack.js): a charged release — the human sword's, not a beast form's (v1).
     const heavy = !!opts?.heavy && !beastEl;
+    // While a heavy is CHARGING the arm is drawn back: no light swing (T tapped during a mouse hold, or LMB during a
+    // T hold). It used to swing — and start the 300 ms cooldown that then silently ate the charged release (the T
+    // tapped late in the hold, as it lands under load: release 0).
+    if (!heavy && isHeavyHeld()) return;
     if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
@@ -415,11 +419,13 @@ export const Player = ({ isWorldBuilt }) => {
       if (express === 'cast') triggerSpellCast();
       else if (express === 'melee' && !e.repeat) { // a held T CHARGES a heavy now; its key-repeat used to spam taps
         triggerMeleeAttack();
-        pressHeavy(performance.now());
+        // The heavy is the human sword's: not in a beast form (R9.2), not with the voidhand full (R9.3, as LMB).
+        const st = useGameStore.getState();
+        if (!st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'key');
       }
     };
     const handleKeyUp = (e) => {
-      if (e.code === 'KeyT') releaseHeavySwing();
+      if (e.code === 'KeyT') releaseHeavySwing('key');
       if (e.code === 'KeyW') setIntent('moveF', false);
       else if (e.code === 'KeyS') setIntent('moveB', false);
       else if (e.code === 'KeyA') setIntent('moveL', false);
@@ -525,16 +531,21 @@ export const Player = ({ isWorldBuilt }) => {
     // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the mouse button on an
     // attack starts the charge, and the release throws the heavy. Only the REAL mouse presses it — the touch overlay
     // calls performVerb with no release event, and a press it never releases would slow the walk forever.
+    // A beast form's hold charges nothing (R9.2): triggerMeleeAttack drops `heavy` in a form, so a charge there only
+    // slowed the walk, ticked "ready" and threw a free extra light swing on release.
     const handleMouseDown = (e) => {
       const verb = performVerb(e.button);
-      if (e.button === 0 && verb === 'attack' && !useGameStore.getState().voidhandHeld) pressHeavy(performance.now());
+      const st = useGameStore.getState();
+      if (e.button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'mouse');
     };
-    const releaseHeavySwing = () => {
+    // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
+    // charge the mouse held).
+    const releaseHeavySwing = (source) => {
       const now = performance.now();
       if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
-      if (releaseHeavy(now)) triggerMeleeAttack({ heavy: true });
+      if (releaseHeavy(now, source)) triggerMeleeAttack({ heavy: true });
     };
-    const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing(); };
+    const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing('mouse'); };
     useGameStore.setState({ performVerb }); // touch overlay (M1) dispatches via store.performVerb
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
@@ -938,7 +949,7 @@ export const Player = ({ isWorldBuilt }) => {
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
     // A heavy's charge dies with the input (a release then throws nothing); death is handled above.
-    if (!isLocked) cancelHeavy();
+    if (!isLocked || locoState.beastFormActive) cancelHeavy(); // a form entered mid-charge drops it too (R9.2)
     const heavyReady = isHeavyReady(performance.now());
     if (heavyReady && !heavyReadyRef.current) useGameStore.getState().playSpatialSound?.('heavyReady', currentTrans, 0.7, 8);
     heavyReadyRef.current = heavyReady;

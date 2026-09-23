@@ -214,7 +214,7 @@ export function settleOnGround(e, groundY, climber = false) {
  * A column with no data leaves the mob as it is.
  * @returns {boolean} whether the move was refused
  */
-export function snapMob(e, getFloor, getTop, now = 0) {
+export function snapMob(e, getFloor, getTop, now) {
   const climber = CLIMBERS.has(e.type);
   const tried = { x: e.position.x, z: e.position.z };
   // A mob buried in its OWN column — a build taller than the reach placed on it, or a first snap inside solid — gets
@@ -243,6 +243,9 @@ const TURN_AWAY_S = 1.5;
  */
 function turnFromWall(e, tried, now) {
   if (e.chargeAt > 0) {
+    // No default clock (review #8, R9.7): `now = 0` gave a caller that forgot it a recovery that ended at world 1600
+    // ms — long past — so the winded punish window silently vanished. A refused charge without a clock is a bug.
+    if (!Number.isFinite(now)) throw new Error('snapMob: a refused charge needs the world clock — pass worldNow()');
     e.chargeAt = 0; e.chargeX = 0; e.chargeZ = 0;
     e.chargeReadyAt = now + SHOULDER_RECOVER_MS;
     return;
