@@ -26,6 +26,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E1 drainKnockback called on frozen frames too  -> "the shove was spent on a FROZEN frame"
 //   E2 the AI clock accumulates through the freeze -> "the mob moved while the world was frozen"
 //   E3 the hold never releases (ws > 1)            -> the presence control: "an UNFROZEN knockback was never spent"
+// THE FREEZE FLOOR (8000 ms, inlined in each page function — they run in the browser). 2500 ms was sized from the frame time measured BEFORE the hit — but frames INSIDE the freeze are
+// far slower: the hit's sparks and bloom are held at their peak, and a software renderer pays for that every frame.
+// Measured locally, on this tree and on 37d030a8 alike: the first frame after the hit lands 2.0-2.3 s later, with
+// 0.6-1.7 s long tasks after it; CI run 35845534213 then counted 2 frames inside 2500 ms, three attempts running.
 test.describe('world hitstop', () => {
   test.setTimeout(180000);
 
@@ -48,7 +52,7 @@ test.describe('world hitstop', () => {
       const stamped = read();
       let freezeMs = 0;
       if (freeze) {
-        freezeMs = Math.min(30000, Math.max(2500, frameMs * 16));
+        freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
         store.getState().triggerHitstop(freezeMs);
       }
       const until = store.getState().hitstopUntil;
@@ -121,7 +125,7 @@ test.describe('world hitstop', () => {
       const free0 = wn();
       for (let i = 0; i < 6; i++) await frame();
       const free1 = wn();
-      const freezeMs = Math.min(30000, Math.max(2500, frameMs * 16));
+      const freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
       store.getState().triggerHitstop(freezeMs);
       const until = store.getState().hitstopUntil;
       const frozen = [];
@@ -183,7 +187,7 @@ test.describe('world hitstop', () => {
       // THE SUBJECT: the same kill, then a freeze sized from the measured frame time.
       store.setState({ hitstopUntil: 0, hitstopStart: 0 });
       const ids = killForOrbs();
-      const freezeMs = Math.min(30000, Math.max(2500, frameMs * 16));
+      const freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
       store.getState().triggerHitstop(freezeMs);
       const until = store.getState().hitstopUntil;
       const frozen = [];
