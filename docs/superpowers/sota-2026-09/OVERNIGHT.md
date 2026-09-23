@@ -7,7 +7,12 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
-| `84f9efe2` `c0785955` `fafc562a` `07661878` | **Review #3 fixes** (`/code-review high` over `0398b7b7..33c75345`, 10 findings, all verified then fixed): the dragon kept ATTACKING through a hitstop that froze its flight; physics debris were wrongly counted as frozen; hub NPCs walked at a per-frame pace through every freeze; one freeze answer per frame now; the far field's hole-punch lagged what was drawn (and could not see a far chunk after a teleport); VICTORY could be stranded by a failing kill step; a corrupt kill night saved as night 0; dead Gerstner code deleted; the GPU-ocean plan doc written, labelled retrospective | local green (unit + e2e running); pushing |
+| `5b1cb802` | VICTORY is now an EVENT of the first dragon's death: it no longer reappears on every reload of a won game, and a return kill never announces the win again | local green; pushing |
+| `d8e8a5b0` | One chunk index for the streamer, block edits and the far-field mask; the far ring no longer computes normals its flat-shaded material never reads | local green; pushing |
+| `c72586cd` | **A paused WORLD clock.** A hitstop now HOLDS a mob's windup (and the brute's brace/charge) instead of letting it expire inside the freeze and strike the frame it ends; the dragon's attacks and its lava warning hold too, instead of bursting out right after your hit. Proven in the running game (new e2e case) | local green incl. 3 e2e cases; pushing |
+| `43154097` | **Walls hold for every mover** (review #4): a mob already pressed against a wall planned from the wall top and never went around (one grid framing now); diagonal gaps no longer wedge mobs; wandering mobs, knockback shoves and the first aggro tick can no longer climb — the ground snap itself refuses | local green; pushing |
+| `0eb6f64d` | Operator pages current — era-review (v22) and sota-audit (v12) republished to their same URLs, LOOP-PROGRESS refreshed | local gates green; pushing |
+| `84f9efe2` `c0785955` `fafc562a` `07661878` | **Review #3 fixes** (`/code-review high` over `0398b7b7..33c75345`, 10 findings, all verified then fixed): the dragon kept ATTACKING through a hitstop that froze its flight; physics debris were wrongly counted as frozen; hub NPCs walked at a per-frame pace through every freeze; one freeze answer per frame now; the far field's hole-punch lagged what was drawn (and could not see a far chunk after a teleport); VICTORY could be stranded by a failing kill step; a corrupt kill night saved as night 0; dead Gerstner code deleted; the GPU-ocean plan doc written, labelled retrospective | local green incl. e2e; pushed? see CI column of the next refresh |
 | `232f0581` | **Mobs no longer walk up walls.** The AI moved mobs with no height check and the ground snap lifted them onto any wall they reached, so a wall you built stopped nothing. Now they route around, slide along, or wait at it; spiders still climb. Reproduced through the real worker first (a zombie walked up a 3-high wall onto the player) | local green; pushing |
 | `de175e6e` | The far horizon takes the boss-fight grade and the cloud shadows (one shared grade — measured: in the boss sky the fog swallows the far ring, so the visible effect there is ~nil); far swamps wear their trees; a re-centre refills one set of buffers | local green; pushing |
 | `bb9f170c` | **The hitstop freeze reaches EVERY world system.** It used to reach only the mobs, the AI clock and the boss (each edited to opt in); allies kept swinging, spells and enemy bolts kept flying (a bolt could land on you inside your own hit's freeze), debris, orbs and loot drifted, zones ticked. Now one function decides, and a census fails any frame loop that reads its raw delta — 15 loops: 12 freeze, 3 run on real time on purpose (your controller, the sky, the weather). Proven in the running game: a kill's XP orbs hang through the freeze, then move | local green incl. both e2e cases; pushing |
@@ -43,10 +48,15 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- The two e2e specs whose seams moved in review #3's fixes (world hitstop, world rebuild after load) are
-  running locally; push after they pass and CI on `33c75345` completes.
+- Nothing uncommitted. Review #4 (`/code-review high 33c75345..4f28c78d`, 10 findings) fully verified and
+  fixed. Pushing onto the completed green run on `33c75345`; then `/code-review high` over the new range.
 
 ## Corrections to things I told you
+
+- **R4.5's VICTORY fix was itself wrong** (review #4): it derived the screen from saved state, so a won game
+  showed VICTORY on every reload. Replaced by an event (`5b1cb802`).
+- **P1's first version held walls only for mobs already chasing** (review #4): wanderers, knockback and a mob
+  already at the wall face still got over. Fixed at the one place every mover passes, the ground snap.
 
 - **The GPU-ocean change (`9860eaa9`) was built without its plan doc** — the one shortcut CLAUDE.md forbids.
   Review #3 caught it; the doc now exists, labelled retrospective rather than presented as having come first.

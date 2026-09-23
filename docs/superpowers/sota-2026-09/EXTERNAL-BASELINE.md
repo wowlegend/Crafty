@@ -68,7 +68,7 @@ Everything under "inference or unverified" below is exactly that. Line numbers a
 | AA order | ~~Minor~~ — **void**: SMAA before tone mapping is the library's recommended order (see Runners-up) | — | — | — |
 | Hitstop scope | **Major**, cheap | PLAY — world keeps moving during the freeze | S | Low |
 | Evasion verb | ~~Major~~ — **exists** (dodge + 0.2 s i-frames); parry absent | PLAY — the windup already has an active answer | — | — |
-| Pathfinding 9×9 | Minor-Major | PLAY — mobs stick on features >4 blocks | M | Med |
+| Pathfinding 9×9 | ~~Minor-Major~~ **worse than stated, FIXED** (`232f0581`, `43154097`) | PLAY — mobs did not stick on walls, they walked UP them (no horizontal collision; the snap lifted them to the top surface). Now they route around, slide, or wait; the snap refuses a climb for every mover | M | Med |
 | Save backend | Minor now | quota + sync stalls | M | Low |
 | Renderer generation | Future-proofing | newest effects gated on WebGPU | L | **High** |
 

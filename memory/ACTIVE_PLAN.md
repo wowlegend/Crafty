@@ -15,9 +15,10 @@ each ~300k context.
   row); `/code-review high` #3 over `0398b7b7..33c75345` → QUEUE R4, all ten verified + fixed (`84f9efe2`,
   `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
   `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
-- **NEXT:** `/code-review high` over `33c75345..HEAD` (P1, far field R3.7/8/10, review-#3 fixes); then R4.2b
-  (pause the Rapier step through a freeze — design first, it moves the player's body), R2.7 (paused world
-  clock for absolute-time VFX, both sides of the worker), G2, I1, I2; then the next EXTERNAL-BASELINE gap
+- **Review #4 done** (QUEUE R5, all fixed: `43154097` `c72586cd` `d8e8a5b0` `5b1cb802`; R2.7 world clock shipped in
+  `c72586cd`). **NEXT:** push; `/code-review high` over `4f28c78d..HEAD`; then R4.2b
+  (pause the Rapier step through a freeze — design first, it moves the player's body), I3 (mipmap motion
+  probe before Kevin decides the lock), G2, I1, I2; then the next EXTERNAL-BASELINE gap
   (CSM shadows are Kevin-gated via the three bump; parry is the open PLAY verb — brainstorm + spec first).
 - **Worktree** `.claude/worktrees/mip-ab` is capture scratch (reset it to HEAD before each A/B; frames land in
   the scratchpad capA..capJ, which dies with the session — commit messages carry the verdicts).

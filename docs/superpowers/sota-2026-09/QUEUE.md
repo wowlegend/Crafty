@@ -661,7 +661,7 @@ Ten unverified candidates; each checked against source before any action.
 | R2.4 | `render/cloudField.js` | a set/grazing sun sampled clouds ~3,400 m away | ✅ FIXED `0de44886` (fade with sun elevation) |
 | R2.5 | `workers/ai.worker.js` | the shoulder-charge latch survived a cover-seek break-off | ✅ FIXED `91dcabc6` (first test to ever drive the cover branch) |
 | R2.6 | `game/hitstop.js` | the freeze is per-consumer opt-in: allies, BossEntity, projectiles, particles keep moving | ✅ FIXED `bb9f170c` — `worldDelta` + a census over every delta-taking useFrame (15 sites: 12 world, 3 real on purpose); e2e: a kill's XP orbs hold through a freeze. Absolute-time VFX still move → R2.7 |
-| R2.7 | `workers/ai.worker.js` | the worker's timers (brace, windup, recover) run on wall-clock through a freeze | OPEN — true, and NOT a one-line fix: `windupUntil`/`chargeAt` are also read on the main thread against `performance.now()` (MobModel's telegraph), so a paused world clock must replace wall time on BOTH sides at once. |
+| R2.7 | `workers/ai.worker.js` | the worker's timers (brace, windup, recover) run on wall-clock through a freeze | ✅ FIXED `c72586cd` — worldNow(): the worker's timers, the windup telegraph and the dragon's attack timers hold through a freeze; e2e case in world-hitstop |
 | R2.8 | `scripts/ci/gate-shape.mjs` | `toContain`/`includes`/`toMatch` literals are checked against the gate's source files whatever the `expect()` subject is | OPEN as **G2** — true by construction, latent (0 false accusations in today's corpus). Shape: only count an assertion whose subject resolves to a source-text binding (`readFileSync`/`read(`/`strip(` init). |
 | R2.9 | `.githooks/pre-push` | a receipt-matched push still builds a full worktree and may `npm install` | OPEN — perf only, not correctness. |
 | R2.10 | `world/mesher.js` | corner AO computed in the key pass, then recomputed per emitted quad | OPEN — perf only; decode it from the key. Measure worker mesh time first. |
@@ -676,10 +676,10 @@ Ten unverified candidates; each checked against source before any action.
 | R3.4 | `world/farField.js` | far WATER sits at SEA_LEVEL-2, above the loaded seabed (a near-surface swimmer sees a floor) | ✅ FIXED `1c0dde0b` (R3.9: discarded over loaded chunks; water sinks only past the deepest wave trough) |
 | R3.5 | `world/farField.js` | canopyFrom ignores Terrain's cull hysteresis (chunks kept to renderDistance + 2, `Terrain.jsx:816`) | ✅ FIXED `1c0dde0b` (canopyFrom deleted; the mask covers whatever IS loaded) |
 | R3.6 | `world/farField.js` | triangle interiors can cover gullies inside loaded chunks; at low tier the ring runs under the player | ✅ FIXED `1c0dde0b` (per-fragment discard over loaded chunks) |
-| R3.7 | `world/FarField.jsx` | no danger-mood grade, no cloud shadows: a seam in the boss fight | OPEN — share Terrain's grade + `cloudShadowGlsl` (both are generated strings already) |
-| R3.8 | `world/farField.js` | swamp trees grow on DIRT (`terrain.worker.js:578`); CANOPY_SURFACES omits it | OPEN — add `BLOCK_ID.dirt` |
+| R3.7 | `world/FarField.jsx` | no danger-mood grade, no cloud shadows: a seam in the boss fight | ✅ FIXED `de175e6e` — one generated grade (render/landGrade.js) + cloud shadows on the far field; measured: the obsidian fog swallows the far ring, so the visible effect in the boss sky is ~nil |
+| R3.8 | `world/farField.js` | swamp trees grow on DIRT (`terrain.worker.js:578`); CANOPY_SURFACES omits it | ✅ FIXED `de175e6e` — carriesCanopy: dirt carries canopy only in the swamp |
 | R3.9 | `world/farField.js` + `FarField.jsx` | **the design fix for R3.4–R3.6**: no FIXED sink can be right, because the sink must be deep only where a chunk IS loaded and chunk presence changes continuously. HOLE-PUNCH instead: a `world/loadedChunks.js` 32x32 R8 mask of loaded chunks around the player (Terrain writes it when its chunk set changes; origin in chunk coords), sampled in the far field's fragment shader to `discard` wherever a real chunk is loaded. Then the ring sits AT the true surface (tiny sink only against the ocean plane), canopy lifts anywhere, water at sea level — no step at the loaded edge. Gates: pure mask build/index; the discard is spliced; mutation: mask ignored / origin off by one chunk | ✅ FIXED `1c0dde0b` — K1–K9 mutation-proven (K8 an equivalent mutant, its dead code deleted); capture A/B opened |
-| R3.10 | `world/FarField.jsx` | each rebuild allocates new arrays + BufferAttributes and regenerates the texture array Terrain already holds | OPEN — perf; build the index once, reuse attributes, read `voxelTextures` |
+| R3.10 | `world/FarField.jsx` | each rebuild allocates new arrays + BufferAttributes and regenerates the texture array Terrain already holds | ✅ FIXED `de175e6e` — one buffer set refilled in place, index built once, the shared texture array |
 | R3.11 | `game/bossPersistence.js`, `bossSystem.js` | killNight coercion duplicates `nat`; stats recomputed; the return entrance still says "the Shadow Dragon awakens" | ✅ FIXED `674a54eb` (entrance names the tier; a corrupt kill night counts from tonight — it clamped to night 0 and woke the dragon at once) |
 
 ## I2 — knip sits in the CI-only tier, which its own rule says it does not belong in (found 2026-09-22, OPEN)
@@ -734,3 +734,25 @@ out of a cave onto its roof.
 | R4.8 | process | the GPU-ocean milestone (`9860eaa9`) had no plan doc | ✅ `07661878` — plan doc written, labelled RETROSPECTIVE |
 | R4.9 | `world/FarField.jsx` | the mask centre uses a literal `/ 16` while loadedChunks.js owns CHUNK | ✅ FIXED `c0785955` — chunkOf() is the one definition |
 | R4.10 | `game/worldClock.js` | `worldDelta` re-reads the clock and the store per call (~70×/frame with 60 mobs), and consumers in one frame can straddle the freeze boundary | ✅ FIXED `84f9efe2` — WorldClockTicker computes the scale once per frame at priority -9999 |
+
+## R5 — review #4 (`/code-review high 33c75345..4f28c78d`, 2026-09-23), each to be VERIFIED before fixing
+
+| # | Where | Finding | Disposition |
+|---|---|---|---|
+| R5.1 | `game/localPath.js`, worker | A* starts at cell (4,4) = column `round(x)`, clampMove/the snap use `floor(x + 0.1)`: they disagree for frac(x) in [0.5, 0.9), so a mob stopped at a wall it approached in +x/+z plans FROM the wall top, straight over it, and never routes around | ✅ FIXED `43154097` — reproduced (stuck at x 4.73); gridOrigin/cellOf/cellCentre, one framing everywhere |
+| R5.2 | `game/localPath.js` | A* cuts diagonally between two blocked orthogonal cells; clampMove refuses the move and both slides → the mob wedges at any diagonal gap, forever | ✅ FIXED `43154097` — a diagonal step needs both orthogonals passable |
+| R5.3 | `systems/AIWorkerSystem.jsx` | only aggro mobs get a heightGrid, so wandering/passive mobs (and the first aggro tick) still walk up walls | ✅ FIXED `43154097` — settleOnGround: the snap refuses a climb for every mover |
+| R5.4 | `render/BossEntity.jsx` | the frozen return only POSTPONES: attack cooldowns and the lava telegraph run on `performance.now()`, so a freeze eats the warning window and releases a burst of attacks on the first unfrozen frame | ✅ FIXED `c72586cd` — the dragon's timers and the lava telegraph on the world clock |
+| R5.5 | `game/bossTier.js`, `HUD.jsx` | VICTORY is derived from STATE (defeated, tier ≤ 1) with HUD-local dismissal, so it reappears on every reload of a won game (and on a return kill whose tier step throws) | ✅ FIXED `5b1cb802` — victoryPending, an event of the tier-0 kill, never saved; showsVictory deleted |
+| R5.6 | `systems/AIWorkerSystem.jsx` | altitude: the fix patched one mover; knockback, allies, spider leaps, spawns still set x/z unchecked and the top-surface snap lifts them | ✅ FIXED `43154097` — with R5.3 (the snap is the choke point) |
+| R5.7 | `workers/ai.worker.js` | clampMove's `blocked` is discarded: a mob stopped at a wall keeps isMoving=true (walk cycle in place) | ✅ FIXED `43154097` — waits when it kept under a quarter of its step (exact-zero missed a shallow press) |
+| R5.8 | `world/Terrain.jsx` | the chunk streamer computes the player's chunk with its own `Math.floor(camera / CHUNK_SIZE)` beside the new `chunkOf` | ✅ FIXED `d8e8a5b0` — CHUNK_SIZE + chunkOf the one definition |
+| R5.9 | `world/FarField.jsx` | `computeVertexNormals` every rebuild, for a `flatShading` material that never reads normals | ✅ FIXED `d8e8a5b0` — normals dropped for the flat-shaded ring |
+| R5.10 | process | the GPU-ocean plan doc is retrospective (already recorded; the rule was broken once) | ACKNOWLEDGED — see OVERNIGHT corrections |
+
+## I3 — mipmaps have no MOTION-stability probe (found by the page refresh, 2026-09-23, OPEN)
+
+The mipmap A/B in KEVIN-REVIEW-BATCH compares still frames. The failure mipmaps exist to fix — distant faces
+crawling as the camera moves — is temporal, and sota-audit recommended a far-band temporal-stability probe
+(sub-pixel camera jitter, depth > 40 m). None exists (`scripts/visual`, `scripts/ci`: no jitter/temporal
+probe). Write it before Kevin decides the lock, so the decision rests on the property, not on a still.
