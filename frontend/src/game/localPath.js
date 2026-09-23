@@ -11,8 +11,24 @@
 //  - clampMove: a move may not enter a cell more than STEP_UP above the one it leaves (the same rule A* uses);
 //    a blocked move slides along the free axis, and any step DOWN is allowed.
 //
-// The grid framing is the one AIWorkerSystem builds and game/mobSteering.js reads: cell (gx, gz) is world
-// (round(mobX) - 4 + gx, round(mobZ) - 4 + gz), row-major gz * GRID + gx.
+// ONE GRID FRAMING, used by everything that touches the grid (review #4, R5.1): the grid is centred on the
+// COLUMN the mob stands on — the column its ground snap probes, floor(x + 0.1), because getMobGroundLevel casts
+// at (x + 0.1, z + 0.1). So cell (gx, gz) is world column (gridOrigin(mobX) + gx, gridOrigin(mobZ) + gz),
+// row-major gz * GRID + gx, and the mob is always cell (4, 4). It used to be round(mobX): for frac(x) in
+// [0.5, 0.9) the mob stood on column floor(x) while A* believed it stood on round(x) — against a wall, on the
+// wall top — and planned straight over the wall it was pressed against.
+/** The world column whose cell is (0, 0) in a grid centred on the column containing `v`. */
+export function gridOrigin(v) {
+  return Math.floor(v + 0.1) - 4;
+}
+/** The grid cell index (may lie outside 0..8) of the column containing `v`. */
+export function cellOf(v, origin) {
+  return Math.floor(v + 0.1) - origin;
+}
+/** Where to steer for cell g: the middle of the span of positions whose snap probes that column. */
+export function cellCentre(g, origin) {
+  return origin + g + 0.4;
+}
 import { NEIGHBOR_OFFSETS, octileHeuristic, DIAG_COST } from './aStarNeighbors.js';
 
 /** Cells per side of the mob-centred grid; the mob is at (4, 4). */
@@ -66,6 +82,10 @@ export function findLocalPath(heightGrid, sx, sz, ex, ez) {
       if (closedSet.has(nIdx)) continue;
       const heightDiff = heightGrid[nIdx] - ch;
       if (heightDiff > STEP_UP) continue; // a wall: walked around, never stepped up
+      // No cutting a corner (review #4, R5.2): a diagonal step needs BOTH orthogonal neighbours passable, or the
+      // mover (clampMove, which checks the real swept path) refuses it and the mob wedges at the gap forever.
+      if (dx !== 0 && dz !== 0
+        && (heightGrid[nx + currNode.z * GRID] - ch > STEP_UP || heightGrid[currNode.x + nz * GRID] - ch > STEP_UP)) continue;
       // Diagonal cost is sqrt(2); a deep drop adds a caution penalty.
       const gScore = currNode.g + (dx !== 0 && dz !== 0 ? DIAG_COST : 1.0) + (heightDiff < -2.0 ? 1.5 : 0.0);
       if (!nodeData[nIdx] || gScore < nodeData[nIdx].g) {
@@ -85,11 +105,9 @@ export function findLocalPath(heightGrid, sx, sz, ex, ez) {
  */
 export function clampMove(heightGrid, fromX, fromZ, toX, toZ, climber = false) {
   if (climber) return { x: toX, z: toZ, blocked: false };
-  const ox = Math.round(fromX) - 4, oz = Math.round(fromZ) - 4;
-  // Cell (gx, gz) holds the column AIWorkerSystem sampled at world (ox + gx + 0.1, ...), i.e. column ox + gx; a
-  // point stands on the column the main thread's ground snap will probe: floor(p + 0.1), the same +0.1 jitter.
+  const ox = gridOrigin(fromX), oz = gridOrigin(fromZ);
   const heightAt = (x, z) => {
-    const gx = Math.floor(x + 0.1) - ox, gz = Math.floor(z + 0.1) - oz;
+    const gx = cellOf(x, ox), gz = cellOf(z, oz);
     return gx < 0 || gx >= GRID || gz < 0 || gz >= GRID ? null : heightGrid[gz * GRID + gx];
   };
   const canEnter = (fx, fz, tx, tz) => {
@@ -106,4 +124,27 @@ export function clampMove(heightGrid, fromX, fromZ, toX, toZ, climber = false) {
     else if (sz !== 0 && canEnter(x, z, x, z + sz)) z += sz;  // or along z
   }
   return { x, z, blocked };
+}
+
+/**
+ * THE GROUND SNAP, with the step rule — the ONE choke point every mover passes through (review #4, R5.3/R5.6).
+ *
+ * The main thread snaps a mob's y to the top of the column it stands on (the probe casts down from y = 255).
+ * The worker's clampMove only covers aggro mobs that carry a height grid; wandering mobs, the first aggro tick,
+ * knockback shoves and spawns set x/z with no check, and the snap then lifted them onto any wall. So the snap
+ * itself refuses: if the column's top is more than STEP_UP above the mob's feet, the mob goes back to the last
+ * position that stood on reachable ground, and its y is left alone. Any step DOWN is taken. Climbers climb.
+ * Mutates `e.position` and the entity's `footX/footZ` memory; returns whether the move was refused.
+ */
+export function settleOnGround(e, groundY, climber = false) {
+  const feet = e.position.y - 0.5;
+  if (!climber && e.footX !== undefined && groundY - feet > STEP_UP) {
+    e.position.x = e.footX;
+    e.position.z = e.footZ;
+    return true;
+  }
+  e.position.y = groundY + 0.5;
+  e.footX = e.position.x;
+  e.footZ = e.position.z;
+  return false;
 }

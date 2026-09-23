@@ -4,6 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
+import { gridOrigin, settleOnGround, CLIMBERS } from '../game/localPath.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -113,7 +114,9 @@ export const AIWorkerSystem = () => {
             if (store.getMobGroundLevel) {
               const groundY = store.getMobGroundLevel(entity.position.x, entity.position.z);
               if (groundY !== null && !isNaN(groundY)) {
-                entity.position.y = groundY + 0.5;
+                // The snap REFUSES a climb (review #4, R5.3/R5.6): every mover — the worker's chase or wander,
+                // a knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them.
+                settleOnGround(entity, groundY, CLIMBERS.has(entity.type));
               }
             }
           }
@@ -207,8 +210,9 @@ export const AIWorkerSystem = () => {
       let heightGrid = null;
       if (!e.passive && e.isAggro) {
         heightGrid = [];
-        const startX = Math.round(e.position.x) - 4;
-        const startZ = Math.round(e.position.z) - 4;
+        // The one grid framing (game/localPath.js): centred on the COLUMN the mob stands on (review #4, R5.1).
+        const startX = gridOrigin(e.position.x);
+        const startZ = gridOrigin(e.position.z);
         if (getMobGroundLevel) {
           for (let gz = 0; gz < 9; gz++) {
             for (let gx = 0; gx < 9; gx++) {

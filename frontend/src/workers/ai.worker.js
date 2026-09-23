@@ -19,7 +19,7 @@ import { hasLineOfSight } from '../game/mobLineOfSight.js';
 import { attackPhase } from '../game/attackTelegraph.js';
 import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
-import { findLocalPath, clampMove, CLIMBERS } from '../game/localPath.js';
+import { findLocalPath, clampMove, CLIMBERS, gridOrigin, cellOf, cellCentre } from '../game/localPath.js';
 import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
 import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
@@ -136,13 +136,12 @@ self.onmessage = function(e) {
       if (isAggro) {
         // AI State Tree - Cover seeking behavior tree selection
         if (health < maxHealth * 0.25 && heightGrid && heightGrid.length === 81) {
-          const mobGridX = Math.round(x);
-          const mobGridZ = Math.round(z);
-          const startXGrid = mobGridX - 4;
-          const startZGrid = mobGridZ - 4;
+          // The one grid framing (game/localPath.js, review #4 R5.1): cells are the columns the snap probes.
+          const startXGrid = gridOrigin(x);
+          const startZGrid = gridOrigin(z);
           
-          const relPlayerX = Math.round(playerX - startXGrid);
-          const relPlayerZ = Math.round(playerZ - startZGrid);
+          const relPlayerX = cellOf(playerX, startXGrid);
+          const relPlayerZ = cellOf(playerZ, startZGrid);
           
           let bestCoverX = -1;
           let bestCoverZ = -1;
@@ -173,8 +172,8 @@ self.onmessage = function(e) {
           }
           
           if (bestCoverX !== -1 && bestCoverZ !== -1) {
-            targetX = startXGrid + bestCoverX;
-            targetZ = startZGrid + bestCoverZ;
+            targetX = cellCentre(bestCoverX, startXGrid);
+            targetZ = cellCentre(bestCoverZ, startZGrid);
             isMoving = true;
             isCoverSeeking = true;
             
@@ -184,8 +183,8 @@ self.onmessage = function(e) {
             const path = findLocalPath(heightGrid, 4, 4, targetGridX, targetGridZ);
             if (path && path.length > 1) {
               const nextNode = path[1];
-              targetX = startXGrid + nextNode[0];
-              targetZ = startZGrid + nextNode[1];
+              targetX = cellCentre(nextNode[0], startXGrid);
+              targetZ = cellCentre(nextNode[1], startZGrid);
             }
           }
         }
@@ -273,11 +272,11 @@ self.onmessage = function(e) {
           // melee, and the archer never kites. Chasers are unaffected: their targetX/Z equal playerX/Z.
           const { gx: targetGridX, gz: targetGridZ } = steerGoalCell(targetX, targetZ, x, z);
 
-          // The grid origin, needed below to map the chosen path node back into world space. Kept in
-          // step with steerGoalCell's own framing (`Math.round(mobX) - 4`) — it is the same origin, and
-          // if the two ever disagree the mob steers toward a cell offset from the one A* solved for.
-          const startXGrid = Math.round(x) - 4;
-          const startZGrid = Math.round(z) - 4;
+          // The grid origin, needed below to map the chosen path node back into world space: the SAME framing
+          // steerGoalCell and AIWorkerSystem's grid builder use (gridOrigin, game/localPath.js) — if they ever
+          // disagree the mob steers toward a cell offset from the one A* solved for (review #4, R5.1).
+          const startXGrid = gridOrigin(x);
+          const startZGrid = gridOrigin(z);
           
           // Run 3D A* from center cell (4, 4) to target grid cell
           const path = findLocalPath(heightGrid, 4, 4, targetGridX, targetGridZ);
@@ -285,8 +284,8 @@ self.onmessage = function(e) {
           if (path && path.length > 1) {
             // Steer towards the next immediate path node
             const nextNode = path[1];
-            const nextWorldX = startXGrid + nextNode[0];
-            const nextWorldZ = startZGrid + nextNode[1];
+            const nextWorldX = cellCentre(nextNode[0], startXGrid);
+            const nextWorldZ = cellCentre(nextNode[1], startZGrid);
             
             // Adjust tactical targets to center of the designated coordinate cell
             targetX = nextWorldX;
@@ -329,7 +328,13 @@ self.onmessage = function(e) {
           // QUEUE P1: a mob does not step UP a wall (the main thread snaps y to the TOP surface, so an unchecked
           // move into a wall cell used to lift it onto the wall). It slides along it instead; spiders climb.
           if (heightGrid && heightGrid.length === 81) {
-            ({ x, z } = clampMove(heightGrid, x, z, toX, toZ, CLIMBERS.has(type)));
+            const m = clampMove(heightGrid, x, z, toX, toZ, CLIMBERS.has(type));
+            // Stopped at a wall, it WAITS there instead of walking in place (review #4, R5.7). "Stopped" is not
+            // "moved zero": pressed into a wall at a shallow angle, the slide creeps it millimetres a tick. A mob
+            // that kept under a quarter of its intended step is waiting; one sliding along the wall is walking.
+            if (m.blocked && Math.hypot(m.x - x, m.z - z) < 0.25 * moveDist) isMoving = false;
+            x = m.x;
+            z = m.z;
           } else {
             x = toX;
             z = toZ;

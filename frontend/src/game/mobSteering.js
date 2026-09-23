@@ -8,6 +8,8 @@
 // so archers never actually kited. The goal cell MUST be resolved from the TACTICAL (targetX,targetZ) the
 // mob decided — which equals the player for chasers, but points away for a retreating archer.
 
+import { gridOrigin, cellOf } from './localPath.js';
+
 /**
  * Resolve the local 9x9 A* goal cell for a mob steering toward its TACTICAL world target.
  * The grid is centered on the mob: cell (4,4) is the mob; cells are clamped to [0,8].
@@ -18,9 +20,8 @@
  * @returns {{gx:number, gz:number}} clamped local grid goal cell
  */
 export function steerGoalCell(targetX, targetZ, mobX, mobZ) {
-  const startXGrid = Math.round(mobX) - 4;
-  const startZGrid = Math.round(mobZ) - 4;
-  const gx = Math.max(0, Math.min(8, Math.round(targetX - startXGrid)));
-  const gz = Math.max(0, Math.min(8, Math.round(targetZ - startZGrid)));
+  // The one grid framing (game/localPath.js, review #4 R5.1): cells are the columns the ground snap probes.
+  const gx = Math.max(0, Math.min(8, cellOf(targetX, gridOrigin(mobX))));
+  const gz = Math.max(0, Math.min(8, cellOf(targetZ, gridOrigin(mobZ))));
   return { gx, gz };
 }
