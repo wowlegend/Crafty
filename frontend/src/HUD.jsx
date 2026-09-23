@@ -668,7 +668,8 @@ export function HUD({
         }} />
       )}
       
-      {bossSystem?.bossDefeated && !victoryDismissed && (
+      {/* C3: VICTORY is the FIRST dragon's (tier just became 1). A return kill is a trophy, not the win again. */}
+      {bossSystem?.bossDefeated && bossSystem?.bossTier === 1 && !victoryDismissed && (
         <VictoryOverlay onDismiss={() => setVictoryDismissed(true)} />
       )}
 

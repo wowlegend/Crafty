@@ -118,6 +118,16 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
     expect(GameMethods.grantXP).toHaveBeenCalledWith(bossTierStats(1).xpReward, `${bossTierStats(1).name} Defeated!`);
   });
 
+  it('a reload DURING a return fight keeps the dragon\'s HP (review 2026-09-22: it refilled)', () => {
+    // The store hydrates an active tier-1 fight at 200 HP; the hook mounts with nothing spawned, the arrival
+    // poll re-places the dragon at the lair — and must not treat it as a fresh return.
+    arm({ bossActive: true, bossDefeated: false, bossTier: 1, bossKillNight: 4, bossHealth: 200, gameWon: true, nightCount: 9 });
+    const hook = renderHook(({ l }) => useBossSystem(l), { initialProps: { l: due } });
+    poll();
+    expect(hook.result.current.bossHealth, 'the reload refilled a wounded return fight').toBe(200);
+    expect(useGameStore.getState().bossActive).toBe(true);
+  });
+
   it('the reawakening is announced ONCE when it becomes due, before the player gets there', () => {
     const hook = fightAndKill(BOSS_BASE_LEVEL);
     act(() => useGameStore.setState({ nightCount: 8, playerPosition: { x: lair.x + 500, y: 40, z: lair.z } }));
@@ -143,6 +153,9 @@ describe('C3 — the renderer and the health bar read the tier (weak, structural
     expect(carriersOf(/BOSS_CONFIG\.phases\[bossPhase\]/), 'a phase read straight from BOSS_CONFIG is back').toEqual([]);
     expect(carriersOf(/bossTier=\{bossSystem\.bossTier\}/)).toEqual(['GameScene.jsx']);
     expect(carriersOf(/bossName=\{bossSystem\.bossName\}/)).toEqual(['HUD.jsx']);
+    // The VICTORY overlay is the first dragon's: gated on the tier that kill produces, so a return kill after
+    // a reload does not announce the win again (review 2026-09-22).
+    expect(carriersOf(/bossSystem\?\.bossDefeated && bossSystem\?\.bossTier === 1 && !victoryDismissed/)).toEqual(['HUD.jsx']);
   });
 });
 

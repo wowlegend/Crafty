@@ -93,8 +93,10 @@ export const useBossSystem = (playerLevel) => {
                 if (gy !== null && !isNaN(gy)) y = gy + 15;
             }
             bossPositionRef.current = [lair.x, y, lair.z];
-            // A RETURN starts a fresh fight at its tier's health (the slain tier sat at 0, defeated).
-            if (bossTier > 0) {
+            // A RETURN starts a fresh fight at its tier's health (the slain tier sat at 0, defeated). A fight
+            // restored by a reload is NOT a return — it is re-placed at the lair with the HP it was saved at
+            // (review 2026-09-22: keyed on the tier alone, a reload refilled every wounded return fight).
+            if (bossTier > 0 && bossDefeated) {
                 setBossHealth(bossTierStats(bossTier).health);
                 setBossDefeated(false);
                 setBossPhase(0);

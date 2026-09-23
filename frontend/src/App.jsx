@@ -272,7 +272,9 @@ function GameApp({ experienceSystem }) {
         s.gameTime !== prevS.gameTime ||
         s.bossHealth !== prevS.bossHealth ||
         s.bossActive !== prevS.bossActive ||
-        s.bossDefeated !== prevS.bossDefeated
+        s.bossDefeated !== prevS.bossDefeated ||
+        s.bossTier !== prevS.bossTier || // C3: the tier and the kill night are persisted too, so either alone schedules a save
+        s.bossKillNight !== prevS.bossKillNight
       ) {
         autosave.schedule();
       }
