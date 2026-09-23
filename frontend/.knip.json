@@ -6,6 +6,12 @@
     "tests/**/*.{test,spec}.{js,jsx}",
     "scripts/**/*.{js,mjs}"
   ],
-  "project": ["src/**/*.{js,jsx}"],
-  "ignoreExportsUsedInFile": true
+  "project": [
+    "src/**/*.{js,jsx}"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": [
+    "pgrep",
+    "pkill"
+  ]
 }
