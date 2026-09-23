@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verdict, readBaseCi, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, jobTimedOut, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -28,6 +28,12 @@ import { verdict, readBaseCi, OBSERVED } from '../../scripts/ci/e2e-freshness.mj
  *   M6 plausible-wrong: the RUN conclusion again (the 8202ec59 false refusal) -> non-e2e-red case RED
  *   M7 plausible-wrong: one green shard makes the base green   -> any-shard case RED
  *   M8 no e2e job observed reads as green                     -> no-job case RED
+ *   T1 the duration ignored: any cancel reads as a timeout    -> superseded-cancel case RED
+ *   T2 plausible-wrong: the limit read as SECONDS              -> superseded-cancel case RED
+ *   T3 the timeout inference not wired into readBaseCi         -> run-35830093253 case RED
+ *   T4 plausible-wrong: the FIRST timeout-minutes in ci.yml (the 20-minute gates job) -> the read-limit case RED
+ *   T5 the 30 s slack widened to 90                           -> the 24m00s boundary RED
+ * Live, not a fixture: against the real gh output the gate now reads base 37d030a as RED (it read UNKNOWN before).
  *   M9 plausible-wrong: a pending shard ignored (only finished shards read)  -> in-progress case RED
  *   M9b plausible-wrong: the RUN's status gates the verdict                  -> other-job-running case RED
  *   M10 a timed-out shard read as unknown (fail open)          -> timed-out case RED
@@ -87,10 +93,11 @@ describe('e2e-freshness verdict', () => {
 // regression (they are separate jobs with separate conclusions); only a red E2E job can.
 describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
   // A fake gh, in the wire format readBaseCi asks for: the run list answers `id|status|conclusion|sha`, the
-  // job query one `status:conclusion` per e2e job. A still-running run prints an EMPTY conclusion, which is
+  // job query one `status,conclusion,startedAt,completedAt` per e2e job. A still-running run prints an EMPTY conclusion, which is
   // why the fields are `|`-separated: split on whitespace, "123  abc1234" shifted the sha into the conclusion.
   const gh = (run, e2eJobs) => (cmd) => (cmd.includes('run list') ? run : cmd.includes('run view') ? e2eJobs : '');
-  const done = (...cs) => cs.map((c) => `completed:${c}`).join(' ');
+  const T0 = '2026-09-23T07:07:39Z', T3 = '2026-09-23T07:10:39Z';
+  const done = (...cs) => cs.map((c) => `completed,${c},${T0},${T3}`).join(' ');
 
   it('a run red on a NON-e2e job, with every e2e shard green, is an e2e-green base', () => {
     expect(readBaseCi(gh('35801779905|completed|failure|8202ec5', done('success', 'success', 'success'))))
@@ -110,10 +117,34 @@ describe('readBaseCi — the base e2e verdict, read from the e2e jobs', () => {
     expect(readBaseCi(gh('1|completed|cancelled|abc1234', done('success', 'cancelled', 'success'))).state).toBe(null);
   });
 
+  // A JOB TIMEOUT CONCLUDES `cancelled`. Run 35830093253: shard 2 went red on perfect-dodge, then hit its 25-minute
+  // limit — cancelled at 07:32:50 after starting 07:07:39 — and this gate read the base as UNKNOWN and failed open.
+  it('a shard cancelled after running its WHOLE timeout timed out: the base is red (run 35830093253)', () => {
+    const real = `completed,success,${T0},2026-09-23T07:21:15Z completed,cancelled,${T0},2026-09-23T07:32:50Z completed,success,${T0},2026-09-23T07:24:12Z`;
+    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', real), 25).state).toBe('failure');
+    // the SAME shard cancelled three minutes in — a superseded run — is still no verdict
+    expect(readBaseCi(gh('35830093253|completed|cancelled|37d030a', done('success', 'cancelled', 'success')), 25).state).toBe(null);
+  });
+
+  it('jobTimedOut: a cancel within 30 s of the limit timed out; one short of that, or any other conclusion, did not', () => {
+    const job = (c, end) => ['completed', c, T0, end];
+    expect(jobTimedOut(job('cancelled', '2026-09-23T07:32:09Z'), 25)).toBe(true); // 24m30s
+    expect(jobTimedOut(job('cancelled', '2026-09-23T07:31:39Z'), 25)).toBe(false); // 24m00s
+    expect(jobTimedOut(job('success', '2026-09-23T07:40:00Z'), 25)).toBe(false);
+    expect(jobTimedOut(job('cancelled', 'null'), 25), 'a job with no end time').toBe(false);
+    expect(jobTimedOut(job('cancelled', '2026-09-23T07:40:00Z'), null), 'no limit read: nothing inferred').toBe(false);
+  });
+
+  it('the limit is READ from ci.yml — the e2e job\'s timeout-minutes, a positive integer (R3a: null would infer nothing)', () => {
+    expect(Number.isInteger(E2E_TIMEOUT_MIN) && E2E_TIMEOUT_MIN > 0, `E2E_TIMEOUT_MIN = ${E2E_TIMEOUT_MIN}`).toBe(true);
+    expect(E2E_TIMEOUT_MIN, 'the e2e job, not the 20-minute gates job or the 5-minute docs job').not.toBe(20);
+    expect(E2E_TIMEOUT_MIN).not.toBe(5);
+  });
+
   it('an e2e shard still RUNNING means no verdict yet — even when the shards that finished are green', () => {
     // Review 2026-09-22: with one shard green and two pending, the pending ones printed "" and were
     // filtered out, and the base read green before its verdict existed.
-    const r = readBaseCi(gh('35803592408|in_progress||927b219', 'completed:success in_progress: in_progress:'));
+    const r = readBaseCi(gh('35803592408|in_progress||927b219', `completed,success,${T0},${T3} in_progress,,${T0}, in_progress,,${T0},`));
     expect(r.state).toBe(null);
     expect(r.sha).toBe('927b219');
   });

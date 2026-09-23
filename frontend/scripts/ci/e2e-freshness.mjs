@@ -152,6 +152,30 @@ export function verdict(current, stamp, base = { state: null }) {
   };
 }
 
+/** The e2e job's `timeout-minutes`, read from the workflow: the job block runs from `  e2e:` to the next job at the
+ *  same indent. Null when it cannot be read — and then no timeout is inferred (a cancel stays unknown). */
+export const E2E_TIMEOUT_MIN = (() => {
+  try {
+    const yml = readFileSync(resolve(APP, '../.github/workflows/ci.yml'), 'utf8');
+    const at = yml.indexOf('\n  e2e:\n');
+    if (at < 0) return null;
+    const rest = yml.slice(at + 1);
+    const next = rest.slice(1).search(/\n {2}[a-z][\w-]*:\n/);
+    const m = /\n {4}timeout-minutes: (\d+)/.exec(next < 0 ? rest : rest.slice(0, next + 1));
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+})();
+
+/** Did this e2e job — [status, conclusion, startedAt, completedAt] — TIME OUT? GitHub concludes a job timeout as
+ *  `cancelled`, exactly like a superseded run; only a job that ran (to within 30 s) its whole limit timed out. */
+export function jobTimedOut([, c, start, end], timeoutMin = E2E_TIMEOUT_MIN) {
+  if (c !== 'cancelled' || !(timeoutMin > 0)) return false;
+  const ms = Date.parse(end) - Date.parse(start);
+  return Number.isFinite(ms) && ms >= (timeoutMin * 60 - 30) * 1000;
+}
+
 /**
  * Read the push base's E2E verdict — the conclusions of the base run's e2e JOBS, not the run's.
  *
@@ -160,14 +184,18 @@ export function verdict(current, stamp, base = { state: null }) {
  * were re-run locally. A knip, lint or build failure cannot hide an e2e regression — those are separate
  * jobs with separate conclusions — so the stacking rule's question is only ever the e2e jobs' answer.
  *   - every e2e job 'success'       -> 'success'
- *   - any e2e job 'failure' or 'timed_out' -> 'failure'
+ *   - any e2e job 'failure' or 'timed_out', or 'cancelled' after running its whole timeout -> 'failure'
  *   - any e2e job not yet completed -> null (its verdict does not exist yet, whatever the finished shards say).
  *     The RUN's status is not the question either: every e2e shard can finish while knip still runs.
- *   - none observed, or any other   -> null (unknown; fail open, loudly — a cancelled shard is no verdict)
+ *   - none observed, or any other   -> null (unknown; fail open, loudly — a shard cancelled SHORT is no verdict)
+ * A JOB TIMEOUT CONCLUDES `cancelled`, not `timed_out` (ci.yml's own e2e comment says so). This read only `timed_out`,
+ * so run 35830093253 — shard 2 red on perfect-dodge, then cut off at its 25-minute limit (07:07:39 -> 07:32:50) —
+ * read as UNKNOWN and the gate failed OPEN onto a base CI had called red. Only the DURATION tells a timeout from a
+ * superseded run, so the job query carries start and end, and `jobTimedOut` compares them to ci.yml's limit.
  * `run` carries the run's own conclusion so the printed line can say what it was.
  * Network + gh, so it is isolated here and always degrades to `{state:null}` — never throws into the push path.
  */
-export function readBaseCi(exec) {
+export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
   try {
     // `|`-separated, because a still-running run has an EMPTY conclusion: split on whitespace, the sha slid
     // into the conclusion field and the base's status was never read at all (review 2026-09-22).
@@ -175,10 +203,11 @@ export function readBaseCi(exec) {
     const [id, status, conclusion, sha] = String(out).trim().split('|');
     if (!id || id === 'null') return { state: null };
     const run = status === 'completed' ? conclusion : status; // what to SAY about the run; not the verdict
-    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status):\\(.conclusion)"] | join(" ")'`);
-    const e2e = String(jobs).trim().split(/\s+/).filter(Boolean).map((j) => j.split(':'));
+    // `,`-separated: the timestamps carry `:`.
+    const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status),\\(.conclusion),\\(.startedAt),\\(.completedAt)"] | join(" ")'`);
+    const e2e = String(jobs).trim().split(/\s+/).filter(Boolean).map((j) => j.split(','));
     let state = null;
-    if (e2e.some(([, c]) => c === 'failure' || c === 'timed_out')) state = 'failure'; // a timeout is a red shard
+    if (e2e.some((j) => j[1] === 'failure' || j[1] === 'timed_out' || jobTimedOut(j, timeoutMin))) state = 'failure'; // a timeout is a red shard
     else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'success')) state = 'success';
     return { state, sha, run };
   } catch {
