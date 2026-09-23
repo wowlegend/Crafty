@@ -769,3 +769,16 @@ probe). Write it before Kevin decides the lock, so the decision rests on the pro
 | R6.6 | `game/worldClock.js` | only the CURRENT burst window is subtracted: a burst that ends and another that starts between two ticks loses the first's tail | ✅ FIXED — the store banks finished bursts; closed-form clock |
 | R6.7 | BossEntity:72, useGameStore:1087, blightHeart:22, shrines:12 | literal `Math.floor(v / 16)` chunk indices remain; the R5.8 gate only matched `/ CHUNK_SIZE` | ✅ FIXED — three sites through chunkOf; gate matches any literal /16 (shrines.js had none) |
 | R6.8 | `systems/AIWorkerSystem.jsx` | the wall check for knockback runs at the 15 Hz reply, after a STALE reply overwrites x/z — the shove renders on the wall or is lost; the guard belongs in drainKnockback (or knockback through clampMove) | ✅ FIXED `458de5db` — with R6.2 (a stale-reply race of a few ms remains: the shove can be lost, never through a wall) |
+
+## R7 — review #6 (`/code-review high 34ead1d3..9063b8c7`, 2026-09-23), each to be VERIFIED before fixing
+
+| # | Where | Finding | Disposition |
+|---|---|---|---|
+| R7.1 | `game/localPath.js` settleOnGround | REGRESSION of R6.4: the own-column exemption accepts ANY rise, and the probe is top-down from y=255 — a roof or bridge built ABOVE a mob (air between) lifts it onto the roof | OPEN — HIGH |
+| R7.2 | chunk literals | "no literal chunk size left" is false: `Terrain.jsx` `cx * 16`, SpawnerSystem 161-162, spawnPlacement 22-23, mesher.js:41, homeAnchor/terrain.worker redeclare CHUNK_SIZE; the gate regex misses nested parens and `* 16` | OPEN |
+| R7.3 | `useGameStore` loadWorldData | the replay's voxel index uses CHUNK_SIZE² while mesher.js uses a literal 256: two layout definitions | OPEN — one shared voxel-index helper |
+| R7.4 | `game/captureRest.js` | depth: the shove is `knockback * delta * 4` — a one-frame impulse scaled by frame delta (refresh-rate-dependent, multi-block after a hitch); fix the displacement, not only the wall walk | OPEN |
+| R7.5 | `captureRest.shoveAgainstWalls` | re-implements clampMove's sub-step walk without the slide; one implementation with a heightAt function | OPEN |
+| R7.6 | same | per-sub-step castRays on the hit frame (AoE × slow frame = hundreds); probe per column crossed | OPEN |
+| R7.7 | `localPath.findLocalPath` cornerOk | stricter than clampMove (a centre-to-centre diagonal need not enter either orthogonal) — A* and the mover disagree; one shared predicate | OPEN |
+| R7.8 | settleOnGround R6.3 | a refused wanderer re-rolls at once and may pick the same wall; a latched brute charge re-charges the wall | OPEN |
