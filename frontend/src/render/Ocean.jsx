@@ -1,6 +1,6 @@
 // W2 stylized tropical-toon ocean SURFACE — a real animated water plane that REPLACES the
 // old voxel water tops (the mesher no longer emits water faces). A subdivided plane pinned at
-// SEA_LEVEL, displaced by summed Gerstner waves (oceanProfile.gerstnerHeight) with RECOMPUTED
+// SEA_LEVEL, displaced by summed Gerstner waves in the VERTEX SHADER (oceanProfile.gerstnerGlsl) with analytic
 // normals, a bright turquoise->teal toon palette, Fresnel off the real normal, glossy highlight
 // bands, and a continuous smoothstep shoreline foam. Capture-frozen time => byte-stable frames.
 import React, { useRef, useMemo, useEffect } from 'react';
@@ -37,8 +37,8 @@ export function Ocean() {
   // say the surface "reads vivid teal at ANY lighting angle". It was not toon shading. The ocean simply
   // was not lit, so no lighting angle could change it.
   //
-  // Foam now rides its own attribute, the vertex colour is gone, and the diffuse survives — so the sea
-  // takes the sun, the mood grade and the time of day like everything else in the world does.
+  // The vertex colour is gone (foam is computed in the vertex shader from the same waves) and the diffuse
+  // survives — so the sea takes the sun, the mood grade and the time of day like everything else does.
   const mat = useMemo(() => new THREE.MeshStandardMaterial({
     color: '#10BCC6', roughness: 0.22, metalness: 0.0, flatShading: false,
     // A much smaller lift than before: it is a tropical shallow-water glow, no longer load-bearing for
@@ -56,8 +56,8 @@ export function Ocean() {
   useFrame((state) => {
     const mesh = meshRef.current; if (!mesh) return;
     const cx = Math.round(camera.position.x), cz = Math.round(camera.position.z);
-    // B8: the plane only COVERS ~110m around the camera, so skip its render AND its ~9.4k-vertex wave
-    // recompute when no water column is within reach — deep inland / inside an inland cave, where the plane
+    // B8: the plane only COVERS ~110m around the camera, so skip its render (and, since 9860eaa9, its
+    // vertex-shader wave pass — the CPU loop is gone) when no water column is within reach — deep inland / inside an inland cave, where the plane
     // is fully buried under terrain (invisible) yet used to burn ~14% of the frame budget and render through
     // cave walls. Always on in capture so the visual baselines stay byte-identical (a live-play perf gate).
     const visible = isCaptureMode() || oceanVisibleNear(cx, cz, sampleSurfaceY);

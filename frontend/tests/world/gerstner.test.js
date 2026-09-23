@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { gerstnerHeight, gerstnerNormal, WAVES, SEA_LEVEL } from '../../src/world/oceanProfile.js';
+import { gerstnerDisplace, gerstnerNormal, WAVES, SEA_LEVEL } from '../../src/world/oceanProfile.js';
+
+// The surface HEIGHT is the displaced parcel's y — the exported height-only function had no runtime caller and
+// was deleted (review #3, R4.7); these properties of the wave table still hold, read through the full form.
+const gerstnerHeight = (x, z, t) => gerstnerDisplace(x, z, t).y;
 
 describe('W2-T2 summed Gerstner ocean surface', () => {
   it('is world-space coherent: same (x,z,t) -> same height regardless of chunk', () => {

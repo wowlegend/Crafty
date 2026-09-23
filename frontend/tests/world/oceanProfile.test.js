@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { SEA_LEVEL, BEACH_BAND_TOP, DEEP_FLOOR, OCEAN_CONTINENT_THRESHOLD, OCEAN_FULL_SPAN, oceanBlend, oceanSurfaceY, WAVES, GRAVITY, WAVE_TIME_SCALE, STEEPNESS, gerstnerDisplace, gerstnerHeight } from '../../src/world/oceanProfile.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, DEEP_FLOOR, OCEAN_CONTINENT_THRESHOLD, OCEAN_FULL_SPAN, oceanBlend, oceanSurfaceY, WAVES, GRAVITY, WAVE_TIME_SCALE, STEEPNESS, gerstnerDisplace } from '../../src/world/oceanProfile.js';
+
+// The height-only form was deleted (no runtime caller, review #3 R4.7); it was exactly the displaced parcel's y.
+const gerstnerHeight = (x, z, t) => gerstnerDisplace(x, z, t).y;
 
 // W2-T7 (2026-06-17) de-island dropped OCEAN_CONTINENT_THRESHOLD -0.15 -> -0.35. The ramp runs
 // continent [thr - SPAN, thr]; these helpers express the shore/mid/deep continent values RELATIVE to
