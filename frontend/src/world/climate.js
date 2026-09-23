@@ -16,9 +16,10 @@ const noise2D = createNoise2D(lcg(12345));
 export function surfaceBlockAt(worldX, worldZ) {
   const { continent, moisture, temperature, n, baseHeight } = computeHeight(noise2D, worldX, worldZ);
   const surfaceY = continent < OCEAN_CONTINENT_THRESHOLD ? oceanSurfaceY(baseHeight, n, continent) : Math.floor(baseHeight);
-  let { surfaceBlock } = pickBiome(temperature, moisture, continent);
+  const biome = pickBiome(temperature, moisture, continent);
+  let { surfaceBlock } = biome;
   if (surfaceY < BEACH_BAND_TOP) surfaceBlock = 4; // beach (matches the worker's override)
-  return { surfaceBlock, surfaceY, isWater: surfaceY <= SEA_LEVEL };
+  return { surfaceBlock, surfaceY, isWater: surfaceY <= SEA_LEVEL, biome: biome.name }; // biome: the far field colours by it
 }
 
 const FOOTSTEP_TYPE = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood' };

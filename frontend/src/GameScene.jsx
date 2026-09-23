@@ -11,6 +11,7 @@ import { ToneMappingMode } from 'postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
+import { FarField } from './world/FarField.jsx';
 import { LightMotes } from './render/LightMotes.jsx';
 import { Sun } from './render/Sun';
 import { MoodGradeDriver } from './render/MoodGradeDriver';
@@ -259,6 +260,10 @@ export function GameScene({
         {/* W2 ocean: the stylized tropical-toon Gerstner water plane (replaces the old voxel water
             tops -- the mesher no longer emits water faces). Capture-frozen wave phase. */}
         <Ocean />
+
+        {/* The far horizon: land and sea beyond the loaded chunks, sunk under them, from the same surface
+            formula (world/farField.js). Without it the world ended in fog at ~72 m while the camera sees 500. */}
+        <FarField renderDistance={q.renderDistance} />
 
         {/* S1-D-M3: always-on warm light motes (spec §5① "drifting light motes").
             Tier-gated count; capture-frozen drift; mood-tinted. Suppressed in the
