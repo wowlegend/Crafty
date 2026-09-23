@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { worldTimeScale, stackHitstop, hitstopForHit, HITSTOP_BURST_CAP_MS } from '../../src/game/hitstop.js';
 import { HITSTOP } from '../../src/game/trauma.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
-import { carriersOf } from './_srcWalk.js';
+import { carriersOf, sourceTexts } from './_srcWalk.js';
 
 /**
  * THE WORLD FREEZES ON A HEAVY HIT, NOT ONLY THE PLAYER (EXTERNAL-BASELINE #3; plan Task 2).
@@ -27,6 +27,8 @@ import { carriersOf } from './_srcWalk.js';
  *   (R2.6 re-pointed the structural checks at the worldDelta shape; re-proven there:)
  *   M12 AIWorkerSystem: the drain guard dropped (`if (true)`)               -> hold RED (structural)
  *   M13 a second, private reader of worldTimeScale in a world consumer       -> one-definition RED
+ *   M14 BossEntity: the frozen early-return deleted (it attacks through the freeze — R4.1) -> boss RED
+ *   M15 plausible-wrong: the frozen return moved BELOW the attack timers                  -> boss RED
  *
  * BLIND SPOT (the integration seam): MobModel / AIWorkerSystem / Components are R3F frame loops, not
  * rendered here, so their use of the scale is asserted structurally — the weak kind — and nothing here
@@ -128,6 +130,16 @@ describe('every hit the player lands has weight — the boss too', () => {
 
   it('the boss holds still through the freeze like every other mob (weak, structural)', () => {
     expect(carriersOf(/const delta = worldDelta\(rawDelta\);/)).toEqual(['render/BossEntity.jsx']);
+  });
+
+  it('...and does not ATTACK through it either: a frozen frame returns before the wall-clock attack timers (R4.1, weak)', () => {
+    // A slice bounded by two landmarks unique to BossEntity's frame loop: the freeze read, and the attack section
+    // whose bite/roar/lava/summon timers compare performance.now(). The return must sit between them.
+    const src = sourceTexts().find((t) => t.file === 'render/BossEntity.jsx').code;
+    const start = src.indexOf('const delta = worldDelta(rawDelta);'), end = src.indexOf('const now = performance.now();', start);
+    expect(start > 0 && end > start, 'the landmarks moved — this check reads nothing').toBe(true);
+    expect(src.slice(start, end), 'the frozen early-return is gone or moved below the attack timers')
+      .toMatch(/if \(isWorldFrozen\(\)\) return;/);
   });
 });
 

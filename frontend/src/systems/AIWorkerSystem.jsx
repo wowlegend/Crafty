@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
-import { routinePositionInto } from '../game/npcRoutine.js';
+import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -133,7 +133,8 @@ export const AIWorkerSystem = () => {
   // night) and re-raycasts ground Y so it stays FLUSH even at the patrol extremes (the M-HUB float
   // class). Capture-suppressed -> NPCs freeze + don't even spawn in capture, so baselines are byte-stable.
   const npcProbeFrame = useRef(0);
-  useFrame(() => {
+  useFrame((state, frameDelta) => {
+    const delta = worldDelta(frameDelta); // hub NPCs hold through a hitstop like the rest of the world (R4.6)
     const store = useGameStore.getState();
     const isDay = store.isDay;
     const gameTime = store.gameTime || 0;
@@ -144,6 +145,7 @@ export const AIWorkerSystem = () => {
     // no-op today (SpawnerSystem never spawns the hub NPCs under capture, so the query is empty), which
     // is exactly why it was safe to leave wrong and why fixing it costs no baseline.
     const frame = npcProbeFrame.current++;
+    const follow = npcFollowT(delta); // per SECOND, not per frame: the pace no longer depends on the refresh rate
     let i = 0;
     for (const e of mobsQuery.entities) {
       if (!e || !e.isNPC) continue;
@@ -152,8 +154,8 @@ export const AIWorkerSystem = () => {
         e.position.x = _npcTarget.x;
         e.position.z = _npcTarget.z;
       } else {
-        e.position.x += (_npcTarget.x - e.position.x) * 0.04;
-        e.position.z += (_npcTarget.z - e.position.z) * 0.04;
+        e.position.x += (_npcTarget.x - e.position.x) * follow;
+        e.position.z += (_npcTarget.z - e.position.z) * follow;
       }
       // The ground probe is a Rapier castRay, and it ran PER NPC PER RENDER FRAME. At a 0.04 lerp an NPC
       // moves a few centimetres a frame, so a 60Hz ray answers the same question sixty times a second.

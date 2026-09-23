@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { routinePosition, nextEmote, routinePositionInto } from './npcRoutine.js';
+import { routinePosition, nextEmote, routinePositionInto, npcFollowT } from './npcRoutine.js';
 
 // Pure ambient-routine math for hub NPCs: a small day patrol circle around a home anchor, retreat-home
 // at night, and a cycling emote. Deterministic from (home, time) so the render layer just reads it in a
@@ -88,5 +88,20 @@ describe('routinePositionInto — the allocation-free variant', () => {
     routinePositionInto(a, 0, 0, 0, true);
     routinePositionInto(b, 0, 0, 0, true);
     expect(a).toEqual(b);
+  });
+});
+
+// Review #3, R4.6. Mutation-Proof (mutate.sh), each RED: N1 plausible-wrong: the per-FRAME constant back
+// (npcFollowT returns 0.04 whatever the delta); N2 the rate not scaled by delta (a freeze no longer holds them).
+describe('npcFollowT — the NPC follow pace is per SECOND, so a refresh rate or a freeze cannot change it', () => {
+  it('is the old 0.04 at 60 fps, so the pace there is unchanged', () => {
+    expect(npcFollowT(1 / 60)).toBeCloseTo(0.04, 10);
+  });
+  it('two 120 Hz frames close exactly as far as one 60 Hz frame (the per-frame constant moved twice as fast)', () => {
+    const t = npcFollowT(1 / 120);
+    expect(1 - (1 - t) * (1 - t)).toBeCloseTo(npcFollowT(1 / 60), 10);
+  });
+  it('a frozen frame (world delta 0) moves them not at all', () => {
+    expect(npcFollowT(0)).toBe(0);
   });
 });

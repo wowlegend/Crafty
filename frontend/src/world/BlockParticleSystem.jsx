@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { InstancedRigidBodies } from '@react-three/rapier';
 import * as THREE from 'three';
 import { parkDeadDebris } from '../game/debrisPark.js';
-import { worldDelta } from '../game/worldClock.js';
+import { realDelta } from '../game/worldClock.js';
 
 const MAX_PARTICLES = 200;
 
@@ -81,7 +81,10 @@ export const BlockParticleSystem = ({ worker }) => {
     const hidePosition = useMemo(() => ({ x: 0, y: -1000, z: 0 }), []);
 
     useFrame((state, frameDelta) => {
-        const delta = worldDelta(frameDelta); // debris hangs in the air through a hitstop (R2.6)
+        // REAL time on purpose (review #3, R4.2): debris are Rapier bodies and the physics step is not paused for a
+        // hitstop, so they keep falling through it. Their lifetime runs on the same clock as their fall; freezing
+        // only the counter (as R2.6 first did) left them tumbling AND living longer by every freeze.
+        const delta = realDelta(frameDelta);
         if (!meshRef.current || !api.current) return;
         
         // Age each live particle; at 2s it's "dead" and teleported far below the world (no scale change —

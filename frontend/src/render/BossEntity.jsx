@@ -11,7 +11,7 @@ import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
-import { worldDelta } from '../game/worldClock.js';
+import { worldDelta, isWorldFrozen } from '../game/worldClock.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
@@ -207,6 +207,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             );
             return;
         }
+
+        // FROZEN (review #3, R4.1): a hitstop holds the dragon WHOLE — no flight step, and no bite, roar, fireball,
+        // lava or summon either. Those timers run on performance.now(), so with only the movement scaled the
+        // dragon stood still and kept attacking through the freeze its own hit had caused.
+        if (isWorldFrozen()) return;
 
         const phase = tierPhases[bossPhase] || tierPhases[0];
         const playerX = camera.position.x;

@@ -33,3 +33,14 @@ export function routinePositionInto(out, homeX, homeZ, t, isDay) {
 }
 
 export function nextEmote(seq) { return EMOTES[Math.floor(Math.abs(seq)) % EMOTES.length]; }
+
+/**
+ * How far a hub NPC closes on its routine target this frame, 0..1. It used to be a fixed 0.04 PER FRAME — twice
+ * as fast at 120 Hz as at 60, and still walking through every hitstop freeze (review #3, R4.6). Now a rate per
+ * second, exponential so it is frame-rate independent; NPC_FOLLOW_RATE is the old 0.04 at 60 fps, so the pace is
+ * unchanged there. `delta` is the WORLD delta, so a freeze holds them.
+ */
+export const NPC_FOLLOW_RATE = -60 * Math.log(1 - 0.04);
+export function npcFollowT(delta) {
+  return 1 - Math.exp(-NPC_FOLLOW_RATE * delta);
+}
