@@ -31,6 +31,7 @@ import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { resetCaptureClock, stepCaptureFrames, captureFrameIndex, setCaptureFrame } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ecs, mobsQuery } from './ecs/world';
+import { worldNow } from './game/worldClock.js';
 import { applyFusion } from './game/hybrids';
 import { getLiveZones } from './world/ElementZoneSystem';
 import { spawnZone, clearZones } from './game/elementZones';
@@ -328,6 +329,9 @@ function GameApp({ experienceSystem }) {
     // not already opted in, to see the freeze reach the systems the review found still moving. `age` is the
     // orb's own clock — it advances only when XPOrbSystem steps it. Read-only copy.
     registerTestHook('readOrbs', () => ecs.entities.filter((e) => e.isXPOrb).map((e) => ({ id: e.id, age: e.age })));
+    // The WORLD clock (game/worldClock.js, R2.7): the world-hitstop E2E proves it holds through a freeze in the
+    // running game — the ticker mounted and ordered — which no unit test can see. Read-only.
+    registerTestHook('worldNow', () => worldNow());
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded

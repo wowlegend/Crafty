@@ -149,3 +149,31 @@ next world system written will not opt in either.
 **Blind spot, stated up front:** consumers animated by ABSOLUTE time (`state.clock`, `performance.now()` —
 the spell and pickup VFX, GPU sparks) are not delta readers, so this census cannot see them; they keep moving
 through a freeze. That is R2.7's paused world clock, not this task.
+
+### Task 6: A paused WORLD clock for the worker's timers and the windup telegraph (QUEUE R2.7)
+
+The freeze stops every delta consumer (Task 5), but the AI worker's timers — the windup before a strike, the
+brute's brace, charge and recovery — compare the `now` AIWorkerSystem sends, which was `performance.now()`.
+The worker is not ticked during a freeze, so those timers kept running on the wall clock: a windup begun just
+before your hit could expire inside the freeze and strike the frame it ends, and MobModel's telegraph (read
+against the same wall clock) kept ramping while the mob stood frozen.
+
+**Files:** `frontend/src/game/worldClock.js` (`worldNow()`), `frontend/src/systems/AIWorkerSystem.jsx` (sends
+it), `frontend/src/render/MobModel.jsx` (reads it), `frontend/tests/gates/world-delta-census-gates.test.js`,
+`frontend/src/App.jsx` (DEV hook `worldNow`), `frontend/tests/e2e/world-hitstop.spec.js`.
+
+**Interfaces:** `worldNow() -> number` ms: wall time minus every frozen span, exact to the freeze window
+`[hitstopStart, hitstopUntil]` rather than to frame boundaries; `performance.now()` before the first tick.
+
+- [ ] **Step 1: Failing tests** — driven ticks with injected `now` and store freeze windows: no freeze → world =
+  wall; a 200 ms freeze → world ends 200 ms behind; a freeze that begins or ends between ticks subtracts only
+  the overlap; a stacked (extended) burst subtracts its whole span. Structural: AIWorkerSystem sends
+  `worldNow()`, MobModel reads the windup against it, no wall-clock windup read remains.
+- [ ] **Step 2: FAIL. Step 3: implement. Step 4: PASS**, lint, unit suite, build.
+- [ ] **Step 5: e2e** — the world clock HOLDS through a freeze in the running game and advances after it
+  (DEV hook), with a presence control that it advances unfrozen.
+- [ ] **Step 6: Mutation-prove** — overlap ignored (the whole tick counted as frozen or as live); the worker sent
+  wall time again; MobModel reads wall time again. **Step 7: Commit.**
+
+**Blind spot:** hit-flash and other purely visual main-thread timers stay on the wall clock on purpose (the
+flash IS the impact); spell/pickup VFX animated by `state.clock` are not moved by this task.

@@ -99,6 +99,47 @@ test.describe('world hitstop', () => {
       `the freeze ended and the held knockback was never spent — the hit is lost after all (${where})`).toBe(true);
   });
 
+  // R2.7: the WORLD clock — what the AI worker's timers, the windup telegraph and the dragon's attacks read —
+  // must HOLD through a freeze and move again after it. A unit test drives the clock by hand; only the running
+  // game proves the ticker is mounted and runs before its consumers.
+  //
+  // Mutation-Proof: by hand against src/GameScene.jsx (cp backup, byte-verified restore):
+  //   E5 <WorldClockTicker /> unmounted -> "the world clock advanced during the freeze" (unticked, worldNow falls back
+  //      to the wall clock — so it is the HOLD, not the presence control, that catches a missing ticker)
+  test('the world clock holds through a freeze and moves after it', async ({ page }) => {
+    await bootDev(page);
+    await startPlayActive(page);
+    const r = await page.evaluate(async () => {
+      const frame = () => new Promise((res) => requestAnimationFrame(() => res(performance.now())));
+      const wn = () => window.__craftyTest.call('worldNow');
+      let t = await frame();
+      const t0 = t;
+      for (let i = 0; i < 5; i++) t = await frame();
+      const frameMs = (t - t0) / 5;
+      const store = window.useGameStore;
+      store.setState({ hitstopUntil: 0, hitstopStart: 0 });
+      const free0 = wn();
+      for (let i = 0; i < 6; i++) await frame();
+      const free1 = wn();
+      const freezeMs = Math.min(30000, Math.max(2500, frameMs * 16));
+      store.getState().triggerHitstop(freezeMs);
+      const until = store.getState().hitstopUntil;
+      const frozen = [];
+      while (performance.now() < until) {
+        await frame();
+        if (performance.now() < until) frozen.push(wn());
+      }
+      for (let i = 0; i < 6; i++) await frame();
+      return { frameMs, freezeMs, free0, free1, frozen, after: wn() };
+    });
+    const where = `frame ${r.frameMs.toFixed(0)} ms, freeze ${r.freezeMs.toFixed(0)} ms, ${r.frozen.length} frozen frames`;
+    expect(r.free1 - r.free0, `the world clock never advanced unfrozen — the ticker is not running (${where})`).toBeGreaterThan(0);
+    expect(r.frozen.length, `fewer than 3 frames inside the freeze (${where})`).toBeGreaterThanOrEqual(3);
+    const [first, ...rest] = r.frozen.slice(1);
+    for (const w of rest) expect(w, `the world clock advanced during the freeze (${where})`).toBe(first);
+    expect(r.after, `the world clock did not move again after the freeze (${where})`).toBeGreaterThan(first);
+  });
+
   // R2.6: the freeze used to reach only the consumers edited to opt in (mobs, AI clock, boss). XP orbs were not
   // one of them, which makes them the honest second subject: a kill scatters orbs whose `age` advances only
   // when XPOrbSystem's frame loop steps them. Frozen, it must hold; after, it must move (or the orb is

@@ -97,8 +97,10 @@ describe('attack-telegraph render gates (M2 #4 Slice 2)', () => {
     expect(mob).toMatch(/import \{ windupRamp, WINDUP_MS \} from '\.\.\/game\/attackTelegraph'/);
   });
   it('renders an anticipation pose from entity.windupUntil (coil), composing after the flinch', () => {
-    expect(/entity\.windupUntil && performance\.now\(\) < entity\.windupUntil/.test(mob)).toBe(true);
-    expect(mob).toMatch(/windupRamp\(performance\.now\(\), entity\.windupUntil/);
+    // Read against the WORLD clock the worker stamps windupUntil in (R2.7), so a hitstop holds the coil too.
+    expect(/entity\.windupUntil && wnow < entity\.windupUntil/.test(mob)).toBe(true);
+    expect(mob).toMatch(/windupRamp\(wnow, entity\.windupUntil/);
+    expect(mob).toMatch(/const wnow = worldNow\(\);/);
   });
   it('ramps an emissive charge glow toward the strike, but the hit-flash still wins', () => {
     expect(mob).toMatch(/const charging = !isHit && entity\.windupUntil/);
@@ -119,7 +121,8 @@ describe('boss lava-AoE telegraph gates (M2 #4 Slice 3)', () => {
     expect(boss).toMatch(/const LAVA_WINDUP_MS = \d+/);
   });
   it('a spawned lava zone carries a telegraphUntil warning window', () => {
-    expect(boss).toMatch(/telegraphUntil: performance\.now\(\) \+ LAVA_WINDUP_MS/);
+    // On the WORLD clock, the same one the damage gate's `now` reads, so a hitstop cannot eat the warning (R5.4).
+    expect(boss).toMatch(/telegraphUntil: worldNow\(\) \+ LAVA_WINDUP_MS/);
   });
   it('lava damage is GATED on the telegraph having elapsed (forming = harmless)', () => {
     expect(boss).toMatch(/const forming = now < l\.telegraphUntil/);

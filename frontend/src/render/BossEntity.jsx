@@ -11,7 +11,7 @@ import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
-import { worldDelta, isWorldFrozen } from '../game/worldClock.js';
+import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 
@@ -174,7 +174,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             position: pos.clone(),
             life: 6.0,
             lastDamageTime: 0,
-            telegraphUntil: performance.now() + LAVA_WINDUP_MS // harmless warning window before it arms
+            telegraphUntil: worldNow() + LAVA_WINDUP_MS // harmless warning window before it arms (world clock: a freeze holds it)
         };
         lavaZonesRef.current.push(lava);
         setEffects(prev => ({ ...prev, lavaZones: [...lavaZonesRef.current] }));
@@ -209,8 +209,10 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         }
 
         // FROZEN (review #3, R4.1): a hitstop holds the dragon WHOLE — no flight step, and no bite, roar, fireball,
-        // lava or summon either. Those timers run on performance.now(), so with only the movement scaled the
-        // dragon stood still and kept attacking through the freeze its own hit had caused.
+        // lava or summon either. With only the movement scaled the dragon stood still and kept attacking through
+        // the freeze its own hit had caused. Its timers read the WORLD clock below, so the freeze also HOLDS them
+        // rather than spending them (review #4, R5.4: a wall-clock cooldown expired inside the freeze and fired a
+        // burst of attacks on the first frame after it, and the lava's warning window was eaten).
         if (isWorldFrozen()) return;
 
         const phase = tierPhases[bossPhase] || tierPhases[0];
@@ -274,7 +276,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         }
 
         // --- Step 2: Phase-Specific Tactical Attack Routines ---
-        const now = performance.now();
+        const now = worldNow();
 
         // 1. Common Melee Damage Routine
         if (dist < BOSS_CONFIG.attackRange) {

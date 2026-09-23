@@ -14,10 +14,33 @@ import { useGameStore } from '../store/useGameStore';
 import { worldTimeScale } from './hitstop.js';
 
 let scale = 1;
+let worldMs = null;
+let lastNow = null;
 
-/** Compute this frame's freeze scale. Called once per frame by <WorldClockTicker>; tests call it directly. */
+/**
+ * Advance the world one frame: this frame's freeze scale, and the WORLD clock — wall time minus every frozen
+ * span, exact to the freeze window [hitstopStart, hitstopUntil] rather than to frame boundaries (R2.7).
+ * Called once per frame by systems/WorldClockTicker.jsx; tests call it directly with an injected `now`.
+ */
 export function tickWorldClock(now = performance.now()) {
-  scale = worldTimeScale(now, useGameStore.getState().hitstopUntil);
+  const { hitstopUntil = 0, hitstopStart = 0 } = useGameStore.getState();
+  scale = worldTimeScale(now, hitstopUntil);
+  if (lastNow === null) worldMs = now;
+  else if (now > lastNow) {
+    const frozen = Math.max(0, Math.min(now, hitstopUntil) - Math.max(lastNow, hitstopStart));
+    worldMs += now - lastNow - frozen;
+  }
+  lastNow = now;
+}
+
+/**
+ * The WORLD clock, ms, in performance.now()'s units: it does not advance through a hitstop (QUEUE R2.7). The AI
+ * worker's timers (windup, brace, charge, recovery), the windup telegraph and the dragon's attack timers read it,
+ * so a freeze HOLDS them rather than spending them — a windup begun before your hit no longer expires inside
+ * the freeze and strikes the frame it ends. Before the first tick it is the wall clock.
+ */
+export function worldNow() {
+  return worldMs === null ? performance.now() : worldMs;
 }
 
 /** A world-simulating useFrame's delta: 0 through a hitstop freeze, the frame's delta otherwise. */

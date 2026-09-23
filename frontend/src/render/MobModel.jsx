@@ -9,7 +9,7 @@ import { mobFeatures, hasHostileEyes } from '../game/mobFeatures';
 import { flinchTilt } from '../game/mobHitFx';
 import { windupRamp, WINDUP_MS } from '../game/attackTelegraph';
 import { dissolvePose, DEATH_DISSOLVE_MS } from '../game/deathFx';
-import { worldDelta } from '../game/worldClock.js';
+import { worldDelta, worldNow } from '../game/worldClock.js';
 import { Panel, Icon } from '../ui/primitives/index.js';
 import { MobToonMaterial } from './MobToonMaterial';
 import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
@@ -90,6 +90,9 @@ const MobModel = React.memo(({ entity }) => {
 
   useFrame((state, frameDelta) => {
     const delta = worldDelta(frameDelta); // the whole model holds through a hitstop (R2.6)
+    // The windup telegraph and the leg cycle read the WORLD clock — the worker stamps windupUntil in it (R2.7).
+    // The hit flash and the death dissolve stay on the wall clock: they are stamped by it, and the flash IS the impact.
+    const wnow = worldNow();
     if (!groupRef.current) return;
 
     // 1. Sync position/rotation from the ECS entity (No React State!). The AI worker ticks at
@@ -160,10 +163,10 @@ const MobModel = React.memo(({ entity }) => {
           modelRef.current.rotation.x = -0.2 * wave;
           modelRef.current.rotation.z = 0;
         }
-      } else if (entity.windupUntil && performance.now() < entity.windupUntil) {
+      } else if (entity.windupUntil && wnow < entity.windupUntil) {
         // M2 #4 ANTICIPATION: coil back + crouch, accelerating toward the strike, so the player can
         // read (and dodge) the incoming attack. Flinch above wins if a hit landed mid-windup.
-        const wt = windupRamp(performance.now(), entity.windupUntil, WINDUP_MS);
+        const wt = windupRamp(wnow, entity.windupUntil, WINDUP_MS);
         const ease = wt * wt; // accelerate the coil near the strike
         modelRef.current.scale.set(1 + ease * 0.06, 1 - ease * 0.12, 1 + ease * 0.06);
         modelRef.current.rotation.x = -0.18 * ease; // lean/coil back
@@ -177,9 +180,9 @@ const MobModel = React.memo(({ entity }) => {
     // 3. Handle hit flash visually
     const isHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
     // M2 #4: telegraph charge glow -- ramps the body emissive up toward the strike (not while hit-flashing).
-    const charging = !isHit && entity.windupUntil && performance.now() < entity.windupUntil;
+    const charging = !isHit && entity.windupUntil && wnow < entity.windupUntil;
     const chargeI = charging
-      ? (0.6 + 0.4 * Math.sin(performance.now() * 0.025)) * windupRamp(performance.now(), entity.windupUntil, WINDUP_MS) ** 2 * 1.5
+      ? (0.6 + 0.4 * Math.sin(wnow * 0.025)) * windupRamp(wnow, entity.windupUntil, WINDUP_MS) ** 2 * 1.5
       : 0;
     
     groupRef.current.traverse((child) => {
@@ -223,7 +226,7 @@ const MobModel = React.memo(({ entity }) => {
     // frame holds a fixed leg pose (wall-clock performance.now() differs run-to-run).
     // Inert in normal gameplay. (Mob movement is already frozen in capture, so speed
     // is ~0 and the swing is usually 0 anyway — this also covers the close-up fixtures.)
-    const time = isCaptureMode() ? 0 : performance.now() * 0.01;
+    const time = isCaptureMode() ? 0 : wnow * 0.01; // the WORLD clock: legs hold through a hitstop
     const speed = velocity * 15;
     const swing = speed > 0.05 ? Math.sin(time) * 0.6 : 0;
     

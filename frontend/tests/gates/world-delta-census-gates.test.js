@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { sourceTexts } from './_srcWalk.js';
-import { worldDelta, realDelta, tickWorldClock, isWorldFrozen } from '../../src/game/worldClock.js';
+import { worldDelta, realDelta, tickWorldClock, isWorldFrozen, worldNow } from '../../src/game/worldClock.js';
 import { carriersOf } from './_srcWalk.js';
 import { useGameStore } from '../../src/store/useGameStore';
 
@@ -20,6 +20,9 @@ import { useGameStore } from '../../src/store/useGameStore';
  *   (review #3:) T1 the ticker unmounted from GameScene   T2 plausible-wrong: worldDelta recomputes per call again
  *   R2 plausible-wrong: the physics debris back on worldDelta (its lifetime frozen while Rapier keeps it falling)
  *   N3 the hub-NPC routine reads its raw delta (it walked through every freeze at a per-FRAME pace)
+ *   (R2.7:) C1 plausible-wrong: the whole tick counted as frozen (not the overlap)   C2 the freeze ignored
+ *   C3 the worker sent the wall clock again   C4 MobModel's telegraph reads the wall clock again
+ *   C5 the dragon's timers on the wall clock again (R5.4)
  *
  * BLIND SPOT: the census proves each site DECIDED, not that it decided right — a world system routed through
  * realDelta passes. The world/real split is listed in the plan task and is the review surface. Callbacks passed
@@ -142,5 +145,43 @@ describe('worldDelta — through the real store', () => {
   it('realDelta is the delta, freeze or not — the name is the decision', () => {
     useGameStore.setState({ hitstopUntil: performance.now() + 60000 });
     expect(realDelta(0.016)).toBe(0.016);
+  });
+});
+
+describe('worldNow — the WORLD clock does not advance through a freeze (QUEUE R2.7)', () => {
+  // Far past any time an earlier test ticked with, so this block's ticks are the only ones that count.
+  const T = 1e9;
+  const freeze = (start, until) => useGameStore.setState({ hitstopStart: T + start, hitstopUntil: T + until });
+  afterEach(() => useGameStore.setState({ hitstopStart: 0, hitstopUntil: 0 }));
+
+  it('unfrozen, it keeps wall time; a 200 ms freeze leaves it exactly 200 ms behind, however the ticks fall', () => {
+    freeze(0, 0);
+    tickWorldClock(T + 0);
+    const w0 = worldNow();
+    tickWorldClock(T + 100);
+    expect(worldNow() - w0, 'the world clock did not keep wall time while unfrozen').toBeCloseTo(100, 9);
+    freeze(150, 350); // begins BETWEEN two ticks and ends between two others
+    tickWorldClock(T + 200);
+    tickWorldClock(T + 300);
+    tickWorldClock(T + 400);
+    tickWorldClock(T + 500);
+    expect(worldNow() - w0, 'the frozen span was not subtracted exactly (only whole ticks, or none)').toBeCloseTo(300, 9);
+  });
+
+  it('a burst that EXTENDS mid-freeze subtracts its whole span', () => {
+    freeze(1000, 1100);
+    tickWorldClock(T + 1000);
+    const w0 = worldNow();
+    tickWorldClock(T + 1050);
+    freeze(1000, 1180); // a second hit stacks the burst (hitstopStart is the burst's start)
+    tickWorldClock(T + 1200);
+    expect(worldNow() - w0).toBeCloseTo(20, 9);
+  });
+
+  it('the worker, the telegraph and the dragon read it (weak, structural)', () => {
+    expect(carriersOf(/const now = worldNow\(\);/).sort()).toEqual(['render/BossEntity.jsx', 'systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/entity\.windupUntil && wnow < entity\.windupUntil/)).toEqual(['render/MobModel.jsx']);
+    expect(carriersOf(/performance\.now\(\) < entity\.windupUntil/), 'a wall-clock windup read is back').toEqual([]);
+    expect(carriersOf(/telegraphUntil: worldNow\(\) \+ LAVA_WINDUP_MS/)).toEqual(['render/BossEntity.jsx']);
   });
 });

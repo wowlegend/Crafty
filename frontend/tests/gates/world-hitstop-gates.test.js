@@ -136,7 +136,7 @@ describe('every hit the player lands has weight — the boss too', () => {
     // A slice bounded by two landmarks unique to BossEntity's frame loop: the freeze read, and the attack section
     // whose bite/roar/lava/summon timers compare performance.now(). The return must sit between them.
     const src = sourceTexts().find((t) => t.file === 'render/BossEntity.jsx').code;
-    const start = src.indexOf('const delta = worldDelta(rawDelta);'), end = src.indexOf('const now = performance.now();', start);
+    const start = src.indexOf('const delta = worldDelta(rawDelta);'), end = src.indexOf('const now = worldNow();', start);
     expect(start > 0 && end > start, 'the landmarks moved — this check reads nothing').toBe(true);
     expect(src.slice(start, end), 'the frozen early-return is gone or moved below the attack timers')
       .toMatch(/if \(isWorldFrozen\(\)\) return;/);

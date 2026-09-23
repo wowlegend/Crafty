@@ -19,7 +19,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 // way; the copies were never necessary. See ai.worker.js's header.
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
-import { worldDelta } from '../game/worldClock.js';
+import { worldDelta, worldNow } from '../game/worldClock.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
 import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
 
@@ -185,7 +185,7 @@ export const AIWorkerSystem = () => {
       drainKnockback(mobsQuery.entities, delta, true);
       return; // AI/movement stays frozen so capture frames are byte-stable
     }
-    const now = performance.now();
+    const now = worldNow(); // the WORLD clock: the worker's timers hold through a hitstop (R2.7)
     // Hitstop holds the WORLD (EXTERNAL-BASELINE #3). The knockback shove is a ONE-frame impulse, spent in
     // full by whichever frame drains it — draining it at a frozen scale would spend it at zero length and
     // the hit would never shove. So a frozen frame HOLDS it, and it lands the frame the freeze ends: the
