@@ -7,7 +7,8 @@ const MAX = BOSS_CONFIG.health;
 
 // Mutation-Proof (C3 tiers, via scripts/dev/mutate.sh against bossPersistence.js), each RED: P1 a won
 // pre-tier save re-arms; P2 a won save kept at tier 0; P3 plausible-wrong: max always the tier-0 health;
-// P4 tier not serialized; P5 a junk killNight trusted.
+// P4 tier not serialized; P5 a junk killNight trusted; P6 plausible-wrong: a junk killNight on a tiered save
+// falls back to night 0 (a slain dragon due at once) instead of tonight.
 
 describe('phaseForHealth — ONE derivation, shared by the hook and the rehydrate', () => {
   // bossSystem.js derives the phase from hpPercent inside a useEffect. Persisting the phase alongside the
@@ -162,6 +163,13 @@ describe('hydrateBossState — tiers', () => {
 
   it('a won save with a tier of 0 is contradictory: it has killed at least one dragon', () => {
     expect(hydrateBossState({ health: 0, active: false, defeated: true, tier: 0, killNight: 4 }, { gameWon: true }).tier).toBe(1);
+  });
+
+  it('a slain tier whose kill night is junk counts its return from TONIGHT — never from night 0, which would wake it at once', () => {
+    for (const bad of [NaN, -3, 'two', null, undefined]) {
+      const out = hydrateBossState({ health: 0, active: false, defeated: true, tier: 2, killNight: bad }, { gameWon: true, nightCount: 31 });
+      expect(out.killNight, `killNight ${String(bad)}`).toBe(31);
+    }
   });
 
   it('junk tier and killNight coerce to safe integers, never NaN', () => {

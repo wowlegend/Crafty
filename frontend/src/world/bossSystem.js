@@ -62,7 +62,7 @@ export const useBossSystem = (playerLevel) => {
                 if (!bossCanReturn({ tier: bossTier, killNight: s.bossKillNight, nightCount: s.nightCount, level: playerLevel })) return;
                 if (!returnAnnounced.current) {
                     returnAnnounced.current = true;
-                    setBossNotification(`The Blight Heart stirs again -- the ${bossTierStats(bossTier).name} waits at the lair.`);
+                    setBossNotification(`The Blight Heart stirs again -- the ${stats.name} waits at the lair.`);
                     scheduleNotifClear(6000);
                 }
             }
@@ -76,7 +76,7 @@ export const useBossSystem = (playerLevel) => {
             // would make those frames non-deterministic (same guard the A5 dangerLevel bridge uses).
             const bStore = useGameStore.getState();
             runIsolatedEffects(bossEntranceBeat({
-                notify: () => { setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]'); scheduleNotifClear(6000); },
+                notify: () => { setBossNotification(`The Blight Heart stirs -- the ${stats.name} awakens! [Climax]`); scheduleNotifClear(6000); },
                 // The REAL camera shake, not setScreenShake -- that one drives DamageOverlay's red vignette,
                 // so the arrival used to paint the take-damage cue over the climax. No clear timeout is
                 // needed any more: trauma decays itself, frame-rate independently.
@@ -97,7 +97,7 @@ export const useBossSystem = (playerLevel) => {
             // restored by a reload is NOT a return — it is re-placed at the lair with the HP it was saved at
             // (review 2026-09-22: keyed on the tier alone, a reload refilled every wounded return fight).
             if (bossTier > 0 && bossDefeated) {
-                setBossHealth(bossTierStats(bossTier).health);
+                setBossHealth(stats.health);
                 setBossDefeated(false);
                 setBossPhase(0);
                 bossKilledRef.current = false;
@@ -106,7 +106,7 @@ export const useBossSystem = (playerLevel) => {
             setBossActive(true);
         }, 1500);
         return () => clearInterval(interval);
-    }, [playerLevel, bossDefeated, bossTier, scheduleNotifClear]);
+    }, [playerLevel, bossDefeated, bossTier, stats, scheduleNotifClear]);
 
     useEffect(() => {
         // The threshold walk moved to game/bossPersistence.phaseForHealth so the rehydrate seeds the phase

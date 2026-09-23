@@ -22,6 +22,7 @@ import { carriersOf } from './_srcWalk.js';
  *   B5 the tier bump placed AFTER a throwing reward, un-isolated (the win-strand shape)
  *   B6 the reawakening announced every poll              B7 plausible-wrong: rewards read from tier 0
  *   B8 BossEntity reads BOSS_CONFIG.phases again (structural)
+ *   B9 the return's entrance says "the Shadow Dragon" again   B10 = B4 re-proven on the refactored line
  *
  * BLIND SPOT: BossEntity's per-phase speed/damage come from bossTierStats(bossTier) by source shape only
  * (a structural check at the end); whether the tier-2 dragon FEELS harder is a person-playing question.
@@ -103,6 +104,8 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
     expect(hook.result.current.bossHealth).toBe(bossTierStats(1).health);
     expect(hook.result.current.bossMaxHealth).toBe(bossTierStats(1).health);
     expect(hook.result.current.bossName).toBe(bossTierStats(1).name);
+    // The ENTRANCE names the tier too (review 2026-09-22: it still said "the Shadow Dragon awakens").
+    expect(hook.result.current.bossNotification).toBe(`The Blight Heart stirs -- the ${bossTierStats(1).name} awakens! [Climax]`);
   });
 
   it('killing the return pays the TIER\'s reward and makes the next one tier 2', () => {

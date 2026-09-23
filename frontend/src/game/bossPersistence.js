@@ -72,9 +72,9 @@ export function hydrateBossState(saved, { maxHealth, gameWon = false, nightCount
   const tiered = !!saved && typeof saved === 'object' && typeof saved.tier === 'number' && Number.isFinite(saved.tier);
   let tier = tiered ? nat(saved.tier, 0) : (gameWon || saved?.defeated ? 1 : 0);
   if (gameWon && tier < 1) tier = 1; // a won game has slain at least one dragon
-  const killNight = tiered && typeof saved.killNight === 'number' && Number.isFinite(saved.killNight)
-    ? Math.max(0, Math.floor(saved.killNight))
-    : (tier >= 1 ? nat(nightCount, 0) : 0);
+  // A kill night the save cannot vouch for (pre-tier, or corrupt) counts the return from tonight.
+  const tonight = tier >= 1 ? nat(nightCount, 0) : 0;
+  const killNight = tiered ? nat(saved.killNight, tonight) : tonight;
   const max = num(maxHealth, bossTierStats(tier).health);
   const untouched = { active: false, health: max, defeated: false, phase: phaseForHealth(max, max), tier, killNight };
   const slain = { active: false, health: 0, defeated: true, phase: phaseForHealth(0, max), tier, killNight };
