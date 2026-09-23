@@ -7,7 +7,8 @@
 // The far field (world/FarField.jsx) draws land at the true surface everywhere and DISCARDS every fragment over a
 // loaded chunk, so real terrain and its impostor never overlap (QUEUE R3.9). It reads the set as a small R8 mask
 // around the player, rebuilt only when the set's version or the player's chunk changes.
-const CHUNK = 16;
+/** Blocks per chunk side — the ONE definition the streamer, block edits and the far-field mask share. */
+export const CHUNK_SIZE = 16;
 
 /**
  * Texels per side of the mask: +-32 chunks (512 m) around the player, so it reaches past the whole far-field ring
@@ -18,7 +19,7 @@ export const LOADED_MASK_SIZE = 64;
 
 /** The chunk a world coordinate falls in — the ONE definition both sides of the mask use (review #3, R4.9). */
 export function chunkOf(v) {
-  return Math.floor(v / CHUNK);
+  return Math.floor(v / CHUNK_SIZE);
 }
 
 const loaded = new Set();
@@ -65,7 +66,7 @@ export function buildLoadedMask(keys, centreCx, centreCz, size = LOADED_MASK_SIZ
  * `uniform sampler2D uLoadedMask`. Scalar statements only: the gate interprets this text in JS.
  */
 export function loadedMaskGlsl(size = LOADED_MASK_SIZE) {
-  const S = size.toFixed(1), C = CHUNK.toFixed(1);
+  const S = size.toFixed(1), C = CHUNK_SIZE.toFixed(1);
   return `
         float lmx = floor(vWorldPos.x / ${C}) - uMaskOrigin.x;
         float lmz = floor(vWorldPos.z / ${C}) - uMaskOrigin.y;

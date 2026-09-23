@@ -34,7 +34,7 @@ import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
-import { markChunkLoaded, markChunkUnloaded, loadedChunkSet } from './loadedChunks.js';
+import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -672,7 +672,6 @@ export const MinecraftWorld = React.memo(() => {
         };
     }, []);
 
-    const CHUNK_SIZE = 16;
     // S2-A-M4a: the chunk load/cull radius now DERIVES from the quality tier's
     // renderDistance lever (TIERS.low 2 / med 3 / high 4) instead of a hardcoded 4.
     // Read transiently per chunk-load tick (the processChunks setTimeout loop, NOT a
@@ -779,8 +778,9 @@ export const MinecraftWorld = React.memo(() => {
             const tier = useGameStore.getState().qualityTier;
             const renderDistance = (TIERS[tier] || TIERS.low).renderDistance;
 
-            const playerCx = Math.floor(camera.position.x / CHUNK_SIZE);
-            const playerCz = Math.floor(camera.position.z / CHUNK_SIZE);
+            // chunkOf: the ONE chunk index the far-field mask also uses (review #4, R5.8).
+            const playerCx = chunkOf(camera.position.x);
+            const playerCz = chunkOf(camera.position.z);
 
             setChunks(currentChunks => {
                 const newChunks = { ...currentChunks };
@@ -941,8 +941,8 @@ export const MinecraftWorld = React.memo(() => {
             const ty = h.targetedY;
             const tz = h.targetedZ;
 
-            const cx = Math.floor(tx / CHUNK_SIZE);
-            const cz = Math.floor(tz / CHUNK_SIZE);
+            const cx = chunkOf(tx);
+            const cz = chunkOf(tz);
             const lx = tx - cx * CHUNK_SIZE;
             const lz = tz - cz * CHUNK_SIZE;
 
@@ -1001,8 +1001,8 @@ export const MinecraftWorld = React.memo(() => {
                 // free while mining granted +1, which gutted the economy — that must not come back through
                 // a multi-block door.
                 if (!store.consumeForPlacement(type)) break;
-                const cx = Math.floor(c.x / CHUNK_SIZE);
-                const cz = Math.floor(c.z / CHUNK_SIZE);
+                const cx = chunkOf(c.x);
+                const cz = chunkOf(c.z);
                 worker.postMessage({ type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: numericType } });
                 newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
                 placed++;

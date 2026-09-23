@@ -21,6 +21,7 @@ import { carriersOf } from './_srcWalk.js';
  *   K3 plausible-wrong: floor -> round in the chunk index      K4 out-of-range keys wrap instead of being dropped
  *   K5 the registry bumps its version on a no-op              K6 FarField: the discard not spliced (structural)
  *   K7 Terrain: mount stops registering the chunk (structural)  K9 (retired with clearLoadedChunks, R4.3)
+ *   (review #4:) K14 the streamer indexes chunks with its own Math.floor again
  *   (review #3:) K10 the mask back to 32 texels   K11 registration back in a passive useEffect   K12 the early clear
  *   restored   K13 plausible-wrong: chunkOf rounds instead of floors
  *   (K8, an `indexOf('_', 1)` start offset in the key parse, SURVIVED as an equivalent mutant — '-' is never
@@ -156,5 +157,8 @@ describe('wired: Terrain feeds it, the far field reads it (weak, structural)', (
     expect(carriersOf(/buildLoadedMask\(loadedChunkSet\(\),/)).toEqual(['world/FarField.jsx']);
     expect(carriersOf(/const pcx = chunkOf\(p\.x\), pcz = chunkOf\(p\.z\);/)).toEqual(['world/FarField.jsx']);
     expect(carriersOf(/Math\.floor\(p\.[xz] \/ 16\)/), 'a literal chunk size is back on the JS side').toEqual([]);
+    // ...and the streamer and the block edits index chunks the same way (review #4, R5.8).
+    expect(carriersOf(/Math\.floor\([^)]*\/ CHUNK_SIZE\)/), 'a second chunk-index definition is back').toEqual(['world/loadedChunks.js']);
+    expect(carriersOf(/const playerCx = chunkOf\(camera\.position\.x\);/)).toEqual(['world/Terrain.jsx']);
   });
 });

@@ -37,6 +37,8 @@ import { carriersOf, sourceTexts } from './_srcWalk.js';
  *   C1 plausible-wrong: dirt carries canopy in every biome    C2 swamp dirt bare again
  *   P1 the rebuild allocates new BufferAttributes again       P2 farFieldVertices ignores `out`
  *   P3 FarField builds its own texture array again
+ *   (review #4:) P4 computeVertexNormals back on the rebuild path   P5 plausible-wrong: flatShading turned off
+ *   while the normals stay uncomputed (the ring would light with a zero normal)
  *
  * BLIND SPOT: nothing here renders. Whether the ring reads as land to the horizon, meets the ocean plane without
  * a seam, and vanishes over loaded terrain is judged from a same-renderer capture (plan Tasks 2 and 3).
@@ -206,6 +208,9 @@ describe('the far field is drawn, from the real world, hazed like the terrain (w
     const rebuild = src.slice(start, end);
     expect(rebuild).toContain('farFieldVertices(');
     expect(rebuild, 'the rebuild allocates again').not.toMatch(/\bnew\b|setAttribute\(|setIndex\(/);
+    // flatShading derives normals from screen-space derivatives: computing them is pure waste (review #4, R5.9).
+    expect(rebuild, 'normals computed for a flat-shaded material again').not.toMatch(/computeVertexNormals\(/);
+    expect(carriersOf(/flatShading: true/)).toContain('world/FarField.jsx');
     // ...and the ONE texture array: nothing builds a second copy just to average it.
     expect(carriersOf(/createProceduralVoxelTextures\(/)).toEqual(['world/proceduralTextures.js']);
   });

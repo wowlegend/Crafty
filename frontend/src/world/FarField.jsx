@@ -143,7 +143,8 @@ export function FarField({ renderDistance }) {
     position.needsUpdate = true;
     color.needsUpdate = true;
     geo.setDrawRange(0, Infinity);
-    geo.computeVertexNormals();
+    // No computeVertexNormals: the material is flatShading, which derives the normal from screen-space
+    // derivatives and never reads the attribute (review #4, R5.9 — it looped ~6k vertices per re-centre).
     geo.computeBoundingSphere();
   });
 
