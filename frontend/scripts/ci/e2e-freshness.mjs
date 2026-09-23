@@ -8,7 +8,7 @@
  * `.github/workflows/ci.yml` and in NO local chokepoint. The author could not have seen it. CI mailed
  * about it afterwards.
  *
- * WHY A RECEIPT AND NOT THE SUITE. 21 Playwright specs take ~20 minutes with `workers: 1` (the suite is
+ * WHY A RECEIPT AND NOT THE SUITE. The Playwright specs take ~20 minutes with `workers: 1` (the suite is
  * serialized because the specs share in-page game state). Putting that in every push makes the hook
  * something people bypass, and a bypassed gate is worth less than no gate. So this asserts the SUITE WAS
  * RUN GREEN AGAINST THIS SOURCE TREE — a receipt — and lets CI run the real thing.
