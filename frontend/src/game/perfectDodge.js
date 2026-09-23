@@ -8,13 +8,17 @@
 // Pure: the dodge start (Components.jsx) calls perfectDodgeTargets, the worker and the strike filter read
 // isStaggered, CombatSystem.damageMob applies riposteDamage. All times are the WORLD clock (game/worldClock.js),
 // the one the worker stamps windupUntil in — so a hitstop holds the window and the stagger alike.
-import { VERTICAL_REACH } from './mobSenses.js';
+import { LEAP_RANGE } from './mobSenses.js';
 import { HITSTOP } from './trauma.js';
 
 /** The late part of the windup a dodge must land in: generous, for web input latency. */
 export const PERFECT_WINDOW_MS = 220;
-/** Horizontal reach of the check: covers the widest melee swing (moss_brute, 3.2). */
-export const PERFECT_RANGE = 3.4;
+/**
+ * Reach of the check, across and up. Every windup is aimed at the player and starts only when its attack can reach,
+ * so this is a sanity bound, and it must cover the LONGEST wound-up attack: the spider's leap (review #7, R8.6 —
+ * it was 3.4, the widest melee swing, and a leap from 3.4-6 m could never be perfectly dodged).
+ */
+export const PERFECT_RANGE = LEAP_RANGE + 0.4;
 /** How long a perfectly dodged mob stays staggered, world ms. */
 export const STAGGER_MS = 1400;
 /** Damage multiplier on a staggered mob — the riposte. */
@@ -26,12 +30,12 @@ export const PERFECT_HITSTOP_MS = HITSTOP.heavy;
 export function perfectDodgeTargets(mobs, player, now) {
   const out = [];
   for (const m of mobs || []) {
-    if (!m || m.passive || !(m.health > 0) || !(m.windupUntil > 0)) continue;
+    if (!m || m.passive || !(m.health > 0) || !(m.windupUntil > 0) || isStaggered(m, now)) continue;
     const due = m.windupUntil - now;
     if (!(due > 0 && due <= PERFECT_WINDOW_MS)) continue;
     const dx = m.position.x - player.x, dz = m.position.z - player.z;
     if (Math.hypot(dx, dz) > PERFECT_RANGE) continue;
-    if (Math.abs(m.position.y - player.y) > VERTICAL_REACH) continue;
+    if (Math.abs(m.position.y - player.y) > PERFECT_RANGE) continue;
     out.push(m);
   }
   return out;
@@ -64,9 +68,18 @@ export function isStaggered(e, now) {
   return !!e && e.staggerUntil > now;
 }
 
-/** Damage dealt to `e` at `now`: the riposte multiplier while it is staggered. */
+/** Damage dealt to `e` at `now`: the riposte multiplier while it is staggered — a whole number, as every hit is (R8.2). */
 export function riposteDamage(damage, e, now) {
-  return isStaggered(e, now) ? damage * RIPOSTE_MULT : damage;
+  return isStaggered(e, now) ? Math.round(damage * RIPOSTE_MULT) : damage;
+}
+
+/**
+ * Keep a staggered mob's windup cancelled (AIWorkerSystem, after each reply). A reply computed from a payload sent
+ * BEFORE the dodge carries the windup the dodge cancelled, and copying it back relit the charge glow and made the
+ * mob a perfect-dodge target again (review #7, R8.1). The stagger is main-thread state, so the main thread holds it.
+ */
+export function holdStagger(e, now) {
+  if (isStaggered(e, now)) e.windupUntil = 0;
 }
 
 /**

@@ -789,12 +789,12 @@ probe). Write it before Kevin decides the lock, so the decision rests on the pro
 
 | # | Where | Finding | Disposition |
 |---|---|---|---|
-| R8.1 | `AIWorkerSystem` reply loop | a worker reply computed before the dodge copies the cancelled `windupUntil` back onto the staggered mob: the charge glow returns (MobModel's `charging` has no stagger check) and `perfectDodgeTargets` treats it as a fresh target | OPEN — verify; hold the stagger on reply apply, skip staggered mobs as targets |
-| R8.2 | `perfectDodge.riposteDamage` | x1.5 of an integer is fractional: health and the floating number read "37.5" | OPEN — verify; round |
+| R8.1 | `AIWorkerSystem` reply loop | a worker reply computed before the dodge copies the cancelled `windupUntil` back onto the staggered mob: the charge glow returns (MobModel's `charging` has no stagger check) and `perfectDodgeTargets` treats it as a fresh target | **FIXED** — VERIFIED through the real worker first (the in-flight reply did restore the windup). `holdStagger` after every reply apply; `perfectDodgeTargets` skips staggered mobs; MobModel's charge glow skips them |
+| R8.2 | `perfectDodge.riposteDamage` | x1.5 of an integer is fractional: health and the floating number read "37.5" | **FIXED** — verified (25 -> 37.5); `Math.round` |
 | R8.3 | `mobFloor.spawnGroundAt` | a trunk column is solid from the ground to the canopy top, so the 4-down probe reads it as ground: a mob can still spawn ON a tree | OPEN — verify; also require the neighbouring columns to be ground |
 | R8.4 | `localPath.settleOnGround` | an Infinity floor on the mob's OWN column skips R6.4's exemption: a mob entombed by a build taller than the reach stays embedded | OPEN — verify; own column falls back to the column top, as R6.4 did |
-| R8.5 | `CombatSystem.damageMob` | the riposte applies to allies, burns and zones too — the tip says "your hits"; an ally's 30 becomes a 45 "crit" | OPEN — gate on isPlayerSource |
-| R8.6 | `perfectDodge.PERFECT_RANGE` | 3.4 covers melee; a spider's leap winds up from up to 6 m (LEAP_RANGE) and can never be perfectly dodged | OPEN — verify; the range covers the longest wound-up attack |
+| R8.5 | `CombatSystem.damageMob` | the riposte applies to allies, burns and zones too — the tip says "your hits"; an ally's 30 becomes a 45 "crit" | **FIXED** — `isPlayerSource` (the player's hits and their burns; not allies or hazards) |
+| R8.6 | `perfectDodge.PERFECT_RANGE` | 3.4 covers melee; a spider's leap winds up from up to 6 m (LEAP_RANGE) and can never be perfectly dodged | **FIXED** — verified: the leap goes through the same 380 ms telegraph from up to 6 m, above too. `LEAP_RANGE` now shared from `game/mobSenses.js`; `PERFECT_RANGE = LEAP_RANGE + 0.4`, across and up (every windup targets the player, so range is only a sanity bound) |
 | R8.7 | `mobFloor.columnFaces` | more than MAX_FACES faces above the feet returns null, which switches off the snap AND the wall rule for that mob | OPEN — raise the cap; unknown must not mean "no walls" |
 | R8.8 | `world/mobFloorProbe.js`, MobModel IK | a closure allocated per probe call; the leg IK calls the multi-cast probe per leg per frame | OPEN — hoist the closure; measure the IK cost |
 | R8.9 | `EnhancedMagicSystem` | the `grounded` closure and a getState() per projectile per frame | OPEN — hoist before the loop |

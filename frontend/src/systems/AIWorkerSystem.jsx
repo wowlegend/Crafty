@@ -6,7 +6,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 import { heightGridAt, snapMob } from '../game/localPath.js';
 import { groundForMover } from '../game/mobFloor.js';
-import { strikesToApply } from '../game/perfectDodge.js';
+import { strikesToApply, holdStagger } from '../game/perfectDodge.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -113,6 +113,7 @@ export const AIWorkerSystem = () => {
             // OLD aggro value. windupUntil drives the render's charge pose; wanderRoll and the charge
             // latch only work if they come back next tick, which is what the shared list guarantees.
             applyMobUpdate(entity, update);
+            holdStagger(entity, worldNow()); // a reply from before a perfect dodge must not relight its windup (R8.1)
 
             // The snap REFUSES a climb (review #4, R5.3/R5.6): every mover — the worker's chase or wander, a
             // knockback shove, the first aggro tick — lands here, so the wall rule holds for all of them. It snaps

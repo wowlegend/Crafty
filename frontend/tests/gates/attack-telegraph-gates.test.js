@@ -103,7 +103,8 @@ describe('attack-telegraph render gates (M2 #4 Slice 2)', () => {
     expect(mob).toMatch(/const wnow = worldNow\(\);/);
   });
   it('ramps an emissive charge glow toward the strike, but the hit-flash still wins', () => {
-    expect(mob).toMatch(/const charging = !isHit && entity\.windupUntil/);
+    // (R8.1: a staggered mob shows no charge either — its windup was cancelled by the perfect dodge.)
+    expect(mob).toMatch(/const charging = !isHit && !isStaggered\(entity, wnow\) && entity\.windupUntil/);
     expect(mob).toMatch(/emissive\.copy\(chargeColor\)/);
     // hit-flash precedence preserved in the traverse
     expect(/if \(isHit\)[\s\S]{0,120}emissive\.copy\(hitColor\)/.test(mob)).toBe(true);

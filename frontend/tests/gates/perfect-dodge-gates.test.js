@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   PERFECT_WINDOW_MS, PERFECT_RANGE, STAGGER_MS, RIPOSTE_MULT, perfectDodgeTargets, isStaggered, riposteDamage,
-  strikesToApply, applyPerfectDodge, staggerPose, PERFECT_HITSTOP_MS,
+  strikesToApply, applyPerfectDodge, staggerPose, PERFECT_HITSTOP_MS, holdStagger,
 } from '../../src/game/perfectDodge.js';
+import { LEAP_RANGE } from '../../src/game/mobSenses.js';
 import { VOICES } from '../../src/audio/synthVoices.js';
 import { HITSTOP } from '../../src/game/trauma.js';
 import { carriersOf, sourceTexts } from './_srcWalk.js';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
-import { VERTICAL_REACH } from '../../src/game/mobSenses.js';
 import { WINDUP_MS } from '../../src/game/attackTelegraph.js';
 
 /**
@@ -43,8 +43,9 @@ describe('the numbers are the design, and they fit the telegraph they answer', (
   it('the window is the LATE part of the windup, and generous for web input latency', () => {
     expect(PERFECT_WINDOW_MS).toBe(220);
     expect(PERFECT_WINDOW_MS, 'the window is longer than the windup itself').toBeLessThan(WINDUP_MS);
-    expect(PERFECT_RANGE, 'shorter than the widest melee reach (moss_brute 3.2): a brute could hit from outside it')
-      .toBeGreaterThanOrEqual(3.2);
+    // Every windup is aimed at the player and starts only when its attack can reach, so the range is a sanity
+    // bound: it must cover the LONGEST wound-up attack — the spider's leap (review #7, R8.6), not only melee.
+    expect(PERFECT_RANGE, 'a spider leaping from beyond PERFECT_RANGE could never be perfectly dodged').toBeGreaterThanOrEqual(LEAP_RANGE);
     expect([STAGGER_MS, RIPOSTE_MULT]).toEqual([1400, 1.5]);
   });
 });
@@ -61,12 +62,15 @@ describe('perfectDodgeTargets — which mobs a dodge pressed NOW staggers', () =
     expect(perfectDodgeTargets([mob({ windupUntil: 0 })], player, NOW), 'a mob not winding up counted').toHaveLength(0);
   });
 
-  it('range: horizontal within PERFECT_RANGE, vertical within the melee reach', () => {
+  it('range: horizontal and vertical within PERFECT_RANGE — a leap from 5.5 m, or from 5 m above, counts', () => {
+    expect(perfectDodgeTargets([mob({ position: { x: 5.5, y: 50.5, z: 0 } })], player, NOW), 'a leap wound up from 5.5 m').toHaveLength(1);
+    expect(perfectDodgeTargets([mob({ position: { x: 1, y: 55.5, z: 0 } })], player, NOW), 'a leap from 5 m above').toHaveLength(1);
     expect(perfectDodgeTargets([mob({ position: { x: PERFECT_RANGE - 0.01, y: 50.5, z: 0 } })], player, NOW)).toHaveLength(1);
     expect(perfectDodgeTargets([mob({ position: { x: PERFECT_RANGE + 0.01, y: 50.5, z: 0 } })], player, NOW), 'out of range counted').toHaveLength(0);
-    expect(perfectDodgeTargets([mob({ position: { x: 1, y: 50.5 + VERTICAL_REACH + 0.1, z: 0 } })], player, NOW), 'a mob far above counted').toHaveLength(0);
+    expect(perfectDodgeTargets([mob({ position: { x: 1, y: 50.5 + PERFECT_RANGE + 0.1, z: 0 } })], player, NOW), 'a mob far above counted').toHaveLength(0);
     // Horizontal is the planar distance, not x alone.
-    expect(perfectDodgeTargets([mob({ position: { x: 2.5, y: 50.5, z: 2.5 } })], player, NOW), 'range read one axis only').toHaveLength(0);
+    // Planar: (4.6, 4.6) is 6.5 m away, but inside the range on either axis alone.
+    expect(perfectDodgeTargets([mob({ position: { x: 4.6, y: 50.5, z: 4.6 } })], player, NOW), 'range read one axis only').toHaveLength(0);
   });
 
   it('never a passive or a dead mob; every qualifying mob, not only the first', () => {
@@ -88,6 +92,10 @@ describe('the stagger and the riposte', () => {
     expect(riposteDamage(20, { staggerUntil: NOW + 500 }, NOW)).toBe(30);
     expect(riposteDamage(20, { staggerUntil: NOW - 1 }, NOW)).toBe(20);
     expect(riposteDamage(20, {}, NOW)).toBe(20);
+  });
+  it('the riposte stays a whole number: x1.5 of an odd hit is rounded, not "37.5" on the health bar (R8.2)', () => {
+    expect(riposteDamage(25, { staggerUntil: NOW + 500 }, NOW)).toBe(38);
+    expect(riposteDamage(27, { staggerUntil: NOW + 500 }, NOW)).toBe(41);
   });
 });
 
@@ -173,7 +181,7 @@ describe('the wiring (weak, structural — the e2e drives these through a real S
   });
   it('damageMob applies the riposte BEFORE the hitstop is sized from the damage', () => {
     const src = sourceTexts().find((x) => x.file === 'systems/CombatSystem.jsx').code;
-    const ri = src.indexOf('damage = riposteDamage(damage, entity, worldNow());');
+    const ri = src.indexOf('if (isPlayerSource(source)) damage = riposteDamage(damage, entity, worldNow());');
     const hs = src.indexOf('triggerHitstop(hitstopForHit(damage');
     expect(ri, 'no riposte in damageMob').toBeGreaterThan(0);
     expect(hs, 'the hitstop line moved — re-anchor this check').toBeGreaterThan(0);
@@ -181,5 +189,41 @@ describe('the wiring (weak, structural — the e2e drives these through a real S
   });
   it('MobModel poses a staggered mob', () => {
     expect(carriersOf(/isStaggered\(entity, wnow\)\) \{\s*[^}]*staggerPose\(wnow\)/)).toEqual(['render/MobModel.jsx']);
+  });
+});
+
+// ---- review #7 (QUEUE R8) --------------------------------------------------------------------------------
+
+describe('a reply computed BEFORE the dodge cannot bring the cancelled windup back (R8.1) — through the real worker', () => {
+  it('the in-flight reply re-writes windupUntil; holdStagger clears it, and a staggered mob is not a target again', () => {
+    const z = {
+      id: 'z8', passive: false, type: 'zombie', position: { x: 1.2, y: 50.5, z: 0 }, isAggro: true, isMoving: false,
+      targetX: 1.2, targetZ: 0, lastAttackTime: 0, windupUntil: 0, damage: 8, moveTimer: 0, speed: 1.2, rotation: 0,
+      health: 60, maxHealth: 60,
+    };
+    const tick = (payload, now) => {
+      posted.length = 0;
+      onmessage({ data: { type: 'TICK', playerPos: [0, 50.5, 0], now, delta: 0.1, mobs: [payload], captureSeed: null } });
+      return posted[posted.length - 1].updates.find((u) => u.id === 'z8');
+    };
+    let now = 30000;
+    for (let i = 0; i < 40 && !(z.windupUntil > now); i++) { now += 100; applyMobUpdate(z, tick(buildMobPayload(z, { speed: 1.2, heightGrid: null }), now)); }
+    expect(z.windupUntil, 'the zombie never wound up — the scenario is empty').toBeGreaterThan(now);
+    const inFlight = buildMobPayload(z, { speed: 1.2, heightGrid: null }); // sent before the press
+    const pressAt = z.windupUntil - 100;
+    expect(applyPerfectDodge([z], player, pressAt)).toHaveLength(1);
+    applyMobUpdate(z, tick(inFlight, pressAt)); // its reply lands after the press
+    expect(z.windupUntil, 'control: the in-flight reply did not restore the windup — the scenario proves nothing').toBeGreaterThan(pressAt);
+    holdStagger(z, pressAt);
+    expect(z.windupUntil, 'the staggered mob kept a live windup (the charge glow, and a target again)').toBe(0);
+    z.windupUntil = pressAt + 50;
+    expect(perfectDodgeTargets([z], player, pressAt), 'an already-staggered mob was perfect-dodged again').toEqual([]);
+  });
+  it('AIWorkerSystem holds the stagger on every reply; MobModel never shows the charge on a staggered mob (weak, structural)', () => {
+    expect(carriersOf(/applyMobUpdate\(entity, update\);\s*holdStagger\(entity, worldNow\(\)\);/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/const charging = !isHit && !isStaggered\(entity, wnow\)/)).toEqual(['render/MobModel.jsx']);
+  });
+  it('the riposte is the PLAYER\'s: an ally, a zone or a hazard hitting a staggered mob gets no x1.5 (R8.5, structural)', () => {
+    expect(carriersOf(/if \(isPlayerSource\(source\)\) damage = riposteDamage\(damage, entity, worldNow\(\)\);/)).toEqual(['systems/CombatSystem.jsx']);
   });
 });

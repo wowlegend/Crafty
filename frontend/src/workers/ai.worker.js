@@ -21,7 +21,7 @@ import { steerGoalCell } from '../game/mobSteering.js';
 import { rollWander } from '../game/mobWander.js';
 import { findLocalPath, clampMove, CLIMBERS, gridOrigin, cellOf, cellCentre } from '../game/localPath.js';
 import { isStaggered } from '../game/perfectDodge.js';
-import { dist3D, withinSense, canReach } from '../game/mobSenses.js';
+import { dist3D, withinSense, canReach, LEAP_RANGE } from '../game/mobSenses.js';
 import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 
@@ -57,7 +57,6 @@ self.onmessage = function(e) {
     // mob loop below. The defaults in that table are these exact numbers, so an undesigned type plays
     // byte-identically to before and only moss_brute / skitterling / duskhound change.
     const ARCHERY_RANGE = 12;
-    const LEAP_RANGE = 6;
     const PACK_ALERT_RADIUS_SQ = 144; // 12 units squared
     
     const updates = [];

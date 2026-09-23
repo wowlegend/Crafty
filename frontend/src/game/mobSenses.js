@@ -30,6 +30,9 @@
 /** How far above or below itself a mob can land a melee blow or a leap, in blocks. Taste call — see above. */
 export const VERTICAL_REACH = 2.5;
 
+/** How far a leaper (the spider) springs, across AND up — the longest wound-up attack (ai.worker.js, perfectDodge). */
+export const LEAP_RANGE = 6;
+
 /** Straight-line distance, all three axes. The honest "how far away is the player" number. */
 export function dist3D(dx, dy, dz) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);

@@ -34,9 +34,10 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // a filter each caller has to remember. Refuse before any side effect fires.
       if (!canPlayerDamage(entity)) return null;
 
-      // THE RIPOSTE (game/perfectDodge.js): a mob a perfect dodge staggered takes 1.5x from every hit, for as
-      // long as the stagger lasts on the world clock. Here, at the one choke point, so every damage path gets it.
-      damage = riposteDamage(damage, entity, worldNow());
+      // THE RIPOSTE (game/perfectDodge.js): a mob a perfect dodge staggered takes 1.5x from the PLAYER's damage —
+      // melee, spells and their burns — for as long as the stagger lasts on the world clock. Not an ally's or a
+      // hazard's: the opening is the player's reward, and an ally's 30 must not become a 45 "crit" (R8.5).
+      if (isPlayerSource(source)) damage = riposteDamage(damage, entity, worldNow());
 
       // Phase 9 / S1-D-M1: Visceral Hitstop (micro-freeze for game feel).
       // Was a MAIN-THREAD BUSY-WAIT (a spin loop on the wall clock) that froze

@@ -187,7 +187,7 @@ const MobModel = React.memo(({ entity }) => {
     // 3. Handle hit flash visually
     const isHit = entity.lastHit && (performance.now() - entity.lastHit < 300);
     // M2 #4: telegraph charge glow -- ramps the body emissive up toward the strike (not while hit-flashing).
-    const charging = !isHit && entity.windupUntil && wnow < entity.windupUntil;
+    const charging = !isHit && !isStaggered(entity, wnow) && entity.windupUntil && wnow < entity.windupUntil;
     const chargeI = charging
       ? (0.6 + 0.4 * Math.sin(wnow * 0.025)) * windupRamp(wnow, entity.windupUntil, WINDUP_MS) ** 2 * 1.5
       : 0;
