@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { worldTimeScale, stackHitstop, HITSTOP_BURST_CAP_MS } from '../../src/game/hitstop.js';
+import { worldTimeScale, stackHitstop, hitstopForHit, HITSTOP_BURST_CAP_MS } from '../../src/game/hitstop.js';
+import { HITSTOP } from '../../src/game/trauma.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { carriersOf } from './_srcWalk.js';
 
@@ -87,7 +88,7 @@ describe('the store is the ONE writer, and it caps', () => {
 
   it('the world consumers read the scale (weak, structural)', () => {
     expect(carriersOf(/worldTimeScale\(/).sort()).toEqual(
-      ['Components.jsx', 'game/hitstop.js', 'render/MobModel.jsx', 'systems/AIWorkerSystem.jsx'].sort(),
+      ['Components.jsx', 'game/hitstop.js', 'render/BossEntity.jsx', 'render/MobModel.jsx', 'systems/AIWorkerSystem.jsx'].sort(),
     );
   });
 
@@ -100,3 +101,28 @@ describe('the store is the ONE writer, and it caps', () => {
     expect(carriersOf(/const t = Math\.min\(1, delta \* 10 \* ws\);/)).toEqual(['render/MobModel.jsx']);
   });
 });
+
+// Review follow-up 2026-09-22: a hit on the BOSS — the biggest enemy in the game — froze nothing at all. The
+// boss is not in the ECS, so melee and spells reach it through damageBoss and never touched damageMob's
+// hitstop. The weight rule is now ONE function, read by the mob path and both boss paths.
+describe('every hit the player lands has weight — the boss too', () => {
+  it('hitstopForHit tiers by the damage dealt and scales by the juice dial', () => {
+    expect(hitstopForHit(45)).toBe(HITSTOP.crit);
+    expect(hitstopForHit(40)).toBe(HITSTOP.crit);
+    expect(hitstopForHit(35)).toBe(HITSTOP.heavy);
+    expect(hitstopForHit(29)).toBe(HITSTOP.light);
+    expect(hitstopForHit(45, 0.5)).toBe(HITSTOP.crit * 0.5);
+    expect(hitstopForHit(45, 0)).toBe(0);
+  });
+
+  it('the mob path and BOTH boss paths use it (weak, structural)', () => {
+    expect(carriersOf(/triggerHitstop\(hitstopForHit\(damage, ji\)\)/)).toEqual(['systems/CombatSystem.jsx']);
+    expect(carriersOf(/store\.damageBoss\(dealt\);\s*store\.triggerHitstop\?\.\(hitstopForHit\(dealt,/)).toEqual(['Components.jsx']);
+    expect(carriersOf(/store\.damageBoss\(projectile\.damage\);\s*store\.triggerHitstop\?\.\(hitstopForHit\(projectile\.damage,/)).toEqual(['EnhancedMagicSystem.jsx']);
+  });
+
+  it('the boss holds still through the freeze like every other mob (weak, structural)', () => {
+    expect(carriersOf(/const delta = rawDelta \* worldTimeScale\(performance\.now\(\), useGameStore\.getState\(\)\.hitstopUntil\);/)).toEqual(['render/BossEntity.jsx']);
+  });
+});
+

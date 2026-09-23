@@ -4,6 +4,7 @@ import { requestZone } from './game/elemancerChannel';
 import { useFrame } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import { useGameStore } from './store/useGameStore';
+import { hitstopForHit } from './game/hitstop.js';
 import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
@@ -416,6 +417,7 @@ export const EnhancedMagicSystem = React.memo(() => {
               if (projectile.position.distanceTo(_bossVec) < 6.0) {
                 if (store.damageBoss) {
                   store.damageBoss(projectile.damage);
+                  store.triggerHitstop?.(hitstopForHit(projectile.damage, store.juiceIntensity ?? 1));
                 }
                 createSpellImpact(projectile.position, projectile.type);
                 if (playSpatialSound) {

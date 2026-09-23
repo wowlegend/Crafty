@@ -25,7 +25,7 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     // predicates, because the two questions came apart: a fireball burn tick is the player's damage
     // (XP, kill credit) but NOT the player's input (hitstop, shake, impact ring). Asserting the literal
     // is what made this gate go red at the fix instead of at a regression.
-    expect(npc).toMatch(/if \(isDirectPlayerHit\(source\)\)\s*\{[\s\S]{0,260}triggerHitstop\(HITSTOP\[/);
+    expect(npc).toMatch(/if \(isDirectPlayerHit\(source\)\)\s*\{[\s\S]{0,260}triggerHitstop\(hitstopForHit\(/);
     expect(npc).toMatch(/isDirectPlayerHit\(source\) && store\.triggerCameraShake/);
     // XP orbs are player-SOURCED (direct hit or burn tick), and the orb count is 0 when totalXP is 0.
     expect(npc).toMatch(/const totalXP = isPlayerSource\(source\) \? \(entity\.xp \|\| 10\) : 0/);

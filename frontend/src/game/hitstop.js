@@ -13,6 +13,19 @@
 //    not weight. The cap bounds STACKING, not one authored beat: the boss entrance's 220 ms held breath is
 //    honoured whole. And a hit only ever moves the end LATER — a light hit inside a long freeze never cuts it.
 
+import { HITSTOP } from './trauma.js';
+
+/**
+ * How long ONE player hit freezes the world: tiered by the damage it dealt (the isCrit >= 40 proxy the
+ * combat code uses), scaled by the juiceIntensity dial. The one rule for every hit the player lands — mobs
+ * (CombatSystem) and the boss (melee in Components, spells in EnhancedMagicSystem), which used to freeze
+ * nothing because it is not in the ECS and never reached damageMob.
+ */
+export function hitstopForHit(damage, juice = 1) {
+  const weight = damage >= 40 ? 'crit' : damage >= 30 ? 'heavy' : 'light';
+  return HITSTOP[weight] * juice;
+}
+
 /** The longest STACKED hits may freeze the world, in ms. The largest combat tier (boss) is 160. */
 export const HITSTOP_BURST_CAP_MS = 180;
 

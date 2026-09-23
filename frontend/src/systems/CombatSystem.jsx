@@ -10,7 +10,7 @@ import { isPlayerSource, isDirectPlayerHit, attributionSource } from '../combat/
 import { sparkFor, hitKnockback, deathBurst } from '../game/mobHitFx';
 import { emitMobKill } from '../game/mobKillBus.js';
 import { DEATH_DISSOLVE_MS } from '../game/deathFx.js';
-import { HITSTOP } from '../game/trauma.js';
+import { hitstopForHit } from '../game/hitstop.js';
 import { nextSpawnId } from './_npcShared';
 
 // CombatSystem -- registers damageMob / captureMob / checkMobCollision / checkMobsInMeleeCone on the
@@ -47,9 +47,8 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       // isDirectPlayerHit, not isPlayerSource: a burn TICK is the player's damage but not the player's
       // input, and clamping their motion four times after the cast is a bug wearing feel's clothes.
       if (isDirectPlayerHit(source)) {
-        const weight = damage >= 40 ? 'crit' : damage >= 30 ? 'heavy' : 'light';
         const ji = useGameStore.getState().juiceIntensity ?? 1;
-        useGameStore.getState().triggerHitstop(HITSTOP[weight] * ji);
+        useGameStore.getState().triggerHitstop(hitstopForHit(damage, ji));
       }
 
       const store = useGameStore.getState();

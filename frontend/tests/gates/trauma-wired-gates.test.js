@@ -45,9 +45,12 @@ describe('M1 trauma core is wired', () => {
   });
 
   it('SimplifiedNPCSystem hitstop is weight-tiered via HITSTOP, not the flat +28', () => {
-    expect(/from '\.\.?\/game\/trauma/.test(sns)).toBe(true); // ./ (host) or ../ (CombatSystem extracted, A1.8)
+    // The tier table reaches the mob path through game/hitstop.js (hitstopForHit imports trauma.HITSTOP).
+    expect(/from '\.\.?\/game\/(trauma|hitstop)/.test(sns)).toBe(true);
     // Routed through the store's one writer (world-hitstop-gates) — the tier table must still be the input.
-    expect(/triggerHitstop\(\s*HITSTOP\[/.test(sns)).toBe(true);
+    // Extracted 2026-09-22 to game/hitstop.hitstopForHit (the boss paths share it); its tiers are pinned in
+    // world-hitstop-gates. Here: the mob path still goes through the tiered rule, not a constant.
+    expect(/triggerHitstop\(hitstopForHit\(damage, ji\)\)/.test(sns)).toBe(true);
     expect(/triggerHitstop\(\s*28\b/.test(sns)).toBe(false);
     expect(sns.includes('juiceIntensity')).toBe(true); // dial scales the freeze too
   });

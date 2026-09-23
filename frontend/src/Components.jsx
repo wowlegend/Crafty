@@ -4,7 +4,7 @@ import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
 import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
-import { worldTimeScale } from './game/hitstop.js';
+import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
 import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
@@ -275,6 +275,7 @@ export const Player = ({ isWorldBuilt }) => {
           const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
           if (isPointInCone(playerPos, lookDir, bossPoint, range, angleRad) && store.damageBoss) {
             store.damageBoss(dealt);
+            store.triggerHitstop?.(hitstopForHit(dealt, store.juiceIntensity ?? 1)); // the boss's hits land too
             // Mirror the melee mob-hit feedback at the player layer: a spatial 'hit'
             // sound at the boss (damageBoss plays no SFX of its own, unlike the spell
             // path) plus the same visceral crit camera-shake the mob path triggers.
