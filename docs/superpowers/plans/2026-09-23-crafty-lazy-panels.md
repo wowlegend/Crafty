@@ -56,14 +56,18 @@ finding in `docs/superpowers/sota-2026-09/OVERNIGHT.md` (the `index` chunk at 74
 
 - [x] Step 1: failing unit test — `loadPanels()` called twice returns one promise; a rejected import is retried on
   the next call (Review Focus 4).
-- [x] Step 2: implement; run the capture for `inventory-open` and compare against the baseline (0 changed pixels).
+- [ ] Step 2: implement; run the capture for `inventory-open` and compare against the baseline (0 changed pixels).
+  NOT DONE as written: implemented, and `openModal('inventory')` was SCREENSHOT-checked (the full panel renders from
+  the chunk) — no capture diff against a baseline was run (the baseline is Chromium 147; a same-renderer A/B is owed).
 
 ### Task 3: e2e and review
 
-- [x] Run the panel specs (`equip-roundtrip`, `panel-overflow`, `hud-layout`) locally; a new e2e case opens the
-  inventory in the first frames after start (Review Focus 1).
-- [x] Mutation: the prefetch removed -> the first-open case still passes (Suspense) but the timing case shows a
+- [x] Run the panel specs locally (`panel-overflow`, `hud-layout`, `touch-controls`, `smoke` — `equip-roundtrip` opens
+  no panel). The new first-frames e2e case (Review Focus 1) was NOT added.
+- [ ] Mutation: the prefetch removed -> the first-open case still passes (Suspense) but the timing case shows a
   fallback frame; the barrel split into two imports -> the gate's one-chunk assertion reds.
+  NOT DONE as written (no timing case exists). Run instead, all RED: B1 a panel statically imported again, B2 a
+  marker no chunk carries (bundle-budget, after a build); Z1-Z3 on lazy-panels-gates.
 - [ ] `/code-review high` over the range (with the next stretch).
 
 **Done (the commit after `aed92d0f`).** `index` 741.5 -> 674.2 KB (-67 KB); `panelBundle` 71.8 KB (16.4 KB gzipped),
