@@ -91,6 +91,24 @@ export function floorUnderPoint(getFloor, getTop, x, z, y) {
   return floor === Infinity && getTop ? getTop(x, z) : floor;
 }
 
+/** How deep the solid under a column's top must run for it to be GROUND a mob may spawn on, not an overhang. */
+export const SPAWN_SOLID_DEPTH = 4;
+
+/**
+ * Where a mob may SPAWN in a column: its top, only when the top is ground — solid SPAWN_SOLID_DEPTH down (QUEUE
+ * R7.9b). A tree canopy, a roof or a bridge is not: spawning ON one looks broken, and spawning UNDER a roof puts a
+ * mob inside the player's sealed base, which is what building walls exists to prevent. null = spawn elsewhere.
+ * The test is one point query SPAWN_SOLID_DEPTH below the top: inside solid it answers the top itself; in an air gap
+ * under an overhang it answers that gap's floor. (A canopy thicker than the depth reads as ground.)
+ */
+export function spawnGroundAt(getFloor, getTop, x, z) {
+  const top = getTop ? getTop(x, z) : null;
+  if (top === null || !Number.isFinite(top)) return null;
+  if (!getFloor) return top;
+  const under = floorUnderPoint(getFloor, getTop, x, z, top - SPAWN_SOLID_DEPTH);
+  return under !== null && Math.abs(under - top) < 0.01 ? top : null;
+}
+
 /**
  * The ground a mover snaps to: its floor; for a climber facing a wall, the column top (a spider goes up it).
  * Falls back to the top-down probe when no floor probe is registered.

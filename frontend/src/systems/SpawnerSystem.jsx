@@ -12,6 +12,7 @@ import { zoneTier } from '../world/zoneTier.js';
 import { weightedPick } from '../game/spawnWeights';
 import { MOB_TYPES } from '../game/mobTypes';
 import { runSpawnPlacement } from './spawnPlacement.js';
+import { spawnGroundAt } from '../game/mobFloor.js';
 
 // SpawnerSystem -- siege/day mob spawning + the one-time static hub-NPC spawn + distance-cull.
 // Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.3); behavior unchanged.
@@ -27,7 +28,8 @@ export const SpawnerSystem = () => {
     let y = explicitY;
     if (y === null) {
       if (!store.getMobGroundLevel) return false;
-      y = store.getMobGroundLevel(x, z);
+      // Ground only — never on or under a canopy, a roof or a bridge (R7.9b; game/mobFloor.js).
+      y = spawnGroundAt(store.getMobFloor, store.getMobGroundLevel, x, z);
       if (y === null || isNaN(y)) {
         return false;
       }
