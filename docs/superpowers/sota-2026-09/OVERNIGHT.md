@@ -7,6 +7,9 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
+| `84f9efe2` `c0785955` `fafc562a` `07661878` | **Review #3 fixes** (`/code-review high` over `0398b7b7..33c75345`, 10 findings, all verified then fixed): the dragon kept ATTACKING through a hitstop that froze its flight; physics debris were wrongly counted as frozen; hub NPCs walked at a per-frame pace through every freeze; one freeze answer per frame now; the far field's hole-punch lagged what was drawn (and could not see a far chunk after a teleport); VICTORY could be stranded by a failing kill step; a corrupt kill night saved as night 0; dead Gerstner code deleted; the GPU-ocean plan doc written, labelled retrospective | local green (unit + e2e running); pushing |
+| `232f0581` | **Mobs no longer walk up walls.** The AI moved mobs with no height check and the ground snap lifted them onto any wall they reached, so a wall you built stopped nothing. Now they route around, slide along, or wait at it; spiders still climb. Reproduced through the real worker first (a zombie walked up a 3-high wall onto the player) | local green; pushing |
+| `de175e6e` | The far horizon takes the boss-fight grade and the cloud shadows (one shared grade — measured: in the boss sky the fog swallows the far ring, so the visible effect there is ~nil); far swamps wear their trees; a re-centre refills one set of buffers | local green; pushing |
 | `bb9f170c` | **The hitstop freeze reaches EVERY world system.** It used to reach only the mobs, the AI clock and the boss (each edited to opt in); allies kept swinging, spells and enemy bolts kept flying (a bolt could land on you inside your own hit's freeze), debris, orbs and loot drifted, zones ticked. Now one function decides, and a census fails any frame loop that reads its raw delta — 15 loops: 12 freeze, 3 run on real time on purpose (your controller, the sky, the weather). Proven in the running game: a kill's XP orbs hang through the freeze, then move | local green incl. both e2e cases; pushing |
 | `674a54eb` | A returning dragon's entrance names its tier; a corrupted save's kill night no longer wakes it at once | local green; pushing |
 | `1c0dde0b` | **The far horizon steps aside for real terrain.** Review #2 found its fixed 2 m sink wrong three ways (far water floating over a loaded seabed, canopy poking through chunks, triangles over gullies). Now it discards itself over every chunk on screen and sits at the true surface: distant ridges stand at their real height behind the tree line. Capture A/B opened: UI 0.000%, only the horizon band moved, no holes | local green; pushing |
@@ -40,10 +43,15 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- R3.7 (the far field takes the danger grade and cloud shadows), R3.8 (swamp trees grow on dirt), R3.10
-  (far-field rebuild perf) — one capture A/B for the three.
+- The two e2e specs whose seams moved in review #3's fixes (world hitstop, world rebuild after load) are
+  running locally; push after they pass and CI on `33c75345` completes.
 
 ## Corrections to things I told you
+
+- **The GPU-ocean change (`9860eaa9`) was built without its plan doc** — the one shortcut CLAUDE.md forbids.
+  Review #3 caught it; the doc now exists, labelled retrospective rather than presented as having come first.
+- **EXTERNAL-BASELINE's "mobs stick on walls > 4 blocks" was wrong in the other direction**: they did not
+  stick, they walked UP them (fixed, `232f0581`).
 
 - `EXTERNAL-BASELINE.md` said Crafty has "no dodge, parry or i-frames". **False** — a dodge with a 0.2 s
   i-frame window exists and gates damage. I had re-verified four of the report's claims and not that one;

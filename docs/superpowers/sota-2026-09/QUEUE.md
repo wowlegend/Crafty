@@ -702,3 +702,35 @@ states into a table of `{ name, setup, shoot }` with each setup self-contained (
 known state), then `--only=` filters the table and writes to `tests/visual/subset/` with `complete:false`
 semantics so a partial run can never satisfy `diff.test.js`. Mutation-prove that a subset run is refused by
 the diff gate.
+
+## P1 — mobs walk up walls: the AI has no horizontal collision (found 2026-09-23 while scoping pathfinding) — ✅ FIXED `232f0581`
+
+EXTERNAL-BASELINE's "Pathfinding 9×9 — mobs stick on features > 4 blocks" understates it. Read in source:
+the worker's Step 4 (`workers/ai.worker.js`) moves `x, z` straight at the steer target with no height check,
+and the main thread then snaps `y` to the TOP surface — the mob ground probe casts DOWN from y = 255
+(`world/Terrain.jsx`, `getMobGroundLevel`), and `AIWorkerSystem` applies it every update. So whenever A*
+returns no path (the goal cell unreachable inside the 9×9 grid — e.g. the player behind a wall or inside a
+built enclosure), the mob walks straight at the player and rises onto the wall top. Building as defense —
+the outpost-walls quest — does not stop anything that is not already pathing around. Shape of the fix:
+(1) Step 4 refuses a move into a cell whose ground is more than the A* step limit (1.25) above the mob's,
+sliding along the free axis instead; (2) an unreachable goal returns the best partial path (the reached cell
+nearest the goal) rather than nothing, so a blocked mob goes AROUND; (3) spiders may climb (they do in the
+genre — decide and state it). Gate through the REAL worker across ticks (mob-charge-loop-gates' grid
+harness): a walled goal must never raise the mob above the wall's base, and a wall with a gap must be routed
+through the gap. Blind spots to name: wandering mobs carry no height grid; the y = 255 probe also lifts a mob
+out of a cave onto its roof.
+
+## R4 — review #3 (`/code-review high 0398b7b7..33c75345`, 2026-09-23), each to be VERIFIED before fixing
+
+| # | Where | Finding | Disposition |
+|---|---|---|---|
+| R4.1 | `render/BossEntity.jsx` | the boss's bite, roar knockback, fireball, lava and summon timers run on `performance.now()`, so it keeps ATTACKING through a hitstop that freezes its movement | ✅ FIXED `84f9efe2` — a frozen frame returns before the attack timers (isWorldFrozen); structural slice gate (no R3F test renderer) |
+| R4.2 | `world/BlockParticleSystem.jsx` | debris are Rapier bodies and physics is never paused: `worldDelta` only freezes their lifetime counter, so the "hangs in the air" comment is false and a freeze lengthens their life | ✅ FIXED `84f9efe2` — VERIFIED; debris lifetime on real time like their physics. **Follow-up R4.2b: pause the Rapier step through a freeze** (moves the player's body too — design first) |
+| R4.3 | `world/FarField.jsx` + `loadedChunks.js` | the mask lags what is drawn: registration in a passive `useEffect` (after paint), `clearLoadedChunks()` before the unmount commits, and ±16 chunks cannot cover a 420 m ring after a teleport | ✅ FIXED `c0785955` — layout-effect registration, no early clear (clearLoadedChunks deleted), 64-texel mask covering FAR_OUTER |
+| R4.4 | `game/bossPersistence.js` | `serializeBossState` writes a junk `bossKillNight` as 0, a VALID night, so hydrate's "junk counts from tonight" never sees junk from live state | ✅ FIXED `fafc562a` — serializes junk as tonight, proven through buildSaveData → loadWorldData |
+| R4.5 | `HUD.jsx` | VICTORY now needs the isolated 'tier' kill effect to succeed (`bossTier === 1`); a throwing tier step strands the win's own UI | ✅ FIXED `fafc562a` — showsVictory: tier ≤ 1; driven through the real hook with the tier write throwing |
+| R4.6 | `systems/AIWorkerSystem.jsx` | the hub-NPC routine lerps a fixed 0.04 per FRAME (frame-rate dependent) and keeps walking through a freeze; the census cannot see a callback with no delta | ✅ FIXED `84f9efe2` — npcFollowT per-second rate (= old 0.04 at 60 fps) on the world delta; census now counts it |
+| R4.7 | `world/oceanProfile.js`, `render/Ocean.jsx` | `gerstnerDisplaceInto`/`gerstnerNormalInto` are dead in production (test-only) and their docs describe the removed CPU loop; Ocean.jsx comments stale | ✅ FIXED `07661878` — Into variants + their test deleted, gerstnerHeight (0 runtime callers) deleted, comments corrected |
+| R4.8 | process | the GPU-ocean milestone (`9860eaa9`) had no plan doc | ✅ `07661878` — plan doc written, labelled RETROSPECTIVE |
+| R4.9 | `world/FarField.jsx` | the mask centre uses a literal `/ 16` while loadedChunks.js owns CHUNK | ✅ FIXED `c0785955` — chunkOf() is the one definition |
+| R4.10 | `game/worldClock.js` | `worldDelta` re-reads the clock and the store per call (~70×/frame with 60 mobs), and consumers in one frame can straddle the freeze boundary | ✅ FIXED `84f9efe2` — WorldClockTicker computes the scale once per frame at priority -9999 |

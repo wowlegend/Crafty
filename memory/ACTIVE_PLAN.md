@@ -5,7 +5,24 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-22 night, session 3 (overnight goal). STATE AT THE LAST FLUSH (~23:30 PDT):
+### RESUME HERE — 2026-09-23 early, session 3 continued (overnight goal).
+
+- **Order of reading:** this block → CI on main by its CONCLUSION → `docs/superpowers/sota-2026-09/QUEUE.md`
+  (sections R3, R4, P1 are this stretch) → OVERNIGHT.md (Kevin's morning read, keep current).
+- **Since the last block:** R3.4–R3.11 closed (`1c0dde0b` hole-punched far field, `674a54eb` boss tidy,
+  `de175e6e` far-field grade/cloud shadows/swamp canopy/alloc-free rebuild); R2.6 world freeze everywhere
+  (`bb9f170c`); P1 mobs no longer walk up walls (`232f0581`, found while scoping the baseline's pathfinding
+  row); `/code-review high` #3 over `0398b7b7..33c75345` → QUEUE R4, all ten verified + fixed (`84f9efe2`,
+  `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
+  `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
+- **NEXT:** `/code-review high` over `33c75345..HEAD` (P1, far field R3.7/8/10, review-#3 fixes); then R4.2b
+  (pause the Rapier step through a freeze — design first, it moves the player's body), R2.7 (paused world
+  clock for absolute-time VFX, both sides of the worker), G2, I1, I2; then the next EXTERNAL-BASELINE gap
+  (CSM shadows are Kevin-gated via the three bump; parry is the open PLAY verb — brainstorm + spec first).
+- **Worktree** `.claude/worktrees/mip-ab` is capture scratch (reset it to HEAD before each A/B; frames land in
+  the scratchpad capA..capJ, which dies with the session — commit messages carry the verdicts).
+
+### (older) RESUME — 2026-09-22 night, session 3. STATE AT THE FLUSH (~23:30 PDT):
 
 - **Kevin's overnight goal** orders: R1 → EXTERNAL-BASELINE → G1/C3/OPEN-ITEMS; keep
   `docs/superpowers/sota-2026-09/OVERNIGHT.md` current (his morning read).
