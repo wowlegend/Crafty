@@ -5,7 +5,23 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-23 early, session 3 continued (overnight goal).
+### RESUME HERE — 2026-09-23, session 3 after the second compaction (overnight goal).
+
+- **Local, unpushed:** `aed92d0f` (R7.4-R7.8) · `e9f4038f` (lazy panels) · `bdc62737` · `42b3777f` · `34ab5ff5` (heavy
+  melee, plan `docs/superpowers/plans/2026-09-23-crafty-heavy-melee.md`, Task 5 review owed) · `152e98ab` (perfect-dodge
+  e2e: planted windup on a frozen clock, test hook `plantWindup`) · `359309c6` (e2e-freshness: a shard `cancelled` at
+  its timeout is RED) · plus the OVERNIGHT/ACTIVE_PLAN docs commit.
+- **CI on `37d030a8` = RED** (run 35830093253: perfect-dodge failed x3 on shard 2, then the shard hit its 25-min limit
+  and concluded `cancelled`). The push therefore needs a local green e2e receipt: full run was launched; on green run
+  `node scripts/ci/e2e-freshness.mjs --record` from `frontend/`, commit the receipt, push, watch CI.
+- **`/code-review high` over `37d030a8..HEAD`** was launched as a forked background skill — verify each finding, fix
+  with a red-first gate, QUEUE row R9.
+- **Then:** EXTERNAL-BASELINE-R2 #3 ore glow, #2 leaves, #4 lightning, #5 lantern + block light (a plan doc each).
+- **Lesson carried:** Chromium's CPU throttle does NOT lower the frame rate here (GPU-bound SwiftShader); this
+  machine's own ~5 fps under load is what reproduces CI timing. A press into a sub-frame window must be PLANTED on a
+  frozen clock, never caught live.
+
+### (older) RESUME HERE — 2026-09-23 early, session 3 continued (overnight goal).
 
 - **Order of reading:** this block → CI on main by its CONCLUSION → `docs/superpowers/sota-2026-09/QUEUE.md`
   (sections R3, R4, P1 are this stretch) → OVERNIGHT.md (Kevin's morning read, keep current).

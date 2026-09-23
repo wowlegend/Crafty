@@ -7,7 +7,11 @@ commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no s
 
 | Commit | What | CI |
 |---|---|---|
-| `a8c35ad2` `9c6dc852` | **The perfect dodge is live — the parry the baseline found missing, on your Shift.** Dodge in the last moments of a foe's lunge (the 380 ms coil-and-glow you can already read): its strike never lands, it staggers for 1.4 s — reeling back, swaying — and every hit on it deals 1.5x. The dodge is refunded so they chain; it lands with a heavy hitstop, ice-white sparks, a new bright "ting" and a PERFECT! banner (en/zh-CN). Proven through a real Shift press in the running game, with the control: the same press made early is an ordinary dodge and that strike DOES land. **See `evidence/perfect-dodge-windup.png` → `perfect-dodge-stagger.png`** (the glow drops, it reels). Not yet seen with my own eyes: the banner and the sparks (out of frame in that shot) | run in progress (pushed `9c6dc852`) |
+| `34ab5ff5` | **Heavy melee — hold the attack to charge it.** Keep LMB (or T) held after the swing and the hand pulls back; release once charged (0.7 s) for a heavy that hits 2x, staggers the mob so the 1.5x riposte follows, and shoves it 2.5x as far. The tap is unchanged and never delayed. Charging slows your walk; a dodge, a hit taken or death drops the charge; a tick plays when it is ready. Proven through a REAL mouse hold in the running game against a half-charged hold that must do nothing: tap 20, half release 0, heavy 40 + stagger. Not yet seen with my own eyes: the hand pull-back, and the ready tick heard | not pushed yet — see *In flight* |
+| `152e98ab` | **CI was red again on `37d030a8`** — the perfect-dodge e2e, again the spec: on CI a natural 380 ms windup is shorter than a frame, and the zombie walked onto the player between tries. The spec now freezes the world at the spawn and plants the windup state through a test hook, so the press is timed exactly at any frame rate; the dodge, the worker and the riposte stay real | not pushed yet |
+| `359309c6` | The push gate failed OPEN onto that red base: GitHub reports a shard that hit its time limit as `cancelled`, which the gate read as "unknown". Now a cancel that ran the whole limit (read from ci.yml) is red. It immediately refused my own push, correctly — hence the full local run | not pushed yet |
+| `aed92d0f` `e9f4038f` | R7.4–R7.8 (knockback a distance not a frame-length; one wall-walk with a slide; a brute charging into a wall is winded; a wanderer turns away) and the **lazy panels** (index 741.5 → 674.2 KB; the panels load on idle) | not pushed yet |
+| `a8c35ad2` `9c6dc852` | **The perfect dodge is live — the parry the baseline found missing, on your Shift.** Dodge in the last moments of a foe's lunge (the 380 ms coil-and-glow you can already read): its strike never lands, it staggers for 1.4 s — reeling back, swaying — and every hit on it deals 1.5x. The dodge is refunded so they chain; it lands with a heavy hitstop, ice-white sparks, a new bright "ting" and a PERFECT! banner (en/zh-CN). Proven through a real Shift press in the running game, with the control: the same press made early is an ordinary dodge and that strike DOES land. **See `evidence/perfect-dodge-windup.png` → `perfect-dodge-stagger.png`** (the glow drops, it reels). Not yet seen with my own eyes: the banner and the sparks (out of frame in that shot) | ❌ 35822535594 (the spec) → ❌ 35830093253 on `37d030a8` (the spec again; its shard then hit the time limit) → fix `152e98ab`, not pushed yet |
 | `a01b1982` | **Spells cast under a tree or a roof fly; loot dropped under a canopy lands on the ground.** Same root as the mob fix below: a spell burst 2 m from you under any canopy, and drops snapped up onto the leaves. Proving it in the game found a second bug the frame rate had hidden: a spell's collision was checked once per frame, so on a slow frame a fireball crossed 8 m unchecked — straight through a thin wall. Now checked every half metre | ✅ run for `a01b1982` |
 | `8db8016a` `fa065432` | **Mobs walk under trees and roofs.** The mob ground probe read the TOP of each column, so under a tree canopy or a roof the "ground" was the canopy: since the wall fix (`232f0581`) a mob refused to walk under any tree, and a roof you built over a mob lifted it onto the roof (review #6 caught both). Mobs now stand on the floor of the air gap their feet are in. Proven twice: a Rapier world built from the real mesher's output with the real AI worker chasing under a roof and a canopy, and in the RUNNING game — a roof placed with the build verb over a spawned zombie (with the old snap it stood on the roof in 6 of 6 samples; now 0) | ✅ run 35819618808 (`fa065432`) |
 | `06d3f190` | Perfect dodge, the core: the timing window, the stagger the AI honours, a strike already in flight dropped | ✅ run 35819618808 (`fa065432`) |
@@ -53,31 +57,20 @@ ones republished to their same URLs: sota-audit v11, era-review v21.
 
 ## In flight
 
-- **CI went RED on `9c6dc852`** (run 35822535594): the perfect-dodge e2e, flaky three different ways, all in the SPEC
-  (the game was right). Fixed in `962b69bd` — the main cause: the game's world clock is computed once per frame, so a
-  reading taken between frames is up to a frame old, and at a loaded runner's frame rate that is longer than the whole
-  220 ms window the spec was aiming a key press at. The push gate then refused to push onto a red base without a full
-  local e2e run: **42/42 green (43 min)**, receipt recorded; pushing now.
-- **Review #7 → QUEUE R8**, all eleven verified then fixed (`d729e2c0`, `a53aaae1`) except R8.8's leg-IK cost, which is
-  unmeasured.
-- **Parked, tested, not yet in main:** R7.4–R7.8 (a knockback shove is a fixed distance — a spider's leap was 6 m on a
-  slow frame; one wall-walk with a slide; a brute that charges into a wall is winded; a wanderer turns away) and the
-  **lazy panels** (every on-demand panel leaves the boot bundle for one prefetched chunk — the budget room the next
-  features need). WIP `45590d2c`, branch `wip/r7-lazy-panels`, worktree `mip-ab`; next up.
-- **Round two of the external baseline** (`EXTERNAL-BASELINE-R2.md`): round one's top five are done or yours. The new
-  top five, each re-checked in the source: a **hold-to-charge heavy melee** (three genre leaders shipped one this year;
-  spec written), glowing ore texels, leaf translucency + sway, storm lightning, and a **lantern + baked block light**.
-
-- Review #6 (`/code-review high` over `34ead1d3..9063b8c7`) → QUEUE R7. R7.1 (HIGH, a regression of my own
-  R6.4) and R7.9 FIXED; R7.9b (a mob can SPAWN on a canopy) open. R7.2–R7.8 queued (chunk-size literals, one voxel-index helper, knockback scaled by frame
-  time, one wall-walk implementation, per-sub-step ray cost, A* vs mover corner rule, a refused wanderer
-  re-picking the same wall). R7.9 new: spells, XP orbs, loot and spawns still read the column top — a spell cast
-  under a tree may burst on launch; verifying in the game before fixing.
-- **Budget note:** the `index` bundle chunk is at 740.9 of 742.2 KB after the perfect dodge — 1.3 KB of room.
-  The next feature that lands in the main chunk will hit the byte budget; raising that ceiling is a decision
-  about load time I will make only with a measured reason, not to fit a feature.
+- **Pushing `aed92d0f..359309c6` needs a full local e2e run first** (the base is red, and the gate I just fixed now
+  says so): running now, ~45 min at this machine's load. Then push, then CI.
+- **`/code-review high` over `37d030a8..HEAD`** (R7.4–R7.8, lazy panels, heavy melee, the two fixes): running.
+- **Next from the external baseline (round two):** glowing ore texels, leaf translucency + sway, storm lightning, a
+  lantern + baked block light — each with its own plan doc first.
+- **Budget note:** the `index` chunk has ~68 KB of room after the lazy panels (674 of 742 KB).
 
 ## Corrections to things I told you
+
+- **I said `962b69bd` fixed the red perfect-dodge e2e. It did not** — CI went red on it again (`37d030a8`). My fix made
+  the spec read the clock correctly but still waited for a NATURAL windup, which on CI lasts less than a frame. Fixed
+  properly in `152e98ab`. I first credited an 8x CPU throttle with reproducing it locally; a frame count showed the
+  throttle changes nothing on this machine (26 vs 25 frames in 5 s). What reproduced it was this machine's own ~5 fps
+  under load.
 
 - **My wall fix (`232f0581`) stopped mobs walking under trees, and my R6.4 fix lifted a mob onto any roof built
   over it** (review #6). Both came from the ground probe reading the column top; neither was caught by my gates,
@@ -116,8 +109,8 @@ has its own same-renderer A/B so you can judge them one at a time.
 
 ## Next, in order
 
-1. Review #7's findings (QUEUE R8), verified then fixed.
-2. R7.9b, R7.2–R7.8.
-3. See the PERFECT! banner and the sparks in a frame (a probe that frames the zombie from further back).
-4. R4.2b (pause Rapier through a freeze), I3 (mipmap motion probe for your lock decision), G2, I1, I2, then the
-   next EXTERNAL-BASELINE gap.
+1. Full local e2e green → push → CI on `359309c6`.
+2. The review's findings, verified then fixed.
+3. EXTERNAL-BASELINE-R2 #3 glowing ores, #2 leaves, #4 storm lightning, #5 lantern + block light (plan doc each).
+4. Open the heavy-melee pull-back and the PERFECT! banner in a frame.
+5. R4.2b, I3 (mipmap motion probe), G2, I1, I2, R8.8's leg-IK cost.
