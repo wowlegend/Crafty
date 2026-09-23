@@ -278,7 +278,10 @@ self.onmessage = function(e) {
         }
 
         if (isCoverSeeking) {
-          // If seeking cover, steer towards target cover point
+          // If seeking cover, steer towards target cover point. A shoulder charge committed before the brute
+          // broke off is DROPPED: left latched, it resumed toward its old overshoot point once cover-seeking
+          // ended, or went straight into a winded recovery it never earned (review 2026-09-22).
+          chargeAt = 0;
         } else if (type === 'skeleton') {
           // Archery Logic: Maintain tactical range. B4: engagement distance is 3D — an archer forty blocks
           // below you is not "in range", and kiting away from a player it cannot reach is pointless.

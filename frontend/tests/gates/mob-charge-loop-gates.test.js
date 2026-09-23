@@ -26,6 +26,7 @@ import {
  *   M4 ai.worker: the recovery window still swings (drop the winded attack guard)            -> punish-window RED
  *   M5 mobMovement: plausible-wrong — recovery never expires (readyAt never passes)       -> re-engage RED
  *   M6 ai.worker: the charge gets no speed boost (plausible-wrong: a charge at walking pace)  -> charge-speed RED
+ *   C1 ai.worker: the latch kept through a cover-seek break-off                              -> latch-across-branches RED
  *
  * BLIND SPOTS: no heightGrid, so the 9x9 A* steering (Step 3) is not exercised — the brute runs on open
  * ground; and nothing here says whether the charge FEELS dodgeable, which needs a person playing.
@@ -55,11 +56,11 @@ const brute = (over = {}) => ({
 });
 
 /** Run the loop: payload -> aiTick -> merge, `ticks` times at `dt` seconds. */
-function run(entities, { ticks, dt = 0.1, start = 1000, player = () => [0, PY, 0], captureSeed = null, onTick } = {}) {
+function run(entities, { ticks, dt = 0.1, start = 1000, player = () => [0, PY, 0], captureSeed = null, onTick, grid } = {}) {
   let now = start;
   for (let i = 0; i < ticks; i++) {
     const p = player(now);
-    const mobs = entities.map((e) => buildMobPayload(e, { speed: e.speed, heightGrid: undefined }));
+    const mobs = entities.map((e) => buildMobPayload(e, { speed: e.speed, heightGrid: grid }));
     const r = aiTick({ type: 'TICK', playerPos: p, now, delta: dt, mobs, captureSeed });
     for (const u of r.updates) applyMobUpdate(entities.find((e) => e.id === u.id), u);
     onTick?.({ now, r, entities, player: p });
@@ -208,5 +209,27 @@ describe('a seeded wander actually wanders (the wanderRoll round trip)', () => {
       },
     });
     expect(rolls.map((r) => r.roll).slice(0, 3)).toEqual([1, 2, 3]);
+  });
+
+});
+
+describe('the charge latch across other branches', () => {
+  it('a brute that breaks off to seek cover DROPS its latched charge — it does not resume it later', () => {
+    // Review 2026-09-22: the cover-seek branch (health < 25%) never touched the latch, so a charge committed
+    // before the brute fled resumed toward its old overshoot point once cover-seeking ended — or, past that
+    // window, went straight into a winded recovery it never earned. A flat 9x9 grid with a tall wall between
+    // brute and player makes cover reachable (the harness default grid is none, so this branch never ran).
+    const grid = new Array(81).fill(PY);
+    for (let z = 0; z < 9; z++) grid[2 + z * 9] = PY + 5; // a wall two cells toward the player
+    const b = brute({ position: { x: 7, y: PY, z: 0 } });
+    let latched = false;
+    run([b], { ticks: 3, onTick: () => { if (b.chargeAt > 0) latched = true; } });
+    expect(latched, 'the brute never latched a charge — the scenario did not happen').toBe(true);
+
+    b.health = b.maxHealth * 0.2; // below the cover threshold
+    let seeking = false;
+    run([b], { ticks: 1, start: 1400, grid, onTick: () => { seeking = b.isCoverSeeking; } });
+    expect(seeking, 'the brute did not seek cover — the scenario did not happen').toBe(true);
+    expect(b.chargeAt, 'a latched charge survived breaking off to seek cover').toBe(0);
   });
 });
