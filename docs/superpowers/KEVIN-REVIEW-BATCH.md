@@ -1752,3 +1752,35 @@ Not decided here, because the strings are authored content and choosing to bin t
 I did delete its sibling `shouldRetreatAtNight` in the same file without asking: that one restated the
 day/night branch `routinePosition` already owns, had no consumer outside its own test, and was duplicated
 logic rather than an unbuilt feature.
+
+---
+
+## 2026-09-22 (overnight) — Distant-terrain mipmaps: one constant, your taste call [KEVIN]
+
+**The problem.** The block textures have no mip chain, so every face beyond a few blocks samples one
+texel of its 32×32 tile per screen pixel. In a still frame that reads as speckle; in motion it CRAWLS
+(texture aliasing — no post-process AA can remove it). EXTERNAL-BASELINE ranks it #2.
+
+**Why I did not just turn it on.** "No mipmaps" is part of the bold-flat LOCK
+(`tests/world/proceduralTextures.test.js`, 2026-06-15), which records crossing it as your call.
+
+**What is built (commit `6a33a101`).** Mipmapping as an option — NEAREST inside a mip level (texels stay
+crisp up close), LINEAR between levels (Minecraft's choice) — proven by `texture-mipmap-gates` (7 mutants
+RED). The terrain sampler already reads raw `vUv`, which mipmaps need to avoid a grid line around every
+block and which is pixel-identical without them. **The flip is one constant:** `const TERRAIN_MIPMAPS =
+false` in `frontend/src/world/proceduralTextures.js` → `true`, plus updating the lock test's `NO mipmaps`
+assertion.
+
+**Same-renderer A/B (left OFF = today, right ON), 3× zoom:**
+- `sota-2026-09/evidence/mipmaps-ab-hearth-grass.png` — mid-distance grass: speckle → flat colour fields.
+- `sota-2026-09/evidence/mipmaps-ab-explore-far.png` — far treeline: leaf speckle → clean silhouettes.
+- `sota-2026-09/evidence/mipmaps-ab-biome-snow.png`.
+
+Pixels changed (≥3 levels on any channel): hearth 44.7%, biome-snow 30.4%, explore-day 13.7%; every UI
+frame 0.000% (the presence control). No block-edge seams in any opened crop.
+
+**My read, for what it is worth:** the ON frames look MORE bold-flat, not less — distant faces become flat
+colour, which is the style's own vocabulary — and the crawl disappears. The cost is that far faces stop
+showing their tile pattern. A still frame cannot show the crawl; walking with it off and then on will.
+
+**Answer:** ON / OFF. ON is a one-line change plus the lock test; I will do it on your word.

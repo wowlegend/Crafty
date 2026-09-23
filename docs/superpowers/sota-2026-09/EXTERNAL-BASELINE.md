@@ -65,7 +65,7 @@ Everything under "inference or unverified" below is exactly that. Line numbers a
 | Sky / clouds | **Major** | LOOKS — sky is empty | S-M | Low |
 | Volumetric fog | Minor-Major | mood depth; cheap version exists | L (WebGPU) | High |
 | Water | Minor (+ main-thread perf smell) | flat sheen; per-frame CPU loop | M | Low |
-| AA order | Minor | SMAA on pre-tonemap HDR | S | Low |
+| AA order | ~~Minor~~ — **void**: SMAA before tone mapping is the library's recommended order (see Runners-up) | — | — | — |
 | Hitstop scope | **Major**, cheap | PLAY — world keeps moving during the freeze | S | Low |
 | Evasion verb | ~~Major~~ — **exists** (dodge + 0.2 s i-frames); parry absent | PLAY — the windup already has an active answer | — | — |
 | Pathfinding 9×9 | Minor-Major | PLAY — mobs stick on features >4 blocks | M | Med |
@@ -92,7 +92,10 @@ Everything under "inference or unverified" below is exactly that. Line numbers a
    sampler gate, < 0.3 ms at high.
 
 Runners-up: far-horizon heightfield impostor (highest LOOKS ceiling, cost L); Gerstner into the vertex
-shader; SMAA after ToneMapping.
+shader; ~~SMAA after ToneMapping~~ — **dismissed 2026-09-22**: the library's own guidance says the opposite.
+pmndrs/postprocessing's Effect-Merging wiki (via Context7, queried 2026-09-22) lists the recommended order as
+SMAA first, Tone Mapping near the end — which is the order `GameScene.jsx` already has. The "AA order" row in
+the gap table rests on the same claim and is void with it.
 
 ## 5. Future-proofing flags
 
