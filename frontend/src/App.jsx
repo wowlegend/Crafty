@@ -336,6 +336,23 @@ function GameApp({ experienceSystem }) {
       id: e.id, type: e.type, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
       knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
     })));
+    // PLANT a windup on a live mob, due `dueMs` from now on the WORLD clock — for the perfect-dodge E2E, which must
+    // press INTO a windup's last 220 ms. A natural windup is 380 ms; a loaded CI runner draws a frame every few
+    // hundred, so a windup there is visible for one frame or none and a press cannot be timed into it (CI run
+    // 35830093253: "no windup ... fell in the phase in 4 tries"). The spec freezes the world and plants the state the
+    // worker itself would hold mid-windup — aggro, off cooldown, winding up — every field of which rides the payload
+    // back to the worker (game/mobStateSync.js), so the worker strikes when it expires unless something stops it.
+    // Returns the due read back, not the one asked for. DEV-only like the whole bridge.
+    registerTestHook('plantWindup', (id, dueMs) => {
+      const e = mobsQuery.entities.find((m) => m.id === id);
+      if (!e || !(e.health > 0)) return null;
+      const wnow = worldNow(); // not `now`: world-delta-census pins which files carry that line
+      e.isAggro = true;
+      e.lastAttackTime = 0;
+      e.staggerUntil = 0;
+      e.windupUntil = wnow + dueMs;
+      return e.windupUntil - wnow;
+    });
     // The XP orbs a kill scatters (R2.6): the world-hitstop E2E needs a SECOND world consumer, one that was
     // not already opted in, to see the freeze reach the systems the review found still moving. `age` is the
     // orb's own clock — it advances only when XPOrbSystem steps it. Read-only copy.
