@@ -3,11 +3,31 @@
 The first thing to read in the morning. Newest at the top of each section. Every "shipped" row names its
 commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no signal yet, not a pass).
 
+## Your live-site report — M3 Max fans, iPad visuals (2026-09-23)
+
+You said the live site runs the M3 Max's fans flat out and looks broken on iPad. That now leads the work
+(plan `docs/superpowers/plans/2026-09-23-crafty-perf-heat-ipad.md`). Found in source and proven in the running game:
+
+| Commit | What | CI |
+|---|---|---|
+| `78726503` | **The post-processing chain was torn down and rebuilt on every hunger and mana tick** (every second while mana regenerates): the composer re-created its depth textures and render targets each time. Built once now. Counted in the running game over 12 s of idle play: 37 → 3 depth allocations | not pushed yet |
+| `ecf22bc9` | **The sun's shadow map kept the FIRST quality tier's size for life.** When the tier governor stepped an iPad up from `low`, the old 512 map was drawn through a 2048 viewport over a stale frustum — shadows cut, shifted and scaled across the whole world. My prime suspect for "buggy / broken" on iPad; a mechanism verified in three's source and fixed, not yet a symptom seen on an iPad | not pushed yet |
+| `54b6f65c` | **An independent review of the perf work found three more defects in the cap, now fixed:** it dropped a frame on displays a hair off their nominal rate (every 20 s at 60.05 Hz, every 2 s at 60.5 Hz, 25 ms gaps at 120.2 Hz — the ProMotion case); the Show Stats readout (F3) would have read ~120 FPS on your M3 Max while it drew 60; and after a moment of Unlimited the quality governor could never step back up. Proven by simulated displays and a real F3 press in the running game | not pushed yet |
+| `f998e442` | The push receipt can no longer certify a partial test run, or a test server borrowed from another checkout | not pushed yet |
+| `9dc5fac7` | **A 60 fps cap, on by default, with a Settings toggle (Frame Rate: 60 / Unlimited).** Your M3 Max's ProMotion panel ran the whole chain at 120 frames a second — twice the GPU work for a difference hard to see in a voxel game, and invisible to the tier governor (it reads frame rate, not heat). Testing it in the running game found three bugs of my own first versions before it shipped: it drew HALF the frames it should (a 60 Hz display would have run at 30); switching the setting would have frozen your attack timer for as long as you had been playing; and the physics engine quietly kept the uncapped loop running after any UI update, so the cap leaked (found only because a do-nothing control mutation went red) | not pushed yet |
+
+**Not yet done on this report:** the production build measured in Chromium and WebKit (the iOS engine) at an iPad
+viewport, with the frames opened; stopping the game canvas drawing behind the title screen and pause; the per-frame
+hot loops (compass, weather). In that order.
+
 ## Shipped
 
 | Commit | What | CI |
 |---|---|---|
-| `34ab5ff5` | **Heavy melee — hold the attack to charge it.** Keep LMB (or T) held after the swing and the hand pulls back; release once charged (0.7 s) for a heavy that hits 2x, staggers the mob so the 1.5x riposte follows, and shoves it 2.5x as far. The tap is unchanged and never delayed. Charging slows your walk; a dodge, a hit taken or death drops the charge; a tick plays when it is ready. Proven through a REAL mouse hold in the running game against a half-charged hold that must do nothing: tap 20, half release 0, heavy 40 + stagger. Not yet seen with my own eyes: the hand pull-back, and the ready tick heard | not pushed yet — see *In flight* |
+| `cd491d37` | Two e2e fixes found by the full local run: the dodge spec read its latch one frame late under load; the push receipt now records only the tree it actually tested | not pushed yet |
+| `d35351cf` | **CI red on `57c45ae4`** (run 35845534213, shards 2 and 3, then cancelled at the 25-minute limit): frames INSIDE a hitstop are 2 s long on CI's software renderer, so two specs ran out of their freeze. Measured, then sized for it — the same failure reproduced on the tree CI last passed, so those passes were luck | not pushed yet |
+| `b2cd2674` | **Review #8 fixes** (7 of 8 findings; R9.6 queued): a panel whose chunk failed to load (offline, or a tab left open across a deploy) no longer takes the game to the reload screen; a panel already loaded opens without a blank beat; the heavy charge no longer runs in a beast form; T cannot end a charge the mouse holds; a shove after a step down walks under an overhang | not pushed yet |
+| `34ab5ff5` | **Heavy melee — hold the attack to charge it.** Keep LMB (or T) held after the swing and the hand pulls back; release once charged (0.7 s) for a heavy that hits 2x, staggers the mob so the 1.5x riposte follows, and shoves it 2.5x as far. The tap is unchanged and never delayed. Charging slows your walk; a dodge, a hit taken or death drops the charge; a tick plays when it is ready. Proven through a REAL mouse hold in the running game against a half-charged hold that must do nothing: tap 20, half release 0, heavy 40 + stagger. Not yet seen with my own eyes: the hand pull-back, and the ready tick heard | not pushed yet |
 | `152e98ab` | **CI was red again on `37d030a8`** — the perfect-dodge e2e, again the spec: on CI a natural 380 ms windup is shorter than a frame, and the zombie walked onto the player between tries. The spec now freezes the world at the spawn and plants the windup state through a test hook, so the press is timed exactly at any frame rate; the dodge, the worker and the riposte stay real | not pushed yet |
 | `359309c6` | The push gate failed OPEN onto that red base: GitHub reports a shard that hit its time limit as `cancelled`, which the gate read as "unknown". Now a cancel that ran the whole limit (read from ci.yml) is red. It immediately refused my own push, correctly — hence the full local run | not pushed yet |
 | `aed92d0f` `e9f4038f` | R7.4–R7.8 (knockback a distance not a frame-length; one wall-walk with a slide; a brute charging into a wall is winded; a wanderer turns away) and the **lazy panels** (index 741.5 → 674.2 KB; the panels load on idle) | not pushed yet |
@@ -55,14 +75,22 @@ operator pages (era-review, sota-audit, LOOP-PROGRESS) were 74 commits stale, un
 pre-push hole above. All three are refreshed (every new claim adversarially verified) and the two published
 ones republished to their same URLs: sota-audit v11, era-review v21.
 
-## In flight
+## PAUSED 2026-09-26 at your request (token budget to AB)
 
-- **Pushing `aed92d0f..359309c6` needs a full local e2e run first** (the base is red, and the gate I just fixed now
-  says so): running now, ~45 min at this machine's load. Then push, then CI.
-- **`/code-review high` over `37d030a8..HEAD`** (R7.4–R7.8, lazy panels, heavy melee, the two fixes): running.
-- **Next from the external baseline (round two):** glowing ore texels, leaf translucency + sway, storm lightning, a
-  lantern + baked block light — each with its own plan doc first.
-- **Budget note:** the `index` chunk has ~68 KB of room after the lazy panels (674 of 742 KB).
+Nothing is pushed yet: the push needs a green full local e2e run (~1 h at this machine's load), and I stopped the first
+one myself when the review found the frame-cap judder in the code it was certifying. Everything above is committed
+locally. Built and unit-proven but not yet run in the game, in a worktree on branch `wip/perf-t3-features`: the title
+screen no longer draws the hidden world at full rate, the compass stops rebuilding itself every frame, and three looks
+items — ores that glow at night, leaves that sway and glow with the sun behind them, and storm lightning with
+thunder. The exact resume steps are the top block of `memory/ACTIVE_PLAN.md`.
+
+## In flight (as of the pause)
+
+- **Nothing pushed since `57c45ae4`.** Pushing needs a green full local e2e run first (the push gate refuses a red
+  base without one). This machine has sat at a load of 25–220 all day from other work (OrbStack, other sessions), which
+  makes a 45-minute run slow and noisy; it goes the moment load allows. Then push, then CI.
+- **Next from the external baseline (round two), after the perf work:** glowing ore texels, leaf translucency + sway,
+  storm lightning, a lantern + baked block light — each with its own plan doc first.
 
 ## Corrections to things I told you
 
@@ -109,8 +137,10 @@ has its own same-renderer A/B so you can judge them one at a time.
 
 ## Next, in order
 
-1. Full local e2e green → push → CI on `359309c6`.
-2. The review's findings, verified then fixed.
-3. EXTERNAL-BASELINE-R2 #3 glowing ores, #2 leaves, #4 storm lightning, #5 lantern + block light (plan doc each).
-4. Open the heavy-melee pull-back and the PERFECT! banner in a frame.
-5. R4.2b, I3 (mipmap motion probe), G2, I1, I2, R8.8's leg-IK cost.
+1. The frame cap committed; full local e2e green → push → CI.
+2. Perf plan: the production build in Chromium + WebKit at an iPad viewport, frames opened (name what is broken
+   before fixing more); no drawing behind the title and pause; the hot loops.
+3. `/code-review high` over the perf stretch, findings verified then fixed.
+4. EXTERNAL-BASELINE-R2 #3 glowing ores, #2 leaves, #4 storm lightning, #5 lantern + block light (plan doc each).
+5. Open the heavy-melee pull-back and the PERFECT! banner in a frame.
+6. R4.2b, I3 (mipmap motion probe), G2, I1, I2, R8.8's leg-IK cost.

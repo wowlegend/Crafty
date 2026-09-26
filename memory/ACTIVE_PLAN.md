@@ -5,7 +5,63 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
-### RESUME HERE — 2026-09-23 ~06:00 PDT, session 3 (third stretch). READ FIRST.
+### PAUSED — 2026-09-26 ~09:00 PDT by Kevin ("focus token usage on AB works for now"). RESUME FROM HERE.
+
+- **Committed, NOT pushed** (origin/main is 57c45ae4, whose CI run 35845534213 concluded cancelled = RED):
+  b2cd2674 d35351cf cd491d37 4a0e2951 78726503 (P1) ecf22bc9 (P5) 9dc5fac7 (P4 frame cap) 54b6f65c (review #8 on the
+  cap: no dropped frames off-60/120 Hz, Show Stats counts drawn frames, governor bounds under the cap) f998e442
+  (e2e-freshness --run refuses partial runs and a reused server). The push still needs a GREEN full local receipt:
+  stop anything on port 4179, then `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run`
+  (~1 h at this machine's load), commit `frontend/tests/e2e/.last-green.json`, push onto a completed CI run, watch CI.
+  The first receipt attempt was stopped deliberately: the review found the stepCap judder in the tree it certified.
+- **Uncommitted in the MAIN checkout** (commit or finish before the receipt, which hashes the tree):
+  `frontend/src/render/Atmosphere.jsx` (review #11: the shadow reset is a layout effect; no gate can see a one-frame
+  race — say so in its commit); `frontend/tests/e2e/dodge-latch.spec.js` (review #5: press/lose/release read in one
+  evaluate; the reviewer's surviving mutant D1 "Shift keyup clear deleted" is now RED; the identity mutant and a clean
+  baseline run are STILL OWED via `scripts/dev/mutate-e2e.sh`); the WebKit iPad probe of the prod build (an untracked
+  `ipad-probe` script beside the other visual probes, plus its port in `_serve.mjs` — written, never run).
+- **Review #8 findings still open** (static review of 57c45ae4..9dc5fac7, verify each before fixing): #1 MED a failed
+  panel chunk strands a touch player (PanelBoundary renders null with the panel flag still set and every touch surface
+  gated off; fix: close the panel and notify on failure); #6 LOW heavy-melee spec header claims J6 single-gate RED (the
+  commit says only both-gates-removed is RED — reconcile); #7 LOW a second always-on canvas can let a commit leak one
+  frame past the cap (bounded; the worktree's TitleDiorama cap narrows it); #8 LOW gl-churn has no room for a tier
+  step in its window (make a tier change a SETUP failure) and its title overclaims; #12 LOW BloomSpikeDriver keeps a
+  dead BloomEffect after a low<->med tier change (spell bloom spikes stop) — pre-existing.
+- **The worktree `.claude/worktrees/perf-t3`** holds built, unit-gated work on branch `wip/perf-t3-features` (WIP
+  commit, pipeline bypassed, never pushed): title-screen pacing (canvasPace) + TitleDiorama cap; compass writes only
+  on change; emissive ores; leaf sway + translucency; storm lightning. Each still needs its e2e run + a mutate-e2e
+  batch (with an identity mutant), then apply to main by file group and commit from main.
+
+### (superseded) RESUME HERE — 2026-09-26 ~08:15 PDT, session 3 (fourth stretch). READ FIRST.
+
+- **P4 frame cap COMMITTED `9dc5fac7`** (advance() rendering, pending-frame clear, clock-keeping setFrameloop wrapper;
+  e2e + unit + toggle gates, all mutants RED with identity controls). New instrument `frontend/scripts/dev/mutate-e2e.sh`.
+- **In flight:** the full local e2e receipt, `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs
+  --run` (log in the session scratchpad `receipt-run.log`). NO edits to frontend/src or tests/e2e in the MAIN checkout
+  until it ends (the receipt hashes the tree). On green: commit `frontend/tests/e2e/.last-green.json`, push onto a
+  completed CI run, watch CI.
+- **Built in the worktree `.claude/worktrees/perf-t3` (detached at 9dc5fac7, node_modules symlinked; NOT committed there
+  — apply to main as diffs by file group and commit from main so the pipeline runs):**
+  (a) perf Task 3: the canvasPace module (render dir) + gate, store `titleCovering` (one writer: MenuSystem), GameScene uses
+      paceFor, TitleDiorama capped, FrameCap `testHooks` prop + `fps` in readFrameloop, frame-cap.spec title case;
+  (b) perf Task 6: HUD compass writes only on change + `data-testid="compass-track"`, e2e `hud-churn.spec.js`;
+  (c) emissive ores: `world/oreGlow.js`, Terrain splice, gates ore-glow + far-field (O1-O5, S1-S2 RED), e2e ore-glow (pending);
+  (d) leaf sway + translucency: `world/leafFeel.js`, Terrain splice, gate leaf-feel (L1-L5, S3-S5 RED);
+  (e) storm lightning: `game/lightning.js`, `render/LightningDriver.jsx`, `mood.js lightningFlashRef`, Atmosphere flash,
+      `synthVoices.thunder`, world-delta roster +1, gate lightning (N1-N5 RED), e2e lightning (pending).
+  Every e2e above still needs its run + mutate-e2e batch (with an identity mutant) before commit.
+- **Review:** an adversarial-reviewer-kz static review of 57c45ae4..9dc5fac7 is running in the background; the dynamic
+  repro-verifier follows after the receipt. Verify every finding, fix red-first.
+- **Then:** iPad WebKit probe of the prod build (`scripts/visual/ipad-probe.mjs`, registered 4237, uncommitted in main),
+  frames opened; OVERNIGHT.md current.
+
+### (older) RESUME HERE — 2026-09-23 ~06:00 PDT, session 3 (third stretch). READ FIRST.
+
+- **UPDATE ~07:00:** P1 committed `78726503` (depth allocs 37 -> 3). P5 committed `ecf22bc9` (shadow target follows the
+  tier; e2e shadow-tier). P4 frame cap IN THE WORKING TREE, uncommitted (FrameCap.jsx, store, persistence, settings
+  toggle, i18n, GameScene Canvas `frameloop` prop + governor bounds; unit gate green, F1-F4 RED). OPEN: with the
+  'demand' loop really active the frame-cap e2e never finishes booting (startPlayActive 90 s timeout) — diagnose before
+  committing (boot may need frames the demand loop does not request; try capActive only once isSpawnChunkLoaded).
 
 - **UPDATE ~06:25:** P1 APPLIED in the working tree (uncommitted): `frontend/src/GameScene.jsx` (PostFX memo +
   GameScene memo with boss primitives), `frontend/src/App.jsx`; gate `frontend/tests/e2e/gl-churn.spec.js` (depth
