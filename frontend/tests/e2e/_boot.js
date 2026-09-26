@@ -42,6 +42,12 @@ export async function startPlay(page) {
   await page.evaluate(() => window.__craftyTest.call('forcePlay'));
 }
 
+// E2E_WORLD_TIMEOUT (ms) lengthens the world-build wait for a LOCAL run on a machine loaded by other work — measured
+// 2026-09-23 at a load average of 45 (not this repo's processes), the spawn chunk took over 90 s and every spec failed
+// in SETUP before reaching its subject. CI keeps the 90 s default. The wait is a precondition, not a subject: a longer
+// limit only delays a broken-boot report, it never passes one.
+const WORLD_TIMEOUT_MS = Number(process.env.E2E_WORLD_TIMEOUT) > 0 ? Number(process.env.E2E_WORLD_TIMEOUT) : 90000;
+
 /** Enter play AND PROVE the input gate is live. Use this for any spec that drives a real keyboard or
  *  mouse verb — anything gated on `getInput().active`.
  *
@@ -63,15 +69,17 @@ export async function startPlay(page) {
  *  window, and throw NAMING the gate if it never does. `hud-layout`, `panel-overflow` and
  *  `touch-controls` each hand-rolled a copy of this loop and each survived that CI run; the two
  *  specs without it are the two that died. This is the shared instrument they should all call. */
-export async function startPlayActive(page, { worldTimeout = 90000 } = {}) {
+export async function startPlayActive(page, { worldTimeout = WORLD_TIMEOUT_MS } = {}) {
   // STRICT — no `.catch` here, unlike startPlay. A spec that needs the input gate needs the world
   // that arms it, so a world that never builds must fail HERE naming `isSpawnChunkLoaded`, not 15s
   // later inside an assertion about something else.
-  await page.waitForFunction(
-    () => window.useGameStore.getState().isSpawnChunkLoaded === true,
-    null,
-    { timeout: worldTimeout }
-  );
+  // A failure here is a PRECONDITION, not the spec's subject: it says "SETUP:" so a mutation run
+  // (scripts/dev/mutate-e2e.sh) reports COULD NOT CHECK instead of scoring a slow world as a caught mutant.
+  await page
+    .waitForFunction(() => window.useGameStore.getState().isSpawnChunkLoaded === true, null, { timeout: worldTimeout })
+    .catch((e) => {
+      throw new Error(`SETUP: the world never built (isSpawnChunkLoaded) within ${worldTimeout} ms — ${e.message}`);
+    });
 
   // Two consecutive live reads 250ms apart = 250ms of held gate, which outlives the ~100ms refusal.
   // One read cannot distinguish "set" from "about to be cleared" — that is the whole defect.
@@ -88,7 +96,7 @@ export async function startPlayActive(page, { worldTimeout = 90000 } = {}) {
   }
   if (held < 2) {
     throw new Error(
-      'startPlayActive: getInput().active never held after forcePlay. The world-ready pointer-lock ' +
+      'SETUP: startPlayActive: getInput().active never held after forcePlay. The world-ready pointer-lock ' +
         'refusal (App.jsx:130 -> Components.jsx:519) is clearing the gate faster than it can be ' +
         're-asserted, so every input-gated verb in this spec is unreachable.'
     );

@@ -33,9 +33,10 @@ describe('M6 settings-persistence sanitize (clamp + whitelist)', () => {
     expect(sanitizeSettings('nope')).toEqual({});
   });
 
-  it('exposes the 5 dial defaults', () => {
+  it('exposes the 6 dial defaults', () => {
+    // frameCap joined 2026-09-26 (the 60 fps cap, perf plan Task 4).
     expect(Object.keys(SETTINGS_DEFAULTS).sort()).toEqual(
-      ['juiceIntensity', 'lookSensitivity', 'masterMuted', 'musicVolume', 'sfxVolume']
+      ['frameCap', 'juiceIntensity', 'lookSensitivity', 'masterMuted', 'musicVolume', 'sfxVolume']
     );
   });
 });

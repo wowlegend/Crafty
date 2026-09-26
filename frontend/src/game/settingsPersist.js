@@ -11,6 +11,7 @@ export const SETTINGS_DEFAULTS = {
   musicVolume: 1,
   masterMuted: false,
   lookSensitivity: 1,
+  frameCap: 60,
 };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -31,6 +32,8 @@ export function sanitizeSettings(raw) {
   // A sanitizer that inherits from the attacker is the opposite of a sanitizer.
   const has = (k) => Object.prototype.hasOwnProperty.call(raw, k);
   if (has('masterMuted')) out.masterMuted = !!raw.masterMuted;
+  // The frame cap is a CHOICE of two, never a number to clamp: 60 or 0 (unlimited). Anything else is dropped.
+  if (has('frameCap') && (raw.frameCap === 0 || raw.frameCap === 60)) out.frameCap = raw.frameCap;
   for (const k of Object.keys(NUM)) {
     if (has(k)) {
       const n = Number(raw[k]);
@@ -70,12 +73,13 @@ const pick = (state) => ({
   musicVolume: state.musicVolume,
   masterMuted: state.masterMuted,
   lookSensitivity: state.lookSensitivity,
+  frameCap: state.frameCap,
 });
 
 const sameSettings = (a, b) =>
   a.juiceIntensity === b.juiceIntensity && a.sfxVolume === b.sfxVolume &&
   a.musicVolume === b.musicVolume && a.masterMuted === b.masterMuted &&
-  a.lookSensitivity === b.lookSensitivity;
+  a.lookSensitivity === b.lookSensitivity && a.frameCap === b.frameCap;
 
 // Glue (called once at boot): hydrate the store from storage, then persist on any dial change.
 // Capture-guarded at BOTH ends: once at boot (for a harness that is already in capture) and again inside

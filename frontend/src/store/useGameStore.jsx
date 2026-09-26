@@ -331,6 +331,11 @@ export const useGameStore = create((set, get) => ({
     // the current dial back in, is worse: the ON transition destructively wrote 0 into that very field,
     // so an ON/OFF cycle would latch at 0 forever. There was no slot to restore FROM. Now there is.
     juiceIntensityChoice: 1,
+    // FRAME CAP (render/FrameCap.jsx; plan 2026-09-23-crafty-perf-heat-ipad, Task 4). 60 = at most 60 frames a second,
+    // on any display; 0 = unlimited (the display's own rate — 120 on a ProMotion laptop, twice the GPU work). The
+    // default is 60: Kevin measured an M3 Max's fans at full speed on the uncapped loop. Persisted (settingsPersist).
+    frameCap: 60,
+    setFrameCap: (fps) => set({ frameCap: fps === 0 ? 0 : 60 }),
     juiceIntensity: 1,
     setJuiceIntensity: (v) => set(() => {
       const next = Math.max(0, Math.min(1, v));

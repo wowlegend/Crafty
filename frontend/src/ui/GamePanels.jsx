@@ -603,6 +603,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
     const gameState = useGameStore(useShallow(state => ({
         lookSensitivity: state.lookSensitivity, setLookSensitivity: state.setLookSensitivity,
         juiceIntensity: state.juiceIntensity, setJuiceIntensity: state.setJuiceIntensity,
+        frameCap: state.frameCap, setFrameCap: state.setFrameCap,
         sfxVolume: state.sfxVolume, setSfxVolume: state.setSfxVolume,
         musicVolume: state.musicVolume, setMusicVolume: state.setMusicVolume,
         masterMuted: state.masterMuted, setMasterMuted: state.setMasterMuted,
@@ -690,6 +691,22 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             className="min-w-[64px]"
                         >
                             {(gameState.juiceIntensity ?? 1) === 0 ? t('ui.on') : t('ui.off')}
+                        </Button>
+                    </Panel>
+
+                    {/* Frame Rate (perf plan 2026-09-23, Task 4): 60 by default — an uncapped loop on a 120 Hz laptop does
+                        twice the GPU work for little a player sees. Unlimited follows the display. */}
+                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                        <span className="font-bold text-text">{t('panel.frameRate')}</span>
+                        <Button
+                            variant={(gameState.frameCap ?? 60) === 0 ? 'secondary' : 'primary'}
+                            size="sm"
+                            onClick={() => gameState.setFrameCap((gameState.frameCap ?? 60) === 0 ? 60 : 0)}
+                            className="min-w-[96px]"
+                            aria-label={t('a11y.frameRate')}
+                            data-testid="frame-cap-toggle"
+                        >
+                            {(gameState.frameCap ?? 60) === 0 ? t('panel.frameRateUncapped') : t('panel.frameRateCapped')}
                         </Button>
                     </Panel>
 

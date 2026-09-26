@@ -30,6 +30,7 @@ import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
+import { FrameCap } from './render/FrameCap.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -154,6 +155,8 @@ export const GameScene = React.memo(function GameScene({
   // pass. <Atmosphere> writes it edge-triggered (twice per day/night cycle), so this is not a per-frame
   // binding and does not violate Game-Loop-Isolation.
   const sunAboveHorizon = useGameStore((s) => s.sunAboveHorizon);
+  const frameCap = useGameStore((s) => s.frameCap);
+  const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe(); // the harnesses step or time their own frames
   const q = TIERS[qualityTier] || TIERS.low;
   const [sunMesh, setSunMesh] = useState(null);
 
@@ -218,6 +221,10 @@ export const GameScene = React.memo(function GameScene({
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
       <Canvas
         shadows
+        // THE FRAME CAP'S MODE LIVES HERE, not in FrameCap: R3F re-applies this prop on every Canvas render, so a
+        // setFrameloop('demand') from inside was overwritten back to 'always' by the next re-render (the first
+        // version did exactly that — the e2e read 'always' under a 60 cap). FrameCap only paces the renders.
+        frameloop={capActive ? 'demand' : 'always'}
         dpr={isPerfProbe() ? PROBE_DPR : [1, q.dprCap]}
         className="w-full h-full"
         gl={{
@@ -301,6 +308,8 @@ export const GameScene = React.memo(function GameScene({
           // make `high` cheap enough to be safe rather than to tune the monitor, which is why the MSAA and
           // god-ray changes alongside this matter more than this line does.
           <PerformanceMonitor
+            // Under the FRAME CAP drei's `refreshrate` (the highest R3F frame rate it has seen) reads 60, so a capped
+            // 120 Hz laptop gets a 60 Hz display's bounds — the cap needs no case of its own here.
             bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
             factor={0.5}
             onDecline={() => {
@@ -316,6 +325,8 @@ export const GameScene = React.memo(function GameScene({
           />
         )}
         {!isCaptureMode && !isPerfProbe() && <AdaptiveDpr pixelated />}
+        {/* FRAME CAP (render/FrameCap.jsx): paces the 'demand' loop the Canvas prop above switches on. */}
+        <FrameCap fps={frameCap} active={capActive} />
 
         <Atmosphere shadowConfig={shadowConfig} />
 
