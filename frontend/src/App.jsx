@@ -978,7 +978,8 @@ function GameApp({ experienceSystem }) {
       style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0 }}
     >
       {/* gameState / showAchievements / showSpellUpgrades were passed here and DELETED 2026-08-11:
-          GameScene's signature destructures exactly isWorldBuilt, bossSystem and showStats, has no rest
+          GameScene's signature destructures exactly isWorldBuilt, the boss PRIMITIVES and showStats (the
+          bossSystem object itself went 2026-09-23: a new object every render defeated GameScene's memo), has no rest
           element and no spread onto a child, and no identifier in the file reads the other three. Nothing
           broke -- the cost was the implication that the 3D scene reacts to an open panel, which it does
           not, and which is precisely the kind of thing a reader takes on trust from a prop list. */}

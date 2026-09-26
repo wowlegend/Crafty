@@ -14,16 +14,34 @@ import { registerTestHook } from '../devtest/testBridge.js';
 
 /**
  * PURE: one rAF tick of the cap. `last` is the cap's own clock (the time the last rendered frame was DUE, not when it
- * rendered), so the average holds at `fps` on any refresh rate: 120 Hz renders every 2nd tick; 144 Hz alternates 3
- * and 2 (~58 fps), where resetting to the tick time would give every 3rd (48). 1 ms slack keeps a 60 Hz display from
- * skipping on timer jitter; a stall longer than two intervals resynchronises instead of bursting to catch up.
+ * rendered), so the average holds at `fps` on any refresh rate: 120 Hz renders every 2nd tick; 144 Hz renders 5 of
+ * every 12 ticks (60 fps), where resetting to the tick time would give every 3rd (48). 1 ms slack keeps a 60 Hz
+ * display from skipping on timer jitter; a stall longer than two intervals resynchronises instead of bursting.
+ *
+ * The clock never runs AHEAD of the tick: `min(last + interval, t)`. Without that, a display a hair faster than the cap
+ * (60.05 Hz, 60.5 Hz — real panels run there, and a 120 Hz ProMotion panel drifts the same way) let the due-time creep
+ * past the ticks until one fell inside the slack and was skipped: a dropped frame every 20 s at 60.05 Hz, every 2 s
+ * at 60.5 Hz, and 25 ms gaps at 120.2 Hz (review #9, simulated). The cap may then draw a hair over its rate on such
+ * a display — the right side to err on: a dropped frame is visible judder, 60.5 fps is not.
  * @returns {{ render: boolean, last: number }}
  */
 export function stepCap(t, last, fps) {
   if (!(fps > 0)) return { render: true, last: t };
   const interval = 1000 / fps;
   if (t - last < interval - 1) return { render: false, last };
-  return { render: true, last: t - last > 2 * interval ? t : last + interval };
+  return { render: true, last: t - last > 2 * interval ? t : Math.min(last + interval, t) };
+}
+
+/**
+ * PURE: the tier governor's bounds (drei PerformanceMonitor) — [decline below, incline above], in frames a second.
+ * drei's `refreshrate` is the HIGHEST rate it has seen this session and is never reset, so it cannot tell the governor
+ * a cap is on: a player who tried Unlimited on a 120 Hz panel for a moment and came back to 60 kept the [50, 90]
+ * bounds, which a capped 60 can never exceed — after any decline the tier could never climb back (review #4). Under
+ * the cap the loop IS a 60 Hz display, so it gets a 60 Hz display's bounds whatever was seen before.
+ */
+export function governorBounds(refreshrate, frameCap) {
+  if (frameCap > 0) return [40, 55];
+  return refreshrate > 90 ? [50, 90] : [40, 55];
 }
 
 /**

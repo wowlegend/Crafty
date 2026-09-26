@@ -1,7 +1,7 @@
 import React, { Suspense, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
-import { Stats, Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
 import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
@@ -30,7 +30,8 @@ import { PROBE_DPR } from './devtest/perfScenarios';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
-import { FrameCap } from './render/FrameCap.jsx';
+import { FrameCap, governorBounds } from './render/FrameCap.jsx';
+import { FrameStats } from './render/FrameStats.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -308,9 +309,8 @@ export const GameScene = React.memo(function GameScene({
           // make `high` cheap enough to be safe rather than to tune the monitor, which is why the MSAA and
           // god-ray changes alongside this matter more than this line does.
           <PerformanceMonitor
-            // Under the FRAME CAP drei's `refreshrate` (the highest R3F frame rate it has seen) reads 60, so a capped
-            // 120 Hz laptop gets a 60 Hz display's bounds — the cap needs no case of its own here.
-            bounds={(refreshrate) => (refreshrate > 90 ? [50, 90] : [40, 55])}
+            // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
+            bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
             factor={0.5}
             onDecline={() => {
               const cur = useGameStore.getState().qualityTier;
@@ -413,7 +413,7 @@ export const GameScene = React.memo(function GameScene({
           <Preload all />
         </Suspense>
 
-        {showStats && <Stats />}
+        {showStats && <FrameStats />}
       </Canvas>
     </div>
   );

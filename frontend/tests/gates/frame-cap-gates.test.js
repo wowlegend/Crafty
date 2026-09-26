@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Clock } from 'three';
-import { stepCap, switchKeepingClock } from '../../src/render/FrameCap.jsx';
+import { stepCap, switchKeepingClock, governorBounds } from '../../src/render/FrameCap.jsx';
+import { frameReadout } from '../../src/render/FrameStats.jsx';
 import { sanitizeSettings, SETTINGS_DEFAULTS, initSettingsPersistence } from '../../src/game/settingsPersist.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
@@ -21,6 +22,10 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
  *   F6 plausible-wrong: the time read AFTER the switch (it reads R3F's zero) -> "the clock jumped back"
  *   F7 frameCap left out of the saved settings -> "Unlimited did not survive a reload"
  *   F8 plausible-wrong: saved, but the change detector ignores it -> "Unlimited did not survive a reload"
+ *   F9 the clock allowed to run ahead of the tick (review #9: last + interval, unclamped) -> "dropped a frame"
+ *      on the 60.05 / 60.5 Hz displays and "a 25 ms gap" at 120.2 Hz — the mean-rate cases above stayed GREEN
+ *   F10 plausible-wrong: the governor reads drei's refreshrate under the cap -> "stuck on [50, 90]"
+ *   F11 the readout counts frames over two seconds but divides by one -> "the readout says"
  *   and I0, an identity mutant (a comment edit in FrameCap.jsx, same harness and batch), SURVIVED.
  *
  * BLIND SPOT: nothing here renders, and the loop switch here is a stand-in for R3F's. That the cap really draws frames
@@ -73,6 +78,55 @@ describe('the cap holds its rate on every display', () => {
     expect(s.render).toBe(true);
     const next = stepCap(1008, s.last, 60); // the very next 120 Hz tick
     expect(next.render, 'the cap burst a catch-up frame after a stall').toBe(false);
+  });
+});
+
+describe('no dropped frame on a display a hair off its nominal rate (review #9)', () => {
+  // Real panels run at 60.05 or 60.5 Hz, and a 120 Hz ProMotion panel drifts the same way. The mean rate hides a
+  // drop, so this asserts the worst GAP between drawn frames over a minute of simulated display.
+  const worstGap = (hz, seconds = 60) => {
+    let last = -Infinity, prev = null, gap = 0, n = 0;
+    for (let i = 0; i < Math.round(hz * seconds); i++) {
+      const t = i * (1000 / hz);
+      const s = stepCap(t, last, 60);
+      last = s.last;
+      if (s.render) { if (prev !== null) gap = Math.max(gap, t - prev); prev = t; n++; }
+    }
+    return { gap, fps: n / seconds };
+  };
+  for (const hz of [59.94, 60.05, 60.5]) {
+    it(`${hz} Hz: every display frame is drawn`, () => {
+      const r = worstGap(hz);
+      expect(r.gap, `dropped a frame at ${hz} Hz: a ${r.gap.toFixed(1)} ms gap`).toBeLessThan(1.5 * (1000 / hz));
+    });
+  }
+  for (const hz of [119.88, 120.2]) {
+    it(`${hz} Hz: every other display frame, evenly — never a longer gap`, () => {
+      const r = worstGap(hz);
+      expect(r.gap, `a ${r.gap.toFixed(1)} ms gap at ${hz} Hz`).toBeLessThan(2 * (1000 / hz) + 0.5);
+      expect(Math.abs(r.fps - 60), `${r.fps.toFixed(2)} fps at ${hz} Hz`).toBeLessThan(0.5);
+    });
+  }
+});
+
+describe('the tier governor under the cap (review #4)', () => {
+  it('capped, the bounds are a 60 Hz display\'s whatever drei has seen — even after a moment of Unlimited at 124 fps', () => {
+    expect(governorBounds(124, 60), 'stuck on [50, 90]: a capped 60 can never climb past 90').toEqual([40, 55]);
+    expect(governorBounds(60, 60)).toEqual([40, 55]);
+  });
+  it('uncapped, the display decides as before', () => {
+    expect(governorBounds(124, 0)).toEqual([50, 90]);
+    expect(governorBounds(60, 0)).toEqual([40, 55]);
+  });
+});
+
+describe('the Show Stats readout counts frames DRAWN (review #2)', () => {
+  it('reads the frames inside the last second, and the mean time between them', () => {
+    const times = Array.from({ length: 120 }, (_, i) => i * (1000 / 60)); // 2 s of drawn frames at 60
+    const r = frameReadout(times, times[times.length - 1]);
+    expect(r.fps, `the readout says ${r.fps}`).toBe(60);
+    expect(r.ms).toBeCloseTo(16.7, 1);
+    expect(frameReadout([], 1000)).toEqual({ fps: 0, ms: null });
   });
 });
 

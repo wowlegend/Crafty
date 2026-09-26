@@ -32,6 +32,12 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   C2 the Canvas frameloop prop pinned to 'always' (the first version's other real bug: the mode set from inside
 //      FrameCap was overwritten by R3F on the next Canvas render) -> "the loop modes were not demand under the cap"
 //   C4 the setFrameloop wrapper removed -> "the R3F clock jumped back" (R3F zeroes it on every loop switch)
+//   C7 (review #2, 2026-09-26) Show Stats back on drei's <Stats> -> "the Show Stats readout is not on screen"
+//   C8 plausible-wrong: the readout counts display ticks instead of drawn frames -> 'Show Stats read "5 FPS drawn"
+//      under a 1 fps cap'
+// Re-run after the window order changed (Unlimited first) on 2026-09-26: C6 -> "did not bind" (22 of 22 ticks); C1 ->
+// RED at the readout check (nothing drawn, so the readout is never written); identity SURVIVED. C2-C5 were proven on
+// the previous order; their assertions are unchanged.
 //
 // BLIND SPOT: 60-of-120 itself — no display here is faster than the cap; that is stepCap's, over simulated displays.
 const WINDOW_MS = 3000;
@@ -72,14 +78,23 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
     return { loop: b.loop, frames, ticks, fps: frames / ((Date.now() - t0) / 1000), perTick: ticks ? frames / ticks : NaN };
   };
 
-  await page.waitForTimeout(3000); // the resize and the tier change recompile and reallocate: let that stall pass
+  await page.waitForTimeout(5000); // the resize and the tier change recompile and reallocate: let that stall pass
   const first = await state();
   expect(first.cap, `SETUP: the default cap is not 60 — ${JSON.stringify(first)}`).toBe(60);
-  const at60 = await measure();
+  // Unlimited first: the first window after boot still catches the world's warm-up, and the 60-cap reading needs a
+  // settled renderer to mean anything (it starved twice as the first window at a load of 40).
   await setCap(0);
   const free = await measure();
+  await setCap(60);
+  const at60 = await measure();
   await setCap(TEST_CAP);
   const test1 = await measure({ commits: true, ms: WINDOW_MS * 2 });
+  // The Show Stats readout (F3), under the same 1 fps cap: it must report frames DRAWN. drei's stats.js counted R3F
+  // loop iterations, and under the cap the loop runs empty iterations — it read the display rate (review #2).
+  await page.keyboard.press('F3');
+  await page.waitForTimeout(2500);
+  const readout = await page.evaluate(() => document.querySelector('[data-testid="frame-stats"]')?.textContent ?? null);
+  await page.keyboard.press('F3');
   await setCap(60);
   const r = { at60, free, test1 };
   const where = JSON.stringify(r);
@@ -95,6 +110,9 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   expect(test1.ticks, `SETUP: the page ticked only ${test1.ticks} times in ${WINDOW_MS * 2} ms — the main thread is starved, nothing about the cap is measurable: ${where}`).toBeGreaterThanOrEqual(12);
   expect(test1.perTick, `the ${TEST_CAP} fps cap did not bind — it drew on ${test1.frames} of ${test1.ticks} display ticks: ${where}`).toBeLessThan(0.5);
   expect(test1.fps, `the ${TEST_CAP} fps cap leaked — ${test1.fps.toFixed(2)} fps drawn while the canvas was invalidated from outside: ${where}`).toBeLessThan(TEST_CAP * 1.5);
+  expect(readout, `the Show Stats readout is not on screen after F3: ${where}`).not.toBeNull();
+  const shownFps = Number((readout.match(/^(\d+) FPS/) || [])[1]);
+  expect(shownFps, `Show Stats read "${readout}" under a ${TEST_CAP} fps cap — it counts something other than frames drawn: ${where}`).toBeLessThanOrEqual(TEST_CAP + 1);
   expect(test1.fps, `the ${TEST_CAP} fps cap starved the loop — ${test1.fps.toFixed(2)} fps: ${where}`).toBeGreaterThan(TEST_CAP * 0.4);
   // Below the 60 cap the renderer is the limit, so every tick must draw: the halved-rate bug drew on every other one.
   expect(at60.perTick, `under the 60 cap the loop drew on ${at60.frames} of ${at60.ticks} display ticks — a slow renderer's every tick should draw: ${where}`).toBeGreaterThan(0.75);

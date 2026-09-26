@@ -89,12 +89,17 @@ behind the title would take one huge step on resume. So: **pace, don't stop.**
 ### Task 4: frame pacing on high-refresh displays
 
 - [x] A 60 fps default cap with a Settings choice (Frame Rate: 60 / Unlimited), persisted — `render/FrameCap.jsx`.
-  The cap renders with R3F's `advance()` in its own rAF tick: the first version's `invalidate()` drew HALF the frames
-  (113 render calls capped vs 240 uncapped; after: 346 vs 313), because an invalidate from outside R3F's loop only
-  schedules the NEXT vsync. A loop switch keeps R3F's clock (its setFrameloop zeroes it; the controller's timers read
-  it). PerformanceMonitor bounds unchanged: drei's `refreshrate` is the highest R3F rate seen, 60 under the cap, so
-  the existing expression already picks the 60 Hz bounds. Gates: `tests/gates/frame-cap-gates.test.js`,
-  `tests/e2e/frame-cap.spec.js`.
+  The cap renders with R3F's `advance()` in its own rAF tick: the first version's `invalidate()` drew HALF the frames,
+  because an invalidate from outside R3F's loop only schedules the NEXT vsync. A skipped tick clears R3F's pending
+  frame count (rapier's in-step invalidations otherwise keep R3F's own loop drawing). A loop switch keeps R3F's clock
+  (its setFrameloop zeroes it; the controller's timers read it). Measured as R3F frames per display tick (the
+  render-call ratio first quoted here was superseded — review #10): under the 60 cap 28 of 29 ticks drawn on a slow
+  renderer, and a 1 fps test cap draws 1.0 fps over ~160 ticks with the canvas invalidated 10x a second.
+  Review #8 fixes (2026-09-26): the cap's clock never runs ahead of the tick (dropped frames on 60.05 / 60.5 / 120.2
+  Hz displays, simulated); the governor gets a 60 Hz display's bounds under the cap (drei's `refreshrate` is a
+  session maximum — a moment of Unlimited left it stuck at [50, 90]); Show Stats counts frames DRAWN (drei's stats.js
+  counted R3F loop iterations, and the cap causes empty ones). Gates: `tests/gates/frame-cap-gates.test.js`,
+  `tests/gates/frame-cap-toggle.test.jsx`, `tests/e2e/frame-cap.spec.js`.
 
 ### Task 5 (iPad): shadows re-registered on a tier change; the governor stops oscillating; context loss recovers
 

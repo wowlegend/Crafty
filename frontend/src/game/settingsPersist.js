@@ -1,6 +1,6 @@
 // settingsPersist.js — persist the player's audio/feedback/look prefs across sessions (local-first,
-// mirrors the worldSaves.js safe-localStorage pattern). The PERSISTABLE surface is exactly the 5 store
-// dials; everything is sanitized/clamped on the way in AND out so a corrupt or tampered blob can never
+// mirrors the worldSaves.js safe-localStorage pattern). The PERSISTABLE surface is exactly the 6 store
+// dials (frameCap joined 2026-09-26); everything is sanitized/clamped on the way in AND out so a corrupt or tampered blob can never
 // inject bad state, and only known keys are ever written. Capture-GUARDED at the init seam so the visual
 // harness never reads/writes localStorage (deterministic baselines).
 export const SETTINGS_KEY = 'crafty_settings';
