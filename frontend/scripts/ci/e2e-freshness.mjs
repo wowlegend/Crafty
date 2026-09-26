@@ -37,6 +37,7 @@ import { createHash } from 'node:crypto';
 import { execSync, spawnSync } from 'node:child_process';
 import { join, resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createConnection } from 'node:net';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const APP = resolve(HERE, '../..');
@@ -263,11 +264,53 @@ export function receiptVerdict(before, after, exitCode) {
   return { ok: true, line: `e2e-freshness: recorded green for tree ${before.id} (${before.files} files) — unchanged across the run` };
 }
 
+/**
+ * PURE. Whether a `--run` may certify anything, BEFORE it runs (review #8, finding 3). Two ways the receipt could
+ * name a tree the suite never fully tested:
+ *   - ARGUMENTS. `--run tests/e2e/one.spec.js` ran one spec and would record green for the whole observed tree.
+ *   - A SERVER ALREADY ON THE PORT. playwright.config sets `reuseExistingServer` locally, so a vite already listening
+ *     on the e2e port — from a sibling worktree, this estate's norm — is REUSED, and the suite tests that server's
+ *     tree while the receipt hashes this one.
+ * Either one refuses (exit 3: COULD NOT CERTIFY), before a minute of suite is spent.
+ */
+export function runPreconditions({ extra, portBusy, port }) {
+  if (extra.length) {
+    return { ok: false, line: `e2e-freshness: --run takes no arguments (got: ${extra.join(' ')}). A partial run cannot certify the whole tree — run it with npx playwright test instead.` };
+  }
+  if (portBusy) {
+    return { ok: false, line: `e2e-freshness: something already listens on the e2e port ${port}. The suite would REUSE it and test that server's tree, not this one — stop it (sh scripts/dev/kill-test-procs.sh, or the sibling worktree's run) and re-run.` };
+  }
+  return { ok: true, line: '' };
+}
+
+/** The e2e port, read from playwright.config.js so this cannot drift from it. */
+function e2ePort() {
+  const m = readFileSync(join(APP, 'playwright.config.js'), 'utf8').match(/const PORT = (\d+);/);
+  return m ? Number(m[1]) : null;
+}
+
+const portInUse = (port) =>
+  new Promise((res) => {
+    const sock = createConnection({ port, host: '127.0.0.1' });
+    sock.once('connect', () => { sock.destroy(); res(true); });
+    sock.once('error', () => res(false));
+  });
+
 if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   const current = treeId();
   if (process.argv.includes('--run')) {
     const extra = process.argv.slice(process.argv.indexOf('--run') + 1);
-    const res = spawnSync('npx', ['playwright', 'test', ...extra], { cwd: APP, stdio: 'inherit' });
+    const port = e2ePort();
+    if (!port) {
+      console.log('e2e-freshness: could not read the e2e port from playwright.config.js — cannot tell whether a server would be reused.');
+      process.exit(3);
+    }
+    const pre = runPreconditions({ extra, portBusy: await portInUse(port), port });
+    if (!pre.ok) {
+      console.log(pre.line);
+      process.exit(3);
+    }
+    const res = spawnSync('npx', ['playwright', 'test'], { cwd: APP, stdio: 'inherit' });
     const after = treeId();
     const v = receiptVerdict(current, after, res.status);
     if (v.ok) writeFileSync(STAMP, `${JSON.stringify({ treeId: current.id, files: current.files, at: new Date().toISOString() }, null, 2)}\n`);

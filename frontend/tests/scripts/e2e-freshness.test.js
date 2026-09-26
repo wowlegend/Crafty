@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -207,5 +207,23 @@ describe('receiptVerdict — a run is recorded for the tree it STARTED on, and o
   it('a red suite is never recorded, changed or not', () => {
     expect(receiptVerdict(T('a1'), T('a1'), 1).ok).toBe(false);
     expect(receiptVerdict(T('a1'), T('a1'), null).ok, 'a killed run (status null)').toBe(false);
+  });
+});
+
+// Review #8 finding 3 (2026-09-26). Mutation-Proof (mutate.sh), each observed RED: P1 the argument check dropped ->
+// "a partial run certified the tree"; P2 plausible-wrong: the busy port only warned (ok: true) -> "a reused server".
+describe('runPreconditions — a --run certifies only a full run against a server it started', () => {
+  it('refuses any argument: one spec cannot certify the tree', () => {
+    const r = runPreconditions({ extra: ['tests/e2e/frame-cap.spec.js'], portBusy: false, port: 4179 });
+    expect(r.ok, 'a partial run certified the tree').toBe(false);
+    expect(r.line).toMatch(/takes no arguments/);
+  });
+  it('refuses when a server already listens on the e2e port (it would be reused)', () => {
+    const r = runPreconditions({ extra: [], portBusy: true, port: 4179 });
+    expect(r.ok, 'a reused server').toBe(false);
+    expect(r.line).toMatch(/4179/);
+  });
+  it('a full run on a free port may certify', () => {
+    expect(runPreconditions({ extra: [], portBusy: false, port: 4179 }).ok).toBe(true);
   });
 });
