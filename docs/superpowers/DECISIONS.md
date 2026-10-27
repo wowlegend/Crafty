@@ -18,6 +18,31 @@
 
 ---
 
+## 2026-10-27 (later) — [LOOP, Kevin-delegated] The calls his overnight goal reserved for him, decided
+
+Kevin's startup prompt handed these to the session (entry below). Each is decided here with its reason; none is
+silently dropped.
+
+- **The 147 -> current-Chromium visual re-baseline — WILL DO, alone, as Phase 0e** of the masterpiece plan, in its own
+  `Baseline-Review:` commit with no `src/` change, BEFORE any look change. The 2026-10-27 roadmap first bundled it with
+  the colour-script re-baseline; the adversarial refute showed that would make every later frame change
+  unattributable (the oracle would never exist on the new renderer by itself). Puppeteer is now 25.16.0 (`10a43f68`),
+  so the target is the Chromium it pins, recorded in `.capture-meta.json` provenance at capture. Looks acceptance moves
+  to the real-GPU, motion-on lookbook (Phase 0d); the 31 SwiftShader frames remain the REGRESSION oracle only.
+- **dprCap — REPLACED by a pixel budget** (Phase 0g, lane steady-cool): the canvas dpr becomes
+  min(cap, devicePixelRatio, sqrt(budget / CSS pixels)) per tier, so a 16-inch M3 Max at dpr 2 (~7.7 Mpx through a
+  half-float post chain) renders at about 1.5 and a small window keeps full sharpness. The exact budgets are set on
+  measurement (the lookbook for sharpness, the power A/B for heat), not by this entry.
+- **The FPV glove value — DEFERRED to after the light-rig rebalance** (Phase 1). QUEUE B5 measured the gloves at
+  rgb(16,3,40) because the scene's lighting floor collapses them; tuning the hex before the ambient/hemisphere change
+  would tune against a moving target (B5's own ordering note). Then: the value ladder through `hands-probe.mjs`.
+- **Dependencies (Dependabot #20/#21) — DONE**, entry below.
+- **three r186 + cascaded shadows — NOT NOW.** An engine bump re-baselines the whole look and changes shadow filtering
+  (r186 removes PCFSoftShadowMap); it is its own decision after the colour script lands. New shader terms stay pure GLSL
+  modules with JS mirrors so a later TSL/WebGPU port is mechanical.
+- **Soft death — KEPT.** The roadmap's "ember cache" would forfeit coins and Aspect meters on a second death, reversing
+  a decision of record (`SOTA-INITIATIVE.md`); not built.
+
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated] Dependencies: vitest 4, an audit refresh, and Dependabot #20/#21 applied on main (`10a43f68`)
 
 **Why it could not wait.** CI's `npm audit --audit-level=high` gate (R5, CI-only) would have failed the very push that
