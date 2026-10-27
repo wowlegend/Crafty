@@ -25,6 +25,9 @@ import { makeCompatMouseFilter, installCompatMouseFilter, makeMouseHandlers, ins
 //   K9 installPrimaryMouse: the compat filter's touch listeners never installed
 //   K10 installPrimaryMouse: remove() leaves the mousedown listener on
 //   K0 identity (a comment edit) SURVIVED, as it must.
+// Review round 3 (the input-time opt-in; 18 tests), each observed RED:
+//   M1 the mouse press drops its timeStamp   M2 the mouse release drops its timeStamp
+//   M3 plausible-wrong: the release hands a time 40 ms early (a stale stamp)   M0 identity (a comment edit) SURVIVED.
 //
 // BLIND SPOT: installPrimaryMouse is the whole DOM wiring, driven here by real window events. That Components.jsx CALLS
 // it (rather than binding its own unfiltered listener beside it) is tests/e2e/touch-hold.spec.js (F2), which taps the
@@ -164,6 +167,18 @@ describe('makeMouseHandlers — an echo never reaches the primary; a mouseup tak
     down(0);
     up(0);
     expect(calls).toEqual([['press', 2, 'mouse'], ['press', 0, 'mouse'], ['release', 'mouse']]);
+  });
+
+  // Review round 3: the heavy reads a hold on the input's own time (heavyAttack.inputTime), so a click whose mouseup was
+  // HANDLED late is still a click. The touch action button handed the game its events' time; the mouse handed none.
+  it('a real press and its release hand the game their events\' OWN time (timeStamp), beside the button and source', () => {
+    const stamped = [];
+    const hs = makeMouseHandlers(r.f, (button, source, at) => stamped.push(['press', button, source, at]),
+      (source, at) => stamped.push(['release', source, at]));
+    hs.onMouseDown(mouse({ button: 0, timeStamp: 1234.5 }));
+    hs.onMouseUp(mouse({ type: 'mouseup', button: 0, timeStamp: 1274.5 }));
+    expect(stamped, 'the mouse reached the game without its events\' own time — a late-handled click reads as a hold')
+      .toEqual([['press', 0, 'mouse', 1234.5], ['release', 'mouse', 1274.5]]);
   });
 
   // Review round 2 (hybrid device): a finger touches the screen WHILE the real mouse button is held. Classified on its

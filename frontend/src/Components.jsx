@@ -20,7 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { pressHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -423,12 +423,12 @@ export const Player = ({ isWorldBuilt }) => {
       else if (express === 'melee' && !e.repeat) { // a held T CHARGES a heavy now; its key-repeat used to spam taps
         triggerMeleeAttack();
         // The heavy is the human sword's: not in a beast form (R9.2), not with the voidhand full (R9.3, as LMB).
-        const st = useGameStore.getState();
-        if (!st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'key');
+        // input/primaryInput.js pressKey, the charge counted from the keydown's own time (review round 3).
+        primary.pressKey(e.timeStamp);
       }
     };
     const handleKeyUp = (e) => {
-      if (e.code === 'KeyT') releaseHeavySwing('key');
+      if (e.code === 'KeyT') releaseHeavySwing('key', e.timeStamp);
       if (e.code === 'KeyW') setIntent('moveF', false);
       else if (e.code === 'KeyS') setIntent('moveB', false);
       else if (e.code === 'KeyA') setIntent('moveL', false);
@@ -542,8 +542,8 @@ export const Player = ({ isWorldBuilt }) => {
     // input/primaryInput.js owns the press, the release and their publication to the store (review round 3: inline here,
     // a store wrapper that dropped the lift's time stayed green across the suite; tests/gates/primary-input-gates.test.jsx
     // drives the published seams). Each takes `at`, the event's own time, so the hold is read on the input and not on a
-    // handler a stall delayed (heavyAttack inputTime): the touch overlay passes it; the mouse pair and T pass none and
-    // keep the handler's clock. The touch
+    // handler a stall delayed (heavyAttack inputTime): the touch overlay, the mouse pair (compatMouse) and T (pressKey,
+    // and its keyup through releasePrimary) all pass it. The touch
     // overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c: the held
     // action button — the same press and release the mouse uses, as the 'touch' source).
     const primary = installPrimaryInput({

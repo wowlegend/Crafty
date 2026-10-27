@@ -27,10 +27,15 @@ import TouchControls from '../../src/ui/TouchControls.jsx';
 //   K15 plausible-wrong: dead input throws the heavy   K16 the beast-form check dropped   K17 the voidhand check dropped
 //   K18 any button charges   K19 any verb charges   K20 remove() leaves releasePrimary   K21 presses not counted
 //   K0 identity (a comment edit) SURVIVED, as it must.
+// T's charge (pressKey; 13 tests), each observed RED: P1 pressKey ignores the keydown's time   P2 plausible-wrong: T
+//   charges as 'mouse'   P3 pressKey's beast-form check dropped   P4 pressKey's voidhand check dropped
+//   P0 identity (a comment edit) SURVIVED.
 //
 // BLIND SPOT: that Components.jsx CALLS installPrimaryInput with the real performVerb, store, liveness and heavy throw
 // (rather than publishing its own seams beside it) is tests/e2e/touch-hold.spec.js — the action button's late lift and
-// late press in the running game. jsdom has no frame loop, so nothing here proves the heavy LANDS on a mob.
+// late press in the running game. That its T handlers pass e.timeStamp to pressKey and to releasePrimary('key') is gated
+// by NOTHING: two one-line call sites in Components' key handlers. jsdom has no frame loop, so nothing here proves the
+// heavy LANDS on a mob.
 
 const T0 = 10000;
 const READY = HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
@@ -171,6 +176,49 @@ describe('the PUBLISHED seams read the hold on the event\'s own time', () => {
     r.store.pressPrimary(2, 'mouse');
     r.store.pressPrimary(0, 'touch');
     expect(r.primary.presses()).toEqual({ mouse: 1, touch: 2 });
+  });
+});
+
+// T, the melee key: Components swings at the keydown and calls pressKey; the keyup is releasePrimary('key', at).
+describe('T charges from the keydown\'s own time, by the primary\'s rules', () => {
+  it('a T held for a full charge whose keydown was HANDLED late throws the heavy; unstamped, the same handling does not', () => {
+    // PRESENCE: the handler times alone are a 320 ms hold.
+    const p = rig();
+    p.at(T0 + 400);
+    p.primary.pressKey();
+    p.at(T0 + 720);
+    p.store.releasePrimary('key');
+    expect(p.thrown, 'SETUP: a 320 ms handler hold of T threw the heavy — the case cannot discriminate').toEqual([]);
+    const r = rig();
+    r.at(T0 + 400);
+    r.primary.pressKey(T0);
+    expect(isHeavyHeld(), 'pressKey did not charge').toBe(true);
+    r.at(T0 + 720);
+    r.store.releasePrimary('key', T0 + READY + 10);
+    expect(r.thrown.length, `a ${READY + 10} ms T hold whose keydown ran late threw nothing — pressKey lost the key's own time`).toBe(1);
+  });
+
+  it('T charges as "key": the mouse and the touch cannot release it, its own keyup does', () => {
+    const r = rig();
+    r.primary.pressKey(T0);
+    r.at(T0 + READY + 10);
+    r.store.releasePrimary('mouse', T0 + READY + 10);
+    r.store.releasePrimary('touch', T0 + READY + 10);
+    expect(r.thrown, 'another input\'s release threw T\'s heavy').toEqual([]);
+    r.store.releasePrimary('key', T0 + READY + 10);
+    expect(r.thrown.length, 'PRESENCE: T\'s own keyup must throw').toBe(1);
+  });
+
+  it('T charges nothing in a beast form or with the voidhand full (2 of 2)', () => {
+    const refused = [['a beast form', { beastFormActive: true }], ['the voidhand full', { voidhandHeld: true }]];
+    let checked = 0;
+    for (const [name, state] of refused) {
+      const r = rig({ state });
+      r.primary.pressKey(T0);
+      expect(isHeavyHeld(), `T charged the heavy in ${name}`).toBe(false);
+      checked += 1;
+    }
+    expect(checked).toBe(refused.length);
   });
 });
 

@@ -31,7 +31,7 @@ import { pressHeavy, releaseHeavy, cancelHeavy } from '../game/heavyAttack.js';
  *           getState: () => { voidhandHeld?: boolean, beastFormActive?: boolean },
  *           isInputLive: () => boolean, throwHeavy: () => void, now: () => number }} deps
  * @returns {{ pressPrimary(button: number, source: string, at?: number): string | undefined,
- *             releasePrimary(source: string, at?: number): void,
+ *             releasePrimary(source: string, at?: number): void, pressKey(at?: number): void,
  *             presses(): Record<string, number>, remove(): void }}
  */
 export function installPrimaryInput({ performVerb, setState, getState, isInputLive, throwHeavy, now }) {
@@ -52,10 +52,17 @@ export function installPrimaryInput({ performVerb, setState, getState, isInputLi
     if (!isInputLive()) { cancelHeavy(); return; }
     if (releaseHeavy(t, source, at)) throwHeavy();
   };
+  // T, the melee key (Kevin 2026-06-28), has no verb router: Components swings at its keydown, and the charge is the
+  // primary's rule for the 'key' source, counted from the keydown's own time. Its keyup is releasePrimary('key', at).
+  const pressKey = (at) => {
+    const st = getState();
+    if (!st.voidhandHeld && !st.beastFormActive) pressHeavy(now(), 'key', at);
+  };
   setState({ performVerb, pressPrimary, releasePrimary });
   return {
     pressPrimary,
     releasePrimary,
+    pressKey,
     presses: () => ({ ...presses }),
     remove: () => setState({ performVerb: null, pressPrimary: null, releasePrimary: null }),
   };

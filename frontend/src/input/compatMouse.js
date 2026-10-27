@@ -58,9 +58,12 @@ export function makeCompatMouseFilter({ now, windowMs = COMPAT_MOUSE_WINDOW_MS }
  * Counts what it DROPS, per event type: the e2e F2 case reads the mousedown count, which a total would let a mouseup
  * echo satisfy alone.
  *
+ * Each real press and release carries its event's own time (`timeStamp`, review round 3): the heavy reads a hold on the
+ * input, not on handlers a stall held apart (heavyAttack.inputTime) — the same opt-in the touch action button has.
+ *
  * @param {{ isCompat(e: object): boolean }} filter
- * @param {(button: number, source: string) => unknown} pressPrimary
- * @param {(source: string) => unknown} releaseHeavySwing
+ * @param {(button: number, source: string, at?: number) => unknown} pressPrimary
+ * @param {(source: string, at?: number) => unknown} releaseHeavySwing
  */
 export function makeMouseHandlers(filter, pressPrimary, releaseHeavySwing) {
   const downWasCompat = new Map();
@@ -70,14 +73,14 @@ export function makeMouseHandlers(filter, pressPrimary, releaseHeavySwing) {
       const echo = filter.isCompat(e);
       downWasCompat.set(e.button, echo);
       if (echo) dropped.mousedown += 1;
-      else pressPrimary(e.button, 'mouse');
+      else pressPrimary(e.button, 'mouse', e.timeStamp);
     },
     onMouseUp(e) {
       const echo = downWasCompat.has(e.button) ? downWasCompat.get(e.button) : filter.isCompat(e);
       downWasCompat.delete(e.button);
       if (e.button !== 0) return;
       if (echo) dropped.mouseup += 1;
-      else releaseHeavySwing('mouse');
+      else releaseHeavySwing('mouse', e.timeStamp);
     },
     /** What it has dropped as echoes, per event type: the counts the dev test bridge exposes. */
     dropped: () => ({ ...dropped }),
