@@ -18,6 +18,24 @@
 
 ---
 
+## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
+
+**Why.** `e2e-freshness` refused every push because the base's CI e2e is red (57c45ae4: run 35845534213 cancelled at
+the limit; a fresh dispatch, 40499349776, red on shard 2 again — the spec fixes are among the unpushed commits), and
+its only escape was a green ~45-minute local e2e run. Three such runs failed today, all on the operator machine's
+load (0.5 fps software rendering; swapping at a load of 118-159 from other sessions and the browser), none on code.
+A gate whose only green path depends on the machine being idle teaches `--no-verify`, which its own R5 note forbids.
+
+**Decided (two refinements, both narrower than trusting the laptop):**
+1. **Tier 1b — CI's e2e verdict on the EXACT commit is a receipt** (`readCommitCi`: some ci.yml run on that sha with
+   ALL e2e jobs green). Clean runners make it stronger evidence than a local run.
+2. **The red-base refusal guards main only.** `.githooks/pre-push` exports the refs a push moves; a push that moves
+   only other branches is let through (CI on that branch decides). Unknown refs (a run by hand, another caller) stay
+   STRICT. Main still moves only on a local green receipt or CI green on the exact commit.
+
+**Flow this enables:** push main's commits to a branch, run CI on it (`gh workflow run ci.yml --ref <branch>`), and
+when its e2e is green, push main at the same sha — tier 1b passes. Mutation receipts in the commit.
+
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated] The calls his overnight goal reserved for him, decided
 
 Kevin's startup prompt handed these to the session (entry below). Each is decided here with its reason; none is

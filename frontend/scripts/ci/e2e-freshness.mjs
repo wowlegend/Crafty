@@ -113,7 +113,7 @@ export function treeId(app = APP) {
  * @param {object|null} stamp                 the local green receipt, if any
  * @param {{state:string|null, sha?:string}} [base]  CI conclusion for the push base; state null = unknown
  */
-export function verdict(current, stamp, base = { state: null }) {
+export function verdict(current, stamp, base = { state: null }, push = {}) {
   // R3a — a zero-file walk means the globs stopped matching, which would make every future run "fresh"
   // forever. That is a control failure, not a pass.
   if (current.files === 0) {
@@ -125,7 +125,25 @@ export function verdict(current, stamp, base = { state: null }) {
     return { code: 0, line: `e2e-freshness: fresh (tree ${current.id}, ${current.files} files, green at ${stamp.at})` };
   }
 
-  // TIER 2 — refuse to stack onto a base CI has already called red.
+  // TIER 1b — CI's own e2e verdict on THIS EXACT COMMIT settles it too (2026-10-27), and it is the stronger receipt:
+  // clean runners, no load. Three local receipt runs that day failed on the operator's machine load (0.5 fps
+  // software rendering, swapping at a load of 118-159), none on code — so the push of a commit CI has already run
+  // green (on a branch, or by workflow_dispatch) no longer depends on re-running 45 minutes of e2e on a laptop.
+  if (push.commitCi && push.commitCi.state === 'success') {
+    return { code: 0, line: `e2e-freshness: fresh by CI — run ${push.commitCi.run}'s e2e jobs all passed on this exact commit` };
+  }
+
+  // TIER 2 — refuse to stack onto a base CI has already called red. It guards MAIN: the branch Vercel deploys, and
+  // the CI history in which a stacked regression hides. A push that moves only other branches is let through, CI on
+  // that branch decides (2026-10-27) — but only when the hook SAID which refs move: unknown refs stay strict.
+  if (base && base.state === 'failure' && push.mainMoves === false) {
+    return {
+      code: 0,
+      line:
+        `e2e-freshness: the base's e2e is RED on CI${base.sha ? ` (${base.sha})` : ''}, but this push does not move main — ` +
+        'CI on the pushed branch decides. Main moves only on a local green receipt or CI green on the exact commit.',
+    };
+  }
   if (base && base.state === 'failure') {
     return {
       code: 1,
@@ -222,6 +240,40 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
     const [id, status, conclusion, sha] = String(out).trim().split('|');
     if (!id || id === 'null') return { state: null };
     const run = status === 'completed' ? conclusion : status; // what to SAY about the run; not the verdict
+    return { state: e2eJobsState(exec, id, timeoutMin), sha, run };
+  } catch {
+    return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
+  }
+}
+
+/**
+ * CI's e2e verdict on ONE commit (tier 1b): the newest ci.yml runs on `sha`, any branch or event. 'success' when
+ * some run's e2e jobs ALL passed (the same reading as the base, e2eJobsState); else null. Never 'failure': a red run
+ * on this commit is not a receipt, and the base rules still apply. Network + gh, degrades to null, never throws.
+ */
+export function readCommitCi(exec, sha, timeoutMin = E2E_TIMEOUT_MIN) {
+  if (!sha) return { state: null };
+  try {
+    const ids = String(exec(`gh run list --workflow=ci.yml --commit ${sha} --limit 5 --json databaseId --jq '.[].databaseId'`)).trim().split(/\s+/).filter(Boolean);
+    for (const id of ids) {
+      if (e2eJobsState(exec, id, timeoutMin) === 'success') return { state: 'success', run: id };
+    }
+    return { state: null };
+  } catch {
+    return { state: null };
+  }
+}
+
+/** PURE. Whether a push moves main, from the hook's space-separated remote refs: null when none were given (strict). */
+export function mainMovesFrom(refs) {
+  const list = String(refs || '').trim().split(/\s+/).filter(Boolean);
+  if (list.length === 0) return null;
+  return list.includes('refs/heads/main');
+}
+
+/** The e2e JOBS' verdict for run `id`: 'success' | 'failure' | null — the reading readBaseCi documents above. */
+function e2eJobsState(exec, id, timeoutMin) {
+  try {
     // `,`-separated: the timestamps carry `:`.
     const jobs = exec(`gh run view ${id} --json jobs --jq '[.jobs[] | select(.name | test("^e2e")) | "\\(.status),\\(.conclusion),\\(.startedAt),\\(.completedAt),\\(.databaseId)"] | join(" ")'`);
     const e2e = String(jobs).trim().split(/\s+/).filter(Boolean).map((j) => j.split(','));
@@ -237,9 +289,9 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
     };
     if (e2e.some((j) => j[1] === 'failure' || j[1] === 'timed_out' || jobTimedOut(j, timeoutMin, notes(j)))) state = 'failure'; // a timeout is a red shard
     else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'success')) state = 'success';
-    return { state, sha, run };
+    return state;
   } catch {
-    return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
+    return null; // a run whose jobs cannot be read has no verdict
   }
 }
 
@@ -345,7 +397,12 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   } catch {
     /* absent */
   }
-  const v = verdict(current, stamp, readBaseCi((cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })));
+  const gh = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  // The commit being certified (pre-push runs this in a detached worktree AT the pushed sha) and the refs the push
+  // moves (exported by .githooks/pre-push). No refs given — a run by hand, or another caller — is null: strict.
+  let head = '';
+  try { head = execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { head = ''; }
+  const v = verdict(current, stamp, readBaseCi(gh), { commitCi: readCommitCi(gh, head), mainMoves: mainMovesFrom(process.env.E2E_PUSH_REFS) });
   console.log(v.line);
   process.exit(v.code);
 }

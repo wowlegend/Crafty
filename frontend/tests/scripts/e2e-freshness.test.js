@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createServer } from 'node:net';
-import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, readCommitCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -262,5 +262,51 @@ describe('runPreconditions — a --run certifies only a full run against a serve
   });
   it('a full run on a free port may certify', () => {
     expect(runPreconditions({ extra: [], portBusy: false, port: 4179 }).ok).toBe(true);
+  });
+});
+
+// 2026-10-27: three local receipt runs failed on the operator's machine load (0.5 fps software rendering; swapping at a
+// load of 118-159), none on code. Two refinements, both narrower than "trust the laptop": (1b) CI's own e2e verdict on
+// the EXACT commit is a receipt, and (2) the red-base refusal guards MAIN only — a branch push is judged by its own
+// CI — while unknown refs stay strict.
+describe('tier 1b and the main-only red-base rule', () => {
+  const T = { id: 'tree1', files: 490 };
+  const RED = { state: 'failure', sha: '57c45ae' };
+  it('a red base still refuses a push that moves main, and one whose refs are unknown (strict)', () => {
+    expect(verdict(T, null, RED, { mainMoves: true }).code).toBe(1);
+    expect(verdict(T, null, RED, { mainMoves: null }).code, 'unknown refs must stay strict').toBe(1);
+    expect(verdict(T, null, RED).code, 'no push info at all must stay strict').toBe(1);
+  });
+  it('a red base lets a push through that moves only other branches, and says CI on the branch decides', () => {
+    const v = verdict(T, null, RED, { mainMoves: false });
+    expect(v.code).toBe(0);
+    expect(v.line).toMatch(/does not move main/);
+  });
+  it('CI green on the exact commit is a receipt, even onto a red base and moving main', () => {
+    const v = verdict(T, null, RED, { mainMoves: true, commitCi: { state: 'success', run: '123' } });
+    expect(v.code).toBe(0);
+    expect(v.line).toMatch(/fresh by CI.*123/);
+  });
+  it('a commit CI did NOT pass is no receipt (presence control: the same push without it is refused)', () => {
+    expect(verdict(T, null, RED, { mainMoves: true, commitCi: { state: null } }).code).toBe(1);
+  });
+  it('mainMovesFrom reads the hook refs: main -> true, branches only -> false, none -> null', () => {
+    expect(mainMovesFrom(' refs/heads/main')).toBe(true);
+    expect(mainMovesFrom('refs/heads/land/x refs/heads/main')).toBe(true);
+    expect(mainMovesFrom(' refs/heads/feat/a refs/heads/land/x')).toBe(false);
+    expect(mainMovesFrom('')).toBe(null);
+    expect(mainMovesFrom(undefined)).toBe(null);
+  });
+  it('readCommitCi: success only when some run on the commit has ALL e2e jobs green', () => {
+    const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
+    const fake = (runs) => (cmd) => {
+      if (cmd.startsWith('gh run list')) return Object.keys(runs).join('\n');
+      const id = cmd.match(/gh run view (\S+)/)[1];
+      return runs[id];
+    };
+    expect(readCommitCi(fake({ 11: `${job('failure')} ${job('success')}`, 12: `${job('success')} ${job('success')}` }), 'abc')).toEqual({ state: 'success', run: '12' });
+    expect(readCommitCi(fake({ 11: `${job('failure')} ${job('success')}` }), 'abc')).toEqual({ state: null });
+    expect(readCommitCi(fake({ 13: '' }), 'abc'), 'a run with no e2e jobs is no verdict').toEqual({ state: null });
+    expect(readCommitCi(fake({}), '')).toEqual({ state: null });
   });
 });

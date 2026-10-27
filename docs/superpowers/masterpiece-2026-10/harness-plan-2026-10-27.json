@@ -1,0 +1,302 @@
+{
+ "target_shape": "ROOT is `git rev-parse --show-toplevel`: the main checkout, or a lane under .claude/worktrees/<name>. Every path in this list is relative to ROOT on purpose. A hard-coded absolute path to the main checkout is exactly the defect C3 removes: it sends worktree sessions into main.\n\nHow to execute:\n- Work in one dedicated worktree off main, after the live command session has pushed.\n- Before the first edit, copy this list into memory/ACTIVE_PLAN.md as its task table (the global rule for work over 2 phases).\n- Group the work into about 20 commits so artifact-currency's 30-commit window does not go red partway through.\n- Every change under scripts/ci or tests/gates carries a `Mutation-Proof:` trailer.\n- Every archive move uses `opsec-scan --rekey` (D1), never `--write`.\n\nVerified this turn, at main df2a10fa:\n- AGENTS.md is 324 lines and 34,487 B.\n- artifact-currency is red: sota-audit is 36 commits behind against a limit of 30, and main is 24 commits ahead of origin.\n- In a lane, `git add -A --dry-run` stages the frontend/node_modules symlink (its target is the operator home path), and opsec-scan follows it with statSync.\n- The tracked settings.json wires 5 graft hooks to an untracked helper, with timeouts of 8000-15000 seconds.\n- The compaction hook emits on PostCompact. Context7 (anthropics/claude-code `ClassicResultFields`) shows additionalContext is accepted on SessionStart but not on PostCompact.\n- The installed 2.1.311 binary contains CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR, .worktreeinclude, SessionEnd and prompt-audit. `onFailure: block` arrived in 2.1.295 (per the CHANGELOG).\n- Load averages are 33-42.\n- No 3D asset loader appears in src, and Blender is not installed.\n\nFigures marked \"lane-measured\" come from the four audit lanes and were not re-run here.\n\nTHE HARNESS AFTER THE CHANGE\n\n1. Always-loaded instructions. .agent/AGENTS.md drops from 324 lines / 34.5 KB to 200 lines or fewer / about 11 KB, about 45% generated. A root AGENTS.md symlink lets Codex read it too. Its sections:\n   - Layout: ROOT from git, APP = ROOT/frontend, a tree that names STATUS, .claude/rules, ci/pipeline.sh and .githooks, and the rule to restate ROOT/APP in delegation briefs.\n   - Stack: the MEASURED block, now including a generated line of package majors, plus 4 qualitative bullets.\n   - Hard rules: each one names its enforcer.\n   - Gates: the GATES table with compressed descriptions, rows for the e2e suite, visual and test:look, and 3 visual one-liners.\n   - Process hygiene (3 bullets), the models/review override (2 lines), and where state lives: the auto-memory line, the path-scoped-rules line, and a 5-entry READ-ORDER.\n   - Compaction & resume (about 0.7 KB) and a 1-line /loop pointer.\n   - Removed: history narration, hand-typed counts, and stale model names.\n2. Rules that fire when a matching file is touched: gates-and-probes.md becomes an 80-line checklist and its history moves to docs/superpowers/GATE-INCIDENTS.md; input-and-pointer-lock.md takes in the still-true movement checks; voxel-mesher.md is unchanged; a new physics.md of 20 lines or fewer holds only traps a model cannot derive. doc-currency checks their paths and harness-integrity checks their globs.\n3. Deterministic layer. The tracked settings.json holds only repo-content wiring:\n   - deny: cmux close-surface, git push --no-verify, git commit --amend;\n   - env: CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1;\n   - hooks: SessionStart(compact) orientation; a PreToolUse guard against in-place rewrites of frontend/src JS(X); a SessionEnd orphan sweep;\n   - graft moves to settings.local.json plus .worktreeinclude;\n   - the $schema is the schemastore Claude Code schema.\n4. Gates:\n   - pre-commit becomes a staged tier of 10 s or less (static gates plus `vitest related`, printing its denominator);\n   - pre-push runs the full offline core once per pushed SHA in the existing detached worktree;\n   - pipeline.sh scrubs GIT_* per step, and ESLint forbids raw git spawns in tests;\n   - a harness-integrity test checks hooks, events, globs and denies;\n   - opsec-scan scans a symlink by its blob;\n   - `prepare` wires core.hooksPath on every install;\n   - commit-msg chains the attribution guard.\n5. Docs:\n   - Canonical: AGENTS; ACTIVE_PLAN (one cursor, size-capped by doc-currency); STATUS (a registry of 30 KB or less with ▢/▣✓/⊘ markers, the one list of Kevin-only items, and a pointer to the active campaign plan); INDEX (every doc mapped, gated); DECISIONS (generated TOC); a rewritten ARCHITECTURE; README; SOTA-INITIATIVE (vision and guardrails only).\n   - Records: CHANGELOG (current quarter, older quarters in memory/archive), the OVERNIGHT brief, plans and specs with gated status banners, and the campaign folders.\n   - Archive: docs/archive/<quarter>/ and memory/archive/, moved with git mv.\n   - Orientation reading drops from about 492 KB (lane-measured) to about 80 KB.\n6. Future-proofing loop:\n   - Cut everything a model can derive.\n   - Make every never-do a permission or a hook.\n   - Gate every harness file.\n   - After each model upgrade, run `/doctor prompt-audit`, cut or restore one section at a time, and restore a section only when its failure recurs.\n   - Record each pass in DECISIONS.",
+ "changes": [
+  {
+   "id": "A1-unblock-push",
+   "order": 1,
+   "files": "docs/superpowers/.artifact-sync.json; docs/superpowers/LOOP-PROGRESS.html and docs/superpowers/KEVIN-REVIEW.html (move to docs/archive/2026-Q3/); docs/superpowers/era-review.html; docs/superpowers/sota-audit.html; the artifact-currency gate test that pins LOOP-PROGRESS (find it with `git grep -l LOOP-PROGRESS frontend/tests`)",
+   "change": "1. Retire the loop-progress surface: remove its entry from .artifact-sync.json and git mv LOOP-PROGRESS.html to the archive. Also git mv KEVIN-REVIEW.html, which nothing cites.\n2. Update the test pin.\n3. Regenerate era-review and sota-audit from the current STATUS, OVERNIGHT and DECISIONS, republish each to its SAME url, then run `node scripts/ci/artifact-currency.mjs --sync <surface>` for each.",
+   "why": "artifact-currency is red now (measured: sota-audit is 36 commits behind df2a10fa, against a limit of 30). It is a pre-push gate, so none of main's 24 unpushed commits can go up. The /loop is dormant, and LOOP-PROGRESS is not published to any url.",
+   "verify": "cd frontend && node scripts/ci/artifact-currency.mjs (exit 0) && npx vitest run <the artifact-currency gate test>"
+  },
+  {
+   "id": "A2-ignore-rules",
+   "order": 2,
+   "files": ".gitignore",
+   "change": "1. Change line 2 from `node_modules/` to `node_modules`, so the rule also covers the symlink each lane creates.\n2. Append `/.claude/worktrees/`, `/.claude/helpers/`, `/.claude/skills/graft/`, `/.mcp.json` and `/.ignore`.",
+   "why": "Verified this turn in the parked lane: `git add -A --dry-run` prints `add 'frontend/node_modules'`, a symlink whose blob is the operator's home path, and `git check-ignore` exits 1. From main, the same sweep stages 6 worktrees as gitlinks. The repo is PUBLIC.",
+   "verify": "In a lane: `git check-ignore -v frontend/node_modules` exits 0 and `git add -A --dry-run | grep -c node_modules` prints 0. In main: `git add -A --dry-run -- .claude | grep -c worktrees` prints 0."
+  },
+  {
+   "id": "A3-opsec-symlink-blob",
+   "order": 3,
+   "files": "frontend/scripts/ci/opsec-scan.mjs (~L186-191); the opsec-scan test under frontend/tests/scripts (new case)",
+   "change": "1. Call lstatSync on each ls-files path. For a symlink, scan the readlinkSync target string with the home-path and credential patterns; scan regular files as today.\n2. Add a fixture case built with fixtureGit: a committed symlink to /Users/<name>/x must go RED.",
+   "why": "Verified: statSync follows the link, sees a directory and skips it (L190). The gate built to stop operator home paths therefore passes a committed link to one. A3 backs up A2: A2 stops the symlink being staged, A3 catches it if it is staged anyway.",
+   "verify": "cd frontend && node scripts/ci/opsec-scan.mjs --all && npx vitest run <opsec test>. Mutation: revert to statSync and the new case goes RED (record it in a Mutation-Proof trailer)."
+  },
+  {
+   "id": "A4-untrack-state",
+   "order": 4,
+   "files": ".state/compaction-events.jsonl; .gitignore; ci/write-receipt.sh (~L40); frontend/tests/scripts/write-receipt.test.js",
+   "change": "1. `git rm --cached .state/compaction-events.jsonl` and add `/.state/` to .gitignore.\n2. Remove the `:(exclude).state` carve-out and its paragraph from write-receipt.sh.\n3. Update the test pin.",
+   "why": "The AB PreCompact hook rewrites a tracked file in a public repo on every compaction. Main is permanently dirty (` M .state/compaction-events.jsonl`, verified this turn), and 12 commits swept the file into unrelated changes (lane-measured). AB reads the file from disk, not from git.",
+   "verify": "`git status --porcelain` shows no .state line. Then: cd frontend && npx vitest run tests/scripts/write-receipt.test.js && sh ../ci/pipeline.sh --tier=commit"
+  },
+  {
+   "id": "A5-graft-machine-local",
+   "order": 5,
+   "files": ".claude/settings.json; .claude/settings.local.json (untracked); .worktreeinclude (new, tracked)",
+   "change": "1. Move out of the tracked settings.json and into settings.local.json: the `Bash(graft:*)` and `Bash(npx graft:*)` allows, the 5 graft hook blocks and footerLinksRegexes.\n2. Convert their timeouts to seconds: 10, 8, 15, 8 and 8.\n3. Set `$schema` to `https://json.schemastore.org/claude-code-settings.json`.\n4. Add a .worktreeinclude listing `.claude/settings.local.json`, `.claude/helpers/`, `.claude/skills/graft/` and `.mcp.json`, so worktrees that Claude Code creates get graft.\n5. Do not upgrade graft.",
+   "why": "Verified: the tracked settings point 5 hook events at .claude/helpers/graft-hooks.cjs, which is untracked in main and absent in lanes and fresh clones. In those trees every prompt, Bash and Edit triggers a MODULE_NOT_FOUND hook. The timeouts were written as milliseconds but the field is seconds, so a stuck prompt hook can hang for about 4 h. The helper cannot be committed because it hard-codes an fnm home path, which opsec-scan rejects.",
+   "verify": "`git show HEAD:.claude/settings.json | grep -c graft` prints 0, and `jq . .claude/settings.local.json` parses. A session started in a lane shows no graft hook errors. Once B6 exists, harness-integrity confirms every hook path is tracked."
+  },
+  {
+   "id": "A6-compaction-hook-channel",
+   "order": 6,
+   "files": ".claude/settings.json; scripts/hooks/post-compact-rules.sh; a new pipe-test under frontend/tests/scripts; frontend/tests/gates/.opsec-ledger.json",
+   "change": "1. Re-register the script under `SessionStart` with `\"matcher\": \"compact\"` and change its emitted hookEventName to `SessionStart`.\n2. Resolve ROOT with `git -C \"$(dirname \"$0\")\" rev-parse --show-toplevel` instead of the hard-coded `<operator-home>` fallback.\n3. Add 4 short lines to the output: the toplevel and branch; `git status -sb | head -3`; the first cursor heading in memory/ACTIVE_PLAN.md; and a warning when `git config core.hooksPath` is not `.githooks`.\n4. Correct the docblock so it names the real channel. Keep the rule that any failure emits {} and exits 0.\n5. Lower the opsec ledger by 1.",
+   "why": "Verified via Context7 (anthropics/claude-code mods/types/claude-code.d.ts): ClassicResultFields gives additionalContext to SessionStart but not to PostCompact, so this reminder has never reached the model. AB's own orientation hook already uses SessionStart+compact. Printing the state also replaces the post-compaction checklist that agents had to remember.",
+   "verify": "`echo '{\"source\":\"compact\"}' | sh scripts/hooks/post-compact-rules.sh | jq -e '.hookSpecificOutput.hookEventName==\"SessionStart\"'`. The pipe-test goes RED when the event name is reverted. After one /compact, grep the transcript for 'PATH-SCOPED RULES'. Then: cd frontend && node scripts/ci/opsec-scan.mjs --all"
+  },
+  {
+   "id": "A7-delete-stale-workflows",
+   "order": 7,
+   "files": ".agent/workflows/fix-movement-Crafty-kz.md; .agent/workflows/debug-physics-Crafty-kz.md; .claude/workflows/crafty-s0-reality-audit.js; .claude/workflows/crafty-s0-reality-audit.STALE-2026-09-19.md; .agent/AGENTS.md (the L18 workflows mention and the L261-263 section); .claude/rules/input-and-pointer-lock.md; .claude/rules/physics.md (new); frontend/tests/gates/.opsec-ledger.json",
+   "change": "In one commit:\n1. git rm all four workflow files, and remove their AGENTS.md references in the same commit so doc-currency stays green.\n2. Append to input-and-pointer-lock.md: use getWorldDirection, not Euler extraction; run the 8-direction and 180-degree check with `npm run test:look`; and the enterPlay/touch-probe specifics now in AGENTS.\n3. Add physics.md, 20 lines or fewer, with paths frontend/src/GameScene.jsx, frontend/src/Components.jsx, frontend/src/world/Terrain.jsx and frontend/src/game/spawnPlacement.js. It holds only traps a model cannot derive: physics is paused in capture mode, so capture frames prove nothing about physics; the KCC owns grounding; use the Rapier `debug` prop on the GameScene <Physics> for collider work.\n4. Lower the opsec ledger by 1 (the S0 .js file).",
+   "why": "fix-movement teaches drei PointerLockControls, which the live input rule calls actively harmful; src/input/pointerLook.js replaced it. debug-physics names App.jsx and gravity -25, but GameScene.jsx uses -30. The S0 workflow is still slash-registered, and its own STALE note says a run overwrites the committed S0 baseline. Estate scope: workflow .js files belong only in AB workflows/.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/opsec-scan.mjs --all. A new session's skill list no longer shows crafty-s0-reality-audit."
+  },
+  {
+   "id": "A8-git-env-scrub",
+   "order": 8,
+   "files": "ci/pipeline.sh step() (~L91-105); .githooks/pre-commit; frontend/eslint.config.js; a pipeline-env test under frontend/tests/scripts",
+   "change": "1. In step(), run each command with every inherited GIT_* variable unset: build an `env -u NAME` argument list from `env`. Leave write-receipt.sh outside step() with git's environment intact.\n2. Add an ESLint override for tests/** and src/**/*.test.*: `no-restricted-syntax` flags execFileSync, execSync, spawnSync or spawn whose first argument is a literal starting with 'git', with the message 'use fixtureGit / isolatedGitEnv'. Exempt tests/scripts/_isolatedGit.js.",
+   "why": "pre-push unsets GIT_DIR, GIT_WORK_TREE and GIT_INDEX_FILE (verified at pre-push:44), but pre-commit and pipeline.sh pass git's hook environment to every child. The 2026-10-27 GIT_DIR incident was fixed per test: only 3 files use fixtureGit. The next fixture test written with a raw git call will rewrite the real repo when it runs inside a hook.",
+   "verify": "cd frontend && npm run lint. Mutation 1: add a raw execFileSync('git', ...) to a test and lint goes RED. Mutation 2: drop the scrub and an isolated-git CONTROL-style test run through pipeline.sh goes RED. Finally `sh ../ci/pipeline.sh --tier=commit` is green."
+  },
+  {
+   "id": "E2-mutate-batch",
+   "order": 9,
+   "files": "frontend/scripts/dev/mutate-batch.mjs (new); frontend/tests/scripts/mutate-batch.test.js (new)",
+   "change": "Write a batch runner over a mutants.json file (subject, spec, old, new, label) that wraps the existing mutate.sh exit codes (0 RED / 1 SURVIVED / 3 COULD NOT CHECK). It:\n- runs the identity mutant first;\n- prints the RED/SURVIVED/COULD-NOT-CHECK denominator;\n- emits `Mutation-Proof:` trailer lines ready to paste;\n- refuses to run outside a linked worktree.",
+   "why": "About 15 changes in this list need mutation receipts. The killability ledger shows 465 of 470 check files carry none (lane-measured), and single-mutant hand loops are the bottleneck. Building this first makes every later gate change faster and fully receipted.",
+   "verify": "cd frontend && npx vitest run tests/scripts/mutate-batch.test.js: the identity mutant must not go RED and a known killing mutant must go RED. Then node scripts/ci/cli-guard.mjs"
+  },
+  {
+   "id": "B1-permissions-and-cwd",
+   "order": 10,
+   "files": ".claude/settings.json",
+   "change": "1. Add to deny: \"Bash(git push --no-verify*)\", \"Bash(git push * --no-verify*)\", \"Bash(git commit --amend*)\", \"Bash(git commit * --amend*)\".\n2. Leave `git commit --no-verify` allowed, since pre-push still certifies. Do not deny `git push -n`, which is dry-run.\n3. Add `\"env\": {\"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR\": \"1\"}`.",
+   "why": "LOOP-CHARTER §3 and pre-push call push --no-verify a reward hack, and Vercel deploys every push to main, yet no layer denies it; the global deny list lacks it. 'Never amend' exists only as prose. The env var, present in the installed 2.1.311 binary (verified), resets Bash to the session's project root after every call. That removes the cwd-drift half of the repo's self-declared #1 recurring mistake.",
+   "verify": "`jq '.permissions.deny, .env' .claude/settings.json`. In a fresh session, `git push --no-verify --dry-run` is denied, and after `cd frontend` the next call's `pwd` prints ROOT. Note: a session launched in main that works in a lane by cd is reset to main on every call. That is the mis-rooted case AB's guard already warns about; lanes must be rooted in their worktree."
+  },
+  {
+   "id": "B2-src-rewrite-guard",
+   "order": 11,
+   "files": "scripts/hooks/pretooluse-src-rewrite-guard.sh (new); .claude/settings.json (PreToolUse, matcher Bash); a pipe-test under frontend/tests/scripts",
+   "change": "Add a hook that parses tool_input.command and returns permissionDecision deny, with a reason pointing to Edit or AST tools, when the command contains `sed -i`, `perl -pi`, `awk -i inplace`, or a `>`, `>>` or `tee` whose target matches frontend/src/**/*.js or *.jsx. It allows `sed -n`, plain reads and non-JS targets. It fails open (no onFailure block), so a bug in the hook never blocks every Bash call.",
+   "why": "AGENTS' 'AST-Safe Edits: never sed on .js/.jsx' is prose, and the harness's own auto-mode prompt contradicts it ('make small, mechanical file changes with sed'). The repo's stated doctrine is to turn a violated rule into a deterministic layer, not more wording.",
+   "verify": "Pipe-tests: `sed -i '' s/a/b/ frontend/src/App.jsx` is denied; `sed -n 1,5p frontend/src/App.jsx` is allowed; `sed -i '' s/a/b/ memory/STATUS.md` is allowed. Mutation: drop the -i branch and the first test goes RED."
+  },
+  {
+   "id": "B3-sessionend-sweep",
+   "order": 12,
+   "files": "frontend/scripts/dev/kill-test-procs.sh (L37 PATTERN); frontend/tests/scripts/kill-test-procs.test.js; .claude/settings.json (SessionEnd)",
+   "change": "1. Widen the vite term of PATTERN to `Crafty/(\\.claude/worktrees/[^/]+/)?frontend/node_modules/\\.bin/vite`.\n2. Add a KTP_PATTERN test case on a fake worktree path.\n3. Register a SessionEnd hook: `sh \"$CLAUDE_PROJECT_DIR/frontend/scripts/dev/kill-test-procs.sh\"`, timeout 10, never --force.",
+   "why": "The current pattern (verified at L37) only matches main's vite, so an orphaned lane vite is invisible to it. There are 6 live lanes. Cleanup also depends on the agent remembering to run it, and this leak class pushed load to 25 in July. Non-force mode kills only orphans (PPID 1), so it is safe across lanes.",
+   "verify": "cd frontend && npx vitest run tests/scripts/kill-test-procs.test.js; reverting the pattern turns the new case RED. Then end a session that launched a lane vite and check `pgrep -fl node_modules/.bin/vite` shows no orphan."
+  },
+  {
+   "id": "B4-hookspath-on-install",
+   "order": 13,
+   "files": "frontend/package.json",
+   "change": "Add `\"prepare\": \"git -C .. config core.hooksPath .githooks 2>/dev/null || true\"`. The A6 hook's hooksPath warning is the second layer.",
+   "why": "core.hooksPath is set only in main's .git/config (lane-verified). A fresh clone, including a cloud or web agent session, runs zero local gates and gets no warning, which looks exactly like a pass.",
+   "verify": "Clone into the scratchpad, run `cd frontend && npm run prepare`, and `git config core.hooksPath` prints .githooks. CI's npm ci and the Vercel install stay green."
+  },
+  {
+   "id": "B5-commit-msg-attribution",
+   "order": 14,
+   "files": ".githooks/commit-msg",
+   "change": "Before the final exec, chain `$HOME/Code/Agentic-Brain/hooks/git-attribution-guard.sh` in commit-msg mode (GIT_HOOK_NAME=commit-msg), mirroring pre-commit, including the printed skip when the guard is absent. Before landing, check that a message which only quotes the ban (a0613e43) passes.",
+   "why": "The guard's message mode never runs in Crafty: commit-msg only runs the mutation-proof gate (verified: its last line is the exec of commit-msg-gate.mjs), and opsec-scan checks files, not messages.",
+   "verify": "In a scratch clone, a commit with a 'Co-Authored-By: Claude' trailer is blocked, and replaying a0613e43's message passes."
+  },
+  {
+   "id": "B6-harness-integrity",
+   "order": 15,
+   "files": "frontend/tests/scripts/harness-integrity.test.js (new); frontend/scripts/ci/doc-currency.mjs (CANONICAL)",
+   "change": "1. Add a test that asserts:\n   (a) every file named by a hook command in the tracked .claude/settings.json is in `git ls-files`;\n   (b) any hook script that emits additionalContext is registered only on events whose whitelist accepts it (SessionStart, UserPromptSubmit, PostToolUse, PostToolUseFailure, PostToolBatch, Stop, SubagentStop, SubagentStart). The failure message names claude-code.d.ts ClassicResultFields as the list to update.\n   (c) every `paths:` glob in .claude/rules/*.md matches at least one tracked file;\n   (d) the B1 deny entries are still present.\n   It prints the counts and fails on zero.\n2. Add .claude/rules/*.md to doc-currency CANONICAL, reusing its allowlist for cautionary paths.",
+   "why": "Both live defects (hooks on an untracked helper; a context hook on PostCompact) went unseen by all 17 gates. doc-currency never reads the rule files that fire at the moment of action, which is how the workflows rotted while CI stayed green.",
+   "verify": "cd frontend && npx vitest run tests/scripts/harness-integrity.test.js. Three mutations each go RED: point a hook at a missing helper; rename an event to PostCompact; change a glob to a nonexistent file. Then node scripts/ci/doc-currency.mjs"
+  },
+  {
+   "id": "B7-commit-tier-split",
+   "order": 16,
+   "files": "ci/pipeline.sh (tier guards); .githooks/pre-commit; .agent/AGENTS.md (regenerated GATES block); docs/superpowers/DECISIONS.md",
+   "change": "1. COMMIT tier, target 10 s or less: opsec-scan --all, doc-currency, eslint, gate-shape, killability-ledger, cli-guard, harness-integrity, and `npx vitest related --run <staged src/tests files>`. It prints 'N of M test files selected by import graph; source-grep gates, build and bundle run at push'.\n2. PUSH: the full offline core once per pushed SHA, in the existing detached-worktree path (today's no-receipt path). The commit tier writes no receipt; an explicit `sh ci/pipeline.sh --tier=core` on a clean tree still can.\n3. Add a dated DECISIONS entry that supersedes the 2026-09-22 front-load decision.",
+   "why": "Load measured this turn: 33-42. Today the commit tier runs about 479 test files plus a vite build on every commit, across 6 lanes (documented at 69 s). That approaches the 120 s Bash timeout, which is what teaches agents to use --no-verify. The lane measured the static gates at about 3 s and vitest related at about 3 s. AB HANDOFF-2026-10-25 recommends this split.",
+   "verify": "Time a one-file commit: 10 s or less, with the denominator printed. `git push` runs the full core in the detached worktree. Then: cd frontend && node scripts/ci/gate-table.mjs --write && node scripts/ci/doc-currency.mjs && npx vitest run tests/scripts/prepush-range-gates.test.js tests/scripts/write-receipt.test.js"
+  },
+  {
+   "id": "C1-gate-table-compress",
+   "order": 17,
+   "files": "frontend/scripts/ci/gate-table.mjs (DESCRIPTIONS ~L51-60, renderBlock header ~L152-170); the gate scripts' docblocks; .agent/AGENTS.md (GATES block, regenerated)",
+   "change": "1. Cut each DESCRIPTIONS entry to one clause of 110 characters or fewer. Move each backstory into its gate script's docblock where it is not already there.\n2. Delete the hand-typed '(offline core, 69s)' literal (verified at L163) and the 'they used to be' sentence.\n3. Reword prod-smoke as 'the only CI harness that boots the production bundle; most visual probes drive the dev server', with no counts.",
+   "why": "The generated block costs about 5.9 KB in every session. Hand-typed numbers inside a generated block rot ('69s', 'all 25 probes'). The prod-smoke claim is false: gpu-cost-probe and ipad-probe also serve the preview build.",
+   "verify": "cd frontend && node scripts/ci/gate-table.mjs --write && node scripts/ci/doc-currency.mjs && npx vitest run tests/scripts/gate-table.test.js. The block measures about 2.5 KB with wc -c."
+  },
+  {
+   "id": "C2-generated-stack-line",
+   "order": 18,
+   "files": "frontend/scripts/ci/measure.mjs (renderBlock ~L81-94); frontend/scripts/ci/doc-currency.mjs (MEASURED check); frontend/tests/scripts/measure.test.js; .agent/AGENTS.md (MEASURED block)",
+   "change": "1. Collapse the 3-line tolerance explanation to one line.\n2. Add a generated line 'Stack (majors, from frontend/package.json)' for an allowlist: react, three, @react-three/fiber, @react-three/drei, @react-three/rapier, @dimforge/rapier3d-compat, @react-three/postprocessing, vite, zustand, miniplex, tailwindcss, vitest, @playwright/test, puppeteer. doc-currency compares the majors exactly.\n3. Keep the parseBlock invariants (`**N source files`, `/ N LOC**`, backticked .jsx? names followed by LOC), and keep backticked .js names out of the stack line.",
+   "why": "The stack line in AGENTS is hand-typed, the failure the file itself warns about, and it omits the majors that decide which API an agent writes: vitest 4, puppeteer 25, playwright 1.64, miniplex 2.",
+   "verify": "cd frontend && node scripts/ci/measure.mjs --write && npx vitest run tests/scripts/measure.test.js && node scripts/ci/doc-currency.mjs. Mutation: a fixture major bump goes RED (Mutation-Proof trailer)."
+  },
+  {
+   "id": "C3-agents-rewrite",
+   "order": 19,
+   "files": ".agent/AGENTS.md; docs/superpowers/LOOP-CHARTER.md (L60, L316-318); docs/superpowers/LOOP-KERNEL-PROMPT.md (L151); docs/superpowers/DECISIONS.md; memory/STATUS.md (one ▢ row); frontend/tests/gates/.opsec-ledger.json",
+   "change": "Rewrite the hand-written sections to target_shape item 1. Leave all three generated marker pairs untouched.\n- Layout: ROOT = `git rev-parse --show-toplevel`, APP = ROOT/frontend. The tree names STATUS.md, .claude/rules/, ci/pipeline.sh and .githooks/, and drops the 4 HISTORICAL memory/ filenames and the S0-S4 status. 'Restate ROOT/APP in every Explore or Plan brief.'\n- Stack: 4 bullets. (1) Monolithic by design; Components.jsx is the irreducible Player loop and the other ≥900-LOC files carry no such finding. (2) ECS is a narrow slice; keep the grep command, drop the count. (3) The engine-core keep list. (4) Touch is built; real-device feel is Kevin-gated.\n- Hard rules, each naming its enforcer:\n  - game-loop isolation;\n  - no in-place rewrites of src JS(X) (B2);\n  - the design-language lock, dropping the 'said 7' clause;\n  - capture guards RESET, never early-return (the capture-guard-timing gate);\n  - done means proven to RUN (e2e, a probe or a log line you watched fire), plus 'what passes if the feature is deleted';\n  - one plan doc per milestone;\n  - commits: no attribution (pre-commit guard and opsec-scan); fix-ups are new commits (B1 deny); Mutation-Proof:/Baseline-Review: trailers;\n  - a violated rule gets a checkpoint or a deterministic layer, not more prose;\n  - the global ACTIVE_PLAN rule replaces the local tunneling thresholds.\n- Gates: add a test:look row and 3 visual one-liners: (1) port 4178 with --strictPort, so never run two captures; (2) capture mode suppresses weather, mobs, NPCs and particles, so judge looks from non-capture frames; (3) read provenance.ua and re-measure, never quote.\n- Process hygiene, 3 bullets: _serve.mjs plus the SessionEnd sweep; close-surface is denied; check uptime and R-state before blaming a gate.\n- Models, 2 lines: Crafty reviewers and verifiers run at xhigh, never max (DECISIONS 2026-10-27); `/code-review xhigh` is the default review; Sonnet 5.5 and Haiku 5.5 run mechanical lanes with the full model id and an explicit effort.\n- Compaction & resume, about 0.7 KB: preserve the milestone and plan path, the resume pointer, uncommitted files, standing directives and /loop state; preserve gate COMMANDS, never results.\n- /loop: one line.\nDelete: the size-history paragraph, the de-monolith history, the browser incident narrative, the VOID determinism narrative, the denominator paragraph, Read-Before-Write, Initialization, the Session-Documentation list and the preambles. Also delete the Core Agent Skills section: its open cleanup/accretion question becomes one ▢ STATUS row, and the Dependabot half goes because .github/dependabot.yml exists.\nRecord the pre-trim SHA in a DECISIONS entry ('restore any section with git show <sha>:.agent/AGENTS.md'); any narrative not already held by DECISIONS, the rules or a script docblock goes into that entry. Re-point the charter's L60 Method citation and its L316-318 hygiene pointer, and the kernel's L151 pointer, to the new headings and gates-and-probes.md. Lower the .agent/AGENTS.md opsec ledger entry from 3 to 0.",
+   "why": "Verified: the file is 324 lines and 34,487 B, about 1.6 times Anthropic's 200-line target, and loads in every session and after every compaction. It carries verified-false claims: 'no dependabot.yml' (L245; the file exists) and 'Opus 5' (L226). It also carries false claims the lane measured: the shipped-bundle claim and the ACTIVE_PLAN layout block. Its absolute ROOT sends lane sessions into main.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/opsec-scan.mjs --all && npx vitest run tests/scripts/read-order.test.js tests/scripts/doc-anchors.test.js. `wc -l ../.agent/AGENTS.md` is 200 or fewer and `wc -c` is 12000 or fewer. Then run `/doctor prompt-audit` on the file."
+  },
+  {
+   "id": "C4-gates-rule-trim",
+   "order": 20,
+   "files": ".claude/rules/gates-and-probes.md; docs/superpowers/GATE-INCIDENTS.md (new, append-only record); docs/superpowers/INDEX.md",
+   "change": "1. Cut the rule to a checklist of about 80 lines:\n   - print and assert the denominator;\n   - assert presence before absence;\n   - mutation-prove, and restore from cp, never checkout;\n   - reference values must vary on every weighted axis;\n   - make the subject drivable rather than tightening a regex;\n   - check both sides of a producer/consumer seam;\n   - a swallowed wait means grep the flag's other consumers;\n   - prove the entry point is REACHED;\n   - the siting rule (tests/gates vs tests/scripts and their ratchets);\n   - allocate ports via _serve.mjs probePort;\n   - kill what you launch.\n2. Move verbatim to GATE-INCIDENTS.md: the 20-row incident table, the DEV/PROD and LCP numbers, and the devtools recipe.\n3. Drop every embedded count; its 388-assertion figure is now 574 live (lane-measured).\n4. Replace 'no instrument' with: 'as of 2026-10-27, surfaces checked: cmux surfaces via close-preview-tabs.sh; not tried: computer-use (orca computer), claude-in-chrome tabs_context'.",
+   "why": "Each edit under tests or scripts injects 18.5 KB (23 logged loads, lane-measured), most of it history. Its counts rot. Its capability-negative has no denominator, which breaks the estate rule-authoring rule.",
+   "verify": "`wc -c .claude/rules/gates-and-probes.md` is 6000 or less. Then: cd frontend && node scripts/ci/doc-currency.mjs && npx vitest run tests/scripts/harness-integrity.test.js"
+  },
+  {
+   "id": "C5-codex-root-symlink",
+   "order": 21,
+   "files": "AGENTS.md (new symlink to .agent/AGENTS.md)",
+   "change": "Run `ln -s .agent/AGENTS.md AGENTS.md` at ROOT and commit it. The generators keep writing .agent/AGENTS.md.",
+   "why": "Codex discovers AGENTS.md from the repo root down (per the skills lane's 2026-10-27 check of developers.openai.com and codex-rs). Crafty has only CLAUDE.md, so Codex, part of the estate's cross-agent floor, gets no project instructions. Landing this after the C3 trim keeps its context cost small.",
+   "verify": "`readlink AGENTS.md` prints .agent/AGENTS.md. Then: cd frontend && node scripts/ci/opsec-scan.mjs --all (the A3 lstat path sees a relative target) && node scripts/ci/doc-currency.mjs"
+  },
+  {
+   "id": "E1-lookbook",
+   "order": 22,
+   "files": "docs/superpowers/plans/2026-10-2X-crafty-lookbook.md (plan doc first); frontend/scripts/visual/lookbook.mjs (new); frontend/package.json (`look:book` script); .agent/AGENTS.md (one Gates-row line)",
+   "change": "Write the plan doc first. Then build a non-gating script that:\n- serves the prod preview via _serve.mjs({preview:true});\n- launches with run-scenarios.mjs's Metal GPU flags and capture mode OFF;\n- shoots fixed camera poses × setTimeOfDay × weather states;\n- writes PNGs and an HTML contact sheet, next to the previous SHA's set, into .superpowers/lookbook/<sha>/ (gitignored);\n- prints gpu-cost-probe numbers;\n- caps frames and duration, with a finally sweep.\nAdd one line to AGENTS: 'npm run look:book: real-GPU, capture-off frames to judge looks by eye'.",
+   "why": "The looks push has no instrument that shows the game as played. 28 of the 33 visual scripts render on CPU with weather, mobs and particles off (lane-measured), and ACTIVE_PLAN's own metric asks for non-capture frames opened by eye. Building it as a script with a one-line pointer, rather than a project skill, respects the estate's AB-only skill rule.",
+   "verify": "`cd frontend && npm run look:book` exits 0 within its cap and the contact sheet opens. `sh scripts/dev/kill-test-procs.sh` finds no orphan. `grep -c look:book ../ci/pipeline.sh` prints 0, so it never becomes a gate."
+  },
+  {
+   "id": "D1-opsec-rekey",
+   "order": 23,
+   "files": "frontend/scripts/ci/opsec-scan.mjs; the opsec-scan test under frontend/tests/scripts",
+   "change": "Add `--rekey`: it reads the renames from `git diff --cached --name-status -M`, moves each ledger count to the new path, and refuses if `_total` would rise. Every archive commit uses it instead of `--write`.",
+   "why": "The ledger is keyed by path (_total 423, verified). A moved file's existing debt therefore blocks the commit, and the only regeneration path, --write, would silently absorb any new debt added in the same commit.",
+   "verify": "Fixture: git mv a ledgered file and --rekey passes; the same move plus one new home path is still RED (Mutation-Proof trailer)."
+  },
+  {
+   "id": "D2-status-rebuild",
+   "order": 24,
+   "files": "memory/STATUS.md; memory/archive/STATUS-registry-2026-06-to-08.md (new); docs/superpowers/KEVIN-REVIEW-BATCH.md (move to docs/archive/2026-Q3/KEVIN-REVIEW-BATCH-2026-05-to-09.md); docs/superpowers/sota-2026-09/OVERNIGHT.md ('Blocked on you' becomes a pointer); the canonical citers",
+   "change": "Rebuild STATUS at 30 KB or less:\n- §1: where we are.\n- §2 THE REGISTRY: one table with ▢/▣✓/⊘ markers, harvested from STATUS §2's open rows, the HOLISTIC-REVIEW L18 heldf-probe row, the unfinished sota-2026-09 QUEUE/OPEN-ITEMS rows (keeping their Q ids), the open ACTIVE_PLAN T-rows, OVERNIGHT's 'Blocked on you', the undecided KEVIN-REVIEW-BATCH asks, the upstream-750 post and the C3 cleanup question.\n- §3 What's next: names plans/2026-10-27-crafty-masterpiece.md.\n- §H: only the items bound to Kevin by mechanism (the ultrareview keystroke, money, force-push, the refused worktree removal).\nVerify each row against code. Move the closed sections verbatim to the archive file. Keep doc-currency's 5 required tokens, every item id that canonical docs cite, and a '**Confirmed: N**' header. git mv KEVIN-REVIEW-BATCH. From then on, asks go to STATUS §H and answers to DECISIONS. Use --rekey for the ledger.",
+   "why": "STATUS calls itself THE source of truth, yet it has no lines from 2026-09 or 2026-10 and is 134 KB (both lane-measured; size verified). Kevin's asks are spread over 5 places. The 2026-10-27 mandate delegates most of them to the session.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/queue-ledger.mjs && node scripts/ci/opsec-scan.mjs --all && npx vitest run tests/scripts/doc-anchors.test.js. `grep -c 2026-10 ../memory/STATUS.md` is above 0 and `wc -c` is 30000 or less. A refuting reviewer at xhigh samples 10 rows against code."
+  },
+  {
+   "id": "D3-active-plan-cap",
+   "order": 25,
+   "files": "memory/ACTIVE_PLAN.md; memory/archive/ACTIVE_PLAN-superseded-2026-08-to-10.md (new); frontend/scripts/ci/archive-cursor.mjs (new); frontend/scripts/ci/doc-currency.mjs",
+   "change": "1. Carry any still-open items to STATUS, then move everything below the live cursor to the archive file. Redact the two dead scratchpad home paths during the move, and fix the L1 heading.\n2. archive-cursor.mjs moves every CURSOR/RESUME block except the newest.\n3. doc-currency warns above 15 KB or 200 lines or when there is more than one cursor heading, and fails above 30 KB, printing 'run node frontend/scripts/ci/archive-cursor.mjs'.",
+   "why": "ACTIVE_PLAN is 57 KB (verified), and about 77% of it is superseded blocks (lane-measured), including August instructions that are now wrong. A one-time archive in August did not stop it regrowing, so the cap must be a gate. Warning first and failing only above a ceiling keeps a session's flush from being blocked.",
+   "verify": "cd frontend && node scripts/ci/archive-cursor.mjs && node scripts/ci/doc-currency.mjs. Fixtures: two cursor headings warn; 31 KB is RED (Mutation-Proof trailer). The opsec ledger falls by 2."
+  },
+  {
+   "id": "D5-campaign-queue",
+   "order": 26,
+   "files": "docs/superpowers/plans/2026-10-27-crafty-masterpiece.md; docs/superpowers/sota-2026-09/PLAN.md; docs/superpowers/sota-2026-09/QUEUE.md",
+   "change": "1. Give the umbrella plan's milestone list ▢/▣✓/⊘ markers and a '**Confirmed: N**' header. It becomes the one live campaign queue; no PLAN, QUEUE or OVERNIGHT files go inside masterpiece-2026-10/. Agree the shape with the live command session that owns this plan.\n2. Add a 'CLOSED 2026-10-27; open rows now live in STATUS' banner to the sota PLAN and QUEUE.\n3. Fix PLAN.md L55, which cites LOOKS.md, a file that does not exist.",
+   "why": "This is the third campaign in a row to start its own status surface. sota-2026-09 QUEUE has 60 rows with no state markers (lane-measured), and its PLAN still claims to be the Verify Gate's reference.",
+   "verify": "cd frontend && node scripts/ci/queue-ledger.mjs && node scripts/ci/doc-currency.mjs"
+  },
+  {
+   "id": "D4-read-order-and-loop-docs",
+   "order": 27,
+   "files": "frontend/scripts/ci/read-order.mjs; frontend/tests/scripts/read-order.test.js; .agent/AGENTS.md; docs/superpowers/LOOP-CHARTER.md; docs/superpowers/LOOP-KERNEL-PROMPT.md (move to docs/archive/2026-Q3/); docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md (move to docs/archive/2026-Q3/); frontend/scripts/ci/queue-ledger.mjs (QUEUES); docs/superpowers/.queue-ledger.json; frontend/tests/scripts/queue-ledger.test.js; frontend/scripts/ci/doc-currency.mjs (CANONICAL, DOC_ALIASES); the 'LOOP-CHARTER §3' strings in commit-msg-gate.mjs and mutation-proof-trailer.mjs",
+   "change": "1. Cut ORDER to 5 entries: (1) git main + CI; (2) ACTIVE_PLAN; (3) STATUS, whose §3 names the campaign plan; (4) DECISIONS, before deciding; (5) INDEX, the doc map, where anything unmapped is not current. Cut the header to one line.\n2. Set SURFACES to ['.agent/AGENTS.md'], and delete the rendered blocks in the charter and the kernel in the same commit.\n3. git mv the kernel to the archive with a 'DORMANT — restore with git mv' banner, and drop it from CANONICAL.\n4. The charter stays canonical: replace its 2026-07-13 mandate block with a pointer to DECISIONS 2026-10-27, and keep §3, §4, §6.4, §6.5 and §8 (doc-anchors pins them).\n5. Point QUEUES at [memory/STATUS.md, docs/superpowers/plans/2026-10-27-crafty-masterpiece.md], then git mv HOLISTIC-REVIEW to the archive.\n6. Update the test pins: ORDER 5, SURFACES 1.",
+   "why": "Orientation reads about 492 KB (lane-measured). Entry #3 is a queue drained since 08-12, #5 is a dormant /loop, and the test pins 8 entries and 3 surfaces (verified). queue-ledger currently checks only a closed file. This lands after D2 and D5 so the new order points at a current STATUS and a marked queue.",
+   "verify": "cd frontend && node scripts/ci/read-order.mjs --write && npx vitest run tests/scripts/read-order.test.js tests/scripts/queue-ledger.test.js tests/scripts/doc-anchors.test.js && node scripts/ci/queue-ledger.mjs && node scripts/ci/doc-currency.mjs. Mutation: a stale AGENTS block still turns doc-currency RED."
+  },
+  {
+   "id": "D6-index-mapped-gate",
+   "order": 28,
+   "files": "docs/superpowers/INDEX.md; frontend/scripts/ci/doc-currency.mjs",
+   "change": "1. Rewrite INDEX in 4 tiers: Canonical; Records; Reference; and Archive, one line per quarter, noting that historical CHANGELOG paths resolve under docs/archive. Replace hand-typed counts with the commands that produce them.\n2. doc-currency fails with 'UNMAPPED DOC' for any tracked file under docs/superpowers/ outside plans/ and specs/ that INDEX does not name by path or by a directory line. masterpiece-2026-10/ and sota-2026-09/ are each mapped by one line.\n3. Fix the '142 docs' figure in doc-currency's docblock.",
+   "why": "45 tracked files are unmapped (lane-measured), and INDEX's own prose rule, 'creating a doc adds a line here', was skipped. A prose rule becomes a gate.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs. Mutation: add an unmapped file and it goes RED (Mutation-Proof trailer)."
+  },
+  {
+   "id": "D7-plan-status-banners",
+   "order": 29,
+   "files": "docs/superpowers/plans/*.md; docs/superpowers/specs/*.md; frontend/scripts/ci/plan-status.mjs (new); frontend/scripts/ci/doc-currency.mjs; docs/superpowers/INDEX.md (generated plans table)",
+   "change": "1. Each plan and spec carries, within its first 10 lines, a status from a closed vocabulary: ACTIVE, SHIPPED, PARKED, SUPERSEDED or DESIGN-OF-RECORD. doc-currency enforces it.\n2. plan-status.mjs renders the INDEX plans table between markers, and warns when commits on main cite a plan that is not marked SHIPPED.\n3. Back-fill the 12 September plans from a per-plan git check. Set de-monolith to PARKED and world-purpose-sota to DESIGN-OF-RECORD. Set emissive-ores, leaf-sway and storm-lightning from their landing state.",
+   "why": "None of the 12 September plans carries a status (lane-measured), and de-monolith still says ACTIVE although the work is closed. An agent can mine an 'ACTIVE' plan for work, and September skipped the 'finished milestone updates its banner' rule.",
+   "verify": "cd frontend && node scripts/ci/plan-status.mjs --write && node scripts/ci/doc-currency.mjs. Mutation: remove one banner and it goes RED."
+  },
+  {
+   "id": "D8-archive-closed-records",
+   "order": 30,
+   "files": "docs/superpowers/{2026-06-16-SOTA-TOTAL-AUDIT, AUDIT-2026-06-28-full-status, CODE-REVIEW-2026-06-20, LOOP-DOC-SOTA-PLAN-2026-07-27, GOVERNANCE-REVIEW-2026-08-07, AUDIT-2026-08-09-full-source, TERRAIN-GRASS-SOTA-PLAN}.md; docs/superpowers/audits/*.md; docs/superpowers/research/2026-06-15-crafty-loop-machinery-review.md; memory/{IN_DEPTH_AUDIT, MONETIZATION-VIRALITY-SCAN-2026-05-30, PRE-S2B-CONTENT-AUDIT-2026-06-03, REALITY-AUDIT-2026-05-30 (+assets), REALITY-AUDIT-S1-2026-06-02, STATE-REVIEW-2026-06-10, S2B1-M2-PERF, S2B1-M5-MOTION, S2B2-M2-PERF}.md; SOTA-KICKOFF-PROMPT.md; SHIPPED plans dated 2026-08-11 or earlier; docs/superpowers/audits/*.json (4 files); frontend/src/game/cameraKick.js:7",
+   "change": "1. git mv by date into docs/archive/2026-Q2 or 2026-Q3 and memory/archive/2026-Q2/, one commit per batch.\n2. Each commit edits the path citations in STATUS, ARCHITECTURE, SOTA-INITIATIVE and INDEX, runs --rekey, and first greps ALL tracked files, not only .md, for each stem.\n3. git rm the 4 raw audit JSONs and drop their ledger entries.\n4. Fix the dangling plan path in cameraKick.js:7 with Edit.\n5. Keep in place: memory/perf/*.json (run-scenarios.mjs writes there), research/2026-06-15-crafty-agentic-e2e-testing.md, specs/ and PERF-PROTOCOL.md.",
+   "why": "About 600 KB of closed records sit beside the canonical docs, several headed like live queues ('THE QUEUE OF RECORD'). The 4 JSONs carry 244 of the 423 accepted home-path lines and have no consumer (lane-measured). Archiving them cuts accepted debt to about 179.",
+   "verify": "Per commit: cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/opsec-scan.mjs --all. `git grep -n <stem> -- ':!docs/archive' ':!memory/archive'` returns only name-only citations. The ledger `_total` falls."
+  },
+  {
+   "id": "D9-changelog-split",
+   "order": 31,
+   "files": "memory/CHANGELOG.md; memory/archive/CHANGELOG-2026-Q2.md and memory/archive/CHANGELOG-2026-Q3.md (new); docs/superpowers/sota-2026-09/OVERNIGHT.md",
+   "change": "1. Split CHANGELOG by quarter. memory/CHANGELOG.md keeps Q4 under a header pointing to the archived quarters.\n2. Back-fill September and October from OVERNIGHT's 'Shipped' section and the git log.\n3. OVERNIGHT stays the operator brief, newest first; its Shipped rows move into CHANGELOG when a session closes.\n4. Re-key CHANGELOG's 7 ledger lines by the section each lands in.",
+   "why": "CHANGELOG is 573 KB (verified), more than an agent can read in one call. Its newest entry is 2026-08-13, so September-October history exists only in OVERNIGHT.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/opsec-scan.mjs --all. `grep -c 2026-10 ../memory/CHANGELOG.md` is above 0. session-archivist-kz still appends to memory/CHANGELOG.md."
+  },
+  {
+   "id": "D10-roadmap-and-initiative",
+   "order": 32,
+   "files": "memory/ROADMAP.md; memory/archive/ROADMAP-2026-04-to-08.md (new); SOTA-INITIATIVE.md; docs/archive/2026-Q2/SOTA-INITIATIVE-status-2026-06.md (new); docs/superpowers/plans/2026-10-27-crafty-masterpiece.md",
+   "change": "1. Archive ROADMAP and replace it with a stub of about 10 lines that points at the active campaign plan. The stub keeps session-archivist-kz's 4-piece contract working.\n2. Fold the Phase-26 sky warning into the masterpiece plan.\n3. Move SOTA-INITIATIVE §3 verbatim to the archive, and delete the L18-21 precedence chain (read-order.mjs owns precedence).\n4. Keep §1, §2, §5 and Kevin's quoted grants verbatim.",
+   "why": "ROADMAP is history labelled as a plan (lane-measured). SOTA-INITIATIVE contradicts itself (§3 is both FROZEN and LIVING) and contradicts the generated read order.",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs && node scripts/ci/opsec-scan.mjs --all"
+  },
+  {
+   "id": "D11-decisions-toc",
+   "order": 33,
+   "files": "docs/superpowers/DECISIONS.md; frontend/scripts/ci/decisions-toc.mjs (new); frontend/scripts/ci/doc-currency.mjs",
+   "change": "1. Generate a table-of-contents block between markers (date, KEVIN/LOOP, title, supersedes), and add 'newest at top' to the protocol.\n2. doc-currency checks that the block is current and that entries above it are in non-increasing date order.\n3. Back-port the September decisions from the sota QUEUE 'KEVIN DECISION BATCH' and OPEN-ITEMS as dated entries naming their source. Do not reorder old entries.",
+   "why": "The newest entries cannot be found by position: the 08-08 to 09-22 entries sit at the bottom (lane-measured), and September's decisions live outside the record.",
+   "verify": "cd frontend && node scripts/ci/decisions-toc.mjs --write && node scripts/ci/doc-currency.mjs. Mutation: a stale TOC goes RED."
+  },
+  {
+   "id": "D12-architecture-rewrite",
+   "order": 34,
+   "files": "memory/ARCHITECTURE.md; memory/archive/ARCHITECTURE-addenda-2026-04-to-08.md (new)",
+   "change": "Rewrite ARCHITECTURE as a subsystem-by-subsystem blueprint of 400 lines or fewer. Each section points to its code paths and every claim is re-verified against source: one Opus 5.5 xhigh builder per subsystem cluster, plus a refuting reviewer at xhigh. Move the old dated addenda verbatim to the archive.",
+   "why": "The file is a stack of dated addenda over a Gemini self-description and has not changed since 08-13. It has 0 mentions of FrameCap, farField, PanelBoundary, perfectDodge, heavyAttack or lazyPanels (lane-measured).",
+   "verify": "cd frontend && node scripts/ci/doc-currency.mjs. Every cited path exists. The reviewer's sample of refuted claims is 0 or corrected."
+  },
+  {
+   "id": "E3-closeout",
+   "order": 35,
+   "files": "docs/superpowers/era-review.html; docs/superpowers/sota-audit.html; docs/superpowers/.artifact-sync.json; docs/superpowers/DECISIONS.md",
+   "change": "1. Run `/doctor prompt-audit` over AGENTS.md and .claude/rules, and fix what it finds.\n2. Record in a DECISIONS entry the standing procedure: rerun the audit after each model upgrade, cut or restore one section at a time, and restore a section only when its failure recurs. Include the AGENTS byte and line counts before and after.\n3. Regenerate both operator pages and run --sync, then push.",
+   "why": "The reorg's commits move artifact-currency's window. `/doctor prompt-audit` (present in the installed 2.1.311 binary) is the future-proofing check for instructions written for older models.",
+   "verify": "cd frontend && node scripts/ci/artifact-currency.mjs (exit 0). The full pre-push passes. `gh run list --workflow=ci.yml --branch main --limit 3` shows the push's run."
+  }
+ ],
+ "not_doing": [
+  "Not installing Blender: nothing consumes authored 3D assets today. A grep of frontend/src for useGLTF, GLTFLoader, .glb, .gltf, useTexture and TextureLoader returned 0 hits this turn; textures are procedural, and Blender is not installed. A system package also needs Kevin's explicit OK under the global rules. If the masterpiece design panel picks hand-made models, prefer MagicaVoxel .vox fed to the existing greedy mesher, and use headless Blender plus gltf-transform only for glTF baking.",
+  "No project skills (.claude/skills/prove-in-game, lookbook, mutation-batch). The global scope rule puts new skills only in AB skills/<name>-kz/. The instruments ship as scripts with one-line pointers (E1, E2), and the procedure lives in the trimmed gates-and-probes.md rule.",
+  "No project .claude/agents overrides that pin reviewers at xhigh. That has the same scope conflict, and the repo is public. xhigh is set per Workflow stage, per DECISIONS 2026-10-27. Proposing a per-project effort override is a message to the AB owner, not a Crafty edit.",
+  "Not moving the GATES table out of AGENTS.md into a path-scoped rule. Which tier runs which gate is what an agent needs when a hook goes red, so it is compressed in place (C1). Revisit only through the prompt-audit cut-and-restore loop.",
+  "Not retiring the era-review and sota-audit pages or the artifact-currency gate. Kevin asked for that check after three stale-page incidents, so they are regenerated instead; only the dormant loop-progress surface and the uncited KEVIN-REVIEW.html are retired.",
+  "Not keying green-tree receipts by tree SHA. B7 stops pre-commit writing receipts, so cross-lane receipt eviction stops mattering.",
+  "Not upgrading graft (0.13 to 0.26) or uninstalling it. That is a global npm install and a call on operator tooling; graft only becomes machine-local (A5).",
+  "Not editing Agentic-Brain files. These go to the AB owner by message: naming the Antigravity .agent/workflows channel loss in configs/known-gaps.json; dropping /.githooks/commit-msg from the attribution-guard installer's ignore block; and the reviewer-effort override.",
+  "Not purging operator paths, the raw audit JSONs, or the hostname embedded in memory/perf/*.json filenames from public git history. Rewriting pushed history is one of Kevin's two bright lines. Deleting from HEAD only lowers ongoing debt; the hostname exposure is a separate decision for Kevin.",
+  "Not fixing the CI e2e shard time limit: main's latest ci.yml run is 'cancelled' (shards 2 and 3 at the limit, per DECISIONS 2026-10-27). That belongs to the command session's task list, and the read order ranks a red CI above this reorg.",
+  "No formal before/after task-success ablation across fixed tasks: no instrument exists for it here. Byte and line sizes plus `/doctor prompt-audit` and restore-on-recurrence stand in for it.",
+  "No gate on how many days since STATUS or CHANGELOG was last touched: touching the file would satisfy it. D7's plan-status check covers the completion step instead.",
+  "Not reordering old DECISIONS entries, which would churn blame; the generated TOC (D11) carries the order.",
+  "No `onFailure: block` on the new PreToolUse guard. A bug in it would block every Bash call, so it fails open and harness-integrity checks its wiring.",
+  "Not moving the sota-2026-09 folder: about 72 files cite its Q ids (lane-measured). It gets CLOSED banners instead (D5)."
+ ]
+}
