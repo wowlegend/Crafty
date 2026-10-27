@@ -5,6 +5,69 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
+### CRAFTY COMMAND SESSION — START HERE (handoff written 2026-10-27 by the session that ran the SOTA overnight goal)
+
+Kevin, 2026-10-27: a new session rooted in `/Users/kz/Code/Crafty` takes over as the **Crafty command session** (so
+Crafty's own `.claude/settings.json` hooks and permission rules are live — the previous session was rooted at
+`~/Code`, where they are not). Standing defaults: **reviewers at xhigh, never max**; **Sonnet 5.5 / Haiku 5.5
+liberally** — both in `.agent/AGENTS.md` Method. Kevin's overnight `/goal` (SOTA looks + gameplay, full autonomy, his
+2026-09-23 live-site report leading: M3 Max heat, iPad visuals broken) is the work; this block is its state.
+
+**Measured 2026-10-27 (re-measure before relying on any of it):**
+- `main` = 03203dbc + this handoff commit, **10 commits ahead of origin/main 57c45ae4, nothing pushed since 2026-09-23.**
+  CI on main last concluded `cancelled` (run 35845534213) — a RED tree by the read order's rule.
+- Two open Dependabot PRs: #20 (dev-dependencies group, its CI run failed 2026-10-01), #21 (production minor/patch).
+  4 open Dependabot alerts.
+- Worktrees: `.claude/worktrees/perf-t3` (branch `wip/perf-t3-features`, WIP commit cfea7d41) and
+  `.claude/worktrees/mip-ab` (branch `wip/r7-lazy-panels`, parking commit 45590d2c, not merged by git; OVERNIGHT records
+  its content as ported to main in aed92d0f + e9f4038f — confirm with a diff, then remove the worktree and branch).
+
+**Ordered next steps:**
+1. **Get main green and pushed.** Commit or finish the uncommitted main edits first (the receipt hashes the tree):
+   `frontend/src/render/Atmosphere.jsx` (review #8 finding 11, shadow reset as a layout effect),
+   `frontend/tests/e2e/dodge-latch.spec.js` (finding 5; D1 mutant RED, an identity mutant + clean baseline still owed
+   via `frontend/scripts/dev/mutate-e2e.sh`), and the untracked iPad probe + its `_serve.mjs` port. Then stop anything
+   on port 4179 and run `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run` (~1 h on a
+   loaded machine; it now refuses a partial run or a reused server), commit `frontend/tests/e2e/.last-green.json`,
+   push onto a completed CI run, watch CI to a `success` conclusion. That push delivers the perf fixes to the live
+   site Kevin tested (Vercel auto-deploys on push).
+2. **Dependabot #20 / #21** — triage against the estate's Dependabot gotchas (`rules-global/github-automation.md`).
+3. **The CI-gates handoff** `~/Code/Agentic-Brain/HANDOFF-2026-10-25-ci-gates-estate.md` §3 (Crafty's share): Vercel
+   Deployment Checks, pin `ubuntu-24.04`, bump the checkout/setup-node actions, pre-commit 69 s -> ~3 s, `onFailure:
+   "block"` on the existing guard. Last owner to finish removes that file and its MEMORY.md inbox line.
+4. **iPad**: run the WebKit iPad probe on the production build and OPEN the frames before fixing more (Kevin's
+   "visuals very buggy / broken" is still unreproduced; ecf22bc9 fixed a verified mechanism, not a seen symptom).
+5. **The parked features** on `wip/perf-t3-features`: apply onto main by file group (main moved: reconcile
+   FrameCap.jsx, GameScene.jsx, frame-cap.spec.js by hand), run each e2e, a mutate-e2e batch with an identity mutant
+   each, then commit from main. Title-screen pacing, compass dedupe, emissive ores, leaf sway + translucency, storm
+   lightning.
+6. **Review #8 open findings**: the list in the PAUSED block below (#1 the touch-strand on a failed panel chunk is the
+   one MED).
+
+**Review method:** `docs/superpowers/DECISIONS.md`, 2026-10-27. In short: `/code-review xhigh` as a FRESH headless process
+   (never forked from the author session) per change range; one pointed adversarial-reviewer-kz at xhigh (a Workflow
+   stage) where a change crosses a runtime seam; the mutation layer stays the floor; ultrareview is Kevin's to
+   launch, for milestones only (3 free runs, then $5-25 a run).
+
+**Findings from the 2026-10-27 review bake-off — to work, verify-first:**
+- **B1, REPRODUCED on main (MED-low):** `frontend/src/game/captureRest.js` shoveAgainstWalls judges each column from
+  the lowered floor (`here`, the R9.5 fix) but writes only x/z; the next ground snap (`frontend/src/game/localPath.js`
+  snapMob via settleOnGround) judges from the ORIGINAL feet, sees the overhang as a wall and reverses the shove
+  (8/8 scenarios, control clean). Fix sketch from the verifier: carry the floor height through the shove (write y, or
+  snap from `here`), then a gate that drives shove then snap.
+- **Instrument flaw, found by BOTH xhigh arms:** `frontend/scripts/dev/mutate-e2e.sh` scores any non-`SETUP:`
+  failure as a kill, so a Playwright test timeout or bootDev's untagged 30 s wait counts as RED. Also
+  `E2E_WORLD_TIMEOUT` above a spec's test timeout pre-empts the SETUP rethrow. Fix before the next mutate-e2e batch;
+  re-check the frame-cap and dodge-latch receipts that relied on it.
+- **Candidates, unverified:** PanelBoundary swallows every render error, not only chunk loads (and a stale-deploy 404
+  retries the same dead chunk forever); T swings the sword while the voidhand is held (its comment claims otherwise);
+  a voidhand grab mid-charge still releases a heavy; BloomSpikeDriver drives a dead BloomEffect after a low/med tier
+  change; FrameCap's production useFrame counter is read only by a DEV hook; `--run` never sweeps its processes;
+  mutate.sh and mutate-e2e.sh duplicate their guards. Already fixed on main: `--run` refusals (f998e442), the
+  governor bounds and the stale comments (54b6f65c).
+
+
+
 ### PAUSED — 2026-09-26 ~09:00 PDT by Kevin ("focus token usage on AB works for now"). RESUME FROM HERE.
 
 - **Committed, NOT pushed** (origin/main is 57c45ae4, whose CI run 35845534213 concluded cancelled = RED):

@@ -18,6 +18,42 @@
 
 ---
 
+## 2026-10-27 — [KEVIN-delegated] Code review for Crafty: built-in `/code-review xhigh` as the default, ONE pointed adversarial reviewer on runtime seams, the dynamic layer stays ours; ultrareview held for milestones
+
+**Asked (Kevin, 2026-10-27):** decide between Claude Code's `/code-review` and ultrareview, say how they differ from our
+review rituals, which is best, and run reviewers at xhigh at most (with Sonnet and Haiku used liberally).
+
+**Measured, not argued.** Both local reviewers re-ran BLIND, at xhigh, on review #8's range (57c45ae4..9dc5fac7) in an
+isolated copy outside the repo (no later history, no main docs). `/code-review` ran as a fresh headless `claude -p`
+process, the adversarial reviewer as a non-fork agent whose reads were audited (0 outside the copy). They were scored
+against six defects verified earlier in that range (G1-G6). The first attempt was CONTAMINATED and discarded: a forked
+`/code-review` inherits the author conversation, and a worktree reviewer can read main's ACTIVE_PLAN and reflog.
+
+| | `/code-review xhigh` | adversarial-reviewer-kz, xhigh, neutral brief | the same reviewer, max, pointed brief (the key's source) |
+|---|---|---|---|
+| verified defects found (of 6) | 3 (G3, G4, G6) | 2 (G3, G4) | 6 (by construction: biased) |
+| findings / wall time | 15 / 15.5 min | 5 / 20 min | 12 / 28 min |
+| missed by both xhigh arms | G1 the stepCap judder at 120.2 Hz, G2 the Show Stats over-read, G5 a dodge-latch test hole | | |
+| extras worth having | breadth (stale comments, two instrument flaws) | depth (BloomSpikeDriver dead effect, the J6 receipt) | |
+
+**Decision.**
+- **Default per change range:** `/code-review xhigh`, run as a FRESH process (`claude -p "/code-review xhigh <range>"`
+  from the Crafty root, in the background), never forked from the author session. Reviews #1-#8 used it (78 findings,
+  72 fixed), but forked, which breaks author/reviewer separation.
+- **Plus one adversarial-reviewer-kz at xhigh with a POINTED brief** where the change crosses a runtime seam (render
+  loop, physics, input timing, library semantics). The pointed brief is what found G1/G2. Its yield at xhigh, as
+  against max, is untested.
+- **The dynamic layer stays ours, and it is the floor:** simulation of pure cores, `mutate.sh` / `mutate-e2e.sh`
+  with identity mutants. It alone confirmed G1 and G5 and found the frame-cap leak. Fix first: `mutate-e2e.sh` scores
+  a Playwright test timeout as a kill (both xhigh arms found it).
+- **ultrareview (`/code-review ultra`):** a cloud fleet that reproduces each finding before reporting it. Max plan:
+  3 free runs per account, one-time; then usage credits, typically $5-25 a run; 15-25 min. No effort control, so the
+  xhigh cap cannot be applied to it. Only Kevin can launch it. Use it as a milestone gate (the parked features branch
+  before it merges, a release), never per commit. Not measured here: every run beyond the free three costs money.
+
+**Limits.** One range and six defects, with a key produced by one of the compared methods. Indicative, not a
+statistic. Re-score when the next verified-defect set exists.
+
 ## 2026-08-13 (night) — [LOOP] three r174 KILLS the GL-error storm, and is still NOT landing tonight
 
 Kevin, going to sleep: *"if the upgrade works, then do it."* It does not work in the sense that clears the

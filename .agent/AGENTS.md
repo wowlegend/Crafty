@@ -210,6 +210,13 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
 - NO "Generated with" / "Co-Authored-By: Claude" footer. Subagent fix-ups = NEW commits (never `git commit --amend` / `reset`).
 
 ## Method
+- **Models and effort for Crafty (Kevin, 2026-10-27, standing).** Reviewers and verifiers run at effort **xhigh,
+  never max** unless Kevin asks for max: *"only up to xhigh reviewers (if any needed) for Crafty works."* Keep them on
+  Opus 5.5 (`agentType: 'adversarial-reviewer-kz'` / `'repro-verifier-kz'`, `model: 'claude-opus-5-5'`,
+  `effort: 'xhigh'`) as Workflow stages — the Agent tool takes no effort argument and both types' frontmatter pins max.
+  Built-in `/code-review` at `xhigh` at most. A reviewer is added where a change crosses a seam the gates cannot see;
+  the deterministic gates stay the floor. And *"make liberal use of sonnet and haiku as you decide best"*: Sonnet 5.5
+  / Haiku 5.5 wherever they fit, through Workflow `agent()` with the full model id and an explicit effort, never low.
 - **A SUBAGENT DOES NOT INHERIT YOUR CONTEXT — including this file.** `Explore` and `Plan` are the two
   most-used delegates and they start blank, so the agent doing the most file-hunting is precisely the one
   that has never read the TWO-LEVEL layout block above — the repo's own #1 recurring mistake. Restate
