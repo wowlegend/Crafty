@@ -11,8 +11,9 @@
 # unset none. This removes every GIT_* name `env` lists, not a list of the dangerous ones: the set git exports grows,
 # and a gate's exception list is where the next defect lives (tests/scripts/_isolatedGit.js does the same for tests).
 #
-# NOT used for ci/write-receipt.sh, which must see git's GIT_INDEX_FILE to certify the index being committed.
-# Proven by tests/scripts/git-env-scrub.test.js.
+# ci/write-receipt.sh is NOT run through it, because it must see git's GIT_INDEX_FILE to certify the index being
+# committed; it sources this file only to LOCATE its tree scrubbed (an absolute GIT_DIR makes git take the cwd as the
+# toplevel). Proven by tests/scripts/git-env-scrub.test.js and tests/scripts/write-receipt.test.js.
 run_scrubbed() {
   (
     for v in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$v"; done

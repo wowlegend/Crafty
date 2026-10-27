@@ -27,6 +27,8 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  *         ignored and untracked, so nothing tracked is exempt)
  *   M5 remove `frontend` from INPUT_ROOTS                                 -> untracked-input case RED
  *   and against ci/pipeline.sh: M6 inline `git write-tree` back in        -> single-writer case RED
+ *   fix round (tranche A review, item 3), via mutate-batch, identity SURVIVED, each -> "LINKED WORKTREE's hook" RED:
+ *   M-R1 the toplevel found under the hook's GIT_DIR (unscrubbed rev-parse) · M-R2 no `cd "$ROOT"` · M-R3 helper not sourced
  *
  * BLIND SPOT: this proves the script refuses a dirty tree; it does not prove pre-push HONOURS only exact
  * matches — that is .githooks/pre-push's reader, gated separately by its tier comparison.
@@ -109,6 +111,53 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
     git(repo, 'add', 'frontend/src/a.js');
     writeFileSync(join(repo, '.mcp.json'), '{}\n');
     expect(run(repo, receipt).status).toBe(0);
+  });
+});
+
+describe('ci/write-receipt.sh run from a LINKED WORKTREE\'s hook, the way ci/pipeline.sh runs it', () => {
+  // THE DEFECT (tranche A review, 2026-10-27): every commit made in a lane worktree had its receipt refused,
+  // "1255 path(s) differ, e.g. .agent/AGENTS.md". pipeline.sh cds into frontend/ and then runs this script; git hands
+  // a linked worktree's hooks an ABSOLUTE GIT_DIR and no GIT_WORK_TREE, and with GIT_DIR set git takes the CURRENT
+  // directory as the top of the work tree. So `git rev-parse --show-toplevel` answered frontend/, and every tracked
+  // path outside it read as deleted. Fail-safe (no receipt, so pre-push certified in full), but every lane commit
+  // paid the full push. This case makes a REAL commit in a linked worktree of a fixture repo, through a pre-commit
+  // hook that does what pipeline.sh does, so git itself sets the environment the script sees.
+  it('certifies the worktree\'s own index tree', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'crafty-receipt-lane-'));
+    try {
+      const wt = join(outside, 'lane');
+      const hooks = join(outside, 'hooks');
+      const log = join(outside, 'hook.log');
+      const envLog = join(outside, 'hook.env');
+      const laneReceipt = join(outside, 'receipt');
+      mkdirSync(hooks);
+      writeFileSync(
+        join(hooks, 'pre-commit'),
+        `#!/bin/sh\nenv > '${envLog}'\ncd frontend || exit 1\nsh '${SCRIPT}' '${laneReceipt}' > '${log}' 2>&1\necho "exit=$?" >> '${log}'\nexit 0\n`,
+        { mode: 0o755 },
+      );
+      git(repo, 'config', 'core.hooksPath', hooks);
+      // The operator's git shim refuses `worktree add` into a temp dir; this one lives for the length of the test, so
+      // it takes the shim's explicit override (as mutate-batch.test.js does). CI has no shim and ignores the variable.
+      process.env.AB_ALLOW_EPHEMERAL_WORKTREE = '1';
+      try {
+        git(repo, 'worktree', 'add', '-q', '-b', 'lane', wt);
+      } finally {
+        delete process.env.AB_ALLOW_EPHEMERAL_WORKTREE;
+      }
+      writeFileSync(join(wt, 'frontend/src/a.js'), 'export const a = 2;\n');
+      git(wt, 'add', 'frontend/src/a.js');
+      git(wt, 'commit', '-q', '-m', 'lane commit');
+
+      const env = readFileSync(envLog, 'utf8');
+      // The precondition of the defect, asserted rather than assumed: the hook really ran under an absolute GIT_DIR.
+      expect(env, 'the hook did not see an absolute GIT_DIR — this case is not reproducing the lane context').toMatch(/^GIT_DIR=\//m);
+      const out = readFileSync(log, 'utf8');
+      expect(out, out).toMatch(/exit=0\s*$/);
+      expect(readFileSync(laneReceipt, 'utf8').split(' ')[0], out).toBe(git(wt, 'rev-parse', 'HEAD^{tree}'));
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
 

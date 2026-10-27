@@ -31,7 +31,15 @@
 set -u
 
 RECEIPT="${1:?usage: sh ci/write-receipt.sh <receipt-path>}"
-ROOT=$(git rev-parse --show-toplevel) || exit 3
+# THE TREE IS FOUND WITH GIT_* SCRUBBED; IT IS CERTIFIED WITH GIT'S OWN. pipeline.sh runs this from frontend/, and in
+# a LINKED worktree git hands its hooks an absolute GIT_DIR with no GIT_WORK_TREE, under which git takes the CURRENT
+# directory as the top of the work tree: `--show-toplevel` answered frontend/, every tracked path outside it read as
+# deleted, and every lane commit's receipt was refused ("1255 path(s) differ", tranche A review, 2026-10-27). So the
+# toplevel is located by discovery from the cwd (run_scrubbed, ci/git-env.sh), and every git below runs from that
+# toplevel with the hook's variables intact — GIT_INDEX_FILE is the index being committed, which is the point.
+# Proven by tests/scripts/write-receipt.test.js ("run from a LINKED WORKTREE's hook").
+. "$(dirname "$0")/git-env.sh" || exit 3
+ROOT=$(run_scrubbed git rev-parse --show-toplevel) || exit 3
 cd "$ROOT" || exit 3
 
 INPUT_ROOTS="frontend ci .githooks docs memory .agent .github"
