@@ -394,7 +394,7 @@ export const GameScene = React.memo(function GameScene({
             dpr is the pixel budget's (render/pixelBudget.js), stepped by the tier. */}
         {import.meta.env.DEV && <FrameStall />}
         {/* FRAME CAP (render/FrameCap.jsx): paces the 'demand' loop the Canvas prop above switches on. */}
-        <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks />
+        <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks drivesHud />
 
         <Atmosphere shadowConfig={shadowConfig} />
 
