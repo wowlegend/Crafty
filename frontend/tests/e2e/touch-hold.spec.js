@@ -50,7 +50,7 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> must SURVIVE
 // (A mutant of ANTICIPATION_SEC is deliberately absent: this spec imports that constant, so it would move its own
 // thresholds and score SETUP, not a verdict.) Replace OWED with the observed verdicts.
-// CI run 40517958583 fix (the input-time hold; the fresh-brute isolation) — OBSERVED 2026-10-27 by its
+// CI run 40517958583 fix (the input-time hold; the fresh-brute isolation; F2's entry wait) — OBSERVED 2026-10-27 by its
 // lane, the action-button case alone, a throwaway config on a free port, a machine at load 31-85 on 14 cores
 // (E2E_WORLD_TIMEOUT=180000), each RED with the message named unless marked:
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> SURVIVED, as it must
@@ -64,6 +64,9 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //       could not fail on CI while the warm-up's stagger lingered under the freeze)
 //   E6 src/Components.jsx: plausible-wrong, the release throws the heavy whatever the charge -> RED, "a HALF-charged
 //       release dealt 40"
+//   E19 F2's flake CONSTRUCTED (a throwaway spec, deleted): the title menu brought back, input made live as forcePlay
+//       does, touch-action hit-tested the moment it mounted -> covered by "CANVAS in title-diorama", topmost 969 ms
+//       later. Every entry of the batch above logged the same cover: 3332-8841 ms after startPlayActive returned.
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
@@ -74,7 +77,8 @@ const stampOf = (at) => (at === undefined ? {} : { timestamp: at });
 const touchStart = (cdp, p, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }], ...stampOf(at) });
 const touchEnd = (cdp, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], ...stampOf(at) });
 
-/** The centre of a control, and proof a thumb there lands ON it. Throws SETUP otherwise. */
+/** The centre of a control, and proof a thumb there lands ON it. Throws SETUP otherwise, naming what covers it: the
+ *  hit element and the nearest [data-testid] around it (a bare "CANVAS" cannot tell the world from the title diorama). */
 async function aimAt(page, testid) {
   const a = await page.evaluate((id) => {
     const el = document.querySelector(`[data-testid="${id}"]`);
@@ -83,7 +87,8 @@ async function aimAt(page, testid) {
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     const hit = document.elementFromPoint(x, y);
-    const name = hit ? (hit.getAttribute('data-testid') || hit.tagName) : 'nothing';
+    const around = hit && !hit.getAttribute('data-testid') ? hit.closest('[data-testid]')?.getAttribute('data-testid') : null;
+    const name = hit ? `${hit.getAttribute('data-testid') || hit.tagName}${around ? ` in ${around}` : ''}` : 'nothing';
     return { ok: hit === el, x, y, locked: el.getAttribute('data-locked'), why: `the centre of ${id} hits ${name}` };
   }, testid);
   if (!a.ok) throw new Error(`SETUP: ${a.why}`);
@@ -125,10 +130,44 @@ async function press(page, cdp, p, ms) {
   return { log, down, up, heldMs: down && up ? Math.round(up.t - down.t) : null };
 }
 
+/** What is topmost at a control's centre: 'self' when the control is, else the hit and the nearest [data-testid]
+ *  around it. A page function (serialised by Playwright), so it closes over nothing. */
+const coverAt = (id) => {
+  const el = document.querySelector(`[data-testid="${id}"]`);
+  if (!el) return 'absent';
+  const r = el.getBoundingClientRect();
+  const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  if (hit === el) return 'self';
+  const around = hit && !hit.getAttribute('data-testid') ? hit.closest('[data-testid]')?.getAttribute('data-testid') : null;
+  return hit ? `${hit.getAttribute('data-testid') || hit.tagName}${around ? ` in ${around}` : ''}` : 'nothing';
+};
+
+/** Wait until `testid` is topmost at its centre, or fail SETUP naming what still covers it. Logs what covered it at
+ *  entry and for how long, so a run says whether the wait did anything. */
+async function uncovered(page, testid, why) {
+  const t0 = Date.now();
+  const first = await page.evaluate(coverAt, testid);
+  let now = first;
+  while (now !== 'self' && Date.now() - t0 < 30000) {
+    await page.waitForTimeout(100);
+    now = await page.evaluate(coverAt, testid);
+  }
+  console.log(`[touch-hold] entry: ${testid} ${first === 'self' ? 'topmost at once' : `covered by ${first}, topmost after ${Date.now() - t0} ms`}`);
+  if (now !== 'self') throw new Error(`SETUP: ${testid} is still covered by ${now} 30 s after input went live — ${why}`);
+}
+
+// REVIEW F2's flake (CI run 40517958583, 1 of 2: "SETUP: the centre of touch-action hits CANVAS"). The overlay mounts
+// the moment input goes live, but the title menu LEAVES on an exit animation: MenuSystem keeps it mounted under
+// AnimatePresence — a fixed, z-index 9999, pointer-events-auto layer holding the title diorama's canvas — until the fade
+// ends, which on a loaded software renderer outlasts startPlayActive's 500 ms of held gate (measured 2026-10-27 on a
+// loaded machine: 12 of 13 entries covered by "CANVAS in title-diorama" for 2.8-8.8 s after it returned). A case that
+// aimed straight away (F2) hit-tested a control the menu still covered. The entry now waits for the overlay to be
+// topmost — the one input aimAt reads and nothing used to set — and fails SETUP naming the cover if it never is.
 async function enterTouchPlay(page) {
   await bootDev(page);
   await startPlayActive(page);
   await attached(page, 'touch-action', 'the touch overlay did not mount (isTouchDevice false, or input never went live)');
+  await uncovered(page, 'touch-action', 'the title menu never left, or something else sits over the overlay');
 }
 
 test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', () => {
