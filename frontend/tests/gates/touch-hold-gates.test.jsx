@@ -60,6 +60,11 @@ import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 //   A5 plausible-wrong: dropHolds cancels the heavy but keeps the claim (every later press refused)
 //   A6 dropHolds leaves the roar's hold   A7 the input-dead effect ignores `active` (only a panel drops the holds)
 //   A0 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
+// Review round 2, item 4 (the heavy's F3 case looped over the roar case's three openers; 35 tests), each observed RED,
+// the heavy's loop among the red titles:
+//   B1 talentsOpen dropped from panelOpen   B2 otherPanelOpen dropped   B3 the store's panels dropped
+//   B4 the action button takes a press with a panel open (the heavy's loop alone)
+//   B0 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -392,23 +397,44 @@ describe('the action button is press-and-hold: the light swing at the press, the
     expect(calls, 'PRESENCE: the owning finger\'s lift must release it').toEqual([['press', 0, 'touch'], ['release', 'touch']]);
   });
 
-  it('F3: a panel opening mid-charge CANCELS the heavy (never throws it), and the button refuses a press while it is open', () => {
-    // The press stand-in charges the real heavyAttack module, as Components' pressPrimary does for 'touch'.
-    useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
-    render(<TouchControls isWorldBuilt />);
-    fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
-    advance(HEAVY_HOLD_MS + 100);
-    expect(isHeavyHeld(), 'SETUP: the press did not charge').toBe(true);
-    act(() => useGameStore.setState({ showChestInterface: true }));
-    expect(getInput().active, 'SETUP: the chest dropped input — this case is the panel that keeps it live').toBe(true);
-    expect(isHeavyHeld(), 'a panel opened under a held heavy and the charge survived').toBe(false);
-    fireEvent.pointerUp(action(), { pointerId: 3, pointerType: 'touch' });
-    expect(calls.filter(([k]) => k === 'release'), 'the lift after the cancel released (threw) the heavy').toEqual([]);
-    fireEvent.pointerDown(action(), { pointerId: 5, pointerType: 'touch' });
-    expect(calls.filter(([k]) => k === 'press'), 'a press went through with the panel open').toHaveLength(1);
-    act(() => useGameStore.setState({ showChestInterface: false }));
-    fireEvent.pointerDown(action(), { pointerId: 6, pointerType: 'touch' });
-    expect(calls.filter(([k]) => k === 'press'), 'PRESENCE: with the panel closed the button presses again').toHaveLength(2);
+  // Review round 2, item 4: this case used to open only the store's chest. The three openers are the same three the roar
+  // case above loops over — the store flag, the App-local Talents flag and the App-local Achievements / Stats flag — since
+  // each reaches `panelOpen` by a different path, and dropping any one of them leaves a heavy charging behind its panel.
+  it('F3: any panel opening mid-charge CANCELS the heavy (never throws it), and the button refuses a press while it is open (3 of 3)', () => {
+    const openers = [
+      ['the chest (a store flag)', () => act(() => useGameStore.setState({ showChestInterface: true })),
+        () => act(() => useGameStore.setState({ showChestInterface: false }))],
+      ['Talents (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt talentsOpen />),
+        (rerender) => rerender(<TouchControls isWorldBuilt />)],
+      ['Achievements / Stats (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />),
+        (rerender) => rerender(<TouchControls isWorldBuilt />)],
+    ];
+    let cancelled = 0;
+    for (const [name, open, close] of openers) {
+      setActive(true);
+      calls.length = 0;
+      // The press stand-in charges the real heavyAttack module, as Components' pressPrimary does for 'touch'.
+      useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
+      const { rerender } = render(<TouchControls isWorldBuilt />);
+      fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+      advance(HEAVY_HOLD_MS + 100);
+      expect(isHeavyHeld(), `SETUP (${name}): the press did not charge`).toBe(true);
+      open(rerender);
+      expect(getInput().active, `SETUP (${name}): input went dead — this case is the panel that keeps it live`).toBe(true);
+      expect(isHeavyHeld(), `${name} opened under a held heavy and the charge survived`).toBe(false);
+      fireEvent.pointerUp(action(), { pointerId: 3, pointerType: 'touch' });
+      expect(calls.filter(([k]) => k === 'release'), `the lift after ${name} cancelled the heavy released (threw) it`).toEqual([]);
+      fireEvent.pointerDown(action(), { pointerId: 5, pointerType: 'touch' });
+      expect(calls.filter(([k]) => k === 'press'), `a press went through with ${name} open`).toHaveLength(1);
+      close(rerender);
+      fireEvent.pointerDown(action(), { pointerId: 6, pointerType: 'touch' });
+      expect(calls.filter(([k]) => k === 'press'), `PRESENCE: with ${name} closed the button presses again`).toHaveLength(2);
+      cancelled += 1;
+      cleanup();
+      cancelHeavy();
+      useGameStore.setState({ showChestInterface: false });
+    }
+    expect(cancelled).toBe(openers.length);
   });
 
   // REVIEW ROUND 2: input going dead (pause, death) UNMOUNTS the action button under the finger, so its lift can never
