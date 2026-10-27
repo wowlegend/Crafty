@@ -389,6 +389,34 @@ describe('a shove is a DISTANCE, not a frame-length (R7.4); it slides along a wa
     drainKnockback([w], false, (x) => (Math.floor(x + 0.1) >= 12 ? Infinity : GROUND));
     expect(w.position.x).toBeLessThan(11.9);
   });
+
+  // B1 (bake-off 2026-10-27, reproduced 8/8; = ultrareview U3): the shove above lands UNDER the overhang, but it
+  // wrote only x/z, and the very next ground snap (snapMob, the one call per worker reply) judged the column from the
+  // ORIGINAL feet — inside the slab — read a wall, and rewound the mob to the ledge it was knocked off. The R9.5 case
+  // stopped at the shove, so it was green while the game undid it a tick later. This drives the SEAM: shove, then snap.
+  it('the shove carries its floor to the next ground snap, which keeps the mob under the overhang', () => {
+    const floorAt = (x, z, feet) => {
+      const cx = Math.floor(x + 0.1);
+      if (cx <= 10) return GROUND;
+      if (cx === 11) return GROUND - 2;
+      return feet > GROUND - 1 ? Infinity : GROUND - 2;
+    };
+    const top = (x) => (Math.floor(x + 0.1) >= 12 ? GROUND + 1 : floorAt(x, 0, GROUND - 2));
+    // A mob already snapped on the ledge: its foot memory is the ledge column, as in the running game.
+    const e = { type: 'zombie', health: 10, position: { x: 10.3, y: GROUND + 0.5, z: 0.3 }, footX: 10.3, footZ: 0.3, knockback: [60, 0, 0] };
+    drainKnockback([e], false, floorAt);
+    expect(e.position.x, 'SETUP: the shove itself no longer reaches under the overhang').toBeCloseTo(14.3, 9);
+    const refused = snapMob(e, floorAt, top, 1000);
+    expect(refused, `the snap refused the shove and rewound the mob to x ${e.position.x.toFixed(2)}`).toBe(false);
+    expect(e.position.x, 'the mob left the spot the shove put it').toBeCloseTo(14.3, 9);
+    expect(e.position.y, `the mob stands at y ${e.position.y} — on the slab, or inside it, not under it`).toBe(GROUND - 2 + 0.5);
+    // CONTROL: a shove that stays on the ledge level leaves y where it was, and the snap keeps it there.
+    const flat = { type: 'zombie', health: 10, position: { x: 4.3, y: GROUND + 0.5, z: 0.3 }, footX: 4.3, footZ: 0.3, knockback: [30, 0, 0] };
+    drainKnockback([flat], false, () => GROUND);
+    expect(flat.position.y).toBe(GROUND + 0.5);
+    expect(snapMob(flat, () => GROUND, () => GROUND, 1000)).toBe(false);
+    expect(flat.position.x).toBeCloseTo(6.3, 9);
+  });
 });
 
 describe('after the snap refuses a move into a wall (R7.8)', () => {

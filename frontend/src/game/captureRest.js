@@ -64,7 +64,7 @@ export const KNOCKBACK_SHOVE_S = 4 / 60;
  * slow frame cast hundreds of rays (review #6, R7.5, R7.6).
  */
 function shoveAgainstWalls(pos, tx, tz, floorAt) {
-  const feet = pos.y - 0.5; // y is not touched until the next ground snap
+  const feet = pos.y - 0.5;
   // The floor it STANDS on is tracked from the feet, never re-probed at the point it is leaving: that point can sit
   // on a column seam (x + 0.1 whole) and read the neighbour's floor — a canopy read there made the canopy look level.
   // walkAgainstWalls takes every step canEnter allows, so `here` follows the walk exactly.
@@ -88,6 +88,11 @@ function shoveAgainstWalls(pos, tx, tz, floorAt) {
   };
   const r = walkAgainstWalls(pos.x, pos.z, tx, tz, canEnter);
   pos.x = r.x; pos.z = r.z;
+  // And the floor it ended on (B1, bake-off 2026-10-27 = ultrareview U3). Writing only x/z left y at the ORIGINAL feet,
+  // so the next ground snap (snapMob, one per worker reply) asked the new column from inside an overhang the shove had
+  // just walked under, read a wall, and rewound the mob to the ledge it was knocked off. Unchanged when the walk never
+  // changed floor; the snap still settles it.
+  pos.y = here + 0.5;
 }
 
 /**
