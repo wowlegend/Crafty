@@ -19,6 +19,12 @@ import { ORE_GLOW, NUGGET_CHROMA, oreGlowTable, nuggetMask, nightFactor, oreGlow
  *   O5 plausible-wrong: the GLSL's night edge drifts from the JS (0.1 -> 0.3) -> the generated-curve case (it
  *      SURVIVED the first version of this file, which text-matched the chroma constants only)
  *   and O0, an identity mutant (a comment edit in oreGlow.js, same harness and batch), SURVIVED.
+ * The output line (review 2026-10-27: every case above checks a factor's DEFINITION, and each could be dropped from the
+ * product with all of them green), same harness, each observed RED at "the output line multiplies every factor":
+ *   O6 oreNight dropped from the product (glows by day)   O7 oreNugget dropped (the stone between the nuggets glows)
+ *   O8 oreGlowK dropped (every layer glows, coal and stone included)   O9 the linear tile colour dropped
+ *   and O10 plausible-wrong: the table read at layer 0 instead of this one -> "the table factor does not read this layer"
+ *   and O0b, an identity mutant (a comment edit in oreGlow.js), SURVIVED.
  *
  * BLIND SPOT: nothing here renders. Whether the term reaches the linked terrain program, and what it looks like,
  * is Task 2's gate and Task 3's probe frame.
@@ -36,6 +42,21 @@ const texels = (layer) => {
   return out;
 };
 const isMatrix = ([r, g, b]) => r === g && b - r >= 0 && b - r <= 3; // the ore tiles' stone: c, c, c + 3
+// The factors of the ONE `totalEmissiveRadiance += a * b * ...;` line in the generated GLSL, split at top-level `*`.
+const emissiveFactors = (glsl) => {
+  const lines = glsl.split('\n').filter((l) => /totalEmissiveRadiance\s*\+=/.test(l));
+  expect(lines.length, 'the term must add into totalEmissiveRadiance exactly once').toBe(1);
+  const rhs = lines[0].match(/totalEmissiveRadiance\s*\+=\s*(.+);\s*$/)[1];
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of rhs) {
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth -= 1;
+    if (ch === '*' && depth === 0) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+};
 
 describe('the glow table: only iron, gold and diamond, in rising order', () => {
   const t = oreGlowTable(LAYERS);
@@ -101,6 +122,19 @@ describe('the GLSL cannot drift from the JS', () => {
     expect(g.apply).toContain(NUGGET_CHROMA[0].toFixed(3));
     expect(g.apply).toContain(NUGGET_CHROMA[1].toFixed(3));
     expect(g.apply).toMatch(/uSunDir\.y/);
+  });
+
+  it('the output line multiplies every factor — the colour, the table, the nugget mask and the night curve', () => {
+    // A factor DEFINED above and tested against its twin below is not APPLIED unless it is in this product: dropping
+    // `* oreNight` passed every other case here. The expected set is written here, not read from oreGlow.js.
+    const g = oreGlowGlsl(LAYERS).apply;
+    const factors = emissiveFactors(g);
+    expect([...factors].sort(), `the output line multiplies every factor: ${factors.join(' * ')}`).toEqual(
+      ['oreGlowK', 'oreNight', 'oreNugget', 'pow(texColor.rgb, vec3(2.2))'],
+    );
+    expect(g, 'the table factor does not read this layer').toMatch(
+      new RegExp(`float oreGlowK = uOreGlow\\[int\\(clamp\\(layerIndex, 0\\.0, ${LAYERS - 1}\\.0\\)\\)\\];`),
+    );
   });
 
   it('the GENERATED shader curves compute what the JS twins compute (the GLSL cannot drift from the tested maths)', () => {

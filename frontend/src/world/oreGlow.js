@@ -48,6 +48,11 @@ export function nightFactor(sunY) {
   return 1 - smoothstep(SUN_DOWN, SUN_UP, sunY);
 }
 
+/** The emissive term's factors, multiplied into the one output line below: the linear tile colour, the table, the
+ *  nugget mask and the night curve — each defined above it in the GLSL and tested against its JS twin. Defining a
+ *  factor does not apply it, so the product is generated from this list and the gate reads the list back out of it. */
+const ORE_GLOW_TERM = ['pow(texColor.rgb, vec3(2.2))', 'oreGlowK', 'oreNugget', 'oreNight'];
+
 /**
  * The GLSL. `decl` goes with the fragment uniforms (uSunDir is already declared by the terrain's cloud shadows);
  * `apply` goes after `#include <emissivemap_fragment>` and needs `layerIndex` and `texColor` in scope — both are
@@ -64,7 +69,7 @@ export function oreGlowGlsl(layers = 16) {
       `  float oreChroma = max(texColor.r, max(texColor.g, texColor.b)) - min(texColor.r, min(texColor.g, texColor.b));`,
       `  float oreNugget = smoothstep(${f(NUGGET_CHROMA[0])}, ${f(NUGGET_CHROMA[1])}, oreChroma);`,
       `  float oreNight = 1.0 - smoothstep(${f(SUN_DOWN)}, ${f(SUN_UP)}, uSunDir.y);`,
-      `  totalEmissiveRadiance += pow(texColor.rgb, vec3(2.2)) * oreGlowK * oreNugget * oreNight;`,
+      `  totalEmissiveRadiance += ${ORE_GLOW_TERM.join(' * ')};`,
       `}`,
     ].join('\n'),
   };
