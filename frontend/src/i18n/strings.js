@@ -16,6 +16,8 @@ export const STRINGS = {
     'ui.paused': 'Paused',
     'ui.resume': 'Resume',
     'ui.resume_hint': 'Your browser released the mouse. Click to take control again.',
+    // A lost WebGL context (ui/ContextLossPanel.jsx): one tap saves and reloads into the same world.
+    'ui.contextLost': 'Graphics were reset by the system — tap to resume',
     'notice.panelLoadFailed': 'That panel could not load. Check your connection, or reload if the game just updated.',
     'ui.level': 'Level {n}',
     'ui.gold': 'Gold',
@@ -179,6 +181,7 @@ export const STRINGS = {
     'ui.paused': '已暂停',
     'ui.resume': '继续游戏',
     'ui.resume_hint': '浏览器已释放鼠标控制，点击画面重新接管角色。',
+    'ui.contextLost': '画面已被系统重置，点击继续游戏',
     'notice.panelLoadFailed': '面板加载失败。请检查网络；如果游戏刚刚更新，请刷新页面。',
     'ui.level': '等级 {n}',
     'ui.gold': '金币',

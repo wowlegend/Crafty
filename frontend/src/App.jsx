@@ -31,6 +31,7 @@ import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { resetCaptureClock, stepCaptureFrames, captureFrameIndex, setCaptureFrame } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
+import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
 import { ecs, mobsQuery } from './ecs/world';
 import { worldNow } from './game/worldClock.js';
 import { applyFusion } from './game/hybrids';
@@ -999,6 +1000,9 @@ function GameApp({ experienceSystem }) {
 
       {/* S2-B2-M2 perf probe (dev-only, self-nulls unless ?perf=A..E) — DOM layer, outside the Canvas */}
       {import.meta.env.DEV && <PerfProbeRunner />}
+
+      {/* A lost WebGL context gets a way back: save, reload into the same world (ui/ContextLossPanel.jsx). */}
+      <ContextLossPanel />
 
       {!isWorldBuilt && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">

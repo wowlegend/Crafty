@@ -321,6 +321,17 @@ export const GameScene = React.memo(function GameScene({
           
           canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
           canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
+          if (import.meta.env.DEV) {
+            // DEV-only: the context-loss e2e loses and restores THIS canvas's context the way the browser would. The
+            // extension is taken now, while the context is alive (getExtension on a lost context returns null).
+            const lose = gl.getContext().getExtension('WEBGL_lose_context');
+            registerTestHook('webglContext', (op) => {
+              if (!lose) return false;
+              if (op === 'lose') lose.loseContext();
+              else lose.restoreContext();
+              return true;
+            });
+          }
         }}
       >
         <CaptureClockTicker />
