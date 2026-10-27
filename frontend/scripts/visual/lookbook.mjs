@@ -30,8 +30,11 @@
  *
  * BLIND SPOTS. macOS WebKit is not iPadOS (same engine and ANGLE-Metal path, not the same GPU, memory ceiling or
  * thermals): a defect seen here is real in WebKit; a clean frame does not clear the iPad. The camera is PINNED above
- * the scene (hero shots), not the player's eye. Mobs aim at the camera, so a night shot can kill the player: the shot
- * is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
+ * the scene (hero shots), not the player's eye. A pose does not pause the world (physics, mobs, weather, particles and
+ * the clock run) but it does stop the Player's controller (movement and the KCC, the death branch, the void guard, the
+ * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: mobs, allies
+ * and chunk streaming see the camera, not the body (src/render/lookbookSeam.js). So mobs aim at the camera, a night
+ * shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
  * suppressed (crafty_onboarded) so they do not cover the frames.
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered into play

@@ -5,6 +5,7 @@ import {
   contextLossCount,
   trackRenderer,
   glInfo,
+  trackedRenderer,
   diagnosticsLines,
   _resetGlDiagnosticsForTest,
 } from '../../src/render/glDiagnostics.js';
@@ -22,7 +23,7 @@ import { t } from '../../src/i18n/i18n.js';
  * preventDefault that lets the browser restore the context, the flag), and the pure line builder in BOTH locales —
  * through the real t(), so a missing translation shows as the raw key.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh, 7 tests, one batch, each observed RED unless stated:
+ * Mutation-Proof: via scripts/dev/mutate.sh, 10 tests, one batch, each observed RED unless stated:
  *   D1 the debug extension ignored (RENDERER only) -> "reads the UNMASKED renderer", "glInfo reports the tracked renderer"
  *   D2 plausible-wrong: the loss not preventDefault()ed -> "a loss on the real canvas listener ..."
  *   D3 plausible-wrong: the count is a flag (`_losses = 1`) -> "a second loss must read 2"
@@ -33,6 +34,10 @@ import { t } from '../../src/i18n/i18n.js';
  *   D8 a restore re-sets the flag -> the listener test
  *   D9 plausible-wrong: an empty renderer string passes through -> "never returns an empty answer"
  *   D10 the zh-CN 'diag.tierHigh' translation deleted (strings.js) -> "Chinese: every label is translated"
+ *   F6a the cap line back to the fixed panel.frameRateCapped ("60 FPS") -> "the cap line shows the cap IN FORCE"
+ *   F6b plausible-wrong: the cap number fixed at 60 in the diag.capFps label -> the same test
+ *   F4a an 'unknown' renderer name kept for the session (the pre-fix cache) -> "a name read while the context was lost ... is NOT kept"
+ *   F4b a context restore does not forget the name -> "a context restore forgets the name"
  *   I0 identity (a comment edit in glDiagnostics.js) SURVIVED.
  *
  * BLIND SPOT: nothing here mounts GameScene, so that `onCreated` really calls watchContextLoss and trackRenderer, and
@@ -78,6 +83,38 @@ describe('the GL renderer string', () => {
     expect(rendererString(null)).toBe('unknown');
     expect(rendererString(fakeCtx({ unmasked: '' }))).toBe('unknown');
   });
+  it('a name read while the context was lost ("unknown") is NOT kept: the next read asks again (F4)', () => {
+    expect(trackedRenderer(), 'before any renderer is tracked').toBe('unknown');
+    let lost = true;
+    const ctx = {
+      ...fakeCtx({ unmasked: ANGLE_METAL }),
+      getParameter: (p) => {
+        if (lost) throw new Error('context lost');
+        return p === UNMASKED ? ANGLE_METAL : 'WebKit WebGL';
+      },
+    };
+    trackRenderer({ getContext: () => ctx, getPixelRatio: () => 1, domElement: { width: 10, height: 10 } });
+    expect(trackedRenderer(), 'a read on a lost context').toBe('unknown');
+    expect(glInfo().renderer).toBe('unknown');
+    lost = false;
+    expect(trackedRenderer(), 'the context came back: the stuck "unknown" must be re-read').toBe(ANGLE_METAL);
+    // A good name IS kept: no GL call per refresh once it is known.
+    lost = true;
+    expect(trackedRenderer(), 'a known name must not be re-read on every call').toBe(ANGLE_METAL);
+  });
+  it('a context restore forgets the name, so a restore onto another GPU reads the new one (F4)', () => {
+    let name = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)';
+    const ctx = { ...fakeCtx(), getExtension: () => null, RENDERER, getParameter: () => name };
+    trackRenderer({ getContext: () => ctx, getPixelRatio: () => 1, domElement: { width: 10, height: 10 } });
+    const canvas = new EventTarget();
+    watchContextLoss(canvas, useGameStore);
+    expect(trackedRenderer()).toBe(name);
+    name = 'ANGLE (AMD, Radeon Pro 5500M)';
+    expect(trackedRenderer(), 'between loss events the name is cached').toBe('ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)');
+    canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    canvas.dispatchEvent(new Event('webglcontextrestored'));
+    expect(trackedRenderer(), 'a restore must re-read the GPU name').toBe('ANGLE (AMD, Radeon Pro 5500M)');
+  });
   it('glInfo reports the tracked renderer, the pixel ratio IN FORCE and the canvas size; null before a renderer exists', () => {
     expect(glInfo()).toBeNull();
     const ctx = fakeCtx({ unmasked: ANGLE_METAL });
@@ -114,9 +151,9 @@ describe('the context-loss listener counts every loss, keeps the context restora
 });
 
 describe('the readout lines', () => {
-  const base = { fps: 60, ms: 16.7, tier: 'high', dpr: 1.5, renderer: ANGLE_METAL, losses: 2, capActive: true };
+  const base = { fps: 60, ms: 16.7, tier: 'high', dpr: 1.5, renderer: ANGLE_METAL, losses: 2, capActive: true, capFps: 60 };
 
-  it('English: FPS first (frame-cap.spec parses /^(\\d+) FPS/), then tier, dpr to two places, the cap, the GPU, the losses', () => {
+  it('English: the frame count, then tier, dpr to two places, the cap, the GPU, the losses', () => {
     expect(diagnosticsLines(base, t)).toEqual([
       '60 FPS drawn · 16.7 ms',
       'Tier High · DPR 1.50 · Frame cap 60 FPS',
@@ -135,7 +172,16 @@ describe('the readout lines', () => {
     expect(diagnosticsLines({ ...base, tier: 'ultra' }, t)[1]).toBe('Tier ultra · DPR 1.50 · Frame cap 60 FPS');
   });
 
-  it('Chinese: every label is translated, and the first line still starts with the number', () => {
+  it('the cap line shows the cap IN FORCE, not a fixed 60 (F6): a test can hold a 1 fps cap the setting never admits', () => {
+    expect(diagnosticsLines({ ...base, capFps: 1 }, t)[1]).toBe('Tier High · DPR 1.50 · Frame cap 1 FPS');
+    expect(diagnosticsLines({ ...base, capFps: 90 }, t)[1]).toBe('Tier High · DPR 1.50 · Frame cap 90 FPS');
+    useGameStore.setState({ locale: 'zh-CN' });
+    expect(diagnosticsLines({ ...base, capFps: 1 }, t)[1]).toBe('画质 高 · 像素比 1.50 · 帧率上限 1 帧');
+    // Presence beside the absence: with the cap not in force the number is not shown at all.
+    expect(diagnosticsLines({ ...base, capFps: 1, capActive: false }, t)[1]).toBe('画质 高 · 像素比 1.50 · 帧率上限 不限');
+  });
+
+  it('Chinese: every label is translated (the number leads, but nothing parses the text for it: data-fps carries the count)', () => {
     useGameStore.setState({ locale: 'zh-CN' });
     expect(diagnosticsLines(base, t)).toEqual([
       '60 帧/秒（实际绘制） · 16.7 ms',

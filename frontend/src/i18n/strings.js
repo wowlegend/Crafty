@@ -62,9 +62,10 @@ export const STRINGS = {
     'panel.frameRateCapped': '60 FPS',
     'panel.frameRateUncapped': 'Unlimited',
     'a11y.frameRate': 'Frame rate limit: 60 keeps a laptop cool, Unlimited matches a high-refresh display',
-    // The Show Stats (F3) diagnostics readout (render/glDiagnostics.js). The first line must start with the number:
-    // tests/e2e/frame-cap.spec.js parses /^(\d+) FPS/ from it.
+    // The Show Stats (F3) diagnostics readout (render/glDiagnostics.js). The frame count is also published as the
+    // element's data-fps attribute, which tests/e2e/frame-cap.spec.js reads; the wording here is free per locale.
     'diag.fpsDrawn': '{fps} FPS drawn',
+    'diag.capFps': '{fps} FPS',
     'diag.tier': 'Tier',
     'diag.tierLow': 'Low',
     'diag.tierMed': 'Medium',
@@ -232,6 +233,7 @@ export const STRINGS = {
     'panel.frameRateUncapped': '不限',
     'a11y.frameRate': '帧率上限：60 帧让笔记本更凉快，不限则跟随高刷新率屏幕',
     'diag.fpsDrawn': '{fps} 帧/秒（实际绘制）',
+    'diag.capFps': '{fps} 帧',
     'diag.tier': '画质',
     'diag.tierLow': '低',
     'diag.tierMed': '中',

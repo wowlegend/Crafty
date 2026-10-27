@@ -45,6 +45,7 @@ export function watchContextLoss(canvas, store) {
   const onRestored = () => {
     if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
     store.getState().setIsWebGLContextLost(false);
+    _renderer = null; // read the GPU name again: a restore can land on another GPU, and a read made while lost may have failed
   };
   canvas.addEventListener('webglcontextlost', onLost, false);
   canvas.addEventListener('webglcontextrestored', onRestored, false);
@@ -65,26 +66,39 @@ export function trackRenderer(gl) {
   _renderer = null;
 }
 
+/**
+ * The tracked renderer's GL string, read lazily. A read that came back 'unknown' (a lost or not-yet-ready context) is
+ * NOT kept, so the next call reads again and a name read while the context was lost cannot stick for the session; a
+ * context restore forgets the name too (watchContextLoss). 'unknown' before the Canvas exists. Both the Show Stats
+ * readout (render/FrameStats.jsx) and glInfo read it here, so they cannot disagree.
+ */
+export function trackedRenderer() {
+  if (!_gl) return 'unknown';
+  if (_renderer === null || _renderer === 'unknown') _renderer = rendererString(_gl.getContext());
+  return _renderer;
+}
+
 /** The tracked renderer's string, the pixel ratio IN FORCE now, and the canvas size in device pixels; null before the
  *  Canvas exists. The lookbook seam (render/lookbookSeam.js) records this per shot. */
 export function glInfo() {
   if (!_gl) return null;
-  if (_renderer === null) _renderer = rendererString(_gl.getContext());
-  return { renderer: _renderer, dpr: _gl.getPixelRatio(), canvas: [_gl.domElement.width, _gl.domElement.height] };
+  return { renderer: trackedRenderer(), dpr: _gl.getPixelRatio(), canvas: [_gl.domElement.width, _gl.domElement.height] };
 }
 
 /**
- * PURE. The readout's lines. The first must keep starting with the frame count — tests/e2e/frame-cap.spec.js parses
- * /^(\d+) FPS/ from it — so every locale's string puts the number first. Every label goes through `t` (i18n), called with a LITERAL key so
- * src/i18n/keyReachability.js sees each key used.
- * @param {{fps:number, ms:number|null, tier:string, dpr:number, renderer:string, losses:number, capActive:boolean}} d
+ * PURE. The readout's lines. The frame count is ALSO published as the element's `data-fps` attribute
+ * (render/FrameStats.jsx), which is what tests/e2e/frame-cap.spec.js reads: the first line's wording is localised
+ * ("60 帧/秒（实际绘制）" does not match an English /^(\d+) FPS/), so no test parses the text for the number. Every label goes
+ * through `t` (i18n), called with a LITERAL key so src/i18n/keyReachability.js sees each key used.
+ * `capFps` is the store's real frame cap (it is shown when `capActive`; a test can set one the setting never admits).
+ * @param {{fps:number, ms:number|null, tier:string, dpr:number, renderer:string, losses:number, capActive:boolean, capFps:number}} d
  * @param {(key:string, vars?:object) => string} t
  * @returns {string[]}
  */
-export function diagnosticsLines({ fps, ms, tier, dpr, renderer, losses, capActive }, t) {
+export function diagnosticsLines({ fps, ms, tier, dpr, renderer, losses, capActive, capFps }, t) {
   const tierNames = { low: t('diag.tierLow'), med: t('diag.tierMed'), high: t('diag.tierHigh') };
   const tierName = tierNames[tier] ?? String(tier);
-  const cap = capActive ? t('panel.frameRateCapped') : t('panel.frameRateUncapped');
+  const cap = capActive ? t('diag.capFps', { fps: capFps }) : t('panel.frameRateUncapped');
   return [
     t('diag.fpsDrawn', { fps }) + (ms === null ? '' : ` · ${ms} ms`),
     `${t('diag.tier')} ${tierName} · ${t('diag.dpr')} ${Number(dpr).toFixed(2)} · ${t('diag.frameCap')} ${cap}`,

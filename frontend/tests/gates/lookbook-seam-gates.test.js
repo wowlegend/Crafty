@@ -32,7 +32,7 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *   - the input gate: play() flips the REAL inputState gate, which is what hides the title menu without pointer lock;
  *   - the subscription the Player uses to hide the first-person hands while a pose is set.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh, 8 tests, each observed RED unless stated:
+ * Mutation-Proof: via scripts/dev/mutate.sh, 9 tests, each observed RED unless stated:
  *   L1 plausible-wrong: any value of the parameter opens the seam (`!== null`) -> "parses only the exact value"
  *   L2 no cycle conversion (the dawn-origin fraction passed straight to setTimeOfDay) -> the conversion, setCycle, info
  *   L2b plausible-wrong: the conversion the wrong way (`f - 0.25`) -> the same three
@@ -46,6 +46,11 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *   L10 plausible-wrong: setCycle echoes the request -> RED. The four programme times all land exactly on the
  *       game-unit grid, so 0.3001 was added BEFORE the run to make this killable (argued, not observed surviving).
  *   L11 plausible-wrong: the pose fov ignored (75 written) -> SURVIVED while the test posed at 75; RED at fov 50
+ *   F3a pose() returns the live _pose -> "pose() and info() hand back COPIES"
+ *   F3b info().pose is the live _pose -> the same test
+ *   F3c plausible-wrong: a shallow copy ({ ...p }, the arrays shared with the live pose) -> the same test
+ *   F3d plausible-wrong: an unposed copy is an empty shell, not null -> the same test
+ *   F3e plausible-wrong: the copy rebuilds the fov from the default (75) -> the same test, posed at fov 50 (at 75 it would survive)
  *   I0 identity (a comment edit in lookbookSeam.js) SURVIVED, twice.
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
@@ -116,6 +121,31 @@ describe('the pose', () => {
     expect(lookbookPose()).toEqual({ position: [13, 81, 13], lookAt: [0, 51, 0], fov: 75 });
     w.__craftyLookbook.clear();
     expect(lookbookPose()).toBeNull();
+  });
+
+  it('pose() and info() hand back COPIES: writing NaN into what they return cannot reach the live pose (F3)', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    // fov 50, not the default 75: a copy that rebuilt the fov from the default would pass at 75.
+    const expected = { position: [13, 81, 13], lookAt: [0, 51, 0], fov: 50 };
+    // A copy that is empty or null would pass the mutation checks below, so first: what comes back IS the pose.
+    const returned = w.__craftyLookbook.pose({ ...HEARTH, fov: 50 });
+    expect(JSON.parse(JSON.stringify(returned)), 'pose() must return the pose it set').toEqual(expected);
+    // Validation runs on the way IN (finite3); a returned live object is a way round it, one assignment from a NaN
+    // camera that PositionTracker would then publish as playerPosition.
+    returned.position[0] = NaN;
+    returned.lookAt[1] = Infinity;
+    returned.fov = NaN;
+    expect(lookbookPose(), 'writing into the object pose() returned changed the live pose').toEqual(expected);
+    const seen = w.__craftyLookbook.info().pose;
+    expect(JSON.parse(JSON.stringify(seen)), 'info().pose must report the live pose').toEqual(expected);
+    seen.position[2] = NaN;
+    seen.lookAt[0] = NaN;
+    seen.fov = NaN;
+    expect(lookbookPose(), 'writing into info().pose changed the live pose').toEqual(expected);
+    // With no pose, both report null rather than an empty shell.
+    w.__craftyLookbook.clear();
+    expect(w.__craftyLookbook.info().pose).toBeNull();
   });
 
   it('subscribers (the Player hiding its hands) hear every pose and clear', () => {

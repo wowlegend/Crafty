@@ -119,7 +119,7 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   expect(shown, `the readout's tier disagrees with the store (${info.tier}): ${shown}`).toContain(`Tier ${tierName}`);
   // In a DEV non-capture run the cap is in force exactly when frameCap > 0 (GameScene capActive).
   expect(shown, `the readout's frame cap disagrees with the store (frameCap ${info.frameCap}): ${shown}`)
-    .toContain(info.frameCap > 0 ? 'Frame cap 60 FPS' : 'Frame cap Unlimited');
+    .toContain(info.frameCap > 0 ? `Frame cap ${info.frameCap} FPS` : 'Frame cap Unlimited');
   expect(shown, `a context loss was counted before any happened: ${shown}`).toContain('GL context losses 0');
 
   // A REAL context loss on the game canvas (the one whose size the tracked renderer reports).

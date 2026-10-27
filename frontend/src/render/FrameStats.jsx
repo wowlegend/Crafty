@@ -11,12 +11,14 @@
 // the pixel ratio IN FORCE (the governor and AdaptiveDpr move it at runtime), the frame cap, the GL renderer, and the
 // session's WebGL context losses. It is the one surface the PRODUCTION build offers for these, and Settings > Show
 // Stats reaches it by touch on an iPad. All transient reads at the existing 4 Hz text refresh; the renderer string
-// is read once. The lines and their labels are built in render/glDiagnostics.js (pure, i18n'd, gated).
+// is read once it is known (render/glDiagnostics.js trackedRenderer). The lines and their labels are built in
+// render/glDiagnostics.js (pure, i18n'd, gated). The frame count is also published as the element's `data-fps`, which
+// is what tests/e2e/frame-cap.spec.js reads: the text is localised, so no test parses it for the number.
 import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
 import { t } from '../i18n/i18n.js';
-import { rendererString, contextLossCount, diagnosticsLines } from './glDiagnostics.js';
+import { trackedRenderer, contextLossCount, diagnosticsLines } from './glDiagnostics.js';
 
 /** PURE: the readout for frames drawn at `times` (ms, ascending) inside a window ending at `now`. */
 export function frameReadout(times, now, windowMs = 1000) {
@@ -30,7 +32,7 @@ export function frameReadout(times, now, windowMs = 1000) {
 /** @param {{ capActive: boolean }} props  whether the frame cap is in force (GameScene's own `capActive`). */
 export function FrameStats({ capActive }) {
   const gl = useThree((s) => s.gl);
-  const state = useMemo(() => ({ times: [], el: null, shown: 0, renderer: null }), []);
+  const state = useMemo(() => ({ times: [], el: null, shown: 0 }), []);
   useEffect(() => {
     const el = document.createElement('div');
     el.dataset.testid = 'frame-stats';
@@ -51,11 +53,11 @@ export function FrameStats({ capActive }) {
     if (state.el && now - state.shown >= 250) {
       state.shown = now;
       const r = frameReadout(state.times, now);
-      if (state.renderer === null) state.renderer = rendererString(gl.getContext());
       const s = useGameStore.getState();
+      state.el.dataset.fps = String(r.fps);
       state.el.textContent = diagnosticsLines({
-        fps: r.fps, ms: r.ms, tier: s.qualityTier, dpr: gl.getPixelRatio(), renderer: state.renderer,
-        losses: contextLossCount(), capActive: !!capActive,
+        fps: r.fps, ms: r.ms, tier: s.qualityTier, dpr: gl.getPixelRatio(), renderer: trackedRenderer(),
+        losses: contextLossCount(), capActive: !!capActive, capFps: s.frameCap,
       }, t).join('\n');
     }
   });

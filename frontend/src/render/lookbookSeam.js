@@ -11,10 +11,15 @@
 //   2. Even then nothing changes until a script calls `window.__craftyLookbook.pose(...)`. A player who types the
 //      parameter sees the ordinary game; there is no UI, no key and no store field behind it.
 //
-// WHAT IT DOES NOT DO. It suppresses nothing: physics, mobs, weather, particles and the day clock keep running (the
-// clock is live, so the probe re-sets the time just before each shot and records where it actually was). The pose is
-// applied by the Player's useFrame (Components.jsx) right after the capture branch, the same early-return shape, and
-// the first-person hands hide while a pose is set (an elevated hero shot with hands in the corner misleads).
+// WHAT KEEPS RUNNING WHILE POSED, AND WHAT STOPS. It does not pause the world: the physics step, mobs, weather,
+// particles and the day clock keep running (the clock is live, so the probe re-sets the time just before each shot and
+// records where it actually was). But the pose is applied by the Player's useFrame (Components.jsx) right after the
+// capture branch, with the same EARLY RETURN, so everything below that return in the Player's controller does not run
+// while a pose is set: movement and the kinematic character controller, the death branch, the void-fall guard and the
+// beast, voidhand and imbue state machines. And the camera is the game's position source: PositionTracker mirrors
+// camera.position into store.playerPosition, so while posed the store's player position is the HERO-SHOT CAMERA, not
+// the body, and mobs, ally squads, chunk streaming and a manual save all see the camera. The first-person hands hide
+// while a pose is set (an elevated hero shot with hands in the corner misleads).
 //
 // Module state on purpose: the pose is read every frame by the Player (a transient read — Game-Loop Isolation), and
 // it changes only when a script asks.
@@ -77,6 +82,15 @@ function setPose(p) {
   for (const cb of _subs) cb();
 }
 
+/**
+ * A copy of a pose, arrays included, or null. pose() and info() hand THIS to callers, never the live `_pose`:
+ * validation runs on the way in (finite3), so a returned live object would be a way round it — one assignment from a
+ * NaN camera that PositionTracker would then publish as the player's position. (Review F3.)
+ */
+function copyPose(p) {
+  return p === null ? null : { position: [...p.position], lookAt: [...p.lookAt], fov: p.fov };
+}
+
 /** Pin `camera` to `pose`: position, a level up vector, the look target, the fov, and a rebuilt projection. */
 export function applyLookbookPose(camera, pose) {
   camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
@@ -97,7 +111,7 @@ export function installLookbookSeam(win, { store, setActive, getActive, cycleOf,
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   win.__craftyLookbook = Object.freeze({
     /** Pin the camera: { position: [x,y,z], lookAt: [x,y,z], fov? }. Throws on a malformed pose. */
-    pose: (p) => { setPose(p); return _pose; },
+    pose: (p) => { setPose(p); return copyPose(_pose); },
     /** Hand the camera back to the player rig. */
     clear: () => { setPose(null); },
     /** Set the time of day as a DAWN-origin cycle fraction; returns the cycle the store actually landed on. A direct
@@ -121,7 +135,7 @@ export function installLookbookSeam(win, { store, setActive, getActive, cycleOf,
         frameCap: s.frameCap,
         contextLosses: contextLosses(),
         gl: glInfo(),
-        pose: _pose,
+        pose: copyPose(_pose),
         worldBuilt: s.isSpawnChunkLoaded === true,
       };
     },

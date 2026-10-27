@@ -607,7 +607,11 @@ export const Player = ({ isWorldBuilt }) => {
 
     // The lookbook probe's camera pin (render/lookbookSeam.js): null unless the page was opened with ?lookbook=1 AND
     // a script posed it, so this is one null read per frame in play. Same early-return shape as capture above, but
-    // nothing else stops: physics, mobs, weather and the clock keep running — motion-on frames are its whole point.
+    // the world is NOT paused: the physics step, mobs, weather and the clock keep running — motion-on frames are its
+    // whole point. What stops is THIS controller, from this return to the end of the callback: movement and the KCC,
+    // the death branch, the void-fall guard and the beast / voidhand / imbue state machines. And PositionTracker
+    // publishes camera.position as store.playerPosition, so while posed mobs, allies, chunk streaming and a manual
+    // save see the hero-shot camera, not the body (render/lookbookSeam.js).
     const lookPose = lookbookPose();
     if (lookPose) {
       applyLookbookPose(state.camera, lookPose);
