@@ -74,7 +74,7 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E19 F2's flake CONSTRUCTED (a throwaway spec, deleted): the title menu brought back, input made live as forcePlay
 //       does, touch-action hit-tested the moment it mounted -> covered by "CANVAS in title-diorama", topmost 969 ms
 //       later. Every entry of the batch above logged the same cover: 3332-8841 ms after startPlayActive returned.
-// Review round 3 (the roar CONTROL rebuilt as a one-frame tap) — OBSERVED 2026-10-27 by
+// Review round 3 (the roar CONTROL rebuilt as a one-frame tap; the late press lifted quickly) — OBSERVED 2026-10-27 by
 // its lane, a throwaway config on port 4317, E2E_WORLD_TIMEOUT=300000, load 110-430 on 14 cores (the frame loop saw the
 // CONTROL's press 4046-7604 ms after it), the roar and action cases, each RED with the message named unless marked:
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> SURVIVED, as it must (2 passed)
@@ -85,6 +85,9 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //       lift and the game cannot tell it from 120 ms. It is RED in tests/gates/touch-hold-gates.test.jsx ("a TAP is
 //       today's pulse"). When the frame that sees the press ends within 1000 ms of it (CI's ~3 fps), the lift lands
 //       inside the mutant's pulse and the intent verdict here reds it; that run is not yet observed.
+//   E20 src/Components.jsx: triggerMeleeAttack hands meleeRefusal no heavy flag -> RED, "a 1501 ms hold whose press was
+//       handled late and lifted 101 ms after threw nothing — the light swing's cooldown, on the handler clock, ate the
+//       charged release"
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
@@ -455,12 +458,13 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
     // the lift 400 ms after it — past the light swing's 300 ms cooldown, short of a charge on the handler clock, 1.4 s
     // of hold on the finger's. Held IN THE PAGE (the event is constructed when the finger lands and dispatched after the
     // stall), because the handler gap must sit inside (300, 700) and a real touch's jitter under load exceeds that.
-    await aim();
-    r.latePress = await page.evaluate(({ stallMs, holdMs }) => {
+    // A page function (serialised by Playwright, so it closes over nothing): a touch whose press is constructed when the
+    // finger lands, dispatched after `stallMs` of a busy main thread, and lifted `holdMs` after it was handled.
+    const lateTouch = ({ stallMs, holdMs, pointerId }) => {
       const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__touchMob)?.health ?? null;
       const spin = (ms) => { const s0 = performance.now(); while (performance.now() - s0 < ms) { /* the main thread, busy */ } };
       const el = document.querySelector('[data-testid="touch-action"]');
-      const opts = { bubbles: true, cancelable: true, pointerId: 78, pointerType: 'touch', isPrimary: true, button: 0 };
+      const opts = { bubbles: true, cancelable: true, pointerId, pointerType: 'touch', isPrimary: true, button: 0 };
       const down = new PointerEvent('pointerdown', { ...opts, buttons: 1 }); // the finger lands: stamped now
       spin(stallMs);
       const hp0 = hp(), h0 = performance.now();
@@ -472,24 +476,38 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
       el.dispatchEvent(up);
       window.__hpLog.splice(0);
       return { press: hp0 - hp1, release: hp1 - hp(), heldMs: Math.round(up.timeStamp - down.timeStamp), handledMs: Math.round(h1 - h0) };
-    }, { stallMs: 1000, holdMs: 400 });
+    };
+    await aim();
+    r.latePress = await page.evaluate(lateTouch, { stallMs: 1000, holdMs: 400, pointerId: 78 });
     await page.waitForTimeout(120);
     r.latePress.after = await read();
+    await page.waitForTimeout(400);
+    // A LATE PRESS LIFTED QUICKLY (review round 3, item 3): the same stall, then the lift only 100 ms after the press is
+    // handled — a 1.5 s hold on the finger, but the press's light swing and the release now sit inside the light swing's
+    // 300 ms cooldown on the HANDLER clock, which used to drop the charged release silently (heavyAttack.meleeRefusal).
+    // On a fresh brute: the late press's heavy staggered the last one.
+    r.quickBefore = await brute('the late press lifted quickly');
+    await aim();
+    r.quick = await page.evaluate(lateTouch, { stallMs: 1400, holdMs: 100, pointerId: 79 });
+    await page.waitForTimeout(120);
+    r.quick.after = await read();
     await page.evaluate(() => { Math.random = window.__touchRandom; });
 
     const where = JSON.stringify(r);
-    const { half, full, late, latePress } = r;
+    const { half, full, late, latePress, quick } = r;
     const READY = HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
     console.log(`[touch-hold] heavy warm: held ${r.warm.heldMs} ms (handled ${r.warm.handledMs}) release ${r.warm.release} staggered ${r.warm.staggered}`
       + ` · half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms, input ${half.heldMs})`
       + ` · full: press ${full.press} release ${full.release} (${full.heldMs} ms, handled ${full.handledMs}, trusted ${full.trusted})`
       + ` · late lift: press ${late.press} release ${late.release} (input ${late.heldMs} ms, handled ${late.handledMs})`
-      + ` · late press: press ${latePress.press} release ${latePress.release} (input ${latePress.heldMs} ms, handled ${latePress.handledMs})`);
+      + ` · late press: press ${latePress.press} release ${latePress.release} (input ${latePress.heldMs} ms, handled ${latePress.handledMs})`
+      + ` · late press lifted quickly: press ${quick.press} release ${quick.release} (input ${quick.heldMs} ms, handled ${quick.handledMs})`);
     for (const [name, ph] of [['full', full], ['late lift', late]]) {
       expect(ph.missing, `SETUP: the ${name}'s pointerdown/pointerup on touch-action were not both logged — ${where}`).toBeUndefined();
       expect(ph.trusted, `SETUP: the ${name} was not a real (trusted) touch — ${where}`).toBe(true);
     }
-    for (const [name, after] of [['half', half.after], ['full', full.after], ['late lift', late.after], ['late press', latePress.after]]) {
+    for (const [name, after] of [['half', half.after], ['full', full.after], ['late lift', late.after], ['late press', latePress.after],
+      ['late press lifted quickly', quick.after]]) {
       expect(after.gone, `SETUP: the brute died or vanished in the ${name} — ${where}`).toBeUndefined();
       expect(after.active && after.alive, `SETUP: the input gate dropped or the player died in the ${name} — ${where}`).toBe(true);
       expect(after.frozen, `SETUP: the world freeze ran out by the ${name} — ${where}`).toBe(true);
@@ -521,6 +539,14 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
     expect(latePress.release, `a ${latePress.heldMs} ms hold whose press was handled late threw nothing — the charge counted from the handler, not the finger: ${where}`).toBeGreaterThan(0);
     expect(latePress.release / latePress.press, `the late press's release dealt ${(latePress.release / latePress.press).toFixed(2)}x the tap: ${where}`).toBeCloseTo(HEAVY_MULT, 1);
     expect(latePress.after.staggered, `the late press's heavy staggered nothing: ${where}`).toBe(true);
+    // THE LATE PRESS LIFTED QUICKLY. Under 250 ms handled (not 300): the heavy's own clock read comes a few ms after the
+    // lift's handler starts, and the case must sit inside the cooldown with that margin to discriminate.
+    expect(quick.handledMs < 250 && quick.heldMs >= READY,
+      `SETUP: the quick late press was handled ${quick.handledMs} ms apart (input ${quick.heldMs}), not under 250 with a full charge on the input — it cannot sit inside the light swing's cooldown: ${where}`).toBe(true);
+    expect(quick.press, `PRESENCE: the quick late press dealt no damage — it never reached the brute: ${where}`).toBeGreaterThan(0);
+    expect(quick.release, `a ${quick.heldMs} ms hold whose press was handled late and lifted ${quick.handledMs} ms after threw nothing — the light swing's cooldown, on the handler clock, ate the charged release: ${where}`).toBeGreaterThan(0);
+    expect(quick.release / quick.press, `the quick late press's release dealt ${(quick.release / quick.press).toFixed(2)}x the tap: ${where}`).toBeCloseTo(HEAVY_MULT, 1);
+    expect(quick.after.staggered, `the quick late press's heavy staggered nothing: ${where}`).toBe(true);
   });
 
   test('F9: a new player sees the roar locked, and a tap on it opens the Talents panel without roaring', async ({ page }) => {
