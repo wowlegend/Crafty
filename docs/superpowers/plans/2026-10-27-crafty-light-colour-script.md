@@ -244,15 +244,25 @@ The five inputs most likely to bite a player that no happy-path test exercises, 
 | Field | night | preDawn | sunrise | day | sunset | dusk |
 |---|---|---|---|---|---|---|
 | sun colour / intensity | - / 0 | - / 0 | `#FFB870` / 2.4 | `#FFE6C4` / 2.8 | `#FFAA55` / 2.6 | - / 0 |
-| moon colour / intensity | `#9DB4FF` / 0.70 | `#A8B8F0` / 0.30 | - / 0 | - / 0 | - / 0 | `#A8B8F0` / 0.30 |
-| ambient (= shadow tint) / int | `#465074` / 0.32 | `#707AA0` / 0.30 | `#B8A89C` / 0.26 | `#C4C6CC` / 0.26 | `#B8AA9C` / 0.26 | `#707AA0` / 0.30 |
-| hemi sky / ground / int | `#52629A` / `#2C2E3C` / 0.60 | `#5E6EA4` / `#463E54` / 0.65 | `#A8B2C8` / `#C8906A` / 0.60 | `#9DB8D6` / `#B49670` / 0.80 | `#A8B2C8` / `#C88E5C` / 0.60 | `#5E6EA4` / `#463E54` / 0.65 |
-| fog colour / density | `#1E2440` / 0.0060 | `#5A6690` / 0.0045 | `#E8C2A8` / 0.0035 | `#CFE3EC` / 0.0025 | `#E8C6A0` / 0.0035 | `#5A6690` / 0.0045 |
-| sky top / mid / horizon | `#070B1E` / `#121B3C` / `#26305A` | `#141C46` / `#34447E` / `#8A90C0` | `#3A5CA8` / `#9AA8D0` / `#FFB8A0` | `#2A64C8` / `#5A9AE0` / `#CFE6F2` | `#3A5CA8` / `#8FA8D0` / `#FFC27A` | `#1A2350` / `#3A4C88` / `#C88A90` |
-| glow colour / strength (fog + dome) | `#000000` / 0 | `#8A90C0` / 0.15 | `#FFC08A` / 0.55 | `#FFF0D8` / 0.20 | `#FFB060` / 0.60 | `#C88A90` / 0.20 |
-| grade sat / bright / contrast | -0.05 / 0.03 / 0.10 | 0.02 / 0.02 / 0.08 | 0.16 / 0.03 / 0.07 | 0.12 / 0.04 / 0.06 | 0.18 / 0.03 / 0.08 | 0.04 / 0.02 / 0.08 |
+| moon colour / intensity | `#B4C2E8` / 0.85 | `#B4BEE6` / 0.55 | - / 0 | - / 0 | - / 0 | `#B4BEE6` / 0.55 |
+| ambient (= shadow tint) / int | `#7E8496` / 0.42 | `#868AA0` / 0.38 | `#B8A89C` / 0.26 | `#C4C6CC` / 0.26 | `#B8AA9C` / 0.26 | `#868AA0` / 0.38 |
+| hemi sky / ground / int | `#7A84A2` / `#4A4A56` / 0.68 | `#7E88AA` / `#5A5262` / 0.68 | `#B0B2C2` / `#C8906A` / 0.60 | `#9DB8D6` / `#B49670` / 0.80 | `#B0B2C2` / `#C88E5C` / 0.60 | `#7E88AA` / `#5A5262` / 0.68 |
+| fog colour / density | `#333B58` / 0.0060 | `#5A6690` / 0.0045 | `#E8C2A8` / 0.0035 | `#CFE3EC` / 0.0025 | `#E8C6A0` / 0.0035 | `#5A6690` / 0.0045 |
+| sky top / mid / horizon | `#0A1028` / `#18234A` / `#34406E` | `#141C46` / `#34447E` / `#8A90C0` | `#3A5CA8` / `#9AA8D0` / `#FFB8A0` | `#2A64C8` / `#5A9AE0` / `#CFE6F2` | `#3A5CA8` / `#8FA8D0` / `#FFC27A` | `#1A2350` / `#3A4C88` / `#9A90C0` |
+| glow colour / strength (fog + dome) | `#000000` / 0 | `#8A90C0` / 0.15 | `#FFC08A` / 0.55 | `#FFF0D8` / 0.20 | `#FFB060` / 0.60 | `#9A90C0` / 0.20 |
+| grade sat / bright / contrast | -0.10 / 0.03 / 0.02 | -0.02 / 0.03 / 0.04 | 0.16 / 0.03 / 0.07 | 0.12 / 0.04 / 0.06 | 0.18 / 0.03 / 0.08 | 0.00 / 0.03 / 0.04 |
 | stars / motes (fireflies) | 1 / 1 | 0.5 / 0.3 | 0 / 0 | 0 / 0 | 0 / 0 | 0.5 / 0.6 |
-| exposure | 1.15 | 1.05 | 1.0 | 1.0 | 1.0 | 1.05 |
+| exposure | 1.7 | 1.4 | 1.0 | 1.0 | 1.0 | 1.4 |
+
+**The table above holds the DERIVED values (Task 1 Step 3, built 2026-10-27).** The night, preDawn and dusk columns
+were re-derived on the displayed model until `colour-script-gates.test.js` passed, and the sunrise and sunset
+hemisphere sky moved `#A8B2C8` -> `#B0B2C2` (the draft turned the sunrise up face a hair blue, OKLab b -0.001, which B3
+forbids). The draft it replaced: night moon `#9DB4FF` / 0.70, ambient `#465074` / 0.32, hemi `#52629A` / `#2C2E3C` /
+0.60, fog `#1E2440`, sky `#070B1E` / `#121B3C` / `#26305A`, grade -0.05 / 0.03 / 0.10, exposure 1.15; preDawn and dusk
+moon `#A8B8F0` / 0.30, ambient `#707AA0` / 0.30, hemi `#5E6EA4` / `#463E54` / 0.65, grade 0.02 / 0.02 / 0.08 (dusk
+0.04), exposure 1.05; dusk horizon and glow `#C88A90`. Displayed on the model: the moonlit stone at midnight (47, 55,
+74)/255, L 0.337 C 0.036 hue 268 (the draft: (5, 22, 57), L 0.211 C 0.071); in shadow (22, 30, 47), L 0.236; the dusk
+horizon hue 294.
 
 Checked against the bounds in the Lambert model before this plan was written (grey stone `#8C8C8C`): day indirect
 C 0.042 (today 0.175); day up-face shadow/lit L ratio 0.66; golden sun-facing side lit hue 60, C 0.075; night stone

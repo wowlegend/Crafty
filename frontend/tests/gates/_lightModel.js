@@ -1,0 +1,165 @@
+// _lightModel.js — the arithmetic the colour gates measure with. A TEST HELPER, not a check file: it asserts
+// nothing, so it carries no Mutation-Proof receipt of its own; the gates that import it carry theirs.
+//
+// What it models, from the light rig to the pixel (plan 2026-10-27-crafty-light-colour-script, Task 1 and review
+// amendment 1). Every step is transcribed from the code that runs, and cited:
+//
+//   1. THE RIG (three r172, physically-correct lights). A diffuse face takes `BRDF_Lambert = diffuseColor / PI`
+//      (node_modules/three/src/renderers/shaders/ShaderChunk/common.glsl.js) times its irradiance: the ambient
+//      colour x intensity, the hemisphere `mix(ground, sky, 0.5 * dot(n, up) + 0.5)` x intensity
+//      (lights_pars_begin.glsl.js), and the one directional key x max(0, dot(n, L)). The stone is the terrain's
+//      material: MeshStandardMaterial, metalness 0.1 (world/Terrain.jsx), so its diffuse colour is the albedo x 0.9.
+//      The multiscatter and specular terms are left out; Task 3b's grey card reads the real screen against this.
+//   2. THE TERRAIN'S AO FLOOR. A fully occluded corner multiplies the ALBEDO by `uAoFloor` before lighting
+//      (Terrain.jsx: `diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0))`, at vAO = 0).
+//   3. THE AERIAL HAZE at full distance (render/aerialPerspective.js, the same constants imported here).
+//   4. THE POST CHAIN, which is what the player sees (GameScene.jsx: HueSaturation -> BrightnessContrast -> Bloom ->
+//      SMAA -> ToneMapping NEUTRAL -> Noise -> Vignette), postprocessing 6.39.5:
+//        HueSaturation in LINEAR, then `min(color, 1.0)` (node_modules/postprocessing/build/index.js, the
+//        hue-saturation fragment); hue 0 makes its rotation the identity.
+//        BrightnessContrast in sRGB: its `inputColorSpace` is SRGBColorSpace (:4455), so the EffectPass inserts
+//        `sRGBTransferOETF` before it (:15477) and `sRGBToLinear` before the next effect, whose input is linear.
+//        three's OETF takes a negative channel down its linear branch; the model clamps it at 0 first.
+//        NEUTRAL: three r172 `NeutralToneMapping`, transcribed line for line
+//        (node_modules/three/src/renderers/shaders/ShaderChunk/tonemapping_pars_fragment.glsl.js), exposure 1.
+//      Bloom adds light only above its threshold; SMAA, noise and vignette are below the gates' resolution at the
+//      centre of the frame. All four are left out. The framebuffer clamps to [0, 1], and so does the model.
+//
+// OKLab/OKLCH from linear sRGB (Ottosson's matrices). Hue in degrees, [0, 360).
+import * as THREE from 'three';
+import { AERIAL_DESAT, AERIAL_HAZE } from '../../src/render/aerialPerspective.js';
+
+export const STONE_HEX = '#8C8C8C';
+export const STONE_METALNESS = 0.1;
+
+/** sRGB hex -> linear [r, g, b], through three's ColorManagement (the same conversion the game's colours take). */
+export function linearFromHex(hex) {
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b];
+}
+
+/** A THREE.Color (or an [r, g, b]) -> [r, g, b], linear. */
+export function rgb(c) {
+  return Array.isArray(c) ? [c[0], c[1], c[2]] : [c.r, c.g, c.b];
+}
+
+const scale = (v, k) => [v[0] * k, v[1] * k, v[2] * k];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const mul = (a, b) => [a[0] * b[0], a[1] * b[1], a[2] * b[2]];
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const unit = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+const STONE_DIFFUSE = scale(linearFromHex(STONE_HEX), 1 - STONE_METALNESS);
+
+/**
+ * The rig's irradiance terms, already multiplied by their intensities. Two frame shapes:
+ *   a ScriptFrame (render/colourScript.js sampleScript): `ambient.color`, intensities BEFORE `exposure`, so the
+ *     model multiplies by `frame.exposure`; the key is `frame.sun` when `frame.s >= 0`, else `frame.moon`.
+ *   a SkyFrame (render/mood.js sampleMood): `ambient` is the colour, intensities already carry the exposure, and
+ *     the key is `keyColor` x `keyIntensity`.
+ */
+export function rigOf(frame) {
+  if (frame.ambient && frame.ambient.color) {
+    const e = frame.exposure;
+    const key = frame.s >= 0 ? frame.sun : frame.moon;
+    return {
+      ambient: scale(rgb(frame.ambient.color), frame.ambient.intensity * e),
+      hemiSky: scale(rgb(frame.hemi.sky), frame.hemi.intensity * e),
+      hemiGround: scale(rgb(frame.hemi.ground), frame.hemi.intensity * e),
+      key: scale(rgb(key.color), key.intensity * e),
+      aoFloor: rgb(frame.aoFloor),
+    };
+  }
+  return {
+    ambient: scale(rgb(frame.ambient), frame.ambientIntensity),
+    hemiSky: scale(rgb(frame.hemiSky), frame.hemiIntensity),
+    hemiGround: scale(rgb(frame.hemiGround), frame.hemiIntensity),
+    key: scale(rgb(frame.keyColor), frame.keyIntensity),
+    aoFloor: rgb(frame.aoFloor),
+  };
+}
+
+/** The irradiance a face of normal `n` takes from the rig; `keyDir` null = in shadow (indirect only). */
+function irradiance(rig, n, keyDir) {
+  const nn = unit(n);
+  let e = add(rig.ambient, mix(rig.hemiGround, rig.hemiSky, 0.5 * nn[1] + 0.5));
+  if (keyDir) e = add(e, scale(rig.key, Math.max(0, dot(nn, unit(keyDir)))));
+  return e;
+}
+
+/** The indirect irradiance on an up face (ambient + hemisphere sky), linear [r, g, b]. */
+export function indirectOnUpFace(frame) {
+  return irradiance(rigOf(frame), [0, 1, 0], null);
+}
+
+/** Linear radiance of the grey stone face under `frame`, before the post chain. */
+export function stoneFaceUnder(frame, { normal = [0, 1, 0], keyDir = null } = {}) {
+  return scale(mul(STONE_DIFFUSE, irradiance(rigOf(frame), normal, keyDir)), 1 / Math.PI);
+}
+
+/** A fully occluded stone corner's up face, in shadow: the albedo multiplied by the frame's AO floor first. */
+export function aoOccludedStone(frame) {
+  const rig = rigOf(frame);
+  return scale(mul(mul(STONE_DIFFUSE, rig.aoFloor), irradiance(rig, [0, 1, 0], null)), 1 / Math.PI);
+}
+
+/** The aerial haze at full distance (aerialGlsl): toward grey by AERIAL_DESAT, then toward the horizon by AERIAL_HAZE. */
+export function hazed(c, horizon) {
+  const alum = c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114;
+  return mix(mix(c, [alum, alum, alum], AERIAL_DESAT), rgb(horizon), AERIAL_HAZE);
+}
+
+const oetf = (c) => { const v = Math.max(0, c); return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 0.41666) - 0.055; };
+const eotf = (c) => (c <= 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4));
+
+/** three r172 NeutralToneMapping, exposure 1. */
+export function neutralToneMap(c) {
+  const startCompression = 0.8 - 0.04, desaturation = 0.15;
+  let col = [c[0], c[1], c[2]];
+  const x = Math.min(col[0], col[1], col[2]);
+  const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  col = col.map((v) => v - offset);
+  const peak = Math.max(col[0], col[1], col[2]);
+  if (peak < startCompression) return col;
+  const d = 1 - startCompression;
+  const newPeak = 1 - (d * d) / (peak + d - startCompression);
+  col = col.map((v) => (v * newPeak) / peak);
+  const g = 1 - 1 / (desaturation * (peak - newPeak) + 1);
+  return mix(col, [newPeak, newPeak, newPeak], g);
+}
+
+/** What reaches the screen, as linear [r, g, b] in [0, 1]: the grade, then NEUTRAL, then the framebuffer clamp. */
+export function displayed(c, grade) {
+  const sat = grade.saturation, br = grade.brightness, ct = grade.contrast;
+  // HueSaturation (linear), then min(color, 1).
+  const avg = (c[0] + c[1] + c[2]) / 3;
+  const k = sat > 0 ? 1 - 1 / (1.001 - sat) : -sat;
+  let col = c.map((v) => Math.min(1, v + (avg - v) * k));
+  // BrightnessContrast in sRGB, then back to linear.
+  col = col.map((v) => {
+    let s = oetf(v) + br - 0.5;
+    s = ct > 0 ? s / (1 - ct) : s * (1 + ct);
+    return eotf(s + 0.5);
+  });
+  return neutralToneMap(col).map((v) => Math.min(1, Math.max(0, v)));
+}
+
+/** Linear sRGB [r, g, b] -> { L, C, h, a, b } in OKLab / OKLCH (h in degrees, [0, 360)). */
+export function oklch(c) {
+  const [r, g, b] = c;
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  const C = Math.hypot(A, B);
+  const h = ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return { L, C, h, a: A, b: B };
+}
+
+/** Linear [r, g, b] -> displayed sRGB bytes, for failure messages a person can picture. */
+export function bytes(c) {
+  return c.map((v) => Math.round(Math.min(1, Math.max(0, oetf(v))) * 255));
+}
