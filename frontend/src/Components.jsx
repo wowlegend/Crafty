@@ -20,7 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { cancelHeavy, heavyWalkMult, isHeavyReady, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -229,8 +229,10 @@ export const Player = ({ isWorldBuilt }) => {
     // While a heavy is CHARGING the arm is drawn back: no light swing (T tapped during a mouse hold, or LMB during a
     // T hold). It used to swing — and start the 300 ms cooldown that then silently ate the charged release (the T
     // tapped late in the hold, as it lands under load: release 0).
-    if (!heavy && isHeavyHeld()) return;
-    if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
+    // The cooldown runs on this handler clock; a charged release is exempt from it (game/heavyAttack.meleeRefusal,
+    // review round 3): a press handled late and lifted soon after is a full charge on the finger, and the cooldown its
+    // own light swing started used to drop that heavy silently.
+    if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
     // M6: every committed swing whooshes (playAttackSounds = swing + attack; was DEFINED-BUT-NEVER-CALLED,

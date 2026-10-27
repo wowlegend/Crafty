@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_WALK_MULT,
-  pressHeavy, releaseHeavy, cancelHeavy, heavyChargeLevel, isHeavyReady, isHeavyHeld, heavyWalkMult,
+  pressHeavy, releaseHeavy, cancelHeavy, heavyChargeLevel, isHeavyReady, isHeavyHeld, heavyWalkMult, meleeRefusal,
 } from '../../src/game/heavyAttack.js';
 
 /**
@@ -23,6 +23,10 @@ import {
  *   H10 plausible-wrong: a stamp after `now` (another clock) accepted -> the foreign-stamp case
  *   H11 plausible-wrong: a zero / negative stamp accepted -> the foreign-stamp case
  *   H0 identity (a comment edit in heavyAttack.js) SURVIVED, as it must.
+ *   The charged release and the cooldown (review round 3, item 3; 14 tests), each observed RED:
+ *   Z1 the charged release's exemption removed -> "the late press lifted quickly"
+ *   Z2 plausible-wrong: every swing exempt from the cooldown   Z3 plausible-wrong: the cooldown outlasts itself (<=)
+ *   Z4 the drawn-back arm no longer refuses a light swing   Z0 identity (a comment edit) SURVIVED.
  *
  * BLIND SPOT: nothing here proves a real mouse hold reaches the machine (plan Task 4's e2e does).
  */
@@ -137,5 +141,36 @@ describe('the hold is read on the input\'s own time when the caller has it', () 
       checked += 1;
     }
     expect(checked).toBe(foreign.length);
+  });
+});
+
+// A CHARGED RELEASE IS NOT EATEN BY THE LIGHT SWING'S COOLDOWN (review round 3, item 3). The melee cooldown (300 ms in
+// Components) runs on the HANDLER clock, while the charge is read on the input's: a press handled late behind a stall
+// and lifted soon after is a full charge on the finger, but its light swing (at the press) and the heavy (at the release)
+// land inside one cooldown on the handler clock, and the heavy was dropped silently. The heavy's own gate is the charge
+// — at least HEAVY_HOLD_MS + HEAVY_CHARGE_MS of hold, longer than the cooldown — so it is refused by neither rule.
+// BLIND SPOT: that Components' triggerMeleeAttack hands meleeRefusal the HEAVY flag is tests/e2e/touch-hold.spec.js's
+// "late press lifted quickly".
+describe('meleeRefusal: the light swing\'s cooldown and the drawn-back arm refuse light swings, never a charged release', () => {
+  const CD = 300;
+  it('a light swing inside the cooldown is refused; at its edge and past it, it goes', () => {
+    expect(meleeRefusal(false, T0 + CD - 1, T0, CD)).toBe('cooldown');
+    expect(meleeRefusal(false, T0 + CD, T0, CD), 'the cooldown outlasted itself').toBeNull();
+    expect(meleeRefusal(false, T0 + CD + 500, T0, CD)).toBeNull();
+  });
+  it('a light swing while a heavy CHARGES is refused, even past the cooldown (the arm is drawn back)', () => {
+    pressHeavy(T0, 'mouse');
+    expect(meleeRefusal(false, T0 + 5000, 0, CD)).toBe('charging');
+    cancelHeavy();
+    expect(meleeRefusal(false, T0 + 5000, 0, CD), 'PRESENCE: with nothing held the same swing goes').toBeNull();
+  });
+  it('the late press lifted quickly: a full charge on the finger, inside one cooldown on the handler clock, throws', () => {
+    // The finger lands at T0; the press runs 1400 ms late and swings light; the lift is handled 100 ms after it.
+    pressHeavy(T0 + 1400, 'touch', T0);
+    const lightAt = T0 + 1400;
+    const liftHandled = T0 + 1500;
+    expect(releaseHeavy(liftHandled, 'touch', liftHandled), 'SETUP: the 1500 ms hold on the finger is not a charge').toBe(true);
+    expect(meleeRefusal(false, liftHandled, lightAt, CD), 'SETUP: a LIGHT swing 100 ms after another is not refused — the case cannot discriminate').toBe('cooldown');
+    expect(meleeRefusal(true, liftHandled, lightAt, CD), 'the charged release was eaten by the light swing\'s cooldown').toBeNull();
   });
 });

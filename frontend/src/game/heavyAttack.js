@@ -59,6 +59,22 @@ export function isHeavyHeld() {
   return pressedAt !== 0;
 }
 
+/**
+ * Why a melee swing may NOT go now — 'charging' (the arm is drawn back for a heavy) or 'cooldown' (inside
+ * `cooldownMs` of the last swing, at `lastAt`) — or null when it may. `now` and `lastAt` are the handler's clock.
+ *
+ * A CHARGED RELEASE (`heavy`) is refused by neither (review round 3, item 3). The cooldown runs on the handler clock and
+ * the charge on the input's (inputTime), so a press handled late behind a stall and lifted soon after — a full charge
+ * on the finger — put its light swing (at the press) and the heavy (at the release) inside one cooldown, and the heavy
+ * the finger held for was dropped silently. The heavy's own gate is the charge, a hold of at least
+ * HEAVY_HOLD_MS + HEAVY_CHARGE_MS, which already outlasts the cooldown, and a press throws at most one.
+ */
+export function meleeRefusal(heavy, now, lastAt, cooldownMs) {
+  if (heavy) return null;
+  if (isHeavyHeld()) return 'charging';
+  return now - lastAt < cooldownMs ? 'cooldown' : null;
+}
+
 /** The charge so far, in [0, 1]: 0 until HEAVY_HOLD_MS, 1 once ready. */
 export function heavyChargeLevel(now) {
   if (pressedAt === 0) return 0;
