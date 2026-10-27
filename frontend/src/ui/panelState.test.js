@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { PANEL_FLAGS, isAnyPanelOpen, shouldShowTitleMenu, shouldShowResumeOverlay } from './panelState.js';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
+import { createElement } from 'react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { PANEL_FLAGS, isAnyPanelOpen, shouldShowTitleMenu, shouldShowResumeOverlay, shouldOpenPauseOnUnlock } from './panelState.js';
+import { MenuSystem } from '../MenuSystem.jsx';
+import { SoundProvider } from '../SoundManager.jsx';
+import { useGameStore } from '../store/useGameStore.jsx';
 
 // Locks the menu-overlay / key-gate single-source-of-truth (the 2026-06-07 U-key bug: two hand-kept
 // lists drifted, so the main menu popped OVER the Aspect tree + 7 other panels). A regression here means
@@ -22,19 +28,20 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
   it('covers the panels the old menu guard silently OMITTED (the bug)', () => {
     // these were absent from MenuSystem's hardcoded `!showInventory && ...` guard -> menu popped over them
     for (const flag of ['showSpellUpgrades', 'showAchievements', 'showChestInterface',
-      'showWorldManager', 'showCredits', 'showTradingInterface', 'showStats']) {
+      'showWorldManager', 'showCredits', 'showTradingInterface']) {
       expect(PANEL_FLAGS).toContain(flag);
       expect(isAnyPanelOpen({ [flag]: true })).toBe(true);
     }
   });
 
-  it('is the COMPLETE set of 13 panels (catch a forgotten new panel)', () => {
+  it('is the COMPLETE set of 12 panels (catch a forgotten new panel)', () => {
     // W1: the auth panel was deleted (auth subsystem purge) -> the auth flag is gone.
     // M-NARRATIVE.3: showQuestLog added (the quest LOG panel, L).
+    // 2026-10-27: showStats REMOVED — the F3 readout is not a panel (panelState.js header: it stranded a player on ESC).
     expect(PANEL_FLAGS).toEqual([
       'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
       'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
-      'showSpellUpgrades', 'showAchievements', 'showStats',
+      'showSpellUpgrades', 'showAchievements',
     ]);
   });
 });
@@ -112,6 +119,62 @@ describe('shouldShowResumeOverlay — the recovery surface for a REFUSED pointer
   });
 });
 
+// Mutation-Proof (2026-10-27, the Show Stats stranding): via scripts/dev/mutate.sh on src/ui/panelState.js, one batch,
+// receipts in the commit:
+//   A1 'showStats' re-added to PANEL_FLAGS                     -> RED expected: the close sweep, the INVARIANT, F3 + ESC
+//   A2 shouldOpenPauseOnUnlock ignores an open panel            -> RED expected ("an open panel was replaced")
+//   A3 shouldOpenPauseOnUnlock ignores touch                    -> RED expected
+//   A0 identity (a comment edit)                               -> must SURVIVE
+
+// F3 THEN ESC (2026-10-27): the stranding. With the readout up, an in-game unlock opened no pause panel (App read Show
+// Stats as an open panel) and showed no resume overlay (same), so the player had no surface and no input. Both decisions
+// now see the readout for what it is. App calls shouldOpenPauseOnUnlock on the unlock transition.
+describe('Show Stats on, then ESC: a way back exists', () => {
+  const live = { gameStarted: true, isAlive: true, isPointerLocked: false, isTouch: false };
+  it('the pause panel opens on the unlock, readout up or not; a real panel still keeps the screen', () => {
+    expect(shouldOpenPauseOnUnlock(live), 'SETUP: an in-game unlock does not open the pause panel at all').toBe(true);
+    expect(shouldOpenPauseOnUnlock({ ...live, showStats: true }), 'F3 on, ESC: no pause panel — the player is stranded').toBe(true);
+    expect(shouldOpenPauseOnUnlock({ ...live, showInventory: true }), 'an open panel was replaced by the pause panel').toBe(false);
+    expect(shouldOpenPauseOnUnlock({ ...live, isTouch: true })).toBe(false);
+    expect(shouldOpenPauseOnUnlock({ ...live, gameStarted: false })).toBe(false);
+    expect(shouldOpenPauseOnUnlock({ ...live, isAlive: false })).toBe(false);
+  });
+  it('and if the pause panel is closed or refused, the resume overlay is there with the readout up', () => {
+    expect(shouldShowResumeOverlay({ ...live, showStats: true }), 'F3 on: the resume overlay is suppressed').toBe(true);
+  });
+});
+
+// WHICH PANELS ARE A WAY BACK — MEASURED, NOT ASSUMED (2026-10-27). The invariant below used to count ANY open panel flag
+// as a way back (`isAnyPanelOpen(s)`), so it passed over `showStats`: F3's in-canvas readout was a panel flag with nothing
+// to click, and F3 + ESC stranded a desktop player with no pause panel, no resume overlay and no input. Now a panel
+// counts only if the REAL MenuSystem, rendered with that flag on and the input dead, shows a close control that closes
+// THAT panel (its setter called with false). A flag that renders nothing closable — the readout, if it is ever listed
+// again — is therefore no way back, and the exhaustive loop reports the stranded state.
+const QUEST_STUB = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
+const setterOf = (flag) => `set${flag[0].toUpperCase()}${flag.slice(1)}`;
+async function closesItself(flag) {
+  const close = vi.fn();
+  const NOOP = () => {};
+  const flags = { [flag]: true, [setterOf(flag)]: (v) => { if (v === false) close(); } };
+  // Every flag goes BOTH ways, as a store flag in gameState and as a MenuSystem prop (the React-local ones): the panel
+  // reads whichever it reads, and the other is ignored.
+  const gameState = { ...useGameStore.getState(), gameStarted: true, isAlive: true, requestPointerLock: NOOP, ...flags };
+  // Inside the SoundProvider, as in App (the settings panel reads it).
+  render(createElement(SoundProvider, null, createElement(MenuSystem, {
+    gameState,
+    showAchievements: false, setShowAchievements: NOOP,
+    showSpellUpgrades: false, setShowSpellUpgrades: NOOP,
+    showStats: false, setShowStats: NOOP,
+    isPointerLocked: false, setIsPointerLocked: NOOP,
+    questSystem: QUEST_STUB,
+    ...flags,
+  })));
+  const controls = await screen.findAllByRole('button', { name: /^(close|×)$/i }, { timeout: 4000 }).catch(() => []);
+  for (const c of controls) fireEvent.click(c);
+  cleanup();
+  return close.mock.calls.length > 0;
+}
+
 describe('INVARIANT: input can never be dead with no way back (exhaustive over the state space)', () => {
   // This is the gate that actually matters. The bug was not in one branch — it was that NO branch
   // owned the "lock refused" case. So enumerate the WHOLE reachable cross-product rather than
@@ -121,6 +184,17 @@ describe('INVARIANT: input can never be dead with no way back (exhaustive over t
   const STARTED = [true, false, undefined];
   const ALIVE = [true, false, undefined];
   const PANELS = [null, ...PANEL_FLAGS];
+  const closable = new Set();
+  beforeAll(async () => {
+    for (const flag of PANEL_FLAGS) if (await closesItself(flag)) closable.add(flag);
+  }, 60000);
+  afterEach(cleanup);
+
+  it('every listed panel renders a control that closes it (the measurement the invariant rests on)', () => {
+    const notClosable = PANEL_FLAGS.filter((f) => !closable.has(f));
+    expect(PANEL_FLAGS.length, 'SETUP: no panels listed — nothing was measured').toBeGreaterThan(0);
+    expect(notClosable, 'a panel flag renders nothing that closes it — it is no way back, and it suppresses the pause panel and the resume overlay').toEqual([]);
+  });
 
   it('holds for every combination of lock x gameStarted x isAlive x panel', () => {
     const stranded = [];
@@ -139,7 +213,9 @@ describe('INVARIANT: input can never be dead with no way back (exhaustive over t
             const gameLive = gameStarted === true && isAlive !== false;
             if (!(inputDead && gameLive)) continue;
 
-            const wayBack = isAnyPanelOpen(s) || shouldShowTitleMenu(s) || shouldShowResumeOverlay(s);
+            // An open panel is a way back only if it renders its own close control (measured above).
+            const closablePanelOpen = PANEL_FLAGS.some((f) => s[f] && closable.has(f));
+            const wayBack = closablePanelOpen || shouldShowTitleMenu(s) || shouldShowResumeOverlay(s);
             if (!wayBack) stranded.push(JSON.stringify(s));
           }
         }

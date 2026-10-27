@@ -18,7 +18,7 @@ import {
 } from './ui/panels/lazyPanels.js';
 import { Icon, Button } from './ui/primitives/index.js';
 import { AchievementsPanel } from './QuestSystem';
-import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelCovering } from './ui/panelState.js';
+import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice } from './input/touchDevice';
 import { useT } from './i18n/i18n.js';
@@ -49,7 +49,7 @@ export function MenuSystem({
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
-  const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
+  const titleMenuVisible = shouldShowTitleMenu({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements });
   // The pointer-lock RECOVERY surface (Kevin, 2026-08-05: "ESC to open the menu, ESC to quit it, and
   // the character is frozen and dies"). The browser refuses to re-lock the mouse immediately after the
   // player's own ESC, so the optimistic relock every panel's onClose performs is guaranteed to fail on
@@ -60,14 +60,15 @@ export function MenuSystem({
     useGameStore.setState({ titleCovering: titleMenuVisible });
   }, [titleMenuVisible]);
   // And whether a panel's full-screen scrim covers it (the same canvas pacing, plan 2026-10-27-crafty-steady-cool item g).
-  // Published here because three of the panel flags are React-local and this is where all of them meet. COVERING, not
-  // open: Show Stats (F3) is a panel flag but draws inside the canvas, and must not pace the game it is measuring.
-  const panelCovering = isAnyPanelCovering({ ...gameState, showSpellUpgrades, showAchievements, showStats });
+  // Published here because two of the panel flags are React-local and this is where all of them meet. Every panel draws
+  // a full-screen scrim (panelState.js says what a panel is); Show Stats is not one, so F3 does not pace the game it is
+  // measuring.
+  const panelCovering = isAnyPanelOpen({ ...gameState, showSpellUpgrades, showAchievements });
   useEffect(() => {
     useGameStore.setState({ panelCovering });
   }, [panelCovering]);
   const resumeOverlayVisible = !isCaptureMode() &&
-    shouldShowResumeOverlay({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
+    shouldShowResumeOverlay({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements });
 
   // Enter (or re-enter) play = open the active gate. On desktop the active SoT is Pointer Lock
   // (Components.jsx's pointerlockchange -> setActive). iPad/iPhone have NO Pointer Lock, and the title

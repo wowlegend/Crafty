@@ -41,7 +41,7 @@ import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { createAutosave } from './game/autosave';
 import { useDayNightClock } from './game/useDayNightClock';
-import { isAnyPanelOpen } from './ui/panelState.js';
+import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 import { beastRevealCamera } from './game/beastRevealCamera.js';
 import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_FAILS } from './game/spawnPlacement.js';
@@ -188,9 +188,9 @@ function GameApp({ experienceSystem }) {
   // where ALL panel flags (store + the 4 React-local) are visible: a panel-open unlock is
   // suppressed (the flag is set before the lock exits), death is suppressed (the
   // DeathScreen owns it), pre-game is suppressed (gameStarted).
-  // The isAnyPanelOpen check below reads the SINGLE canonical panel set (panelState.js) — it replaced a
-  // 4th hand-kept list (that was missing showCredits/showStats); the click-to-play overlay + title menu
-  // + key handlers all gate on the same set.
+  // The decision is panelState.js shouldOpenPauseOnUnlock, over the SINGLE canonical panel set — it replaced a
+  // 4th hand-kept list (that was missing showCredits); the click-to-play overlay + title menu + key handlers all
+  // gate on the same set. Show Stats is not in it (2026-10-27): with F3 on, an ESC opened no pause panel at all.
   // useLayoutEffect, NOT useEffect: between the unlock and this opening the pause panel there is one
   // committed render where the game has started, nothing is locked and no panel is open — which is
   // exactly the state the resume overlay is derived from, so with a post-paint effect the overlay
@@ -202,12 +202,11 @@ function GameApp({ experienceSystem }) {
     prevLockedRef.current = isPointerLocked;
     if (was && !isPointerLocked) {
       const s = useGameStore.getState();
-      if (!isTouchDevice() && s.isAlive && s.gameStarted &&
-          !isAnyPanelOpen({ ...s, showSpellUpgrades, showAchievements, showStats })) {
+      if (shouldOpenPauseOnUnlock({ ...s, showSpellUpgrades, showAchievements, isTouch: isTouchDevice() })) {
         s.setShowSettings(true);
       }
     }
-  }, [isPointerLocked, showSpellUpgrades, showAchievements, showStats]);
+  }, [isPointerLocked, showSpellUpgrades, showAchievements]);
 
   // Select the device quality tier once at startup (runs in prod + dev). On a coarse pointer the render distance is
   // pinned to this boot tier: a runtime step there must not re-stream the world (render/tierGovernor.js).

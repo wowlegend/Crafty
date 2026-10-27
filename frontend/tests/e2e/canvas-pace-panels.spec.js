@@ -18,10 +18,14 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E2 GameScene passes no `unfocused` to paceFor                               -> RED expected: "not paced in an unfocused window"
 //   E3 plausible-wrong: panelCovering derived from the store flags only (the React-local achievements panel missed)
 //                                                                              -> RED expected: "not paced behind the achievements panel"
-//   E4 Show Stats counted as covering (MenuSystem: `isAnyPanelCovering(...) || showStats`, the shipped defect of review
+//   E4 Show Stats counted as covering (MenuSystem: `isAnyPanelOpen(...) || showStats`, the shipped defect of review
 //      2026-10-27 HIGH 1)                                                     -> RED expected: "Show Stats (F3) paced the canvas"
+//   E5 the pause-on-unlock reads the readout as a panel (App.jsx: `shouldOpenPauseOnUnlock(...) && !showStats`, the
+//      stranding)                                                             -> RED expected: "F3 on, ESC: no pause panel"
 //   E0 identity (a comment edit in canvasPace.js)                              -> must SURVIVE
-// The unit half of E4 is tests/gates/canvas-pace-gates (C1-C3, run); this spec adds the real F3 key and the live Canvas.
+// RUN 2026-10-27 for E0/E4/E5 only (one batch, a throwaway config on port 4307, E2E_WORLD_TIMEOUT=240000): E0 PASSED,
+// E4 RED "Show Stats (F3) paced the canvas" (stats 30), E5 RED "F3 on, ESC: no pause panel" (paused false). E1-E3 not run.
+// The unit halves: tests/gates/canvas-pace-gates (the pace), src/ui/panelState.test.js (the pause and the invariant).
 test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under capture', async ({ page }) => {
   test.setTimeout(240000);
   await bootDev(page);
@@ -49,12 +53,25 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await settle();
   const refocused = await loop();
 
-  // Show Stats (F3, a React-local panel FLAG) draws its readout inside the canvas and covers nothing: the canvas must
-  // stay at its play pace, or the readout reports the pace instead of the game. Presence first: the readout is up.
+  // Show Stats (F3) draws its readout inside the canvas and covers nothing — it is not a panel (ui/panelState.js): the
+  // canvas must stay at its play pace, or the readout reports the pace instead of the game. Presence first: it is up.
   await page.keyboard.press('F3');
   await settle();
   const stats = await loop();
   const statsShown = await page.evaluate(() => !!document.querySelector('[data-testid="frame-stats"]'));
+  // F3 on, then ESC — the stranding (2026-10-27): with the readout counted as a panel, the unlock opened no pause panel and
+  // the resume overlay stayed suppressed. A headless page cannot hold a real pointer lock, so the unlock is the
+  // `pointerlockchange` the browser fires after the player's ESC; Components' handler reads pointerLockElement (null),
+  // drops the active gate, and App decides on that transition — the same path a real ESC takes from there. App opens the
+  // pause panel only once the game has started, which the harness's forcePlay deliberately does not mark.
+  await page.evaluate(() => window.useGameStore.getState().markGameStarted());
+  await page.evaluate(() => document.dispatchEvent(new Event('pointerlockchange')));
+  const paused = await page.waitForFunction(() => !!document.querySelector('[role="dialog"][aria-label="Settings"]'), null, { timeout: 10000 })
+    .then(() => true, () => false);
+  const unlockedActive = await page.evaluate(() => window.__craftyTest.call('readIntents').active);
+  // Back to play for the rest: close the pause panel, re-open the gate, readout off.
+  await page.evaluate(() => window.useGameStore.getState().setShowSettings(false));
+  await page.evaluate(() => window.__craftyTest.call('forcePlay'));
   await page.keyboard.press('F3');
   await settle();
 
@@ -70,7 +87,7 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await settle();
   const capture = await loop();
 
-  const where = JSON.stringify({ open, inventory, closed, achievements, achievementsOpen, blurred, refocused, stats, statsShown, capture });
+  const where = JSON.stringify({ open, inventory, closed, achievements, achievementsOpen, blurred, refocused, stats, statsShown, unlockedActive, paused, capture });
   console.log(`canvas-pace-panels: ${where}`);
   expect(inventory, `not paced behind the inventory: ${where}`).toEqual({ loop: 'demand', fps: 30 });
   expect(closed, `still paced after the inventory closed: ${where}`).toEqual({ loop: 'demand', fps: 60 });
@@ -80,5 +97,7 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   expect(refocused, `still paced after the window regained focus: ${where}`).toEqual({ loop: 'demand', fps: 60 });
   expect(statsShown, `SETUP: F3 did not show the Show Stats readout — the stats case was not exercised: ${where}`).toBe(true);
   expect(stats, `Show Stats (F3) paced the canvas it is measuring: ${where}`).toEqual({ loop: 'demand', fps: 60 });
+  expect(unlockedActive, `SETUP: the dispatched unlock did not drop the active gate — the ESC case was not exercised: ${where}`).toBe(false);
+  expect(paused, `F3 on, ESC: no pause panel — the player is stranded with no way back: ${where}`).toBe(true);
   expect(capture, `the capture harness was paced behind a panel: ${where}`).toEqual({ loop: 'always', fps: 0 });
 });

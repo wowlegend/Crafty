@@ -103,35 +103,27 @@ describe('useWindowFocused — the unfocused input, from the window, desktop onl
 });
 
 /**
- * SHOW STATS IS NOT A COVERING PANEL (review 2026-10-27, steady-cool HIGH 1). Show Stats (F3) is a panel FLAG — the key
- * gate and the menu guard read it — but it draws the frame-time readout inside the canvas, with no scrim. Published as
- * "covering", it paced the game to 30 fps, so the readout reported the pace instead of the game, and it unmounted the
- * tier governor's monitor (governorSamples). This renders the REAL MenuSystem against the real store and reads what it
- * publishes; the F3 key end to end is tests/e2e/canvas-pace-panels.spec.js.
+ * SHOW STATS DOES NOT PACE THE GAME IT MEASURES (review 2026-10-27, steady-cool HIGH 1). F3 draws the frame-time readout
+ * inside the canvas, with no scrim. While it was a panel flag MenuSystem published it as covering: the game dropped to 30
+ * fps, the readout reported the pace instead of the game, and the tier governor's monitor unmounted (governorSamples).
+ * Show Stats is no longer a panel at all (ui/panelState.js), so covering is simply "a panel is open" — one list. This
+ * renders the REAL MenuSystem against the real store, reads what it publishes, and feeds that to the real pace and
+ * governor decisions; the F3 key end to end is tests/e2e/canvas-pace-panels.spec.js.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh, each observed RED, an identity mutant SURVIVED (receipts in the commit):
- *   C1 MenuSystem publishes isAnyPanelOpen again (the shipped defect)             -> RED "Show Stats paced the canvas"
- *   C2 NON_COVERING_FLAGS emptied (Show Stats counted as covering)               -> RED (pure + render)
- *   C3 plausible-wrong: COVERING_FLAGS drops the React-local panels               -> RED "the achievements scrim"
- *   C0 identity (a comment edit in panelState.js)                                -> SURVIVED
+ * Mutation-Proof: via scripts/dev/mutate.sh, receipts in the commit (the earlier COVERING_FLAGS receipts C1-C3 are void:
+ * that list is deleted). Re-adding 'showStats' to PANEL_FLAGS alone cannot reach this gate — no caller passes the readout
+ * to the panel check any more — so the regression shape here is a caller counting it again:
+ *   K1 MenuSystem: panelCovering = isAnyPanelOpen(...) || showStats (the shipped defect)  -> RED expected
+ *   K2 MenuSystem publishes a constant false (pacing behind panels lost)                  -> RED expected
+ *   K0 identity (a comment edit in panelState.js)                                        -> must SURVIVE
  */
-describe('covering = a panel whose scrim covers the canvas; Show Stats is not one', () => {
-  it('every panel flag but Show Stats covers', async () => {
-    const { PANEL_FLAGS, COVERING_FLAGS, isAnyPanelCovering } = await import('../../src/ui/panelState.js');
-    expect(PANEL_FLAGS.length, 'SETUP: the panel list changed size — re-check which panels draw a scrim').toBe(13);
-    expect(COVERING_FLAGS.length, 'the covering set is not every panel but one').toBe(PANEL_FLAGS.length - 1);
-    for (const flag of PANEL_FLAGS) {
-      expect(isAnyPanelCovering({ [flag]: true }), `${flag}`).toBe(flag !== 'showStats');
-    }
-    expect(isAnyPanelCovering({ showStats: true, showInventory: true }), 'Show Stats masked a real panel').toBe(true);
-    expect(isAnyPanelCovering(null)).toBe(false);
-  });
-
-  it('MenuSystem publishes panelCovering from the covering set, React-local panels included', async () => {
+describe('Show Stats is not a panel: F3 neither paces the canvas nor unmounts the governor', () => {
+  it('MenuSystem publishes panelCovering = a panel is open, React-local panels included; F3 keeps the play pace', async () => {
     const React = (await import('react')).default;
     const { render, cleanup } = await import('@testing-library/react');
     const { MenuSystem } = await import('../../src/MenuSystem.jsx');
     const { useGameStore } = await import('../../src/store/useGameStore.jsx');
+    const { governorSamples } = await import('../../src/render/tierGovernor.js');
     const NOOP = () => {};
     const quest = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
     const props = (o) => ({
@@ -151,5 +143,10 @@ describe('covering = a panel whose scrim covers the canvas; Show Stats is not on
     expect(published({}), 'nothing open, yet the canvas is paced').toBe(false);
     expect(published({ showStats: true }), 'Show Stats paced the canvas it is measuring').toBe(false);
     expect(published({ showStats: true, showAchievements: true }), 'Show Stats masked the achievements scrim').toBe(true);
+    // The pace and the governor, fed what MenuSystem published with the readout up: the 60 cap holds and the monitor stays.
+    const withStats = published({ showStats: true });
+    const pace = paceFor({ frameCap: 60, titleCovering: false, panelCovering: withStats, unfocused: false, harness: false });
+    expect(pace, 'Show Stats paced the canvas it is measuring').toEqual({ loop: 'demand', fps: 60 });
+    expect(governorSamples(pace, 60), 'Show Stats unmounted the tier governor\'s monitor').toBe(true);
   });
 });
