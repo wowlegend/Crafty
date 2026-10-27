@@ -10,6 +10,7 @@
 // Why a session-scoped breadcrumb: nothing resumes a save at boot (a reload lands on the title, and the session's world
 // id is deliberately in-memory only — useGameStore saveActiveWorld's B2a note). sessionStorage survives a reload of the
 // same tab and dies with it, which is exactly "resume what this tab was playing" and nothing more.
+import { markShadowWorldChanged } from '../render/shadowSchedule.js';
 
 /** The sessionStorage key holding the world this tab was playing when its context was lost. */
 export const RESUME_WORLD_KEY = 'crafty.resumeWorldId';
@@ -23,6 +24,20 @@ export const RESUME_WORLD_KEY = 'crafty.resumeWorldId';
 export function onContextLost({ setLost, doc = document }) {
   setLost(true);
   if (doc.pointerLockElement && typeof doc.exitPointerLock === 'function') doc.exitPointerLock();
+}
+
+/**
+ * GameScene's `webglcontextrestored` handler. three re-creates its GPU state on the same event, and the sun's shadow map
+ * comes back EMPTY: it renders on demand (render/shadowSchedule.js), so with a still camera and nothing moving nothing
+ * asked for one and the world stood unshadowed (review 2026-10-27, steady-cool LOW 6). Ask for one, then clear the loss
+ * once three has drawn (whenDrawnAgain).
+ * @param {{ info: { render: { frame: number } } }} gl the WebGLRenderer
+ * @param {{ setLost: (lost: boolean) => void, raf?: (fn: () => void) => void }} deps
+ * @returns {() => void} cancel the wait for a frame
+ */
+export function onContextRestored(gl, { setLost, raf }) {
+  markShadowWorldChanged();
+  return whenDrawnAgain(gl, () => setLost(false), raf);
 }
 
 /**

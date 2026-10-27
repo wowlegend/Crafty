@@ -5,7 +5,8 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { STRINGS } from '../../src/i18n/strings.js';
 import { writeWorld } from '../../src/game/worldSaves.js';
 import { ContextLossPanel } from '../../src/ui/ContextLossPanel.jsx';
-import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, onContextLost, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, onContextLost, onContextRestored, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { shadowWorldEpoch } from '../../src/render/shadowSchedule.js';
 import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
 
@@ -199,6 +200,34 @@ describe('whenDrawnAgain: the restore is believed once three has rendered since'
     gl.info.render.frame = 1;
     r.flush();
     expect(onDrawn, 'the first frame on the fresh counter was not seen').toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * A RESTORE ASKS FOR THE SUN'S SHADOW AGAIN (review 2026-10-27, steady-cool LOW 6). The shadow map renders on demand
+ * (render/shadowSchedule.js) and comes back EMPTY after a restore; with a still camera and nothing moving, nothing asked
+ * for one. GameScene's restore handler is onContextRestored: it bumps the world epoch the schedule renders on, then waits
+ * for a drawn frame to clear the loss.
+ * BLIND SPOT: that the bumped epoch reaches a shadow render is Atmosphere's schedule (tests/gates/shadow-schedule-gates).
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/game/contextRecovery.js, one batch, receipts in the commit:
+ *   S1 the restore never asks for a shadow render              -> RED expected
+ *   S2 plausible-wrong: the loss cleared before a frame is drawn -> RED expected
+ *   S0 identity (a comment edit)                               -> must SURVIVE
+ */
+describe('onContextRestored: a shadow render is asked for, and the loss clears on a drawn frame', () => {
+  it('bumps the shadow world epoch once, at the restore; clears the loss only after three renders', () => {
+    const gl = { info: { render: { frame: 0 } } };
+    const setLost = vi.fn();
+    const q = [];
+    const e0 = shadowWorldEpoch();
+    onContextRestored(gl, { setLost, raf: (fn) => q.push(fn) });
+    expect(shadowWorldEpoch() - e0, 'the restore did not ask for a shadow render').toBe(1);
+    q.shift()();
+    expect(setLost, 'the loss cleared before anything was drawn').not.toHaveBeenCalled();
+    gl.info.render.frame = 3;
+    q.shift()();
+    expect(setLost).toHaveBeenCalledWith(false);
   });
 });
 
