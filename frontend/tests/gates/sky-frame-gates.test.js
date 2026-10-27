@@ -4,7 +4,9 @@ import {
   moodTarget, sampleMood, skyFrameRef, publishSkyFrame, CAPTURE_SOLAR, captureCycle, liveCycle, MOOD_SCALARS, MOOD_GRADE,
 } from '../../src/render/mood.js';
 import { sampleScript, makeScriptFrame } from '../../src/render/colourScript.js';
-import { resolveKeyLight, makeKeyLight } from '../../src/render/keyLight.js';
+import { resolveKeyLight, makeKeyLight, moonArcDirection, MOON_NOON } from '../../src/render/keyLight.js';
+import { sunArcDirection } from '../../src/render/sunArc.js';
+import { STORM_MOOD_BOOST } from '../../src/game/weatherGate.js';
 import { aoFloorColor } from '../../src/world/biomeTable.js';
 import { PALETTE } from '../../src/theme/tokens.js';
 import { oklch, displayed, stoneFaceUnder } from './_lightModel.js';
@@ -34,6 +36,12 @@ import { oklch, displayed, stoneFaceUnder } from './_lightModel.js';
  *   S7 sunColor written from keyColor                            -> key-and-sun RED (and mood-0-is-the-script)
  *   S8 the dome's skyMid without the key's exposure              -> mood-0-is-the-script RED
  *   S0 identity (a comment edit in mood.js)                      -> SURVIVED
+ *   Review fixes (2026-10-27: MB, MA, STORM_KEY_DIM = 0 and STORM_SKY_GREY = 0 had survived the whole suite):
+ *   MB moonDir never copied into the frame                        -> directions RED
+ *   MA sunDir written from the key's direction                    -> directions RED
+ *   SK1 STORM_KEY_DIM = 0 / SK2 doubled (0.8) / MC the key's storm term dropped -> storm RED (each)
+ *   SG1 STORM_SKY_GREY = 0 / SG3 0.9 / SG2 the storm darkens the sky instead of greying it -> storm RED (each)
+ *   S0b identity (a comment edit in mood.js)                     -> SURVIVED
  *
  * BLIND SPOT: nothing here wires. Whether Atmosphere publishes the frame, and whether the readers read it, is Task 3b
  * (its sky-readers gate and its e2e).
@@ -141,6 +149,55 @@ describe('the sky frame: the script under the danger overlays', () => {
     sampleMood(0, 0.25); // overwrite the scratch
     expect(skyFrameRef.current.fog.getHex()).toBe(held);
     expect(skyFrameRef.current.keyDir).toEqual(heldKey);
+  });
+
+  // THE FRAME'S THREE DIRECTIONS (review of the light-colour lane, 2026-10-27: mutants MB and MA survived the suite).
+  // Each is checked against the pure arc it must come from, built here independently of mood.js: the sun's arc on the
+  // mood's noon vector, the moon's arc (keyLight.js moonArcDirection), and the key = whichever body is up. At 0.62 the
+  // moon is up and far from its own noon (MOON_NOON, which is also the dome's initial uniform), so a moonDir never
+  // copied (left at the scratch's [0, -1, 0]) or a frozen one both fail.
+  it('sunDir, moonDir and keyDir are the arcs they name, at a moonlit hour and a sunlit one', () => {
+    let n = 0;
+    for (const f of [0.62, 0.3]) {
+      const m = sampleMood(0, f);
+      const sun = sunArcDirection(MOOD_SCALARS.explore.sunPos, f), moon = moonArcDirection(f);
+      for (let c = 0; c < 3; c++) {
+        expect(m.sunDir[c], `f ${f}: sunDir[${c}] is not the sun's arc`).toBeCloseTo(sun[c], 9);
+        expect(m.moonDir[c], `f ${f}: moonDir[${c}] is not the moon's arc`).toBeCloseTo(moon[c], 9);
+        expect(m.keyDir[c], `f ${f}: keyDir[${c}] is not the body that is up`).toBeCloseTo(m.keyIsMoon ? moon[c] : sun[c], 9);
+      }
+      n++;
+    }
+    expect(n).toBe(2);
+    expect(sampleMood(0, 0.62).keyIsMoon).toBe(true); // the night case really is the moon's
+    const at62 = moonArcDirection(0.62), nn = Math.hypot(...MOON_NOON);
+    const cos = (at62[0] * MOON_NOON[0] + at62[1] * MOON_NOON[1] + at62[2] * MOON_NOON[2]) / nn;
+    expect(cos, 'the case cannot tell the moon\'s arc from its noon').toBeLessThan(Math.cos((10 * Math.PI) / 180));
+  });
+
+  // THE STORM OVERLAY'S TWO OTHER TERMS (review: STORM_KEY_DIM = 0 and STORM_SKY_GREY = 0 both survived). Design
+  // anchors, not the constants: at the live storm boost (game/weatherGate.js) a storm takes between a quarter and a half
+  // off the key light, and washes the sky toward grey (OKLab chroma down by 20-50%) without darkening it (the grey is
+  // the colour's own luminance, Rec. 709, so the luminance holds within 1%). Noon and midnight, so both keys are seen.
+  it('a storm dims the key and greys the sky toward its own luminance, at noon and at midnight', () => {
+    const lum709 = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    let n = 0;
+    for (const f of [0.25, 0.75]) {
+      const calm = sampleMood(0, f);
+      const key0 = calm.keyIntensity, sky0 = calm.skyMid.clone(), top0 = calm.skyTop.clone();
+      const storm = sampleMood(STORM_MOOD_BOOST, f);
+      const keyRatio = storm.keyIntensity / key0;
+      expect(keyRatio, `f ${f}: the storm left the key at ${(keyRatio * 100).toFixed(0)}%`).toBeLessThanOrEqual(0.75);
+      expect(keyRatio, `f ${f}: the storm took the key to ${(keyRatio * 100).toFixed(0)}%`).toBeGreaterThanOrEqual(0.5);
+      for (const [name, c0, c1] of [['skyMid', sky0, storm.skyMid], ['skyTop', top0, storm.skyTop]]) {
+        const chroma = oklch([c1.r, c1.g, c1.b]).C / oklch([c0.r, c0.g, c0.b]).C;
+        expect(chroma, `f ${f}: ${name} kept ${(chroma * 100).toFixed(0)}% of its chroma under the storm`).toBeLessThanOrEqual(0.8);
+        expect(chroma, `f ${f}: ${name} lost too much chroma`).toBeGreaterThanOrEqual(0.5);
+        expect(lum709(c1) / lum709(c0), `f ${f}: the storm darkened ${name} instead of greying it`).toBeCloseTo(1, 2);
+      }
+      n++;
+    }
+    expect(n).toBe(2);
   });
 
   it('captureCycle: declared, then by isDay', () => {

@@ -90,7 +90,10 @@ export const useGameStore = create((set, get) => ({
     // suppressed. Set ONLY by the `enterCapture` test-bridge hook on the dev server;
     // always false in production (the bridge is tree-shaken out of prod builds).
     isCaptureMode: false,
-    setCaptureMode: (on) => set({ isCaptureMode: !!on }),
+    // Leaving capture also clears the declared capture fraction (captureSolarFraction below): a capture state's light
+    // never outlives capture. It is reset HERE, where the flag goes false, so there is one writer of the reset and a
+    // store test drives it (tests/gates/sky-readers-wiring-gates.test.jsx); the exitCapture hook calls this.
+    setCaptureMode: (on) => set(on ? { isCaptureMode: true } : { isCaptureMode: false, captureSolarFraction: null }),
 
     // B2a: which world slot THIS SESSION owns. Set by loadWorldData (opened one) or by the first
     // autosave (minted one). Deliberately NOT persisted: it must die with the tab, or a fresh session
@@ -114,7 +117,8 @@ export const useGameStore = create((set, get) => ({
     setCaptureStudio: (on) => set({ captureStudio: !!on }),
     // The cycle fraction a CAPTURE state declares for its light (light-colour plan Task 3b; render/mood.js
     // captureCycle): a finite value wins, null falls back to noon (isDay) or midnight (!isDay). Read only under
-    // capture; set by the DEV hook `setCaptureSolar`, reset to null by `exitCapture`. Transient (not persisted).
+    // capture; set by the DEV hook `setCaptureSolar`, reset to null by setCaptureMode(false) (the `exitCapture` hook).
+    // Transient (not persisted).
     captureSolarFraction: null,
 
     // Device-gated render quality tier (spec §8). Default 'low' = conservative;

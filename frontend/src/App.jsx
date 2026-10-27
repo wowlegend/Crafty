@@ -904,10 +904,9 @@ function GameApp({ experienceSystem }) {
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
-      useGameStore.getState().setCaptureMode(false);
+      useGameStore.getState().setCaptureMode(false); // also clears the declared capture fraction (store, one writer)
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
-      useGameStore.setState({ captureSolarFraction: null }); // a declared capture fraction never outlives capture
     });
     // Open a modal (inventory/crafting) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
     // WAITS for it first (page.evaluate awaits the promise): a capture must never shoot the empty Suspense frame.
