@@ -1,4 +1,5 @@
 import { test, expect } from './_fixtures.js';
+import { PNG } from 'pngjs';
 import { bootDev, startPlayActive } from './_boot.js';
 
 // A LOST WEBGL CONTEXT HAS A WAY BACK, AND THE WAY BACK LANDS IN THE SAME WORLD (plan 2026-10-27-crafty-steady-cool,
@@ -16,26 +17,57 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E3 handleContextLost no longer sets the flag (GameScene.jsx)                                -> RED expected: "no panel after the loss"
 //   E4 Terrain publishes the worker with a bare setState again (bypassing setTerrainWorker)     -> RED expected: "did not resume the block"
 //   E5 the Player's spawn ignores resumeSpawn (Components.jsx)                                  -> RED expected: "where they stood"
+//   E6 the DEV `restore` op dispatches a bare `webglcontextrestored` event instead of restoring the context (GameScene.jsx):
+//      the panel goes and the frame loop runs, but the GPU never came back — the case the old frame-count check passed
+//                                                                                               -> RED expected: "did not draw after the restore"
 //   E0 identity (a comment edit in contextRecovery.js)                                          -> must SURVIVE
 // E4/E5's unit halves are tests/gates/context-loss-gates R1-R6 (run, all RED; identity SURVIVED).
 test('a lost context shows the panel; a restore clears it and draws again; a tap reloads into the same world', async ({ page }) => {
   test.setTimeout(300000);
   await bootDev(page);
   await startPlayActive(page);
-  const frames = () => page.evaluate(() => window.__craftyTest.call('readFrameloop').frames);
   const panel = page.getByTestId('context-loss-panel');
   await expect(panel, 'SETUP: the panel is up before any loss').toHaveCount(0);
+  // WHAT THE GAME CANVAS SHOWS, as composited pixels (review 2026-10-27 MED 3). The old check counted frame-loop callbacks,
+  // which keep running while the context is lost, so it could not fail. Every other element is hidden for the shot (the
+  // HUD over the canvas is non-uniform on its own); the game canvas is the largest one on the page.
+  const canvasShot = async () => {
+    await page.evaluate(() => {
+      const all = [...document.querySelectorAll('canvas')];
+      const game = all.sort((a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight)[0];
+      game.setAttribute('data-e2e-game-canvas', '');
+      const s = document.createElement('style');
+      s.id = 'e2e-only-the-canvas';
+      s.textContent = 'body * { visibility: hidden !important; } [data-e2e-game-canvas] { visibility: visible !important; }';
+      document.head.appendChild(s);
+    });
+    const png = PNG.sync.read(await page.locator('[data-e2e-game-canvas]').screenshot());
+    await page.evaluate(() => document.getElementById('e2e-only-the-canvas')?.remove());
+    let min = 255;
+    let max = 0;
+    for (let i = 0; i < png.data.length; i += 4) {
+      const l = (png.data[i] + png.data[i + 1] + png.data[i + 2]) / 3;
+      if (l < min) min = l;
+      if (l > max) max = l;
+    }
+    return { range: Math.round(max - min), pixels: png.data.length / 4 };
+  };
+  // Presence first: the same instrument sees a drawn world before the loss (smoke.spec's tonal-range floor, 20).
+  const lit = await canvasShot();
+  expect(lit.range, `SETUP: the canvas reads blank before any loss — the instrument sees nothing: ${JSON.stringify(lit)}`).toBeGreaterThan(20);
 
   // A real loss, then the browser's restore.
   expect(await page.evaluate(() => window.__craftyTest.call('webglContext', 'lose')), 'SETUP: WEBGL_lose_context is unavailable here').toBe(true);
   await expect(panel, 'no panel after the loss').toBeVisible({ timeout: 10000 });
   await expect(panel).toContainText('Graphics were reset by the system');
+  const dark = await canvasShot();
   await page.evaluate(() => window.__craftyTest.call('webglContext', 'restore'));
-  await expect(panel, 'the panel stayed after the context came back').toHaveCount(0, { timeout: 10000 });
-  const f0 = await frames();
-  await page.waitForTimeout(3000);
-  const f1 = await frames();
-  expect(f1, `the canvas did not draw after the restore (${f0} -> ${f1} frames)`).toBeGreaterThan(f0);
+  // The panel clears once three has drawn since the restore (game/contextRecovery.js whenDrawnAgain): a frame, not an event.
+  await expect(panel, 'the panel stayed after the context came back').toHaveCount(0, { timeout: 30000 });
+  await page.waitForTimeout(2000);
+  const back = await canvasShot();
+  console.log(`context-loss: canvas tonal range lit ${lit.range} · lost ${dark.range} · restored ${back.range}`);
+  expect(back.range, `the canvas did not draw after the restore — it reads blank: ${JSON.stringify({ lit, dark, back })}`).toBeGreaterThan(20);
 
   // Lose it again and take the way back: the world must be the one that was being played — its progress, the blocks its
   // player placed, and where the player stood (review 2026-10-27 HIGH 2: coins alone came back; the edits and the

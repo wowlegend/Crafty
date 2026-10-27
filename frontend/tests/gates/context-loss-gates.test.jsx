@@ -5,7 +5,7 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { STRINGS } from '../../src/i18n/strings.js';
 import { writeWorld } from '../../src/game/worldSaves.js';
 import { ContextLossPanel } from '../../src/ui/ContextLossPanel.jsx';
-import { recoverFromContextLoss, consumeResumeWorld, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
 import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
 
@@ -123,6 +123,47 @@ describe('the breadcrumb resumes the world at boot, once', () => {
  *   R6 the boot resume never sets resumeSpawn                                -> RED expected
  *   R0 identity (a comment edit in spawnPlacement.js)                        -> must SURVIVE
  */
+/**
+ * A RESTORE CLEARS THE PANEL ONLY ONCE THE WORLD HAS BEEN DRAWN AGAIN (review 2026-10-27, steady-cool MED 3). The e2e's
+ * old "draws again" check counted frame-loop callbacks, which keep running while the context is lost, so it could not
+ * fail; it now reads pixels. Here: the gate GameScene's restore handler passes the flag through, on a hand-cranked rAF.
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/game/contextRecovery.js, one batch, receipts in the commit:
+ *   D1 onDrawn at once (no wait for a frame)                                       -> RED expected
+ *   D2 plausible-wrong: compares the frame number only (three re-creates gl.info)  -> RED expected (never clears)
+ *   D3 plausible-wrong: a re-created gl.info counts as drawn by itself             -> RED expected
+ *   D0 identity (a comment edit)                                                   -> must SURVIVE
+ */
+describe('whenDrawnAgain: the restore is believed once three has rendered since', () => {
+  const crank = () => {
+    let q = [];
+    return { raf: (fn) => q.push(fn), flush: () => { const run = q; q = []; run.forEach((fn) => fn()); } };
+  };
+  it('three\'s handler ran first (gl.info already fresh at 0): not before its first render, then once', () => {
+    const gl = { info: { render: { frame: 0 } } };
+    const onDrawn = vi.fn();
+    const r = crank();
+    whenDrawnAgain(gl, onDrawn, r.raf);
+    r.flush(); r.flush();
+    expect(onDrawn, 'cleared with nothing drawn since the restore').not.toHaveBeenCalled();
+    gl.info.render.frame = 1;
+    r.flush(); r.flush();
+    expect(onDrawn).toHaveBeenCalledTimes(1);
+  });
+  it('ours ran first (the old gl.info, mid-count): the fresh one three installs counts from 0', () => {
+    const gl = { info: { render: { frame: 512 } } };
+    const onDrawn = vi.fn();
+    const r = crank();
+    whenDrawnAgain(gl, onDrawn, r.raf);
+    gl.info = { render: { frame: 0 } }; // three's initGLContext on the same event
+    r.flush();
+    expect(onDrawn, 'a re-created counter at 0 was read as a frame drawn').not.toHaveBeenCalled();
+    gl.info.render.frame = 1;
+    r.flush();
+    expect(onDrawn, 'the first frame on the fresh counter was not seen').toHaveBeenCalledTimes(1);
+  });
+});
+
 const realLoadWorldData = useGameStore.getState().loadWorldData;
 const editedSave = () => ({
   id: 'local_edits',

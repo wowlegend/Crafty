@@ -10,7 +10,8 @@ import { recoverFromContextLoss, consumeResumeWorld } from '../game/contextRecov
 // read it, so a lost context left a black canvas under a live HUD. This is DERIVED FROM STATE (the resume overlay's
 // rule: a surface that a state predicate shows cannot be bypassed by a path nobody thought of). The whole panel is the
 // tap target: save, leave a breadcrumb, reload — and at boot the breadcrumb loads that world again (game/contextRecovery).
-// If the browser restores the context on its own, the flag clears and the panel goes away.
+// If the browser restores the context on its own, the flag clears — once three has drawn a frame since (GameScene,
+// game/contextRecovery.js whenDrawnAgain) — and the panel goes away.
 
 const sessionStore = () => {
   try { return window.sessionStorage; } catch { return null; }

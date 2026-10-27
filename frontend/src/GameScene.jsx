@@ -41,6 +41,7 @@ import { createGovernor, governorDecline, governorIncline, governorSamples, rend
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
 import { PointLightPool } from './render/lightPool.jsx';
+import { whenDrawnAgain } from './game/contextRecovery.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -322,7 +323,9 @@ export const GameScene = React.memo(function GameScene({
           };
           const handleContextRestored = () => {
             if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-            useGameStore.getState().setIsWebGLContextLost(false);
+            // The panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since the restore: its going away then
+            // means the world is on screen again, not merely that the browser said the context is back.
+            whenDrawnAgain(gl, () => useGameStore.getState().setIsWebGLContextLost(false));
           };
           
           canvasEl.addEventListener('webglcontextlost', handleContextLost, false);

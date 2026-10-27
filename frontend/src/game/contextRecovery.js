@@ -33,6 +33,34 @@ export function recoverFromContextLoss({ getState, storage, reload }) {
 }
 
 /**
+ * After a context RESTORE: call `onDrawn` once three has rendered since (review 2026-10-27, steady-cool MED 3). Until then
+ * the restore is the browser's word, not a frame on screen, and the panel should stay up as the way back. three's own
+ * restore handler re-creates `gl.info` (a fresh frame counter at 0), so the test holds whichever listener ran first: a new
+ * info object counts from 0, the same one from the frame it was at.
+ * @param {{ info: { render: { frame: number } } }} gl the WebGLRenderer
+ * @param {() => void} onDrawn
+ * @param {(fn: () => void) => void} [raf] a seam for the gate
+ * @returns {() => void} cancel
+ */
+export function whenDrawnAgain(gl, onDrawn, raf = (fn) => requestAnimationFrame(fn)) {
+  const info0 = gl.info;
+  const f0 = info0.render.frame;
+  let live = true;
+  const check = () => {
+    if (!live) return;
+    const drawn = gl.info !== info0 ? gl.info.render.frame > 0 : gl.info.render.frame > f0;
+    if (drawn) {
+      live = false;
+      onDrawn();
+    } else {
+      raf(check);
+    }
+  };
+  raf(check);
+  return () => { live = false; };
+}
+
+/**
  * At boot: take the breadcrumb (once — it is removed whether or not the world still exists) and return that world's
  * save, or null. The caller loads it; the player still presses Start, a gesture the browser needs anyway.
  * @param {{ storage: Storage, readWorld: (id: string) => object|null }} deps
