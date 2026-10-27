@@ -35,6 +35,7 @@ import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
+import { ComposerPixelRatioSync } from './render/postFx.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -133,6 +134,8 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
       <Vignette eskil={false} offset={0.45} darkness={0.35} />
       <BloomSpikeDriver />
       <MoodGradeDriver />
+      {/* The package resizes the composer on a CSS size change only; this follows a pixel-ratio change (render/postFx.js). */}
+      <ComposerPixelRatioSync />
     </EffectComposer>
   );
 });
