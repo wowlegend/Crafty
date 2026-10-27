@@ -1024,7 +1024,7 @@ function GameApp({ experienceSystem }) {
 
       {/* Phase 0c (F9): the Talents panel's flag is App-local (useInputManager), so touch gets it as props — the
           locked ring sector opens it (nothing else on touch can), and tap-to-play stays off it while it is open. */}
-      <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades}
+      <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades} otherPanelOpen={showAchievements || showStats}
         onOpenTalents={() => openTalents(useGameStore.getState(), { setShowSpellUpgrades, setShowAchievements })} />
 
       {/* MenuSystem's setIsPointerLocked prop is wired to setActive — the OPTIMISTIC

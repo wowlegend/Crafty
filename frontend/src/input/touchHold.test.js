@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { makeIntentHold, chargeFraction, chargeRingStyle } from './touchHold.js';
+import { makeIntentHold, makePointerClaim, chargeFraction, chargeRingDeg, CHARGE_SWEEPS } from './touchHold.js';
 import { TAP_HOLD_MS } from './aspectWheel.js';
 
 // touchHold.js — the PURE hold semantics behind the touch overlay's press-and-hold roar (Phase 0c, plan
@@ -11,6 +11,11 @@ import { TAP_HOLD_MS } from './aspectWheel.js';
 //   T2 a re-press does not cancel the pending clear   T3 chargeFraction unclamped   T4 release not idempotent
 //   T5 plausible-wrong: a constant full sweep   T6 drop writes while idle
 //   T0 identity (a comment edit) SURVIVED, as it must.
+// Review F6 + F5, 2026-10-27, against this file's final form (17 tests), each observed RED:
+//   P1 makePointerClaim.claim ignores an existing owner   P2 plausible-wrong: free ignores which pointer owns it
+//   R1 chargeRingDeg returns an object again (the per-frame allocation)   R3 plausible-wrong: floored, not rounded
+//   R4 the sweep table left mutable   I1 identity (a comment edit in touchHold.js) SURVIVED, as it must.
+// (T5's sweep cases now live in the chargeRingDeg block: chargeRingStyle was replaced by it for F5.)
 //
 // BLIND SPOT: this proves the module. Whether TouchControls binds it to the right pointer events is
 // tests/gates/touch-hold-gates.test.jsx; whether a held touch commits the beast form in the running game is
@@ -110,6 +115,62 @@ describe('a press-and-hold intent', () => {
   });
 });
 
+describe('a hold belongs to ONE finger (review F6)', () => {
+  let r;
+  beforeEach(() => { r = rig(); });
+
+  it('a second finger\'s press neither restarts nor takes over the hold, and its lift does not end it', () => {
+    expect(r.hold.press(7)).toBe(true);
+    r.advance(300);
+    expect(r.hold.press(8), 'a second finger took the hold').toBe(false);
+    expect(r.writes, 'the second press wrote — a restart').toEqual([['roar', true]]);
+    expect(r.hold.release(8), 'the second finger\'s lift ended the first finger\'s hold').toBe(false);
+    r.advance(300);
+    expect(r.last(), 'the roar dropped while its own finger was still down').toBe(true);
+    expect(r.hold.release(7), 'PRESENCE: the owning finger\'s lift must end it').toBe(true);
+    expect(r.last()).toBe(false);
+  });
+
+  it('after the owner lifts, the next finger can hold it — ownership is per press, not forever', () => {
+    r.hold.press(7);
+    r.advance(200);
+    r.hold.release(7);
+    expect(r.hold.press(8)).toBe(true);
+    r.advance(200);
+    expect(r.hold.release(7), 'the old owner\'s stray lift ended the new hold').toBe(false);
+    expect(r.hold.release(8)).toBe(true);
+  });
+
+  it('close ends the hold whichever finger owns it (the control went away under it), honouring the minimum pulse', () => {
+    expect(r.hold.close(), 'close with nothing held reported an end').toBe(false);
+    r.hold.press(7);
+    r.advance(30);
+    expect(r.hold.close()).toBe(true);
+    expect(r.last(), 'close cut a tap below the minimum pulse').toBe(true);
+    r.advance(TAP_HOLD_MS);
+    expect(r.last()).toBe(false);
+    expect(r.hold.release(7), 'the closed hold was still owned').toBe(false);
+  });
+});
+
+describe('makePointerClaim — which finger owns a control', () => {
+  it('the first claim wins; another pointer can neither claim nor free it; the owner frees it; clear forgets it', () => {
+    const c = makePointerClaim();
+    expect(c.free(3), 'freed with nothing claimed').toBe(false);
+    expect(c.claim(3)).toBe(true);
+    expect(c.claim(4)).toBe(false);
+    expect(c.claim(3), 'a duplicate press re-claimed').toBe(false);
+    expect(c.free(4)).toBe(false);
+    expect(c.isHeld()).toBe(true);
+    expect(c.free(3)).toBe(true);
+    expect(c.isHeld()).toBe(false);
+    expect(c.claim(4)).toBe(true);
+    expect(c.clear()).toBe(true);
+    expect(c.clear()).toBe(false);
+    expect(c.free(4), 'clear left the owner able to free').toBe(false);
+  });
+});
+
 describe('chargeFraction — what a radial fill draws', () => {
   it('nothing to draw without a start', () => {
     expect(chargeFraction(null, 500, 450)).toBeNull();
@@ -128,16 +189,29 @@ describe('chargeFraction — what a radial fill draws', () => {
   });
 });
 
-describe('chargeRingStyle', () => {
-  it('hides when there is nothing to draw', () => {
-    expect(chargeRingStyle(null)).toEqual({ opacity: '0' });
+describe('chargeRingDeg + CHARGE_SWEEPS — what a charge ring paints, with nothing allocated per frame (review F5)', () => {
+  it('a NUMBER: -1 when there is nothing to draw (null, undefined, NaN)', () => {
+    expect(chargeRingDeg(null)).toBe(-1);
+    expect(chargeRingDeg(undefined)).toBe(-1);
+    expect(chargeRingDeg(NaN)).toBe(-1);
+    // A primitive is what lets the painter's cache compare by value: a fresh object per frame never equals the last.
+    expect(typeof chargeRingDeg(0.5)).toBe('number');
   });
-  it('draws a sweep of frac x 360 degrees — distinct at 0.25 and 0.75, so a constant sweep cannot pass', () => {
-    const quarter = chargeRingStyle(0.25);
-    const threeQ = chargeRingStyle(0.75);
-    expect(quarter.opacity).toBe('1');
-    expect(quarter.background).toContain('90deg');
-    expect(threeQ.background).toContain('270deg');
-    expect(chargeRingStyle(1).background).toContain('360deg');
+  it('whole degrees of frac x 360 — distinct at 0.25 and 0.75, so a constant sweep cannot pass — clamped to [0, 360]', () => {
+    expect(chargeRingDeg(0)).toBe(0);
+    expect(chargeRingDeg(0.25)).toBe(90);
+    expect(chargeRingDeg(0.75)).toBe(270);
+    expect(chargeRingDeg(1)).toBe(360);
+    expect(chargeRingDeg(0.499)).toBe(180); // 179.64, ROUNDED (not floored): a tick writes at most once per degree
+    expect(chargeRingDeg(1.7)).toBe(360);
+    expect(chargeRingDeg(-0.2)).toBe(0);
+  });
+  it('the sweep table is built once: 361 frozen entries, entry d sweeping d degrees', () => {
+    expect(CHARGE_SWEEPS).toHaveLength(361);
+    expect(Object.isFrozen(CHARGE_SWEEPS)).toBe(true);
+    expect(CHARGE_SWEEPS[90]).toContain(') 90deg, transparent 90deg');
+    expect(CHARGE_SWEEPS[270]).toContain(') 270deg, transparent 270deg');
+    expect(CHARGE_SWEEPS[360]).toContain(') 360deg');
+    expect(CHARGE_SWEEPS[chargeRingDeg(0.25)], 'the deg indexes a different sweep').toBe(CHARGE_SWEEPS[90]);
   });
 });

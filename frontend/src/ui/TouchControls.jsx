@@ -6,7 +6,8 @@ import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
 import { aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
-import { makeIntentHold } from '../input/touchHold';
+import { makeIntentHold, makePointerClaim } from '../input/touchHold';
+import { cancelHeavy } from '../game/heavyAttack';
 import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
 import { ownsTouch } from '../input/touchOwnership';
@@ -26,13 +27,13 @@ import { isAnyPanelOpen } from './panelState.js';
  * <TouchControlsSurface> (pointerEvents:none); the transparent data-touch-btn hit-areas, aligned to
  * those glyphs, are the real targets.
  */
-export default function TouchControls({ isWorldBuilt, talentsOpen = false, onOpenTalents }) {
+export default function TouchControls({ isWorldBuilt, talentsOpen = false, otherPanelOpen = false, onOpenTalents }) {
   if (isCaptureMode()) {
     // capture renders the tray OPEN so mobile.png locks the full M3a feature (grid icon + 4 openers).
     return getCaptureOpts().showTouch ? <TouchControlsSurface trayOpen /> : null;
   }
   if (!isTouchDevice()) return null;
-  return <TouchControlsLive isWorldBuilt={isWorldBuilt} talentsOpen={talentsOpen} onOpenTalents={onOpenTalents} />;
+  return <TouchControlsLive isWorldBuilt={isWorldBuilt} talentsOpen={talentsOpen} otherPanelOpen={otherPanelOpen} onOpenTalents={onOpenTalents} />;
 }
 
 // PHASE 0c — PRESS-AND-HOLD CONTROLS (plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
@@ -58,7 +59,8 @@ const noMenu = (e) => e.preventDefault();
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
 // talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
-function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
+// otherPanelOpen: the remaining App-local panel flags (Achievements, Stats), for the hold cancel below (review F3).
+function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTalents }) {
   const t = useT();
   const rootRef = useRef(null);
   const routerRef = useRef(makeTouchRouter());
@@ -72,16 +74,30 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
   // the frame the intent drops, so the old 120 ms pulse could never commit it. One hold for the overlay's life,
   // driven only from event handlers and effects — never per-frame React state (Game-Loop Isolation).
   const [roarHold] = useState(() => makeIntentHold({ verb: 'roar', setIntent, now: () => performance.now() }));
-  // A hold must end however its control goes away, or the next press has no rising edge and is eaten. Input going
-  // dead (pause, a panel, death) drops it at once; the ring closing under a held finger (a second finger on the
-  // opener) releases it as a lift would; unmounting drops it.
-  useEffect(() => { if (!active) roarHold.drop(); }, [active, roarHold]);
-  useEffect(() => { if (!wheelOpen) roarHold.release(); }, [wheelOpen, roarHold]);
-  useEffect(() => () => roarHold.drop(), [roarHold]);
+  // The action button's held charge belongs to ONE finger too (review F6): a second finger's press does not swing again
+  // or take the charge over, and its lift does not throw or end the first finger's heavy.
+  const [actionClaim] = useState(() => makePointerClaim());
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
   // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
   const anyPanel = useGameStore((s) => s.showInventory || s.showCrafting || s.showBuildingTools || s.showMagic);
+  // EVERY panel, from the one canonical list (panelState.js), plus the App-local flags the store cannot see. A held
+  // control must not outlive a panel opening (review F3): the WORLD opener (a chest, through the interact verb) does not
+  // lower `active` on touch — there is no pointer lock to lose — so a roar held across it kept charging and committed
+  // the beast form behind the chest, and a held heavy kept slowing the walk and threw on the lift. A boolean selector:
+  // it re-renders only on the open/close transition, so Game-Loop Isolation holds.
+  const storePanelOpen = useGameStore((s) => isAnyPanelOpen(s));
+  const panelOpen = storePanelOpen || talentsOpen || otherPanelOpen;
+  // A hold must end however its control goes away, or the next press has no rising edge and is eaten. Input going
+  // dead (pause, death) or a panel opening drops both holds at once — the heavy is CANCELLED, never thrown; the ring
+  // closing under a held finger (a second finger on the opener) releases the roar as a lift would; unmounting drops it.
+  useEffect(() => {
+    if (active && !panelOpen) return;
+    roarHold.drop();
+    if (actionClaim.clear()) cancelHeavy();
+  }, [active, panelOpen, roarHold, actionClaim]);
+  useEffect(() => { if (!wheelOpen) roarHold.close(); }, [wheelOpen, roarHold]);
+  useEffect(() => () => roarHold.drop(), [roarHold]);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -227,9 +243,14 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
         // the store seams Components publishes beside performVerb, as the 'touch' source, so a compat mouseup from a
         // second finger's tap cannot end this charge (heavyAttack.releaseHeavy checks the source). This used to
         // dispatch on pointerup with no release at all, so the heavy could never be performed on touch.
+        // Per finger (F6): only the claiming pointer presses and only it releases; refused while a panel is open (F3).
         <button data-touch-btn aria-label={t('a11y.action')} data-testid="touch-action"
-          onPointerDown={(e) => { capturePointer(e); useGameStore.getState().pressPrimary?.(0, 'touch'); }}
-          {...releaseHandlers(() => useGameStore.getState().releasePrimary?.('touch'))}
+          onPointerDown={(e) => {
+            if (panelOpen || !actionClaim.claim(e.pointerId)) return;
+            capturePointer(e);
+            useGameStore.getState().pressPrimary?.(0, 'touch');
+          }}
+          {...releaseHandlers((e) => { if (actionClaim.free(e.pointerId)) useGameStore.getState().releasePrimary?.('touch'); })}
           onContextMenu={noMenu}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}
@@ -305,8 +326,8 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
           // The ring stays open while held — closing it on the press would unmount the sector under the finger.
           return (
             <button key={a.verb} data-touch-btn data-locked="false" data-testid={`touch-aspect-${a.verb}`} aria-label={a.aspect}
-              onPointerDown={(e) => { capturePointer(e); roarHold.press(); }}
-              {...releaseHandlers(() => { if (roarHold.release()) setWheelOpen(false); })}
+              onPointerDown={(e) => { if (!panelOpen && roarHold.press(e.pointerId)) capturePointer(e); }}
+              {...releaseHandlers((e) => { if (roarHold.release(e.pointerId)) setWheelOpen(false); })}
               onContextMenu={noMenu}
               style={place} />
           );

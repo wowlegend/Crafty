@@ -44,6 +44,16 @@ import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 //      the case now re-mounts it full, the one state a value-only cache gets wrong)
 //   F6 the hidden state never written   F7 plausible-wrong: the ring on every unlocked sector
 //   F0 identity (a comment edit) SURVIVED, as it must.
+// Review fixes, 2026-10-27 (31 tests; subject src/ui/TouchControls.jsx unless named), each observed RED:
+//   F4/H1 the ring-close release effect deleted   F4/H2 plausible-wrong: the opener toggles on the press
+//   F6/P1g src/input/touchHold.js: a claim ignores an existing owner   F6/P3 plausible-wrong: the action lift frees any
+//   finger   F6/P4 plausible-wrong: the roar lift ends the hold for any finger
+//   F3/Q1 panelOpen ignores the store   F3/Q2 plausible-wrong: the old four-flag tray selector
+//   F3/Q3 plausible-wrong: the panel THROWS the heavy (release) instead of cancelling it
+//   F3/Q4 the roar sector takes a press with a panel open   F3/Q5 the action button does
+//   F3/Q6 talentsOpen dropped   F3/Q7 otherPanelOpen dropped
+//   F5/R1g src/input/touchHold.js: chargeRingDeg returns an object again   F5/R2 src/ui/TouchControlsSurface.jsx: the
+//   painter's cache removed   I2 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -74,6 +84,7 @@ afterEach(() => {
   vi.useRealTimers();
   delete Element.prototype.setPointerCapture;
   for (const a of ASPECT_VERBS) setIntent(a.verb, false);
+  useGameStore.setState({ showChestInterface: false });
   setActive(false);
 });
 
@@ -187,6 +198,56 @@ describe('the roar sector is press-and-hold', () => {
     expect(screen.queryByTestId('touch-aspect-roar'), 'the opener did not close the ring').toBeNull();
     expect(onOpenTalents).not.toHaveBeenCalled();
     expect(getInput().active, 'closing the ring dropped touch focus').toBe(true);
+  });
+
+  // REVIEW F6: the hold was GLOBAL — any pointer's press restarted it and any pointer's lift ended it, so a second finger
+  // brushing the sector cancelled the first finger's charge (the transform cancels the frame its intent drops).
+  it('F6: a second finger on the sector neither restarts nor ends the first finger\'s hold', () => {
+    withRoar();
+    render(<TouchControls isWorldBuilt />);
+    openRing();
+    fireEvent.pointerDown(roarSector(), { pointerId: 7, pointerType: 'touch' });
+    advance(200);
+    fireEvent.pointerDown(roarSector(), { pointerId: 8, pointerType: 'touch' });
+    expect(captured.map((c) => c.id), 'the second finger captured the sector it does not own').toEqual([7]);
+    advance(60);
+    fireEvent.pointerUp(roarSector(), { pointerId: 8, pointerType: 'touch' });
+    expect(getInput().roar, 'the second finger\'s lift ended the first finger\'s roar').toBe(true);
+    expect(screen.queryByTestId('touch-aspect-roar'), 'the second finger\'s lift closed the ring under the first').not.toBeNull();
+    advance(300);
+    expect(getInput().roar).toBe(true);
+    fireEvent.pointerUp(roarSector(), { pointerId: 7, pointerType: 'touch' });
+    expect(getInput().roar, 'PRESENCE: the owning finger\'s lift must end it').toBe(false);
+  });
+
+  // REVIEW F3: a panel opened by the WORLD (a chest, through the interact verb) leaves `active` true on touch — there is
+  // no pointer lock to lose — so a roar held across it kept charging and committed the form behind the panel.
+  it('F3: any panel opening mid-hold drops the roar at once, with input still live — store, Talents and App-local (3 of 3)', () => {
+    const openers = [
+      ['the chest (a store flag)', () => act(() => useGameStore.setState({ showChestInterface: true }))],
+      ['Talents (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt talentsOpen />)],
+      ['Achievements / Stats (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />)],
+    ];
+    let dropped = 0;
+    for (const [name, open] of openers) {
+      withRoar();
+      setActive(true);
+      const { rerender } = render(<TouchControls isWorldBuilt />);
+      openRing();
+      fireEvent.pointerDown(roarSector(), { pointerId: 7, pointerType: 'touch' });
+      advance(300);
+      expect(getInput().roar, `SETUP (${name}): the press did not hold`).toBe(true);
+      open(rerender);
+      expect(getInput().active, `SETUP (${name}): input went dead — this case is the panel that keeps it live`).toBe(true);
+      expect(getInput().roar, `${name} opened under a held roar and the roar kept charging`).toBe(false);
+      fireEvent.pointerUp(roarSector(), { pointerId: 7, pointerType: 'touch' });
+      fireEvent.pointerDown(roarSector(), { pointerId: 9, pointerType: 'touch' });
+      expect(getInput().roar, `with ${name} open, a fresh press on the sector raised the roar`).toBe(false);
+      dropped += 1;
+      cleanup();
+      useGameStore.setState({ showChestInterface: false });
+    }
+    expect(dropped).toBe(openers.length);
   });
 
   it('the other unlocked sectors keep the tap pulse on release — they have no charge to hold', () => {
@@ -314,6 +375,36 @@ describe('the action button is press-and-hold: the light swing at the press, the
     expect(captured[0].el).toBe(action());
   });
 
+  it('F6: a second finger on the action button neither swings again nor ends the first finger\'s charge', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+    fireEvent.pointerDown(action(), { pointerId: 4, pointerType: 'touch' });
+    fireEvent.pointerUp(action(), { pointerId: 4, pointerType: 'touch' });
+    fireEvent.pointerLeave(action(), { pointerId: 4, pointerType: 'touch' });
+    expect(calls, 'the second finger pressed or released the first finger\'s primary').toEqual([['press', 0, 'touch']]);
+    fireEvent.pointerUp(action(), { pointerId: 3, pointerType: 'touch' });
+    expect(calls, 'PRESENCE: the owning finger\'s lift must release it').toEqual([['press', 0, 'touch'], ['release', 'touch']]);
+  });
+
+  it('F3: a panel opening mid-charge CANCELS the heavy (never throws it), and the button refuses a press while it is open', () => {
+    // The press stand-in charges the real heavyAttack module, as Components' pressPrimary does for 'touch'.
+    useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+    advance(HEAVY_HOLD_MS + 100);
+    expect(isHeavyHeld(), 'SETUP: the press did not charge').toBe(true);
+    act(() => useGameStore.setState({ showChestInterface: true }));
+    expect(getInput().active, 'SETUP: the chest dropped input — this case is the panel that keeps it live').toBe(true);
+    expect(isHeavyHeld(), 'a panel opened under a held heavy and the charge survived').toBe(false);
+    fireEvent.pointerUp(action(), { pointerId: 3, pointerType: 'touch' });
+    expect(calls.filter(([k]) => k === 'release'), 'the lift after the cancel released (threw) the heavy').toEqual([]);
+    fireEvent.pointerDown(action(), { pointerId: 5, pointerType: 'touch' });
+    expect(calls.filter(([k]) => k === 'press'), 'a press went through with the panel open').toHaveLength(1);
+    act(() => useGameStore.setState({ showChestInterface: false }));
+    fireEvent.pointerDown(action(), { pointerId: 6, pointerType: 'touch' });
+    expect(calls.filter(([k]) => k === 'press'), 'PRESENCE: with the panel closed the button presses again').toHaveLength(2);
+  });
+
   it('a "touch" charge is ended only by the "touch" release — a compat mouseup from another finger cannot take it', () => {
     const t0 = 1000;
     const ready = t0 + HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
@@ -383,6 +474,31 @@ describe('the radial charge rings read the TRUE charge, never the touch', () => 
     rerender(<TouchControlsSurface wheelOpen />);
     advance(16);
     expect(screen.getByTestId('touch-charge-roar').style.opacity, 'the reopened ring was never painted').toBe('1');
+  });
+
+  // REVIEW F5: the tick allocated a style object, its template string and a key string per ring per frame. A heap
+  // allocation cannot be observed from a test, so this asserts the property that the allocation-free painter has and
+  // the old one lacked under a per-frame object key: a ring at rest is written NOTHING, frame after frame.
+  it('F5: a full ring at rest is written nothing for 60 frames; a change is written at once (the presence)', () => {
+    withRoar();
+    render(<TouchControlsSurface wheelOpen />);
+    const ring = screen.getByTestId('touch-charge-roar');
+    act(() => useGameStore.setState({ beastCharging: true }));
+    advance(600);
+    expect(sweepDeg(ring), 'SETUP: the ring is not full').toBe(360);
+    let writes = 0;
+    for (const prop of ['opacity', 'background']) {
+      Object.defineProperty(ring.style, prop, {
+        configurable: true,
+        get() { return this.getPropertyValue(prop); },
+        set(v) { writes += 1; this.setProperty(prop, v); },
+      });
+    }
+    advance(16 * 60);
+    expect(writes, `a ring at rest was written ${writes} times in 60 frames`).toBe(0);
+    act(() => useGameStore.setState({ beastCharging: false }));
+    advance(16);
+    expect(writes, 'PRESENCE: the cancel was never written — the instrument is blind').toBeGreaterThan(0);
   });
 
   it('the heavy ring follows heavyAttack\'s charge: nothing through a tap, half-way, full when ready, gone on cancel', () => {

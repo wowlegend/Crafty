@@ -8,7 +8,7 @@ import { useT } from '../i18n/i18n.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { heavyChargeLevel } from '../game/heavyAttack';
 import { ANTICIPATION_SEC } from '../game/beastTransform';
-import { chargeFraction, chargeRingStyle } from '../input/touchHold';
+import { chargeFraction, chargeRingDeg, CHARGE_SWEEPS } from '../input/touchHold';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
@@ -38,22 +38,28 @@ const BTN = (extra) => ({
 });
 
 // Phase 0c — the radial CHARGE RING drawn round a hold control (the roar sector, the action button). Its shape is
-// static: a mask keeps only the outer 6px band of a conic sweep. Only the sweep changes, written per frame by the tick
-// below through chargeRingStyle (input/touchHold.js).
+// static: a mask keeps only the outer 6px band of a conic sweep. Only the sweep changes, written by the tick below as a
+// whole-degree index into CHARGE_SWEEPS (input/touchHold.js).
 const RING_MASK = 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))';
 const CHARGE_RING = { position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none',
   WebkitMaskImage: RING_MASK, maskImage: RING_MASK };
-/** Write a ring's style only when it differs from what THIS element last got, so an idle tick writes nothing. Keyed by
- *  the element too: a ring re-mounted mid-charge (the Aspect ring reopened) is a new element and must be painted. */
-function paintRing(el, style, slot) {
+/** Write a ring only when its sweep (`deg`, -1 = hidden) differs from what THIS element last got, so an idle tick writes
+ *  nothing. Keyed by the element too: a ring re-mounted mid-charge (the Aspect ring reopened) is a new element and must
+ *  be painted. NO ALLOCATION (review F5): it compares two numbers and an element, and writes a prebuilt string — this
+ *  used to build a style object, its template string and a key string per ring per frame. */
+function paintRing(el, deg, slot) {
   if (!el) return;
-  const key = `${style.opacity}|${style.background || ''}`;
-  if (slot.el === el && slot.key === key) return;
+  if (slot.el === el && slot.deg === deg) return;
   slot.el = el;
-  slot.key = key;
-  el.style.opacity = style.opacity;
-  if (style.background) el.style.background = style.background;
+  slot.deg = deg;
+  if (deg < 0) {
+    el.style.opacity = '0';
+    return;
+  }
+  el.style.opacity = '1';
+  el.style.background = CHARGE_SWEEPS[deg];
 }
+const NO_COOLDOWNS = Object.freeze({}); // the tick's fallback, shared, so a store with no cooldowns allocates nothing
 
 /**
  * Pure visual surface for the touch overlay (M2). Joystick base ring (left), bottom-right thumb
@@ -85,13 +91,13 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
   const roarRingRef = useRef(null);
   const heavyRingRef = useRef(null);
   // The tick's own memory: when it first saw the roar charging, and what each ring was last painted with.
-  const ringState = useRef({ roarSince: null, roar: { el: null, key: '' }, heavy: { el: null, key: '' } });
+  const ringState = useRef({ roarSince: null, roar: { el: null, deg: null }, heavy: { el: null, deg: null } });
   useEffect(() => {
     if (isCaptureMode()) return undefined; // capture frames must stay byte-identical
     let raf;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const cds = useGameStore.getState().abilityCooldowns || {};
+      const cds = useGameStore.getState().abilityCooldowns || NO_COOLDOWNS;
       for (const a of aspects) {
         const el = sweepRefs.current[a.verb];
         if (!el) continue;
@@ -113,9 +119,9 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       if (useGameStore.getState().beastCharging) {
         if (rs.roarSince === null) rs.roarSince = now;
       } else rs.roarSince = null;
-      paintRing(roarRingRef.current, chargeRingStyle(chargeFraction(rs.roarSince, now, ANTICIPATION_SEC * 1000)), rs.roar);
+      paintRing(roarRingRef.current, chargeRingDeg(chargeFraction(rs.roarSince, now, ANTICIPATION_SEC * 1000)), rs.roar);
       const heavy = heavyChargeLevel(now);
-      paintRing(heavyRingRef.current, chargeRingStyle(heavy > 0 ? heavy : null), rs.heavy);
+      paintRing(heavyRingRef.current, heavy > 0 ? chargeRingDeg(heavy) : -1, rs.heavy);
     };
     tick();
     return () => cancelAnimationFrame(raf);

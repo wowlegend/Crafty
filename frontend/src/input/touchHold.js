@@ -12,18 +12,57 @@
  * press cancels a clear still pending from the previous tap, or that clear would cut the new hold short. `release` is
  * idempotent because a touch delivers pointerup, lostpointercapture and pointerleave for one lift.
  *
+ * A HOLD BELONGS TO ONE FINGER (review F6). It records the pointerId that pressed it: a second finger landing on the
+ * same control neither restarts nor takes over the hold, and its lift does not end it. Only the owning finger's
+ * release ends it, or `close` (the control went away under the finger), or `drop`. A press with no pointerId (a
+ * caller that has none) owns the hold as `undefined`, and only a release with no pointerId ends it.
+ *
  * Same purity contract as touchMath.js and aspectWheel.js: no React, no DOM, no Three. The clock and the scheduler are
  * injected so the timing is testable without a browser.
  */
 import { TAP_HOLD_MS } from './aspectWheel.js';
 
 /**
+ * Which finger owns a held control (review F6): the first pointer to claim it, until that same pointer frees it.
+ * @returns {{ claim(id: unknown): boolean, free(id: unknown): boolean, clear(): boolean, isHeld(): boolean }}
+ */
+export function makePointerClaim() {
+  let held = false;
+  let owner;
+  return {
+    /** True when `id` now owns the control; false while another pointer (or this one, again) already does. */
+    claim(id) {
+      if (held) return false;
+      held = true;
+      owner = id;
+      return true;
+    },
+    /** True when `id` owned it and has let go; a pointer that does not own it frees nothing. */
+    free(id) {
+      if (!held || id !== owner) return false;
+      held = false;
+      owner = undefined;
+      return true;
+    },
+    /** Forget the owner whoever it is (the hold was cancelled). True when something was held. */
+    clear() {
+      if (!held) return false;
+      held = false;
+      owner = undefined;
+      return true;
+    },
+    isHeld: () => held,
+  };
+}
+
+/**
  * @param {{ verb: string, setIntent: (verb: string, on: boolean) => void, now: () => number, minMs?: number,
  *           schedule?: (fn: () => void, ms: number) => unknown, unschedule?: (id: unknown) => void }} opts
- * @returns {{ press(): void, release(): boolean, drop(): void, isHeld(): boolean }}
+ * @returns {{ press(pointerId?: unknown): boolean, release(pointerId?: unknown): boolean, close(): boolean,
+ *             drop(): void, isHeld(): boolean }}
  */
 export function makeIntentHold({ verb, setIntent, now, minMs = TAP_HOLD_MS, schedule = setTimeout, unschedule = clearTimeout }) {
-  let down = false;
+  const claim = makePointerClaim();
   let pressedAt = 0;
   let pending = null;
   const cancelPending = () => {
@@ -32,36 +71,44 @@ export function makeIntentHold({ verb, setIntent, now, minMs = TAP_HOLD_MS, sche
       pending = null;
     }
   };
+  // Ends the hold, honouring the minimum pulse.
+  const end = () => {
+    const wait = Math.max(0, pressedAt + minMs - now());
+    if (wait === 0) {
+      setIntent(verb, false);
+    } else {
+      pending = schedule(() => {
+        pending = null;
+        setIntent(verb, false);
+      }, wait);
+    }
+    return true;
+  };
   return {
-    press() {
+    /** Raises the intent. Returns false, changing nothing, while a finger already holds it. */
+    press(pointerId) {
+      if (!claim.claim(pointerId)) return false;
       cancelPending();
-      down = true;
       pressedAt = now();
       setIntent(verb, true);
-    },
-    /** Ends the hold, honouring the minimum pulse. Returns whether a hold was actually ended. */
-    release() {
-      if (!down) return false;
-      down = false;
-      const wait = Math.max(0, pressedAt + minMs - now());
-      if (wait === 0) {
-        setIntent(verb, false);
-      } else {
-        pending = schedule(() => {
-          pending = null;
-          setIntent(verb, false);
-        }, wait);
-      }
       return true;
     },
-    /** Clears at once (input went dead, or the control unmounted). Silent when nothing is held or pending. */
+    /** The finger `pointerId` lifted. Ends the hold only if that finger owns it. Returns whether a hold was ended. */
+    release(pointerId) {
+      return claim.free(pointerId) ? end() : false;
+    },
+    /** The control went away under whichever finger holds it: ends the hold as a lift would. */
+    close() {
+      return claim.clear() ? end() : false;
+    },
+    /** Clears at once (input went dead, a panel opened, or the control unmounted). Silent when nothing is held or pending. */
     drop() {
-      if (!down && pending === null) return;
+      const wasHeld = claim.clear();
+      if (!wasHeld && pending === null) return;
       cancelPending();
-      down = false;
       setIntent(verb, false);
     },
-    isHeld: () => down,
+    isHeld: () => claim.isHeld(),
   };
 }
 
@@ -77,15 +124,19 @@ export function chargeFraction(startedAt, now, durationMs) {
 }
 
 /**
- * The inline style a charge ring takes: hidden for null, else a gold conic sweep of `frac` x 360 degrees (whole
- * degrees, so a rAF writes a new value at most once per degree). The ring SHAPE (a mask) is static and lives on the
- * element; this is only what changes per frame.
+ * A charge ring's sweep in WHOLE degrees [0, 360], or -1 when there is nothing to draw (null, undefined, NaN).
+ *
+ * A NUMBER, deliberately (review F5). This runs inside TouchControlsSurface's rAF tick for two rings every frame, and it
+ * used to return a fresh style object holding a fresh template string, which the painter then keyed with a third
+ * string: three allocations per ring per frame, for a value that changes at most once per degree. A number compares
+ * without allocating, and the string it stands for is looked up in CHARGE_SWEEPS, built once.
  */
-export function chargeRingStyle(frac) {
-  if (frac === null || frac === undefined) return { opacity: '0' };
-  const deg = Math.round(frac * 360);
-  return {
-    opacity: '1',
-    background: `conic-gradient(from 0deg, rgb(var(--ui-accent, 201 168 106)) ${deg}deg, transparent ${deg}deg)`,
-  };
+export function chargeRingDeg(frac) {
+  if (frac === null || frac === undefined || !Number.isFinite(frac)) return -1;
+  return Math.round(Math.min(1, Math.max(0, frac)) * 360);
 }
+
+/** Every sweep a charge ring can show, indexed by chargeRingDeg: built once at load, so the tick writes a shared
+ *  string and never builds one. The ring SHAPE (a mask) is static and lives on the element. */
+export const CHARGE_SWEEPS = Object.freeze(Array.from({ length: 361 },
+  (_, deg) => `conic-gradient(from 0deg, rgb(var(--ui-accent, 201 168 106)) ${deg}deg, transparent ${deg}deg)`));
