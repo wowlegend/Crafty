@@ -32,6 +32,7 @@ import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
+import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -255,18 +256,11 @@ export const GameScene = React.memo(function GameScene({
 
           const canvasEl = gl.domElement;
           canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
-          const handleContextLost = (e) => {
-            e.preventDefault();
-            console.error('WebGL context lost detected in GameScene!');
-            useGameStore.getState().setIsWebGLContextLost(true);
-          };
-          const handleContextRestored = () => {
-            if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-            useGameStore.getState().setIsWebGLContextLost(false);
-          };
-          
-          canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
-          canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
+          // Context loss/restore: the handlers that lived inline here moved, unchanged in effect, to
+          // render/glDiagnostics.js, where they also COUNT losses for the Show Stats readout and a gate can drive them.
+          watchContextLoss(canvasEl, useGameStore);
+          // The renderer the readout and the lookbook seam (render/lookbookSeam.js) report: GL renderer, dpr in force.
+          trackRenderer(gl);
         }}
       >
         <CaptureClockTicker />
@@ -413,7 +407,7 @@ export const GameScene = React.memo(function GameScene({
           <Preload all />
         </Suspense>
 
-        {showStats && <FrameStats />}
+        {showStats && <FrameStats capActive={capActive} />}
       </Canvas>
     </div>
   );
