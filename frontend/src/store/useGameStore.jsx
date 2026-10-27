@@ -342,6 +342,8 @@ export const useGameStore = create((set, get) => ({
     // The opaque title screen covers the game canvas (render/canvasPace.js paces it down). ONE writer: MenuSystem,
     // from its own titleMenuVisible — a second derivation of "is the title up" is how two copies drift.
     titleCovering: false,
+    // A panel's full-screen scrim covers the game canvas (render/canvasPace.js paces it to 30). ONE writer: MenuSystem.
+    panelCovering: false,
     juiceIntensity: 1,
     setJuiceIntensity: (v) => set(() => {
       const next = Math.max(0, Math.min(1, v));

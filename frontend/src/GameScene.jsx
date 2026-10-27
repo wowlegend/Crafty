@@ -9,7 +9,8 @@ import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
 import { EffectComposer, Noise, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
-import { TIERS } from './render/quality';
+import { TIERS, readDeviceSignals } from './render/quality';
+import { useWindowFocused } from './render/useWindowFocused.js';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
 import { FarField } from './world/FarField.jsx';
@@ -183,7 +184,11 @@ export const GameScene = React.memo(function GameScene({
   // Written only by MenuSystem (its titleMenuVisible): the opaque title screen covers this canvas.
   const titleCovering = useGameStore((s) => s.titleCovering);
   // How often this canvas draws — render/canvasPace.js, the one decision (the harnesses step or time their own frames).
-  const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
+  // A panel's scrim (MenuSystem publishes it) paces the canvas to 30; an unfocused desktop window to 10 (item g).
+  const panelCovering = useGameStore((s) => s.panelCovering);
+  const [finePointer] = useState(() => !readDeviceSignals().coarsePointer);
+  const focused = useWindowFocused({ finePointer });
+  const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);
   // On a coarse pointer the render distance is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
