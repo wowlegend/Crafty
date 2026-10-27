@@ -17,6 +17,9 @@ export const sunDirRef = { current: new THREE.Vector3(0.3, 0.6, 0.3).normalize()
 // The cloud cover <Atmosphere> set this frame (0..1; 0 for the sky-studio cards). The terrain's cloud shadows
 // read it so there is never a shadow under a sky with no cloud in it.
 export const cloudCoverRef = { current: 1 };
+// The storm-lightning flash this frame (added hemisphere intensity; 0 = none). Written by <LightningDriver> once per
+// frame, read by <Atmosphere> — a transient ref, so a flash never re-renders React (Game-Loop Isolation).
+export const lightningFlashRef = { current: 0 };
 
 const STATES = ['explore', 'dusk', 'obsidian']; // index === integer mood
 

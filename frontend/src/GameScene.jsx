@@ -5,6 +5,7 @@ import { Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
 import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
+import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
 import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
@@ -349,6 +350,8 @@ export const GameScene = React.memo(function GameScene({
         {!captureStudio && <LightMotes count={q.moteCount} />}
 
         <WeatherSystem />
+        {/* Storm lightning (EXTERNAL-BASELINE-R2 #4): flash + thunder while a storm is on; inert under capture. */}
+        <LightningDriver />
 
         {/* Desktop mouse-look — our own pointer-lock handler (src/input/pointerLook.js), replacing drei's
             pointer-lock controls. drei's PLC only rotated while its EXACT canvas was pointerLockElement

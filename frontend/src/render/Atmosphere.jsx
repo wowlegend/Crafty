@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { cycleFraction } from '../game/dayPhase.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { isCaptureMode } from '../devtest/captureMode.js';
-import { moodRef, moodTarget, sampleMood, sunDirRef, cloudCoverRef } from './mood.js';
+import { moodRef, moodTarget, sampleMood, sunDirRef, cloudCoverRef, lightningFlashRef } from './mood.js';
 import { starIntensity } from './nightSky.js';
 import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
@@ -275,6 +275,13 @@ export function Atmosphere({ shadowConfig }) {
       u.topColor.value.copy(m.skyTop);
       u.midColor.value.copy(m.skyMid);
       u.horizonColor.value.copy(m.skyHorizon);
+      // ...and the sky itself: a lightning flash whitens the dome, strongest overhead (0 outside a flash).
+      const flash = lightningFlashRef.current;
+      if (flash > 0) {
+        u.topColor.value.addScalar(flash * 0.22);
+        u.midColor.value.addScalar(flash * 0.16);
+        u.horizonColor.value.addScalar(flash * 0.1);
+      }
       u.sunColor.value.copy(m.sun);
       u.sunDir.value.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
       sunDirRef.current.copy(u.sunDir.value); // the ONE resolved sun, for the terrain's cloud shadows
@@ -305,7 +312,9 @@ export function Atmosphere({ shadowConfig }) {
     if (hemiRef.current) {
       hemiRef.current.color.copy(m.hemiSky);          // sky bounce (top)
       hemiRef.current.groundColor.copy(m.hemiGround); // ground bounce (bottom)
-      hemiRef.current.intensity = m.hemiIntensity;
+      // STORM LIGHTNING (render/LightningDriver.jsx): the flash is sky light, so it rides the hemisphere — the whole
+      // world lights from above for a beat, shadows unchanged. 0 outside a flash, and 0 under capture.
+      hemiRef.current.intensity = m.hemiIntensity + lightningFlashRef.current;
     }
   });
 
