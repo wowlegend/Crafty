@@ -19,6 +19,8 @@ import { parseMutants, identityMutant, summarize, inLinkedWorktree } from '../..
  *   M-U1c the .json branch appends a comment like the JS one -> "the JSON identity mutant stays valid JSON" RED
  *   M-U1d the CLI checks only its own tree, not the cwd      -> "refuses outside a linked worktree" RED
  *   identity: a trailing `// identity mutant` line           -> SURVIVED (the control holds)
+ *   fix round (tranche A review, item 4), via mutate-batch (13 tests), identity SURVIVED, each -> "the bound itself" RED:
+ *   M-B1 expect: 0 accepted (`< 0`) · M-B2 expect: 1 refused (`< 2`) · M-B3 a fractional expect accepted
  *
  * BLIND SPOT: no case here runs a real mutant through mutate.sh end to end — that would run vitest inside vitest
  * under the load this lane measured. The wrapping of mutate.sh's exit codes (0 RED, 1 SURVIVED, else 3) is read
@@ -56,6 +58,14 @@ describe('parseMutants', () => {
   it('rejects a mutant without expect', () => {
     const { expect: _drop, ...noExpect } = ok;
     expect(() => parseMutants(JSON.stringify([noExpect]))).toThrow(/expect/);
+  });
+
+  it('rejects expect: 0 and a fractional expect, and accepts expect: 1 — the bound itself', () => {
+    // A spec that collected zero tests is exactly what `expect` exists to catch, so 0 is the value the bound is FOR
+    // (tranche A review, item 4: only a missing expect was driven, so `< 1` could slide to `< 0` unseen).
+    expect(() => parseMutants(JSON.stringify([{ ...ok, expect: 0 }]))).toThrow(/expect/);
+    expect(() => parseMutants(JSON.stringify([{ ...ok, expect: 1.5 }]))).toThrow(/expect/);
+    expect(parseMutants(JSON.stringify([{ ...ok, expect: 1 }]))[0].expect).toBe(1);
   });
 
   it('refuses a LIVE settings file as subject, and accepts a scratch copy one directory away', () => {
