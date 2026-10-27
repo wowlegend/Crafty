@@ -37,7 +37,7 @@ import { FrameStats } from './render/FrameStats.jsx';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
-import { createGovernor, governorDecline, governorIncline, governorSamples, renderDistanceFor } from './render/tierGovernor.js';
+import { createGovernor, governorDecline, governorIncline, governorSamples, governorWarm, renderDistanceFor } from './render/tierGovernor.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
 import { PointLightPool } from './render/lightPool.jsx';
@@ -200,7 +200,9 @@ export const GameScene = React.memo(function GameScene({
   // decision (or the DEV signal hook below) to the store.
   const governor = useRef(null);
   if (!governor.current) governor.current = createGovernor();
-  const governorStep = useRef((kind) => {
+  const governorStep = useRef((kind, monitor) => {
+    // A monitor's first window is warm-up (render/tierGovernor.js governorWarm). The DEV signal hook passes no monitor.
+    if (monitor && !governorWarm(monitor.index)) return null;
     const st = useGameStore.getState();
     const now = performance.now();
     const next = kind === 'decline'
@@ -392,11 +394,14 @@ export const GameScene = React.memo(function GameScene({
           // also discards the samples taken while paced, so play resumes with a fresh window.
           governorSamples(pace, frameCap) && (
             <PerformanceMonitor
+              // Keyed on the tier: a step mounts a fresh monitor, and its first window — the step's own cost — is warm-up
+              // (governorStep ignores it; render/tierGovernor.js rule 4).
+              key={qualityTier}
               // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
               bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
               factor={0.5}
-              onDecline={() => governorStep('decline')}
-              onIncline={() => governorStep('incline')}
+              onDecline={(api) => governorStep('decline', api)}
+              onIncline={(api) => governorStep('incline', api)}
             />
           )
         )}

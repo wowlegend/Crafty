@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  createGovernor, governorDecline, governorIncline, governorSamples, renderDistanceFor,
-  REINCLINE_BLOCK_MS, SETTLE_AFTER_DECLINES,
+  createGovernor, governorDecline, governorIncline, governorSamples, governorWarm, renderDistanceFor,
+  REINCLINE_BLOCK_MS, SETTLE_AFTER_DECLINES, MONITOR_ITERATIONS,
 } from '../../src/render/tierGovernor.js';
 import { paceFor } from '../../src/render/canvasPace.js';
 import { TIERS } from '../../src/render/quality.js';
@@ -112,6 +113,71 @@ describe('the governor samples only a canvas running at its play pace', () => {
     for (const frameCap of [60, 0]) {
       expect(governorSamples(paceFor({ frameCap, titleCovering: true, harness: false }), frameCap), `cap ${frameCap}`).toBe(false);
     }
+  });
+});
+
+/**
+ * A FRESH MONITOR'S FIRST WINDOW IS WARM-UP (review 2026-10-27, steady-cool MED 4). GameScene keys PerformanceMonitor on
+ * the tier, so a step mounts a fresh monitor, and the step's own cost (the light pool's shader re-links, reallocated
+ * targets) lands in its first window; a decision from that window could walk a capable machine down to low on the cost of
+ * its own steps. governorStep ignores it. This drives drei's REAL monitor (R3F's useFrame stubbed, a fake clock) so the
+ * premise — the first window's decision arrives with api.index === MONITOR_ITERATIONS — is checked against the installed
+ * drei, not assumed. The GameScene wiring (the key, the api handed through, the check before the step) is
+ * perf-config-gates'.
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh, one batch, receipts in the commit:
+ *   W1 governorWarm always true (no warm-up)                            -> RED expected
+ *   W2 plausible-wrong: `>=` (the first window's decision counts)       -> RED expected
+ *   W3 GameScene's monitor not keyed on the tier                        -> RED expected (perf-config-gates)
+ *   W4 GameScene's callbacks drop drei's api                            -> RED expected (perf-config-gates)
+ *   W5 governorStep's warm-up check removed                             -> RED expected (perf-config-gates)
+ *   W0 identity (a comment edit in tierGovernor.js)                     -> must SURVIVE
+ */
+afterEach(() => { vi.restoreAllMocks(); });
+
+// drei is an external dependency, so vi.mock cannot reach the useFrame it imports. Instead the REAL useFrame is given a
+// root: R3F's own `context`, holding a store whose internal.subscribe records the frame callback, the one thing useFrame
+// reads from it (fiber's useFrame: useStore() -> store.getState().internal.subscribe(ref, priority, store)).
+const subs = [];
+const fakeRoot = { getState: () => ({ internal: { subscribe: (ref) => { subs.push(ref); return () => subs.splice(subs.indexOf(ref), 1); } } }) };
+
+describe('warm-up: a fresh monitor\'s first decision is ignored, the next one counts', () => {
+  it('pure: up to the end of the first window no decision counts; after it, every one does', () => {
+    expect(MONITOR_ITERATIONS).toBe(10);
+    expect(governorWarm(MONITOR_ITERATIONS)).toBe(false);
+    expect(governorWarm(2 * MONITOR_ITERATIONS)).toBe(true);
+  });
+
+  it('drei\'s own monitor, slow frames: first decision ignored, second counts; a re-key (a tier step) starts over', async () => {
+    const React = (await import('react')).default;
+    const { render, act, cleanup } = await import('@testing-library/react');
+    const { PerformanceMonitor } = await import('@react-three/drei');
+    const { context } = await import('@react-three/fiber');
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const seen = [];
+    const monitor = (tier) => React.createElement(context.Provider, { value: fakeRoot }, React.createElement(PerformanceMonitor, {
+      key: tier,
+      bounds: () => [50, 60],
+      onDecline: (api) => seen.push({ tier, index: api.index, counts: governorWarm(api.index) }),
+    }));
+    // 20 fps (a frame every 50 ms), under the lower bound: every window ends in a decline.
+    const frames = (n) => act(() => {
+      for (let i = 0; i < n; i++) {
+        now += 50;
+        expect(subs.length, 'SETUP: not exactly one monitor subscribed to frames').toBe(1);
+        subs[0].current({}, 0.05);
+      }
+    });
+    const { rerender } = render(monitor('high'));
+    frames(130);
+    expect(seen.length, `SETUP: the monitor did not decide twice in 130 slow frames: ${JSON.stringify(seen)}`).toBe(2);
+    expect(seen[0].index, 'the first window\'s decision is not at MONITOR_ITERATIONS samples').toBe(MONITOR_ITERATIONS);
+    expect(seen.map((s) => s.counts), 'the first window counted, or the second did not').toEqual([false, true]);
+    rerender(monitor('med')); // the tier step: GameScene's key={qualityTier}
+    frames(70);
+    expect(seen.slice(2).map((s) => [s.tier, s.counts]), 'a re-keyed monitor\'s first window counted').toEqual([['med', false]]);
+    cleanup();
   });
 });
 

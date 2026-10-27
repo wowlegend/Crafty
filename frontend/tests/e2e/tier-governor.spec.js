@@ -43,7 +43,10 @@ test('the governor settles under an oscillating signal and ignores the paced-dow
   await setTier('high');
   const a0 = await gov();
   await page.evaluate(() => window.__craftyTest.call('injectFrameStall', 70));
-  await page.waitForTimeout(10000);
+  // Up to 60 s, not a fixed 10: a fresh monitor's first window is warm-up and ignored (render/tierGovernor.js rule 4,
+  // review 2026-10-27 MED 4), so a decline needs two windows after the setTier above remounts the monitor, and a window
+  // is ten samples of >= 250 ms each, longer still on CI's software renderer.
+  await page.waitForFunction((d) => window.__craftyTest.call('readGovernor').declines > d, a0.declines, { timeout: 60000, polling: 500 }).catch(() => {});
   await page.evaluate(() => window.__craftyTest.call('injectFrameStall', 0));
   const a1 = await gov();
   expect(a1.declines, `the monitor never declined through the governor under 70 ms frames: ${JSON.stringify({ a0, a1 })}`).toBeGreaterThan(a0.declines);

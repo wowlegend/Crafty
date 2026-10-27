@@ -103,11 +103,19 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
     expect([governorIncline(g, 'low', 0), governorIncline(g, 'med', 0), governorIncline(g, 'high', 0)]).toEqual(['med', 'high', null]);
     expect([governorDecline(createGovernor(), 'high', 0), governorDecline(createGovernor(), 'med', 0), governorDecline(createGovernor(), 'low', 0)]).toEqual(['med', 'low', null]);
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(code).toMatch(/onIncline=\{\(\) => governorStep\('incline'\)\}/);
-    expect(code).toMatch(/onDecline=\{\(\) => governorStep\('decline'\)\}/);
+    // 2026-10-27 (review MED 4, the warm-up): each callback hands drei's api to the step, which ignores a fresh monitor's
+    // first window (governorWarm, driven against drei's real monitor in tier-governor-gates), and the monitor is keyed on
+    // the tier so a step's own cost lands in a fresh monitor's first window.
+    expect(code).toMatch(/onIncline=\{\(api\) => governorStep\('incline', api\)\}/);
+    expect(code).toMatch(/onDecline=\{\(api\) => governorStep\('decline', api\)\}/);
     const step = code.slice(code.indexOf('const governorStep = useRef('), code.indexOf('}).current;'));
     expect(step, 'governorStep not found').toMatch(/governorIncline\(governor\.current, st\.qualityTier, now\)/);
     expect(step).toMatch(/governorDecline\(governor\.current, st\.qualityTier, now\)/);
+    expect(step, 'the step does not ignore a fresh monitor\'s first window').toMatch(/^\s*if \(monitor && !governorWarm\(monitor\.index\)\) return null;/m);
+    expect(step.indexOf('governorWarm('), 'the warm-up check comes after the tier is stepped').toBeLessThan(step.indexOf('governorDecline('));
+    const tagAt = code.indexOf('<PerformanceMonitor');
+    const tag = code.slice(tagAt, code.indexOf('/>', tagAt));
+    expect(tag, 'the monitor is not remounted by a tier step').toMatch(/\bkey=\{qualityTier\}/);
     // It must guard against a no-op write (only setQualityTier when the governor returned a tier).
     expect(step).toMatch(/if \(next\) st\.setQualityTier\(next\);/);
   });

@@ -11,7 +11,12 @@
 //   2. after SETTLE_AFTER_DECLINES (2) declines the governor settles: it never inclines again this session (it may still
 //      decline — a machine that heats up later must be able to step down);
 //   3. a decision is honoured only while the canvas runs at its PLAY pace (governorSamples): behind the title, a panel or
-//      an unfocused window the canvas is paced down on purpose, and a frame-rate sampler reads that as a slow GPU.
+//      an unfocused window the canvas is paced down on purpose, and a frame-rate sampler reads that as a slow GPU;
+//   4. a fresh monitor's FIRST window is warm-up and its decision is ignored (governorWarm; review 2026-10-27, steady-cool
+//      MED 4). GameScene keys the monitor on the tier, so every step mounts a fresh one: the step's own cost (the per-tier
+//      point-light pool changes NUM_POINT_LIGHTS and re-links every lit shader; shadow and composer targets reallocate)
+//      lands in that window, and a capable machine could read its own step as a slow GPU and walk itself down to low. Boot
+//      and every return to the play pace mount a fresh monitor too, and get the same warm-up.
 //
 // WHY NO "DOUBLING PER REPEAT" (the brief's third rule). With the settle at 2 declines, at most ONE block is ever set
 // before the governor settles, so a block that doubles on each repeat can never reach its second value: it would be dead
@@ -54,6 +59,18 @@ export function governorIncline(g, cur, now) {
   if (next === cur) return null;
   if (now < (g.blockedUntil[next] || 0)) return null;
   return next;
+}
+
+/** drei PerformanceMonitor's `iterations` (its default; GameScene passes none): the samples in one decision window. */
+export const MONITOR_ITERATIONS = 10;
+
+/**
+ * PURE. Whether a PerformanceMonitor decision counts: never one from the monitor's first window (rule 4 above). `samples`
+ * is the monitor's api.index, the samples it has taken since it mounted; drei calls onIncline/onDecline with that api at
+ * the end of each window of MONITOR_ITERATIONS samples, so the first window's decision arrives at exactly that count.
+ */
+export function governorWarm(samples) {
+  return samples > MONITOR_ITERATIONS;
 }
 
 /** PURE. Whether the governor may sample this canvas: only at its play pace — the setting's cap, or uncapped. */
