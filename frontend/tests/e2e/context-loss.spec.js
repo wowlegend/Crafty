@@ -66,9 +66,10 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
     }
     return { moved: Number((moved / (b.data.length / 4)).toFixed(5)), range: Math.round(max - min) };
   };
-  // Calibrated from local runs 2026-10-27 (swiftshader, load 35-220): a drawing canvas moved 13.3%, 13.7% and 83.6% of its
-  // pixels in 1.5 s; a lost one moved 0% twice and 0.447% twice (a fixed region, same value both times). 2% sits 4.5x
-  // above the most a frozen canvas moved and 6.6x below the least a drawing one did.
+  // Calibrated from seven local runs 2026-10-27 (swiftshader, load 35-220): a drawing canvas moved 11.1-83.6% of its
+  // pixels in 1.5 s (nine readings); a lost one moved 0% in five runs and 0.447% in two (the same value both times, before
+  // the 1 s settle below existed). 2% sits 4.5x above the most a frozen canvas moved and 5.5x below the least a drawing
+  // one did. Re-measure, do not re-quote, if the renderer or the scene changes.
   const LIVE = 0.02;
   // Presence first: the instrument sees a drawn, moving world before the loss.
   const lit = await liveness();
