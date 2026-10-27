@@ -1,7 +1,41 @@
-# Overnight — 2026-09-22 → 23
+# Overnight — 2026-09-22 → 23, resumed 2026-10-27
 
 The first thing to read in the morning. Newest at the top of each section. Every "shipped" row names its
 commit and the CI conclusion observed for it (`in_progress` / `cancelled` = no signal yet, not a pass).
+
+## 2026-10-27 — the command session (c54fc9b6), your "masterpiece" goal
+
+**Where it stands (re-measure before trusting):** main is 22 commits ahead of origin, nothing pushed yet; the full
+local e2e receipt that the push needs is running. The milestone branch `feat/parked-looks-perf` holds the parked
+looks and pacing work (ore glow, leaf sway, storm lightning, title pacing, compass) on top of main; its PR follows its
+e2e proofs.
+
+| Commit | What | CI |
+|---|---|---|
+| `93785815` `0c5b269c` | **The mutation instruments now fail closed honestly:** a test timeout, an app that never booted, a busy port, or vitest 4's quieter output used to be scored as a verdict. Your ultrareview found three of these (U4-U6), the bake-off one more | not pushed yet |
+| `43754237` | **A panel that fails to load closes and tells you**, instead of leaving you in panel mode with nothing on screen (worst on iPad) — your ultrareview U2 | not pushed yet |
+| `167841e2` | **A mob knocked off a ledge stays under the overhang it slid under**; the next ground check used to put it back on the ledge (U3 = the bake-off's B1) | not pushed yet |
+| `10a43f68` | **Dependencies:** vitest 4 and an audit refresh clear 14 advisories (2 critical) that would have failed CI on the very push that ships your heat fixes; Dependabot #20/#21 applied on main | not pushed yet |
+| `5177c203` | CI pinned to ubuntu-24.04, actions on v7 | not pushed yet |
+
+**An incident, repaired, and the root cause fixed (`0c5b269c`):** the first commit made from a worktree ran the test
+suite with git's hook environment, and two test fixtures wrote into the real repository: it was re-initialised as
+bare and given a fixture identity, and four fixture commits landed on the worktree's branch. Repaired the same
+minute against the measured prior values; main and origin were never touched.
+
+**The design for your goal** (a four-lane survey, a roadmap, an upside pass, an adversarial refute; full text to be
+filed as the masterpiece plan): **"Ember against the dark"** — light as both the look and the progression. Night gets
+a real moon key light and an authored colour script; a baked voxel light field makes lanterns, the Hearth and relit
+shrines into pools of warm light; light is the defence (no spawns in strong light, sieges march on your brightest
+structure); relighting the frontier's shrines weakens the dragon, as Pike's quest line already promises. Underneath
+it: a pixel budget instead of dpr 2 (the next big heat lever), tiers that settle instead of oscillating (the leading
+iPad suspect), touch controls that can perform the beast form and the heavy, and close-quarters combat (today the
+player out-walks every chaser 2-5x, so every fight is optional).
+
+**One question only you can answer, not blocking:** your iPad's iPadOS and Safari version (Settings > General >
+About). Safari 27 (2026-09-14) "Fixed a regression where a WebGL canvas was filled with opaque content that hid
+stacked canvases beneath it" (Apple's release notes, read 2026-10-27), and Crafty stacks two WebGL canvases at the
+title. Whether that is what you saw is unverified; your version would settle whether it can be.
 
 ## Your live-site report — M3 Max fans, iPad visuals (2026-09-23)
 
